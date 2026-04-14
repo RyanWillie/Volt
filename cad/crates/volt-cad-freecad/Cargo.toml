@@ -1,0 +1,13 @@
+[package]
+name = "volt-cad-freecad"
+description = "FreeCAD headless subprocess bridge for volt-cad"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+volt-cad-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tempfile = { workspace = true }

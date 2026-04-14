@@ -44,9 +44,9 @@ volt-eda schematic render --project ./MyProject --output schematic.svg
 
 ### `cad/` — CAD Engine (MIT)
 
-Agent-friendly CLI wrapper around FreeCAD's headless engine for enclosure design.
+Agent-friendly CLI (`volt-cad`) around FreeCAD's headless engine for solid modeling, import/export, meshing, and geometric checks.
 
-**Status:** Not yet started.
+**Status:** Initial `volt-cad` CLI with FreeCAD-backed operations (see `cad/README.md`).
 
 ### `agent/` — Agent Harness (Proprietary)
 
@@ -71,6 +71,12 @@ cd eda && cargo test
 
 # Run the CLI
 cd eda && cargo run --bin volt-eda -- --help
+
+# Build the CAD engine
+cd cad && cargo build
+
+# Run the CAD CLI
+cd cad && cargo run --bin volt-cad -- --help
 ```
 
 ## License
