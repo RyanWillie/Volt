@@ -1,9 +1,7 @@
 [workspace]
 members = [
-    "crates/volt-sexp",
     "crates/volt-core",
-    "crates/volt-librepcb",
-    "crates/volt-kicad",
+    "crates/volt-import",
     "crates/volt-erc",
     "crates/volt-drc",
     "crates/volt-export",
@@ -18,10 +16,8 @@ license = "MIT"
 repository = "https://github.com/volt-eda/volt-eda"
 
 [workspace.dependencies]
-volt-sexp = { path = "crates/volt-sexp" }
 volt-core = { path = "crates/volt-core" }
-volt-librepcb = { path = "crates/volt-librepcb" }
-volt-kicad = { path = "crates/volt-kicad" }
+volt-import = { path = "crates/volt-import" }
 volt-erc = { path = "crates/volt-erc" }
 volt-drc = { path = "crates/volt-drc" }
 volt-export = { path = "crates/volt-export" }
@@ -30,3 +26,4 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 thiserror = "2"
+chrono = { version = "0.4", features = ["serde"] }

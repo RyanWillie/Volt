@@ -1,6 +1,6 @@
 [package]
-name = "volt-kicad"
-description = "KiCad .kicad_sym/.kicad_mod library importer"
+name = "volt-import"
+description = "LibrePCB .lp and KiCad library importers"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
