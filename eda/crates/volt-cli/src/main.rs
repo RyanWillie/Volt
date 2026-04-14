@@ -48,6 +48,16 @@ enum Commands {
         #[command(subcommand)]
         command: commands::schematic::SchematicCommands,
     },
+    /// Import external libraries and project data
+    Import {
+        #[command(subcommand)]
+        command: commands::import::ImportCommands,
+    },
+    /// Search and inspect the embedded project library
+    Library {
+        #[command(subcommand)]
+        command: commands::library::LibraryCommands,
+    },
 }
 
 fn main() {
@@ -60,6 +70,8 @@ fn main() {
         Commands::Component { command } => commands::component_command(command),
         Commands::Net { command } => commands::net_command(command),
         Commands::Schematic { command } => commands::schematic_command(command),
+        Commands::Import { command } => commands::import_command(command),
+        Commands::Library { command } => commands::library_command(command),
     };
 
     if let Err(e) = result {

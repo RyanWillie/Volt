@@ -1,3 +1,6 @@
-//! LibrePCB `.lp` and KiCad library importers.
+//! KiCad and LibrePCB library importers.
 //!
-//! Converts external EDA formats into `volt-core` types.
+//! Converts external EDA library formats into `volt-core` types.
+
+pub mod sexp;
+pub mod kicad_sym;
