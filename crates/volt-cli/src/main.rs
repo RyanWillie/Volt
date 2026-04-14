@@ -27,6 +27,16 @@ enum Commands {
         #[arg(long, default_value = ".")]
         project: PathBuf,
     },
+    /// Manage component instances in the circuit
+    Component {
+        #[command(subcommand)]
+        command: commands::component::ComponentCommands,
+    },
+    /// Manage nets in the circuit
+    Net {
+        #[command(subcommand)]
+        command: commands::net::NetCommands,
+    },
 }
 
 fn main() {
@@ -35,6 +45,8 @@ fn main() {
     let result = match cli.command {
         Commands::New { name, output } => commands::new_project(&name, output.as_deref()),
         Commands::Inspect { project } => commands::inspect_project(&project),
+        Commands::Component { command } => commands::component_command(command),
+        Commands::Net { command } => commands::net_command(command),
     };
 
     if let Err(e) = result {

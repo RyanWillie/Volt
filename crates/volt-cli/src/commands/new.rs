@@ -6,7 +6,9 @@ use std::path::Path;
 use volt_core::common::*;
 use volt_core::project::*;
 
-pub fn new_project(name: &str, output: Option<&Path>) -> Result<(), Box<dyn std::error::Error>> {
+use super::project_io::{self, Result};
+
+pub fn new_project(name: &str, output: Option<&Path>) -> Result<()> {
     let dir = output
         .map(|p| p.to_path_buf())
         .unwrap_or_else(|| Path::new(name).to_path_buf());
@@ -129,8 +131,6 @@ pub fn new_project(name: &str, output: Option<&Path>) -> Result<(), Box<dyn std:
     Ok(())
 }
 
-fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), Box<dyn std::error::Error>> {
-    let json = serde_json::to_string_pretty(value)?;
-    fs::write(path, json + "\n")?;
-    Ok(())
+fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
+    project_io::write_json(path, value)
 }

@@ -5,18 +5,13 @@ use std::path::Path;
 
 use volt_core::project::*;
 
-pub fn inspect_project(project_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let meta_path = project_dir.join("volt.json");
-    if !meta_path.exists() {
-        return Err(format!(
-            "Not a Volt project: {} (no volt.json found)",
-            project_dir.display()
-        )
-        .into());
-    }
+use super::project_io::{self, Result};
 
-    let metadata: ProjectMetadata = read_json(&meta_path)?;
-    let circuit: Circuit = read_json(&project_dir.join("circuit.json"))?;
+pub fn inspect_project(project_dir: &Path) -> Result<()> {
+    project_io::ensure_project(project_dir)?;
+
+    let metadata: ProjectMetadata = project_io::read_metadata(project_dir)?;
+    let circuit: Circuit = project_io::read_circuit(project_dir)?;
 
     // Discover schematics
     let mut schematics = Vec::new();
@@ -26,7 +21,7 @@ pub fn inspect_project(project_dir: &Path) -> Result<(), Box<dyn std::error::Err
             let entry = entry?;
             let path = entry.path();
             if path.extension().is_some_and(|e| e == "json") {
-                let sch: Schematic = read_json(&path)?;
+                let sch: Schematic = project_io::read_json(&path)?;
                 schematics.push(sch.name);
             }
         }
@@ -41,7 +36,7 @@ pub fn inspect_project(project_dir: &Path) -> Result<(), Box<dyn std::error::Err
             let entry = entry?;
             let path = entry.path();
             if path.extension().is_some_and(|e| e == "json") {
-                let brd: Board = read_json(&path)?;
+                let brd: Board = project_io::read_json(&path)?;
                 boards.push(brd.name);
             }
         }
@@ -90,10 +85,4 @@ pub fn inspect_project(project_dir: &Path) -> Result<(), Box<dyn std::error::Err
 
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
-}
-
-fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, Box<dyn std::error::Error>> {
-    let content = fs::read_to_string(path)?;
-    let value = serde_json::from_str(&content)?;
-    Ok(value)
 }
