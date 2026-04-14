@@ -32,6 +32,12 @@ enum Commands {
         #[command(subcommand)]
         command: commands::component::ComponentCommands,
     },
+    /// Run electrical rule check on the circuit
+    Erc {
+        /// Path to project directory
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+    },
     /// Manage nets in the circuit
     Net {
         #[command(subcommand)]
@@ -46,6 +52,7 @@ fn main() {
         Commands::New { name, output } => commands::new_project(&name, output.as_deref()),
         Commands::Inspect { project } => commands::inspect_project(&project),
         Commands::Component { command } => commands::component_command(command),
+        Commands::Erc { project } => commands::erc_command(project),
         Commands::Net { command } => commands::net_command(command),
     };
 
