@@ -1,0 +1,16 @@
+[package]
+name = "volt-erc"
+description = "Electrical rule checking"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+volt-core = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+chrono = { workspace = true }
