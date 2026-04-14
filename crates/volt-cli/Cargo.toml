@@ -1,0 +1,18 @@
+[package]
+name = "volt-cli"
+description = "The volt-eda command-line interface"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "volt-eda"
+path = "src/main.rs"
+
+[dependencies]
+volt-core = { workspace = true }
+volt-sexp = { workspace = true }
+volt-librepcb = { workspace = true }
+volt-erc = { workspace = true }
+serde_json = { workspace = true }
+clap = { version = "4", features = ["derive"] }

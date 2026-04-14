@@ -1,0 +1,12 @@
+[package]
+name = "volt-librepcb"
+description = "LibrePCB .lp file format serialization/deserialization"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+volt-sexp = { workspace = true }
+volt-core = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }

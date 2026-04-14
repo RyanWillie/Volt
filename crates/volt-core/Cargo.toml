@@ -1,0 +1,11 @@
+[package]
+name = "volt-core"
+description = "Core data model for EDA: circuits, schematics, boards, library types"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
