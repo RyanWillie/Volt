@@ -61,6 +61,9 @@ pub enum SchematicCommands {
         /// To endpoint: "component:pin" or "x,y" for junction
         #[arg(long)]
         to: String,
+        /// Routing style: "manhattan" (default, right-angle segments) or "direct"
+        #[arg(long, default_value = "manhattan")]
+        route: String,
     },
     /// Add a net label at a position
     Label {
@@ -99,8 +102,8 @@ pub fn schematic_command(cmd: SchematicCommands) -> Result<()> {
             project, schematic, component, grid,
         } => move_symbol(&project, &schematic, &component, &grid),
         SchematicCommands::Wire {
-            project, schematic, net, from, to,
-        } => add_wire(&project, &schematic, &net, &from, &to),
+            project, schematic, net, from, to, route,
+        } => add_wire(&project, &schematic, &net, &from, &to, &route),
         SchematicCommands::Label {
             project, schematic, net, grid, rotation,
         } => add_label(&project, &schematic, &net, &grid, rotation),
@@ -310,12 +313,68 @@ fn parse_endpoint(
     }
 }
 
+/// Resolve a pin endpoint "Component:Pin" to its world position.
+fn resolve_pin_position(
+    comp_name: &str,
+    pin_name: &str,
+    circuit: &Circuit,
+    schematic: &Schematic,
+    project: &std::path::Path,
+) -> Result<Position> {
+    let comp_instance = circuit.components.iter()
+        .find(|c| c.name == comp_name)
+        .ok_or_else(|| format!("Component '{}' not found", comp_name))?;
+    let sch_sym = schematic.symbols.iter()
+        .find(|s| s.component == comp_instance.uuid)
+        .ok_or_else(|| format!("Component '{}' not placed on schematic", comp_name))?;
+    let lib_comp: Component = project_io::read_library_element(
+        project, "components", &comp_instance.lib_component,
+    )?;
+    let variant = lib_comp.variants.iter()
+        .find(|v| v.uuid == comp_instance.lib_variant)
+        .ok_or("Variant not found")?;
+    let gate = variant.gates.first().ok_or("No gate")?;
+    let lib_sym: Symbol = project_io::read_library_element(
+        project, "symbols", &gate.symbol,
+    )?;
+    let pin = lib_sym.pins.iter()
+        .find(|p| p.name == pin_name)
+        .ok_or_else(|| format!("Pin '{}' not found on '{}'", pin_name, comp_name))?;
+
+    // Transform pin position by symbol's position and rotation
+    let rot_rad = sch_sym.rotation.0.to_radians();
+    let cos_r = rot_rad.cos();
+    let sin_r = rot_rad.sin();
+    let px = pin.position.x;
+    let py = pin.position.y;
+    Ok(Position::new(
+        sch_sym.position.x + px * cos_r - py * sin_r,
+        sch_sym.position.y + px * sin_r + py * cos_r,
+    ))
+}
+
+/// Resolve any endpoint string to a world position.
+fn resolve_endpoint_position(
+    s: &str,
+    circuit: &Circuit,
+    schematic: &Schematic,
+    project: &std::path::Path,
+) -> Result<Position> {
+    if s.contains(':') {
+        let parts: Vec<&str> = s.splitn(2, ':').collect();
+        resolve_pin_position(parts[0], parts[1], circuit, schematic, project)
+    } else {
+        parse_grid(s)
+    }
+}
+
 fn add_wire(
     project: &std::path::Path,
     sch_name: &str,
     net_name: &str,
     from_str: &str,
     to_str: &str,
+    route_style: &str,
 ) -> Result<()> {
     project_io::ensure_project(project)?;
     let circuit = project_io::read_circuit(project)?;
@@ -326,8 +385,12 @@ fn add_wire(
         .find(|n| n.name == net_name)
         .ok_or_else(|| format!("Net '{}' not found", net_name))?;
 
-    let (mut from_ep, from_pos) = parse_endpoint(from_str, &circuit, &schematic, project)?;
-    let (mut to_ep, to_pos) = parse_endpoint(to_str, &circuit, &schematic, project)?;
+    // Resolve positions for Manhattan routing calculation
+    let from_pos = resolve_endpoint_position(from_str, &circuit, &schematic, project)?;
+    let to_pos = resolve_endpoint_position(to_str, &circuit, &schematic, project)?;
+
+    let (from_ep, from_junc_pos) = parse_endpoint(from_str, &circuit, &schematic, project)?;
+    let (to_ep, to_junc_pos) = parse_endpoint(to_str, &circuit, &schematic, project)?;
 
     // Find or create the net segment for this net
     let seg = if let Some(seg) = schematic.net_segments.iter_mut().find(|s| s.net == net.uuid) {
@@ -343,35 +406,91 @@ fn add_wire(
         schematic.net_segments.last_mut().unwrap()
     };
 
-    // Create junctions if endpoints are positions
-    if let Some(pos) = from_pos {
+    // Create junctions for position-based endpoints
+    let mut actual_from = from_ep;
+    if let Some(pos) = from_junc_pos {
         let junc_uuid = new_uuid();
         seg.junctions.push(Junction { uuid: junc_uuid, position: pos });
-        from_ep = LineEndpoint::Junction { junction: junc_uuid };
+        actual_from = LineEndpoint::Junction { junction: junc_uuid };
     }
-    if let Some(pos) = to_pos {
+    let mut actual_to = to_ep;
+    if let Some(pos) = to_junc_pos {
         let junc_uuid = new_uuid();
         seg.junctions.push(Junction { uuid: junc_uuid, position: pos });
-        to_ep = LineEndpoint::Junction { junction: junc_uuid };
+        actual_to = LineEndpoint::Junction { junction: junc_uuid };
     }
 
-    let line_uuid = new_uuid();
-    seg.lines.push(SchematicLine {
-        uuid: line_uuid,
-        width: 0.15875,
-        from: from_ep,
-        to: to_ep,
-    });
+    let use_manhattan = route_style == "manhattan";
+    let dx = (to_pos.x - from_pos.x).abs();
+    let dy = (to_pos.y - from_pos.y).abs();
+    let aligned = dx < 0.01 || dy < 0.01; // Already horizontal or vertical
+
+    let mut line_uuids = Vec::new();
+
+    if use_manhattan && !aligned {
+        // Create a bend junction and two wire segments
+        // Choose bend direction: horizontal-first if dx >= dy, vertical-first otherwise
+        let bend_pos = if dx >= dy {
+            // Horizontal first: go to (to_x, from_y), then vertical to target
+            Position::new(to_pos.x, from_pos.y)
+        } else {
+            // Vertical first: go to (from_x, to_y), then horizontal to target
+            Position::new(from_pos.x, to_pos.y)
+        };
+
+        // Snap bend to grid (2.54mm)
+        let grid = 2.54;
+        let bend_snapped = Position::new(
+            (bend_pos.x / grid).round() * grid,
+            (bend_pos.y / grid).round() * grid,
+        );
+
+        let bend_uuid = new_uuid();
+        seg.junctions.push(Junction { uuid: bend_uuid, position: bend_snapped });
+        let bend_ep = LineEndpoint::Junction { junction: bend_uuid };
+
+        // Wire 1: from → bend
+        let line1_uuid = new_uuid();
+        seg.lines.push(SchematicLine {
+            uuid: line1_uuid,
+            width: 0.15875,
+            from: actual_from,
+            to: bend_ep.clone(),
+        });
+        line_uuids.push(line1_uuid);
+
+        // Wire 2: bend → to
+        let line2_uuid = new_uuid();
+        seg.lines.push(SchematicLine {
+            uuid: line2_uuid,
+            width: 0.15875,
+            from: bend_ep,
+            to: actual_to,
+        });
+        line_uuids.push(line2_uuid);
+    } else {
+        // Direct wire (single segment)
+        let line_uuid = new_uuid();
+        seg.lines.push(SchematicLine {
+            uuid: line_uuid,
+            width: 0.15875,
+            from: actual_from,
+            to: actual_to,
+        });
+        line_uuids.push(line_uuid);
+    }
 
     project_io::write_schematic(project, sch_name, &schematic)?;
 
     let result = serde_json::json!({
         "status": "ok",
         "wire": {
-            "uuid": line_uuid.to_string(),
+            "uuids": line_uuids.iter().map(|u| u.to_string()).collect::<Vec<_>>(),
             "net": net_name,
             "from": from_str,
             "to": to_str,
+            "route": route_style,
+            "segments": line_uuids.len(),
         }
     });
     println!("{}", serde_json::to_string_pretty(&result)?);
