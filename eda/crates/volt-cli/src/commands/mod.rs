@@ -7,6 +7,7 @@ pub mod schematic;
 pub mod render;
 pub mod import;
 pub mod library;
+pub mod autoplace;
 pub mod project_io;
 
 pub use new::new_project;

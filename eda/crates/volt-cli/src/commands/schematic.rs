@@ -96,6 +96,20 @@ pub enum SchematicCommands {
         #[arg(long)]
         output: PathBuf,
     },
+    /// Auto-place all components and wire nets (replaces existing layout)
+    Autoplace {
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        #[arg(long, default_value = "main")]
+        schematic: String,
+    },
+    /// Clean up an existing schematic layout
+    Tidy {
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        #[arg(long, default_value = "main")]
+        schematic: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -161,6 +175,12 @@ pub fn schematic_command(cmd: SchematicCommands) -> Result<()> {
         SchematicCommands::Render {
             project, schematic, output,
         } => super::render::render_schematic(&project, &schematic, &output),
+        SchematicCommands::Autoplace {
+            project, schematic,
+        } => super::autoplace::autoplace_schematic(&project, &schematic),
+        SchematicCommands::Tidy {
+            project, schematic,
+        } => super::autoplace::tidy_schematic(&project, &schematic),
     }
 }
 
