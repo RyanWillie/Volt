@@ -288,12 +288,30 @@ def run_job(job: dict, result_path: Path) -> None:
         _fail(result_path, f"{e}\n{tb}")
 
 
+def _extract_paths_from_argv() -> tuple[Path, Path]:
+    """Support both direct invocation and FreeCAD's `--pass` forwarding."""
+    args = list(sys.argv[1:])
+    if "--pass" in args:
+        i = args.index("--pass")
+        pass_args = args[i + 1 :]
+        if len(pass_args) < 2:
+            raise ValueError("expected --pass <job.json> <result.json>")
+        return Path(pass_args[0]), Path(pass_args[1])
+    if len(args) < 2:
+        raise ValueError("expected <job.json> <result.json>")
+    return Path(args[0]), Path(args[1])
+
+
 def main() -> int:
-    if len(sys.argv) < 3:
-        print("usage: freecadcmd volt_cad_driver.py <job.json> <result.json>", file=sys.stderr)
+    try:
+        job_path, result_path = _extract_paths_from_argv()
+    except Exception as e:  # noqa: BLE001
+        print(
+            "usage: freecadcmd volt_cad_driver.py --pass <job.json> <result.json>",
+            file=sys.stderr,
+        )
+        print(str(e), file=sys.stderr)
         return 2
-    job_path = Path(sys.argv[1])
-    result_path = Path(sys.argv[2])
     try:
         job = json.loads(job_path.read_text(encoding="utf-8"))
     except Exception as e:  # noqa: BLE001
@@ -303,5 +321,4 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+raise SystemExit(main())

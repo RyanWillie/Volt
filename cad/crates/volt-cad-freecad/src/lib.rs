@@ -56,21 +56,28 @@ pub fn run_job(job: &CadJob) -> Result<EngineResult, FreecadError> {
     std::fs::write(&job_path, serde_json::to_string_pretty(job)?)?;
     std::fs::write(&driver_path, DRIVER_PY)?;
 
-    let status = Command::new(&exe)
+    let output = Command::new(&exe)
         .arg(driver_path.as_os_str())
+        .arg("--pass")
         .arg(job_path.as_os_str())
         .arg(result_path.as_os_str())
-        .status()
+        .output()
         .map_err(|e| FreecadError::Process(e.to_string()))?;
 
-    if !status.success() {
+    if !output.status.success() {
         return Err(FreecadError::Process(format!(
-            "freecad exited with {status}"
+            "freecad exited with {} stderr: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
         )));
     }
 
     let bytes = std::fs::read(&result_path).map_err(|e| {
-        FreecadError::Process(format!("missing result file after freecad run: {e}"))
+        FreecadError::Process(format!(
+            "missing result file after freecad run: {e}; stdout: {}; stderr: {}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ))
     })?;
 
     let parsed: EngineResult = serde_json::from_slice(&bytes)?;
@@ -90,21 +97,28 @@ pub fn run_job_with_executable(
     std::fs::write(&job_path, serde_json::to_string_pretty(job)?)?;
     std::fs::write(&driver_path, DRIVER_PY)?;
 
-    let status = Command::new(exe)
+    let output = Command::new(exe)
         .arg(driver_path.as_os_str())
+        .arg("--pass")
         .arg(job_path.as_os_str())
         .arg(result_path.as_os_str())
-        .status()
+        .output()
         .map_err(|e| FreecadError::Process(e.to_string()))?;
 
-    if !status.success() {
+    if !output.status.success() {
         return Err(FreecadError::Process(format!(
-            "freecad exited with {status}"
+            "freecad exited with {} stderr: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
         )));
     }
 
     let bytes = std::fs::read(&result_path).map_err(|e| {
-        FreecadError::Process(format!("missing result file after freecad run: {e}"))
+        FreecadError::Process(format!(
+            "missing result file after freecad run: {e}; stdout: {}; stderr: {}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ))
     })?;
 
     let parsed: EngineResult = serde_json::from_slice(&bytes)?;
