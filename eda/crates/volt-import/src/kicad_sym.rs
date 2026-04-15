@@ -127,26 +127,28 @@ fn parse_symbol_node(node: &SExpr) -> Result<KicadSymbolImport, String> {
         pins: sym_pins,
         polygons,
         texts: vec![
-            SymbolText {
-                uuid: new_uuid(),
-                layer: Layer::SchNames,
-                value: "{{NAME}}".into(),
-                position: Position::new(0.0, -1.27),
-                rotation: Angle(0.0),
-                height: 1.27,
-                align: Alignment { h: HAlign::Center, v: VAlign::Bottom },
-                lock: false,
-            },
-            SymbolText {
-                uuid: new_uuid(),
-                layer: Layer::SchValues,
-                value: "{{VALUE}}".into(),
-                position: Position::new(0.0, 1.27),
-                rotation: Angle(0.0),
-                height: 1.27,
-                align: Alignment { h: HAlign::Center, v: VAlign::Top },
-                lock: false,
-            },
+            parse_property_text(node, "Reference", Layer::SchNames, "{{NAME}}")
+                .unwrap_or(SymbolText {
+                    uuid: new_uuid(),
+                    layer: Layer::SchNames,
+                    value: "{{NAME}}".into(),
+                    position: Position::new(0.0, -1.27),
+                    rotation: Angle(0.0),
+                    height: 1.27,
+                    align: Alignment { h: HAlign::Center, v: VAlign::Bottom },
+                    lock: false,
+                }),
+            parse_property_text(node, "Value", Layer::SchValues, "{{VALUE}}")
+                .unwrap_or(SymbolText {
+                    uuid: new_uuid(),
+                    layer: Layer::SchValues,
+                    value: "{{VALUE}}".into(),
+                    position: Position::new(0.0, 1.27),
+                    rotation: Angle(0.0),
+                    height: 1.27,
+                    align: Alignment { h: HAlign::Center, v: VAlign::Top },
+                    lock: false,
+                }),
         ],
         grid_interval: 2.54,
     };
@@ -220,19 +222,73 @@ fn parse_symbol_node(node: &SExpr) -> Result<KicadSymbolImport, String> {
 // ---------------------------------------------------------------------------
 
 fn get_property(node: &SExpr, name: &str) -> Option<String> {
-    for child in node.children() {
+    get_property_node(node, name)?
+        .args()
+        .get(1)
+        .and_then(|a| a.as_str().or_else(|| a.as_atom()))
+        .map(|s| s.to_string())
+}
+
+fn get_property_node<'a>(node: &'a SExpr, name: &str) -> Option<&'a SExpr> {
+    node.children().iter().find(|child| {
         if child.keyword() != Some("property") {
-            continue;
+            return false;
         }
-        let args = child.args();
-        if let Some(prop_name) = args.first().and_then(|a| a.as_str().or_else(|| a.as_atom())) {
-            if prop_name == name {
-                // The value is typically the second argument
-                return args.get(1).and_then(|a| a.as_str().or_else(|| a.as_atom())).map(|s| s.to_string());
-            }
-        }
-    }
-    None
+        child.args()
+            .first()
+            .and_then(|a| a.as_str().or_else(|| a.as_atom()))
+            == Some(name)
+    })
+}
+
+fn parse_property_text(node: &SExpr, name: &str, layer: Layer, placeholder: &str) -> Option<SymbolText> {
+    let prop = get_property_node(node, name)?;
+    let at = prop.child("at")?;
+    let at_args = at.args();
+    let x = at_args.first()?.as_atom()?.parse::<f64>().ok()?;
+    let y = at_args.get(1)?.as_atom()?.parse::<f64>().ok()?;
+    let rotation = at_args.get(2)
+        .and_then(|a| a.as_atom()?.parse::<f64>().ok())
+        .unwrap_or(0.0);
+
+    let effects = prop.child("effects");
+    let height = effects
+        .and_then(|e| e.child("font"))
+        .and_then(|f| f.child("size"))
+        .and_then(|s| s.args().get(1).or_else(|| s.args().first()))
+        .and_then(|a| a.as_atom()?.parse::<f64>().ok())
+        .unwrap_or(1.27);
+
+    let justify_args = effects
+        .and_then(|e| e.child("justify"))
+        .map(|j| j.args())
+        .unwrap_or(&[]);
+
+    let h = if justify_args.iter().any(|a| a.as_atom() == Some("right")) {
+        HAlign::Right
+    } else if justify_args.iter().any(|a| a.as_atom() == Some("center")) {
+        HAlign::Center
+    } else {
+        HAlign::Left
+    };
+    let v = if justify_args.iter().any(|a| a.as_atom() == Some("top")) {
+        VAlign::Top
+    } else if justify_args.iter().any(|a| a.as_atom() == Some("bottom")) {
+        VAlign::Bottom
+    } else {
+        VAlign::Center
+    };
+
+    Some(SymbolText {
+        uuid: new_uuid(),
+        layer,
+        value: placeholder.into(),
+        position: Position::new(x, y),
+        rotation: Angle(rotation),
+        height,
+        align: Alignment { h, v },
+        lock: false,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -363,19 +419,17 @@ fn parse_pin(node: &SExpr) -> Option<(SymbolPin, SignalRole)> {
         .unwrap_or("?")
         .to_string();
 
-    // Pin name (display name)
-    let name = node.child("name")
+    // Pin name/function (display name)
+    let pin_name = node.child("name")
         .and_then(|n| n.args().first())
         .and_then(|a| a.as_str().or_else(|| a.as_atom()))
         .unwrap_or("")
         .to_string();
 
-    // Use pin number as the identifier (consistent with KiCad convention)
-    let _display_name = if name.is_empty() || name == "~" { number.clone() } else { name };
-
     let pin = SymbolPin {
         uuid: new_uuid(),
         name: number,
+        pin_name: if pin_name == "~" { String::new() } else { pin_name },
         position: Position::new(x, y),
         rotation: Angle(angle),
         length,
@@ -505,6 +559,8 @@ mod tests {
         let parsed = parse_kicad_sym(input).unwrap();
         assert_eq!(parsed.symbol.meta.name, "R");
         assert_eq!(parsed.symbol.pins.len(), 2);
+        assert_eq!(parsed.symbol.pins[0].name, "1");
+        assert_eq!(parsed.symbol.pins[0].pin_name, "");
         assert_eq!(parsed.component.signals.len(), 2);
         assert_eq!(parsed.component.prefix, "R");
     }
@@ -535,6 +591,8 @@ mod tests {
         let resolved = resolve_extends(vec![parent, child]).unwrap();
         let derived = resolved.iter().find(|x| x.symbol.meta.name == "DERIVED").unwrap();
         assert_eq!(derived.symbol.pins.len(), 2);
+        assert_eq!(derived.symbol.pins[0].pin_name, "IN");
+        assert_eq!(derived.symbol.pins[1].pin_name, "OUT");
         assert_eq!(derived.component.signals.len(), 2);
     }
 }

@@ -85,7 +85,8 @@ pub fn render_schematic(
   .junction {{ fill: #007030; }}
   .text-name {{ font-family: sans-serif; font-size: 2.2px; fill: #800000; }}
   .text-value {{ font-family: sans-serif; font-size: 2.2px; fill: #006060; }}
-  .text-pin {{ font-family: sans-serif; font-size: 1.8px; fill: #006060; }}
+  .text-pin-number {{ font-family: sans-serif; font-size: 1.6px; fill: #006060; }}
+  .text-pin-name {{ font-family: sans-serif; font-size: 1.7px; fill: #005050; }}
   .text-label {{ font-family: sans-serif; font-size: 2.5px; fill: #007030; font-weight: bold; }}
   .grid-dot {{ fill: #e0e0e0; }}
 </style>"#)?;
@@ -140,11 +141,6 @@ pub fn render_schematic(
     for seg in &schematic.net_segments {
         let net_name = net_map.get(&seg.net).map(|n| n.name.as_str()).unwrap_or("?");
 
-        // Build junction position map
-        let junc_map: HashMap<Uuid, Position> = seg.junctions.iter()
-            .map(|j| (j.uuid, j.position))
-            .collect();
-
         // Render wires
         for line in &seg.lines {
             let from_pos = resolve_endpoint_pos(&line.from, &schematic, &comp_map, &comp_cache, &sym_cache);
@@ -164,10 +160,14 @@ pub fn render_schematic(
 
         // Render labels
         for label in &seg.labels {
-            writeln!(svg, r#"<text x="{:.2}" y="{:.2}" class="text-label" transform="rotate({:.1},{:.2},{:.2})">{}</text>"#,
-                label.position.x, label.position.y - 0.5,
-                label.rotation.0, label.position.x, label.position.y,
-                net_name)?;
+            write_svg_text(
+                &mut svg,
+                "text-label",
+                Position::new(label.position.x, label.position.y - 0.5),
+                label.rotation,
+                Alignment { h: HAlign::Left, v: VAlign::Bottom },
+                net_name,
+            )?;
         }
     }
 
@@ -221,9 +221,13 @@ fn render_symbol(
         // Pin dot at connection point
         writeln!(svg, r#"<circle cx="{:.2}" cy="{:.2}" r="0.4" class="pin-dot"/>"#,
             pin.position.x, pin.position.y)?;
-        // Pin name
-        writeln!(svg, r#"<text x="{:.2}" y="{:.2}" class="text-pin">{}</text>"#,
-            pin.position.x, pin.position.y - 0.8, pin.name)?;
+
+        let (number_pos, number_align) = pin_number_position(pin);
+        write_svg_text(svg, "text-pin-number", number_pos, Angle(0.0), number_align, &pin.name)?;
+
+        if !pin.pin_name.is_empty() {
+            write_svg_text(svg, "text-pin-name", pin_name_position(pin), Angle(0.0), pin.name_align, &pin.pin_name)?;
+        }
     }
 
     writeln!(svg, "</g>")?;
@@ -234,11 +238,121 @@ fn render_symbol(
         let display_value = text.value
             .replace("{{NAME}}", name)
             .replace("{{VALUE}}", value);
-        writeln!(svg, r#"<text x="{:.2}" y="{:.2}" class="{}">{}</text>"#,
-            text.position.x, text.position.y, css_class, display_value)?;
+        write_svg_text(svg, css_class, text.position, text.rotation, text.align, &display_value)?;
     }
 
     Ok(())
+}
+
+fn write_svg_text(
+    svg: &mut String,
+    class_name: &str,
+    position: Position,
+    rotation: Angle,
+    align: Alignment,
+    value: &str,
+) -> std::fmt::Result {
+    let anchor = svg_text_anchor(align.h);
+    let baseline = svg_dominant_baseline(align.v);
+    let escaped = escape_xml_text(value);
+
+    if rotation.0.abs() > 0.01 {
+        writeln!(
+            svg,
+            r#"<text x="{:.2}" y="{:.2}" class="{}" text-anchor="{}" dominant-baseline="{}" transform="rotate({:.1},{:.2},{:.2})">{}</text>"#,
+            position.x,
+            position.y,
+            class_name,
+            anchor,
+            baseline,
+            rotation.0,
+            position.x,
+            position.y,
+            escaped,
+        )
+    } else {
+        writeln!(
+            svg,
+            r#"<text x="{:.2}" y="{:.2}" class="{}" text-anchor="{}" dominant-baseline="{}">{}</text>"#,
+            position.x,
+            position.y,
+            class_name,
+            anchor,
+            baseline,
+            escaped,
+        )
+    }
+}
+
+fn svg_text_anchor(align: HAlign) -> &'static str {
+    match align {
+        HAlign::Left => "start",
+        HAlign::Center => "middle",
+        HAlign::Right => "end",
+    }
+}
+
+fn svg_dominant_baseline(align: VAlign) -> &'static str {
+    match align {
+        VAlign::Top => "hanging",
+        VAlign::Center => "middle",
+        VAlign::Bottom => "text-after-edge",
+    }
+}
+
+fn escape_xml_text(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+fn pin_number_position(pin: &SymbolPin) -> (Position, Alignment) {
+    match normalize_angle(pin.rotation.0) as i32 {
+        0 => (
+            Position::new(pin.position.x - 0.6, pin.position.y - 0.8),
+            Alignment { h: HAlign::Right, v: VAlign::Bottom },
+        ),
+        90 => (
+            Position::new(pin.position.x + 0.8, pin.position.y - 0.4),
+            Alignment { h: HAlign::Left, v: VAlign::Bottom },
+        ),
+        180 => (
+            Position::new(pin.position.x + 0.6, pin.position.y - 0.8),
+            Alignment { h: HAlign::Left, v: VAlign::Bottom },
+        ),
+        270 => (
+            Position::new(pin.position.x + 0.8, pin.position.y + 0.4),
+            Alignment { h: HAlign::Left, v: VAlign::Top },
+        ),
+        _ => (
+            Position::new(pin.position.x, pin.position.y - 0.8),
+            Alignment { h: HAlign::Center, v: VAlign::Bottom },
+        ),
+    }
+}
+
+fn pin_name_position(pin: &SymbolPin) -> Position {
+    if pin.name_position != Position::default() {
+        return pin.name_position;
+    }
+
+    let end = pin_endpoint(pin);
+    match normalize_angle(pin.rotation.0) as i32 {
+        0 => Position::new(end.x + 0.6, end.y),
+        90 => Position::new(end.x + 0.6, end.y + 0.4),
+        180 => Position::new(end.x - 0.6, end.y),
+        270 => Position::new(end.x + 0.6, end.y - 0.4),
+        _ => end,
+    }
+}
+
+fn normalize_angle(angle: f64) -> f64 {
+    let mut angle = angle % 360.0;
+    if angle < 0.0 {
+        angle += 360.0;
+    }
+    angle.round()
 }
 
 /// Calculate the endpoint position of a pin (where it meets the symbol body).
@@ -293,9 +407,9 @@ fn resolve_endpoint_pos(
 
 fn calculate_bounds(
     schematic: &Schematic,
-    comp_map: &HashMap<Uuid, &ComponentInstance>,
-    comp_cache: &HashMap<Uuid, Component>,
-    sym_cache: &HashMap<Uuid, Symbol>,
+    _comp_map: &HashMap<Uuid, &ComponentInstance>,
+    _comp_cache: &HashMap<Uuid, Component>,
+    _sym_cache: &HashMap<Uuid, Symbol>,
 ) -> (f64, f64, f64, f64) {
     let mut min_x = f64::INFINITY;
     let mut min_y = f64::INFINITY;

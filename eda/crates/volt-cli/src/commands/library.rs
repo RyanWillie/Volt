@@ -146,6 +146,7 @@ fn library_info(project: &Path, component_uuid: Option<Uuid>, component_name: Op
                 "pins": s.pins.iter().map(|p| serde_json::json!({
                     "uuid": p.uuid.to_string(),
                     "name": p.name,
+                    "pin_name": p.pin_name,
                     "position": {"x": p.position.x, "y": p.position.y},
                     "rotation": p.rotation.0,
                 })).collect::<Vec<_>>(),

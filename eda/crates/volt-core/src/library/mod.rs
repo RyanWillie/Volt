@@ -105,7 +105,11 @@ fn default_grid_interval() -> f64 {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SymbolPin {
     pub uuid: Uuid,
+    /// Stable electrical identifier, typically the pin number.
     pub name: String,
+    /// Optional display/function name, e.g. `TRIG`, `OUT`, `VCC`.
+    #[serde(default)]
+    pub pin_name: String,
     pub position: Position,
     #[serde(default)]
     pub rotation: Angle,

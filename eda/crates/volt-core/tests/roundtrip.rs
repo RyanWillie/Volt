@@ -83,6 +83,7 @@ fn roundtrip_symbol() {
         pins: vec![SymbolPin {
             uuid: Uuid::nil(),
             name: "1".into(),
+            pin_name: "IN".into(),
             position: Position::new(-5.08, 0.0),
             rotation: Angle(0.0),
             length: 2.0,

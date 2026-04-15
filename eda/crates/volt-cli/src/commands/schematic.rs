@@ -6,7 +6,7 @@ use clap::Subcommand;
 use uuid::Uuid;
 
 use volt_core::common::*;
-use volt_core::library::{Component, Symbol};
+use volt_core::library::{Component, Symbol, SymbolPin, SymbolText};
 use volt_core::project::*;
 
 use super::project_io::{self, Result};
@@ -46,6 +46,11 @@ pub enum SchematicCommands {
         #[arg(long)]
         grid: String,
     },
+    /// Move or reset reference/value text fields on a placed symbol
+    Field {
+        #[command(subcommand)]
+        command: SchematicFieldCommands,
+    },
     /// Add a wire between two endpoints (pin or junction)
     Wire {
         #[arg(long, default_value = ".")]
@@ -55,7 +60,7 @@ pub enum SchematicCommands {
         /// Net name
         #[arg(long)]
         net: String,
-        /// From endpoint: "component:pin" (e.g. "R1:1") or "x,y" for junction
+        /// From endpoint: "component:pin" (e.g. "R1:1" or "U1:OUT") or "x,y" for junction
         #[arg(long)]
         from: String,
         /// To endpoint: "component:pin" or "x,y" for junction
@@ -93,6 +98,37 @@ pub enum SchematicCommands {
     },
 }
 
+#[derive(Subcommand)]
+pub enum SchematicFieldCommands {
+    /// Move a single field (name/reference or value) on a placed symbol
+    Move {
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        #[arg(long, default_value = "main")]
+        schematic: String,
+        #[arg(long)]
+        component: String,
+        /// Field name: `name`/`reference` or `value`
+        #[arg(long)]
+        field: String,
+        /// New absolute position as grid coordinates "x,y"
+        #[arg(long)]
+        grid: String,
+    },
+    /// Reset one field, or all fields, to the library default positions
+    Reset {
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        #[arg(long, default_value = "main")]
+        schematic: String,
+        #[arg(long)]
+        component: String,
+        /// Optional field name: `name`/`reference` or `value`
+        #[arg(long)]
+        field: Option<String>,
+    },
+}
+
 pub fn schematic_command(cmd: SchematicCommands) -> Result<()> {
     match cmd {
         SchematicCommands::Place {
@@ -101,6 +137,21 @@ pub fn schematic_command(cmd: SchematicCommands) -> Result<()> {
         SchematicCommands::Move {
             project, schematic, component, grid,
         } => move_symbol(&project, &schematic, &component, &grid),
+        SchematicCommands::Field { command } => match command {
+            SchematicFieldCommands::Move {
+                project,
+                schematic,
+                component,
+                field,
+                grid,
+            } => move_symbol_field(&project, &schematic, &component, &field, &grid),
+            SchematicFieldCommands::Reset {
+                project,
+                schematic,
+                component,
+                field,
+            } => reset_symbol_field(&project, &schematic, &component, field.as_deref()),
+        },
         SchematicCommands::Wire {
             project, schematic, net, from, to, route,
         } => add_wire(&project, &schematic, &net, &from, &to, &route),
@@ -258,6 +309,175 @@ fn move_symbol(
     Ok(())
 }
 
+fn move_symbol_field(
+    project: &std::path::Path,
+    sch_name: &str,
+    comp_name: &str,
+    field: &str,
+    grid: &str,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+    let circuit = project_io::read_circuit(project)?;
+    let mut schematic = project_io::read_schematic(project, sch_name)?;
+    let new_pos = parse_grid(grid)?;
+    let target_layer = field_layer(field)?;
+
+    let comp_instance = circuit.components.iter()
+        .find(|c| c.name == comp_name)
+        .ok_or_else(|| format!("Component '{}' not found in circuit", comp_name))?;
+
+    let sym = schematic.symbols.iter_mut()
+        .find(|s| s.component == comp_instance.uuid)
+        .ok_or_else(|| format!("Component '{}' not placed on schematic '{}'", comp_name, sch_name))?;
+
+    let text = sym.texts.iter_mut()
+        .find(|t| t.layer == target_layer)
+        .ok_or_else(|| format!("Field '{}' not found on component '{}'", field, comp_name))?;
+
+    let old_pos = text.position;
+    text.position = new_pos;
+
+    project_io::write_schematic(project, sch_name, &schematic)?;
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "field": {
+            "component": comp_name,
+            "field": canonical_field_name(target_layer),
+            "from": { "x": old_pos.x, "y": old_pos.y },
+            "to": { "x": new_pos.x, "y": new_pos.y },
+            "grid": grid,
+        }
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+fn reset_symbol_field(
+    project: &std::path::Path,
+    sch_name: &str,
+    comp_name: &str,
+    field: Option<&str>,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+    let circuit = project_io::read_circuit(project)?;
+    let mut schematic = project_io::read_schematic(project, sch_name)?;
+
+    let comp_instance = circuit.components.iter()
+        .find(|c| c.name == comp_name)
+        .ok_or_else(|| format!("Component '{}' not found in circuit", comp_name))?;
+
+    let sym = schematic.symbols.iter_mut()
+        .find(|s| s.component == comp_instance.uuid)
+        .ok_or_else(|| format!("Component '{}' not placed on schematic '{}'", comp_name, sch_name))?;
+
+    let lib_comp: Component = project_io::read_library_element(
+        project, "components", &comp_instance.lib_component,
+    )?;
+    let variant = lib_comp.variants.iter()
+        .find(|v| v.uuid == comp_instance.lib_variant)
+        .ok_or_else(|| format!("Variant not found for component '{}'", comp_name))?;
+    let gate = variant.gates.iter()
+        .find(|g| g.uuid == sym.lib_gate)
+        .or_else(|| variant.gates.first())
+        .ok_or_else(|| format!("No gates defined for component '{}'", comp_name))?;
+    let lib_sym: Symbol = project_io::read_library_element(project, "symbols", &gate.symbol)?;
+
+    let target_layers: Vec<Layer> = if let Some(field) = field {
+        vec![field_layer(field)?]
+    } else {
+        vec![Layer::SchNames, Layer::SchValues]
+    };
+
+    let mut reset_fields = Vec::new();
+    for layer in target_layers {
+        let template = lib_sym.texts.iter()
+            .find(|t| t.layer == layer)
+            .ok_or_else(|| format!("No library template found for '{}' field on '{}'", canonical_field_name(layer), comp_name))?;
+        apply_symbol_text_template(sym, template);
+        reset_fields.push(canonical_field_name(layer));
+    }
+
+    project_io::write_schematic(project, sch_name, &schematic)?;
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "reset": {
+            "component": comp_name,
+            "fields": reset_fields,
+        }
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+fn apply_symbol_text_template(sym: &mut SchematicSymbol, template: &SymbolText) {
+    let rebuilt = SchematicText {
+        uuid: sym.texts.iter().find(|t| t.layer == template.layer).map(|t| t.uuid).unwrap_or_else(new_uuid),
+        layer: template.layer,
+        value: template.value.clone(),
+        position: Position::new(sym.position.x + template.position.x, sym.position.y + template.position.y),
+        rotation: Angle(template.rotation.0 + sym.rotation.0),
+        height: template.height,
+        align: template.align,
+        lock: template.lock,
+    };
+
+    if let Some(existing) = sym.texts.iter_mut().find(|t| t.layer == template.layer) {
+        *existing = rebuilt;
+    } else {
+        sym.texts.push(rebuilt);
+    }
+}
+
+fn field_layer(field: &str) -> Result<Layer> {
+    match field.trim().to_ascii_lowercase().as_str() {
+        "name" | "reference" => Ok(Layer::SchNames),
+        "value" => Ok(Layer::SchValues),
+        _ => Err(format!("Unknown field '{}'. Use 'name'/'reference' or 'value'", field).into()),
+    }
+}
+
+fn canonical_field_name(layer: Layer) -> &'static str {
+    match layer {
+        Layer::SchNames => "name",
+        Layer::SchValues => "value",
+        _ => "field",
+    }
+}
+
+fn find_symbol_pin<'a>(lib_sym: &'a Symbol, selector: &str) -> std::result::Result<&'a SymbolPin, String> {
+    if let Some(pin) = lib_sym.pins.iter().find(|p| p.name == selector) {
+        return Ok(pin);
+    }
+
+    let alias_matches: Vec<&SymbolPin> = lib_sym.pins.iter()
+        .filter(|p| !p.pin_name.is_empty() && p.pin_name.eq_ignore_ascii_case(selector))
+        .collect();
+
+    match alias_matches.len() {
+        1 => Ok(alias_matches[0]),
+        0 => Err(format!(
+            "Pin '{}' not found. Available: {}",
+            selector,
+            lib_sym.pins.iter().map(format_pin_display).collect::<Vec<_>>().join(", ")
+        )),
+        _ => Err(format!(
+            "Pin name '{}' is ambiguous. Matches: {}",
+            selector,
+            alias_matches.iter().map(|p| format_pin_display(p)).collect::<Vec<_>>().join(", ")
+        )),
+    }
+}
+
+fn format_pin_display(pin: &SymbolPin) -> String {
+    if pin.pin_name.is_empty() {
+        pin.name.clone()
+    } else {
+        format!("{} ({})", pin.name, pin.pin_name)
+    }
+}
+
 /// Parse an endpoint string: either "Component:Pin" or "x,y" (grid coords for junction)
 fn parse_endpoint(
     s: &str,
@@ -292,12 +512,8 @@ fn parse_endpoint(
             project, "symbols", &gate.symbol,
         )?;
 
-        let pin = lib_sym.pins.iter()
-            .find(|p| p.name == pin_name)
-            .ok_or_else(|| {
-                let avail: Vec<&str> = lib_sym.pins.iter().map(|p| p.name.as_str()).collect();
-                format!("Pin '{}' not found on '{}'. Available: {}", pin_name, comp_name, avail.join(", "))
-            })?;
+        let pin = find_symbol_pin(&lib_sym, pin_name)
+            .map_err(|e| format!("{e} on '{comp_name}'"))?;
 
         Ok((
             LineEndpoint::Symbol { symbol: sch_sym.uuid, pin: pin.uuid },
@@ -337,9 +553,8 @@ fn resolve_pin_position(
     let lib_sym: Symbol = project_io::read_library_element(
         project, "symbols", &gate.symbol,
     )?;
-    let pin = lib_sym.pins.iter()
-        .find(|p| p.name == pin_name)
-        .ok_or_else(|| format!("Pin '{}' not found on '{}'", pin_name, comp_name))?;
+    let pin = find_symbol_pin(&lib_sym, pin_name)
+        .map_err(|e| format!("{e} on '{comp_name}'"))?;
 
     // Transform pin position by symbol's position and rotation
     let rot_rad = sch_sym.rotation.0.to_radians();

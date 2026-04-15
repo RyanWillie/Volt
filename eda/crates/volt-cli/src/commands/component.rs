@@ -189,6 +189,7 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
             SymbolPin {
                 uuid: pin1_uuid,
                 name: "1".into(),
+                pin_name: String::new(),
                 position: Position::new(-5.08, 0.0),
                 rotation: Angle(0.0),
                 length: 2.0,
@@ -203,6 +204,7 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
             SymbolPin {
                 uuid: pin2_uuid,
                 name: "2".into(),
+                pin_name: String::new(),
                 position: Position::new(5.08, 0.0),
                 rotation: Angle(180.0),
                 length: 2.0,

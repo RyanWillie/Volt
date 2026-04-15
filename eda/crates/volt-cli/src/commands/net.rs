@@ -3,9 +3,9 @@
 use std::path::PathBuf;
 
 use clap::Subcommand;
-use uuid::Uuid;
 
 use volt_core::common::*;
+use volt_core::library::{Component, Symbol, SymbolPin};
 use volt_core::project::*;
 
 use super::project_io::{self, Result};
@@ -111,33 +111,32 @@ fn net_connect(
         .map(|n| n.uuid)
         .ok_or_else(|| format!("Net '{net_name}' not found"))?;
 
-    // Find the component instance
-    let comp_instance = circuit
+    // Find the component instance index so we can resolve aliases before mutably borrowing it
+    let comp_index = circuit
         .components
-        .iter_mut()
-        .find(|c| c.name == component_name)
+        .iter()
+        .position(|c| c.name == component_name)
         .ok_or_else(|| format!("Component '{component_name}' not found"))?;
 
-    // Look up the library component to resolve pin name → signal UUID
-    let lib_comp: volt_core::library::Component =
-        project_io::read_library_element(project, "components", &comp_instance.lib_component)?;
+    let lib_component_uuid = circuit.components[comp_index].lib_component;
+    let lib_variant_uuid = circuit.components[comp_index].lib_variant;
+    let lib_comp: Component =
+        project_io::read_library_element(project, "components", &lib_component_uuid)?;
 
-    let signal = lib_comp
-        .signals
-        .iter()
-        .find(|s| s.name == pin_name)
-        .ok_or_else(|| {
-            let available: Vec<&str> = lib_comp.signals.iter().map(|s| s.name.as_str()).collect();
-            format!(
-                "Pin '{pin_name}' not found on component '{component_name}'. Available: {}",
-                available.join(", ")
-            )
-        })?;
+    let (signal_uuid, resolved_pin) = resolve_signal_selector(
+        project,
+        &lib_comp,
+        lib_variant_uuid,
+        pin_name,
+        component_name,
+    )?;
+
+    let comp_instance = &mut circuit.components[comp_index];
 
     // Find or create the signal connection
     let mut found = false;
     for conn in &mut comp_instance.signal_connections {
-        if conn.signal == signal.uuid {
+        if conn.signal == signal_uuid {
             conn.net = Some(net_uuid);
             found = true;
             break;
@@ -145,7 +144,7 @@ fn net_connect(
     }
     if !found {
         comp_instance.signal_connections.push(SignalConnection {
-            signal: signal.uuid,
+            signal: signal_uuid,
             net: Some(net_uuid),
         });
     }
@@ -157,13 +156,90 @@ fn net_connect(
         "connection": {
             "component": component_name,
             "pin": pin_name,
-            "signal_uuid": signal.uuid.to_string(),
+            "resolved_pin": resolved_pin,
+            "signal_uuid": signal_uuid.to_string(),
             "net": net_name,
             "net_uuid": net_uuid.to_string(),
         }
     });
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
+}
+
+fn resolve_signal_selector(
+    project: &std::path::Path,
+    lib_comp: &Component,
+    lib_variant_uuid: uuid::Uuid,
+    selector: &str,
+    component_name: &str,
+) -> Result<(uuid::Uuid, String)> {
+    if let Some(signal) = lib_comp.signals.iter().find(|s| s.name == selector) {
+        return Ok((signal.uuid, signal.name.clone()));
+    }
+
+    let variant = lib_comp
+        .variants
+        .iter()
+        .find(|v| v.uuid == lib_variant_uuid)
+        .ok_or_else(|| format!("Variant not found for component '{component_name}'"))?;
+    let gate = variant
+        .gates
+        .first()
+        .ok_or_else(|| format!("No gates defined for component '{component_name}'"))?;
+    let lib_sym: Symbol = project_io::read_library_element(project, "symbols", &gate.symbol)?;
+    let pin = find_symbol_pin(&lib_sym, selector).map_err(|e| format!("{e} on component '{component_name}'"))?;
+    let mapping = gate
+        .pin_mappings
+        .iter()
+        .find(|m| m.pin == pin.uuid)
+        .ok_or_else(|| format!("No signal mapping found for pin '{}' on component '{component_name}'", pin.name))?;
+    let signal = lib_comp
+        .signals
+        .iter()
+        .find(|s| s.uuid == mapping.signal)
+        .ok_or_else(|| format!("Mapped signal missing for component '{component_name}'"))?;
+    Ok((signal.uuid, format_pin_display(pin)))
+}
+
+fn find_symbol_pin<'a>(lib_sym: &'a Symbol, selector: &str) -> std::result::Result<&'a SymbolPin, String> {
+    if let Some(pin) = lib_sym.pins.iter().find(|p| p.name == selector) {
+        return Ok(pin);
+    }
+
+    let alias_matches: Vec<&SymbolPin> = lib_sym
+        .pins
+        .iter()
+        .filter(|p| !p.pin_name.is_empty() && p.pin_name.eq_ignore_ascii_case(selector))
+        .collect();
+
+    match alias_matches.len() {
+        1 => Ok(alias_matches[0]),
+        0 => Err(format!(
+            "Pin '{selector}' not found. Available: {}",
+            lib_sym
+                .pins
+                .iter()
+                .map(format_pin_display)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )),
+        _ => Err(format!(
+            "Pin name '{selector}' is ambiguous. Matches: {}",
+            alias_matches
+                .iter()
+                .map(|p| format_pin_display(p))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )),
+    }
+}
+
+fn format_pin_display(pin: &SymbolPin) -> String {
+    if pin.pin_name.is_empty() {
+        pin.name.clone()
+    } else {
+        format!("{} ({})", pin.name, pin.pin_name)
+    }
 }
 
 fn net_list(project: &std::path::Path) -> Result<()> {
