@@ -3,13 +3,13 @@
 //! `autoplace` — generates an initial layout from a connected circuit.
 //! `tidy` — cleans up an existing schematic layout.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::Path;
 
 use uuid::Uuid;
 
 use volt_core::common::*;
-use volt_core::library::{Component, Symbol, SymbolText};
+use volt_core::library::{Component, Symbol};
 use volt_core::project::*;
 
 use super::project_io::{self, Result};
@@ -25,169 +25,140 @@ pub fn autoplace_schematic(project: &Path, sch_name: &str) -> Result<()> {
     let circuit = project_io::read_circuit(project)?;
     let mut schematic = project_io::read_schematic(project, sch_name)?;
 
-    // Load all library data we need
-    let mut lib_comps: HashMap<Uuid, Component> = HashMap::new();
-    let mut lib_syms: HashMap<Uuid, Symbol> = HashMap::new();
+    // Load all library data
+    let (lib_comps, lib_syms) = load_library_data(project, &circuit)?;
 
-    for inst in &circuit.components {
-        if !lib_comps.contains_key(&inst.lib_component) {
-            if let Ok(c) = project_io::read_library_element::<Component>(
-                project, "components", &inst.lib_component,
-            ) {
-                let variant = c.variants.iter().find(|v| v.uuid == inst.lib_variant);
-                if let Some(variant) = variant {
-                    for gate in &variant.gates {
-                        if !lib_syms.contains_key(&gate.symbol) {
-                            if let Ok(s) = project_io::read_library_element::<Symbol>(
-                                project, "symbols", &gate.symbol,
-                            ) {
-                                lib_syms.insert(gate.symbol, s);
-                            }
-                        }
-                    }
-                }
-                lib_comps.insert(inst.lib_component, c);
-            }
-        }
-    }
+    // Build connectivity
+    let net_members = build_net_members(&circuit);
+    let power_nets = detect_power_nets(&circuit);
 
-    // Build connectivity: net_uuid → [component_uuid]
-    let mut net_members: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
-    for inst in &circuit.components {
-        for conn in &inst.signal_connections {
-            if let Some(net_uuid) = conn.net {
-                net_members.entry(net_uuid).or_default().push(inst.uuid);
-            }
-        }
-    }
+    // Score components: signal degree (non-power connections to other components)
+    let comp_signal_degree = compute_signal_degrees(&circuit, &net_members, &power_nets);
 
-    // Score components by connection degree
-    let mut comp_degree: HashMap<Uuid, usize> = HashMap::new();
-    for inst in &circuit.components {
-        let degree: usize = inst.signal_connections.iter()
-            .filter_map(|c| c.net)
-            .flat_map(|n| net_members.get(&n).into_iter().flatten())
-            .filter(|&&c| c != inst.uuid)
-            .collect::<HashSet<_>>()
-            .len();
-        comp_degree.insert(inst.uuid, degree);
-    }
+    // Find the anchor: highest signal degree (usually the IC)
+    let anchor = circuit.components.iter()
+        .max_by_key(|c| comp_signal_degree.get(&c.uuid).unwrap_or(&0))
+        .map(|c| c.uuid);
 
-    // Sort: highest degree first (ICs before passives)
-    let mut placement_order: Vec<&ComponentInstance> = circuit.components.iter().collect();
-    placement_order.sort_by(|a, b| {
-        comp_degree.get(&b.uuid).unwrap_or(&0)
-            .cmp(comp_degree.get(&a.uuid).unwrap_or(&0))
-    });
+    let Some(anchor_uuid) = anchor else {
+        return Err("No components to place".into());
+    };
 
-    // Compute bounding boxes for each symbol
-    let mut sym_bounds: HashMap<Uuid, (f64, f64)> = HashMap::new(); // symbol_uuid → (half_w, half_h)
-    for (uuid, sym) in &lib_syms {
-        let (hw, hh) = symbol_half_extents(sym);
-        sym_bounds.insert(*uuid, (hw, hh));
-    }
+    // Compute symbol half-extents
+    let sym_extents = compute_all_extents(&circuit, &lib_comps, &lib_syms);
 
-    // Occupied grid cells: position → component_uuid
-    let mut occupied: HashMap<(i32, i32), Uuid> = HashMap::new();
-    let mut placements: HashMap<Uuid, (f64, f64, f64)> = HashMap::new(); // comp_uuid → (gx, gy, rotation)
+    // Classify each component's relationship to the anchor
+    let anchor_inst = circuit.components.iter().find(|c| c.uuid == anchor_uuid).unwrap();
+    let anchor_comp = lib_comps.get(&anchor_inst.lib_component);
+    let anchor_sym = anchor_comp
+        .and_then(|c| c.variants.iter().find(|v| v.uuid == anchor_inst.lib_variant))
+        .and_then(|v| v.gates.first())
+        .and_then(|g| lib_syms.get(&g.symbol));
 
-    // Detect power net names
-    let power_nets: HashSet<Uuid> = circuit.nets.iter()
-        .filter(|n| is_power_net_name(&n.name))
-        .map(|n| n.uuid)
-        .collect();
+    // --- PLACEMENT via BFS from anchor ---
+    let anchor_ext = sym_extents.get(&anchor_uuid).copied().unwrap_or((4.0, 4.0));
+    let anchor_gx = 20.0_f64;
+    let anchor_gy = 16.0_f64;
 
-    // Place components
-    let center_x = 16.0_f64;
-    let center_y = 14.0_f64;
+    let mut placements: HashMap<Uuid, (f64, f64, f64)> = HashMap::new();
+    placements.insert(anchor_uuid, (anchor_gx, anchor_gy, 0.0));
 
-    for inst in &placement_order {
-        let lib_comp = match lib_comps.get(&inst.lib_component) {
-            Some(c) => c,
-            None => continue,
-        };
-        let variant = match lib_comp.variants.iter().find(|v| v.uuid == inst.lib_variant) {
-            Some(v) => v,
-            None => continue,
-        };
-        let gate = match variant.gates.first() {
-            Some(g) => g,
-            None => continue,
-        };
-        let sym = match lib_syms.get(&gate.symbol) {
-            Some(s) => s,
-            None => continue,
-        };
-        let (hw, hh) = sym_bounds.get(&gate.symbol).copied().unwrap_or((4.0, 4.0));
+    // Track occupied grid cells to prevent overlap
+    let mut occupied: HashSet<(i32, i32)> = HashSet::new();
+    occupy_cells(&mut occupied, anchor_gx, anchor_gy, anchor_ext.0, anchor_ext.1);
 
-        if placements.is_empty() {
-            // First component (highest degree) goes at center
-            let gx = center_x;
-            let gy = center_y;
-            occupy_cells(&mut occupied, gx, gy, hw, hh, inst.uuid);
-            placements.insert(inst.uuid, (gx, gy, 0.0));
-            continue;
-        }
+    // BFS: place components outward from the anchor
+    // Use two-pass: signal neighbors first (front of queue), power neighbors second (back)
+    let mut queue: VecDeque<Uuid> = VecDeque::new();
+    queue.push_back(anchor_uuid);
+    let mut visited: HashSet<Uuid> = HashSet::new();
+    visited.insert(anchor_uuid);
 
-        // Find the best anchor: placed component sharing the most non-power nets
-        let mut best_anchor: Option<(Uuid, usize, Uuid)> = None; // (anchor_uuid, shared_count, connecting_net)
-        for conn in &inst.signal_connections {
+    while let Some(current_uuid) = queue.pop_front() {
+        let current_inst = circuit.components.iter().find(|c| c.uuid == current_uuid).unwrap();
+        let (cur_gx, cur_gy, _) = placements[&current_uuid];
+
+        // Collect neighbors with signal/power distinction
+        let mut signal_neighbors: Vec<(Uuid, f64, f64)> = Vec::new();
+        let mut power_neighbors: Vec<(Uuid, f64, f64)> = Vec::new();
+
+        for conn in &current_inst.signal_connections {
             let Some(net_uuid) = conn.net else { continue };
-            if power_nets.contains(&net_uuid) { continue; }
-            if let Some(members) = net_members.get(&net_uuid) {
-                for &member in members {
-                    if member == inst.uuid { continue; }
-                    if !placements.contains_key(&member) { continue; }
-                    let count = best_anchor.map(|(_, c, _)| c).unwrap_or(0);
-                    // Count shared nets between this inst and this anchor
-                    let shared = count_shared_nets(inst, member, &net_members, &power_nets);
-                    if shared > count {
-                        best_anchor = Some((member, shared, net_uuid));
-                    }
-                }
-            }
-        }
+            let Some(members) = net_members.get(&net_uuid) else { continue };
+            let is_power = power_nets.contains(&net_uuid);
 
-        let (target_gx, target_gy) = if let Some((anchor_uuid, _, connecting_net)) = best_anchor {
-            let (ax, ay, _arot) = placements[&anchor_uuid];
-            let anchor_inst = circuit.components.iter().find(|c| c.uuid == anchor_uuid).unwrap();
-            let anchor_comp = lib_comps.get(&anchor_inst.lib_component).unwrap();
-            let anchor_variant = anchor_comp.variants.iter().find(|v| v.uuid == anchor_inst.lib_variant).unwrap();
-            let anchor_gate = anchor_variant.gates.first().unwrap();
-            let anchor_sym = lib_syms.get(&anchor_gate.symbol).unwrap();
-
-            // Find the pin on the anchor that connects via this net
-            let direction = find_pin_direction(
-                anchor_inst, anchor_comp, anchor_sym, anchor_gate, connecting_net,
+            let pin_pos = get_pin_position_for_signal(
+                current_inst, conn.signal, &lib_comps, &lib_syms,
             );
 
-            let (ahw, ahh) = sym_bounds.get(&anchor_gate.symbol).copied().unwrap_or((4.0, 4.0));
-            let spacing_x = ahw + hw + 3.0;
-            let spacing_y = ahh + hh + 3.0;
-
-            match direction {
-                Direction::Right => (ax + spacing_x, ay),
-                Direction::Left  => (ax - spacing_x, ay),
-                Direction::Down  => (ax, ay + spacing_y),
-                Direction::Up    => (ax, ay - spacing_y),
+            for &member_uuid in members {
+                if member_uuid == current_uuid || visited.contains(&member_uuid) { continue; }
+                let (px, py) = pin_pos.unwrap_or((0.0, 0.0));
+                if is_power {
+                    power_neighbors.push((member_uuid, px, py));
+                } else {
+                    signal_neighbors.push((member_uuid, px, py));
+                }
             }
-        } else {
-            // No anchor found, place below the last placed component
-            let max_y = placements.values().map(|(_, y, _)| *y).fold(f64::NEG_INFINITY, f64::max);
-            (center_x, max_y + hh * 2.0 + 4.0)
-        };
+        }
 
-        // Find nearest free position
-        let (gx, gy) = find_free_position(&occupied, target_gx, target_gy, hw, hh);
-        occupy_cells(&mut occupied, gx, gy, hw, hh, inst.uuid);
+        // Deduplicate: if a neighbor appears in signal list, remove from power
+        let signal_uuids: HashSet<Uuid> = signal_neighbors.iter().map(|(u, _, _)| *u).collect();
+        power_neighbors.retain(|(u, _, _)| !signal_uuids.contains(u));
+
+        // Dedup within each list
+        let mut seen: HashSet<Uuid> = HashSet::new();
+        signal_neighbors.retain(|(u, _, _)| seen.insert(*u));
+        seen.clear();
+        power_neighbors.retain(|(u, _, _)| seen.insert(*u));
+
+        // Process all neighbors: signal first, then power
+        let all_neighbors: Vec<(Uuid, f64, f64)> = signal_neighbors.into_iter()
+            .chain(power_neighbors.into_iter())
+            .collect();
+
+        for (neighbor_uuid, pin_x, pin_y) in all_neighbors {
+            if visited.contains(&neighbor_uuid) { continue; }
+            visited.insert(neighbor_uuid);
+
+            let neighbor_ext = sym_extents.get(&neighbor_uuid).copied().unwrap_or((2.0, 2.0));
+            let cur_ext = sym_extents.get(&current_uuid).copied().unwrap_or((4.0, 4.0));
+
+            // Determine placement direction from pin position
+            let (dir_x, dir_y) = if pin_x.abs() > pin_y.abs() {
+                if pin_x < 0.0 { (-1.0, 0.0) } else { (1.0, 0.0) }
+            } else if pin_y.abs() > 0.01 {
+                if pin_y < 0.0 { (0.0, -1.0) } else { (0.0, 1.0) }
+            } else {
+                (1.0, 0.0) // default: place to the right
+            };
+
+            let spacing_x = cur_ext.0 + neighbor_ext.0 + 2.0;
+            let spacing_y = cur_ext.1 + neighbor_ext.1 + 1.5;
+
+            let target_gx = cur_gx + dir_x * spacing_x;
+            let target_gy = cur_gy + dir_y * spacing_y;
+
+            let (gx, gy) = find_free_position(&occupied, target_gx, target_gy, neighbor_ext.0, neighbor_ext.1);
+            occupy_cells(&mut occupied, gx, gy, neighbor_ext.0, neighbor_ext.1);
+            placements.insert(neighbor_uuid, (gx, gy, 0.0));
+            queue.push_back(neighbor_uuid);
+        }
+    }
+
+    // Place any remaining unvisited components near the anchor
+    for inst in &circuit.components {
+        if placements.contains_key(&inst.uuid) { continue; }
+        let ext = sym_extents.get(&inst.uuid).copied().unwrap_or((2.0, 2.0));
+        let (gx, gy) = find_free_position(&occupied, anchor_gx, anchor_gy - 8.0, ext.0, ext.1);
+        occupy_cells(&mut occupied, gx, gy, ext.0, ext.1);
         placements.insert(inst.uuid, (gx, gy, 0.0));
     }
 
-    // Clear existing symbols and net segments
+    // --- BUILD SCHEMATIC ---
     schematic.symbols.clear();
     schematic.net_segments.clear();
 
-    // Create schematic symbols
     for inst in &circuit.components {
         let Some(&(gx, gy, rot)) = placements.get(&inst.uuid) else { continue };
         let lib_comp = match lib_comps.get(&inst.lib_component) { Some(c) => c, None => continue };
@@ -222,43 +193,15 @@ pub fn autoplace_schematic(project: &Path, sch_name: &str) -> Result<()> {
         });
     }
 
-    // Build a lookup from component_uuid → schematic symbol
+    // --- WIRE NETS ---
     let sym_by_comp: HashMap<Uuid, &SchematicSymbol> = schematic.symbols.iter()
         .map(|s| (s.component, s))
         .collect();
 
-    // Generate wires for each net
-    let net_name_map: HashMap<Uuid, &str> = circuit.nets.iter().map(|n| (n.uuid, n.name.as_str())).collect();
-
     for net in &circuit.nets {
-        // Collect all pin endpoints for this net
-        let mut pin_endpoints: Vec<(Uuid, Uuid, Position)> = Vec::new(); // (sch_sym_uuid, pin_uuid, world_pos)
-
-        for inst in &circuit.components {
-            for conn in &inst.signal_connections {
-                if conn.net != Some(net.uuid) { continue; }
-                let Some(sch_sym) = sym_by_comp.get(&inst.uuid) else { continue };
-                let lib_comp = match lib_comps.get(&inst.lib_component) { Some(c) => c, None => continue };
-                let variant = match lib_comp.variants.iter().find(|v| v.uuid == inst.lib_variant) { Some(v) => v, None => continue };
-                let gate = match variant.gates.first() { Some(g) => g, None => continue };
-                let lib_sym = match lib_syms.get(&gate.symbol) { Some(s) => s, None => continue };
-
-                // Find which pin maps to this signal
-                let Some(mapping) = gate.pin_mappings.iter().find(|m| m.signal == conn.signal) else { continue };
-                let Some(pin) = lib_sym.pins.iter().find(|p| p.uuid == mapping.pin) else { continue };
-
-                let rot_rad = sch_sym.rotation.0.to_radians();
-                let cos_r = rot_rad.cos();
-                let sin_r = rot_rad.sin();
-                let world_pos = Position::new(
-                    sch_sym.position.x + pin.position.x * cos_r - pin.position.y * sin_r,
-                    sch_sym.position.y + pin.position.x * sin_r + pin.position.y * cos_r,
-                );
-
-                pin_endpoints.push((sch_sym.uuid, pin.uuid, world_pos));
-            }
-        }
-
+        let pin_endpoints = collect_pin_endpoints(
+            &circuit, net, &sym_by_comp, &lib_comps, &lib_syms,
+        );
         if pin_endpoints.is_empty() { continue; }
 
         let mut seg = SchematicNetSegment {
@@ -271,30 +214,27 @@ pub fn autoplace_schematic(project: &Path, sch_name: &str) -> Result<()> {
 
         let is_power = power_nets.contains(&net.uuid);
 
-        if is_power || pin_endpoints.len() > 4 {
-            // High-fanout net: use labels at each pin instead of wiring everything
+        if is_power {
+            // Power nets: label at each pin
             for (_, _, pos) in &pin_endpoints {
-                // Add a short stub + label
-                let label_pos = Position::new(
-                    (pos.x / GRID).round() * GRID,
-                    (pos.y / GRID - 1.0).round() * GRID,
-                );
                 seg.labels.push(NetLabel {
                     uuid: new_uuid(),
-                    position: label_pos,
+                    position: Position::new(
+                        (pos.x / GRID).round() * GRID,
+                        ((pos.y - GRID * 1.5) / GRID).round() * GRID,
+                    ),
                     rotation: Angle(0.0),
                     mirror: false,
                 });
             }
         } else {
-            // Sort by x then y for a consistent chain
+            // Signal nets: chain wire
             let mut sorted = pin_endpoints.clone();
             sorted.sort_by(|a, b| {
                 a.2.x.partial_cmp(&b.2.x).unwrap()
                     .then(a.2.y.partial_cmp(&b.2.y).unwrap())
             });
 
-            // Chain: wire pin[0]→pin[1]→pin[2]→...
             for window in sorted.windows(2) {
                 let (sym_a, pin_a, pos_a) = &window[0];
                 let (sym_b, pin_b, pos_b) = &window[1];
@@ -306,15 +246,10 @@ pub fn autoplace_schematic(project: &Path, sch_name: &str) -> Result<()> {
                 let dy = (pos_b.y - pos_a.y).abs();
 
                 if dx < 0.01 || dy < 0.01 {
-                    // Already aligned — direct wire
                     seg.lines.push(SchematicLine {
-                        uuid: new_uuid(),
-                        width: 0.15875,
-                        from,
-                        to,
+                        uuid: new_uuid(), width: 0.15875, from, to,
                     });
                 } else {
-                    // Manhattan: create a bend junction
                     let bend = if dx >= dy {
                         Position::new(pos_b.x, pos_a.y)
                     } else {
@@ -327,30 +262,23 @@ pub fn autoplace_schematic(project: &Path, sch_name: &str) -> Result<()> {
                     let junc_uuid = new_uuid();
                     seg.junctions.push(Junction { uuid: junc_uuid, position: bend_snapped });
                     let bend_ep = LineEndpoint::Junction { junction: junc_uuid };
-
                     seg.lines.push(SchematicLine {
-                        uuid: new_uuid(),
-                        width: 0.15875,
-                        from,
-                        to: bend_ep.clone(),
+                        uuid: new_uuid(), width: 0.15875, from, to: bend_ep.clone(),
                     });
                     seg.lines.push(SchematicLine {
-                        uuid: new_uuid(),
-                        width: 0.15875,
-                        from: bend_ep,
-                        to,
+                        uuid: new_uuid(), width: 0.15875, from: bend_ep, to,
                     });
                 }
             }
 
-            // Add a label for nets with ≥ 3 connections
+            // Label for multi-connection signal nets
             if sorted.len() >= 3 {
                 let mid = &sorted[sorted.len() / 2].2;
                 seg.labels.push(NetLabel {
                     uuid: new_uuid(),
                     position: Position::new(
                         (mid.x / GRID).round() * GRID,
-                        (mid.y / GRID - 1.5).round() * GRID,
+                        ((mid.y - GRID * 1.5) / GRID).round() * GRID,
                     ),
                     rotation: Angle(0.0),
                     mirror: false,
@@ -385,48 +313,141 @@ pub fn tidy_schematic(project: &Path, sch_name: &str) -> Result<()> {
 
     let mut changes = Vec::new();
 
-    // 1. Deduplicate junctions at the same position
+    // 1. Deduplicate junctions
     let deduped = dedup_junctions(&mut schematic);
-    if deduped > 0 {
-        changes.push(format!("Deduplicated {deduped} junctions"));
-    }
+    if deduped > 0 { changes.push(format!("Deduplicated {deduped} junctions")); }
 
-    // 2. Remove zero-length wire segments
+    // 2. Remove zero-length wires
     let removed = remove_zero_length_wires(&mut schematic);
-    if removed > 0 {
-        changes.push(format!("Removed {removed} zero-length wire segments"));
-    }
+    if removed > 0 { changes.push(format!("Removed {removed} zero-length wires")); }
 
-    // 3. Reset all field positions to library defaults
+    // 3. Reset field positions to library defaults
     let reset = reset_all_fields(project, &circuit, &mut schematic)?;
-    if reset > 0 {
-        changes.push(format!("Reset {reset} text field positions"));
-    }
+    if reset > 0 { changes.push(format!("Reset {reset} text fields")); }
 
-    // 4. Spread overlapping labels
+    // 4. Snap nearly-aligned components to same row/column
+    let snapped = snap_component_alignment(&mut schematic);
+    if snapped > 0 { changes.push(format!("Snapped {snapped} components to alignment")); }
+
+    // 5. Spread overlapping labels
     let spread = spread_overlapping_labels(&mut schematic);
-    if spread > 0 {
-        changes.push(format!("Spread {spread} overlapping labels"));
-    }
+    if spread > 0 { changes.push(format!("Spread {spread} overlapping labels")); }
+
+    // 6. Compact: shift entire layout so top-left is near origin
+    let compacted = compact_layout(&mut schematic);
+    if compacted { changes.push("Compacted layout towards origin".into()); }
 
     project_io::write_schematic(project, sch_name, &schematic)?;
 
     let result = serde_json::json!({
         "status": "ok",
-        "tidy": {
-            "changes": changes,
-        }
+        "tidy": { "changes": changes }
     });
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
 }
 
 // ===========================================================================
-// Autoplace helpers
+// Shared helpers
 // ===========================================================================
 
-#[derive(Debug, Clone, Copy)]
-enum Direction { Left, Right, Up, Down }
+fn load_library_data(
+    project: &Path,
+    circuit: &Circuit,
+) -> Result<(HashMap<Uuid, Component>, HashMap<Uuid, Symbol>)> {
+    let mut lib_comps: HashMap<Uuid, Component> = HashMap::new();
+    let mut lib_syms: HashMap<Uuid, Symbol> = HashMap::new();
+
+    for inst in &circuit.components {
+        if lib_comps.contains_key(&inst.lib_component) { continue; }
+        if let Ok(c) = project_io::read_library_element::<Component>(
+            project, "components", &inst.lib_component,
+        ) {
+            if let Some(variant) = c.variants.iter().find(|v| v.uuid == inst.lib_variant) {
+                for gate in &variant.gates {
+                    if !lib_syms.contains_key(&gate.symbol) {
+                        if let Ok(s) = project_io::read_library_element::<Symbol>(
+                            project, "symbols", &gate.symbol,
+                        ) {
+                            lib_syms.insert(gate.symbol, s);
+                        }
+                    }
+                }
+            }
+            lib_comps.insert(inst.lib_component, c);
+        }
+    }
+
+    Ok((lib_comps, lib_syms))
+}
+
+fn build_net_members(circuit: &Circuit) -> HashMap<Uuid, Vec<Uuid>> {
+    let mut net_members: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
+    for inst in &circuit.components {
+        for conn in &inst.signal_connections {
+            if let Some(net_uuid) = conn.net {
+                net_members.entry(net_uuid).or_default().push(inst.uuid);
+            }
+        }
+    }
+    net_members
+}
+
+fn detect_power_nets(circuit: &Circuit) -> HashSet<Uuid> {
+    circuit.nets.iter()
+        .filter(|n| is_power_net_name(&n.name))
+        .map(|n| n.uuid)
+        .collect()
+}
+
+fn is_power_net_name(name: &str) -> bool {
+    let upper = name.to_uppercase();
+    matches!(upper.as_str(),
+        "VCC" | "VDD" | "V+" | "VBUS" | "VBAT" | "VIN" | "VOUT" |
+        "GND" | "VSS" | "V-" | "AGND" | "DGND" | "PGND" | "GNDA" |
+        "3V3" | "+3V3" | "+3.3V" | "5V" | "+5V" | "+12V" | "+24V" |
+        "BAT_RAW"
+    )
+}
+
+fn compute_signal_degrees(
+    circuit: &Circuit,
+    net_members: &HashMap<Uuid, Vec<Uuid>>,
+    power_nets: &HashSet<Uuid>,
+) -> HashMap<Uuid, usize> {
+    let mut degrees = HashMap::new();
+    for inst in &circuit.components {
+        let degree: usize = inst.signal_connections.iter()
+            .filter_map(|c| c.net)
+            .filter(|n| !power_nets.contains(n))
+            .flat_map(|n| net_members.get(&n).into_iter().flatten())
+            .filter(|&&c| c != inst.uuid)
+            .collect::<HashSet<_>>()
+            .len();
+        degrees.insert(inst.uuid, degree);
+    }
+    degrees
+}
+
+fn compute_all_extents(
+    circuit: &Circuit,
+    lib_comps: &HashMap<Uuid, Component>,
+    lib_syms: &HashMap<Uuid, Symbol>,
+) -> HashMap<Uuid, (f64, f64)> {
+    let mut extents = HashMap::new();
+    for inst in &circuit.components {
+        if let Some(c) = lib_comps.get(&inst.lib_component) {
+            if let Some(v) = c.variants.iter().find(|v| v.uuid == inst.lib_variant) {
+                if let Some(g) = v.gates.first() {
+                    if let Some(s) = lib_syms.get(&g.symbol) {
+                        extents.insert(inst.uuid, symbol_half_extents(s));
+                    }
+                }
+            }
+        }
+    }
+    extents
+}
 
 fn symbol_half_extents(sym: &Symbol) -> (f64, f64) {
     let mut max_x = 0.0_f64;
@@ -444,45 +465,33 @@ fn symbol_half_extents(sym: &Symbol) -> (f64, f64) {
     (max_x.ceil().max(2.0), max_y.ceil().max(2.0))
 }
 
-fn is_power_net_name(name: &str) -> bool {
-    let upper = name.to_uppercase();
-    matches!(upper.as_str(),
-        "VCC" | "VDD" | "V+" | "VBUS" | "VBAT" | "VIN" | "VOUT" |
-        "GND" | "VSS" | "V-" | "AGND" | "DGND" | "PGND" | "GNDA" |
-        "3V3" | "+3V3" | "+3.3V" | "5V" | "+5V" | "+12V" | "+24V" |
-        "BAT_RAW"
-    )
-}
-
-fn occupy_cells(occupied: &mut HashMap<(i32, i32), Uuid>, gx: f64, gy: f64, hw: f64, hh: f64, uuid: Uuid) {
-    let x0 = (gx - hw).floor() as i32;
-    let x1 = (gx + hw).ceil() as i32;
-    let y0 = (gy - hh).floor() as i32;
-    let y1 = (gy + hh).ceil() as i32;
+fn occupy_cells(occupied: &mut HashSet<(i32, i32)>, gx: f64, gy: f64, hw: f64, hh: f64) {
+    let x0 = (gx - hw - 1.0).floor() as i32;
+    let x1 = (gx + hw + 1.0).ceil() as i32;
+    let y0 = (gy - hh - 1.0).floor() as i32;
+    let y1 = (gy + hh + 1.0).ceil() as i32;
     for x in x0..=x1 {
         for y in y0..=y1 {
-            occupied.insert((x, y), uuid);
+            occupied.insert((x, y));
         }
     }
 }
 
-fn is_position_free(occupied: &HashMap<(i32, i32), Uuid>, gx: f64, gy: f64, hw: f64, hh: f64) -> bool {
-    let x0 = (gx - hw).floor() as i32;
-    let x1 = (gx + hw).ceil() as i32;
-    let y0 = (gy - hh).floor() as i32;
-    let y1 = (gy + hh).ceil() as i32;
+fn is_position_free(occupied: &HashSet<(i32, i32)>, gx: f64, gy: f64, hw: f64, hh: f64) -> bool {
+    let x0 = (gx - hw - 1.0).floor() as i32;
+    let x1 = (gx + hw + 1.0).ceil() as i32;
+    let y0 = (gy - hh - 1.0).floor() as i32;
+    let y1 = (gy + hh + 1.0).ceil() as i32;
     for x in x0..=x1 {
         for y in y0..=y1 {
-            if occupied.contains_key(&(x, y)) {
-                return false;
-            }
+            if occupied.contains(&(x, y)) { return false; }
         }
     }
     true
 }
 
 fn find_free_position(
-    occupied: &HashMap<(i32, i32), Uuid>,
+    occupied: &HashSet<(i32, i32)>,
     target_x: f64,
     target_y: f64,
     hw: f64,
@@ -493,74 +502,89 @@ fn find_free_position(
     if is_position_free(occupied, tx, ty, hw, hh) {
         return (tx, ty);
     }
-    // Spiral outward
-    for radius in 1..30 {
+    // Fine spiral outward
+    for radius in 1..60 {
         let r = radius as f64;
-        for &(dx, dy) in &[
-            (r, 0.0), (-r, 0.0), (0.0, r), (0.0, -r),
-            (r, r), (r, -r), (-r, r), (-r, -r),
-            (r * 2.0, 0.0), (-r * 2.0, 0.0), (0.0, r * 2.0), (0.0, -r * 2.0),
-        ] {
-            let cx = tx + dx;
-            let cy = ty + dy;
+        // Try 8 directions at each radius
+        for angle_step in 0..8 {
+            let angle = angle_step as f64 * std::f64::consts::FRAC_PI_4;
+            let cx = (tx + r * angle.cos()).round();
+            let cy = (ty + r * angle.sin()).round();
             if is_position_free(occupied, cx, cy, hw, hh) {
                 return (cx, cy);
             }
         }
     }
-    // Fallback: just offset far enough
     (tx + 20.0, ty)
 }
 
-fn count_shared_nets(
-    a: &ComponentInstance,
-    b_uuid: Uuid,
-    net_members: &HashMap<Uuid, Vec<Uuid>>,
-    power_nets: &HashSet<Uuid>,
-) -> usize {
-    let mut count = 0;
-    for conn in &a.signal_connections {
-        let Some(net) = conn.net else { continue };
-        if power_nets.contains(&net) { continue; }
-        if let Some(members) = net_members.get(&net) {
-            if members.contains(&b_uuid) {
-                count += 1;
-            }
-        }
-    }
-    count
+fn get_pin_position_for_signal(
+    inst: &ComponentInstance,
+    signal_uuid: Uuid,
+    lib_comps: &HashMap<Uuid, Component>,
+    lib_syms: &HashMap<Uuid, Symbol>,
+) -> Option<(f64, f64)> {
+    let lib_comp = lib_comps.get(&inst.lib_component)?;
+    let variant = lib_comp.variants.iter().find(|v| v.uuid == inst.lib_variant)?;
+    let gate = variant.gates.first()?;
+    let lib_sym = lib_syms.get(&gate.symbol)?;
+    let mapping = gate.pin_mappings.iter().find(|m| m.signal == signal_uuid)?;
+    let pin = lib_sym.pins.iter().find(|p| p.uuid == mapping.pin)?;
+    Some((pin.position.x, pin.position.y))
 }
 
-fn find_pin_direction(
-    inst: &ComponentInstance,
-    _lib_comp: &Component,
-    lib_sym: &Symbol,
-    gate: &volt_core::library::Gate,
-    net_uuid: Uuid,
-) -> Direction {
-    // Find the signal connected to this net
-    let signal_uuid = inst.signal_connections.iter()
-        .find(|c| c.net == Some(net_uuid))
-        .map(|c| c.signal);
+fn has_signal_connection_to(
+    comp_a: Uuid,
+    comp_b: Uuid,
+    circuit: &Circuit,
+    net_members: &HashMap<Uuid, Vec<Uuid>>,
+    power_nets: &HashSet<Uuid>,
+) -> bool {
+    let inst_a = circuit.components.iter().find(|c| c.uuid == comp_a);
+    let Some(inst_a) = inst_a else { return false; };
+    inst_a.signal_connections.iter()
+        .filter_map(|c| c.net)
+        .filter(|n| !power_nets.contains(n))
+        .any(|n| {
+            net_members.get(&n)
+                .map(|m| m.contains(&comp_b))
+                .unwrap_or(false)
+        })
+}
 
-    if let Some(signal_uuid) = signal_uuid {
-        // Find the pin mapped to this signal
-        if let Some(mapping) = gate.pin_mappings.iter().find(|m| m.signal == signal_uuid) {
-            if let Some(pin) = lib_sym.pins.iter().find(|p| p.uuid == mapping.pin) {
-                // Direction based on pin position relative to center
-                let px = pin.position.x;
-                let py = pin.position.y;
-                if px.abs() > py.abs() {
-                    if px > 0.0 { return Direction::Right; }
-                    else { return Direction::Left; }
-                } else {
-                    if py > 0.0 { return Direction::Down; }
-                    else { return Direction::Up; }
-                }
-            }
+fn collect_pin_endpoints(
+    circuit: &Circuit,
+    net: &Net,
+    sym_by_comp: &HashMap<Uuid, &SchematicSymbol>,
+    lib_comps: &HashMap<Uuid, Component>,
+    lib_syms: &HashMap<Uuid, Symbol>,
+) -> Vec<(Uuid, Uuid, Position)> {
+    let mut endpoints = Vec::new();
+
+    for inst in &circuit.components {
+        for conn in &inst.signal_connections {
+            if conn.net != Some(net.uuid) { continue; }
+            let Some(sch_sym) = sym_by_comp.get(&inst.uuid) else { continue };
+            let Some(lib_comp) = lib_comps.get(&inst.lib_component) else { continue };
+            let Some(variant) = lib_comp.variants.iter().find(|v| v.uuid == inst.lib_variant) else { continue };
+            let Some(gate) = variant.gates.first() else { continue };
+            let Some(lib_sym) = lib_syms.get(&gate.symbol) else { continue };
+            let Some(mapping) = gate.pin_mappings.iter().find(|m| m.signal == conn.signal) else { continue };
+            let Some(pin) = lib_sym.pins.iter().find(|p| p.uuid == mapping.pin) else { continue };
+
+            let rot_rad = sch_sym.rotation.0.to_radians();
+            let cos_r = rot_rad.cos();
+            let sin_r = rot_rad.sin();
+            let world_pos = Position::new(
+                sch_sym.position.x + pin.position.x * cos_r - pin.position.y * sin_r,
+                sch_sym.position.y + pin.position.x * sin_r + pin.position.y * cos_r,
+            );
+
+            endpoints.push((sch_sym.uuid, pin.uuid, world_pos));
         }
     }
-    Direction::Right // default
+
+    endpoints
 }
 
 // ===========================================================================
@@ -587,11 +611,7 @@ fn dedup_junctions(schematic: &mut Schematic) -> usize {
         }
 
         if remap.is_empty() { continue; }
-
-        // Remove duplicated junctions
         seg.junctions.retain(|j| !remap.contains_key(&j.uuid));
-
-        // Remap line endpoints
         for line in &mut seg.lines {
             remap_endpoint(&mut line.from, &remap);
             remap_endpoint(&mut line.to, &remap);
@@ -618,18 +638,16 @@ fn remove_zero_length_wires(schematic: &mut Schematic) -> usize {
     total
 }
 
-fn reset_all_fields(
-    project: &Path,
-    circuit: &Circuit,
-    schematic: &mut Schematic,
-) -> Result<usize> {
+fn reset_all_fields(project: &Path, circuit: &Circuit, schematic: &mut Schematic) -> Result<usize> {
+    let (lib_comps, lib_syms) = load_library_data(project, circuit)?;
     let mut count = 0;
+
     for sym in &mut schematic.symbols {
         let Some(inst) = circuit.components.iter().find(|c| c.uuid == sym.component) else { continue };
-        let Ok(lib_comp) = project_io::read_library_element::<Component>(project, "components", &inst.lib_component) else { continue };
+        let Some(lib_comp) = lib_comps.get(&inst.lib_component) else { continue };
         let Some(variant) = lib_comp.variants.iter().find(|v| v.uuid == inst.lib_variant) else { continue };
         let Some(gate) = variant.gates.iter().find(|g| g.uuid == sym.lib_gate).or_else(|| variant.gates.first()) else { continue };
-        let Ok(lib_sym) = project_io::read_library_element::<Symbol>(project, "symbols", &gate.symbol) else { continue };
+        let Some(lib_sym) = lib_syms.get(&gate.symbol) else { continue };
 
         for template in &lib_sym.texts {
             let rebuilt = SchematicText {
@@ -653,32 +671,109 @@ fn reset_all_fields(
     Ok(count)
 }
 
-fn spread_overlapping_labels(schematic: &mut Schematic) -> usize {
-    // Collect all label positions, nudge overlapping ones
-    let mut all_label_positions: Vec<(usize, usize, f64, f64)> = Vec::new(); // (seg_idx, label_idx, x, y)
+fn snap_component_alignment(schematic: &mut Schematic) -> usize {
+    let snap_threshold = GRID * 1.2; // ~3mm
+    let mut snapped = 0;
 
+    // Collect positions
+    let positions: Vec<(usize, f64, f64)> = schematic.symbols.iter().enumerate()
+        .map(|(i, s)| (i, s.position.x, s.position.y))
+        .collect();
+
+    // Snap Y: if two symbols are within threshold of same Y, align them
+    for i in 0..positions.len() {
+        for j in (i + 1)..positions.len() {
+            let dy = (positions[i].2 - positions[j].2).abs();
+            if dy > 0.01 && dy < snap_threshold {
+                let avg_y = (positions[i].2 + positions[j].2) / 2.0;
+                let snapped_y = (avg_y / GRID).round() * GRID;
+
+                let idx_j = positions[j].0;
+                let old_y = schematic.symbols[idx_j].position.y;
+                let delta = snapped_y - old_y;
+                schematic.symbols[idx_j].position.y = snapped_y;
+                for text in &mut schematic.symbols[idx_j].texts {
+                    text.position.y += delta;
+                }
+                snapped += 1;
+            }
+        }
+    }
+
+    snapped
+}
+
+fn spread_overlapping_labels(schematic: &mut Schematic) -> usize {
+    let mut all_positions: Vec<(usize, usize, f64, f64)> = Vec::new();
     for (si, seg) in schematic.net_segments.iter().enumerate() {
         for (li, label) in seg.labels.iter().enumerate() {
-            all_label_positions.push((si, li, label.position.x, label.position.y));
+            all_positions.push((si, li, label.position.x, label.position.y));
         }
     }
 
     let mut nudged = 0;
-    let threshold = GRID * 1.5;
+    let threshold = GRID * 2.0;
 
-    for i in 0..all_label_positions.len() {
-        for j in (i + 1)..all_label_positions.len() {
-            let (_, _, x1, y1) = all_label_positions[i];
-            let (si, li, x2, y2) = all_label_positions[j];
+    for i in 0..all_positions.len() {
+        for j in (i + 1)..all_positions.len() {
+            let (_, _, x1, y1) = all_positions[i];
+            let (si, li, x2, y2) = all_positions[j];
             let dist = ((x2 - x1).powi(2) + (y2 - y1).powi(2)).sqrt();
             if dist < threshold {
-                // Nudge the second label down
                 let new_y = y2 + GRID * 2.0;
-                all_label_positions[j].3 = new_y;
+                all_positions[j].3 = new_y;
                 schematic.net_segments[si].labels[li].position.y = new_y;
                 nudged += 1;
             }
         }
     }
     nudged
+}
+
+fn compact_layout(schematic: &mut Schematic) -> bool {
+    if schematic.symbols.is_empty() { return false; }
+
+    // Find the bounding box of all elements
+    let mut min_x = f64::INFINITY;
+    let mut min_y = f64::INFINITY;
+
+    for sym in &schematic.symbols {
+        min_x = min_x.min(sym.position.x);
+        min_y = min_y.min(sym.position.y);
+    }
+    for seg in &schematic.net_segments {
+        for junc in &seg.junctions {
+            min_x = min_x.min(junc.position.x);
+            min_y = min_y.min(junc.position.y);
+        }
+    }
+
+    // Target: top-left component at grid (6, 6) = 15.24mm
+    let target = 6.0 * GRID;
+    let dx = target - min_x;
+    let dy = target - min_y;
+
+    if dx.abs() < 0.01 && dy.abs() < 0.01 { return false; }
+
+    // Shift everything
+    for sym in &mut schematic.symbols {
+        sym.position.x += dx;
+        sym.position.y += dy;
+        for text in &mut sym.texts {
+            text.position.x += dx;
+            text.position.y += dy;
+        }
+    }
+    for seg in &mut schematic.net_segments {
+        for junc in &mut seg.junctions {
+            junc.position.x += dx;
+            junc.position.y += dy;
+        }
+        for label in &mut seg.labels {
+            label.position.x += dx;
+            label.position.y += dy;
+        }
+    }
+
+    true
 }
