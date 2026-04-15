@@ -38,115 +38,102 @@ pub fn autoplace_schematic(project: &Path, sch_name: &str) -> Result<()> {
 
     let anchor_inst = circuit.components.iter().find(|c| c.uuid == anchor_uuid).unwrap();
 
-    // --- Step 2: Classify components into zones based on anchor pin direction ---
+    // --- Step 2: Detect signal chains FIRST (before zone classification) ---
+    // Follow signal nets outward from anchor to find chains.
+    // A chain is: anchor-pin → comp_A → comp_B → comp_C (each via a signal net).
+    // Components in chains get locked to their chain and won't be placed as power-only.
+    let mut chain_member: HashSet<Uuid> = HashSet::new(); // all components assigned to a chain
+    chain_member.insert(anchor_uuid);
+
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     enum Zone { Left, Right, Top, Bottom }
 
-    let mut zone_comps: HashMap<Zone, Vec<(Uuid, f64)>> = HashMap::new(); // zone → [(comp_uuid, pin_y_or_x for sorting)]
-    let mut power_only_comps: Vec<Uuid> = Vec::new();
-    let mut placed_in_zone: HashSet<Uuid> = HashSet::new();
-    placed_in_zone.insert(anchor_uuid);
+    struct ZoneChain {
+        zone: Zone,
+        sort_key: f64,
+        root: Uuid,
+        chain: Vec<Uuid>, // components after root, in order
+    }
 
-    for inst in &circuit.components {
-        if inst.uuid == anchor_uuid { continue; }
+    let mut zone_chains: Vec<ZoneChain> = Vec::new();
 
-        // Find the anchor pin this component connects through (prefer signal nets)
-        let mut best_pin_pos: Option<(f64, f64)> = None;
-        let mut found_signal = false;
+    // For each signal connection from anchor, follow the chain outward
+    for anchor_conn in &anchor_inst.signal_connections {
+        let Some(net_uuid) = anchor_conn.net else { continue };
+        if power_nets.contains(&net_uuid) { continue; }
+        let Some(members) = net_members.get(&net_uuid) else { continue };
 
-        for conn in &inst.signal_connections {
-            let Some(net_uuid) = conn.net else { continue };
-            let is_power = power_nets.contains(&net_uuid);
-            if found_signal && is_power { continue; }
-
-            // Does the anchor also connect to this net?
-            let anchor_signal = anchor_inst.signal_connections.iter()
-                .find(|ac| ac.net == Some(net_uuid));
-            let Some(anchor_conn) = anchor_signal else { continue };
-
-            // Get the anchor's pin position for this signal
-            if let Some(pos) = get_pin_position_for_signal(
-                anchor_inst, anchor_conn.signal, &lib_comps, &lib_syms,
-            ) {
-                if !is_power { found_signal = true; }
-                best_pin_pos = Some(pos);
-            }
-        }
-
-        if let Some((px, py)) = best_pin_pos {
-            let zone = if px.abs() > py.abs() {
-                if px < 0.0 { Zone::Left } else { Zone::Right }
-            } else {
-                if py < 0.0 { Zone::Top } else { Zone::Bottom }
-            };
-            // Sort key: pin Y for left/right columns, pin X for top/bottom rows
-            let sort_key = match zone {
-                Zone::Left | Zone::Right => py,
-                Zone::Top | Zone::Bottom => px,
-            };
-            zone_comps.entry(zone).or_default().push((inst.uuid, sort_key));
-            placed_in_zone.insert(inst.uuid);
+        // Get the anchor pin direction for this signal
+        let pin_pos = get_pin_position_for_signal(
+            anchor_inst, anchor_conn.signal, &lib_comps, &lib_syms,
+        );
+        let (px, py) = pin_pos.unwrap_or((0.0, 0.0));
+        let zone = if px.abs() > py.abs() {
+            if px < 0.0 { Zone::Left } else { Zone::Right }
         } else {
-            power_only_comps.push(inst.uuid);
-        }
-    }
+            if py < 0.0 { Zone::Top } else { Zone::Bottom }
+        };
+        let sort_key = match zone {
+            Zone::Left | Zone::Right => py,
+            Zone::Top | Zone::Bottom => px,
+        };
 
-    // Sort each zone by pin position order
-    for list in zone_comps.values_mut() {
-        list.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-    }
+        // Find direct neighbors on this net that aren't already claimed
+        for &member in members {
+            if member == anchor_uuid || chain_member.contains(&member) { continue; }
 
-    // --- Step 3: Detect chains extending from zone components ---
-    // If a zone component connects via signal net to an unplaced component, chain it
-    let mut chains: HashMap<Uuid, Vec<Uuid>> = HashMap::new(); // zone_comp → [chained_comp1, chained_comp2, ...]
-
-    for zone_list in zone_comps.values() {
-        for &(zone_uuid, _) in zone_list {
-            let zone_inst = circuit.components.iter().find(|c| c.uuid == zone_uuid).unwrap();
+            // Start a chain from this member
+            chain_member.insert(member);
             let mut chain = Vec::new();
-            let mut current = zone_uuid;
-            let mut current_inst = zone_inst;
+            let mut current = member;
 
+            // Follow signal connections outward
             loop {
+                let inst = circuit.components.iter().find(|c| c.uuid == current).unwrap();
                 let mut next_comp = None;
-                for conn in &current_inst.signal_connections {
-                    let Some(net_uuid) = conn.net else { continue };
-                    if power_nets.contains(&net_uuid) { continue; }
-                    if let Some(members) = net_members.get(&net_uuid) {
-                        for &member in members {
-                            if member == current { continue; }
-                            if placed_in_zone.contains(&member) { continue; }
-                            if chain.contains(&member) { continue; }
-                            next_comp = Some(member);
+                for conn in &inst.signal_connections {
+                    let Some(n) = conn.net else { continue };
+                    if power_nets.contains(&n) { continue; }
+                    if let Some(ms) = net_members.get(&n) {
+                        for &m in ms {
+                            if m == current || chain_member.contains(&m) { continue; }
+                            next_comp = Some(m);
                             break;
                         }
                     }
                     if next_comp.is_some() { break; }
                 }
-
                 if let Some(next) = next_comp {
                     chain.push(next);
-                    placed_in_zone.insert(next);
+                    chain_member.insert(next);
                     current = next;
-                    current_inst = circuit.components.iter().find(|c| c.uuid == next).unwrap();
                 } else {
                     break;
                 }
             }
 
-            if !chain.is_empty() {
-                chains.insert(zone_uuid, chain);
-            }
+            zone_chains.push(ZoneChain { zone, sort_key, root: member, chain });
         }
     }
 
-    // Also chain power-only components
+    // Sort chains within each zone by pin order
+    zone_chains.sort_by(|a, b| {
+        a.zone.cmp_order().cmp(&b.zone.cmp_order())
+            .then(a.sort_key.partial_cmp(&b.sort_key).unwrap())
+    });
+
+    // Remaining components (power-only) that weren't claimed by any signal chain
+    let mut power_only_comps: Vec<Uuid> = circuit.components.iter()
+        .filter(|c| !chain_member.contains(&c.uuid))
+        .map(|c| c.uuid)
+        .collect();
+
+    // Chain power-only components together (battery→switch→regulator)
     let mut power_chain_order = Vec::new();
     {
         let mut remaining: HashSet<Uuid> = power_only_comps.iter().copied().collect();
-        // Start with components that connect to the fewest other components (sources first)
-        let mut sorted_power: Vec<Uuid> = power_only_comps.clone();
-        sorted_power.sort_by_key(|&uuid| {
+        let mut sorted: Vec<Uuid> = power_only_comps.clone();
+        sorted.sort_by_key(|&uuid| {
             circuit.components.iter().find(|c| c.uuid == uuid)
                 .map(|inst| inst.signal_connections.iter()
                     .filter_map(|c| c.net)
@@ -155,23 +142,18 @@ pub fn autoplace_schematic(project: &Path, sch_name: &str) -> Result<()> {
                     .collect::<HashSet<_>>().len())
                 .unwrap_or(0)
         });
-
-        while let Some(&start) = sorted_power.iter().find(|u| remaining.contains(u)) {
+        while let Some(&start) = sorted.iter().find(|u| remaining.contains(u)) {
             remaining.remove(&start);
             power_chain_order.push(start);
-            // Follow the chain
             let mut current = start;
             loop {
                 let inst = circuit.components.iter().find(|c| c.uuid == current).unwrap();
                 let mut next = None;
                 for conn in &inst.signal_connections {
-                    let Some(net_uuid) = conn.net else { continue };
-                    if let Some(members) = net_members.get(&net_uuid) {
-                        for &member in members {
-                            if remaining.contains(&member) {
-                                next = Some(member);
-                                break;
-                            }
+                    let Some(n) = conn.net else { continue };
+                    if let Some(ms) = net_members.get(&n) {
+                        for &m in ms {
+                            if remaining.contains(&m) { next = Some(m); break; }
                         }
                     }
                     if next.is_some() { break; }
@@ -180,14 +162,12 @@ pub fn autoplace_schematic(project: &Path, sch_name: &str) -> Result<()> {
                     remaining.remove(&n);
                     power_chain_order.push(n);
                     current = n;
-                } else {
-                    break;
-                }
+                } else { break; }
             }
         }
     }
 
-    // --- Step 4: Compute positions ---
+    // --- Step 3: Compute positions ---
     let sym_extents = compute_all_extents(&circuit, &lib_comps, &lib_syms);
     let anchor_ext = sym_extents.get(&anchor_uuid).copied().unwrap_or((4.0, 4.0));
 
@@ -196,31 +176,98 @@ pub fn autoplace_schematic(project: &Path, sch_name: &str) -> Result<()> {
     let mut placements: HashMap<Uuid, (f64, f64, f64)> = HashMap::new();
     placements.insert(anchor_uuid, (anchor_gx, anchor_gy, 0.0));
 
-    // Place left zone as a column
-    let left_list = zone_comps.get(&Zone::Left).cloned().unwrap_or_default();
-    place_zone_column(&left_list, &chains, &sym_extents, &mut placements,
-                      anchor_gx - anchor_ext.0 - 4.0, anchor_gy, -1.0);
+    // Place zone chains
+    impl Zone {
+        fn cmp_order(&self) -> u8 {
+            match self { Zone::Left => 0, Zone::Right => 1, Zone::Top => 2, Zone::Bottom => 3 }
+        }
+    }
 
-    // Place right zone
-    let right_list = zone_comps.get(&Zone::Right).cloned().unwrap_or_default();
-    place_zone_column(&right_list, &chains, &sym_extents, &mut placements,
-                      anchor_gx + anchor_ext.0 + 4.0, anchor_gy, 1.0);
+    // Group chains by zone
+    let mut left_chains: Vec<&ZoneChain> = Vec::new();
+    let mut right_chains: Vec<&ZoneChain> = Vec::new();
+    let mut top_chains: Vec<&ZoneChain> = Vec::new();
+    let mut bottom_chains: Vec<&ZoneChain> = Vec::new();
 
-    // Place bottom zone as a row
-    let bottom_list = zone_comps.get(&Zone::Bottom).cloned().unwrap_or_default();
-    place_zone_row(&bottom_list, &chains, &sym_extents, &mut placements,
-                   anchor_gx, anchor_gy + anchor_ext.1 + 4.0, 1.0);
+    for zc in &zone_chains {
+        match zc.zone {
+            Zone::Left => left_chains.push(zc),
+            Zone::Right => right_chains.push(zc),
+            Zone::Top => top_chains.push(zc),
+            Zone::Bottom => bottom_chains.push(zc),
+        }
+    }
 
-    // Place top zone
-    let top_list = zone_comps.get(&Zone::Top).cloned().unwrap_or_default();
-    place_zone_row(&top_list, &chains, &sym_extents, &mut placements,
-                   anchor_gx, anchor_gy - anchor_ext.1 - 4.0, -1.0);
+    // Place left zone chains: roots in a column, chains extend further left
+    {
+        let col_x = anchor_gx - anchor_ext.0 - 4.0;
+        let n = left_chains.len();
+        let start_y = anchor_gy - ((n as f64 - 1.0) * 3.5) / 2.0;
+        for (i, zc) in left_chains.iter().enumerate() {
+            let gy = start_y + i as f64 * 3.5;
+            placements.insert(zc.root, (col_x, gy, 0.0));
+            let mut cx = col_x - 4.0;
+            for &chain_uuid in &zc.chain {
+                placements.insert(chain_uuid, (cx, gy, 0.0));
+                cx -= 4.0;
+            }
+        }
+    }
+
+    // Place right zone chains: roots in a column, chains extend further right
+    {
+        let col_x = anchor_gx + anchor_ext.0 + 4.0;
+        let n = right_chains.len();
+        let start_y = anchor_gy - ((n as f64 - 1.0) * 3.5) / 2.0;
+        for (i, zc) in right_chains.iter().enumerate() {
+            let gy = start_y + i as f64 * 3.5;
+            placements.insert(zc.root, (col_x, gy, 0.0));
+            let mut cx = col_x + 4.0;
+            for &chain_uuid in &zc.chain {
+                placements.insert(chain_uuid, (cx, gy, 0.0));
+                cx += 4.0;
+            }
+        }
+    }
+
+    // Place top zone chains: roots in a row, chains extend further up
+    {
+        let row_y = anchor_gy - anchor_ext.1 - 4.0;
+        let n = top_chains.len();
+        let start_x = anchor_gx - ((n as f64 - 1.0) * 5.0) / 2.0;
+        for (i, zc) in top_chains.iter().enumerate() {
+            let gx = start_x + i as f64 * 5.0;
+            placements.insert(zc.root, (gx, row_y, 0.0));
+            let mut cy = row_y - 4.0;
+            for &chain_uuid in &zc.chain {
+                placements.insert(chain_uuid, (gx, cy, 0.0));
+                cy -= 4.0;
+            }
+        }
+    }
+
+    // Place bottom zone chains
+    {
+        let row_y = anchor_gy + anchor_ext.1 + 4.0;
+        let n = bottom_chains.len();
+        let start_x = anchor_gx - ((n as f64 - 1.0) * 5.0) / 2.0;
+        for (i, zc) in bottom_chains.iter().enumerate() {
+            let gx = start_x + i as f64 * 5.0;
+            placements.insert(zc.root, (gx, row_y, 0.0));
+            let mut cy = row_y + 4.0;
+            for &chain_uuid in &zc.chain {
+                placements.insert(chain_uuid, (gx, cy, 0.0));
+                cy += 4.0;
+            }
+        }
+    }
 
     // Place power chain above everything
     {
         let min_y = placements.values().map(|(_, y, _)| *y).fold(f64::INFINITY, f64::min);
-        let power_y = min_y - 5.0;
-        let start_x = anchor_gx - ((power_chain_order.len() as f64 - 1.0) * 5.0) / 2.0;
+        let power_y = (min_y - 5.0).min(anchor_gy - anchor_ext.1 - 8.0);
+        let n = power_chain_order.len();
+        let start_x = anchor_gx - ((n as f64 - 1.0) * 5.0) / 2.0;
         for (i, &uuid) in power_chain_order.iter().enumerate() {
             if !placements.contains_key(&uuid) {
                 placements.insert(uuid, (start_x + i as f64 * 5.0, power_y, 0.0));
@@ -368,65 +415,6 @@ pub fn autoplace_schematic(project: &Path, sch_name: &str) -> Result<()> {
     });
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
-}
-
-fn place_zone_column(
-    zone_list: &[(Uuid, f64)],
-    chains: &HashMap<Uuid, Vec<Uuid>>,
-    sym_extents: &HashMap<Uuid, (f64, f64)>,
-    placements: &mut HashMap<Uuid, (f64, f64, f64)>,
-    col_x: f64,
-    center_y: f64,
-    chain_dir_x: f64, // -1.0 for extending chains further left, +1.0 for right
-) {
-    let total = zone_list.len();
-    let spacing = 3.5;
-    let start_y = center_y - ((total as f64 - 1.0) * spacing) / 2.0;
-
-    for (i, &(uuid, _)) in zone_list.iter().enumerate() {
-        let gy = start_y + i as f64 * spacing;
-        placements.insert(uuid, (col_x, gy, 0.0));
-
-        // Place chain extensions
-        if let Some(chain) = chains.get(&uuid) {
-            let ext = sym_extents.get(&uuid).copied().unwrap_or((2.0, 2.0));
-            let mut chain_x = col_x + chain_dir_x * (ext.0 + 3.0);
-            for &chain_uuid in chain {
-                let chain_ext = sym_extents.get(&chain_uuid).copied().unwrap_or((2.0, 2.0));
-                placements.insert(chain_uuid, (chain_x, gy, 0.0));
-                chain_x += chain_dir_x * (chain_ext.0 + 3.0);
-            }
-        }
-    }
-}
-
-fn place_zone_row(
-    zone_list: &[(Uuid, f64)],
-    chains: &HashMap<Uuid, Vec<Uuid>>,
-    sym_extents: &HashMap<Uuid, (f64, f64)>,
-    placements: &mut HashMap<Uuid, (f64, f64, f64)>,
-    center_x: f64,
-    row_y: f64,
-    chain_dir_y: f64,
-) {
-    let total = zone_list.len();
-    let spacing = 5.0;
-    let start_x = center_x - ((total as f64 - 1.0) * spacing) / 2.0;
-
-    for (i, &(uuid, _)) in zone_list.iter().enumerate() {
-        let gx = start_x + i as f64 * spacing;
-        placements.insert(uuid, (gx, row_y, 0.0));
-
-        if let Some(chain) = chains.get(&uuid) {
-            let ext = sym_extents.get(&uuid).copied().unwrap_or((2.0, 2.0));
-            let mut chain_y = row_y + chain_dir_y * (ext.1 + 3.0);
-            for &chain_uuid in chain {
-                let chain_ext = sym_extents.get(&chain_uuid).copied().unwrap_or((2.0, 2.0));
-                placements.insert(chain_uuid, (gx, chain_y, 0.0));
-                chain_y += chain_dir_y * (chain_ext.1 + 3.0);
-            }
-        }
-    }
 }
 
 // ===========================================================================
