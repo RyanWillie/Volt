@@ -268,19 +268,10 @@ pub fn board_command(cmd: BoardCommands) -> Result<()> {
         BoardCommands::Ratsnest { project, board } => {
             board_ratsnest(&project, &board)
         }
-        BoardCommands::Autoplace { .. } => {
-            stub("board autoplace")
+        BoardCommands::Autoplace { project, board } => {
+            board_autoplace(&project, &board)
         }
     }
-}
-
-fn stub(command: &str) -> Result<()> {
-    let result = serde_json::json!({
-        "status": "not_implemented",
-        "command": command,
-    });
-    println!("{}", serde_json::to_string_pretty(&result)?);
-    Ok(())
 }
 
 // ===========================================================================
@@ -1728,6 +1719,455 @@ fn parse_connect_style(s: &str) -> Result<ConnectStyle> {
             "Unknown connect style '{other}': expected 'solid', 'thermal', or 'none'"
         ).into()),
     }
+}
+
+// ===========================================================================
+// Helpers
+// ===========================================================================
+
+// ===========================================================================
+// board autoplace
+// ===========================================================================
+
+/// Auto-place all devices on the board within the board outline.
+///
+/// Strategy:
+/// 1. Read circuit, board, and all relevant library packages/footprints.
+/// 2. Get the board outline bounding box.
+/// 3. Compute each device's footprint bounding box.
+/// 4. Build a connectivity graph: which devices share nets?
+/// 5. Classify devices as "ICs" (3+ pads) or "passives" (1-2 pads).
+/// 6. Place ICs on a grid in the center of the board, spaced apart.
+/// 7. Place passives near the IC they're most connected to.
+/// 8. Clamp everything within the board outline bounds.
+/// 9. Write board back and print JSON summary.
+fn board_autoplace(
+    project: &std::path::Path,
+    board_name: &str,
+) -> Result<()> {
+    use std::collections::HashMap;
+
+    project_io::ensure_project(project)?;
+
+    let circuit = project_io::read_circuit(project)?;
+    let mut board = project_io::read_board(project, board_name)?;
+
+    // -----------------------------------------------------------------------
+    // 1. Board outline bounds
+    // -----------------------------------------------------------------------
+    let outline_poly = board
+        .polygons
+        .iter()
+        .find(|p| p.layer == Layer::BoardOutlines);
+
+    let (brd_min_x, brd_min_y, brd_max_x, brd_max_y) = match outline_poly {
+        Some(poly) if !poly.vertices.is_empty() => {
+            let mut min_x = f64::INFINITY;
+            let mut max_x = f64::NEG_INFINITY;
+            let mut min_y = f64::INFINITY;
+            let mut max_y = f64::NEG_INFINITY;
+            for v in &poly.vertices {
+                min_x = min_x.min(v.position.x);
+                max_x = max_x.max(v.position.x);
+                min_y = min_y.min(v.position.y);
+                max_y = max_y.max(v.position.y);
+            }
+            (min_x, min_y, max_x, max_y)
+        }
+        _ => (0.0, 0.0, 100.0, 100.0), // fallback
+    };
+
+    let brd_w = brd_max_x - brd_min_x;
+    let brd_h = brd_max_y - brd_min_y;
+
+    // -----------------------------------------------------------------------
+    // 2. For each board device, compute footprint bounding box and pad count
+    // -----------------------------------------------------------------------
+    struct DeviceInfo {
+        index: usize,
+        component_uuid: uuid::Uuid,
+        pad_count: usize,
+        fp_width: f64,
+        fp_height: f64,
+        locked: bool,
+    }
+
+    let mut device_infos: Vec<DeviceInfo> = Vec::new();
+
+    for (idx, bd) in board.devices.iter().enumerate() {
+        // Load package to get footprint geometry
+        let dev: Device = match project_io::read_library_element(
+            project, "devices", &bd.lib_device,
+        ) {
+            Ok(d) => d,
+            Err(_) => {
+                device_infos.push(DeviceInfo {
+                    index: idx,
+                    component_uuid: bd.component,
+                    pad_count: 0,
+                    fp_width: 2.0,
+                    fp_height: 2.0,
+                    locked: bd.lock,
+                });
+                continue;
+            }
+        };
+
+        let pkg: Package = match project_io::read_library_element(
+            project, "packages", &dev.package,
+        ) {
+            Ok(p) => p,
+            Err(_) => {
+                device_infos.push(DeviceInfo {
+                    index: idx,
+                    component_uuid: bd.component,
+                    pad_count: 0,
+                    fp_width: 2.0,
+                    fp_height: 2.0,
+                    locked: bd.lock,
+                });
+                continue;
+            }
+        };
+
+        let footprint = pkg
+            .footprints
+            .iter()
+            .find(|f| f.uuid == bd.lib_footprint)
+            .or_else(|| pkg.footprints.first());
+
+        let (pad_count, fp_width, fp_height) = match footprint {
+            Some(fp) => {
+                let mut min_x = f64::INFINITY;
+                let mut max_x = f64::NEG_INFINITY;
+                let mut min_y = f64::INFINITY;
+                let mut max_y = f64::NEG_INFINITY;
+
+                // Consider pads
+                for pad in &fp.pads {
+                    let half_w = pad.width / 2.0;
+                    let half_h = pad.height / 2.0;
+                    min_x = min_x.min(pad.position.x - half_w);
+                    max_x = max_x.max(pad.position.x + half_w);
+                    min_y = min_y.min(pad.position.y - half_h);
+                    max_y = max_y.max(pad.position.y + half_h);
+                }
+
+                // Consider courtyard/outline polygons for size
+                for poly in &fp.polygons {
+                    for v in &poly.vertices {
+                        min_x = min_x.min(v.position.x);
+                        max_x = max_x.max(v.position.x);
+                        min_y = min_y.min(v.position.y);
+                        max_y = max_y.max(v.position.y);
+                    }
+                }
+
+                if min_x > max_x {
+                    // No geometry found
+                    (fp.pads.len(), 2.0, 2.0)
+                } else {
+                    (fp.pads.len(), max_x - min_x, max_y - min_y)
+                }
+            }
+            None => (0, 2.0, 2.0),
+        };
+
+        device_infos.push(DeviceInfo {
+            index: idx,
+            component_uuid: bd.component,
+            pad_count,
+            fp_width,
+            fp_height,
+            locked: bd.lock,
+        });
+    }
+
+    if device_infos.is_empty() {
+        let result = serde_json::json!({
+            "status": "ok",
+            "placed": 0,
+            "board_bounds": { "width": brd_w, "height": brd_h },
+        });
+        println!("{}", serde_json::to_string_pretty(&result)?);
+        return Ok(());
+    }
+
+    // -----------------------------------------------------------------------
+    // 3. Build connectivity graph: which devices share nets?
+    // -----------------------------------------------------------------------
+    // Map component_uuid → device_info index
+    let comp_to_dev: HashMap<uuid::Uuid, usize> = device_infos
+        .iter()
+        .enumerate()
+        .map(|(i, di)| (di.component_uuid, i))
+        .collect();
+
+    // For each net, collect the set of device indices connected to it
+    let mut net_device_sets: Vec<Vec<usize>> = Vec::new();
+    for net in &circuit.nets {
+        let mut devs_on_net: Vec<usize> = Vec::new();
+        for comp in &circuit.components {
+            for sc in &comp.signal_connections {
+                if sc.net == Some(net.uuid) {
+                    if let Some(&di) = comp_to_dev.get(&comp.uuid) {
+                        if !devs_on_net.contains(&di) {
+                            devs_on_net.push(di);
+                        }
+                    }
+                }
+            }
+        }
+        if devs_on_net.len() >= 2 {
+            net_device_sets.push(devs_on_net);
+        }
+    }
+
+    // Build adjacency: connection_count[i][j] = number of shared nets
+    let n = device_infos.len();
+    let mut connection_count: Vec<Vec<u32>> = vec![vec![0u32; n]; n];
+    for devs in &net_device_sets {
+        for a in 0..devs.len() {
+            for b in (a + 1)..devs.len() {
+                let i = devs[a];
+                let j = devs[b];
+                connection_count[i][j] += 1;
+                connection_count[j][i] += 1;
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 4. Classify: ICs (3+ pads) vs passives (1-2 pads)
+    // -----------------------------------------------------------------------
+    let mut ic_indices: Vec<usize> = Vec::new();
+    let mut passive_indices: Vec<usize> = Vec::new();
+
+    for (i, di) in device_infos.iter().enumerate() {
+        if di.locked {
+            continue; // skip locked devices
+        }
+        if di.pad_count >= 3 {
+            ic_indices.push(i);
+        } else {
+            passive_indices.push(i);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 5. Place ICs on a grid in the center of the board
+    // -----------------------------------------------------------------------
+    let margin = 2.0_f64; // mm margin from board edge
+    let spacing = 3.0_f64; // mm extra gap between devices
+
+    // Compute available placement area
+    let area_min_x = brd_min_x + margin;
+    let area_min_y = brd_min_y + margin;
+    let area_max_x = brd_max_x - margin;
+    let area_max_y = brd_max_y - margin;
+    let area_w = (area_max_x - area_min_x).max(1.0);
+    let area_h = (area_max_y - area_min_y).max(1.0);
+
+    // For ICs: arrange in a grid, centered in the board
+    let ic_count = ic_indices.len();
+    let mut positions: Vec<(f64, f64)> = vec![(0.0, 0.0); n];
+
+    if ic_count > 0 {
+        // Determine grid dimensions
+        let cols = (ic_count as f64).sqrt().ceil() as usize;
+        let rows = (ic_count + cols - 1) / cols;
+
+        // Calculate cell sizes based on largest IC in each row/col
+        // For simplicity, use uniform cells based on the max IC size
+        let max_ic_w = ic_indices
+            .iter()
+            .map(|&i| device_infos[i].fp_width)
+            .fold(0.0_f64, f64::max);
+        let max_ic_h = ic_indices
+            .iter()
+            .map(|&i| device_infos[i].fp_height)
+            .fold(0.0_f64, f64::max);
+
+        let cell_w = max_ic_w + spacing;
+        let cell_h = max_ic_h + spacing;
+
+        let grid_w = cols as f64 * cell_w;
+        let grid_h = rows as f64 * cell_h;
+
+        // Center the grid in the board area
+        let grid_origin_x = area_min_x + (area_w - grid_w).max(0.0) / 2.0;
+        let grid_origin_y = area_min_y + (area_h - grid_h).max(0.0) / 2.0;
+
+        for (idx, &di) in ic_indices.iter().enumerate() {
+            let col = idx % cols;
+            let row = idx / cols;
+            let cx = grid_origin_x + (col as f64 + 0.5) * cell_w;
+            let cy = grid_origin_y + (row as f64 + 0.5) * cell_h;
+            positions[di] = (cx, cy);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 6. Place passives near the IC they're most connected to
+    // -----------------------------------------------------------------------
+    // For each passive, find the IC (or any device already placed) it shares
+    // the most nets with, and place it nearby.
+    // Track occupied rectangles to avoid overlap.
+    struct Rect {
+        cx: f64,
+        cy: f64,
+        half_w: f64,
+        half_h: f64,
+    }
+
+    let mut occupied: Vec<Rect> = Vec::new();
+    for &i in &ic_indices {
+        occupied.push(Rect {
+            cx: positions[i].0,
+            cy: positions[i].1,
+            half_w: device_infos[i].fp_width / 2.0 + spacing / 2.0,
+            half_h: device_infos[i].fp_height / 2.0 + spacing / 2.0,
+        });
+    }
+
+    let overlaps = |cx: f64, cy: f64, hw: f64, hh: f64, rects: &[Rect]| -> bool {
+        for r in rects {
+            if (cx - r.cx).abs() < hw + r.half_w
+                && (cy - r.cy).abs() < hh + r.half_h
+            {
+                return true;
+            }
+        }
+        false
+    };
+
+    for &pi in &passive_indices {
+        let di = &device_infos[pi];
+        let half_w = di.fp_width / 2.0 + spacing / 2.0;
+        let half_h = di.fp_height / 2.0 + spacing / 2.0;
+
+        // Find the most-connected placed device (preferring ICs)
+        let mut best_target: Option<usize> = None;
+        let mut best_count = 0u32;
+        for &ici in &ic_indices {
+            if connection_count[pi][ici] > best_count {
+                best_count = connection_count[pi][ici];
+                best_target = Some(ici);
+            }
+        }
+        // If no IC connection, try any device
+        if best_target.is_none() {
+            for j in 0..n {
+                if j != pi && connection_count[pi][j] > best_count {
+                    best_count = connection_count[pi][j];
+                    best_target = Some(j);
+                }
+            }
+        }
+
+        let (anchor_x, anchor_y) = match best_target {
+            Some(t) => positions[t],
+            None => (
+                area_min_x + area_w / 2.0,
+                area_min_y + area_h / 2.0,
+            ),
+        };
+
+        // Try positions in a spiral around the anchor
+        let mut placed = false;
+        'search: for ring in 0..50 {
+            let offset = (ring as f64) * (spacing + 1.0);
+            // Try 8 directions per ring (+ cardinal offsets)
+            let offsets: [(f64, f64); 8] = [
+                (offset, 0.0),
+                (-offset, 0.0),
+                (0.0, offset),
+                (0.0, -offset),
+                (offset, offset),
+                (offset, -offset),
+                (-offset, offset),
+                (-offset, -offset),
+            ];
+            for &(dx, dy) in &offsets {
+                let cx = anchor_x + dx;
+                let cy = anchor_y + dy;
+                // Check bounds
+                if cx - half_w < area_min_x || cx + half_w > area_max_x {
+                    continue;
+                }
+                if cy - half_h < area_min_y || cy + half_h > area_max_y {
+                    continue;
+                }
+                if !overlaps(cx, cy, half_w, half_h, &occupied) {
+                    positions[pi] = (cx, cy);
+                    occupied.push(Rect {
+                        cx,
+                        cy,
+                        half_w,
+                        half_h,
+                    });
+                    placed = true;
+                    break 'search;
+                }
+            }
+        }
+
+        if !placed {
+            // Fallback: just place it offset from anchor, clamped to bounds
+            let cx = (anchor_x + spacing)
+                .max(area_min_x + half_w)
+                .min(area_max_x - half_w);
+            let cy = (anchor_y + spacing)
+                .max(area_min_y + half_h)
+                .min(area_max_y - half_h);
+            positions[pi] = (cx, cy);
+            occupied.push(Rect {
+                cx,
+                cy,
+                half_w,
+                half_h,
+            });
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 7. Apply positions to board devices (skip locked ones)
+    // -----------------------------------------------------------------------
+    let mut placed_count = 0usize;
+    for di in &device_infos {
+        if di.locked {
+            continue;
+        }
+        let (x, y) = positions[di.index];
+        // Clamp to board bounds as a safety net
+        let x = x
+            .max(brd_min_x + margin)
+            .min(brd_max_x - margin);
+        let y = y
+            .max(brd_min_y + margin)
+            .min(brd_max_y - margin);
+        board.devices[di.index].position = Position::new(
+            (x * 100.0).round() / 100.0,
+            (y * 100.0).round() / 100.0,
+        );
+        placed_count += 1;
+    }
+
+    // -----------------------------------------------------------------------
+    // 8. Write board and emit JSON
+    // -----------------------------------------------------------------------
+    project_io::write_board(project, board_name, &board)?;
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "placed": placed_count,
+        "board_bounds": {
+            "width": brd_w,
+            "height": brd_h,
+        },
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
 }
 
 // ===========================================================================
