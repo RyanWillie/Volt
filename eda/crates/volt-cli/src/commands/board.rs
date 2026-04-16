@@ -203,15 +203,28 @@ pub fn board_command(cmd: BoardCommands) -> Result<()> {
         BoardCommands::Init { project, name } => {
             board_init(&project, &name)
         }
-        BoardCommands::Outline { .. } => {
-            stub("board outline")
+        BoardCommands::Outline { project, board, rect, vertices } => {
+            board_outline(&project, &board, rect.as_deref(), vertices.as_deref())
         }
-        BoardCommands::Place { .. } => {
-            stub("board place")
-        }
-        BoardCommands::Move { .. } => {
-            stub("board move")
-        }
+        BoardCommands::Place {
+            project,
+            board,
+            component,
+            x,
+            y,
+            rotation,
+            flip,
+            lock,
+        } => board_place(&project, &board, &component, x, y, rotation, flip, lock),
+        BoardCommands::Move {
+            project,
+            board,
+            component,
+            x,
+            y,
+            rotation,
+            flip,
+        } => board_move(&project, &board, &component, x, y, rotation, flip),
         BoardCommands::Trace { .. } => {
             stub("board trace")
         }
@@ -243,6 +256,169 @@ fn stub(command: &str) -> Result<()> {
     });
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
+}
+
+// ===========================================================================
+// board outline
+// ===========================================================================
+
+/// Define or replace the board outline polygon.
+///
+/// Accepts either `--rect "WxH"` for a rectangular outline at the origin,
+/// or `--vertices "x1,y1;x2,y2;..."` for an explicit polygon (auto-closed).
+fn board_outline(
+    project: &std::path::Path,
+    name: &str,
+    rect: Option<&str>,
+    vertices_arg: Option<&str>,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+
+    // Validate: exactly one of --rect or --vertices must be provided
+    match (rect, vertices_arg) {
+        (None, None) => {
+            return Err("Either --rect or --vertices must be provided".into());
+        }
+        (Some(_), Some(_)) => {
+            return Err("Cannot specify both --rect and --vertices".into());
+        }
+        _ => {}
+    }
+
+    let mut board = project_io::read_board(project, name)?;
+
+    // Parse vertices from the provided argument
+    let outline_vertices = if let Some(rect_str) = rect {
+        parse_rect_outline(rect_str)?
+    } else {
+        parse_explicit_vertices(vertices_arg.unwrap())?
+    };
+
+    // Remove any existing BoardOutlines polygons
+    board.polygons.retain(|p| p.layer != Layer::BoardOutlines);
+
+    // Add the new outline polygon
+    board.polygons.push(BoardPolygon {
+        uuid: new_uuid(),
+        layer: Layer::BoardOutlines,
+        width: 0.0,
+        fill: false,
+        grab_area: false,
+        lock: false,
+        vertices: outline_vertices.clone(),
+    });
+
+    project_io::write_board(project, name, &board)?;
+
+    // Compute bounds for the output
+    let (width, height) = compute_bounds(&outline_vertices);
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "outline": {
+            "vertices": outline_vertices.len(),
+            "bounds": {
+                "width": width,
+                "height": height,
+            }
+        }
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+/// Parse a "WxH" string into a closed rectangular polygon at the origin.
+fn parse_rect_outline(rect_str: &str) -> Result<Vec<Vertex>> {
+    let parts: Vec<&str> = rect_str.split('x').collect();
+    if parts.len() != 2 {
+        return Err(format!(
+            "Invalid --rect format '{rect_str}': expected 'WxH' (e.g. '50x30')"
+        )
+        .into());
+    }
+    let w: f64 = parts[0]
+        .trim()
+        .parse()
+        .map_err(|_| format!("Invalid width in --rect '{rect_str}'"))?;
+    let h: f64 = parts[1]
+        .trim()
+        .parse()
+        .map_err(|_| format!("Invalid height in --rect '{rect_str}'"))?;
+
+    if w <= 0.0 || h <= 0.0 {
+        return Err(format!("Board dimensions must be positive, got {w}x{h}").into());
+    }
+
+    Ok(vec![
+        Vertex { position: Position::new(0.0, 0.0), angle: Angle(0.0) },
+        Vertex { position: Position::new(w, 0.0), angle: Angle(0.0) },
+        Vertex { position: Position::new(w, h), angle: Angle(0.0) },
+        Vertex { position: Position::new(0.0, h), angle: Angle(0.0) },
+        Vertex { position: Position::new(0.0, 0.0), angle: Angle(0.0) },
+    ])
+}
+
+/// Parse an explicit vertex list "x1,y1;x2,y2;..." and auto-close if needed.
+fn parse_explicit_vertices(vertices_str: &str) -> Result<Vec<Vertex>> {
+    let pairs: Vec<&str> = vertices_str.split(';').collect();
+    if pairs.len() < 3 {
+        return Err("At least 3 vertices are required for a polygon".into());
+    }
+
+    let mut vertices = Vec::with_capacity(pairs.len() + 1);
+    for (i, pair) in pairs.iter().enumerate() {
+        let coords: Vec<&str> = pair.split(',').collect();
+        if coords.len() != 2 {
+            return Err(format!(
+                "Invalid vertex at position {}: '{}' (expected 'x,y')",
+                i + 1,
+                pair
+            )
+            .into());
+        }
+        let x: f64 = coords[0]
+            .trim()
+            .parse()
+            .map_err(|_| format!("Invalid x coordinate in vertex {}: '{}'", i + 1, coords[0]))?;
+        let y: f64 = coords[1]
+            .trim()
+            .parse()
+            .map_err(|_| format!("Invalid y coordinate in vertex {}: '{}'", i + 1, coords[1]))?;
+        vertices.push(Vertex {
+            position: Position::new(x, y),
+            angle: Angle(0.0),
+        });
+    }
+
+    // Auto-close: append first vertex if not already closed
+    if let (Some(first), Some(last)) = (vertices.first(), vertices.last()) {
+        if first.position != last.position {
+            vertices.push(Vertex {
+                position: first.position,
+                angle: Angle(0.0),
+            });
+        }
+    }
+
+    Ok(vertices)
+}
+
+/// Compute the bounding box width and height from a list of vertices.
+fn compute_bounds(vertices: &[Vertex]) -> (f64, f64) {
+    if vertices.is_empty() {
+        return (0.0, 0.0);
+    }
+    let mut min_x = f64::INFINITY;
+    let mut max_x = f64::NEG_INFINITY;
+    let mut min_y = f64::INFINITY;
+    let mut max_y = f64::NEG_INFINITY;
+    for v in vertices {
+        min_x = min_x.min(v.position.x);
+        max_x = max_x.max(v.position.x);
+        min_y = min_y.min(v.position.y);
+        max_y = max_y.max(v.position.y);
+    }
+    (max_x - min_x, max_y - min_y)
 }
 
 // ===========================================================================
@@ -403,6 +579,169 @@ fn board_init(project: &std::path::Path, name: &str) -> Result<()> {
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
 }
+
+// ===========================================================================
+// board place
+// ===========================================================================
+
+/// Place a device footprint on the board.
+///
+/// Looks up the component by designator in the circuit, then finds (or creates)
+/// the corresponding `BoardDevice` entry on the board and sets its position,
+/// rotation, flip, and lock fields.
+fn board_place(
+    project: &std::path::Path,
+    board_name: &str,
+    designator: &str,
+    x: f64,
+    y: f64,
+    rotation: f64,
+    flip: bool,
+    lock: bool,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+
+    let circuit = project_io::read_circuit(project)?;
+    let comp = circuit
+        .components
+        .iter()
+        .find(|c| c.name == designator)
+        .ok_or_else(|| format!("Component '{designator}' not found in circuit"))?;
+    let comp_uuid = comp.uuid;
+
+    let mut board = project_io::read_board(project, board_name)?;
+
+    let action = if let Some(dev) = board.devices.iter_mut().find(|d| d.component == comp_uuid) {
+        // Update existing device entry
+        dev.position = Position::new(x, y);
+        dev.rotation = Angle(rotation);
+        dev.flip = flip;
+        dev.lock = lock;
+        "updated"
+    } else {
+        // Device not on board yet — try to discover device/package and add it
+        let (dev, pkg) = discover_device_and_package(project, comp)?;
+        let footprint_uuid = pkg
+            .footprints
+            .first()
+            .map(|f| f.uuid)
+            .unwrap_or_else(new_uuid);
+
+        board.devices.push(BoardDevice {
+            component: comp_uuid,
+            lib_device: dev.meta.uuid,
+            lib_footprint: footprint_uuid,
+            position: Position::new(x, y),
+            rotation: Angle(rotation),
+            flip,
+            lock,
+            texts: vec![],
+        });
+        "placed"
+    };
+
+    project_io::write_board(project, board_name, &board)?;
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "component": designator,
+        "position": { "x": x, "y": y },
+        "rotation": rotation,
+        "flip": flip,
+        "action": action,
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+/// Try to find a device and package for a component — first via device
+/// assignments, then by searching the library.
+fn discover_device_and_package(
+    project: &std::path::Path,
+    comp: &ComponentInstance,
+) -> Result<(Device, Package)> {
+    // Try device assignments first
+    if let Some(da) = comp.device_assignments.first() {
+        let dev: Device = project_io::read_library_element(project, "devices", &da.device)?;
+        let pkg: Package = project_io::read_library_element(project, "packages", &dev.package)?;
+        return Ok((dev, pkg));
+    }
+    // Fall back to library search
+    find_device_for_component(project, comp)
+        .ok_or_else(|| {
+            format!(
+                "No device assignment and no matching device found in library for '{}'",
+                comp.name
+            )
+            .into()
+        })
+}
+
+// ===========================================================================
+// board move
+// ===========================================================================
+
+/// Move an already-placed device to a new position on the board.
+///
+/// Optionally updates rotation and flip. Errors if the component is not
+/// found on the board.
+fn board_move(
+    project: &std::path::Path,
+    board_name: &str,
+    designator: &str,
+    x: f64,
+    y: f64,
+    rotation: Option<f64>,
+    flip: Option<bool>,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+
+    let circuit = project_io::read_circuit(project)?;
+    let comp = circuit
+        .components
+        .iter()
+        .find(|c| c.name == designator)
+        .ok_or_else(|| format!("Component '{designator}' not found in circuit"))?;
+    let comp_uuid = comp.uuid;
+
+    let mut board = project_io::read_board(project, board_name)?;
+
+    let dev = board
+        .devices
+        .iter_mut()
+        .find(|d| d.component == comp_uuid)
+        .ok_or_else(|| {
+            format!("Component '{designator}' is not placed on board '{board_name}'")
+        })?;
+
+    dev.position = Position::new(x, y);
+    if let Some(r) = rotation {
+        dev.rotation = Angle(r);
+    }
+    if let Some(f) = flip {
+        dev.flip = f;
+    }
+
+    let final_rotation = dev.rotation.0;
+    let final_flip = dev.flip;
+
+    project_io::write_board(project, board_name, &board)?;
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "component": designator,
+        "position": { "x": x, "y": y },
+        "rotation": final_rotation,
+        "flip": final_flip,
+        "action": "moved",
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+// ===========================================================================
+// Helpers
+// ===========================================================================
 
 /// Search the project library for a Device that references the given component.
 fn find_device_for_component(
