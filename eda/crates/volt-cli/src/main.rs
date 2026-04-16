@@ -48,6 +48,11 @@ enum Commands {
         #[command(subcommand)]
         command: commands::schematic::SchematicCommands,
     },
+    /// Board layout editing and rendering
+    Board {
+        #[command(subcommand)]
+        command: commands::board::BoardCommands,
+    },
     /// Import external libraries and project data
     Import {
         #[command(subcommand)]
@@ -70,6 +75,7 @@ fn main() {
         Commands::Component { command } => commands::component_command(command),
         Commands::Net { command } => commands::net_command(command),
         Commands::Schematic { command } => commands::schematic_command(command),
+        Commands::Board { command } => commands::board_command(command),
         Commands::Import { command } => commands::import_command(command),
         Commands::Library { command } => commands::library_command(command),
     };

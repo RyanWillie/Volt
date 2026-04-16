@@ -4,3 +4,4 @@
 
 pub mod sexp;
 pub mod kicad_sym;
+pub mod kicad_mod;
