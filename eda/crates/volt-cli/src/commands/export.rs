@@ -8,6 +8,8 @@ use clap::{Subcommand, ValueEnum};
 
 use volt_core::library::{Component, Device, Package};
 use volt_export::bom::{self, BomLibrary};
+use volt_export::excellon;
+use volt_export::gerber::{self, BoardLibrary};
 use volt_export::pick_place;
 
 use super::project_io::{self, Result};
@@ -54,6 +56,18 @@ pub enum ExportCommands {
         #[arg(long)]
         output_dir: PathBuf,
     },
+    /// Export Excellon drill files (PTH and NPTH)
+    Drills {
+        /// Path to project directory
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// Board name (without .json)
+        #[arg(long, default_value = "default")]
+        board: String,
+        /// Output directory
+        #[arg(long)]
+        output_dir: PathBuf,
+    },
 }
 
 #[derive(Clone, ValueEnum)]
@@ -83,6 +97,11 @@ pub fn export_command(cmd: ExportCommands) -> Result<()> {
             board,
             output_dir,
         } => export_gerber(&project, &board, &output_dir),
+        ExportCommands::Drills {
+            project,
+            board,
+            output_dir,
+        } => export_drills(&project, &board, &output_dir),
     }
 }
 
@@ -165,20 +184,85 @@ fn export_pick_place(
 }
 
 // ---------------------------------------------------------------------------
-// Gerber export (stub / wire-up)
+// Gerber export
 // ---------------------------------------------------------------------------
 
 fn export_gerber(
-    _project: &std::path::Path,
-    _board_name: &str,
-    _output_dir: &std::path::Path,
+    project: &std::path::Path,
+    board_name: &str,
+    output_dir: &std::path::Path,
 ) -> Result<()> {
-    // The gerber module will be wired up when volt_export::gerber is implemented.
-    eprintln!("Gerber export is not yet implemented.");
-    eprintln!("The gerber module will be wired up when available.");
+    project_io::ensure_project(project)?;
+    let circuit = project_io::read_circuit(project)?;
+    let board = project_io::read_board(project, board_name)?;
+    let library = load_project_library(project, &circuit)?;
+
+    fs::create_dir_all(output_dir)?;
+    let summary = gerber::export_all(&board, &circuit, &library, output_dir)
+        .map_err(|e| format!("gerber export failed: {e}"))?;
+
+    let files_json: Vec<_> = summary
+        .files
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "layer": f.layer_name,
+                "path": f.path.display().to_string(),
+            })
+        })
+        .collect();
     let result = serde_json::json!({
-        "status": "not_implemented",
-        "message": "Gerber export is not yet available"
+        "status": "ok",
+        "board": board.name,
+        "file_count": summary.files.len(),
+        "files": files_json,
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Excellon drill export
+// ---------------------------------------------------------------------------
+
+fn export_drills(
+    project: &std::path::Path,
+    board_name: &str,
+    output_dir: &std::path::Path,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+    let circuit = project_io::read_circuit(project)?;
+    let board = project_io::read_board(project, board_name)?;
+    let library = load_project_library(project, &circuit)?;
+
+    fs::create_dir_all(output_dir)?;
+    let settings = board.fabrication_output_settings.clone();
+    let summary = excellon::export_all_drills(&board, &library, output_dir, &settings)
+        .map_err(|e| format!("drill export failed: {e}"))?;
+
+    let files_json: Vec<_> = summary
+        .files
+        .iter()
+        .map(|f| {
+            let kind = match f.kind {
+                excellon::DrillFileKind::Pth => "pth",
+                excellon::DrillFileKind::Npth => "npth",
+                excellon::DrillFileKind::Merged => "merged",
+            };
+            serde_json::json!({
+                "kind": kind,
+                "path": f.path.display().to_string(),
+                "hole_count": f.hole_count,
+            })
+        })
+        .collect();
+    let result = serde_json::json!({
+        "status": "ok",
+        "board": board.name,
+        "pth_hole_count": summary.pth_hole_count,
+        "npth_hole_count": summary.npth_hole_count,
+        "file_count": summary.files.len(),
+        "files": files_json,
     });
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
@@ -199,6 +283,15 @@ impl BomLibrary for ProjectLibrary {
     fn get_component(&self, uuid: &uuid::Uuid) -> Option<&Component> {
         self.components.get(uuid)
     }
+    fn get_device(&self, uuid: &uuid::Uuid) -> Option<&Device> {
+        self.devices.get(uuid)
+    }
+    fn get_package(&self, uuid: &uuid::Uuid) -> Option<&Package> {
+        self.packages.get(uuid)
+    }
+}
+
+impl BoardLibrary for ProjectLibrary {
     fn get_device(&self, uuid: &uuid::Uuid) -> Option<&Device> {
         self.devices.get(uuid)
     }
@@ -247,6 +340,33 @@ fn load_project_library(
                         }
                     }
                     devices.insert(da.device, d);
+                }
+            }
+        }
+    }
+
+    // Also scan the library/devices directory for any devices not referenced
+    // by assignments (e.g. auto-discovered devices from board init)
+    let devices_dir = project.join("library/devices");
+    if devices_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&devices_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|e| e.to_str()) == Some("json") {
+                    if let Ok(d) = project_io::read_json::<Device>(&path) {
+                        if !devices.contains_key(&d.meta.uuid) {
+                            if !packages.contains_key(&d.package) {
+                                if let Ok(p) = project_io::read_library_element::<Package>(
+                                    project,
+                                    "packages",
+                                    &d.package,
+                                ) {
+                                    packages.insert(d.package, p);
+                                }
+                            }
+                            devices.insert(d.meta.uuid, d);
+                        }
+                    }
                 }
             }
         }
