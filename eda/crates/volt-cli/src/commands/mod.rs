@@ -6,6 +6,7 @@ pub mod erc;
 pub mod schematic;
 pub mod board;
 pub mod board_render;
+pub mod board_render_3d;
 pub mod render;
 pub mod import;
 pub mod library;

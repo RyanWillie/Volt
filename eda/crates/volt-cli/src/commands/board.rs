@@ -172,15 +172,18 @@ pub enum BoardCommands {
         #[arg(long, default_value = "false")]
         stop_mask: bool,
     },
-    /// Render the board to SVG
+    /// Render the board to SVG (default) or interactive 3D HTML
     Render {
         #[arg(long, default_value = ".")]
         project: PathBuf,
         #[arg(long, default_value = "default")]
         board: String,
-        /// Output SVG file path
+        /// Output file path (.svg for 2D, .html for 3D)
         #[arg(long)]
         output: PathBuf,
+        /// Output format: "svg" (2D) or "3d" (interactive HTML). Auto-detected from extension if omitted.
+        #[arg(long)]
+        format: Option<String>,
     },
     /// Compute and display unrouted connections (ratsnest)
     Ratsnest {
@@ -262,8 +265,17 @@ pub fn board_command(cmd: BoardCommands) -> Result<()> {
             diameter,
             stop_mask,
         } => board_hole(&project, &board, x, y, diameter, stop_mask),
-        BoardCommands::Render { project, board, output } => {
-            super::board_render::render_board(&project, &board, &output)
+        BoardCommands::Render { project, board, output, format } => {
+            let fmt = format.as_deref().unwrap_or_else(|| {
+                match output.extension().and_then(|e| e.to_str()) {
+                    Some("html" | "htm") => "3d",
+                    _ => "svg",
+                }
+            });
+            match fmt {
+                "3d" | "3D" | "html" => super::board_render_3d::render_board_3d(&project, &board, &output),
+                _ => super::board_render::render_board(&project, &board, &output),
+            }
         }
         BoardCommands::Ratsnest { project, board } => {
             board_ratsnest(&project, &board)
