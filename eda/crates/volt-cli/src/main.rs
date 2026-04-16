@@ -63,6 +63,20 @@ enum Commands {
         #[command(subcommand)]
         command: commands::library::LibraryCommands,
     },
+    /// Export BOM, pick & place, and Gerber files
+    Export {
+        #[command(subcommand)]
+        command: commands::export::ExportCommands,
+    },
+    /// Run design rule checking on a board
+    Drc {
+        /// Path to project directory
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// Board name (without .json)
+        #[arg(long, default_value = "default")]
+        board: String,
+    },
 }
 
 fn main() {
@@ -78,6 +92,8 @@ fn main() {
         Commands::Board { command } => commands::board_command(command),
         Commands::Import { command } => commands::import_command(command),
         Commands::Library { command } => commands::library_command(command),
+        Commands::Export { command } => commands::export_command(command),
+        Commands::Drc { project, board } => commands::drc_command(project, board),
     };
 
     if let Err(e) = result {
