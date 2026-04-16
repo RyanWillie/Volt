@@ -134,8 +134,9 @@ impl Default for ExcellonWriter {
 /// Convert a millimetre value to an Excellon coordinate string
 /// (signed integer in microns; trailing zeros retained).
 fn format_coord(mm: f64) -> String {
-    let value = (mm * 1000.0).round() as i64;
-    value.to_string()
+    // Use decimal format (e.g. "20.000") for maximum compatibility.
+    // Trailing zeros are kept for clarity.
+    format!("{:.3}", mm)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -494,12 +495,12 @@ mod tests {
 
     #[test]
     fn coord_formatting_microns() {
-        assert_eq!(format_coord(0.0), "0");
-        assert_eq!(format_coord(1.0), "1000");
-        assert_eq!(format_coord(12.0), "12000");
-        assert_eq!(format_coord(12.345), "12345");
-        assert_eq!(format_coord(-5.0), "-5000");
-        assert_eq!(format_coord(0.001), "1");
+        assert_eq!(format_coord(0.0), "0.000");
+        assert_eq!(format_coord(1.0), "1.000");
+        assert_eq!(format_coord(12.0), "12.000");
+        assert_eq!(format_coord(12.345), "12.345");
+        assert_eq!(format_coord(-5.0), "-5.000");
+        assert_eq!(format_coord(0.001), "0.001");
     }
 
     #[test]
@@ -530,9 +531,9 @@ mod tests {
         assert!(s.contains("\nT1\n"));
         assert!(s.contains("\nT2\n"));
         // Hits are grouped by tool
-        assert!(s.contains("X12000Y15000\n"));
-        assert!(s.contains("X28000Y15000\n"));
-        assert!(s.contains("X5000Y5000\n"));
+        assert!(s.contains("X12.000Y15.000\n"));
+        assert!(s.contains("X28.000Y15.000\n"));
+        assert!(s.contains("X5.000Y5.000\n"));
     }
 
     #[test]
@@ -587,9 +588,9 @@ mod tests {
         assert!(content.contains("T2C0.800"));
 
         // Hit coordinates, in microns
-        assert!(content.contains("X10000Y20000"));
-        assert!(content.contains("X30000Y40000"));
-        assert!(content.contains("X50000Y60000"));
+        assert!(content.contains("X10.000Y20.000"));
+        assert!(content.contains("X30.000Y40.000"));
+        assert!(content.contains("X50.000Y60.000"));
 
         // End-of-file
         assert!(content.trim_end().ends_with("M30"));
@@ -687,7 +688,7 @@ mod tests {
 
         // One tool (1.000 mm) + hit at board position (25, 30)
         assert!(content.contains("T1C1.000"));
-        assert!(content.contains("X25000Y30000"));
+        assert!(content.contains("X25.000Y30.000"));
     }
 
     // ── NPTH export ──────────────────────────────────────────────────────
@@ -703,10 +704,10 @@ mod tests {
         let content = export_npth_drills(&board).unwrap();
         // Single tool (3.2 mm) with 4 hits at the corners.
         assert!(content.contains("T1C3.200"));
-        assert!(content.contains("X5000Y5000"));
-        assert!(content.contains("X95000Y5000"));
-        assert!(content.contains("X5000Y75000"));
-        assert!(content.contains("X95000Y75000"));
+        assert!(content.contains("X5.000Y5.000"));
+        assert!(content.contains("X95.000Y5.000"));
+        assert!(content.contains("X5.000Y75.000"));
+        assert!(content.contains("X95.000Y75.000"));
         assert!(content.trim_end().ends_with("M30"));
     }
 
@@ -827,8 +828,8 @@ mod tests {
         // Merged file has both hits; tools sorted ascending → 0.3, 3.2.
         assert!(content.contains("T1C0.300"));
         assert!(content.contains("T2C3.200"));
-        assert!(content.contains("X10000Y10000"));
-        assert!(content.contains("X5000Y5000"));
+        assert!(content.contains("X10.000Y10.000"));
+        assert!(content.contains("X5.000Y5.000"));
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
