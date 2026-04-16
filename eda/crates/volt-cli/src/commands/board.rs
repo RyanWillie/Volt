@@ -225,18 +225,36 @@ pub fn board_command(cmd: BoardCommands) -> Result<()> {
             rotation,
             flip,
         } => board_move(&project, &board, &component, x, y, rotation, flip),
-        BoardCommands::Trace { .. } => {
-            stub("board trace")
-        }
+        BoardCommands::Trace {
+            project,
+            board,
+            net,
+            from,
+            to,
+            layer,
+            route,
+            width,
+        } => board_trace(&project, &board, &net, &from, &to, &layer, &route, width),
         BoardCommands::Via { .. } => {
             stub("board via")
         }
-        BoardCommands::Plane { .. } => {
-            stub("board plane")
-        }
-        BoardCommands::Hole { .. } => {
-            stub("board hole")
-        }
+        BoardCommands::Plane {
+            project,
+            board,
+            net,
+            layer,
+            vertices,
+            priority,
+            connect_style,
+        } => board_plane(&project, &board, &net, &layer, &vertices, priority, &connect_style),
+        BoardCommands::Hole {
+            project,
+            board,
+            x,
+            y,
+            diameter,
+            stop_mask,
+        } => board_hole(&project, &board, x, y, diameter, stop_mask),
         BoardCommands::Render { .. } => {
             stub("board render")
         }
@@ -737,6 +755,552 @@ fn board_move(
     });
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
+}
+
+// ===========================================================================
+// board trace
+// ===========================================================================
+
+/// Format a copper layer for display in JSON output.
+fn layer_display(layer: &Layer) -> String {
+    match layer {
+        Layer::TopCopper => "top_copper".to_string(),
+        Layer::BottomCopper => "bottom_copper".to_string(),
+        Layer::InnerCopper(n) => format!("inner_{n}"),
+        other => format!("{other:?}"),
+    }
+}
+
+/// Resolve the absolute board position of a footprint pad given device placement.
+///
+/// Computes: `device.position + rotate(pad.position, device.rotation)`,
+/// with x-mirror if the device is flipped to the bottom side.
+fn resolve_pad_position(
+    board: &Board,
+    project: &std::path::Path,
+    device_component_uuid: &uuid::Uuid,
+    pad_uuid: &uuid::Uuid,
+) -> Result<Position> {
+    let board_dev = board
+        .devices
+        .iter()
+        .find(|d| d.component == *device_component_uuid)
+        .ok_or_else(|| {
+            format!(
+                "BoardDevice with component {} not found",
+                device_component_uuid
+            )
+        })?;
+
+    // Load device → package → footprint to find the pad position
+    let dev: Device =
+        project_io::read_library_element(project, "devices", &board_dev.lib_device)?;
+    let pkg: Package =
+        project_io::read_library_element(project, "packages", &dev.package)?;
+
+    let footprint = pkg
+        .footprints
+        .iter()
+        .find(|f| f.uuid == board_dev.lib_footprint)
+        .or_else(|| pkg.footprints.first())
+        .ok_or_else(|| format!("No footprint found in package {}", dev.package))?;
+
+    let fp_pad = footprint
+        .pads
+        .iter()
+        .find(|p| p.uuid == *pad_uuid)
+        .ok_or_else(|| format!("FootprintPad {} not found in footprint", pad_uuid))?;
+
+    // Pad position relative to footprint origin
+    let mut px = fp_pad.position.x;
+    let py = fp_pad.position.y;
+
+    // If device is flipped (bottom side), mirror x
+    if board_dev.flip {
+        px = -px;
+    }
+
+    // Rotate by device rotation
+    let theta = board_dev.rotation.0.to_radians();
+    let cos_t = theta.cos();
+    let sin_t = theta.sin();
+    let rx = px * cos_t - py * sin_t;
+    let ry = px * sin_t + py * cos_t;
+
+    // Translate by device position
+    Ok(Position::new(
+        board_dev.position.x + rx,
+        board_dev.position.y + ry,
+    ))
+}
+
+/// Parse a trace endpoint string.
+///
+/// Formats:
+/// - `"R1:1"` → `TraceEndpoint::Device` (component pad)
+/// - `"25.0,15.0"` → `TraceEndpoint::Junction` (creates junction at that position)
+///
+/// Returns the endpoint and optionally a new [`Junction`] to add to the net segment.
+fn parse_trace_endpoint(
+    s: &str,
+    circuit: &Circuit,
+    board: &Board,
+    project: &std::path::Path,
+) -> Result<(TraceEndpoint, Option<Junction>)> {
+    if s.contains(':') {
+        // "Component:Pad" format
+        let parts: Vec<&str> = s.splitn(2, ':').collect();
+        let designator = parts[0];
+        let pad_name = parts[1];
+
+        // Find component by designator
+        let comp = circuit
+            .components
+            .iter()
+            .find(|c| c.name == designator)
+            .ok_or_else(|| format!("Component '{designator}' not found in circuit"))?;
+
+        // Find BoardDevice by component UUID
+        let board_dev = board
+            .devices
+            .iter()
+            .find(|d| d.component == comp.uuid)
+            .ok_or_else(|| {
+                format!("Component '{designator}' is not placed on the board")
+            })?;
+
+        // Load device to get package UUID
+        let dev: Device =
+            project_io::read_library_element(project, "devices", &board_dev.lib_device)?;
+
+        // Load package to find pad by name
+        let pkg: Package =
+            project_io::read_library_element(project, "packages", &dev.package)?;
+
+        // Find PackagePad by name
+        let pkg_pad = pkg
+            .pads
+            .iter()
+            .find(|p| p.name == pad_name)
+            .ok_or_else(|| {
+                let pad_names: Vec<&str> = pkg.pads.iter().map(|p| p.name.as_str()).collect();
+                format!(
+                    "Pad '{pad_name}' not found in package '{}'. Available pads: {:?}",
+                    pkg.meta.name, pad_names
+                )
+            })?;
+
+        // Find footprint (matching board device's lib_footprint, or first)
+        let footprint = pkg
+            .footprints
+            .iter()
+            .find(|f| f.uuid == board_dev.lib_footprint)
+            .or_else(|| pkg.footprints.first())
+            .ok_or_else(|| {
+                format!("No footprint in package '{}'", pkg.meta.name)
+            })?;
+
+        // Find FootprintPad that references this PackagePad
+        let fp_pad = footprint
+            .pads
+            .iter()
+            .find(|p| p.package_pad == pkg_pad.uuid)
+            .ok_or_else(|| {
+                format!(
+                    "No footprint pad found for package pad '{}' in footprint '{}'",
+                    pad_name, footprint.name
+                )
+            })?;
+
+        Ok((
+            TraceEndpoint::Device {
+                device: comp.uuid,
+                pad: fp_pad.uuid,
+            },
+            None,
+        ))
+    } else if s.contains(',') {
+        // "x,y" format — create a junction
+        let coords: Vec<&str> = s.split(',').collect();
+        if coords.len() != 2 {
+            return Err(
+                format!("Invalid endpoint format '{s}': expected 'x,y'").into()
+            );
+        }
+        let x: f64 = coords[0]
+            .trim()
+            .parse()
+            .map_err(|_| format!("Invalid x coordinate in endpoint '{s}'"))?;
+        let y: f64 = coords[1]
+            .trim()
+            .parse()
+            .map_err(|_| format!("Invalid y coordinate in endpoint '{s}'"))?;
+
+        let junction = Junction {
+            uuid: new_uuid(),
+            position: Position::new(x, y),
+        };
+        let endpoint = TraceEndpoint::Junction {
+            junction: junction.uuid,
+        };
+        Ok((endpoint, Some(junction)))
+    } else {
+        Err(format!(
+            "Invalid endpoint format '{s}': expected 'Component:Pad' or 'x,y'"
+        )
+        .into())
+    }
+}
+
+/// Resolve the (x,y) position of a trace endpoint for routing calculations.
+fn resolve_endpoint_position(
+    endpoint: &TraceEndpoint,
+    board: &Board,
+    project: &std::path::Path,
+    junctions: &[Junction],
+) -> Result<Position> {
+    match endpoint {
+        TraceEndpoint::Device { device, pad } => {
+            resolve_pad_position(board, project, device, pad)
+        }
+        TraceEndpoint::Junction { junction } => {
+            // Search provided junctions first (includes newly created ones),
+            // then fall back to existing net segment junctions on the board.
+            let j = junctions
+                .iter()
+                .find(|j| j.uuid == *junction)
+                .or_else(|| {
+                    board
+                        .net_segments
+                        .iter()
+                        .flat_map(|ns| &ns.junctions)
+                        .find(|j| j.uuid == *junction)
+                })
+                .ok_or_else(|| format!("Junction {} not found", junction))?;
+            Ok(j.position)
+        }
+        TraceEndpoint::Via { via } => {
+            let v = board
+                .net_segments
+                .iter()
+                .flat_map(|ns| &ns.vias)
+                .find(|v| v.uuid == *via)
+                .ok_or_else(|| format!("Via {} not found", via))?;
+            Ok(v.position)
+        }
+    }
+}
+
+/// Route a copper trace between two endpoints on the board.
+///
+/// Supports "direct" (single straight trace) and "manhattan" (horizontal-then-
+/// vertical with a junction at the bend) routing styles.
+fn board_trace(
+    project: &std::path::Path,
+    board_name: &str,
+    net_name: &str,
+    from_str: &str,
+    to_str: &str,
+    layer_str: &str,
+    route_style: &str,
+    width_override: Option<f64>,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+
+    // 1. Read circuit and find the net by name
+    let circuit = project_io::read_circuit(project)?;
+    let net = circuit
+        .nets
+        .iter()
+        .find(|n| n.name == net_name)
+        .ok_or_else(|| format!("Net '{net_name}' not found in circuit"))?;
+    let net_uuid = net.uuid;
+
+    // 2. Read the board
+    let mut board = project_io::read_board(project, board_name)?;
+
+    // 3. Parse the copper layer
+    let layer = parse_layer(layer_str)?;
+
+    // 4. Parse endpoints
+    let (endpoint_from, junction_from) =
+        parse_trace_endpoint(from_str, &circuit, &board, project)?;
+    let (endpoint_to, junction_to) =
+        parse_trace_endpoint(to_str, &circuit, &board, project)?;
+
+    // 5. Determine trace width (explicit override or design-rules default)
+    let width = width_override.unwrap_or(board.design_rules.default_trace_width);
+
+    // 6. Find or create a BoardNetSegment for this net
+    let seg_idx = if let Some(idx) = board
+        .net_segments
+        .iter()
+        .position(|ns| ns.net == Some(net_uuid))
+    {
+        idx
+    } else {
+        board.net_segments.push(BoardNetSegment {
+            uuid: new_uuid(),
+            net: Some(net_uuid),
+            traces: vec![],
+            vias: vec![],
+            junctions: vec![],
+            pads: vec![],
+        });
+        board.net_segments.len() - 1
+    };
+
+    // Add any junction endpoints to the segment
+    if let Some(j) = junction_from {
+        board.net_segments[seg_idx].junctions.push(j);
+    }
+    if let Some(j) = junction_to {
+        board.net_segments[seg_idx].junctions.push(j);
+    }
+
+    // 7/8. Create trace(s) based on routing style
+    let num_segments = match route_style {
+        "direct" => {
+            let trace = Trace {
+                uuid: new_uuid(),
+                layer,
+                width,
+                from: endpoint_from,
+                to: endpoint_to,
+            };
+            board.net_segments[seg_idx].traces.push(trace);
+            1
+        }
+        "manhattan" => {
+            // Resolve physical positions of both endpoints
+            let all_junctions = &board.net_segments[seg_idx].junctions;
+            let pos_from =
+                resolve_endpoint_position(&endpoint_from, &board, project, all_junctions)?;
+            let pos_to =
+                resolve_endpoint_position(&endpoint_to, &board, project, all_junctions)?;
+
+            // Bend point: go horizontal (keep from.y) then vertical (to to.y)
+            let bend = Position::new(pos_to.x, pos_from.y);
+
+            // If endpoints are already colinear, a single segment suffices
+            let eps = 1e-6;
+            if (pos_from.x - pos_to.x).abs() < eps
+                || (pos_from.y - pos_to.y).abs() < eps
+            {
+                let trace = Trace {
+                    uuid: new_uuid(),
+                    layer,
+                    width,
+                    from: endpoint_from,
+                    to: endpoint_to,
+                };
+                board.net_segments[seg_idx].traces.push(trace);
+                1
+            } else {
+                // Create junction at the bend
+                let bend_junction = Junction {
+                    uuid: new_uuid(),
+                    position: bend,
+                };
+                let bend_uuid = bend_junction.uuid;
+                board.net_segments[seg_idx].junctions.push(bend_junction);
+
+                // Horizontal segment: from → bend
+                let trace1 = Trace {
+                    uuid: new_uuid(),
+                    layer,
+                    width,
+                    from: endpoint_from,
+                    to: TraceEndpoint::Junction {
+                        junction: bend_uuid,
+                    },
+                };
+                // Vertical segment: bend → to
+                let trace2 = Trace {
+                    uuid: new_uuid(),
+                    layer,
+                    width,
+                    from: TraceEndpoint::Junction {
+                        junction: bend_uuid,
+                    },
+                    to: endpoint_to,
+                };
+
+                board.net_segments[seg_idx].traces.push(trace1);
+                board.net_segments[seg_idx].traces.push(trace2);
+                2
+            }
+        }
+        other => {
+            return Err(format!(
+                "Unknown routing style '{other}': expected 'direct' or 'manhattan'"
+            )
+            .into());
+        }
+    };
+
+    // 10. Write board back
+    project_io::write_board(project, board_name, &board)?;
+
+    // 11. Print JSON result
+    let result = serde_json::json!({
+        "status": "ok",
+        "trace": {
+            "net": net_name,
+            "layer": layer_display(&layer),
+            "width": width,
+            "segments": num_segments,
+            "route": route_style,
+        }
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+// ===========================================================================
+// board hole
+// ===========================================================================
+
+/// Add a non-plated mounting or tooling hole to the board.
+fn board_hole(
+    project: &std::path::Path,
+    board_name: &str,
+    x: f64,
+    y: f64,
+    diameter: f64,
+    stop_mask: bool,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+
+    let mut board = project_io::read_board(project, board_name)?;
+
+    let hole = BoardHole {
+        uuid: new_uuid(),
+        diameter,
+        stop_mask: if stop_mask {
+            StopMaskConfig::Auto
+        } else {
+            StopMaskConfig::Off
+        },
+        lock: false,
+        path: vec![Vertex {
+            position: Position::new(x, y),
+            angle: Angle(0.0),
+        }],
+    };
+
+    let uuid_str = hole.uuid.to_string();
+    board.holes.push(hole);
+    project_io::write_board(project, board_name, &board)?;
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "hole": {
+            "uuid": uuid_str,
+            "position": { "x": x, "y": y },
+            "diameter": diameter,
+        }
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+// ===========================================================================
+// board plane
+// ===========================================================================
+
+/// Add a copper pour / fill zone to the board.
+fn board_plane(
+    project: &std::path::Path,
+    board_name: &str,
+    net_name: &str,
+    layer_str: &str,
+    vertices_str: &str,
+    priority: u32,
+    connect_style_str: &str,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+
+    // Read circuit to resolve net name → UUID
+    let circuit = project_io::read_circuit(project)?;
+    let net = circuit
+        .nets
+        .iter()
+        .find(|n| n.name == net_name)
+        .ok_or_else(|| format!("Net '{net_name}' not found in circuit"))?;
+    let net_uuid = net.uuid;
+
+    let mut board = project_io::read_board(project, board_name)?;
+
+    let layer = parse_layer(layer_str)?;
+    let vertices = parse_explicit_vertices(vertices_str)?;
+    let connect_style = parse_connect_style(connect_style_str)?;
+
+    let plane = Plane {
+        uuid: new_uuid(),
+        layer,
+        net: net_uuid,
+        priority: priority as i32,
+        min_width: 0.2,
+        min_copper_clearance: 0.2,
+        min_board_clearance: 0.3,
+        min_npth_clearance: 0.2,
+        connect_style,
+        thermal_gap: 0.3,
+        thermal_spoke: 0.3,
+        keep_islands: false,
+        lock: false,
+        vertices: vertices.clone(),
+    };
+
+    let uuid_str = plane.uuid.to_string();
+    let vertex_count = vertices.len();
+    board.planes.push(plane);
+    project_io::write_board(project, board_name, &board)?;
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "plane": {
+            "uuid": uuid_str,
+            "net": net_name,
+            "layer": layer_str,
+            "vertices": vertex_count,
+        }
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+/// Parse a layer string into a [`Layer`] enum variant.
+fn parse_layer(s: &str) -> Result<Layer> {
+    match s {
+        "top_copper" | "top" => Ok(Layer::TopCopper),
+        "bottom_copper" | "bottom" => Ok(Layer::BottomCopper),
+        other => {
+            if let Some(n_str) = other.strip_prefix("inner_") {
+                let n: u8 = n_str
+                    .parse()
+                    .map_err(|_| format!("Invalid inner copper layer number: '{n_str}'"))?;
+                Ok(Layer::InnerCopper(n))
+            } else {
+                Err(format!(
+                    "Unknown layer '{other}': expected 'top_copper', 'top', 'bottom_copper', 'bottom', or 'inner_N'"
+                ).into())
+            }
+        }
+    }
+}
+
+/// Parse a connect-style string into a [`ConnectStyle`] enum variant.
+fn parse_connect_style(s: &str) -> Result<ConnectStyle> {
+    match s {
+        "solid" => Ok(ConnectStyle::Solid),
+        "thermal" => Ok(ConnectStyle::Thermal),
+        "none" => Ok(ConnectStyle::None),
+        other => Err(format!(
+            "Unknown connect style '{other}': expected 'solid', 'thermal', or 'none'"
+        ).into()),
+    }
 }
 
 // ===========================================================================
