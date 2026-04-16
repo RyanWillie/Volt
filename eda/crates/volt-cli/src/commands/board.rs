@@ -235,9 +235,16 @@ pub fn board_command(cmd: BoardCommands) -> Result<()> {
             route,
             width,
         } => board_trace(&project, &board, &net, &from, &to, &layer, &route, width),
-        BoardCommands::Via { .. } => {
-            stub("board via")
-        }
+        BoardCommands::Via {
+            project,
+            board,
+            net,
+            x,
+            y,
+            drill,
+            from_layer,
+            to_layer,
+        } => board_via(&project, &board, &net, x, y, drill, &from_layer, &to_layer),
         BoardCommands::Plane {
             project,
             board,
@@ -255,11 +262,11 @@ pub fn board_command(cmd: BoardCommands) -> Result<()> {
             diameter,
             stop_mask,
         } => board_hole(&project, &board, x, y, diameter, stop_mask),
-        BoardCommands::Render { .. } => {
-            stub("board render")
+        BoardCommands::Render { project, board, output } => {
+            super::board_render::render_board(&project, &board, &output)
         }
-        BoardCommands::Ratsnest { .. } => {
-            stub("board ratsnest")
+        BoardCommands::Ratsnest { project, board } => {
+            board_ratsnest(&project, &board)
         }
         BoardCommands::Autoplace { .. } => {
             stub("board autoplace")
@@ -1158,6 +1165,91 @@ fn board_trace(
 }
 
 // ===========================================================================
+// board via
+// ===========================================================================
+
+/// Add a via to the board on a given net.
+fn board_via(
+    project: &std::path::Path,
+    board_name: &str,
+    net_name: &str,
+    x: f64,
+    y: f64,
+    drill: f64,
+    from_layer_str: &str,
+    to_layer_str: &str,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+
+    // 1. Read circuit to find net UUID from --net name
+    let circuit = project_io::read_circuit(project)?;
+    let net = circuit
+        .nets
+        .iter()
+        .find(|n| n.name == net_name)
+        .ok_or_else(|| format!("Net '{net_name}' not found in circuit"))?;
+    let net_uuid = net.uuid;
+
+    // 2. Read board
+    let mut board = project_io::read_board(project, board_name)?;
+
+    // 3. Parse layers
+    let from_layer = parse_layer(from_layer_str)?;
+    let to_layer = parse_layer(to_layer_str)?;
+
+    // 4. Create the Via
+    let via = Via {
+        uuid: new_uuid(),
+        from_layer,
+        to_layer,
+        position: Position::new(x, y),
+        drill,
+        size: ViaSize::Auto,
+        exposure: ViaExposure::Auto,
+    };
+    let via_uuid = via.uuid;
+
+    // 5. Find or create a BoardNetSegment for this net (same pattern as board_trace)
+    let seg_idx = if let Some(idx) = board
+        .net_segments
+        .iter()
+        .position(|ns| ns.net == Some(net_uuid))
+    {
+        idx
+    } else {
+        board.net_segments.push(BoardNetSegment {
+            uuid: new_uuid(),
+            net: Some(net_uuid),
+            traces: vec![],
+            vias: vec![],
+            junctions: vec![],
+            pads: vec![],
+        });
+        board.net_segments.len() - 1
+    };
+
+    // 6. Push via to the net segment's vias vec
+    board.net_segments[seg_idx].vias.push(via);
+
+    // 7. Write board back
+    project_io::write_board(project, board_name, &board)?;
+
+    // 8. Print JSON result
+    let result = serde_json::json!({
+        "status": "ok",
+        "via": {
+            "uuid": via_uuid.to_string(),
+            "position": { "x": x, "y": y },
+            "drill": drill,
+            "from_layer": layer_display(&from_layer),
+            "to_layer": layer_display(&to_layer),
+        }
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+// ===========================================================================
 // board hole
 // ===========================================================================
 
@@ -1269,6 +1361,341 @@ fn board_plane(
     });
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
+}
+
+// ===========================================================================
+// board ratsnest
+// ===========================================================================
+
+/// Compute and display unrouted connections (ratsnest).
+///
+/// For each net, identifies which pads should be connected, builds a
+/// connectivity graph from existing traces, and reports unconnected pad pairs.
+fn board_ratsnest(
+    project: &std::path::Path,
+    board_name: &str,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+
+    let circuit = project_io::read_circuit(project)?;
+    let board = project_io::read_board(project, board_name)?;
+
+    let mut nets_output: Vec<serde_json::Value> = Vec::new();
+    let mut total_unrouted: usize = 0;
+
+    for net in &circuit.nets {
+        // Collect all (component_uuid, signal_uuid) pairs connected to this net
+        let mut pad_entries: Vec<PadEntry> = Vec::new();
+
+        for comp in &circuit.components {
+            for sc in &comp.signal_connections {
+                if sc.net == Some(net.uuid) {
+                    // This component signal is connected to this net.
+                    // Find the board device for this component.
+                    let board_dev = match board.devices.iter().find(|d| d.component == comp.uuid) {
+                        Some(d) => d,
+                        None => continue, // component not placed on board
+                    };
+
+                    // Load device to get pad mappings (signal → package pad)
+                    let dev: Device = match project_io::read_library_element(
+                        project, "devices", &board_dev.lib_device,
+                    ) {
+                        Ok(d) => d,
+                        Err(_) => continue,
+                    };
+
+                    // Load package to get pad names and footprint pads
+                    let pkg: Package = match project_io::read_library_element(
+                        project, "packages", &dev.package,
+                    ) {
+                        Ok(p) => p,
+                        Err(_) => continue,
+                    };
+
+                    let footprint = match pkg
+                        .footprints
+                        .iter()
+                        .find(|f| f.uuid == board_dev.lib_footprint)
+                        .or_else(|| pkg.footprints.first())
+                    {
+                        Some(f) => f,
+                        None => continue,
+                    };
+
+                    // Find pad mapping: signal → package pad
+                    for pm in &dev.pad_mappings {
+                        if pm.signal == sc.signal {
+                            // pm.pad is the PackagePad UUID
+                            // Find the FootprintPad that references this PackagePad
+                            let fp_pad = match footprint
+                                .pads
+                                .iter()
+                                .find(|p| p.package_pad == pm.pad)
+                            {
+                                Some(p) => p,
+                                None => continue,
+                            };
+
+                            // Get human-readable pad name
+                            let pad_name = pkg
+                                .pads
+                                .iter()
+                                .find(|p| p.uuid == pm.pad)
+                                .map(|p| p.name.as_str())
+                                .unwrap_or("?");
+
+                            // Resolve absolute position on board
+                            let position = match resolve_pad_position(
+                                &board, project, &comp.uuid, &fp_pad.uuid,
+                            ) {
+                                Ok(pos) => pos,
+                                Err(_) => continue,
+                            };
+
+                            pad_entries.push(PadEntry {
+                                designator: comp.name.clone(),
+                                pad_name: pad_name.to_string(),
+                                fp_pad_uuid: fp_pad.uuid,
+                                component_uuid: comp.uuid,
+                                position,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        if pad_entries.len() < 2 {
+            // A net with 0 or 1 pads has nothing to route
+            continue;
+        }
+
+        // Build connectivity from existing traces in the board's net segments
+        // for this net. Use union-find to group connected pads.
+        let n = pad_entries.len();
+        let mut parent: Vec<usize> = (0..n).collect();
+
+        // Union-find helpers (inline closures won't work well, use fn-style)
+        fn find(parent: &mut Vec<usize>, mut x: usize) -> usize {
+            while parent[x] != x {
+                parent[x] = parent[parent[x]];
+                x = parent[x];
+            }
+            x
+        }
+        fn union(parent: &mut Vec<usize>, a: usize, b: usize) {
+            let ra = find(parent, a);
+            let rb = find(parent, b);
+            if ra != rb {
+                parent[ra] = rb;
+            }
+        }
+
+        // For each net segment belonging to this net, examine traces
+        for ns in &board.net_segments {
+            if ns.net != Some(net.uuid) {
+                continue;
+            }
+
+            // Build a mapping from trace endpoint identifier to pad index
+            // Trace endpoints can be Device{device,pad}, Junction, or Via.
+            // We care about Device endpoints that match our pad_entries.
+            for trace in &ns.traces {
+                let from_idx = endpoint_to_pad_index(&trace.from, &pad_entries);
+                let to_idx = endpoint_to_pad_index(&trace.to, &pad_entries);
+
+                match (from_idx, to_idx) {
+                    (Some(a), Some(b)) => {
+                        union(&mut parent, a, b);
+                    }
+                    _ => {
+                        // At least one endpoint is a junction/via. We need
+                        // to do transitive connectivity through junctions/vias.
+                        // We'll handle this below with a full graph approach.
+                    }
+                }
+            }
+
+            // For full connectivity through junctions and vias, build a
+            // graph of all endpoints and do BFS/union-find.
+            // Endpoint key: either "dev:<comp_uuid>:<pad_uuid>" or "junc:<uuid>" or "via:<uuid>"
+            let mut endpoint_ids: Vec<String> = Vec::new();
+            let mut ep_parent: Vec<usize> = Vec::new();
+
+            let get_or_insert = |id: String, endpoint_ids: &mut Vec<String>, ep_parent: &mut Vec<usize>| -> usize {
+                if let Some(pos) = endpoint_ids.iter().position(|x| *x == id) {
+                    pos
+                } else {
+                    let idx = endpoint_ids.len();
+                    endpoint_ids.push(id);
+                    ep_parent.push(idx);
+                    idx
+                }
+            };
+
+            fn ep_find(ep_parent: &mut Vec<usize>, mut x: usize) -> usize {
+                while ep_parent[x] != x {
+                    ep_parent[x] = ep_parent[ep_parent[x]];
+                    x = ep_parent[x];
+                }
+                x
+            }
+            fn ep_union(ep_parent: &mut Vec<usize>, a: usize, b: usize) {
+                let ra = ep_find(ep_parent, a);
+                let rb = ep_find(ep_parent, b);
+                if ra != rb {
+                    ep_parent[ra] = rb;
+                }
+            }
+
+            for trace in &ns.traces {
+                let from_id = endpoint_key(&trace.from);
+                let to_id = endpoint_key(&trace.to);
+                let fi = get_or_insert(from_id, &mut endpoint_ids, &mut ep_parent);
+                let ti = get_or_insert(to_id, &mut endpoint_ids, &mut ep_parent);
+                ep_union(&mut ep_parent, fi, ti);
+            }
+
+            // Now map pad_entries to their endpoint keys and union pad indices
+            // if they share the same connected component in the endpoint graph.
+            let mut pad_ep_indices: Vec<Option<usize>> = Vec::with_capacity(n);
+            for pe in &pad_entries {
+                let key = format!("dev:{}:{}", pe.component_uuid, pe.fp_pad_uuid);
+                let ep_idx = endpoint_ids.iter().position(|x| *x == key);
+                pad_ep_indices.push(ep_idx);
+            }
+
+            // Union pad_entries that share the same endpoint connected component
+            for i in 0..n {
+                for j in (i + 1)..n {
+                    if let (Some(ei), Some(ej)) = (pad_ep_indices[i], pad_ep_indices[j]) {
+                        if ep_find(&mut ep_parent, ei) == ep_find(&mut ep_parent, ej) {
+                            union(&mut parent, i, j);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Count connected groups
+        let mut roots = std::collections::HashSet::new();
+        for i in 0..n {
+            roots.insert(find(&mut parent, i));
+        }
+        let connected_groups = roots.len();
+
+        // If everything is in one group, no unrouted connections
+        if connected_groups <= 1 {
+            continue;
+        }
+
+        // Build unrouted pairs: for each pair of groups, pick the closest
+        // pad pair (minimum spanning tree approach on groups).
+        // Simple approach: connect groups using a minimal set of edges.
+        // Use Kruskal's on groups: find the shortest inter-group edge for
+        // each pair of groups.
+        let mut unrouted: Vec<serde_json::Value> = Vec::new();
+
+        // Collect one representative per group, then find shortest edges
+        // between different groups to form MST.
+        let mut group_parent: Vec<usize> = (0..n).collect();
+        for i in 0..n {
+            group_parent[i] = find(&mut parent, i);
+        }
+
+        // Build candidate edges between pads in different groups, sorted by distance
+        let mut edges: Vec<(f64, usize, usize)> = Vec::new();
+        for i in 0..n {
+            for j in (i + 1)..n {
+                if group_parent[i] != group_parent[j] {
+                    let dx = pad_entries[i].position.x - pad_entries[j].position.x;
+                    let dy = pad_entries[i].position.y - pad_entries[j].position.y;
+                    let dist = (dx * dx + dy * dy).sqrt();
+                    edges.push((dist, i, j));
+                }
+            }
+        }
+        edges.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Kruskal's to find minimum spanning tree across groups
+        let mut mst_parent: Vec<usize> = (0..n).collect();
+
+        fn mst_find(p: &mut Vec<usize>, mut x: usize) -> usize {
+            while p[x] != x {
+                p[x] = p[p[x]];
+                x = p[x];
+            }
+            x
+        }
+
+        for (_, i, j) in &edges {
+            let ri = mst_find(&mut mst_parent, group_parent[*i]);
+            let rj = mst_find(&mut mst_parent, group_parent[*j]);
+            if ri != rj {
+                mst_parent[ri] = rj;
+                unrouted.push(serde_json::json!({
+                    "from": format!("{}:{}", pad_entries[*i].designator, pad_entries[*i].pad_name),
+                    "to": format!("{}:{}", pad_entries[*j].designator, pad_entries[*j].pad_name),
+                    "from_position": {
+                        "x": pad_entries[*i].position.x,
+                        "y": pad_entries[*i].position.y,
+                    },
+                    "to_position": {
+                        "x": pad_entries[*j].position.x,
+                        "y": pad_entries[*j].position.y,
+                    },
+                }));
+            }
+        }
+
+        total_unrouted += unrouted.len();
+
+        nets_output.push(serde_json::json!({
+            "name": net.name,
+            "total_pads": n,
+            "connected_groups": connected_groups,
+            "unrouted": unrouted,
+        }));
+    }
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "nets": nets_output,
+        "total_unrouted": total_unrouted,
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+/// Internal helper for ratsnest: holds info about a pad on a net.
+struct PadEntry {
+    designator: String,
+    pad_name: String,
+    fp_pad_uuid: uuid::Uuid,
+    component_uuid: uuid::Uuid,
+    position: Position,
+}
+
+/// Convert a TraceEndpoint to a string key for union-find.
+fn endpoint_key(ep: &TraceEndpoint) -> String {
+    match ep {
+        TraceEndpoint::Device { device, pad } => format!("dev:{device}:{pad}"),
+        TraceEndpoint::Junction { junction } => format!("junc:{junction}"),
+        TraceEndpoint::Via { via } => format!("via:{via}"),
+    }
+}
+
+/// Find the pad_entries index that matches a TraceEndpoint::Device.
+fn endpoint_to_pad_index(ep: &TraceEndpoint, pad_entries: &[PadEntry]) -> Option<usize> {
+    match ep {
+        TraceEndpoint::Device { device, pad } => {
+            pad_entries.iter().position(|pe| {
+                pe.component_uuid == *device && pe.fp_pad_uuid == *pad
+            })
+        }
+        _ => None,
+    }
 }
 
 /// Parse a layer string into a [`Layer`] enum variant.

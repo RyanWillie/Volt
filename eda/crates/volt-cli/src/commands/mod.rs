@@ -5,6 +5,7 @@ pub mod net;
 pub mod erc;
 pub mod schematic;
 pub mod board;
+pub mod board_render;
 pub mod render;
 pub mod import;
 pub mod library;
