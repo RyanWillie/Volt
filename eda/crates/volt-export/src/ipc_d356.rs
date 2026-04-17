@@ -16,11 +16,7 @@ use volt_core::project::*;
 use crate::gerber::{BoardLibrary, transform_point};
 
 /// Generate an IPC-D-356 netlist string.
-pub fn export_ipc_d356(
-    board: &Board,
-    circuit: &Circuit,
-    library: &dyn BoardLibrary,
-) -> String {
+pub fn export_ipc_d356(board: &Board, circuit: &Circuit, library: &dyn BoardLibrary) -> String {
     let mut out = String::with_capacity(4096);
 
     // Header
@@ -50,15 +46,30 @@ pub fn export_ipc_d356(
 
     // Iterate devices and their pads
     for dev in &board.devices {
-        let Some(lib_dev) = library.get_device(&dev.lib_device) else { continue };
-        let Some(pkg) = library.get_package(&lib_dev.package) else { continue };
-        let Some(fp) = pkg.footprints.iter().find(|f| f.uuid == dev.lib_footprint)
-            .or_else(|| pkg.footprints.first()) else { continue };
+        let Some(lib_dev) = library.get_device(&dev.lib_device) else {
+            continue;
+        };
+        let Some(pkg) = library.get_package(&lib_dev.package) else {
+            continue;
+        };
+        let Some(fp) = pkg
+            .footprints
+            .iter()
+            .find(|f| f.uuid == dev.lib_footprint)
+            .or_else(|| pkg.footprints.first())
+        else {
+            continue;
+        };
 
-        let designator = comp_names.get(&dev.component).map(|s| s.as_str()).unwrap_or("?");
+        let designator = comp_names
+            .get(&dev.component)
+            .map(|s| s.as_str())
+            .unwrap_or("?");
 
         for fp_pad in &fp.pads {
-            let pad_name = pkg.pads.iter()
+            let pad_name = pkg
+                .pads
+                .iter()
                 .find(|p| p.uuid == fp_pad.package_pad)
                 .map(|p| p.name.as_str())
                 .unwrap_or("?");
@@ -75,7 +86,9 @@ pub fn export_ipc_d356(
             let y_mil = (wy * 1000.0 / 25.4) as i32;
 
             let is_tht = fp_pad.side == PadSide::ThroughHole || !fp_pad.holes.is_empty();
-            let hole_dia_mil = fp_pad.holes.first()
+            let hole_dia_mil = fp_pad
+                .holes
+                .first()
                 .map(|h| (h.diameter * 1000.0 / 25.4) as i32)
                 .unwrap_or(0);
 
@@ -103,10 +116,13 @@ pub fn export_ipc_d356(
                 &designator[..designator.len().min(6)],
                 &pad_name[..pad_name.len().min(4)],
                 access,
-                x_mil, y_mil,
-                pad_w_mil, pad_h_mil,
+                x_mil,
+                y_mil,
+                pad_w_mil,
+                pad_h_mil,
                 hole_dia_mil,
-            ).unwrap();
+            )
+            .unwrap();
         }
     }
 
@@ -116,7 +132,9 @@ pub fn export_ipc_d356(
 }
 
 fn effective_pad_side_d356(pad_side: PadSide, flipped: bool) -> PadSide {
-    if !flipped { return pad_side; }
+    if !flipped {
+        return pad_side;
+    }
     match pad_side {
         PadSide::Top => PadSide::Bottom,
         PadSide::Bottom => PadSide::Top,
@@ -131,21 +149,31 @@ fn build_pad_net_map(
 ) -> HashMap<(Uuid, Uuid), Uuid> {
     let mut map = HashMap::new();
     for dev in &board.devices {
-        let Some(device_lib) = library.get_device(&dev.lib_device) else { continue };
-        let Some(package) = library.get_package(&device_lib.package) else { continue };
+        let Some(device_lib) = library.get_device(&dev.lib_device) else {
+            continue;
+        };
+        let Some(package) = library.get_package(&device_lib.package) else {
+            continue;
+        };
         let comp = circuit.components.iter().find(|c| c.uuid == dev.component);
         let Some(comp) = comp else { continue };
-        let footprint = package.footprints.iter()
+        let footprint = package
+            .footprints
+            .iter()
             .find(|f| f.uuid == dev.lib_footprint)
             .or_else(|| package.footprints.first());
         let Some(footprint) = footprint else { continue };
 
         for fp_pad in &footprint.pads {
-            let signal = device_lib.pad_mappings.iter()
+            let signal = device_lib
+                .pad_mappings
+                .iter()
                 .find(|pm| pm.pad == fp_pad.package_pad)
                 .map(|pm| pm.signal);
             if let Some(sig) = signal {
-                let net = comp.signal_connections.iter()
+                let net = comp
+                    .signal_connections
+                    .iter()
                     .find(|sc| sc.signal == sig)
                     .and_then(|sc| sc.net);
                 if let Some(net_uuid) = net {

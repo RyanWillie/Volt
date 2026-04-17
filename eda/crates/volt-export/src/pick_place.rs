@@ -213,6 +213,7 @@ mod tests {
                 device_assignments: vec![],
                 signal_connections: vec![],
             }],
+            differential_pairs: vec![],
             nets: vec![],
             net_classes: vec![],
             assembly_variants: vec![],
@@ -256,7 +257,10 @@ mod tests {
 
         let csv = export_pick_place_csv(&entries);
         let lines: Vec<&str> = csv.lines().collect();
-        assert_eq!(lines[0], "Designator,Value,Package,X(mm),Y(mm),Rotation,Side");
+        assert_eq!(
+            lines[0],
+            "Designator,Value,Package,X(mm),Y(mm),Rotation,Side"
+        );
         assert_eq!(lines[1], "R1,10k,R0402,25.4000,12.7000,90.0,top");
     }
 
@@ -282,6 +286,7 @@ mod tests {
                 device_assignments: vec![],
                 signal_connections: vec![],
             }],
+            differential_pairs: vec![],
             nets: vec![],
             net_classes: vec![],
             assembly_variants: vec![],

@@ -72,8 +72,7 @@ pub fn generate_bom(circuit: &Circuit, library: &dyn BomLibrary) -> BomResult {
 
         let entry = groups.entry(key.clone()).or_insert_with(|| {
             // Resolve library metadata once per group
-            let (package_name, description, mpn, manufacturer) =
-                resolve_part_info(comp, library);
+            let (package_name, description, mpn, manufacturer) = resolve_part_info(comp, library);
 
             BomGroupData {
                 designators: Vec::new(),
@@ -430,6 +429,7 @@ mod tests {
                     signal_connections: vec![],
                 },
             ],
+            differential_pairs: vec![],
             nets: vec![],
             net_classes: vec![],
             assembly_variants: vec![],
@@ -496,6 +496,7 @@ mod tests {
                     signal_connections: vec![],
                 },
             ],
+            differential_pairs: vec![],
             nets: vec![],
             net_classes: vec![],
             assembly_variants: vec![],
@@ -564,6 +565,7 @@ mod tests {
                     signal_connections: vec![],
                 },
             ],
+            differential_pairs: vec![],
             nets: vec![],
             net_classes: vec![],
             assembly_variants: vec![],
@@ -594,7 +596,10 @@ mod tests {
         let csv = export_bom_csv(&bom);
         let lines: Vec<&str> = csv.lines().collect();
 
-        assert_eq!(lines[0], "Designator,Quantity,Value,Package,Description,MPN,Manufacturer");
+        assert_eq!(
+            lines[0],
+            "Designator,Quantity,Value,Package,Description,MPN,Manufacturer"
+        );
         assert_eq!(
             lines[1],
             "R1 R2,2,10k,R0402,\"Resistor, thick film\",RC0402FR-0710KL,Yageo"

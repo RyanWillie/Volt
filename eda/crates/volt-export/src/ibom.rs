@@ -33,15 +33,22 @@ pub fn export_interactive_html_bom(
         .collect();
 
     for dev in &board.devices {
-        let designator = comp_names.get(&dev.component).map(|s| s.as_str()).unwrap_or("?");
+        let designator = comp_names
+            .get(&dev.component)
+            .map(|s| s.as_str())
+            .unwrap_or("?");
         let side = if dev.flip { "bottom" } else { "top" };
 
         // Get pad positions for highlighting
         let mut pads = Vec::new();
         if let Some(lib_dev) = BoardLibrary::get_device(library, &dev.lib_device) {
             if let Some(pkg) = BoardLibrary::get_package(library, &lib_dev.package) {
-                if let Some(fp) = pkg.footprints.iter().find(|f| f.uuid == dev.lib_footprint)
-                    .or_else(|| pkg.footprints.first()) {
+                if let Some(fp) = pkg
+                    .footprints
+                    .iter()
+                    .find(|f| f.uuid == dev.lib_footprint)
+                    .or_else(|| pkg.footprints.first())
+                {
                     for fp_pad in &fp.pads {
                         let (x, y) = transform_point(fp_pad.position.x, fp_pad.position.y, dev);
                         pads.push(serde_json::json!({
@@ -68,7 +75,12 @@ pub fn export_interactive_html_bom(
         .polygons
         .iter()
         .find(|p| p.layer == Layer::BoardOutlines)
-        .map(|p| p.vertices.iter().map(|v| [v.position.x, v.position.y]).collect())
+        .map(|p| {
+            p.vertices
+                .iter()
+                .map(|v| [v.position.x, v.position.y])
+                .collect()
+        })
         .unwrap_or_default();
 
     // BOM as JSON
@@ -94,7 +106,8 @@ pub fn export_interactive_html_bom(
 
     let data_str = serde_json::to_string(&data_json).unwrap_or_default();
 
-    format!(r##"<!DOCTYPE html>
+    format!(
+        r##"<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">

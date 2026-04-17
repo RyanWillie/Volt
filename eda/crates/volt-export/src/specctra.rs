@@ -21,11 +21,7 @@ use volt_core::project::*;
 use crate::gerber::{BoardLibrary, transform_point};
 
 /// Export a Specctra DSN file.
-pub fn export_dsn(
-    board: &Board,
-    circuit: &Circuit,
-    library: &dyn BoardLibrary,
-) -> String {
+pub fn export_dsn(board: &Board, circuit: &Circuit, library: &dyn BoardLibrary) -> String {
     let mut out = String::with_capacity(8192);
 
     writeln!(out, "(pcb \"{}\"", board.name).unwrap();
@@ -133,13 +129,17 @@ fn write_placements(
 ) {
     writeln!(out, "  (placement").unwrap();
     for dev in &board.devices {
-        let name = comp_names.get(&dev.component).map(|s| s.as_str()).unwrap_or("?");
+        let name = comp_names
+            .get(&dev.component)
+            .map(|s| s.as_str())
+            .unwrap_or("?");
         let side = if dev.flip { "back" } else { "front" };
         writeln!(
             out,
             "    (component \"{}\" (place \"{}\" {:.4} {:.4} {} {:.1}))",
             name, name, dev.position.x, dev.position.y, side, dev.rotation.0
-        ).unwrap();
+        )
+        .unwrap();
     }
     writeln!(out, "  )").unwrap();
 }
@@ -165,21 +165,37 @@ fn write_network(
     let mut net_pins: HashMap<Uuid, Vec<String>> = HashMap::new();
 
     for dev in &board.devices {
-        let comp_name = comp_names.get(&dev.component).map(|s| s.as_str()).unwrap_or("?");
-        let Some(lib_dev) = library.get_device(&dev.lib_device) else { continue };
-        let Some(pkg) = library.get_package(&lib_dev.package) else { continue };
-        let Some(fp) = pkg.footprints.iter().find(|f| f.uuid == dev.lib_footprint)
-            .or_else(|| pkg.footprints.first()) else { continue };
+        let comp_name = comp_names
+            .get(&dev.component)
+            .map(|s| s.as_str())
+            .unwrap_or("?");
+        let Some(lib_dev) = library.get_device(&dev.lib_device) else {
+            continue;
+        };
+        let Some(pkg) = library.get_package(&lib_dev.package) else {
+            continue;
+        };
+        let Some(fp) = pkg
+            .footprints
+            .iter()
+            .find(|f| f.uuid == dev.lib_footprint)
+            .or_else(|| pkg.footprints.first())
+        else {
+            continue;
+        };
 
         for fp_pad in &fp.pads {
             if let Some(&net_uuid) = pad_net_map.get(&(dev.component, fp_pad.uuid)) {
-                let pad_name = pkg.pads.iter()
+                let pad_name = pkg
+                    .pads
+                    .iter()
                     .find(|p| p.uuid == fp_pad.package_pad)
                     .map(|p| p.name.as_str())
                     .unwrap_or("?");
-                net_pins.entry(net_uuid).or_default().push(
-                    format!("\"{}\"-\"{}\"", comp_name, pad_name)
-                );
+                net_pins
+                    .entry(net_uuid)
+                    .or_default()
+                    .push(format!("\"{}\"-\"{}\"", comp_name, pad_name));
             }
         }
     }
@@ -226,20 +242,30 @@ fn build_pad_net_map(
 ) -> HashMap<(Uuid, Uuid), Uuid> {
     let mut map = HashMap::new();
     for dev in &board.devices {
-        let Some(device_lib) = library.get_device(&dev.lib_device) else { continue };
-        let Some(package) = library.get_package(&device_lib.package) else { continue };
+        let Some(device_lib) = library.get_device(&dev.lib_device) else {
+            continue;
+        };
+        let Some(package) = library.get_package(&device_lib.package) else {
+            continue;
+        };
         let comp = circuit.components.iter().find(|c| c.uuid == dev.component);
         let Some(comp) = comp else { continue };
-        let footprint = package.footprints.iter()
+        let footprint = package
+            .footprints
+            .iter()
             .find(|f| f.uuid == dev.lib_footprint)
             .or_else(|| package.footprints.first());
         let Some(footprint) = footprint else { continue };
         for fp_pad in &footprint.pads {
-            let signal = device_lib.pad_mappings.iter()
+            let signal = device_lib
+                .pad_mappings
+                .iter()
                 .find(|pm| pm.pad == fp_pad.package_pad)
                 .map(|pm| pm.signal);
             if let Some(sig) = signal {
-                let net = comp.signal_connections.iter()
+                let net = comp
+                    .signal_connections
+                    .iter()
                     .find(|sc| sc.signal == sig)
                     .and_then(|sc| sc.net);
                 if let Some(net_uuid) = net {

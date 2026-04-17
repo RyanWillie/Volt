@@ -13,7 +13,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::gerber::{transform_point, BoardLibrary};
+use crate::gerber::{BoardLibrary, transform_point};
 use volt_core::common::PadSide;
 use volt_core::project::{Board, FabricationOutputSettings};
 
@@ -182,11 +182,7 @@ fn collect_pth_hits(board: &Board, library: &dyn BoardLibrary) -> Result<Vec<Raw
         let Some(pkg) = library.get_package(&lib_dev.package) else {
             return Err(format!("library package {} not found", lib_dev.package));
         };
-        let Some(footprint) = pkg
-            .footprints
-            .iter()
-            .find(|f| f.uuid == dev.lib_footprint)
-        else {
+        let Some(footprint) = pkg.footprints.iter().find(|f| f.uuid == dev.lib_footprint) else {
             return Err(format!(
                 "footprint {} not found in package",
                 dev.lib_footprint
@@ -284,10 +280,7 @@ fn build_writer(hits: &[RawHit]) -> ExcellonWriter {
 /// Includes every via on the board (outer through vias and blind/buried
 /// vias alike — drilling is independent of layer span for this purpose)
 /// and every drill hole on every THT footprint pad.
-pub fn export_pth_drills(
-    board: &Board,
-    library: &dyn BoardLibrary,
-) -> Result<String, String> {
+pub fn export_pth_drills(board: &Board, library: &dyn BoardLibrary) -> Result<String, String> {
     let hits = collect_pth_hits(board, library)?;
     let writer = build_writer(&hits);
     Ok(writer.to_string())
@@ -307,10 +300,7 @@ pub fn export_npth_drills(board: &Board) -> Result<String, String> {
 /// holes. The merged file does not distinguish between the two kinds
 /// of holes; if a fabricator requires separate PTH/NPTH files, leave
 /// `merge_drills` disabled.
-pub fn export_merged_drills(
-    board: &Board,
-    library: &dyn BoardLibrary,
-) -> Result<String, String> {
+pub fn export_merged_drills(board: &Board, library: &dyn BoardLibrary) -> Result<String, String> {
     let mut hits = collect_pth_hits(board, library)?;
     hits.extend(collect_npth_hits(board));
     Ok(build_writer(&hits).to_string())
@@ -752,10 +742,8 @@ mod tests {
 
     #[test]
     fn export_all_drills_writes_both_files() {
-        let tmp = std::env::temp_dir().join(format!(
-            "volt_excellon_test_{}",
-            Uuid::new_v4().simple()
-        ));
+        let tmp =
+            std::env::temp_dir().join(format!("volt_excellon_test_{}", Uuid::new_v4().simple()));
         let mut board = empty_board("myboard");
         board.net_segments.push(BoardNetSegment {
             uuid: Uuid::new_v4(),
@@ -769,8 +757,7 @@ mod tests {
 
         let library = MapBoardLibrary::new();
         let settings = FabricationOutputSettings::default();
-        let summary =
-            export_all_drills(&board, &library, &tmp, &settings).expect("export ok");
+        let summary = export_all_drills(&board, &library, &tmp, &settings).expect("export ok");
 
         assert_eq!(summary.pth_hole_count, 1);
         assert_eq!(summary.npth_hole_count, 1);
@@ -784,10 +771,12 @@ mod tests {
         }
 
         // Merged disabled by default.
-        assert!(!summary
-            .files
-            .iter()
-            .any(|f| f.kind == DrillFileKind::Merged));
+        assert!(
+            !summary
+                .files
+                .iter()
+                .any(|f| f.kind == DrillFileKind::Merged)
+        );
 
         // Clean up
         let _ = std::fs::remove_dir_all(&tmp);
@@ -795,10 +784,8 @@ mod tests {
 
     #[test]
     fn export_all_drills_with_merge() {
-        let tmp = std::env::temp_dir().join(format!(
-            "volt_excellon_merge_{}",
-            Uuid::new_v4().simple()
-        ));
+        let tmp =
+            std::env::temp_dir().join(format!("volt_excellon_merge_{}", Uuid::new_v4().simple()));
         let mut board = empty_board("merged");
         board.net_segments.push(BoardNetSegment {
             uuid: Uuid::new_v4(),
@@ -814,8 +801,7 @@ mod tests {
         let mut settings = FabricationOutputSettings::default();
         settings.merge_drills = true;
 
-        let summary =
-            export_all_drills(&board, &library, &tmp, &settings).expect("export ok");
+        let summary = export_all_drills(&board, &library, &tmp, &settings).expect("export ok");
         assert_eq!(summary.files.len(), 3);
         let merged = summary
             .files

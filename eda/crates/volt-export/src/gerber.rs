@@ -489,10 +489,7 @@ impl<'a> BoardMaps<'a> {
     ) -> Result<(f64, f64)> {
         match endpoint {
             TraceEndpoint::Via { via } => {
-                let v = self
-                    .via_map
-                    .get(via)
-                    .ok_or(GerberError::MissingVia(*via))?;
+                let v = self.via_map.get(via).ok_or(GerberError::MissingVia(*via))?;
                 Ok((v.position.x, v.position.y))
             }
             TraceEndpoint::Junction { junction } => {
@@ -717,7 +714,11 @@ pub fn export_soldermask_layer(
     library: &dyn BoardLibrary,
     top: bool,
 ) -> Result<String> {
-    let file_function = if top { "Soldermask,Top" } else { "Soldermask,Bot" };
+    let file_function = if top {
+        "Soldermask,Top"
+    } else {
+        "Soldermask,Bot"
+    };
     let mut writer = GerberWriter::new_x2(file_function, "Negative");
     let mut cache = ApertureCache::new();
     let mut flashes: Vec<(usize, f64, f64)> = Vec::new();
@@ -984,8 +985,11 @@ pub fn export_silkscreen_layer(
             let ap = cache.circle(&mut writer, line_width);
             writer.select_aperture(ap);
 
-            let first =
-                transform_point(poly.vertices[0].position.x, poly.vertices[0].position.y, dev);
+            let first = transform_point(
+                poly.vertices[0].position.x,
+                poly.vertices[0].position.y,
+                dev,
+            );
             writer.move_to(first.0, first.1);
             for v in &poly.vertices[1..] {
                 let (x, y) = transform_point(v.position.x, v.position.y, dev);
@@ -1010,18 +1014,12 @@ pub fn export_silkscreen_layer(
         let ap = cache.circle(&mut writer, line_width);
         writer.select_aperture(ap);
 
-        writer.move_to(
-            poly.vertices[0].position.x,
-            poly.vertices[0].position.y,
-        );
+        writer.move_to(poly.vertices[0].position.x, poly.vertices[0].position.y);
         for v in &poly.vertices[1..] {
             writer.line_to(v.position.x, v.position.y);
         }
         if poly.vertices.len() > 2 {
-            writer.line_to(
-                poly.vertices[0].position.x,
-                poly.vertices[0].position.y,
-            );
+            writer.line_to(poly.vertices[0].position.x, poly.vertices[0].position.y);
         }
     }
 
@@ -1129,15 +1127,36 @@ pub fn export_all(
 
     // Board outline
     let content = export_board_outline(board)?;
-    write_gerber_file(&mut files, output_dir, name, &settings.outlines_suffix, "Board Outlines", &content)?;
+    write_gerber_file(
+        &mut files,
+        output_dir,
+        name,
+        &settings.outlines_suffix,
+        "Board Outlines",
+        &content,
+    )?;
 
     // Top copper
     let content = export_copper_layer(board, circuit, library, Layer::TopCopper)?;
-    write_gerber_file(&mut files, output_dir, name, &settings.copper_top_suffix, "Top Copper", &content)?;
+    write_gerber_file(
+        &mut files,
+        output_dir,
+        name,
+        &settings.copper_top_suffix,
+        "Top Copper",
+        &content,
+    )?;
 
     // Bottom copper
     let content = export_copper_layer(board, circuit, library, Layer::BottomCopper)?;
-    write_gerber_file(&mut files, output_dir, name, &settings.copper_bot_suffix, "Bottom Copper", &content)?;
+    write_gerber_file(
+        &mut files,
+        output_dir,
+        name,
+        &settings.copper_bot_suffix,
+        "Bottom Copper",
+        &content,
+    )?;
 
     // Inner copper layers
     for i in 1..=board.inner_layers {
@@ -1152,24 +1171,66 @@ pub fn export_all(
 
     // Soldermask
     let content = export_soldermask_layer(board, circuit, library, true)?;
-    write_gerber_file(&mut files, output_dir, name, &settings.soldermask_top_suffix, "Top Soldermask", &content)?;
+    write_gerber_file(
+        &mut files,
+        output_dir,
+        name,
+        &settings.soldermask_top_suffix,
+        "Top Soldermask",
+        &content,
+    )?;
 
     let content = export_soldermask_layer(board, circuit, library, false)?;
-    write_gerber_file(&mut files, output_dir, name, &settings.soldermask_bot_suffix, "Bottom Soldermask", &content)?;
+    write_gerber_file(
+        &mut files,
+        output_dir,
+        name,
+        &settings.soldermask_bot_suffix,
+        "Bottom Soldermask",
+        &content,
+    )?;
 
     // Silkscreen
     let content = export_silkscreen_layer(board, circuit, library, true)?;
-    write_gerber_file(&mut files, output_dir, name, &settings.silkscreen_top_suffix, "Top Silkscreen", &content)?;
+    write_gerber_file(
+        &mut files,
+        output_dir,
+        name,
+        &settings.silkscreen_top_suffix,
+        "Top Silkscreen",
+        &content,
+    )?;
 
     let content = export_silkscreen_layer(board, circuit, library, false)?;
-    write_gerber_file(&mut files, output_dir, name, &settings.silkscreen_bot_suffix, "Bottom Silkscreen", &content)?;
+    write_gerber_file(
+        &mut files,
+        output_dir,
+        name,
+        &settings.silkscreen_bot_suffix,
+        "Bottom Silkscreen",
+        &content,
+    )?;
 
     // Solder paste / stencil
     let content = export_paste_layer(board, circuit, library, true)?;
-    write_gerber_file(&mut files, output_dir, name, &settings.paste_top_suffix, "Top Paste", &content)?;
+    write_gerber_file(
+        &mut files,
+        output_dir,
+        name,
+        &settings.paste_top_suffix,
+        "Top Paste",
+        &content,
+    )?;
 
     let content = export_paste_layer(board, circuit, library, false)?;
-    write_gerber_file(&mut files, output_dir, name, &settings.paste_bot_suffix, "Bottom Paste", &content)?;
+    write_gerber_file(
+        &mut files,
+        output_dir,
+        name,
+        &settings.paste_bot_suffix,
+        "Bottom Paste",
+        &content,
+    )?;
 
     Ok(ExportSummary { files })
 }
@@ -1394,8 +1455,7 @@ mod tests {
         let circuit = Circuit::default();
         let library = MapBoardLibrary::new();
 
-        let result =
-            export_copper_layer(&board, &circuit, &library, Layer::TopCopper).unwrap();
+        let result = export_copper_layer(&board, &circuit, &library, Layer::TopCopper).unwrap();
 
         // Header
         assert!(result.contains("%FSLAX46Y46*%"));
@@ -1418,8 +1478,7 @@ mod tests {
         let circuit = Circuit::default();
         let library = MapBoardLibrary::new();
 
-        let result =
-            export_copper_layer(&board, &circuit, &library, Layer::BottomCopper).unwrap();
+        let result = export_copper_layer(&board, &circuit, &library, Layer::BottomCopper).unwrap();
 
         // No trace aperture should appear (the trace is on TopCopper only)
         assert!(!result.contains("D01*"), "no draw commands expected");
@@ -1448,11 +1507,11 @@ mod tests {
         let result = export_board_outline(&board).unwrap();
 
         // Vertices: (0,0), (100,0), (100,80), (0,80)
-        assert!(result.contains("X0Y0D02*"));           // move to start
-        assert!(result.contains("X100000000Y0D01*"));    // draw to (100,0)
+        assert!(result.contains("X0Y0D02*")); // move to start
+        assert!(result.contains("X100000000Y0D01*")); // draw to (100,0)
         assert!(result.contains("X100000000Y80000000D01*")); // draw to (100,80)
-        assert!(result.contains("X0Y80000000D01*"));     // draw to (0,80)
-        assert!(result.contains("X0Y0D01*"));            // close back to (0,0)
+        assert!(result.contains("X0Y80000000D01*")); // draw to (0,80)
+        assert!(result.contains("X0Y0D01*")); // close back to (0,0)
     }
 
     #[test]
