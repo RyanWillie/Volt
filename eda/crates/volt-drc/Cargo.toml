@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 volt-core = { workspace = true }
+volt-refill = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
