@@ -11,7 +11,7 @@ use std::path::Path;
 use uuid::Uuid;
 
 use volt_core::common::*;
-use volt_core::library::{Device, FootprintPad, Footprint, Package};
+use volt_core::library::{Device, Footprint, FootprintPad, Package};
 use volt_core::project::*;
 
 use super::project_io::{self, Result};
@@ -74,9 +74,11 @@ pub fn render_board(project: &Path, board_name: &str, output: &Path) -> Result<(
                 project_io::read_library_element::<Device>(project, "devices", &bd.lib_device)
             {
                 if !pkg_cache.contains_key(&dev.package) {
-                    if let Ok(pkg) =
-                        project_io::read_library_element::<Package>(project, "packages", &dev.package)
-                    {
+                    if let Ok(pkg) = project_io::read_library_element::<Package>(
+                        project,
+                        "packages",
+                        &dev.package,
+                    ) {
                         pkg_cache.insert(dev.package, pkg);
                     }
                 }
@@ -134,13 +136,30 @@ pub fn render_board(project: &Path, board_name: &str, output: &Path) -> Result<(
     // (d) Traces
     for seg in &board.net_segments {
         for trace in &seg.traces {
-            let from = resolve_trace_endpoint(&trace.from, &board, &seg.junctions, project, &dev_cache, &pkg_cache);
-            let to = resolve_trace_endpoint(&trace.to, &board, &seg.junctions, project, &dev_cache, &pkg_cache);
+            let from = resolve_trace_endpoint(
+                &trace.from,
+                &board,
+                &seg.junctions,
+                project,
+                &dev_cache,
+                &pkg_cache,
+            );
+            let to = resolve_trace_endpoint(
+                &trace.to,
+                &board,
+                &seg.junctions,
+                project,
+                &dev_cache,
+                &pkg_cache,
+            );
             if let (Some(fp), Some(tp)) = (from, to) {
                 writeln!(
                     svg,
                     r#"<line x1="{:.3}" y1="{:.3}" x2="{:.3}" y2="{:.3}" stroke="{}" stroke-width="{:.3}" stroke-linecap="round" class="trace"/>"#,
-                    fp.0, fp.1, tp.0, tp.1,
+                    fp.0,
+                    fp.1,
+                    tp.0,
+                    tp.1,
                     layer_color(&trace.layer),
                     trace.width,
                 )?;
@@ -202,17 +221,16 @@ pub fn render_board(project: &Path, board_name: &str, output: &Path) -> Result<(
 
     // (i) Component designators
     for bd in &board.devices {
-        let name = comp_name
-            .get(&bd.component)
-            .copied()
-            .unwrap_or("?");
+        let name = comp_name.get(&bd.component).copied().unwrap_or("?");
         let color = if bd.flip { "#00cccc" } else { "#ffff00" };
         // Place text slightly above the device position
         let ty = bd.position.y - 2.5;
         writeln!(
             svg,
             r#"<text x="{:.3}" y="{:.3}" fill="{color}" class="designator">{}</text>"#,
-            bd.position.x, ty, escape_xml(name),
+            bd.position.x,
+            ty,
+            escape_xml(name),
         )?;
     }
 
@@ -240,7 +258,9 @@ pub fn render_board(project: &Path, board_name: &str, output: &Path) -> Result<(
 // ===========================================================================
 
 fn write_styles(svg: &mut String) -> std::fmt::Result {
-    writeln!(svg, r#"<style>
+    writeln!(
+        svg,
+        r#"<style>
   .bg {{ fill: {BG_COLOR}; }}
   .outline {{ stroke: #c0c0c0; stroke-width: 0.2; fill: none; }}
   .trace {{ fill: none; }}
@@ -257,7 +277,8 @@ fn write_styles(svg: &mut String) -> std::fmt::Result {
   .pad {{ }}
   .pad-drill {{ fill: {BG_COLOR}; }}
   .grid-dot {{ fill: {GRID_DOT_COLOR}; }}
-</style>"#)
+</style>"#
+    )
 }
 
 fn write_grid(
@@ -268,7 +289,11 @@ fn write_grid(
     vh: f64,
     grid: &Grid,
 ) -> std::fmt::Result {
-    let interval = if grid.interval > 0.0 { grid.interval } else { 1.0 };
+    let interval = if grid.interval > 0.0 {
+        grid.interval
+    } else {
+        1.0
+    };
     // Only draw grid if it won't be absurdly dense
     let dots_x = (vw / interval) as i32;
     let dots_y = (vh / interval) as i32;
@@ -294,11 +319,7 @@ fn write_grid(
     Ok(())
 }
 
-fn write_polygon_outline(
-    svg: &mut String,
-    vertices: &[Vertex],
-    class: &str,
-) -> std::fmt::Result {
+fn write_polygon_outline(svg: &mut String, vertices: &[Vertex], class: &str) -> std::fmt::Result {
     if vertices.len() < 2 {
         return Ok(());
     }
@@ -357,11 +378,7 @@ fn write_polygon_stroke(
     )
 }
 
-fn write_pad(
-    svg: &mut String,
-    fp_pad: &FootprintPad,
-    bd: &BoardDevice,
-) -> std::fmt::Result {
+fn write_pad(svg: &mut String, fp_pad: &FootprintPad, bd: &BoardDevice) -> std::fmt::Result {
     let (wx, wy) = transform_point(fp_pad.position.x, fp_pad.position.y, bd);
     let total_rot = if bd.flip {
         -fp_pad.rotation.0 + bd.rotation.0
@@ -402,7 +419,8 @@ fn write_pad(
                 writeln!(
                     svg,
                     r#"<rect x="{:.3}" y="{:.3}" width="{w:.3}" height="{h:.3}" rx="{rx:.3}" ry="{rx:.3}" fill="{fill}" class="pad"/>"#,
-                    wx - half_w, wy - half_h,
+                    wx - half_w,
+                    wy - half_h,
                 )?;
             }
         }
@@ -461,7 +479,8 @@ fn resolve_trace_endpoint(
     ep: &TraceEndpoint,
     board: &Board,
     local_junctions: &[Junction],
-    _project: &Path,    dev_cache: &HashMap<Uuid, Device>,
+    _project: &Path,
+    dev_cache: &HashMap<Uuid, Device>,
     pkg_cache: &HashMap<Uuid, Package>,
 ) -> Option<(f64, f64)> {
     match ep {

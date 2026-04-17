@@ -191,11 +191,7 @@ pub fn order_within_ranks(
 ///
 /// Propagates `rank[v] = max(rank[u] + 1)` along forward edges in the DAG.
 /// A per-node visit cap guards against cycles.
-fn longest_path_forward(
-    comp_set: &HashSet<Uuid>,
-    dag: &FlowGraph,
-    ranks: &mut HashMap<Uuid, i32>,
-) {
+fn longest_path_forward(comp_set: &HashSet<Uuid>, dag: &FlowGraph, ranks: &mut HashMap<Uuid, i32>) {
     let mut queue: VecDeque<Uuid> = ranks.keys().copied().collect();
     let mut visits: HashMap<Uuid, usize> = HashMap::new();
     // Allow each node to be re-enqueued at most 2×N times (cycle guard).
@@ -322,12 +318,7 @@ enum Sweep {
 ///
 /// Components with no neighbours in the reference layer keep their current
 /// position index as a fallback so they remain stable.
-fn barycenter_sort(
-    layers: &mut [Vec<Uuid>],
-    li: usize,
-    sweep: Sweep,
-    dag: &FlowGraph,
-) {
+fn barycenter_sort(layers: &mut [Vec<Uuid>], li: usize, sweep: Sweep, dag: &FlowGraph) {
     let ref_li = match sweep {
         Sweep::Forward => {
             if li == 0 {
@@ -414,16 +405,8 @@ fn total_crossings(layers: &[Vec<Uuid>], dag: &FlowGraph) -> usize {
 /// Uses O(e²) pairwise comparison — perfectly fine for typical schematic sizes
 /// (rarely more than a few dozen edges between adjacent ranks).
 fn crossing_count(upper: &[Uuid], lower: &[Uuid], dag: &FlowGraph) -> usize {
-    let upos: HashMap<Uuid, usize> = upper
-        .iter()
-        .enumerate()
-        .map(|(i, &id)| (id, i))
-        .collect();
-    let lpos: HashMap<Uuid, usize> = lower
-        .iter()
-        .enumerate()
-        .map(|(i, &id)| (id, i))
-        .collect();
+    let upos: HashMap<Uuid, usize> = upper.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+    let lpos: HashMap<Uuid, usize> = lower.iter().enumerate().map(|(i, &id)| (id, i)).collect();
 
     // Collect every visual connection as (upper_index, lower_index).
     // Include both forward and backward flow-graph edges so that feedback

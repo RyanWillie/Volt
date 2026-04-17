@@ -36,10 +36,16 @@ pub enum LibraryCommands {
 
 pub fn library_command(cmd: LibraryCommands) -> Result<()> {
     match cmd {
-        LibraryCommands::Search { project, query, limit } => search_library(&project, &query, limit),
-        LibraryCommands::Info { project, component, name } => {
-            library_info(&project, component, name.as_deref())
-        }
+        LibraryCommands::Search {
+            project,
+            query,
+            limit,
+        } => search_library(&project, &query, limit),
+        LibraryCommands::Info {
+            project,
+            component,
+            name,
+        } => library_info(&project, component, name.as_deref()),
     }
 }
 

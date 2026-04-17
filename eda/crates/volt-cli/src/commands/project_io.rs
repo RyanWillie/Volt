@@ -8,8 +8,8 @@ use volt_core::project::{Board, Circuit, ProjectMetadata, Schematic};
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 pub fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
     let value = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse {}: {e}", path.display()))?;
     Ok(value)

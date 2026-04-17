@@ -171,7 +171,12 @@ pub struct Placement {
 
 impl Placement {
     pub fn new(gx: f64, gy: f64, rotation: f64) -> Self {
-        Self { gx, gy, rotation, mirror: false }
+        Self {
+            gx,
+            gy,
+            rotation,
+            mirror: false,
+        }
     }
 }
 
@@ -194,19 +199,26 @@ impl BBox {
     }
 
     pub fn overlaps(&self, other: &BBox) -> bool {
-        self.x0 < other.x1 && self.x1 > other.x0 &&
-        self.y0 < other.y1 && self.y1 > other.y0
+        self.x0 < other.x1 && self.x1 > other.x0 && self.y0 < other.y1 && self.y1 > other.y0
     }
 
     pub fn contains(&self, x: f64, y: f64) -> bool {
         x >= self.x0 && x <= self.x1 && y >= self.y0 && y <= self.y1
     }
 
-    pub fn width(&self) -> f64 { self.x1 - self.x0 }
-    pub fn height(&self) -> f64 { self.y1 - self.y0 }
+    pub fn width(&self) -> f64 {
+        self.x1 - self.x0
+    }
+    pub fn height(&self) -> f64 {
+        self.y1 - self.y0
+    }
 
-    pub fn center_x(&self) -> f64 { (self.x0 + self.x1) / 2.0 }
-    pub fn center_y(&self) -> f64 { (self.y0 + self.y1) / 2.0 }
+    pub fn center_x(&self) -> f64 {
+        (self.x0 + self.x1) / 2.0
+    }
+    pub fn center_y(&self) -> f64 {
+        (self.y0 + self.y1) / 2.0
+    }
 
     /// Expand the box by `margin` on each side.
     pub fn expand(&self, margin: f64) -> Self {
@@ -241,7 +253,9 @@ pub const HIGH_FANOUT_THRESHOLD: usize = 4;
 /// Normalize angle to [0, 360).
 pub fn normalize_angle(angle: f64) -> f64 {
     let mut a = angle % 360.0;
-    if a < 0.0 { a += 360.0; }
+    if a < 0.0 {
+        a += 360.0;
+    }
     a
 }
 
@@ -258,16 +272,38 @@ pub fn snap_grid_units(value: f64) -> f64 {
 /// Check if a net name is a power net.
 pub fn is_power_net_name(name: &str) -> bool {
     let u = name.to_uppercase();
-    matches!(u.as_str(),
-        "VCC"|"VDD"|"V+"|"VBUS"|"VBAT"|"VIN"|"VOUT"|
-        "GND"|"VSS"|"V-"|"AGND"|"DGND"|"PGND"|"GNDA"|
-        "3V3"|"+3V3"|"+3.3V"|"5V"|"+5V"|"+12V"|"+24V"|
-        "BAT_RAW"
+    matches!(
+        u.as_str(),
+        "VCC"
+            | "VDD"
+            | "V+"
+            | "VBUS"
+            | "VBAT"
+            | "VIN"
+            | "VOUT"
+            | "GND"
+            | "VSS"
+            | "V-"
+            | "AGND"
+            | "DGND"
+            | "PGND"
+            | "GNDA"
+            | "3V3"
+            | "+3V3"
+            | "+3.3V"
+            | "5V"
+            | "+5V"
+            | "+12V"
+            | "+24V"
+            | "BAT_RAW"
     )
 }
 
 /// Check if a power net name is a ground-family net.
 pub fn is_ground_net_name(name: &str) -> bool {
     let u = name.to_uppercase();
-    matches!(u.as_str(), "GND"|"VSS"|"V-"|"AGND"|"DGND"|"PGND"|"GNDA")
+    matches!(
+        u.as_str(),
+        "GND" | "VSS" | "V-" | "AGND" | "DGND" | "PGND" | "GNDA"
+    )
 }

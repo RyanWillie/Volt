@@ -134,11 +134,8 @@ fn classify_one(
     };
 
     // Map signal uuid → role from the library definition.
-    let sig_role: HashMap<Uuid, SignalRole> = lib
-        .signals
-        .iter()
-        .map(|s| (s.uuid, s.role))
-        .collect();
+    let sig_role: HashMap<Uuid, SignalRole> =
+        lib.signals.iter().map(|s| (s.uuid, s.role)).collect();
 
     // Build connected-pin info for every signal that has a net.
     let pins: Vec<PinInfo> = inst
@@ -172,9 +169,8 @@ fn classify_one(
     }
 
     // ── N-pin: check for input / output signals on signal nets ───────
-    let on_signal_net = |p: &&PinInfo| {
-        matches!(p.net_class, NetClass::Signal | NetClass::HighFanout)
-    };
+    let on_signal_net =
+        |p: &&PinInfo| matches!(p.net_class, NetClass::Signal | NetClass::HighFanout);
 
     // Bidirectional, OpenDrain, and OpenCollector count as BOTH input AND output.
     let has_output = pins.iter().filter(on_signal_net).any(|p| {
@@ -304,17 +300,17 @@ pub fn build_flow_dag(
         graph.add_node(comp.uuid);
     }
 
-    let comp_by_id: HashMap<Uuid, &ComponentInstance> = circuit
-        .components
-        .iter()
-        .map(|c| (c.uuid, c))
-        .collect();
+    let comp_by_id: HashMap<Uuid, &ComponentInstance> =
+        circuit.components.iter().map(|c| (c.uuid, c)).collect();
 
     // Collect candidate edges (may contain cycles).
     let mut candidates: Vec<(Uuid, Uuid, Uuid)> = Vec::new(); // (from, to, net)
 
     for net in &circuit.nets {
-        let nc = net_classes.get(&net.uuid).copied().unwrap_or(NetClass::Signal);
+        let nc = net_classes
+            .get(&net.uuid)
+            .copied()
+            .unwrap_or(NetClass::Signal);
 
         // Skip power rails and high-fanout nets.
         if matches!(nc, NetClass::Power | NetClass::HighFanout) {
@@ -509,11 +505,8 @@ pub fn detect_companions(
     net_members: &HashMap<Uuid, Vec<Uuid>>,
     _lib_comps: &HashMap<Uuid, Component>,
 ) -> Vec<Companion> {
-    let comp_by_id: HashMap<Uuid, &ComponentInstance> = circuit
-        .components
-        .iter()
-        .map(|c| (c.uuid, c))
-        .collect();
+    let comp_by_id: HashMap<Uuid, &ComponentInstance> =
+        circuit.components.iter().map(|c| (c.uuid, c)).collect();
 
     let net_name: HashMap<Uuid, &str> = circuit
         .nets
@@ -586,9 +579,7 @@ fn find_bypass_parent(
         .collect();
 
     // Try non-ground nets first — they're more selective for parent finding.
-    power_nets.sort_by_key(|nid| {
-        is_ground_net_name(net_name.get(nid).unwrap_or(&""))
-    });
+    power_nets.sort_by_key(|nid| is_ground_net_name(net_name.get(nid).unwrap_or(&"")));
 
     for &pn in &power_nets {
         let members = match net_members.get(&pn) {
@@ -601,14 +592,12 @@ fn find_bypass_parent(
             .iter()
             .find(|&&m| m != inst.uuid && is_active_role(comp_roles.get(&m).copied()))
         {
-            let parent_signal = comp_by_id
-                .get(&parent)
-                .and_then(|p| {
-                    p.signal_connections
-                        .iter()
-                        .find(|sc| sc.net == Some(pn))
-                        .map(|sc| sc.signal)
-                });
+            let parent_signal = comp_by_id.get(&parent).and_then(|p| {
+                p.signal_connections
+                    .iter()
+                    .find(|sc| sc.net == Some(pn))
+                    .map(|sc| sc.signal)
+            });
 
             return Some(Companion {
                 component: inst.uuid,

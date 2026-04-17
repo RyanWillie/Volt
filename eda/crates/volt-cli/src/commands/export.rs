@@ -11,6 +11,7 @@ use volt_export::bom::{self, BomLibrary};
 use volt_export::excellon;
 use volt_export::gerber::{self, BoardLibrary};
 use volt_export::pick_place;
+use volt_refill::refill_board;
 
 use super::project_io::{self, Result};
 
@@ -262,8 +263,9 @@ fn export_gerber(
 ) -> Result<()> {
     project_io::ensure_project(project)?;
     let circuit = project_io::read_circuit(project)?;
-    let board = project_io::read_board(project, board_name)?;
+    let mut board = project_io::read_board(project, board_name)?;
     let library = load_project_library(project, &circuit)?;
+    refill_board(&mut board, &circuit, &library);
 
     fs::create_dir_all(output_dir)?;
     let summary = gerber::export_all(&board, &circuit, &library, output_dir)
@@ -394,11 +396,7 @@ fn export_ibom(
 // Specctra DSN export
 // ---------------------------------------------------------------------------
 
-fn export_dsn(
-    project: &std::path::Path,
-    board_name: &str,
-    output: &std::path::Path,
-) -> Result<()> {
+fn export_dsn(project: &std::path::Path, board_name: &str, output: &std::path::Path) -> Result<()> {
     project_io::ensure_project(project)?;
     let circuit = project_io::read_circuit(project)?;
     let board = project_io::read_board(project, board_name)?;
@@ -470,6 +468,16 @@ impl BoardLibrary for ProjectLibrary {
     }
 }
 
+impl volt_refill::RefillLibrary for ProjectLibrary {
+    fn get_device(&self, uuid: &uuid::Uuid) -> Option<&Device> {
+        self.devices.get(uuid)
+    }
+
+    fn get_package(&self, uuid: &uuid::Uuid) -> Option<&Package> {
+        self.packages.get(uuid)
+    }
+}
+
 /// Load all library elements referenced by the circuit.
 fn load_project_library(
     project: &std::path::Path,
@@ -494,17 +502,13 @@ fn load_project_library(
         // Load devices from assignments
         for da in &comp.device_assignments {
             if !devices.contains_key(&da.device) {
-                if let Ok(d) = project_io::read_library_element::<Device>(
-                    project,
-                    "devices",
-                    &da.device,
-                ) {
+                if let Ok(d) =
+                    project_io::read_library_element::<Device>(project, "devices", &da.device)
+                {
                     // Also load the package
                     if !packages.contains_key(&d.package) {
                         if let Ok(p) = project_io::read_library_element::<Package>(
-                            project,
-                            "packages",
-                            &d.package,
+                            project, "packages", &d.package,
                         ) {
                             packages.insert(d.package, p);
                         }
@@ -527,9 +531,7 @@ fn load_project_library(
                         if !devices.contains_key(&d.meta.uuid) {
                             if !packages.contains_key(&d.package) {
                                 if let Ok(p) = project_io::read_library_element::<Package>(
-                                    project,
-                                    "packages",
-                                    &d.package,
+                                    project, "packages", &d.package,
                                 ) {
                                     packages.insert(d.package, p);
                                 }
@@ -547,4 +549,125 @@ fn load_project_library(
         devices,
         packages,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use tempfile::TempDir;
+    use uuid::Uuid;
+    use volt_core::common::*;
+    use volt_core::project::*;
+
+    use super::*;
+    use crate::commands::new_project;
+
+    fn create_temp_project() -> (TempDir, PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().join("proj");
+        new_project("proj", Some(&project)).unwrap();
+        (dir, project)
+    }
+
+    #[test]
+    fn gerber_export_refills_planes_before_writing() {
+        let (_tmp, project) = create_temp_project();
+
+        let mut circuit = project_io::read_circuit(&project).unwrap();
+        let net_class = circuit.net_classes[0].uuid;
+        let plane_net = Uuid::new_v4();
+        let trace_net = Uuid::new_v4();
+        circuit.nets = vec![
+            Net {
+                uuid: plane_net,
+                name: "GND".into(),
+                auto_name: false,
+                net_class,
+                scope: NetScope::Global,
+                owner_sheet: None,
+                is_power: true,
+            },
+            Net {
+                uuid: trace_net,
+                name: "SIG".into(),
+                auto_name: false,
+                net_class,
+                scope: NetScope::Global,
+                owner_sheet: None,
+                is_power: false,
+            },
+        ];
+        project_io::write_circuit(&project, &circuit).unwrap();
+
+        let mut board = project_io::read_board(&project, "default").unwrap();
+        board.planes.push(Plane {
+            uuid: Uuid::new_v4(),
+            layer: Layer::TopCopper,
+            net: plane_net,
+            priority: 0,
+            min_width: 0.2,
+            min_copper_clearance: 0.2,
+            min_board_clearance: 0.0,
+            min_npth_clearance: 0.2,
+            connect_style: ConnectStyle::Solid,
+            thermal_gap: 0.3,
+            thermal_spoke: 0.3,
+            keep_islands: true,
+            lock: false,
+            vertices: vec![
+                Vertex {
+                    position: Position::new(10.0, 10.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(90.0, 10.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(90.0, 90.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(10.0, 90.0),
+                    angle: Angle(0.0),
+                },
+            ],
+            fragments: vec![],
+        });
+        let j1 = Junction {
+            uuid: Uuid::new_v4(),
+            position: Position::new(50.0, 10.0),
+        };
+        let j2 = Junction {
+            uuid: Uuid::new_v4(),
+            position: Position::new(50.0, 90.0),
+        };
+        board.net_segments.push(BoardNetSegment {
+            uuid: Uuid::new_v4(),
+            net: Some(trace_net),
+            traces: vec![Trace {
+                uuid: Uuid::new_v4(),
+                layer: Layer::TopCopper,
+                width: 20.0,
+                from: TraceEndpoint::Junction { junction: j1.uuid },
+                to: TraceEndpoint::Junction { junction: j2.uuid },
+            }],
+            vias: vec![],
+            junctions: vec![j1, j2],
+            pads: vec![],
+        });
+        project_io::write_board(&project, "default", &board).unwrap();
+
+        let output_dir = project.join("out");
+        export_gerber(&project, "default", &output_dir).unwrap();
+
+        let top_copper = output_dir.join("default_COPPER-TOP.gbr");
+        let content = fs::read_to_string(top_copper).unwrap();
+        assert!(
+            content.matches("G36*").count() >= 2,
+            "Expected split refill fragments in top copper output, got:\n{}",
+            content
+        );
+    }
 }

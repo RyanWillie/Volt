@@ -8,6 +8,7 @@ use clap::Subcommand;
 use volt_core::common::*;
 use volt_core::library::{Device, Package};
 use volt_core::project::*;
+use volt_core::split::{BoardNode, board_connected_components};
 
 use super::project_io::{self, Result};
 
@@ -203,12 +204,13 @@ pub enum BoardCommands {
 
 pub fn board_command(cmd: BoardCommands) -> Result<()> {
     match cmd {
-        BoardCommands::Init { project, name } => {
-            board_init(&project, &name)
-        }
-        BoardCommands::Outline { project, board, rect, vertices } => {
-            board_outline(&project, &board, rect.as_deref(), vertices.as_deref())
-        }
+        BoardCommands::Init { project, name } => board_init(&project, &name),
+        BoardCommands::Outline {
+            project,
+            board,
+            rect,
+            vertices,
+        } => board_outline(&project, &board, rect.as_deref(), vertices.as_deref()),
         BoardCommands::Place {
             project,
             board,
@@ -256,7 +258,15 @@ pub fn board_command(cmd: BoardCommands) -> Result<()> {
             vertices,
             priority,
             connect_style,
-        } => board_plane(&project, &board, &net, &layer, &vertices, priority, &connect_style),
+        } => board_plane(
+            &project,
+            &board,
+            &net,
+            &layer,
+            &vertices,
+            priority,
+            &connect_style,
+        ),
         BoardCommands::Hole {
             project,
             board,
@@ -265,7 +275,12 @@ pub fn board_command(cmd: BoardCommands) -> Result<()> {
             diameter,
             stop_mask,
         } => board_hole(&project, &board, x, y, diameter, stop_mask),
-        BoardCommands::Render { project, board, output, format } => {
+        BoardCommands::Render {
+            project,
+            board,
+            output,
+            format,
+        } => {
             let fmt = format.as_deref().unwrap_or_else(|| {
                 match output.extension().and_then(|e| e.to_str()) {
                     Some("html" | "htm") => "3d",
@@ -273,16 +288,14 @@ pub fn board_command(cmd: BoardCommands) -> Result<()> {
                 }
             });
             match fmt {
-                "3d" | "3D" | "html" => super::board_render_3d::render_board_3d(&project, &board, &output),
+                "3d" | "3D" | "html" => {
+                    super::board_render_3d::render_board_3d(&project, &board, &output)
+                }
                 _ => super::board_render::render_board(&project, &board, &output),
             }
         }
-        BoardCommands::Ratsnest { project, board } => {
-            board_ratsnest(&project, &board)
-        }
-        BoardCommands::Autoplace { project, board } => {
-            board_autoplace(&project, &board)
-        }
+        BoardCommands::Ratsnest { project, board } => board_ratsnest(&project, &board),
+        BoardCommands::Autoplace { project, board } => board_autoplace(&project, &board),
     }
 }
 
@@ -359,10 +372,9 @@ fn board_outline(
 fn parse_rect_outline(rect_str: &str) -> Result<Vec<Vertex>> {
     let parts: Vec<&str> = rect_str.split('x').collect();
     if parts.len() != 2 {
-        return Err(format!(
-            "Invalid --rect format '{rect_str}': expected 'WxH' (e.g. '50x30')"
-        )
-        .into());
+        return Err(
+            format!("Invalid --rect format '{rect_str}': expected 'WxH' (e.g. '50x30')").into(),
+        );
     }
     let w: f64 = parts[0]
         .trim()
@@ -378,11 +390,26 @@ fn parse_rect_outline(rect_str: &str) -> Result<Vec<Vertex>> {
     }
 
     Ok(vec![
-        Vertex { position: Position::new(0.0, 0.0), angle: Angle(0.0) },
-        Vertex { position: Position::new(w, 0.0), angle: Angle(0.0) },
-        Vertex { position: Position::new(w, h), angle: Angle(0.0) },
-        Vertex { position: Position::new(0.0, h), angle: Angle(0.0) },
-        Vertex { position: Position::new(0.0, 0.0), angle: Angle(0.0) },
+        Vertex {
+            position: Position::new(0.0, 0.0),
+            angle: Angle(0.0),
+        },
+        Vertex {
+            position: Position::new(w, 0.0),
+            angle: Angle(0.0),
+        },
+        Vertex {
+            position: Position::new(w, h),
+            angle: Angle(0.0),
+        },
+        Vertex {
+            position: Position::new(0.0, h),
+            angle: Angle(0.0),
+        },
+        Vertex {
+            position: Position::new(0.0, 0.0),
+            angle: Angle(0.0),
+        },
     ])
 }
 
@@ -530,11 +557,26 @@ fn board_init(project: &std::path::Path, name: &str) -> Result<()> {
             grab_area: false,
             lock: false,
             vertices: vec![
-                Vertex { position: Position::new(0.0, 0.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(100.0, 0.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(100.0, 100.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(0.0, 100.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(0.0, 0.0), angle: Angle(0.0) },
+                Vertex {
+                    position: Position::new(0.0, 0.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(100.0, 0.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(100.0, 100.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(0.0, 100.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(0.0, 0.0),
+                    angle: Angle(0.0),
+                },
             ],
         }],
         holes: vec![],
@@ -672,9 +714,7 @@ fn board_move(
         .devices
         .iter_mut()
         .find(|d| d.component == comp_uuid)
-        .ok_or_else(|| {
-            format!("Component '{designator}' is not placed on board '{board_name}'")
-        })?;
+        .ok_or_else(|| format!("Component '{designator}' is not placed on board '{board_name}'"))?;
 
     dev.position = Position::new(x, y);
     if let Some(r) = rotation {
@@ -737,10 +777,8 @@ fn resolve_pad_position(
         })?;
 
     // Load device → package → footprint to find the pad position
-    let dev: Device =
-        project_io::read_library_element(project, "devices", &board_dev.lib_device)?;
-    let pkg: Package =
-        project_io::read_library_element(project, "packages", &dev.package)?;
+    let dev: Device = project_io::read_library_element(project, "devices", &board_dev.lib_device)?;
+    let pkg: Package = project_io::read_library_element(project, "packages", &dev.package)?;
 
     let footprint = pkg
         .footprints
@@ -809,17 +847,14 @@ fn parse_trace_endpoint(
             .devices
             .iter()
             .find(|d| d.component == comp.uuid)
-            .ok_or_else(|| {
-                format!("Component '{designator}' is not placed on the board")
-            })?;
+            .ok_or_else(|| format!("Component '{designator}' is not placed on the board"))?;
 
         // Load device to get package UUID
         let dev: Device =
             project_io::read_library_element(project, "devices", &board_dev.lib_device)?;
 
         // Load package to find pad by name
-        let pkg: Package =
-            project_io::read_library_element(project, "packages", &dev.package)?;
+        let pkg: Package = project_io::read_library_element(project, "packages", &dev.package)?;
 
         // Find PackagePad by name
         let pkg_pad = pkg
@@ -840,9 +875,7 @@ fn parse_trace_endpoint(
             .iter()
             .find(|f| f.uuid == board_dev.lib_footprint)
             .or_else(|| pkg.footprints.first())
-            .ok_or_else(|| {
-                format!("No footprint in package '{}'", pkg.meta.name)
-            })?;
+            .ok_or_else(|| format!("No footprint in package '{}'", pkg.meta.name))?;
 
         // Find FootprintPad that references this PackagePad
         let fp_pad = footprint
@@ -867,9 +900,7 @@ fn parse_trace_endpoint(
         // "x,y" format — create a junction
         let coords: Vec<&str> = s.split(',').collect();
         if coords.len() != 2 {
-            return Err(
-                format!("Invalid endpoint format '{s}': expected 'x,y'").into()
-            );
+            return Err(format!("Invalid endpoint format '{s}': expected 'x,y'").into());
         }
         let x: f64 = coords[0]
             .trim()
@@ -889,10 +920,7 @@ fn parse_trace_endpoint(
         };
         Ok((endpoint, Some(junction)))
     } else {
-        Err(format!(
-            "Invalid endpoint format '{s}': expected 'Component:Pad' or 'x,y'"
-        )
-        .into())
+        Err(format!("Invalid endpoint format '{s}': expected 'Component:Pad' or 'x,y'").into())
     }
 }
 
@@ -904,9 +932,7 @@ fn resolve_endpoint_position(
     junctions: &[Junction],
 ) -> Result<Position> {
     match endpoint {
-        TraceEndpoint::Device { device, pad } => {
-            resolve_pad_position(board, project, device, pad)
-        }
+        TraceEndpoint::Device { device, pad } => resolve_pad_position(board, project, device, pad),
         TraceEndpoint::Junction { junction } => {
             // Search provided junctions first (includes newly created ones),
             // then fall back to existing net segment junctions on the board.
@@ -967,10 +993,8 @@ fn board_trace(
     let layer = parse_layer(layer_str)?;
 
     // 4. Parse endpoints
-    let (endpoint_from, junction_from) =
-        parse_trace_endpoint(from_str, &circuit, &board, project)?;
-    let (endpoint_to, junction_to) =
-        parse_trace_endpoint(to_str, &circuit, &board, project)?;
+    let (endpoint_from, junction_from) = parse_trace_endpoint(from_str, &circuit, &board, project)?;
+    let (endpoint_to, junction_to) = parse_trace_endpoint(to_str, &circuit, &board, project)?;
 
     // 5. Determine trace width (explicit override or design-rules default)
     let width = width_override.unwrap_or(board.design_rules.default_trace_width);
@@ -1020,17 +1044,14 @@ fn board_trace(
             let all_junctions = &board.net_segments[seg_idx].junctions;
             let pos_from =
                 resolve_endpoint_position(&endpoint_from, &board, project, all_junctions)?;
-            let pos_to =
-                resolve_endpoint_position(&endpoint_to, &board, project, all_junctions)?;
+            let pos_to = resolve_endpoint_position(&endpoint_to, &board, project, all_junctions)?;
 
             // Bend point: go horizontal (keep from.y) then vertical (to to.y)
             let bend = Position::new(pos_to.x, pos_from.y);
 
             // If endpoints are already colinear, a single segment suffices
             let eps = 1e-6;
-            if (pos_from.x - pos_to.x).abs() < eps
-                || (pos_from.y - pos_to.y).abs() < eps
-            {
+            if (pos_from.x - pos_to.x).abs() < eps || (pos_from.y - pos_to.y).abs() < eps {
                 let trace = Trace {
                     uuid: new_uuid(),
                     layer,
@@ -1309,10 +1330,7 @@ fn board_plane(
 ///
 /// For each net, identifies which pads should be connected, builds a
 /// connectivity graph from existing traces, and reports unconnected pad pairs.
-fn board_ratsnest(
-    project: &std::path::Path,
-    board_name: &str,
-) -> Result<()> {
+fn board_ratsnest(project: &std::path::Path, board_name: &str) -> Result<()> {
     project_io::ensure_project(project)?;
 
     let circuit = project_io::read_circuit(project)?;
@@ -1337,19 +1355,20 @@ fn board_ratsnest(
 
                     // Load device to get pad mappings (signal → package pad)
                     let dev: Device = match project_io::read_library_element(
-                        project, "devices", &board_dev.lib_device,
+                        project,
+                        "devices",
+                        &board_dev.lib_device,
                     ) {
                         Ok(d) => d,
                         Err(_) => continue,
                     };
 
                     // Load package to get pad names and footprint pads
-                    let pkg: Package = match project_io::read_library_element(
-                        project, "packages", &dev.package,
-                    ) {
-                        Ok(p) => p,
-                        Err(_) => continue,
-                    };
+                    let pkg: Package =
+                        match project_io::read_library_element(project, "packages", &dev.package) {
+                            Ok(p) => p,
+                            Err(_) => continue,
+                        };
 
                     let footprint = match pkg
                         .footprints
@@ -1366,14 +1385,11 @@ fn board_ratsnest(
                         if pm.signal == sc.signal {
                             // pm.pad is the PackagePad UUID
                             // Find the FootprintPad that references this PackagePad
-                            let fp_pad = match footprint
-                                .pads
-                                .iter()
-                                .find(|p| p.package_pad == pm.pad)
-                            {
-                                Some(p) => p,
-                                None => continue,
-                            };
+                            let fp_pad =
+                                match footprint.pads.iter().find(|p| p.package_pad == pm.pad) {
+                                    Some(p) => p,
+                                    None => continue,
+                                };
 
                             // Get human-readable pad name
                             let pad_name = pkg
@@ -1385,7 +1401,10 @@ fn board_ratsnest(
 
                             // Resolve absolute position on board
                             let position = match resolve_pad_position(
-                                &board, project, &comp.uuid, &fp_pad.uuid,
+                                &board,
+                                project,
+                                &comp.uuid,
+                                &fp_pad.uuid,
                             ) {
                                 Ok(pos) => pos,
                                 Err(_) => continue,
@@ -1430,85 +1449,35 @@ fn board_ratsnest(
             }
         }
 
-        // For each net segment belonging to this net, examine traces
+        // For each net segment belonging to this net, examine connectivity
+        // groups using the shared board graph helper from volt-core.
         for ns in &board.net_segments {
             if ns.net != Some(net.uuid) {
                 continue;
             }
 
-            // Build a mapping from trace endpoint identifier to pad index
-            // Trace endpoints can be Device{device,pad}, Junction, or Via.
-            // We care about Device endpoints that match our pad_entries.
-            for trace in &ns.traces {
-                let from_idx = endpoint_to_pad_index(&trace.from, &pad_entries);
-                let to_idx = endpoint_to_pad_index(&trace.to, &pad_entries);
+            let node_component: std::collections::HashMap<BoardNode, usize> =
+                board_connected_components(ns)
+                    .into_iter()
+                    .enumerate()
+                    .flat_map(|(component_idx, nodes)| {
+                        nodes.into_iter().map(move |node| (node, component_idx))
+                    })
+                    .collect();
 
-                match (from_idx, to_idx) {
-                    (Some(a), Some(b)) => {
-                        union(&mut parent, a, b);
-                    }
-                    _ => {
-                        // At least one endpoint is a junction/via. We need
-                        // to do transitive connectivity through junctions/vias.
-                        // We'll handle this below with a full graph approach.
-                    }
-                }
-            }
+            let pad_components: Vec<Option<usize>> = pad_entries
+                .iter()
+                .map(|pe| {
+                    node_component
+                        .get(&BoardNode::DevicePad(pe.component_uuid, pe.fp_pad_uuid))
+                        .copied()
+                })
+                .collect();
 
-            // For full connectivity through junctions and vias, build a
-            // graph of all endpoints and do BFS/union-find.
-            // Endpoint key: either "dev:<comp_uuid>:<pad_uuid>" or "junc:<uuid>" or "via:<uuid>"
-            let mut endpoint_ids: Vec<String> = Vec::new();
-            let mut ep_parent: Vec<usize> = Vec::new();
-
-            let get_or_insert = |id: String, endpoint_ids: &mut Vec<String>, ep_parent: &mut Vec<usize>| -> usize {
-                if let Some(pos) = endpoint_ids.iter().position(|x| *x == id) {
-                    pos
-                } else {
-                    let idx = endpoint_ids.len();
-                    endpoint_ids.push(id);
-                    ep_parent.push(idx);
-                    idx
-                }
-            };
-
-            fn ep_find(ep_parent: &mut Vec<usize>, mut x: usize) -> usize {
-                while ep_parent[x] != x {
-                    ep_parent[x] = ep_parent[ep_parent[x]];
-                    x = ep_parent[x];
-                }
-                x
-            }
-            fn ep_union(ep_parent: &mut Vec<usize>, a: usize, b: usize) {
-                let ra = ep_find(ep_parent, a);
-                let rb = ep_find(ep_parent, b);
-                if ra != rb {
-                    ep_parent[ra] = rb;
-                }
-            }
-
-            for trace in &ns.traces {
-                let from_id = endpoint_key(&trace.from);
-                let to_id = endpoint_key(&trace.to);
-                let fi = get_or_insert(from_id, &mut endpoint_ids, &mut ep_parent);
-                let ti = get_or_insert(to_id, &mut endpoint_ids, &mut ep_parent);
-                ep_union(&mut ep_parent, fi, ti);
-            }
-
-            // Now map pad_entries to their endpoint keys and union pad indices
-            // if they share the same connected component in the endpoint graph.
-            let mut pad_ep_indices: Vec<Option<usize>> = Vec::with_capacity(n);
-            for pe in &pad_entries {
-                let key = format!("dev:{}:{}", pe.component_uuid, pe.fp_pad_uuid);
-                let ep_idx = endpoint_ids.iter().position(|x| *x == key);
-                pad_ep_indices.push(ep_idx);
-            }
-
-            // Union pad_entries that share the same endpoint connected component
             for i in 0..n {
                 for j in (i + 1)..n {
-                    if let (Some(ei), Some(ej)) = (pad_ep_indices[i], pad_ep_indices[j]) {
-                        if ep_find(&mut ep_parent, ei) == ep_find(&mut ep_parent, ej) {
+                    if let (Some(ci), Some(cj)) = (pad_components[i], pad_components[j]) {
+                        if ci == cj {
                             union(&mut parent, i, j);
                         }
                     }
@@ -1615,27 +1584,6 @@ struct PadEntry {
     position: Position,
 }
 
-/// Convert a TraceEndpoint to a string key for union-find.
-fn endpoint_key(ep: &TraceEndpoint) -> String {
-    match ep {
-        TraceEndpoint::Device { device, pad } => format!("dev:{device}:{pad}"),
-        TraceEndpoint::Junction { junction } => format!("junc:{junction}"),
-        TraceEndpoint::Via { via } => format!("via:{via}"),
-    }
-}
-
-/// Find the pad_entries index that matches a TraceEndpoint::Device.
-fn endpoint_to_pad_index(ep: &TraceEndpoint, pad_entries: &[PadEntry]) -> Option<usize> {
-    match ep {
-        TraceEndpoint::Device { device, pad } => {
-            pad_entries.iter().position(|pe| {
-                pe.component_uuid == *device && pe.fp_pad_uuid == *pad
-            })
-        }
-        _ => None,
-    }
-}
-
 /// Parse a layer string into a [`Layer`] enum variant.
 fn parse_layer(s: &str) -> Result<Layer> {
     match s {
@@ -1664,7 +1612,8 @@ fn parse_connect_style(s: &str) -> Result<ConnectStyle> {
         "none" => Ok(ConnectStyle::None),
         other => Err(format!(
             "Unknown connect style '{other}': expected 'solid', 'thermal', or 'none'"
-        ).into()),
+        )
+        .into()),
     }
 }
 
@@ -1688,10 +1637,7 @@ fn parse_connect_style(s: &str) -> Result<ConnectStyle> {
 /// 7. Place passives near the IC they're most connected to.
 /// 8. Clamp everything within the board outline bounds.
 /// 9. Write board back and print JSON summary.
-fn board_autoplace(
-    project: &std::path::Path,
-    board_name: &str,
-) -> Result<()> {
+fn board_autoplace(project: &std::path::Path, board_name: &str) -> Result<()> {
     use std::collections::HashMap;
 
     project_io::ensure_project(project)?;
@@ -1743,9 +1689,8 @@ fn board_autoplace(
 
     for (idx, bd) in board.devices.iter().enumerate() {
         // Load package to get footprint geometry
-        let dev: Device = match project_io::read_library_element(
-            project, "devices", &bd.lib_device,
-        ) {
+        let dev: Device = match project_io::read_library_element(project, "devices", &bd.lib_device)
+        {
             Ok(d) => d,
             Err(_) => {
                 device_infos.push(DeviceInfo {
@@ -1760,9 +1705,8 @@ fn board_autoplace(
             }
         };
 
-        let pkg: Package = match project_io::read_library_element(
-            project, "packages", &dev.package,
-        ) {
+        let pkg: Package = match project_io::read_library_element(project, "packages", &dev.package)
+        {
             Ok(p) => p,
             Err(_) => {
                 device_infos.push(DeviceInfo {
@@ -1979,9 +1923,7 @@ fn board_autoplace(
 
     let overlaps = |cx: f64, cy: f64, hw: f64, hh: f64, rects: &[Rect]| -> bool {
         for r in rects {
-            if (cx - r.cx).abs() < hw + r.half_w
-                && (cy - r.cy).abs() < hh + r.half_h
-            {
+            if (cx - r.cx).abs() < hw + r.half_w && (cy - r.cy).abs() < hh + r.half_h {
                 return true;
             }
         }
@@ -2014,10 +1956,7 @@ fn board_autoplace(
 
         let (anchor_x, anchor_y) = match best_target {
             Some(t) => positions[t],
-            None => (
-                area_min_x + area_w / 2.0,
-                area_min_y + area_h / 2.0,
-            ),
+            None => (area_min_x + area_w / 2.0, area_min_y + area_h / 2.0),
         };
 
         // Try positions in a spiral around the anchor
@@ -2087,16 +2026,10 @@ fn board_autoplace(
         }
         let (x, y) = positions[di.index];
         // Clamp to board bounds as a safety net
-        let x = x
-            .max(brd_min_x + margin)
-            .min(brd_max_x - margin);
-        let y = y
-            .max(brd_min_y + margin)
-            .min(brd_max_y - margin);
-        board.devices[di.index].position = Position::new(
-            (x * 100.0).round() / 100.0,
-            (y * 100.0).round() / 100.0,
-        );
+        let x = x.max(brd_min_x + margin).min(brd_max_x - margin);
+        let y = y.max(brd_min_y + margin).min(brd_max_y - margin);
+        board.devices[di.index].position =
+            Position::new((x * 100.0).round() / 100.0, (y * 100.0).round() / 100.0);
         placed_count += 1;
     }
 
@@ -2175,7 +2108,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::*;
-    use crate::commands::component::{component_command, ComponentCommands};
+    use crate::commands::component::{ComponentCommands, component_command};
     use crate::commands::new_project;
     use crate::commands::project_io;
     use volt_core::library::*;
@@ -2241,7 +2174,8 @@ mod tests {
                 gates: vec![],
             }],
         };
-        project_io::write_library_element(project, "components", &component_uuid, &component).unwrap();
+        project_io::write_library_element(project, "components", &component_uuid, &component)
+            .unwrap();
 
         let package_uuid = new_uuid();
         let package = Package {
@@ -2260,8 +2194,14 @@ mod tests {
             grid_interval: 1.0,
             min_copper_clearance: 0.2,
             pads: vec![
-                PackagePad { uuid: pad_in, name: "1".into() },
-                PackagePad { uuid: pad_out, name: "2".into() },
+                PackagePad {
+                    uuid: pad_in,
+                    name: "1".into(),
+                },
+                PackagePad {
+                    uuid: pad_out,
+                    name: "2".into(),
+                },
             ],
             footprints: vec![Footprint {
                 uuid: new_uuid(),
@@ -2343,9 +2283,10 @@ mod tests {
     }
 
     #[test]
-    fn board_init_fails_without_assignment() {
+    fn board_init_uses_auto_assigned_unique_device() {
         let (_tmp, project) = create_temp_project();
-        let (component_uuid, variant_uuid, _device_uuid) = seed_library_component_with_device(&project);
+        let (component_uuid, variant_uuid, device_uuid) =
+            seed_library_component_with_device(&project);
 
         component_command(ComponentCommands::Add {
             project: project.clone(),
@@ -2359,15 +2300,23 @@ mod tests {
         })
         .unwrap();
 
-        let err = board_init(&project, "fab").unwrap_err();
-        assert!(err.to_string().contains("missing valid device assignment"));
-        assert!(!project.join("boards/fab.json").exists());
+        board_init(&project, "fab").unwrap();
+
+        let circuit = project_io::read_circuit(&project).unwrap();
+        let component = circuit.components.iter().find(|c| c.name == "U1").unwrap();
+        assert_eq!(component.device_assignments.len(), 1);
+        assert_eq!(component.device_assignments[0].device, device_uuid);
+
+        let board = project_io::read_board(&project, "fab").unwrap();
+        assert_eq!(board.devices.len(), 1);
+        assert_eq!(board.devices[0].lib_device, device_uuid);
     }
 
     #[test]
-    fn board_place_requires_assignment_for_new_board_device() {
+    fn board_place_uses_auto_assigned_device_for_new_board_device() {
         let (_tmp, project) = create_temp_project();
-        let (component_uuid, variant_uuid, _device_uuid) = seed_library_component_with_device(&project);
+        let (component_uuid, variant_uuid, device_uuid) =
+            seed_library_component_with_device(&project);
 
         component_command(ComponentCommands::Add {
             project: project.clone(),
@@ -2381,8 +2330,13 @@ mod tests {
         })
         .unwrap();
 
-        let err = board_place(&project, "default", "U1", 10.0, 15.0, 0.0, false, false).unwrap_err();
-        assert!(err.to_string().contains("component has no valid device assignment"));
+        board_init(&project, "fab").unwrap();
+        board_place(&project, "fab", "U1", 10.0, 15.0, 0.0, false, false).unwrap();
+
+        let board = project_io::read_board(&project, "fab").unwrap();
+        assert_eq!(board.devices.len(), 1);
+        assert_eq!(board.devices[0].lib_device, device_uuid);
+        assert_eq!(board.devices[0].position, Position::new(10.0, 15.0));
     }
 
     #[test]
@@ -2413,7 +2367,11 @@ mod tests {
 
         board_place(&project, "fab", "R1", 10.0, 15.0, 90.0, false, true).unwrap();
         let board = project_io::read_board(&project, "fab").unwrap();
-        let device = board.devices.iter().find(|d| d.component == component.uuid).unwrap();
+        let device = board
+            .devices
+            .iter()
+            .find(|d| d.component == component.uuid)
+            .unwrap();
         assert_eq!(device.position, Position::new(10.0, 15.0));
         assert_eq!(device.rotation, Angle(90.0));
         assert!(device.lock);

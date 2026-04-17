@@ -5,6 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use clap::Subcommand;
+use serde::de::DeserializeOwned;
 use uuid::Uuid;
 
 use volt_core::common::*;
@@ -54,6 +55,21 @@ pub enum ComponentCommands {
         #[arg(long)]
         device: Uuid,
     },
+    /// Create a library device by auto-mapping component signals to package pads by name/number
+    CreateDevice {
+        /// Path to project directory
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// Library component UUID or name
+        #[arg(long)]
+        component: String,
+        /// Library package UUID or name
+        #[arg(long)]
+        package: String,
+        /// Optional device name override
+        #[arg(long)]
+        name: Option<String>,
+    },
     /// List all component instances in the circuit
     List {
         /// Path to project directory
@@ -77,7 +93,9 @@ pub fn component_command(cmd: ComponentCommands) -> Result<()> {
             project_io::ensure_project(&project)?;
             let mut circuit = project_io::read_circuit(&project)?;
 
-            if simple_passive && (lib_component.is_some() || lib_variant.is_some() || device.is_some()) {
+            if simple_passive
+                && (lib_component.is_some() || lib_variant.is_some() || device.is_some())
+            {
                 return Err(
                     "--simple-passive cannot be combined with --lib-component, --lib-variant, or --device"
                         .into(),
@@ -89,30 +107,33 @@ pub fn component_command(cmd: ComponentCommands) -> Result<()> {
                 return Err(format!("Component '{name}' already exists").into());
             }
 
-            let (comp_uuid, variant_uuid, assigned_device_uuid) = if let (Some(cu), Some(vu)) =
-                (lib_component, lib_variant)
-            {
-                let comp: Component = project_io::read_library_element(&project, "components", &cu)?;
-                if !comp.variants.iter().any(|v| v.uuid == vu) {
+            let (comp_uuid, variant_uuid, assigned_device_uuid) =
+                if let (Some(cu), Some(vu)) = (lib_component, lib_variant) {
+                    let comp: Component =
+                        project_io::read_library_element(&project, "components", &cu)?;
+                    if !comp.variants.iter().any(|v| v.uuid == vu) {
+                        return Err(format!(
+                            "Variant '{}' not found in component '{}'",
+                            vu, comp.meta.name
+                        )
+                        .into());
+                    }
+                    (cu, vu, device)
+                } else if simple_passive {
+                    // Create a simple 2-pin passive component + symbol + package + device inline
+                    create_simple_passive(&project, &prefix)?
+                } else {
                     return Err(
-                        format!("Variant '{}' not found in component '{}'", vu, comp.meta.name).into(),
+                        "Must specify --lib-component and --lib-variant, or use --simple-passive"
+                            .into(),
                     );
-                }
-                (cu, vu, device)
-            } else if simple_passive {
-                // Create a simple 2-pin passive component + symbol + package + device inline
-                create_simple_passive(&project, &prefix)?
-            } else {
-                return Err(
-                    "Must specify --lib-component and --lib-variant, or use --simple-passive"
-                        .into(),
-                );
-            };
+                };
 
             let instance_uuid = new_uuid();
 
             // Look up the component to get its signals for connection stubs
-            let comp: Component = project_io::read_library_element(&project, "components", &comp_uuid)?;
+            let comp: Component =
+                project_io::read_library_element(&project, "components", &comp_uuid)?;
 
             let signal_connections: Vec<SignalConnection> = comp
                 .signals
@@ -123,6 +144,13 @@ pub fn component_command(cmd: ComponentCommands) -> Result<()> {
                 })
                 .collect();
 
+            let auto_assignment = if assigned_device_uuid.is_none() {
+                find_unique_component_device_assignment(&project, &circuit, &comp)?
+            } else {
+                None
+            };
+            let auto_assigned = auto_assignment.is_some();
+
             let device_assignments = match assigned_device_uuid {
                 Some(device_uuid) => vec![build_validated_device_assignment(
                     &project,
@@ -130,7 +158,7 @@ pub fn component_command(cmd: ComponentCommands) -> Result<()> {
                     &comp,
                     device_uuid,
                 )?],
-                None => vec![],
+                None => auto_assignment.into_iter().collect(),
             };
 
             let instance = ComponentInstance {
@@ -154,6 +182,7 @@ pub fn component_command(cmd: ComponentCommands) -> Result<()> {
                     "name": name,
                     "lib_component": comp_uuid.to_string(),
                     "lib_variant": variant_uuid.to_string(),
+                    "auto_assigned_device": auto_assigned,
                     "device_assignments": device_assignments.iter().map(|da| {
                         serde_json::json!({
                             "device": da.device.to_string(),
@@ -223,6 +252,30 @@ pub fn component_command(cmd: ComponentCommands) -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&result)?);
             Ok(())
         }
+        ComponentCommands::CreateDevice {
+            project,
+            component,
+            package,
+            name,
+        } => {
+            project_io::ensure_project(&project)?;
+            let created =
+                create_auto_mapped_device(&project, &component, &package, name.as_deref())?;
+            let result = serde_json::json!({
+                "status": "ok",
+                "action": if created.created { "created" } else { "existing" },
+                "device": {
+                    "uuid": created.device.meta.uuid.to_string(),
+                    "name": created.device.meta.name,
+                    "component": created.device.component.to_string(),
+                    "package": created.device.package.to_string(),
+                    "pad_mapping_count": created.device.pad_mappings.len(),
+                    "mapped_signals": created.mapped_signals,
+                }
+            });
+            println!("{}", serde_json::to_string_pretty(&result)?);
+            Ok(())
+        }
         ComponentCommands::List { project } => {
             project_io::ensure_project(&project)?;
             let circuit = project_io::read_circuit(&project)?;
@@ -268,6 +321,212 @@ fn default_assembly_variant_uuid(circuit: &Circuit) -> Result<Uuid> {
         .first()
         .map(|v| v.uuid)
         .ok_or_else(|| "Project has no assembly variants".into())
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct CreatedDevice {
+    pub device: Device,
+    pub created: bool,
+    pub mapped_signals: Vec<String>,
+}
+
+pub(crate) fn create_auto_mapped_device(
+    project: &Path,
+    component_selector: &str,
+    package_selector: &str,
+    device_name: Option<&str>,
+) -> Result<CreatedDevice> {
+    let component = resolve_library_component(project, component_selector)?;
+    let package = resolve_library_package(project, package_selector)?;
+    let pad_mappings = build_auto_pad_mappings(&component, &package)?;
+
+    if let Some(existing) = read_library_elements::<Device>(project, "devices")?
+        .into_iter()
+        .find(|device| {
+            device.component == component.meta.uuid
+                && device.package == package.meta.uuid
+                && device_mappings_match(&device.pad_mappings, &pad_mappings)
+        })
+    {
+        return Ok(CreatedDevice {
+            mapped_signals: mapped_signal_names(&component, &pad_mappings),
+            device: existing,
+            created: false,
+        });
+    }
+
+    let device = Device {
+        meta: LibraryMeta {
+            uuid: new_uuid(),
+            name: device_name
+                .map(ToOwned::to_owned)
+                .unwrap_or_else(|| format!("{} / {}", component.meta.name, package.meta.name)),
+            description: format!("{} in {}", component.meta.name, package.meta.name),
+            keywords: String::new(),
+            author: "volt-eda".into(),
+            version: "0.1".into(),
+            created: chrono::Utc::now(),
+            deprecated: false,
+            category: None,
+        },
+        component: component.meta.uuid,
+        package: package.meta.uuid,
+        pad_mappings: pad_mappings.clone(),
+        parts: vec![],
+    };
+    project_io::write_library_element(project, "devices", &device.meta.uuid, &device)?;
+
+    Ok(CreatedDevice {
+        mapped_signals: mapped_signal_names(&component, &pad_mappings),
+        device,
+        created: true,
+    })
+}
+
+fn find_unique_component_device_assignment(
+    project: &Path,
+    circuit: &Circuit,
+    lib_component: &Component,
+) -> Result<Option<DeviceAssignment>> {
+    let mut matches = read_library_elements::<Device>(project, "devices")?
+        .into_iter()
+        .filter(|device| device.component == lib_component.meta.uuid);
+    let first = matches.next().map(|device| device.meta.uuid);
+    if matches.next().is_some() {
+        return Ok(None);
+    }
+    match first {
+        Some(device_uuid) => {
+            Ok(
+                build_validated_device_assignment(project, circuit, lib_component, device_uuid)
+                    .ok(),
+            )
+        }
+        None => Ok(None),
+    }
+}
+
+fn read_library_elements<T: DeserializeOwned>(project: &Path, subdir: &str) -> Result<Vec<T>> {
+    let dir = project.join("library").join(subdir);
+    if !dir.exists() {
+        return Ok(vec![]);
+    }
+
+    let mut items = Vec::new();
+    for entry in fs::read_dir(&dir)? {
+        let path = entry?.path();
+        if path.extension().is_some_and(|ext| ext == "json") {
+            items.push(project_io::read_json::<T>(&path)?);
+        }
+    }
+    Ok(items)
+}
+
+fn resolve_library_component(project: &Path, selector: &str) -> Result<Component> {
+    resolve_library_element(project, "components", selector, |component: &Component| {
+        component.meta.name.as_str()
+    })
+}
+
+fn resolve_library_package(project: &Path, selector: &str) -> Result<Package> {
+    resolve_library_element(project, "packages", selector, |package: &Package| {
+        package.meta.name.as_str()
+    })
+}
+
+fn resolve_library_element<T, F>(project: &Path, subdir: &str, selector: &str, name: F) -> Result<T>
+where
+    T: DeserializeOwned,
+    F: Fn(&T) -> &str,
+{
+    if let Ok(uuid) = selector.parse::<Uuid>() {
+        return project_io::read_library_element(project, subdir, &uuid);
+    }
+
+    read_library_elements::<T>(project, subdir)?
+        .into_iter()
+        .find(|item| name(item) == selector)
+        .ok_or_else(|| format!("Library {} '{}' not found", subdir, selector).into())
+}
+
+fn build_auto_pad_mappings(
+    component: &Component,
+    package: &Package,
+) -> Result<Vec<DevicePadMapping>> {
+    let mut package_pad_by_key: HashMap<String, &PackagePad> = HashMap::new();
+    for pad in &package.pads {
+        let key = normalized_pin_key(&pad.name);
+        if package_pad_by_key.insert(key.clone(), pad).is_some() {
+            return Err(format!(
+                "Package '{}' has duplicate pad identifier '{}'",
+                package.meta.name, pad.name
+            )
+            .into());
+        }
+    }
+
+    let mut mappings = Vec::new();
+    let mut missing_required = Vec::new();
+    for signal in &component.signals {
+        let key = normalized_pin_key(&signal.name);
+        if let Some(pad) = package_pad_by_key.get(&key) {
+            mappings.push(DevicePadMapping {
+                pad: pad.uuid,
+                signal: signal.uuid,
+                optional: false,
+            });
+        } else if signal.required {
+            missing_required.push(signal.name.clone());
+        }
+    }
+
+    if !missing_required.is_empty() {
+        return Err(format!(
+            "Cannot auto-map device '{} -> {}': missing package pads for required signals: {}",
+            component.meta.name,
+            package.meta.name,
+            missing_required.join(", ")
+        )
+        .into());
+    }
+
+    if mappings.is_empty() {
+        return Err(format!(
+            "Cannot auto-map device '{} -> {}': no signal names matched package pads",
+            component.meta.name, package.meta.name
+        )
+        .into());
+    }
+
+    Ok(mappings)
+}
+
+fn mapped_signal_names(component: &Component, pad_mappings: &[DevicePadMapping]) -> Vec<String> {
+    let signal_names: HashMap<Uuid, &str> = component
+        .signals
+        .iter()
+        .map(|signal| (signal.uuid, signal.name.as_str()))
+        .collect();
+    pad_mappings
+        .iter()
+        .filter_map(|mapping| signal_names.get(&mapping.signal).copied())
+        .map(ToOwned::to_owned)
+        .collect()
+}
+
+fn device_mappings_match(existing: &[DevicePadMapping], expected: &[DevicePadMapping]) -> bool {
+    existing.len() == expected.len()
+        && expected.iter().all(|mapping| {
+            existing.iter().any(|candidate| {
+                candidate.pad == mapping.pad
+                    && candidate.signal == mapping.signal
+                    && candidate.optional == mapping.optional
+            })
+        })
+}
+
+fn normalized_pin_key(name: &str) -> String {
+    name.trim().to_ascii_uppercase()
 }
 
 fn build_validated_device_assignment(
@@ -376,7 +635,11 @@ fn find_board_with_component(project: &Path, component_uuid: Uuid) -> Result<Opt
             continue;
         }
         let board: Board = project_io::read_json(&path)?;
-        if board.devices.iter().any(|dev| dev.component == component_uuid) {
+        if board
+            .devices
+            .iter()
+            .any(|dev| dev.component == component_uuid)
+        {
             return Ok(Some(board.name));
         }
     }
@@ -387,7 +650,10 @@ fn find_board_with_component(project: &Path, component_uuid: Uuid) -> Result<Opt
 /// Create a simple 2-pin passive component (resistor/capacitor style) with
 /// symbol, component, package, and device in the project library.
 /// Returns (component_uuid, variant_uuid, device_uuid).
-fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uuid, Uuid, Option<Uuid>)> {
+fn create_simple_passive(
+    project: &std::path::Path,
+    prefix: &str,
+) -> Result<(Uuid, Uuid, Option<Uuid>)> {
     let now = chrono::Utc::now();
 
     // Symbol: simple 2-pin box
@@ -444,11 +710,26 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
             fill: false,
             grab_area: true,
             vertices: vec![
-                Vertex { position: Position::new(-3.08, -1.016), angle: Angle(0.0) },
-                Vertex { position: Position::new(-3.08, 1.016), angle: Angle(0.0) },
-                Vertex { position: Position::new(3.08, 1.016), angle: Angle(0.0) },
-                Vertex { position: Position::new(3.08, -1.016), angle: Angle(0.0) },
-                Vertex { position: Position::new(-3.08, -1.016), angle: Angle(0.0) },
+                Vertex {
+                    position: Position::new(-3.08, -1.016),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(-3.08, 1.016),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(3.08, 1.016),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(3.08, -1.016),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(-3.08, -1.016),
+                    angle: Angle(0.0),
+                },
             ],
         }],
         texts: vec![
@@ -459,7 +740,10 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
                 position: Position::new(-3.08, 1.016),
                 rotation: Angle(0.0),
                 height: 2.54,
-                align: Alignment { h: HAlign::Left, v: VAlign::Bottom },
+                align: Alignment {
+                    h: HAlign::Left,
+                    v: VAlign::Bottom,
+                },
                 lock: false,
             },
             SymbolText {
@@ -469,7 +753,10 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
                 position: Position::new(-3.08, -1.016),
                 rotation: Angle(0.0),
                 height: 2.54,
-                align: Alignment { h: HAlign::Left, v: VAlign::Top },
+                align: Alignment {
+                    h: HAlign::Left,
+                    v: VAlign::Top,
+                },
                 lock: false,
             },
         ],
@@ -532,8 +819,14 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
                 required: true,
                 suffix: String::new(),
                 pin_mappings: vec![
-                    PinMapping { pin: pin1_uuid, signal: sig1_uuid },
-                    PinMapping { pin: pin2_uuid, signal: sig2_uuid },
+                    PinMapping {
+                        pin: pin1_uuid,
+                        signal: sig1_uuid,
+                    },
+                    PinMapping {
+                        pin: pin2_uuid,
+                        signal: sig2_uuid,
+                    },
                 ],
             }],
         }],
@@ -559,8 +852,14 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
         grid_interval: 2.54,
         min_copper_clearance: 0.2,
         pads: vec![
-            PackagePad { uuid: pad1_uuid, name: "1".into() },
-            PackagePad { uuid: pad2_uuid, name: "2".into() },
+            PackagePad {
+                uuid: pad1_uuid,
+                name: "1".into(),
+            },
+            PackagePad {
+                uuid: pad2_uuid,
+                name: "2".into(),
+            },
         ],
         footprints: vec![Footprint {
             uuid: new_uuid(),
@@ -611,11 +910,26 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
                     fill: false,
                     grab_area: false,
                     vertices: vec![
-                        Vertex { position: Position::new(-1.0, -0.65), angle: Angle(0.0) },
-                        Vertex { position: Position::new(1.0, -0.65), angle: Angle(0.0) },
-                        Vertex { position: Position::new(1.0, 0.65), angle: Angle(0.0) },
-                        Vertex { position: Position::new(-1.0, 0.65), angle: Angle(0.0) },
-                        Vertex { position: Position::new(-1.0, -0.65), angle: Angle(0.0) },
+                        Vertex {
+                            position: Position::new(-1.0, -0.65),
+                            angle: Angle(0.0),
+                        },
+                        Vertex {
+                            position: Position::new(1.0, -0.65),
+                            angle: Angle(0.0),
+                        },
+                        Vertex {
+                            position: Position::new(1.0, 0.65),
+                            angle: Angle(0.0),
+                        },
+                        Vertex {
+                            position: Position::new(-1.0, 0.65),
+                            angle: Angle(0.0),
+                        },
+                        Vertex {
+                            position: Position::new(-1.0, -0.65),
+                            angle: Angle(0.0),
+                        },
                     ],
                 },
                 // Courtyard
@@ -626,11 +940,26 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
                     fill: false,
                     grab_area: false,
                     vertices: vec![
-                        Vertex { position: Position::new(-1.68, -0.95), angle: Angle(0.0) },
-                        Vertex { position: Position::new(1.68, -0.95), angle: Angle(0.0) },
-                        Vertex { position: Position::new(1.68, 0.95), angle: Angle(0.0) },
-                        Vertex { position: Position::new(-1.68, 0.95), angle: Angle(0.0) },
-                        Vertex { position: Position::new(-1.68, -0.95), angle: Angle(0.0) },
+                        Vertex {
+                            position: Position::new(-1.68, -0.95),
+                            angle: Angle(0.0),
+                        },
+                        Vertex {
+                            position: Position::new(1.68, -0.95),
+                            angle: Angle(0.0),
+                        },
+                        Vertex {
+                            position: Position::new(1.68, 0.95),
+                            angle: Angle(0.0),
+                        },
+                        Vertex {
+                            position: Position::new(-1.68, 0.95),
+                            angle: Angle(0.0),
+                        },
+                        Vertex {
+                            position: Position::new(-1.68, -0.95),
+                            angle: Angle(0.0),
+                        },
                     ],
                 },
             ],
@@ -645,7 +974,10 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
                     stroke_width: 0.15,
                     letter_spacing: None,
                     line_spacing: None,
-                    align: Alignment { h: HAlign::Center, v: VAlign::Bottom },
+                    align: Alignment {
+                        h: HAlign::Center,
+                        v: VAlign::Bottom,
+                    },
                     mirror: false,
                     auto_rotate: true,
                     lock: false,
@@ -660,7 +992,10 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
                     stroke_width: 0.15,
                     letter_spacing: None,
                     line_spacing: None,
-                    align: Alignment { h: HAlign::Center, v: VAlign::Top },
+                    align: Alignment {
+                        h: HAlign::Center,
+                        v: VAlign::Top,
+                    },
                     mirror: false,
                     auto_rotate: true,
                     lock: false,
@@ -686,8 +1021,16 @@ fn create_simple_passive(project: &std::path::Path, prefix: &str) -> Result<(Uui
         component: comp.meta.uuid,
         package: pkg.meta.uuid,
         pad_mappings: vec![
-            DevicePadMapping { pad: pad1_uuid, signal: sig1_uuid, optional: false },
-            DevicePadMapping { pad: pad2_uuid, signal: sig2_uuid, optional: false },
+            DevicePadMapping {
+                pad: pad1_uuid,
+                signal: sig1_uuid,
+                optional: false,
+            },
+            DevicePadMapping {
+                pad: pad2_uuid,
+                signal: sig2_uuid,
+                optional: false,
+            },
         ],
         parts: vec![],
     };
@@ -712,7 +1055,10 @@ mod tests {
         (dir, project)
     }
 
-    fn seed_library_component_with_device(project: &Path, missing_required_mapping: bool) -> (Uuid, Uuid, Uuid) {
+    fn seed_library_component_with_device(
+        project: &Path,
+        missing_required_mapping: bool,
+    ) -> (Uuid, Uuid, Uuid) {
         let now = chrono::Utc::now();
         let signal_in = new_uuid();
         let signal_out = new_uuid();
@@ -767,7 +1113,8 @@ mod tests {
                 gates: vec![],
             }],
         };
-        project_io::write_library_element(project, "components", &component_uuid, &component).unwrap();
+        project_io::write_library_element(project, "components", &component_uuid, &component)
+            .unwrap();
 
         let package_uuid = new_uuid();
         let package = Package {
@@ -786,8 +1133,14 @@ mod tests {
             grid_interval: 1.0,
             min_copper_clearance: 0.2,
             pads: vec![
-                PackagePad { uuid: pad_in, name: "1".into() },
-                PackagePad { uuid: pad_out, name: "2".into() },
+                PackagePad {
+                    uuid: pad_in,
+                    name: "1".into(),
+                },
+                PackagePad {
+                    uuid: pad_out,
+                    name: "2".into(),
+                },
             ],
             footprints: vec![Footprint {
                 uuid: footprint_uuid,
@@ -870,6 +1223,138 @@ mod tests {
         (component_uuid, variant_uuid, device_uuid)
     }
 
+    fn seed_library_component_with_package_only(project: &Path) -> (Uuid, Uuid, Uuid) {
+        let now = chrono::Utc::now();
+        let signal_in = new_uuid();
+        let signal_out = new_uuid();
+        let variant_uuid = new_uuid();
+        let component_uuid = new_uuid();
+        let pad_in = new_uuid();
+        let pad_out = new_uuid();
+        let footprint_uuid = new_uuid();
+        let package_uuid = new_uuid();
+
+        let component = Component {
+            meta: LibraryMeta {
+                uuid: component_uuid,
+                name: "Test IC".into(),
+                description: String::new(),
+                keywords: String::new(),
+                author: "test".into(),
+                version: "0.1".into(),
+                created: now,
+                deprecated: false,
+                category: None,
+            },
+            prefix: "U".into(),
+            default_value: String::new(),
+            schematic_only: false,
+            attributes: vec![],
+            signals: vec![
+                Signal {
+                    uuid: signal_in,
+                    name: "1".into(),
+                    role: SignalRole::Input,
+                    required: true,
+                    negated: false,
+                    clock: false,
+                    forced_net: String::new(),
+                },
+                Signal {
+                    uuid: signal_out,
+                    name: "2".into(),
+                    role: SignalRole::Output,
+                    required: true,
+                    negated: false,
+                    clock: false,
+                    forced_net: String::new(),
+                },
+            ],
+            variants: vec![ComponentVariant {
+                uuid: variant_uuid,
+                norm: String::new(),
+                name: "default".into(),
+                description: String::new(),
+                gates: vec![],
+            }],
+        };
+        project_io::write_library_element(project, "components", &component_uuid, &component)
+            .unwrap();
+
+        let package = Package {
+            meta: LibraryMeta {
+                uuid: package_uuid,
+                name: "SOIC-8".into(),
+                description: String::new(),
+                keywords: String::new(),
+                author: "test".into(),
+                version: "0.1".into(),
+                created: now,
+                deprecated: false,
+                category: None,
+            },
+            assembly_type: AssemblyType::Smt,
+            grid_interval: 1.0,
+            min_copper_clearance: 0.2,
+            pads: vec![
+                PackagePad {
+                    uuid: pad_in,
+                    name: "1".into(),
+                },
+                PackagePad {
+                    uuid: pad_out,
+                    name: "2".into(),
+                },
+            ],
+            footprints: vec![Footprint {
+                uuid: footprint_uuid,
+                name: "default".into(),
+                description: String::new(),
+                model_position: Position3D::default(),
+                model_rotation: Position3D::default(),
+                pads: vec![
+                    FootprintPad {
+                        uuid: new_uuid(),
+                        package_pad: pad_in,
+                        side: PadSide::Top,
+                        shape: PadShape::RoundRect,
+                        position: Position::new(-1.0, 0.0),
+                        rotation: Angle(0.0),
+                        width: 1.0,
+                        height: 1.0,
+                        radius: 0.0,
+                        stop_mask: StopMaskConfig::Auto,
+                        solder_paste: SolderPasteConfig::Auto,
+                        clearance: 0.0,
+                        function: PadFunction::Standard,
+                        holes: vec![],
+                    },
+                    FootprintPad {
+                        uuid: new_uuid(),
+                        package_pad: pad_out,
+                        side: PadSide::Top,
+                        shape: PadShape::RoundRect,
+                        position: Position::new(1.0, 0.0),
+                        rotation: Angle(0.0),
+                        width: 1.0,
+                        height: 1.0,
+                        radius: 0.0,
+                        stop_mask: StopMaskConfig::Auto,
+                        solder_paste: SolderPasteConfig::Auto,
+                        clearance: 0.0,
+                        function: PadFunction::Standard,
+                        holes: vec![],
+                    },
+                ],
+                polygons: vec![],
+                texts: vec![],
+            }],
+        };
+        project_io::write_library_element(project, "packages", &package_uuid, &package).unwrap();
+
+        (component_uuid, variant_uuid, package_uuid)
+    }
+
     #[test]
     fn component_add_with_device_writes_assignment() {
         let (_tmp, project) = create_temp_project();
@@ -918,7 +1403,64 @@ mod tests {
         let component = circuit.components.iter().find(|c| c.name == "R1").unwrap();
         assert_eq!(component.device_assignments.len(), 1);
         let device_uuid = component.device_assignments[0].device;
-        let _: Device = project_io::read_library_element(&project, "devices", &device_uuid).unwrap();
+        let _: Device =
+            project_io::read_library_element(&project, "devices", &device_uuid).unwrap();
+    }
+
+    #[test]
+    fn create_device_auto_maps_component_signals_to_package_pads() {
+        let (_tmp, project) = create_temp_project();
+        let (component_uuid, _variant_uuid, package_uuid) =
+            seed_library_component_with_package_only(&project);
+
+        component_command(ComponentCommands::CreateDevice {
+            project: project.clone(),
+            component: component_uuid.to_string(),
+            package: package_uuid.to_string(),
+            name: None,
+        })
+        .unwrap();
+
+        let devices = read_library_elements::<Device>(&project, "devices").unwrap();
+        assert_eq!(devices.len(), 1);
+        assert_eq!(devices[0].component, component_uuid);
+        assert_eq!(devices[0].package, package_uuid);
+        assert_eq!(devices[0].pad_mappings.len(), 2);
+
+        component_command(ComponentCommands::CreateDevice {
+            project: project.clone(),
+            component: component_uuid.to_string(),
+            package: package_uuid.to_string(),
+            name: None,
+        })
+        .unwrap();
+
+        let devices = read_library_elements::<Device>(&project, "devices").unwrap();
+        assert_eq!(devices.len(), 1);
+    }
+
+    #[test]
+    fn add_auto_assigns_unique_existing_device() {
+        let (_tmp, project) = create_temp_project();
+        let (component_uuid, variant_uuid, device_uuid) =
+            seed_library_component_with_device(&project, false);
+
+        component_command(ComponentCommands::Add {
+            project: project.clone(),
+            name: "U1".into(),
+            value: String::new(),
+            lib_component: Some(component_uuid),
+            lib_variant: Some(variant_uuid),
+            device: None,
+            simple_passive: false,
+            prefix: "U".into(),
+        })
+        .unwrap();
+
+        let circuit = project_io::read_circuit(&project).unwrap();
+        let component = circuit.components.iter().find(|c| c.name == "U1").unwrap();
+        assert_eq!(component.device_assignments.len(), 1);
+        assert_eq!(component.device_assignments[0].device, device_uuid);
     }
 
     #[test]
@@ -976,7 +1518,10 @@ mod tests {
             device: bad_device_uuid,
         })
         .unwrap_err();
-        assert!(err.to_string().contains("missing mappings for required signals"));
+        assert!(
+            err.to_string()
+                .contains("missing mappings for required signals")
+        );
 
         let circuit = project_io::read_circuit(&project).unwrap();
         let component = circuit.components.iter().find(|c| c.name == "U1").unwrap();

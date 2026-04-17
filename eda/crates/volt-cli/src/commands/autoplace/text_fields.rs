@@ -57,10 +57,8 @@ pub fn build_symbol_texts(
             } else {
                 // Normal: use rotated template offset.
                 let rot_rad = rotation.to_radians();
-                let tx = template.position.x * rot_rad.cos()
-                    - template.position.y * rot_rad.sin();
-                let ty = template.position.x * rot_rad.sin()
-                    + template.position.y * rot_rad.cos();
+                let tx = template.position.x * rot_rad.cos() - template.position.y * rot_rad.sin();
+                let ty = template.position.x * rot_rad.sin() + template.position.y * rot_rad.cos();
                 (
                     Position::new(px + tx, py + ty),
                     Angle(template.rotation.0 + rotation),
@@ -152,9 +150,10 @@ pub fn resolve_collisions(schematic: &mut Schematic, comp_boxes: &[BBox]) {
         .iter()
         .enumerate()
         .flat_map(|(si, sym)| {
-            sym.texts.iter().enumerate().map(move |(ti, t)| {
-                (si, ti, estimate_text_bbox(t))
-            })
+            sym.texts
+                .iter()
+                .enumerate()
+                .map(move |(ti, t)| (si, ti, estimate_text_bbox(t)))
         })
         .collect();
 
@@ -192,7 +191,7 @@ pub fn estimate_text_bbox(text: &SchematicText) -> BBox {
     // representative character counts.
     let display = text
         .value
-        .replace("{{NAME}}", "UXX")   // 3 chars
+        .replace("{{NAME}}", "UXX") // 3 chars
         .replace("{{VALUE}}", "100k"); // 4 chars
     let char_count = display.chars().count().max(1);
 

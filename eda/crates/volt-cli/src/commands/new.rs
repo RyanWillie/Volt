@@ -59,9 +59,12 @@ pub fn new_project(name: &str, output: Option<&Path>) -> Result<()> {
             min_copper_copper_clearance: 0.0,
             min_copper_width: 0.0,
             min_via_drill_diameter: 0.0,
+            diff_pair_gap: None,
+            diff_pair_max_length_delta: None,
         }],
         nets: vec![],
         components: vec![],
+        differential_pairs: vec![],
     };
     write_json(&dir.join("circuit.json"), &circuit)?;
 
@@ -75,6 +78,13 @@ pub fn new_project(name: &str, output: Option<&Path>) -> Result<()> {
         },
         symbols: vec![],
         net_segments: vec![],
+        sheet_refs: vec![],
+        hierarchical_ports: vec![],
+        power_ports: vec![],
+        power_flags: vec![],
+        bus_segments: vec![],
+        bus_entries: vec![],
+        bus_aliases: vec![],
     };
     write_json(&dir.join("schematics/main.json"), &schematic)?;
 
@@ -105,11 +115,26 @@ pub fn new_project(name: &str, output: Option<&Path>) -> Result<()> {
             grab_area: false,
             lock: false,
             vertices: vec![
-                Vertex { position: Position::new(0.0, 0.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(100.0, 0.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(100.0, 100.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(0.0, 100.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(0.0, 0.0), angle: Angle(0.0) },
+                Vertex {
+                    position: Position::new(0.0, 0.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(100.0, 0.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(100.0, 100.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(0.0, 100.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(0.0, 0.0),
+                    angle: Angle(0.0),
+                },
             ],
         }],
         holes: vec![],

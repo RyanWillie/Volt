@@ -6,11 +6,11 @@
 //! components (bypass caps, pull-ups, pull-downs) near their parent ICs and resolves
 //! any bounding-box overlaps.
 
+use super::types::*;
 use std::collections::HashMap;
 use uuid::Uuid;
 use volt_core::library::{Component, Symbol};
 use volt_core::project::*;
-use super::types::*;
 
 // Explicit import so autoplace `NetClass` (enum) wins over project `NetClass` (struct).
 use super::types::NetClass;
@@ -27,7 +27,10 @@ fn lookup_symbol_for_instance<'a>(
     lib_syms: &'a HashMap<Uuid, Symbol>,
 ) -> Option<&'a Symbol> {
     let lib_comp = lib_comps.get(&inst.lib_component)?;
-    let variant = lib_comp.variants.iter().find(|v| v.uuid == inst.lib_variant)?;
+    let variant = lib_comp
+        .variants
+        .iter()
+        .find(|v| v.uuid == inst.lib_variant)?;
     let gate = variant.gates.first()?;
     lib_syms.get(&gate.symbol)
 }
@@ -109,10 +112,7 @@ fn infer_component_role(
 }
 
 /// Max half-width among a set of components. Returns 0.0 for an empty slice.
-fn max_half_width(
-    uuids: &[Uuid],
-    sym_extents: &HashMap<Uuid, (f64, f64)>,
-) -> f64 {
+fn max_half_width(uuids: &[Uuid], sym_extents: &HashMap<Uuid, (f64, f64)>) -> f64 {
     let default = (2.0, 2.0);
     uuids
         .iter()
@@ -240,13 +240,8 @@ pub fn assign_coordinates(
         let mut y: f64 = 0.0;
         for (row_idx, &comp_uuid) in column.iter().enumerate() {
             // Compute rotation first so we can swap extents if needed.
-            let profile = pin_profiles
-                .get(&comp_uuid)
-                .cloned()
-                .unwrap_or_default();
-            let role = infer_component_role(
-                &comp_uuid, circuit, net_classes, flow_dag, &profile,
-            );
+            let profile = pin_profiles.get(&comp_uuid).cloned().unwrap_or_default();
+            let role = infer_component_role(&comp_uuid, circuit, net_classes, flow_dag, &profile);
             let rotation = choose_rotation(comp_uuid, role, &profile, flow_dag, &placements);
 
             // Swap half-extents when component is rotated 90°/270°.
@@ -259,8 +254,12 @@ pub fn assign_coordinates(
 
             if row_idx > 0 {
                 let prev_uuid = column[row_idx - 1];
-                let prev_rotation = placements.get(&prev_uuid).map(|p| p.rotation).unwrap_or(0.0);
-                let (prev_raw_hw, prev_raw_hh) = *sym_extents.get(&prev_uuid).unwrap_or(&default_extent);
+                let prev_rotation = placements
+                    .get(&prev_uuid)
+                    .map(|p| p.rotation)
+                    .unwrap_or(0.0);
+                let (prev_raw_hw, prev_raw_hh) =
+                    *sym_extents.get(&prev_uuid).unwrap_or(&default_extent);
                 let (_, prev_hh) = if prev_rotation == 90.0 || prev_rotation == 270.0 {
                     (prev_raw_hh, prev_raw_hw)
                 } else {
@@ -504,8 +503,7 @@ pub fn resolve_overlaps(
                 let b_bottom = pb.gy + hhb + padding;
 
                 // No overlap?
-                if a_left >= b_right || a_right <= b_left
-                    || a_top >= b_bottom || a_bottom <= b_top
+                if a_left >= b_right || a_right <= b_left || a_top >= b_bottom || a_bottom <= b_top
                 {
                     continue;
                 }

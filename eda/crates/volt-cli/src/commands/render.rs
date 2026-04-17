@@ -16,23 +16,16 @@ use volt_core::project::*;
 use super::project_io::{self, Result};
 
 /// Render a schematic to SVG file.
-pub fn render_schematic(
-    project: &Path,
-    sch_name: &str,
-    output: &Path,
-) -> Result<()> {
+pub fn render_schematic(project: &Path, sch_name: &str, output: &Path) -> Result<()> {
     project_io::ensure_project(project)?;
     let circuit = project_io::read_circuit(project)?;
     let schematic = project_io::read_schematic(project, sch_name)?;
 
     // Build lookup maps
-    let comp_map: HashMap<Uuid, &ComponentInstance> = circuit.components.iter()
-        .map(|c| (c.uuid, c))
-        .collect();
+    let comp_map: HashMap<Uuid, &ComponentInstance> =
+        circuit.components.iter().map(|c| (c.uuid, c)).collect();
 
-    let net_map: HashMap<Uuid, &Net> = circuit.nets.iter()
-        .map(|n| (n.uuid, n))
-        .collect();
+    let net_map: HashMap<Uuid, &Net> = circuit.nets.iter().map(|n| (n.uuid, n)).collect();
 
     // Load all referenced symbols and components
     let mut sym_cache: HashMap<Uuid, Symbol> = HashMap::new();
@@ -42,14 +35,24 @@ pub fn render_schematic(
         if let Some(comp_inst) = comp_map.get(&sch_sym.component) {
             if !comp_cache.contains_key(&comp_inst.lib_component) {
                 if let Ok(lib_comp) = project_io::read_library_element::<Component>(
-                    project, "components", &comp_inst.lib_component,
+                    project,
+                    "components",
+                    &comp_inst.lib_component,
                 ) {
                     // Find the gate's symbol UUID
-                    if let Some(variant) = lib_comp.variants.iter().find(|v| v.uuid == comp_inst.lib_variant) {
-                        if let Some(gate) = variant.gates.iter().find(|g| g.uuid == sch_sym.lib_gate) {
+                    if let Some(variant) = lib_comp
+                        .variants
+                        .iter()
+                        .find(|v| v.uuid == comp_inst.lib_variant)
+                    {
+                        if let Some(gate) =
+                            variant.gates.iter().find(|g| g.uuid == sch_sym.lib_gate)
+                        {
                             if !sym_cache.contains_key(&gate.symbol) {
                                 if let Ok(sym) = project_io::read_library_element::<Symbol>(
-                                    project, "symbols", &gate.symbol,
+                                    project,
+                                    "symbols",
+                                    &gate.symbol,
                                 ) {
                                     sym_cache.insert(gate.symbol, sym);
                                 }
@@ -63,7 +66,8 @@ pub fn render_schematic(
     }
 
     // Calculate bounding box
-    let (min_x, min_y, max_x, max_y) = calculate_bounds(&schematic, &comp_map, &comp_cache, &sym_cache);
+    let (min_x, min_y, max_x, max_y) =
+        calculate_bounds(&schematic, &comp_map, &comp_cache, &sym_cache);
     let margin = 20.0;
     let vx = min_x - margin;
     let vy = min_y - margin;
@@ -73,13 +77,26 @@ pub fn render_schematic(
     let mut svg = String::with_capacity(8192);
 
     // SVG header
-    writeln!(svg, r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vx:.2} {vy:.2} {vw:.2} {vh:.2}" width="{}" height="{}">"#,
-        (vw * 4.0) as i32, (vh * 4.0) as i32)?;
+    writeln!(
+        svg,
+        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vx:.2} {vy:.2} {vw:.2} {vh:.2}" width="{}" height="{}">"#,
+        (vw * 4.0) as i32,
+        (vh * 4.0) as i32
+    )?;
 
     // Style
-    writeln!(svg, r#"<style>
+    writeln!(
+        svg,
+        r#"<style>
   .wire {{ stroke: #007030; stroke-width: 0.3; fill: none; }}
+  .bus {{ stroke: #1b4d8c; stroke-width: 0.6; fill: none; }}
+  .bus-entry {{ stroke: #1b4d8c; stroke-width: 0.35; fill: none; }}
   .outline {{ stroke: #800000; stroke-width: 0.254; fill: none; }}
+  .sheet {{ stroke: #5a4a1d; stroke-width: 0.25; fill: #fff9e8; }}
+  .sheet-pin {{ stroke: #5a4a1d; stroke-width: 0.3; fill: none; }}
+  .hier-port {{ stroke: #0a4e8a; stroke-width: 0.25; fill: #d9ecff; }}
+  .power-port {{ stroke: #9a4a00; stroke-width: 0.25; fill: none; }}
+  .power-flag {{ stroke: #9a4a00; stroke-width: 0.25; fill: #ffe8d0; }}
   .pin-line {{ stroke: #006060; stroke-width: 0.15; }}
   .pin-dot {{ fill: #007030; }}
   .junction {{ fill: #007030; }}
@@ -88,11 +105,19 @@ pub fn render_schematic(
   .text-pin-number {{ font-family: sans-serif; font-size: 1.6px; fill: #006060; }}
   .text-pin-name {{ font-family: sans-serif; font-size: 1.7px; fill: #005050; }}
   .text-label {{ font-family: sans-serif; font-size: 2.5px; fill: #007030; font-weight: bold; }}
+  .text-bus {{ font-family: sans-serif; font-size: 2.4px; fill: #1b4d8c; font-weight: bold; }}
+  .text-sheet {{ font-family: sans-serif; font-size: 2.2px; fill: #5a4a1d; font-weight: bold; }}
+  .text-sheet-pin {{ font-family: sans-serif; font-size: 1.9px; fill: #5a4a1d; }}
+  .text-power {{ font-family: sans-serif; font-size: 2.0px; fill: #9a4a00; font-weight: bold; }}
   .grid-dot {{ fill: #e0e0e0; }}
-</style>"#)?;
+</style>"#
+    )?;
 
     // Background
-    writeln!(svg, r#"<rect x="{vx:.2}" y="{vy:.2}" width="{vw:.2}" height="{vh:.2}" fill="white"/>"#)?;
+    writeln!(
+        svg,
+        r#"<rect x="{vx:.2}" y="{vy:.2}" width="{vw:.2}" height="{vh:.2}" fill="white"/>"#
+    )?;
 
     // Grid dots
     let grid_interval = schematic.grid.interval;
@@ -106,9 +131,17 @@ pub fn render_schematic(
             for gy in gy_start..=gy_end {
                 let x = gx as f64 * grid_interval;
                 let y = gy as f64 * grid_interval;
-                writeln!(svg, r#"<circle cx="{x:.2}" cy="{y:.2}" r="0.3" class="grid-dot"/>"#)?;
+                writeln!(
+                    svg,
+                    r#"<circle cx="{x:.2}" cy="{y:.2}" r="0.3" class="grid-dot"/>"#
+                )?;
             }
         }
+    }
+
+    // Render sheet references and pins
+    for sheet_ref in &schematic.sheet_refs {
+        render_sheet_ref(&mut svg, sheet_ref)?;
     }
 
     // Render symbols
@@ -121,7 +154,11 @@ pub fn render_schematic(
             Some(c) => c,
             None => continue,
         };
-        let variant = match lib_comp.variants.iter().find(|v| v.uuid == comp_inst.lib_variant) {
+        let variant = match lib_comp
+            .variants
+            .iter()
+            .find(|v| v.uuid == comp_inst.lib_variant)
+        {
             Some(v) => v,
             None => continue,
         };
@@ -134,28 +171,78 @@ pub fn render_schematic(
             None => continue,
         };
 
-        render_symbol(&mut svg, sch_sym, lib_sym, &comp_inst.name, &comp_inst.value)?;
+        render_symbol(
+            &mut svg,
+            sch_sym,
+            lib_sym,
+            &comp_inst.name,
+            &comp_inst.value,
+        )?;
+    }
+
+    // Render bus segments and entries
+    for bus in &schematic.bus_segments {
+        for line in &bus.lines {
+            let from_pos = resolve_bus_endpoint_pos(&line.from, bus);
+            let to_pos = resolve_bus_endpoint_pos(&line.to, bus);
+            if let (Some(fp), Some(tp)) = (from_pos, to_pos) {
+                writeln!(
+                    svg,
+                    r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="bus"/>"#,
+                    fp.x, fp.y, tp.x, tp.y
+                )?;
+            }
+        }
+
+        if let Some(anchor) = bus.junctions.first() {
+            write_svg_text(
+                &mut svg,
+                "text-bus",
+                Position::new(anchor.position.x + 1.2, anchor.position.y - 1.0),
+                Angle(0.0),
+                Alignment {
+                    h: HAlign::Left,
+                    v: VAlign::Bottom,
+                },
+                &bus.label,
+            )?;
+        }
+    }
+
+    for entry in &schematic.bus_entries {
+        render_bus_entry(&mut svg, entry)?;
     }
 
     // Render net segments (wires, junctions, labels)
     for seg in &schematic.net_segments {
-        let net_name = net_map.get(&seg.net).map(|n| n.name.as_str()).unwrap_or("?");
+        let net_name = net_map
+            .get(&seg.net)
+            .map(|n| n.name.as_str())
+            .unwrap_or("?");
 
         // Render wires
         for line in &seg.lines {
-            let from_pos = resolve_endpoint_pos(&line.from, &schematic, &comp_map, &comp_cache, &sym_cache);
-            let to_pos = resolve_endpoint_pos(&line.to, &schematic, &comp_map, &comp_cache, &sym_cache);
+            let from_pos =
+                resolve_endpoint_pos(&line.from, &schematic, &comp_map, &comp_cache, &sym_cache);
+            let to_pos =
+                resolve_endpoint_pos(&line.to, &schematic, &comp_map, &comp_cache, &sym_cache);
 
             if let (Some(fp), Some(tp)) = (from_pos, to_pos) {
-                writeln!(svg, r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="wire"/>"#,
-                    fp.x, fp.y, tp.x, tp.y)?;
+                writeln!(
+                    svg,
+                    r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="wire"/>"#,
+                    fp.x, fp.y, tp.x, tp.y
+                )?;
             }
         }
 
         // Render junctions
         for junc in &seg.junctions {
-            writeln!(svg, r#"<circle cx="{:.2}" cy="{:.2}" r="0.6" class="junction"/>"#,
-                junc.position.x, junc.position.y)?;
+            writeln!(
+                svg,
+                r#"<circle cx="{:.2}" cy="{:.2}" r="0.6" class="junction"/>"#,
+                junc.position.x, junc.position.y
+            )?;
         }
 
         // Render labels
@@ -165,10 +252,36 @@ pub fn render_schematic(
                 "text-label",
                 Position::new(label.position.x, label.position.y - 0.5),
                 label.rotation,
-                Alignment { h: HAlign::Left, v: VAlign::Bottom },
+                Alignment {
+                    h: HAlign::Left,
+                    v: VAlign::Bottom,
+                },
                 net_name,
             )?;
         }
+    }
+
+    // Render hierarchical and power primitives
+    for port in &schematic.hierarchical_ports {
+        let net_name = net_map
+            .get(&port.net)
+            .map(|net| net.name.as_str())
+            .unwrap_or(port.name.as_str());
+        render_hierarchical_port(&mut svg, port, net_name)?;
+    }
+    for power_port in &schematic.power_ports {
+        let net_name = net_map
+            .get(&power_port.net)
+            .map(|net| net.name.as_str())
+            .unwrap_or("?");
+        render_power_port(&mut svg, power_port, net_name)?;
+    }
+    for power_flag in &schematic.power_flags {
+        let net_name = net_map
+            .get(&power_flag.net)
+            .map(|net| net.name.as_str())
+            .unwrap_or("?");
+        render_power_flag(&mut svg, power_flag, net_name)?;
     }
 
     writeln!(svg, "</svg>")?;
@@ -197,7 +310,10 @@ fn render_symbol(
     let py = sch_sym.position.y;
     let rot = sch_sym.rotation.0;
 
-    writeln!(svg, r#"<g transform="translate({px:.2},{py:.2}) rotate({rot:.1})">"#)?;
+    writeln!(
+        svg,
+        r#"<g transform="translate({px:.2},{py:.2}) rotate({rot:.1})">"#
+    )?;
 
     // Draw polygons (outlines)
     for poly in &lib_sym.polygons {
@@ -206,7 +322,9 @@ fn render_symbol(
         }
         write!(svg, r#"<polyline points=""#)?;
         for (i, v) in poly.vertices.iter().enumerate() {
-            if i > 0 { write!(svg, " ")?; }
+            if i > 0 {
+                write!(svg, " ")?;
+            }
             write!(svg, "{:.2},{:.2}", v.position.x, v.position.y)?;
         }
         writeln!(svg, r#"" class="outline"/>"#)?;
@@ -216,17 +334,37 @@ fn render_symbol(
     for pin in &lib_sym.pins {
         let pin_end = pin_endpoint(pin);
         // Pin line from connection point to body
-        writeln!(svg, r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="pin-line"/>"#,
-            pin.position.x, pin.position.y, pin_end.x, pin_end.y)?;
+        writeln!(
+            svg,
+            r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="pin-line"/>"#,
+            pin.position.x, pin.position.y, pin_end.x, pin_end.y
+        )?;
         // Pin dot at connection point
-        writeln!(svg, r#"<circle cx="{:.2}" cy="{:.2}" r="0.4" class="pin-dot"/>"#,
-            pin.position.x, pin.position.y)?;
+        writeln!(
+            svg,
+            r#"<circle cx="{:.2}" cy="{:.2}" r="0.4" class="pin-dot"/>"#,
+            pin.position.x, pin.position.y
+        )?;
 
         let (number_pos, number_align) = pin_number_position(pin);
-        write_svg_text(svg, "text-pin-number", number_pos, Angle(0.0), number_align, &pin.name)?;
+        write_svg_text(
+            svg,
+            "text-pin-number",
+            number_pos,
+            Angle(0.0),
+            number_align,
+            &pin.name,
+        )?;
 
         if !pin.pin_name.is_empty() {
-            write_svg_text(svg, "text-pin-name", pin_name_position(pin), Angle(0.0), pin.name_align, &pin.pin_name)?;
+            write_svg_text(
+                svg,
+                "text-pin-name",
+                pin_name_position(pin),
+                Angle(0.0),
+                pin.name_align,
+                &pin.pin_name,
+            )?;
         }
     }
 
@@ -234,13 +372,283 @@ fn render_symbol(
 
     // Draw name and value texts (in world space, not rotated with symbol)
     for text in &sch_sym.texts {
-        let css_class = if text.value.contains("NAME") { "text-name" } else { "text-value" };
-        let display_value = text.value
+        let css_class = if text.value.contains("NAME") {
+            "text-name"
+        } else {
+            "text-value"
+        };
+        let display_value = text
+            .value
             .replace("{{NAME}}", name)
             .replace("{{VALUE}}", value);
-        write_svg_text(svg, css_class, text.position, text.rotation, text.align, &display_value)?;
+        write_svg_text(
+            svg,
+            css_class,
+            text.position,
+            text.rotation,
+            text.align,
+            &display_value,
+        )?;
     }
 
+    Ok(())
+}
+
+fn render_sheet_ref(svg: &mut String, sheet: &SheetRef) -> std::fmt::Result {
+    writeln!(
+        svg,
+        r#"<rect x="{:.2}" y="{:.2}" width="{:.2}" height="{:.2}" class="sheet"/>"#,
+        sheet.position.x, sheet.position.y, sheet.width, sheet.height
+    )?;
+    write_svg_text(
+        svg,
+        "text-sheet",
+        Position::new(sheet.position.x + 1.0, sheet.position.y + 1.2),
+        Angle(0.0),
+        Alignment {
+            h: HAlign::Left,
+            v: VAlign::Top,
+        },
+        &format!("{} -> {}", sheet.name, sheet.target_schematic),
+    )?;
+
+    for pin in &sheet.pins {
+        let pos = sheet_pin_position(sheet, pin);
+        let (stub_end, align, text_pos) = match pin.side {
+            SheetSide::Left => (
+                Position::new(pos.x - 2.0, pos.y),
+                Alignment {
+                    h: HAlign::Right,
+                    v: VAlign::Center,
+                },
+                Position::new(pos.x - 2.4, pos.y),
+            ),
+            SheetSide::Right => (
+                Position::new(pos.x + 2.0, pos.y),
+                Alignment {
+                    h: HAlign::Left,
+                    v: VAlign::Center,
+                },
+                Position::new(pos.x + 2.4, pos.y),
+            ),
+            SheetSide::Top => (
+                Position::new(pos.x, pos.y - 2.0),
+                Alignment {
+                    h: HAlign::Center,
+                    v: VAlign::Bottom,
+                },
+                Position::new(pos.x, pos.y - 2.4),
+            ),
+            SheetSide::Bottom => (
+                Position::new(pos.x, pos.y + 2.0),
+                Alignment {
+                    h: HAlign::Center,
+                    v: VAlign::Top,
+                },
+                Position::new(pos.x, pos.y + 2.4),
+            ),
+        };
+        writeln!(
+            svg,
+            r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="sheet-pin"/>"#,
+            pos.x, pos.y, stub_end.x, stub_end.y
+        )?;
+        write_svg_text(
+            svg,
+            "text-sheet-pin",
+            text_pos,
+            Angle(0.0),
+            align,
+            &pin.name,
+        )?;
+    }
+
+    Ok(())
+}
+
+fn render_hierarchical_port(
+    svg: &mut String,
+    port: &HierarchicalPort,
+    net_name: &str,
+) -> std::fmt::Result {
+    let points = match port.side {
+        SheetSide::Left => format!(
+            "{:.2},{:.2} {:.2},{:.2} {:.2},{:.2}",
+            port.position.x,
+            port.position.y,
+            port.position.x + 2.2,
+            port.position.y - 1.3,
+            port.position.x + 2.2,
+            port.position.y + 1.3
+        ),
+        SheetSide::Right => format!(
+            "{:.2},{:.2} {:.2},{:.2} {:.2},{:.2}",
+            port.position.x,
+            port.position.y,
+            port.position.x - 2.2,
+            port.position.y - 1.3,
+            port.position.x - 2.2,
+            port.position.y + 1.3
+        ),
+        SheetSide::Top => format!(
+            "{:.2},{:.2} {:.2},{:.2} {:.2},{:.2}",
+            port.position.x,
+            port.position.y,
+            port.position.x - 1.3,
+            port.position.y + 2.2,
+            port.position.x + 1.3,
+            port.position.y + 2.2
+        ),
+        SheetSide::Bottom => format!(
+            "{:.2},{:.2} {:.2},{:.2} {:.2},{:.2}",
+            port.position.x,
+            port.position.y,
+            port.position.x - 1.3,
+            port.position.y - 2.2,
+            port.position.x + 1.3,
+            port.position.y - 2.2
+        ),
+    };
+    writeln!(svg, r#"<polygon points="{}" class="hier-port"/>"#, points)?;
+    write_svg_text(
+        svg,
+        "text-sheet-pin",
+        Position::new(port.position.x + 2.8, port.position.y),
+        Angle(0.0),
+        Alignment {
+            h: HAlign::Left,
+            v: VAlign::Center,
+        },
+        &format!("{} ({})", port.name, net_name),
+    )?;
+    Ok(())
+}
+
+fn render_power_port(svg: &mut String, power_port: &PowerPort, net_name: &str) -> std::fmt::Result {
+    let x = power_port.position.x;
+    let y = power_port.position.y;
+    if power_port.style.eq_ignore_ascii_case("gnd") {
+        writeln!(
+            svg,
+            r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="power-port"/>"#,
+            x,
+            y - 1.6,
+            x,
+            y
+        )?;
+        writeln!(
+            svg,
+            r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="power-port"/>"#,
+            x - 2.0,
+            y,
+            x + 2.0,
+            y
+        )?;
+        writeln!(
+            svg,
+            r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="power-port"/>"#,
+            x - 1.3,
+            y + 0.8,
+            x + 1.3,
+            y + 0.8
+        )?;
+        writeln!(
+            svg,
+            r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="power-port"/>"#,
+            x - 0.6,
+            y + 1.6,
+            x + 0.6,
+            y + 1.6
+        )?;
+    } else {
+        writeln!(
+            svg,
+            r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="power-port"/>"#,
+            x,
+            y + 1.8,
+            x,
+            y - 0.4
+        )?;
+        writeln!(
+            svg,
+            r#"<polygon points="{:.2},{:.2} {:.2},{:.2} {:.2},{:.2}" class="power-port"/>"#,
+            x,
+            y - 2.0,
+            x - 1.5,
+            y - 0.4,
+            x + 1.5,
+            y - 0.4
+        )?;
+    }
+    write_svg_text(
+        svg,
+        "text-power",
+        Position::new(x + 2.4, y - 1.2),
+        Angle(0.0),
+        Alignment {
+            h: HAlign::Left,
+            v: VAlign::Center,
+        },
+        net_name,
+    )?;
+    Ok(())
+}
+
+fn render_power_flag(svg: &mut String, power_flag: &PowerFlag, net_name: &str) -> std::fmt::Result {
+    let x = power_flag.position.x;
+    let y = power_flag.position.y;
+    writeln!(
+        svg,
+        r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="power-port"/>"#,
+        x,
+        y + 1.5,
+        x,
+        y - 1.5
+    )?;
+    writeln!(
+        svg,
+        r#"<polygon points="{:.2},{:.2} {:.2},{:.2} {:.2},{:.2}" class="power-flag"/>"#,
+        x,
+        y - 1.5,
+        x + 3.0,
+        y - 0.3,
+        x,
+        y + 0.9
+    )?;
+    write_svg_text(
+        svg,
+        "text-power",
+        Position::new(x + 3.4, y - 0.2),
+        Angle(0.0),
+        Alignment {
+            h: HAlign::Left,
+            v: VAlign::Center,
+        },
+        &format!("PWR {}", net_name),
+    )?;
+    Ok(())
+}
+
+fn render_bus_entry(svg: &mut String, entry: &BusEntry) -> std::fmt::Result {
+    writeln!(
+        svg,
+        r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" class="bus-entry"/>"#,
+        entry.position.x - 1.6,
+        entry.position.y - 1.6,
+        entry.position.x,
+        entry.position.y
+    )?;
+    write_svg_text(
+        svg,
+        "text-bus",
+        Position::new(entry.position.x + 0.6, entry.position.y - 0.4),
+        Angle(0.0),
+        Alignment {
+            h: HAlign::Left,
+            v: VAlign::Bottom,
+        },
+        &entry.member_name,
+    )?;
     Ok(())
 }
 
@@ -274,12 +682,7 @@ fn write_svg_text(
         writeln!(
             svg,
             r#"<text x="{:.2}" y="{:.2}" class="{}" text-anchor="{}" dominant-baseline="{}">{}</text>"#,
-            position.x,
-            position.y,
-            class_name,
-            anchor,
-            baseline,
-            escaped,
+            position.x, position.y, class_name, anchor, baseline, escaped,
         )
     }
 }
@@ -311,23 +714,38 @@ fn pin_number_position(pin: &SymbolPin) -> (Position, Alignment) {
     match normalize_angle(pin.rotation.0) as i32 {
         0 => (
             Position::new(pin.position.x - 0.6, pin.position.y - 0.8),
-            Alignment { h: HAlign::Right, v: VAlign::Bottom },
+            Alignment {
+                h: HAlign::Right,
+                v: VAlign::Bottom,
+            },
         ),
         90 => (
             Position::new(pin.position.x + 0.8, pin.position.y - 0.4),
-            Alignment { h: HAlign::Left, v: VAlign::Bottom },
+            Alignment {
+                h: HAlign::Left,
+                v: VAlign::Bottom,
+            },
         ),
         180 => (
             Position::new(pin.position.x + 0.6, pin.position.y - 0.8),
-            Alignment { h: HAlign::Left, v: VAlign::Bottom },
+            Alignment {
+                h: HAlign::Left,
+                v: VAlign::Bottom,
+            },
         ),
         270 => (
             Position::new(pin.position.x + 0.8, pin.position.y + 0.4),
-            Alignment { h: HAlign::Left, v: VAlign::Top },
+            Alignment {
+                h: HAlign::Left,
+                v: VAlign::Top,
+            },
         ),
         _ => (
             Position::new(pin.position.x, pin.position.y - 0.8),
-            Alignment { h: HAlign::Center, v: VAlign::Bottom },
+            Alignment {
+                h: HAlign::Center,
+                v: VAlign::Bottom,
+            },
         ),
     }
 }
@@ -364,6 +782,32 @@ fn pin_endpoint(pin: &SymbolPin) -> Position {
     )
 }
 
+fn sheet_pin_position(sheet: &SheetRef, pin: &SheetRefPin) -> Position {
+    match pin.side {
+        SheetSide::Left => Position::new(sheet.position.x, sheet.position.y + pin.offset),
+        SheetSide::Right => Position::new(
+            sheet.position.x + sheet.width,
+            sheet.position.y + pin.offset,
+        ),
+        SheetSide::Top => Position::new(sheet.position.x + pin.offset, sheet.position.y),
+        SheetSide::Bottom => Position::new(
+            sheet.position.x + pin.offset,
+            sheet.position.y + sheet.height,
+        ),
+    }
+}
+
+fn resolve_bus_endpoint_pos(ep: &LineEndpoint, bus: &BusSegment) -> Option<Position> {
+    match ep {
+        LineEndpoint::Junction { junction } => bus
+            .junctions
+            .iter()
+            .find(|j| j.uuid == *junction)
+            .map(|j| j.position),
+        _ => None,
+    }
+}
+
 /// Resolve a LineEndpoint to a world position.
 fn resolve_endpoint_pos(
     ep: &LineEndpoint,
@@ -385,7 +829,10 @@ fn resolve_endpoint_pos(
             let sch_sym = schematic.symbols.iter().find(|s| s.uuid == *symbol)?;
             let comp_inst = comp_map.get(&sch_sym.component)?;
             let lib_comp = comp_cache.get(&comp_inst.lib_component)?;
-            let variant = lib_comp.variants.iter().find(|v| v.uuid == comp_inst.lib_variant)?;
+            let variant = lib_comp
+                .variants
+                .iter()
+                .find(|v| v.uuid == comp_inst.lib_variant)?;
             let gate = variant.gates.iter().find(|g| g.uuid == sch_sym.lib_gate)?;
             let lib_sym = sym_cache.get(&gate.symbol)?;
             let lib_pin = lib_sym.pins.iter().find(|p| p.uuid == *pin)?;
@@ -402,6 +849,19 @@ fn resolve_endpoint_pos(
                 sch_sym.position.y + px * sin_r + py * cos_r,
             ))
         }
+        LineEndpoint::SheetPin { sheet_ref, pin } => {
+            let sheet = schematic
+                .sheet_refs
+                .iter()
+                .find(|sheet| sheet.uuid == *sheet_ref)?;
+            let sheet_pin = sheet.pins.iter().find(|sheet_pin| sheet_pin.uuid == *pin)?;
+            Some(sheet_pin_position(sheet, sheet_pin))
+        }
+        LineEndpoint::HierPort { port } => schematic
+            .hierarchical_ports
+            .iter()
+            .find(|hier_port| hier_port.uuid == *port)
+            .map(|hier_port| hier_port.position),
     }
 }
 
@@ -428,6 +888,19 @@ fn calculate_bounds(
         expand(sch_sym.position.x + 10.0, sch_sym.position.y + 10.0);
     }
 
+    for sheet in &schematic.sheet_refs {
+        expand(sheet.position.x, sheet.position.y);
+        expand(
+            sheet.position.x + sheet.width,
+            sheet.position.y + sheet.height,
+        );
+        for pin in &sheet.pins {
+            let pos = sheet_pin_position(sheet, pin);
+            expand(pos.x - 2.5, pos.y - 2.5);
+            expand(pos.x + 2.5, pos.y + 2.5);
+        }
+    }
+
     for seg in &schematic.net_segments {
         for junc in &seg.junctions {
             expand(junc.position.x, junc.position.y);
@@ -435,6 +908,32 @@ fn calculate_bounds(
         for label in &seg.labels {
             expand(label.position.x, label.position.y);
         }
+    }
+
+    for bus in &schematic.bus_segments {
+        for junc in &bus.junctions {
+            expand(junc.position.x, junc.position.y);
+        }
+    }
+
+    for port in &schematic.hierarchical_ports {
+        expand(port.position.x - 2.5, port.position.y - 2.5);
+        expand(port.position.x + 2.5, port.position.y + 2.5);
+    }
+
+    for power_port in &schematic.power_ports {
+        expand(power_port.position.x - 2.5, power_port.position.y - 2.5);
+        expand(power_port.position.x + 2.5, power_port.position.y + 2.5);
+    }
+
+    for power_flag in &schematic.power_flags {
+        expand(power_flag.position.x - 2.5, power_flag.position.y - 2.5);
+        expand(power_flag.position.x + 4.0, power_flag.position.y + 2.5);
+    }
+
+    for bus_entry in &schematic.bus_entries {
+        expand(bus_entry.position.x - 2.0, bus_entry.position.y - 2.0);
+        expand(bus_entry.position.x + 2.0, bus_entry.position.y + 2.0);
     }
 
     if min_x == f64::INFINITY {

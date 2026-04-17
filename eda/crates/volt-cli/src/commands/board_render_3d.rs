@@ -74,7 +74,9 @@ pub fn render_board_3d(project: &Path, board_name: &str, output: &Path) -> Resul
             {
                 if !pkg_cache.contains_key(&dev.package) {
                     if let Ok(pkg) = project_io::read_library_element::<Package>(
-                        project, "packages", &dev.package,
+                        project,
+                        "packages",
+                        &dev.package,
                     ) {
                         pkg_cache.insert(dev.package, pkg);
                     }
@@ -372,7 +374,10 @@ fn write_board_shape(
     )?;
 
     // Use an array of materials: [sides, top, bottom] via groups
-    writeln!(js, "  const boardMesh = new THREE.Mesh(boardGeo, [boardSideMat, boardMat, boardMat]);")?;
+    writeln!(
+        js,
+        "  const boardMesh = new THREE.Mesh(boardGeo, [boardSideMat, boardMat, boardMat]);"
+    )?;
     writeln!(js, "  boardMesh.receiveShadow = true;")?;
     writeln!(js, "  boardMesh.castShadow = true;")?;
     writeln!(js, "  scene.add(boardMesh);")?;
@@ -446,11 +451,7 @@ fn write_pads(
                     writeln!(js, "  const mesh = new THREE.Mesh(geo, padMat);")?;
                     writeln!(js, "  mesh.position.set({lx:.4}, {ly:.4}, {z:.4});")?;
                     if total_rot.abs() > 0.01 {
-                        writeln!(
-                            js,
-                            "  mesh.rotation.z = {:.4};",
-                            -total_rot.to_radians()
-                        )?;
+                        writeln!(js, "  mesh.rotation.z = {:.4};", -total_rot.to_radians())?;
                     }
                     writeln!(js, "  mesh.castShadow = true;")?;
                     writeln!(js, "  scene.add(mesh);")?;
@@ -531,10 +532,7 @@ fn write_traces(
                 "  const geo = new THREE.BoxGeometry({len:.4}, {w:.4}, {COPPER_THICKNESS});"
             )?;
             writeln!(js, "  const mesh = new THREE.Mesh(geo, copperMat);")?;
-            writeln!(
-                js,
-                "  mesh.position.set({mid_x:.4}, {mid_y:.4}, {z:.4});"
-            )?;
+            writeln!(js, "  mesh.position.set({mid_x:.4}, {mid_y:.4}, {z:.4});")?;
             writeln!(js, "  mesh.rotation.z = {:.4};", -angle)?;
             writeln!(js, "  mesh.castShadow = true;")?;
             writeln!(js, "  scene.add(mesh);")?;
@@ -582,10 +580,7 @@ fn write_vias(js: &mut String, board: &Board) -> std::fmt::Result {
             writeln!(js, "  geo.rotateX(Math.PI / 2);")?;
             writeln!(js, "  const mesh = new THREE.Mesh(geo, viaMat);")?;
             let via_bot_z = -(BOARD_THICKNESS / 2.0 + VIA_RING_Z / 2.0);
-            writeln!(
-                js,
-                "  mesh.position.set({lx:.4}, {ly:.4}, {via_bot_z:.4});"
-            )?;
+            writeln!(js, "  mesh.position.set({lx:.4}, {ly:.4}, {via_bot_z:.4});")?;
             writeln!(js, "  scene.add(mesh);")?;
             writeln!(js, "}}")?;
 
@@ -640,12 +635,7 @@ fn write_holes(js: &mut String, board: &Board) -> std::fmt::Result {
 // JS generation: copper planes
 // ===========================================================================
 
-fn write_planes(
-    js: &mut String,
-    board: &Board,
-    cx: f64,
-    cy: f64,
-) -> std::fmt::Result {
+fn write_planes(js: &mut String, board: &Board, cx: f64, cy: f64) -> std::fmt::Result {
     writeln!(js, "\n// Copper planes")?;
     for plane in &board.planes {
         if plane.vertices.len() < 3 {
@@ -674,7 +664,11 @@ fn write_planes(
             js,
             "  const geo = new THREE.ExtrudeGeometry(shape, {{ depth: {COPPER_THICKNESS}, bevelEnabled: false }});"
         )?;
-        writeln!(js, "  geo.translate(0, 0, {:.4});", z - COPPER_THICKNESS / 2.0)?;
+        writeln!(
+            js,
+            "  geo.translate(0, 0, {:.4});",
+            z - COPPER_THICKNESS / 2.0
+        )?;
         writeln!(js, "  const mesh = new THREE.Mesh(geo, copperMat);")?;
         writeln!(js, "  mesh.castShadow = true;")?;
         writeln!(js, "  scene.add(mesh);")?;
@@ -724,9 +718,12 @@ fn write_component_bodies(
         for poly in &footprint.polygons {
             if matches!(
                 poly.layer,
-                Layer::TopCourtyard | Layer::BottomCourtyard
-                    | Layer::TopPackageOutlines | Layer::BottomPackageOutlines
-                    | Layer::TopDocumentation | Layer::BottomDocumentation
+                Layer::TopCourtyard
+                    | Layer::BottomCourtyard
+                    | Layer::TopPackageOutlines
+                    | Layer::BottomPackageOutlines
+                    | Layer::TopDocumentation
+                    | Layer::BottomDocumentation
             ) {
                 for v in &poly.vertices {
                     bmin_x = bmin_x.min(v.position.x);
@@ -771,10 +768,7 @@ fn write_component_bodies(
             bd.rotation.0
         };
 
-        let name = comp_name
-            .get(&bd.component)
-            .copied()
-            .unwrap_or("?");
+        let name = comp_name.get(&bd.component).copied().unwrap_or("?");
 
         writeln!(js, "// {name}")?;
         writeln!(js, "{{")?;
@@ -785,11 +779,7 @@ fn write_component_bodies(
         writeln!(js, "  const mesh = new THREE.Mesh(geo, bodyMat);")?;
         writeln!(js, "  mesh.position.set({lx:.4}, {ly:.4}, {z:.4});")?;
         if total_rot.abs() > 0.01 {
-            writeln!(
-                js,
-                "  mesh.rotation.z = {:.4};",
-                -total_rot.to_radians()
-            )?;
+            writeln!(js, "  mesh.rotation.z = {:.4};", -total_rot.to_radians())?;
         }
         writeln!(js, "  mesh.castShadow = true;")?;
         writeln!(js, "  mesh.receiveShadow = true;")?;
@@ -809,10 +799,7 @@ fn write_component_bodies(
                 js,
                 "  const markerGeo = new THREE.SphereGeometry(0.2, 8, 8);"
             )?;
-            writeln!(
-                js,
-                "  const marker = new THREE.Mesh(markerGeo, pin1Mat);"
-            )?;
+            writeln!(js, "  const marker = new THREE.Mesh(markerGeo, pin1Mat);")?;
             writeln!(
                 js,
                 "  marker.position.set({p1lx:.4}, {p1ly:.4}, {marker_z:.4});"
@@ -890,10 +877,7 @@ fn write_silkscreen(
                     "  const geo = new THREE.BoxGeometry({len:.4}, {w:.4}, {SILK_THICKNESS});"
                 )?;
                 writeln!(js, "  const mesh = new THREE.Mesh(geo, silkMat);")?;
-                writeln!(
-                    js,
-                    "  mesh.position.set({mid_x:.4}, {mid_y:.4}, {z:.4});"
-                )?;
+                writeln!(js, "  mesh.position.set({mid_x:.4}, {mid_y:.4}, {z:.4});")?;
                 writeln!(js, "  mesh.rotation.z = {:.4};", -angle)?;
                 writeln!(js, "  scene.add(mesh);")?;
                 writeln!(js, "}}")?;

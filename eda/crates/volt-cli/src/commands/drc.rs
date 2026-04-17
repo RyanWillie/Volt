@@ -28,7 +28,9 @@ pub fn drc_command(project: PathBuf, board_name: String) -> Result<()> {
                     // Load associated package
                     if !packages.contains_key(&dev.package) {
                         if let Ok(pkg) = project_io::read_library_element::<Package>(
-                            &project, "packages", &dev.package,
+                            &project,
+                            "packages",
+                            &dev.package,
                         ) {
                             packages.insert(dev.package, pkg);
                         }

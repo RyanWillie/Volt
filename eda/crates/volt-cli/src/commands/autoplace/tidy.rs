@@ -70,7 +70,10 @@ pub fn tidy_pass(
     let comp_boxes = compute_comp_boxes(schematic, circuit, lib_comps, lib_syms);
     let overlap_count = fix_label_component_overlaps(schematic, &comp_boxes);
     if overlap_count > 0 {
-        changes.push(format!("Fixed {} label-component overlap(s)", overlap_count));
+        changes.push(format!(
+            "Fixed {} label-component overlap(s)",
+            overlap_count
+        ));
     }
 
     // 7. Spread overlapping labels
@@ -196,7 +199,9 @@ fn try_merge_one(seg: &mut SchematicNetSegment) -> bool {
         .collect();
 
     for &(junc_uuid, junc_x, junc_y) in &junc_snapshot {
-        let Some(line_indices) = junc_refs.get(&junc_uuid) else { continue };
+        let Some(line_indices) = junc_refs.get(&junc_uuid) else {
+            continue;
+        };
         // Deduplicate indices (a line can reference the same junction in both endpoints).
         let mut unique: Vec<usize> = line_indices.clone();
         unique.sort_unstable();
@@ -238,8 +243,12 @@ fn try_merge_one(seg: &mut SchematicNetSegment) -> bool {
 
         // Merge: keep line at i0, connect outer endpoints, remove line at i1 and junction.
         let width = seg.lines[i0].width;
-        let new_from = LineEndpoint::Junction { junction: ep_a_other };
-        let new_to = LineEndpoint::Junction { junction: ep_b_other };
+        let new_from = LineEndpoint::Junction {
+            junction: ep_a_other,
+        };
+        let new_to = LineEndpoint::Junction {
+            junction: ep_b_other,
+        };
 
         seg.lines[i0] = SchematicLine {
             uuid: seg.lines[i0].uuid,
@@ -264,8 +273,10 @@ fn try_merge_one(seg: &mut SchematicNetSegment) -> bool {
 /// return the *other* endpoint's junction UUID. Returns None if the other
 /// endpoint is a Symbol or if the junction doesn't appear in the line.
 fn other_junction_endpoint(line: &SchematicLine, junc_uuid: Uuid) -> Option<Uuid> {
-    let from_match = matches!(&line.from, LineEndpoint::Junction { junction } if *junction == junc_uuid);
-    let to_match = matches!(&line.to, LineEndpoint::Junction { junction } if *junction == junc_uuid);
+    let from_match =
+        matches!(&line.from, LineEndpoint::Junction { junction } if *junction == junc_uuid);
+    let to_match =
+        matches!(&line.to, LineEndpoint::Junction { junction } if *junction == junc_uuid);
 
     if from_match && !to_match {
         if let LineEndpoint::Junction { junction } = &line.to {
@@ -518,13 +529,26 @@ fn compute_comp_boxes(
     let mut boxes = Vec::new();
 
     for sym in &schematic.symbols {
-        let Some(inst) = comp_by_uuid.get(&sym.component) else { continue };
-        let Some(lc) = lib_comps.get(&inst.lib_component) else { continue };
-        let Some(v) = lc.variants.iter().find(|v| v.uuid == inst.lib_variant) else { continue };
-        let Some(g) = v.gates.iter()
+        let Some(inst) = comp_by_uuid.get(&sym.component) else {
+            continue;
+        };
+        let Some(lc) = lib_comps.get(&inst.lib_component) else {
+            continue;
+        };
+        let Some(v) = lc.variants.iter().find(|v| v.uuid == inst.lib_variant) else {
+            continue;
+        };
+        let Some(g) = v
+            .gates
+            .iter()
             .find(|g| g.uuid == sym.lib_gate)
-            .or(v.gates.first()) else { continue };
-        let Some(ls) = lib_syms.get(&g.symbol) else { continue };
+            .or(v.gates.first())
+        else {
+            continue;
+        };
+        let Some(ls) = lib_syms.get(&g.symbol) else {
+            continue;
+        };
 
         let rot = sym.rotation.0.to_radians();
         let cos_r = rot.cos();
@@ -556,7 +580,12 @@ fn compute_comp_boxes(
         let min_y = ys.iter().cloned().fold(f64::INFINITY, f64::min);
         let max_y = ys.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
 
-        boxes.push(BBox::new(min_x - 1.0, min_y - 1.0, max_x + 1.0, max_y + 1.0));
+        boxes.push(BBox::new(
+            min_x - 1.0,
+            min_y - 1.0,
+            max_x + 1.0,
+            max_y + 1.0,
+        ));
     }
 
     boxes
@@ -587,7 +616,9 @@ fn remap_endpoint(ep: &mut LineEndpoint, remap: &HashMap<Uuid, Uuid>) {
 fn endpoint_position(ep: &LineEndpoint, junctions: &[Junction]) -> Option<(f64, f64)> {
     match ep {
         LineEndpoint::Junction { junction } => junction_position(*junction, junctions),
-        LineEndpoint::Symbol { .. } => None,
+        LineEndpoint::Symbol { .. }
+        | LineEndpoint::SheetPin { .. }
+        | LineEndpoint::HierPort { .. } => None,
     }
 }
 
