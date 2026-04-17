@@ -49,11 +49,7 @@ impl RefillLibrary for MapRefillLibrary {
 
 /// Run the refill engine on all planes in the board.
 /// Mutates `board.planes[].fragments` in place.
-pub fn refill_board(
-    board: &mut Board,
-    circuit: &Circuit,
-    library: &dyn RefillLibrary,
-) {
+pub fn refill_board(board: &mut Board, circuit: &Circuit, library: &dyn RefillLibrary) {
     let outline = board_outline_polygon(board);
     let layers = unique_plane_layers(board);
 
@@ -193,7 +189,9 @@ fn refill_layer(
             let device_lib = library.get_device(&dev.lib_device);
             let package = device_lib.and_then(|d| library.get_package(&d.package));
             let footprint = package.and_then(|p| {
-                p.footprints.iter().find(|f| f.uuid == dev.lib_footprint)
+                p.footprints
+                    .iter()
+                    .find(|f| f.uuid == dev.lib_footprint)
                     .or_else(|| p.footprints.first())
             });
 
@@ -203,7 +201,10 @@ fn refill_layer(
                         continue;
                     }
                     let pad_pos = transform_pad_position(
-                        fp_pad.position, dev.position, dev.rotation.0, dev.flip,
+                        fp_pad.position,
+                        dev.position,
+                        dev.rotation.0,
+                        dev.flip,
                     );
                     let pad_net = pad_net_map.get(&(dev.component, fp_pad.uuid));
                     let is_same_net_pad = pad_net.map_or(false, |n| *n == plane_net);
@@ -215,18 +216,24 @@ fn refill_layer(
                         ConnectStyle::Thermal if is_same_net_pad => {
                             // Cut thermal relief gaps around pad
                             let thermal_obstacles = thermal_relief_gaps(
-                                pad_pos.x, pad_pos.y,
-                                fp_pad.width, fp_pad.height,
+                                pad_pos.x,
+                                pad_pos.y,
+                                fp_pad.width,
+                                fp_pad.height,
                                 dev.rotation.0 + fp_pad.rotation.0,
-                                thermal_gap, thermal_spoke, plane_clearance,
+                                thermal_gap,
+                                thermal_spoke,
+                                plane_clearance,
                             );
                             obstacles.extend(thermal_obstacles);
                         }
                         _ => {
                             // Foreign-net or None style: full antipad
                             let pad_poly = pad_polygon_with_clearance(
-                                pad_pos.x, pad_pos.y,
-                                fp_pad.width, fp_pad.height,
+                                pad_pos.x,
+                                pad_pos.y,
+                                fp_pad.width,
+                                fp_pad.height,
                                 dev.rotation.0 + fp_pad.rotation.0,
                                 plane_clearance,
                             );
@@ -237,8 +244,13 @@ fn refill_layer(
                     // PTH holes on device pads
                     for hole in &fp_pad.holes {
                         let hole_pos = transform_pad_position(
-                            hole.path.first().map(|v| v.position).unwrap_or(fp_pad.position),
-                            dev.position, dev.rotation.0, dev.flip,
+                            hole.path
+                                .first()
+                                .map(|v| v.position)
+                                .unwrap_or(fp_pad.position),
+                            dev.position,
+                            dev.rotation.0,
+                            dev.flip,
                         );
                         let r = hole.diameter / 2.0 + plane_clearance;
                         obstacles.push(circle_polygon(hole_pos.x, hole_pos.y, r, 32));
@@ -249,7 +261,11 @@ fn refill_layer(
 
         // NPTH board holes
         for hole in &board.holes {
-            let pos = hole.path.first().map(|v| v.position).unwrap_or(Position::new(0.0, 0.0));
+            let pos = hole
+                .path
+                .first()
+                .map(|v| v.position)
+                .unwrap_or(Position::new(0.0, 0.0));
             let r = hole.diameter / 2.0 + npth_clearance;
             obstacles.push(circle_polygon(pos.x, pos.y, r, 32));
         }
@@ -266,9 +282,8 @@ fn refill_layer(
 
         // 7. Island removal
         if !keep_islands {
-            let same_net_positions = collect_same_net_positions(
-                board, circuit, library, plane_net, layer,
-            );
+            let same_net_positions =
+                collect_same_net_positions(board, circuit, library, plane_net, layer);
             fill = remove_islands(&fill, &same_net_positions);
         }
 
@@ -314,8 +329,10 @@ fn flatten_vertices(vertices: &[Vertex]) -> Poly {
             // Arc: tessellate from previous point to this point
             let prev = &vertices[i - 1];
             let arc_pts = tessellate_arc(
-                prev.position.x, prev.position.y,
-                v.position.x, v.position.y,
+                prev.position.x,
+                prev.position.y,
+                v.position.x,
+                v.position.y,
                 v.angle.0,
             );
             result.extend(arc_pts);
@@ -414,8 +431,14 @@ fn offset_polygon(poly: &[[f64; 2]], offset: f64) -> Poly {
 }
 
 fn line_line_intersect(
-    p0x: f64, p0y: f64, p1x: f64, p1y: f64,
-    q0x: f64, q0y: f64, q1x: f64, q1y: f64,
+    p0x: f64,
+    p0y: f64,
+    p1x: f64,
+    p1y: f64,
+    q0x: f64,
+    q0y: f64,
+    q1x: f64,
+    q1y: f64,
 ) -> Option<[f64; 2]> {
     let d1x = p1x - p0x;
     let d1y = p1y - p0y;
@@ -455,7 +478,12 @@ fn stroke_to_polygon(from: Position, to: Position, half_width: f64) -> Poly {
 }
 
 fn pad_polygon_with_clearance(
-    cx: f64, cy: f64, w: f64, h: f64, rotation_deg: f64, clearance: f64,
+    cx: f64,
+    cy: f64,
+    w: f64,
+    h: f64,
+    rotation_deg: f64,
+    clearance: f64,
 ) -> Poly {
     let hw = w / 2.0 + clearance;
     let hh = h / 2.0 + clearance;
@@ -470,8 +498,14 @@ fn pad_polygon_with_clearance(
 }
 
 fn thermal_relief_gaps(
-    cx: f64, cy: f64, pad_w: f64, pad_h: f64, rotation_deg: f64,
-    gap_width: f64, _spoke_width: f64, clearance: f64,
+    cx: f64,
+    cy: f64,
+    pad_w: f64,
+    pad_h: f64,
+    rotation_deg: f64,
+    gap_width: f64,
+    _spoke_width: f64,
+    clearance: f64,
 ) -> Vec<Poly> {
     // Create 4 rectangular gaps radiating from pad center along cardinal directions
     // The gaps are centered on the pad axes and extend outward
@@ -481,9 +515,8 @@ fn thermal_relief_gaps(
     let cos_a = angle.cos();
     let sin_a = angle.sin();
 
-    let rotate = |x: f64, y: f64| -> [f64; 2] {
-        [cx + x * cos_a - y * sin_a, cy + x * sin_a + y * cos_a]
-    };
+    let rotate =
+        |x: f64, y: f64| -> [f64; 2] { [cx + x * cos_a - y * sin_a, cy + x * sin_a + y * cos_a] };
 
     // Gap along +X axis (right)
     let gap_right = vec![
@@ -658,7 +691,10 @@ fn resolve_trace_endpoint_pos(
 }
 
 fn transform_pad_position(
-    pad_pos: Position, dev_pos: Position, rotation_deg: f64, flip: bool,
+    pad_pos: Position,
+    dev_pos: Position,
+    rotation_deg: f64,
+    flip: bool,
 ) -> Position {
     let mut x = pad_pos.x;
     let y = pad_pos.y;
@@ -799,7 +835,10 @@ fn collect_same_net_positions(
             for fp_pad in &fp.pads {
                 if pad_net_map.get(&(dev.component, fp_pad.uuid)) == Some(&net_uuid) {
                     let pos = transform_pad_position(
-                        fp_pad.position, dev.position, dev.rotation.0, dev.flip,
+                        fp_pad.position,
+                        dev.position,
+                        dev.rotation.0,
+                        dev.flip,
                     );
                     positions.push(pos);
                 }
@@ -820,7 +859,9 @@ fn remove_islands(shapes: &[Shape], seed_positions: &[Position]) -> Vec<Shape> {
         .iter()
         .filter(|shape| {
             if let Some(outer) = shape.first() {
-                seed_positions.iter().any(|pos| point_in_polygon(pos.x, pos.y, outer))
+                seed_positions
+                    .iter()
+                    .any(|pos| point_in_polygon(pos.x, pos.y, outer))
             } else {
                 false
             }
@@ -866,10 +907,22 @@ mod tests {
             grab_area: false,
             lock: false,
             vertices: vec![
-                Vertex { position: Position::new(0.0, 0.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(w, 0.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(w, h), angle: Angle(0.0) },
-                Vertex { position: Position::new(0.0, h), angle: Angle(0.0) },
+                Vertex {
+                    position: Position::new(0.0, 0.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(w, 0.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(w, h),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(0.0, h),
+                    angle: Angle(0.0),
+                },
             ],
         }
     }
@@ -890,16 +943,36 @@ mod tests {
             keep_islands: false,
             lock: false,
             vertices: vec![
-                Vertex { position: Position::new(x0, y0), angle: Angle(0.0) },
-                Vertex { position: Position::new(x1, y0), angle: Angle(0.0) },
-                Vertex { position: Position::new(x1, y1), angle: Angle(0.0) },
-                Vertex { position: Position::new(x0, y1), angle: Angle(0.0) },
+                Vertex {
+                    position: Position::new(x0, y0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(x1, y0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(x1, y1),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(x0, y1),
+                    angle: Angle(0.0),
+                },
             ],
             fragments: vec![],
         }
     }
 
-    fn make_trace(net: Uuid, layer: Layer, x0: f64, y0: f64, x1: f64, y1: f64, width: f64) -> BoardNetSegment {
+    fn make_trace(
+        net: Uuid,
+        layer: Layer,
+        x0: f64,
+        y0: f64,
+        x1: f64,
+        y1: f64,
+        width: f64,
+    ) -> BoardNetSegment {
         let j0 = Uuid::new_v4();
         let j1 = Uuid::new_v4();
         BoardNetSegment {
@@ -914,8 +987,14 @@ mod tests {
             }],
             vias: vec![],
             junctions: vec![
-                Junction { uuid: j0, position: Position::new(x0, y0) },
-                Junction { uuid: j1, position: Position::new(x1, y1) },
+                Junction {
+                    uuid: j0,
+                    position: Position::new(x0, y0),
+                },
+                Junction {
+                    uuid: j1,
+                    position: Position::new(x1, y1),
+                },
             ],
             pads: vec![],
         }
@@ -934,6 +1013,7 @@ mod tests {
             net_classes: vec![],
             nets: vec![],
             components: vec![],
+            differential_pairs: vec![],
         }
     }
 
@@ -941,7 +1021,10 @@ mod tests {
         Board {
             uuid: Uuid::new_v4(),
             name: "test".into(),
-            grid: Grid { interval: 1.0, unit: GridUnit::Millimeters },
+            grid: Grid {
+                interval: 1.0,
+                unit: GridUnit::Millimeters,
+            },
             inner_layers: 0,
             thickness: 1.6,
             solder_resist: SolderResistColor::Green,
@@ -963,34 +1046,66 @@ mod tests {
         let gnd = Uuid::new_v4();
         let vcc = Uuid::new_v4();
         let mut board = minimal_board(20.0, 20.0);
-        board.planes.push(make_plane(gnd, Layer::TopCopper, 1.0, 1.0, 19.0, 19.0));
-        board.net_segments.push(make_trace(vcc, Layer::TopCopper, 1.0, 10.0, 19.0, 10.0, 1.0));
+        board
+            .planes
+            .push(make_plane(gnd, Layer::TopCopper, 1.0, 1.0, 19.0, 19.0));
+        board.net_segments.push(make_trace(
+            vcc,
+            Layer::TopCopper,
+            1.0,
+            10.0,
+            19.0,
+            10.0,
+            1.0,
+        ));
 
         let circuit = empty_circuit();
         let library = empty_library();
 
         refill_board(&mut board, &circuit, &library);
 
-        assert!(!board.planes[0].fragments.is_empty(), "should produce fragments");
-        let total_contours: usize = board.planes[0].fragments.iter()
+        assert!(
+            !board.planes[0].fragments.is_empty(),
+            "should produce fragments"
+        );
+        let total_contours: usize = board.planes[0]
+            .fragments
+            .iter()
             .map(|f| f.contours.len())
             .sum();
-        assert!(total_contours >= 2, "should have at least outer + hole or 2 fragments: got {total_contours}");
+        assert!(
+            total_contours >= 2,
+            "should have at least outer + hole or 2 fragments: got {total_contours}"
+        );
     }
 
     #[test]
     fn tv2_same_net_no_subtraction() {
         let gnd = Uuid::new_v4();
         let mut board = minimal_board(20.0, 20.0);
-        board.planes.push(make_plane(gnd, Layer::TopCopper, 1.0, 1.0, 19.0, 19.0));
-        board.net_segments.push(make_trace(gnd, Layer::TopCopper, 1.0, 10.0, 19.0, 10.0, 1.0));
+        board
+            .planes
+            .push(make_plane(gnd, Layer::TopCopper, 1.0, 1.0, 19.0, 19.0));
+        board.net_segments.push(make_trace(
+            gnd,
+            Layer::TopCopper,
+            1.0,
+            10.0,
+            19.0,
+            10.0,
+            1.0,
+        ));
 
         refill_board(&mut board, &empty_circuit(), &empty_library());
 
         assert!(!board.planes[0].fragments.is_empty());
         // Same net trace should not create holes
         for frag in &board.planes[0].fragments {
-            assert_eq!(frag.contours.len(), 1, "should have only outer contour (no holes)");
+            assert_eq!(
+                frag.contours.len(),
+                1,
+                "should have only outer contour (no holes)"
+            );
         }
     }
 
@@ -1010,7 +1125,11 @@ mod tests {
         let outer = &board.planes[0].fragments[0].contours[0];
         for pt in outer {
             // Allow small tolerance for polygon intersection edge cases
-            assert!(pt.x >= 0.99, "x={} should be >= ~1.0 (board clearance)", pt.x);
+            assert!(
+                pt.x >= 0.99,
+                "x={} should be >= ~1.0 (board clearance)",
+                pt.x
+            );
             assert!(pt.y >= 0.99, "y={} should be >= ~1.0", pt.y);
             assert!(pt.x <= 19.01, "x={} should be <= ~19.0", pt.x);
             assert!(pt.y <= 19.01, "y={} should be <= ~19.0", pt.y);
@@ -1021,22 +1140,32 @@ mod tests {
     fn tv4_npth_hole_keepout() {
         let gnd = Uuid::new_v4();
         let mut board = minimal_board(20.0, 20.0);
-        board.planes.push(make_plane(gnd, Layer::TopCopper, 1.0, 1.0, 19.0, 19.0));
+        board
+            .planes
+            .push(make_plane(gnd, Layer::TopCopper, 1.0, 1.0, 19.0, 19.0));
         board.holes.push(BoardHole {
             uuid: Uuid::new_v4(),
             diameter: 2.0,
             stop_mask: StopMaskConfig::Auto,
             lock: false,
-            path: vec![Vertex { position: Position::new(10.0, 10.0), angle: Angle(0.0) }],
+            path: vec![Vertex {
+                position: Position::new(10.0, 10.0),
+                angle: Angle(0.0),
+            }],
         });
 
         refill_board(&mut board, &empty_circuit(), &empty_library());
 
         assert!(!board.planes[0].fragments.is_empty());
-        let total_contours: usize = board.planes[0].fragments.iter()
+        let total_contours: usize = board.planes[0]
+            .fragments
+            .iter()
             .map(|f| f.contours.len())
             .sum();
-        assert!(total_contours >= 2, "should have hole for NPTH: got {total_contours}");
+        assert!(
+            total_contours >= 2,
+            "should have hole for NPTH: got {total_contours}"
+        );
     }
 
     #[test]
@@ -1045,9 +1174,19 @@ mod tests {
         let vcc = Uuid::new_v4();
         let mut board = minimal_board(20.0, 20.0);
         // Plane covers 1..19
-        board.planes.push(make_plane(gnd, Layer::TopCopper, 1.0, 1.0, 19.0, 19.0));
+        board
+            .planes
+            .push(make_plane(gnd, Layer::TopCopper, 1.0, 1.0, 19.0, 19.0));
         // Wide trace splits plane in half (wide enough to create gap)
-        board.net_segments.push(make_trace(vcc, Layer::TopCopper, 0.0, 10.0, 20.0, 10.0, 4.0));
+        board.net_segments.push(make_trace(
+            vcc,
+            Layer::TopCopper,
+            0.0,
+            10.0,
+            20.0,
+            10.0,
+            4.0,
+        ));
 
         // keep_islands = false (default)
         refill_board(&mut board, &empty_circuit(), &empty_library());
@@ -1063,29 +1202,45 @@ mod tests {
         let frag_count_keep = board.planes[0].fragments.len();
 
         // keep_islands=true should keep at least as many fragments
-        assert!(frag_count_keep >= frag_count_no_keep,
-            "keep_islands=true ({frag_count_keep}) should keep >= no-keep ({frag_count_no_keep})");
+        assert!(
+            frag_count_keep >= frag_count_no_keep,
+            "keep_islands=true ({frag_count_keep}) should keep >= no-keep ({frag_count_no_keep})"
+        );
     }
 
     #[test]
     fn tv9_fragment_has_contours() {
         let gnd = Uuid::new_v4();
         let mut board = minimal_board(20.0, 20.0);
-        board.planes.push(make_plane(gnd, Layer::TopCopper, 2.0, 2.0, 18.0, 18.0));
+        board
+            .planes
+            .push(make_plane(gnd, Layer::TopCopper, 2.0, 2.0, 18.0, 18.0));
         board.holes.push(BoardHole {
             uuid: Uuid::new_v4(),
             diameter: 2.0,
             stop_mask: StopMaskConfig::Auto,
             lock: false,
-            path: vec![Vertex { position: Position::new(10.0, 10.0), angle: Angle(0.0) }],
+            path: vec![Vertex {
+                position: Position::new(10.0, 10.0),
+                angle: Angle(0.0),
+            }],
         });
 
         refill_board(&mut board, &empty_circuit(), &empty_library());
 
         let frag = &board.planes[0].fragments[0];
-        assert!(frag.contours.len() >= 2, "should have outer + at least 1 hole");
-        assert!(frag.contours[0].len() >= 3, "outer contour should be a valid polygon");
-        assert!(frag.contours[1].len() >= 3, "hole contour should be a valid polygon");
+        assert!(
+            frag.contours.len() >= 2,
+            "should have outer + at least 1 hole"
+        );
+        assert!(
+            frag.contours[0].len() >= 3,
+            "outer contour should be a valid polygon"
+        );
+        assert!(
+            frag.contours[1].len() >= 3,
+            "hole contour should be a valid polygon"
+        );
     }
 
     #[test]
@@ -1105,12 +1260,19 @@ mod tests {
         refill_board(&mut board, &empty_circuit(), &empty_library());
 
         // Higher priority plane should have normal fill
-        assert!(!board.planes[0].fragments.is_empty(), "high-priority plane should fill");
+        assert!(
+            !board.planes[0].fragments.is_empty(),
+            "high-priority plane should fill"
+        );
         // Lower priority plane should have the high-priority area subtracted
-        let lo_total_contours: usize = board.planes[1].fragments.iter()
+        let lo_total_contours: usize = board.planes[1]
+            .fragments
+            .iter()
             .map(|f| f.contours.len())
             .sum();
-        assert!(lo_total_contours >= 2,
-            "low-priority plane should have a hole where high-priority sits: got {lo_total_contours}");
+        assert!(
+            lo_total_contours >= 2,
+            "low-priority plane should have a hole where high-priority sits: got {lo_total_contours}"
+        );
     }
 }
