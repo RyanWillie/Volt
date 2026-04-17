@@ -5,6 +5,7 @@
 //! segment into multiple segments, one per connected component.
 
 use std::collections::HashMap;
+use std::hash::Hash;
 
 use uuid::Uuid;
 
@@ -24,7 +25,7 @@ pub fn split_schematic_net_segments(schematic: &mut Schematic) -> usize {
     let original_segments: Vec<SchematicNetSegment> = schematic.net_segments.drain(..).collect();
 
     for segment in original_segments {
-        let components = find_schematic_connected_components(&segment);
+        let components = schematic_connected_components(&segment);
         if components.len() <= 1 {
             // No split needed — keep as-is
             new_segments.push(segment);
@@ -40,7 +41,8 @@ pub fn split_schematic_net_segments(schematic: &mut Schematic) -> usize {
                 };
 
                 // Collect junction UUIDs in this component
-                let junction_uuids: Vec<Uuid> = component_indices.iter()
+                let junction_uuids: Vec<Uuid> = component_indices
+                    .iter()
                     .filter_map(|idx| {
                         if let SchematicNode::Junction(uuid) = idx {
                             Some(*uuid)
@@ -68,9 +70,8 @@ pub fn split_schematic_net_segments(schematic: &mut Schematic) -> usize {
 
                 // Assign labels by proximity to junctions in this component
                 for label in &segment.labels {
-                    let closest_component = find_closest_component_for_label(
-                        &label.position, &segment, &components,
-                    );
+                    let closest_component =
+                        find_closest_component_for_label(&label.position, &segment, &components);
                     if closest_component == i {
                         new_seg.labels.push(label.clone());
                     }
@@ -95,7 +96,7 @@ pub fn split_board_net_segments(board: &mut Board) -> usize {
     let original_segments: Vec<BoardNetSegment> = board.net_segments.drain(..).collect();
 
     for segment in original_segments {
-        let components = find_board_connected_components(&segment);
+        let components = board_connected_components(&segment);
         if components.len() <= 1 {
             new_segments.push(segment);
         } else {
@@ -109,16 +110,26 @@ pub fn split_board_net_segments(board: &mut Board) -> usize {
                     pads: vec![],
                 };
 
-                let junction_uuids: Vec<Uuid> = component_nodes.iter()
-                    .filter_map(|n| if let BoardNode::Junction(u) = n { Some(*u) } else { None })
+                let junction_uuids: Vec<Uuid> = component_nodes
+                    .iter()
+                    .filter_map(|n| {
+                        if let BoardNode::Junction(u) = n {
+                            Some(*u)
+                        } else {
+                            None
+                        }
+                    })
                     .collect();
-                let via_uuids: Vec<Uuid> = component_nodes.iter()
-                    .filter_map(|n| if let BoardNode::Via(u) = n { Some(*u) } else { None })
+                let via_uuids: Vec<Uuid> = component_nodes
+                    .iter()
+                    .filter_map(|n| {
+                        if let BoardNode::Via(u) = n {
+                            Some(*u)
+                        } else {
+                            None
+                        }
+                    })
                     .collect();
-                let device_pads: Vec<(Uuid, Uuid)> = component_nodes.iter()
-                    .filter_map(|n| if let BoardNode::DevicePad(d, p) = n { Some((*d, *p)) } else { None })
-                    .collect();
-
                 for j in &segment.junctions {
                     if junction_uuids.contains(&j.uuid) {
                         new_seg.junctions.push(j.clone());
@@ -141,7 +152,9 @@ pub fn split_board_net_segments(board: &mut Board) -> usize {
                 // Assign standalone pads by proximity
                 for pad in &segment.pads {
                     let closest = find_closest_board_component_for_position(
-                        &pad.position, &segment, &components,
+                        &pad.position,
+                        &segment,
+                        &components,
                     );
                     if closest == i {
                         new_seg.pads.push(pad.clone());
@@ -162,79 +175,47 @@ pub fn split_board_net_segments(board: &mut Board) -> usize {
 // Schematic connectivity
 // ============================================================================
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum SchematicNode {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SchematicNode {
     Junction(Uuid),
     SymbolPin(Uuid, Uuid), // symbol, pin
+    SheetPin(Uuid, Uuid),  // sheet_ref, pin
+    HierPort(Uuid),        // port
 }
 
-fn find_schematic_connected_components(
-    segment: &SchematicNetSegment,
-) -> Vec<Vec<SchematicNode>> {
+pub fn schematic_connected_components(segment: &SchematicNetSegment) -> Vec<Vec<SchematicNode>> {
     // Collect all nodes
     let mut nodes: Vec<SchematicNode> = Vec::new();
+    let mut edges = Vec::new();
     for j in &segment.junctions {
         nodes.push(SchematicNode::Junction(j.uuid));
     }
     for line in &segment.lines {
-        let from_node = schematic_endpoint_to_node(&line.from);
-        let to_node = schematic_endpoint_to_node(&line.to);
-        if !nodes.contains(&from_node) { nodes.push(from_node.clone()); }
-        if !nodes.contains(&to_node) { nodes.push(to_node.clone()); }
-    }
-
-    if nodes.is_empty() {
-        return vec![];
-    }
-
-    // Build adjacency via union-find
-    let mut parent: HashMap<usize, usize> = HashMap::new();
-    for i in 0..nodes.len() {
-        parent.insert(i, i);
-    }
-
-    let find = |parent: &mut HashMap<usize, usize>, mut x: usize| -> usize {
-        while parent[&x] != x {
-            let px = parent[&x];
-            parent.insert(x, parent[&px]);
-            x = px;
+        let from_node = schematic_node_for_endpoint(&line.from);
+        let to_node = schematic_node_for_endpoint(&line.to);
+        if !nodes.contains(&from_node) {
+            nodes.push(from_node.clone());
         }
-        x
-    };
-
-    for line in &segment.lines {
-        let from_node = schematic_endpoint_to_node(&line.from);
-        let to_node = schematic_endpoint_to_node(&line.to);
-        let from_idx = nodes.iter().position(|n| *n == from_node);
-        let to_idx = nodes.iter().position(|n| *n == to_node);
-        if let (Some(fi), Some(ti)) = (from_idx, to_idx) {
-            let fr = find(&mut parent, fi);
-            let tr = find(&mut parent, ti);
-            if fr != tr {
-                parent.insert(fr, tr);
-            }
+        if !nodes.contains(&to_node) {
+            nodes.push(to_node.clone());
         }
+        edges.push((from_node, to_node));
     }
 
-    // Group by root
-    let mut groups: HashMap<usize, Vec<SchematicNode>> = HashMap::new();
-    for (i, node) in nodes.iter().enumerate() {
-        let root = find(&mut parent, i);
-        groups.entry(root).or_default().push(node.clone());
-    }
-
-    groups.into_values().collect()
+    connected_components(nodes, edges)
 }
 
-fn schematic_endpoint_to_node(ep: &LineEndpoint) -> SchematicNode {
+pub fn schematic_node_for_endpoint(ep: &LineEndpoint) -> SchematicNode {
     match ep {
         LineEndpoint::Junction { junction } => SchematicNode::Junction(*junction),
         LineEndpoint::Symbol { symbol, pin } => SchematicNode::SymbolPin(*symbol, *pin),
+        LineEndpoint::SheetPin { sheet_ref, pin } => SchematicNode::SheetPin(*sheet_ref, *pin),
+        LineEndpoint::HierPort { port } => SchematicNode::HierPort(*port),
     }
 }
 
 fn endpoint_in_component(ep: &LineEndpoint, component: &[SchematicNode]) -> bool {
-    let node = schematic_endpoint_to_node(ep);
+    let node = schematic_node_for_endpoint(ep);
     component.contains(&node)
 }
 
@@ -249,10 +230,14 @@ fn find_closest_component_for_label(
     for (i, comp) in components.iter().enumerate() {
         for node in comp {
             let pos = match node {
-                SchematicNode::Junction(uuid) => {
-                    segment.junctions.iter().find(|j| j.uuid == *uuid).map(|j| j.position)
-                }
+                SchematicNode::Junction(uuid) => segment
+                    .junctions
+                    .iter()
+                    .find(|j| j.uuid == *uuid)
+                    .map(|j| j.position),
                 SchematicNode::SymbolPin(_, _) => None, // can't resolve position without library
+                SchematicNode::SheetPin(_, _) => None,
+                SchematicNode::HierPort(_) => None,
             };
             if let Some(p) = pos {
                 let dx = p.x - label_pos.x;
@@ -272,17 +257,16 @@ fn find_closest_component_for_label(
 // Board connectivity
 // ============================================================================
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum BoardNode {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BoardNode {
     Junction(Uuid),
     Via(Uuid),
     DevicePad(Uuid, Uuid), // device, pad
 }
 
-fn find_board_connected_components(
-    segment: &BoardNetSegment,
-) -> Vec<Vec<BoardNode>> {
+pub fn board_connected_components(segment: &BoardNetSegment) -> Vec<Vec<BoardNode>> {
     let mut nodes: Vec<BoardNode> = Vec::new();
+    let mut edges = Vec::new();
     for j in &segment.junctions {
         nodes.push(BoardNode::Junction(j.uuid));
     }
@@ -290,54 +274,21 @@ fn find_board_connected_components(
         nodes.push(BoardNode::Via(v.uuid));
     }
     for trace in &segment.traces {
-        let from_node = board_endpoint_to_node(&trace.from);
-        let to_node = board_endpoint_to_node(&trace.to);
-        if !nodes.contains(&from_node) { nodes.push(from_node.clone()); }
-        if !nodes.contains(&to_node) { nodes.push(to_node.clone()); }
-    }
-
-    if nodes.is_empty() {
-        return vec![];
-    }
-
-    let mut parent: HashMap<usize, usize> = HashMap::new();
-    for i in 0..nodes.len() {
-        parent.insert(i, i);
-    }
-
-    let find = |parent: &mut HashMap<usize, usize>, mut x: usize| -> usize {
-        while parent[&x] != x {
-            let px = parent[&x];
-            parent.insert(x, parent[&px]);
-            x = px;
+        let from_node = board_node_for_endpoint(&trace.from);
+        let to_node = board_node_for_endpoint(&trace.to);
+        if !nodes.contains(&from_node) {
+            nodes.push(from_node.clone());
         }
-        x
-    };
-
-    for trace in &segment.traces {
-        let from_node = board_endpoint_to_node(&trace.from);
-        let to_node = board_endpoint_to_node(&trace.to);
-        let from_idx = nodes.iter().position(|n| *n == from_node);
-        let to_idx = nodes.iter().position(|n| *n == to_node);
-        if let (Some(fi), Some(ti)) = (from_idx, to_idx) {
-            let fr = find(&mut parent, fi);
-            let tr = find(&mut parent, ti);
-            if fr != tr {
-                parent.insert(fr, tr);
-            }
+        if !nodes.contains(&to_node) {
+            nodes.push(to_node.clone());
         }
+        edges.push((from_node, to_node));
     }
 
-    let mut groups: HashMap<usize, Vec<BoardNode>> = HashMap::new();
-    for (i, node) in nodes.iter().enumerate() {
-        let root = find(&mut parent, i);
-        groups.entry(root).or_default().push(node.clone());
-    }
-
-    groups.into_values().collect()
+    connected_components(nodes, edges)
 }
 
-fn board_endpoint_to_node(ep: &TraceEndpoint) -> BoardNode {
+pub fn board_node_for_endpoint(ep: &TraceEndpoint) -> BoardNode {
     match ep {
         TraceEndpoint::Junction { junction } => BoardNode::Junction(*junction),
         TraceEndpoint::Via { via } => BoardNode::Via(*via),
@@ -346,7 +297,7 @@ fn board_endpoint_to_node(ep: &TraceEndpoint) -> BoardNode {
 }
 
 fn board_endpoint_in_component(ep: &TraceEndpoint, component: &[BoardNode]) -> bool {
-    let node = board_endpoint_to_node(ep);
+    let node = board_node_for_endpoint(ep);
     component.contains(&node)
 }
 
@@ -361,12 +312,16 @@ fn find_closest_board_component_for_position(
     for (i, comp) in components.iter().enumerate() {
         for node in comp {
             let node_pos = match node {
-                BoardNode::Junction(uuid) => {
-                    segment.junctions.iter().find(|j| j.uuid == *uuid).map(|j| j.position)
-                }
-                BoardNode::Via(uuid) => {
-                    segment.vias.iter().find(|v| v.uuid == *uuid).map(|v| v.position)
-                }
+                BoardNode::Junction(uuid) => segment
+                    .junctions
+                    .iter()
+                    .find(|j| j.uuid == *uuid)
+                    .map(|j| j.position),
+                BoardNode::Via(uuid) => segment
+                    .vias
+                    .iter()
+                    .find(|v| v.uuid == *uuid)
+                    .map(|v| v.position),
                 BoardNode::DevicePad(_, _) => None,
             };
             if let Some(p) = node_pos {
@@ -383,6 +338,56 @@ fn find_closest_board_component_for_position(
     best_idx
 }
 
+fn connected_components<T>(nodes: Vec<T>, edges: Vec<(T, T)>) -> Vec<Vec<T>>
+where
+    T: Copy + Eq + Hash,
+{
+    if nodes.is_empty() {
+        return vec![];
+    }
+
+    let mut unique_nodes = Vec::new();
+    let mut index_by_node = HashMap::new();
+    for node in nodes {
+        if index_by_node.contains_key(&node) {
+            continue;
+        }
+        let idx = unique_nodes.len();
+        unique_nodes.push(node);
+        index_by_node.insert(node, idx);
+    }
+
+    let mut parent: Vec<usize> = (0..unique_nodes.len()).collect();
+
+    fn find(parent: &mut [usize], mut idx: usize) -> usize {
+        while parent[idx] != idx {
+            parent[idx] = parent[parent[idx]];
+            idx = parent[idx];
+        }
+        idx
+    }
+
+    for (from, to) in edges {
+        let (Some(&from_idx), Some(&to_idx)) = (index_by_node.get(&from), index_by_node.get(&to))
+        else {
+            continue;
+        };
+        let from_root = find(&mut parent, from_idx);
+        let to_root = find(&mut parent, to_idx);
+        if from_root != to_root {
+            parent[from_root] = to_root;
+        }
+    }
+
+    let mut groups: HashMap<usize, Vec<T>> = HashMap::new();
+    for (idx, node) in unique_nodes.into_iter().enumerate() {
+        let root = find(&mut parent, idx);
+        groups.entry(root).or_default().push(node);
+    }
+
+    groups.into_values().collect()
+}
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -392,7 +397,10 @@ mod tests {
     use super::*;
 
     fn make_junction(uuid: Uuid, x: f64, y: f64) -> Junction {
-        Junction { uuid, position: Position::new(x, y) }
+        Junction {
+            uuid,
+            position: Position::new(x, y),
+        }
     }
 
     fn make_line(from_j: Uuid, to_j: Uuid) -> SchematicLine {
@@ -424,7 +432,10 @@ mod tests {
         let mut schematic = Schematic {
             uuid: new_uuid(),
             name: "test".into(),
-            grid: Grid { interval: 2.54, unit: GridUnit::Millimeters },
+            grid: Grid {
+                interval: 2.54,
+                unit: GridUnit::Millimeters,
+            },
             symbols: vec![],
             net_segments: vec![SchematicNetSegment {
                 uuid: new_uuid(),
@@ -434,12 +445,16 @@ mod tests {
                     make_junction(j2, 10.0, 0.0),
                     make_junction(j3, 20.0, 0.0),
                 ],
-                lines: vec![
-                    make_line(j1, j2),
-                    make_line(j2, j3),
-                ],
+                lines: vec![make_line(j1, j2), make_line(j2, j3)],
                 labels: vec![],
             }],
+            sheet_refs: vec![],
+            hierarchical_ports: vec![],
+            power_ports: vec![],
+            power_flags: vec![],
+            bus_segments: vec![],
+            bus_entries: vec![],
+            bus_aliases: vec![],
         };
 
         let splits = split_schematic_net_segments(&mut schematic);
@@ -459,7 +474,10 @@ mod tests {
         let mut schematic = Schematic {
             uuid: new_uuid(),
             name: "test".into(),
-            grid: Grid { interval: 2.54, unit: GridUnit::Millimeters },
+            grid: Grid {
+                interval: 2.54,
+                unit: GridUnit::Millimeters,
+            },
             symbols: vec![],
             net_segments: vec![SchematicNetSegment {
                 uuid: new_uuid(),
@@ -470,12 +488,16 @@ mod tests {
                     make_junction(j3, 30.0, 0.0),
                     make_junction(j4, 40.0, 0.0),
                 ],
-                lines: vec![
-                    make_line(j1, j2),
-                    make_line(j3, j4),
-                ],
+                lines: vec![make_line(j1, j2), make_line(j3, j4)],
                 labels: vec![],
             }],
+            sheet_refs: vec![],
+            hierarchical_ports: vec![],
+            power_ports: vec![],
+            power_flags: vec![],
+            bus_segments: vec![],
+            bus_entries: vec![],
+            bus_aliases: vec![],
         };
 
         let splits = split_schematic_net_segments(&mut schematic);
@@ -500,7 +522,10 @@ mod tests {
         let mut board = Board {
             uuid: new_uuid(),
             name: "test".into(),
-            grid: Grid { interval: 1.0, unit: GridUnit::Millimeters },
+            grid: Grid {
+                interval: 1.0,
+                unit: GridUnit::Millimeters,
+            },
             inner_layers: 0,
             thickness: 1.6,
             solder_resist: SolderResistColor::Green,
@@ -513,16 +538,25 @@ mod tests {
             net_segments: vec![BoardNetSegment {
                 uuid: new_uuid(),
                 net: Some(net),
-                traces: vec![
-                    make_trace(j1, j2),
-                    make_trace(j3, j4),
-                ],
+                traces: vec![make_trace(j1, j2), make_trace(j3, j4)],
                 vias: vec![],
                 junctions: vec![
-                    Junction { uuid: j1, position: Position::new(0.0, 0.0) },
-                    Junction { uuid: j2, position: Position::new(10.0, 0.0) },
-                    Junction { uuid: j3, position: Position::new(30.0, 0.0) },
-                    Junction { uuid: j4, position: Position::new(40.0, 0.0) },
+                    Junction {
+                        uuid: j1,
+                        position: Position::new(0.0, 0.0),
+                    },
+                    Junction {
+                        uuid: j2,
+                        position: Position::new(10.0, 0.0),
+                    },
+                    Junction {
+                        uuid: j3,
+                        position: Position::new(30.0, 0.0),
+                    },
+                    Junction {
+                        uuid: j4,
+                        position: Position::new(40.0, 0.0),
+                    },
                 ],
                 pads: vec![],
             }],
@@ -550,7 +584,10 @@ mod tests {
         let mut board = Board {
             uuid: new_uuid(),
             name: "test".into(),
-            grid: Grid { interval: 1.0, unit: GridUnit::Millimeters },
+            grid: Grid {
+                interval: 1.0,
+                unit: GridUnit::Millimeters,
+            },
             inner_layers: 0,
             thickness: 1.6,
             solder_resist: SolderResistColor::Green,
@@ -563,15 +600,21 @@ mod tests {
             net_segments: vec![BoardNetSegment {
                 uuid: new_uuid(),
                 net: Some(net),
-                traces: vec![
-                    make_trace(j1, j2),
-                    make_trace(j2, j3),
-                ],
+                traces: vec![make_trace(j1, j2), make_trace(j2, j3)],
                 vias: vec![],
                 junctions: vec![
-                    Junction { uuid: j1, position: Position::new(0.0, 0.0) },
-                    Junction { uuid: j2, position: Position::new(10.0, 0.0) },
-                    Junction { uuid: j3, position: Position::new(20.0, 0.0) },
+                    Junction {
+                        uuid: j1,
+                        position: Position::new(0.0, 0.0),
+                    },
+                    Junction {
+                        uuid: j2,
+                        position: Position::new(10.0, 0.0),
+                    },
+                    Junction {
+                        uuid: j3,
+                        position: Position::new(20.0, 0.0),
+                    },
                 ],
                 pads: vec![],
             }],

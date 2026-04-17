@@ -102,10 +102,22 @@ fn roundtrip_symbol() {
             fill: false,
             grab_area: true,
             vertices: vec![
-                Vertex { position: Position::new(-3.08, -1.016), angle: Angle(0.0) },
-                Vertex { position: Position::new(-3.08, 1.016), angle: Angle(0.0) },
-                Vertex { position: Position::new(3.08, 1.016), angle: Angle(0.0) },
-                Vertex { position: Position::new(3.08, -1.016), angle: Angle(0.0) },
+                Vertex {
+                    position: Position::new(-3.08, -1.016),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(-3.08, 1.016),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(3.08, 1.016),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(3.08, -1.016),
+                    angle: Angle(0.0),
+                },
             ],
         }],
         texts: vec![SymbolText {
@@ -115,7 +127,10 @@ fn roundtrip_symbol() {
             position: Position::new(-3.08, 1.016),
             rotation: Angle(0.0),
             height: 2.54,
-            align: Alignment { h: HAlign::Left, v: VAlign::Bottom },
+            align: Alignment {
+                h: HAlign::Left,
+                v: VAlign::Bottom,
+            },
             lock: false,
         }],
         grid_interval: 2.54,
@@ -136,17 +151,15 @@ fn roundtrip_component() {
             unit: "ohm".into(),
             value: "".into(),
         }],
-        signals: vec![
-            Signal {
-                uuid: Uuid::nil(),
-                name: "1".into(),
-                role: SignalRole::Passive,
-                required: true,
-                negated: false,
-                clock: false,
-                forced_net: String::new(),
-            },
-        ],
+        signals: vec![Signal {
+            uuid: Uuid::nil(),
+            name: "1".into(),
+            role: SignalRole::Passive,
+            required: true,
+            negated: false,
+            clock: false,
+            forced_net: String::new(),
+        }],
         variants: vec![ComponentVariant {
             uuid: Uuid::nil(),
             norm: "IEC 60617".into(),
@@ -177,8 +190,14 @@ fn roundtrip_package() {
         grid_interval: 2.54,
         min_copper_clearance: 0.2,
         pads: vec![
-            PackagePad { uuid: Uuid::nil(), name: "1".into() },
-            PackagePad { uuid: Uuid::nil(), name: "2".into() },
+            PackagePad {
+                uuid: Uuid::nil(),
+                name: "1".into(),
+            },
+            PackagePad {
+                uuid: Uuid::nil(),
+                name: "2".into(),
+            },
         ],
         footprints: vec![Footprint {
             uuid: Uuid::nil(),
@@ -263,14 +282,20 @@ fn roundtrip_circuit() {
             min_copper_copper_clearance: 0.0,
             min_copper_width: 0.0,
             min_via_drill_diameter: 0.0,
+            diff_pair_gap: None,
+            diff_pair_max_length_delta: None,
         }],
         nets: vec![Net {
             uuid: Uuid::nil(),
             name: "GND".into(),
             auto_name: false,
             net_class: Uuid::nil(),
+            scope: NetScope::Global,
+            owner_sheet: None,
+            is_power: false,
         }],
         components: vec![],
+        differential_pairs: vec![],
     };
     roundtrip(&circuit);
 }
@@ -280,7 +305,10 @@ fn roundtrip_schematic() {
     let sch = Schematic {
         uuid: Uuid::nil(),
         name: "Main".into(),
-        grid: Grid { interval: 2.54, unit: GridUnit::Millimeters },
+        grid: Grid {
+            interval: 2.54,
+            unit: GridUnit::Millimeters,
+        },
         symbols: vec![],
         net_segments: vec![SchematicNetSegment {
             uuid: Uuid::nil(),
@@ -297,6 +325,13 @@ fn roundtrip_schematic() {
                 mirror: false,
             }],
         }],
+        sheet_refs: vec![],
+        hierarchical_ports: vec![],
+        power_ports: vec![],
+        power_flags: vec![],
+        bus_segments: vec![],
+        bus_entries: vec![],
+        bus_aliases: vec![],
     };
     roundtrip(&sch);
 }
@@ -306,7 +341,10 @@ fn roundtrip_board() {
     let board = Board {
         uuid: Uuid::nil(),
         name: "default".into(),
-        grid: Grid { interval: 1.0, unit: GridUnit::Millimeters },
+        grid: Grid {
+            interval: 1.0,
+            unit: GridUnit::Millimeters,
+        },
         inner_layers: 0,
         thickness: 1.6,
         solder_resist: SolderResistColor::Green,
@@ -326,11 +364,26 @@ fn roundtrip_board() {
             grab_area: false,
             lock: false,
             vertices: vec![
-                Vertex { position: Position::new(0.0, 0.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(100.0, 0.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(100.0, 100.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(0.0, 100.0), angle: Angle(0.0) },
-                Vertex { position: Position::new(0.0, 0.0), angle: Angle(0.0) },
+                Vertex {
+                    position: Position::new(0.0, 0.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(100.0, 0.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(100.0, 100.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(0.0, 100.0),
+                    angle: Angle(0.0),
+                },
+                Vertex {
+                    position: Position::new(0.0, 0.0),
+                    angle: Angle(0.0),
+                },
             ],
         }],
         holes: vec![],
@@ -380,5 +433,8 @@ fn json_is_pretty() {
     };
     let json = serde_json::to_string_pretty(&meta).unwrap();
     assert!(json.contains('\n'), "JSON should be pretty-printed");
-    assert!(json.contains("\"name\": \"Test\""), "JSON should contain readable fields");
+    assert!(
+        json.contains("\"name\": \"Test\""),
+        "JSON should contain readable fields"
+    );
 }

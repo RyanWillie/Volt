@@ -39,7 +39,7 @@ fn default_version() -> String {
 }
 
 /// Current schema version. Bump when making breaking changes.
-pub const CURRENT_SCHEMA_VERSION: u32 = 1;
+pub const CURRENT_SCHEMA_VERSION: u32 = 2;
 
 fn default_schema_version() -> u32 {
     1
@@ -73,6 +73,8 @@ pub struct Circuit {
     pub nets: Vec<Net>,
     #[serde(default)]
     pub components: Vec<ComponentInstance>,
+    #[serde(default)]
+    pub differential_pairs: Vec<DifferentialPair>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -97,6 +99,10 @@ pub struct NetClass {
     pub min_copper_width: f64,
     #[serde(default)]
     pub min_via_drill_diameter: f64,
+    #[serde(default)]
+    pub diff_pair_gap: Option<f64>,
+    #[serde(default)]
+    pub diff_pair_max_length_delta: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
@@ -114,6 +120,24 @@ pub struct Net {
     #[serde(default)]
     pub auto_name: bool,
     pub net_class: Uuid,
+    #[serde(default = "default_net_scope")]
+    pub scope: NetScope,
+    #[serde(default)]
+    pub owner_sheet: Option<Uuid>,
+    #[serde(default)]
+    pub is_power: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum NetScope {
+    #[default]
+    Global,
+    Local,
+}
+
+fn default_net_scope() -> NetScope {
+    NetScope::Global
 }
 
 /// An instance of a library component placed in the circuit.
@@ -189,6 +213,20 @@ pub struct Schematic {
     pub symbols: Vec<SchematicSymbol>,
     #[serde(default)]
     pub net_segments: Vec<SchematicNetSegment>,
+    #[serde(default)]
+    pub sheet_refs: Vec<SheetRef>,
+    #[serde(default)]
+    pub hierarchical_ports: Vec<HierarchicalPort>,
+    #[serde(default)]
+    pub power_ports: Vec<PowerPort>,
+    #[serde(default)]
+    pub power_flags: Vec<PowerFlag>,
+    #[serde(default)]
+    pub bus_segments: Vec<BusSegment>,
+    #[serde(default)]
+    pub bus_entries: Vec<BusEntry>,
+    #[serde(default)]
+    pub bus_aliases: Vec<BusAlias>,
 }
 
 /// A symbol placement on a schematic sheet.
@@ -262,6 +300,8 @@ fn default_wire_width() -> f64 {
 pub enum LineEndpoint {
     Symbol { symbol: Uuid, pin: Uuid },
     Junction { junction: Uuid },
+    SheetPin { sheet_ref: Uuid, pin: Uuid },
+    HierPort { port: Uuid },
 }
 
 /// A net name label on the schematic.
@@ -273,6 +313,148 @@ pub struct NetLabel {
     pub rotation: Angle,
     #[serde(default)]
     pub mirror: bool,
+}
+
+// ===========================================================================
+// Hierarchical schematic types
+// ===========================================================================
+
+/// A reference to a child schematic sheet, placed on a parent sheet.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SheetRef {
+    pub uuid: Uuid,
+    /// Instance name on the parent sheet.
+    pub name: String,
+    /// Target schematic file name (without .json).
+    pub target_schematic: String,
+    pub position: Position,
+    #[serde(default = "default_sheet_size")]
+    pub width: f64,
+    #[serde(default = "default_sheet_size")]
+    pub height: f64,
+    #[serde(default)]
+    pub pins: Vec<SheetRefPin>,
+}
+
+fn default_sheet_size() -> f64 {
+    20.0
+}
+
+/// A pin on a sheet reference symbol, visible on the parent sheet.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SheetRefPin {
+    pub uuid: Uuid,
+    pub name: String,
+    /// Reference to the child sheet's [`HierarchicalPort`] UUID.
+    pub port_ref: Uuid,
+    #[serde(default)]
+    pub side: SheetSide,
+    #[serde(default)]
+    pub offset: f64,
+    /// Parent-side net binding.
+    #[serde(default)]
+    pub net: Option<Uuid>,
+}
+
+/// A port exported by a child sheet (the child's interface point).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HierarchicalPort {
+    pub uuid: Uuid,
+    pub name: String,
+    pub position: Position,
+    #[serde(default)]
+    pub side: SheetSide,
+    /// Child-side net UUID.
+    pub net: Uuid,
+}
+
+/// Side of a sheet for port/pin placement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum SheetSide {
+    #[default]
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+/// A global power port on a schematic (e.g. VCC, GND, 3V3).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PowerPort {
+    pub uuid: Uuid,
+    pub net: Uuid,
+    pub position: Position,
+    #[serde(default)]
+    pub rotation: Angle,
+    /// Visual style: "vcc", "gnd", "3v3", etc.
+    #[serde(default)]
+    pub style: String,
+}
+
+/// A power flag declaring that a net is actively driven.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PowerFlag {
+    pub uuid: Uuid,
+    pub net: Uuid,
+    pub position: Position,
+}
+
+// ===========================================================================
+// Bus types
+// ===========================================================================
+
+/// A bus wire segment on a schematic. Carries a bus label like "D[0..7]".
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BusSegment {
+    pub uuid: Uuid,
+    /// Bus label text (e.g. "D[0..7]" or an alias name).
+    pub label: String,
+    #[serde(default)]
+    pub junctions: Vec<Junction>,
+    #[serde(default)]
+    pub lines: Vec<SchematicLine>,
+}
+
+/// A bus entry connecting a bus segment to a scalar net wire.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BusEntry {
+    pub uuid: Uuid,
+    pub position: Position,
+    /// The bus segment this entry taps.
+    pub bus_segment: Uuid,
+    /// The scalar net this entry connects to.
+    pub net: Uuid,
+    /// The specific bus member name (e.g. "D[3]").
+    pub member_name: String,
+}
+
+/// A bus alias definition for reuse.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BusAlias {
+    pub uuid: Uuid,
+    pub name: String,
+    /// Expanded member net names.
+    pub members: Vec<String>,
+}
+
+// ===========================================================================
+// Differential pairs
+// ===========================================================================
+
+/// A differential pair linking two nets.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DifferentialPair {
+    pub uuid: Uuid,
+    pub name: String,
+    pub positive_net: Uuid,
+    pub negative_net: Uuid,
+    /// Maximum allowed length delta in mm. Overrides net-class default.
+    #[serde(default)]
+    pub max_length_delta: Option<f64>,
+    /// Target differential impedance in ohms.
+    #[serde(default)]
+    pub target_impedance: Option<f64>,
 }
 
 // ===========================================================================
@@ -362,14 +544,30 @@ pub struct DesignRules {
     pub via_annular_ring_max: f64,
 }
 
-fn dr_trace_width() -> f64 { 0.5 }
-fn dr_via_drill() -> f64 { 0.3 }
-fn dr_stopmask_via() -> f64 { 0.5 }
-fn dr_01() -> f64 { 0.1 }
-fn dr_10() -> f64 { 1.0 }
-fn dr_02() -> f64 { 0.2 }
-fn dr_025() -> f64 { 0.25 }
-fn dr_20() -> f64 { 2.0 }
+fn dr_trace_width() -> f64 {
+    0.5
+}
+fn dr_via_drill() -> f64 {
+    0.3
+}
+fn dr_stopmask_via() -> f64 {
+    0.5
+}
+fn dr_01() -> f64 {
+    0.1
+}
+fn dr_10() -> f64 {
+    1.0
+}
+fn dr_02() -> f64 {
+    0.2
+}
+fn dr_025() -> f64 {
+    0.25
+}
+fn dr_20() -> f64 {
+    2.0
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DrcSettings {
@@ -411,13 +609,27 @@ pub struct DrcSettings {
     pub buried_vias_allowed: bool,
 }
 
-fn dr_03() -> f64 { 0.3 }
-fn dr_035() -> f64 { 0.35 }
-fn dr_05() -> f64 { 0.5 }
-fn dr_0127() -> f64 { 0.127 }
-fn dr_015() -> f64 { 0.15 }
-fn dr_07() -> f64 { 0.7 }
-fn dr_08() -> f64 { 0.8 }
+fn dr_03() -> f64 {
+    0.3
+}
+fn dr_035() -> f64 {
+    0.35
+}
+fn dr_05() -> f64 {
+    0.5
+}
+fn dr_0127() -> f64 {
+    0.127
+}
+fn dr_015() -> f64 {
+    0.15
+}
+fn dr_07() -> f64 {
+    0.7
+}
+fn dr_08() -> f64 {
+    0.8
+}
 
 // ---------------------------------------------------------------------------
 // Fabrication output
@@ -463,20 +675,48 @@ impl Default for FabricationOutputSettings {
     }
 }
 
-fn fab_base_path() -> String { "./output/{{VERSION}}/gerber/{{PROJECT}}".into() }
-fn fab_outlines() -> String { "_OUTLINES.gbr".into() }
-fn fab_copper_top() -> String { "_COPPER-TOP.gbr".into() }
-fn fab_copper_inner() -> String { "_COPPER-IN{{CU_LAYER}}.gbr".into() }
-fn fab_copper_bot() -> String { "_COPPER-BOTTOM.gbr".into() }
-fn fab_soldermask_top() -> String { "_SOLDERMASK-TOP.gbr".into() }
-fn fab_soldermask_bot() -> String { "_SOLDERMASK-BOTTOM.gbr".into() }
-fn fab_silkscreen_top() -> String { "_SILKSCREEN-TOP.gbr".into() }
-fn fab_silkscreen_bot() -> String { "_SILKSCREEN-BOTTOM.gbr".into() }
-fn fab_drills_pth() -> String { "_DRILLS-PTH.drl".into() }
-fn fab_drills_npth() -> String { "_DRILLS-NPTH.drl".into() }
-fn fab_drills_merged() -> String { "_DRILLS.drl".into() }
-fn fab_paste_top() -> String { "_PASTE-TOP.gbr".into() }
-fn fab_paste_bot() -> String { "_PASTE-BOTTOM.gbr".into() }
+fn fab_base_path() -> String {
+    "./output/{{VERSION}}/gerber/{{PROJECT}}".into()
+}
+fn fab_outlines() -> String {
+    "_OUTLINES.gbr".into()
+}
+fn fab_copper_top() -> String {
+    "_COPPER-TOP.gbr".into()
+}
+fn fab_copper_inner() -> String {
+    "_COPPER-IN{{CU_LAYER}}.gbr".into()
+}
+fn fab_copper_bot() -> String {
+    "_COPPER-BOTTOM.gbr".into()
+}
+fn fab_soldermask_top() -> String {
+    "_SOLDERMASK-TOP.gbr".into()
+}
+fn fab_soldermask_bot() -> String {
+    "_SOLDERMASK-BOTTOM.gbr".into()
+}
+fn fab_silkscreen_top() -> String {
+    "_SILKSCREEN-TOP.gbr".into()
+}
+fn fab_silkscreen_bot() -> String {
+    "_SILKSCREEN-BOTTOM.gbr".into()
+}
+fn fab_drills_pth() -> String {
+    "_DRILLS-PTH.drl".into()
+}
+fn fab_drills_npth() -> String {
+    "_DRILLS-NPTH.drl".into()
+}
+fn fab_drills_merged() -> String {
+    "_DRILLS.drl".into()
+}
+fn fab_paste_top() -> String {
+    "_PASTE-TOP.gbr".into()
+}
+fn fab_paste_bot() -> String {
+    "_PASTE-BOTTOM.gbr".into()
+}
 
 // ---------------------------------------------------------------------------
 // Board elements
@@ -596,9 +836,15 @@ pub struct BoardPad {
     pub holes: Vec<BoardPadHole>,
 }
 
-fn default_stop_mask_config() -> StopMaskConfig { StopMaskConfig::Auto }
-fn default_solder_paste_config() -> SolderPasteConfig { SolderPasteConfig::Off }
-fn default_board_pad_function() -> PadFunction { PadFunction::Standard }
+fn default_stop_mask_config() -> StopMaskConfig {
+    StopMaskConfig::Auto
+}
+fn default_solder_paste_config() -> SolderPasteConfig {
+    SolderPasteConfig::Off
+}
+fn default_board_pad_function() -> PadFunction {
+    PadFunction::Standard
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BoardPadHole {
@@ -636,8 +882,12 @@ pub struct Plane {
     pub fragments: Vec<PlaneFragment>,
 }
 
-fn default_connect_style() -> ConnectStyle { ConnectStyle::Solid }
-fn default_thermal() -> f64 { 0.3 }
+fn default_connect_style() -> ConnectStyle {
+    ConnectStyle::Solid
+}
+fn default_thermal() -> f64 {
+    0.3
+}
 
 /// A computed fill fragment from a plane refill pass.
 /// First contour is the outer boundary; subsequent contours are holes.

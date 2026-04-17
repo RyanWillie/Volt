@@ -32,10 +32,10 @@ pub fn migrate_project(project_dir: &Path) -> Result<Option<MigrationResult>, St
         return Err("Not a Volt project: no volt.json found".into());
     }
 
-    let content = fs::read_to_string(&volt_path)
-        .map_err(|e| format!("Failed to read volt.json: {e}"))?;
-    let mut value: serde_json::Value = serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse volt.json: {e}"))?;
+    let content =
+        fs::read_to_string(&volt_path).map_err(|e| format!("Failed to read volt.json: {e}"))?;
+    let mut value: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse volt.json: {e}"))?;
 
     let current_version = value
         .get("schema_version")
@@ -59,10 +59,15 @@ pub fn migrate_project(project_dir: &Path) -> Result<Option<MigrationResult>, St
 
     while version < CURRENT_SCHEMA_VERSION {
         match version {
-            // Add migration functions here as schema evolves:
-            // 1 => { migrate_v1_to_v2(project_dir, &mut value)?; applied.push("v1→v2: ...".into()); }
+            1 => {
+                // v1→v2: Add net scope fields, hierarchy, bus, diff-pair support.
+                // All new fields use serde defaults, so no JSON mutation is needed
+                // for existing files — they deserialize correctly as-is.
+                applied.push(
+                    "v1→v2: advanced schematic features (hierarchy, buses, diff pairs)".into(),
+                );
+            }
             _ => {
-                // No explicit migration needed for this step — just bump version
                 applied.push(format!("v{}→v{}: no-op (compatible)", version, version + 1));
             }
         }
@@ -73,8 +78,7 @@ pub fn migrate_project(project_dir: &Path) -> Result<Option<MigrationResult>, St
     value["schema_version"] = serde_json::Value::from(CURRENT_SCHEMA_VERSION);
     let updated = serde_json::to_string_pretty(&value)
         .map_err(|e| format!("Failed to serialize volt.json: {e}"))?;
-    fs::write(&volt_path, updated + "\n")
-        .map_err(|e| format!("Failed to write volt.json: {e}"))?;
+    fs::write(&volt_path, updated + "\n").map_err(|e| format!("Failed to write volt.json: {e}"))?;
 
     Ok(Some(MigrationResult {
         from_version: current_version,
@@ -98,7 +102,11 @@ mod tests {
             "schema_version": CURRENT_SCHEMA_VERSION,
             "created": "2026-01-01T00:00:00Z",
         });
-        fs::write(dir.path().join("volt.json"), serde_json::to_string_pretty(&volt_json).unwrap()).unwrap();
+        fs::write(
+            dir.path().join("volt.json"),
+            serde_json::to_string_pretty(&volt_json).unwrap(),
+        )
+        .unwrap();
 
         let result = migrate_project(dir.path()).unwrap();
         assert!(result.is_none());
@@ -114,7 +122,11 @@ mod tests {
             "schema_version": CURRENT_SCHEMA_VERSION + 5,
             "created": "2026-01-01T00:00:00Z",
         });
-        fs::write(dir.path().join("volt.json"), serde_json::to_string_pretty(&volt_json).unwrap()).unwrap();
+        fs::write(
+            dir.path().join("volt.json"),
+            serde_json::to_string_pretty(&volt_json).unwrap(),
+        )
+        .unwrap();
 
         let result = migrate_project(dir.path());
         assert!(result.is_err());
@@ -131,10 +143,21 @@ mod tests {
             "version": "v1",
             "created": "2026-01-01T00:00:00Z",
         });
-        fs::write(dir.path().join("volt.json"), serde_json::to_string_pretty(&volt_json).unwrap()).unwrap();
+        fs::write(
+            dir.path().join("volt.json"),
+            serde_json::to_string_pretty(&volt_json).unwrap(),
+        )
+        .unwrap();
 
-        // Since CURRENT_SCHEMA_VERSION is 1 and default is 1, no migration needed
+        // Legacy project defaults to v1; should migrate to CURRENT
         let result = migrate_project(dir.path()).unwrap();
-        assert!(result.is_none());
+        if CURRENT_SCHEMA_VERSION > 1 {
+            assert!(result.is_some(), "legacy project should be migrated");
+            let r = result.unwrap();
+            assert_eq!(r.from_version, 1);
+            assert_eq!(r.to_version, CURRENT_SCHEMA_VERSION);
+        } else {
+            assert!(result.is_none());
+        }
     }
 }
