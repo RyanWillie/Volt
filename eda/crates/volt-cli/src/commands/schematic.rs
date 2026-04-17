@@ -23,6 +23,9 @@ pub enum SchematicCommands {
         /// Component designator (e.g. "R1")
         #[arg(long)]
         component: String,
+        /// Gate UUID or suffix (e.g. "A", "B") for multi-gate components. Omit for single-gate.
+        #[arg(long)]
+        gate: Option<String>,
         /// Position as grid coordinates "x,y" (grid = 2.54mm)
         #[arg(long)]
         grid: String,
@@ -146,8 +149,8 @@ pub enum SchematicFieldCommands {
 pub fn schematic_command(cmd: SchematicCommands) -> Result<()> {
     match cmd {
         SchematicCommands::Place {
-            project, schematic, component, grid, rotation, mirror,
-        } => place_symbol(&project, &schematic, &component, &grid, rotation, mirror),
+            project, schematic, component, gate, grid, rotation, mirror,
+        } => place_symbol(&project, &schematic, &component, gate.as_deref(), &grid, rotation, mirror),
         SchematicCommands::Move {
             project, schematic, component, grid,
         } => move_symbol(&project, &schematic, &component, &grid),
@@ -201,6 +204,7 @@ fn place_symbol(
     project: &std::path::Path,
     sch_name: &str,
     comp_name: &str,
+    gate_selector: Option<&str>,
     grid: &str,
     rotation: f64,
     mirror: bool,
@@ -216,12 +220,7 @@ fn place_symbol(
         .find(|c| c.name == comp_name)
         .ok_or_else(|| format!("Component '{}' not found in circuit", comp_name))?;
 
-    // Check if already placed
-    if schematic.symbols.iter().any(|s| s.component == comp_instance.uuid) {
-        return Err(format!("Component '{}' is already placed on schematic '{}'", comp_name, sch_name).into());
-    }
-
-    // Look up the library component to get the gate UUID
+    // Look up the library component to get gates
     let lib_comp: Component = project_io::read_library_element(
         project, "components", &comp_instance.lib_component,
     )?;
@@ -230,8 +229,48 @@ fn place_symbol(
         .find(|v| v.uuid == comp_instance.lib_variant)
         .ok_or_else(|| format!("Variant not found for component '{}'", comp_name))?;
 
-    let gate = variant.gates.first()
-        .ok_or_else(|| format!("No gates defined for component '{}'", comp_name))?;
+    if variant.gates.is_empty() {
+        return Err(format!("No gates defined for component '{}'", comp_name).into());
+    }
+
+    // Collect already-placed gate UUIDs for this component
+    let placed_gates: Vec<Uuid> = schematic.symbols.iter()
+        .filter(|s| s.component == comp_instance.uuid)
+        .map(|s| s.lib_gate)
+        .collect();
+
+    // Select the gate to place
+    let gate = if let Some(selector) = gate_selector {
+        // Try UUID first, then suffix match
+        if let Ok(uuid) = selector.parse::<Uuid>() {
+            variant.gates.iter().find(|g| g.uuid == uuid)
+                .ok_or_else(|| format!("Gate UUID '{}' not found in component '{}'", selector, comp_name))?
+        } else {
+            variant.gates.iter().find(|g| g.suffix.eq_ignore_ascii_case(selector))
+                .ok_or_else(|| format!("Gate suffix '{}' not found in component '{}'", selector, comp_name))?
+        }
+    } else {
+        // Auto-select first unplaced gate
+        variant.gates.iter()
+            .find(|g| !placed_gates.contains(&g.uuid))
+            .ok_or_else(|| format!(
+                "All {} gate(s) of component '{}' are already placed on schematic '{}'",
+                variant.gates.len(), comp_name, sch_name
+            ))?
+    };
+
+    // Check that this specific gate isn't already placed
+    if placed_gates.contains(&gate.uuid) {
+        let suffix_info = if gate.suffix.is_empty() {
+            String::new()
+        } else {
+            format!(" (gate {})", gate.suffix)
+        };
+        return Err(format!(
+            "Gate{} of component '{}' is already placed on schematic '{}'",
+            suffix_info, comp_name, sch_name
+        ).into());
+    }
 
     // Look up symbol to get text templates
     let lib_sym: Symbol = project_io::read_library_element(

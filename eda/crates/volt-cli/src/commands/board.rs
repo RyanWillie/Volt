@@ -455,9 +455,9 @@ fn compute_bounds(vertices: &[Vertex]) -> (f64, f64) {
 
 /// Create a board from the project circuit.
 ///
-/// Reads the circuit, finds all components that have device assignments,
-/// and populates the board's device list. Sets default design rules and
-/// creates a 100×100 mm board outline.
+/// Reads the circuit, requires an explicit valid device assignment for each
+/// component, and populates the board's device list. Sets default design rules
+/// and creates a 100×100 mm board outline.
 fn board_init(project: &std::path::Path, name: &str) -> Result<()> {
     project_io::ensure_project(project)?;
 
@@ -468,91 +468,39 @@ fn board_init(project: &std::path::Path, name: &str) -> Result<()> {
 
     let circuit = project_io::read_circuit(project)?;
 
-    // Build board devices from circuit components that have device assignments.
-    // Each component may have a device assignment which tells us the physical
-    // package/footprint to use on the board.
     let mut devices = Vec::new();
-    let mut skipped = Vec::new();
+    let mut failures = Vec::new();
 
     for comp in &circuit.components {
-        // Find the first device assignment (use the first assembly variant's assignment)
-        let assignment = comp.device_assignments.first();
+        match resolve_assigned_device_and_package(project, &circuit, comp) {
+            Ok((device, package)) => {
+                let footprint_uuid = package
+                    .footprints
+                    .first()
+                    .map(|f| f.uuid)
+                    .unwrap_or_else(new_uuid);
 
-        if let Some(da) = assignment {
-            // Look up the device to get the footprint UUID
-            let device: Device = match project_io::read_library_element(
-                project, "devices", &da.device,
-            ) {
-                Ok(d) => d,
-                Err(e) => {
-                    skipped.push(serde_json::json!({
-                        "name": comp.name,
-                        "reason": format!("Failed to read device: {e}"),
-                    }));
-                    continue;
-                }
-            };
-
-            // Look up the package to get the default footprint
-            let package: Package = match project_io::read_library_element(
-                project, "packages", &device.package,
-            ) {
-                Ok(p) => p,
-                Err(e) => {
-                    skipped.push(serde_json::json!({
-                        "name": comp.name,
-                        "reason": format!("Failed to read package: {e}"),
-                    }));
-                    continue;
-                }
-            };
-
-            let footprint_uuid = package
-                .footprints
-                .first()
-                .map(|f| f.uuid)
-                .unwrap_or_else(new_uuid);
-
-            devices.push(BoardDevice {
-                component: comp.uuid,
-                lib_device: da.device,
-                lib_footprint: footprint_uuid,
-                position: Position::new(0.0, 0.0), // unplaced — at origin
-                rotation: Angle(0.0),
-                flip: false,
-                lock: false,
-                texts: vec![],
-            });
-        } else {
-            // No device assignment — try to find a device in the library
-            // that references this component
-            match find_device_for_component(project, comp) {
-                Some((dev, pkg)) => {
-                    let footprint_uuid = pkg
-                        .footprints
-                        .first()
-                        .map(|f| f.uuid)
-                        .unwrap_or_else(new_uuid);
-
-                    devices.push(BoardDevice {
-                        component: comp.uuid,
-                        lib_device: dev.meta.uuid,
-                        lib_footprint: footprint_uuid,
-                        position: Position::new(0.0, 0.0),
-                        rotation: Angle(0.0),
-                        flip: false,
-                        lock: false,
-                        texts: vec![],
-                    });
-                }
-                None => {
-                    skipped.push(serde_json::json!({
-                        "name": comp.name,
-                        "reason": "No device assignment and no matching device found in library",
-                    }));
-                }
+                devices.push(BoardDevice {
+                    component: comp.uuid,
+                    lib_device: device.meta.uuid,
+                    lib_footprint: footprint_uuid,
+                    position: Position::new(0.0, 0.0),
+                    rotation: Angle(0.0),
+                    flip: false,
+                    lock: false,
+                    texts: vec![],
+                });
             }
+            Err(err) => failures.push(format!("{}: {}", comp.name, err)),
         }
+    }
+
+    if !failures.is_empty() {
+        return Err(format!(
+            "Board init failed: components missing valid device assignment:\n- {}",
+            failures.join("\n- ")
+        )
+        .into());
     }
 
     // Create board with default 100×100 mm outline
@@ -601,7 +549,6 @@ fn board_init(project: &std::path::Path, name: &str) -> Result<()> {
         "board": name,
         "uuid": board.uuid.to_string(),
         "devices": board.devices.len(),
-        "skipped": skipped,
         "outline": "100x100mm",
     });
     println!("{}", serde_json::to_string_pretty(&result)?);
@@ -648,7 +595,7 @@ fn board_place(
         "updated"
     } else {
         // Device not on board yet — try to discover device/package and add it
-        let (dev, pkg) = discover_device_and_package(project, comp)?;
+        let (dev, pkg) = discover_device_and_package(project, &circuit, comp)?;
         let footprint_uuid = pkg
             .footprints
             .first()
@@ -686,23 +633,10 @@ fn board_place(
 /// assignments, then by searching the library.
 fn discover_device_and_package(
     project: &std::path::Path,
+    circuit: &Circuit,
     comp: &ComponentInstance,
 ) -> Result<(Device, Package)> {
-    // Try device assignments first
-    if let Some(da) = comp.device_assignments.first() {
-        let dev: Device = project_io::read_library_element(project, "devices", &da.device)?;
-        let pkg: Package = project_io::read_library_element(project, "packages", &dev.package)?;
-        return Ok((dev, pkg));
-    }
-    // Fall back to library search
-    find_device_for_component(project, comp)
-        .ok_or_else(|| {
-            format!(
-                "No device assignment and no matching device found in library for '{}'",
-                comp.name
-            )
-            .into()
-        })
+    resolve_assigned_device_and_package(project, circuit, comp)
 }
 
 // ===========================================================================
@@ -1346,6 +1280,7 @@ fn board_plane(
         keep_islands: false,
         lock: false,
         vertices: vertices.clone(),
+        fragments: vec![],
     };
 
     let uuid_str = plane.uuid.to_string();
@@ -2186,32 +2121,301 @@ fn board_autoplace(
 // Helpers
 // ===========================================================================
 
-/// Search the project library for a Device that references the given component.
-fn find_device_for_component(
+fn default_assembly_variant_uuid(circuit: &Circuit) -> Result<uuid::Uuid> {
+    circuit
+        .assembly_variants
+        .first()
+        .map(|variant| variant.uuid)
+        .ok_or_else(|| "Project has no assembly variants".into())
+}
+
+fn resolve_assigned_device_and_package(
     project: &std::path::Path,
+    circuit: &Circuit,
     comp: &ComponentInstance,
-) -> Option<(Device, Package)> {
-    let devices_dir = project.join("library/devices");
-    if !devices_dir.exists() {
-        return None;
+) -> Result<(Device, Package)> {
+    let variant_uuid = default_assembly_variant_uuid(circuit)?;
+    let assignment = comp
+        .device_assignments
+        .iter()
+        .find(|assignment| assignment.variant == variant_uuid)
+        .ok_or_else(|| {
+            format!(
+                "component has no valid device assignment; run 'volt-eda component assign-device --component {} --device <uuid>'",
+                comp.name
+            )
+        })?;
+
+    let device: Device = project_io::read_library_element(project, "devices", &assignment.device)?;
+    if device.component != comp.lib_component {
+        return Err(format!(
+            "assigned device '{}' does not belong to component '{}'",
+            assignment.device, comp.name
+        )
+        .into());
     }
 
-    let entries = fs::read_dir(&devices_dir).ok()?;
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("json") {
-            continue;
-        }
-        if let Ok(dev) = project_io::read_json::<Device>(&path) {
-            if dev.component == comp.lib_component {
-                // Found a matching device — now load its package
-                if let Ok(pkg) = project_io::read_library_element::<Package>(
-                    project, "packages", &dev.package,
-                ) {
-                    return Some((dev, pkg));
-                }
-            }
-        }
+    let package: Package = project_io::read_library_element(project, "packages", &device.package)?;
+    if package.footprints.is_empty() {
+        return Err(format!(
+            "assigned device '{}' references package '{}' with no footprints",
+            assignment.device, package.meta.uuid
+        )
+        .into());
     }
-    None
+
+    Ok((device, package))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+
+    use tempfile::TempDir;
+    use uuid::Uuid;
+
+    use super::*;
+    use crate::commands::component::{component_command, ComponentCommands};
+    use crate::commands::new_project;
+    use crate::commands::project_io;
+    use volt_core::library::*;
+
+    fn create_temp_project() -> (TempDir, PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().join("proj");
+        new_project("proj", Some(&project)).unwrap();
+        (dir, project)
+    }
+
+    fn seed_library_component_with_device(project: &Path) -> (Uuid, Uuid, Uuid) {
+        let now = chrono::Utc::now();
+        let signal_in = new_uuid();
+        let signal_out = new_uuid();
+        let variant_uuid = new_uuid();
+        let component_uuid = new_uuid();
+        let pad_in = new_uuid();
+        let pad_out = new_uuid();
+        let device_uuid = new_uuid();
+
+        let component = Component {
+            meta: LibraryMeta {
+                uuid: component_uuid,
+                name: "Test IC".into(),
+                description: String::new(),
+                keywords: String::new(),
+                author: "test".into(),
+                version: "0.1".into(),
+                created: now,
+                deprecated: false,
+                category: None,
+            },
+            prefix: "U".into(),
+            default_value: String::new(),
+            schematic_only: false,
+            attributes: vec![],
+            signals: vec![
+                Signal {
+                    uuid: signal_in,
+                    name: "IN".into(),
+                    role: SignalRole::Input,
+                    required: true,
+                    negated: false,
+                    clock: false,
+                    forced_net: String::new(),
+                },
+                Signal {
+                    uuid: signal_out,
+                    name: "OUT".into(),
+                    role: SignalRole::Output,
+                    required: true,
+                    negated: false,
+                    clock: false,
+                    forced_net: String::new(),
+                },
+            ],
+            variants: vec![ComponentVariant {
+                uuid: variant_uuid,
+                norm: String::new(),
+                name: "default".into(),
+                description: String::new(),
+                gates: vec![],
+            }],
+        };
+        project_io::write_library_element(project, "components", &component_uuid, &component).unwrap();
+
+        let package_uuid = new_uuid();
+        let package = Package {
+            meta: LibraryMeta {
+                uuid: package_uuid,
+                name: "PKG".into(),
+                description: String::new(),
+                keywords: String::new(),
+                author: "test".into(),
+                version: "0.1".into(),
+                created: now,
+                deprecated: false,
+                category: None,
+            },
+            assembly_type: AssemblyType::Smt,
+            grid_interval: 1.0,
+            min_copper_clearance: 0.2,
+            pads: vec![
+                PackagePad { uuid: pad_in, name: "1".into() },
+                PackagePad { uuid: pad_out, name: "2".into() },
+            ],
+            footprints: vec![Footprint {
+                uuid: new_uuid(),
+                name: "default".into(),
+                description: String::new(),
+                model_position: Position3D::default(),
+                model_rotation: Position3D::default(),
+                pads: vec![
+                    FootprintPad {
+                        uuid: new_uuid(),
+                        package_pad: pad_in,
+                        side: PadSide::Top,
+                        shape: PadShape::RoundRect,
+                        position: Position::new(-1.0, 0.0),
+                        rotation: Angle(0.0),
+                        width: 1.0,
+                        height: 1.0,
+                        radius: 0.0,
+                        stop_mask: StopMaskConfig::Auto,
+                        solder_paste: SolderPasteConfig::Auto,
+                        clearance: 0.0,
+                        function: PadFunction::Standard,
+                        holes: vec![],
+                    },
+                    FootprintPad {
+                        uuid: new_uuid(),
+                        package_pad: pad_out,
+                        side: PadSide::Top,
+                        shape: PadShape::RoundRect,
+                        position: Position::new(1.0, 0.0),
+                        rotation: Angle(0.0),
+                        width: 1.0,
+                        height: 1.0,
+                        radius: 0.0,
+                        stop_mask: StopMaskConfig::Auto,
+                        solder_paste: SolderPasteConfig::Auto,
+                        clearance: 0.0,
+                        function: PadFunction::Standard,
+                        holes: vec![],
+                    },
+                ],
+                polygons: vec![],
+                texts: vec![],
+            }],
+        };
+        project_io::write_library_element(project, "packages", &package_uuid, &package).unwrap();
+
+        let device = Device {
+            meta: LibraryMeta {
+                uuid: device_uuid,
+                name: "Test IC Device".into(),
+                description: String::new(),
+                keywords: String::new(),
+                author: "test".into(),
+                version: "0.1".into(),
+                created: now,
+                deprecated: false,
+                category: None,
+            },
+            component: component_uuid,
+            package: package_uuid,
+            pad_mappings: vec![
+                DevicePadMapping {
+                    pad: pad_in,
+                    signal: signal_in,
+                    optional: false,
+                },
+                DevicePadMapping {
+                    pad: pad_out,
+                    signal: signal_out,
+                    optional: false,
+                },
+            ],
+            parts: vec![],
+        };
+        project_io::write_library_element(project, "devices", &device_uuid, &device).unwrap();
+
+        (component_uuid, variant_uuid, device_uuid)
+    }
+
+    #[test]
+    fn board_init_fails_without_assignment() {
+        let (_tmp, project) = create_temp_project();
+        let (component_uuid, variant_uuid, _device_uuid) = seed_library_component_with_device(&project);
+
+        component_command(ComponentCommands::Add {
+            project: project.clone(),
+            name: "U1".into(),
+            value: String::new(),
+            lib_component: Some(component_uuid),
+            lib_variant: Some(variant_uuid),
+            device: None,
+            simple_passive: false,
+            prefix: "U".into(),
+        })
+        .unwrap();
+
+        let err = board_init(&project, "fab").unwrap_err();
+        assert!(err.to_string().contains("missing valid device assignment"));
+        assert!(!project.join("boards/fab.json").exists());
+    }
+
+    #[test]
+    fn board_place_requires_assignment_for_new_board_device() {
+        let (_tmp, project) = create_temp_project();
+        let (component_uuid, variant_uuid, _device_uuid) = seed_library_component_with_device(&project);
+
+        component_command(ComponentCommands::Add {
+            project: project.clone(),
+            name: "U1".into(),
+            value: String::new(),
+            lib_component: Some(component_uuid),
+            lib_variant: Some(variant_uuid),
+            device: None,
+            simple_passive: false,
+            prefix: "U".into(),
+        })
+        .unwrap();
+
+        let err = board_place(&project, "default", "U1", 10.0, 15.0, 0.0, false, false).unwrap_err();
+        assert!(err.to_string().contains("component has no valid device assignment"));
+    }
+
+    #[test]
+    fn board_init_and_place_use_explicit_assignment() {
+        let (_tmp, project) = create_temp_project();
+
+        component_command(ComponentCommands::Add {
+            project: project.clone(),
+            name: "R1".into(),
+            value: "10k".into(),
+            lib_component: None,
+            lib_variant: None,
+            device: None,
+            simple_passive: true,
+            prefix: "R".into(),
+        })
+        .unwrap();
+
+        board_init(&project, "fab").unwrap();
+
+        let circuit = project_io::read_circuit(&project).unwrap();
+        let component = circuit.components.iter().find(|c| c.name == "R1").unwrap();
+        let assigned_device = component.device_assignments[0].device;
+
+        let board = project_io::read_board(&project, "fab").unwrap();
+        assert_eq!(board.devices.len(), 1);
+        assert_eq!(board.devices[0].lib_device, assigned_device);
+
+        board_place(&project, "fab", "R1", 10.0, 15.0, 90.0, false, true).unwrap();
+        let board = project_io::read_board(&project, "fab").unwrap();
+        let device = board.devices.iter().find(|d| d.component == component.uuid).unwrap();
+        assert_eq!(device.position, Position::new(10.0, 15.0));
+        assert_eq!(device.rotation, Angle(90.0));
+        assert!(device.lock);
+    }
 }

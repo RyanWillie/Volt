@@ -5,6 +5,7 @@ members = [
     "crates/volt-erc",
     "crates/volt-drc",
     "crates/volt-export",
+    "crates/volt-refill",
     "crates/volt-cli",
 ]
 resolver = "2"
@@ -21,6 +22,8 @@ volt-import = { path = "crates/volt-import" }
 volt-erc = { path = "crates/volt-erc" }
 volt-drc = { path = "crates/volt-drc" }
 volt-export = { path = "crates/volt-export" }
+
+volt-refill = { path = "crates/volt-refill" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

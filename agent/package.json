@@ -1,0 +1,20 @@
+{
+  "name": "volt-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Volt hardware design agent harness",
+  "scripts": {
+    "start": "npx tsx src/launch.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-ai": "*",
+    "@sinclair/typebox": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0"
+  }
+}

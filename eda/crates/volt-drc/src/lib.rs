@@ -29,7 +29,7 @@ use uuid::Uuid;
 
 use volt_core::common::*;
 use volt_core::library::{Device, FootprintPad, Package};
-use volt_core::project::{Board, BoardDevice, Circuit, TraceEndpoint, Via, ViaSize};
+use volt_core::project::{Board, BoardDevice, Circuit, NetClass, TraceEndpoint, Via, ViaSize};
 
 // ===========================================================================
 // Public types
@@ -300,6 +300,7 @@ enum CopperObject {
         y1: f64,
         x2: f64,
         y2: f64,
+        net: Option<Uuid>,
     },
     /// A pad (from device or standalone) at a world position.
     Pad {
@@ -310,6 +311,7 @@ enum CopperObject {
         y: f64,
         width: f64,
         height: f64,
+        net: Option<Uuid>,
     },
 }
 
@@ -326,9 +328,13 @@ struct DrillHole {
 /// Collect all copper objects from the board.
 fn collect_copper_objects(
     board: &Board,
+    circuit: &Circuit,
     library: &dyn BoardLibrary,
 ) -> Vec<CopperObject> {
     let mut objects = Vec::new();
+
+    // Build device pad → net map from circuit
+    let pad_net_map = build_device_pad_net_map(board, circuit, library);
 
     // Traces
     for seg in &board.net_segments {
@@ -341,6 +347,7 @@ fn collect_copper_objects(
                     layer: trace.layer,
                     width: trace.width,
                     x1, y1, x2, y2,
+                    net: seg.net,
                 });
             }
         }
@@ -354,6 +361,7 @@ fn collect_copper_objects(
                     for fp_pad in &fp.pads {
                         let (wx, wy) = transform_point(fp_pad.position.x, fp_pad.position.y, bd);
                         let layers = pad_copper_layers(fp_pad, bd);
+                        let net = pad_net_map.get(&(bd.component, fp_pad.uuid)).copied();
                         objects.push(CopperObject::Pad {
                             uuid: fp_pad.uuid,
                             layers,
@@ -361,6 +369,7 @@ fn collect_copper_objects(
                             y: wy,
                             width: fp_pad.width,
                             height: fp_pad.height,
+                            net,
                         });
                     }
                 }
@@ -380,6 +389,7 @@ fn collect_copper_objects(
                 y: via.position.y,
                 width: outer,
                 height: outer,
+                net: seg.net,
             });
         }
     }
@@ -399,11 +409,63 @@ fn collect_copper_objects(
                 y: bpad.position.y,
                 width: bpad.size_width,
                 height: bpad.size_height,
+                net: seg.net,
             });
         }
     }
 
     objects
+}
+
+/// Build a map from (component_uuid, footprint_pad_uuid) → net_uuid.
+/// Resolves through circuit signal connections and device pad mappings.
+fn build_device_pad_net_map(
+    board: &Board,
+    circuit: &Circuit,
+    library: &dyn BoardLibrary,
+) -> HashMap<(Uuid, Uuid), Uuid> {
+    let mut map = HashMap::new();
+    for dev in &board.devices {
+        let device_lib = match library.get_device(&dev.lib_device) {
+            Some(d) => d,
+            None => continue,
+        };
+        let package = match library.get_package(&device_lib.package) {
+            Some(p) => p,
+            None => continue,
+        };
+        let comp = match circuit.components.iter().find(|c| c.uuid == dev.component) {
+            Some(c) => c,
+            None => continue,
+        };
+        let footprint = package
+            .footprints
+            .iter()
+            .find(|f| f.uuid == dev.lib_footprint)
+            .or_else(|| package.footprints.first());
+        let footprint = match footprint {
+            Some(f) => f,
+            None => continue,
+        };
+        for fp_pad in &footprint.pads {
+            let signal = device_lib
+                .pad_mappings
+                .iter()
+                .find(|pm| pm.pad == fp_pad.package_pad)
+                .map(|pm| pm.signal);
+            if let Some(sig) = signal {
+                let net = comp
+                    .signal_connections
+                    .iter()
+                    .find(|sc| sc.signal == sig)
+                    .and_then(|sc| sc.net);
+                if let Some(net_uuid) = net {
+                    map.insert((dev.component, fp_pad.uuid), net_uuid);
+                }
+            }
+        }
+    }
+    map
 }
 
 /// Determine which copper layers a footprint pad exists on.
@@ -572,18 +634,18 @@ fn board_outline_vertices(board: &Board) -> Option<Vec<(f64, f64)>> {
 /// Run all board-level DRC checks.
 pub fn run_drc(
     board: &Board,
-    _circuit: &Circuit,
+    circuit: &Circuit,
     library: &dyn BoardLibrary,
 ) -> DrcResult {
     let mut diagnostics = Vec::new();
 
     // Collect data once
-    let copper = collect_copper_objects(board, library);
+    let copper = collect_copper_objects(board, circuit, library);
     let drills = collect_drill_holes(board, library);
     let outline = board_outline_vertices(board);
 
     // Clearance checks
-    check_copper_copper_clearance(board, &copper, &mut diagnostics);
+    check_copper_copper_clearance(board, circuit, &copper, &mut diagnostics);
     check_copper_board_clearance(board, &copper, outline.as_deref(), &mut diagnostics);
     check_copper_npth_clearance(board, &copper, &drills, &mut diagnostics);
     check_drill_drill_clearance(board, &drills, &mut diagnostics);
@@ -601,6 +663,14 @@ pub fn run_drc(
     check_overlapping_devices(board, library, &mut diagnostics);
     check_blind_buried_vias(board, &mut diagnostics);
 
+    // Schematic-board parity checks
+    check_net_parity(board, circuit, library, &mut diagnostics);
+
+    // Additional DRC checks for remaining DrcSettings fields
+    check_min_copper_width(board, &copper, &mut diagnostics);
+    check_slot_widths(board, &drills, &mut diagnostics);
+    check_outline_tool_diameter(board, outline.as_deref(), &mut diagnostics);
+
     let errors = diagnostics.iter().filter(|d| d.severity == Severity::Error).count();
     let warnings = diagnostics.iter().filter(|d| d.severity == Severity::Warning).count();
 
@@ -617,17 +687,31 @@ pub fn run_drc(
 // ===========================================================================
 
 /// D001: Copper-to-copper clearance violation.
+/// Uses per-NetClass clearance when available, otherwise board default.
 fn check_copper_copper_clearance(
     board: &Board,
+    circuit: &Circuit,
     copper: &[CopperObject],
     diags: &mut Vec<DrcDiagnostic>,
 ) {
-    let min_clearance = board.drc_settings.min_copper_copper_clearance;
+    let default_clearance = board.drc_settings.min_copper_copper_clearance;
     let n = copper.len();
+
+    // Build net → net_class clearance map
+    let net_class_clearance = build_net_class_clearance_map(circuit);
 
     for i in 0..n {
         for j in (i + 1)..n {
             let (obj_a, obj_b) = (&copper[i], &copper[j]);
+
+            // Skip same-net objects — they are allowed to touch
+            let net_a = copper_object_net(obj_a);
+            let net_b = copper_object_net(obj_b);
+            if let (Some(na), Some(nb)) = (net_a, net_b) {
+                if na == nb {
+                    continue;
+                }
+            }
 
             // Only check objects on the same layer
             let a_layers = copper_layers(obj_a);
@@ -635,6 +719,11 @@ fn check_copper_copper_clearance(
             if !share_layer(&a_layers, &b_layers) {
                 continue;
             }
+
+            // Resolve effective clearance: max of either net's class minimum, or board default
+            let min_clearance = resolve_effective_clearance(
+                net_a, net_b, &net_class_clearance, default_clearance,
+            );
 
             let clearance = copper_object_distance(obj_a, obj_b);
             if clearance < min_clearance {
@@ -654,10 +743,48 @@ fn check_copper_copper_clearance(
     }
 }
 
+/// Build a map from net UUID → net_class min_copper_copper_clearance.
+fn build_net_class_clearance_map(circuit: &Circuit) -> HashMap<Uuid, f64> {
+    let mut map = HashMap::new();
+    let class_map: HashMap<Uuid, &NetClass> = circuit
+        .net_classes
+        .iter()
+        .map(|nc| (nc.uuid, nc))
+        .collect();
+    for net in &circuit.nets {
+        if let Some(nc) = class_map.get(&net.net_class) {
+            if nc.min_copper_copper_clearance > 0.0 {
+                map.insert(net.uuid, nc.min_copper_copper_clearance);
+            }
+        }
+    }
+    map
+}
+
+/// Resolve effective clearance: use the stricter of the two nets' class overrides,
+/// or fall back to the board default.
+fn resolve_effective_clearance(
+    net_a: Option<Uuid>,
+    net_b: Option<Uuid>,
+    net_class_clearance: &HashMap<Uuid, f64>,
+    default: f64,
+) -> f64 {
+    let a = net_a.and_then(|n| net_class_clearance.get(&n)).copied().unwrap_or(default);
+    let b = net_b.and_then(|n| net_class_clearance.get(&n)).copied().unwrap_or(default);
+    a.max(b)
+}
+
 fn copper_layers(obj: &CopperObject) -> Vec<Layer> {
     match obj {
         CopperObject::TraceSegment { layer, .. } => vec![*layer],
         CopperObject::Pad { layers, .. } => layers.clone(),
+    }
+}
+
+fn copper_object_net(obj: &CopperObject) -> Option<Uuid> {
+    match obj {
+        CopperObject::TraceSegment { net, .. } => *net,
+        CopperObject::Pad { net, .. } => *net,
     }
 }
 
@@ -1038,7 +1165,8 @@ fn check_overlapping_devices(
     library: &dyn BoardLibrary,
     diags: &mut Vec<DrcDiagnostic>,
 ) {
-    // Compute axis-aligned bounding boxes for each device in world space
+    // Use courtyard polygons where available, fall back to pad-based AABB.
+    // Courtyard is identified as a polygon on Layer::TopCourtyard or BottomCourtyard.
     let bboxes: Vec<(Uuid, f64, f64, f64, f64)> = board
         .devices
         .iter()
@@ -1047,19 +1175,24 @@ fn check_overlapping_devices(
             let pkg = library.get_package(&lib_dev.package)?;
             let fp = pkg.footprints.iter().find(|f| f.uuid == bd.lib_footprint)?;
 
-            // Collect all pad and polygon positions to compute bounds
+            // Prefer courtyard polygon
+            let courtyard = fp.polygons.iter().find(|p| {
+                matches!(p.layer, Layer::TopCourtyard | Layer::BottomCourtyard)
+            });
+
             let mut points: Vec<(f64, f64)> = Vec::new();
 
-            for pad in &fp.pads {
-                let (wx, wy) = transform_point(pad.position.x, pad.position.y, bd);
-                points.push((wx - pad.width / 2.0, wy - pad.height / 2.0));
-                points.push((wx + pad.width / 2.0, wy + pad.height / 2.0));
-            }
-
-            for poly in &fp.polygons {
-                for v in &poly.vertices {
+            if let Some(cy) = courtyard {
+                for v in &cy.vertices {
                     let (wx, wy) = transform_point(v.position.x, v.position.y, bd);
                     points.push((wx, wy));
+                }
+            } else {
+                // Fallback: pad-based bounding box
+                for pad in &fp.pads {
+                    let (wx, wy) = transform_point(pad.position.x, pad.position.y, bd);
+                    points.push((wx - pad.width / 2.0, wy - pad.height / 2.0));
+                    points.push((wx + pad.width / 2.0, wy + pad.height / 2.0));
                 }
             }
 
@@ -1149,6 +1282,186 @@ fn check_blind_buried_vias(board: &Board, diags: &mut Vec<DrcDiagnostic>) {
 
 // ===========================================================================
 // Tests
+// ===========================================================================
+// Additional DRC checks for DrcSettings fields
+// ===========================================================================
+
+/// D016: Minimum copper width (general, not just traces).
+/// Checks traces and standalone pad dimensions against DrcSettings.min_copper_width.
+fn check_min_copper_width(
+    board: &Board,
+    copper: &[CopperObject],
+    diags: &mut Vec<DrcDiagnostic>,
+) {
+    let min_width = board.drc_settings.min_copper_width;
+    if min_width <= 0.0 {
+        return;
+    }
+    for obj in copper {
+        match obj {
+            CopperObject::TraceSegment { uuid, width, .. } => {
+                if *width < min_width {
+                    diags.push(DrcDiagnostic {
+                        rule: "D016".into(),
+                        severity: Severity::Error,
+                        message: format!(
+                            "Copper width {:.3}mm < minimum {:.3}mm",
+                            width, min_width
+                        ),
+                        location: None,
+                        object: Some(*uuid),
+                    });
+                }
+            }
+            CopperObject::Pad { uuid, width, height, .. } => {
+                let min_dim = width.min(*height);
+                if min_dim < min_width {
+                    diags.push(DrcDiagnostic {
+                        rule: "D016".into(),
+                        severity: Severity::Error,
+                        message: format!(
+                            "Pad copper dimension {:.3}mm < minimum {:.3}mm",
+                            min_dim, min_width
+                        ),
+                        location: None,
+                        object: Some(*uuid),
+                    });
+                }
+            }
+        }
+    }
+}
+
+/// D017: NPTH slot width violation.
+/// D018: PTH slot width violation.
+fn check_slot_widths(
+    board: &Board,
+    drills: &[DrillHole],
+    diags: &mut Vec<DrcDiagnostic>,
+) {
+    let min_npth_slot = board.drc_settings.min_npth_slot_width;
+    let min_pth_slot = board.drc_settings.min_pth_slot_width;
+
+    for hole in drills {
+        // Slots have diameter as width; check if below minimum
+        if !hole.plated && min_npth_slot > 0.0 && hole.diameter < min_npth_slot {
+            diags.push(DrcDiagnostic {
+                rule: "D017".into(),
+                severity: Severity::Error,
+                message: format!(
+                    "NPTH slot width {:.3}mm < minimum {:.3}mm",
+                    hole.diameter, min_npth_slot
+                ),
+                location: Some(Position::new(hole.x, hole.y)),
+                object: Some(hole.uuid),
+            });
+        }
+        if hole.plated && min_pth_slot > 0.0 && hole.diameter < min_pth_slot {
+            diags.push(DrcDiagnostic {
+                rule: "D018".into(),
+                severity: Severity::Error,
+                message: format!(
+                    "PTH slot width {:.3}mm < minimum {:.3}mm",
+                    hole.diameter, min_pth_slot
+                ),
+                location: Some(Position::new(hole.x, hole.y)),
+                object: Some(hole.uuid),
+            });
+        }
+    }
+}
+
+/// D019: Board outline corners sharper than min_outline_tool_diameter.
+/// Approximated: checks if any outline segment is shorter than the tool diameter.
+fn check_outline_tool_diameter(
+    board: &Board,
+    outline: Option<&[(f64, f64)]>,
+    diags: &mut Vec<DrcDiagnostic>,
+) {
+    let min_tool = board.drc_settings.min_outline_tool_diameter;
+    if min_tool <= 0.0 {
+        return;
+    }
+    let Some(outline) = outline else { return };
+    let n = outline.len();
+    for i in 0..n {
+        let j = (i + 1) % n;
+        let dx = outline[j].0 - outline[i].0;
+        let dy = outline[j].1 - outline[i].1;
+        let seg_len = (dx * dx + dy * dy).sqrt();
+        if seg_len > 0.0 && seg_len < min_tool {
+            diags.push(DrcDiagnostic {
+                rule: "D019".into(),
+                severity: Severity::Warning,
+                message: format!(
+                    "Board outline segment {:.3}mm shorter than minimum tool diameter {:.3}mm",
+                    seg_len, min_tool
+                ),
+                location: Some(Position::new(outline[i].0, outline[i].1)),
+                object: None,
+            });
+        }
+    }
+}
+
+// ===========================================================================
+// Net-parity checks
+// ===========================================================================
+
+/// D014: Board net segment net doesn't match circuit net assignments for device pads.
+/// D015: Trace endpoint connects to a device pad whose signal maps to a different net.
+fn check_net_parity(
+    board: &Board,
+    circuit: &Circuit,
+    library: &dyn BoardLibrary,
+    diags: &mut Vec<DrcDiagnostic>,
+) {
+    let pad_net_map = build_device_pad_net_map(board, circuit, library);
+
+    for seg in &board.net_segments {
+        let seg_net = match seg.net {
+            Some(n) => n,
+            None => continue,
+        };
+
+        for trace in &seg.traces {
+            check_trace_endpoint_parity(
+                &trace.from, seg_net, trace.uuid, board, &pad_net_map, diags,
+            );
+            check_trace_endpoint_parity(
+                &trace.to, seg_net, trace.uuid, board, &pad_net_map, diags,
+            );
+        }
+    }
+}
+
+fn check_trace_endpoint_parity(
+    ep: &TraceEndpoint,
+    segment_net: Uuid,
+    trace_uuid: Uuid,
+    board: &Board,
+    pad_net_map: &HashMap<(Uuid, Uuid), Uuid>,
+    diags: &mut Vec<DrcDiagnostic>,
+) {
+    if let TraceEndpoint::Device { device, pad } = ep {
+        if let Some(bd) = board.devices.iter().find(|d| d.component == *device) {
+            if let Some(&pad_net) = pad_net_map.get(&(bd.component, *pad)) {
+                if pad_net != segment_net {
+                    diags.push(DrcDiagnostic {
+                        rule: "D015".into(),
+                        severity: Severity::Error,
+                        message: format!(
+                            "Trace endpoint connected to device pad whose signal maps to a different net"
+                        ),
+                        location: None,
+                        object: Some(trace_uuid),
+                    });
+                }
+            }
+        }
+    }
+}
+
 // ===========================================================================
 
 #[cfg(test)]

@@ -1,11 +1,12 @@
 //! `volt-eda library` subcommands.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use clap::Subcommand;
 use uuid::Uuid;
-use volt_core::library::{Component, Symbol};
+use volt_core::library::{Component, Device, Package, Symbol};
 
 use super::project_io::{self, Result};
 
@@ -36,7 +37,9 @@ pub enum LibraryCommands {
 pub fn library_command(cmd: LibraryCommands) -> Result<()> {
     match cmd {
         LibraryCommands::Search { project, query, limit } => search_library(&project, &query, limit),
-        LibraryCommands::Info { project, component, name } => library_info(&project, component, name.as_deref()),
+        LibraryCommands::Info { project, component, name } => {
+            library_info(&project, component, name.as_deref())
+        }
     }
 }
 
@@ -44,6 +47,8 @@ fn search_library(project: &Path, query: &str, limit: usize) -> Result<()> {
     project_io::ensure_project(project)?;
     let q = query.to_lowercase();
     let mut hits = Vec::new();
+    let devices = read_all_devices(project)?;
+    let packages = read_all_packages(project)?;
 
     for component in read_all_components(project)? {
         let haystack = format!(
@@ -62,6 +67,7 @@ fn search_library(project: &Path, query: &str, limit: usize) -> Result<()> {
         }
 
         let variant = component.variants.first();
+        let matching_devices = matching_devices_json(&component, &devices, &packages);
         hits.push((
             score,
             serde_json::json!({
@@ -74,11 +80,16 @@ fn search_library(project: &Path, query: &str, limit: usize) -> Result<()> {
                 "default_value": component.default_value,
                 "signals": component.signals.iter().map(|s| s.name.clone()).collect::<Vec<_>>(),
                 "signal_count": component.signals.len(),
+                "device_count": matching_devices.len(),
+                "devices": matching_devices,
             }),
         ));
     }
 
-    hits.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1["name"].as_str().cmp(&b.1["name"].as_str())));
+    hits.sort_by(|a, b| {
+        b.0.cmp(&a.0)
+            .then_with(|| a.1["name"].as_str().cmp(&b.1["name"].as_str()))
+    });
     let results: Vec<_> = hits.into_iter().take(limit).map(|(_, item)| item).collect();
 
     let out = serde_json::json!({
@@ -91,7 +102,11 @@ fn search_library(project: &Path, query: &str, limit: usize) -> Result<()> {
     Ok(())
 }
 
-fn library_info(project: &Path, component_uuid: Option<Uuid>, component_name: Option<&str>) -> Result<()> {
+fn library_info(
+    project: &Path,
+    component_uuid: Option<Uuid>,
+    component_name: Option<&str>,
+) -> Result<()> {
     project_io::ensure_project(project)?;
     let component = if let Some(uuid) = component_uuid {
         project_io::read_library_element::<Component>(project, "components", &uuid)?
@@ -108,8 +123,12 @@ fn library_info(project: &Path, component_uuid: Option<Uuid>, component_name: Op
         .variants
         .iter()
         .flat_map(|variant| variant.gates.iter())
-        .filter_map(|gate| project_io::read_library_element::<Symbol>(project, "symbols", &gate.symbol).ok())
+        .filter_map(|gate| {
+            project_io::read_library_element::<Symbol>(project, "symbols", &gate.symbol).ok()
+        })
         .collect::<Vec<_>>();
+    let devices = read_all_devices(project)?;
+    let packages = read_all_packages(project)?;
 
     let out = serde_json::json!({
         "status": "ok",
@@ -151,10 +170,35 @@ fn library_info(project: &Path, component_uuid: Option<Uuid>, component_name: Op
                     "rotation": p.rotation.0,
                 })).collect::<Vec<_>>(),
             })).collect::<Vec<_>>(),
+            "devices": matching_devices_json(&component, &devices, &packages),
         }
     });
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
+}
+
+fn matching_devices_json(
+    component: &Component,
+    devices: &[Device],
+    packages: &HashMap<Uuid, Package>,
+) -> Vec<serde_json::Value> {
+    devices
+        .iter()
+        .filter(|device| device.component == component.meta.uuid)
+        .map(|device| {
+            let package_name = packages
+                .get(&device.package)
+                .map(|package| package.meta.name.clone());
+            serde_json::json!({
+                "device_uuid": device.meta.uuid.to_string(),
+                "device_name": device.meta.name,
+                "package_uuid": device.package.to_string(),
+                "package_name": package_name,
+                "pad_mapping_count": device.pad_mappings.len(),
+                "part_count": device.parts.len(),
+            })
+        })
+        .collect()
 }
 
 fn read_all_components(project: &Path) -> Result<Vec<Component>> {
@@ -170,6 +214,37 @@ fn read_all_components(project: &Path) -> Result<Vec<Component>> {
         }
     }
     Ok(components)
+}
+
+fn read_all_devices(project: &Path) -> Result<Vec<Device>> {
+    let mut devices = Vec::new();
+    let dir = project.join("library/devices");
+    if !dir.exists() {
+        return Ok(devices);
+    }
+    for entry in fs::read_dir(dir)? {
+        let path = entry?.path();
+        if path.extension().is_some_and(|ext| ext == "json") {
+            devices.push(project_io::read_json::<Device>(&path)?);
+        }
+    }
+    Ok(devices)
+}
+
+fn read_all_packages(project: &Path) -> Result<HashMap<Uuid, Package>> {
+    let mut packages = HashMap::new();
+    let dir = project.join("library/packages");
+    if !dir.exists() {
+        return Ok(packages);
+    }
+    for entry in fs::read_dir(dir)? {
+        let path = entry?.path();
+        if path.extension().is_some_and(|ext| ext == "json") {
+            let package = project_io::read_json::<Package>(&path)?;
+            packages.insert(package.meta.uuid, package);
+        }
+    }
+    Ok(packages)
 }
 
 fn score_match(haystack: &str, query: &str, component: &Component) -> usize {

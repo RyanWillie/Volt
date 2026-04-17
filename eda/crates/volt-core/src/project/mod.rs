@@ -441,6 +441,10 @@ pub struct FabricationOutputSettings {
     pub drills_merged_suffix: String,
     #[serde(default)]
     pub merge_drills: bool,
+    #[serde(default = "fab_paste_top")]
+    pub paste_top_suffix: String,
+    #[serde(default = "fab_paste_bot")]
+    pub paste_bot_suffix: String,
 }
 
 impl Default for FabricationOutputSettings {
@@ -461,6 +465,8 @@ fn fab_silkscreen_bot() -> String { "_SILKSCREEN-BOTTOM.gbr".into() }
 fn fab_drills_pth() -> String { "_DRILLS-PTH.drl".into() }
 fn fab_drills_npth() -> String { "_DRILLS-NPTH.drl".into() }
 fn fab_drills_merged() -> String { "_DRILLS.drl".into() }
+fn fab_paste_top() -> String { "_PASTE-TOP.gbr".into() }
+fn fab_paste_bot() -> String { "_PASTE-BOTTOM.gbr".into() }
 
 // ---------------------------------------------------------------------------
 // Board elements
@@ -615,10 +621,21 @@ pub struct Plane {
     #[serde(default)]
     pub lock: bool,
     pub vertices: Vec<Vertex>,
+    /// Computed fill fragments. Empty until refill is run.
+    #[serde(default)]
+    pub fragments: Vec<PlaneFragment>,
 }
 
 fn default_connect_style() -> ConnectStyle { ConnectStyle::Solid }
 fn default_thermal() -> f64 { 0.3 }
+
+/// A computed fill fragment from a plane refill pass.
+/// First contour is the outer boundary; subsequent contours are holes.
+/// Each contour is a closed ring of positions.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct PlaneFragment {
+    pub contours: Vec<Vec<Position>>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]

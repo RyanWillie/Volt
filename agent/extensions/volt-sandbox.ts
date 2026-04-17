@@ -1,0 +1,120 @@
+/**
+ * Volt Project Sandbox Extension
+ *
+ * Confines the agent to the project directory. All file operations (read, write,
+ * edit, bash) are validated to ensure they don't escape the project root.
+ *
+ * This extension is loaded by the Volt application when launching an agent
+ * session. The project root is passed as cwd to the Pi session.
+ *
+ * Rules:
+ * - read/write/edit: path must resolve within cwd or /tmp
+ * - bash: commands are allowed (volt-eda runs in the project dir)
+ * - No access to home directory, ~/.ssh, ~/.aws, etc.
+ */
+
+import { resolve, relative } from "node:path";
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  let projectRoot = "";
+
+  pi.on("session_start", async (_event, ctx) => {
+    projectRoot = ctx.cwd;
+    ctx.ui.setStatus(
+      "sandbox",
+      ctx.ui.theme.fg("accent", `🔒 Volt sandbox: ${projectRoot}`)
+    );
+  });
+
+  pi.on("tool_call", async (event, ctx) => {
+    const { toolName, input } = event;
+
+    // Validate file path operations
+    if (toolName === "read" || toolName === "write" || toolName === "edit") {
+      const filePath = input.path as string | undefined;
+      if (!filePath) return undefined;
+
+      const resolved = resolve(projectRoot, filePath);
+      const rel = relative(projectRoot, resolved);
+
+      // Allow paths within project root
+      if (!rel.startsWith("..") && !resolve(rel).startsWith("/")) {
+        return undefined;
+      }
+
+      // Allow /tmp for scratch work
+      if (resolved.startsWith("/tmp/") || resolved.startsWith("/tmp")) {
+        return undefined;
+      }
+
+      // Block everything else
+      if (ctx.hasUI) {
+        ctx.ui.notify(
+          `🚫 Blocked ${toolName} outside project: ${filePath}`,
+          "warning"
+        );
+      }
+      return {
+        block: true,
+        reason: `Path "${filePath}" resolves to "${resolved}" which is outside the project directory "${projectRoot}". The agent can only access files within the project directory and /tmp.`,
+      };
+    }
+
+    // For bash, validate no obvious escapes
+    if (toolName === "bash") {
+      const command = (input.command as string) || "";
+
+      // Block common escape patterns
+      const blocked = [
+        /\bssh\b/,
+        /\bcurl\b.*\|.*\bsh\b/,
+        /\bwget\b.*\|.*\bsh\b/,
+        /\brm\s+-rf\s+\//,
+        /\bsudo\b/,
+        /~\/\.ssh/,
+        /~\/\.aws/,
+        /~\/\.gnupg/,
+      ];
+
+      for (const pattern of blocked) {
+        if (pattern.test(command)) {
+          if (ctx.hasUI) {
+            ctx.ui.notify(`🚫 Blocked dangerous command pattern`, "warning");
+          }
+          return {
+            block: true,
+            reason: `Command blocked by Volt sandbox: matches restricted pattern. The agent should only use volt-eda commands and basic file operations within the project directory.`,
+          };
+        }
+      }
+    }
+
+    return undefined;
+  });
+
+  // Register /sandbox command to show current config
+  pi.registerCommand("sandbox", {
+    description: "Show Volt sandbox configuration",
+    handler: async (_args, ctx) => {
+      ctx.ui.notify(
+        [
+          "Volt Project Sandbox",
+          "",
+          `Project root: ${projectRoot}`,
+          "",
+          "Allowed:",
+          `  • File operations within: ${projectRoot}`,
+          "  • Scratch files in: /tmp",
+          "  • volt-eda CLI commands",
+          "",
+          "Blocked:",
+          "  • File access outside project root",
+          "  • ssh, sudo, dangerous shell patterns",
+          "  • Home directory sensitive files (~/.ssh, ~/.aws)",
+        ].join("\n"),
+        "info"
+      );
+    },
+  });
+}

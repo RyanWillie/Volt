@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 use volt_core::common::*;
-use volt_core::library::{Device, Package};
+use volt_core::library::{Device, FootprintPad, Package};
 use volt_core::project::*;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -617,23 +617,54 @@ pub fn export_copper_layer(
         writer.flash(*x, *y);
     }
 
-    // Copper planes (filled regions)
+    // Copper planes (filled regions from refill fragments)
     for plane in &board.planes {
         if plane.layer != layer {
             continue;
         }
-        if plane.vertices.len() < 3 {
-            continue;
+        if !plane.fragments.is_empty() {
+            // Use computed refill fragments
+            for fragment in &plane.fragments {
+                if fragment.contours.is_empty() {
+                    continue;
+                }
+                // Outer boundary = dark region
+                let outer = &fragment.contours[0];
+                if outer.len() >= 3 {
+                    writer.region_start();
+                    writer.move_to(outer[0].x, outer[0].y);
+                    for pt in &outer[1..] {
+                        writer.line_to(pt.x, pt.y);
+                    }
+                    writer.line_to(outer[0].x, outer[0].y);
+                    writer.region_end();
+                }
+                // Holes = clear regions
+                for hole in &fragment.contours[1..] {
+                    if hole.len() >= 3 {
+                        writer.set_polarity_clear();
+                        writer.region_start();
+                        writer.move_to(hole[0].x, hole[0].y);
+                        for pt in &hole[1..] {
+                            writer.line_to(pt.x, pt.y);
+                        }
+                        writer.line_to(hole[0].x, hole[0].y);
+                        writer.region_end();
+                        writer.set_polarity_dark();
+                    }
+                }
+            }
+        } else if plane.vertices.len() >= 3 {
+            // Fallback: raw plane outline (no refill computed)
+            writer.region_start();
+            let first = &plane.vertices[0];
+            writer.move_to(first.position.x, first.position.y);
+            for v in &plane.vertices[1..] {
+                writer.line_to(v.position.x, v.position.y);
+            }
+            writer.line_to(first.position.x, first.position.y);
+            writer.region_end();
         }
-        writer.region_start();
-        let first = &plane.vertices[0];
-        writer.move_to(first.position.x, first.position.y);
-        for v in &plane.vertices[1..] {
-            writer.line_to(v.position.x, v.position.y);
-        }
-        // Close the polygon
-        writer.line_to(first.position.x, first.position.y);
-        writer.region_end();
     }
 
     writer.finish();
@@ -740,6 +771,124 @@ pub fn export_soldermask_layer(
 
     writer.finish();
     Ok(writer.to_string())
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Solder paste (stencil) layer export
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Export a solder-paste (stencil) layer as a Gerber RS-274X string.
+///
+/// Produces apertures for SMD pads only (no THT, no vias).
+/// Aperture size is the pad size shrunk by the paste clearance.
+pub fn export_paste_layer(
+    board: &Board,
+    _circuit: &Circuit,
+    library: &dyn BoardLibrary,
+    top: bool,
+) -> Result<String> {
+    let mut writer = GerberWriter::new();
+    let mut cache = ApertureCache::new();
+    let mut flashes: Vec<(usize, f64, f64)> = Vec::new();
+
+    let side_name = if top { "Top" } else { "Bottom" };
+    writer.comment(&format!("Solder Paste {}", side_name));
+
+    let rules = &board.design_rules;
+
+    // Device footprint pads (SMD only)
+    for dev in &board.devices {
+        let Some(lib_dev) = library.get_device(&dev.lib_device) else {
+            continue;
+        };
+        let Some(pkg) = library.get_package(&lib_dev.package) else {
+            continue;
+        };
+        let Some(footprint) = pkg.footprints.iter().find(|f| f.uuid == dev.lib_footprint) else {
+            continue;
+        };
+        for fp_pad in &footprint.pads {
+            // Only SMD pads get paste — skip THT
+            if fp_pad.side == PadSide::ThroughHole {
+                continue;
+            }
+            if !pad_on_paste_side(fp_pad.side, dev.flip, top) {
+                continue;
+            }
+            let shrink = match fp_pad.solder_paste {
+                SolderPasteConfig::Auto => paste_shrink_auto(fp_pad, rules),
+                SolderPasteConfig::Manual(v) => v,
+                SolderPasteConfig::Off => continue,
+            };
+            let (x, y) = transform_point(fp_pad.position.x, fp_pad.position.y, dev);
+            let w = (fp_pad.width - 2.0 * shrink).max(0.01);
+            let h = (fp_pad.height - 2.0 * shrink).max(0.01);
+            let ap = match fp_pad.shape {
+                PadShape::Round => cache.circle(&mut writer, w),
+                _ => cache.rectangle(&mut writer, w, h),
+            };
+            flashes.push((ap, x, y));
+        }
+    }
+
+    // Standalone board pads (SMD only)
+    for seg in &board.net_segments {
+        for pad in &seg.pads {
+            if pad.side == PadSide::ThroughHole {
+                continue;
+            }
+            if !pad_on_paste_side(pad.side, false, top) {
+                continue;
+            }
+            let shrink = match pad.solder_paste {
+                SolderPasteConfig::Auto => {
+                    let ratio = rules.solderpaste_clearance_ratio;
+                    let min_s = rules.solderpaste_clearance_min;
+                    let max_s = rules.solderpaste_clearance_max;
+                    let computed = pad.size_width.min(pad.size_height) * ratio;
+                    computed.max(min_s).min(max_s)
+                }
+                SolderPasteConfig::Manual(v) => v,
+                SolderPasteConfig::Off => continue,
+            };
+            let w = (pad.size_width - 2.0 * shrink).max(0.01);
+            let h = (pad.size_height - 2.0 * shrink).max(0.01);
+            let ap = match pad.shape {
+                PadShape::Round => cache.circle(&mut writer, w),
+                _ => cache.rectangle(&mut writer, w, h),
+            };
+            flashes.push((ap, pad.position.x, pad.position.y));
+        }
+    }
+
+    // No vias on paste layer — ever.
+
+    writer.set_polarity_dark();
+    for (ap, x, y) in &flashes {
+        writer.select_aperture(*ap);
+        writer.flash(*x, *y);
+    }
+
+    writer.finish();
+    Ok(writer.to_string())
+}
+
+fn pad_on_paste_side(pad_side: PadSide, flipped: bool, top: bool) -> bool {
+    let side = effective_pad_side(pad_side, flipped);
+    if top {
+        matches!(side, PadSide::Top)
+    } else {
+        matches!(side, PadSide::Bottom)
+    }
+}
+
+fn paste_shrink_auto(fp_pad: &FootprintPad, rules: &DesignRules) -> f64 {
+    let ratio = rules.solderpaste_clearance_ratio;
+    let min_s = rules.solderpaste_clearance_min;
+    let max_s = rules.solderpaste_clearance_max;
+    let pad_min = fp_pad.width.min(fp_pad.height);
+    let computed = pad_min * ratio;
+    computed.max(min_s).min(max_s)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -979,6 +1128,13 @@ pub fn export_all(
 
     let content = export_silkscreen_layer(board, circuit, library, false)?;
     write_gerber_file(&mut files, output_dir, name, &settings.silkscreen_bot_suffix, "Bottom Silkscreen", &content)?;
+
+    // Solder paste / stencil
+    let content = export_paste_layer(board, circuit, library, true)?;
+    write_gerber_file(&mut files, output_dir, name, &settings.paste_top_suffix, "Top Paste", &content)?;
+
+    let content = export_paste_layer(board, circuit, library, false)?;
+    write_gerber_file(&mut files, output_dir, name, &settings.paste_bot_suffix, "Bottom Paste", &content)?;
 
     Ok(ExportSummary { files })
 }

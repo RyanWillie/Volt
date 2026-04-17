@@ -380,3 +380,108 @@ fn drc_result_is_json_serializable() {
     assert!(json.contains("\"passed\": true"));
     assert!(json.contains("\"D010\""));
 }
+
+// ===========================================================================
+// Net-awareness tests
+// ===========================================================================
+
+#[test]
+fn d001_same_net_traces_no_violation() {
+    let mut board = make_clean_board();
+    let net_a = Uuid::new_v4();
+    let j1 = Uuid::new_v4();
+    let j2 = Uuid::new_v4();
+    let j3 = Uuid::new_v4();
+    let j4 = Uuid::new_v4();
+
+    // Two traces on the same net, overlapping/touching
+    board.net_segments.push(BoardNetSegment {
+        uuid: Uuid::new_v4(),
+        net: Some(net_a),
+        traces: vec![
+            Trace {
+                uuid: Uuid::new_v4(),
+                layer: Layer::TopCopper,
+                width: 0.5,
+                from: TraceEndpoint::Junction { junction: j1 },
+                to: TraceEndpoint::Junction { junction: j2 },
+            },
+            Trace {
+                uuid: Uuid::new_v4(),
+                layer: Layer::TopCopper,
+                width: 0.5,
+                from: TraceEndpoint::Junction { junction: j3 },
+                to: TraceEndpoint::Junction { junction: j4 },
+            },
+        ],
+        vias: vec![],
+        junctions: vec![
+            Junction { uuid: j1, position: Position::new(10.0, 10.0) },
+            Junction { uuid: j2, position: Position::new(20.0, 10.0) },
+            Junction { uuid: j3, position: Position::new(15.0, 10.0) },
+            Junction { uuid: j4, position: Position::new(25.0, 10.0) },
+        ],
+        pads: vec![],
+    });
+
+    let result = run_drc(&board, &empty_circuit(), &empty_library());
+    assert!(
+        !result.diagnostics.iter().any(|d| d.rule == "D001"),
+        "Same-net traces should not produce D001: {:?}",
+        result.diagnostics.iter().filter(|d| d.rule == "D001").collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn d001_different_net_traces_violation() {
+    let mut board = make_clean_board();
+    let net_a = Uuid::new_v4();
+    let net_b = Uuid::new_v4();
+    let j1 = Uuid::new_v4();
+    let j2 = Uuid::new_v4();
+    let j3 = Uuid::new_v4();
+    let j4 = Uuid::new_v4();
+
+    // Two traces on different nets, within min clearance
+    board.net_segments.push(BoardNetSegment {
+        uuid: Uuid::new_v4(),
+        net: Some(net_a),
+        traces: vec![Trace {
+            uuid: Uuid::new_v4(),
+            layer: Layer::TopCopper,
+            width: 0.5,
+            from: TraceEndpoint::Junction { junction: j1 },
+            to: TraceEndpoint::Junction { junction: j2 },
+        }],
+        vias: vec![],
+        junctions: vec![
+            Junction { uuid: j1, position: Position::new(10.0, 10.0) },
+            Junction { uuid: j2, position: Position::new(20.0, 10.0) },
+        ],
+        pads: vec![],
+    });
+    board.net_segments.push(BoardNetSegment {
+        uuid: Uuid::new_v4(),
+        net: Some(net_b),
+        traces: vec![Trace {
+            uuid: Uuid::new_v4(),
+            layer: Layer::TopCopper,
+            width: 0.5,
+            from: TraceEndpoint::Junction { junction: j3 },
+            to: TraceEndpoint::Junction { junction: j4 },
+        }],
+        vias: vec![],
+        junctions: vec![
+            Junction { uuid: j3, position: Position::new(10.0, 10.1) },
+            Junction { uuid: j4, position: Position::new(20.0, 10.1) },
+        ],
+        pads: vec![],
+    });
+
+    let result = run_drc(&board, &empty_circuit(), &empty_library());
+    assert!(
+        result.diagnostics.iter().any(|d| d.rule == "D001"),
+        "Different-net traces within clearance should produce D001: distance is ~0.1 but min is 0.2; diagnostics: {:?}",
+        result.diagnostics
+    );
+}
