@@ -45,10 +45,7 @@ fn make_lib_component(uuid: Uuid, signals: Vec<(&str, bool)>) -> Component {
     }
 }
 
-fn make_lib_component_with_forced(
-    uuid: Uuid,
-    signals: Vec<(&str, bool, &str)>,
-) -> Component {
+fn make_lib_component_with_forced(uuid: Uuid, signals: Vec<(&str, bool, &str)>) -> Component {
     Component {
         meta: LibraryMeta {
             uuid,
@@ -100,18 +97,18 @@ fn make_circuit_base() -> Circuit {
             min_copper_copper_clearance: 0.0,
             min_copper_width: 0.0,
             min_via_drill_diameter: 0.0,
+            diff_pair_gap: None,
+            diff_pair_max_length_delta: None,
         }],
         nets: vec![],
         components: vec![],
+        differential_pairs: vec![],
     }
 }
 
 fn resolver_from(components: Vec<Component>) -> MapResolver {
     MapResolver {
-        components: components
-            .into_iter()
-            .map(|c| (c.meta.uuid, c))
-            .collect(),
+        components: components.into_iter().map(|c| (c.meta.uuid, c)).collect(),
     }
 }
 
@@ -128,8 +125,24 @@ fn clean_circuit_passes() {
     let net2 = Uuid::new_v4();
 
     let mut circuit = make_circuit_base();
-    circuit.nets.push(Net { uuid: net1, name: "VCC".into(), auto_name: false, net_class: default_net_class_uuid() });
-    circuit.nets.push(Net { uuid: net2, name: "GND".into(), auto_name: false, net_class: default_net_class_uuid() });
+    circuit.nets.push(Net {
+        uuid: net1,
+        name: "VCC".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: false,
+    });
+    circuit.nets.push(Net {
+        uuid: net2,
+        name: "GND".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: false,
+    });
     circuit.components.push(ComponentInstance {
         uuid: Uuid::new_v4(),
         lib_component: comp_uuid,
@@ -143,13 +156,23 @@ fn clean_circuit_passes() {
             part: DevicePartRef::default(),
         }],
         signal_connections: vec![
-            SignalConnection { signal: lib.signals[0].uuid, net: Some(net1) },
-            SignalConnection { signal: lib.signals[1].uuid, net: Some(net2) },
+            SignalConnection {
+                signal: lib.signals[0].uuid,
+                net: Some(net1),
+            },
+            SignalConnection {
+                signal: lib.signals[1].uuid,
+                net: Some(net2),
+            },
         ],
     });
 
     let result = run_erc(&circuit, &resolver_from(vec![lib]));
-    assert!(result.passed, "Expected clean pass, got: {:?}", result.diagnostics);
+    assert!(
+        result.passed,
+        "Expected clean pass, got: {:?}",
+        result.diagnostics
+    );
     assert_eq!(result.errors, 0);
 }
 
@@ -160,7 +183,15 @@ fn e001_unconnected_required_signal() {
 
     let net1 = Uuid::new_v4();
     let mut circuit = make_circuit_base();
-    circuit.nets.push(Net { uuid: net1, name: "VCC".into(), auto_name: false, net_class: default_net_class_uuid() });
+    circuit.nets.push(Net {
+        uuid: net1,
+        name: "VCC".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: false,
+    });
     circuit.components.push(ComponentInstance {
         uuid: Uuid::new_v4(),
         lib_component: comp_uuid,
@@ -170,8 +201,14 @@ fn e001_unconnected_required_signal() {
         lock_assembly: false,
         device_assignments: vec![],
         signal_connections: vec![
-            SignalConnection { signal: lib.signals[0].uuid, net: Some(net1) },
-            SignalConnection { signal: lib.signals[1].uuid, net: None }, // pin 2 unconnected!
+            SignalConnection {
+                signal: lib.signals[0].uuid,
+                net: Some(net1),
+            },
+            SignalConnection {
+                signal: lib.signals[1].uuid,
+                net: None,
+            }, // pin 2 unconnected!
         ],
     });
 
@@ -187,7 +224,15 @@ fn e001_optional_signal_ok() {
 
     let net1 = Uuid::new_v4();
     let mut circuit = make_circuit_base();
-    circuit.nets.push(Net { uuid: net1, name: "VCC".into(), auto_name: false, net_class: default_net_class_uuid() });
+    circuit.nets.push(Net {
+        uuid: net1,
+        name: "VCC".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: false,
+    });
     circuit.components.push(ComponentInstance {
         uuid: Uuid::new_v4(),
         lib_component: comp_uuid,
@@ -197,8 +242,14 @@ fn e001_optional_signal_ok() {
         lock_assembly: false,
         device_assignments: vec![],
         signal_connections: vec![
-            SignalConnection { signal: lib.signals[0].uuid, net: Some(net1) },
-            SignalConnection { signal: lib.signals[1].uuid, net: None }, // optional, ok
+            SignalConnection {
+                signal: lib.signals[0].uuid,
+                net: Some(net1),
+            },
+            SignalConnection {
+                signal: lib.signals[1].uuid,
+                net: None,
+            }, // optional, ok
         ],
     });
 
@@ -246,7 +297,15 @@ fn e003_forced_net_conflict() {
 
     let wrong_net = Uuid::new_v4();
     let mut circuit = make_circuit_base();
-    circuit.nets.push(Net { uuid: wrong_net, name: "VCC".into(), auto_name: false, net_class: default_net_class_uuid() });
+    circuit.nets.push(Net {
+        uuid: wrong_net,
+        name: "VCC".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: false,
+    });
     circuit.components.push(ComponentInstance {
         uuid: Uuid::new_v4(),
         lib_component: comp_uuid,
@@ -256,13 +315,20 @@ fn e003_forced_net_conflict() {
         lock_assembly: false,
         device_assignments: vec![],
         signal_connections: vec![
-            SignalConnection { signal: lib.signals[0].uuid, net: Some(wrong_net) }, // connected to VCC, not GND!
+            SignalConnection {
+                signal: lib.signals[0].uuid,
+                net: Some(wrong_net),
+            }, // connected to VCC, not GND!
         ],
     });
 
     let result = run_erc(&circuit, &resolver_from(vec![lib]));
     assert!(!result.passed);
-    let conflict = result.diagnostics.iter().find(|d| d.rule == "E003").unwrap();
+    let conflict = result
+        .diagnostics
+        .iter()
+        .find(|d| d.rule == "E003")
+        .unwrap();
     assert!(conflict.message.contains("VCC"));
     assert!(conflict.message.contains("GND"));
 }
@@ -274,7 +340,15 @@ fn w001_single_connection_net() {
 
     let net1 = Uuid::new_v4();
     let mut circuit = make_circuit_base();
-    circuit.nets.push(Net { uuid: net1, name: "LONELY".into(), auto_name: false, net_class: default_net_class_uuid() });
+    circuit.nets.push(Net {
+        uuid: net1,
+        name: "LONELY".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: false,
+    });
     circuit.components.push(ComponentInstance {
         uuid: Uuid::new_v4(),
         lib_component: comp_uuid,
@@ -283,13 +357,19 @@ fn w001_single_connection_net() {
         value: String::new(),
         lock_assembly: false,
         device_assignments: vec![],
-        signal_connections: vec![
-            SignalConnection { signal: lib.signals[0].uuid, net: Some(net1) },
-        ],
+        signal_connections: vec![SignalConnection {
+            signal: lib.signals[0].uuid,
+            net: Some(net1),
+        }],
     });
 
     let result = run_erc(&circuit, &resolver_from(vec![lib]));
-    assert!(result.diagnostics.iter().any(|d| d.rule == "W001" && d.message.contains("LONELY")));
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|d| d.rule == "W001" && d.message.contains("LONELY"))
+    );
 }
 
 #[test]
@@ -300,10 +380,18 @@ fn w002_empty_net() {
         name: "UNUSED".into(),
         auto_name: false,
         net_class: default_net_class_uuid(),
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: false,
     });
 
     let result = run_erc(&circuit, &resolver_from(vec![]));
-    assert!(result.diagnostics.iter().any(|d| d.rule == "W002" && d.message.contains("UNUSED")));
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|d| d.rule == "W002" && d.message.contains("UNUSED"))
+    );
 }
 
 #[test]
@@ -318,6 +406,8 @@ fn w003_unused_net_class() {
         min_copper_copper_clearance: 0.0,
         min_copper_width: 0.0,
         min_via_drill_diameter: 0.0,
+        diff_pair_gap: None,
+        diff_pair_max_length_delta: None,
     });
 
     let result = run_erc(&circuit, &resolver_from(vec![]));
@@ -343,7 +433,12 @@ fn w004_missing_device_assignment() {
     });
 
     let result = run_erc(&circuit, &resolver_from(vec![lib]));
-    assert!(result.diagnostics.iter().any(|d| d.rule == "W004" && d.message.contains("R1")));
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|d| d.rule == "W004" && d.message.contains("R1"))
+    );
 }
 
 #[test]
@@ -361,13 +456,24 @@ fn w005_no_signal_connections() {
         lock_assembly: false,
         device_assignments: vec![],
         signal_connections: vec![
-            SignalConnection { signal: lib.signals[0].uuid, net: None },
-            SignalConnection { signal: lib.signals[1].uuid, net: None },
+            SignalConnection {
+                signal: lib.signals[0].uuid,
+                net: None,
+            },
+            SignalConnection {
+                signal: lib.signals[1].uuid,
+                net: None,
+            },
         ],
     });
 
     let result = run_erc(&circuit, &resolver_from(vec![lib]));
-    assert!(result.diagnostics.iter().any(|d| d.rule == "W005" && d.message.contains("R1")));
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|d| d.rule == "W005" && d.message.contains("R1"))
+    );
 }
 
 #[test]

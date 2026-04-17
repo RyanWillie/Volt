@@ -92,8 +92,14 @@ pub fn run_erc(circuit: &Circuit, library: &dyn LibraryResolver) -> ErcResult {
     check_missing_device_assignment(circuit, &mut diagnostics);
     check_no_signal_connections(circuit, &mut diagnostics);
 
-    let errors = diagnostics.iter().filter(|d| d.severity == Severity::Error).count();
-    let warnings = diagnostics.iter().filter(|d| d.severity == Severity::Warning).count();
+    let errors = diagnostics
+        .iter()
+        .filter(|d| d.severity == Severity::Error)
+        .count();
+    let warnings = diagnostics
+        .iter()
+        .filter(|d| d.severity == Severity::Warning)
+        .count();
 
     ErcResult {
         passed: errors == 0,
@@ -248,10 +254,7 @@ fn check_single_connection_nets(circuit: &Circuit, diags: &mut Vec<ErcDiagnostic
             diags.push(ErcDiagnostic {
                 rule: "W001".into(),
                 severity: Severity::Warning,
-                message: format!(
-                    "Net '{}' has only 1 connection (likely dangling)",
-                    net.name
-                ),
+                message: format!("Net '{}' has only 1 connection (likely dangling)", net.name),
                 object: Some(net.uuid),
             });
         }
