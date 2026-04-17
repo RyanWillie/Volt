@@ -12,7 +12,7 @@
 use volt_core::common::*;
 use volt_core::library::*;
 
-use crate::sexp::{parse, SExpr};
+use crate::sexp::{SExpr, parse};
 
 /// Result of parsing a KiCad symbol file.
 #[derive(Debug, Clone)]
@@ -35,8 +35,7 @@ pub fn parse_kicad_sym(content: &str) -> Result<KicadSymbolImport, String> {
     }
 
     // Find the (symbol ...) child
-    let sym_node = root.child("symbol")
-        .ok_or("No symbol element found")?;
+    let sym_node = root.child("symbol").ok_or("No symbol element found")?;
 
     parse_symbol_node(sym_node)
 }
@@ -48,13 +47,15 @@ fn parse_symbol_node(node: &SExpr) -> Result<KicadSymbolImport, String> {
     }
 
     // First arg is the symbol name
-    let sym_name = children.get(1)
+    let sym_name = children
+        .get(1)
         .and_then(|c| c.as_str().or_else(|| c.as_atom()))
         .ok_or("Missing symbol name")?
         .to_string();
 
     // Check for (extends "ParentName")
-    let extends = node.child("extends")
+    let extends = node
+        .child("extends")
         .and_then(|e| e.args().first())
         .and_then(|a| a.as_str().or_else(|| a.as_atom()))
         .map(|s| s.to_string());
@@ -79,7 +80,9 @@ fn parse_symbol_node(node: &SExpr) -> Result<KicadSymbolImport, String> {
         if child.keyword() != Some("symbol") {
             continue;
         }
-        let sub_name = child.children().get(1)
+        let sub_name = child
+            .children()
+            .get(1)
             .and_then(|c| c.as_str().or_else(|| c.as_atom()))
             .unwrap_or("");
 
@@ -127,46 +130,61 @@ fn parse_symbol_node(node: &SExpr) -> Result<KicadSymbolImport, String> {
         pins: sym_pins,
         polygons,
         texts: vec![
-            parse_property_text(node, "Reference", Layer::SchNames, "{{NAME}}")
-                .unwrap_or(SymbolText {
+            parse_property_text(node, "Reference", Layer::SchNames, "{{NAME}}").unwrap_or(
+                SymbolText {
                     uuid: new_uuid(),
                     layer: Layer::SchNames,
                     value: "{{NAME}}".into(),
                     position: Position::new(0.0, -1.27),
                     rotation: Angle(0.0),
                     height: 1.27,
-                    align: Alignment { h: HAlign::Center, v: VAlign::Bottom },
+                    align: Alignment {
+                        h: HAlign::Center,
+                        v: VAlign::Bottom,
+                    },
                     lock: false,
-                }),
-            parse_property_text(node, "Value", Layer::SchValues, "{{VALUE}}")
-                .unwrap_or(SymbolText {
+                },
+            ),
+            parse_property_text(node, "Value", Layer::SchValues, "{{VALUE}}").unwrap_or(
+                SymbolText {
                     uuid: new_uuid(),
                     layer: Layer::SchValues,
                     value: "{{VALUE}}".into(),
                     position: Position::new(0.0, 1.27),
                     rotation: Angle(0.0),
                     height: 1.27,
-                    align: Alignment { h: HAlign::Center, v: VAlign::Top },
+                    align: Alignment {
+                        h: HAlign::Center,
+                        v: VAlign::Top,
+                    },
                     lock: false,
-                }),
+                },
+            ),
         ],
         grid_interval: 2.54,
     };
 
     // Build component (abstract electrical part)
-    let signals: Vec<Signal> = all_pins.iter().map(|(_, pin, role)| {
-        Signal {
+    let signals: Vec<Signal> = all_pins
+        .iter()
+        .map(|(_, pin, role)| Signal {
             uuid: new_uuid(),
             name: pin.name.clone(),
             role: *role,
-            required: matches!(role, SignalRole::Power | SignalRole::Input | SignalRole::Output),
+            required: matches!(
+                role,
+                SignalRole::Power | SignalRole::Input | SignalRole::Output
+            ),
             negated: false,
             clock: false,
             forced_net: String::new(),
-        }
-    }).collect();
+        })
+        .collect();
 
-    let pin_mappings: Vec<PinMapping> = symbol.pins.iter().zip(signals.iter())
+    let pin_mappings: Vec<PinMapping> = symbol
+        .pins
+        .iter()
+        .zip(signals.iter())
         .map(|(pin, sig)| PinMapping {
             pin: pin.uuid,
             signal: sig.uuid,
@@ -188,7 +206,11 @@ fn parse_symbol_node(node: &SExpr) -> Result<KicadSymbolImport, String> {
             deprecated: false,
             category: None,
         },
-        prefix: if reference.is_empty() { "U".into() } else { reference },
+        prefix: if reference.is_empty() {
+            "U".into()
+        } else {
+            reference
+        },
         default_value: value,
         schematic_only: false,
         attributes: vec![],
@@ -234,20 +256,27 @@ fn get_property_node<'a>(node: &'a SExpr, name: &str) -> Option<&'a SExpr> {
         if child.keyword() != Some("property") {
             return false;
         }
-        child.args()
+        child
+            .args()
             .first()
             .and_then(|a| a.as_str().or_else(|| a.as_atom()))
             == Some(name)
     })
 }
 
-fn parse_property_text(node: &SExpr, name: &str, layer: Layer, placeholder: &str) -> Option<SymbolText> {
+fn parse_property_text(
+    node: &SExpr,
+    name: &str,
+    layer: Layer,
+    placeholder: &str,
+) -> Option<SymbolText> {
     let prop = get_property_node(node, name)?;
     let at = prop.child("at")?;
     let at_args = at.args();
     let x = at_args.first()?.as_atom()?.parse::<f64>().ok()?;
     let y = at_args.get(1)?.as_atom()?.parse::<f64>().ok()?;
-    let rotation = at_args.get(2)
+    let rotation = at_args
+        .get(2)
         .and_then(|a| a.as_atom()?.parse::<f64>().ok())
         .unwrap_or(0.0);
 
@@ -297,7 +326,8 @@ fn parse_property_text(node: &SExpr, name: &str, layer: Layer, placeholder: &str
 
 /// Parse "R_0_1" → (unit=0, conversion=1), "LM2904_2_1" → (unit=2, conversion=1)
 fn parse_sub_symbol_name(sub_name: &str, parent_name: &str) -> (u32, u32) {
-    let suffix = sub_name.strip_prefix(parent_name)
+    let suffix = sub_name
+        .strip_prefix(parent_name)
         .and_then(|s| s.strip_prefix('_'))
         .unwrap_or("");
 
@@ -320,7 +350,8 @@ fn parse_rectangle(node: &SExpr) -> Option<Polygon> {
     let x2 = end.args().first()?.as_atom()?.parse::<f64>().ok()?;
     let y2 = end.args().get(1)?.as_atom()?.parse::<f64>().ok()?;
 
-    let width = node.child("stroke")
+    let width = node
+        .child("stroke")
         .and_then(|s| s.child("width"))
         .and_then(|w| w.args().first()?.as_atom()?.parse::<f64>().ok())
         .unwrap_or(0.254);
@@ -332,11 +363,26 @@ fn parse_rectangle(node: &SExpr) -> Option<Polygon> {
         fill: false,
         grab_area: true,
         vertices: vec![
-            Vertex { position: Position::new(x1, y1), angle: Angle(0.0) },
-            Vertex { position: Position::new(x2, y1), angle: Angle(0.0) },
-            Vertex { position: Position::new(x2, y2), angle: Angle(0.0) },
-            Vertex { position: Position::new(x1, y2), angle: Angle(0.0) },
-            Vertex { position: Position::new(x1, y1), angle: Angle(0.0) },
+            Vertex {
+                position: Position::new(x1, y1),
+                angle: Angle(0.0),
+            },
+            Vertex {
+                position: Position::new(x2, y1),
+                angle: Angle(0.0),
+            },
+            Vertex {
+                position: Position::new(x2, y2),
+                angle: Angle(0.0),
+            },
+            Vertex {
+                position: Position::new(x1, y2),
+                angle: Angle(0.0),
+            },
+            Vertex {
+                position: Position::new(x1, y1),
+                angle: Angle(0.0),
+            },
         ],
     })
 }
@@ -361,7 +407,8 @@ fn parse_polyline(node: &SExpr) -> Option<Polygon> {
         return None;
     }
 
-    let width = node.child("stroke")
+    let width = node
+        .child("stroke")
         .and_then(|s| s.child("width"))
         .and_then(|w| w.args().first()?.as_atom()?.parse::<f64>().ok())
         .unwrap_or(0.0);
@@ -403,24 +450,28 @@ fn parse_pin(node: &SExpr) -> Option<(SymbolPin, SignalRole)> {
     let at_args = at_node.args();
     let x = at_args.first()?.as_atom()?.parse::<f64>().ok()?;
     let y = at_args.get(1)?.as_atom()?.parse::<f64>().ok()?;
-    let angle = at_args.get(2)
+    let angle = at_args
+        .get(2)
         .and_then(|a| a.as_atom()?.parse::<f64>().ok())
         .unwrap_or(0.0);
 
     // Length
-    let length = node.child("length")
+    let length = node
+        .child("length")
         .and_then(|l| l.args().first()?.as_atom()?.parse::<f64>().ok())
         .unwrap_or(2.54);
 
     // Pin number (the electrical identifier)
-    let number = node.child("number")
+    let number = node
+        .child("number")
         .and_then(|n| n.args().first())
         .and_then(|a| a.as_str().or_else(|| a.as_atom()))
         .unwrap_or("?")
         .to_string();
 
     // Pin name/function (display name)
-    let pin_name = node.child("name")
+    let pin_name = node
+        .child("name")
         .and_then(|n| n.args().first())
         .and_then(|a| a.as_str().or_else(|| a.as_atom()))
         .unwrap_or("")
@@ -429,14 +480,21 @@ fn parse_pin(node: &SExpr) -> Option<(SymbolPin, SignalRole)> {
     let pin = SymbolPin {
         uuid: new_uuid(),
         name: number,
-        pin_name: if pin_name == "~" { String::new() } else { pin_name },
+        pin_name: if pin_name == "~" {
+            String::new()
+        } else {
+            pin_name
+        },
         position: Position::new(x, y),
         rotation: Angle(angle),
         length,
         name_position: Position::new(0.0, 0.0),
         name_rotation: Angle(0.0),
         name_height: 1.27,
-        name_align: Alignment { h: HAlign::Left, v: VAlign::Center },
+        name_align: Alignment {
+            h: HAlign::Left,
+            v: VAlign::Center,
+        },
     };
 
     Some((pin, role))
@@ -451,7 +509,9 @@ pub fn import_kicad_sym_dir(dir: &std::path::Path) -> Vec<Result<KicadSymbolImpo
     let mut results = Vec::new();
 
     fn walk(dir: &std::path::Path, results: &mut Vec<Result<KicadSymbolImport, String>>) {
-        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
@@ -465,8 +525,7 @@ pub fn import_kicad_sym_dir(dir: &std::path::Path) -> Vec<Result<KicadSymbolImpo
                     }
                 };
                 results.push(
-                    parse_kicad_sym(&content)
-                        .map_err(|e| format!("{}: {e}", path.display()))
+                    parse_kicad_sym(&content).map_err(|e| format!("{}: {e}", path.display())),
                 );
             }
         }
@@ -504,8 +563,12 @@ fn resolve_one(
     if stack.contains(&imp.symbol.meta.name) {
         return Err(format!("Cyclic symbol inheritance: {}", stack.join(" -> ")));
     }
-    let parent = by_name.get(parent_name)
-        .ok_or_else(|| format!("Missing parent symbol '{parent_name}' for '{}'", imp.symbol.meta.name))?;
+    let parent = by_name.get(parent_name).ok_or_else(|| {
+        format!(
+            "Missing parent symbol '{parent_name}' for '{}'",
+            imp.symbol.meta.name
+        )
+    })?;
     stack.push(imp.symbol.meta.name.clone());
     let resolved_parent = resolve_one(parent, by_name, stack)?;
     stack.pop();
@@ -520,12 +583,19 @@ fn resolve_one(
     if resolved.component.signals.is_empty() {
         resolved.component.signals = resolved_parent.component.signals;
     }
-    if resolved.component.variants.first().is_some_and(|v| v.gates.first().is_some_and(|g| g.pin_mappings.is_empty())) {
+    if resolved
+        .component
+        .variants
+        .first()
+        .is_some_and(|v| v.gates.first().is_some_and(|g| g.pin_mappings.is_empty()))
+    {
         if let (Some(variant), Some(parent_variant)) = (
             resolved.component.variants.first_mut(),
             resolved_parent.component.variants.first(),
         ) {
-            if let (Some(gate), Some(parent_gate)) = (variant.gates.first_mut(), parent_variant.gates.first()) {
+            if let (Some(gate), Some(parent_gate)) =
+                (variant.gates.first_mut(), parent_variant.gates.first())
+            {
                 gate.pin_mappings = parent_gate.pin_mappings.clone();
             }
         }
@@ -567,7 +637,8 @@ mod tests {
 
     #[test]
     fn resolves_extends_from_parent() {
-        let parent = parse_kicad_sym(r#"(kicad_symbol_lib
+        let parent = parse_kicad_sym(
+            r#"(kicad_symbol_lib
   (version 1)
   (symbol "BASE"
     (property "Reference" "U")
@@ -577,8 +648,11 @@ mod tests {
       (pin output line (at 2.54 0 180) (length 2.54) (name "OUT") (number "2"))
     )
   )
-)"#).unwrap();
-        let child = parse_kicad_sym(r#"(kicad_symbol_lib
+)"#,
+        )
+        .unwrap();
+        let child = parse_kicad_sym(
+            r#"(kicad_symbol_lib
   (version 1)
   (symbol "DERIVED"
     (extends "BASE")
@@ -586,10 +660,15 @@ mod tests {
     (property "Value" "DERIVED")
     (property "Description" "Child")
   )
-)"#).unwrap();
+)"#,
+        )
+        .unwrap();
 
         let resolved = resolve_extends(vec![parent, child]).unwrap();
-        let derived = resolved.iter().find(|x| x.symbol.meta.name == "DERIVED").unwrap();
+        let derived = resolved
+            .iter()
+            .find(|x| x.symbol.meta.name == "DERIVED")
+            .unwrap();
         assert_eq!(derived.symbol.pins.len(), 2);
         assert_eq!(derived.symbol.pins[0].pin_name, "IN");
         assert_eq!(derived.symbol.pins[1].pin_name, "OUT");

@@ -25,8 +25,8 @@
 mod parser;
 mod writer;
 
+pub use parser::{ParseError, parse};
 use std::fmt;
-pub use parser::{parse, ParseError};
 
 /// A node in an S-Expression tree.
 #[derive(Debug, Clone, PartialEq)]
@@ -56,7 +56,11 @@ impl SExpr {
     pub fn list(children: Vec<SExpr>) -> Self {
         let mut separators = Vec::with_capacity(children.len());
         for i in 0..children.len() {
-            separators.push(if i == 0 { String::new() } else { " ".to_string() });
+            separators.push(if i == 0 {
+                String::new()
+            } else {
+                " ".to_string()
+            });
         }
         SExpr::List {
             children,
@@ -169,10 +173,7 @@ impl SExpr {
                 separators,
                 closing,
                 ..
-            } => {
-                !separators.iter().any(|s| s.contains('\n'))
-                    && !closing.contains('\n')
-            }
+            } => !separators.iter().any(|s| s.contains('\n')) && !closing.contains('\n'),
             _ => true,
         }
     }

@@ -16,7 +16,7 @@ use std::path::Path;
 use volt_core::common::*;
 use volt_core::library::*;
 
-use crate::sexp::{parse, SExpr};
+use crate::sexp::{SExpr, parse};
 
 /// Parse a `.kicad_mod` file from disk and return a [`Package`].
 pub fn parse_kicad_mod_file(path: &Path) -> Result<Package, String> {
@@ -201,13 +201,12 @@ fn get_property(node: &SExpr, keyword: &str) -> Option<String> {
         }
     }
     // Legacy format: (descr "...") or (tags "...")
-    node.child(keyword)
-        .and_then(|c| {
-            c.args()
-                .first()
-                .and_then(|a| a.as_str().or_else(|| a.as_atom()))
-                .map(|s| s.to_string())
-        })
+    node.child(keyword).and_then(|c| {
+        c.args()
+            .first()
+            .and_then(|a| a.as_str().or_else(|| a.as_atom()))
+            .map(|s| s.to_string())
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -265,11 +264,7 @@ fn get_stroke_width(node: &SExpr) -> f64 {
 /// Check if a node has (fill solid) or (fill yes).
 fn is_filled(node: &SExpr) -> bool {
     node.child("fill")
-        .and_then(|f| {
-            f.args()
-                .first()
-                .and_then(|a| a.as_atom())
-        })
+        .and_then(|f| f.args().first().and_then(|a| a.as_atom()))
         .is_some_and(|v| v == "solid" || v == "yes")
 }
 
@@ -322,8 +317,7 @@ fn parse_pad(
     } else {
         // Check layers to determine top vs bottom
         let layers = get_pad_layers(node);
-        if layers.iter().any(|l| l.contains("B.Cu")) && !layers.iter().any(|l| l.contains("F.Cu"))
-        {
+        if layers.iter().any(|l| l.contains("B.Cu")) && !layers.iter().any(|l| l.contains("F.Cu")) {
             PadSide::Bottom
         } else {
             PadSide::Top
@@ -672,11 +666,7 @@ fn parse_fp_arc(node: &SExpr) -> Option<Polygon> {
 }
 
 /// Compute the arc sweep angle (in degrees) given three points on a circular arc.
-fn arc_angle_from_three_points(
-    sx: f64, sy: f64,
-    mx: f64, my: f64,
-    ex: f64, ey: f64,
-) -> f64 {
+fn arc_angle_from_three_points(sx: f64, sy: f64, mx: f64, my: f64, ex: f64, ey: f64) -> f64 {
     // Find circumscribed circle center using perpendicular bisectors
     let ax = sx;
     let ay = sy;
@@ -797,7 +787,9 @@ fn parse_fp_text(node: &SExpr) -> Option<StrokeText> {
 /// Parse a KiCad 8+ `(property "Reference" "REF**" ...)` node as a StrokeText.
 fn parse_property_text(node: &SExpr) -> Option<StrokeText> {
     let args = node.args();
-    let prop_name = args.first().and_then(|a| a.as_str().or_else(|| a.as_atom()))?;
+    let prop_name = args
+        .first()
+        .and_then(|a| a.as_str().or_else(|| a.as_atom()))?;
 
     // Only handle Reference and Value properties
     let value = match prop_name {
@@ -861,35 +853,21 @@ fn parse_effects_justify(effects: Option<&SExpr>) -> (HAlign, VAlign, bool) {
         .map(|j| j.args())
         .unwrap_or(&[]);
 
-    let h = if justify_args
-        .iter()
-        .any(|a| a.as_atom() == Some("right"))
-    {
+    let h = if justify_args.iter().any(|a| a.as_atom() == Some("right")) {
         HAlign::Right
-    } else if justify_args
-        .iter()
-        .any(|a| a.as_atom() == Some("left"))
-    {
+    } else if justify_args.iter().any(|a| a.as_atom() == Some("left")) {
         HAlign::Left
     } else {
         HAlign::Center
     };
-    let v = if justify_args
-        .iter()
-        .any(|a| a.as_atom() == Some("top"))
-    {
+    let v = if justify_args.iter().any(|a| a.as_atom() == Some("top")) {
         VAlign::Top
-    } else if justify_args
-        .iter()
-        .any(|a| a.as_atom() == Some("bottom"))
-    {
+    } else if justify_args.iter().any(|a| a.as_atom() == Some("bottom")) {
         VAlign::Bottom
     } else {
         VAlign::Center
     };
-    let mirror = justify_args
-        .iter()
-        .any(|a| a.as_atom() == Some("mirror"));
+    let mirror = justify_args.iter().any(|a| a.as_atom() == Some("mirror"));
 
     (h, v, mirror)
 }
