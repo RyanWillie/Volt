@@ -71,6 +71,7 @@ pub fn write_library_element<T: serde::Serialize>(
 }
 
 /// Ensure the path points to a valid Volt project.
+/// Runs schema migration if needed.
 pub fn ensure_project(project: &Path) -> Result<()> {
     if !project.join("volt.json").exists() {
         return Err(format!(
@@ -78,6 +79,15 @@ pub fn ensure_project(project: &Path) -> Result<()> {
             project.display()
         )
         .into());
+    }
+    // Run migration if schema version is behind
+    if let Some(result) = volt_core::migration::migrate_project(project)
+        .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?
+    {
+        eprintln!(
+            "Migrated project from schema v{} to v{}",
+            result.from_version, result.to_version
+        );
     }
     Ok(())
 }

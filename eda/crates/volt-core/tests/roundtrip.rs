@@ -240,6 +240,7 @@ fn roundtrip_project_metadata() {
         name: "Test Project".into(),
         author: "Volt".into(),
         version: "v1".into(),
+        schema_version: 1,
         created: chrono::Utc::now(),
         settings: ProjectSettings::default(),
     };
@@ -371,6 +372,7 @@ fn json_is_pretty() {
         name: "Test".into(),
         author: "Volt".into(),
         version: "v1".into(),
+        schema_version: 1,
         created: chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
             .unwrap()
             .to_utc(),

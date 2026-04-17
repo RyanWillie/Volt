@@ -11,5 +11,6 @@
 
 pub mod common;
 pub mod library;
+pub mod migration;
 pub mod project;
 pub mod split;

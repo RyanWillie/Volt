@@ -13,8 +13,13 @@
  * - No access to home directory, ~/.ssh, ~/.aws, etc.
  */
 
-import { resolve, relative } from "node:path";
+import { resolve, relative, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+
+// The agent root is the parent of the extensions/ directory
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const agentRoot = resolve(__dirname, "..");
 
 export default function (pi: ExtensionAPI) {
   let projectRoot = "";
@@ -46,6 +51,14 @@ export default function (pi: ExtensionAPI) {
       // Allow /tmp for scratch work
       if (resolved.startsWith("/tmp/") || resolved.startsWith("/tmp")) {
         return undefined;
+      }
+
+      // Allow read-only access to agent's bundled skills/resources
+      if (toolName === "read") {
+        const relToAgent = relative(agentRoot, resolved);
+        if (!relToAgent.startsWith("..")) {
+          return undefined;
+        }
       }
 
       // Block everything else
@@ -104,7 +117,8 @@ export default function (pi: ExtensionAPI) {
           `Project root: ${projectRoot}`,
           "",
           "Allowed:",
-          `  • File operations within: ${projectRoot}`,
+          `  • Read/write/edit within: ${projectRoot}`,
+          `  • Read-only access to bundled skills: ${agentRoot}`,
           "  • Scratch files in: /tmp",
           "  • volt-eda CLI commands",
           "",

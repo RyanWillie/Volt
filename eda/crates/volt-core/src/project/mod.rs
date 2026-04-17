@@ -26,6 +26,9 @@ pub struct ProjectMetadata {
     pub author: String,
     #[serde(default = "default_version")]
     pub version: String,
+    /// Format schema version. Used for migration.
+    #[serde(default = "default_schema_version")]
+    pub schema_version: u32,
     pub created: chrono::DateTime<chrono::Utc>,
     #[serde(default)]
     pub settings: ProjectSettings,
@@ -33,6 +36,13 @@ pub struct ProjectMetadata {
 
 fn default_version() -> String {
     "v1".to_string()
+}
+
+/// Current schema version. Bump when making breaking changes.
+pub const CURRENT_SCHEMA_VERSION: u32 = 1;
+
+fn default_schema_version() -> u32 {
+    1
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

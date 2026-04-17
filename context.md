@@ -1,209 +1,180 @@
-# Code Context — Net-Segment Splitter (Pebble e08d3753)
+# Code Context — IPC-D-356 Netlist Export for Volt
 
 ## Files Retrieved
-1. `eda/crates/volt-core/src/project/mod.rs` (lines 217–270) — `SchematicNetSegment`, `Junction`, `SchematicLine`, `LineEndpoint`, `NetLabel` definitions
-2. `eda/crates/volt-core/src/project/mod.rs` (lines 491–530) — `BoardNetSegment`, `Trace`, `TraceEndpoint`, `Via` definitions
-3. `eda/crates/volt-core/src/project/mod.rs` (lines 558–600) — `BoardPad` definition
-4. `eda/crates/volt-core/src/project/mod.rs` (lines 181) — `Schematic.net_segments: Vec<SchematicNetSegment>`
-5. `eda/crates/volt-core/src/project/mod.rs` (lines 295) — `Board.net_segments: Vec<BoardNetSegment>`
-6. `eda/crates/volt-core/src/common/mod.rs` (line 288) — `new_uuid()` helper
-7. `eda/crates/volt-cli/src/commands/schematic.rs` (lines 606–720) — `add_wire()`: finds-or-creates `SchematicNetSegment`, creates `Junction`+`SchematicLine`
-8. `eda/crates/volt-cli/src/commands/board.rs` (lines 942–1108) — `board_trace()`: finds-or-creates `BoardNetSegment`, creates `Junction`+`Trace`
-9. `eda/crates/volt-cli/src/commands/board.rs` (lines 1312–1520) — `board_ratsnest()`: union-find connectivity through traces/junctions/vias (the only existing graph traversal)
-10. `eda/crates/volt-cli/src/commands/board.rs` (lines 1619–1639) — `endpoint_key()` and `endpoint_to_pad_index()` helpers
-11. `eda/crates/volt-cli/src/commands/autoplace/tidy.rs` (lines 1–260) — Full tidy pass: dedup junctions, remove zero-length wires, merge collinear, remove orphan junctions (closest existing analog)
-12. `eda/crates/volt-cli/src/commands/autoplace/tidy.rs` (lines 347–368) — `remove_orphan_junctions()`: collects referenced junctions then retains
-13. `eda/crates/volt-cli/src/commands/schematic.rs` (lines 1–146) — CLI commands: **no delete/remove wire or segment command exists**
-14. `eda/crates/volt-cli/src/commands/board.rs` (lines 1–204) — CLI commands: **no delete/remove trace or segment command exists**
-15. `eda/crates/volt-core/tests/roundtrip.rs` (lines 280–310) — Round-trip serialization test for `SchematicNetSegment` and `BoardNetSegment`
+1. `eda/crates/volt-cli/src/commands/export.rs` (lines 1-290) — CLI command wiring: `ExportCommands` enum, `export_command()` dispatch, `load_project_library()`, `ProjectLibrary` struct with `BoardLibrary` + `BomLibrary` impls
+2. `eda/crates/volt-export/src/lib.rs` (lines 1-6) — Module declarations; currently exposes `bom`, `excellon`, `gerber`, `pick_place`
+3. `eda/crates/volt-export/src/excellon.rs` (full) — Closest analog: collects pad holes, vias, NPTH holes with geometry transforms; pattern to follow
+4. `eda/crates/volt-export/src/pick_place.rs` (full) — Shows circuit→board→library resolution pattern (component designator lookup)
+5. `eda/crates/volt-export/src/gerber.rs` (lines 200-270) — `BoardLibrary` trait, `MapBoardLibrary`, `transform_point()`, `effective_pad_side()`
+6. `eda/crates/volt-export/src/gerber.rs` (lines 425-620) — Copper layer export: iterates `board.net_segments` for traces/vias/pads, device footprint pads
+7. `eda/crates/volt-core/src/project/mod.rs` (lines 57-136) — `Circuit { nets, components }`, `Net { uuid, name }`, `ComponentInstance { uuid, name, signal_connections }`
+8. `eda/crates/volt-core/src/project/mod.rs` (lines 274-310) — `Board { devices, net_segments, holes }`
+9. `eda/crates/volt-core/src/project/mod.rs` (lines 477-600) — `BoardDevice`, `BoardNetSegment { uuid, net: Option<Uuid>, vias, pads }`, `Via`, `BoardPad`
+10. `eda/crates/volt-core/src/project/mod.rs` (lines 417-465) — `FabricationOutputSettings` with file suffix fields
+11. `eda/crates/volt-core/src/library/mod.rs` (lines 260-380) — `PackagePad { uuid, name }`, `Footprint { pads }`, `FootprintPad { uuid, package_pad, side, position, width, height, holes }`, `PadHole { diameter }`, `Device { pad_mappings }`, `DevicePadMapping { pad, signal }`
+12. `eda/crates/volt-cli/src/main.rs` (lines 68-95) — CLI `Commands::Export` variant → `commands::export_command(command)`
+13. `eda/crates/volt-export/Cargo.toml` — description already mentions "D-356 netlist export"
 
 ## Key Code
 
-### Schematic Data Model (project/mod.rs:217–270)
+### CLI Wiring Pattern (export.rs lines 22-107)
 ```rust
-pub struct SchematicNetSegment {
-    pub uuid: Uuid,
-    pub net: Uuid,                       // reference to Circuit::nets[].uuid
-    pub junctions: Vec<Junction>,        // free-floating points
-    pub lines: Vec<SchematicLine>,       // wires connecting endpoints
-    pub labels: Vec<NetLabel>,           // visual name labels (position-based, NOT linked to junction)
+#[derive(Subcommand)]
+pub enum ExportCommands {
+    Bom { project, format, output },
+    PickPlace { project, board, output },
+    Gerber { project, board, output_dir },
+    Drills { project, board, output_dir },
+    // NEW: Netlist { project, board, output }
 }
 
-pub struct SchematicLine {
-    pub uuid: Uuid,
-    pub width: f64,
-    pub from: LineEndpoint,
-    pub to: LineEndpoint,
-}
-
-pub enum LineEndpoint {
-    Symbol { symbol: Uuid, pin: Uuid },  // attached to a schematic symbol's pin
-    Junction { junction: Uuid },          // attached to a junction node
-}
-
-pub struct Junction { pub uuid: Uuid, pub position: Position }
-pub struct NetLabel { pub uuid: Uuid, pub position: Position, pub rotation: Angle, pub mirror: bool }
-```
-
-### Board Data Model (project/mod.rs:491–550)
-```rust
-pub struct BoardNetSegment {
-    pub uuid: Uuid,
-    pub net: Option<Uuid>,              // None for unconnected standalone pads
-    pub traces: Vec<Trace>,             // copper trace segments
-    pub vias: Vec<Via>,                 // layer-transition vias (position-based nodes)
-    pub junctions: Vec<Junction>,       // generic junction nodes
-    pub pads: Vec<BoardPad>,            // standalone pads (not part of a device)
-}
-
-pub struct Trace {
-    pub uuid: Uuid,
-    pub layer: Layer,
-    pub width: f64,
-    pub from: TraceEndpoint,
-    pub to: TraceEndpoint,
-}
-
-pub enum TraceEndpoint {
-    Device { device: Uuid, pad: Uuid },  // device footprint pad
-    Via { via: Uuid },                    // via node
-    Junction { junction: Uuid },          // junction node
-}
-```
-
-### Existing Union-Find Connectivity (board.rs:1460–1510)
-```rust
-// In board_ratsnest(): builds per-trace-segment graph nodes keyed by
-//   "dev:<uuid>:<pad_uuid>" | "junc:<uuid>" | "via:<uuid>"
-// For each trace, unions from_key and to_key.
-// Then maps device pads to their graph-node index and checks for shared roots.
-fn endpoint_key(ep: &TraceEndpoint) -> String { ... }
-```
-
-### Orphan Junction Removal (tidy.rs:347–368) — Closest analog pattern
-```rust
-fn remove_orphan_junctions(schematic: &mut Schematic) -> usize {
-    for seg in &mut schematic.net_segments {
-        let mut referenced: HashSet<Uuid> = HashSet::new();
-        for line in &seg.lines {
-            if let LineEndpoint::Junction { junction } = &line.from { referenced.insert(*junction); }
-            if let LineEndpoint::Junction { junction } = &line.to   { referenced.insert(*junction); }
-        }
-        seg.junctions.retain(|j| referenced.contains(&j.uuid));
+pub fn export_command(cmd: ExportCommands) -> Result<()> {
+    match cmd {
+        ExportCommands::Bom { .. } => export_bom(..),
+        ExportCommands::PickPlace { .. } => export_pick_place(..),
+        ExportCommands::Gerber { .. } => export_gerber(..),
+        ExportCommands::Drills { .. } => export_drills(..),
+        // NEW: ExportCommands::Netlist { .. } => export_netlist(..),
     }
 }
 ```
 
-## Architecture
-
-### Graph Topology
-
-**Schematic segments** form graphs where:
-- **Nodes** = `Junction` UUIDs + `Symbol{symbol,pin}` pairs
-- **Edges** = `SchematicLine` (each connects two `LineEndpoint`s)
-- **Labels** = free-floating by `Position`, NOT graph-connected. Must be assigned to a component by geometric proximity (closest junction/line).
-
-**Board segments** form graphs where:
-- **Nodes** = `Junction` UUIDs + `Via` UUIDs + `Device{device,pad}` pairs
-- **Edges** = `Trace` (each connects two `TraceEndpoint`s)
-- **Pads** = `BoardPad`s are standalone, position-based, not graph-linked to traces.
-
-### Key Observations
-
-1. **No delete command exists.** There is no CLI subcommand for removing a wire, trace, junction, or segment. The splitter will be invoked after the (to-be-added) delete command.
-
-2. **Single segment per net.** Current `add_wire`/`board_trace` do `find-or-create` by net UUID — they collapse everything into one segment per net. A split is needed only after deletion breaks connectivity.
-
-3. **Labels are positional.** `NetLabel` has no junction reference — assignment to a split component must use geometric nearest-junction/line matching.
-
-4. **BoardPads are standalone.** `BoardPad`s sit in the segment but are not referenced by any `TraceEndpoint`. They too must be assigned by position or kept in the "primary" fragment.
-
-5. **Vias are nodes, not edges.** `Via` is referenced *by* `TraceEndpoint::Via { via }`, similar to how `Junction` is referenced by `TraceEndpoint::Junction`. In the connectivity graph, a via is a node that multiple traces can connect to.
-
-6. **ratsnest already has the union-find pattern** for board traces (board.rs:1460–1510), but it operates on pad-level connectivity *across* segments. The splitter needs union-find *within* a single segment.
-
-## Splitter Design
-
-### API Surface
-```rust
-// In volt-core/src/project/mod.rs or a new eda/crates/volt-core/src/project/split.rs
-
-/// Split any schematic net segment whose lines form >1 connected component
-/// into separate segments. Returns count of segments created by splitting.
-pub fn split_schematic_net_segments(schematic: &mut Schematic) -> usize;
-
-/// Split any board net segment whose traces form >1 connected component
-/// into separate segments. Returns count of segments created by splitting.
-pub fn split_board_net_segments(board: &mut Board) -> usize;
+### Net Name Resolution Chain
+```
+Board.net_segments[i].net: Option<Uuid>  →  Circuit.nets[j].uuid  →  Circuit.nets[j].name
 ```
 
-### Algorithm (Schematic)
+### Pad-to-Net Resolution for Device Pads
+```
+BoardDevice.component → ComponentInstance.signal_connections[k].signal → Uuid
+Device.pad_mappings[m] maps PackagePad.uuid → signal Uuid
+ComponentInstance.signal_connections[n] maps signal Uuid → net: Option<Uuid>
+```
 
-For each `SchematicNetSegment`:
+### Standalone BoardPad Net Resolution
+```
+BoardNetSegment.pads contains BoardPad entries
+BoardNetSegment.net: Option<Uuid> gives the net for ALL pads/vias/traces in that segment
+```
 
-1. **Build node set.** Collect every unique `LineEndpoint` appearing in any `SchematicLine.from`/`.to`. Node identity:
-   - `LineEndpoint::Junction { junction }` → key = junction UUID
-   - `LineEndpoint::Symbol { symbol, pin }` → key = `(symbol, pin)` pair
+### BoardLibrary Trait (gerber.rs line 203)
+```rust
+pub trait BoardLibrary {
+    fn get_device(&self, uuid: &Uuid) -> Option<&Device>;
+    fn get_package(&self, uuid: &Uuid) -> Option<&Package>;
+}
+```
 
-2. **Union-find on edges.** For each `SchematicLine`, union its `from` node with its `to` node.
+### transform_point (gerber.rs line 237)
+```rust
+pub fn transform_point(px: f64, py: f64, device: &BoardDevice) -> (f64, f64)
+// Applies flip, rotation, translation from footprint-local → board coords
+```
 
-3. **Check component count.** If only 1 connected component → skip (no split needed).
+### FabricationOutputSettings (project/mod.rs lines 417-465)
+Needs a new field: `netlist_ipc_d356_suffix: String` with default like `"_NETLIST.ipc"`.
 
-4. **Partition lines.** Group lines by their connected component (root node).
+## Architecture
 
-5. **Partition junctions.** For each `Junction`, find which component references it (look up in the union-find by its UUID key). Orphan junctions (unreferenced) are dropped.
+```
+volt-cli (commands/export.rs)
+  ├── reads project: Circuit + Board + Library
+  ├── calls volt-export::<format>::export_*()
+  └── writes output file
 
-6. **Assign labels.** For each `NetLabel`, find the nearest junction in the segment (Euclidean distance on `position`). Assign to that junction's component. If no junctions exist in a component (pure symbol-to-symbol), assign to the component whose line endpoints are geometrically closest.
+volt-export
+  ├── bom.rs          — BOM generation (circuit + library only)
+  ├── pick_place.rs   — Placement CSV (board + circuit + library)
+  ├── gerber.rs       — Gerber RS-274X (board + circuit + library), provides BoardLibrary trait
+  ├── excellon.rs     — Drill files (board + library), reuses BoardLibrary + transform_point
+  └── [NEW] ipc_d356.rs — IPC-D-356 netlist (board + circuit + library)
 
-7. **Emit segments.** Keep the first component in the original segment (preserving UUID). Create new `SchematicNetSegment`s (with `new_uuid()`, same `net` UUID) for each additional component.
+volt-core
+  ├── project/mod.rs  — Board, Circuit, Net, BoardNetSegment, BoardDevice, BoardPad, Via
+  └── library/mod.rs  — Package, Footprint, FootprintPad, PackagePad, Device, DevicePadMapping
+```
 
-### Algorithm (Board)
+### Data Flow for D-356
 
-For each `BoardNetSegment`:
+For each test point record (317 record), you need:
+- **Net name**: `circuit.nets.find(|n| n.uuid == seg.net).name` (max 14 chars in IPC-D-356)
+- **Component ref designator**: `circuit.components.find(|c| c.uuid == board_dev.component).name`
+- **Pad name**: resolved via `package.pads.find(|p| p.uuid == fp_pad.package_pad).name`
+- **Mid-point (board coords)**: `transform_point(fp_pad.position, board_dev)` → (x, y) in mm → convert to mils (÷ 0.0254) or keep mm depending on units header
+- **Pad size**: `fp_pad.width`, `fp_pad.height`
+- **Hole diameter**: from `fp_pad.holes[0].diameter` (0 for SMD)
+- **Access side**: from `effective_pad_side(fp_pad.side, board_dev.flip)` → 1=top, 2=bottom
+- **Vias**: from `seg.vias[]` — position, drill, net name; treated as mid-point access (side=3 for via)
+- **Standalone BoardPads**: from `seg.pads[]` — position, size, holes, net from segment
 
-1. **Build node set.** Node identity from `TraceEndpoint`:
-   - `Junction { junction }` → junction UUID
-   - `Via { via }` → via UUID
-   - `Device { device, pad }` → `(device, pad)` pair
+## IPC-D-356 Record Format (317 Records)
 
-2. **Union-find on edges.** For each `Trace`, union `from` and `to`.
+Fixed 80-column format. Key record types:
 
-3. **Via cross-layer linking.** Vias are already nodes in the graph (referenced by `TraceEndpoint::Via`). No extra edges needed — they're connected by traces.
+```
+Column  Width  Field
+1-3     3      Record type: "317" for through-hole test, "327" for SMD test
+4       1      Space
+5-17    14     Net name (left-justified, padded with spaces)  
+18-20   3      Blank/Reserved
+21-26   6      Component ref designator (left-justified)
+27-30   4      Pad name (left-justified, e.g. "1", "A1")
+31      1      Mid-point access: 1=top, 2=bottom, 3=via/both, blank=unknown
+32-37   6      X center (±NNNNNN in 0.0001" or ten-thousandths of inch)
+38-43   6      Y center (±NNNNNN same)
+44-47   4      X pad size (in 0.0001")
+48-51   4      Y pad size (in 0.0001")
+52      1      Rotation (optional)
+53-57   5      Pad/hole shape
+58-62   5      Hole diameter (in 0.0001", 0 for SMD)
+63      1      Plating: P=plated, U=unplated
+64-66   3      Connection type
+67-80   14     Reserved/comment
 
-4. **Partition traces, junctions, vias.** Group by connected component.
+Special records:
+P  C  A  — Units line (e.g., "P  C  A  IPC-D-356" header)
+999      — End of file
+```
 
-5. **Assign BoardPads.** These are standalone (not in the trace graph). Assign by position: find the nearest via/junction in each component, assign pad to that component. (Or keep in the largest component as fallback.)
+## Minimal Implementation Plan
 
-6. **Emit segments.** Same pattern: first component keeps original UUID; new components get `new_uuid()`, same `net`.
+### 1. Add suffix field to `FabricationOutputSettings` (volt-core)
+- File: `eda/crates/volt-core/src/project/mod.rs` (~line 445)
+- Add: `pub netlist_d356_suffix: String` with `#[serde(default = "fab_netlist_d356")]`
+- Add: `fn fab_netlist_d356() -> String { "_NETLIST.ipc".into() }`
 
-### Where To Put It
+### 2. Create `eda/crates/volt-export/src/ipc_d356.rs`
+- Re-use `BoardLibrary` trait from `gerber.rs`
+- Need `Circuit` for net name + component designator resolution
+- Core function: `pub fn export_ipc_d356(board: &Board, circuit: &Circuit, library: &dyn BoardLibrary) -> Result<String, String>`
+- Build lookup: `HashMap<Uuid, &str>` for net UUID → net name
+- Build lookup: `HashMap<Uuid, &ComponentInstance>` for component UUID → instance
+- Iterate `board.devices` → resolve footprint pads → emit 317/327 records
+- Iterate `board.net_segments` → emit via records (317 with access=3) and standalone pad records
+- Helper: `fn format_d356_coord(mm: f64) -> String` — convert mm to 0.0001" (×39370.0787, rounded to int, sign-padded to 6 chars)
+- Helper: `fn format_d356_size(mm: f64) -> String` — convert mm to 0.0001" (4 chars)
 
-- **Implementation:** `eda/crates/volt-core/src/project/split.rs` (new file), with `mod split;` added to `project/mod.rs`. This keeps it in `volt-core` so both CLI and future GUI can call it.
-- **Invocation:** After any wire/trace delete in the CLI (to be added), call `split_schematic_net_segments(&mut schematic)` or `split_board_net_segments(&mut board)` before writing back.
-- **Also callable from tidy:** Add as step 9 in `tidy.rs` after orphan junction removal.
+### 3. Register module in `eda/crates/volt-export/src/lib.rs`
+- Add: `pub mod ipc_d356;`
 
-### Edge Cases
+### 4. Add CLI variant in `eda/crates/volt-cli/src/commands/export.rs`
+- Add `Netlist` variant to `ExportCommands` (project, board, output args)
+- Add `ExportCommands::Netlist { .. } => export_netlist(..)` to dispatch
+- Add `fn export_netlist(..)` — follows exact pattern of `export_drills`: load circuit+board+library, call `ipc_d356::export_ipc_d356()`, write to file
+- Import `volt_export::ipc_d356` at top
 
-| Case | Handling |
-|------|----------|
-| Segment with 0 lines/traces after delete | Remove the segment entirely (it's empty) |
-| Segment with only labels, no lines | Keep if labels exist (label-only segment is valid), or remove |
-| Label equidistant to two components | Assign to the component with more lines (arbitrary tiebreak) |
-| Junction referenced by 0 lines | Drop it (orphan — `remove_orphan_junctions` pattern) |
-| Via referenced by 0 traces | Keep it (vias have physical meaning) or drop — match LibrePCB behavior |
-| All traces on same component | No-op, no split needed |
-| Net with multiple segments already | Each segment is split independently; net UUID preserved on all |
-
-### Test Plan (per acceptance criteria)
-
-1. Create a 3-wire linear segment: `A—J1—B—J2—C` (junctions J1, J2, lines A↔J1, J1↔J2, J2↔C)
-2. Delete the middle wire (J1↔J2)
-3. Call `split_schematic_net_segments`
-4. Assert: 2 segments exist for that net, with disjoint junction sets `{J1}` and `{J2}`
-5. Assert: round-trip through JSON is stable (serialize → deserialize → identical)
-
-Same pattern for board with traces/vias.
+### 5. Tests in `ipc_d356.rs`
+- Follow excellon.rs test pattern: build in-memory board + library + circuit
+- Verify 317 records for THT pads, 327 for SMD pads, via records
+- Verify coordinate formatting, net name field width, file header/footer
 
 ## Start Here
 
-Start at **`eda/crates/volt-core/src/project/mod.rs` line 217** — the `SchematicNetSegment` struct definition. This is the data model you're splitting. Then read `BoardNetSegment` at line 491. The `board_ratsnest` function at `board.rs:1430` has the only existing union-find pattern to use as reference. The `tidy.rs` file shows the mutation patterns (retain, remove, remap) you'll reuse.
+**`eda/crates/volt-export/src/excellon.rs`** — This is the closest sibling. It demonstrates:
+1. How to iterate board devices + footprint pads + holes with `BoardLibrary` (lines 153-195)
+2. How to use `transform_point` from gerber.rs (line 189)
+3. The collect → build → format pattern
+4. The `export_all` orchestration + `DrillSummary` return type
+5. Complete test patterns with `MapBoardLibrary`
+
+Then look at **`eda/crates/volt-cli/src/commands/export.rs`** (lines 22-107) to understand the CLI wiring.

@@ -68,6 +68,54 @@ pub enum ExportCommands {
         #[arg(long)]
         output_dir: PathBuf,
     },
+    /// Export IPC-D-356 bare-board test netlist
+    Netlist {
+        /// Path to project directory
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// Board name (without .json)
+        #[arg(long, default_value = "default")]
+        board: String,
+        /// Output file (stdout if omitted)
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+    /// Export interactive HTML BOM
+    Ibom {
+        /// Path to project directory
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// Board name (without .json)
+        #[arg(long, default_value = "default")]
+        board: String,
+        /// Output HTML file
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Export Specctra DSN file for external autorouting
+    Dsn {
+        /// Path to project directory
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// Board name (without .json)
+        #[arg(long, default_value = "default")]
+        board: String,
+        /// Output .dsn file
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Export STEP 3D file of the board
+    Step {
+        /// Path to project directory
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// Board name (without .json)
+        #[arg(long, default_value = "default")]
+        board: String,
+        /// Output .step file
+        #[arg(long)]
+        output: PathBuf,
+    },
 }
 
 #[derive(Clone, ValueEnum)]
@@ -102,6 +150,26 @@ pub fn export_command(cmd: ExportCommands) -> Result<()> {
             board,
             output_dir,
         } => export_drills(&project, &board, &output_dir),
+        ExportCommands::Netlist {
+            project,
+            board,
+            output,
+        } => export_netlist(&project, &board, output.as_deref()),
+        ExportCommands::Ibom {
+            project,
+            board,
+            output,
+        } => export_ibom(&project, &board, &output),
+        ExportCommands::Dsn {
+            project,
+            board,
+            output,
+        } => export_dsn(&project, &board, &output),
+        ExportCommands::Step {
+            project,
+            board,
+            output,
+        } => export_step_file(&project, &board, &output),
     }
 }
 
@@ -263,6 +331,108 @@ fn export_drills(
         "npth_hole_count": summary.npth_hole_count,
         "file_count": summary.files.len(),
         "files": files_json,
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// IPC-D-356 netlist export
+// ---------------------------------------------------------------------------
+
+fn export_netlist(
+    project: &std::path::Path,
+    board_name: &str,
+    output: Option<&std::path::Path>,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+    let circuit = project_io::read_circuit(project)?;
+    let board = project_io::read_board(project, board_name)?;
+    let library = load_project_library(project, &circuit)?;
+
+    let content = volt_export::ipc_d356::export_ipc_d356(&board, &circuit, &library);
+
+    if let Some(path) = output {
+        fs::write(path, &content)?;
+        let result = serde_json::json!({
+            "status": "ok",
+            "output": path.display().to_string(),
+        });
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    } else {
+        print!("{}", content);
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Interactive HTML BOM export
+// ---------------------------------------------------------------------------
+
+fn export_ibom(
+    project: &std::path::Path,
+    board_name: &str,
+    output: &std::path::Path,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+    let circuit = project_io::read_circuit(project)?;
+    let board = project_io::read_board(project, board_name)?;
+    let library = load_project_library(project, &circuit)?;
+
+    let html = volt_export::ibom::export_interactive_html_bom(&board, &circuit, &library);
+    fs::write(output, &html)?;
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "output": output.display().to_string(),
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Specctra DSN export
+// ---------------------------------------------------------------------------
+
+fn export_dsn(
+    project: &std::path::Path,
+    board_name: &str,
+    output: &std::path::Path,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+    let circuit = project_io::read_circuit(project)?;
+    let board = project_io::read_board(project, board_name)?;
+    let library = load_project_library(project, &circuit)?;
+
+    let content = volt_export::specctra::export_dsn(&board, &circuit, &library);
+    fs::write(output, &content)?;
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "output": output.display().to_string(),
+    });
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// STEP 3D export
+// ---------------------------------------------------------------------------
+
+fn export_step_file(
+    project: &std::path::Path,
+    board_name: &str,
+    output: &std::path::Path,
+) -> Result<()> {
+    project_io::ensure_project(project)?;
+    let board = project_io::read_board(project, board_name)?;
+
+    let content = volt_export::step::export_step(&board);
+    fs::write(output, &content)?;
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "output": output.display().to_string(),
     });
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())

@@ -31,6 +31,7 @@ pub fn new_project(name: &str, output: Option<&Path>) -> Result<()> {
         name: name.to_string(),
         author: String::new(),
         version: "v1".to_string(),
+        schema_version: volt_core::project::CURRENT_SCHEMA_VERSION,
         created: chrono::Utc::now(),
         settings: ProjectSettings {
             locale_order: vec!["en_US".to_string()],
