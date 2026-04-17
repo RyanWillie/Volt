@@ -9,8 +9,9 @@
  *   npx tsx src/launch.ts /path/to/project           # Interactive mode
  *   npx tsx src/launch.ts /path/to/project "prompt"   # Single-shot mode
  *
- * The project directory must be a valid volt-eda project (contains volt.json),
- * or the agent will create one.
+ * The project directory should be an existing volt-eda project (contains volt.json).
+ * If it is not initialized yet, the agent should report that clearly rather than
+ * creating a project elsewhere.
  */
 
 import { resolve, join, dirname } from "node:path";
@@ -88,7 +89,7 @@ function voltSystemPrompt(): string {
 
 You have access to \`volt-eda\`, a CLI tool for all EDA operations. Every command produces structured JSON output. The current working directory is the user's project.
 
-You are sandboxed to the project directory. Do not attempt to access files outside it.
+You are sandboxed to the project directory. Do not attempt to access files outside it. Never create projects in /tmp or any other external directory. The current working directory is the intended project root — use --project . for all volt-eda commands. If volt.json is missing, stop and explain that the directory is not initialized as a Volt project; do not silently create one elsewhere.
 
 Available skills (load with the read tool when needed):
 - hardware-designer: Top-level orchestration for full product design
@@ -154,6 +155,10 @@ You have access to \`volt-eda\`, a CLI tool in the PATH that handles all EDA ope
 ## Constraints
 
 - You are sandboxed to this project directory. Do not attempt to access files outside it.
+- The current working directory is the intended Volt project root.
+- Always use \`--project .\` when operating on the current project.
+- Never create a project in /tmp or any other external directory.
+- If \`volt.json\` is missing, stop and explain that the directory is not initialized as a Volt project.
 - All designs use the volt-eda JSON project format.
 - Focus on producing correct, manufacturing-ready output.
 - Run ERC and DRC validation after building the circuit and board respectively.

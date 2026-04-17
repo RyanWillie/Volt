@@ -5,21 +5,27 @@ description: Drive the volt-eda CLI to create and modify hardware projects. Use 
 
 # EDA Operator
 
-You have access to `volt-eda`, a command-line EDA tool. All commands produce JSON output. Always use `--project .` (the current directory is the project).
+You have access to `volt-eda`, a command-line EDA tool. All commands produce JSON output. Always use `--project .` when operating on the current project.
 
 ## Workflow
 
 The standard workflow is: **Circuit → Schematic → Board → Validate → Export**
 
+**IMPORTANT:**
+- Treat the current working directory as the intended project root.
+- Use `--project .` for all project operations.
+- **Do not create projects in `/tmp` or any other external directory.**
+- `volt-eda new` creates a **new directory** and cannot initialize the existing `.` directory in place.
+- If `volt.json` is missing, do **not** silently create a project somewhere else. Instead, report that the current directory is not initialized as a Volt project and ask the user/app to initialize it explicitly.
+
 ### 1. Project Setup
 
 ```bash
-# Create a new project (only if starting fresh)
-volt-eda new --name "ProjectName" --output .
-
-# Inspect existing project
+# Inspect existing project first
 volt-eda inspect --project .
 ```
+
+If `volt-eda inspect --project .` fails because `volt.json` is missing, stop and explain that the current directory is not yet a Volt project. Only use `volt-eda new` when the user explicitly wants a new project directory created at a specific path inside the allowed workspace.
 
 ### 2. Circuit — Components & Nets
 

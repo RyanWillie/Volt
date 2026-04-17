@@ -1,180 +1,250 @@
-# Code Context — IPC-D-356 Netlist Export for Volt
+# Code Context
 
 ## Files Retrieved
-1. `eda/crates/volt-cli/src/commands/export.rs` (lines 1-290) — CLI command wiring: `ExportCommands` enum, `export_command()` dispatch, `load_project_library()`, `ProjectLibrary` struct with `BoardLibrary` + `BomLibrary` impls
-2. `eda/crates/volt-export/src/lib.rs` (lines 1-6) — Module declarations; currently exposes `bom`, `excellon`, `gerber`, `pick_place`
-3. `eda/crates/volt-export/src/excellon.rs` (full) — Closest analog: collects pad holes, vias, NPTH holes with geometry transforms; pattern to follow
-4. `eda/crates/volt-export/src/pick_place.rs` (full) — Shows circuit→board→library resolution pattern (component designator lookup)
-5. `eda/crates/volt-export/src/gerber.rs` (lines 200-270) — `BoardLibrary` trait, `MapBoardLibrary`, `transform_point()`, `effective_pad_side()`
-6. `eda/crates/volt-export/src/gerber.rs` (lines 425-620) — Copper layer export: iterates `board.net_segments` for traces/vias/pads, device footprint pads
-7. `eda/crates/volt-core/src/project/mod.rs` (lines 57-136) — `Circuit { nets, components }`, `Net { uuid, name }`, `ComponentInstance { uuid, name, signal_connections }`
-8. `eda/crates/volt-core/src/project/mod.rs` (lines 274-310) — `Board { devices, net_segments, holes }`
-9. `eda/crates/volt-core/src/project/mod.rs` (lines 477-600) — `BoardDevice`, `BoardNetSegment { uuid, net: Option<Uuid>, vias, pads }`, `Via`, `BoardPad`
-10. `eda/crates/volt-core/src/project/mod.rs` (lines 417-465) — `FabricationOutputSettings` with file suffix fields
-11. `eda/crates/volt-core/src/library/mod.rs` (lines 260-380) — `PackagePad { uuid, name }`, `Footprint { pads }`, `FootprintPad { uuid, package_pad, side, position, width, height, holes }`, `PadHole { diameter }`, `Device { pad_mappings }`, `DevicePadMapping { pad, signal }`
-12. `eda/crates/volt-cli/src/main.rs` (lines 68-95) — CLI `Commands::Export` variant → `commands::export_command(command)`
-13. `eda/crates/volt-export/Cargo.toml` — description already mentions "D-356 netlist export"
+1. `eda/crates/volt-cli/src/commands/autoplace/analysis.rs` (lines 1-220; focus 117-159) - `PinInfo` definition and `PinInfo` construction in `classify_one` where stray schema fields were inserted.
+2. `eda/crates/volt-cli/src/commands/export.rs` (lines 540-628; focus 574-595) - failing test `gerber_export_refills_planes_before_writing` with two outdated `Net` literals.
+3. `eda/crates/volt-core/src/split.rs` (lines 420-635; focus 432-455, 474-497, 522-631) - schematic test constructors, the failing `Board` test constructor, and the nearby correct `Board` constructor for comparison.
+4. `eda/crates/volt-core/src/project/mod.rs` (lines 67-139) - authoritative definitions of `Circuit`, `NetClass`, `Net`, and `NetScope` after the schema upgrade.
+5. `eda/crates/volt-core/src/project/mod.rs` (lines 206-303) - authoritative definitions of `Schematic` and `LineEndpoint` after the schema upgrade.
+6. `eda/crates/volt-cli/src/commands/net.rs` (lines 74-83) - canonical current `Net` constructor showing the right new fields.
+7. `eda/crates/volt-core/tests/roundtrip.rs` (lines 394-406) - follow-up test coverage note: `LineEndpoint` roundtrip test still only exercises the old two variants.
 
 ## Key Code
 
-### CLI Wiring Pattern (export.rs lines 22-107)
+### Compiler error sites from `cargo test 2>&1`
+Error-related ` --> ` lines in the current run:
+
+- `crates/volt-cli/src/commands/autoplace/analysis.rs:124:19`
+- `crates/volt-cli/src/commands/autoplace/analysis.rs:122:16`
+- `crates/volt-cli/src/commands/autoplace/analysis.rs:123:22`
+- `crates/volt-cli/src/commands/autoplace/analysis.rs:156:16`
+- `crates/volt-cli/src/commands/export.rs:582:13`
+- `crates/volt-cli/src/commands/export.rs:588:13`
+- `crates/volt-core/src/split.rs:563:9`
+- `crates/volt-core/src/split.rs:564:9`
+- `crates/volt-core/src/split.rs:565:9`
+- `crates/volt-core/src/split.rs:566:9`
+- `crates/volt-core/src/split.rs:567:9`
+- `crates/volt-core/src/split.rs:568:9`
+- `crates/volt-core/src/split.rs:569:9`
+
+Other ` --> ` lines in the log were warnings, not compile errors.
+
+### Authoritative schema after the upgrade
+`eda/crates/volt-core/src/project/mod.rs`:
+
 ```rust
-#[derive(Subcommand)]
-pub enum ExportCommands {
-    Bom { project, format, output },
-    PickPlace { project, board, output },
-    Gerber { project, board, output_dir },
-    Drills { project, board, output_dir },
-    // NEW: Netlist { project, board, output }
+pub struct Circuit {
+    pub assembly_variants: Vec<AssemblyVariant>,
+    pub net_classes: Vec<NetClass>,
+    pub nets: Vec<Net>,
+    pub components: Vec<ComponentInstance>,
+    pub differential_pairs: Vec<DifferentialPair>,
 }
 
-pub fn export_command(cmd: ExportCommands) -> Result<()> {
-    match cmd {
-        ExportCommands::Bom { .. } => export_bom(..),
-        ExportCommands::PickPlace { .. } => export_pick_place(..),
-        ExportCommands::Gerber { .. } => export_gerber(..),
-        ExportCommands::Drills { .. } => export_drills(..),
-        // NEW: ExportCommands::Netlist { .. } => export_netlist(..),
-    }
+pub struct NetClass {
+    pub uuid: Uuid,
+    pub name: String,
+    pub default_trace_width: TraceWidthConfig,
+    pub default_via_drill_diameter: TraceWidthConfig,
+    pub min_copper_copper_clearance: f64,
+    pub min_copper_width: f64,
+    pub min_via_drill_diameter: f64,
+    pub diff_pair_gap: Option<f64>,
+    pub diff_pair_max_length_delta: Option<f64>,
+}
+
+pub struct Net {
+    pub uuid: Uuid,
+    pub name: String,
+    pub auto_name: bool,
+    pub net_class: Uuid,
+    pub scope: NetScope,
+    pub owner_sheet: Option<Uuid>,
+    pub is_power: bool,
 }
 ```
 
-### Net Name Resolution Chain
-```
-Board.net_segments[i].net: Option<Uuid>  →  Circuit.nets[j].uuid  →  Circuit.nets[j].name
-```
+And for schematic data:
 
-### Pad-to-Net Resolution for Device Pads
-```
-BoardDevice.component → ComponentInstance.signal_connections[k].signal → Uuid
-Device.pad_mappings[m] maps PackagePad.uuid → signal Uuid
-ComponentInstance.signal_connections[n] maps signal Uuid → net: Option<Uuid>
-```
-
-### Standalone BoardPad Net Resolution
-```
-BoardNetSegment.pads contains BoardPad entries
-BoardNetSegment.net: Option<Uuid> gives the net for ALL pads/vias/traces in that segment
-```
-
-### BoardLibrary Trait (gerber.rs line 203)
 ```rust
-pub trait BoardLibrary {
-    fn get_device(&self, uuid: &Uuid) -> Option<&Device>;
-    fn get_package(&self, uuid: &Uuid) -> Option<&Package>;
+pub struct Schematic {
+    pub uuid: Uuid,
+    pub name: String,
+    pub grid: Grid,
+    pub symbols: Vec<SchematicSymbol>,
+    pub net_segments: Vec<SchematicNetSegment>,
+    pub sheet_refs: Vec<SheetRef>,
+    pub hierarchical_ports: Vec<HierarchicalPort>,
+    pub power_ports: Vec<PowerPort>,
+    pub power_flags: Vec<PowerFlag>,
+    pub bus_segments: Vec<BusSegment>,
+    pub bus_entries: Vec<BusEntry>,
+    pub bus_aliases: Vec<BusAlias>,
+}
+
+pub enum LineEndpoint {
+    Symbol { symbol: Uuid, pin: Uuid },
+    Junction { junction: Uuid },
+    SheetPin { sheet_ref: Uuid, pin: Uuid },
+    HierPort { port: Uuid },
 }
 ```
 
-### transform_point (gerber.rs line 237)
+### File-by-file exact fixes
+
+#### 1. `eda/crates/volt-cli/src/commands/autoplace/analysis.rs`
+Problem area:
+
 ```rust
-pub fn transform_point(px: f64, py: f64, device: &BoardDevice) -> (f64, f64)
-// Applies flip, rotation, translation from footprint-local → board coords
+struct PinInfo {
+    _signal: Uuid,
+    role: SignalRole,
+    net: Uuid,
+    net_class: NetClass,
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: false,
+}
 ```
 
-### FabricationOutputSettings (project/mod.rs lines 417-465)
-Needs a new field: `netlist_ipc_d356_suffix: String` with default like `"_NETLIST.ipc"`.
+and later:
+
+```rust
+Some(PinInfo {
+    _signal: sc.signal,
+    role,
+    net: nid,
+    net_class: nc,
+    scope: NetScope::Global,
+    owner_sheet: None,
+    is_power: false,
+})
+```
+
+Exact fix needed:
+- Remove the three stray lines `scope`, `owner_sheet`, and `is_power` from the local `PinInfo` struct.
+- Remove the same three lines from the `PinInfo` initializer in `classify_one`.
+- Do **not** add a `NetScope` import here; that would only mask one symptom. These fields belong to `volt_core::project::Net`, not to this local analysis helper type.
+
+Why:
+- `PinInfo` is a local helper with fields `_signal`, `role`, `net`, and `net_class` only.
+- The schema upgrade for `Net` appears to have been accidentally pasted into this unrelated helper, which causes:
+  - parse failure (`expected type, found keyword false`),
+  - unresolved `NetScope`, and
+  - `None` being interpreted where a type is expected.
+
+#### 2. `eda/crates/volt-cli/src/commands/export.rs`
+Problem area:
+
+```rust
+circuit.nets = vec![
+    Net {
+        uuid: plane_net,
+        name: "GND".into(),
+        auto_name: false,
+        net_class,
+    },
+    Net {
+        uuid: trace_net,
+        name: "SIG".into(),
+        auto_name: false,
+        net_class,
+    },
+];
+```
+
+Exact fix needed:
+- Add the new `Net` fields to both literals:
+  - `scope: NetScope::Global`
+  - `owner_sheet: None`
+  - `is_power: ...`
+- For semantic correctness in this test:
+  - `GND` net should be `is_power: true`
+  - `SIG` net should be `is_power: false`
+
+Use the same pattern already used in `eda/crates/volt-cli/src/commands/net.rs`:
+
+```rust
+let net = Net {
+    uuid: net_uuid,
+    name: name.to_string(),
+    auto_name: false,
+    net_class: default_nc.uuid,
+    scope: NetScope::Global,
+    owner_sheet: None,
+    is_power: false,
+};
+```
+
+Why:
+- `volt_core::project::Net` now requires the new schema fields.
+- This failing test is constructing raw `Net` values by hand.
+
+#### 3. `eda/crates/volt-core/src/split.rs`
+Problem area in `board_split_into_two`:
+
+```rust
+let mut board = Board {
+    ...
+    net_segments: vec![...],
+    sheet_refs: vec![],
+    hierarchical_ports: vec![],
+    power_ports: vec![],
+    power_flags: vec![],
+    bus_segments: vec![],
+    bus_entries: vec![],
+    bus_aliases: vec![],
+    planes: vec![],
+    polygons: vec![],
+    holes: vec![],
+};
+```
+
+Exact fix needed:
+- Remove these seven fields from the `Board` literal:
+  - `sheet_refs`
+  - `hierarchical_ports`
+  - `power_ports`
+  - `power_flags`
+  - `bus_segments`
+  - `bus_entries`
+  - `bus_aliases`
+- Keep only the actual `Board` fields (`planes`, `polygons`, `holes`, etc.).
+- The immediately following test `board_no_split_when_connected` already shows the correct `Board` field set and can be copied.
+
+Why:
+- Those seven fields were added to `Schematic`, not `Board`.
+- In the same file, the two `Schematic` tests above are correctly updated with these new fields, so this `Board` constructor appears to be a copy/paste spillover from the schematic schema update.
 
 ## Architecture
+- `eda/crates/volt-core/src/project/mod.rs` is the source of truth for serialized project schema.
+- `volt-cli` test/support code and `volt-core` tests instantiate schema structs directly rather than through builders/defaults, so schema changes fan out into handwritten literals.
+- Current compiler failures are all downstream of that schema source:
+  - `autoplace/analysis.rs` has an accidental paste of new `Net` fields into a non-schema helper type.
+  - `export.rs` test code still uses the pre-upgrade `Net` literal shape.
+  - `split.rs` has new `Schematic` fields incorrectly inserted into a `Board` literal.
+- I checked the schema definitions and nearby code paths: `LineEndpoint` support is already updated in the currently visible core logic (`split.rs`, `render.rs`, `autoplace/tidy.rs`). No current compiler error for `SheetPin`/`HierPort` surfaced in this `cargo test` run.
 
-```
-volt-cli (commands/export.rs)
-  ├── reads project: Circuit + Board + Library
-  ├── calls volt-export::<format>::export_*()
-  └── writes output file
+### Follow-up note not surfaced as a compiler error in this run
+`eda/crates/volt-core/tests/roundtrip.rs` still has:
 
-volt-export
-  ├── bom.rs          — BOM generation (circuit + library only)
-  ├── pick_place.rs   — Placement CSV (board + circuit + library)
-  ├── gerber.rs       — Gerber RS-274X (board + circuit + library), provides BoardLibrary trait
-  ├── excellon.rs     — Drill files (board + library), reuses BoardLibrary + transform_point
-  └── [NEW] ipc_d356.rs — IPC-D-356 netlist (board + circuit + library)
+```rust
+fn roundtrip_line_endpoint_enum() {
+    let sym_ep = LineEndpoint::Symbol { ... };
+    roundtrip(&sym_ep);
 
-volt-core
-  ├── project/mod.rs  — Board, Circuit, Net, BoardNetSegment, BoardDevice, BoardPad, Via
-  └── library/mod.rs  — Package, Footprint, FootprintPad, PackagePad, Device, DevicePadMapping
-```
-
-### Data Flow for D-356
-
-For each test point record (317 record), you need:
-- **Net name**: `circuit.nets.find(|n| n.uuid == seg.net).name` (max 14 chars in IPC-D-356)
-- **Component ref designator**: `circuit.components.find(|c| c.uuid == board_dev.component).name`
-- **Pad name**: resolved via `package.pads.find(|p| p.uuid == fp_pad.package_pad).name`
-- **Mid-point (board coords)**: `transform_point(fp_pad.position, board_dev)` → (x, y) in mm → convert to mils (÷ 0.0254) or keep mm depending on units header
-- **Pad size**: `fp_pad.width`, `fp_pad.height`
-- **Hole diameter**: from `fp_pad.holes[0].diameter` (0 for SMD)
-- **Access side**: from `effective_pad_side(fp_pad.side, board_dev.flip)` → 1=top, 2=bottom
-- **Vias**: from `seg.vias[]` — position, drill, net name; treated as mid-point access (side=3 for via)
-- **Standalone BoardPads**: from `seg.pads[]` — position, size, holes, net from segment
-
-## IPC-D-356 Record Format (317 Records)
-
-Fixed 80-column format. Key record types:
-
-```
-Column  Width  Field
-1-3     3      Record type: "317" for through-hole test, "327" for SMD test
-4       1      Space
-5-17    14     Net name (left-justified, padded with spaces)  
-18-20   3      Blank/Reserved
-21-26   6      Component ref designator (left-justified)
-27-30   4      Pad name (left-justified, e.g. "1", "A1")
-31      1      Mid-point access: 1=top, 2=bottom, 3=via/both, blank=unknown
-32-37   6      X center (±NNNNNN in 0.0001" or ten-thousandths of inch)
-38-43   6      Y center (±NNNNNN same)
-44-47   4      X pad size (in 0.0001")
-48-51   4      Y pad size (in 0.0001")
-52      1      Rotation (optional)
-53-57   5      Pad/hole shape
-58-62   5      Hole diameter (in 0.0001", 0 for SMD)
-63      1      Plating: P=plated, U=unplated
-64-66   3      Connection type
-67-80   14     Reserved/comment
-
-Special records:
-P  C  A  — Units line (e.g., "P  C  A  IPC-D-356" header)
-999      — End of file
+    let junc_ep = LineEndpoint::Junction { ... };
+    roundtrip(&junc_ep);
+}
 ```
 
-## Minimal Implementation Plan
-
-### 1. Add suffix field to `FabricationOutputSettings` (volt-core)
-- File: `eda/crates/volt-core/src/project/mod.rs` (~line 445)
-- Add: `pub netlist_d356_suffix: String` with `#[serde(default = "fab_netlist_d356")]`
-- Add: `fn fab_netlist_d356() -> String { "_NETLIST.ipc".into() }`
-
-### 2. Create `eda/crates/volt-export/src/ipc_d356.rs`
-- Re-use `BoardLibrary` trait from `gerber.rs`
-- Need `Circuit` for net name + component designator resolution
-- Core function: `pub fn export_ipc_d356(board: &Board, circuit: &Circuit, library: &dyn BoardLibrary) -> Result<String, String>`
-- Build lookup: `HashMap<Uuid, &str>` for net UUID → net name
-- Build lookup: `HashMap<Uuid, &ComponentInstance>` for component UUID → instance
-- Iterate `board.devices` → resolve footprint pads → emit 317/327 records
-- Iterate `board.net_segments` → emit via records (317 with access=3) and standalone pad records
-- Helper: `fn format_d356_coord(mm: f64) -> String` — convert mm to 0.0001" (×39370.0787, rounded to int, sign-padded to 6 chars)
-- Helper: `fn format_d356_size(mm: f64) -> String` — convert mm to 0.0001" (4 chars)
-
-### 3. Register module in `eda/crates/volt-export/src/lib.rs`
-- Add: `pub mod ipc_d356;`
-
-### 4. Add CLI variant in `eda/crates/volt-cli/src/commands/export.rs`
-- Add `Netlist` variant to `ExportCommands` (project, board, output args)
-- Add `ExportCommands::Netlist { .. } => export_netlist(..)` to dispatch
-- Add `fn export_netlist(..)` — follows exact pattern of `export_drills`: load circuit+board+library, call `ipc_d356::export_ipc_d356()`, write to file
-- Import `volt_export::ipc_d356` at top
-
-### 5. Tests in `ipc_d356.rs`
-- Follow excellon.rs test pattern: build in-memory board + library + circuit
-- Verify 317 records for THT pads, 327 for SMD pads, via records
-- Verify coordinate formatting, net name field width, file header/footer
+This is not a compile failure, but the schema upgrade added two more `LineEndpoint` variants. Test coverage should likely be extended with roundtrip cases for:
+- `LineEndpoint::SheetPin { sheet_ref, pin }`
+- `LineEndpoint::HierPort { port }`
 
 ## Start Here
-
-**`eda/crates/volt-export/src/excellon.rs`** — This is the closest sibling. It demonstrates:
-1. How to iterate board devices + footprint pads + holes with `BoardLibrary` (lines 153-195)
-2. How to use `transform_point` from gerber.rs (line 189)
-3. The collect → build → format pattern
-4. The `export_all` orchestration + `DrillSummary` return type
-5. Complete test patterns with `MapBoardLibrary`
-
-Then look at **`eda/crates/volt-cli/src/commands/export.rs`** (lines 22-107) to understand the CLI wiring.
+Start with `eda/crates/volt-core/src/project/mod.rs` because it is the authoritative schema that explains every failing constructor. Then inspect the three failing files in this order:
+1. `eda/crates/volt-cli/src/commands/autoplace/analysis.rs` - obvious bad paste into a local helper type.
+2. `eda/crates/volt-cli/src/commands/export.rs` - straightforward `Net` literal updates.
+3. `eda/crates/volt-core/src/split.rs` - remove schematic-only fields from the `Board` test literal.

@@ -17,6 +17,11 @@ Load these skills as needed. Always load `eda-operator` before running volt-eda 
 ## Constraints
 
 - You are sandboxed to this project directory. Do not attempt to access files outside it.
+- The current working directory is the intended Volt project root.
+- Always use `--project .` when operating on the current project.
+- Never create a project in `/tmp` or any other external directory.
+- `volt-eda new` creates a new directory; it does not initialize the current directory in place.
+- If `volt.json` is missing, stop and tell the user/app that the current directory is not initialized as a Volt project.
 - All designs use the volt-eda JSON project format.
 - Focus on producing correct, manufacturing-ready output.
 - Run ERC and DRC validation after building the circuit and board respectively.

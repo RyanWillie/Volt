@@ -8,8 +8,9 @@
  * session. The project root is passed as cwd to the Pi session.
  *
  * Rules:
- * - read/write/edit: path must resolve within cwd or /tmp
- * - bash: commands are allowed (volt-eda runs in the project dir)
+ * - read/write/edit: project root only, plus read-only access to bundled agent resources
+ * - bash: commands are allowed only when they stay within the project workflow
+ * - No access to /tmp for project creation or output
  * - No access to home directory, ~/.ssh, ~/.aws, etc.
  */
 
@@ -48,11 +49,6 @@ export default function (pi: ExtensionAPI) {
         return undefined;
       }
 
-      // Allow /tmp for scratch work
-      if (resolved.startsWith("/tmp/") || resolved.startsWith("/tmp")) {
-        return undefined;
-      }
-
       // Allow read-only access to agent's bundled skills/resources
       if (toolName === "read") {
         const relToAgent = relative(agentRoot, resolved);
@@ -70,7 +66,7 @@ export default function (pi: ExtensionAPI) {
       }
       return {
         block: true,
-        reason: `Path "${filePath}" resolves to "${resolved}" which is outside the project directory "${projectRoot}". The agent can only access files within the project directory and /tmp.`,
+        reason: `Path "${filePath}" resolves to "${resolved}" which is outside the project directory "${projectRoot}". The agent can only access files within the project directory, plus read-only bundled agent resources.`,
       };
     }
 
@@ -88,6 +84,11 @@ export default function (pi: ExtensionAPI) {
         /~\/\.ssh/,
         /~\/\.aws/,
         /~\/\.gnupg/,
+        /(^|\s)cd\s+\/tmp(\/|\s|$)/,
+        /(^|\s)cd\s+\/(\s|$)/,
+        /volt-eda\b.*--project\s+\/tmp(\/|\s|$)/,
+        /volt-eda\b.*--output(?:-dir)?\s+\/tmp(\/|\s|$)/,
+        /volt-eda\b.*\bnew\b.*\/tmp\//,
       ];
 
       for (const pattern of blocked) {
@@ -119,11 +120,11 @@ export default function (pi: ExtensionAPI) {
           "Allowed:",
           `  • Read/write/edit within: ${projectRoot}`,
           `  • Read-only access to bundled skills: ${agentRoot}`,
-          "  • Scratch files in: /tmp",
-          "  • volt-eda CLI commands",
+          "  • volt-eda CLI commands that operate on the current project",
           "",
           "Blocked:",
           "  • File access outside project root",
+          "  • Using /tmp as a project location or output destination",
           "  • ssh, sudo, dangerous shell patterns",
           "  • Home directory sensitive files (~/.ssh, ~/.aws)",
         ].join("\n"),
