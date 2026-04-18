@@ -1,5 +1,6 @@
 //! Shared project I/O: read/write JSON files in a Volt project.
 
+use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 
@@ -39,6 +40,25 @@ pub fn read_schematic(project: &Path, name: &str) -> Result<Schematic> {
 
 pub fn write_schematic(project: &Path, name: &str, schematic: &Schematic) -> Result<()> {
     write_json(&project.join(format!("schematics/{name}.json")), schematic)
+}
+
+pub fn read_all_schematics(project: &Path) -> Result<Vec<Schematic>> {
+    let mut schematics = Vec::new();
+    let dir = project.join("schematics");
+    if !dir.exists() {
+        return Ok(schematics);
+    }
+
+    for entry in fs::read_dir(&dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension() == Some(OsStr::new("json")) {
+            schematics.push(read_json(&path)?);
+        }
+    }
+
+    schematics.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(schematics)
 }
 
 pub fn read_board(project: &Path, name: &str) -> Result<Board> {

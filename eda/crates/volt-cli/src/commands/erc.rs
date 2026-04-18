@@ -4,13 +4,14 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use volt_core::library::Component;
-use volt_erc::{MapResolver, run_erc};
+use volt_erc::{MapResolver, run_erc_with_schematics};
 
 use super::project_io::{self, Result};
 
 pub fn erc_command(project: PathBuf) -> Result<()> {
     project_io::ensure_project(&project)?;
     let circuit = project_io::read_circuit(&project)?;
+    let schematics = project_io::read_all_schematics(&project)?;
 
     // Load all library components referenced by circuit
     let mut components = HashMap::new();
@@ -27,7 +28,7 @@ pub fn erc_command(project: PathBuf) -> Result<()> {
     }
 
     let resolver = MapResolver { components };
-    let result = run_erc(&circuit, &resolver);
+    let result = run_erc_with_schematics(&circuit, &schematics, &resolver);
 
     println!("{}", serde_json::to_string_pretty(&result)?);
 

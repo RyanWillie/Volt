@@ -1039,3 +1039,167 @@ fn d021_warns_when_impedance_target_has_no_gap_constraint() {
     );
     assert_eq!(d021.unwrap().severity, Severity::Warning);
 }
+
+#[test]
+fn d022_errors_when_only_one_side_of_pair_is_routed() {
+    let mut board = make_clean_board();
+    let net_class_uuid = Uuid::new_v4();
+    let pos_net = Uuid::new_v4();
+    let neg_net = Uuid::new_v4();
+    let pos_start = make_junction(10.0, 10.0);
+    let pos_end = make_junction(30.0, 10.0);
+    board.net_segments.push(BoardNetSegment {
+        uuid: Uuid::new_v4(),
+        net: Some(pos_net),
+        traces: vec![make_trace(
+            Layer::TopCopper,
+            0.3,
+            pos_start.uuid,
+            pos_end.uuid,
+        )],
+        vias: vec![],
+        junctions: vec![pos_start, pos_end],
+        pads: vec![],
+    });
+
+    let circuit = Circuit {
+        assembly_variants: vec![],
+        net_classes: vec![NetClass {
+            uuid: net_class_uuid,
+            name: "diff".into(),
+            default_trace_width: TraceWidthConfig::Inherit,
+            default_via_drill_diameter: TraceWidthConfig::Inherit,
+            min_copper_copper_clearance: 0.0,
+            min_copper_width: 0.0,
+            min_via_drill_diameter: 0.0,
+            diff_pair_gap: Some(0.2),
+            diff_pair_max_length_delta: Some(1.0),
+        }],
+        nets: vec![
+            Net {
+                uuid: pos_net,
+                name: "PAIR_P".into(),
+                auto_name: false,
+                net_class: net_class_uuid,
+                scope: NetScope::Global,
+                owner_sheet: None,
+                is_power: false,
+            },
+            Net {
+                uuid: neg_net,
+                name: "PAIR_N".into(),
+                auto_name: false,
+                net_class: net_class_uuid,
+                scope: NetScope::Global,
+                owner_sheet: None,
+                is_power: false,
+            },
+        ],
+        components: vec![],
+        differential_pairs: vec![DifferentialPair {
+            uuid: Uuid::new_v4(),
+            name: "PAIR".into(),
+            positive_net: pos_net,
+            negative_net: neg_net,
+            max_length_delta: None,
+            target_impedance: None,
+        }],
+    };
+
+    let result = run_drc(&board, &circuit, &empty_library());
+    assert!(
+        result.diagnostics.iter().any(|diag| diag.rule == "D022"),
+        "Expected D022 for partially routed pair, got: {:?}",
+        result.diagnostics
+    );
+}
+
+#[test]
+fn d023_errors_when_pair_gap_deviates_from_rule() {
+    let mut board = make_clean_board();
+    let net_class_uuid = Uuid::new_v4();
+    let pos_net = Uuid::new_v4();
+    let neg_net = Uuid::new_v4();
+    let pos_start = make_junction(10.0, 10.0);
+    let pos_end = make_junction(30.0, 10.0);
+    let neg_start = make_junction(10.0, 12.0);
+    let neg_end = make_junction(30.0, 12.0);
+
+    board.net_segments.push(BoardNetSegment {
+        uuid: Uuid::new_v4(),
+        net: Some(pos_net),
+        traces: vec![make_trace(
+            Layer::TopCopper,
+            0.3,
+            pos_start.uuid,
+            pos_end.uuid,
+        )],
+        vias: vec![],
+        junctions: vec![pos_start, pos_end],
+        pads: vec![],
+    });
+    board.net_segments.push(BoardNetSegment {
+        uuid: Uuid::new_v4(),
+        net: Some(neg_net),
+        traces: vec![make_trace(
+            Layer::TopCopper,
+            0.3,
+            neg_start.uuid,
+            neg_end.uuid,
+        )],
+        vias: vec![],
+        junctions: vec![neg_start, neg_end],
+        pads: vec![],
+    });
+
+    let circuit = Circuit {
+        assembly_variants: vec![],
+        net_classes: vec![NetClass {
+            uuid: net_class_uuid,
+            name: "diff".into(),
+            default_trace_width: TraceWidthConfig::Inherit,
+            default_via_drill_diameter: TraceWidthConfig::Inherit,
+            min_copper_copper_clearance: 0.0,
+            min_copper_width: 0.0,
+            min_via_drill_diameter: 0.0,
+            diff_pair_gap: Some(0.2),
+            diff_pair_max_length_delta: Some(5.0),
+        }],
+        nets: vec![
+            Net {
+                uuid: pos_net,
+                name: "PAIR_P".into(),
+                auto_name: false,
+                net_class: net_class_uuid,
+                scope: NetScope::Global,
+                owner_sheet: None,
+                is_power: false,
+            },
+            Net {
+                uuid: neg_net,
+                name: "PAIR_N".into(),
+                auto_name: false,
+                net_class: net_class_uuid,
+                scope: NetScope::Global,
+                owner_sheet: None,
+                is_power: false,
+            },
+        ],
+        components: vec![],
+        differential_pairs: vec![DifferentialPair {
+            uuid: Uuid::new_v4(),
+            name: "PAIR".into(),
+            positive_net: pos_net,
+            negative_net: neg_net,
+            max_length_delta: None,
+            target_impedance: None,
+        }],
+    };
+
+    let result = run_drc(&board, &circuit, &empty_library());
+    assert!(
+        result.diagnostics.iter().any(|diag| diag.rule == "D023"),
+        "Expected D023 for pair-gap deviation, got: {:?}",
+        result.diagnostics
+    );
+}

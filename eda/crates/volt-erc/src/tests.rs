@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use uuid::Uuid;
 
 use volt_core::common::*;
@@ -109,6 +107,26 @@ fn make_circuit_base() -> Circuit {
 fn resolver_from(components: Vec<Component>) -> MapResolver {
     MapResolver {
         components: components.into_iter().map(|c| (c.meta.uuid, c)).collect(),
+    }
+}
+
+fn make_schematic(name: &str) -> Schematic {
+    Schematic {
+        uuid: Uuid::new_v4(),
+        name: name.into(),
+        grid: Grid {
+            interval: 2.54,
+            unit: GridUnit::Millimeters,
+        },
+        symbols: vec![],
+        net_segments: vec![],
+        sheet_refs: vec![],
+        hierarchical_ports: vec![],
+        power_ports: vec![],
+        power_flags: vec![],
+        bus_segments: vec![],
+        bus_entries: vec![],
+        bus_aliases: vec![],
     }
 }
 
@@ -492,4 +510,273 @@ fn erc_result_is_json_serializable() {
     let json = serde_json::to_string_pretty(&result).unwrap();
     assert!(json.contains("\"passed\": true"));
     assert!(json.contains("\"W001\""));
+}
+
+#[test]
+fn hierarchy_bindings_prevent_false_single_connection_warnings() {
+    let comp_uuid = Uuid::new_v4();
+    let lib = make_lib_component(comp_uuid, vec![("1", false)]);
+    let parent_net = Uuid::new_v4();
+    let child_net = Uuid::new_v4();
+    let port_uuid = Uuid::new_v4();
+
+    let mut circuit = make_circuit_base();
+    circuit.nets.push(Net {
+        uuid: parent_net,
+        name: "IO".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: false,
+    });
+    circuit.nets.push(Net {
+        uuid: child_net,
+        name: "IO".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Local,
+        owner_sheet: None,
+        is_power: false,
+    });
+    circuit.components.push(ComponentInstance {
+        uuid: Uuid::new_v4(),
+        lib_component: comp_uuid,
+        lib_variant: Uuid::new_v4(),
+        name: "U_PARENT".into(),
+        value: String::new(),
+        lock_assembly: false,
+        device_assignments: vec![],
+        signal_connections: vec![SignalConnection {
+            signal: lib.signals[0].uuid,
+            net: Some(parent_net),
+        }],
+    });
+    circuit.components.push(ComponentInstance {
+        uuid: Uuid::new_v4(),
+        lib_component: comp_uuid,
+        lib_variant: Uuid::new_v4(),
+        name: "U_CHILD".into(),
+        value: String::new(),
+        lock_assembly: false,
+        device_assignments: vec![],
+        signal_connections: vec![SignalConnection {
+            signal: lib.signals[0].uuid,
+            net: Some(child_net),
+        }],
+    });
+
+    let mut child = make_schematic("child");
+    child.hierarchical_ports.push(HierarchicalPort {
+        uuid: port_uuid,
+        name: "IO".into(),
+        position: Position::new(0.0, 0.0),
+        side: SheetSide::Left,
+        net: child_net,
+    });
+
+    let mut parent = make_schematic("main");
+    parent.sheet_refs.push(SheetRef {
+        uuid: Uuid::new_v4(),
+        name: "U_CHILD".into(),
+        target_schematic: "child".into(),
+        position: Position::new(0.0, 0.0),
+        width: 20.0,
+        height: 15.0,
+        pins: vec![SheetRefPin {
+            uuid: Uuid::new_v4(),
+            name: "IO".into(),
+            port_ref: port_uuid,
+            side: SheetSide::Left,
+            offset: 2.54,
+            net: Some(parent_net),
+        }],
+    });
+
+    let result = run_erc_with_schematics(&circuit, &[parent, child], &resolver_from(vec![lib]));
+    assert!(
+        !result.diagnostics.iter().any(|diag| diag.rule == "W001"),
+        "Hierarchy binding should suppress false dangling-net warnings: {:?}",
+        result.diagnostics
+    );
+}
+
+#[test]
+fn hierarchy_reports_unbound_sheet_pins() {
+    let mut circuit = make_circuit_base();
+    let parent_net = Uuid::new_v4();
+    let child_net = Uuid::new_v4();
+    let port_uuid = Uuid::new_v4();
+    circuit.nets.push(Net {
+        uuid: parent_net,
+        name: "IO".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: false,
+    });
+    circuit.nets.push(Net {
+        uuid: child_net,
+        name: "IO_LOCAL".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Local,
+        owner_sheet: None,
+        is_power: false,
+    });
+
+    let mut child = make_schematic("child");
+    child.hierarchical_ports.push(HierarchicalPort {
+        uuid: port_uuid,
+        name: "IO".into(),
+        position: Position::new(0.0, 0.0),
+        side: SheetSide::Left,
+        net: child_net,
+    });
+
+    let mut parent = make_schematic("main");
+    parent.sheet_refs.push(SheetRef {
+        uuid: Uuid::new_v4(),
+        name: "U_CHILD".into(),
+        target_schematic: "child".into(),
+        position: Position::new(0.0, 0.0),
+        width: 20.0,
+        height: 15.0,
+        pins: vec![SheetRefPin {
+            uuid: Uuid::new_v4(),
+            name: "IO".into(),
+            port_ref: port_uuid,
+            side: SheetSide::Left,
+            offset: 2.54,
+            net: None,
+        }],
+    });
+
+    let result = run_erc_with_schematics(&circuit, &[parent, child], &resolver_from(vec![]));
+    assert!(
+        result.diagnostics.iter().any(|diag| diag.rule == "E004"),
+        "Expected E004 for unbound sheet pin, got: {:?}",
+        result.diagnostics
+    );
+}
+
+#[test]
+fn hierarchy_reports_orphan_ports() {
+    let mut circuit = make_circuit_base();
+    let child_net = Uuid::new_v4();
+    circuit.nets.push(Net {
+        uuid: child_net,
+        name: "IO_LOCAL".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Local,
+        owner_sheet: None,
+        is_power: false,
+    });
+
+    let mut child = make_schematic("child");
+    child.hierarchical_ports.push(HierarchicalPort {
+        uuid: Uuid::new_v4(),
+        name: "IO".into(),
+        position: Position::new(0.0, 0.0),
+        side: SheetSide::Left,
+        net: child_net,
+    });
+
+    let result = run_erc_with_schematics(&circuit, &[child], &resolver_from(vec![]));
+    assert!(
+        result.diagnostics.iter().any(|diag| diag.rule == "W006"),
+        "Expected W006 for orphan hierarchical port, got: {:?}",
+        result.diagnostics
+    );
+}
+
+#[test]
+fn power_flags_count_as_driver_evidence() {
+    let comp_uuid = Uuid::new_v4();
+    let mut lib = make_lib_component(comp_uuid, vec![("VCC", false)]);
+    lib.signals[0].role = SignalRole::Power;
+
+    let power_net = Uuid::new_v4();
+    let mut circuit = make_circuit_base();
+    circuit.nets.push(Net {
+        uuid: power_net,
+        name: "VCC".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: true,
+    });
+    circuit.components.push(ComponentInstance {
+        uuid: Uuid::new_v4(),
+        lib_component: comp_uuid,
+        lib_variant: Uuid::new_v4(),
+        name: "U1".into(),
+        value: String::new(),
+        lock_assembly: false,
+        device_assignments: vec![],
+        signal_connections: vec![SignalConnection {
+            signal: lib.signals[0].uuid,
+            net: Some(power_net),
+        }],
+    });
+
+    let mut main = make_schematic("main");
+    main.power_flags.push(PowerFlag {
+        uuid: Uuid::new_v4(),
+        net: power_net,
+        position: Position::new(0.0, 0.0),
+    });
+
+    let result = run_erc_with_schematics(&circuit, &[main], &resolver_from(vec![lib]));
+    assert!(
+        !result.diagnostics.iter().any(|diag| diag.rule == "W007"),
+        "Power flag should count as source evidence: {:?}",
+        result.diagnostics
+    );
+}
+
+#[test]
+fn power_nets_without_driver_or_flag_warn() {
+    let comp_uuid = Uuid::new_v4();
+    let mut lib = make_lib_component(comp_uuid, vec![("VCC", false)]);
+    lib.signals[0].role = SignalRole::Power;
+
+    let power_net = Uuid::new_v4();
+    let mut circuit = make_circuit_base();
+    circuit.nets.push(Net {
+        uuid: power_net,
+        name: "VCC".into(),
+        auto_name: false,
+        net_class: default_net_class_uuid(),
+        scope: NetScope::Global,
+        owner_sheet: None,
+        is_power: true,
+    });
+    circuit.components.push(ComponentInstance {
+        uuid: Uuid::new_v4(),
+        lib_component: comp_uuid,
+        lib_variant: Uuid::new_v4(),
+        name: "U1".into(),
+        value: String::new(),
+        lock_assembly: false,
+        device_assignments: vec![],
+        signal_connections: vec![SignalConnection {
+            signal: lib.signals[0].uuid,
+            net: Some(power_net),
+        }],
+    });
+
+    let result = run_erc_with_schematics(
+        &circuit,
+        &[make_schematic("main")],
+        &resolver_from(vec![lib]),
+    );
+    assert!(
+        result.diagnostics.iter().any(|diag| diag.rule == "W007"),
+        "Expected W007 for undriven power net, got: {:?}",
+        result.diagnostics
+    );
 }

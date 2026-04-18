@@ -335,6 +335,49 @@ fn snap_all_to_grid(schematic: &mut Schematic) -> usize {
         }
     }
 
+    for sheet_ref in &mut schematic.sheet_refs {
+        if snap_position(&mut sheet_ref.position) {
+            count += 1;
+        }
+        for pin in &mut sheet_ref.pins {
+            if snap_scalar_to_grid(&mut pin.offset) {
+                count += 1;
+            }
+        }
+    }
+
+    for port in &mut schematic.hierarchical_ports {
+        if snap_position(&mut port.position) {
+            count += 1;
+        }
+    }
+
+    for power_port in &mut schematic.power_ports {
+        if snap_position(&mut power_port.position) {
+            count += 1;
+        }
+    }
+
+    for power_flag in &mut schematic.power_flags {
+        if snap_position(&mut power_flag.position) {
+            count += 1;
+        }
+    }
+
+    for bus in &mut schematic.bus_segments {
+        for junction in &mut bus.junctions {
+            if snap_position(&mut junction.position) {
+                count += 1;
+            }
+        }
+    }
+
+    for entry in &mut schematic.bus_entries {
+        if snap_position(&mut entry.position) {
+            count += 1;
+        }
+    }
+
     count
 }
 
@@ -345,6 +388,15 @@ fn snap_position(pos: &mut Position) -> bool {
     if !approx_eq(pos.x, sx) || !approx_eq(pos.y, sy) {
         pos.x = sx;
         pos.y = sy;
+        return true;
+    }
+    false
+}
+
+fn snap_scalar_to_grid(value: &mut f64) -> bool {
+    let snapped = snap_to_grid(*value);
+    if !approx_eq(*value, snapped) {
+        *value = snapped;
         return true;
     }
     false
@@ -467,6 +519,38 @@ fn compact_layout(schematic: &mut Schematic) -> bool {
         }
     }
 
+    for sheet_ref in &schematic.sheet_refs {
+        min_x = min_x.min(sheet_ref.position.x);
+        min_y = min_y.min(sheet_ref.position.y);
+    }
+
+    for port in &schematic.hierarchical_ports {
+        min_x = min_x.min(port.position.x);
+        min_y = min_y.min(port.position.y);
+    }
+
+    for power_port in &schematic.power_ports {
+        min_x = min_x.min(power_port.position.x);
+        min_y = min_y.min(power_port.position.y);
+    }
+
+    for power_flag in &schematic.power_flags {
+        min_x = min_x.min(power_flag.position.x);
+        min_y = min_y.min(power_flag.position.y);
+    }
+
+    for bus in &schematic.bus_segments {
+        for junction in &bus.junctions {
+            min_x = min_x.min(junction.position.x);
+            min_y = min_y.min(junction.position.y);
+        }
+    }
+
+    for entry in &schematic.bus_entries {
+        min_x = min_x.min(entry.position.x);
+        min_y = min_y.min(entry.position.y);
+    }
+
     if min_x.is_infinite() || min_y.is_infinite() {
         return false;
     }
@@ -499,6 +583,38 @@ fn compact_layout(schematic: &mut Schematic) -> bool {
             label.position.x += dx;
             label.position.y += dy;
         }
+    }
+
+    for sheet_ref in &mut schematic.sheet_refs {
+        sheet_ref.position.x += dx;
+        sheet_ref.position.y += dy;
+    }
+
+    for port in &mut schematic.hierarchical_ports {
+        port.position.x += dx;
+        port.position.y += dy;
+    }
+
+    for power_port in &mut schematic.power_ports {
+        power_port.position.x += dx;
+        power_port.position.y += dy;
+    }
+
+    for power_flag in &mut schematic.power_flags {
+        power_flag.position.x += dx;
+        power_flag.position.y += dy;
+    }
+
+    for bus in &mut schematic.bus_segments {
+        for junction in &mut bus.junctions {
+            junction.position.x += dx;
+            junction.position.y += dy;
+        }
+    }
+
+    for entry in &mut schematic.bus_entries {
+        entry.position.x += dx;
+        entry.position.y += dy;
     }
 
     true
@@ -634,4 +750,179 @@ fn round_pos_key(x: f64, y: f64) -> (i64, i64) {
 /// Approximate equality within 0.0005 mm.
 fn approx_eq(a: f64, b: f64) -> bool {
     (a - b).abs() < 0.0005
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_schematic() -> Schematic {
+        Schematic {
+            uuid: Uuid::new_v4(),
+            name: "main".into(),
+            grid: Grid {
+                interval: GRID,
+                unit: GridUnit::Millimeters,
+            },
+            symbols: vec![],
+            net_segments: vec![],
+            sheet_refs: vec![],
+            hierarchical_ports: vec![],
+            power_ports: vec![],
+            power_flags: vec![],
+            bus_segments: vec![],
+            bus_entries: vec![],
+            bus_aliases: vec![],
+        }
+    }
+
+    #[test]
+    fn snap_all_to_grid_moves_hierarchy_and_bus_primitives() {
+        let mut schematic = make_schematic();
+        schematic.sheet_refs.push(SheetRef {
+            uuid: Uuid::new_v4(),
+            name: "U_CHILD".into(),
+            target_schematic: "child".into(),
+            position: Position::new(2.7, 2.8),
+            width: 20.0,
+            height: 15.0,
+            pins: vec![SheetRefPin {
+                uuid: Uuid::new_v4(),
+                name: "IO".into(),
+                port_ref: Uuid::new_v4(),
+                side: SheetSide::Left,
+                offset: 2.7,
+                net: None,
+            }],
+        });
+        schematic.hierarchical_ports.push(HierarchicalPort {
+            uuid: Uuid::new_v4(),
+            name: "PORT".into(),
+            position: Position::new(2.6, 2.5),
+            side: SheetSide::Left,
+            net: Uuid::new_v4(),
+        });
+        schematic.power_ports.push(PowerPort {
+            uuid: Uuid::new_v4(),
+            net: Uuid::new_v4(),
+            position: Position::new(2.5, 2.6),
+            rotation: Angle(0.0),
+            style: "vcc".into(),
+        });
+        schematic.power_flags.push(PowerFlag {
+            uuid: Uuid::new_v4(),
+            net: Uuid::new_v4(),
+            position: Position::new(2.6, 2.7),
+        });
+        schematic.bus_segments.push(BusSegment {
+            uuid: Uuid::new_v4(),
+            label: "D[0..3]".into(),
+            junctions: vec![Junction {
+                uuid: Uuid::new_v4(),
+                position: Position::new(2.6, 5.3),
+            }],
+            lines: vec![],
+        });
+        schematic.bus_entries.push(BusEntry {
+            uuid: Uuid::new_v4(),
+            position: Position::new(2.7, 7.6),
+            bus_segment: schematic.bus_segments[0].uuid,
+            net: Uuid::new_v4(),
+            member_name: "D[0]".into(),
+        });
+
+        let moved = snap_all_to_grid(&mut schematic);
+        assert!(moved >= 6);
+        assert_eq!(schematic.sheet_refs[0].position, Position::new(GRID, GRID));
+        assert!((schematic.sheet_refs[0].pins[0].offset - GRID).abs() < 1e-6);
+        assert_eq!(
+            schematic.hierarchical_ports[0].position,
+            Position::new(GRID, GRID)
+        );
+        assert_eq!(schematic.power_ports[0].position, Position::new(GRID, GRID));
+        assert_eq!(schematic.power_flags[0].position, Position::new(GRID, GRID));
+        assert_eq!(
+            schematic.bus_segments[0].junctions[0].position,
+            Position::new(GRID, 2.0 * GRID)
+        );
+        assert_eq!(
+            schematic.bus_entries[0].position,
+            Position::new(GRID, 3.0 * GRID)
+        );
+    }
+
+    #[test]
+    fn compact_layout_translates_hierarchy_and_bus_primitives() {
+        let mut schematic = make_schematic();
+        schematic.sheet_refs.push(SheetRef {
+            uuid: Uuid::new_v4(),
+            name: "U_CHILD".into(),
+            target_schematic: "child".into(),
+            position: Position::new(1.0, 2.0),
+            width: 20.0,
+            height: 15.0,
+            pins: vec![],
+        });
+        schematic.hierarchical_ports.push(HierarchicalPort {
+            uuid: Uuid::new_v4(),
+            name: "PORT".into(),
+            position: Position::new(2.0, 3.0),
+            side: SheetSide::Right,
+            net: Uuid::new_v4(),
+        });
+        schematic.power_ports.push(PowerPort {
+            uuid: Uuid::new_v4(),
+            net: Uuid::new_v4(),
+            position: Position::new(3.0, 4.0),
+            rotation: Angle(0.0),
+            style: "vcc".into(),
+        });
+        schematic.power_flags.push(PowerFlag {
+            uuid: Uuid::new_v4(),
+            net: Uuid::new_v4(),
+            position: Position::new(4.0, 5.0),
+        });
+        schematic.bus_segments.push(BusSegment {
+            uuid: Uuid::new_v4(),
+            label: "D[0..3]".into(),
+            junctions: vec![Junction {
+                uuid: Uuid::new_v4(),
+                position: Position::new(5.0, 6.0),
+            }],
+            lines: vec![],
+        });
+        schematic.bus_entries.push(BusEntry {
+            uuid: Uuid::new_v4(),
+            position: Position::new(6.0, 7.0),
+            bus_segment: schematic.bus_segments[0].uuid,
+            net: Uuid::new_v4(),
+            member_name: "D[0]".into(),
+        });
+
+        assert!(compact_layout(&mut schematic));
+        assert_eq!(
+            schematic.sheet_refs[0].position,
+            Position::new(8.0 * GRID, 8.0 * GRID)
+        );
+        assert_eq!(
+            schematic.hierarchical_ports[0].position,
+            Position::new(21.32, 21.32)
+        );
+        assert_eq!(
+            schematic.power_ports[0].position,
+            Position::new(22.32, 22.32)
+        );
+        assert_eq!(
+            schematic.power_flags[0].position,
+            Position::new(23.32, 23.32)
+        );
+        assert_eq!(
+            schematic.bus_segments[0].junctions[0].position,
+            Position::new(24.32, 24.32)
+        );
+        assert_eq!(
+            schematic.bus_entries[0].position,
+            Position::new(25.32, 25.32)
+        );
+    }
 }

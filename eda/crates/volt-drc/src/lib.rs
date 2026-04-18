@@ -23,8 +23,10 @@
 //! | D013 | Error    | Blind/buried via used when not allowed |
 //! | D020 | Error    | Differential pair length mismatch |
 //! | D021 | Warning  | Differential pair impedance target lacks routing gap constraint |
+//! | D022 | Error    | Differential pair is only partially routed or lacks a coupled partner |
+//! | D023 | Error    | Differential pair gap deviates from the configured rule |
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -2008,7 +2010,22 @@ fn net_class_for_net<'a>(circuit: &'a Circuit, net_uuid: Uuid) -> Option<&'a Net
         .find(|net_class| net_class.uuid == net.net_class)
 }
 
-fn total_net_trace_length(board: &Board, net_uuid: Uuid, library: &dyn BoardLibrary) -> f64 {
+#[derive(Debug, Clone)]
+struct RoutedTraceSegment {
+    uuid: Uuid,
+    layer: Layer,
+    width: f64,
+    x1: f64,
+    y1: f64,
+    x2: f64,
+    y2: f64,
+}
+
+fn routed_trace_segments(
+    board: &Board,
+    net_uuid: Uuid,
+    library: &dyn BoardLibrary,
+) -> Vec<RoutedTraceSegment> {
     board
         .net_segments
         .iter()
@@ -2017,8 +2034,23 @@ fn total_net_trace_length(board: &Board, net_uuid: Uuid, library: &dyn BoardLibr
         .filter_map(|trace| {
             let from = resolve_endpoint(&trace.from, board, library)?;
             let to = resolve_endpoint(&trace.to, board, library)?;
-            Some(point_distance(from.0, from.1, to.0, to.1))
+            Some(RoutedTraceSegment {
+                uuid: trace.uuid,
+                layer: trace.layer,
+                width: trace.width,
+                x1: from.0,
+                y1: from.1,
+                x2: to.0,
+                y2: to.1,
+            })
         })
+        .collect()
+}
+
+fn trace_set_length(traces: &[RoutedTraceSegment]) -> f64 {
+    traces
+        .iter()
+        .map(|trace| point_distance(trace.x1, trace.y1, trace.x2, trace.y2))
         .sum()
 }
 
@@ -2035,8 +2067,10 @@ fn check_differential_pairs(
         .collect();
 
     for pair in &circuit.differential_pairs {
-        let positive_length = total_net_trace_length(board, pair.positive_net, library);
-        let negative_length = total_net_trace_length(board, pair.negative_net, library);
+        let positive_traces = routed_trace_segments(board, pair.positive_net, library);
+        let negative_traces = routed_trace_segments(board, pair.negative_net, library);
+        let positive_length = trace_set_length(&positive_traces);
+        let negative_length = trace_set_length(&negative_traces);
         let delta = (positive_length - negative_length).abs();
 
         let positive_class = net_class_for_net(circuit, pair.positive_net);
@@ -2075,10 +2109,47 @@ fn check_differential_pairs(
             }
         }
 
+        let gap_constraint = positive_class
+            .and_then(|net_class| net_class.diff_pair_gap)
+            .or_else(|| negative_class.and_then(|net_class| net_class.diff_pair_gap));
+
+        if positive_length > 0.0 && negative_length == 0.0
+            || negative_length > 0.0 && positive_length == 0.0
+        {
+            diags.push(DrcDiagnostic {
+                rule: "D022".into(),
+                severity: Severity::Error,
+                message: format!(
+                    "Differential pair '{}' is only partially routed ({}={:.3}mm, {}={:.3}mm)",
+                    pair.name,
+                    net_name_map
+                        .get(&pair.positive_net)
+                        .copied()
+                        .unwrap_or("<unnamed>"),
+                    positive_length,
+                    net_name_map
+                        .get(&pair.negative_net)
+                        .copied()
+                        .unwrap_or("<unnamed>"),
+                    negative_length
+                ),
+                location: None,
+                object: Some(pair.uuid),
+            });
+        }
+
+        if let Some(target_gap) = gap_constraint {
+            check_differential_pair_gap(
+                pair.uuid,
+                &pair.name,
+                target_gap,
+                &positive_traces,
+                &negative_traces,
+                diags,
+            );
+        }
+
         if let Some(target_impedance) = pair.target_impedance {
-            let gap_constraint = positive_class
-                .and_then(|net_class| net_class.diff_pair_gap)
-                .or_else(|| negative_class.and_then(|net_class| net_class.diff_pair_gap));
             if gap_constraint.is_none() {
                 diags.push(DrcDiagnostic {
                     rule: "D021".into(),
@@ -2091,6 +2162,96 @@ fn check_differential_pairs(
                     object: Some(pair.uuid),
                 });
             }
+        }
+    }
+}
+
+fn trace_angle(trace: &RoutedTraceSegment) -> Option<f64> {
+    let dx = trace.x2 - trace.x1;
+    let dy = trace.y2 - trace.y1;
+    if dx.abs() < 1e-9 && dy.abs() < 1e-9 {
+        None
+    } else {
+        Some(dy.atan2(dx))
+    }
+}
+
+fn traces_are_parallel(a: &RoutedTraceSegment, b: &RoutedTraceSegment) -> bool {
+    let (Some(angle_a), Some(angle_b)) = (trace_angle(a), trace_angle(b)) else {
+        return false;
+    };
+    let mut delta = (angle_a - angle_b).abs();
+    while delta > std::f64::consts::PI {
+        delta -= std::f64::consts::PI;
+    }
+    delta < std::f64::consts::FRAC_PI_6
+        || (std::f64::consts::PI - delta) < std::f64::consts::FRAC_PI_6
+}
+
+fn trace_edge_gap(a: &RoutedTraceSegment, b: &RoutedTraceSegment) -> f64 {
+    (segment_to_segment_distance(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1, b.x2, b.y2)
+        - a.width / 2.0
+        - b.width / 2.0)
+        .max(0.0)
+}
+
+fn check_differential_pair_gap(
+    pair_uuid: Uuid,
+    pair_name: &str,
+    target_gap: f64,
+    positive_traces: &[RoutedTraceSegment],
+    negative_traces: &[RoutedTraceSegment],
+    diags: &mut Vec<DrcDiagnostic>,
+) {
+    let tolerance = (target_gap * 0.25).max(0.1);
+    let has_any_partner = !positive_traces.is_empty() && !negative_traces.is_empty();
+    let mut missing_partner_reported: HashSet<Uuid> = HashSet::new();
+
+    for trace in positive_traces.iter().chain(negative_traces.iter()) {
+        let opposite = if positive_traces
+            .iter()
+            .any(|candidate| candidate.uuid == trace.uuid)
+        {
+            negative_traces
+        } else {
+            positive_traces
+        };
+
+        let nearest = opposite
+            .iter()
+            .filter(|candidate| {
+                candidate.layer == trace.layer && traces_are_parallel(trace, candidate)
+            })
+            .map(|candidate| (trace_edge_gap(trace, candidate), candidate.uuid))
+            .min_by(|a, b| a.0.total_cmp(&b.0));
+
+        let Some((nearest_gap, _partner_uuid)) = nearest else {
+            if has_any_partner && missing_partner_reported.insert(trace.uuid) {
+                diags.push(DrcDiagnostic {
+                    rule: "D022".into(),
+                    severity: Severity::Error,
+                    message: format!(
+                        "Differential pair '{}' trace segment has no coupled partner on the same layer",
+                        pair_name
+                    ),
+                    location: Some(Position::new(trace.x1, trace.y1)),
+                    object: Some(trace.uuid),
+                });
+            }
+            continue;
+        };
+
+        if (nearest_gap - target_gap).abs() > tolerance {
+            diags.push(DrcDiagnostic {
+                rule: "D023".into(),
+                severity: Severity::Error,
+                message: format!(
+                    "Differential pair '{}' gap {:.3}mm deviates from configured {:.3}mm by more than {:.3}mm",
+                    pair_name, nearest_gap, target_gap, tolerance
+                ),
+                location: Some(Position::new(trace.x1, trace.y1)),
+                object: Some(pair_uuid),
+            });
         }
     }
 }
