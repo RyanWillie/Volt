@@ -1,0 +1,19 @@
+include(FetchContent)
+
+FetchContent_Declare(
+    Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG v3.7.1
+)
+
+FetchContent_MakeAvailable(Catch2)
+
+add_executable(volt_core_tests core/version_test.cpp)
+target_link_libraries(volt_core_tests PRIVATE Volt::Core Catch2::Catch2WithMain)
+target_compile_features(volt_core_tests PRIVATE cxx_std_20)
+volt_apply_project_warnings(volt_core_tests PRIVATE)
+volt_apply_sanitizers(volt_core_tests)
+
+include(Catch)
+catch_discover_tests(volt_core_tests)
+

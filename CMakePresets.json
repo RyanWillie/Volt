@@ -1,0 +1,90 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "dev",
+      "displayName": "Development",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/dev",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "VOLT_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "VOLT_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "asan",
+      "displayName": "Address Sanitizer",
+      "inherits": "dev",
+      "binaryDir": "${sourceDir}/build/asan",
+      "cacheVariables": {
+        "VOLT_ENABLE_ASAN": "ON",
+        "VOLT_ENABLE_UBSAN": "ON"
+      }
+    },
+    {
+      "name": "macos-llvm",
+      "displayName": "macOS Homebrew LLVM",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/macos-llvm",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
+        "VOLT_BUILD_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan"
+    },
+    {
+      "name": "macos-llvm",
+      "configurePreset": "macos-llvm"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "macos-llvm",
+      "configurePreset": "macos-llvm",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
