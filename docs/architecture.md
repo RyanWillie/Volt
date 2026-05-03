@@ -93,6 +93,30 @@ Each diagnostic carries:
 across independent kernel layers. `EntityRef` is a reporting type using `EntityKind` plus
 an index; it is not the storage model.
 
+## Circuit Definitions
+
+`PinDefinition` and `ComponentDefinition` describe reusable part shapes. They do not
+represent actual design instances such as `R1` or `U1`; those come in a later layer.
+
+Definition objects do not store their own IDs. Their IDs are table keys assigned by
+`EntityTable`, which avoids duplicated identity state inside the entity payload. The
+definition payload stores electronics meaning:
+
+```text
+PinDefinition
+  name: "VDD"
+  number: "17"
+  role: PowerInput
+  required: true
+
+ComponentDefinition
+  name: "Resistor"
+  pins: [PinDefId(0), PinDefId(1)]
+```
+
+Actual component instances, concrete pin instances, and net connections are intentionally
+deferred to subsequent layers.
+
 ## Mutation Boundary
 
 Kernel data should be mutated through explicit operations:
