@@ -138,6 +138,26 @@ Pin instances are first-class entities because nets should connect concrete pins
 reusable pin definitions. Net modeling is intentionally deferred until the instance layer
 is stable.
 
+## Nets
+
+`Net` is the canonical logical connection data structure. It stores electronics meaning
+and local pin membership:
+
+```text
+Net
+  name: "GND"
+  kind: Ground
+  pins: [PinId(0), PinId(3)]
+```
+
+A net contains concrete `PinId` values, not reusable `PinDefId` values. This keeps the
+model grounded in actual design occurrences.
+
+The current net layer only enforces local membership rules: deterministic pin order,
+no duplicate pins inside one net, and explicit disconnect behavior. The circuit-wide
+invariant that a pin belongs to zero or one net belongs in the future `Circuit` container,
+where all nets and pins are visible at once.
+
 ## Mutation Boundary
 
 Kernel data should be mutated through explicit operations:
