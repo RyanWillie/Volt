@@ -24,6 +24,16 @@ cmake --build --preset dev
 ctest --preset dev
 ```
 
+## Documentation
+
+Volt uses Doxygen for public API documentation:
+
+```sh
+cmake --build --preset dev --target docs
+```
+
+The generated HTML lives under the selected build directory.
+
 For sanitizer builds:
 
 ```sh

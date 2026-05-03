@@ -14,6 +14,16 @@ cmake --build --preset dev
 ctest --preset dev
 ```
 
+Generate API documentation with:
+
+```sh
+cmake --build --preset dev --target docs
+```
+
+Documentation is generated with Doxygen from public headers and Markdown docs. The build
+keeps Doxygen optional for normal compilation, but public APIs should be documented as
+they are added.
+
 If the Apple system compiler fails inside standard library headers, use the Homebrew LLVM
 preset available on this workstation:
 
