@@ -158,6 +158,22 @@ no duplicate pins inside one net, and explicit disconnect behavior. The circuit-
 invariant that a pin belongs to zero or one net belongs in the future `Circuit` container,
 where all nets and pins are visible at once.
 
+## Circuit Container
+
+`Circuit` is the first owning database for the logical model. It stores entity tables for:
+
+- pin definitions
+- component definitions
+- component instances
+- concrete pin instances
+- nets
+
+This layer is intentionally storage-oriented. It assigns typed IDs, owns entity payloads,
+and returns const references by ID. It does not yet validate cross-entity references or
+enforce the circuit-wide invariant that a pin belongs to at most one net. Those behaviors
+belong in later editor and validation layers, where mutations can be checked with the full
+circuit context.
+
 ## Mutation Boundary
 
 Kernel data should be mutated through explicit operations:

@@ -10,6 +10,7 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(
     volt_core_tests
+    circuit/circuit_test.cpp
     circuit/definitions_test.cpp
     circuit/instances_test.cpp
     circuit/nets_test.cpp
