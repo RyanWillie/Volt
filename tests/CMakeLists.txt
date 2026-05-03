@@ -10,6 +10,7 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(
     volt_core_tests
+    core/diagnostics_test.cpp
     core/entity_table_test.cpp
     core/ids_test.cpp
     core/version_test.cpp

@@ -76,6 +76,23 @@ NetId             internal engine identity
 NetName("GND")    electronics meaning
 ```
 
+## Diagnostics
+
+Diagnostics are generic reports, not validation-specific reports. The same primitive
+should support future logical validation, electrical checks, physical DRC, import/load
+errors, and editor consistency checks.
+
+Each diagnostic carries:
+
+- `Severity`: info, warning, or error
+- `DiagnosticCode`: machine-readable string code
+- message: human-readable explanation
+- `EntityRef` list: logical entities related to the finding
+
+`DiagnosticCode` is a value wrapper rather than a central enum because codes will grow
+across independent kernel layers. `EntityRef` is a reporting type using `EntityKind` plus
+an index; it is not the storage model.
+
 ## Mutation Boundary
 
 Kernel data should be mutated through explicit operations:
