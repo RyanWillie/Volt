@@ -117,6 +117,27 @@ ComponentDefinition
 Actual component instances, concrete pin instances, and net connections are intentionally
 deferred to subsequent layers.
 
+## Circuit Instances
+
+`ComponentInstance` and `PinInstance` represent concrete design occurrences:
+
+```text
+ComponentInstance
+  definition: ComponentDefId(0)
+  reference: "R1"
+
+PinInstance
+  component: ComponentId(0)
+  definition: PinDefId(1)
+```
+
+Reference designators are domain data, not identity. `ComponentId` remains the internal
+engine identity, while `ReferenceDesignator("R1")` is the electronics-facing label.
+
+Pin instances are first-class entities because nets should connect concrete pins, not
+reusable pin definitions. Net modeling is intentionally deferred until the instance layer
+is stable.
+
 ## Mutation Boundary
 
 Kernel data should be mutated through explicit operations:

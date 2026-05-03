@@ -11,6 +11,7 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(
     volt_core_tests
     circuit/definitions_test.cpp
+    circuit/instances_test.cpp
     core/diagnostics_test.cpp
     core/entity_table_test.cpp
     core/ids_test.cpp
