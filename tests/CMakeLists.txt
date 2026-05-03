@@ -8,7 +8,12 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Catch2)
 
-add_executable(volt_core_tests core/version_test.cpp)
+add_executable(
+    volt_core_tests
+    core/entity_table_test.cpp
+    core/ids_test.cpp
+    core/version_test.cpp
+)
 target_link_libraries(volt_core_tests PRIVATE Volt::Core Catch2::Catch2WithMain)
 target_compile_features(volt_core_tests PRIVATE cxx_std_20)
 volt_apply_project_warnings(volt_core_tests PRIVATE)
@@ -16,4 +21,3 @@ volt_apply_sanitizers(volt_core_tests)
 
 include(Catch)
 catch_discover_tests(volt_core_tests)
-

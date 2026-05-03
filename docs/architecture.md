@@ -45,6 +45,37 @@ Volt should avoid using strings as internal identity. Names such as `R1`, `VCC`,
 `U1.PA0` are user-facing labels. Internal relationships should use typed IDs such as
 `ComponentId`, `PinDefId`, and `NetId`.
 
+The first logical-kernel IDs are deliberately narrow:
+
+- `ComponentDefId`
+- `ComponentId`
+- `PinDefId`
+- `PinId`
+- `NetId`
+
+Schematic IDs such as page, symbol, and wire IDs are intentionally deferred until the
+schematic view layer exists.
+
+## Entity Storage
+
+The first storage primitive is `EntityTable<T, Id>`. It is vector-backed, deterministic,
+and insertion ordered. IDs are typed indexes into their owning table.
+
+The table intentionally does not support deletion, generations, tombstones, sparse
+storage, or custom allocation yet. Those features only become justified when the kernel
+has concrete mutation and undo/redo requirements.
+
+This gives the logical model stable internal identity while keeping electronics meaning
+in domain data:
+
+```text
+ComponentId       internal engine identity
+ReferenceDesignator("R1")  electronics meaning
+
+NetId             internal engine identity
+NetName("GND")    electronics meaning
+```
+
 ## Mutation Boundary
 
 Kernel data should be mutated through explicit operations:
@@ -58,4 +89,3 @@ Kernel data should be mutated through explicit operations:
 
 This preserves invariants and gives future undo/redo, serialization, and Python bindings
 a narrow API surface.
-
