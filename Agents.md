@@ -2,6 +2,24 @@
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
+## Core Kernel Principle
+
+**Invalid kernel state should be impossible; bad circuit design should be diagnosable.**
+
+The kernel must reject structurally invalid operations at mutation boundaries. Examples:
+missing IDs, dangling references, pin instances that do not belong to the circuit, or a
+pin connected to more than one net.
+
+Bad design intent is different. Examples such as unconnected pins, single-pin nets,
+incompatible electrical roles, and power-domain issues should be reported through
+diagnostics and validation layers.
+
+When deciding where a check belongs:
+- Structural integrity belongs in the core mutation API.
+- Design correctness belongs in diagnostics and validation.
+- Reporting references such as `EntityRef` must not become normal traversal or mutation
+  handles.
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**

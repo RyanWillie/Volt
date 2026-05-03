@@ -12,10 +12,26 @@ The canonical source of truth is the logical circuit model:
 - pin definitions
 - nets
 - pin-to-net membership
-- constraints and validation rules
+- constraints and design intent
 
 Schematics are authored views over canonical nets. A schematic wire displays a net; it
 does not own electrical connectivity.
+
+The core design rule is:
+
+```text
+Invalid kernel state should be impossible.
+Bad circuit design should be diagnosable.
+```
+
+The kernel should reject structurally invalid operations at mutation boundaries. Examples
+include missing IDs, dangling references, pin instances that do not belong to the circuit,
+and a concrete pin connected to more than one net. Deeper design-quality issues, such as
+unconnected pins, single-pin nets, incompatible electrical roles, and power-domain
+problems, should be reported by diagnostics and validation layers.
+
+Validation rules are implemented by kernel layers and operate over the canonical model.
+User-authored constraints may become stored model data once the constraints layer exists.
 
 ## Initial Layers
 
@@ -91,7 +107,8 @@ Each diagnostic carries:
 
 `DiagnosticCode` is a value wrapper rather than a central enum because codes will grow
 across independent kernel layers. `EntityRef` is a reporting type using `EntityKind` plus
-an index; it is not the storage model.
+an index; it is not the storage model. It should only be used for diagnostics and
+reporting, not for normal traversal or mutation.
 
 ## Circuit Definitions
 
@@ -107,15 +124,15 @@ PinDefinition
   name: "VDD"
   number: "17"
   role: PowerInput
-  required: true
+  connection_requirement: Required
 
 ComponentDefinition
   name: "Resistor"
   pins: [PinDefId(0), PinDefId(1)]
 ```
 
-Actual component instances, concrete pin instances, and net connections are intentionally
-deferred to subsequent layers.
+Actual component instances, concrete pin instances, and net connections are separate
+concepts introduced in later sections and layers.
 
 ## Circuit Instances
 
@@ -153,10 +170,10 @@ Net
 A net contains concrete `PinId` values, not reusable `PinDefId` values. This keeps the
 model grounded in actual design occurrences.
 
-The current net layer only enforces local membership rules: deterministic pin order,
-no duplicate pins inside one net, and explicit disconnect behavior. The circuit-wide
-invariant that a pin belongs to zero or one net belongs in the future `Circuit` container,
-where all nets and pins are visible at once.
+The standalone net layer only enforces local membership rules: deterministic pin order,
+no duplicate pins inside one net, and local disconnect behavior. The circuit-wide
+invariant that a pin belongs to zero or one net belongs in `Circuit`, where all nets and
+pins are visible at once.
 
 ## Circuit Container
 
@@ -168,11 +185,15 @@ where all nets and pins are visible at once.
 - concrete pin instances
 - nets
 
-This layer is intentionally storage-oriented. It assigns typed IDs, owns entity payloads,
-and returns const references by ID. It does not yet validate cross-entity references or
-enforce the circuit-wide invariant that a pin belongs to at most one net. Those behaviors
-belong in later editor and validation layers, where mutations can be checked with the full
-circuit context.
+This layer assigns typed IDs, owns entity payloads, and returns references by ID. Explicit
+mutation operations on `Circuit` preserve structural integrity. Operations reject missing
+definitions, missing component instances, missing pin instances, nets that reference
+unknown pins, and attempts to connect IDs that do not belong to the circuit.
+
+`Circuit` also enforces the core connectivity invariant that a concrete pin belongs to
+zero or one net. Deeper design-quality checks are reported by validation layers. Examples
+include unconnected pins, single-pin nets, incompatible pin roles, and power-domain
+issues.
 
 ## Mutation Boundary
 

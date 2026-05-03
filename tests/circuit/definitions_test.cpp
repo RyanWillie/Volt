@@ -12,27 +12,31 @@ TEST_CASE("PinDefinition stores logical pin metadata") {
         "VDD",
         "17",
         volt::PinRole::PowerInput,
-        true,
+        volt::ConnectionRequirement::Required,
     };
 
     CHECK(pin.name() == "VDD");
     CHECK(pin.number() == "17");
     CHECK(pin.role() == volt::PinRole::PowerInput);
-    CHECK(pin.required());
+    CHECK(pin.connection_requirement() == volt::ConnectionRequirement::Required);
 }
 
-TEST_CASE("PinDefinition can represent optional no-connect pins") {
-    const auto pin = volt::PinDefinition{
-        "NC",
+TEST_CASE("PinDefinition can represent explicit connection requirements") {
+    const auto optional = volt::PinDefinition{
+        "GPIO0",
         "4",
+        volt::PinRole::Bidirectional,
+        volt::ConnectionRequirement::Optional,
+    };
+    const auto must_not_connect = volt::PinDefinition{
+        "NC",
+        "5",
         volt::PinRole::NoConnect,
-        false,
+        volt::ConnectionRequirement::MustNotConnect,
     };
 
-    CHECK(pin.name() == "NC");
-    CHECK(pin.number() == "4");
-    CHECK(pin.role() == volt::PinRole::NoConnect);
-    CHECK_FALSE(pin.required());
+    CHECK(optional.connection_requirement() == volt::ConnectionRequirement::Optional);
+    CHECK(must_not_connect.connection_requirement() == volt::ConnectionRequirement::MustNotConnect);
 }
 
 TEST_CASE("PinDefinition rejects empty names and numbers") {

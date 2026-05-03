@@ -23,13 +23,24 @@ enum class PinRole {
     NoConnect,
 };
 
+/** Whether a pin is expected, allowed, or forbidden to connect in normal use. */
+enum class ConnectionRequirement {
+    Optional,
+    Required,
+    MustNotConnect,
+};
+
 /** Reusable pin metadata belonging to a component definition. */
 class PinDefinition {
   public:
-    /** Construct a pin definition with a name, package/symbol number, role, and requirement flag.
+    /**
+     * Construct a pin definition with a name, package/symbol number, role, and connection
+     * requirement.
      */
-    PinDefinition(std::string name, std::string number, PinRole role, bool required = true)
-        : name_{std::move(name)}, number_{std::move(number)}, role_{role}, required_{required} {
+    PinDefinition(std::string name, std::string number, PinRole role,
+                  ConnectionRequirement connection_requirement = ConnectionRequirement::Required)
+        : name_{std::move(name)}, number_{std::move(number)}, role_{role},
+          connection_requirement_{connection_requirement} {
         if (name_.empty()) {
             throw std::invalid_argument{"Pin definition name must not be empty"};
         }
@@ -47,14 +58,16 @@ class PinDefinition {
     /** Return the pin's declared electrical role. */
     [[nodiscard]] PinRole role() const noexcept { return role_; }
 
-    /** Return whether this pin is expected to be connected in normal use. */
-    [[nodiscard]] bool required() const noexcept { return required_; }
+    /** Return whether this pin is expected, allowed, or forbidden to connect. */
+    [[nodiscard]] ConnectionRequirement connection_requirement() const noexcept {
+        return connection_requirement_;
+    }
 
   private:
     std::string name_;
     std::string number_;
     PinRole role_;
-    bool required_;
+    ConnectionRequirement connection_requirement_;
 };
 
 /** Reusable logical component definition made from pin definition IDs. */
