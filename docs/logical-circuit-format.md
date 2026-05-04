@@ -230,6 +230,9 @@ Nets store canonical logical connectivity:
 - `Signal`
 - `Power`
 - `Ground`
+- `Clock`
+- `Analog`
+- `HighCurrent`
 
 A pin may appear in at most one net.
 
