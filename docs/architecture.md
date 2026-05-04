@@ -110,6 +110,29 @@ across independent kernel layers. `EntityRef` is a reporting type using `EntityK
 an index; it is not the storage model. It should only be used for diagnostics and
 reporting, not for normal traversal or mutation.
 
+## Properties
+
+Properties are extensible metadata, not replacements for typed kernel relationships.
+They are useful for facts such as values, tolerances, datasheet links, lifecycle notes,
+and contributor-defined annotations.
+
+The first property layer lives in `volt-core`:
+
+```text
+PropertyKey
+  value: "value"
+
+PropertyValue
+  string | boolean | integer | number
+
+PropertyMap
+  deterministic key-ordered map from PropertyKey to PropertyValue
+```
+
+Typed model fields still carry structural meaning. For example, component-to-definition
+links, selected-part references, package references, footprint references, and pin/pad
+mappings should not be hidden inside generic properties.
+
 ## Circuit Definitions
 
 `PinDefinition` and `ComponentDefinition` describe reusable part shapes. They do not

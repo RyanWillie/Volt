@@ -20,6 +20,7 @@ add_executable(
     core/diagnostics_test.cpp
     core/entity_table_test.cpp
     core/ids_test.cpp
+    core/properties_test.cpp
     core/version_test.cpp
 )
 target_link_libraries(volt_core_tests PRIVATE Volt::Core Catch2::Catch2WithMain)
