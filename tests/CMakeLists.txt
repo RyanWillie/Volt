@@ -23,10 +23,14 @@ add_executable(
     core/ids_test.cpp
     core/properties_test.cpp
     core/version_test.cpp
+    io/logical_circuit_writer_test.cpp
 )
 target_link_libraries(volt_core_tests PRIVATE Volt::Core Catch2::Catch2WithMain)
 target_compile_features(volt_core_tests PRIVATE cxx_std_20)
 target_include_directories(volt_core_tests PRIVATE ${PROJECT_SOURCE_DIR}/examples)
+target_compile_definitions(
+    volt_core_tests PRIVATE VOLT_TEST_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/tests/fixtures"
+)
 volt_apply_project_warnings(volt_core_tests PRIVATE)
 volt_apply_sanitizers(volt_core_tests)
 
