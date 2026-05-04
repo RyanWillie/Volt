@@ -1,0 +1,19 @@
+{
+  "format": "volt.logical_circuit",
+  "version": 1,
+  "pin_definitions": [
+    { "id": "pin_def:0", "name": "OUT", "number": "1", "role": "DigitalOutput", "connection_requirement": "Required" }
+  ],
+  "component_definitions": [
+    { "id": "component_def:0", "name": "OutputDriver", "pins": ["pin_def:0"], "properties": {} }
+  ],
+  "components": [
+    { "id": "component:0", "definition": "component_def:0", "reference": "U1", "properties": {} }
+  ],
+  "pins": [
+    { "id": "pin:0", "component": "component:0", "definition": "pin_def:0" }
+  ],
+  "nets": [
+    { "id": "net:0", "name": "FLOATING_OUT", "kind": "Signal", "pins": ["pin:0"] }
+  ]
+}

@@ -24,6 +24,7 @@ add_executable(
     core/properties_test.cpp
     core/version_test.cpp
     io/logical_circuit_reader_test.cpp
+    io/logical_circuit_round_trip_test.cpp
     io/logical_circuit_writer_test.cpp
 )
 target_link_libraries(volt_core_tests PRIVATE Volt::Core Catch2::Catch2WithMain)
