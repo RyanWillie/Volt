@@ -217,6 +217,26 @@ The first implementation uses deterministic table scans instead of cached lookup
 Secondary indexes can be introduced later if profiling shows the circuit authoring path
 needs them.
 
+## Logical Validation
+
+Logical validation is the first electrical-rule-checking layer over the canonical circuit
+model. It returns a `DiagnosticReport`; it does not mutate the circuit and it does not
+make structurally invalid states valid.
+
+The initial `validate_circuit` pass intentionally checks only facts represented by the
+current model:
+
+- required pins that are not connected
+- pins marked no-connect or must-not-connect that are connected
+- empty nets
+- single-pin nets
+- multiple output-like pins connected to one net
+
+These findings are bad circuit design, not invalid kernel state. More domain-specific
+ERC, such as voltage compatibility, missing pull-ups, current limiting, power-domain
+checking, and component-specific rules, should be added only after the model contains the
+data needed to express those checks.
+
 ## Mutation Boundary
 
 Kernel data should be mutated through explicit operations:
