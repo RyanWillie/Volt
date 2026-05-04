@@ -30,10 +30,49 @@ TEST_CASE("LED example builds a valid logical circuit") {
     CHECK(circuit.net(led_a.value()).pins().size() == 2);
     CHECK(circuit.net(gnd.value()).pins().size() == 2);
 
+    const auto j1 = circuit.component_by_reference(volt::ReferenceDesignator{"J1"});
     const auto r1 = circuit.component_by_reference(volt::ReferenceDesignator{"R1"});
+    const auto d1 = circuit.component_by_reference(volt::ReferenceDesignator{"D1"});
+    REQUIRE(j1.has_value());
     REQUIRE(r1.has_value());
+    REQUIRE(d1.has_value());
     CHECK(circuit.component(r1.value()).properties().get(volt::PropertyKey{"value"}) ==
           volt::PropertyValue{"330 ohm"});
+
+    const auto &j1_part = circuit.selected_physical_part(j1.value());
+    const auto &r1_part = circuit.selected_physical_part(r1.value());
+    const auto &d1_part = circuit.selected_physical_part(d1.value());
+    REQUIRE(j1_part.has_value());
+    REQUIRE(r1_part.has_value());
+    REQUIRE(d1_part.has_value());
+    const auto &j1_pins =
+        circuit.component_definition(circuit.component(j1.value()).definition()).pins();
+    const auto &r1_pins =
+        circuit.component_definition(circuit.component(r1.value()).definition()).pins();
+    const auto &d1_pins =
+        circuit.component_definition(circuit.component(d1.value()).definition()).pins();
+
+    CHECK(j1_part->package().value() == "2.54mm-1x02");
+    CHECK(j1_part->footprint().name() == "PinHeader_1x02_P2.54mm_Vertical");
+    REQUIRE(j1_part->pin_pad_mappings().size() == 2);
+    CHECK(j1_part->pin_pad_mappings()[0].pin() == j1_pins[0]);
+    CHECK(j1_part->pin_pad_mappings()[0].pad() == "1");
+    CHECK(j1_part->pin_pad_mappings()[1].pin() == j1_pins[1]);
+    CHECK(j1_part->pin_pad_mappings()[1].pad() == "2");
+    CHECK(r1_part->package().value() == "0603");
+    CHECK(r1_part->footprint().name() == "R_0603_1608Metric");
+    REQUIRE(r1_part->pin_pad_mappings().size() == 2);
+    CHECK(r1_part->pin_pad_mappings()[0].pin() == r1_pins[0]);
+    CHECK(r1_part->pin_pad_mappings()[0].pad() == "1");
+    CHECK(r1_part->pin_pad_mappings()[1].pin() == r1_pins[1]);
+    CHECK(r1_part->pin_pad_mappings()[1].pad() == "2");
+    CHECK(d1_part->package().value() == "0603");
+    CHECK(d1_part->footprint().name() == "LED_0603_1608Metric");
+    REQUIRE(d1_part->pin_pad_mappings().size() == 2);
+    CHECK(d1_part->pin_pad_mappings()[0].pin() == d1_pins[1]);
+    CHECK(d1_part->pin_pad_mappings()[0].pad() == "1");
+    CHECK(d1_part->pin_pad_mappings()[1].pin() == d1_pins[0]);
+    CHECK(d1_part->pin_pad_mappings()[1].pad() == "2");
 
     CHECK(volt::validate_circuit(circuit).empty());
 }

@@ -40,6 +40,23 @@ inline Circuit build_led_circuit() {
         PropertyMap{{PropertyKey{"value"}, PropertyValue{"330 ohm"}}});
     const auto d1 = circuit.instantiate_component(led, ReferenceDesignator{"D1"});
 
+    circuit.select_physical_part(
+        j1, PhysicalPart{ManufacturerPart{"Generic", "HDR-1x02-2.54mm"},
+                         PackageRef{"2.54mm-1x02"},
+                         FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
+                         std::vector{PinPadMapping{connector_positive, "1"},
+                                     PinPadMapping{connector_negative, "2"}}});
+    circuit.select_physical_part(
+        r1, PhysicalPart{ManufacturerPart{"Yageo", "RC0603FR-07330RL"}, PackageRef{"0603"},
+                         FootprintRef{"passives", "R_0603_1608Metric"},
+                         std::vector{PinPadMapping{resistor_pin_1, "1"},
+                                     PinPadMapping{resistor_pin_2, "2"}}});
+    circuit.select_physical_part(
+        d1, PhysicalPart{ManufacturerPart{"Lite-On", "LTST-C190KRKT"}, PackageRef{"0603"},
+                         FootprintRef{"leds", "LED_0603_1608Metric"},
+                         std::vector{PinPadMapping{led_cathode, "1"},
+                                     PinPadMapping{led_anode, "2"}}});
+
     const auto vcc = circuit.add_net(Net{NetName{"VCC"}, NetKind::Power});
     const auto led_a = circuit.add_net(Net{NetName{"LED_A"}, NetKind::Signal});
     const auto gnd = circuit.add_net(Net{NetName{"GND"}, NetKind::Ground});
