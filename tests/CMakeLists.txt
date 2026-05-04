@@ -16,6 +16,7 @@ add_executable(
     circuit/instances_test.cpp
     circuit/led_circuit_test.cpp
     circuit/nets_test.cpp
+    circuit/parts_test.cpp
     circuit/validation_test.cpp
     core/diagnostics_test.cpp
     core/entity_table_test.cpp

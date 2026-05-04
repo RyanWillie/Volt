@@ -133,6 +133,47 @@ Typed model fields still carry structural meaning. For example, component-to-def
 links, selected-part references, package references, footprint references, and pin/pad
 mappings should not be hidden inside generic properties.
 
+## Physical Part Selection
+
+Logical component definitions describe electrical shape. Physical part selection
+describes one manufacturable implementation of that logical shape without introducing PCB
+geometry yet:
+
+```text
+ManufacturerPart
+  manufacturer: "Yageo"
+  part_number: "RC0603FR-07330RL"
+
+PackageRef
+  value: "0603"
+
+FootprintRef
+  library: "passives"
+  name: "R_0603_1608Metric"
+
+PinPadMapping
+  pin: PinDefId(0)
+  pad: "1"
+
+PhysicalPart
+  manufacturer_part
+  package
+  footprint
+  pin_pad_mappings
+  properties: {"tolerance": "1%"}
+```
+
+This layer keeps the distinction between:
+
+- the reusable logical device definition
+- the selected manufacturer part
+- the selected physical package
+- the referenced footprint definition
+- the logical-pin to physical-pad mapping
+
+`FootprintRef` is only a reference. Footprint geometry, pads, courtyards, layers, and
+board placement remain outside the current circuit-kernel scope.
+
 ## Circuit Definitions
 
 `PinDefinition` and `ComponentDefinition` describe reusable part shapes. They do not
