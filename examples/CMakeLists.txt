@@ -1,0 +1,10 @@
+add_executable(volt_led_circuit_example led_circuit.cpp)
+target_link_libraries(volt_led_circuit_example PRIVATE Volt::Core)
+target_compile_features(volt_led_circuit_example PRIVATE cxx_std_20)
+target_include_directories(volt_led_circuit_example PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+volt_apply_project_warnings(volt_led_circuit_example PRIVATE)
+volt_apply_sanitizers(volt_led_circuit_example)
+
+if(VOLT_BUILD_TESTS)
+    add_test(NAME volt_led_circuit_example COMMAND volt_led_circuit_example)
+endif()

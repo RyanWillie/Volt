@@ -11,6 +11,7 @@ include(cmake/VoltCompilerOptions.cmake)
 
 option(VOLT_BUILD_TESTS "Build Volt tests" ON)
 option(VOLT_BUILD_DOCS "Add the Doxygen documentation target" ON)
+option(VOLT_BUILD_EXAMPLES "Build Volt examples" ON)
 
 configure_file(
     cmake/volt_version_config.hpp.in
@@ -59,4 +60,8 @@ endif()
 if(VOLT_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+if(VOLT_BUILD_EXAMPLES)
+    add_subdirectory(examples)
 endif()

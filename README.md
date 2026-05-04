@@ -24,6 +24,12 @@ cmake --build --preset dev
 ctest --preset dev
 ```
 
+Examples are built by default. The first end-to-end logical example is an LED circuit:
+
+```sh
+./build/dev/examples/volt_led_circuit_example
+```
+
 ## Documentation
 
 Volt uses Doxygen for public API documentation:
