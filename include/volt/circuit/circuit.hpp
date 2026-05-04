@@ -282,14 +282,19 @@ class Circuit {
     require_physical_part_matches_component_definition(ComponentDefId component_definition,
                                                        const PhysicalPart &physical_part) const {
         const auto &definition_pins = component_definitions_.get(component_definition).pins();
-        if (physical_part.pin_pad_mappings().size() != definition_pins.size()) {
-            throw std::logic_error{"Physical part must map every pin in the component definition"};
-        }
-
         for (const auto &mapping : physical_part.pin_pad_mappings()) {
             if (std::find(definition_pins.begin(), definition_pins.end(), mapping.pin()) ==
                 definition_pins.end()) {
                 throw std::logic_error{"Physical part maps a pin outside the component definition"};
+            }
+        }
+
+        for (const auto pin : definition_pins) {
+            const auto mapped = std::any_of(
+                physical_part.pin_pad_mappings().begin(), physical_part.pin_pad_mappings().end(),
+                [pin](const PinPadMapping &mapping) { return mapping.pin() == pin; });
+            if (!mapped) {
+                throw std::logic_error{"Physical part must map every pin in the component definition"};
             }
         }
     }
