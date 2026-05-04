@@ -58,6 +58,23 @@ TEST_CASE("ComponentDefinition stores reusable component metadata and pin defini
     CHECK(component.properties().empty());
 }
 
+TEST_CASE("DefinitionSource stores reusable definition provenance") {
+    const auto source = volt::DefinitionSource{"volt.passives", "resistor_2pin", "1.0.0"};
+
+    CHECK(source.namespace_name() == "volt.passives");
+    CHECK(source.name() == "resistor_2pin");
+    CHECK(source.version() == "1.0.0");
+}
+
+TEST_CASE("DefinitionSource rejects empty provenance fields") {
+    CHECK_THROWS_AS(volt::DefinitionSource("", "resistor_2pin", "1.0.0"),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::DefinitionSource("volt.passives", "", "1.0.0"),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::DefinitionSource("volt.passives", "resistor_2pin", ""),
+                    std::invalid_argument);
+}
+
 TEST_CASE("ComponentDefinition stores explicit properties") {
     const auto component = volt::ComponentDefinition{
         "Resistor",
@@ -72,6 +89,20 @@ TEST_CASE("ComponentDefinition stores explicit properties") {
     CHECK(component.properties().get(volt::PropertyKey{"category"}) ==
           volt::PropertyValue{"passive"});
     CHECK(component.properties().get(volt::PropertyKey{"polarized"}) == volt::PropertyValue{false});
+}
+
+TEST_CASE("ComponentDefinition stores optional source provenance") {
+    const auto component = volt::ComponentDefinition{
+        "Resistor",
+        std::vector{volt::PinDefId{0}, volt::PinDefId{1}},
+        {},
+        volt::DefinitionSource{"volt.passives", "resistor_2pin", "1.0.0"},
+    };
+
+    REQUIRE(component.source().has_value());
+    CHECK(component.source()->namespace_name() == "volt.passives");
+    CHECK(component.source()->name() == "resistor_2pin");
+    CHECK(component.source()->version() == "1.0.0");
 }
 
 TEST_CASE("ComponentDefinition rejects empty names and empty pin lists") {
