@@ -152,6 +152,7 @@ PinDefinition
 ComponentDefinition
   name: "Resistor"
   pins: [PinDefId(0), PinDefId(1)]
+  properties: {"category": "passive"}
 ```
 
 Actual component instances, concrete pin instances, and net connections are separate
@@ -165,6 +166,7 @@ concepts introduced in later sections and layers.
 ComponentInstance
   definition: ComponentDefId(0)
   reference: "R1"
+  properties: {"value": "330 ohm"}
 
 PinInstance
   component: ComponentId(0)

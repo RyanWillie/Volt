@@ -75,10 +75,12 @@ class Circuit {
      * definition.
      */
     [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition,
-                                                    ReferenceDesignator reference) {
+                                                    ReferenceDesignator reference,
+                                                    PropertyMap properties = {}) {
         require_component_definition(definition);
 
-        const auto component = add_component(ComponentInstance{definition, std::move(reference)});
+        const auto component = add_component(
+            ComponentInstance{definition, std::move(reference), std::move(properties)});
         for (const auto pin_definition_id : component_definition(definition).pins()) {
             [[maybe_unused]] const auto pin = add_pin(PinInstance{component, pin_definition_id});
         }

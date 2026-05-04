@@ -6,6 +6,7 @@
 #include <volt/circuit/definitions.hpp>
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
+#include <volt/core/properties.hpp>
 
 namespace volt::examples {
 
@@ -28,12 +29,15 @@ inline Circuit build_led_circuit() {
     const auto connector = circuit.add_component_definition(ComponentDefinition{
         "Two-pin connector", std::vector{connector_positive, connector_negative}});
     const auto resistor = circuit.add_component_definition(
-        ComponentDefinition{"Resistor", std::vector{resistor_pin_1, resistor_pin_2}});
+        ComponentDefinition{"Resistor", std::vector{resistor_pin_1, resistor_pin_2},
+                            PropertyMap{{PropertyKey{"category"}, PropertyValue{"passive"}}}});
     const auto led = circuit.add_component_definition(
         ComponentDefinition{"LED", std::vector{led_anode, led_cathode}});
 
     const auto j1 = circuit.instantiate_component(connector, ReferenceDesignator{"J1"});
-    const auto r1 = circuit.instantiate_component(resistor, ReferenceDesignator{"R1"});
+    const auto r1 = circuit.instantiate_component(
+        resistor, ReferenceDesignator{"R1"},
+        PropertyMap{{PropertyKey{"value"}, PropertyValue{"330 ohm"}}});
     const auto d1 = circuit.instantiate_component(led, ReferenceDesignator{"D1"});
 
     const auto vcc = circuit.add_net(Net{NetName{"VCC"}, NetKind::Power});

@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <volt/core/ids.hpp>
+#include <volt/core/properties.hpp>
 
 namespace volt {
 
@@ -34,9 +35,11 @@ class ReferenceDesignator {
 /** Concrete component occurrence in a design. */
 class ComponentInstance {
   public:
-    /** Construct an instance from a reusable component definition and reference. */
-    ComponentInstance(ComponentDefId definition, ReferenceDesignator reference)
-        : definition_{definition}, reference_{std::move(reference)} {}
+    /** Construct an instance from a reusable component definition, reference, and properties. */
+    ComponentInstance(ComponentDefId definition, ReferenceDesignator reference,
+                      PropertyMap properties = {})
+        : definition_{definition}, reference_{std::move(reference)},
+          properties_{std::move(properties)} {}
 
     /** Return the reusable component definition used by this instance. */
     [[nodiscard]] ComponentDefId definition() const noexcept { return definition_; }
@@ -44,9 +47,13 @@ class ComponentInstance {
     /** Return this component's human-facing reference designator. */
     [[nodiscard]] const ReferenceDesignator &reference() const noexcept { return reference_; }
 
+    /** Return extensible metadata properties for this component instance. */
+    [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
+
   private:
     ComponentDefId definition_;
     ReferenceDesignator reference_;
+    PropertyMap properties_;
 };
 
 /** Concrete pin occurrence belonging to a component instance. */

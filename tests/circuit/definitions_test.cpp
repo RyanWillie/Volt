@@ -6,6 +6,7 @@
 
 #include <volt/circuit/definitions.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/properties.hpp>
 
 TEST_CASE("PinDefinition stores logical pin metadata") {
     const auto pin = volt::PinDefinition{
@@ -54,6 +55,23 @@ TEST_CASE("ComponentDefinition stores reusable component metadata and pin defini
     REQUIRE(component.pins().size() == 2);
     CHECK(component.pins()[0] == volt::PinDefId{0});
     CHECK(component.pins()[1] == volt::PinDefId{1});
+    CHECK(component.properties().empty());
+}
+
+TEST_CASE("ComponentDefinition stores explicit properties") {
+    const auto component = volt::ComponentDefinition{
+        "Resistor",
+        std::vector{volt::PinDefId{0}, volt::PinDefId{1}},
+        volt::PropertyMap{
+            {volt::PropertyKey{"category"}, volt::PropertyValue{"passive"}},
+            {volt::PropertyKey{"polarized"}, volt::PropertyValue{false}},
+        },
+    };
+
+    CHECK(component.properties().size() == 2);
+    CHECK(component.properties().get(volt::PropertyKey{"category"}) ==
+          volt::PropertyValue{"passive"});
+    CHECK(component.properties().get(volt::PropertyKey{"polarized"}) == volt::PropertyValue{false});
 }
 
 TEST_CASE("ComponentDefinition rejects empty names and empty pin lists") {

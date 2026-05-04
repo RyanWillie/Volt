@@ -8,6 +8,7 @@
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/properties.hpp>
 
 TEST_CASE("Circuit rejects component definitions with missing pin definitions") {
     volt::Circuit circuit;
@@ -86,6 +87,21 @@ TEST_CASE("Circuit instantiates component pins from the component definition") {
     CHECK(circuit.pin(pins[0]).definition() == anode);
     CHECK(circuit.pin(pins[1]).component() == component);
     CHECK(circuit.pin(pins[1]).definition() == cathode);
+}
+
+TEST_CASE("Circuit instantiates components with instance properties") {
+    volt::Circuit circuit;
+    const auto pin =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto resistor =
+        circuit.add_component_definition(volt::ComponentDefinition{"Resistor", std::vector{pin}});
+
+    const auto component = circuit.instantiate_component(
+        resistor, volt::ReferenceDesignator{"R1"},
+        volt::PropertyMap{{volt::PropertyKey{"value"}, volt::PropertyValue{"330 ohm"}}});
+
+    CHECK(circuit.component(component).properties().get(volt::PropertyKey{"value"}) ==
+          volt::PropertyValue{"330 ohm"});
 }
 
 TEST_CASE("Circuit finds component pins by definition name and number") {

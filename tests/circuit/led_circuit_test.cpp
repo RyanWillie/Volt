@@ -5,6 +5,7 @@
 #include <volt/circuit/validation.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/properties.hpp>
 
 #include "led_circuit.hpp"
 
@@ -28,6 +29,11 @@ TEST_CASE("LED example builds a valid logical circuit") {
     CHECK(circuit.net(vcc.value()).pins().size() == 2);
     CHECK(circuit.net(led_a.value()).pins().size() == 2);
     CHECK(circuit.net(gnd.value()).pins().size() == 2);
+
+    const auto r1 = circuit.component_by_reference(volt::ReferenceDesignator{"R1"});
+    REQUIRE(r1.has_value());
+    CHECK(circuit.component(r1.value()).properties().get(volt::PropertyKey{"value"}) ==
+          volt::PropertyValue{"330 ohm"});
 
     CHECK(volt::validate_circuit(circuit).empty());
 }

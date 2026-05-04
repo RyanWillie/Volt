@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <volt/core/ids.hpp>
+#include <volt/core/properties.hpp>
 
 namespace volt {
 
@@ -73,9 +74,9 @@ class PinDefinition {
 /** Reusable logical component definition made from pin definition IDs. */
 class ComponentDefinition {
   public:
-    /** Construct a component definition with a name and ordered pin definition IDs. */
-    ComponentDefinition(std::string name, std::vector<PinDefId> pins)
-        : name_{std::move(name)}, pins_{std::move(pins)} {
+    /** Construct a component definition with a name, ordered pin definitions, and properties. */
+    ComponentDefinition(std::string name, std::vector<PinDefId> pins, PropertyMap properties = {})
+        : name_{std::move(name)}, pins_{std::move(pins)}, properties_{std::move(properties)} {
         if (name_.empty()) {
             throw std::invalid_argument{"Component definition name must not be empty"};
         }
@@ -90,9 +91,13 @@ class ComponentDefinition {
     /** Return ordered pin definition IDs belonging to this component definition. */
     [[nodiscard]] const std::vector<PinDefId> &pins() const noexcept { return pins_; }
 
+    /** Return extensible metadata properties for this component definition. */
+    [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
+
   private:
     std::string name_;
     std::vector<PinDefId> pins_;
+    PropertyMap properties_;
 };
 
 } // namespace volt
