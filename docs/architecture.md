@@ -174,6 +174,11 @@ This layer keeps the distinction between:
 `FootprintRef` is only a reference. Footprint geometry, pads, courtyards, layers, and
 board placement remain outside the current circuit-kernel scope.
 
+Selected physical parts are assigned to component instances through `Circuit`. The
+component stores the selected value, but the mutation boundary validates that the
+`PhysicalPart` pin/pad mappings exactly match the component's logical pin definitions.
+This keeps invalid selected-part state out of the owning circuit database.
+
 ## Circuit Definitions
 
 `PinDefinition` and `ComponentDefinition` describe reusable part shapes. They do not

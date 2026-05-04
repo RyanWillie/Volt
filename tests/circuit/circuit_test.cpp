@@ -7,7 +7,25 @@
 #include <volt/circuit/definitions.hpp>
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
+#include <volt/circuit/parts.hpp>
 #include <volt/core/ids.hpp>
+
+namespace {
+
+volt::PhysicalPart make_resistor_physical_part(volt::PinDefId first_pin,
+                                               volt::PinDefId second_pin) {
+    return volt::PhysicalPart{
+        volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+        volt::PackageRef{"0603"},
+        volt::FootprintRef{"passives", "R_0603_1608Metric"},
+        std::vector{
+            volt::PinPadMapping{first_pin, "1"},
+            volt::PinPadMapping{second_pin, "2"},
+        },
+    };
+}
+
+} // namespace
 
 TEST_CASE("Circuit starts with empty entity tables") {
     const volt::Circuit circuit;
@@ -185,4 +203,83 @@ TEST_CASE("Circuit disconnects a pin from its current net") {
     CHECK_FALSE(circuit.disconnect(pin));
     CHECK_FALSE(circuit.net_of(pin).has_value());
     CHECK(circuit.net(net).pins().empty());
+}
+
+TEST_CASE("Circuit assigns and reads a selected physical part for a component") {
+    volt::Circuit circuit;
+    const auto first_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto second_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+
+    CHECK_FALSE(circuit.selected_physical_part(component).has_value());
+
+    circuit.select_physical_part(component, make_resistor_physical_part(first_pin, second_pin));
+
+    const auto &selected_part = circuit.selected_physical_part(component);
+    REQUIRE(selected_part.has_value());
+    CHECK(selected_part->manufacturer_part().manufacturer() == "Yageo");
+    CHECK(selected_part->manufacturer_part().part_number() == "RC0603FR-07330RL");
+    CHECK(selected_part->package().value() == "0603");
+    CHECK(selected_part->footprint().name() == "R_0603_1608Metric");
+}
+
+TEST_CASE("Circuit rejects selected-part operations for missing components") {
+    volt::Circuit circuit;
+    const auto first_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto second_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+
+    CHECK_THROWS_AS(circuit.select_physical_part(
+                        volt::ComponentId{99}, make_resistor_physical_part(first_pin, second_pin)),
+                    std::out_of_range);
+    CHECK_THROWS_AS(circuit.selected_physical_part(volt::ComponentId{99}), std::out_of_range);
+}
+
+TEST_CASE("Circuit rejects selected parts with mappings outside the component definition") {
+    volt::Circuit circuit;
+    const auto first_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto second_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto foreign_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"3", "3", volt::PinRole::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+
+    CHECK_THROWS_AS(circuit.select_physical_part(
+                        component, make_resistor_physical_part(first_pin, foreign_pin)),
+                    std::logic_error);
+    CHECK_FALSE(circuit.selected_physical_part(component).has_value());
+}
+
+TEST_CASE("Circuit rejects selected parts that do not map every component-definition pin") {
+    volt::Circuit circuit;
+    const auto first_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto second_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    auto incomplete_part = volt::PhysicalPart{
+        volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+        volt::PackageRef{"0603"},
+        volt::FootprintRef{"passives", "R_0603_1608Metric"},
+        std::vector{
+            volt::PinPadMapping{first_pin, "1"},
+        },
+    };
+
+    CHECK_THROWS_AS(circuit.select_physical_part(component, std::move(incomplete_part)),
+                    std::logic_error);
+    CHECK_FALSE(circuit.selected_physical_part(component).has_value());
 }

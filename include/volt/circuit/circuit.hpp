@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <optional>
 #include <stdexcept>
@@ -10,6 +11,7 @@
 #include <volt/circuit/definitions.hpp>
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
+#include <volt/circuit/parts.hpp>
 #include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
 
@@ -115,6 +117,22 @@ class Circuit {
         }
 
         return nets_.get(existing_net.value()).disconnect(pin);
+    }
+
+    /** Assign a selected physical implementation to an existing component instance. */
+    void select_physical_part(ComponentId component, PhysicalPart physical_part) {
+        require_component(component);
+        require_physical_part_matches_component_definition(components_.get(component).definition(),
+                                                           physical_part);
+
+        components_.get(component).select_physical_part(std::move(physical_part));
+    }
+
+    /** Return the selected physical implementation for a component, if one has been assigned. */
+    [[nodiscard]] const std::optional<PhysicalPart> &
+    selected_physical_part(ComponentId component) const {
+        require_component(component);
+        return components_.get(component).selected_physical_part();
     }
 
     /** Return the net currently connected to the pin, if any. */
@@ -257,6 +275,22 @@ class Circuit {
     void require_net(NetId net) const {
         if (!nets_.contains(net)) {
             throw std::out_of_range{"Net ID does not belong to this circuit"};
+        }
+    }
+
+    void
+    require_physical_part_matches_component_definition(ComponentDefId component_definition,
+                                                       const PhysicalPart &physical_part) const {
+        const auto &definition_pins = component_definitions_.get(component_definition).pins();
+        if (physical_part.pin_pad_mappings().size() != definition_pins.size()) {
+            throw std::logic_error{"Physical part must map every pin in the component definition"};
+        }
+
+        for (const auto &mapping : physical_part.pin_pad_mappings()) {
+            if (std::find(definition_pins.begin(), definition_pins.end(), mapping.pin()) ==
+                definition_pins.end()) {
+                throw std::logic_error{"Physical part maps a pin outside the component definition"};
+            }
         }
     }
 
