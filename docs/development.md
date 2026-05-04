@@ -39,6 +39,17 @@ Run the LED logical-circuit example with:
 ./build/macos-llvm/examples/volt_led_circuit_example
 ```
 
+## Build Targets
+
+The build is split by architecture layer:
+
+- `Volt::Core` contains typed IDs, storage primitives, diagnostics, properties, and the
+  version API.
+- `Volt::Circuit` contains the logical circuit model and depends on `Volt::Core`.
+- `Volt::IO` contains logical circuit read/write support and owns the JSON dependency.
+- `Volt::Volt` is an umbrella interface target for applications that want the full public
+  API.
+
 Format changed C++ files with:
 
 ```sh

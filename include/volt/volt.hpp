@@ -11,3 +11,5 @@
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 #include <volt/core/version.hpp>
+#include <volt/io/logical_circuit_reader.hpp>
+#include <volt/io/logical_circuit_writer.hpp>
