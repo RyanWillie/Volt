@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -71,12 +72,54 @@ class PinDefinition {
     ConnectionRequirement connection_requirement_;
 };
 
+/** Provenance for a reusable definition imported from a library. */
+class DefinitionSource {
+  public:
+    /** Construct source provenance from non-empty namespace, name, and version fields. */
+    DefinitionSource(std::string namespace_name, std::string name, std::string version)
+        : namespace_{std::move(namespace_name)}, name_{std::move(name)},
+          version_{std::move(version)} {
+        if (namespace_.empty()) {
+            throw std::invalid_argument{"Definition source namespace must not be empty"};
+        }
+        if (name_.empty()) {
+            throw std::invalid_argument{"Definition source name must not be empty"};
+        }
+        if (version_.empty()) {
+            throw std::invalid_argument{"Definition source version must not be empty"};
+        }
+    }
+
+    /** Return the source library namespace. */
+    [[nodiscard]] const std::string &namespace_name() const noexcept { return namespace_; }
+
+    /** Return the source library item name. */
+    [[nodiscard]] const std::string &name() const noexcept { return name_; }
+
+    /** Return the source library item version. */
+    [[nodiscard]] const std::string &version() const noexcept { return version_; }
+
+    /** Return whether two source records identify the same imported provenance. */
+    [[nodiscard]] friend bool operator==(const DefinitionSource &lhs,
+                                         const DefinitionSource &rhs) noexcept {
+        return lhs.namespace_ == rhs.namespace_ && lhs.name_ == rhs.name_ &&
+               lhs.version_ == rhs.version_;
+    }
+
+  private:
+    std::string namespace_;
+    std::string name_;
+    std::string version_;
+};
+
 /** Reusable logical component definition made from pin definition IDs. */
 class ComponentDefinition {
   public:
     /** Construct a component definition with a name, ordered pin definitions, and properties. */
-    ComponentDefinition(std::string name, std::vector<PinDefId> pins, PropertyMap properties = {})
-        : name_{std::move(name)}, pins_{std::move(pins)}, properties_{std::move(properties)} {
+    ComponentDefinition(std::string name, std::vector<PinDefId> pins, PropertyMap properties = {},
+                        std::optional<DefinitionSource> source = std::nullopt)
+        : name_{std::move(name)}, pins_{std::move(pins)}, properties_{std::move(properties)},
+          source_{std::move(source)} {
         if (name_.empty()) {
             throw std::invalid_argument{"Component definition name must not be empty"};
         }
@@ -94,10 +137,16 @@ class ComponentDefinition {
     /** Return extensible metadata properties for this component definition. */
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
+    /** Return source provenance for this definition, if it was imported from a library. */
+    [[nodiscard]] const std::optional<DefinitionSource> &source() const noexcept {
+        return source_;
+    }
+
   private:
     std::string name_;
     std::vector<PinDefId> pins_;
     PropertyMap properties_;
+    std::optional<DefinitionSource> source_;
 };
 
 } // namespace volt

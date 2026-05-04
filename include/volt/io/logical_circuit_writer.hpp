@@ -237,7 +237,15 @@ inline void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         const auto id = ComponentDefId{index};
         const auto &definition = circuit.component_definition(id);
         out << "    { \"id\": " << detail::json_string(detail::component_def_id(id))
-            << ", \"name\": " << detail::json_string(definition.name()) << ", \"pins\": [";
+            << ", \"name\": " << detail::json_string(definition.name());
+        if (definition.source().has_value()) {
+            out << ", \"source\": { \"namespace\": "
+                << detail::json_string(definition.source()->namespace_name())
+                << ", \"name\": " << detail::json_string(definition.source()->name())
+                << ", \"version\": " << detail::json_string(definition.source()->version())
+                << " }";
+        }
+        out << ", \"pins\": [";
         for (std::size_t pin_index = 0; pin_index < definition.pins().size(); ++pin_index) {
             out << detail::json_string(detail::pin_def_id(definition.pins()[pin_index]));
             if (pin_index + 1 != definition.pins().size()) {
