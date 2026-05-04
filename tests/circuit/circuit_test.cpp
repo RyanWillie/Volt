@@ -228,6 +228,32 @@ TEST_CASE("Circuit assigns and reads a selected physical part for a component") 
     CHECK(selected_part->footprint().name() == "R_0603_1608Metric");
 }
 
+TEST_CASE("Circuit sets component instance properties through an explicit mutation API") {
+    volt::Circuit circuit;
+    const auto pin_def =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Test point", std::vector{pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"TP1"});
+
+    circuit.set_component_property(component, volt::PropertyKey{"value"}, volt::PropertyValue{"VCC"});
+    circuit.set_component_property(component, volt::PropertyKey{"fitted"}, volt::PropertyValue{true});
+
+    CHECK(circuit.component(component).properties().get(volt::PropertyKey{"value"}) ==
+          volt::PropertyValue{"VCC"});
+    CHECK(circuit.component(component).properties().get(volt::PropertyKey{"fitted"}) ==
+          volt::PropertyValue{true});
+}
+
+TEST_CASE("Circuit rejects component property mutation for missing components") {
+    volt::Circuit circuit;
+
+    CHECK_THROWS_AS(circuit.set_component_property(volt::ComponentId{99}, volt::PropertyKey{"value"},
+                                                   volt::PropertyValue{"VCC"}),
+                    std::out_of_range);
+}
+
 TEST_CASE("Circuit rejects selected-part operations for missing components") {
     volt::Circuit circuit;
     const auto first_pin =
