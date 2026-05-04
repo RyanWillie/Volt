@@ -46,7 +46,8 @@ volt-schematic
   pages, symbols, wires, labels, consistency checks over canonical nets
 
 volt-io
-  deterministic save/load formats
+  deterministic save/load formats; the first logical circuit format is specified in
+  logical-circuit-format.md
 
 volt-python
   Python bindings over the stable public kernel API

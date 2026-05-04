@@ -73,6 +73,7 @@ Volt uses stable typed IDs for kernel entities. Human names such as `R1`, `GND`,
 8. Deterministic serialization
 9. Python bindings
 
-See [docs/architecture.md](docs/architecture.md) for the architectural outline and
+See [docs/architecture.md](docs/architecture.md) for the architectural outline,
 [docs/authoring-api.md](docs/authoring-api.md) for the planned SKiDL-style authoring
-facade boundary.
+facade boundary, and [docs/logical-circuit-format.md](docs/logical-circuit-format.md) for
+the canonical logical circuit file format.
