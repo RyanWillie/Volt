@@ -8,42 +8,18 @@ project(
 )
 
 include(cmake/VoltCompilerOptions.cmake)
-include(FetchContent)
-
-FetchContent_Declare(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.3
-)
-FetchContent_MakeAvailable(nlohmann_json)
 
 option(VOLT_BUILD_TESTS "Build Volt tests" ON)
 option(VOLT_BUILD_DOCS "Add the Doxygen documentation target" ON)
 option(VOLT_BUILD_EXAMPLES "Build Volt examples" ON)
 
-configure_file(
-    cmake/volt_version_config.hpp.in
-    ${PROJECT_BINARY_DIR}/generated/volt/core/version_config.hpp
-    @ONLY
-)
+add_subdirectory(src/core)
+add_subdirectory(src/circuit)
+add_subdirectory(src/io)
 
-add_library(volt_core src/core/version.cpp)
-add_library(Volt::Core ALIAS volt_core)
-
-target_compile_features(volt_core PUBLIC cxx_std_20)
-target_link_libraries(volt_core PUBLIC nlohmann_json::nlohmann_json)
-
-target_include_directories(
-    volt_core
-    PUBLIC
-        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-    PRIVATE
-        ${PROJECT_BINARY_DIR}/generated
-)
-
-volt_apply_project_warnings(volt_core PRIVATE)
-volt_apply_sanitizers(volt_core)
+add_library(volt INTERFACE)
+add_library(Volt::Volt ALIAS volt)
+target_link_libraries(volt INTERFACE Volt::Core Volt::Circuit Volt::IO)
 
 if(VOLT_BUILD_DOCS)
     find_package(Doxygen)

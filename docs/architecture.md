@@ -53,8 +53,25 @@ volt-python
   Python bindings over the stable public kernel API
 ```
 
-The first implementation slice only builds enough of `volt-core` to prove the build and
-test system. The circuit model follows after the scaffold is stable.
+The CMake targets mirror these boundaries:
+
+```text
+Volt::Core
+  lowest-level primitives and version API
+
+Volt::Circuit
+  logical circuit model; depends on Volt::Core
+
+Volt::IO
+  deterministic logical circuit persistence; depends on Volt::Circuit and owns JSON
+  dependencies
+
+Volt::Volt
+  umbrella target for applications that want the full public surface
+```
+
+Future authoring, Python, schematic, and PCB layers should be added as new targets that
+depend on the stable kernel layers instead of pushing dependencies back into them.
 
 ## Identity
 

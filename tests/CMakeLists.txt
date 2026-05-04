@@ -22,12 +22,13 @@ add_executable(
     core/entity_table_test.cpp
     core/ids_test.cpp
     core/properties_test.cpp
+    core/umbrella_header_test.cpp
     core/version_test.cpp
     io/logical_circuit_reader_test.cpp
     io/logical_circuit_round_trip_test.cpp
     io/logical_circuit_writer_test.cpp
 )
-target_link_libraries(volt_core_tests PRIVATE Volt::Core Catch2::Catch2WithMain)
+target_link_libraries(volt_core_tests PRIVATE Volt::IO Catch2::Catch2WithMain)
 target_compile_features(volt_core_tests PRIVATE cxx_std_20)
 target_include_directories(volt_core_tests PRIVATE ${PROJECT_SOURCE_DIR}/examples)
 target_compile_definitions(

@@ -15,6 +15,7 @@ for future Python bindings.
 - CTest-based unit tests
 - Strict compiler warnings for project code
 - Documentation for architecture and development workflow
+- Layered CMake targets: `Volt::Core`, `Volt::Circuit`, `Volt::IO`, and `Volt::Volt`
 
 ## Build
 

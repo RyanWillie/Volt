@@ -9,6 +9,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_OSX_SYSROOT": "macosx",
         "VOLT_BUILD_TESTS": "ON"
       }
     },
@@ -20,6 +21,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_OSX_SYSROOT": "macosx",
         "VOLT_BUILD_TESTS": "ON"
       }
     },
@@ -31,18 +33,6 @@
       "cacheVariables": {
         "VOLT_ENABLE_ASAN": "ON",
         "VOLT_ENABLE_UBSAN": "ON"
-      }
-    },
-    {
-      "name": "macos-llvm",
-      "displayName": "macOS Homebrew LLVM",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/macos-llvm",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
-        "VOLT_BUILD_TESTS": "ON"
       }
     }
   ],
@@ -58,10 +48,6 @@
     {
       "name": "asan",
       "configurePreset": "asan"
-    },
-    {
-      "name": "macos-llvm",
-      "configurePreset": "macos-llvm"
     }
   ],
   "testPresets": [
@@ -75,13 +61,6 @@
     {
       "name": "asan",
       "configurePreset": "asan",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "macos-llvm",
-      "configurePreset": "macos-llvm",
       "output": {
         "outputOnFailure": true
       }
