@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_exception.hpp>
 
 #include <fstream>
 #include <iterator>
@@ -55,6 +56,33 @@ TEST_CASE("Logical circuit reader rejects wrong typed local IDs") {
     fixture["pins"][0]["id"] = "component:99";
 
     CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+}
+
+TEST_CASE("Logical circuit reader reports unsupported versions deterministically") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["version"] = 2;
+
+    CHECK_THROWS_MATCHES(volt::io::read_logical_circuit(fixture), std::logic_error,
+                         Catch::Matchers::Message(
+                             "Unsupported logical circuit format version: 2"));
+}
+
+TEST_CASE("Logical circuit reader reports large unsupported versions deterministically") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["version"] = 2147483648LL;
+
+    CHECK_THROWS_MATCHES(volt::io::read_logical_circuit(fixture), std::logic_error,
+                         Catch::Matchers::Message(
+                             "Unsupported logical circuit format version: 2147483648"));
+}
+
+TEST_CASE("Logical circuit reader reports unsupported formats deterministically") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["format"] = "volt.other";
+
+    CHECK_THROWS_MATCHES(volt::io::read_logical_circuit(fixture), std::logic_error,
+                         Catch::Matchers::Message(
+                             "Unsupported logical circuit format: volt.other"));
 }
 
 TEST_CASE("Logical circuit reader rejects selected part mappings outside the component definition") {

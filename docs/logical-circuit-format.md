@@ -316,6 +316,8 @@ Version 1 readers must require:
 - `format` equal to `volt.logical_circuit`
 - `version` equal to `1`
 
-Unknown core fields should be rejected by the first strict reader unless they appear under
-an explicitly defined future extension point. Future versions should document migration or
-rejection behavior before adding incompatible semantics.
+The v1 reader may ignore unknown fields until an extension mechanism is defined. Unknown
+fields are not preserved when rewriting canonical output, so producers must not rely on
+unknown fields for data that should round-trip. Future versions should document migration
+or rejection behavior before adding incompatible semantics. See
+[schema-versioning.md](schema-versioning.md) for the shared compatibility policy.

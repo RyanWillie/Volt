@@ -75,5 +75,6 @@ Volt uses stable typed IDs for kernel entities. Human names such as `R1`, `GND`,
 
 See [docs/architecture.md](docs/architecture.md) for the architectural outline,
 [docs/authoring-api.md](docs/authoring-api.md) for the planned SKiDL-style authoring
-facade boundary, and [docs/logical-circuit-format.md](docs/logical-circuit-format.md) for
-the canonical logical circuit file format.
+facade boundary, [docs/logical-circuit-format.md](docs/logical-circuit-format.md) for
+the canonical logical circuit file format, and
+[docs/schema-versioning.md](docs/schema-versioning.md) for file compatibility policy.
