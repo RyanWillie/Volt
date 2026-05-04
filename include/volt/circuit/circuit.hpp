@@ -119,6 +119,12 @@ class Circuit {
         return nets_.get(existing_net.value()).disconnect(pin);
     }
 
+    /** Set or replace a metadata property on an existing component instance. */
+    void set_component_property(ComponentId component, PropertyKey key, PropertyValue value) {
+        require_component(component);
+        components_.get(component).set_property(std::move(key), std::move(value));
+    }
+
     /** Assign a selected physical implementation to an existing component instance. */
     void select_physical_part(ComponentId component, PhysicalPart physical_part) {
         require_component(component);

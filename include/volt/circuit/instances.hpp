@@ -62,6 +62,10 @@ class ComponentInstance {
   private:
     friend class Circuit;
 
+    void set_property(PropertyKey key, PropertyValue value) {
+        properties_.set(std::move(key), std::move(value));
+    }
+
     void select_physical_part(PhysicalPart physical_part) {
         selected_physical_part_ = std::move(physical_part);
     }
