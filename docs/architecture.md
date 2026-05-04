@@ -268,7 +268,8 @@ issues.
 
 ## Authoring Helpers
 
-Authoring helpers make the logical kernel usable without changing the source of truth.
+Authoring helpers make the logical kernel usable without changing the source of truth. The
+SKiDL-style facade is specified separately in [authoring-api.md](authoring-api.md).
 They return typed IDs and are derived from the canonical entity tables.
 
 `ReferenceDesignator` values and `NetName` values are unique within a `Circuit`. The
