@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <cstddef>
 #include <istream>
 #include <map>
@@ -27,8 +28,8 @@ class LogicalCircuitReader {
     /** Load and structurally validate the document into a Circuit. */
     [[nodiscard]] Circuit read() {
         require(document_.is_object(), "Logical circuit document must be an object");
-        require_string(document_, "format", std::string{logical_circuit_format_name()});
-        require_int(document_, "version", logical_circuit_format_version());
+        require_format(document_);
+        require_version(document_);
 
         read_pin_definitions();
         read_component_definitions();
@@ -60,16 +61,18 @@ class LogicalCircuitReader {
         return value.get<std::string>();
     }
 
-    static void require_string(const nlohmann::json &object, const char *name,
-                               const std::string &expected) {
-        require(string_field(object, name) == expected,
-                std::string{"Unexpected value for field: "} + name);
+    static void require_format(const nlohmann::json &object) {
+        const auto actual = string_field(object, "format");
+        require(actual == logical_circuit_format_name(),
+                "Unsupported logical circuit format: " + actual);
     }
 
-    static void require_int(const nlohmann::json &object, const char *name, int expected) {
-        const auto &value = field(object, name);
-        require(value.is_number_integer(), std::string{"Expected integer field: "} + name);
-        require(value.get<int>() == expected, std::string{"Unexpected value for field: "} + name);
+    static void require_version(const nlohmann::json &object) {
+        const auto &value = field(object, "version");
+        require(value.is_number_integer(), "Expected integer field: version");
+        const auto actual = value.get<std::int64_t>();
+        require(actual == static_cast<std::int64_t>(logical_circuit_format_version()),
+                "Unsupported logical circuit format version: " + std::to_string(actual));
     }
 
     static const nlohmann::json &array_field(const nlohmann::json &object, const char *name) {
