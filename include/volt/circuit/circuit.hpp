@@ -3,7 +3,9 @@
 #include <cstddef>
 #include <optional>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 #include <volt/circuit/definitions.hpp>
 #include <volt/circuit/instances.hpp>
@@ -23,13 +25,18 @@ class Circuit {
 
     /** Store a reusable component definition and return its stable ID. */
     [[nodiscard]] ComponentDefId add_component_definition(ComponentDefinition definition) {
+        for (const auto pin : definition.pins()) {
+            require_pin_definition(pin);
+        }
+
         return component_definitions_.insert(std::move(definition));
     }
 
     /** Store a component instance and return its stable ID. */
     [[nodiscard]] ComponentId add_component(ComponentInstance component) {
-        if (!component_definitions_.contains(component.definition())) {
-            throw std::out_of_range{"Component instance references a missing component definition"};
+        require_component_definition(component.definition());
+        if (component_by_reference(component.reference()).has_value()) {
+            throw std::logic_error{"Component reference designator already exists"};
         }
 
         return components_.insert(std::move(component));
@@ -49,6 +56,10 @@ class Circuit {
 
     /** Store a canonical net and return its stable ID. */
     [[nodiscard]] NetId add_net(Net net) {
+        if (net_by_name(net.name()).has_value()) {
+            throw std::logic_error{"Net name already exists"};
+        }
+
         for (const auto pin : net.pins()) {
             require_pin(pin);
             if (net_of_existing_pin(pin).has_value()) {
@@ -57,6 +68,22 @@ class Circuit {
         }
 
         return nets_.insert(std::move(net));
+    }
+
+    /**
+     * Instantiate a component definition and create concrete pins for each ordered pin
+     * definition.
+     */
+    [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition,
+                                                    ReferenceDesignator reference) {
+        require_component_definition(definition);
+
+        const auto component = add_component(ComponentInstance{definition, std::move(reference)});
+        for (const auto pin_definition_id : component_definition(definition).pins()) {
+            [[maybe_unused]] const auto pin = add_pin(PinInstance{component, pin_definition_id});
+        }
+
+        return component;
     }
 
     /** Connect an existing pin to an existing net; returns true when the circuit changed. */
@@ -92,6 +119,72 @@ class Circuit {
     [[nodiscard]] std::optional<NetId> net_of(PinId pin) const {
         require_pin(pin);
         return net_of_existing_pin(pin);
+    }
+
+    /** Return the component with this reference designator, if it exists. */
+    [[nodiscard]] std::optional<ComponentId>
+    component_by_reference(const ReferenceDesignator &reference) const {
+        for (std::size_t index = 0; index < components_.size(); ++index) {
+            const auto component_id = ComponentId{index};
+            if (components_.get(component_id).reference() == reference) {
+                return component_id;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    /** Return the net with this name, if it exists. */
+    [[nodiscard]] std::optional<NetId> net_by_name(const NetName &name) const {
+        for (std::size_t index = 0; index < nets_.size(); ++index) {
+            const auto net_id = NetId{index};
+            if (nets_.get(net_id).name() == name) {
+                return net_id;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    /** Return concrete pins belonging to a component in deterministic creation order. */
+    [[nodiscard]] std::vector<PinId> pins_for(ComponentId component) const {
+        require_component(component);
+
+        std::vector<PinId> result;
+        for (std::size_t index = 0; index < pins_.size(); ++index) {
+            const auto pin_id = PinId{index};
+            if (pins_.get(pin_id).component() == component) {
+                result.push_back(pin_id);
+            }
+        }
+
+        return result;
+    }
+
+    /** Return a component pin by reusable pin definition name, if it exists. */
+    [[nodiscard]] std::optional<PinId> pin_by_name(ComponentId component,
+                                                   std::string_view name) const {
+        for (const auto pin_id : pins_for(component)) {
+            const auto definition = pins_.get(pin_id).definition();
+            if (pin_definitions_.get(definition).name() == name) {
+                return pin_id;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    /** Return a component pin by reusable pin definition number, if it exists. */
+    [[nodiscard]] std::optional<PinId> pin_by_number(ComponentId component,
+                                                     std::string_view number) const {
+        for (const auto pin_id : pins_for(component)) {
+            const auto definition = pins_.get(pin_id).definition();
+            if (pin_definitions_.get(definition).number() == number) {
+                return pin_id;
+            }
+        }
+
+        return std::nullopt;
     }
 
     /** Return a reusable pin definition by ID. */
@@ -135,6 +228,24 @@ class Circuit {
     [[nodiscard]] std::size_t net_count() const noexcept { return nets_.size(); }
 
   private:
+    void require_pin_definition(PinDefId pin_definition) const {
+        if (!pin_definitions_.contains(pin_definition)) {
+            throw std::out_of_range{"Pin definition ID does not belong to this circuit"};
+        }
+    }
+
+    void require_component_definition(ComponentDefId component_definition) const {
+        if (!component_definitions_.contains(component_definition)) {
+            throw std::out_of_range{"Component definition ID does not belong to this circuit"};
+        }
+    }
+
+    void require_component(ComponentId component) const {
+        if (!components_.contains(component)) {
+            throw std::out_of_range{"Component ID does not belong to this circuit"};
+        }
+    }
+
     void require_pin(PinId pin) const {
         if (!pins_.contains(pin)) {
             throw std::out_of_range{"Pin ID does not belong to this circuit"};

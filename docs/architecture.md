@@ -195,12 +195,34 @@ zero or one net. Deeper design-quality checks are reported by validation layers.
 include unconnected pins, single-pin nets, incompatible pin roles, and power-domain
 issues.
 
+## Authoring Helpers
+
+Authoring helpers make the logical kernel usable without changing the source of truth.
+They return typed IDs and are derived from the canonical entity tables.
+
+`ReferenceDesignator` values and `NetName` values are unique within a `Circuit`. The
+internal ID remains the engine identity, while the label remains the electronics-facing
+authoring handle:
+
+```text
+component_by_reference("R1") -> ComponentId(0)
+net_by_name("GND") -> NetId(2)
+```
+
+`instantiate_component` creates one `ComponentInstance` and concrete `PinInstance` values
+for each ordered pin definition in the component definition. This is still logical model
+authoring; it does not create schematic symbols, wires, footprints, or PCB objects.
+
+The first implementation uses deterministic table scans instead of cached lookup indexes.
+Secondary indexes can be introduced later if profiling shows the circuit authoring path
+needs them.
+
 ## Mutation Boundary
 
 Kernel data should be mutated through explicit operations:
 
 - define component
-- add component instance
+- instantiate component
 - create net
 - connect pin to net
 - disconnect pin
