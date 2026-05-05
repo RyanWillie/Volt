@@ -237,8 +237,10 @@ TEST_CASE("Circuit sets component instance properties through an explicit mutati
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"TP1"});
 
-    circuit.set_component_property(component, volt::PropertyKey{"value"}, volt::PropertyValue{"VCC"});
-    circuit.set_component_property(component, volt::PropertyKey{"fitted"}, volt::PropertyValue{true});
+    circuit.set_component_property(component, volt::PropertyKey{"value"},
+                                   volt::PropertyValue{"VCC"});
+    circuit.set_component_property(component, volt::PropertyKey{"fitted"},
+                                   volt::PropertyValue{true});
 
     CHECK(circuit.component(component).properties().get(volt::PropertyKey{"value"}) ==
           volt::PropertyValue{"VCC"});
@@ -249,7 +251,8 @@ TEST_CASE("Circuit sets component instance properties through an explicit mutati
 TEST_CASE("Circuit rejects component property mutation for missing components") {
     volt::Circuit circuit;
 
-    CHECK_THROWS_AS(circuit.set_component_property(volt::ComponentId{99}, volt::PropertyKey{"value"},
+    CHECK_THROWS_AS(circuit.set_component_property(volt::ComponentId{99},
+                                                   volt::PropertyKey{"value"},
                                                    volt::PropertyValue{"VCC"}),
                     std::out_of_range);
 }

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <algorithm>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <istream>
 #include <map>
 #include <set>
@@ -90,33 +90,52 @@ class LogicalCircuitReader {
     }
 
     [[nodiscard]] static PinRole pin_role(const std::string &value) {
-        if (value == "Passive") return PinRole::Passive;
-        if (value == "PowerInput") return PinRole::PowerInput;
-        if (value == "PowerOutput") return PinRole::PowerOutput;
-        if (value == "Ground") return PinRole::Ground;
-        if (value == "DigitalInput") return PinRole::DigitalInput;
-        if (value == "DigitalOutput") return PinRole::DigitalOutput;
-        if (value == "Bidirectional") return PinRole::Bidirectional;
-        if (value == "AnalogInput") return PinRole::AnalogInput;
-        if (value == "AnalogOutput") return PinRole::AnalogOutput;
-        if (value == "NoConnect") return PinRole::NoConnect;
+        if (value == "Passive")
+            return PinRole::Passive;
+        if (value == "PowerInput")
+            return PinRole::PowerInput;
+        if (value == "PowerOutput")
+            return PinRole::PowerOutput;
+        if (value == "Ground")
+            return PinRole::Ground;
+        if (value == "DigitalInput")
+            return PinRole::DigitalInput;
+        if (value == "DigitalOutput")
+            return PinRole::DigitalOutput;
+        if (value == "Bidirectional")
+            return PinRole::Bidirectional;
+        if (value == "AnalogInput")
+            return PinRole::AnalogInput;
+        if (value == "AnalogOutput")
+            return PinRole::AnalogOutput;
+        if (value == "NoConnect")
+            return PinRole::NoConnect;
         throw std::logic_error{"Invalid PinRole value"};
     }
 
     [[nodiscard]] static ConnectionRequirement connection_requirement(const std::string &value) {
-        if (value == "Optional") return ConnectionRequirement::Optional;
-        if (value == "Required") return ConnectionRequirement::Required;
-        if (value == "MustNotConnect") return ConnectionRequirement::MustNotConnect;
+        if (value == "Optional")
+            return ConnectionRequirement::Optional;
+        if (value == "Required")
+            return ConnectionRequirement::Required;
+        if (value == "MustNotConnect")
+            return ConnectionRequirement::MustNotConnect;
         throw std::logic_error{"Invalid ConnectionRequirement value"};
     }
 
     [[nodiscard]] static NetKind net_kind(const std::string &value) {
-        if (value == "Signal") return NetKind::Signal;
-        if (value == "Power") return NetKind::Power;
-        if (value == "Ground") return NetKind::Ground;
-        if (value == "Clock") return NetKind::Clock;
-        if (value == "Analog") return NetKind::Analog;
-        if (value == "HighCurrent") return NetKind::HighCurrent;
+        if (value == "Signal")
+            return NetKind::Signal;
+        if (value == "Power")
+            return NetKind::Power;
+        if (value == "Ground")
+            return NetKind::Ground;
+        if (value == "Clock")
+            return NetKind::Clock;
+        if (value == "Analog")
+            return NetKind::Analog;
+        if (value == "HighCurrent")
+            return NetKind::HighCurrent;
         throw std::logic_error{"Invalid NetKind value"};
     }
 
@@ -163,8 +182,8 @@ class LogicalCircuitReader {
                                 string_field(*it, "version")};
     }
 
-    template <typename Id> [[nodiscard]] Id resolve(const std::map<std::string, Id> &ids,
-                                                    const std::string &id) const {
+    template <typename Id>
+    [[nodiscard]] Id resolve(const std::map<std::string, Id> &ids, const std::string &id) const {
         const auto it = ids.find(id);
         require(it != ids.end(), "Reference points to a missing local ID");
         return it->second;
@@ -174,11 +193,11 @@ class LogicalCircuitReader {
         auto seen = std::set<std::string>{};
         for (const auto &pin : array_field(document_, "pin_definitions")) {
             const auto id = local_id(pin, "pin_def:", seen);
-            pin_def_ids_.emplace(id, circuit_.add_pin_definition(PinDefinition{
-                                     string_field(pin, "name"), string_field(pin, "number"),
-                                     pin_role(string_field(pin, "role")),
-                                     connection_requirement(
-                                         string_field(pin, "connection_requirement"))}));
+            pin_def_ids_.emplace(
+                id, circuit_.add_pin_definition(PinDefinition{
+                        string_field(pin, "name"), string_field(pin, "number"),
+                        pin_role(string_field(pin, "role")),
+                        connection_requirement(string_field(pin, "connection_requirement"))}));
         }
     }
 
@@ -191,11 +210,10 @@ class LogicalCircuitReader {
                 require(pin.is_string(), "Component definition pin reference must be a string");
                 pins.push_back(resolve(pin_def_ids_, pin.get<std::string>()));
             }
-            component_def_ids_.emplace(
-                id, circuit_.add_component_definition(ComponentDefinition{
-                        string_field(definition, "name"), std::move(pins),
-                        properties(field(definition, "properties")),
-                        definition_source(definition)}));
+            component_def_ids_.emplace(id, circuit_.add_component_definition(ComponentDefinition{
+                                               string_field(definition, "name"), std::move(pins),
+                                               properties(field(definition, "properties")),
+                                               definition_source(definition)}));
         }
     }
 
@@ -205,10 +223,10 @@ class LogicalCircuitReader {
             const auto id = local_id(component, "component:", seen);
             const auto definition =
                 resolve(component_def_ids_, string_field(component, "definition"));
-            component_ids_.emplace(id, circuit_.add_component(ComponentInstance{
-                                       definition, ReferenceDesignator{string_field(component,
-                                                                                   "reference")},
-                                       properties(field(component, "properties"))}));
+            component_ids_.emplace(
+                id, circuit_.add_component(ComponentInstance{
+                        definition, ReferenceDesignator{string_field(component, "reference")},
+                        properties(field(component, "properties"))}));
             if (const auto it = component.find("selected_physical_part"); it != component.end()) {
                 selected_parts_.emplace_back(id, *it);
             }
@@ -264,7 +282,8 @@ class LogicalCircuitReader {
 
     void read_selected_physical_parts() {
         for (const auto &[component_id, part] : selected_parts_) {
-            circuit_.select_physical_part(resolve(component_ids_, component_id), physical_part(part));
+            circuit_.select_physical_part(resolve(component_ids_, component_id),
+                                          physical_part(part));
         }
     }
 
