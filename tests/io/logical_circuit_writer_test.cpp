@@ -30,8 +30,8 @@ TEST_CASE("Logical circuit writer escapes JSON control characters") {
     volt::Circuit circuit;
     const auto pin = circuit.add_pin_definition(
         volt::PinDefinition{"CTRL\x01\x1f", "1", volt::PinRole::Passive});
-    const auto component_def = circuit.add_component_definition(
-        volt::ComponentDefinition{"Escaped", std::vector{pin}});
+    const auto component_def =
+        circuit.add_component_definition(volt::ComponentDefinition{"Escaped", std::vector{pin}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
     circuit.set_component_property(component, volt::PropertyKey{"note"},
@@ -47,8 +47,8 @@ TEST_CASE("Logical circuit writer preserves double precision and rejects non-fin
     volt::Circuit circuit;
     const auto pin =
         circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto component_def = circuit.add_component_definition(
-        volt::ComponentDefinition{"Precise", std::vector{pin}});
+    const auto component_def =
+        circuit.add_component_definition(volt::ComponentDefinition{"Precise", std::vector{pin}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
     circuit.set_component_property(component, volt::PropertyKey{"ratio"},
@@ -57,7 +57,8 @@ TEST_CASE("Logical circuit writer preserves double precision and rejects non-fin
                                    volt::PropertyValue{std::numeric_limits<double>::infinity()});
 
     CHECK_THROWS_AS(volt::io::write_logical_circuit(circuit), std::logic_error);
-    circuit.set_component_property(component, volt::PropertyKey{"invalid"}, volt::PropertyValue{1.0});
+    circuit.set_component_property(component, volt::PropertyKey{"invalid"},
+                                   volt::PropertyValue{1.0});
 
     CHECK(volt::io::write_logical_circuit(circuit).find("0.12345678901234566") !=
           std::string::npos);
@@ -66,6 +67,5 @@ TEST_CASE("Logical circuit writer preserves double precision and rejects non-fin
 TEST_CASE("Logical circuit writer matches the LED golden fixture") {
     const auto circuit = volt::examples::build_led_circuit();
 
-    CHECK(volt::io::write_logical_circuit(circuit) ==
-          read_fixture("led_circuit.volt.json"));
+    CHECK(volt::io::write_logical_circuit(circuit) == read_fixture("led_circuit.volt.json"));
 }

@@ -63,32 +63,31 @@ TEST_CASE("Logical circuit reader reports unsupported versions deterministically
     fixture["version"] = 2;
 
     CHECK_THROWS_MATCHES(volt::io::read_logical_circuit(fixture), std::logic_error,
-                         Catch::Matchers::Message(
-                             "Unsupported logical circuit format version: 2"));
+                         Catch::Matchers::Message("Unsupported logical circuit format version: 2"));
 }
 
 TEST_CASE("Logical circuit reader reports large unsupported versions deterministically") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["version"] = 2147483648LL;
 
-    CHECK_THROWS_MATCHES(volt::io::read_logical_circuit(fixture), std::logic_error,
-                         Catch::Matchers::Message(
-                             "Unsupported logical circuit format version: 2147483648"));
+    CHECK_THROWS_MATCHES(
+        volt::io::read_logical_circuit(fixture), std::logic_error,
+        Catch::Matchers::Message("Unsupported logical circuit format version: 2147483648"));
 }
 
 TEST_CASE("Logical circuit reader reports unsupported formats deterministically") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["format"] = "volt.other";
 
-    CHECK_THROWS_MATCHES(volt::io::read_logical_circuit(fixture), std::logic_error,
-                         Catch::Matchers::Message(
-                             "Unsupported logical circuit format: volt.other"));
+    CHECK_THROWS_MATCHES(
+        volt::io::read_logical_circuit(fixture), std::logic_error,
+        Catch::Matchers::Message("Unsupported logical circuit format: volt.other"));
 }
 
-TEST_CASE("Logical circuit reader rejects selected part mappings outside the component definition") {
+TEST_CASE(
+    "Logical circuit reader rejects selected part mappings outside the component definition") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
-    fixture["components"][0]["selected_physical_part"]["pin_pad_mappings"][0]["pin"] =
-        "pin_def:2";
+    fixture["components"][0]["selected_physical_part"]["pin_pad_mappings"][0]["pin"] = "pin_def:2";
 
     CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
 }

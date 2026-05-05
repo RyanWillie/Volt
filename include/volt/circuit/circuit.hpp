@@ -300,7 +300,8 @@ class Circuit {
                 physical_part.pin_pad_mappings().begin(), physical_part.pin_pad_mappings().end(),
                 [pin](const PinPadMapping &mapping) { return mapping.pin() == pin; });
             if (!mapped) {
-                throw std::logic_error{"Physical part must map every pin in the component definition"};
+                throw std::logic_error{
+                    "Physical part must map every pin in the component definition"};
             }
         }
     }

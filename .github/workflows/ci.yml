@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-test-docs:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14, windows-2022]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install tools on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build doxygen clang-format
+
+      - name: Install tools on macOS
+        if: runner.os == 'macOS'
+        run: brew install ninja doxygen clang-format
+
+      - name: Install tools on Windows
+        if: runner.os == 'Windows'
+        run: choco install ninja doxygen.install llvm -y --no-progress
+
+      - name: Check formatting
+        run: python scripts/check-format.py
+
+      - name: Configure
+        run: cmake --preset dev
+
+      - name: Build
+        run: cmake --build --preset dev
+
+      - name: Test
+        run: ctest --preset dev
+
+      - name: Build docs
+        run: cmake --build --preset dev --target docs

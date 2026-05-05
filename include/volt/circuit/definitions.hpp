@@ -138,9 +138,7 @@ class ComponentDefinition {
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
     /** Return source provenance for this definition, if it was imported from a library. */
-    [[nodiscard]] const std::optional<DefinitionSource> &source() const noexcept {
-        return source_;
-    }
+    [[nodiscard]] const std::optional<DefinitionSource> &source() const noexcept { return source_; }
 
   private:
     std::string name_;

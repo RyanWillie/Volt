@@ -138,8 +138,8 @@ inline void write_property_value(std::ostream &out, const PropertyValue &value) 
         if (!std::isfinite(value.as_number())) {
             throw std::logic_error{"Cannot write non-finite JSON number"};
         }
-        out << "\"number\", \"value\": " << std::setprecision(std::numeric_limits<double>::max_digits10)
-            << value.as_number();
+        out << "\"number\", \"value\": "
+            << std::setprecision(std::numeric_limits<double>::max_digits10) << value.as_number();
         break;
     }
     out << " }";
@@ -175,17 +175,15 @@ inline void write_properties(std::ostream &out, const PropertyMap &properties) {
     return "component:" + std::to_string(id.index());
 }
 
-[[nodiscard]] inline std::string pin_id(PinId id) {
-    return "pin:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string pin_id(PinId id) { return "pin:" + std::to_string(id.index()); }
 
 [[nodiscard]] inline std::string net_id(NetId id) { return "net:" + std::to_string(id.index()); }
 
 inline void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
     out << "{\n";
     out << "      \"manufacturer_part\": { \"manufacturer\": "
-        << json_string(part.manufacturer_part().manufacturer()) << ", \"part_number\": "
-        << json_string(part.manufacturer_part().part_number()) << " },\n";
+        << json_string(part.manufacturer_part().manufacturer())
+        << ", \"part_number\": " << json_string(part.manufacturer_part().part_number()) << " },\n";
     out << "      \"package\": " << json_string(part.package().value()) << ",\n";
     out << "      \"footprint\": { \"library\": " << json_string(part.footprint().library())
         << ", \"name\": " << json_string(part.footprint().name()) << " },\n";
@@ -242,8 +240,7 @@ inline void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             out << ", \"source\": { \"namespace\": "
                 << detail::json_string(definition.source()->namespace_name())
                 << ", \"name\": " << detail::json_string(definition.source()->name())
-                << ", \"version\": " << detail::json_string(definition.source()->version())
-                << " }";
+                << ", \"version\": " << detail::json_string(definition.source()->version()) << " }";
         }
         out << ", \"pins\": [";
         for (std::size_t pin_index = 0; pin_index < definition.pins().size(); ++pin_index) {

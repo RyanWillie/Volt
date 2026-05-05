@@ -67,10 +67,8 @@ TEST_CASE("DefinitionSource stores reusable definition provenance") {
 }
 
 TEST_CASE("DefinitionSource rejects empty provenance fields") {
-    CHECK_THROWS_AS(volt::DefinitionSource("", "resistor_2pin", "1.0.0"),
-                    std::invalid_argument);
-    CHECK_THROWS_AS(volt::DefinitionSource("volt.passives", "", "1.0.0"),
-                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::DefinitionSource("", "resistor_2pin", "1.0.0"), std::invalid_argument);
+    CHECK_THROWS_AS(volt::DefinitionSource("volt.passives", "", "1.0.0"), std::invalid_argument);
     CHECK_THROWS_AS(volt::DefinitionSource("volt.passives", "resistor_2pin", ""),
                     std::invalid_argument);
 }
