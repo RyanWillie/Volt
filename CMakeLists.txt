@@ -25,7 +25,7 @@ if(VOLT_BUILD_DOCS)
     find_package(Doxygen)
     if(DOXYGEN_FOUND)
         set(VOLT_DOXYGEN_INPUT_DIRS
-            "${PROJECT_SOURCE_DIR}/README.md ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/docs"
+            "${PROJECT_SOURCE_DIR}/README.md ${PROJECT_SOURCE_DIR}/CONTRIBUTING.md ${PROJECT_SOURCE_DIR}/ROADMAP.md ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/docs"
         )
         set(VOLT_DOXYGEN_OUTPUT_DIR "${PROJECT_BINARY_DIR}/docs/doxygen")
         configure_file(docs/Doxyfile.in ${PROJECT_BINARY_DIR}/Doxyfile @ONLY)

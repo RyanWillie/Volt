@@ -79,3 +79,6 @@ See [docs/architecture.md](docs/architecture.md) for the architectural outline,
 facade boundary, [docs/logical-circuit-format.md](docs/logical-circuit-format.md) for
 the canonical logical circuit file format, and
 [docs/schema-versioning.md](docs/schema-versioning.md) for file compatibility policy.
+
+For contributor workflow and milestones, see [CONTRIBUTING.md](CONTRIBUTING.md) and
+[ROADMAP.md](ROADMAP.md).
