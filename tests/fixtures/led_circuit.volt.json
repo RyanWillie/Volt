@@ -2,19 +2,19 @@
   "format": "volt.logical_circuit",
   "version": 1,
   "pin_definitions": [
-    { "id": "pin_def:0", "name": "+", "number": "1", "role": "Passive", "connection_requirement": "Required" },
-    { "id": "pin_def:1", "name": "-", "number": "2", "role": "Passive", "connection_requirement": "Required" },
+    { "id": "pin_def:0", "name": "+", "number": "1", "role": "Bidirectional", "connection_requirement": "Required" },
+    { "id": "pin_def:1", "name": "-", "number": "2", "role": "Bidirectional", "connection_requirement": "Required" },
     { "id": "pin_def:2", "name": "1", "number": "1", "role": "Passive", "connection_requirement": "Required" },
     { "id": "pin_def:3", "name": "2", "number": "2", "role": "Passive", "connection_requirement": "Required" },
-    { "id": "pin_def:4", "name": "A", "number": "1", "role": "Passive", "connection_requirement": "Required" },
-    { "id": "pin_def:5", "name": "K", "number": "2", "role": "Passive", "connection_requirement": "Required" }
+    { "id": "pin_def:4", "name": "A", "number": "2", "role": "Passive", "connection_requirement": "Required" },
+    { "id": "pin_def:5", "name": "K", "number": "1", "role": "Passive", "connection_requirement": "Required" }
   ],
   "component_definitions": [
-    { "id": "component_def:0", "name": "Two-pin connector", "pins": ["pin_def:0", "pin_def:1"], "properties": {} },
-    { "id": "component_def:1", "name": "Resistor", "pins": ["pin_def:2", "pin_def:3"], "properties": {
+    { "id": "component_def:0", "name": "Two-pin connector", "source": { "namespace": "volt.connectors", "name": "connector_1x02", "version": "1.0.0" }, "pins": ["pin_def:0", "pin_def:1"], "properties": {} },
+    { "id": "component_def:1", "name": "Resistor", "source": { "namespace": "volt.passives", "name": "resistor_2pin", "version": "1.0.0" }, "pins": ["pin_def:2", "pin_def:3"], "properties": {
         "category": { "type": "string", "value": "passive" }
       } },
-    { "id": "component_def:2", "name": "LED", "pins": ["pin_def:4", "pin_def:5"], "properties": {} }
+    { "id": "component_def:2", "name": "LED", "source": { "namespace": "volt.optos", "name": "led_2pin", "version": "1.0.0" }, "pins": ["pin_def:4", "pin_def:5"], "properties": {} }
   ],
   "components": [
     { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_physical_part": {

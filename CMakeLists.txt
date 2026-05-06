@@ -15,11 +15,12 @@ option(VOLT_BUILD_EXAMPLES "Build Volt examples" ON)
 
 add_subdirectory(src/core)
 add_subdirectory(src/circuit)
+add_subdirectory(src/authoring)
 add_subdirectory(src/io)
 
 add_library(volt INTERFACE)
 add_library(Volt::Volt ALIAS volt)
-target_link_libraries(volt INTERFACE Volt::Core Volt::Circuit Volt::IO)
+target_link_libraries(volt INTERFACE Volt::Core Volt::Circuit Volt::Authoring Volt::IO)
 
 if(VOLT_BUILD_DOCS)
     find_package(Doxygen)

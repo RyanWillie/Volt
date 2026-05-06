@@ -42,6 +42,10 @@ volt-core
 volt-circuit
   component definitions, component instances, pins, nets, circuit validation
 
+volt-authoring
+  component library presets, reference allocation, and ergonomic connection helpers
+  over volt-circuit
+
 volt-schematic
   pages, symbols, wires, labels, consistency checks over canonical nets
 
@@ -62,6 +66,10 @@ Volt::Core
 Volt::Circuit
   logical circuit model; depends on Volt::Core
 
+Volt::Authoring
+  component library, reference allocation, and ergonomic connection helpers;
+  depends on Volt::Circuit
+
 Volt::IO
   deterministic logical circuit persistence; depends on Volt::Circuit and owns JSON
   dependencies
@@ -70,8 +78,8 @@ Volt::Volt
   umbrella target for applications that want the full public surface
 ```
 
-Future authoring, Python, schematic, and PCB layers should be added as new targets that
-depend on the stable kernel layers instead of pushing dependencies back into them.
+Future Python, schematic, and PCB layers should be added as new targets that depend on the
+stable kernel layers instead of pushing dependencies back into them.
 
 ## Identity
 
@@ -288,7 +296,14 @@ issues.
 
 Authoring helpers make the logical kernel usable without changing the source of truth. The
 SKiDL-style facade is specified separately in [authoring-api.md](authoring-api.md).
-They return typed IDs and are derived from the canonical entity tables.
+They return typed IDs and route structural mutation through `Circuit`.
+
+The first authoring helpers are deliberately small:
+
+- data-driven component definition specs and catalog presets
+- deterministic reference designator allocation from prefixes such as `R` and `D`
+- component instantiation helpers that delegate to `Circuit::instantiate_component`
+- connection helpers that delegate to `Circuit::connect`
 
 `ReferenceDesignator` values and `NetName` values are unique within a `Circuit`. The
 internal ID remains the engine identity, while the label remains the electronics-facing

@@ -2,9 +2,10 @@
 
 #include <vector>
 
+#include <volt/authoring/component_library.hpp>
+#include <volt/authoring/connection_helpers.hpp>
+#include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/definitions.hpp>
-#include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/core/properties.hpp>
 
@@ -13,32 +14,24 @@ namespace volt::examples {
 inline Circuit build_led_circuit() {
     auto circuit = Circuit{};
 
-    const auto connector_positive = circuit.add_pin_definition(
-        PinDefinition{"+", "1", PinRole::Passive, ConnectionRequirement::Required});
-    const auto connector_negative = circuit.add_pin_definition(
-        PinDefinition{"-", "2", PinRole::Passive, ConnectionRequirement::Required});
-    const auto resistor_pin_1 = circuit.add_pin_definition(
-        PinDefinition{"1", "1", PinRole::Passive, ConnectionRequirement::Required});
-    const auto resistor_pin_2 = circuit.add_pin_definition(
-        PinDefinition{"2", "2", PinRole::Passive, ConnectionRequirement::Required});
-    const auto led_anode = circuit.add_pin_definition(
-        PinDefinition{"A", "1", PinRole::Passive, ConnectionRequirement::Required});
-    const auto led_cathode = circuit.add_pin_definition(
-        PinDefinition{"K", "2", PinRole::Passive, ConnectionRequirement::Required});
+    const auto connector = authoring::define_component(circuit, authoring::connector_1x02());
+    const auto resistor = authoring::define_component(circuit, authoring::resistor());
+    const auto led = authoring::define_component(circuit, authoring::led());
 
-    const auto connector = circuit.add_component_definition(ComponentDefinition{
-        "Two-pin connector", std::vector{connector_positive, connector_negative}});
-    const auto resistor = circuit.add_component_definition(
-        ComponentDefinition{"Resistor", std::vector{resistor_pin_1, resistor_pin_2},
-                            PropertyMap{{PropertyKey{"category"}, PropertyValue{"passive"}}}});
-    const auto led = circuit.add_component_definition(
-        ComponentDefinition{"LED", std::vector{led_anode, led_cathode}});
+    const auto &connector_pins = circuit.component_definition(connector).pins();
+    const auto connector_positive = connector_pins[0];
+    const auto connector_negative = connector_pins[1];
+    const auto &resistor_pins = circuit.component_definition(resistor).pins();
+    const auto resistor_pin_1 = resistor_pins[0];
+    const auto resistor_pin_2 = resistor_pins[1];
+    const auto &led_pins = circuit.component_definition(led).pins();
+    const auto led_anode = led_pins[0];
+    const auto led_cathode = led_pins[1];
 
-    const auto j1 = circuit.instantiate_component(connector, ReferenceDesignator{"J1"});
-    const auto r1 = circuit.instantiate_component(
-        resistor, ReferenceDesignator{"R1"},
-        PropertyMap{{PropertyKey{"value"}, PropertyValue{"330 ohm"}}});
-    const auto d1 = circuit.instantiate_component(led, ReferenceDesignator{"D1"});
+    const auto j1 = authoring::instantiate(circuit, connector, "J");
+    const auto r1 = authoring::instantiate(
+        circuit, resistor, "R", PropertyMap{{PropertyKey{"value"}, PropertyValue{"330 ohm"}}});
+    const auto d1 = authoring::instantiate(circuit, led, "D");
 
     circuit.select_physical_part(
         j1, PhysicalPart{ManufacturerPart{"Generic", "HDR-1x02-2.54mm"}, PackageRef{"2.54mm-1x02"},
@@ -60,12 +53,15 @@ inline Circuit build_led_circuit() {
     const auto led_a = circuit.add_net(Net{NetName{"LED_A"}, NetKind::Signal});
     const auto gnd = circuit.add_net(Net{NetName{"GND"}, NetKind::Ground});
 
-    circuit.connect(vcc, circuit.pin_by_number(j1, "1").value());
-    circuit.connect(vcc, circuit.pin_by_number(r1, "1").value());
-    circuit.connect(led_a, circuit.pin_by_number(r1, "2").value());
-    circuit.connect(led_a, circuit.pin_by_name(d1, "A").value());
-    circuit.connect(gnd, circuit.pin_by_name(d1, "K").value());
-    circuit.connect(gnd, circuit.pin_by_number(j1, "2").value());
+    authoring::connect(
+        circuit, vcc,
+        {circuit.pin_by_number(j1, "1").value(), circuit.pin_by_number(r1, "1").value()});
+    authoring::connect(
+        circuit, led_a,
+        {circuit.pin_by_number(r1, "2").value(), circuit.pin_by_name(d1, "A").value()});
+    authoring::connect(
+        circuit, gnd,
+        {circuit.pin_by_name(d1, "K").value(), circuit.pin_by_number(j1, "2").value()});
 
     return circuit;
 }
