@@ -42,6 +42,9 @@ volt-core
 volt-circuit
   component definitions, component instances, pins, nets, circuit validation
 
+volt-authoring
+  component library presets and ergonomic construction helpers over volt-circuit
+
 volt-schematic
   pages, symbols, wires, labels, consistency checks over canonical nets
 
@@ -62,6 +65,9 @@ Volt::Core
 Volt::Circuit
   logical circuit model; depends on Volt::Core
 
+Volt::Authoring
+  component library and ergonomic construction helpers; depends on Volt::Circuit
+
 Volt::IO
   deterministic logical circuit persistence; depends on Volt::Circuit and owns JSON
   dependencies
@@ -70,8 +76,8 @@ Volt::Volt
   umbrella target for applications that want the full public surface
 ```
 
-Future authoring, Python, schematic, and PCB layers should be added as new targets that
-depend on the stable kernel layers instead of pushing dependencies back into them.
+Future Python, schematic, and PCB layers should be added as new targets that depend on the
+stable kernel layers instead of pushing dependencies back into them.
 
 ## Identity
 

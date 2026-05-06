@@ -2,9 +2,8 @@
 
 #include <vector>
 
+#include <volt/authoring/component_library.hpp>
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/definitions.hpp>
-#include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/core/properties.hpp>
 
@@ -13,26 +12,19 @@ namespace volt::examples {
 inline Circuit build_led_circuit() {
     auto circuit = Circuit{};
 
-    const auto connector_positive = circuit.add_pin_definition(
-        PinDefinition{"+", "1", PinRole::Passive, ConnectionRequirement::Required});
-    const auto connector_negative = circuit.add_pin_definition(
-        PinDefinition{"-", "2", PinRole::Passive, ConnectionRequirement::Required});
-    const auto resistor_pin_1 = circuit.add_pin_definition(
-        PinDefinition{"1", "1", PinRole::Passive, ConnectionRequirement::Required});
-    const auto resistor_pin_2 = circuit.add_pin_definition(
-        PinDefinition{"2", "2", PinRole::Passive, ConnectionRequirement::Required});
-    const auto led_anode = circuit.add_pin_definition(
-        PinDefinition{"A", "1", PinRole::Passive, ConnectionRequirement::Required});
-    const auto led_cathode = circuit.add_pin_definition(
-        PinDefinition{"K", "2", PinRole::Passive, ConnectionRequirement::Required});
+    const auto connector = authoring::define_component(circuit, authoring::connector_1x02());
+    const auto resistor = authoring::define_component(circuit, authoring::resistor());
+    const auto led = authoring::define_component(circuit, authoring::led());
 
-    const auto connector = circuit.add_component_definition(ComponentDefinition{
-        "Two-pin connector", std::vector{connector_positive, connector_negative}});
-    const auto resistor = circuit.add_component_definition(
-        ComponentDefinition{"Resistor", std::vector{resistor_pin_1, resistor_pin_2},
-                            PropertyMap{{PropertyKey{"category"}, PropertyValue{"passive"}}}});
-    const auto led = circuit.add_component_definition(
-        ComponentDefinition{"LED", std::vector{led_anode, led_cathode}});
+    const auto &connector_pins = circuit.component_definition(connector).pins();
+    const auto connector_positive = connector_pins[0];
+    const auto connector_negative = connector_pins[1];
+    const auto &resistor_pins = circuit.component_definition(resistor).pins();
+    const auto resistor_pin_1 = resistor_pins[0];
+    const auto resistor_pin_2 = resistor_pins[1];
+    const auto &led_pins = circuit.component_definition(led).pins();
+    const auto led_anode = led_pins[0];
+    const auto led_cathode = led_pins[1];
 
     const auto j1 = circuit.instantiate_component(connector, ReferenceDesignator{"J1"});
     const auto r1 = circuit.instantiate_component(

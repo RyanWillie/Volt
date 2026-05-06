@@ -10,6 +10,7 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(
     volt_core_tests
+    authoring/component_library_test.cpp
     circuit/circuit_test.cpp
     circuit/authoring_test.cpp
     circuit/definitions_test.cpp
@@ -28,7 +29,7 @@ add_executable(
     io/logical_circuit_round_trip_test.cpp
     io/logical_circuit_writer_test.cpp
 )
-target_link_libraries(volt_core_tests PRIVATE Volt::IO Catch2::Catch2WithMain)
+target_link_libraries(volt_core_tests PRIVATE Volt::Authoring Volt::IO Catch2::Catch2WithMain)
 target_compile_features(volt_core_tests PRIVATE cxx_std_20)
 target_include_directories(volt_core_tests PRIVATE ${PROJECT_SOURCE_DIR}/examples)
 target_compile_definitions(

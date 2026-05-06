@@ -1,5 +1,5 @@
 add_executable(volt_led_circuit_example led_circuit.cpp)
-target_link_libraries(volt_led_circuit_example PRIVATE Volt::Circuit)
+target_link_libraries(volt_led_circuit_example PRIVATE Volt::Authoring)
 target_compile_features(volt_led_circuit_example PRIVATE cxx_std_20)
 target_include_directories(volt_led_circuit_example PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 volt_apply_project_warnings(volt_led_circuit_example PRIVATE)
