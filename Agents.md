@@ -20,6 +20,26 @@ When deciding where a check belongs:
 - Reporting references such as `EntityRef` must not become normal traversal or mutation
   handles.
 
+## Kernel-Owned EDA Semantics
+
+Python, UI, importers, schematic tools, and future PCB tools are authoring or projection
+surfaces. They must not become alternate owners of EDA meaning.
+
+Any operation that changes EDA meaning must be represented in the C++ kernel as explicit
+model data, a kernel mutation API, or a kernel-owned constraint. This includes logical
+connectivity, selected parts, schematic presentation data, PCB placement/routing data,
+rules, and validation results.
+
+Layer ownership is strict:
+- The logical circuit owns components, pins, nets, and pin-to-net membership.
+- Schematic layers may visualize, arrange, label, and annotate existing logical
+  connectivity, but must not create, merge, split, or otherwise mutate nets.
+- PCB layers may physically implement existing logical connectivity, but must not define
+  the netlist.
+- Python should provide ergonomic syntax over kernel-owned state. It should not contain
+  Python-only EDA semantics that cannot be loaded, validated, serialized, or inspected by
+  the kernel.
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**

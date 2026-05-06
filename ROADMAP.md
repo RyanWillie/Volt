@@ -35,7 +35,8 @@ Remaining work:
 
 ### Programmatic Authoring Layer
 
-Goal: provide a SKiDL-style ergonomic layer without weakening kernel invariants.
+Goal: provide an ergonomic logical-circuit authoring layer without weakening kernel
+invariants.
 
 Planned work:
 
@@ -43,7 +44,7 @@ Planned work:
 - add reference designator allocation
 - add ergonomic net connection helpers
 - plan the Python bindings boundary
-- implement a first Python authoring MVP
+- implement a first Python logical-authoring MVP
 
 The authoring facade should remain a convenience layer over `Circuit`; it must not become
 a second source of truth.
@@ -75,10 +76,12 @@ wires the source of electrical truth.
 
 Planned work:
 
-- design schematic model vocabulary
-- add symbol definition and instance model
-- project canonical nets into schematic connectivity
-- add a first simple schematic renderer/export
+- design the C++ schematic kernel model vocabulary
+- add C++ symbol definition and instance model
+- represent schematic projection data over canonical nets in the kernel
+- add schematic consistency diagnostics and serialization coverage
+- then add Python schematic drawing bindings/syntax
+- then add a first simple schematic renderer/export
 
 ### PCB Foundation
 

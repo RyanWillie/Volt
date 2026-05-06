@@ -5,7 +5,7 @@ the layers above it.
 
 ## Source Of Truth
 
-The canonical source of truth is the logical circuit model:
+The current canonical source of truth is the logical circuit model:
 
 - component definitions
 - component instances
@@ -14,8 +14,10 @@ The canonical source of truth is the logical circuit model:
 - pin-to-net membership
 - constraints and design intent
 
-Schematics are authored views over canonical nets. A schematic wire displays a net; it
-does not own electrical connectivity.
+Future Volt layers should be organized around one project-level design root. That future
+`Design` aggregate may own a logical circuit, schematic projections, PCB layouts,
+constraints, libraries, and reports. The current implementation is intentionally focused
+on the logical circuit portion of that aggregate.
 
 The core design rule is:
 
@@ -33,6 +35,71 @@ problems, should be reported by diagnostics and validation layers.
 Validation rules are implemented by kernel layers and operate over the canonical model.
 User-authored constraints may become stored model data once the constraints layer exists.
 
+## Kernel-Owned EDA Semantics
+
+The kernel owns EDA meaning. Python, UI tools, file importers, schematic renderers, and
+future PCB tools may make authoring pleasant, but they must lower meaningful operations
+into kernel-owned data or kernel mutation APIs.
+
+Layer ownership is strict:
+
+| Layer | Owns | References | Must not own |
+| --- | --- | --- | --- |
+| Logical circuit | component definitions, component instances, pins, nets, pin-to-net membership, selected parts | library/source metadata | schematic presentation or PCB geometry |
+| Schematic projection | sheets, symbol placement, visual wire runs, labels, notes, drawing metadata | `ComponentId`, `PinId`, `NetId` | logical connectivity |
+| PCB projection | board outline, layers, footprint placement, copper geometry, zones, vias, routing metadata | `ComponentId`, selected physical parts, `NetId` | logical connectivity |
+| Constraints | declared design intent and rule parameters | logical, schematic, or physical entities | validation results |
+| Validation | diagnostics and reports | all relevant kernel-owned model layers | mutation of invalid state into valid state |
+
+This means connectivity is single-source:
+
+```text
+Circuit owns connectivity.
+Schematic visualizes connectivity.
+PCB implements connectivity.
+Python is syntax over kernel-owned state.
+```
+
+Only the logical circuit layer may create or mutate pin-to-net membership. Schematic and
+PCB layers may reference logical connectivity, visualize it, annotate it, physically
+implement it, and report inconsistencies against it, but they must not create, merge,
+split, or otherwise mutate nets.
+
+This rule is intentionally stronger than many schematic-first EDA tools. It protects
+code-authored circuits from accidental logical changes while drawing schematics or laying
+out boards.
+
+## Deferred Projection Layers
+
+Schematics and PCB design are planned projection layers, not current implementation
+targets. They should be designed when the logical circuit generation, serialization,
+validation, and Python logical-authoring foundation are stable.
+
+Projection-layer workflow is kernel-first:
+
+1. Design the C++ kernel representation for the projection layer.
+2. Add kernel mutation APIs and validation for that representation.
+3. Add serialization and round-trip coverage for the kernel data.
+4. Then add Python bindings and Python syntax over that kernel-owned data.
+
+Do not add Python schematic drawing APIs before the C++ schematic model exists. Likewise,
+do not add Python PCB layout APIs before the C++ board model exists.
+
+The current thinking is:
+
+- Schematics should support multiple sheets.
+- Schematic entities should reference existing logical entities.
+- A schematic wire or visual run should represent an existing `NetId`; it should not be
+  the source of electrical connectivity.
+- PCB routes and copper should implement existing `NetId` values; they should not define
+  the netlist.
+- Schematic and PCB validators should report projection consistency issues, such as a
+  missing symbol for a component, an unrouted net, or visual geometry that references the
+  wrong logical net.
+
+Detailed schematic objects, wire graphs, drawing algorithms, and PCB geometry are
+intentionally deferred.
+
 ## Initial Layers
 
 ```text
@@ -47,14 +114,14 @@ volt-authoring
   over volt-circuit
 
 volt-schematic
-  pages, symbols, wires, labels, consistency checks over canonical nets
+  planned projection data and consistency checks over canonical nets; deferred
 
 volt-io
   deterministic save/load formats; the first logical circuit format is specified in
   logical-circuit-format.md
 
 volt-python
-  Python bindings over the stable public kernel API
+  planned Python bindings and authoring syntax over kernel-owned state
 ```
 
 The CMake targets mirror these boundaries:
@@ -295,7 +362,8 @@ issues.
 ## Authoring Helpers
 
 Authoring helpers make the logical kernel usable without changing the source of truth. The
-SKiDL-style facade is specified separately in [authoring-api.md](authoring-api.md).
+programmatic authoring facade is specified separately in
+[authoring-api.md](authoring-api.md).
 They return typed IDs and route structural mutation through `Circuit`.
 
 The first authoring helpers are deliberately small:
