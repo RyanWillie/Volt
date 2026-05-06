@@ -10,6 +10,7 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(
     volt_core_tests
+    authoring/connection_helpers_test.cpp
     authoring/component_library_test.cpp
     circuit/circuit_test.cpp
     circuit/authoring_test.cpp

@@ -46,7 +46,7 @@ The build is split by architecture layer:
 - `Volt::Core` contains typed IDs, storage primitives, diagnostics, properties, and the
   version API.
 - `Volt::Circuit` contains the logical circuit model and depends on `Volt::Core`.
-- `Volt::Authoring` contains component-library presets and construction helpers over
+- `Volt::Authoring` contains component-library presets and connection helpers over
   `Volt::Circuit`.
 - `Volt::IO` contains logical circuit read/write support and owns the JSON dependency.
 - `Volt::Volt` is an umbrella interface target for applications that want the full public

@@ -43,7 +43,7 @@ volt-circuit
   component definitions, component instances, pins, nets, circuit validation
 
 volt-authoring
-  component library presets and ergonomic construction helpers over volt-circuit
+  component library presets and ergonomic connection helpers over volt-circuit
 
 volt-schematic
   pages, symbols, wires, labels, consistency checks over canonical nets
@@ -66,7 +66,7 @@ Volt::Circuit
   logical circuit model; depends on Volt::Core
 
 Volt::Authoring
-  component library and ergonomic construction helpers; depends on Volt::Circuit
+  component library and ergonomic connection helpers; depends on Volt::Circuit
 
 Volt::IO
   deterministic logical circuit persistence; depends on Volt::Circuit and owns JSON

@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <volt/authoring/component_library.hpp>
+#include <volt/authoring/connection_helpers.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/core/properties.hpp>
@@ -52,12 +53,15 @@ inline Circuit build_led_circuit() {
     const auto led_a = circuit.add_net(Net{NetName{"LED_A"}, NetKind::Signal});
     const auto gnd = circuit.add_net(Net{NetName{"GND"}, NetKind::Ground});
 
-    circuit.connect(vcc, circuit.pin_by_number(j1, "1").value());
-    circuit.connect(vcc, circuit.pin_by_number(r1, "1").value());
-    circuit.connect(led_a, circuit.pin_by_number(r1, "2").value());
-    circuit.connect(led_a, circuit.pin_by_name(d1, "A").value());
-    circuit.connect(gnd, circuit.pin_by_name(d1, "K").value());
-    circuit.connect(gnd, circuit.pin_by_number(j1, "2").value());
+    authoring::connect(
+        circuit, vcc,
+        {circuit.pin_by_number(j1, "1").value(), circuit.pin_by_number(r1, "1").value()});
+    authoring::connect(
+        circuit, led_a,
+        {circuit.pin_by_number(r1, "2").value(), circuit.pin_by_name(d1, "A").value()});
+    authoring::connect(
+        circuit, gnd,
+        {circuit.pin_by_name(d1, "K").value(), circuit.pin_by_number(j1, "2").value()});
 
     return circuit;
 }
