@@ -4,6 +4,7 @@
 
 #include <volt/authoring/component_library.hpp>
 #include <volt/authoring/connection_helpers.hpp>
+#include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/core/properties.hpp>
@@ -27,11 +28,10 @@ inline Circuit build_led_circuit() {
     const auto led_anode = led_pins[0];
     const auto led_cathode = led_pins[1];
 
-    const auto j1 = circuit.instantiate_component(connector, ReferenceDesignator{"J1"});
-    const auto r1 = circuit.instantiate_component(
-        resistor, ReferenceDesignator{"R1"},
-        PropertyMap{{PropertyKey{"value"}, PropertyValue{"330 ohm"}}});
-    const auto d1 = circuit.instantiate_component(led, ReferenceDesignator{"D1"});
+    const auto j1 = authoring::instantiate(circuit, connector, "J");
+    const auto r1 = authoring::instantiate(
+        circuit, resistor, "R", PropertyMap{{PropertyKey{"value"}, PropertyValue{"330 ohm"}}});
+    const auto d1 = authoring::instantiate(circuit, led, "D");
 
     circuit.select_physical_part(
         j1, PhysicalPart{ManufacturerPart{"Generic", "HDR-1x02-2.54mm"}, PackageRef{"2.54mm-1x02"},

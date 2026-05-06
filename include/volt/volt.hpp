@@ -2,6 +2,7 @@
 
 #include <volt/authoring/component_library.hpp>
 #include <volt/authoring/connection_helpers.hpp>
+#include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/definitions.hpp>
 #include <volt/circuit/instances.hpp>

@@ -122,6 +122,17 @@ is convenience only:
   label.
 - Collisions are authoring errors surfaced before or during kernel mutation.
 
+The current low-level helper surface exposes this as:
+
+```cpp
+const auto r1 = volt::authoring::instantiate(circuit, resistor_definition, "R");
+const auto r10 = volt::authoring::instantiate(
+    circuit, resistor_definition, volt::ReferenceDesignator{"R10"});
+```
+
+The prefix overload allocates the first unused deterministic label, while the explicit
+overload preserves user-provided references and relies on `Circuit` to reject duplicates.
+
 ## Error and Diagnostic Flow
 
 Structural errors are exceptions from kernel mutation boundaries. Examples:
@@ -171,5 +182,7 @@ A minimal useful authoring layer can be built from existing kernel APIs:
 6. `NetHandle::connect()` convenience overloads.
 7. `ComponentHandle::set_property()` and `select_part()` delegating to `Circuit`.
 
-Reference designator allocation and component factories can follow once this boundary is
-stable.
+The current foundation already includes data-driven component definition specs,
+deterministic reference allocation, component instantiation helpers, and net connection
+helpers as free functions. A richer `Design` facade can build on those helpers without
+becoming a second source of truth.
