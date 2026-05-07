@@ -48,15 +48,17 @@ measured problem.
 The binding stack should be layered:
 
 ```text
-volt.kernel
-  thin bindings over C++ kernel objects, IDs, diagnostics, reader, and writer
+volt._volt
+  private bindings over C++ kernel operations, IDs, diagnostics, and writer
 
 volt
-  Pythonic authoring API backed by volt.kernel
+  Pythonic authoring API backed by volt._volt
 ```
 
-Most users should write against `volt`, not `volt.kernel`. The lower-level module exists
-for tests, debugging, advanced inspection, and future tooling.
+Most users should write against `volt`, not `volt._volt`. The private module exists to
+keep the first binding small and explicit while the public API settles. A public lower
+level inspection module can be added later when the kernel surface it should expose is
+clear.
 
 ## Design Root
 
@@ -122,6 +124,49 @@ This syntax is intentionally ergonomic, but the operation sequence is still expl
 3. Connect pins to nets through kernel mutation APIs.
 4. Validate through kernel validation passes.
 5. Serialize kernel-owned data.
+
+## Current MVP
+
+The first implemented Python slice supports logical authoring only:
+
+```python
+import volt
+
+design = volt.Design("led")
+
+vcc = design.net("VCC", kind="power")
+led_a = design.net("LED_A")
+gnd = design.net("GND", kind="ground")
+
+j1 = design.connector_1x02(ref="J1")
+r1 = design.R("330 ohm", ref="R1")
+d1 = design.LED(ref="D1")
+
+vcc += j1[1], r1[1]
+led_a += r1[2], d1["A"]
+gnd += d1["K"], j1[2]
+
+report = design.validate()
+assert not report.has_errors
+
+design.write("led.volt.json")
+```
+
+`Design`, `Component`, `Pin`, and `Net` are lightweight Python handles over kernel-owned
+IDs. The Python package does not own component definitions, net membership, validation
+rules, or serialization semantics.
+
+Catalog helpers such as `Design.R()`, `Design.C()`, `Design.LED()`, and
+`Design.connector_1x02()` define reusable kernel component definitions lazily per design
+and instantiate concrete components through the C++ mutation API. Component values are
+stored as kernel component properties.
+
+Diagnostics are inspectable Python objects created from kernel-produced diagnostic data:
+
+```python
+for diagnostic in design.validate():
+    print(diagnostic.severity, diagnostic.code, diagnostic.message)
+```
 
 ## Composition
 

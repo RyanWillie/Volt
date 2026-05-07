@@ -12,11 +12,20 @@ include(cmake/VoltCompilerOptions.cmake)
 option(VOLT_BUILD_TESTS "Build Volt tests" ON)
 option(VOLT_BUILD_DOCS "Add the Doxygen documentation target" ON)
 option(VOLT_BUILD_EXAMPLES "Build Volt examples" ON)
+option(VOLT_BUILD_PYTHON "Build Volt Python bindings" OFF)
+
+if(VOLT_BUILD_TESTS)
+    enable_testing()
+endif()
 
 add_subdirectory(src/core)
 add_subdirectory(src/circuit)
 add_subdirectory(src/authoring)
 add_subdirectory(src/io)
+
+if(VOLT_BUILD_PYTHON)
+    add_subdirectory(src/python)
+endif()
 
 add_library(volt INTERFACE)
 add_library(Volt::Volt ALIAS volt)
@@ -44,7 +53,6 @@ if(VOLT_BUILD_DOCS)
 endif()
 
 if(VOLT_BUILD_TESTS)
-    enable_testing()
     add_subdirectory(tests)
 endif()
 
