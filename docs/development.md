@@ -14,6 +14,17 @@ cmake --build --preset dev
 ctest --preset dev
 ```
 
+The `dev` preset also enables the optional Python binding target so the first Python
+authoring surface is exercised with the normal local test run. The binding target fetches
+`pybind11` through CMake `FetchContent` and writes the importable package into
+`build/dev/python`.
+
+Run only the Python authoring MVP test with:
+
+```sh
+ctest --preset dev -R volt_python_led_mvp --output-on-failure
+```
+
 Generate API documentation with:
 
 ```sh
@@ -49,6 +60,8 @@ The build is split by architecture layer:
 - `Volt::Authoring` contains component-library presets, reference allocation helpers, and
   connection helpers over `Volt::Circuit`.
 - `Volt::IO` contains logical circuit read/write support and owns the JSON dependency.
+- `_volt` is the optional private Python extension module used by the public Python
+  authoring facade.
 - `Volt::Volt` is an umbrella interface target for applications that want the full public
   API.
 

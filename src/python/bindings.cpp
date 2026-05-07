@@ -1,0 +1,237 @@
+#include <cmath>
+#include <cstdint>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+
+#include <volt/authoring/component_library.hpp>
+#include <volt/authoring/reference_designators.hpp>
+#include <volt/circuit/circuit.hpp>
+#include <volt/circuit/nets.hpp>
+#include <volt/circuit/validation.hpp>
+#include <volt/core/diagnostics.hpp>
+#include <volt/core/properties.hpp>
+#include <volt/io/logical_circuit_writer.hpp>
+
+namespace py = pybind11;
+
+namespace {
+
+[[nodiscard]] volt::ComponentDefId component_def_id(std::size_t index) {
+    return volt::ComponentDefId{index};
+}
+
+[[nodiscard]] volt::ComponentId component_id(std::size_t index) { return volt::ComponentId{index}; }
+
+[[nodiscard]] volt::PinId pin_id(std::size_t index) { return volt::PinId{index}; }
+
+[[nodiscard]] volt::NetId net_id(std::size_t index) { return volt::NetId{index}; }
+
+[[nodiscard]] volt::NetKind parse_net_kind(const std::string &value) {
+    if (value == "signal" || value == "Signal") {
+        return volt::NetKind::Signal;
+    }
+    if (value == "power" || value == "Power") {
+        return volt::NetKind::Power;
+    }
+    if (value == "ground" || value == "Ground") {
+        return volt::NetKind::Ground;
+    }
+    if (value == "clock" || value == "Clock") {
+        return volt::NetKind::Clock;
+    }
+    if (value == "analog" || value == "Analog") {
+        return volt::NetKind::Analog;
+    }
+    if (value == "high_current" || value == "high-current" || value == "HighCurrent") {
+        return volt::NetKind::HighCurrent;
+    }
+
+    throw std::invalid_argument{"Unknown net kind"};
+}
+
+[[nodiscard]] std::string severity_name(volt::Severity severity) {
+    switch (severity) {
+    case volt::Severity::Info:
+        return "info";
+    case volt::Severity::Warning:
+        return "warning";
+    case volt::Severity::Error:
+        return "error";
+    }
+
+    throw std::logic_error{"Unhandled diagnostic severity"};
+}
+
+[[nodiscard]] std::string entity_kind_name(volt::EntityKind kind) {
+    switch (kind) {
+    case volt::EntityKind::ComponentDef:
+        return "component_definition";
+    case volt::EntityKind::Component:
+        return "component";
+    case volt::EntityKind::PinDef:
+        return "pin_definition";
+    case volt::EntityKind::Pin:
+        return "pin";
+    case volt::EntityKind::Net:
+        return "net";
+    }
+
+    throw std::logic_error{"Unhandled diagnostic entity kind"};
+}
+
+[[nodiscard]] volt::PropertyMap properties_from_dict(const py::dict &dict) {
+    auto properties = volt::PropertyMap{};
+
+    for (const auto item : dict) {
+        if (!py::isinstance<py::str>(item.first)) {
+            throw std::invalid_argument{"Property keys must be strings"};
+        }
+
+        auto key = volt::PropertyKey{py::cast<std::string>(item.first)};
+        const auto value = item.second;
+
+        if (py::isinstance<py::bool_>(value)) {
+            properties.set(std::move(key), volt::PropertyValue{py::cast<bool>(value)});
+        } else if (py::isinstance<py::int_>(value)) {
+            properties.set(std::move(key), volt::PropertyValue{static_cast<std::int64_t>(
+                                               py::cast<long long>(value))});
+        } else if (py::isinstance<py::float_>(value)) {
+            const auto number = py::cast<double>(value);
+            if (!std::isfinite(number)) {
+                throw std::invalid_argument{"Property numbers must be finite"};
+            }
+            properties.set(std::move(key), volt::PropertyValue{number});
+        } else if (py::isinstance<py::str>(value)) {
+            properties.set(std::move(key), volt::PropertyValue{py::cast<std::string>(value)});
+        } else {
+            throw std::invalid_argument{
+                "Property values must be strings, booleans, ints, or floats"};
+        }
+    }
+
+    return properties;
+}
+
+[[nodiscard]] py::dict diagnostic_to_dict(const volt::Diagnostic &diagnostic) {
+    auto result = py::dict{};
+    result["severity"] = severity_name(diagnostic.severity());
+    result["code"] = diagnostic.code().value();
+    result["message"] = diagnostic.message();
+
+    auto entities = py::list{};
+    for (const auto entity : diagnostic.entities()) {
+        auto entity_dict = py::dict{};
+        entity_dict["kind"] = entity_kind_name(entity.kind());
+        entity_dict["index"] = entity.index();
+        entities.append(std::move(entity_dict));
+    }
+    result["entities"] = std::move(entities);
+
+    return result;
+}
+
+class PyCircuit {
+  public:
+    [[nodiscard]] std::size_t define_resistor() {
+        return volt::authoring::define_component(circuit_, volt::authoring::resistor()).index();
+    }
+
+    [[nodiscard]] std::size_t define_capacitor() {
+        return volt::authoring::define_component(circuit_, volt::authoring::capacitor()).index();
+    }
+
+    [[nodiscard]] std::size_t define_led() {
+        return volt::authoring::define_component(circuit_, volt::authoring::led()).index();
+    }
+
+    [[nodiscard]] std::size_t define_connector_1x02() {
+        return volt::authoring::define_component(circuit_, volt::authoring::connector_1x02())
+            .index();
+    }
+
+    [[nodiscard]] std::size_t add_net(const std::string &name, const std::string &kind) {
+        return circuit_.add_net(volt::Net{volt::NetName{name}, parse_net_kind(kind)}).index();
+    }
+
+    [[nodiscard]] std::size_t instantiate_ref(std::size_t definition, const std::string &reference,
+                                              const py::dict &properties) {
+        return volt::authoring::instantiate(circuit_, component_def_id(definition),
+                                            volt::ReferenceDesignator{reference},
+                                            properties_from_dict(properties))
+            .index();
+    }
+
+    [[nodiscard]] std::size_t instantiate_auto(std::size_t definition, const std::string &prefix,
+                                               const py::dict &properties) {
+        return volt::authoring::instantiate(circuit_, component_def_id(definition), prefix,
+                                            properties_from_dict(properties))
+            .index();
+    }
+
+    [[nodiscard]] std::size_t pin_by_name(std::size_t component, const std::string &name) const {
+        const auto pin = circuit_.pin_by_name(component_id(component), name);
+        if (!pin.has_value()) {
+            throw std::out_of_range{"Component has no pin with that name"};
+        }
+
+        return pin.value().index();
+    }
+
+    [[nodiscard]] std::size_t pin_by_number(std::size_t component,
+                                            const std::string &number) const {
+        const auto pin = circuit_.pin_by_number(component_id(component), number);
+        if (!pin.has_value()) {
+            throw std::out_of_range{"Component has no pin with that number"};
+        }
+
+        return pin.value().index();
+    }
+
+    void connect(std::size_t net, std::size_t pin) { circuit_.connect(net_id(net), pin_id(pin)); }
+
+    [[nodiscard]] py::list validate() const {
+        const auto report = volt::validate_circuit(circuit_);
+        auto diagnostics = py::list{};
+        for (const auto &diagnostic : report.diagnostics()) {
+            diagnostics.append(diagnostic_to_dict(diagnostic));
+        }
+
+        return diagnostics;
+    }
+
+    [[nodiscard]] std::string to_json() const {
+        auto out = std::ostringstream{};
+        volt::io::write_logical_circuit(out, circuit_);
+        return out.str();
+    }
+
+  private:
+    volt::Circuit circuit_;
+};
+
+} // namespace
+
+PYBIND11_MODULE(_volt, module) {
+    module.doc() = "Private Volt kernel bindings used by the Python authoring facade.";
+
+    py::class_<PyCircuit>(module, "Circuit")
+        .def(py::init<>())
+        .def("define_resistor", &PyCircuit::define_resistor)
+        .def("define_capacitor", &PyCircuit::define_capacitor)
+        .def("define_led", &PyCircuit::define_led)
+        .def("define_connector_1x02", &PyCircuit::define_connector_1x02)
+        .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
+        .def("instantiate_ref", &PyCircuit::instantiate_ref, py::arg("definition"),
+             py::arg("reference"), py::arg("properties") = py::dict{})
+        .def("instantiate_auto", &PyCircuit::instantiate_auto, py::arg("definition"),
+             py::arg("prefix"), py::arg("properties") = py::dict{})
+        .def("pin_by_name", &PyCircuit::pin_by_name, py::arg("component"), py::arg("name"))
+        .def("pin_by_number", &PyCircuit::pin_by_number, py::arg("component"), py::arg("number"))
+        .def("connect", &PyCircuit::connect, py::arg("net"), py::arg("pin"))
+        .def("validate", &PyCircuit::validate)
+        .def("to_json", &PyCircuit::to_json);
+}
