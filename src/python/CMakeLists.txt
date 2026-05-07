@@ -20,6 +20,18 @@ pybind11_add_module(_volt MODULE bindings.cpp)
 target_link_libraries(_volt PRIVATE Volt::Authoring Volt::IO)
 set_target_properties(_volt PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt)
 
+if(WIN32)
+    add_custom_command(
+        TARGET _volt
+        POST_BUILD
+        COMMAND
+            ${CMAKE_COMMAND} "-DVOLT_RUNTIME_TARGET_FILE=$<TARGET_FILE:_volt>"
+            "-DVOLT_RUNTIME_TARGET_DIR=$<TARGET_FILE_DIR:_volt>" -P
+            "${PROJECT_SOURCE_DIR}/cmake/VoltCopyRuntimeDependencies.cmake"
+        VERBATIM
+    )
+endif()
+
 if(VOLT_BUILD_TESTS)
     add_test(
         NAME volt_python_led_mvp
