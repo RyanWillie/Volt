@@ -106,23 +106,17 @@ ctest --preset macos-llvm
 ## Design Direction
 
 Volt uses stable typed IDs for kernel entities. Human names such as `R1`, `GND`, and
-`U1.PA0` are labels, not internal identity. The first kernel layers will be:
-
-1. Core primitive types and diagnostics
-2. Entity storage
-3. Component and pin definitions
-4. Component instances
-5. Nets and pin connectivity
-6. Electrical validation
-7. Schematic views over canonical nets
-8. Deterministic serialization
-9. Python bindings
+`U1.PA0` are labels, not internal identity. The current phase is focused on logical
+circuit generation, deterministic serialization, validation, and a Python authoring
+surface over kernel-owned state. Schematic and PCB layers are planned projections over the
+logical circuit, not alternate owners of connectivity.
 
 See [docs/architecture.md](docs/architecture.md) for the architectural outline,
-[docs/authoring-api.md](docs/authoring-api.md) for the planned SKiDL-style authoring
+[docs/authoring-api.md](docs/authoring-api.md) for the planned programmatic authoring
 facade boundary, [docs/logical-circuit-format.md](docs/logical-circuit-format.md) for
 the canonical logical circuit file format, and
 [docs/schema-versioning.md](docs/schema-versioning.md) for file compatibility policy.
+[docs/python-api.md](docs/python-api.md) documents the planned Python boundary.
 
 For contributor workflow and milestones, see [CONTRIBUTING.md](CONTRIBUTING.md) and
 [ROADMAP.md](ROADMAP.md).

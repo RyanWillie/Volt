@@ -1,9 +1,10 @@
-# SKiDL-Style Authoring API Design
+# Programmatic Authoring API Design
 
-Volt's SKiDL-style authoring layer should make circuit construction concise without
+Volt's programmatic authoring layer should make circuit construction concise without
 becoming the logical kernel. The authoring layer is a convenience facade over `Circuit`;
 `Circuit` remains the canonical source of truth and the only owner of structural
-invariants.
+invariants. The planned Python-facing boundary is documented separately in
+[python-api.md](python-api.md).
 
 ## Goals
 
@@ -30,7 +31,7 @@ invariants.
 user code / Python bindings
         │
         ▼
-SKiDL-style authoring facade
+programmatic authoring facade
   - ergonomic builders
   - reference designator allocation
   - pin/net lookup conveniences
