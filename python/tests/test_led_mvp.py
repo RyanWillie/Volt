@@ -268,6 +268,18 @@ def test_selected_part_mapping_errors_are_rejected():
 
 def test_invalid_selected_part_rating_does_not_select_part():
     design = volt.Design("bad-rating")
+
+    try:
+        design.C(ref="C1", voltage_rating=float("inf"))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("non-finite capacitor voltage rating should be rejected")
+
+    capacitor = json.loads(design.to_json())["components"][0]
+    assert capacitor["reference"] == "C1"
+    assert "selected_physical_part" not in capacitor
+
     r1 = design.R(ref="R1")
 
     try:

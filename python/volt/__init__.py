@@ -243,9 +243,10 @@ class Design:
                 component.index, "capacitance", "capacitance", _number(capacitance)
             )
         if voltage_rating is not None:
+            voltage_rating_value = _number(voltage_rating)
             self._circuit.select_generic_physical_part(component.index)
             self._circuit.set_selected_part_quantity(
-                component.index, "voltage_rating", "voltage", _number(voltage_rating)
+                component.index, "voltage_rating", "voltage", voltage_rating_value
             )
         return component
 
