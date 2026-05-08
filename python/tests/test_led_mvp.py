@@ -109,6 +109,197 @@ def test_custom_component_definitions_are_kernel_owned():
     assert {diagnostic.code for diagnostic in report} == {"UNCONNECTED_REQUIRED_PIN", "SINGLE_PIN_NET"}
 
 
+def test_component_selected_part_serializes():
+    design = volt.Design("selected-part")
+    r1 = design.R(resistance=330, tolerance=0.01, ref="R1")
+
+    r1.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603FR-07330RL",
+        package="0603",
+        footprint=("Resistor_SMD", "R_0603_1608Metric"),
+        pin_pads={
+            1: "1",
+            2: "2",
+        },
+        properties={
+            "supplier": "Digi-Key",
+        },
+        voltage_rating=75,
+        power_rating=0.1,
+    )
+
+    circuit = json.loads(design.to_json())
+    resistor = next(
+        component for component in circuit["components"] if component["reference"] == "R1"
+    )
+    part = resistor["selected_physical_part"]
+
+    assert part["manufacturer_part"] == {
+        "manufacturer": "Yageo",
+        "part_number": "RC0603FR-07330RL",
+    }
+    assert part["package"] == "0603"
+    assert part["footprint"] == {
+        "library": "Resistor_SMD",
+        "name": "R_0603_1608Metric",
+    }
+    assert part["pin_pad_mappings"] == [
+        {"pin": "pin_def:0", "pad": "1"},
+        {"pin": "pin_def:1", "pad": "2"},
+    ]
+    assert part["properties"]["supplier"] == {"type": "string", "value": "Digi-Key"}
+    assert part["electrical_attributes"]["voltage_rating"] == {
+        "type": "quantity",
+        "dimension": "voltage",
+        "value": 75.0,
+    }
+    assert part["electrical_attributes"]["power_rating"] == {
+        "type": "quantity",
+        "dimension": "power",
+        "value": 0.1,
+    }
+
+
+def test_custom_component_selected_part_accepts_named_pin_mappings():
+    design = volt.Design("selected-custom")
+    opamp = design.define_component(
+        "OpAmp",
+        pins=[
+            volt.PinSpec("OUT", 1, role="output"),
+            volt.PinSpec("IN-", 2, role="input"),
+            volt.PinSpec("IN+", 3, role="input"),
+            volt.PinSpec("V-", 4, role="power"),
+            volt.PinSpec("V+", 8, role="power"),
+        ],
+    )
+    u1 = design.instantiate(opamp, ref="U1")
+
+    u1.select_part(
+        manufacturer="Texas Instruments",
+        part_number="TLV9002IDR",
+        package="SOIC-8",
+        footprint=("Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"),
+        pin_pads={
+            "OUT": "1",
+            "IN-": "2",
+            "IN+": "3",
+            "V-": "4",
+            "V+": "8",
+        },
+        voltage_rating=5.5,
+    )
+
+    circuit = json.loads(design.to_json())
+    part = circuit["components"][0]["selected_physical_part"]
+
+    assert part["manufacturer_part"]["manufacturer"] == "Texas Instruments"
+    assert part["manufacturer_part"]["part_number"] == "TLV9002IDR"
+    assert part["pin_pad_mappings"] == [
+        {"pin": "pin_def:0", "pad": "1"},
+        {"pin": "pin_def:1", "pad": "2"},
+        {"pin": "pin_def:2", "pad": "3"},
+        {"pin": "pin_def:3", "pad": "4"},
+        {"pin": "pin_def:4", "pad": "8"},
+    ]
+    assert part["electrical_attributes"]["voltage_rating"] == {
+        "type": "quantity",
+        "dimension": "voltage",
+        "value": 5.5,
+    }
+
+
+def test_selected_part_mapping_errors_are_rejected():
+    design = volt.Design("bad-part")
+    r1 = design.R(ref="R1")
+
+    try:
+        r1.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-07330RL",
+            package="0603",
+            footprint=("Resistor_SMD", "R_0603_1608Metric"),
+            pin_pads={1: "1"},
+        )
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("missing pin mapping should be rejected")
+
+    try:
+        r1.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-07330RL",
+            package="0603",
+            footprint=("Resistor_SMD", "R_0603_1608Metric"),
+            pin_pads={1: "1", 2: "1"},
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("duplicate pad mapping should be rejected")
+
+    try:
+        r1.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-07330RL",
+            package="0603",
+            footprint=("Resistor_SMD", "R_0603_1608Metric"),
+            pin_pads={1: "1", "1": "2"},
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("duplicate logical pin mapping should be rejected")
+
+    try:
+        r1.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-07330RL",
+            package="0603",
+            footprint=("Resistor_SMD", "R_0603_1608Metric"),
+            pin_pads={1: "1", "BOGUS": "2"},
+        )
+    except IndexError:
+        pass
+    else:
+        raise AssertionError("unknown pin mapping should be rejected")
+
+
+def test_invalid_selected_part_rating_does_not_select_part():
+    design = volt.Design("bad-rating")
+
+    try:
+        design.C(ref="C1", voltage_rating=float("inf"))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("non-finite capacitor voltage rating should be rejected")
+
+    capacitor = json.loads(design.to_json())["components"][0]
+    assert capacitor["reference"] == "C1"
+    assert "selected_physical_part" not in capacitor
+
+    r1 = design.R(ref="R1")
+
+    try:
+        r1.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-07330RL",
+            package="0603",
+            footprint=("Resistor_SMD", "R_0603_1608Metric"),
+            pin_pads={1: "1", 2: "2"},
+            voltage_rating=float("inf"),
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("non-finite selected-part rating should be rejected")
+
+    circuit = json.loads(design.to_json())
+    assert "selected_physical_part" not in circuit["components"][0]
+
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")
@@ -125,4 +316,8 @@ if __name__ == "__main__":
     test_led_circuit_validates()
     test_natural_electrical_values_serialize_as_kernel_attributes()
     test_custom_component_definitions_are_kernel_owned()
+    test_component_selected_part_serializes()
+    test_custom_component_selected_part_accepts_named_pin_mappings()
+    test_selected_part_mapping_errors_are_rejected()
+    test_invalid_selected_part_rating_does_not_select_part()
     test_diagnostics_are_inspectable()

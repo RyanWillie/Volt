@@ -205,16 +205,71 @@ opamp = d.define_component(
 )
 
 u1 = d.instantiate(opamp, ref="U1")
+vout = d.net("VOUT")
 vout += u1["OUT"]
 ```
 
 `PinSpec` data lowers into kernel-owned pin definitions. `ComponentDefinition` and
 `Component` Python objects are handles over kernel IDs; the Python layer does not own the
-component model. Pin roles use the same concepts as the logical format, written naturally in lowercase:
-`passive`, `input`/`digital_input`, `output`/`digital_output`, `analog_input`,
-`analog_output`, `bidirectional`, `power`/`power_input`, `power_output`, `ground`, and
-`no_connect`. Connection requirements
-are `required`, `optional`, and `must_not_connect`.
+component model. Pin roles use the same concepts as the logical format, written naturally
+in lowercase: `passive`, `input`/`digital_input`, `output`/`digital_output`,
+`analog_input`, `analog_output`, `bidirectional`, `power`/`power_input`, `power_output`,
+`ground`, and `no_connect`. Connection requirements are `required`, `optional`, and
+`must_not_connect`.
+
+## Selected Physical Parts
+
+Component definitions describe the logical shape of a device. Component instances are
+concrete occurrences in the design. A selected physical part attaches the implementation
+choice for one component instance:
+
+```python
+r1 = d.R(resistance=330, tolerance=0.01, ref="R1")
+
+r1.select_part(
+    manufacturer="Yageo",
+    part_number="RC0603FR-07330RL",
+    package="0603",
+    footprint=("Resistor_SMD", "R_0603_1608Metric"),
+    pin_pads={
+        1: "1",
+        2: "2",
+    },
+    properties={"supplier": "Digi-Key"},
+    voltage_rating=75,
+    power_rating=0.1,
+)
+```
+
+For custom components, `pin_pads` may use pin names:
+
+```python
+u1.select_part(
+    manufacturer="Texas Instruments",
+    part_number="TLV9002IDR",
+    package="SOIC-8",
+    footprint=("Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"),
+    pin_pads={
+        "OUT": "1",
+        "IN-": "2",
+        "IN+": "3",
+        "V-": "4",
+        "V+": "8",
+    },
+    voltage_rating=5.5,
+)
+```
+
+`select_part()` lowers into the kernel's `PhysicalPart` selection for that component. The
+manufacturer identity, package, footprint, pin-pad mapping, properties, and selected-part
+ratings serialize through logical JSON as `selected_physical_part`. The kernel rejects
+structurally invalid mappings, including missing logical pins, unknown pins, duplicate
+logical pins, and duplicate physical pads.
+
+Selected-part manufacturer information is not only BOM metadata. It is the selected
+physical implementation record that owns package, footprint, logical-pin-to-pad mapping,
+and selected-part electrical ratings. `voltage_rating` and `power_rating` lower into
+typed selected-part electrical attributes.
 
 ## Composition
 
