@@ -33,29 +33,35 @@ Remaining work:
 - publish generated API docs
 - continue improving packaging and release ergonomics
 
-### Programmatic Authoring Layer
+### Logical Circuit Kernel
 
-Goal: provide an ergonomic logical-circuit authoring layer without weakening kernel
-invariants.
+Goal: finish the canonical logical circuit foundation before projection or simulation
+layers build on it.
 
 Planned work:
 
 - add a minimal component factory/library layer
 - add reference designator allocation
 - add ergonomic net connection helpers
-- plan the Python bindings boundary
-- implement a first Python logical-authoring MVP
 
 The authoring facade should remain a convenience layer over `Circuit`; it must not become
 a second source of truth.
 
-### Serialization And Round-Trip Loading
+### Typed Electrical Semantics
 
-Goal: make the logical circuit model deterministic, inspectable, and portable.
+Goal: make electrical meaning typed and kernel-owned before expanding ERC.
 
-Completed work includes the v1 format spec, deterministic writer, structural reader,
-schema compatibility policy, and golden fixtures. Future work may add migrations and more
-fixture coverage as the model grows.
+Planned work:
+
+- design quantities, units, ranges, and tolerances
+- move common component values and ratings toward typed fields
+- define richer pin electrical specs beyond the current broad `PinRole`
+- keep the circuit model limited to design-defining inputs and constraints
+- update serialization once the C++ model exists
+- define natural Python authoring syntax over typed kernel-owned values
+
+This is the required foundation for richer ERC and future simulation readiness. See
+[typed-electrical-semantics.md](docs/typed-electrical-semantics.md).
 
 ### Logical ERC And Constraints
 
@@ -65,9 +71,24 @@ Planned work:
 
 - create a diagnostic code catalog
 - validate selected part compatibility as diagnostics where appropriate
-- add basic power and ground sanity checks
-- add metadata-aware ERC checks
+- add typed-semantics-aware power and ground sanity checks
+- add rating, domain, and drive-compatibility checks after typed semantics exist
 - add validation pass composition API
+
+Do not expand ERC as ad hoc checks over today's broad `PinRole` model. Basic
+power/ground checks should wait until the typed electrical semantics design lands.
+
+### Python Authoring Refinements
+
+Goal: keep Python expressive while preserving the C++ kernel as the owner of EDA meaning.
+
+Planned work:
+
+- plan the Python bindings boundary
+- implement and refine the first Python logical-authoring MVP
+- add typed quantity/value authoring once the kernel model exists
+- keep Python-authored simulation behavior behind kernel-owned model contracts when that
+  layer is eventually designed
 
 ### Schematic Projection And Rendering
 
@@ -83,6 +104,22 @@ Planned work:
 - then add Python schematic drawing bindings/syntax
 - then add a first simple schematic renderer/export
 
+### Simulation Foundation
+
+Goal: become simulation-ready without choosing a simulation-specific architecture yet.
+
+Planned work:
+
+- define kernel-owned simulation model contracts after typed electrical semantics and ERC
+  are stable
+- define units, state/result data, scheduling semantics, and validation boundaries before
+  any backend work
+- treat SPICE as a possible future backend/export adapter, not Volt's canonical
+  simulation architecture
+
+No simulation engine, SPICE integration, or solver API is planned before those contracts
+exist.
+
 ### PCB Foundation
 
 Goal: defer board-specific modeling until logical and schematic foundations are stable.
@@ -92,6 +129,15 @@ Planned work:
 - draft PCB kernel architecture
 - design footprint geometry primitives
 - implement an initial board model
+
+### Serialization And Round-Trip Loading
+
+Goal: make each kernel-owned model layer deterministic, inspectable, and portable.
+
+Completed work includes the v1 logical circuit format spec, deterministic writer,
+structural reader, schema compatibility policy, and golden fixtures. Future work should
+add typed electrical semantics, projection data, and migrations only after the owning C++
+model exists.
 
 ## Design Rules For Roadmap Work
 

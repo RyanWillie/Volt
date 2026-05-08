@@ -226,6 +226,29 @@ Typed model fields still carry structural meaning. For example, component-to-def
 links, selected-part references, package references, footprint references, and pin/pad
 mappings should not be hidden inside generic properties.
 
+## Typed Electrical Semantics
+
+Volt should become simulation-ready without becoming simulation-specific yet. That means
+core electrical meaning must become kernel-owned typed data before ERC expands into
+voltage, current, rating, and power-domain checks.
+
+`PropertyMap` remains useful for arbitrary metadata. Electrical facts that affect
+validation, persistence, Python bindings, or future simulation contracts should move
+toward typed fields owned by the C++ kernel:
+
+- quantities and units such as `330 ohm`, `3.3 V`, `100 nF`, and `0.1 W`
+- design-defining component values and physical-part ratings
+- richer pin electrical specs beyond the current broad `PinRole`
+- declared voltage domains, accepted/produced ranges, and drive behavior
+
+Do not store every electrical value that can be derived or simulated. Runtime quantities
+such as calculated current, node voltage, charge, temperature, or power dissipation belong
+in future analysis results unless they are explicit design constraints.
+
+Future ERC should consume those typed semantics instead of accumulating ad hoc checks over
+labels or broad pin roles. The detailed trajectory is captured in
+[typed-electrical-semantics.md](typed-electrical-semantics.md).
+
 ## Physical Part Selection
 
 Logical component definitions describe electrical shape. Physical part selection
@@ -408,7 +431,7 @@ current model:
 These findings are bad circuit design, not invalid kernel state. More domain-specific
 ERC, such as voltage compatibility, missing pull-ups, current limiting, power-domain
 checking, and component-specific rules, should be added only after the model contains the
-data needed to express those checks.
+typed kernel-owned data needed to express those checks.
 
 ## Mutation Boundary
 

@@ -29,13 +29,30 @@ APIs.
 Examples:
 
 - `net += pin` lowers to a kernel connectivity mutation.
-- `design.R("10k")` lowers to kernel component definition and instance data.
+- `design.R(resistance=10_000)` lowers to kernel component definition and instance data.
 - `design.validate()` returns kernel-produced diagnostics.
 - `design.write("board.volt.json")` serializes kernel-owned circuit data.
 
 Python should not contain Python-only EDA meaning. If removing the Python runtime would
 make a design impossible to load, validate, serialize, or inspect, the data belongs in the
 kernel first.
+
+This also applies to typed electrical semantics. The public Python API should prefer
+natural component-specific keyword arguments over requiring users to multiply by Volt unit
+objects:
+
+```python
+r1 = d.R(resistance=330, tolerance=0.01, ref="R1")
+c1 = d.C(capacitance=100, voltage_rating=16, ref="C1")
+vdd = d.net("VDD", voltage=3.3)
+```
+
+Python helpers may use documented contextual defaults for plain numbers, such as ohms for
+`resistance` or volts for `voltage`. Those defaults are an authoring contract, not kernel
+unit guessing: helpers must lower values into kernel-owned quantities, ratings, pin
+specs, or constraints before they affect ERC or persistence. Explicit unit objects or
+string parsers can still exist for uncommon units and importers, but they should not be
+required for ordinary authoring.
 
 ## Binding Boundary
 
@@ -106,8 +123,8 @@ vin = d.net("VIN", kind="power")
 vout = d.net("VOUT")
 gnd = d.net("GND", kind="ground")
 
-r_top = d.R("10k")
-r_bottom = d.R("20k")
+r_top = d.R(resistance=10_000)
+r_bottom = d.R(resistance=20_000)
 
 vin += r_top[1]
 vout += r_top[2], r_bottom[1]
@@ -158,8 +175,10 @@ rules, or serialization semantics.
 
 Catalog helpers such as `Design.R()`, `Design.C()`, `Design.LED()`, and
 `Design.connector_1x02()` define reusable kernel component definitions lazily per design
-and instantiate concrete components through the C++ mutation API. Component values are
-stored as kernel component properties.
+and instantiate concrete components through the C++ mutation API. In the current MVP,
+component values are stored as kernel component properties. Once typed electrical
+semantics exist, helpers should prefer natural keyword arguments and lower plain numbers
+into typed kernel quantities.
 
 Diagnostics are inspectable Python objects created from kernel-produced diagnostic data:
 
@@ -174,9 +193,9 @@ Reusable circuit construction should start as ordinary Python functions that rec
 `Design` and explicit ports:
 
 ```python
-def voltage_divider(d, vin, vout, gnd, top="10k", bottom="20k"):
-    r_top = d.R(top)
-    r_bottom = d.R(bottom)
+def voltage_divider(d, vin, vout, gnd, top=10_000, bottom=20_000):
+    r_top = d.R(resistance=top)
+    r_bottom = d.R(resistance=bottom)
 
     vin += r_top[1]
     vout += r_top[2], r_bottom[1]
@@ -223,6 +242,17 @@ for diagnostic in report:
 Examples include unconnected required pins, single-pin nets, incompatible output drivers,
 and future ERC findings. Python may format diagnostics, but validation logic belongs in
 the kernel.
+
+## Future Simulation Authoring
+
+Volt should become simulation-ready without making Python the owner of simulation meaning.
+Python may eventually let users author behavioral models, but those behaviors must attach
+to kernel-owned model contracts with typed parameters, units, scheduling semantics,
+state/result data, and validation.
+
+SPICE should be treated as a possible future backend or export adapter, not the canonical
+Python API shape. No Python simulation engine, SPICE integration, or solver API should be
+added before the C++ kernel owns the model contracts.
 
 ## Future Projection Layers
 
