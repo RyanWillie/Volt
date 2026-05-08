@@ -45,3 +45,7 @@ TEST_CASE("Golden diagnostic fixture round-trips and preserves connectivity") {
     CHECK_FALSE(report.empty());
     check_fixture_round_trips("single_pin_net.volt.json");
 }
+
+TEST_CASE("Golden typed electrical attribute fixture round-trips") {
+    check_fixture_round_trips("typed_electrical_attributes.volt.json");
+}
