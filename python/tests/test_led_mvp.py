@@ -1,3 +1,5 @@
+import json
+
 import volt
 
 
@@ -25,6 +27,51 @@ def test_led_circuit_validates():
     assert '"reference": "R1"' in json_text
 
 
+def test_natural_electrical_values_serialize_as_kernel_attributes():
+    design = volt.Design("typed")
+
+    design.R(resistance=330, tolerance=0.01, ref="R1")
+    design.C(capacitance=100e-9, voltage_rating=16, ref="C1")
+    design.net("VDD", kind="power", voltage=3.3)
+
+    circuit = json.loads(design.to_json())
+    resistor = next(
+        component for component in circuit["components"] if component["reference"] == "R1"
+    )
+    capacitor = next(
+        component for component in circuit["components"] if component["reference"] == "C1"
+    )
+    vdd = next(net for net in circuit["nets"] if net["name"] == "VDD")
+
+    assert resistor["electrical_attributes"]["resistance"] == {
+        "type": "quantity",
+        "dimension": "resistance",
+        "value": 330.0,
+    }
+    assert resistor["electrical_attributes"]["tolerance"] == {
+        "type": "tolerance",
+        "mode": "percent",
+        "dimension": "ratio",
+        "minus": 0.01,
+        "plus": 0.01,
+    }
+    assert capacitor["electrical_attributes"]["capacitance"] == {
+        "type": "quantity",
+        "dimension": "capacitance",
+        "value": 100e-9,
+    }
+    assert capacitor["selected_physical_part"]["electrical_attributes"]["voltage_rating"] == {
+        "type": "quantity",
+        "dimension": "voltage",
+        "value": 16.0,
+    }
+    assert vdd["electrical_attributes"]["voltage"] == {
+        "type": "quantity",
+        "dimension": "voltage",
+        "value": 3.3,
+    }
+
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")
@@ -39,4 +86,5 @@ def test_diagnostics_are_inspectable():
 
 if __name__ == "__main__":
     test_led_circuit_validates()
+    test_natural_electrical_values_serialize_as_kernel_attributes()
     test_diagnostics_are_inspectable()

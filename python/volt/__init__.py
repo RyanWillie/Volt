@@ -124,20 +124,58 @@ class Design:
         self._circuit = _volt.Circuit()
         self._definitions: dict[str, int] = {}
 
-    def net(self, name: str, *, kind: str = "signal") -> Net:
-        return Net(self, self._circuit.add_net(name, kind), name)
+    def net(self, name: str, *, kind: str = "signal", voltage: float | None = None) -> Net:
+        net = Net(self, self._circuit.add_net(name, kind), name)
+        if voltage is not None:
+            self._circuit.set_net_quantity(net.index, "voltage", "voltage", _number(voltage))
+        return net
 
-    def R(self, value: str | None = None, *, ref: str | None = None) -> Component:
+    def R(
+        self,
+        value: str | None = None,
+        *,
+        resistance: float | None = None,
+        tolerance: float | None = None,
+        ref: str | None = None,
+    ) -> Component:
         properties = {}
         if value is not None:
             properties["value"] = value
-        return self._instantiate("resistor", self._circuit.define_resistor, "R", ref, properties)
+        component = self._instantiate(
+            "resistor", self._circuit.define_resistor, "R", ref, properties
+        )
+        if resistance is not None:
+            self._circuit.set_component_quantity(
+                component.index, "resistance", "resistance", _number(resistance)
+            )
+        if tolerance is not None:
+            self._circuit.set_component_percent_tolerance(component.index, _number(tolerance))
+        return component
 
-    def C(self, value: str | None = None, *, ref: str | None = None) -> Component:
+    def C(
+        self,
+        value: str | None = None,
+        *,
+        capacitance: float | None = None,
+        voltage_rating: float | None = None,
+        ref: str | None = None,
+    ) -> Component:
         properties = {}
         if value is not None:
             properties["value"] = value
-        return self._instantiate("capacitor", self._circuit.define_capacitor, "C", ref, properties)
+        component = self._instantiate(
+            "capacitor", self._circuit.define_capacitor, "C", ref, properties
+        )
+        if capacitance is not None:
+            self._circuit.set_component_quantity(
+                component.index, "capacitance", "capacitance", _number(capacitance)
+            )
+        if voltage_rating is not None:
+            self._circuit.select_generic_physical_part(component.index)
+            self._circuit.set_selected_part_quantity(
+                component.index, "voltage_rating", "voltage", _number(voltage_rating)
+            )
+        return component
 
     def LED(self, *, ref: str | None = None) -> Component:
         return self._instantiate("led", self._circuit.define_led, "D", ref, {})
@@ -168,6 +206,14 @@ class Design:
         else:
             component = self._circuit.instantiate_ref(definition, ref, properties)
         return Component(self, component)
+
+
+def _number(value: float) -> float:
+    if isinstance(value, bool):
+        raise TypeError("Electrical attribute values must be numbers")
+    if not isinstance(value, (int, float)):
+        raise TypeError("Electrical attribute values must be numbers")
+    return float(value)
 
 
 def _flatten_pins(values):
