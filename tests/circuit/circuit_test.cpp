@@ -8,6 +8,7 @@
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/circuit/parts.hpp>
+#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 
 namespace {
@@ -228,6 +229,36 @@ TEST_CASE("Circuit assigns and reads a selected physical part for a component") 
     CHECK(selected_part->footprint().name() == "R_0603_1608Metric");
 }
 
+TEST_CASE("Circuit sets typed electrical attributes on selected physical parts") {
+    volt::Circuit circuit;
+    const auto first_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto second_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    circuit.select_physical_part(component, make_resistor_physical_part(first_pin, second_pin));
+    const auto voltage_rating = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"voltage_rating"},
+        volt::ElectricalAttributeOwner::SelectedPart,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Voltage,
+    };
+
+    circuit.set_selected_part_electrical_attribute(
+        component, voltage_rating,
+        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 75.0}});
+
+    REQUIRE(circuit.selected_physical_part(component).has_value());
+    CHECK(circuit.selected_physical_part(component)
+              .value()
+              .electrical_attributes()
+              .get(volt::ElectricalAttributeName{"voltage_rating"})
+              .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 75.0});
+}
+
 TEST_CASE("Circuit sets component instance properties through an explicit mutation API") {
     volt::Circuit circuit;
     const auto pin_def =
@@ -248,6 +279,31 @@ TEST_CASE("Circuit sets component instance properties through an explicit mutati
           volt::PropertyValue{true});
 }
 
+TEST_CASE("Circuit sets typed electrical attributes on component instances") {
+    volt::Circuit circuit;
+    const auto pin_def =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    const auto resistance = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"resistance"},
+        volt::ElectricalAttributeOwner::ComponentInstance,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Resistance,
+    };
+
+    circuit.set_component_electrical_attribute(
+        component, resistance,
+        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}});
+
+    CHECK(circuit.component(component)
+              .electrical_attributes()
+              .get(volt::ElectricalAttributeName{"resistance"})
+              .as_quantity() == volt::Quantity{volt::UnitDimension::Resistance, 330.0});
+}
+
 TEST_CASE("Circuit rejects component property mutation for missing components") {
     volt::Circuit circuit;
 
@@ -255,6 +311,44 @@ TEST_CASE("Circuit rejects component property mutation for missing components") 
                                                    volt::PropertyKey{"value"},
                                                    volt::PropertyValue{"VCC"}),
                     std::out_of_range);
+}
+
+TEST_CASE("Circuit rejects incompatible component electrical attributes") {
+    volt::Circuit circuit;
+    const auto pin_def =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    const auto resistance = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"resistance"},
+        volt::ElectricalAttributeOwner::ComponentInstance,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Resistance,
+    };
+    const auto selected_part_rating = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"voltage_rating"},
+        volt::ElectricalAttributeOwner::SelectedPart,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Voltage,
+    };
+
+    CHECK_THROWS_AS(
+        circuit.set_component_electrical_attribute(
+            component, resistance,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        circuit.set_component_electrical_attribute(
+            component, selected_part_rating,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 75.0}}),
+        std::logic_error);
+    CHECK_THROWS_AS(
+        circuit.set_component_electrical_attribute(
+            volt::ComponentId{99}, resistance,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}}),
+        std::out_of_range);
 }
 
 TEST_CASE("Circuit rejects selected-part operations for missing components") {
@@ -268,6 +362,49 @@ TEST_CASE("Circuit rejects selected-part operations for missing components") {
                         volt::ComponentId{99}, make_resistor_physical_part(first_pin, second_pin)),
                     std::out_of_range);
     CHECK_THROWS_AS(circuit.selected_physical_part(volt::ComponentId{99}), std::out_of_range);
+}
+
+TEST_CASE("Circuit rejects incompatible selected part electrical attributes") {
+    volt::Circuit circuit;
+    const auto first_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto second_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    const auto voltage_rating = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"voltage_rating"},
+        volt::ElectricalAttributeOwner::SelectedPart,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Voltage,
+    };
+    const auto component_resistance = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"resistance"},
+        volt::ElectricalAttributeOwner::ComponentInstance,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Resistance,
+    };
+
+    CHECK_THROWS_AS(
+        circuit.set_selected_part_electrical_attribute(
+            component, voltage_rating,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 75.0}}),
+        std::logic_error);
+
+    circuit.select_physical_part(component, make_resistor_physical_part(first_pin, second_pin));
+
+    CHECK_THROWS_AS(
+        circuit.set_selected_part_electrical_attribute(
+            component, voltage_rating,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Current, 1.0}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        circuit.set_selected_part_electrical_attribute(
+            component, component_resistance,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}}),
+        std::logic_error);
 }
 
 TEST_CASE("Circuit rejects selected parts with mappings outside the component definition") {

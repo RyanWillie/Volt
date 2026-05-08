@@ -125,6 +125,15 @@ class Circuit {
         components_.get(component).set_property(std::move(key), std::move(value));
     }
 
+    /** Set or replace a typed electrical attribute on an existing component instance. */
+    void set_component_electrical_attribute(ComponentId component,
+                                            const ElectricalAttributeSpec &spec,
+                                            ElectricalAttributeValue value) {
+        require_component(component);
+        require_attribute_owner(spec, ElectricalAttributeOwner::ComponentInstance);
+        components_.get(component).set_electrical_attribute(spec, std::move(value));
+    }
+
     /** Assign a selected physical implementation to an existing component instance. */
     void select_physical_part(ComponentId component, PhysicalPart physical_part) {
         require_component(component);
@@ -132,6 +141,15 @@ class Circuit {
                                                            physical_part);
 
         components_.get(component).select_physical_part(std::move(physical_part));
+    }
+
+    /** Set or replace a typed electrical attribute on a component's selected physical part. */
+    void set_selected_part_electrical_attribute(ComponentId component,
+                                                const ElectricalAttributeSpec &spec,
+                                                ElectricalAttributeValue value) {
+        require_component(component);
+        require_attribute_owner(spec, ElectricalAttributeOwner::SelectedPart);
+        components_.get(component).set_selected_part_electrical_attribute(spec, std::move(value));
     }
 
     /** Return the selected physical implementation for a component, if one has been assigned. */
@@ -281,6 +299,13 @@ class Circuit {
     void require_net(NetId net) const {
         if (!nets_.contains(net)) {
             throw std::out_of_range{"Net ID does not belong to this circuit"};
+        }
+    }
+
+    static void require_attribute_owner(const ElectricalAttributeSpec &spec,
+                                        ElectricalAttributeOwner expected) {
+        if (spec.owner() != expected) {
+            throw std::logic_error{"Electrical attribute spec owner is not valid here"};
         }
     }
 

@@ -37,6 +37,48 @@ TEST_CASE("Logical circuit reader preserves component definition source metadata
           fixture["component_definitions"][1]["source"]);
 }
 
+TEST_CASE("Logical circuit reader preserves typed electrical attributes") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["components"][1]["electrical_attributes"] = {
+        {"resistance", {{"type", "quantity"}, {"dimension", "resistance"}, {"value", 330.0}}},
+        {"tolerance",
+         {{"type", "tolerance"},
+          {"mode", "percent"},
+          {"dimension", "ratio"},
+          {"minus", 0.01},
+          {"plus", 0.01}}},
+    };
+    fixture["components"][1]["selected_physical_part"]["electrical_attributes"] = {
+        {"voltage_rating", {{"type", "quantity"}, {"dimension", "voltage"}, {"value", 75.0}}},
+    };
+
+    const auto circuit = volt::io::read_logical_circuit(fixture);
+    const auto &component = circuit.component(volt::ComponentId{1});
+    const auto &selected_part = circuit.selected_physical_part(volt::ComponentId{1}).value();
+
+    CHECK(component.electrical_attributes()
+              .get(volt::ElectricalAttributeName{"resistance"})
+              .as_quantity() == volt::Quantity{volt::UnitDimension::Resistance, 330.0});
+    CHECK(component.electrical_attributes()
+              .get(volt::ElectricalAttributeName{"tolerance"})
+              .as_tolerance()
+              .plus() == volt::Quantity{volt::UnitDimension::Ratio, 0.01});
+    CHECK(selected_part.electrical_attributes()
+              .get(volt::ElectricalAttributeName{"voltage_rating"})
+              .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 75.0});
+}
+
+TEST_CASE("Logical circuit reader defaults missing typed electrical attributes to empty maps") {
+    const auto circuit = volt::io::read_logical_circuit_text(read_fixture("led_circuit.volt.json"));
+
+    CHECK(circuit.component(volt::ComponentId{1}).electrical_attributes().empty());
+    REQUIRE(circuit.selected_physical_part(volt::ComponentId{1}).has_value());
+    CHECK(circuit.selected_physical_part(volt::ComponentId{1})
+              .value()
+              .electrical_attributes()
+              .empty());
+}
+
 TEST_CASE("Logical circuit reader rejects duplicate net pin references") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["nets"][0]["pins"].push_back("pin:0");

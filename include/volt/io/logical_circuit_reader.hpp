@@ -139,6 +139,44 @@ class LogicalCircuitReader {
         throw std::logic_error{"Invalid NetKind value"};
     }
 
+    [[nodiscard]] static UnitDimension unit_dimension(const std::string &value) {
+        if (value == "resistance")
+            return UnitDimension::Resistance;
+        if (value == "capacitance")
+            return UnitDimension::Capacitance;
+        if (value == "inductance")
+            return UnitDimension::Inductance;
+        if (value == "voltage")
+            return UnitDimension::Voltage;
+        if (value == "current")
+            return UnitDimension::Current;
+        if (value == "power")
+            return UnitDimension::Power;
+        if (value == "frequency")
+            return UnitDimension::Frequency;
+        if (value == "time")
+            return UnitDimension::Time;
+        if (value == "temperature")
+            return UnitDimension::Temperature;
+        if (value == "ratio")
+            return UnitDimension::Ratio;
+        throw std::logic_error{"Invalid unit dimension value"};
+    }
+
+    [[nodiscard]] static ToleranceMode tolerance_mode(const std::string &value) {
+        if (value == "absolute")
+            return ToleranceMode::Absolute;
+        if (value == "percent")
+            return ToleranceMode::Percent;
+        throw std::logic_error{"Invalid tolerance mode value"};
+    }
+
+    [[nodiscard]] static double number_field(const nlohmann::json &object, const char *name) {
+        const auto &value = field(object, name);
+        require(value.is_number(), std::string{"Expected number field: "} + name);
+        return value.get<double>();
+    }
+
     [[nodiscard]] static PropertyValue property_value(const nlohmann::json &object) {
         require(object.is_object(), "Property value must be an object");
         const auto type = string_field(object, "type");
@@ -169,6 +207,75 @@ class LogicalCircuitReader {
             result.set(PropertyKey{key}, property_value(value));
         }
         return result;
+    }
+
+    [[nodiscard]] static ElectricalAttributeValue
+    electrical_attribute_value(const nlohmann::json &object) {
+        require(object.is_object(), "Electrical attribute value must be an object");
+        const auto type = string_field(object, "type");
+        const auto dimension = unit_dimension(string_field(object, "dimension"));
+        if (type == "quantity") {
+            return ElectricalAttributeValue{Quantity{dimension, number_field(object, "value")}};
+        }
+        if (type == "tolerance") {
+            const auto mode = tolerance_mode(string_field(object, "mode"));
+            if (mode == ToleranceMode::Percent) {
+                require(dimension == UnitDimension::Ratio,
+                        "Percent tolerance dimension must be ratio");
+                return ElectricalAttributeValue{Tolerance::percent(number_field(object, "minus"),
+                                                                   number_field(object, "plus"))};
+            }
+
+            return ElectricalAttributeValue{
+                Tolerance::absolute(Quantity{dimension, number_field(object, "minus")},
+                                    Quantity{dimension, number_field(object, "plus")})};
+        }
+        if (type == "range") {
+            const auto minimum = object.find("minimum");
+            const auto maximum = object.find("maximum");
+            require(minimum != object.end() || maximum != object.end(),
+                    "Quantity range must contain at least one bound");
+            if (minimum != object.end()) {
+                require(minimum->is_number(), "Quantity range minimum must be a number");
+            }
+            if (maximum != object.end()) {
+                require(maximum->is_number(), "Quantity range maximum must be a number");
+            }
+            if (minimum != object.end() && maximum != object.end()) {
+                return ElectricalAttributeValue{
+                    QuantityRange::bounded(Quantity{dimension, minimum->get<double>()},
+                                           Quantity{dimension, maximum->get<double>()})};
+            }
+            if (minimum != object.end()) {
+                return ElectricalAttributeValue{
+                    QuantityRange::minimum(Quantity{dimension, minimum->get<double>()})};
+            }
+            return ElectricalAttributeValue{
+                QuantityRange::maximum(Quantity{dimension, maximum->get<double>()})};
+        }
+        throw std::logic_error{"Invalid electrical attribute value type"};
+    }
+
+    void read_electrical_attributes(const nlohmann::json &object, ComponentId component,
+                                    ElectricalAttributeOwner owner) {
+        const auto it = object.find("electrical_attributes");
+        if (it == object.end()) {
+            return;
+        }
+        require(it->is_object(), "Electrical attributes must be an object");
+        for (const auto &[name, value] : it->items()) {
+            const auto attribute = electrical_attribute_value(value);
+            const auto spec = ElectricalAttributeSpec{ElectricalAttributeName{name}, owner,
+                                                      ElectricalAttributeKind::DesignInput,
+                                                      attribute.dimension()};
+            if (owner == ElectricalAttributeOwner::ComponentInstance) {
+                circuit_.set_component_electrical_attribute(component, spec, attribute);
+            } else if (owner == ElectricalAttributeOwner::SelectedPart) {
+                circuit_.set_selected_part_electrical_attribute(component, spec, attribute);
+            } else {
+                throw std::logic_error{"Unsupported electrical attribute owner while reading"};
+            }
+        }
     }
 
     [[nodiscard]] static std::optional<DefinitionSource>
@@ -223,10 +330,12 @@ class LogicalCircuitReader {
             const auto id = local_id(component, "component:", seen);
             const auto definition =
                 resolve(component_def_ids_, string_field(component, "definition"));
-            component_ids_.emplace(
-                id, circuit_.add_component(ComponentInstance{
-                        definition, ReferenceDesignator{string_field(component, "reference")},
-                        properties(field(component, "properties"))}));
+            const auto component_id = circuit_.add_component(ComponentInstance{
+                definition, ReferenceDesignator{string_field(component, "reference")},
+                properties(field(component, "properties"))});
+            component_ids_.emplace(id, component_id);
+            read_electrical_attributes(component, component_id,
+                                       ElectricalAttributeOwner::ComponentInstance);
             if (const auto it = component.find("selected_physical_part"); it != component.end()) {
                 selected_parts_.emplace_back(id, *it);
             }
@@ -282,8 +391,9 @@ class LogicalCircuitReader {
 
     void read_selected_physical_parts() {
         for (const auto &[component_id, part] : selected_parts_) {
-            circuit_.select_physical_part(resolve(component_ids_, component_id),
-                                          physical_part(part));
+            const auto component = resolve(component_ids_, component_id);
+            circuit_.select_physical_part(component, physical_part(part));
+            read_electrical_attributes(part, component, ElectricalAttributeOwner::SelectedPart);
         }
     }
 

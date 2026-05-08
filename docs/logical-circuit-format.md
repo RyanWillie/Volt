@@ -89,6 +89,8 @@ version:
 - preserve loaded local IDs when possible
 - generate missing local IDs deterministically from table order
 - emit properties in lexicographic key order
+- emit electrical attributes in lexicographic key order
+- omit empty `electrical_attributes` objects
 - preserve net pin order
 - preserve selected-part pin/pad mapping order
 - use the enum spellings shown in this document
@@ -108,6 +110,48 @@ version:
 ```
 
 Valid property types are `string`, `boolean`, `integer`, and `number`.
+
+## Typed Electrical Attributes
+
+Components and selected physical parts may carry optional `electrical_attributes`. The
+field is absent when no typed electrical attributes are present. Attribute names are
+stable strings chosen by the kernel/catalog contract for that owner, and values are
+dimensioned payloads:
+
+```json
+{
+  "resistance": { "type": "quantity", "dimension": "resistance", "value": 330 },
+  "tolerance": { "type": "tolerance", "mode": "percent", "dimension": "ratio", "minus": 0.01, "plus": 0.01 },
+  "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 75 },
+  "input_voltage_range": { "type": "range", "dimension": "voltage", "minimum": 3, "maximum": 5.5 }
+}
+```
+
+Valid dimensions are:
+
+- `resistance`
+- `capacitance`
+- `inductance`
+- `voltage`
+- `current`
+- `power`
+- `frequency`
+- `time`
+- `temperature`
+- `ratio`
+
+Valid value encodings are:
+
+- `quantity`: requires `dimension` and finite JSON-number `value`
+- `tolerance`: requires `mode`, `dimension`, finite non-negative `minus`, and finite
+  non-negative `plus`; valid modes are `absolute` and `percent`; percent tolerances use
+  `ratio`
+- `range`: requires `dimension` and at least one finite JSON-number bound, `minimum` or
+  `maximum`; when both are present, `minimum` must not exceed `maximum`
+
+The logical file persists design-bearing typed values, not Python authoring syntax,
+default authoring units, UI labels, or catalog spec metadata. A missing
+`electrical_attributes` field loads as an empty typed attribute map.
 
 ## Pin Definitions
 
@@ -172,6 +216,9 @@ Components are concrete design occurrences:
   "definition": "component_def:0",
   "reference": "D1",
   "properties": {},
+  "electrical_attributes": {
+    "forward_voltage": { "type": "quantity", "dimension": "voltage", "value": 2 }
+  },
   "selected_physical_part": {
     "manufacturer_part": {
       "manufacturer": "Lite-On",
@@ -186,7 +233,10 @@ Components are concrete design occurrences:
       { "pin": "pin_def:1", "pad": "1" },
       { "pin": "pin_def:0", "pad": "2" }
     ],
-    "properties": {}
+    "properties": {},
+    "electrical_attributes": {
+      "current_rating": { "type": "quantity", "dimension": "current", "value": 0.02 }
+    }
   }
 }
 ```
@@ -259,6 +309,7 @@ including:
 - empty structural strings such as names, reference designators, package labels, footprint
   labels, manufacturer names, part numbers, and pad labels
 - invalid enum or property type spellings
+- invalid electrical attribute value types, dimensions, modes, numbers, or ranges
 
 Design-quality issues remain diagnostics, not reader failures, when the structure is
 valid. Examples include unconnected required pins, single-pin nets, incompatible driver

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <volt/circuit/parts.hpp>
+#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
@@ -96,6 +97,7 @@ TEST_CASE("PhysicalPart defaults to empty properties") {
     };
 
     CHECK(physical_part.properties().empty());
+    CHECK(physical_part.electrical_attributes().empty());
 }
 
 TEST_CASE("PhysicalPart rejects empty and ambiguous pin-pad mappings") {

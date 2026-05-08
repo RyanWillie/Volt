@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <volt/circuit/parts.hpp>
+#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
@@ -54,6 +55,11 @@ class ComponentInstance {
     /** Return extensible metadata properties for this component instance. */
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
+    /** Return typed electrical attributes for this component instance. */
+    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept {
+        return electrical_attributes_;
+    }
+
     /** Return the selected physical implementation for this component, if assigned. */
     [[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part() const noexcept {
         return selected_physical_part_;
@@ -66,13 +72,28 @@ class ComponentInstance {
         properties_.set(std::move(key), std::move(value));
     }
 
+    void set_electrical_attribute(const ElectricalAttributeSpec &spec,
+                                  ElectricalAttributeValue value) {
+        electrical_attributes_.set(spec, std::move(value));
+    }
+
     void select_physical_part(PhysicalPart physical_part) {
         selected_physical_part_ = std::move(physical_part);
+    }
+
+    void set_selected_part_electrical_attribute(const ElectricalAttributeSpec &spec,
+                                                ElectricalAttributeValue value) {
+        if (!selected_physical_part_.has_value()) {
+            throw std::logic_error{"Component has no selected physical part"};
+        }
+
+        selected_physical_part_->set_electrical_attribute(spec, std::move(value));
     }
 
     ComponentDefId definition_;
     ReferenceDesignator reference_;
     PropertyMap properties_;
+    ElectricalAttributeMap electrical_attributes_;
     std::optional<PhysicalPart> selected_physical_part_;
 };
 

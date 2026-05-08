@@ -122,6 +122,49 @@ namespace detail {
     throw std::logic_error{"Unhandled net kind"};
 }
 
+[[nodiscard]] inline std::string unit_dimension_name(UnitDimension dimension) {
+    switch (dimension) {
+    case UnitDimension::Resistance:
+        return "resistance";
+    case UnitDimension::Capacitance:
+        return "capacitance";
+    case UnitDimension::Inductance:
+        return "inductance";
+    case UnitDimension::Voltage:
+        return "voltage";
+    case UnitDimension::Current:
+        return "current";
+    case UnitDimension::Power:
+        return "power";
+    case UnitDimension::Frequency:
+        return "frequency";
+    case UnitDimension::Time:
+        return "time";
+    case UnitDimension::Temperature:
+        return "temperature";
+    case UnitDimension::Ratio:
+        return "ratio";
+    }
+    throw std::logic_error{"Unhandled unit dimension"};
+}
+
+[[nodiscard]] inline std::string tolerance_mode_name(ToleranceMode mode) {
+    switch (mode) {
+    case ToleranceMode::Absolute:
+        return "absolute";
+    case ToleranceMode::Percent:
+        return "percent";
+    }
+    throw std::logic_error{"Unhandled tolerance mode"};
+}
+
+inline void write_json_number(std::ostream &out, double value) {
+    if (!std::isfinite(value)) {
+        throw std::logic_error{"Cannot write non-finite JSON number"};
+    }
+    out << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
+}
+
 inline void write_property_value(std::ostream &out, const PropertyValue &value) {
     out << "{ \"type\": ";
     switch (value.kind()) {
@@ -163,6 +206,65 @@ inline void write_properties(std::ostream &out, const PropertyMap &properties) {
     out << '}';
 }
 
+inline void write_quantity_payload(std::ostream &out, const Quantity &quantity) {
+    out << "\"dimension\": " << json_string(unit_dimension_name(quantity.dimension()))
+        << ", \"value\": ";
+    write_json_number(out, quantity.value());
+}
+
+inline void write_electrical_attribute_value(std::ostream &out,
+                                             const ElectricalAttributeValue &value) {
+    out << "{ \"type\": ";
+    switch (value.kind()) {
+    case ElectricalAttributeValueKind::Quantity:
+        out << "\"quantity\", ";
+        write_quantity_payload(out, value.as_quantity());
+        break;
+    case ElectricalAttributeValueKind::Tolerance:
+        out << "\"tolerance\", \"mode\": "
+            << json_string(tolerance_mode_name(value.as_tolerance().mode())) << ", \"dimension\": "
+            << json_string(unit_dimension_name(value.as_tolerance().minus().dimension()))
+            << ", \"minus\": ";
+        write_json_number(out, value.as_tolerance().minus().value());
+        out << ", \"plus\": ";
+        write_json_number(out, value.as_tolerance().plus().value());
+        break;
+    case ElectricalAttributeValueKind::Range:
+        out << "\"range\", \"dimension\": "
+            << json_string(unit_dimension_name(value.as_range().dimension()));
+        if (value.as_range().minimum().has_value()) {
+            out << ", \"minimum\": ";
+            write_json_number(out, value.as_range().minimum()->value());
+        }
+        if (value.as_range().maximum().has_value()) {
+            out << ", \"maximum\": ";
+            write_json_number(out, value.as_range().maximum()->value());
+        }
+        break;
+    }
+    out << " }";
+}
+
+inline void write_electrical_attributes(std::ostream &out, const ElectricalAttributeMap &attributes,
+                                        std::string_view entry_indent,
+                                        std::string_view closing_indent) {
+    out << '{';
+    if (!attributes.empty()) {
+        out << '\n';
+        auto index = std::size_t{0};
+        for (const auto &[name, value] : attributes.entries()) {
+            out << entry_indent << json_string(name.value()) << ": ";
+            write_electrical_attribute_value(out, value);
+            if (++index != attributes.size()) {
+                out << ',';
+            }
+            out << '\n';
+        }
+        out << closing_indent;
+    }
+    out << '}';
+}
+
 [[nodiscard]] inline std::string pin_def_id(PinDefId id) {
     return "pin_def:" + std::to_string(id.index());
 }
@@ -200,6 +302,10 @@ inline void write_selected_physical_part(std::ostream &out, const PhysicalPart &
     out << "      ],\n";
     out << "      \"properties\": ";
     write_properties(out, part.properties());
+    if (!part.electrical_attributes().empty()) {
+        out << ",\n      \"electrical_attributes\": ";
+        write_electrical_attributes(out, part.electrical_attributes(), "        ", "      ");
+    }
     out << "\n    }";
 }
 
@@ -269,6 +375,11 @@ inline void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             << ", \"reference\": " << detail::json_string(component.reference().value())
             << ", \"properties\": ";
         detail::write_properties(out, component.properties());
+        if (!component.electrical_attributes().empty()) {
+            out << ", \"electrical_attributes\": ";
+            detail::write_electrical_attributes(out, component.electrical_attributes(), "        ",
+                                                "      ");
+        }
         if (component.selected_physical_part().has_value()) {
             out << ", \"selected_physical_part\": ";
             detail::write_selected_physical_part(out, component.selected_physical_part().value());

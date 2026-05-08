@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include <volt/circuit/instances.hpp>
+#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
@@ -41,6 +42,15 @@ TEST_CASE("ComponentInstance stores explicit properties") {
     CHECK(component.properties().size() == 2);
     CHECK(component.properties().get(volt::PropertyKey{"value"}) == volt::PropertyValue{"330 ohm"});
     CHECK(component.properties().get(volt::PropertyKey{"fitted"}) == volt::PropertyValue{true});
+}
+
+TEST_CASE("ComponentInstance starts with no typed electrical attributes") {
+    const auto component = volt::ComponentInstance{
+        volt::ComponentDefId{3},
+        volt::ReferenceDesignator{"R1"},
+    };
+
+    CHECK(component.electrical_attributes().empty());
 }
 
 TEST_CASE("PinInstance stores owning component and reusable pin definition") {
