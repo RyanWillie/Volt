@@ -134,6 +134,15 @@ class Circuit {
         components_.get(component).set_electrical_attribute(spec, std::move(value));
     }
 
+    /** Set or replace a typed electrical attribute on an existing reusable pin definition. */
+    void set_pin_definition_electrical_attribute(PinDefId pin_definition,
+                                                 const ElectricalAttributeSpec &spec,
+                                                 ElectricalAttributeValue value) {
+        require_pin_definition(pin_definition);
+        require_attribute_owner(spec, ElectricalAttributeOwner::PinSpec);
+        pin_definitions_.get(pin_definition).set_electrical_attribute(spec, std::move(value));
+    }
+
     /** Assign a selected physical implementation to an existing component instance. */
     void select_physical_part(ComponentId component, PhysicalPart physical_part) {
         require_component(component);

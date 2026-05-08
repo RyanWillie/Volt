@@ -109,6 +109,57 @@ def test_custom_component_definitions_are_kernel_owned():
     assert {diagnostic.code for diagnostic in report} == {"UNCONNECTED_REQUIRED_PIN", "SINGLE_PIN_NET"}
 
 
+def test_pin_spec_electrical_semantics_are_kernel_owned():
+    design = volt.Design("pin-semantics")
+
+    timer = design.define_component(
+        "Timer",
+        pins=[
+            volt.PinSpec(
+                "RESET",
+                4,
+                role="input",
+                terminal="signal",
+                direction="input",
+                signal="digital",
+                drive="high_impedance",
+                polarity="active_low",
+                voltage_range=(0.0, 5.5),
+            ),
+            volt.PinSpec(
+                "VCC",
+                8,
+                role="power",
+                terminal="power",
+                direction="input",
+                voltage_range=(4.5, 16.0),
+            ),
+            volt.PinSpec("GND", 1, role="ground", terminal="ground", direction="passive"),
+        ],
+    )
+    design.instantiate(timer, ref="U1")
+
+    circuit = json.loads(design.to_json())
+    pin_definitions = {pin["name"]: pin for pin in circuit["pin_definitions"]}
+
+    reset = pin_definitions["RESET"]
+    assert reset["terminal_kind"] == "Signal"
+    assert reset["direction"] == "Input"
+    assert reset["signal_domain"] == "Digital"
+    assert reset["drive_kind"] == "HighImpedance"
+    assert reset["polarity"] == "ActiveLow"
+    assert reset["electrical_attributes"]["voltage_range"] == {
+        "type": "range",
+        "dimension": "voltage",
+        "minimum": 0.0,
+        "maximum": 5.5,
+    }
+
+    assert pin_definitions["VCC"]["terminal_kind"] == "Power"
+    assert pin_definitions["VCC"]["electrical_attributes"]["voltage_range"]["minimum"] == 4.5
+    assert pin_definitions["GND"]["terminal_kind"] == "Ground"
+
+
 def test_component_selected_part_serializes():
     design = volt.Design("selected-part")
     r1 = design.R(resistance=330, tolerance=0.01, ref="R1")
@@ -323,6 +374,34 @@ def test_voltage_rating_diagnostic_is_inspectable():
     }
 
 
+def test_power_pin_semantics_drive_diagnostics():
+    design = volt.Design("typed-power")
+    load = design.define_component(
+        "Load",
+        pins=[
+            volt.PinSpec(
+                "VCC",
+                1,
+                role="power",
+                terminal="power",
+                direction="input",
+                voltage_range=(3.0, 3.6),
+            ),
+            volt.PinSpec("GND", 2, role="ground", terminal="ground", direction="passive"),
+        ],
+    )
+    u1 = design.instantiate(load, ref="U1")
+
+    vcc = design.net("VCC", kind="power", voltage=3.3)
+    vcc += u1["VCC"]
+    gnd = design.net("GND", kind="ground")
+    gnd += u1["GND"]
+
+    report = design.validate()
+
+    assert "POWER_INPUT_WITHOUT_SOURCE" in {diagnostic.code for diagnostic in report}
+
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")
@@ -339,9 +418,11 @@ if __name__ == "__main__":
     test_led_circuit_validates()
     test_natural_electrical_values_serialize_as_kernel_attributes()
     test_custom_component_definitions_are_kernel_owned()
+    test_pin_spec_electrical_semantics_are_kernel_owned()
     test_component_selected_part_serializes()
     test_custom_component_selected_part_accepts_named_pin_mappings()
     test_selected_part_mapping_errors_are_rejected()
     test_invalid_selected_part_rating_does_not_select_part()
     test_voltage_rating_diagnostic_is_inspectable()
+    test_power_pin_semantics_drive_diagnostics()
     test_diagnostics_are_inspectable()

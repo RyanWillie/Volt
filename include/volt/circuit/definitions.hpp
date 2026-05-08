@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
@@ -32,6 +33,50 @@ enum class ConnectionRequirement {
     MustNotConnect,
 };
 
+/** Broad terminal behavior for reusable pin definitions. */
+enum class ElectricalTerminalKind {
+    Unspecified,
+    Passive,
+    Signal,
+    Power,
+    Ground,
+    NoConnect,
+};
+
+/** Direction of electrical behavior at a reusable pin definition. */
+enum class ElectricalDirection {
+    Unspecified,
+    Input,
+    Output,
+    Bidirectional,
+    Passive,
+};
+
+/** Signal domain carried by a reusable pin definition. */
+enum class ElectricalSignalDomain {
+    Unspecified,
+    Digital,
+    Analog,
+    Mixed,
+};
+
+/** Output or terminal drive behavior for reusable pin definitions. */
+enum class ElectricalDriveKind {
+    Unspecified,
+    PushPull,
+    OpenCollector,
+    OpenDrain,
+    HighImpedance,
+    Passive,
+};
+
+/** Logical polarity for control-oriented reusable pin definitions. */
+enum class ElectricalPolarity {
+    None,
+    ActiveHigh,
+    ActiveLow,
+};
+
 /** Reusable pin metadata belonging to a component definition. */
 class PinDefinition {
   public:
@@ -40,9 +85,16 @@ class PinDefinition {
      * requirement.
      */
     PinDefinition(std::string name, std::string number, PinRole role,
-                  ConnectionRequirement connection_requirement = ConnectionRequirement::Required)
+                  ConnectionRequirement connection_requirement = ConnectionRequirement::Required,
+                  ElectricalTerminalKind terminal_kind = ElectricalTerminalKind::Unspecified,
+                  ElectricalDirection direction = ElectricalDirection::Unspecified,
+                  ElectricalSignalDomain signal_domain = ElectricalSignalDomain::Unspecified,
+                  ElectricalDriveKind drive_kind = ElectricalDriveKind::Unspecified,
+                  ElectricalPolarity polarity = ElectricalPolarity::None)
         : name_{std::move(name)}, number_{std::move(number)}, role_{role},
-          connection_requirement_{connection_requirement} {
+          connection_requirement_{connection_requirement}, terminal_kind_{terminal_kind},
+          direction_{direction}, signal_domain_{signal_domain}, drive_kind_{drive_kind},
+          polarity_{polarity} {
         if (name_.empty()) {
             throw std::invalid_argument{"Pin definition name must not be empty"};
         }
@@ -65,11 +117,44 @@ class PinDefinition {
         return connection_requirement_;
     }
 
+    /** Return the pin's broad terminal behavior. */
+    [[nodiscard]] ElectricalTerminalKind terminal_kind() const noexcept { return terminal_kind_; }
+
+    /** Return the pin's electrical direction. */
+    [[nodiscard]] ElectricalDirection direction() const noexcept { return direction_; }
+
+    /** Return the pin's signal domain. */
+    [[nodiscard]] ElectricalSignalDomain signal_domain() const noexcept { return signal_domain_; }
+
+    /** Return the pin's drive behavior. */
+    [[nodiscard]] ElectricalDriveKind drive_kind() const noexcept { return drive_kind_; }
+
+    /** Return the pin's logical polarity. */
+    [[nodiscard]] ElectricalPolarity polarity() const noexcept { return polarity_; }
+
+    /** Return typed electrical attributes attached to this pin definition. */
+    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept {
+        return electrical_attributes_;
+    }
+
   private:
+    friend class Circuit;
+
+    void set_electrical_attribute(const ElectricalAttributeSpec &spec,
+                                  ElectricalAttributeValue value) {
+        electrical_attributes_.set(spec, std::move(value));
+    }
+
     std::string name_;
     std::string number_;
     PinRole role_;
     ConnectionRequirement connection_requirement_;
+    ElectricalTerminalKind terminal_kind_;
+    ElectricalDirection direction_;
+    ElectricalSignalDomain signal_domain_;
+    ElectricalDriveKind drive_kind_;
+    ElectricalPolarity polarity_;
+    ElectricalAttributeMap electrical_attributes_;
 };
 
 /** Provenance for a reusable definition imported from a library. */

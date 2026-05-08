@@ -22,9 +22,21 @@ namespace volt {
                definition.role() == PinRole::NoConnect;
     };
     const auto is_output_pin = [](const PinDefinition &definition) {
+        if (definition.direction() == ElectricalDirection::Output) {
+            return true;
+        }
         return definition.role() == PinRole::PowerOutput ||
                definition.role() == PinRole::DigitalOutput ||
                definition.role() == PinRole::AnalogOutput;
+    };
+    const auto is_power_input = [](const PinDefinition &definition) {
+        return definition.terminal_kind() == ElectricalTerminalKind::Power &&
+               definition.direction() == ElectricalDirection::Input;
+    };
+    const auto is_power_source = [](const PinDefinition &definition) {
+        return definition.terminal_kind() == ElectricalTerminalKind::Power &&
+               (definition.direction() == ElectricalDirection::Output ||
+                definition.direction() == ElectricalDirection::Bidirectional);
     };
 
     for (std::size_t index = 0; index < circuit.pin_count(); ++index) {
@@ -89,12 +101,53 @@ namespace volt {
         }
 
         auto output_pins = std::vector<PinId>{};
+        auto power_input_pins = std::vector<PinId>{};
+        auto has_power_source = false;
         for (const auto pin_id : net.pins()) {
             const auto &pin = circuit.pin(pin_id);
             const auto &definition = circuit.pin_definition(pin.definition());
             if (is_output_pin(definition)) {
                 output_pins.push_back(pin_id);
             }
+            if (is_power_input(definition)) {
+                power_input_pins.push_back(pin_id);
+            }
+            if (is_power_source(definition)) {
+                has_power_source = true;
+            }
+            if (definition.terminal_kind() == ElectricalTerminalKind::Ground &&
+                net.kind() != NetKind::Ground) {
+                report.add(Diagnostic{
+                    Severity::Error,
+                    DiagnosticCode{"PIN_GROUND_ON_NON_GROUND_NET"},
+                    "Ground pin is connected to a non-ground net",
+                    std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
+                                EntityRef::pin_def(pin.definition())},
+                });
+            }
+            if (definition.terminal_kind() == ElectricalTerminalKind::Power &&
+                net.kind() == NetKind::Ground) {
+                report.add(Diagnostic{
+                    Severity::Error,
+                    DiagnosticCode{"PIN_POWER_ON_GROUND_NET"},
+                    "Power pin is connected to a ground net",
+                    std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
+                                EntityRef::pin_def(pin.definition())},
+                });
+            }
+        }
+
+        if (!power_input_pins.empty() && !has_power_source && net.kind() != NetKind::Ground) {
+            auto entities = std::vector<EntityRef>{EntityRef::net(net_id)};
+            for (const auto pin_id : power_input_pins) {
+                entities.push_back(EntityRef::pin(pin_id));
+            }
+            report.add(Diagnostic{
+                Severity::Error,
+                DiagnosticCode{"POWER_INPUT_WITHOUT_SOURCE"},
+                "Power input is connected to a net with no typed supply source",
+                std::move(entities),
+            });
         }
 
         if (net.electrical_attributes().contains(voltage_attribute_name)) {

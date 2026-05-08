@@ -82,9 +82,43 @@ TEST_CASE("Logical circuit reader preserves net typed electrical attributes") {
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 3.3});
 }
 
+TEST_CASE("Logical circuit reader preserves pin electrical semantics") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    auto &pin = fixture["pin_definitions"][0];
+    pin["terminal_kind"] = "Signal";
+    pin["direction"] = "Output";
+    pin["signal_domain"] = "Digital";
+    pin["drive_kind"] = "PushPull";
+    pin["polarity"] = "ActiveHigh";
+    pin["electrical_attributes"] = {
+        {"voltage_range",
+         {{"type", "range"}, {"dimension", "voltage"}, {"minimum", 0.0}, {"maximum", 5.5}}},
+    };
+
+    const auto circuit = volt::io::read_logical_circuit(fixture);
+    const auto &definition = circuit.pin_definition(volt::PinDefId{0});
+
+    CHECK(definition.terminal_kind() == volt::ElectricalTerminalKind::Signal);
+    CHECK(definition.direction() == volt::ElectricalDirection::Output);
+    CHECK(definition.signal_domain() == volt::ElectricalSignalDomain::Digital);
+    CHECK(definition.drive_kind() == volt::ElectricalDriveKind::PushPull);
+    CHECK(definition.polarity() == volt::ElectricalPolarity::ActiveHigh);
+
+    const auto &range = definition.electrical_attributes()
+                            .get(volt::ElectricalAttributeName{"voltage_range"})
+                            .as_range();
+    REQUIRE(range.minimum().has_value());
+    REQUIRE(range.maximum().has_value());
+    CHECK(range.minimum().value() == volt::Quantity{volt::UnitDimension::Voltage, 0.0});
+    CHECK(range.maximum().value() == volt::Quantity{volt::UnitDimension::Voltage, 5.5});
+}
+
 TEST_CASE("Logical circuit reader defaults missing typed electrical attributes to empty maps") {
     const auto circuit = volt::io::read_logical_circuit_text(read_fixture("led_circuit.volt.json"));
 
+    CHECK(circuit.pin_definition(volt::PinDefId{0}).terminal_kind() ==
+          volt::ElectricalTerminalKind::Unspecified);
+    CHECK(circuit.pin_definition(volt::PinDefId{0}).electrical_attributes().empty());
     CHECK(circuit.component(volt::ComponentId{1}).electrical_attributes().empty());
     CHECK(circuit.net(volt::NetId{0}).electrical_attributes().empty());
     REQUIRE(circuit.selected_physical_part(volt::ComponentId{1}).has_value());
@@ -97,6 +131,13 @@ TEST_CASE("Logical circuit reader defaults missing typed electrical attributes t
 TEST_CASE("Logical circuit reader rejects duplicate net pin references") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["nets"][0]["pins"].push_back("pin:0");
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+}
+
+TEST_CASE("Logical circuit reader rejects invalid pin electrical enum values") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["pin_definitions"][0]["terminal_kind"] = "ThresholdInput";
 
     CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
 }

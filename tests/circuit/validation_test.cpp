@@ -219,6 +219,97 @@ TEST_CASE("Circuit validation accepts nets within selected part voltage ratings"
     CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
 }
 
+TEST_CASE("Circuit validation reports power inputs without typed supply sources") {
+    volt::Circuit circuit;
+    const auto power_input = circuit.add_pin_definition(volt::PinDefinition{
+        "VCC", "1", volt::PinRole::PowerInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto passive_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::PinRole::Passive, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Passive, volt::ElectricalDirection::Passive});
+    const auto load_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Load", std::vector{power_input}});
+    const auto resistor_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{passive_pin}});
+    const auto load = circuit.instantiate_component(load_def, volt::ReferenceDesignator{"U1"});
+    const auto resistor =
+        circuit.instantiate_component(resistor_def, volt::ReferenceDesignator{"R1"});
+    const auto load_pin = circuit.pin_by_name(load, "VCC").value();
+    const auto resistor_pin = circuit.pin_by_number(resistor, "1").value();
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    circuit.connect(net, load_pin);
+    circuit.connect(net, resistor_pin);
+
+    const auto report = volt::validate_circuit(circuit);
+
+    REQUIRE(report.count() == 1);
+    CHECK(report.diagnostics()[0].severity() == volt::Severity::Error);
+    CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"POWER_INPUT_WITHOUT_SOURCE"});
+    REQUIRE(report.diagnostics()[0].entities().size() == 2);
+    CHECK(report.diagnostics()[0].entities()[0] == volt::EntityRef::net(net));
+    CHECK(report.diagnostics()[0].entities()[1] == volt::EntityRef::pin(load_pin));
+}
+
+TEST_CASE("Circuit validation accepts typed power inputs with typed supply sources") {
+    volt::Circuit circuit;
+    const auto power_input = circuit.add_pin_definition(volt::PinDefinition{
+        "VCC", "1", volt::PinRole::PowerInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto power_source = circuit.add_pin_definition(volt::PinDefinition{
+        "OUT", "1", volt::PinRole::PowerOutput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Output});
+    const auto load_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Load", std::vector{power_input}});
+    const auto regulator_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Regulator", std::vector{power_source}});
+    const auto load = circuit.instantiate_component(load_def, volt::ReferenceDesignator{"U1"});
+    const auto regulator =
+        circuit.instantiate_component(regulator_def, volt::ReferenceDesignator{"U2"});
+    const auto load_pin = circuit.pin_by_name(load, "VCC").value();
+    const auto source_pin = circuit.pin_by_name(regulator, "OUT").value();
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    circuit.connect(net, load_pin);
+    circuit.connect(net, source_pin);
+
+    const auto report = volt::validate_circuit(circuit);
+
+    CHECK(report.empty());
+}
+
+TEST_CASE("Circuit validation reports power and ground domain mismatches") {
+    volt::Circuit circuit;
+    const auto ground_pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "GND", "1", volt::PinRole::Ground, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Ground, volt::ElectricalDirection::Passive});
+    const auto power_pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "VCC", "1", volt::PinRole::PowerInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto ground_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Grounded", std::vector{ground_pin_def}});
+    const auto power_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Powered", std::vector{power_pin_def}});
+    const auto grounded =
+        circuit.instantiate_component(ground_def, volt::ReferenceDesignator{"U1"});
+    const auto powered = circuit.instantiate_component(power_def, volt::ReferenceDesignator{"U2"});
+    const auto ground_pin = circuit.pin_by_name(grounded, "GND").value();
+    const auto power_pin = circuit.pin_by_name(powered, "VCC").value();
+    const auto power_net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto ground_net = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+
+    circuit.connect(power_net, ground_pin);
+    circuit.connect(ground_net, power_pin);
+
+    const auto report = volt::validate_circuit(circuit);
+
+    REQUIRE(report.count() == 4);
+    CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+    CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"PIN_GROUND_ON_NON_GROUND_NET"});
+    CHECK(report.diagnostics()[2].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+    CHECK(report.diagnostics()[3].code() == volt::DiagnosticCode{"PIN_POWER_ON_GROUND_NET"});
+}
+
 TEST_CASE("Circuit validation reports multiple output drivers on one net") {
     volt::Circuit circuit;
     const auto output_a = circuit.add_pin_definition(volt::PinDefinition{

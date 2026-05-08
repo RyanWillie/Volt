@@ -104,6 +104,84 @@ namespace detail {
     throw std::logic_error{"Unhandled connection requirement"};
 }
 
+[[nodiscard]] inline std::string electrical_terminal_kind_name(ElectricalTerminalKind kind) {
+    switch (kind) {
+    case ElectricalTerminalKind::Unspecified:
+        return "Unspecified";
+    case ElectricalTerminalKind::Passive:
+        return "Passive";
+    case ElectricalTerminalKind::Signal:
+        return "Signal";
+    case ElectricalTerminalKind::Power:
+        return "Power";
+    case ElectricalTerminalKind::Ground:
+        return "Ground";
+    case ElectricalTerminalKind::NoConnect:
+        return "NoConnect";
+    }
+    throw std::logic_error{"Unhandled electrical terminal kind"};
+}
+
+[[nodiscard]] inline std::string electrical_direction_name(ElectricalDirection direction) {
+    switch (direction) {
+    case ElectricalDirection::Unspecified:
+        return "Unspecified";
+    case ElectricalDirection::Input:
+        return "Input";
+    case ElectricalDirection::Output:
+        return "Output";
+    case ElectricalDirection::Bidirectional:
+        return "Bidirectional";
+    case ElectricalDirection::Passive:
+        return "Passive";
+    }
+    throw std::logic_error{"Unhandled electrical direction"};
+}
+
+[[nodiscard]] inline std::string electrical_signal_domain_name(ElectricalSignalDomain domain) {
+    switch (domain) {
+    case ElectricalSignalDomain::Unspecified:
+        return "Unspecified";
+    case ElectricalSignalDomain::Digital:
+        return "Digital";
+    case ElectricalSignalDomain::Analog:
+        return "Analog";
+    case ElectricalSignalDomain::Mixed:
+        return "Mixed";
+    }
+    throw std::logic_error{"Unhandled electrical signal domain"};
+}
+
+[[nodiscard]] inline std::string electrical_drive_kind_name(ElectricalDriveKind kind) {
+    switch (kind) {
+    case ElectricalDriveKind::Unspecified:
+        return "Unspecified";
+    case ElectricalDriveKind::PushPull:
+        return "PushPull";
+    case ElectricalDriveKind::OpenCollector:
+        return "OpenCollector";
+    case ElectricalDriveKind::OpenDrain:
+        return "OpenDrain";
+    case ElectricalDriveKind::HighImpedance:
+        return "HighImpedance";
+    case ElectricalDriveKind::Passive:
+        return "Passive";
+    }
+    throw std::logic_error{"Unhandled electrical drive kind"};
+}
+
+[[nodiscard]] inline std::string electrical_polarity_name(ElectricalPolarity polarity) {
+    switch (polarity) {
+    case ElectricalPolarity::None:
+        return "None";
+    case ElectricalPolarity::ActiveHigh:
+        return "ActiveHigh";
+    case ElectricalPolarity::ActiveLow:
+        return "ActiveLow";
+    }
+    throw std::logic_error{"Unhandled electrical polarity"};
+}
+
 [[nodiscard]] inline std::string net_kind_name(NetKind kind) {
     switch (kind) {
     case NetKind::Signal:
@@ -309,6 +387,30 @@ inline void write_selected_physical_part(std::ostream &out, const PhysicalPart &
     out << "\n    }";
 }
 
+inline void write_pin_definition_semantics(std::ostream &out, const PinDefinition &pin) {
+    if (pin.terminal_kind() != ElectricalTerminalKind::Unspecified) {
+        out << ", \"terminal_kind\": "
+            << json_string(electrical_terminal_kind_name(pin.terminal_kind()));
+    }
+    if (pin.direction() != ElectricalDirection::Unspecified) {
+        out << ", \"direction\": " << json_string(electrical_direction_name(pin.direction()));
+    }
+    if (pin.signal_domain() != ElectricalSignalDomain::Unspecified) {
+        out << ", \"signal_domain\": "
+            << json_string(electrical_signal_domain_name(pin.signal_domain()));
+    }
+    if (pin.drive_kind() != ElectricalDriveKind::Unspecified) {
+        out << ", \"drive_kind\": " << json_string(electrical_drive_kind_name(pin.drive_kind()));
+    }
+    if (pin.polarity() != ElectricalPolarity::None) {
+        out << ", \"polarity\": " << json_string(electrical_polarity_name(pin.polarity()));
+    }
+    if (!pin.electrical_attributes().empty()) {
+        out << ", \"electrical_attributes\": ";
+        write_electrical_attributes(out, pin.electrical_attributes(), "        ", "      ");
+    }
+}
+
 } // namespace detail
 
 /** Write a deterministic JSON representation of the logical circuit to an output stream. */
@@ -327,8 +429,9 @@ inline void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             << ", \"role\": " << detail::json_string(detail::pin_role_name(pin.role()))
             << ", \"connection_requirement\": "
             << detail::json_string(
-                   detail::connection_requirement_name(pin.connection_requirement()))
-            << " }";
+                   detail::connection_requirement_name(pin.connection_requirement()));
+        detail::write_pin_definition_semantics(out, pin);
+        out << " }";
         if (index + 1 != circuit.pin_definition_count()) {
             out << ',';
         }

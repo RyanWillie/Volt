@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <volt/circuit/definitions.hpp>
+#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
@@ -20,6 +21,12 @@ TEST_CASE("PinDefinition stores logical pin metadata") {
     CHECK(pin.number() == "17");
     CHECK(pin.role() == volt::PinRole::PowerInput);
     CHECK(pin.connection_requirement() == volt::ConnectionRequirement::Required);
+    CHECK(pin.terminal_kind() == volt::ElectricalTerminalKind::Unspecified);
+    CHECK(pin.direction() == volt::ElectricalDirection::Unspecified);
+    CHECK(pin.signal_domain() == volt::ElectricalSignalDomain::Unspecified);
+    CHECK(pin.drive_kind() == volt::ElectricalDriveKind::Unspecified);
+    CHECK(pin.polarity() == volt::ElectricalPolarity::None);
+    CHECK(pin.electrical_attributes().empty());
 }
 
 TEST_CASE("PinDefinition can represent explicit connection requirements") {
@@ -38,6 +45,57 @@ TEST_CASE("PinDefinition can represent explicit connection requirements") {
 
     CHECK(optional.connection_requirement() == volt::ConnectionRequirement::Optional);
     CHECK(must_not_connect.connection_requirement() == volt::ConnectionRequirement::MustNotConnect);
+}
+
+TEST_CASE("PinDefinition stores fundamental electrical pin semantics") {
+    const auto power = volt::PinDefinition{
+        "VCC",
+        "8",
+        volt::PinRole::PowerInput,
+        volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power,
+        volt::ElectricalDirection::Input,
+    };
+    const auto reset = volt::PinDefinition{
+        "RESET",
+        "4",
+        volt::PinRole::DigitalInput,
+        volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Input,
+        volt::ElectricalSignalDomain::Digital,
+        volt::ElectricalDriveKind::HighImpedance,
+        volt::ElectricalPolarity::ActiveLow,
+    };
+    const auto output = volt::PinDefinition{
+        "OUT",
+        "3",
+        volt::PinRole::DigitalOutput,
+        volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Output,
+        volt::ElectricalSignalDomain::Digital,
+        volt::ElectricalDriveKind::PushPull,
+    };
+    const auto no_connect = volt::PinDefinition{
+        "NC",
+        "5",
+        volt::PinRole::NoConnect,
+        volt::ConnectionRequirement::MustNotConnect,
+        volt::ElectricalTerminalKind::NoConnect,
+    };
+
+    CHECK(power.terminal_kind() == volt::ElectricalTerminalKind::Power);
+    CHECK(power.direction() == volt::ElectricalDirection::Input);
+    CHECK(reset.terminal_kind() == volt::ElectricalTerminalKind::Signal);
+    CHECK(reset.direction() == volt::ElectricalDirection::Input);
+    CHECK(reset.signal_domain() == volt::ElectricalSignalDomain::Digital);
+    CHECK(reset.drive_kind() == volt::ElectricalDriveKind::HighImpedance);
+    CHECK(reset.polarity() == volt::ElectricalPolarity::ActiveLow);
+    CHECK(output.direction() == volt::ElectricalDirection::Output);
+    CHECK(output.drive_kind() == volt::ElectricalDriveKind::PushPull);
+    CHECK(no_connect.terminal_kind() == volt::ElectricalTerminalKind::NoConnect);
+    CHECK(no_connect.connection_requirement() == volt::ConnectionRequirement::MustNotConnect);
 }
 
 TEST_CASE("PinDefinition rejects empty names and numbers") {
