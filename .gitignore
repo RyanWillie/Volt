@@ -3,4 +3,6 @@ build*/
 .DS_Store
 compile_commands.json
 CMakeUserPresets.json
+__pycache__/
+*.pyc
 
