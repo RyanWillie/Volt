@@ -13,6 +13,7 @@
 #include <volt/circuit/nets.hpp>
 #include <volt/circuit/validation.hpp>
 #include <volt/core/diagnostics.hpp>
+#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/properties.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 
@@ -64,6 +65,50 @@ namespace {
     }
 
     throw std::logic_error{"Unhandled diagnostic severity"};
+}
+
+void require_finite(double value, const char *message) {
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument{message};
+    }
+}
+
+[[nodiscard]] volt::UnitDimension parse_dimension(const std::string &value) {
+    if (value == "resistance") {
+        return volt::UnitDimension::Resistance;
+    }
+    if (value == "capacitance") {
+        return volt::UnitDimension::Capacitance;
+    }
+    if (value == "voltage") {
+        return volt::UnitDimension::Voltage;
+    }
+    if (value == "ratio") {
+        return volt::UnitDimension::Ratio;
+    }
+
+    throw std::invalid_argument{"Unknown electrical attribute dimension"};
+}
+
+[[nodiscard]] volt::ElectricalAttributeSpec component_quantity_spec(const std::string &name,
+                                                                    volt::UnitDimension dimension) {
+    return volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{name},
+                                         volt::ElectricalAttributeOwner::ComponentInstance,
+                                         volt::ElectricalAttributeKind::DesignInput, dimension};
+}
+
+[[nodiscard]] volt::ElectricalAttributeSpec
+selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimension) {
+    return volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{name},
+                                         volt::ElectricalAttributeOwner::SelectedPart,
+                                         volt::ElectricalAttributeKind::DesignInput, dimension};
+}
+
+[[nodiscard]] volt::ElectricalAttributeSpec net_quantity_spec(const std::string &name,
+                                                              volt::UnitDimension dimension) {
+    return volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{name},
+                                         volt::ElectricalAttributeOwner::Net,
+                                         volt::ElectricalAttributeKind::DesignInput, dimension};
 }
 
 [[nodiscard]] std::string entity_kind_name(volt::EntityKind kind) {
@@ -157,6 +202,57 @@ class PyCircuit {
         return circuit_.add_net(volt::Net{volt::NetName{name}, parse_net_kind(kind)}).index();
     }
 
+    void set_component_quantity(std::size_t component, const std::string &name,
+                                const std::string &dimension_name, double value) {
+        require_finite(value, "Electrical attribute quantities must be finite");
+        const auto dimension = parse_dimension(dimension_name);
+        circuit_.set_component_electrical_attribute(
+            component_id(component), component_quantity_spec(name, dimension),
+            volt::ElectricalAttributeValue{volt::Quantity{dimension, value}});
+    }
+
+    void set_component_percent_tolerance(std::size_t component, double value) {
+        require_finite(value, "Tolerance values must be finite");
+        circuit_.set_component_electrical_attribute(
+            component_id(component),
+            component_quantity_spec("tolerance", volt::UnitDimension::Ratio),
+            volt::ElectricalAttributeValue{volt::Tolerance::percent(value)});
+    }
+
+    void set_net_quantity(std::size_t net, const std::string &name,
+                          const std::string &dimension_name, double value) {
+        require_finite(value, "Electrical attribute quantities must be finite");
+        const auto dimension = parse_dimension(dimension_name);
+        circuit_.set_net_electrical_attribute(
+            net_id(net), net_quantity_spec(name, dimension),
+            volt::ElectricalAttributeValue{volt::Quantity{dimension, value}});
+    }
+
+    void select_generic_physical_part(std::size_t component) {
+        const auto component_handle = component_id(component);
+        const auto &definition =
+            circuit_.component_definition(circuit_.component(component_handle).definition());
+        auto mappings = std::vector<volt::PinPadMapping>{};
+        mappings.reserve(definition.pins().size());
+        for (std::size_t index = 0; index < definition.pins().size(); ++index) {
+            mappings.emplace_back(definition.pins()[index], std::to_string(index + 1));
+        }
+        circuit_.select_physical_part(
+            component_handle, volt::PhysicalPart{volt::ManufacturerPart{"Volt", "generic"},
+                                                 volt::PackageRef{"unspecified"},
+                                                 volt::FootprintRef{"volt.generic", "unspecified"},
+                                                 std::move(mappings)});
+    }
+
+    void set_selected_part_quantity(std::size_t component, const std::string &name,
+                                    const std::string &dimension_name, double value) {
+        require_finite(value, "Electrical attribute quantities must be finite");
+        const auto dimension = parse_dimension(dimension_name);
+        circuit_.set_selected_part_electrical_attribute(
+            component_id(component), selected_part_quantity_spec(name, dimension),
+            volt::ElectricalAttributeValue{volt::Quantity{dimension, value}});
+    }
+
     [[nodiscard]] std::size_t instantiate_ref(std::size_t definition, const std::string &reference,
                                               const py::dict &properties) {
         return volt::authoring::instantiate(circuit_, component_def_id(definition),
@@ -225,6 +321,16 @@ PYBIND11_MODULE(_volt, module) {
         .def("define_led", &PyCircuit::define_led)
         .def("define_connector_1x02", &PyCircuit::define_connector_1x02)
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
+        .def("set_component_quantity", &PyCircuit::set_component_quantity, py::arg("component"),
+             py::arg("name"), py::arg("dimension"), py::arg("value"))
+        .def("set_component_percent_tolerance", &PyCircuit::set_component_percent_tolerance,
+             py::arg("component"), py::arg("value"))
+        .def("set_net_quantity", &PyCircuit::set_net_quantity, py::arg("net"), py::arg("name"),
+             py::arg("dimension"), py::arg("value"))
+        .def("select_generic_physical_part", &PyCircuit::select_generic_physical_part,
+             py::arg("component"))
+        .def("set_selected_part_quantity", &PyCircuit::set_selected_part_quantity,
+             py::arg("component"), py::arg("name"), py::arg("dimension"), py::arg("value"))
         .def("instantiate_ref", &PyCircuit::instantiate_ref, py::arg("definition"),
              py::arg("reference"), py::arg("properties") = py::dict{})
         .def("instantiate_auto", &PyCircuit::instantiate_auto, py::arg("definition"),

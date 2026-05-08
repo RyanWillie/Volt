@@ -43,7 +43,7 @@ objects:
 
 ```python
 r1 = d.R(resistance=330, tolerance=0.01, ref="R1")
-c1 = d.C(capacitance=100, voltage_rating=16, ref="C1")
+c1 = d.C(capacitance=100e-9, voltage_rating=16, ref="C1")
 vdd = d.net("VDD", voltage=3.3)
 ```
 
@@ -176,9 +176,9 @@ rules, or serialization semantics.
 Catalog helpers such as `Design.R()`, `Design.C()`, `Design.LED()`, and
 `Design.connector_1x02()` define reusable kernel component definitions lazily per design
 and instantiate concrete components through the C++ mutation API. In the current MVP,
-component values are stored as kernel component properties. Once typed electrical
-semantics exist, helpers should prefer natural keyword arguments and lower plain numbers
-into typed kernel quantities.
+legacy positional component values are stored as kernel component properties. Natural
+keyword arguments such as `resistance`, `capacitance`, `tolerance`, `voltage_rating`, and
+net `voltage` lower plain numbers into typed kernel electrical attributes.
 
 Diagnostics are inspectable Python objects created from kernel-produced diagnostic data:
 
