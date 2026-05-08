@@ -256,8 +256,8 @@ class LogicalCircuitReader {
         throw std::logic_error{"Invalid electrical attribute value type"};
     }
 
-    void read_electrical_attributes(const nlohmann::json &object, ComponentId component,
-                                    ElectricalAttributeOwner owner) {
+    void read_component_electrical_attributes(const nlohmann::json &object, ComponentId component,
+                                              ElectricalAttributeOwner owner) {
         const auto it = object.find("electrical_attributes");
         if (it == object.end()) {
             return;
@@ -275,6 +275,23 @@ class LogicalCircuitReader {
             } else {
                 throw std::logic_error{"Unsupported electrical attribute owner while reading"};
             }
+        }
+    }
+
+    void read_net_electrical_attributes(const nlohmann::json &object, NetId net) {
+        const auto it = object.find("electrical_attributes");
+        if (it == object.end()) {
+            return;
+        }
+        require(it->is_object(), "Electrical attributes must be an object");
+        for (const auto &[name, value] : it->items()) {
+            const auto attribute = electrical_attribute_value(value);
+            circuit_.set_net_electrical_attribute(
+                net,
+                ElectricalAttributeSpec{
+                    ElectricalAttributeName{name}, ElectricalAttributeOwner::Net,
+                    ElectricalAttributeKind::DesignInput, attribute.dimension()},
+                attribute);
         }
     }
 
@@ -334,8 +351,8 @@ class LogicalCircuitReader {
                 definition, ReferenceDesignator{string_field(component, "reference")},
                 properties(field(component, "properties"))});
             component_ids_.emplace(id, component_id);
-            read_electrical_attributes(component, component_id,
-                                       ElectricalAttributeOwner::ComponentInstance);
+            read_component_electrical_attributes(component, component_id,
+                                                 ElectricalAttributeOwner::ComponentInstance);
             if (const auto it = component.find("selected_physical_part"); it != component.end()) {
                 selected_parts_.emplace_back(id, *it);
             }
@@ -368,7 +385,9 @@ class LogicalCircuitReader {
                 require(net.connect(resolve(pin_ids_, pin.get<std::string>())),
                         "Net contains a duplicate pin reference");
             }
-            net_ids_.emplace(id, circuit_.add_net(std::move(net)));
+            const auto net_id = circuit_.add_net(std::move(net));
+            net_ids_.emplace(id, net_id);
+            read_net_electrical_attributes(net_object, net_id);
         }
     }
 
@@ -393,7 +412,8 @@ class LogicalCircuitReader {
         for (const auto &[component_id, part] : selected_parts_) {
             const auto component = resolve(component_ids_, component_id);
             circuit_.select_physical_part(component, physical_part(part));
-            read_electrical_attributes(part, component, ElectricalAttributeOwner::SelectedPart);
+            read_component_electrical_attributes(part, component,
+                                                 ElectricalAttributeOwner::SelectedPart);
         }
     }
 

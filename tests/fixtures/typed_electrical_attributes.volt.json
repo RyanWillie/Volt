@@ -31,6 +31,8 @@
     { "id": "pin:1", "component": "component:0", "definition": "pin_def:1" }
   ],
   "nets": [
-    { "id": "net:0", "name": "NET_A", "kind": "Signal", "pins": ["pin:0", "pin:1"] }
+    { "id": "net:0", "name": "3V3", "kind": "Power", "pins": ["pin:0", "pin:1"], "electrical_attributes": {
+        "voltage": { "type": "quantity", "dimension": "voltage", "value": 3.2999999999999998 }
+      } }
   ]
 }
