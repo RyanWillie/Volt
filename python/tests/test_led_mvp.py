@@ -72,6 +72,43 @@ def test_natural_electrical_values_serialize_as_kernel_attributes():
     }
 
 
+def test_custom_component_definitions_are_kernel_owned():
+    design = volt.Design("custom")
+
+    opamp = design.define_component(
+        "OpAmp",
+        pins=[
+            volt.PinSpec("OUT", 1, role="output"),
+            volt.PinSpec("IN-", 2, role="input"),
+            volt.PinSpec("IN+", 3, role="input"),
+            volt.PinSpec("V-", 4, role="power"),
+            volt.PinSpec("V+", 8, role="power"),
+        ],
+        properties={"category": "analog"},
+    )
+    u1 = design.instantiate(opamp, ref="U1")
+
+    vout = design.net("VOUT")
+    vout += u1["OUT"]
+
+    circuit = json.loads(design.to_json())
+    definition = circuit["component_definitions"][0]
+    component = circuit["components"][0]
+    pin_definitions = {pin["name"]: pin for pin in circuit["pin_definitions"]}
+
+    assert definition["name"] == "OpAmp"
+    assert definition["properties"]["category"] == {"type": "string", "value": "analog"}
+    assert component["reference"] == "U1"
+    assert pin_definitions["OUT"]["role"] == "DigitalOutput"
+    assert pin_definitions["V+"]["role"] == "PowerInput"
+    assert len(circuit["pins"]) == 5
+    assert circuit["nets"][0]["pins"] == ["pin:0"]
+
+    report = design.validate()
+    assert report.has_errors
+    assert {diagnostic.code for diagnostic in report} == {"UNCONNECTED_REQUIRED_PIN", "SINGLE_PIN_NET"}
+
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")
@@ -87,4 +124,5 @@ def test_diagnostics_are_inspectable():
 if __name__ == "__main__":
     test_led_circuit_validates()
     test_natural_electrical_values_serialize_as_kernel_attributes()
+    test_custom_component_definitions_are_kernel_owned()
     test_diagnostics_are_inspectable()
