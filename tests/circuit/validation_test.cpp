@@ -145,6 +145,43 @@ TEST_CASE("Circuit validation reports selected part voltage rating violations") 
     CHECK(diagnostic.entities()[2] == volt::EntityRef::component(component));
 }
 
+TEST_CASE("Circuit validation ignores non-quantity voltage attributes for voltage rating checks") {
+    volt::Circuit circuit;
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::PinRole::Passive, volt::ConnectionRequirement::Required});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Capacitor", std::vector{pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"C1"});
+    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+
+    circuit.connect(net, pin);
+    circuit.set_net_electrical_attribute(
+        net,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
+            volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Ratio},
+        volt::ElectricalAttributeValue{volt::Tolerance::percent(0.1)});
+    circuit.select_physical_part(
+        component,
+        volt::PhysicalPart{volt::ManufacturerPart{"Test", "C-16V"}, volt::PackageRef{"0603"},
+                           volt::FootprintRef{"Capacitor_SMD", "C_0603"},
+                           std::vector{volt::PinPadMapping{pin_def, "1"}}});
+    circuit.set_selected_part_electrical_attribute(
+        component,
+        volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{"voltage_rating"},
+                                      volt::ElectricalAttributeOwner::SelectedPart,
+                                      volt::ElectricalAttributeKind::DesignInput,
+                                      volt::UnitDimension::Ratio},
+        volt::ElectricalAttributeValue{volt::Tolerance::percent(0.1)});
+
+    const auto report = volt::validate_circuit(circuit);
+
+    REQUIRE(report.count() == 1);
+    CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+}
+
 TEST_CASE("Circuit validation accepts nets within selected part voltage ratings") {
     volt::Circuit circuit;
     const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
