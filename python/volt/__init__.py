@@ -47,6 +47,40 @@ class DiagnosticReport:
         return any(diagnostic.severity == "error" for diagnostic in self._diagnostics)
 
 
+@dataclass(frozen=True)
+class PinSpec:
+    """Reusable pin definition data for Python-authored component definitions."""
+
+    name: str
+    number: int | str
+    role: str = "passive"
+    requirement: str = "required"
+
+    def _to_dict(self):
+        return {
+            "name": self.name,
+            "number": str(self.number),
+            "role": self.role,
+            "requirement": self.requirement,
+        }
+
+
+class ComponentDefinition:
+    """Handle to a kernel-owned reusable component definition."""
+
+    def __init__(self, design: Design, index: int, name: str):
+        self._design = design
+        self._index = index
+        self.name = name
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def __repr__(self) -> str:
+        return f"ComponentDefinition(name={self.name!r}, index={self._index})"
+
+
 class Pin:
     """Handle to a kernel-owned concrete pin."""
 
@@ -177,6 +211,32 @@ class Design:
             )
         return component
 
+    def define_component(
+        self, name: str, *, pins: Iterable[PinSpec], properties: dict | None = None
+    ) -> ComponentDefinition:
+        definition = self._circuit.define_component(
+            name, [pin._to_dict() for pin in pins], properties or {}
+        )
+        return ComponentDefinition(self, definition, name)
+
+    def instantiate(
+        self,
+        definition: ComponentDefinition,
+        *,
+        ref: str | None = None,
+        prefix: str = "U",
+        properties: dict | None = None,
+    ) -> Component:
+        if not isinstance(definition, ComponentDefinition):
+            raise TypeError("instantiate expects a ComponentDefinition handle")
+        if definition._design is not self:
+            raise ValueError("Component definition belongs to a different design")
+        if ref is None:
+            component = self._circuit.instantiate_auto(definition.index, prefix, properties or {})
+        else:
+            component = self._circuit.instantiate_ref(definition.index, ref, properties or {})
+        return Component(self, component)
+
     def LED(self, *, ref: str | None = None) -> Component:
         return self._instantiate("led", self._circuit.define_led, "D", ref, {})
 
@@ -239,10 +299,12 @@ def _diagnostic_from_dict(item) -> Diagnostic:
 
 __all__ = [
     "Component",
+    "ComponentDefinition",
     "Design",
     "Diagnostic",
     "DiagnosticEntity",
     "DiagnosticReport",
     "Net",
     "Pin",
+    "PinSpec",
 ]

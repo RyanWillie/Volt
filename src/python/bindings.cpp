@@ -31,6 +31,55 @@ namespace {
 
 [[nodiscard]] volt::NetId net_id(std::size_t index) { return volt::NetId{index}; }
 
+[[nodiscard]] volt::PinRole parse_pin_role(const std::string &value) {
+    if (value == "passive" || value == "Passive") {
+        return volt::PinRole::Passive;
+    }
+    if (value == "input" || value == "digital_input" || value == "DigitalInput") {
+        return volt::PinRole::DigitalInput;
+    }
+    if (value == "output" || value == "digital_output" || value == "DigitalOutput") {
+        return volt::PinRole::DigitalOutput;
+    }
+    if (value == "analog_input" || value == "AnalogInput") {
+        return volt::PinRole::AnalogInput;
+    }
+    if (value == "analog_output" || value == "AnalogOutput") {
+        return volt::PinRole::AnalogOutput;
+    }
+    if (value == "bidirectional" || value == "Bidirectional") {
+        return volt::PinRole::Bidirectional;
+    }
+    if (value == "power" || value == "power_input" || value == "PowerInput") {
+        return volt::PinRole::PowerInput;
+    }
+    if (value == "power_output" || value == "PowerOutput") {
+        return volt::PinRole::PowerOutput;
+    }
+    if (value == "ground" || value == "Ground") {
+        return volt::PinRole::Ground;
+    }
+    if (value == "no_connect" || value == "no-connect" || value == "NoConnect") {
+        return volt::PinRole::NoConnect;
+    }
+
+    throw std::invalid_argument{"Unknown pin role"};
+}
+
+[[nodiscard]] volt::ConnectionRequirement parse_connection_requirement(const std::string &value) {
+    if (value == "required" || value == "Required") {
+        return volt::ConnectionRequirement::Required;
+    }
+    if (value == "optional" || value == "Optional") {
+        return volt::ConnectionRequirement::Optional;
+    }
+    if (value == "must_not_connect" || value == "must-not-connect" || value == "MustNotConnect") {
+        return volt::ConnectionRequirement::MustNotConnect;
+    }
+
+    throw std::invalid_argument{"Unknown connection requirement"};
+}
+
 [[nodiscard]] volt::NetKind parse_net_kind(const std::string &value) {
     if (value == "signal" || value == "Signal") {
         return volt::NetKind::Signal;
@@ -161,6 +210,37 @@ selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimensi
     return properties;
 }
 
+[[nodiscard]] volt::authoring::PinSpec pin_spec_from_dict(const py::dict &dict) {
+    if (!dict.contains("name")) {
+        throw std::invalid_argument{"Pin specs must include a name"};
+    }
+    if (!dict.contains("number")) {
+        throw std::invalid_argument{"Pin specs must include a number"};
+    }
+
+    auto role = volt::PinRole::Passive;
+    if (dict.contains("role")) {
+        role = parse_pin_role(py::cast<std::string>(dict["role"]));
+    }
+
+    auto requirement = volt::ConnectionRequirement::Required;
+    if (dict.contains("requirement")) {
+        requirement = parse_connection_requirement(py::cast<std::string>(dict["requirement"]));
+    }
+
+    return volt::authoring::PinSpec{py::cast<std::string>(dict["name"]),
+                                    py::cast<std::string>(dict["number"]), role, requirement};
+}
+
+[[nodiscard]] std::vector<volt::authoring::PinSpec> pin_specs_from_list(const py::list &pins) {
+    auto specs = std::vector<volt::authoring::PinSpec>{};
+    specs.reserve(static_cast<std::size_t>(py::len(pins)));
+    for (const auto item : pins) {
+        specs.push_back(pin_spec_from_dict(py::cast<py::dict>(item)));
+    }
+    return specs;
+}
+
 [[nodiscard]] py::dict diagnostic_to_dict(const volt::Diagnostic &diagnostic) {
     auto result = py::dict{};
     result["severity"] = severity_name(diagnostic.severity());
@@ -195,6 +275,14 @@ class PyCircuit {
 
     [[nodiscard]] std::size_t define_connector_1x02() {
         return volt::authoring::define_component(circuit_, volt::authoring::connector_1x02())
+            .index();
+    }
+
+    [[nodiscard]] std::size_t define_component(const std::string &name, const py::list &pins,
+                                               const py::dict &properties) {
+        return volt::authoring::define_component(
+                   circuit_, volt::authoring::ComponentSpec{name, pin_specs_from_list(pins),
+                                                            properties_from_dict(properties)})
             .index();
     }
 
@@ -320,6 +408,8 @@ PYBIND11_MODULE(_volt, module) {
         .def("define_capacitor", &PyCircuit::define_capacitor)
         .def("define_led", &PyCircuit::define_led)
         .def("define_connector_1x02", &PyCircuit::define_connector_1x02)
+        .def("define_component", &PyCircuit::define_component, py::arg("name"), py::arg("pins"),
+             py::arg("properties") = py::dict{})
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
         .def("set_component_quantity", &PyCircuit::set_component_quantity, py::arg("component"),
              py::arg("name"), py::arg("dimension"), py::arg("value"))

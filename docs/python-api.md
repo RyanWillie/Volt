@@ -187,6 +187,35 @@ for diagnostic in design.validate():
     print(diagnostic.severity, diagnostic.code, diagnostic.message)
 ```
 
+## Custom Component Definitions
+
+Python can define reusable logical component definitions when the built-in helpers are not
+enough:
+
+```python
+opamp = d.define_component(
+    "OpAmp",
+    pins=[
+        volt.PinSpec("OUT", 1, role="output"),
+        volt.PinSpec("IN-", 2, role="input"),
+        volt.PinSpec("IN+", 3, role="input"),
+        volt.PinSpec("V-", 4, role="power"),
+        volt.PinSpec("V+", 8, role="power"),
+    ],
+)
+
+u1 = d.instantiate(opamp, ref="U1")
+vout += u1["OUT"]
+```
+
+`PinSpec` data lowers into kernel-owned pin definitions. `ComponentDefinition` and
+`Component` Python objects are handles over kernel IDs; the Python layer does not own the
+component model. Pin roles use the same concepts as the logical format, written naturally in lowercase:
+`passive`, `input`/`digital_input`, `output`/`digital_output`, `analog_input`,
+`analog_output`, `bidirectional`, `power`/`power_input`, `power_output`, `ground`, and
+`no_connect`. Connection requirements
+are `required`, `optional`, and `must_not_connect`.
+
 ## Composition
 
 Reusable circuit construction should start as ordinary Python functions that receive a
