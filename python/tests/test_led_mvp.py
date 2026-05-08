@@ -300,6 +300,29 @@ def test_invalid_selected_part_rating_does_not_select_part():
     assert "selected_physical_part" not in circuit["components"][0]
 
 
+def test_voltage_rating_diagnostic_is_inspectable():
+    design = volt.Design("rating")
+    vdd = design.net("VDD", kind="power", voltage=5.0)
+    c1 = design.C(capacitance=100e-9, ref="C1")
+    c1.select_part(
+        manufacturer="Example",
+        part_number="LOW-VOLTAGE-CAP",
+        package="0603",
+        footprint=("Capacitor_SMD", "C_0603"),
+        pin_pads={1: "1", 2: "2"},
+        voltage_rating=3.3,
+    )
+
+    vdd += c1[1]
+
+    report = design.validate()
+
+    assert report.has_errors
+    assert "SELECTED_PART_VOLTAGE_RATING_EXCEEDED" in {
+        diagnostic.code for diagnostic in report
+    }
+
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")
@@ -320,4 +343,5 @@ if __name__ == "__main__":
     test_custom_component_selected_part_accepts_named_pin_mappings()
     test_selected_part_mapping_errors_are_rejected()
     test_invalid_selected_part_rating_does_not_select_part()
+    test_voltage_rating_diagnostic_is_inspectable()
     test_diagnostics_are_inspectable()

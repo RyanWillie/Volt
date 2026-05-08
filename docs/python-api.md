@@ -324,8 +324,8 @@ for diagnostic in report:
 ```
 
 Examples include unconnected required pins, single-pin nets, incompatible output drivers,
-and future ERC findings. Python may format diagnostics, but validation logic belongs in
-the kernel.
+and selected physical parts whose `voltage_rating` is below a connected net's nominal
+`voltage`. Python may format diagnostics, but validation logic belongs in the kernel.
 
 ## Future Simulation Authoring
 

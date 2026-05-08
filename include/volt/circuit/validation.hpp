@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -7,6 +8,7 @@
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/definitions.hpp>
 #include <volt/core/diagnostics.hpp>
+#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 
 namespace volt {
@@ -63,6 +65,9 @@ namespace volt {
         }
     }
 
+    const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
+    const auto voltage_rating_attribute_name = ElectricalAttributeName{"voltage_rating"};
+
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
         const auto net_id = NetId{index};
         const auto &net = circuit.net(net_id);
@@ -89,6 +94,40 @@ namespace volt {
             const auto &definition = circuit.pin_definition(pin.definition());
             if (is_output_pin(definition)) {
                 output_pins.push_back(pin_id);
+            }
+        }
+
+        if (net.electrical_attributes().contains(voltage_attribute_name)) {
+            const auto &net_voltage_attribute =
+                net.electrical_attributes().get(voltage_attribute_name);
+            if (net_voltage_attribute.kind() == ElectricalAttributeValueKind::Quantity) {
+                const auto net_voltage = std::abs(net_voltage_attribute.as_quantity().value());
+                for (const auto pin_id : net.pins()) {
+                    const auto &pin = circuit.pin(pin_id);
+                    const auto &selected_part = circuit.selected_physical_part(pin.component());
+                    if (!selected_part.has_value() ||
+                        !selected_part->electrical_attributes().contains(
+                            voltage_rating_attribute_name)) {
+                        continue;
+                    }
+
+                    const auto &voltage_rating_attribute =
+                        selected_part->electrical_attributes().get(voltage_rating_attribute_name);
+                    if (voltage_rating_attribute.kind() != ElectricalAttributeValueKind::Quantity) {
+                        continue;
+                    }
+
+                    const auto voltage_rating = voltage_rating_attribute.as_quantity().value();
+                    if (net_voltage > voltage_rating) {
+                        report.add(Diagnostic{
+                            Severity::Error,
+                            DiagnosticCode{"SELECTED_PART_VOLTAGE_RATING_EXCEEDED"},
+                            "Net voltage exceeds selected part voltage rating",
+                            std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
+                                        EntityRef::component(pin.component())},
+                        });
+                    }
+                }
             }
         }
 
