@@ -421,7 +421,13 @@ inline void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
                 out << ", ";
             }
         }
-        out << "] }";
+        out << "]";
+        if (!net.electrical_attributes().empty()) {
+            out << ", \"electrical_attributes\": ";
+            detail::write_electrical_attributes(out, net.electrical_attributes(), "        ",
+                                                "      ");
+        }
+        out << " }";
         if (index + 1 != circuit.net_count()) {
             out << ',';
         }

@@ -304,6 +304,26 @@ TEST_CASE("Circuit sets typed electrical attributes on component instances") {
               .as_quantity() == volt::Quantity{volt::UnitDimension::Resistance, 330.0});
 }
 
+TEST_CASE("Circuit sets typed electrical attributes on nets") {
+    volt::Circuit circuit;
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"3V3"}, volt::NetKind::Power});
+    const auto voltage = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"voltage"},
+        volt::ElectricalAttributeOwner::Net,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Voltage,
+    };
+
+    circuit.set_net_electrical_attribute(
+        net, voltage,
+        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}});
+
+    CHECK(circuit.net(net)
+              .electrical_attributes()
+              .get(volt::ElectricalAttributeName{"voltage"})
+              .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 3.3});
+}
+
 TEST_CASE("Circuit rejects component property mutation for missing components") {
     volt::Circuit circuit;
 
@@ -348,6 +368,39 @@ TEST_CASE("Circuit rejects incompatible component electrical attributes") {
         circuit.set_component_electrical_attribute(
             volt::ComponentId{99}, resistance,
             volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}}),
+        std::out_of_range);
+}
+
+TEST_CASE("Circuit rejects incompatible net electrical attributes") {
+    volt::Circuit circuit;
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"3V3"}, volt::NetKind::Power});
+    const auto voltage = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"voltage"},
+        volt::ElectricalAttributeOwner::Net,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Voltage,
+    };
+    const auto component_resistance = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"resistance"},
+        volt::ElectricalAttributeOwner::ComponentInstance,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Resistance,
+    };
+
+    CHECK_THROWS_AS(
+        circuit.set_net_electrical_attribute(
+            net, voltage,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Current, 0.01}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        circuit.set_net_electrical_attribute(
+            net, component_resistance,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}}),
+        std::logic_error);
+    CHECK_THROWS_AS(
+        circuit.set_net_electrical_attribute(
+            volt::NetId{99}, voltage,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}}),
         std::out_of_range);
 }
 

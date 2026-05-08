@@ -152,6 +152,14 @@ class Circuit {
         components_.get(component).set_selected_part_electrical_attribute(spec, std::move(value));
     }
 
+    /** Set or replace a typed electrical attribute on an existing net. */
+    void set_net_electrical_attribute(NetId net, const ElectricalAttributeSpec &spec,
+                                      ElectricalAttributeValue value) {
+        require_net(net);
+        require_attribute_owner(spec, ElectricalAttributeOwner::Net);
+        nets_.get(net).set_electrical_attribute(spec, std::move(value));
+    }
+
     /** Return the selected physical implementation for a component, if one has been assigned. */
     [[nodiscard]] const std::optional<PhysicalPart> &
     selected_physical_part(ComponentId component) const {

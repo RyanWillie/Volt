@@ -68,10 +68,25 @@ TEST_CASE("Logical circuit reader preserves typed electrical attributes") {
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 75.0});
 }
 
+TEST_CASE("Logical circuit reader preserves net typed electrical attributes") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["nets"][0]["electrical_attributes"] = {
+        {"voltage", {{"type", "quantity"}, {"dimension", "voltage"}, {"value", 3.3}}},
+    };
+
+    const auto circuit = volt::io::read_logical_circuit(fixture);
+
+    CHECK(circuit.net(volt::NetId{0})
+              .electrical_attributes()
+              .get(volt::ElectricalAttributeName{"voltage"})
+              .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 3.3});
+}
+
 TEST_CASE("Logical circuit reader defaults missing typed electrical attributes to empty maps") {
     const auto circuit = volt::io::read_logical_circuit_text(read_fixture("led_circuit.volt.json"));
 
     CHECK(circuit.component(volt::ComponentId{1}).electrical_attributes().empty());
+    CHECK(circuit.net(volt::NetId{0}).electrical_attributes().empty());
     REQUIRE(circuit.selected_physical_part(volt::ComponentId{1}).has_value());
     CHECK(circuit.selected_physical_part(volt::ComponentId{1})
               .value()

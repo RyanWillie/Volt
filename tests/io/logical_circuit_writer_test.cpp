@@ -127,6 +127,25 @@ TEST_CASE("Logical circuit writer emits typed electrical attributes") {
     CHECK(part_attributes["voltage_rating"]["value"] == 75.0);
 }
 
+TEST_CASE("Logical circuit writer emits net typed electrical attributes") {
+    volt::Circuit circuit;
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"3V3"}, volt::NetKind::Power});
+
+    circuit.set_net_electrical_attribute(
+        net,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
+            volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Voltage},
+        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}});
+
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+    const auto &attributes = output["nets"][0]["electrical_attributes"];
+
+    CHECK(attributes["voltage"]["type"] == "quantity");
+    CHECK(attributes["voltage"]["dimension"] == "voltage");
+    CHECK(attributes["voltage"]["value"] == 3.3);
+}
+
 TEST_CASE("Logical circuit writer matches the LED golden fixture") {
     const auto circuit = volt::examples::build_led_circuit();
 

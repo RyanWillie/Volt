@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 
 namespace volt {
@@ -57,6 +58,11 @@ class Net {
     /** Return concrete pins connected to this net in deterministic insertion order. */
     [[nodiscard]] const std::vector<PinId> &pins() const noexcept { return pins_; }
 
+    /** Return typed electrical attributes for this net. */
+    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept {
+        return electrical_attributes_;
+    }
+
     /** Return whether the pin is already connected to this net. */
     [[nodiscard]] bool contains(PinId pin) const noexcept {
         return std::find(pins_.begin(), pins_.end(), pin) != pins_.end();
@@ -84,9 +90,17 @@ class Net {
     }
 
   private:
+    friend class Circuit;
+
+    void set_electrical_attribute(const ElectricalAttributeSpec &spec,
+                                  ElectricalAttributeValue value) {
+        electrical_attributes_.set(spec, std::move(value));
+    }
+
     NetName name_;
     NetKind kind_;
     std::vector<PinId> pins_;
+    ElectricalAttributeMap electrical_attributes_;
 };
 
 } // namespace volt

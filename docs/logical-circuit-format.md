@@ -113,10 +113,10 @@ Valid property types are `string`, `boolean`, `integer`, and `number`.
 
 ## Typed Electrical Attributes
 
-Components and selected physical parts may carry optional `electrical_attributes`. The
-field is absent when no typed electrical attributes are present. Attribute names are
-stable strings chosen by the kernel/catalog contract for that owner, and values are
-dimensioned payloads:
+Components, selected physical parts, and nets may carry optional
+`electrical_attributes`. The field is absent when no typed electrical attributes are
+present. Attribute names are stable strings chosen by the kernel/catalog contract for
+that owner, and values are dimensioned payloads:
 
 ```json
 {
@@ -271,7 +271,10 @@ Nets store canonical logical connectivity:
   "id": "net:0",
   "name": "GND",
   "kind": "Ground",
-  "pins": ["pin:1", "pin:3"]
+  "pins": ["pin:1", "pin:3"],
+  "electrical_attributes": {
+    "voltage": { "type": "quantity", "dimension": "voltage", "value": 0 }
+  }
 }
 ```
 
@@ -285,6 +288,10 @@ Nets store canonical logical connectivity:
 - `HighCurrent`
 
 A pin may appear in at most one net.
+
+Net `electrical_attributes` use the same typed payload encoding described above and are
+for design-bearing net facts such as nominal voltage. Empty net electrical attribute maps
+are omitted from canonical output and load as empty maps.
 
 ## Reader Validation
 
