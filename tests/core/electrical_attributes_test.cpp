@@ -99,3 +99,32 @@ TEST_CASE("ElectricalAttributeSpec rejects values with incompatible dimensions")
                         volt::Quantity{volt::UnitDimension::Current, 3.3}}),
                     std::invalid_argument);
 }
+
+TEST_CASE("ElectricalAttributeMap stores compatible values by attribute name") {
+    auto attributes = volt::ElectricalAttributeMap{};
+    const auto resistance = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"resistance"},
+        volt::ElectricalAttributeOwner::ComponentInstance,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Resistance,
+    };
+
+    attributes.set(resistance, volt::ElectricalAttributeValue{
+                                   volt::Quantity{volt::UnitDimension::Resistance, 330.0}});
+
+    CHECK(attributes.size() == 1);
+    CHECK(attributes.contains(volt::ElectricalAttributeName{"resistance"}));
+    CHECK(attributes.get(volt::ElectricalAttributeName{"resistance"}).as_quantity() ==
+          volt::Quantity{volt::UnitDimension::Resistance, 330.0});
+
+    attributes.set(resistance, volt::ElectricalAttributeValue{
+                                   volt::Quantity{volt::UnitDimension::Resistance, 470.0}});
+
+    CHECK(attributes.size() == 1);
+    CHECK(attributes.get(volt::ElectricalAttributeName{"resistance"}).as_quantity() ==
+          volt::Quantity{volt::UnitDimension::Resistance, 470.0});
+    CHECK_THROWS_AS(attributes.get(volt::ElectricalAttributeName{"missing"}), std::out_of_range);
+    CHECK_THROWS_AS(attributes.set(resistance, volt::ElectricalAttributeValue{volt::Quantity{
+                                                   volt::UnitDimension::Voltage, 3.3}}),
+                    std::invalid_argument);
+}

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cmath>
+#include <cstddef>
+#include <map>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -192,6 +194,49 @@ class ElectricalAttributeSpec {
     ElectricalAttributeKind kind_;
     UnitDimension dimension_;
     std::optional<AuthoringUnit> default_authoring_unit_;
+};
+
+/** Deterministically ordered storage for typed electrical attribute values. */
+class ElectricalAttributeMap {
+  public:
+    /** Construct an empty electrical attribute map. */
+    ElectricalAttributeMap() = default;
+
+    /** Set or replace an attribute value after checking it against the spec. */
+    void set(const ElectricalAttributeSpec &spec, ElectricalAttributeValue value) {
+        spec.require_compatible(value);
+        entries_.insert_or_assign(spec.name(), std::move(value));
+    }
+
+    /** Return an attribute value or throw if the name is missing. */
+    [[nodiscard]] const ElectricalAttributeValue &get(const ElectricalAttributeName &name) const {
+        const auto it = entries_.find(name);
+        if (it == entries_.end()) {
+            throw std::out_of_range{"Electrical attribute is not present"};
+        }
+
+        return it->second;
+    }
+
+    /** Return whether an attribute exists for the name. */
+    [[nodiscard]] bool contains(const ElectricalAttributeName &name) const noexcept {
+        return entries_.find(name) != entries_.end();
+    }
+
+    /** Return whether the map contains no electrical attributes. */
+    [[nodiscard]] bool empty() const noexcept { return entries_.empty(); }
+
+    /** Return the number of electrical attributes. */
+    [[nodiscard]] std::size_t size() const noexcept { return entries_.size(); }
+
+    /** Return attributes in deterministic name order. */
+    [[nodiscard]] const std::map<ElectricalAttributeName, ElectricalAttributeValue> &
+    entries() const noexcept {
+        return entries_;
+    }
+
+  private:
+    std::map<ElectricalAttributeName, ElectricalAttributeValue> entries_;
 };
 
 } // namespace volt

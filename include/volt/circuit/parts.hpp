@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
@@ -179,12 +180,25 @@ class PhysicalPart {
     /** Return extensible metadata properties for this physical part selection. */
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
+    /** Return typed electrical attributes for this physical part selection. */
+    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept {
+        return electrical_attributes_;
+    }
+
   private:
+    friend class ComponentInstance;
+
+    void set_electrical_attribute(const ElectricalAttributeSpec &spec,
+                                  ElectricalAttributeValue value) {
+        electrical_attributes_.set(spec, std::move(value));
+    }
+
     ManufacturerPart manufacturer_part_;
     PackageRef package_;
     FootprintRef footprint_;
     std::vector<PinPadMapping> pin_pad_mappings_;
     PropertyMap properties_;
+    ElectricalAttributeMap electrical_attributes_;
 };
 
 } // namespace volt
