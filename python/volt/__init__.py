@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 from pathlib import Path
 from typing import Iterable, Iterator
 
@@ -116,6 +117,43 @@ class Component:
             raise TypeError("Component pins are addressed by int number or str name")
 
         return Pin(self._design, pin)
+
+    def select_part(
+        self,
+        *,
+        manufacturer: str,
+        part_number: str,
+        package: str,
+        footprint: tuple[str, str],
+        pin_pads: dict[int | str, str],
+        properties: dict | None = None,
+        voltage_rating: float | None = None,
+        power_rating: float | None = None,
+    ) -> Component:
+        if not isinstance(pin_pads, dict):
+            raise TypeError("pin_pads must be a dict")
+        if not isinstance(footprint, tuple) or len(footprint) != 2:
+            raise TypeError("footprint must be a (library, name) tuple")
+
+        selected_part_ratings = []
+        if voltage_rating is not None:
+            selected_part_ratings.append(("voltage_rating", "voltage", _number(voltage_rating)))
+        if power_rating is not None:
+            selected_part_ratings.append(("power_rating", "power", _number(power_rating)))
+
+        self._design._circuit.select_physical_part(
+            self._index,
+            manufacturer,
+            part_number,
+            package,
+            footprint[0],
+            footprint[1],
+            pin_pads,
+            properties or {},
+        )
+        for name, dimension, value in selected_part_ratings:
+            self._design._circuit.set_selected_part_quantity(self._index, name, dimension, value)
+        return self
 
     def __repr__(self) -> str:
         return f"Component(index={self._index})"
@@ -273,7 +311,10 @@ def _number(value: float) -> float:
         raise TypeError("Electrical attribute values must be numbers")
     if not isinstance(value, (int, float)):
         raise TypeError("Electrical attribute values must be numbers")
-    return float(value)
+    result = float(value)
+    if not isfinite(result):
+        raise ValueError("Electrical attribute values must be finite")
+    return result
 
 
 def _flatten_pins(values):

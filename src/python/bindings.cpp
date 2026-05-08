@@ -1,5 +1,6 @@
 #include <cmath>
 #include <cstdint>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -132,6 +133,9 @@ void require_finite(double value, const char *message) {
     if (value == "voltage") {
         return volt::UnitDimension::Voltage;
     }
+    if (value == "power") {
+        return volt::UnitDimension::Power;
+    }
     if (value == "ratio") {
         return volt::UnitDimension::Ratio;
     }
@@ -241,6 +245,14 @@ selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimensi
     return specs;
 }
 
+[[nodiscard]] std::string string_from_pin_key(const py::handle &key) {
+    if (py::isinstance<py::int_>(key) || py::isinstance<py::str>(key)) {
+        return py::cast<std::string>(py::str(key));
+    }
+
+    throw std::invalid_argument{"Pin-pad mapping keys must be pin numbers or names"};
+}
+
 [[nodiscard]] py::dict diagnostic_to_dict(const volt::Diagnostic &diagnostic) {
     auto result = py::dict{};
     result["severity"] = severity_name(diagnostic.severity());
@@ -288,6 +300,38 @@ class PyCircuit {
 
     [[nodiscard]] std::size_t add_net(const std::string &name, const std::string &kind) {
         return circuit_.add_net(volt::Net{volt::NetName{name}, parse_net_kind(kind)}).index();
+    }
+
+    void select_physical_part(std::size_t component, const std::string &manufacturer,
+                              const std::string &part_number, const std::string &package,
+                              const std::string &footprint_library,
+                              const std::string &footprint_name, const py::dict &pin_pads,
+                              const py::dict &properties) {
+        const auto component_handle = component_id(component);
+        auto mappings = std::vector<volt::PinPadMapping>{};
+        mappings.reserve(static_cast<std::size_t>(py::len(pin_pads)));
+
+        for (const auto item : pin_pads) {
+            const auto key = string_from_pin_key(item.first);
+            const auto pad = py::cast<std::string>(item.second);
+            auto pin = std::optional<volt::PinId>{};
+            if (py::isinstance<py::int_>(item.first)) {
+                pin = circuit_.pin_by_number(component_handle, key);
+            } else {
+                pin = circuit_.pin_by_name(component_handle, key);
+            }
+            if (!pin.has_value()) {
+                throw std::out_of_range{"Component has no pin with that name or number"};
+            }
+            mappings.emplace_back(circuit_.pin(pin.value()).definition(), pad);
+        }
+
+        circuit_.select_physical_part(
+            component_handle,
+            volt::PhysicalPart{volt::ManufacturerPart{manufacturer, part_number},
+                               volt::PackageRef{package},
+                               volt::FootprintRef{footprint_library, footprint_name},
+                               std::move(mappings), properties_from_dict(properties)});
     }
 
     void set_component_quantity(std::size_t component, const std::string &name,
@@ -411,6 +455,10 @@ PYBIND11_MODULE(_volt, module) {
         .def("define_component", &PyCircuit::define_component, py::arg("name"), py::arg("pins"),
              py::arg("properties") = py::dict{})
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
+        .def("select_physical_part", &PyCircuit::select_physical_part, py::arg("component"),
+             py::arg("manufacturer"), py::arg("part_number"), py::arg("package"),
+             py::arg("footprint_library"), py::arg("footprint_name"), py::arg("pin_pads"),
+             py::arg("properties") = py::dict{})
         .def("set_component_quantity", &PyCircuit::set_component_quantity, py::arg("component"),
              py::arg("name"), py::arg("dimension"), py::arg("value"))
         .def("set_component_percent_tolerance", &PyCircuit::set_component_percent_tolerance,
