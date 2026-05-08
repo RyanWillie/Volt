@@ -146,6 +146,44 @@ TEST_CASE("Logical circuit writer emits net typed electrical attributes") {
     CHECK(attributes["voltage"]["value"] == 3.3);
 }
 
+TEST_CASE("Logical circuit writer emits pin electrical semantics") {
+    volt::Circuit circuit;
+    const auto pin = circuit.add_pin_definition(volt::PinDefinition{
+        "RESET",
+        "4",
+        volt::PinRole::DigitalInput,
+        volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Input,
+        volt::ElectricalSignalDomain::Digital,
+        volt::ElectricalDriveKind::HighImpedance,
+        volt::ElectricalPolarity::ActiveLow,
+    });
+
+    circuit.set_pin_definition_electrical_attribute(
+        pin,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage_range"}, volt::ElectricalAttributeOwner::PinSpec,
+            volt::ElectricalAttributeKind::Constraint, volt::UnitDimension::Voltage},
+        volt::ElectricalAttributeValue{
+            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 0.0},
+                                         volt::Quantity{volt::UnitDimension::Voltage, 5.5})});
+
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+    const auto &pin_json = output["pin_definitions"][0];
+    const auto &attributes = pin_json["electrical_attributes"];
+
+    CHECK(pin_json["terminal_kind"] == "Signal");
+    CHECK(pin_json["direction"] == "Input");
+    CHECK(pin_json["signal_domain"] == "Digital");
+    CHECK(pin_json["drive_kind"] == "HighImpedance");
+    CHECK(pin_json["polarity"] == "ActiveLow");
+    CHECK(attributes["voltage_range"]["type"] == "range");
+    CHECK(attributes["voltage_range"]["dimension"] == "voltage");
+    CHECK(attributes["voltage_range"]["minimum"] == 0.0);
+    CHECK(attributes["voltage_range"]["maximum"] == 5.5);
+}
+
 TEST_CASE("Logical circuit writer matches the LED golden fixture") {
     const auto circuit = volt::examples::build_led_circuit();
 

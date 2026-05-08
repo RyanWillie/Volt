@@ -62,15 +62,25 @@ TEST_CASE("Passive component catalog specs define two required passive pins") {
     CHECK(circuit.pin_definition(resistor_definition.pins()[0]).role() == volt::PinRole::Passive);
     CHECK(circuit.pin_definition(resistor_definition.pins()[0]).connection_requirement() ==
           volt::ConnectionRequirement::Required);
+    CHECK(circuit.pin_definition(resistor_definition.pins()[0]).terminal_kind() ==
+          volt::ElectricalTerminalKind::Passive);
+    CHECK(circuit.pin_definition(resistor_definition.pins()[0]).direction() ==
+          volt::ElectricalDirection::Passive);
     CHECK(circuit.pin_definition(resistor_definition.pins()[1]).name() == "2");
     CHECK(circuit.pin_definition(resistor_definition.pins()[1]).number() == "2");
+    CHECK(circuit.pin_definition(resistor_definition.pins()[1]).terminal_kind() ==
+          volt::ElectricalTerminalKind::Passive);
 
     const auto &capacitor_definition = circuit.component_definition(capacitor);
     REQUIRE(capacitor_definition.pins().size() == 2);
     CHECK(circuit.pin_definition(capacitor_definition.pins()[0]).name() == "1");
     CHECK(circuit.pin_definition(capacitor_definition.pins()[0]).number() == "1");
+    CHECK(circuit.pin_definition(capacitor_definition.pins()[0]).terminal_kind() ==
+          volt::ElectricalTerminalKind::Passive);
     CHECK(circuit.pin_definition(capacitor_definition.pins()[1]).name() == "2");
     CHECK(circuit.pin_definition(capacitor_definition.pins()[1]).number() == "2");
+    CHECK(circuit.pin_definition(capacitor_definition.pins()[1]).direction() ==
+          volt::ElectricalDirection::Passive);
 }
 
 TEST_CASE("LED and connector catalog specs preserve expected logical pin conventions") {
@@ -84,8 +94,12 @@ TEST_CASE("LED and connector catalog specs preserve expected logical pin convent
     REQUIRE(led_definition.pins().size() == 2);
     CHECK(circuit.pin_definition(led_definition.pins()[0]).name() == "A");
     CHECK(circuit.pin_definition(led_definition.pins()[0]).number() == "2");
+    CHECK(circuit.pin_definition(led_definition.pins()[0]).terminal_kind() ==
+          volt::ElectricalTerminalKind::Passive);
     CHECK(circuit.pin_definition(led_definition.pins()[1]).name() == "K");
     CHECK(circuit.pin_definition(led_definition.pins()[1]).number() == "1");
+    CHECK(circuit.pin_definition(led_definition.pins()[1]).direction() ==
+          volt::ElectricalDirection::Passive);
 
     const auto &connector_definition = circuit.component_definition(connector);
     REQUIRE(connector_definition.pins().size() == 2);

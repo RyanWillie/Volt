@@ -61,6 +61,16 @@ class LogicalCircuitReader {
         return value.get<std::string>();
     }
 
+    static std::string optional_string_field(const nlohmann::json &object, const char *name,
+                                             std::string default_value) {
+        const auto it = object.find(name);
+        if (it == object.end()) {
+            return default_value;
+        }
+        require(it->is_string(), std::string{"Expected string field: "} + name);
+        return it->get<std::string>();
+    }
+
     static void require_format(const nlohmann::json &object) {
         const auto actual = string_field(object, "format");
         require(actual == logical_circuit_format_name(),
@@ -121,6 +131,74 @@ class LogicalCircuitReader {
         if (value == "MustNotConnect")
             return ConnectionRequirement::MustNotConnect;
         throw std::logic_error{"Invalid ConnectionRequirement value"};
+    }
+
+    [[nodiscard]] static ElectricalTerminalKind electrical_terminal_kind(const std::string &value) {
+        if (value == "Unspecified")
+            return ElectricalTerminalKind::Unspecified;
+        if (value == "Passive")
+            return ElectricalTerminalKind::Passive;
+        if (value == "Signal")
+            return ElectricalTerminalKind::Signal;
+        if (value == "Power")
+            return ElectricalTerminalKind::Power;
+        if (value == "Ground")
+            return ElectricalTerminalKind::Ground;
+        if (value == "NoConnect")
+            return ElectricalTerminalKind::NoConnect;
+        throw std::logic_error{"Invalid ElectricalTerminalKind value"};
+    }
+
+    [[nodiscard]] static ElectricalDirection electrical_direction(const std::string &value) {
+        if (value == "Unspecified")
+            return ElectricalDirection::Unspecified;
+        if (value == "Input")
+            return ElectricalDirection::Input;
+        if (value == "Output")
+            return ElectricalDirection::Output;
+        if (value == "Bidirectional")
+            return ElectricalDirection::Bidirectional;
+        if (value == "Passive")
+            return ElectricalDirection::Passive;
+        throw std::logic_error{"Invalid ElectricalDirection value"};
+    }
+
+    [[nodiscard]] static ElectricalSignalDomain electrical_signal_domain(const std::string &value) {
+        if (value == "Unspecified")
+            return ElectricalSignalDomain::Unspecified;
+        if (value == "Digital")
+            return ElectricalSignalDomain::Digital;
+        if (value == "Analog")
+            return ElectricalSignalDomain::Analog;
+        if (value == "Mixed")
+            return ElectricalSignalDomain::Mixed;
+        throw std::logic_error{"Invalid ElectricalSignalDomain value"};
+    }
+
+    [[nodiscard]] static ElectricalDriveKind electrical_drive_kind(const std::string &value) {
+        if (value == "Unspecified")
+            return ElectricalDriveKind::Unspecified;
+        if (value == "PushPull")
+            return ElectricalDriveKind::PushPull;
+        if (value == "OpenCollector")
+            return ElectricalDriveKind::OpenCollector;
+        if (value == "OpenDrain")
+            return ElectricalDriveKind::OpenDrain;
+        if (value == "HighImpedance")
+            return ElectricalDriveKind::HighImpedance;
+        if (value == "Passive")
+            return ElectricalDriveKind::Passive;
+        throw std::logic_error{"Invalid ElectricalDriveKind value"};
+    }
+
+    [[nodiscard]] static ElectricalPolarity electrical_polarity(const std::string &value) {
+        if (value == "None")
+            return ElectricalPolarity::None;
+        if (value == "ActiveHigh")
+            return ElectricalPolarity::ActiveHigh;
+        if (value == "ActiveLow")
+            return ElectricalPolarity::ActiveLow;
+        throw std::logic_error{"Invalid ElectricalPolarity value"};
     }
 
     [[nodiscard]] static NetKind net_kind(const std::string &value) {
@@ -295,6 +373,24 @@ class LogicalCircuitReader {
         }
     }
 
+    void read_pin_definition_electrical_attributes(const nlohmann::json &object,
+                                                   PinDefId pin_definition) {
+        const auto it = object.find("electrical_attributes");
+        if (it == object.end()) {
+            return;
+        }
+        require(it->is_object(), "Electrical attributes must be an object");
+        for (const auto &[name, value] : it->items()) {
+            const auto attribute = electrical_attribute_value(value);
+            circuit_.set_pin_definition_electrical_attribute(
+                pin_definition,
+                ElectricalAttributeSpec{ElectricalAttributeName{name},
+                                        ElectricalAttributeOwner::PinSpec,
+                                        ElectricalAttributeKind::Constraint, attribute.dimension()},
+                attribute);
+        }
+    }
+
     [[nodiscard]] static std::optional<DefinitionSource>
     definition_source(const nlohmann::json &object) {
         const auto it = object.find("source");
@@ -317,11 +413,19 @@ class LogicalCircuitReader {
         auto seen = std::set<std::string>{};
         for (const auto &pin : array_field(document_, "pin_definitions")) {
             const auto id = local_id(pin, "pin_def:", seen);
-            pin_def_ids_.emplace(
-                id, circuit_.add_pin_definition(PinDefinition{
-                        string_field(pin, "name"), string_field(pin, "number"),
-                        pin_role(string_field(pin, "role")),
-                        connection_requirement(string_field(pin, "connection_requirement"))}));
+            const auto pin_definition_id = circuit_.add_pin_definition(PinDefinition{
+                string_field(pin, "name"), string_field(pin, "number"),
+                pin_role(string_field(pin, "role")),
+                connection_requirement(string_field(pin, "connection_requirement")),
+                electrical_terminal_kind(
+                    optional_string_field(pin, "terminal_kind", "Unspecified")),
+                electrical_direction(optional_string_field(pin, "direction", "Unspecified")),
+                electrical_signal_domain(
+                    optional_string_field(pin, "signal_domain", "Unspecified")),
+                electrical_drive_kind(optional_string_field(pin, "drive_kind", "Unspecified")),
+                electrical_polarity(optional_string_field(pin, "polarity", "None"))});
+            pin_def_ids_.emplace(id, pin_definition_id);
+            read_pin_definition_electrical_attributes(pin, pin_definition_id);
         }
     }
 

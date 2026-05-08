@@ -304,6 +304,39 @@ TEST_CASE("Circuit sets typed electrical attributes on component instances") {
               .as_quantity() == volt::Quantity{volt::UnitDimension::Resistance, 330.0});
 }
 
+TEST_CASE("Circuit sets typed electrical attributes on pin definitions") {
+    volt::Circuit circuit;
+    const auto pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+        "VCC",
+        "8",
+        volt::PinRole::PowerInput,
+        volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power,
+        volt::ElectricalDirection::Input,
+    });
+    const auto voltage_range = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"voltage_range"},
+        volt::ElectricalAttributeOwner::PinSpec,
+        volt::ElectricalAttributeKind::Constraint,
+        volt::UnitDimension::Voltage,
+    };
+
+    circuit.set_pin_definition_electrical_attribute(
+        pin_definition, voltage_range,
+        volt::ElectricalAttributeValue{
+            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 4.5},
+                                         volt::Quantity{volt::UnitDimension::Voltage, 16.0})});
+
+    const auto &stored_range = circuit.pin_definition(pin_definition)
+                                   .electrical_attributes()
+                                   .get(volt::ElectricalAttributeName{"voltage_range"})
+                                   .as_range();
+    REQUIRE(stored_range.minimum().has_value());
+    REQUIRE(stored_range.maximum().has_value());
+    CHECK(stored_range.minimum().value() == volt::Quantity{volt::UnitDimension::Voltage, 4.5});
+    CHECK(stored_range.maximum().value() == volt::Quantity{volt::UnitDimension::Voltage, 16.0});
+}
+
 TEST_CASE("Circuit sets typed electrical attributes on nets") {
     volt::Circuit circuit;
     const auto net = circuit.add_net(volt::Net{volt::NetName{"3V3"}, volt::NetKind::Power});
@@ -369,6 +402,41 @@ TEST_CASE("Circuit rejects incompatible component electrical attributes") {
             volt::ComponentId{99}, resistance,
             volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}}),
         std::out_of_range);
+}
+
+TEST_CASE("Circuit rejects incompatible pin definition electrical attributes") {
+    volt::Circuit circuit;
+    const auto pin_definition =
+        circuit.add_pin_definition(volt::PinDefinition{"VCC", "8", volt::PinRole::PowerInput});
+    const auto voltage_range = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"voltage_range"},
+        volt::ElectricalAttributeOwner::PinSpec,
+        volt::ElectricalAttributeKind::Constraint,
+        volt::UnitDimension::Voltage,
+    };
+    const auto component_resistance = volt::ElectricalAttributeSpec{
+        volt::ElectricalAttributeName{"resistance"},
+        volt::ElectricalAttributeOwner::ComponentInstance,
+        volt::ElectricalAttributeKind::DesignInput,
+        volt::UnitDimension::Resistance,
+    };
+
+    CHECK_THROWS_AS(
+        circuit.set_pin_definition_electrical_attribute(
+            pin_definition, voltage_range,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Current, 0.01}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        circuit.set_pin_definition_electrical_attribute(
+            pin_definition, component_resistance,
+            volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}}),
+        std::logic_error);
+    CHECK_THROWS_AS(circuit.set_pin_definition_electrical_attribute(
+                        volt::PinDefId{99}, voltage_range,
+                        volt::ElectricalAttributeValue{volt::QuantityRange::bounded(
+                            volt::Quantity{volt::UnitDimension::Voltage, 4.5},
+                            volt::Quantity{volt::UnitDimension::Voltage, 16.0})}),
+                    std::out_of_range);
 }
 
 TEST_CASE("Circuit rejects incompatible net electrical attributes") {

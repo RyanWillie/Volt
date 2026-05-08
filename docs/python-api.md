@@ -196,11 +196,18 @@ enough:
 opamp = d.define_component(
     "OpAmp",
     pins=[
-        volt.PinSpec("OUT", 1, role="output"),
-        volt.PinSpec("IN-", 2, role="input"),
-        volt.PinSpec("IN+", 3, role="input"),
-        volt.PinSpec("V-", 4, role="power"),
-        volt.PinSpec("V+", 8, role="power"),
+        volt.PinSpec("OUT", 1, role="output", terminal="signal", direction="output"),
+        volt.PinSpec("IN-", 2, role="input", terminal="signal", direction="input"),
+        volt.PinSpec("IN+", 3, role="input", terminal="signal", direction="input"),
+        volt.PinSpec("V-", 4, role="ground", terminal="ground", direction="passive"),
+        volt.PinSpec(
+            "V+",
+            8,
+            role="power",
+            terminal="power",
+            direction="input",
+            voltage_range=(2.7, 5.5),
+        ),
     ],
 )
 
@@ -216,6 +223,12 @@ in lowercase: `passive`, `input`/`digital_input`, `output`/`digital_output`,
 `analog_input`, `analog_output`, `bidirectional`, `power`/`power_input`, `power_output`,
 `ground`, and `no_connect`. Connection requirements are `required`, `optional`, and
 `must_not_connect`.
+
+`PinSpec` also accepts a small set of fundamental electrical semantics:
+`terminal`, `direction`, `signal`, `drive`, `polarity`, and `voltage_range`. These are
+not Python-only metadata; they lower into kernel-owned pin definitions and logical JSON.
+ERC consumes these typed semantics for power/ground checks, such as reporting a typed
+power input connected to a net with no typed supply source.
 
 ## Selected Physical Parts
 

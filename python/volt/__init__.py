@@ -56,14 +56,34 @@ class PinSpec:
     number: int | str
     role: str = "passive"
     requirement: str = "required"
+    terminal: str = "unspecified"
+    direction: str = "unspecified"
+    signal: str = "unspecified"
+    drive: str = "unspecified"
+    polarity: str = "none"
+    voltage_range: tuple[float | None, float | None] | None = None
 
     def _to_dict(self):
-        return {
+        result = {
             "name": self.name,
             "number": str(self.number),
             "role": self.role,
             "requirement": self.requirement,
+            "terminal": self.terminal,
+            "direction": self.direction,
+            "signal": self.signal,
+            "drive": self.drive,
+            "polarity": self.polarity,
         }
+        if self.voltage_range is not None:
+            if not isinstance(self.voltage_range, tuple) or len(self.voltage_range) != 2:
+                raise TypeError("voltage_range must be a (minimum, maximum) tuple")
+            minimum, maximum = self.voltage_range
+            result["voltage_range"] = (
+                None if minimum is None else _number(minimum),
+                None if maximum is None else _number(maximum),
+            )
+        return result
 
 
 class ComponentDefinition:

@@ -81,6 +81,103 @@ namespace {
     throw std::invalid_argument{"Unknown connection requirement"};
 }
 
+[[nodiscard]] volt::ElectricalTerminalKind parse_terminal_kind(const std::string &value) {
+    if (value == "unspecified" || value == "Unspecified") {
+        return volt::ElectricalTerminalKind::Unspecified;
+    }
+    if (value == "passive" || value == "Passive") {
+        return volt::ElectricalTerminalKind::Passive;
+    }
+    if (value == "signal" || value == "Signal") {
+        return volt::ElectricalTerminalKind::Signal;
+    }
+    if (value == "power" || value == "Power") {
+        return volt::ElectricalTerminalKind::Power;
+    }
+    if (value == "ground" || value == "Ground") {
+        return volt::ElectricalTerminalKind::Ground;
+    }
+    if (value == "no_connect" || value == "no-connect" || value == "NoConnect") {
+        return volt::ElectricalTerminalKind::NoConnect;
+    }
+
+    throw std::invalid_argument{"Unknown electrical terminal kind"};
+}
+
+[[nodiscard]] volt::ElectricalDirection parse_direction(const std::string &value) {
+    if (value == "unspecified" || value == "Unspecified") {
+        return volt::ElectricalDirection::Unspecified;
+    }
+    if (value == "input" || value == "Input") {
+        return volt::ElectricalDirection::Input;
+    }
+    if (value == "output" || value == "Output") {
+        return volt::ElectricalDirection::Output;
+    }
+    if (value == "bidirectional" || value == "Bidirectional") {
+        return volt::ElectricalDirection::Bidirectional;
+    }
+    if (value == "passive" || value == "Passive") {
+        return volt::ElectricalDirection::Passive;
+    }
+
+    throw std::invalid_argument{"Unknown electrical direction"};
+}
+
+[[nodiscard]] volt::ElectricalSignalDomain parse_signal_domain(const std::string &value) {
+    if (value == "unspecified" || value == "Unspecified") {
+        return volt::ElectricalSignalDomain::Unspecified;
+    }
+    if (value == "digital" || value == "Digital") {
+        return volt::ElectricalSignalDomain::Digital;
+    }
+    if (value == "analog" || value == "Analog") {
+        return volt::ElectricalSignalDomain::Analog;
+    }
+    if (value == "mixed" || value == "Mixed") {
+        return volt::ElectricalSignalDomain::Mixed;
+    }
+
+    throw std::invalid_argument{"Unknown electrical signal domain"};
+}
+
+[[nodiscard]] volt::ElectricalDriveKind parse_drive_kind(const std::string &value) {
+    if (value == "unspecified" || value == "Unspecified") {
+        return volt::ElectricalDriveKind::Unspecified;
+    }
+    if (value == "push_pull" || value == "push-pull" || value == "PushPull") {
+        return volt::ElectricalDriveKind::PushPull;
+    }
+    if (value == "open_collector" || value == "open-collector" || value == "OpenCollector") {
+        return volt::ElectricalDriveKind::OpenCollector;
+    }
+    if (value == "open_drain" || value == "open-drain" || value == "OpenDrain") {
+        return volt::ElectricalDriveKind::OpenDrain;
+    }
+    if (value == "high_impedance" || value == "high-impedance" || value == "HighImpedance") {
+        return volt::ElectricalDriveKind::HighImpedance;
+    }
+    if (value == "passive" || value == "Passive") {
+        return volt::ElectricalDriveKind::Passive;
+    }
+
+    throw std::invalid_argument{"Unknown electrical drive kind"};
+}
+
+[[nodiscard]] volt::ElectricalPolarity parse_polarity(const std::string &value) {
+    if (value == "none" || value == "None") {
+        return volt::ElectricalPolarity::None;
+    }
+    if (value == "active_high" || value == "active-high" || value == "ActiveHigh") {
+        return volt::ElectricalPolarity::ActiveHigh;
+    }
+    if (value == "active_low" || value == "active-low" || value == "ActiveLow") {
+        return volt::ElectricalPolarity::ActiveLow;
+    }
+
+    throw std::invalid_argument{"Unknown electrical polarity"};
+}
+
 [[nodiscard]] volt::NetKind parse_net_kind(const std::string &value) {
     if (value == "signal" || value == "Signal") {
         return volt::NetKind::Signal;
@@ -232,8 +329,67 @@ selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimensi
         requirement = parse_connection_requirement(py::cast<std::string>(dict["requirement"]));
     }
 
+    auto terminal_kind = volt::ElectricalTerminalKind::Unspecified;
+    if (dict.contains("terminal")) {
+        terminal_kind = parse_terminal_kind(py::cast<std::string>(dict["terminal"]));
+    }
+
+    auto direction = volt::ElectricalDirection::Unspecified;
+    if (dict.contains("direction")) {
+        direction = parse_direction(py::cast<std::string>(dict["direction"]));
+    }
+
+    auto signal_domain = volt::ElectricalSignalDomain::Unspecified;
+    if (dict.contains("signal")) {
+        signal_domain = parse_signal_domain(py::cast<std::string>(dict["signal"]));
+    }
+
+    auto drive_kind = volt::ElectricalDriveKind::Unspecified;
+    if (dict.contains("drive")) {
+        drive_kind = parse_drive_kind(py::cast<std::string>(dict["drive"]));
+    }
+
+    auto polarity = volt::ElectricalPolarity::None;
+    if (dict.contains("polarity")) {
+        polarity = parse_polarity(py::cast<std::string>(dict["polarity"]));
+    }
+
+    auto voltage_range = std::optional<volt::QuantityRange>{};
+    if (dict.contains("voltage_range")) {
+        const auto range = py::cast<std::pair<std::optional<double>, std::optional<double>>>(
+            dict["voltage_range"]);
+        if (!range.first.has_value() && !range.second.has_value()) {
+            throw std::invalid_argument{"voltage_range must include at least one bound"};
+        }
+        if (range.first.has_value()) {
+            require_finite(range.first.value(), "Voltage range bounds must be finite");
+        }
+        if (range.second.has_value()) {
+            require_finite(range.second.value(), "Voltage range bounds must be finite");
+        }
+        if (range.first.has_value() && range.second.has_value()) {
+            voltage_range = volt::QuantityRange::bounded(
+                volt::Quantity{volt::UnitDimension::Voltage, range.first.value()},
+                volt::Quantity{volt::UnitDimension::Voltage, range.second.value()});
+        } else if (range.first.has_value()) {
+            voltage_range = volt::QuantityRange::minimum(
+                volt::Quantity{volt::UnitDimension::Voltage, range.first.value()});
+        } else {
+            voltage_range = volt::QuantityRange::maximum(
+                volt::Quantity{volt::UnitDimension::Voltage, range.second.value()});
+        }
+    }
+
     return volt::authoring::PinSpec{py::cast<std::string>(dict["name"]),
-                                    py::cast<std::string>(dict["number"]), role, requirement};
+                                    py::cast<std::string>(dict["number"]),
+                                    role,
+                                    requirement,
+                                    terminal_kind,
+                                    direction,
+                                    signal_domain,
+                                    drive_kind,
+                                    polarity,
+                                    voltage_range};
 }
 
 [[nodiscard]] std::vector<volt::authoring::PinSpec> pin_specs_from_list(const py::list &pins) {
