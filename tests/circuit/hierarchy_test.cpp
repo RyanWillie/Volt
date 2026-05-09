@@ -182,6 +182,25 @@ TEST_CASE("Circuit rejects duplicate port bindings for one module instance port"
     CHECK(circuit.port_binding_count() == 1);
 }
 
+TEST_CASE("Circuit rejects binding a module port to its own internal net") {
+    volt::Circuit circuit;
+
+    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"BuckConverter"},
+    });
+    const auto vin = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
+    const auto port = circuit.add_port_definition(
+        module, volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
+    const auto instance =
+        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
+    const auto internal_net = circuit.concrete_net_for(instance, vin);
+    REQUIRE(internal_net.has_value());
+
+    CHECK_THROWS_AS(circuit.bind_port(instance, port, internal_net.value()), std::logic_error);
+    CHECK(circuit.port_binding_count() == 0);
+}
+
 TEST_CASE("Root module instantiation preflights concrete net names before mutating") {
     volt::Circuit circuit;
 

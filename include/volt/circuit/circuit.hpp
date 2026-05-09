@@ -153,6 +153,9 @@ class Circuit {
         if (!internal_net.has_value()) {
             throw std::logic_error{"Port internal net has no concrete module instance net"};
         }
+        if (internal_net.value() == parent_net) {
+            throw std::logic_error{"Module instance port cannot bind to its own internal net"};
+        }
 
         return port_bindings_.insert(PortBinding{instance, port, internal_net.value(), parent_net});
     }
