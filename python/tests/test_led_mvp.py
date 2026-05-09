@@ -413,6 +413,19 @@ def test_pin_voltage_range_diagnostic_is_inspectable():
     assert "PIN_VOLTAGE_RANGE_VIOLATION" in {diagnostic.code for diagnostic in report}
 
 
+def test_pcb_readiness_requires_selected_physical_parts():
+    design = volt.Design("pcb-readiness")
+    r1 = design.R("10k", ref="R1")
+    signal = design.net("SIGNAL")
+    signal += r1[1]
+
+    logical_report = design.validate()
+    pcb_report = design.validate_for_pcb()
+
+    assert "PHYSICAL_PART_REQUIRED" not in {diagnostic.code for diagnostic in logical_report}
+    assert "PHYSICAL_PART_REQUIRED" in {diagnostic.code for diagnostic in pcb_report}
+
+
 def test_power_pin_semantics_drive_diagnostics():
     design = volt.Design("typed-power")
     load = design.define_component(
@@ -464,5 +477,6 @@ if __name__ == "__main__":
     test_invalid_selected_part_rating_does_not_select_part()
     test_voltage_rating_diagnostic_is_inspectable()
     test_pin_voltage_range_diagnostic_is_inspectable()
+    test_pcb_readiness_requires_selected_physical_parts()
     test_power_pin_semantics_drive_diagnostics()
     test_diagnostics_are_inspectable()

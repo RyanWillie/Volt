@@ -187,6 +187,10 @@ for diagnostic in design.validate():
     print(diagnostic.severity, diagnostic.code, diagnostic.message)
 ```
 
+`Design.validate()` runs the default logical validation suite. `Design.validate_for_pcb()`
+adds PCB-readiness checks, including selected physical part requirements, without making
+selected parts mandatory for logical-only designs.
+
 ## Custom Component Definitions
 
 Python can define reusable logical component definitions when the built-in helpers are not

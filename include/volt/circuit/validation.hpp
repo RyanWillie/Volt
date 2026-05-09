@@ -297,6 +297,22 @@ inline void validate_net_semantics(const Circuit &circuit, DiagnosticReport &rep
     }
 }
 
+inline void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &report) {
+    for (std::size_t index = 0; index < circuit.component_count(); ++index) {
+        const auto component_id = ComponentId{index};
+        const auto &component = circuit.component(component_id);
+        if (!component.selected_physical_part().has_value()) {
+            report.add(Diagnostic{
+                Severity::Error,
+                DiagnosticCode{"PHYSICAL_PART_REQUIRED"},
+                "Component requires a selected physical part for PCB readiness",
+                std::vector{EntityRef::component(component_id),
+                            EntityRef::component_def(component.definition())},
+            });
+        }
+    }
+}
+
 } // namespace detail
 
 /** Validate logical connectivity shape and pin connection requirements. */
@@ -324,6 +340,15 @@ inline void validate_net_semantics(const Circuit &circuit, DiagnosticReport &rep
 
     detail::validate_pin_connection_requirements(circuit, report);
     detail::validate_net_semantics(circuit, report);
+
+    return report;
+}
+
+/** Validate whether a circuit is ready for PCB/layout work. */
+[[nodiscard]] inline DiagnosticReport validate_for_pcb(const Circuit &circuit) {
+    auto report = validate_circuit(circuit);
+
+    detail::validate_physical_part_selection(circuit, report);
 
     return report;
 }

@@ -17,6 +17,7 @@ TEST_CASE("Circuit validation diagnostic code catalog remains stable") {
     const auto codes = std::set<std::string>{
         "EMPTY_NET",
         "MULTIPLE_OUTPUTS_ON_NET",
+        "PHYSICAL_PART_REQUIRED",
         "PIN_GROUND_ON_NON_GROUND_NET",
         "PIN_MUST_NOT_CONNECT",
         "PIN_POWER_ON_GROUND_NET",
@@ -27,7 +28,7 @@ TEST_CASE("Circuit validation diagnostic code catalog remains stable") {
         "UNCONNECTED_REQUIRED_PIN",
     };
 
-    CHECK(codes.size() == 10);
+    CHECK(codes.size() == 11);
 }
 
 TEST_CASE("Circuit validation reports required pins that are not connected") {
@@ -243,6 +244,72 @@ TEST_CASE("Full circuit validation preserves connectivity before electrical rule
     CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
     CHECK(report.diagnostics()[2].code() == volt::DiagnosticCode{"POWER_INPUT_WITHOUT_SOURCE"});
     CHECK(report.diagnostics()[3].code() == volt::DiagnosticCode{"PIN_VOLTAGE_RANGE_VIOLATION"});
+}
+
+TEST_CASE("PCB readiness validation reports components without selected physical parts") {
+    volt::Circuit circuit;
+    const auto first_pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::PinRole::Passive, volt::ConnectionRequirement::Required});
+    const auto second_pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::PinRole::Passive, volt::ConnectionRequirement::Required});
+    const auto resistor_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin_def, second_pin_def}});
+    const auto resistor =
+        circuit.instantiate_component(resistor_def, volt::ReferenceDesignator{"R1"});
+    const auto first_pin = circuit.pin_by_number(resistor, "1").value();
+    const auto second_pin = circuit.pin_by_number(resistor, "2").value();
+    const auto input = circuit.add_net(volt::Net{volt::NetName{"IN"}, volt::NetKind::Signal});
+    const auto output = circuit.add_net(volt::Net{volt::NetName{"OUT"}, volt::NetKind::Signal});
+
+    circuit.connect(input, first_pin);
+    circuit.connect(output, second_pin);
+
+    const auto logical_report = volt::validate_circuit(circuit);
+    const auto pcb_report = volt::validate_for_pcb(circuit);
+
+    REQUIRE(logical_report.count() == 2);
+    CHECK(logical_report.diagnostics()[0].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+    CHECK(logical_report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+    REQUIRE(pcb_report.count() == 3);
+    CHECK(pcb_report.diagnostics()[0].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+    CHECK(pcb_report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+    const auto &diagnostic = pcb_report.diagnostics()[2];
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    CHECK(diagnostic.code() == volt::DiagnosticCode{"PHYSICAL_PART_REQUIRED"});
+    REQUIRE(diagnostic.entities().size() == 2);
+    CHECK(diagnostic.entities()[0] == volt::EntityRef::component(resistor));
+    CHECK(diagnostic.entities()[1] == volt::EntityRef::component_def(resistor_def));
+}
+
+TEST_CASE("PCB readiness validation accepts components with selected physical parts") {
+    volt::Circuit circuit;
+    const auto first_pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::PinRole::Passive, volt::ConnectionRequirement::Required});
+    const auto second_pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::PinRole::Passive, volt::ConnectionRequirement::Required});
+    const auto resistor_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin_def, second_pin_def}});
+    const auto resistor =
+        circuit.instantiate_component(resistor_def, volt::ReferenceDesignator{"R1"});
+    const auto first_pin = circuit.pin_by_number(resistor, "1").value();
+    const auto second_pin = circuit.pin_by_number(resistor, "2").value();
+    const auto input = circuit.add_net(volt::Net{volt::NetName{"IN"}, volt::NetKind::Signal});
+    const auto output = circuit.add_net(volt::Net{volt::NetName{"OUT"}, volt::NetKind::Signal});
+
+    circuit.connect(input, first_pin);
+    circuit.connect(output, second_pin);
+    circuit.select_physical_part(
+        resistor, volt::PhysicalPart{volt::ManufacturerPart{"Yageo", "RC0603FR-0710KL"},
+                                     volt::PackageRef{"0603"},
+                                     volt::FootprintRef{"Resistor_SMD", "R_0603_1608Metric"},
+                                     std::vector{volt::PinPadMapping{first_pin_def, "1"},
+                                                 volt::PinPadMapping{second_pin_def, "2"}}});
+
+    const auto report = volt::validate_for_pcb(circuit);
+
+    REQUIRE(report.count() == 2);
+    CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+    CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
 }
 
 TEST_CASE("Circuit validation reports selected part voltage rating violations") {
