@@ -263,6 +263,27 @@ inline void validate_output_driver_conflicts(const Circuit &circuit, NetId net_i
     }
 }
 
+inline void validate_net_shapes(const Circuit &circuit, DiagnosticReport &report) {
+    for (std::size_t index = 0; index < circuit.net_count(); ++index) {
+        const auto net_id = NetId{index};
+        const auto &net = circuit.net(net_id);
+
+        validate_net_shape(net_id, net, report);
+    }
+}
+
+inline void validate_net_electrical_rules(const Circuit &circuit, DiagnosticReport &report) {
+    for (std::size_t index = 0; index < circuit.net_count(); ++index) {
+        const auto net_id = NetId{index};
+        const auto &net = circuit.net(net_id);
+
+        validate_power_and_ground_semantics(circuit, net_id, net, report);
+        validate_selected_part_voltage_ratings(circuit, net_id, net, report);
+        validate_pin_voltage_ranges(circuit, net_id, net, report);
+        validate_output_driver_conflicts(circuit, net_id, net, report);
+    }
+}
+
 inline void validate_net_semantics(const Circuit &circuit, DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
         const auto net_id = NetId{index};
@@ -278,7 +299,26 @@ inline void validate_net_semantics(const Circuit &circuit, DiagnosticReport &rep
 
 } // namespace detail
 
-/** Run the first logical electrical-rule checks over a circuit. */
+/** Validate logical connectivity shape and pin connection requirements. */
+[[nodiscard]] inline DiagnosticReport validate_connectivity(const Circuit &circuit) {
+    auto report = DiagnosticReport{};
+
+    detail::validate_pin_connection_requirements(circuit, report);
+    detail::validate_net_shapes(circuit, report);
+
+    return report;
+}
+
+/** Validate electrical rules over the existing logical circuit connectivity. */
+[[nodiscard]] inline DiagnosticReport validate_electrical_rules(const Circuit &circuit) {
+    auto report = DiagnosticReport{};
+
+    detail::validate_net_electrical_rules(circuit, report);
+
+    return report;
+}
+
+/** Run the default logical circuit validation suite. */
 [[nodiscard]] inline DiagnosticReport validate_circuit(const Circuit &circuit) {
     auto report = DiagnosticReport{};
 

@@ -379,13 +379,13 @@
       <aside>Validation passes</aside>
       <div class="stack">
         <h2>Current pass layout</h2>
-        <pre><code>validate_pin_connection_requirements(circuit, report)
-validate_net_shape(circuit, report)
-validate_selected_part_voltage_ratings(circuit, report)
-validate_power_and_ground_semantics(circuit, report)
-validate_output_driver_conflicts(circuit, report)</code></pre>
+        <pre><code>validate_circuit(circuit)
+  validate_connectivity(circuit)
+  validate_electrical_rules(circuit)</code></pre>
         <p>
-          The public API remains <code>validate_circuit(circuit)</code>. The pass functions are internal structure so each future ERC check has a clear home.
+          Use <code>validate_circuit(circuit)</code> for the default complete logical
+          validation suite. The named entry points expose stable intent-level groups for
+          tests and future tools; the smaller pass helpers remain internal structure.
         </p>
       </div>
     </section>
