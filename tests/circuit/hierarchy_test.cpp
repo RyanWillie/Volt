@@ -99,6 +99,122 @@ TEST_CASE("Circuit rejects ports with invalid internal nets or duplicate names")
         std::out_of_range);
 }
 
+TEST_CASE("Circuit stores module component templates and template pin connectivity") {
+    volt::Circuit circuit;
+    const auto left =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto right =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto resistor = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
+
+    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"Divider"},
+    });
+    const auto input = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
+    const auto output = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
+    const auto component = circuit.add_module_component(
+        module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
+
+    CHECK(component == volt::ModuleComponentId{0});
+    CHECK(circuit.module_definition(module).components().size() == 1);
+    CHECK(circuit.module_component_template(component).definition() == resistor);
+    CHECK(circuit.module_component_template(component).reference() ==
+          volt::ReferenceDesignator{"R1"});
+
+    CHECK(circuit.connect_module_pin(module, input, component, left));
+    CHECK(circuit.connect_module_pin(module, output, component, right));
+    CHECK_FALSE(circuit.connect_module_pin(module, input, component, left));
+    CHECK(circuit.template_net_for(module, component, left) == input);
+    CHECK(circuit.template_net_for(module, component, right) == output);
+    CHECK(circuit.module_component_count() == 1);
+    CHECK(circuit.module_pin_connection_count() == 2);
+}
+
+TEST_CASE("Root module instantiation materializes module component templates") {
+    volt::Circuit circuit;
+    const auto left =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto right =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto resistor = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
+
+    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"Divider"},
+    });
+    const auto input = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
+    const auto output = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
+    const auto component = circuit.add_module_component(
+        module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
+    CHECK(circuit.connect_module_pin(module, input, component, left));
+    CHECK(circuit.connect_module_pin(module, output, component, right));
+
+    const auto instance =
+        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"});
+
+    const auto concrete_component = circuit.concrete_component_for(instance, component);
+    REQUIRE(concrete_component.has_value());
+    CHECK(concrete_component.value() == volt::ComponentId{0});
+    CHECK(circuit.component(concrete_component.value()).reference() ==
+          volt::ReferenceDesignator{"DIV_A/R1"});
+    REQUIRE(circuit.concrete_net_for(instance, input).has_value());
+    REQUIRE(circuit.concrete_net_for(instance, output).has_value());
+    REQUIRE(circuit.pin_by_number(concrete_component.value(), "1").has_value());
+    REQUIRE(circuit.pin_by_number(concrete_component.value(), "2").has_value());
+    CHECK(circuit.net_of(circuit.pin_by_number(concrete_component.value(), "1").value()) ==
+          circuit.concrete_net_for(instance, input));
+    CHECK(circuit.net_of(circuit.pin_by_number(concrete_component.value(), "2").value()) ==
+          circuit.concrete_net_for(instance, output));
+}
+
+TEST_CASE("Circuit rejects structurally invalid module component templates") {
+    volt::Circuit circuit;
+    const auto left =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto right =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto extra =
+        circuit.add_pin_definition(volt::PinDefinition{"3", "3", volt::PinRole::Passive});
+    const auto resistor = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
+    const auto first = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"First"},
+    });
+    const auto second = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"Second"},
+    });
+    const auto first_net = circuit.add_template_net(
+        first, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
+    const auto first_output = circuit.add_template_net(
+        first, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
+    const auto second_net = circuit.add_template_net(
+        second, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
+    const auto first_component = circuit.add_module_component(
+        first, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
+    const auto second_component = circuit.add_module_component(
+        second, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
+
+    CHECK_THROWS_AS(
+        circuit.add_module_component(
+            first, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}}),
+        std::logic_error);
+    CHECK_THROWS_AS(circuit.connect_module_pin(first, second_net, first_component, left),
+                    std::logic_error);
+    CHECK_THROWS_AS(circuit.connect_module_pin(first, first_net, second_component, left),
+                    std::logic_error);
+    CHECK_THROWS_AS(circuit.connect_module_pin(first, first_net, first_component, extra),
+                    std::logic_error);
+
+    CHECK(circuit.connect_module_pin(first, first_net, first_component, left));
+    CHECK_THROWS_AS(circuit.connect_module_pin(first, first_output, first_component, left),
+                    std::logic_error);
+}
+
 TEST_CASE("Root module instantiation creates concrete nets for template-local nets") {
     volt::Circuit circuit;
 
@@ -216,6 +332,29 @@ TEST_CASE("Root module instantiation preflights concrete net names before mutati
                     std::logic_error);
     CHECK(circuit.module_instance_count() == 0);
     CHECK(circuit.net_count() == 1);
+}
+
+TEST_CASE("Root module instantiation preflights concrete component references before mutating") {
+    volt::Circuit circuit;
+    const auto pin =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto definition =
+        circuit.add_component_definition(volt::ComponentDefinition{"Thing", {pin}});
+    [[maybe_unused]] const auto existing =
+        circuit.instantiate_component(definition, volt::ReferenceDesignator{"DIV_A/R1"});
+    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"Divider"},
+    });
+    [[maybe_unused]] const auto template_net = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
+    [[maybe_unused]] const auto component = circuit.add_module_component(
+        module, volt::ModuleComponentTemplate{definition, volt::ReferenceDesignator{"R1"}});
+
+    CHECK_THROWS_AS(circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"}),
+                    std::logic_error);
+    CHECK(circuit.module_instance_count() == 0);
+    CHECK(circuit.component_count() == 1);
+    CHECK(circuit.net_count() == 0);
 }
 
 TEST_CASE("Circuit validation reports unbound required module ports") {
