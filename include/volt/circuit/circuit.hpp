@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <volt/circuit/definitions.hpp>
+#include <volt/circuit/hierarchy.hpp>
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/circuit/parts.hpp>
@@ -70,6 +71,90 @@ class Circuit {
         }
 
         return nets_.insert(std::move(net));
+    }
+
+    /** Store a reusable logical module definition and return its stable ID. */
+    [[nodiscard]] ModuleDefId add_module_definition(ModuleDefinition definition) {
+        if (module_definition_by_name(definition.name()).has_value()) {
+            throw std::logic_error{"Module definition name already exists"};
+        }
+
+        return module_definitions_.insert(std::move(definition));
+    }
+
+    /** Add a template-local net to a reusable module definition. */
+    [[nodiscard]] TemplateNetDefId add_template_net(ModuleDefId module, TemplateNetDefinition net) {
+        require_module_definition(module);
+        if (template_net_by_name(module, net.name()).has_value()) {
+            throw std::logic_error{"Template net name already exists in module definition"};
+        }
+
+        const auto id = template_net_definitions_.insert(std::move(net));
+        module_definitions_.get(module).add_template_net(id);
+        return id;
+    }
+
+    /** Add a boundary port to a reusable module definition. */
+    [[nodiscard]] PortDefId add_port_definition(ModuleDefId module, PortDefinition port) {
+        require_module_definition(module);
+        require_template_net_in_module(module, port.internal_net());
+        if (port_by_name(module, port.name()).has_value()) {
+            throw std::logic_error{"Port name already exists in module definition"};
+        }
+
+        const auto id = port_definitions_.insert(std::move(port));
+        module_definitions_.get(module).add_port(id);
+        return id;
+    }
+
+    /** Instantiate a module at the root and create concrete nets for its template-local nets. */
+    [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition,
+                                                           ModuleInstanceName name) {
+        require_module_definition(definition);
+        if (module_instance_by_name(name).has_value()) {
+            throw std::logic_error{"Module instance name already exists"};
+        }
+
+        std::vector<Net> concrete_nets;
+        for (const auto template_net : module_definitions_.get(definition).template_nets()) {
+            const auto &template_net_definition = template_net_definitions_.get(template_net);
+            auto concrete_name =
+                NetName{name.value() + "/" + template_net_definition.name().value()};
+            if (net_by_name(concrete_name).has_value()) {
+                throw std::logic_error{"Module instance concrete net name already exists"};
+            }
+            concrete_nets.emplace_back(std::move(concrete_name), template_net_definition.kind());
+        }
+
+        const auto instance = module_instances_.insert(ModuleInstance{definition, std::move(name)});
+        const auto &template_nets = module_definitions_.get(definition).template_nets();
+        for (std::size_t index = 0; index < template_nets.size(); ++index) {
+            const auto net = add_net(std::move(concrete_nets.at(index)));
+            module_net_origins_.push_back(ModuleNetOrigin{instance, template_nets.at(index)});
+            module_origin_nets_.push_back(net);
+        }
+
+        return instance;
+    }
+
+    /** Record an explicit connectivity edge from an instance-local port net to a parent net. */
+    [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port,
+                                          NetId parent_net) {
+        require_module_instance(instance);
+        require_port_in_module(module_instances_.get(instance).definition(), port);
+        require_net(parent_net);
+
+        if (port_binding_for(instance, port).has_value()) {
+            throw std::logic_error{"Module instance port is already bound"};
+        }
+
+        const auto internal_net =
+            concrete_net_for(instance, port_definitions_.get(port).internal_net());
+        if (!internal_net.has_value()) {
+            throw std::logic_error{"Port internal net has no concrete module instance net"};
+        }
+
+        return port_bindings_.insert(PortBinding{instance, port, internal_net.value(), parent_net});
     }
 
     /**
@@ -195,6 +280,89 @@ class Circuit {
         return std::nullopt;
     }
 
+    /** Return the module definition with this name, if it exists. */
+    [[nodiscard]] std::optional<ModuleDefId>
+    module_definition_by_name(const ModuleName &name) const {
+        for (std::size_t index = 0; index < module_definitions_.size(); ++index) {
+            const auto id = ModuleDefId{index};
+            if (module_definitions_.get(id).name() == name) {
+                return id;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    /** Return the root-level module instance with this name, if it exists. */
+    [[nodiscard]] std::optional<ModuleInstanceId>
+    module_instance_by_name(const ModuleInstanceName &name) const {
+        for (std::size_t index = 0; index < module_instances_.size(); ++index) {
+            const auto id = ModuleInstanceId{index};
+            if (module_instances_.get(id).name() == name) {
+                return id;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    /** Return a template-local net in a module definition by name, if it exists. */
+    [[nodiscard]] std::optional<TemplateNetDefId> template_net_by_name(ModuleDefId module,
+                                                                       const NetName &name) const {
+        require_module_definition(module);
+        for (const auto net : module_definitions_.get(module).template_nets()) {
+            if (template_net_definitions_.get(net).name() == name) {
+                return net;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    /** Return a port in a module definition by name, if it exists. */
+    [[nodiscard]] std::optional<PortDefId> port_by_name(ModuleDefId module,
+                                                        const PortName &name) const {
+        require_module_definition(module);
+        for (const auto port : module_definitions_.get(module).ports()) {
+            if (port_definitions_.get(port).name() == name) {
+                return port;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    /** Return the explicit binding for a module instance port, if it exists. */
+    [[nodiscard]] std::optional<PortBindingId> port_binding_for(ModuleInstanceId instance,
+                                                                PortDefId port) const {
+        require_module_instance(instance);
+        require_port_in_module(module_instances_.get(instance).definition(), port);
+        for (std::size_t index = 0; index < port_bindings_.size(); ++index) {
+            const auto id = PortBindingId{index};
+            const auto &binding = port_bindings_.get(id);
+            if (binding.instance() == instance && binding.port() == port) {
+                return id;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    /** Return the concrete net created for a module instance template-local net, if any. */
+    [[nodiscard]] std::optional<NetId> concrete_net_for(ModuleInstanceId instance,
+                                                        TemplateNetDefId template_net) const {
+        require_module_instance(instance);
+        require_template_net_in_module(module_instances_.get(instance).definition(), template_net);
+        for (std::size_t index = 0; index < module_net_origins_.size(); ++index) {
+            const auto &origin = module_net_origins_.at(index);
+            if (origin.instance() == instance && origin.template_net() == template_net) {
+                return module_origin_nets_.at(index);
+            }
+        }
+
+        return std::nullopt;
+    }
+
     /** Return the net with this name, if it exists. */
     [[nodiscard]] std::optional<NetId> net_by_name(const NetName &name) const {
         for (std::size_t index = 0; index < nets_.size(); ++index) {
@@ -269,6 +437,31 @@ class Circuit {
     /** Return a canonical net by ID. */
     [[nodiscard]] const Net &net(NetId id) const { return nets_.get(id); }
 
+    /** Return a reusable module definition by ID. */
+    [[nodiscard]] const ModuleDefinition &module_definition(ModuleDefId id) const {
+        return module_definitions_.get(id);
+    }
+
+    /** Return a template-local net definition by ID. */
+    [[nodiscard]] const TemplateNetDefinition &template_net_definition(TemplateNetDefId id) const {
+        return template_net_definitions_.get(id);
+    }
+
+    /** Return a module port definition by ID. */
+    [[nodiscard]] const PortDefinition &port_definition(PortDefId id) const {
+        return port_definitions_.get(id);
+    }
+
+    /** Return a root-level module instance by ID. */
+    [[nodiscard]] const ModuleInstance &module_instance(ModuleInstanceId id) const {
+        return module_instances_.get(id);
+    }
+
+    /** Return an explicit module port binding by ID. */
+    [[nodiscard]] const PortBinding &port_binding(PortBindingId id) const {
+        return port_bindings_.get(id);
+    }
+
     /** Return the number of reusable pin definitions. */
     [[nodiscard]] std::size_t pin_definition_count() const noexcept {
         return pin_definitions_.size();
@@ -288,6 +481,29 @@ class Circuit {
     /** Return the number of canonical nets. */
     [[nodiscard]] std::size_t net_count() const noexcept { return nets_.size(); }
 
+    /** Return the number of reusable module definitions. */
+    [[nodiscard]] std::size_t module_definition_count() const noexcept {
+        return module_definitions_.size();
+    }
+
+    /** Return the number of template-local net definitions. */
+    [[nodiscard]] std::size_t template_net_definition_count() const noexcept {
+        return template_net_definitions_.size();
+    }
+
+    /** Return the number of module port definitions. */
+    [[nodiscard]] std::size_t port_definition_count() const noexcept {
+        return port_definitions_.size();
+    }
+
+    /** Return the number of root-level module instances. */
+    [[nodiscard]] std::size_t module_instance_count() const noexcept {
+        return module_instances_.size();
+    }
+
+    /** Return the number of explicit module port bindings. */
+    [[nodiscard]] std::size_t port_binding_count() const noexcept { return port_bindings_.size(); }
+
   private:
     void require_pin_definition(PinDefId pin_definition) const {
         if (!pin_definitions_.contains(pin_definition)) {
@@ -304,6 +520,48 @@ class Circuit {
     void require_component(ComponentId component) const {
         if (!components_.contains(component)) {
             throw std::out_of_range{"Component ID does not belong to this circuit"};
+        }
+    }
+
+    void require_module_definition(ModuleDefId module) const {
+        if (!module_definitions_.contains(module)) {
+            throw std::out_of_range{"Module definition ID does not belong to this circuit"};
+        }
+    }
+
+    void require_template_net(TemplateNetDefId net) const {
+        if (!template_net_definitions_.contains(net)) {
+            throw std::out_of_range{"Template net definition ID does not belong to this circuit"};
+        }
+    }
+
+    void require_port(PortDefId port) const {
+        if (!port_definitions_.contains(port)) {
+            throw std::out_of_range{"Port definition ID does not belong to this circuit"};
+        }
+    }
+
+    void require_module_instance(ModuleInstanceId instance) const {
+        if (!module_instances_.contains(instance)) {
+            throw std::out_of_range{"Module instance ID does not belong to this circuit"};
+        }
+    }
+
+    void require_template_net_in_module(ModuleDefId module, TemplateNetDefId net) const {
+        require_module_definition(module);
+        require_template_net(net);
+        const auto &nets = module_definitions_.get(module).template_nets();
+        if (std::find(nets.begin(), nets.end(), net) == nets.end()) {
+            throw std::logic_error{"Template net does not belong to module definition"};
+        }
+    }
+
+    void require_port_in_module(ModuleDefId module, PortDefId port) const {
+        require_module_definition(module);
+        require_port(port);
+        const auto &ports = module_definitions_.get(module).ports();
+        if (std::find(ports.begin(), ports.end(), port) == ports.end()) {
+            throw std::logic_error{"Port does not belong to module definition"};
         }
     }
 
@@ -364,6 +622,13 @@ class Circuit {
     EntityTable<ComponentInstance, ComponentId> components_;
     EntityTable<PinInstance, PinId> pins_;
     EntityTable<Net, NetId> nets_;
+    EntityTable<ModuleDefinition, ModuleDefId> module_definitions_;
+    EntityTable<TemplateNetDefinition, TemplateNetDefId> template_net_definitions_;
+    EntityTable<PortDefinition, PortDefId> port_definitions_;
+    EntityTable<ModuleInstance, ModuleInstanceId> module_instances_;
+    EntityTable<PortBinding, PortBindingId> port_bindings_;
+    std::vector<ModuleNetOrigin> module_net_origins_;
+    std::vector<NetId> module_origin_nets_;
 };
 
 } // namespace volt

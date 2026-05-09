@@ -54,6 +54,9 @@ enum class EntityKind {
     PinDef,
     Pin,
     Net,
+    ModuleDef,
+    ModuleInstance,
+    PortDef,
 };
 
 /**
@@ -87,6 +90,21 @@ class EntityRef {
     /** Create a reference to a net. */
     [[nodiscard]] static EntityRef net(NetId id) noexcept {
         return EntityRef{EntityKind::Net, id.index()};
+    }
+
+    /** Create a reference to a module definition. */
+    [[nodiscard]] static EntityRef module_def(ModuleDefId id) noexcept {
+        return EntityRef{EntityKind::ModuleDef, id.index()};
+    }
+
+    /** Create a reference to a module instance. */
+    [[nodiscard]] static EntityRef module_instance(ModuleInstanceId id) noexcept {
+        return EntityRef{EntityKind::ModuleInstance, id.index()};
+    }
+
+    /** Create a reference to a module port definition. */
+    [[nodiscard]] static EntityRef port_def(PortDefId id) noexcept {
+        return EntityRef{EntityKind::PortDef, id.index()};
     }
 
     /** Return the kind of entity referenced. */
