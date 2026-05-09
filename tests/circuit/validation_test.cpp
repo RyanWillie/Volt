@@ -20,13 +20,14 @@ TEST_CASE("Circuit validation diagnostic code catalog remains stable") {
         "PIN_GROUND_ON_NON_GROUND_NET",
         "PIN_MUST_NOT_CONNECT",
         "PIN_POWER_ON_GROUND_NET",
+        "PIN_VOLTAGE_RANGE_VIOLATION",
         "POWER_INPUT_WITHOUT_SOURCE",
         "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
         "SINGLE_PIN_NET",
         "UNCONNECTED_REQUIRED_PIN",
     };
 
-    CHECK(codes.size() == 9);
+    CHECK(codes.size() == 10);
 }
 
 TEST_CASE("Circuit validation reports required pins that are not connected") {
@@ -235,6 +236,139 @@ TEST_CASE("Circuit validation accepts nets within selected part voltage ratings"
 
     REQUIRE(report.count() == 1);
     CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+}
+
+TEST_CASE("Circuit validation reports pin voltage range violations") {
+    volt::Circuit circuit;
+    const auto power_input = circuit.add_pin_definition(volt::PinDefinition{
+        "VCC", "1", volt::PinRole::PowerInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto power_source = circuit.add_pin_definition(volt::PinDefinition{
+        "OUT", "1", volt::PinRole::PowerOutput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Output});
+    const auto load_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Load", std::vector{power_input}});
+    const auto regulator_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Regulator", std::vector{power_source}});
+    const auto load = circuit.instantiate_component(load_def, volt::ReferenceDesignator{"U1"});
+    const auto regulator =
+        circuit.instantiate_component(regulator_def, volt::ReferenceDesignator{"U2"});
+    const auto load_pin = circuit.pin_by_name(load, "VCC").value();
+    const auto source_pin = circuit.pin_by_name(regulator, "OUT").value();
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    circuit.set_pin_definition_electrical_attribute(
+        power_input,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage_range"},
+            volt::ElectricalAttributeOwner::PinSpec,
+            volt::ElectricalAttributeKind::Constraint,
+            volt::UnitDimension::Voltage,
+        },
+        volt::ElectricalAttributeValue{
+            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
+                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
+    circuit.connect(net, load_pin);
+    circuit.connect(net, source_pin);
+    circuit.set_net_electrical_attribute(
+        net,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
+            volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Voltage},
+        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 5.0}});
+
+    const auto report = volt::validate_circuit(circuit);
+
+    REQUIRE(report.count() == 1);
+    const auto &diagnostic = report.diagnostics().front();
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    CHECK(diagnostic.code() == volt::DiagnosticCode{"PIN_VOLTAGE_RANGE_VIOLATION"});
+    REQUIRE(diagnostic.entities().size() == 3);
+    CHECK(diagnostic.entities()[0] == volt::EntityRef::net(net));
+    CHECK(diagnostic.entities()[1] == volt::EntityRef::pin(load_pin));
+    CHECK(diagnostic.entities()[2] == volt::EntityRef::pin_def(power_input));
+}
+
+TEST_CASE("Circuit validation accepts net voltages within pin voltage ranges") {
+    volt::Circuit circuit;
+    const auto power_input = circuit.add_pin_definition(volt::PinDefinition{
+        "VCC", "1", volt::PinRole::PowerInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto power_source = circuit.add_pin_definition(volt::PinDefinition{
+        "OUT", "1", volt::PinRole::PowerOutput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Output});
+    const auto load_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Load", std::vector{power_input}});
+    const auto regulator_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Regulator", std::vector{power_source}});
+    const auto load = circuit.instantiate_component(load_def, volt::ReferenceDesignator{"U1"});
+    const auto regulator =
+        circuit.instantiate_component(regulator_def, volt::ReferenceDesignator{"U2"});
+    const auto load_pin = circuit.pin_by_name(load, "VCC").value();
+    const auto source_pin = circuit.pin_by_name(regulator, "OUT").value();
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    circuit.set_pin_definition_electrical_attribute(
+        power_input,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage_range"},
+            volt::ElectricalAttributeOwner::PinSpec,
+            volt::ElectricalAttributeKind::Constraint,
+            volt::UnitDimension::Voltage,
+        },
+        volt::ElectricalAttributeValue{
+            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
+                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
+    circuit.connect(net, load_pin);
+    circuit.connect(net, source_pin);
+    circuit.set_net_electrical_attribute(
+        net,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
+            volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Voltage},
+        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}});
+
+    const auto report = volt::validate_circuit(circuit);
+
+    CHECK(report.empty());
+}
+
+TEST_CASE("Circuit validation ignores pin voltage ranges without net voltage") {
+    volt::Circuit circuit;
+    const auto power_input = circuit.add_pin_definition(volt::PinDefinition{
+        "VCC", "1", volt::PinRole::PowerInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto power_source = circuit.add_pin_definition(volt::PinDefinition{
+        "OUT", "1", volt::PinRole::PowerOutput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Output});
+    const auto load_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Load", std::vector{power_input}});
+    const auto regulator_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Regulator", std::vector{power_source}});
+    const auto load = circuit.instantiate_component(load_def, volt::ReferenceDesignator{"U1"});
+    const auto regulator =
+        circuit.instantiate_component(regulator_def, volt::ReferenceDesignator{"U2"});
+    const auto load_pin = circuit.pin_by_name(load, "VCC").value();
+    const auto source_pin = circuit.pin_by_name(regulator, "OUT").value();
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    circuit.set_pin_definition_electrical_attribute(
+        power_input,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage_range"},
+            volt::ElectricalAttributeOwner::PinSpec,
+            volt::ElectricalAttributeKind::Constraint,
+            volt::UnitDimension::Voltage,
+        },
+        volt::ElectricalAttributeValue{
+            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
+                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
+    circuit.connect(net, load_pin);
+    circuit.connect(net, source_pin);
+
+    const auto report = volt::validate_circuit(circuit);
+
+    CHECK(report.empty());
 }
 
 TEST_CASE("Circuit validation reports power inputs without typed supply sources") {

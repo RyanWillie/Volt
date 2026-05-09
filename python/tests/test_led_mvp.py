@@ -374,6 +374,45 @@ def test_voltage_rating_diagnostic_is_inspectable():
     }
 
 
+def test_pin_voltage_range_diagnostic_is_inspectable():
+    design = volt.Design("pin-voltage")
+    load = design.define_component(
+        "Load",
+        pins=[
+            volt.PinSpec(
+                "VCC",
+                1,
+                role="power",
+                terminal="power",
+                direction="input",
+                voltage_range=(1.8, 3.6),
+            ),
+        ],
+    )
+    source = design.define_component(
+        "Supply",
+        pins=[
+            volt.PinSpec(
+                "OUT",
+                1,
+                role="power_output",
+                terminal="power",
+                direction="output",
+            ),
+        ],
+    )
+    u1 = design.instantiate(load, ref="U1")
+    u2 = design.instantiate(source, ref="U2")
+
+    vdd = design.net("VDD", kind="power", voltage=5.0)
+    vdd += u1["VCC"], u2["OUT"]
+
+    report = design.validate()
+
+    assert report.has_errors
+    assert "PIN_VOLTAGE_RANGE_VIOLATION" in {diagnostic.code for diagnostic in report}
+
+
 def test_power_pin_semantics_drive_diagnostics():
     design = volt.Design("typed-power")
     load = design.define_component(
@@ -424,5 +463,6 @@ if __name__ == "__main__":
     test_selected_part_mapping_errors_are_rejected()
     test_invalid_selected_part_rating_does_not_select_part()
     test_voltage_rating_diagnostic_is_inspectable()
+    test_pin_voltage_range_diagnostic_is_inspectable()
     test_power_pin_semantics_drive_diagnostics()
     test_diagnostics_are_inspectable()

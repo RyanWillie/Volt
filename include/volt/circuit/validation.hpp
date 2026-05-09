@@ -184,6 +184,59 @@ inline void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId
     }
 }
 
+inline void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net &net,
+                                        DiagnosticReport &report) {
+    const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
+    const auto voltage_range_attribute_name = ElectricalAttributeName{"voltage_range"};
+    if (!net.electrical_attributes().contains(voltage_attribute_name)) {
+        return;
+    }
+
+    const auto &net_voltage_attribute = net.electrical_attributes().get(voltage_attribute_name);
+    if (net_voltage_attribute.kind() != ElectricalAttributeValueKind::Quantity) {
+        return;
+    }
+
+    const auto &net_voltage_quantity = net_voltage_attribute.as_quantity();
+    if (net_voltage_quantity.dimension() != UnitDimension::Voltage) {
+        return;
+    }
+
+    const auto net_voltage = net_voltage_quantity.value();
+    for (const auto pin_id : net.pins()) {
+        const auto &pin = circuit.pin(pin_id);
+        const auto &definition = circuit.pin_definition(pin.definition());
+        if (!definition.electrical_attributes().contains(voltage_range_attribute_name)) {
+            continue;
+        }
+
+        const auto &range_attribute =
+            definition.electrical_attributes().get(voltage_range_attribute_name);
+        if (range_attribute.kind() != ElectricalAttributeValueKind::Range) {
+            continue;
+        }
+
+        const auto &range = range_attribute.as_range();
+        if (range.dimension() != UnitDimension::Voltage) {
+            continue;
+        }
+
+        const auto below_minimum =
+            range.minimum().has_value() && net_voltage < range.minimum()->value();
+        const auto above_maximum =
+            range.maximum().has_value() && net_voltage > range.maximum()->value();
+        if (below_minimum || above_maximum) {
+            report.add(Diagnostic{
+                Severity::Error,
+                DiagnosticCode{"PIN_VOLTAGE_RANGE_VIOLATION"},
+                "Net voltage is outside pin voltage range",
+                std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
+                            EntityRef::pin_def(pin.definition())},
+            });
+        }
+    }
+}
+
 inline void validate_output_driver_conflicts(const Circuit &circuit, NetId net_id, const Net &net,
                                              DiagnosticReport &report) {
     auto output_pins = std::vector<PinId>{};
@@ -218,6 +271,7 @@ inline void validate_net_semantics(const Circuit &circuit, DiagnosticReport &rep
         validate_net_shape(net_id, net, report);
         validate_power_and_ground_semantics(circuit, net_id, net, report);
         validate_selected_part_voltage_ratings(circuit, net_id, net, report);
+        validate_pin_voltage_ranges(circuit, net_id, net, report);
         validate_output_driver_conflicts(circuit, net_id, net, report);
     }
 }
