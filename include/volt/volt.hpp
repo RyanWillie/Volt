@@ -5,6 +5,7 @@
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/definitions.hpp>
+#include <volt/circuit/hierarchy.hpp>
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/circuit/parts.hpp>

@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt Hierarchy and Scoped Net Design</title>
+  <style>
+    :root { --bg:#0f1216; --panel:#171c23; --panel2:#11161d; --text:#e8eef5; --muted:#a6b1bd; --line:#2a3340; --accent:#7dd3fc; --green:#9be28f; --yellow:#ffd166; --red:#ff8a8a; --code:#090c10; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.58 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { max-width:1120px; margin:0 auto; padding:46px 28px 80px; }
+    h1 { font-size:clamp(38px,6vw,70px); line-height:.96; letter-spacing:-.045em; margin:0 0 16px; max-width:960px; }
+    h2 { font-size:28px; line-height:1.1; margin:46px 0 14px; padding-top:30px; border-top:1px solid var(--line); letter-spacing:-.025em; }
+    h3 { font-size:20px; margin:28px 0 10px; color:var(--accent); }
+    p { margin:0 0 12px; }
+    ul,ol { padding-left:24px; }
+    li { margin:7px 0; }
+    code { background:var(--code); border:1px solid var(--line); padding:1px 5px; border-radius:5px; color:#d9f0ff; }
+    pre { background:var(--code); border:1px solid var(--line); border-radius:14px; padding:16px; overflow:auto; font-size:14px; line-height:1.45; }
+    pre code { background:transparent; border:0; padding:0; }
+    table { width:100%; border-collapse:collapse; margin:18px 0; font-size:14px; }
+    th,td { border:1px solid var(--line); padding:10px 12px; vertical-align:top; }
+    th { background:var(--panel2); text-align:left; }
+    .lead { color:var(--muted); font-size:20px; max-width:920px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px; margin:16px 0; }
+    .callout { border-left:4px solid var(--accent); }
+    .warn { border-left:4px solid var(--yellow); }
+    .bad { border-left:4px solid var(--red); }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .tagrow { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0 0; }
+    .tag { font-size:12px; text-transform:uppercase; letter-spacing:.08em; font-weight:800; color:#071017; background:var(--accent); border-radius:999px; padding:6px 10px; }
+    .small { color:var(--muted); font-size:14px; }
+    .yes { color:var(--green); font-weight:800; }
+    .no { color:var(--red); font-weight:800; }
+    @media(max-width:850px){ .grid{grid-template-columns:1fr;} main{padding:32px 18px 64px;} }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="small" style="text-transform:uppercase;letter-spacing:.09em;font-weight:850;color:var(--accent);">Design proposal</p>
+    <h1>Hierarchy and scoped nets without making names the source of truth</h1>
+    <p class="lead">This page proposes the minimum kernel-owned primitives Volt needs to compose reusable subcircuits while preserving the existing rule: nets are typed IDs owned by the logical circuit; names are user-facing labels scoped by hierarchy.</p>
+    <div class="tagrow">
+      <span class="tag">Minimal primitives</span>
+      <span class="tag">Ports cross scopes</span>
+      <span class="tag">NetId stays canonical</span>
+      <span class="tag">No schematic</span>
+      <span class="tag">No bus system yet</span>
+    </div>
+  </header>
+
+  <section class="card callout">
+    <h2 style="border:0;padding:0;margin-top:0;">Core answer</h2>
+    <p><strong>Volt should let users compose reusable subcircuits by making modules explicit kernel objects, making ports the boundary between scopes, and making net names scoped labels over canonical <code>NetId</code>s.</strong></p>
+    <pre><code>NetId             internal identity, never derived from text name
+NetName           user-facing label, scoped by hierarchy
+Port              explicit connection point between module interior and parent scope
+ModuleInstance    creates an instance scope with its own local nets</code></pre>
+  </section>
+
+  <h2>Problem statement</h2>
+  <p>Python functions can create repeated circuitry, but they only provide program structure. After execution, the kernel currently sees a flat set of components, pins, and nets. That means the kernel cannot reliably answer:</p>
+  <ul>
+    <li>which components belong to a reusable block,</li>
+    <li>whether a net named <code>FB</code> is local to one buck converter or accidentally shared,</li>
+    <li>which nets are allowed to cross a block boundary,</li>
+    <li>where a diagnostic belongs in repeated hierarchy,</li>
+    <li>or how to round-trip reusable structure through JSON.</li>
+  </ul>
+
+  <h2>Non-goals for this slice</h2>
+  <div class="card bad">
+    <ul>
+      <li>No schematic sheets, symbol placement, wires, labels, or drawing behavior.</li>
+      <li>No PCB model or footprint placement behavior.</li>
+      <li>No protocol-specific buses such as SPI/I2C/USB as kernel objects.</li>
+      <li>No generic bus/interface system yet; that should come after scoped nets are clear.</li>
+      <li>No name-derived internal identity.</li>
+      <li>No automatic net merging based only on matching text names across scopes.</li>
+    </ul>
+  </div>
+
+  <h2>Minimal vocabulary for the first slice</h2>
+  <table>
+    <thead><tr><th>Concept</th><th>Purpose</th><th>Owns / references</th></tr></thead>
+    <tbody>
+      <tr><td><code>ModuleDefinition</code></td><td>Reusable logical block template.</td><td>Owns template component instances, template local nets, and port definitions.</td></tr>
+      <tr><td><code>ModuleInstance</code></td><td>Root-level instantiation of a module definition for the first slice.</td><td>References a <code>ModuleDefinition</code>; owns instance name and port bindings. Nested module instances are deferred.</td></tr>
+      <tr><td><code>PortDefinition</code></td><td>Declared boundary point of a module.</td><td>Name, optional direction/role, optional requirement, and exactly one internal module net.</td></tr>
+      <tr><td><code>PortBinding</code></td><td>Connects a module instance port to a net in the parent context.</td><td>References module instance, port definition, instance-local concrete net, and parent <code>NetId</code>.</td></tr>
+      <tr><td>Scoped local net names</td><td>Allow repeated module instances to reuse names like <code>FB</code> or <code>SW</code> without collision.</td><td>Names label template nets; instantiation creates concrete <code>NetId</code>s with origin metadata.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card warn">
+    <p><strong>Deferred concepts:</strong> net aliases, net ties, global-net import rules, generic buses/interfaces, schematic paths, and PCB behavior are useful but should not be part of the first implementation slice. They deserve separate follow-up designs once the basic module/port/scoped-net model exists.</p>
+  </div>
+
+  <h2>Important semantic rule</h2>
+  <div class="card callout">
+    <p><strong>A matching net name is not sufficient to create a connection across hierarchy.</strong></p>
+    <p>In the first slice, connections across a module boundary happen only through a module instance port binding. Later designs may add explicit aliases, net ties, or carefully-scoped global import rules, but those are intentionally out of scope for the initial implementation.</p>
+  </div>
+
+  <h2>Recommended decisions for the first slice</h2>
+  <div class="card callout">
+    <ul>
+      <li><strong>Modules are templates.</strong> A <code>ModuleDefinition</code> describes reusable internal structure.</li>
+      <li><strong>Instantiation creates concrete circuit entities.</strong> Validation continues to run on concrete <code>ComponentId</code>, <code>PinId</code>, and <code>NetId</code> as it does today.</li>
+      <li><strong>Concrete entities keep origin metadata.</strong> Components, pins, and nets created by a module instance record their originating module definition entity and owning module instance.</li>
+      <li><strong>Ports map to one internal module net.</strong> A <code>PortDefinition</code> is not a pin-like second connectivity system; it names one internal template net as the module boundary.</li>
+      <li><strong>Port binding records an explicit connectivity edge between two concrete nets.</strong> The instance-local port net and parent net remain distinct <code>NetId</code>s; the binding is consumed by validation, serialization, and future projection/export code. The first slice should not destructively merge nets or make matching names imply connectivity.</li>
+      <li><strong>Validation traverses port-binding edges for electrical continuity.</strong> Connectivity and ERC-style checks that ask whether two pins are electrically connected must treat a port binding as continuity between the instance-local concrete net and the parent net, while preserving both <code>NetId</code>s for naming, hierarchy, serialization, and diagnostics.</li>
+      <li><strong>No aliases, net ties, buses, global net imports, schematic concepts, or PCB concepts yet.</strong></li>
+    </ul>
+  </div>
+
+  <h2>Python authoring shape</h2>
+  <h3>Current flat helper: useful but not persisted as hierarchy</h3>
+  <pre><code class="language-python">def add_buck(name, vin, gnd, vout):
+    sw = d.net(f"{name}_SW")
+    fb = d.net(f"{name}_FB")
+    u = d.instantiate(buck_regulator, ref=f"U_{name}")
+    u.pin("VIN").connect(vin)
+    u.pin("GND").connect(gnd)
+    u.pin("SW").connect(sw)
+    u.pin("FB").connect(fb)
+    # Kernel sees flat names: BUCK_A_FB, BUCK_B_FB, etc.
+
+add_buck("A", vin, gnd, vout_a)
+add_buck("B", vin, gnd, vout_b)</code></pre>
+
+  <h3>Proposed explicit module: persisted hierarchy</h3>
+  <pre><code class="language-python">buck = volt.Module("BuckConverter")
+vin_in = buck.local_net("VIN")
+vout_out = buck.local_net("VOUT")
+gnd_in = buck.local_net("GND")
+sw = buck.local_net("SW")
+fb = buck.local_net("FB")
+
+buck.port("VIN", net=vin_in, role="power_input")
+buck.port("VOUT", net=vout_out, role="power_output")
+buck.port("GND", net=gnd_in, role="ground")
+
+u = buck.instantiate(buck_regulator, ref="U")
+vin_in.connect(u.pin("VIN"))
+gnd_in.connect(u.pin("GND"))
+vout_out.connect(u.pin("VOUT"))
+sw.connect(u.pin("SW"))
+fb.connect(u.pin("FB"))
+
+board = volt.Design("power_board")
+vin = board.global_net("VIN", voltage=12.0)
+gnd = board.global_net("GND", kind="ground")
+
+buck_a = board.instantiate(buck, name="BUCK_A")
+buck_b = board.instantiate(buck, name="BUCK_B")
+
+vout_a = board.net("VOUT_A", voltage=5.0)
+vout_b = board.net("VOUT_B", voltage=3.3)
+
+buck_a.port("VIN").connect(vin)
+buck_a.port("GND").connect(gnd)
+buck_a.port("VOUT").connect(vout_a)
+
+buck_b.port("VIN").connect(vin)
+buck_b.port("GND").connect(gnd)
+buck_b.port("VOUT").connect(vout_b)
+
+# /BUCK_A/FB and /BUCK_B/FB are distinct NetIds with the same local name.
+# They are not connected unless explicitly tied or exported.</code></pre>
+
+  <h2>C++ kernel shape</h2>
+  <p>This is illustrative, not final API.</p>
+  <pre><code class="language-cpp">auto buck = circuit.add_module_definition(ModuleDefinition{"BuckConverter"});
+
+auto vinInternal = circuit.add_template_net(buck, NetName{"VIN"});
+auto voutInternal = circuit.add_template_net(buck, NetName{"VOUT"});
+auto gndInternal = circuit.add_template_net(buck, NetName{"GND"});
+auto sw = circuit.add_template_net(buck, NetName{"SW"});
+auto fb = circuit.add_template_net(buck, NetName{"FB"});
+
+auto vinPort = circuit.add_port_definition(buck, PortDefinition{"VIN", vinInternal, PortRole::PowerInput});
+auto voutPort = circuit.add_port_definition(buck, PortDefinition{"VOUT", voutInternal, PortRole::PowerOutput});
+auto gndPort = circuit.add_port_definition(buck, PortDefinition{"GND", gndInternal, PortRole::Ground});
+
+auto reg = circuit.instantiate_template_component(buck, buckRegulatorDef, ReferenceDesignator{"U"});
+circuit.connect(vinInternal, circuit.template_pin(reg, "VIN"));
+circuit.connect(gndInternal, circuit.template_pin(reg, "GND"));
+circuit.connect(voutInternal, circuit.template_pin(reg, "VOUT"));
+circuit.connect(sw, circuit.template_pin(reg, "SW"));
+circuit.connect(fb, circuit.template_pin(reg, "FB"));
+
+auto buckA = circuit.instantiate_root_module(buck, InstanceName{"BUCK_A"});
+auto buckB = circuit.instantiate_root_module(buck, InstanceName{"BUCK_B"});
+
+circuit.bind_port(buckA, vinPort, vinNet);
+circuit.bind_port(buckA, gndPort, gndNet);
+circuit.bind_port(buckA, voutPort, voutANet);
+
+circuit.bind_port(buckB, vinPort, vinNet);
+circuit.bind_port(buckB, gndPort, gndNet);
+circuit.bind_port(buckB, voutPort, voutBNet);</code></pre>
+
+  <h2>Name resolution rules for the first slice</h2>
+  <table>
+    <thead><tr><th>Operation</th><th>Rule</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>Create template local net</td><td>Name must be unique within the module definition's local net namespace.</td><td><code>BuckConverter.FB</code> is allowed once per module definition.</td></tr>
+      <tr><td>Create port</td><td>Name must be unique within the module definition's port namespace and must reference exactly one internal template net.</td><td><code>port VIN -> internal net VIN</code>.</td></tr>
+      <tr><td>Instantiate module</td><td>Each instance gets distinct concrete nets copied from template local nets.</td><td><code>/A/FB</code> and <code>/B/FB</code> are different <code>NetId</code>s.</td></tr>
+      <tr><td>Bind port</td><td>Port binding records an explicit edge from the instance's concrete internal port net to a parent concrete net. It does not merge the two <code>NetId</code>s.</td><td><code>BUCK_A.VIN -> root VIN</code>.</td></tr>
+      <tr><td>Lookup by unqualified name</td><td>Inside a module definition, unqualified names resolve only within that definition's local namespace for this slice.</td><td><code>FB</code> resolves to the template net <code>BuckConverter.FB</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Validation diagnostics this model enables</h2>
+  <table>
+    <thead><tr><th>Diagnostic</th><th>When it fires</th><th>Severity suggestion</th></tr></thead>
+    <tbody>
+      <tr><td><code>DUPLICATE_LOCAL_NET_NAME</code></td><td>Two local nets with same name in the same definition/scope.</td><td>Error at mutation/load boundary.</td></tr>
+      <tr><td><code>DUPLICATE_PORT_NAME</code></td><td>Two ports with same name in one module definition.</td><td>Error at mutation/load boundary.</td></tr>
+      <tr><td><code>UNBOUND_REQUIRED_PORT</code></td><td>A required module port is not connected in an instance.</td><td>Warning/error depending on port requirement.</td></tr>
+      <tr><td><code>PORT_DIRECTION_CONFLICT</code></td><td>Port role/direction conflicts with connected net/pins.</td><td>Warning or error.</td></tr>
+      <tr><td><code>PORT_INTERNAL_NET_MISSING</code></td><td>A port definition references a missing or non-local template net.</td><td>Error at mutation/load boundary.</td></tr>
+      <tr><td><code>MODULE_ORIGIN_MISSING</code></td><td>A concrete entity created by module instantiation lacks valid origin metadata.</td><td>Error at load boundary.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Serialization sketch</h2>
+  <p>The exact format can wait for implementation, but the design should preserve these facts:</p>
+  <pre><code>{
+  "module_definitions": [
+    {
+      "id": "module_def_0",
+      "name": "BuckConverter",
+      "local_nets": [
+        { "id": "net_template_0", "name": "VIN" },
+        { "id": "net_template_1", "name": "VOUT" },
+        { "id": "net_template_2", "name": "GND" },
+        { "id": "net_template_3", "name": "SW" },
+        { "id": "net_template_4", "name": "FB" }
+      ],
+      "ports": [
+        { "id": "port_0", "name": "VIN", "role": "power_input", "internal_net": "net_template_0" },
+        { "id": "port_1", "name": "VOUT", "role": "power_output", "internal_net": "net_template_1" },
+        { "id": "port_2", "name": "GND", "role": "ground", "internal_net": "net_template_2" }
+      ]
+    }
+  ],
+  "module_instances": [
+    {
+      "id": "module_0",
+      "definition": "module_def_0",
+      "name": "BUCK_A",
+      "parent_scope": "root",
+      "port_bindings": {
+        "port_0": "net_0",
+        "port_1": "net_2",
+        "port_2": "net_1"
+      }
+    }
+  ]
+}</code></pre>
+
+  <h2>Open design questions after the first slice</h2>
+  <ol>
+    <li><strong>Reference designators:</strong> should child refs be local names like <code>U</code> under <code>/BUCK_A</code>, displayed as <code>BUCK_A.U</code>, or allocated globally as <code>U12</code> with hierarchy metadata?</li>
+    <li><strong>Nested modules:</strong> the first implementation should use root-level module instances only. Nested modules should be designed as a follow-up once root-level instantiation, origin metadata, and port bindings are proven.</li>
+    <li><strong>Deletion/undo:</strong> current entity tables do not support deletion. The first slice should avoid needing it.</li>
+    <li><strong>Global imports:</strong> should modules eventually be allowed to reference globals internally, or should all cross-boundary connectivity require ports except carefully-designed special cases?</li>
+    <li><strong>Aliases and ties:</strong> what are the exact semantics for additional net names and intentional net joins once scoped nets exist?</li>
+    <li><strong>Export/projection traversal:</strong> which future schematic, PCB, and netlist exporters should collapse or preserve port-bound nets?</li>
+  </ol>
+
+  <h2>Smallest implementation slice after review</h2>
+  <div class="card warn">
+    <p><strong>Do not implement everything above at once.</strong> The first in-memory kernel slice should likely be:</p>
+    <ol>
+      <li><code>ModuleDefinitionId</code>, <code>ModuleInstanceId</code>, <code>PortDefId</code>, and origin metadata for concrete entities.</li>
+      <li>Create module definition templates with unique port names and local net names.</li>
+      <li>Require each port to reference exactly one internal template net.</li>
+      <li>Instantiate module at root with unique instance name, creating concrete components, pins, and nets.</li>
+      <li>Bind required ports by recording an explicit connectivity edge between the instance-local concrete port net and an existing root net.</li>
+      <li>Report unbound required ports.</li>
+    </ol>
+    <p>Serialization/deserialization of definitions, instances, bindings, and origin metadata is required before hierarchy can be considered complete, but it should be a follow-up slice after the in-memory model lands. Minimal Python syntax should wait until the C++ kernel model and serialization are stable.</p>
+  </div>
+
+  <section class="card callout">
+    <h2 style="border:0;padding:0;margin-top:0;">Decision summary</h2>
+    <ul>
+      <li><strong>Nets stay kernel-owned IDs.</strong></li>
+      <li><strong>Names are labels, scoped by hierarchy.</strong></li>
+      <li><strong>Ports are the explicit boundary between scopes.</strong></li>
+      <li><strong>First slice uses template definitions expanded into concrete entities with origin metadata.</strong></li>
+      <li><strong>First slice supports root-level module instances only; nesting is deferred.</strong></li>
+      <li><strong>Port bindings are explicit connectivity edges, not net merges.</strong></li>
+      <li><strong>Validation traverses port-binding edges for electrical continuity while preserving both <code>NetId</code>s.</strong></li>
+      <li><strong>Aliases and ties are explicit future design intent, not first-slice features.</strong></li>
+      <li><strong>Schematic and PCB remain deferred projection layers.</strong></li>
+    </ul>
+  </section>
+
+  <p class="small">This is a design proposal for review, not an implementation spec. APIs and JSON are illustrative.</p>
+</main>
+</body>
+</html>

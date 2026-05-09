@@ -297,6 +297,28 @@ inline void validate_net_semantics(const Circuit &circuit, DiagnosticReport &rep
     }
 }
 
+inline void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &report) {
+    for (std::size_t instance_index = 0; instance_index < circuit.module_instance_count();
+         ++instance_index) {
+        const auto instance_id = ModuleInstanceId{instance_index};
+        const auto &instance = circuit.module_instance(instance_id);
+        const auto &definition = circuit.module_definition(instance.definition());
+        for (const auto port_id : definition.ports()) {
+            const auto &port = circuit.port_definition(port_id);
+            if (port.required() && !circuit.port_binding_for(instance_id, port_id).has_value()) {
+                report.add(Diagnostic{
+                    Severity::Error,
+                    DiagnosticCode{"UNBOUND_REQUIRED_PORT"},
+                    "Required module port is not bound",
+                    std::vector{EntityRef::module_instance(instance_id),
+                                EntityRef::module_def(instance.definition()),
+                                EntityRef::port_def(port_id)},
+                });
+            }
+        }
+    }
+}
+
 inline void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.component_count(); ++index) {
         const auto component_id = ComponentId{index};
@@ -320,6 +342,7 @@ inline void validate_physical_part_selection(const Circuit &circuit, DiagnosticR
     auto report = DiagnosticReport{};
 
     detail::validate_pin_connection_requirements(circuit, report);
+    detail::validate_required_module_ports(circuit, report);
     detail::validate_net_shapes(circuit, report);
 
     return report;
@@ -339,6 +362,7 @@ inline void validate_physical_part_selection(const Circuit &circuit, DiagnosticR
     auto report = DiagnosticReport{};
 
     detail::validate_pin_connection_requirements(circuit, report);
+    detail::validate_required_module_ports(circuit, report);
     detail::validate_net_semantics(circuit, report);
 
     return report;

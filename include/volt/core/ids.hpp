@@ -35,6 +35,11 @@ struct ComponentIdTag;
 struct PinDefIdTag;
 struct PinIdTag;
 struct NetIdTag;
+struct ModuleDefIdTag;
+struct ModuleInstanceIdTag;
+struct TemplateNetDefIdTag;
+struct PortDefIdTag;
+struct PortBindingIdTag;
 
 } // namespace detail
 
@@ -48,5 +53,15 @@ using PinDefId = EntityId<detail::PinDefIdTag>;
 using PinId = EntityId<detail::PinIdTag>;
 /** ID for a canonical logical net in the design. */
 using NetId = EntityId<detail::NetIdTag>;
+/** ID for a reusable logical module definition. */
+using ModuleDefId = EntityId<detail::ModuleDefIdTag>;
+/** ID for a root-level module instance in the design. */
+using ModuleInstanceId = EntityId<detail::ModuleInstanceIdTag>;
+/** ID for a template-local net declared by a module definition. */
+using TemplateNetDefId = EntityId<detail::TemplateNetDefIdTag>;
+/** ID for a module port definition. */
+using PortDefId = EntityId<detail::PortDefIdTag>;
+/** ID for an explicit module port binding edge. */
+using PortBindingId = EntityId<detail::PortBindingIdTag>;
 
 } // namespace volt

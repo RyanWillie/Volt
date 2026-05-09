@@ -16,6 +16,7 @@ add_executable(
     circuit/circuit_test.cpp
     circuit/authoring_test.cpp
     circuit/definitions_test.cpp
+    circuit/hierarchy_test.cpp
     circuit/instances_test.cpp
     circuit/led_circuit_test.cpp
     circuit/nets_test.cpp
