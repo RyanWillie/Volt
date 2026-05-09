@@ -100,8 +100,9 @@ Quantity
   value: canonical numeric value
 
 Tolerance
-  minus: ratio
-  plus: ratio
+  mode: absolute | percent
+  minus: Quantity
+  plus: Quantity
 
 QuantityRange
   dimension: UnitDimension
@@ -112,6 +113,9 @@ QuantityRange
 Display units, unit spelling, and scale-preserving formatting are deferred. Validation
 does not depend on whether a user wrote `10 kOhm`, `10000 ohm`, or a Python helper
 lowered a plain number to an explicit dimensioned quantity.
+
+Percent tolerances use ratio quantities. Absolute tolerances use quantities with the
+dimension being tolerated, such as resistance or voltage.
 
 Typed electrical attributes are named values with an expected owner and dimension. This
 avoids a giant universal component field list while still making common design facts
