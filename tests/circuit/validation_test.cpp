@@ -120,6 +120,131 @@ TEST_CASE("Circuit validation reports empty and single-pin nets") {
     CHECK(report.diagnostics()[1].entities().front() == volt::EntityRef::net(single_pin_net));
 }
 
+TEST_CASE("Circuit connectivity validation excludes electrical rule diagnostics") {
+    volt::Circuit circuit;
+    const auto power_input = circuit.add_pin_definition(volt::PinDefinition{
+        "VCC", "1", volt::PinRole::PowerInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto unconnected_pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "EN", "2", volt::PinRole::DigitalInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Signal, volt::ElectricalDirection::Input});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Load", std::vector{power_input, unconnected_pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+    const auto power_pin = circuit.pin_by_name(component, "VCC").value();
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    circuit.set_pin_definition_electrical_attribute(
+        power_input,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage_range"},
+            volt::ElectricalAttributeOwner::PinSpec,
+            volt::ElectricalAttributeKind::Constraint,
+            volt::UnitDimension::Voltage,
+        },
+        volt::ElectricalAttributeValue{
+            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
+                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
+    circuit.connect(net, power_pin);
+    circuit.set_net_electrical_attribute(
+        net,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
+            volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Voltage},
+        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 5.0}});
+
+    const auto report = volt::validate_connectivity(circuit);
+
+    REQUIRE(report.count() == 2);
+    CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"UNCONNECTED_REQUIRED_PIN"});
+    CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+}
+
+TEST_CASE("Circuit electrical-rule validation excludes connectivity diagnostics") {
+    volt::Circuit circuit;
+    const auto power_input = circuit.add_pin_definition(volt::PinDefinition{
+        "VCC", "1", volt::PinRole::PowerInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto unconnected_pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "EN", "2", volt::PinRole::DigitalInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Signal, volt::ElectricalDirection::Input});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Load", std::vector{power_input, unconnected_pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+    const auto power_pin = circuit.pin_by_name(component, "VCC").value();
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    circuit.set_pin_definition_electrical_attribute(
+        power_input,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage_range"},
+            volt::ElectricalAttributeOwner::PinSpec,
+            volt::ElectricalAttributeKind::Constraint,
+            volt::UnitDimension::Voltage,
+        },
+        volt::ElectricalAttributeValue{
+            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
+                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
+    circuit.connect(net, power_pin);
+    circuit.set_net_electrical_attribute(
+        net,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
+            volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Voltage},
+        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 5.0}});
+
+    const auto report = volt::validate_electrical_rules(circuit);
+
+    REQUIRE(report.count() == 2);
+    CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"POWER_INPUT_WITHOUT_SOURCE"});
+    CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"PIN_VOLTAGE_RANGE_VIOLATION"});
+}
+
+TEST_CASE("Full circuit validation preserves connectivity before electrical rules") {
+    volt::Circuit circuit;
+    const auto power_input = circuit.add_pin_definition(volt::PinDefinition{
+        "VCC", "1", volt::PinRole::PowerInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto unconnected_pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "EN", "2", volt::PinRole::DigitalInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Signal, volt::ElectricalDirection::Input});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Load", std::vector{power_input, unconnected_pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+    const auto power_pin = circuit.pin_by_name(component, "VCC").value();
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    circuit.set_pin_definition_electrical_attribute(
+        power_input,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage_range"},
+            volt::ElectricalAttributeOwner::PinSpec,
+            volt::ElectricalAttributeKind::Constraint,
+            volt::UnitDimension::Voltage,
+        },
+        volt::ElectricalAttributeValue{
+            volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
+                                         volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
+    circuit.connect(net, power_pin);
+    circuit.set_net_electrical_attribute(
+        net,
+        volt::ElectricalAttributeSpec{
+            volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
+            volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Voltage},
+        volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 5.0}});
+
+    const auto report = volt::validate_circuit(circuit);
+
+    REQUIRE(report.count() == 4);
+    CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"UNCONNECTED_REQUIRED_PIN"});
+    CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
+    CHECK(report.diagnostics()[2].code() == volt::DiagnosticCode{"POWER_INPUT_WITHOUT_SOURCE"});
+    CHECK(report.diagnostics()[3].code() == volt::DiagnosticCode{"PIN_VOLTAGE_RANGE_VIOLATION"});
+}
+
 TEST_CASE("Circuit validation reports selected part voltage rating violations") {
     volt::Circuit circuit;
     const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
