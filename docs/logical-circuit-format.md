@@ -113,7 +113,7 @@ Valid property types are `string`, `boolean`, `integer`, and `number`.
 
 ## Typed Electrical Attributes
 
-Components, selected physical parts, and nets may carry optional
+Components, selected physical parts, nets, and pin definitions may carry optional
 `electrical_attributes`. The field is absent when no typed electrical attributes are
 present. Attribute names are stable strings chosen by the kernel/catalog contract for
 that owner, and values are dimensioned payloads:
@@ -123,7 +123,7 @@ that owner, and values are dimensioned payloads:
   "resistance": { "type": "quantity", "dimension": "resistance", "value": 330 },
   "tolerance": { "type": "tolerance", "mode": "percent", "dimension": "ratio", "minus": 0.01, "plus": 0.01 },
   "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 75 },
-  "input_voltage_range": { "type": "range", "dimension": "voltage", "minimum": 3, "maximum": 5.5 }
+  "voltage_range": { "type": "range", "dimension": "voltage", "minimum": 3, "maximum": 5.5 }
 }
 ```
 

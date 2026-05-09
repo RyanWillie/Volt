@@ -12,7 +12,10 @@ The current canonical source of truth is the logical circuit model:
 - pin definitions
 - nets
 - pin-to-net membership
-- constraints and design intent
+- typed attributes and selected design intent
+
+A future constraints layer may promote more design intent into first-class constraint
+entities once the model exists.
 
 Future Volt layers should be organized around one project-level design root. That future
 `Design` aggregate may own a logical circuit, schematic projections, PCB layouts,
@@ -68,6 +71,39 @@ split, or otherwise mutate nets.
 This rule is intentionally stronger than many schematic-first EDA tools. It protects
 code-authored circuits from accidental logical changes while drawing schematics or laying
 out boards.
+
+## First-Principles Primitives And Progressive Disclosure
+
+Volt should be built from first-principles EDA abstractions, not from a checklist of
+features in existing tools. When evaluating a proposed concept, ask what underlying
+circuit meaning it represents and whether that meaning must be validated, serialized,
+inspected, imported, exported, or referenced by another layer.
+
+The kernel should expose the minimal set of general concepts required to define,
+validate, serialize, and inspect electronically meaningful circuits. Convenience APIs may
+make common circuits concise, but they must lower into general kernel-owned concepts
+rather than introducing Python-only semantics or use-case-specific shortcuts.
+
+Prefer general primitives over use-case-specific kernel objects. For example:
+
+- a reusable power stage, sensor channel, or motor driver should be built from module,
+  port, component, net, and constraint primitives rather than special-purpose kernel
+  classes for each circuit pattern;
+- SPI, I2C, UART, memory, or connector helpers should build on generic net bundles,
+  interfaces, ports, and nets rather than requiring protocol-specific kernel concepts;
+- USB, clock, analog, high-current, or power-rail behavior should be expressed through
+  reusable net classes or constraints rather than one-off APIs for every case.
+
+Advanced features should use progressive disclosure. Simple circuits should remain simple
+to author, while additional electrical intent, constraints, hierarchy, physical-part data,
+or projection data can be added only when needed for correctness or interoperability.
+The existence of a richer model should not force every author through verbose ceremony.
+
+In short:
+
+```text
+Minimal primitives, progressive disclosure, kernel-owned meaning.
+```
 
 ## Deferred Projection Layers
 
