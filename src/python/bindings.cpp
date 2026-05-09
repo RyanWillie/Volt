@@ -427,6 +427,15 @@ selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimensi
     return result;
 }
 
+[[nodiscard]] py::list diagnostics_to_list(const volt::DiagnosticReport &report) {
+    auto diagnostics = py::list{};
+    for (const auto &diagnostic : report.diagnostics()) {
+        diagnostics.append(diagnostic_to_dict(diagnostic));
+    }
+
+    return diagnostics;
+}
+
 class PyCircuit {
   public:
     [[nodiscard]] std::size_t define_resistor() {
@@ -578,13 +587,11 @@ class PyCircuit {
     void connect(std::size_t net, std::size_t pin) { circuit_.connect(net_id(net), pin_id(pin)); }
 
     [[nodiscard]] py::list validate() const {
-        const auto report = volt::validate_circuit(circuit_);
-        auto diagnostics = py::list{};
-        for (const auto &diagnostic : report.diagnostics()) {
-            diagnostics.append(diagnostic_to_dict(diagnostic));
-        }
+        return diagnostics_to_list(volt::validate_circuit(circuit_));
+    }
 
-        return diagnostics;
+    [[nodiscard]] py::list validate_for_pcb() const {
+        return diagnostics_to_list(volt::validate_for_pcb(circuit_));
     }
 
     [[nodiscard]] std::string to_json() const {
@@ -633,5 +640,6 @@ PYBIND11_MODULE(_volt, module) {
         .def("pin_by_number", &PyCircuit::pin_by_number, py::arg("component"), py::arg("number"))
         .def("connect", &PyCircuit::connect, py::arg("net"), py::arg("pin"))
         .def("validate", &PyCircuit::validate)
+        .def("validate_for_pcb", &PyCircuit::validate_for_pcb)
         .def("to_json", &PyCircuit::to_json);
 }

@@ -307,6 +307,11 @@ class Design:
     def validate(self) -> DiagnosticReport:
         return DiagnosticReport(_diagnostic_from_dict(item) for item in self._circuit.validate())
 
+    def validate_for_pcb(self) -> DiagnosticReport:
+        return DiagnosticReport(
+            _diagnostic_from_dict(item) for item in self._circuit.validate_for_pcb()
+        )
+
     def to_json(self) -> str:
         return self._circuit.to_json()
 

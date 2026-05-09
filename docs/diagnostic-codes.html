@@ -355,6 +355,12 @@
               <td>A net has multiple output drivers.</td>
               <td><code>net</code>, then each output <code>pin</code></td>
             </tr>
+            <tr>
+              <td><code>PHYSICAL_PART_REQUIRED</code></td>
+              <td class="severity-error">Error</td>
+              <td>A component is missing the selected physical part required for PCB readiness.</td>
+              <td><code>component</code>, <code>component_definition</code></td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -381,11 +387,17 @@
         <h2>Current pass layout</h2>
         <pre><code>validate_circuit(circuit)
   validate_connectivity(circuit)
-  validate_electrical_rules(circuit)</code></pre>
+  validate_electrical_rules(circuit)
+
+validate_for_pcb(circuit)
+  validate_circuit(circuit)
+  validate physical part selection</code></pre>
         <p>
           Use <code>validate_circuit(circuit)</code> for the default complete logical
           validation suite. The named entry points expose stable intent-level groups for
-          tests and future tools; the smaller pass helpers remain internal structure.
+          tests and future tools. Use <code>validate_for_pcb(circuit)</code> when a
+          workflow needs physical implementation readiness; the smaller pass helpers
+          remain internal structure.
         </p>
       </div>
     </section>
