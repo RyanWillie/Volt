@@ -36,6 +36,10 @@ Every persisted entity has a required document-local ID using a typed prefix:
 - `component:<number>`
 - `pin:<number>`
 - `net:<number>`
+- `module_def:<number>`
+- `template_net:<number>`
+- `port:<number>`
+- `module:<number>`
 
 Local IDs are non-semantic. A component ID such as `component:0` is independent of the
 component's reference designator, so it can survive a rename from `R1` to `R101`.
@@ -91,6 +95,7 @@ version:
 - emit properties in lexicographic key order
 - emit electrical attributes in lexicographic key order
 - omit empty `electrical_attributes` objects
+- omit hierarchy arrays when no module definitions or module instances are present
 - preserve net pin order
 - preserve selected-part pin/pad mapping order
 - use the enum spellings shown in this document
@@ -293,6 +298,65 @@ Net `electrical_attributes` use the same typed payload encoding described above 
 for design-bearing net facts such as nominal voltage. Empty net electrical attribute maps
 are omitted from canonical output and load as empty maps.
 
+## Hierarchy Module Scaffold
+
+Hierarchy is optional in v1 files. When present, `module_definitions` define reusable
+module-local net and port shapes, while `module_instances` attach a concrete root module
+instance to already-persisted concrete nets:
+
+```json
+{
+  "module_definitions": [
+    {
+      "id": "module_def:0",
+      "name": "BuckConverter",
+      "local_nets": [
+        { "id": "template_net:0", "name": "VIN", "kind": "Power" },
+        { "id": "template_net:1", "name": "FB", "kind": "Signal" }
+      ],
+      "ports": [
+        {
+          "id": "port:0",
+          "name": "VIN",
+          "internal_net": "template_net:0",
+          "role": "PowerInput",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "module_instances": [
+    {
+      "id": "module:0",
+      "definition": "module_def:0",
+      "name": "BUCK_A",
+      "net_origins": [
+        { "template_net": "template_net:0", "net": "net:0" },
+        { "template_net": "template_net:1", "net": "net:1" }
+      ],
+      "port_bindings": [
+        { "port": "port:0", "parent_net": "net:2" }
+      ]
+    }
+  ]
+}
+```
+
+`local_nets` are template-local net definitions. They are not concrete connectivity by
+themselves. Each module instance must provide exactly one `net_origins` entry for every
+template net in its definition, and each entry points to a concrete top-level `net`.
+
+Ports expose one internal template net to the parent design. `role` uses the public
+`PortRole` spellings: `Passive`, `Input`, `Output`, `Bidirectional`, `PowerInput`,
+`PowerOutput`, and `Ground`. `required` defaults to `true` when omitted.
+`port_bindings` connect instance ports to parent concrete nets without merging the
+parent net and internal module-origin net into one logical net.
+
+This scaffold intentionally persists only the current kernel-owned hierarchy state:
+module definitions, template-local nets, ports, root module instances, concrete net
+origins, and port bindings. It does not yet persist component templates, nested module
+instances, schematic placement, PCB implementation, alias nets, or power ties.
+
 ## Reader Validation
 
 Reading a file is a mutation boundary. Readers must reject structurally invalid files,
@@ -312,6 +376,12 @@ including:
 - pins whose definitions are not part of their component definition
 - nets referencing missing pins
 - a pin appearing in more than one net
+- module definitions with duplicate names
+- template nets or ports that reference the wrong module
+- module instances that do not provide exactly one concrete net origin for every
+  template-local net
+- port bindings whose port does not belong to the module instance definition
+- port bindings that bind a module port to its own module-origin net
 - selected part mappings that do not exactly match the component definition
 - empty structural strings such as names, reference designators, package labels, footprint
   labels, manufacturer names, part numbers, and pad labels

@@ -49,3 +49,7 @@ TEST_CASE("Golden diagnostic fixture round-trips and preserves connectivity") {
 TEST_CASE("Golden typed electrical attribute fixture round-trips") {
     check_fixture_round_trips("typed_electrical_attributes.volt.json");
 }
+
+TEST_CASE("Golden hierarchy module fixture round-trips") {
+    check_fixture_round_trips("hierarchy_module.volt.json");
+}
