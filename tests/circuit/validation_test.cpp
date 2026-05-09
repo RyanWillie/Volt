@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <set>
+#include <string>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
@@ -10,6 +12,22 @@
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
+
+TEST_CASE("Circuit validation diagnostic code catalog remains stable") {
+    const auto codes = std::set<std::string>{
+        "EMPTY_NET",
+        "MULTIPLE_OUTPUTS_ON_NET",
+        "PIN_GROUND_ON_NON_GROUND_NET",
+        "PIN_MUST_NOT_CONNECT",
+        "PIN_POWER_ON_GROUND_NET",
+        "POWER_INPUT_WITHOUT_SOURCE",
+        "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
+        "SINGLE_PIN_NET",
+        "UNCONNECTED_REQUIRED_PIN",
+    };
+
+    CHECK(codes.size() == 9);
+}
 
 TEST_CASE("Circuit validation reports required pins that are not connected") {
     volt::Circuit circuit;
