@@ -184,6 +184,47 @@ TEST_CASE("Logical circuit writer emits pin electrical semantics") {
     CHECK(attributes["voltage_range"]["maximum"] == 5.5);
 }
 
+TEST_CASE("Logical circuit writer emits hierarchy module scaffold") {
+    volt::Circuit circuit;
+    const auto module =
+        circuit.add_module_definition(volt::ModuleDefinition{volt::ModuleName{"BuckConverter"}});
+    const auto vin = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
+    [[maybe_unused]] const auto fb = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"FB"}, volt::NetKind::Signal});
+    const auto port = circuit.add_port_definition(
+        module, volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
+    const auto instance =
+        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
+    const auto parent_net = circuit.add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
+    [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);
+
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+    const auto &module_json = output["module_definitions"][0];
+    const auto &instance_json = output["module_instances"][0];
+
+    CHECK(module_json["id"] == "module_def:0");
+    CHECK(module_json["name"] == "BuckConverter");
+    CHECK(module_json["local_nets"][0]["id"] == "template_net:0");
+    CHECK(module_json["local_nets"][0]["name"] == "VIN");
+    CHECK(module_json["local_nets"][0]["kind"] == "Power");
+    CHECK(module_json["local_nets"][1]["id"] == "template_net:1");
+    CHECK(module_json["ports"][0]["id"] == "port:0");
+    CHECK(module_json["ports"][0]["name"] == "VIN");
+    CHECK(module_json["ports"][0]["internal_net"] == "template_net:0");
+    CHECK(module_json["ports"][0]["role"] == "PowerInput");
+    CHECK(module_json["ports"][0]["required"] == true);
+    CHECK(instance_json["id"] == "module:0");
+    CHECK(instance_json["definition"] == "module_def:0");
+    CHECK(instance_json["name"] == "BUCK_A");
+    CHECK(instance_json["net_origins"][0]["template_net"] == "template_net:0");
+    CHECK(instance_json["net_origins"][0]["net"] == "net:0");
+    CHECK(instance_json["net_origins"][1]["template_net"] == "template_net:1");
+    CHECK(instance_json["net_origins"][1]["net"] == "net:1");
+    CHECK(instance_json["port_bindings"][0]["port"] == "port:0");
+    CHECK(instance_json["port_bindings"][0]["parent_net"] == "net:2");
+}
+
 TEST_CASE("Logical circuit writer matches the LED golden fixture") {
     const auto circuit = volt::examples::build_led_circuit();
 

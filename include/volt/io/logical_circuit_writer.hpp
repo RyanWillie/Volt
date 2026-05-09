@@ -200,6 +200,26 @@ namespace detail {
     throw std::logic_error{"Unhandled net kind"};
 }
 
+[[nodiscard]] inline std::string port_role_name(PortRole role) {
+    switch (role) {
+    case PortRole::Passive:
+        return "Passive";
+    case PortRole::Input:
+        return "Input";
+    case PortRole::Output:
+        return "Output";
+    case PortRole::Bidirectional:
+        return "Bidirectional";
+    case PortRole::PowerInput:
+        return "PowerInput";
+    case PortRole::PowerOutput:
+        return "PowerOutput";
+    case PortRole::Ground:
+        return "Ground";
+    }
+    throw std::logic_error{"Unhandled port role"};
+}
+
 [[nodiscard]] inline std::string unit_dimension_name(UnitDimension dimension) {
     switch (dimension) {
     case UnitDimension::Resistance:
@@ -358,6 +378,22 @@ inline void write_electrical_attributes(std::ostream &out, const ElectricalAttri
 [[nodiscard]] inline std::string pin_id(PinId id) { return "pin:" + std::to_string(id.index()); }
 
 [[nodiscard]] inline std::string net_id(NetId id) { return "net:" + std::to_string(id.index()); }
+
+[[nodiscard]] inline std::string module_def_id(ModuleDefId id) {
+    return "module_def:" + std::to_string(id.index());
+}
+
+[[nodiscard]] inline std::string template_net_def_id(TemplateNetDefId id) {
+    return "template_net:" + std::to_string(id.index());
+}
+
+[[nodiscard]] inline std::string port_def_id(PortDefId id) {
+    return "port:" + std::to_string(id.index());
+}
+
+[[nodiscard]] inline std::string module_instance_id(ModuleInstanceId id) {
+    return "module:" + std::to_string(id.index());
+}
 
 inline void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
     out << "{\n";
@@ -532,6 +568,103 @@ inline void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         }
         out << " }";
         if (index + 1 != circuit.net_count()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    const auto has_hierarchy =
+        circuit.module_definition_count() != 0 || circuit.module_instance_count() != 0;
+    out << (has_hierarchy ? "  ],\n" : "  ]\n");
+
+    if (!has_hierarchy) {
+        out << "}\n";
+        return;
+    }
+
+    out << "  \"module_definitions\": [\n";
+    for (std::size_t index = 0; index < circuit.module_definition_count(); ++index) {
+        const auto id = ModuleDefId{index};
+        const auto &definition = circuit.module_definition(id);
+        out << "    { \"id\": " << detail::json_string(detail::module_def_id(id))
+            << ", \"name\": " << detail::json_string(definition.name().value())
+            << ", \"local_nets\": [";
+        for (std::size_t net_index = 0; net_index < definition.template_nets().size();
+             ++net_index) {
+            const auto template_net_id = definition.template_nets()[net_index];
+            const auto &template_net = circuit.template_net_definition(template_net_id);
+            if (net_index != 0) {
+                out << ", ";
+            }
+            out << "{ \"id\": " << detail::json_string(detail::template_net_def_id(template_net_id))
+                << ", \"name\": " << detail::json_string(template_net.name().value())
+                << ", \"kind\": " << detail::json_string(detail::net_kind_name(template_net.kind()))
+                << " }";
+        }
+        out << "], \"ports\": [";
+        for (std::size_t port_index = 0; port_index < definition.ports().size(); ++port_index) {
+            const auto port_id = definition.ports()[port_index];
+            const auto &port = circuit.port_definition(port_id);
+            if (port_index != 0) {
+                out << ", ";
+            }
+            out << "{ \"id\": " << detail::json_string(detail::port_def_id(port_id))
+                << ", \"name\": " << detail::json_string(port.name().value())
+                << ", \"internal_net\": "
+                << detail::json_string(detail::template_net_def_id(port.internal_net()))
+                << ", \"role\": " << detail::json_string(detail::port_role_name(port.role()))
+                << ", \"required\": " << (port.required() ? "true" : "false") << " }";
+        }
+        out << "] }";
+        if (index + 1 != circuit.module_definition_count()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "  ],\n";
+
+    out << "  \"module_instances\": [\n";
+    for (std::size_t index = 0; index < circuit.module_instance_count(); ++index) {
+        const auto id = ModuleInstanceId{index};
+        const auto &instance = circuit.module_instance(id);
+        const auto &definition = circuit.module_definition(instance.definition());
+        out << "    { \"id\": " << detail::json_string(detail::module_instance_id(id))
+            << ", \"definition\": "
+            << detail::json_string(detail::module_def_id(instance.definition()))
+            << ", \"name\": " << detail::json_string(instance.name().value())
+            << ", \"net_origins\": [";
+        for (std::size_t net_index = 0; net_index < definition.template_nets().size();
+             ++net_index) {
+            const auto template_net_id = definition.template_nets()[net_index];
+            const auto concrete_net = circuit.concrete_net_for(id, template_net_id);
+            if (!concrete_net.has_value()) {
+                throw std::logic_error{"Module instance is missing concrete net origin"};
+            }
+            if (net_index != 0) {
+                out << ", ";
+            }
+            out << "{ \"template_net\": "
+                << detail::json_string(detail::template_net_def_id(template_net_id))
+                << ", \"net\": " << detail::json_string(detail::net_id(concrete_net.value()))
+                << " }";
+        }
+        out << "], \"port_bindings\": [";
+        auto wrote_binding = false;
+        for (const auto port_id : definition.ports()) {
+            const auto binding = circuit.port_binding_for(id, port_id);
+            if (!binding.has_value()) {
+                continue;
+            }
+            const auto &port_binding = circuit.port_binding(binding.value());
+            if (wrote_binding) {
+                out << ", ";
+            }
+            wrote_binding = true;
+            out << "{ \"port\": " << detail::json_string(detail::port_def_id(port_id))
+                << ", \"parent_net\": "
+                << detail::json_string(detail::net_id(port_binding.parent_net())) << " }";
+        }
+        out << "] }";
+        if (index + 1 != circuit.module_instance_count()) {
             out << ',';
         }
         out << '\n';

@@ -1,0 +1,23 @@
+{
+  "format": "volt.logical_circuit",
+  "version": 1,
+  "pin_definitions": [
+  ],
+  "component_definitions": [
+  ],
+  "components": [
+  ],
+  "pins": [
+  ],
+  "nets": [
+    { "id": "net:0", "name": "BUCK_A/VIN", "kind": "Power", "pins": [] },
+    { "id": "net:1", "name": "BUCK_A/FB", "kind": "Signal", "pins": [] },
+    { "id": "net:2", "name": "VIN", "kind": "Power", "pins": [] }
+  ],
+  "module_definitions": [
+    { "id": "module_def:0", "name": "BuckConverter", "local_nets": [{ "id": "template_net:0", "name": "VIN", "kind": "Power" }, { "id": "template_net:1", "name": "FB", "kind": "Signal" }], "ports": [{ "id": "port:0", "name": "VIN", "internal_net": "template_net:0", "role": "PowerInput", "required": true }] }
+  ],
+  "module_instances": [
+    { "id": "module:0", "definition": "module_def:0", "name": "BUCK_A", "net_origins": [{ "template_net": "template_net:0", "net": "net:0" }, { "template_net": "template_net:1", "net": "net:1" }], "port_bindings": [{ "port": "port:0", "parent_net": "net:2" }] }
+  ]
+}

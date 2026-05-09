@@ -143,6 +143,10 @@ class Circuit {
         require_module_instance(instance);
         require_port_in_module(module_instances_.get(instance).definition(), port);
         require_net(parent_net);
+        if (is_module_origin_net(parent_net)) {
+            throw std::logic_error{
+                "Module instance port parent net must be outside module origins"};
+        }
 
         if (port_binding_for(instance, port).has_value()) {
             throw std::logic_error{"Module instance port is already bound"};
@@ -158,6 +162,55 @@ class Circuit {
         }
 
         return port_bindings_.insert(PortBinding{instance, port, internal_net.value(), parent_net});
+    }
+
+    /** Restore a root module instance over existing concrete nets while loading JSON. */
+    [[nodiscard]] ModuleInstanceId
+    restore_root_module_instance(ModuleDefId definition, ModuleInstanceName name,
+                                 const std::vector<std::pair<TemplateNetDefId, NetId>> &origins) {
+        require_module_definition(definition);
+        if (module_instance_by_name(name).has_value()) {
+            throw std::logic_error{"Module instance name already exists"};
+        }
+
+        const auto &template_nets = module_definitions_.get(definition).template_nets();
+        if (origins.size() != template_nets.size()) {
+            throw std::logic_error{"Module instance origin net count does not match definition"};
+        }
+
+        auto seen_template_nets = std::vector<TemplateNetDefId>{};
+        auto seen_concrete_nets = std::vector<NetId>{};
+        for (const auto &[template_net, concrete_net] : origins) {
+            require_template_net_in_module(definition, template_net);
+            require_net(concrete_net);
+            if (std::find(seen_template_nets.begin(), seen_template_nets.end(), template_net) !=
+                seen_template_nets.end()) {
+                throw std::logic_error{"Duplicate module instance template-net origin"};
+            }
+            if (std::find(seen_concrete_nets.begin(), seen_concrete_nets.end(), concrete_net) !=
+                seen_concrete_nets.end()) {
+                throw std::logic_error{"Duplicate module instance concrete-net origin"};
+            }
+            if (is_module_origin_net(concrete_net)) {
+                throw std::logic_error{"Concrete net already has module origin metadata"};
+            }
+            seen_template_nets.push_back(template_net);
+            seen_concrete_nets.push_back(concrete_net);
+        }
+
+        for (const auto template_net : template_nets) {
+            if (std::find(seen_template_nets.begin(), seen_template_nets.end(), template_net) ==
+                seen_template_nets.end()) {
+                throw std::logic_error{"Missing module instance template-net origin"};
+            }
+        }
+
+        const auto instance = module_instances_.insert(ModuleInstance{definition, std::move(name)});
+        for (const auto &[template_net, concrete_net] : origins) {
+            module_net_origins_.push_back(ModuleNetOrigin{instance, template_net});
+            module_origin_nets_.push_back(concrete_net);
+        }
+        return instance;
     }
 
     /**
@@ -349,6 +402,13 @@ class Circuit {
         }
 
         return std::nullopt;
+    }
+
+    /** Return whether a net is concrete module-origin net. */
+    [[nodiscard]] bool is_module_origin_net(NetId net) const {
+        require_net(net);
+        return std::find(module_origin_nets_.begin(), module_origin_nets_.end(), net) !=
+               module_origin_nets_.end();
     }
 
     /** Return the concrete net created for a module instance template-local net, if any. */

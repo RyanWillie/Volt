@@ -113,6 +113,53 @@ TEST_CASE("Logical circuit reader preserves pin electrical semantics") {
     CHECK(range.maximum().value() == volt::Quantity{volt::UnitDimension::Voltage, 5.5});
 }
 
+TEST_CASE("Logical circuit reader preserves hierarchy module scaffold") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["nets"].push_back({{"id", "net:3"},
+                               {"name", "BUCK_A/VIN"},
+                               {"kind", "Power"},
+                               {"pins", nlohmann::json::array()}});
+    fixture["nets"].push_back({{"id", "net:4"},
+                               {"name", "BUCK_A/FB"},
+                               {"kind", "Signal"},
+                               {"pins", nlohmann::json::array()}});
+    fixture["module_definitions"] = nlohmann::json::array(
+        {{{"id", "module_def:0"},
+          {"name", "BuckConverter"},
+          {"local_nets",
+           nlohmann::json::array({{{"id", "template_net:0"}, {"name", "VIN"}, {"kind", "Power"}},
+                                  {{"id", "template_net:1"}, {"name", "FB"}, {"kind", "Signal"}}})},
+          {"ports", nlohmann::json::array({{{"id", "port:0"},
+                                            {"name", "VIN"},
+                                            {"internal_net", "template_net:0"},
+                                            {"role", "PowerInput"},
+                                            {"required", true}}})}}});
+    fixture["module_instances"] = nlohmann::json::array(
+        {{{"id", "module:0"},
+          {"definition", "module_def:0"},
+          {"name", "BUCK_A"},
+          {"net_origins",
+           nlohmann::json::array({{{"template_net", "template_net:0"}, {"net", "net:3"}},
+                                  {{"template_net", "template_net:1"}, {"net", "net:4"}}})},
+          {"port_bindings",
+           nlohmann::json::array({{{"port", "port:0"}, {"parent_net", "net:0"}}})}}});
+
+    const auto circuit = volt::io::read_logical_circuit(fixture);
+
+    CHECK(circuit.module_definition_count() == 1);
+    CHECK(circuit.template_net_definition_count() == 2);
+    CHECK(circuit.port_definition_count() == 1);
+    CHECK(circuit.module_instance_count() == 1);
+    CHECK(circuit.port_binding_count() == 1);
+    CHECK(circuit.module_definition(volt::ModuleDefId{0}).name() ==
+          volt::ModuleName{"BuckConverter"});
+    CHECK(circuit.concrete_net_for(volt::ModuleInstanceId{0}, volt::TemplateNetDefId{0}) ==
+          volt::NetId{3});
+    CHECK(circuit.concrete_net_for(volt::ModuleInstanceId{0}, volt::TemplateNetDefId{1}) ==
+          volt::NetId{4});
+    CHECK(circuit.port_binding(volt::PortBindingId{0}).parent_net() == volt::NetId{0});
+}
+
 TEST_CASE("Logical circuit reader defaults missing typed electrical attributes to empty maps") {
     const auto circuit = volt::io::read_logical_circuit_text(read_fixture("led_circuit.volt.json"));
 
@@ -126,6 +173,50 @@ TEST_CASE("Logical circuit reader defaults missing typed electrical attributes t
               .value()
               .electrical_attributes()
               .empty());
+}
+
+TEST_CASE("Logical circuit reader rejects malformed hierarchy references") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["module_definitions"] = nlohmann::json::array(
+        {{{"id", "module_def:0"},
+          {"name", "BuckConverter"},
+          {"local_nets",
+           nlohmann::json::array({{{"id", "template_net:0"}, {"name", "VIN"}, {"kind", "Power"}}})},
+          {"ports", nlohmann::json::array({{{"id", "port:0"},
+                                            {"name", "VIN"},
+                                            {"internal_net", "template_net:99"},
+                                            {"role", "PowerInput"},
+                                            {"required", true}}})}}});
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+}
+
+TEST_CASE("Logical circuit reader rejects hierarchy self-bindings") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["nets"].push_back({{"id", "net:3"},
+                               {"name", "BUCK_A/VIN"},
+                               {"kind", "Power"},
+                               {"pins", nlohmann::json::array()}});
+    fixture["module_definitions"] = nlohmann::json::array(
+        {{{"id", "module_def:0"},
+          {"name", "BuckConverter"},
+          {"local_nets",
+           nlohmann::json::array({{{"id", "template_net:0"}, {"name", "VIN"}, {"kind", "Power"}}})},
+          {"ports", nlohmann::json::array({{{"id", "port:0"},
+                                            {"name", "VIN"},
+                                            {"internal_net", "template_net:0"},
+                                            {"role", "PowerInput"},
+                                            {"required", true}}})}}});
+    fixture["module_instances"] = nlohmann::json::array(
+        {{{"id", "module:0"},
+          {"definition", "module_def:0"},
+          {"name", "BUCK_A"},
+          {"net_origins",
+           nlohmann::json::array({{{"template_net", "template_net:0"}, {"net", "net:3"}}})},
+          {"port_bindings",
+           nlohmann::json::array({{{"port", "port:0"}, {"parent_net", "net:3"}}})}}});
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
 }
 
 TEST_CASE("Logical circuit reader rejects duplicate net pin references") {

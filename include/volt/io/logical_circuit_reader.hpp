@@ -36,6 +36,8 @@ class LogicalCircuitReader {
         read_components();
         read_pins();
         read_nets();
+        read_module_definitions();
+        read_module_instances();
         read_selected_physical_parts();
 
         return std::move(circuit_);
@@ -89,6 +91,16 @@ class LogicalCircuitReader {
         const auto &value = field(object, name);
         require(value.is_array(), std::string{"Expected array field: "} + name);
         return value;
+    }
+
+    static const nlohmann::json *optional_array_field(const nlohmann::json &object,
+                                                      const char *name) {
+        const auto it = object.find(name);
+        if (it == object.end()) {
+            return nullptr;
+        }
+        require(it->is_array(), std::string{"Expected array field: "} + name);
+        return &*it;
     }
 
     static std::string local_id(const nlohmann::json &object, const std::string &prefix,
@@ -215,6 +227,24 @@ class LogicalCircuitReader {
         if (value == "HighCurrent")
             return NetKind::HighCurrent;
         throw std::logic_error{"Invalid NetKind value"};
+    }
+
+    [[nodiscard]] static PortRole port_role(const std::string &value) {
+        if (value == "Passive")
+            return PortRole::Passive;
+        if (value == "Input")
+            return PortRole::Input;
+        if (value == "Output")
+            return PortRole::Output;
+        if (value == "Bidirectional")
+            return PortRole::Bidirectional;
+        if (value == "PowerInput")
+            return PortRole::PowerInput;
+        if (value == "PowerOutput")
+            return PortRole::PowerOutput;
+        if (value == "Ground")
+            return PortRole::Ground;
+        throw std::logic_error{"Invalid PortRole value"};
     }
 
     [[nodiscard]] static UnitDimension unit_dimension(const std::string &value) {
@@ -495,6 +525,80 @@ class LogicalCircuitReader {
         }
     }
 
+    void read_module_definitions() {
+        const auto modules = optional_array_field(document_, "module_definitions");
+        if (modules == nullptr) {
+            return;
+        }
+
+        auto seen = std::set<std::string>{};
+        auto seen_template_nets = std::set<std::string>{};
+        auto seen_ports = std::set<std::string>{};
+        for (const auto &module_object : *modules) {
+            const auto id = local_id(module_object, "module_def:", seen);
+            const auto module = circuit_.add_module_definition(
+                ModuleDefinition{ModuleName{string_field(module_object, "name")}});
+            module_def_ids_.emplace(id, module);
+
+            for (const auto &net_object : array_field(module_object, "local_nets")) {
+                const auto net_id = local_id(net_object, "template_net:", seen_template_nets);
+                const auto template_net = circuit_.add_template_net(
+                    module, TemplateNetDefinition{NetName{string_field(net_object, "name")},
+                                                  net_kind(string_field(net_object, "kind"))});
+                template_net_ids_.emplace(net_id, template_net);
+            }
+
+            for (const auto &port_object : array_field(module_object, "ports")) {
+                const auto port_id = local_id(port_object, "port:", seen_ports);
+                const auto internal_net =
+                    resolve(template_net_ids_, string_field(port_object, "internal_net"));
+                const auto required_it = port_object.find("required");
+                auto required = true;
+                if (required_it != port_object.end()) {
+                    require(required_it->is_boolean(), "Expected boolean field: required");
+                    required = required_it->get<bool>();
+                }
+                const auto port = circuit_.add_port_definition(
+                    module,
+                    PortDefinition{PortName{string_field(port_object, "name")}, internal_net,
+                                   port_role(optional_string_field(port_object, "role", "Passive")),
+                                   required});
+                port_def_ids_.emplace(port_id, port);
+            }
+        }
+    }
+
+    void read_module_instances() {
+        const auto modules = optional_array_field(document_, "module_instances");
+        if (modules == nullptr) {
+            return;
+        }
+
+        auto seen = std::set<std::string>{};
+        for (const auto &instance_object : *modules) {
+            const auto id = local_id(instance_object, "module:", seen);
+            const auto definition =
+                resolve(module_def_ids_, string_field(instance_object, "definition"));
+            auto origins = std::vector<std::pair<TemplateNetDefId, NetId>>{};
+            for (const auto &origin_object : array_field(instance_object, "net_origins")) {
+                origins.emplace_back(
+                    resolve(template_net_ids_, string_field(origin_object, "template_net")),
+                    resolve(net_ids_, string_field(origin_object, "net")));
+            }
+            const auto instance = circuit_.restore_root_module_instance(
+                definition, ModuleInstanceName{string_field(instance_object, "name")}, origins);
+            module_instance_ids_.emplace(id, instance);
+
+            for (const auto &binding_object : array_field(instance_object, "port_bindings")) {
+                const auto port = resolve(port_def_ids_, string_field(binding_object, "port"));
+                const auto parent_net =
+                    resolve(net_ids_, string_field(binding_object, "parent_net"));
+                [[maybe_unused]] const auto binding =
+                    circuit_.bind_port(instance, port, parent_net);
+            }
+        }
+    }
+
     [[nodiscard]] PhysicalPart physical_part(const nlohmann::json &object) const {
         require(object.is_object(), "Selected physical part must be an object");
         const auto &manufacturer_part = field(object, "manufacturer_part");
@@ -528,6 +632,10 @@ class LogicalCircuitReader {
     std::map<std::string, ComponentId> component_ids_;
     std::map<std::string, PinId> pin_ids_;
     std::map<std::string, NetId> net_ids_;
+    std::map<std::string, ModuleDefId> module_def_ids_;
+    std::map<std::string, TemplateNetDefId> template_net_ids_;
+    std::map<std::string, PortDefId> port_def_ids_;
+    std::map<std::string, ModuleInstanceId> module_instance_ids_;
     std::vector<std::pair<std::string, nlohmann::json>> selected_parts_;
 };
 
