@@ -1,20 +1,19 @@
-# Typed Electrical Semantics Design
+# Typed Electrical Semantics
 
 ## Purpose
 
-Volt needs a kernel-owned foundation for electrical meaning before ERC grows beyond the
-current broad `PinRole` checks.
+Volt has a kernel-owned foundation for electrical meaning that can support richer
+validation without becoming simulation-specific.
 
-The goal is:
+The guiding rule remains:
 
 ```text
 Volt should become simulation-ready without becoming simulation-specific yet.
 ```
 
-This design defines the model trajectory for typed quantities and units, typed component
-values and ratings, richer pin electrical specs, ERC consumption, Python authoring, and
-the future simulation boundary. It does not add a simulation engine, SPICE integration,
-solver APIs, schematic implementation, or PCB work.
+This document records the current typed semantics model, the boundaries it protects, and
+the remaining work needed before ERC, schematic, PCB, and future simulation layers can
+lean on it confidently.
 
 ## Ownership Rule
 
@@ -22,7 +21,7 @@ solver APIs, schematic implementation, or PCB work.
 lifecycle notes, contributor annotations, and escape-hatch facts that Volt does not yet
 understand.
 
-Core electrical meaning should move into typed kernel-owned fields when Volt needs to:
+Core electrical meaning belongs in typed kernel-owned fields when Volt needs to:
 
 - validate it
 - serialize it with stable semantics
@@ -43,7 +42,7 @@ typed electrical meaning:
   tolerance = +/- 1 percent
   voltage_rating = 75 V
   pin drive kind = push-pull output
-  pin voltage domain = VDD_IO
+  pin voltage range = 0 V to 5.5 V
 ```
 
 If a fact changes EDA behavior, the C++ kernel owns the fact. Python may make it easier to
@@ -51,217 +50,258 @@ author, but Python must lower it into kernel data or kernel mutation APIs.
 
 Volt should store design-defining electrical inputs, not every electrical concept that can
 be calculated from them. A field belongs in the model when it affects connectivity,
-component selection, ERC, constraints, serialization, or future simulation setup.
+component selection, ERC, constraints, serialization, PCB readiness, or future simulation
+setup.
 
 Examples:
 
 - store a resistor's resistance, tolerance, and power rating
 - store a capacitor's capacitance and voltage rating
-- store a supply net's nominal voltage or allowed voltage range when checks depend on it
+- store a supply net's nominal voltage when checks depend on it
+- store a pin's accepted voltage range when validation depends on it
 - do not store derived current, node voltage, charge, temperature, or power dissipation as
   design fields unless they are explicit constraints or saved analysis results
 
 This keeps the kernel small while leaving room for future analysis layers to produce
 state and result data without confusing those results with circuit design intent.
 
-## Typed Quantities And Units
+## Current Foundation
 
-Volt should introduce a small quantity model before moving electrical values and ratings
-out of string properties.
+The landed foundation includes:
 
-Recommended first vocabulary:
+- `UnitDimension`, `Quantity`, `Tolerance`, and `QuantityRange`
+- `ElectricalAttributeSpec`, `ElectricalAttributeValue`, and `ElectricalAttributeMap`
+- owner and dimension checks for typed electrical attributes
+- component instance electrical attributes
+- selected physical part electrical attributes
+- net electrical attributes, including authored net voltage
+- pin definition electrical attributes, including authored voltage ranges
+- unified pin semantics on `PinDefinition` rather than a separate pin electrical spec
+- logical JSON read/write support for typed electrical attributes
+- validation entry points for general, connectivity, ERC, and PCB-readiness checks
+- typed diagnostics for power/ground sanity, pin voltage range, selected-part voltage
+  rating, and missing selected physical parts for PCB readiness
+- Python authoring helpers over kernel-owned state
+
+The important architectural result is that Python and JSON are no longer the only places
+where these facts exist. The kernel can inspect, serialize, and validate them directly.
+
+## Quantities And Attributes
+
+The current quantity model is intentionally small:
 
 ```text
-Unit
-  dimension: resistance | capacitance | inductance | voltage | current | power |
-             frequency | time | temperature | ratio
-  scale: integer exponent or canonical multiplier
-  symbol: display spelling such as ohm, kOhm, V, mA, W, Hz, s, percent
+UnitDimension
+  resistance | capacitance | inductance | voltage | current | power |
+  frequency | time | temperature | ratio
 
 Quantity
   dimension: UnitDimension
-  value: decimal-compatible numeric value
-  unit: Unit
+  value: canonical numeric value
 
 Tolerance
-  mode: absolute | percent
-  plus: Quantity or ratio
-  minus: Quantity or ratio
+  minus: ratio
+  plus: ratio
 
-Range
+QuantityRange
+  dimension: UnitDimension
   minimum: optional Quantity
   maximum: optional Quantity
 ```
 
-The kernel should store quantities in a canonical dimension-aware form so `10 kOhm`,
-`10000 ohm`, and Python-authored plain numbers passed through helper defaults can be
-compared deterministically. Display spelling can be preserved later if user-facing
-formatting needs it, but validation should not depend on the original string.
+Display units, unit spelling, and scale-preserving formatting are deferred. Validation
+does not depend on whether a user wrote `10 kOhm`, `10000 ohm`, or a Python helper
+lowered a plain number to an explicit dimensioned quantity.
 
-Structural checks belong at construction or mutation boundaries:
+Typed electrical attributes are named values with an expected owner and dimension. This
+avoids a giant universal component field list while still making common design facts
+kernel-owned.
 
-- quantity dimension must match the field that stores it
-- ranges must have compatible dimensions
-- range minimum cannot exceed range maximum
-- percent tolerance belongs to ratio-like fields, not arbitrary strings
-
-Do not introduce implicit unit guessing in the kernel. Authoring helpers may provide
-contextual defaults, such as treating `resistance=330` in `Design.R(...)` as ohms, but
-the helper must produce an explicit `Quantity` before entering model data.
-
-## Component Values And Ratings
-
-Typed values should be attached to kernel component definitions, component instances, and
-selected physical parts based on ownership:
+Current useful owners are:
 
 ```text
-ComponentDefinition
-  nominal electrical behavior common to the logical device
-  examples: kind = resistor, expected value dimension = resistance
-
 ComponentInstance
   design-specific value choices
   examples: resistance = 330 ohm, capacitance = 100 nF
 
-PhysicalPart
+SelectedPhysicalPart
   manufacturer-specific ratings and limits
   examples: tolerance = +/-1%, voltage_rating = 75 V, power_rating = 0.1 W
+
+Net
+  authored net-level electrical intent
+  examples: voltage = 3.3 V
+
+PinDefinition
+  logical pin electrical limits
+  examples: voltage_range = 0 V to 5.5 V
 ```
 
-Avoid a giant universal component field list. Start with a small typed electrical
-attribute vocabulary whose entries define:
+Structural checks happen at construction, mutation, or load boundaries:
 
-- the canonical name, such as `resistance` or `voltage_rating`
-- the expected dimension
-- the valid owner, such as component instance, selected part, pin spec, net, or constraint
-- the default authoring unit for plain numbers
-- whether the attribute is design input or constraint
+- attribute name must be known
+- owner must be allowed for that attribute
+- quantity dimension must match the attribute
+- ranges must have compatible dimensions
+- range minimum cannot exceed range maximum
 
-Common attributes can be added or removed as the model matures without making every
-component carry irrelevant fields. Specialized structures should be introduced only when a
-validation or simulation contract needs stronger relationships than named typed
-attributes can express. Future analysis results should have separate ownership rather
-than being stored as ordinary circuit design attributes.
+Design-quality issues remain diagnostics. For example, a selected part whose voltage
+rating is too low for an authored net voltage is diagnosable; it should not make the
+loaded circuit structurally invalid.
 
-Initial design-input attributes should likely cover:
+## Pin Semantics
 
-- resistance, capacitance, inductance
-- tolerance
-- voltage rating
-- current rating
-- power rating
-- operating temperature range
+Volt should not grow hundreds of narrow pin roles such as `threshold_input`,
+`reset_input`, or `discharge_output`. Those names are useful datasheet vocabulary, but
+they are not the fundamental model.
 
-Design-quality diagnostics, not mutation failures, should report missing or unsuitable
-choices such as a resistor instance with no resistance value or a selected part whose
-rating is lower than a declared design requirement.
-
-## Pin Electrical Specs
-
-`PinRole` is useful as a coarse compatibility hint, but it is too broad to be the basis
-for expanded ERC. Volt should evolve toward a richer `PinElectricalSpec` associated with
-`PinDefinition`.
-
-Suggested shape:
+The current direction is a unified `PinSpec`/`PinDefinition` with a small set of
+first-principles fields:
 
 ```text
-PinElectricalSpec
-  connection_requirement: Optional | Required | MustNotConnect
-  terminal_kind: passive | power | ground | signal | no_connect
-  direction: input | output | bidirectional | passive | not_applicable
-  signal_kind: digital | analog | mixed | clock | reset | power_control | unknown
-  drive_kind: high_impedance | open_drain | open_source | push_pull |
-              current_source | current_sink | passive | unknown
-  supply_role: supply_input | supply_output | reference | return | not_supply
-  voltage_domain: optional domain name/reference
-  accepted_voltage_range: optional Range<voltage>
-  produced_voltage_range: optional Range<voltage>
-  current_limit: optional Range<current>
-  properties: PropertyMap for non-core annotations
+PinDefinition
+  name
+  number
+  role
+  connection_requirement
+  terminal_kind
+  direction
+  signal_domain
+  drive_kind
+  polarity
+  electrical_attributes
 ```
 
-This model separates concerns that are currently collapsed into enum values. For example:
+This lets authoring stay compact while preserving behavior:
 
-- a GPIO can be digital, bidirectional, push-pull or open-drain, and tied to `VDD_IO`
-- a regulator output can be a supply output with a produced voltage range
-- a passive resistor pin can be passive with no direction
-- a ground pin can be a supply return rather than a generic signal
+```python
+ne555 = d.define_component(
+    "NE555 timer",
+    pins=[
+        volt.PinSpec("GND", 1, role="ground", terminal="ground"),
+        volt.PinSpec(
+            "TRIG", 2, role="analog_input", terminal="signal",
+            direction="input", signal="analog", voltage_range=(0, 5.5)
+        ),
+        volt.PinSpec(
+            "OUT", 3, role="output", terminal="signal",
+            direction="output", signal="digital", drive="push_pull"
+        ),
+        volt.PinSpec(
+            "RESET", 4, role="input", terminal="signal",
+            direction="input", signal="digital", polarity="active_low"
+        ),
+        volt.PinSpec("CTRL", 5, role="analog_input", terminal="signal"),
+        volt.PinSpec("THRESH", 6, role="analog_input", terminal="signal"),
+        volt.PinSpec(
+            "DISCH", 7, role="output", terminal="signal",
+            direction="output", signal="digital", drive="open_drain"
+        ),
+        volt.PinSpec(
+            "VCC", 8, role="power", terminal="power",
+            direction="input", voltage_range=(4.5, 16)
+        ),
+    ],
+    properties={"category": "timer"},
+)
+```
 
-`PinRole` can remain as a compatibility field or derived summary while the richer spec is
-introduced. New ERC should consume `PinElectricalSpec` rather than adding increasingly
-special cases to `PinRole`.
+The names `TRIG`, `THRESH`, and `DISCH` still exist as pin names. The kernel-visible
+semantics are the simpler facts: analog input, digital output, open-drain, active-low,
+required connection, and voltage range.
 
-## ERC Consumption
+Future additions should follow the same rule: add a core field only when it represents a
+general electrical concept that validation, serialization, import/export, PCB, or future
+simulation layers need. Otherwise prefer typed attributes, metadata, or higher-level
+authoring helpers that lower into the existing fields.
 
-ERC should run over canonical kernel-owned model data and produce diagnostics. It should
-not fix a bad design, mutate nets, or infer missing electrical contracts from labels such
-as `VCC` and `GND` except through explicit model fields or validated authoring helpers.
+## Validation Consumption
 
-Staged ERC trajectory:
+Validation should run over canonical kernel-owned model data and produce diagnostics. It
+should not fix a bad design, mutate nets, or infer missing electrical contracts from
+labels such as `VCC` and `GND` except through explicit model fields or validated authoring
+helpers.
 
-1. Keep existing structural connectivity invariants in `Circuit` mutation APIs.
-2. Keep existing logical diagnostics for unconnected required pins, empty nets,
-   single-pin nets, no-connect violations, and obvious output conflicts.
-3. Add typed electrical semantics to the model and persistence format.
-4. Rework richer ERC checks to read `PinElectricalSpec`, typed values, ratings, and
-   declared constraints.
-5. Add power-domain and rating checks only when the domain, voltage, current, and rating
-   data is explicit enough to make findings diagnosable.
+Current validation entry points are:
 
-Examples of future diagnostics:
+```text
+validate_circuit
+  broad logical validation for normal authoring feedback
 
-- power input has no compatible supply source on its net
-- open-drain output net has no pull-up to a compatible voltage domain
-- two push-pull outputs drive the same net
-- component rating is below the declared net or environment requirement
-- analog input is connected to a net outside its accepted voltage range
+validate_connectivity
+  focused connectivity checks
+
+validate_electrical_rules
+  electrical semantics checks over typed model data
+
+validate_for_pcb
+  PCB-readiness checks that require selected physical parts
+```
+
+Current typed checks include:
+
+- required pins that are left unconnected
+- no-connect pin violations
+- empty and single-pin nets
+- obvious output conflicts
+- power/ground sanity checks
+- net voltage against connected pin voltage ranges
+- selected-part voltage rating against authored net voltage
+- missing selected physical parts when validating for PCB output
+
+Remaining validation work should build on explicit data:
+
+- current limits and power capability checks
+- no-connect assertions as stored design intent, distinct from pin roles
+- selected-part compatibility beyond voltage rating
+- drive and domain compatibility once the constraint model is clearer
+- hierarchy and scoped-net validation after those primitives exist
+- netclass/rule-class validation once reusable rule classes exist
 
 These are design-quality findings. They remain diagnostics unless they reveal a
 structurally invalid mutation such as a pin connected to more than one net.
 
-## Serialization Implications
+## Serialization
 
-The current logical circuit JSON format should not be stretched with ad hoc string
-properties for core electrical meaning. Typed semantics should be added through explicit
-versioned fields once the C++ model exists.
+The logical circuit JSON format now serializes typed electrical attributes for the model
+owners that exist today:
 
-Expected format direction:
+- component instances
+- selected physical parts
+- nets
+- pin definitions
 
-- keep generic `properties` for metadata
-- add typed quantity encodings with dimension and canonical value
-- add typed value/rating fields to component instances and selected physical parts
-- add `electrical_spec` or equivalent fields to pin definitions
-- preserve deterministic field order and round-trip fixtures
-- reject malformed typed fields during load as structural format errors
-- report bad design intent after load through validation diagnostics
+Generic `properties` remain for metadata. Core electrical meaning should not be added as
+ad hoc strings when a typed kernel field exists.
 
-Migration can preserve old string properties such as `value = "330 ohm"` as metadata
-until a deliberate importer or authoring helper converts them into typed fields.
+Loading malformed typed fields is a structural format error. Loading a well-formed but
+bad design should succeed and allow validation to report diagnostics.
 
-## Python Authoring Expectations
+## Python Authoring
 
-Python should make typed electrical authoring pleasant without owning electrical meaning.
-
-Expected authoring style:
+Python provides ergonomic syntax over kernel-owned state:
 
 ```python
 r1 = d.R(resistance=330, tolerance=0.01, ref="R1")
-c1 = d.C(capacitance=100, voltage_rating=16, ref="C1")
+c1 = d.C(capacitance=100e-9, voltage_rating=16, ref="C1")
 vdd = d.net("VDD", voltage=3.3)
-```
 
-Those calls must lower to kernel-owned quantities, component values, ratings, pin specs,
-constraints, or net semantics. The public Python API should not require users to multiply
-by Volt unit objects for common component helpers. Instead, helper definitions should own
-the expected dimensions and default units for plain numbers, then pass explicit quantities
-to the kernel.
+r1.select_part(
+    manufacturer="Yageo",
+    part_number="RC0603FR-07330RL",
+    package="0603",
+    footprint=("Resistor_SMD", "R_0603_1608Metric"),
+    pin_pads={1: "1", 2: "2"},
+    voltage_rating=75,
+    power_rating=0.1,
+)
+
+diagnostics = d.validate_for_pcb()
+```
 
 Default units are part of the Python helper contract, not kernel guesswork. For example,
 `Design.R(resistance=330)` can mean `330 ohm` because the resistor helper declares that
-default. A capacitor helper may choose an ergonomic default such as nanofarads if that is
-documented by the public API, but the kernel receives a dimensioned capacitance either
-way. Python may still offer explicit unit objects or parsers for uncommon units and
-importers, but those are conveniences rather than required authoring syntax.
+default. The kernel receives a dimensioned quantity either way.
 
 Python exceptions remain appropriate for rejected structural mutations or invalid typed
 values. ERC and design-quality issues remain kernel-produced diagnostics.
@@ -294,20 +334,21 @@ Explicitly deferred:
 - no SPICE integration
 - no solver APIs
 - no transient, AC, DC, or mixed-signal analysis APIs
-- no schematic or PCB implementation
+- no schematic or PCB implementation in this layer
 
-## Implementation Slices
+## Next Slices
 
-The design should land before issue `c9042835` basic power/ground checks or any similar
-ERC expansion. Suggested implementation order:
+The typed semantics foundation is now in place. The next work should be small and
+dependency-aware:
 
-1. Define quantity and unit value objects in `volt-core`.
-2. Add typed passive values and selected-part ratings to the logical model.
-3. Extend serialization with explicit typed fields and golden fixtures.
-4. Add `PinElectricalSpec` beside or behind the existing `PinRole`.
-5. Update authoring helpers and Python bindings to produce typed kernel data.
-6. Expand ERC against typed semantics and constraints.
-7. Only then design simulation contracts or backend adapters.
+1. Finish the documentation refresh so contributors understand the current model.
+2. Write a focused hierarchy and scoped-net design page before adding new logical
+   topology.
+3. Add the smallest hierarchy/scoped-net vertical slice.
+4. Add no-connect assertions as explicit stored design intent.
+5. Add selected-part compatibility checks beyond voltage rating.
+6. Add current and power capability checks once the relevant constraints are explicit.
+7. Design netclasses/rule classes only after the reusable constraint vocabulary is clear.
 
 Each slice should have tests that prove structural invalid data is rejected at the
 mutation or load boundary, while bad design intent is reported through diagnostics.
