@@ -620,6 +620,9 @@ class LogicalCircuitReader {
                                 string_field(origin_object, "template_component")),
                         resolve(component_ids_, string_field(origin_object, "component")));
                 }
+            } else {
+                component_origins = infer_component_origins(
+                    definition, ModuleInstanceName{string_field(instance_object, "name")});
             }
             const auto instance = circuit_.restore_root_module_instance(
                 definition, ModuleInstanceName{string_field(instance_object, "name")}, origins,
@@ -634,6 +637,21 @@ class LogicalCircuitReader {
                     circuit_.bind_port(instance, port, parent_net);
             }
         }
+    }
+
+    [[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>>
+    infer_component_origins(ModuleDefId definition, const ModuleInstanceName &name) const {
+        auto component_origins = std::vector<std::pair<ModuleComponentId, ComponentId>>{};
+        for (const auto component : circuit_.module_definition(definition).components()) {
+            const auto &template_component = circuit_.module_component_template(component);
+            const auto concrete_reference =
+                ReferenceDesignator{name.value() + "/" + template_component.reference().value()};
+            const auto concrete_component = circuit_.component_by_reference(concrete_reference);
+            require(concrete_component.has_value(),
+                    "Missing module instance concrete component for inferred component origin");
+            component_origins.emplace_back(component, concrete_component.value());
+        }
+        return component_origins;
     }
 
     [[nodiscard]] PhysicalPart physical_part(const nlohmann::json &object) const {
