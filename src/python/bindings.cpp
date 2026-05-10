@@ -245,6 +245,46 @@ namespace {
     throw std::invalid_argument{"Unknown port role"};
 }
 
+[[nodiscard]] std::string net_kind_name(volt::NetKind kind) {
+    switch (kind) {
+    case volt::NetKind::Signal:
+        return "Signal";
+    case volt::NetKind::Power:
+        return "Power";
+    case volt::NetKind::Ground:
+        return "Ground";
+    case volt::NetKind::Clock:
+        return "Clock";
+    case volt::NetKind::Analog:
+        return "Analog";
+    case volt::NetKind::HighCurrent:
+        return "HighCurrent";
+    }
+
+    throw std::logic_error{"Unhandled net kind"};
+}
+
+[[nodiscard]] std::string port_role_name(volt::PortRole role) {
+    switch (role) {
+    case volt::PortRole::Passive:
+        return "Passive";
+    case volt::PortRole::Input:
+        return "Input";
+    case volt::PortRole::Output:
+        return "Output";
+    case volt::PortRole::Bidirectional:
+        return "Bidirectional";
+    case volt::PortRole::PowerInput:
+        return "PowerInput";
+    case volt::PortRole::PowerOutput:
+        return "PowerOutput";
+    case volt::PortRole::Ground:
+        return "Ground";
+    }
+
+    throw std::logic_error{"Unhandled port role"};
+}
+
 [[nodiscard]] std::string severity_name(volt::Severity severity) {
     switch (severity) {
     case volt::Severity::Info:
@@ -729,6 +769,99 @@ class PyCircuit {
             circuit_.bind_port(module_instance_id(instance), port_def_id(port), net_id(parent_net));
     }
 
+    [[nodiscard]] py::list template_nets(std::size_t module) const {
+        auto result = py::list{};
+        const auto &definition = circuit_.module_definition(module_def_id(module));
+        for (const auto net_id : definition.template_nets()) {
+            const auto &net = circuit_.template_net_definition(net_id);
+            auto item = py::dict{};
+            item["index"] = net_id.index();
+            item["name"] = net.name().value();
+            item["kind"] = net_kind_name(net.kind());
+            result.append(std::move(item));
+        }
+        return result;
+    }
+
+    [[nodiscard]] py::list module_ports(std::size_t module) const {
+        auto result = py::list{};
+        const auto &definition = circuit_.module_definition(module_def_id(module));
+        for (const auto port_id : definition.ports()) {
+            const auto &port = circuit_.port_definition(port_id);
+            auto item = py::dict{};
+            item["index"] = port_id.index();
+            item["name"] = port.name().value();
+            item["internal_net"] = port.internal_net().index();
+            item["role"] = port_role_name(port.role());
+            item["required"] = port.required();
+            result.append(std::move(item));
+        }
+        return result;
+    }
+
+    [[nodiscard]] py::list module_components(std::size_t module) const {
+        auto result = py::list{};
+        const auto &definition = circuit_.module_definition(module_def_id(module));
+        for (const auto component_id : definition.components()) {
+            const auto &component = circuit_.module_component_template(component_id);
+            auto item = py::dict{};
+            item["index"] = component_id.index();
+            item["definition"] = component.definition().index();
+            item["reference"] = component.reference().value();
+            result.append(std::move(item));
+        }
+        return result;
+    }
+
+    [[nodiscard]] py::list module_connections(std::size_t module) const {
+        auto result = py::list{};
+        for (const auto &connection : circuit_.module_pin_connections(module_def_id(module))) {
+            auto item = py::dict{};
+            item["net"] = connection.net().index();
+            item["component"] = connection.component().index();
+            item["pin_definition"] = connection.pin().index();
+            result.append(std::move(item));
+        }
+        return result;
+    }
+
+    [[nodiscard]] py::list module_net_origins(std::size_t instance) const {
+        auto result = py::list{};
+        for (const auto &[template_net, concrete_net] :
+             circuit_.module_net_origins(module_instance_id(instance))) {
+            auto item = py::dict{};
+            item["template_net"] = template_net.index();
+            item["net"] = concrete_net.index();
+            result.append(std::move(item));
+        }
+        return result;
+    }
+
+    [[nodiscard]] py::list module_component_origins(std::size_t instance) const {
+        auto result = py::list{};
+        for (const auto &[module_component, concrete_component] :
+             circuit_.module_component_origins(module_instance_id(instance))) {
+            auto item = py::dict{};
+            item["module_component"] = module_component.index();
+            item["component"] = concrete_component.index();
+            result.append(std::move(item));
+        }
+        return result;
+    }
+
+    [[nodiscard]] py::list port_bindings(std::size_t instance) const {
+        auto result = py::list{};
+        for (const auto binding_id : circuit_.port_bindings_for(module_instance_id(instance))) {
+            const auto &binding = circuit_.port_binding(binding_id);
+            auto item = py::dict{};
+            item["port"] = binding.port().index();
+            item["internal_net"] = binding.internal_net().index();
+            item["parent_net"] = binding.parent_net().index();
+            result.append(std::move(item));
+        }
+        return result;
+    }
+
     [[nodiscard]] py::list validate() const {
         return diagnostics_to_list(volt::validate_circuit(circuit_));
     }
@@ -801,6 +934,13 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("component"))
         .def("bind_port", &PyCircuit::bind_port, py::arg("instance"), py::arg("port"),
              py::arg("parent_net"))
+        .def("template_nets", &PyCircuit::template_nets, py::arg("module"))
+        .def("module_ports", &PyCircuit::module_ports, py::arg("module"))
+        .def("module_components", &PyCircuit::module_components, py::arg("module"))
+        .def("module_connections", &PyCircuit::module_connections, py::arg("module"))
+        .def("module_net_origins", &PyCircuit::module_net_origins, py::arg("instance"))
+        .def("module_component_origins", &PyCircuit::module_component_origins, py::arg("instance"))
+        .def("port_bindings", &PyCircuit::port_bindings, py::arg("instance"))
         .def("validate", &PyCircuit::validate)
         .def("validate_for_pcb", &PyCircuit::validate_for_pcb)
         .def("to_json", &PyCircuit::to_json);

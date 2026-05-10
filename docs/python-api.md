@@ -333,6 +333,23 @@ The first module API deliberately supports root-level module instances containin
 component templates. Nested modules, schematic placement, PCB data, and ERC rules over
 hierarchy are separate future slices.
 
+Modules and module instances also expose read-only inspection views for projection layers
+and debugging:
+
+```python
+divider.template_nets()
+divider.ports()
+divider.components()
+divider.connections()
+
+div_a.net_origins()
+div_a.component_origins()
+div_a.port_bindings()
+```
+
+These methods return small immutable data objects with kernel IDs and labels. They are
+not mutation handles; edits still go through the explicit module authoring methods above.
+
 ## Function Composition
 
 Non-hierarchical reusable construction can still be ordinary Python functions that receive

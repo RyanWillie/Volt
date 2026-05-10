@@ -516,6 +516,59 @@ def test_module_authoring_serializes_kernel_owned_contents():
     assert circuit["components"][component.index]["reference"] == "DIV_A/R1"
 
 
+def test_module_authoring_exposes_hierarchy_inspection_views():
+    design = volt.Design("module-inspection")
+    resistor = design.define_component(
+        "Resistor",
+        pins=[
+            volt.PinSpec("1", 1),
+            volt.PinSpec("2", 2),
+        ],
+    )
+
+    divider = design.define_module("Divider")
+    vin = divider.port("VIN", kind="power", role="power_input")
+    out = divider.port("OUT")
+    r1 = divider.instantiate(resistor, ref="R1")
+    vin += r1[1]
+    out += r1[2]
+
+    parent_vin = design.net("VIN", kind="power")
+    parent_out = design.net("OUT")
+    div_a = design.instantiate(divider, ref="DIV_A")
+    parent_vin += div_a["VIN"]
+    parent_out += div_a["OUT"]
+
+    assert divider.template_nets() == (
+        volt.TemplateNetInfo(index=0, name="VIN", kind="Power"),
+        volt.TemplateNetInfo(index=1, name="OUT", kind="Signal"),
+    )
+    assert divider.ports() == (
+        volt.PortInfo(
+            index=0, name="VIN", internal_net=0, role="PowerInput", required=True
+        ),
+        volt.PortInfo(index=1, name="OUT", internal_net=1, role="Passive", required=True),
+    )
+    assert divider.components() == (
+        volt.ModuleComponentInfo(index=0, definition=0, reference="R1"),
+    )
+    assert divider.connections() == (
+        volt.ModuleConnectionInfo(net=0, component=0, pin_definition=0),
+        volt.ModuleConnectionInfo(net=1, component=0, pin_definition=1),
+    )
+    assert div_a.net_origins() == (
+        volt.ModuleNetOriginInfo(template_net=0, net=2),
+        volt.ModuleNetOriginInfo(template_net=1, net=3),
+    )
+    assert div_a.component_origins() == (
+        volt.ModuleComponentOriginInfo(module_component=0, component=0),
+    )
+    assert div_a.port_bindings() == (
+        volt.PortBindingInfo(port=0, internal_net=2, parent_net=0),
+        volt.PortBindingInfo(port=1, internal_net=3, parent_net=1),
+    )
+
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")
@@ -542,4 +595,5 @@ if __name__ == "__main__":
     test_pcb_readiness_requires_selected_physical_parts()
     test_power_pin_semantics_drive_diagnostics()
     test_module_authoring_serializes_kernel_owned_contents()
+    test_module_authoring_exposes_hierarchy_inspection_views()
     test_diagnostics_are_inspectable()

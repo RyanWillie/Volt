@@ -49,6 +49,69 @@ class DiagnosticReport:
 
 
 @dataclass(frozen=True)
+class TemplateNetInfo:
+    """Read-only view of a module template-local net."""
+
+    index: int
+    name: str
+    kind: str
+
+
+@dataclass(frozen=True)
+class PortInfo:
+    """Read-only view of a module port definition."""
+
+    index: int
+    name: str
+    internal_net: int
+    role: str
+    required: bool
+
+
+@dataclass(frozen=True)
+class ModuleComponentInfo:
+    """Read-only view of a component template inside a module definition."""
+
+    index: int
+    definition: int
+    reference: str
+
+
+@dataclass(frozen=True)
+class ModuleConnectionInfo:
+    """Read-only view of a module-local pin-to-net connection."""
+
+    net: int
+    component: int
+    pin_definition: int
+
+
+@dataclass(frozen=True)
+class ModuleNetOriginInfo:
+    """Read-only view of a concrete net created from a module template net."""
+
+    template_net: int
+    net: int
+
+
+@dataclass(frozen=True)
+class ModuleComponentOriginInfo:
+    """Read-only view of a concrete component created from a module component template."""
+
+    module_component: int
+    component: int
+
+
+@dataclass(frozen=True)
+class PortBindingInfo:
+    """Read-only view of a module instance port binding edge."""
+
+    port: int
+    internal_net: int
+    parent_net: int
+
+
+@dataclass(frozen=True)
 class PinSpec:
     """Reusable pin definition data for Python-authored component definitions."""
 
@@ -152,6 +215,36 @@ class ModuleDefinition:
 
     def connect(self, *endpoints) -> ModuleNet:
         return _connect_module_endpoints(_flatten_module_endpoints(endpoints))
+
+    def template_nets(self) -> tuple[TemplateNetInfo, ...]:
+        return tuple(
+            TemplateNetInfo(item["index"], item["name"], item["kind"])
+            for item in self._design._circuit.template_nets(self._index)
+        )
+
+    def ports(self) -> tuple[PortInfo, ...]:
+        return tuple(
+            PortInfo(
+                item["index"],
+                item["name"],
+                item["internal_net"],
+                item["role"],
+                item["required"],
+            )
+            for item in self._design._circuit.module_ports(self._index)
+        )
+
+    def components(self) -> tuple[ModuleComponentInfo, ...]:
+        return tuple(
+            ModuleComponentInfo(item["index"], item["definition"], item["reference"])
+            for item in self._design._circuit.module_components(self._index)
+        )
+
+    def connections(self) -> tuple[ModuleConnectionInfo, ...]:
+        return tuple(
+            ModuleConnectionInfo(item["net"], item["component"], item["pin_definition"])
+            for item in self._design._circuit.module_connections(self._index)
+        )
 
     def __repr__(self) -> str:
         return f"ModuleDefinition(name={self.name!r}, index={self._index})"
@@ -282,6 +375,24 @@ class ModuleInstance:
         if ref not in self._components_by_ref:
             raise KeyError(ref)
         return Component(self._design, self._components_by_ref[ref])
+
+    def net_origins(self) -> tuple[ModuleNetOriginInfo, ...]:
+        return tuple(
+            ModuleNetOriginInfo(item["template_net"], item["net"])
+            for item in self._design._circuit.module_net_origins(self._index)
+        )
+
+    def component_origins(self) -> tuple[ModuleComponentOriginInfo, ...]:
+        return tuple(
+            ModuleComponentOriginInfo(item["module_component"], item["component"])
+            for item in self._design._circuit.module_component_origins(self._index)
+        )
+
+    def port_bindings(self) -> tuple[PortBindingInfo, ...]:
+        return tuple(
+            PortBindingInfo(item["port"], item["internal_net"], item["parent_net"])
+            for item in self._design._circuit.port_bindings(self._index)
+        )
 
     def __repr__(self) -> str:
         return f"ModuleInstance(name={self.name!r}, index={self._index})"
@@ -613,13 +724,20 @@ __all__ = [
     "DiagnosticEntity",
     "DiagnosticReport",
     "ModuleComponent",
+    "ModuleComponentInfo",
+    "ModuleComponentOriginInfo",
+    "ModuleConnectionInfo",
     "ModuleDefinition",
     "ModuleInstance",
     "ModuleInstancePort",
+    "ModuleNetOriginInfo",
     "ModuleNet",
     "ModulePin",
     "ModulePort",
     "Net",
     "Pin",
     "PinSpec",
+    "PortBindingInfo",
+    "PortInfo",
+    "TemplateNetInfo",
 ]
