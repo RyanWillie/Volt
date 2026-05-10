@@ -136,6 +136,10 @@ class SymbolText {
     /** Return the text orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
 
+    /** Return whether two symbol text primitives have the same content and geometry. */
+    [[nodiscard]] friend bool operator==(const SymbolText &lhs,
+                                         const SymbolText &rhs) noexcept = default;
+
   private:
     std::string text_;
     Point anchor_;
