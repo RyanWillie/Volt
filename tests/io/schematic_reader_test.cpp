@@ -1,7 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_exception.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -105,7 +107,33 @@ TEST_CASE("Schematic reader rejects dangling projection references") {
 
     auto missing_component = schematic_json();
     missing_component["symbol_instances"][0]["component"] = "component:99";
-    CHECK_THROWS_AS(volt::io::read_schematic(missing_component, circuit), std::out_of_range);
+    CHECK_THROWS_MATCHES(
+        volt::io::read_schematic(missing_component, circuit), std::logic_error,
+        Catch::Matchers::Message(
+            "Component reference points to a missing logical component: component:99"));
+}
+
+TEST_CASE("Schematic reader rejects overflowing local ID indices") {
+    volt::Circuit circuit;
+    add_resistor(circuit);
+
+    auto overflowing_component = schematic_json();
+    overflowing_component["symbol_instances"][0]["component"] =
+        "component:" + std::to_string(std::numeric_limits<std::size_t>::max()) + "0";
+
+    CHECK_THROWS_MATCHES(volt::io::read_schematic(overflowing_component, circuit), std::logic_error,
+                         Catch::Matchers::Message("Local ID index is too large"));
+}
+
+TEST_CASE("Schematic reader rejects non-finite numeric fields at parse time") {
+    volt::Circuit circuit;
+    add_resistor(circuit);
+
+    auto fixture = schematic_json();
+    fixture["symbol_instances"][0]["position"]["x"] = std::numeric_limits<double>::infinity();
+
+    CHECK_THROWS_MATCHES(volt::io::read_schematic(fixture, circuit), std::logic_error,
+                         Catch::Matchers::Message("Schematic numeric field must be finite: x"));
 }
 
 TEST_CASE("Schematic reader rejects sheet instance list mismatches") {

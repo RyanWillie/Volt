@@ -71,6 +71,7 @@ TEST_CASE("Symbol primitives store basic vector geometry") {
     CHECK(text.text() == "U?");
     CHECK(text.anchor() == volt::Point{0.0, 12.0});
     CHECK(text.orientation() == volt::SchematicOrientation::Right);
+    CHECK(text == volt::SymbolText{"U?", volt::Point{0.0, 12.0}});
 }
 
 TEST_CASE("Schematic stores sheets and symbol instances over logical components") {

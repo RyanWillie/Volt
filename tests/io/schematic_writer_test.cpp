@@ -66,6 +66,7 @@ TEST_CASE("Schematic writer emits structured projection JSON") {
     CHECK(output["symbol_definitions"][0]["primitives"][2]["type"] == "circle");
     CHECK(output["symbol_definitions"][0]["primitives"][3]["type"] == "arc");
     CHECK(output["symbol_definitions"][0]["primitives"][4]["type"] == "text");
+    CHECK(output["symbol_definitions"][0]["primitives"][4]["orientation"] == "Right");
     CHECK(output["sheets"][0]["id"] == "sheet:0");
     CHECK(output["sheets"][0]["name"] == "Main");
     CHECK(output["sheets"][0]["symbol_instances"] == nlohmann::json::array({"symbol_instance:0"}));

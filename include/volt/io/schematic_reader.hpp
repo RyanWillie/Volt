@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cctype>
+#include <cmath>
 #include <cstddef>
 #include <istream>
+#include <limits>
 #include <map>
 #include <set>
 #include <sstream>
@@ -25,7 +27,7 @@ class SchematicReader {
   public:
     /** Construct a reader over a parsed JSON document and its logical circuit context. */
     SchematicReader(const nlohmann::json &document, const Circuit &circuit)
-        : document_{document}, schematic_{circuit} {}
+        : document_{document}, circuit_{circuit}, schematic_{circuit} {}
 
     /** Load and structurally validate the document into a schematic projection. */
     [[nodiscard]] Schematic read() {
@@ -64,7 +66,10 @@ class SchematicReader {
     static double number_field(const nlohmann::json &object, const char *name) {
         const auto &value = field(object, name);
         require(value.is_number(), std::string{"Expected number field: "} + name);
-        return value.get<double>();
+        const auto number = value.get<double>();
+        require(std::isfinite(number),
+                std::string{"Schematic numeric field must be finite: "} + name);
+        return number;
     }
 
     static const nlohmann::json &array_field(const nlohmann::json &object, const char *name) {
@@ -94,7 +99,10 @@ class SchematicReader {
         for (const auto character : suffix) {
             require(std::isdigit(static_cast<unsigned char>(character)) != 0,
                     "Local ID index must be numeric");
-            index = (index * 10U) + static_cast<std::size_t>(character - '0');
+            const auto digit = static_cast<std::size_t>(character - '0');
+            require(index <= (std::numeric_limits<std::size_t>::max() - digit) / std::size_t{10},
+                    "Local ID index is too large");
+            index = (index * std::size_t{10}) + digit;
         }
         return index;
     }
@@ -129,6 +137,13 @@ class SchematicReader {
         if (value == "Up")
             return SchematicOrientation::Up;
         throw std::logic_error{"Invalid schematic orientation value"};
+    }
+
+    [[nodiscard]] ComponentId component_id(const std::string &id) const {
+        const auto component = ComponentId{local_index(id, "component:")};
+        require(component.index() < circuit_.component_count(),
+                "Component reference points to a missing logical component: " + id);
+        return component;
     }
 
     [[nodiscard]] static SymbolPrimitive primitive(const nlohmann::json &object) {
@@ -196,8 +211,7 @@ class SchematicReader {
             const auto sheet = resolve(sheet_ids_, string_field(instance_object, "sheet"));
             const auto symbol =
                 resolve(symbol_def_ids_, string_field(instance_object, "symbol_definition"));
-            const auto component =
-                ComponentId{local_index(string_field(instance_object, "component"), "component:")};
+            const auto component = component_id(string_field(instance_object, "component"));
             const auto instance = schematic_.place_symbol(
                 sheet, SymbolInstance{symbol, component, point(field(instance_object, "position")),
                                       orientation(string_field(instance_object, "orientation"))});
@@ -218,6 +232,7 @@ class SchematicReader {
     }
 
     const nlohmann::json &document_;
+    const Circuit &circuit_;
     Schematic schematic_;
     std::map<std::string, SymbolDefId> symbol_def_ids_;
     std::map<std::string, SheetId> sheet_ids_;
