@@ -77,13 +77,12 @@ TEST_CASE("Schematic stores sheets and symbol instances over logical components"
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
 
-    volt::Schematic schematic;
+    volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
     const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
-    const auto instance =
-        schematic.place_symbol(circuit, sheet,
-                               volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0},
-                                                    volt::SchematicOrientation::Right});
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0},
+                                    volt::SchematicOrientation::Right});
 
     CHECK(sheet == volt::SheetId{0});
     CHECK(symbol == volt::SymbolDefId{0});
@@ -123,22 +122,22 @@ TEST_CASE("Schematic rejects symbol placements with missing references") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
 
-    volt::Schematic schematic;
+    volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
     const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
 
     CHECK_THROWS_AS(
-        schematic.place_symbol(circuit, volt::SheetId{99},
+        schematic.place_symbol(volt::SheetId{99},
                                volt::SymbolInstance{symbol, component, volt::Point{0.0, 0.0}}),
         std::out_of_range);
-    CHECK_THROWS_AS(schematic.place_symbol(circuit, sheet,
-                                           volt::SymbolInstance{volt::SymbolDefId{99}, component,
-                                                                volt::Point{0.0, 0.0}}),
-                    std::out_of_range);
-    CHECK_THROWS_AS(schematic.place_symbol(
-                        circuit, sheet,
-                        volt::SymbolInstance{symbol, volt::ComponentId{99}, volt::Point{0.0, 0.0}}),
-                    std::out_of_range);
+    CHECK_THROWS_AS(
+        schematic.place_symbol(
+            sheet, volt::SymbolInstance{volt::SymbolDefId{99}, component, volt::Point{0.0, 0.0}}),
+        std::out_of_range);
+    CHECK_THROWS_AS(
+        schematic.place_symbol(
+            sheet, volt::SymbolInstance{symbol, volt::ComponentId{99}, volt::Point{0.0, 0.0}}),
+        std::out_of_range);
 }
 
 TEST_CASE("Schematic geometry rejects non-finite coordinates") {

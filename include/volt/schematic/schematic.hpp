@@ -73,6 +73,9 @@ class SymbolInstance {
 /** Kernel-owned schematic projection over a logical circuit. */
 class Schematic {
   public:
+    /** Construct a schematic projection for one logical circuit context. */
+    explicit Schematic(const Circuit &circuit) : circuit_{circuit} {}
+
     /** Store a reusable symbol definition and return its stable schematic ID. */
     [[nodiscard]] SymbolDefId add_symbol_definition(SymbolDefinition definition) {
         if (symbol_definition_by_name(definition.name()).has_value()) {
@@ -92,11 +95,10 @@ class Schematic {
     }
 
     /** Place a symbol on a sheet for an existing logical component instance. */
-    [[nodiscard]] SymbolInstanceId place_symbol(const Circuit &circuit, SheetId sheet,
-                                                SymbolInstance instance) {
+    [[nodiscard]] SymbolInstanceId place_symbol(SheetId sheet, SymbolInstance instance) {
         require_sheet(sheet);
         require_symbol_definition(instance.symbol_definition());
-        static_cast<void>(circuit.component(instance.component()));
+        static_cast<void>(circuit_.component(instance.component()));
 
         const auto id = symbol_instances_.insert(std::move(instance));
         sheets_.get(sheet).add_symbol_instance(id);
@@ -167,6 +169,7 @@ class Schematic {
         }
     }
 
+    const Circuit &circuit_;
     EntityTable<SymbolDefinition, SymbolDefId> symbol_definitions_;
     EntityTable<Sheet, SheetId> sheets_;
     EntityTable<SymbolInstance, SymbolInstanceId> symbol_instances_;
