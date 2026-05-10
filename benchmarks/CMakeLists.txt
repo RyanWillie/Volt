@@ -1,0 +1,6 @@
+add_executable(volt_kernel_benchmarks kernel_benchmarks.cpp)
+target_link_libraries(volt_kernel_benchmarks PRIVATE Volt::Authoring Volt::IO)
+target_compile_features(volt_kernel_benchmarks PRIVATE cxx_std_20)
+volt_apply_project_warnings(volt_kernel_benchmarks PRIVATE)
+volt_apply_sanitizers(volt_kernel_benchmarks)
+volt_apply_coverage(volt_kernel_benchmarks)

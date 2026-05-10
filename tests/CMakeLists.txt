@@ -6,6 +6,9 @@ FetchContent_Declare(
     GIT_TAG v3.7.1
 )
 
+set(CATCH_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(CATCH_INSTALL_DOCS OFF CACHE BOOL "" FORCE)
+set(CATCH_INSTALL_EXTRAS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(
@@ -42,6 +45,7 @@ target_compile_definitions(
 )
 volt_apply_project_warnings(volt_core_tests PRIVATE)
 volt_apply_sanitizers(volt_core_tests)
+volt_apply_coverage(volt_core_tests)
 
 include(Catch)
 catch_discover_tests(volt_core_tests)

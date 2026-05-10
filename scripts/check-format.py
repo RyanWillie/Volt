@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_DIRS = ["include", "src", "tests", "examples"]
+SOURCE_DIRS = ["include", "src", "tests", "examples", "benchmarks"]
 SUFFIXES = {".cpp", ".hpp"}
 
 files = [

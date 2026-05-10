@@ -35,6 +35,34 @@
         "VOLT_ENABLE_ASAN": "ON",
         "VOLT_ENABLE_UBSAN": "ON"
       }
+    },
+    {
+      "name": "benchmarks",
+      "displayName": "Benchmarks",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/benchmarks",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_OSX_SYSROOT": "macosx",
+        "VOLT_BUILD_BENCHMARKS": "ON",
+        "VOLT_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "coverage",
+      "displayName": "Coverage",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/coverage",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_OSX_SYSROOT": "macosx",
+        "VOLT_BUILD_BENCHMARKS": "ON",
+        "VOLT_BUILD_PYTHON": "OFF",
+        "VOLT_BUILD_TESTS": "ON",
+        "VOLT_ENABLE_COVERAGE": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -49,12 +77,29 @@
     {
       "name": "asan",
       "configurePreset": "asan"
+    },
+    {
+      "name": "benchmarks",
+      "configurePreset": "benchmarks",
+      "targets": [
+        "volt_kernel_benchmarks"
+      ]
+    },
+    {
+      "name": "coverage-report",
+      "configurePreset": "coverage",
+      "targets": [
+        "coverage-report"
+      ]
     }
   ],
   "testPresets": [
     {
       "name": "dev",
       "configurePreset": "dev",
+      "execution": {
+        "jobs": 8
+      },
       "output": {
         "outputOnFailure": true
       }
@@ -62,9 +107,78 @@
     {
       "name": "asan",
       "configurePreset": "asan",
+      "execution": {
+        "jobs": 8
+      },
       "output": {
         "outputOnFailure": true
       }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "dev",
+      "displayName": "Configure, build, and test development",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev"
+        },
+        {
+          "type": "build",
+          "name": "dev"
+        },
+        {
+          "type": "test",
+          "name": "dev"
+        }
+      ]
+    },
+    {
+      "name": "asan",
+      "displayName": "Configure, build, and test sanitizers",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "asan"
+        },
+        {
+          "type": "build",
+          "name": "asan"
+        },
+        {
+          "type": "test",
+          "name": "asan"
+        }
+      ]
+    },
+    {
+      "name": "benchmarks",
+      "displayName": "Configure and build benchmarks",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "benchmarks"
+        },
+        {
+          "type": "build",
+          "name": "benchmarks"
+        }
+      ]
+    },
+    {
+      "name": "coverage",
+      "displayName": "Configure and report coverage",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "coverage"
+        },
+        {
+          "type": "build",
+          "name": "coverage-report"
+        }
+      ]
     }
   ]
 }
