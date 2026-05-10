@@ -10,15 +10,25 @@ TEST_CASE("logical entity IDs are distinct typed storage indexes") {
     const auto pin_def = volt::PinDefId{2};
     const auto pin = volt::PinId{3};
     const auto net = volt::NetId{4};
+    const auto symbol_def = volt::SymbolDefId{5};
+    const auto sheet = volt::SheetId{6};
+    const auto symbol_instance = volt::SymbolInstanceId{7};
 
     CHECK(component_def.index() == 0);
     CHECK(component.index() == 1);
     CHECK(pin_def.index() == 2);
     CHECK(pin.index() == 3);
     CHECK(net.index() == 4);
+    CHECK(symbol_def.index() == 5);
+    CHECK(sheet.index() == 6);
+    CHECK(symbol_instance.index() == 7);
 
     static_assert(!std::is_same_v<volt::ComponentId, volt::NetId>);
     static_assert(!std::is_same_v<volt::PinDefId, volt::PinId>);
+    static_assert(!std::is_same_v<volt::SymbolDefId, volt::ComponentDefId>);
+    static_assert(!std::is_same_v<volt::SheetId, volt::NetId>);
+    static_assert(!std::is_same_v<volt::SymbolInstanceId, volt::ComponentId>);
     static_assert(!std::is_constructible_v<volt::NetId, volt::ComponentId>);
     static_assert(!std::is_convertible_v<volt::ComponentId, volt::NetId>);
+    static_assert(!std::is_constructible_v<volt::ComponentId, volt::SymbolInstanceId>);
 }

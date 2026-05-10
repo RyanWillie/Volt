@@ -19,3 +19,6 @@
 #include <volt/core/version.hpp>
 #include <volt/io/logical_circuit_reader.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
+#include <volt/schematic/geometry.hpp>
+#include <volt/schematic/schematic.hpp>
+#include <volt/schematic/symbols.hpp>
