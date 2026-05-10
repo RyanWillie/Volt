@@ -426,6 +426,8 @@ including:
   module component template
 - module component origins whose concrete component definition does not match the
   template component definition
+- module component origins whose concrete pins are not connected to the concrete nets
+  required by the template connections
 - port bindings whose port does not belong to the module instance definition
 - port bindings that bind a module port to its own module-origin net
 - selected part mappings that do not exactly match the component definition

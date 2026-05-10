@@ -172,6 +172,82 @@ TEST_CASE("Root module instantiation materializes module component templates") {
           circuit.concrete_net_for(instance, output));
 }
 
+TEST_CASE("Circuit exposes hierarchy inspection views") {
+    volt::Circuit circuit;
+    const auto left =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto right =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto resistor = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
+
+    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"Divider"},
+    });
+    const auto input = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Power});
+    const auto output = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
+    const auto port = circuit.add_port_definition(
+        module, volt::PortDefinition{volt::PortName{"IN"}, input, volt::PortRole::PowerInput});
+    const auto component = circuit.add_module_component(
+        module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
+    CHECK(circuit.connect_module_pin(module, input, component, left));
+    CHECK(circuit.connect_module_pin(module, output, component, right));
+
+    const auto parent = circuit.add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
+    const auto instance =
+        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"});
+    const auto binding = circuit.bind_port(instance, port, parent);
+
+    CHECK(circuit.module_pin_connections(module).size() == 2);
+    CHECK(circuit.module_pin_connections(module)[0].net() == input);
+    CHECK(circuit.module_net_origins(instance).size() == 2);
+    CHECK(circuit.module_net_origins(instance)[0].first == input);
+    CHECK(circuit.module_component_origins(instance).size() == 1);
+    CHECK(circuit.module_component_origins(instance)[0].first == component);
+    CHECK(circuit.port_bindings_for(instance) == std::vector{binding});
+}
+
+TEST_CASE("Circuit restore rejects mismatched module connectivity before mutating") {
+    volt::Circuit circuit;
+    const auto left =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto right =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto resistor = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
+    const auto concrete_component =
+        circuit.instantiate_component(resistor, volt::ReferenceDesignator{"DIV_A/R1"});
+
+    const auto first_net =
+        circuit.add_net(volt::Net{volt::NetName{"DIV_A/IN"}, volt::NetKind::Signal});
+    auto second = volt::Net{volt::NetName{"DIV_A/OUT"}, volt::NetKind::Signal};
+    REQUIRE(circuit.pin_by_definition(concrete_component, left).has_value());
+    REQUIRE(circuit.pin_by_definition(concrete_component, right).has_value());
+    CHECK(second.connect(circuit.pin_by_definition(concrete_component, left).value()));
+    CHECK(second.connect(circuit.pin_by_definition(concrete_component, right).value()));
+    const auto second_net = circuit.add_net(std::move(second));
+
+    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"Divider"},
+    });
+    const auto input = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"IN"}, volt::NetKind::Signal});
+    const auto output = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"OUT"}, volt::NetKind::Signal});
+    const auto component = circuit.add_module_component(
+        module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
+    CHECK(circuit.connect_module_pin(module, input, component, left));
+    CHECK(circuit.connect_module_pin(module, output, component, right));
+
+    CHECK_THROWS_AS(circuit.restore_root_module_instance(module, volt::ModuleInstanceName{"DIV_A"},
+                                                         {{input, first_net}, {output, second_net}},
+                                                         {{component, concrete_component}}),
+                    std::logic_error);
+    CHECK(circuit.module_instance_count() == 0);
+}
+
 TEST_CASE("Circuit rejects structurally invalid module component templates") {
     volt::Circuit circuit;
     const auto left =
