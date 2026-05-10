@@ -18,6 +18,7 @@ configure_file(
 
 pybind11_add_module(_volt MODULE bindings.cpp)
 target_link_libraries(_volt PRIVATE Volt::Authoring Volt::IO)
+volt_apply_coverage(_volt)
 set_target_properties(_volt PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt)
 
 if(WIN32)

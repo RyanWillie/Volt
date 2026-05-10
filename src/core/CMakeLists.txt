@@ -20,3 +20,4 @@ target_include_directories(
 
 volt_apply_project_warnings(volt_core PRIVATE)
 volt_apply_sanitizers(volt_core)
+volt_apply_coverage(volt_core)
