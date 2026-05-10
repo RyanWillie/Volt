@@ -200,6 +200,18 @@ TEST_CASE("Logical circuit reader preserves hierarchy module scaffold") {
     CHECK(circuit.port_binding(volt::PortBindingId{0}).parent_net() == volt::NetId{0});
 }
 
+TEST_CASE("Logical circuit reader infers missing module component origins for v1 fixtures") {
+    auto fixture = nlohmann::json::parse(read_fixture("hierarchy_module.volt.json"));
+    fixture["module_instances"][0].erase("component_origins");
+
+    const auto circuit = volt::io::read_logical_circuit(fixture);
+
+    CHECK(circuit.module_instance_count() == 1);
+    CHECK(circuit.module_component_count() == 1);
+    CHECK(circuit.concrete_component_for(volt::ModuleInstanceId{0}, volt::ModuleComponentId{0}) ==
+          volt::ComponentId{0});
+}
+
 TEST_CASE("Logical circuit reader rejects mismatched module component origin connectivity") {
     auto fixture = nlohmann::json::parse(read_fixture("hierarchy_module.volt.json"));
     fixture["nets"][0]["pins"] = nlohmann::json::array();
