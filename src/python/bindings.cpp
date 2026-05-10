@@ -32,6 +32,24 @@ namespace {
 
 [[nodiscard]] volt::NetId net_id(std::size_t index) { return volt::NetId{index}; }
 
+[[nodiscard]] volt::ModuleDefId module_def_id(std::size_t index) {
+    return volt::ModuleDefId{index};
+}
+
+[[nodiscard]] volt::TemplateNetDefId template_net_def_id(std::size_t index) {
+    return volt::TemplateNetDefId{index};
+}
+
+[[nodiscard]] volt::PortDefId port_def_id(std::size_t index) { return volt::PortDefId{index}; }
+
+[[nodiscard]] volt::ModuleComponentId module_component_id(std::size_t index) {
+    return volt::ModuleComponentId{index};
+}
+
+[[nodiscard]] volt::ModuleInstanceId module_instance_id(std::size_t index) {
+    return volt::ModuleInstanceId{index};
+}
+
 [[nodiscard]] volt::PinRole parse_pin_role(const std::string &value) {
     if (value == "passive" || value == "Passive") {
         return volt::PinRole::Passive;
@@ -201,6 +219,32 @@ namespace {
     throw std::invalid_argument{"Unknown net kind"};
 }
 
+[[nodiscard]] volt::PortRole parse_port_role(const std::string &value) {
+    if (value == "passive" || value == "Passive") {
+        return volt::PortRole::Passive;
+    }
+    if (value == "input" || value == "Input") {
+        return volt::PortRole::Input;
+    }
+    if (value == "output" || value == "Output") {
+        return volt::PortRole::Output;
+    }
+    if (value == "bidirectional" || value == "Bidirectional") {
+        return volt::PortRole::Bidirectional;
+    }
+    if (value == "power" || value == "power_input" || value == "PowerInput") {
+        return volt::PortRole::PowerInput;
+    }
+    if (value == "power_output" || value == "PowerOutput") {
+        return volt::PortRole::PowerOutput;
+    }
+    if (value == "ground" || value == "Ground") {
+        return volt::PortRole::Ground;
+    }
+
+    throw std::invalid_argument{"Unknown port role"};
+}
+
 [[nodiscard]] std::string severity_name(volt::Severity severity) {
     switch (severity) {
     case volt::Severity::Info:
@@ -273,6 +317,12 @@ selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimensi
         return "pin";
     case volt::EntityKind::Net:
         return "net";
+    case volt::EntityKind::ModuleDef:
+        return "module_definition";
+    case volt::EntityKind::ModuleInstance:
+        return "module_instance";
+    case volt::EntityKind::PortDef:
+        return "port_definition";
     }
 
     throw std::logic_error{"Unhandled diagnostic entity kind"};
@@ -586,6 +636,99 @@ class PyCircuit {
 
     void connect(std::size_t net, std::size_t pin) { circuit_.connect(net_id(net), pin_id(pin)); }
 
+    [[nodiscard]] std::size_t define_module(const std::string &name) {
+        return circuit_.add_module_definition(volt::ModuleDefinition{volt::ModuleName{name}})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t add_template_net(std::size_t module, const std::string &name,
+                                               const std::string &kind) {
+        return circuit_
+            .add_template_net(
+                module_def_id(module),
+                volt::TemplateNetDefinition{volt::NetName{name}, parse_net_kind(kind)})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t add_port(std::size_t module, const std::string &name,
+                                       std::size_t internal_net, const std::string &role,
+                                       bool required) {
+        return circuit_
+            .add_port_definition(module_def_id(module),
+                                 volt::PortDefinition{volt::PortName{name},
+                                                      template_net_def_id(internal_net),
+                                                      parse_port_role(role), required})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t add_module_component(std::size_t module, std::size_t definition,
+                                                   const std::string &reference,
+                                                   const py::dict &properties) {
+        return circuit_
+            .add_module_component(
+                module_def_id(module),
+                volt::ModuleComponentTemplate{component_def_id(definition),
+                                              volt::ReferenceDesignator{reference},
+                                              properties_from_dict(properties)})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t module_component_pin_by_name(std::size_t component,
+                                                           const std::string &name) const {
+        const auto component_handle = module_component_id(component);
+        const auto &component_template = circuit_.module_component_template(component_handle);
+        const auto &definition = circuit_.component_definition(component_template.definition());
+        for (const auto pin : definition.pins()) {
+            if (circuit_.pin_definition(pin).name() == name) {
+                return pin.index();
+            }
+        }
+
+        throw std::out_of_range{"Module component has no pin with that name"};
+    }
+
+    [[nodiscard]] std::size_t module_component_pin_by_number(std::size_t component,
+                                                             const std::string &number) const {
+        const auto component_handle = module_component_id(component);
+        const auto &component_template = circuit_.module_component_template(component_handle);
+        const auto &definition = circuit_.component_definition(component_template.definition());
+        for (const auto pin : definition.pins()) {
+            if (circuit_.pin_definition(pin).number() == number) {
+                return pin.index();
+            }
+        }
+
+        throw std::out_of_range{"Module component has no pin with that number"};
+    }
+
+    void connect_module_pin(std::size_t module, std::size_t net, std::size_t component,
+                            std::size_t pin) {
+        circuit_.connect_module_pin(module_def_id(module), template_net_def_id(net),
+                                    module_component_id(component), volt::PinDefId{pin});
+    }
+
+    [[nodiscard]] std::size_t instantiate_root_module(std::size_t definition,
+                                                      const std::string &name) {
+        return circuit_
+            .instantiate_root_module(module_def_id(definition), volt::ModuleInstanceName{name})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t concrete_component_for(std::size_t instance,
+                                                     std::size_t component) const {
+        const auto concrete = circuit_.concrete_component_for(module_instance_id(instance),
+                                                              module_component_id(component));
+        if (!concrete.has_value()) {
+            throw std::out_of_range{"Module instance has no concrete component for template"};
+        }
+        return concrete.value().index();
+    }
+
+    void bind_port(std::size_t instance, std::size_t port, std::size_t parent_net) {
+        [[maybe_unused]] const auto binding =
+            circuit_.bind_port(module_instance_id(instance), port_def_id(port), net_id(parent_net));
+    }
+
     [[nodiscard]] py::list validate() const {
         return diagnostics_to_list(volt::validate_circuit(circuit_));
     }
@@ -639,6 +782,25 @@ PYBIND11_MODULE(_volt, module) {
         .def("pin_by_name", &PyCircuit::pin_by_name, py::arg("component"), py::arg("name"))
         .def("pin_by_number", &PyCircuit::pin_by_number, py::arg("component"), py::arg("number"))
         .def("connect", &PyCircuit::connect, py::arg("net"), py::arg("pin"))
+        .def("define_module", &PyCircuit::define_module, py::arg("name"))
+        .def("add_template_net", &PyCircuit::add_template_net, py::arg("module"), py::arg("name"),
+             py::arg("kind") = "signal")
+        .def("add_port", &PyCircuit::add_port, py::arg("module"), py::arg("name"),
+             py::arg("internal_net"), py::arg("role") = "passive", py::arg("required") = true)
+        .def("add_module_component", &PyCircuit::add_module_component, py::arg("module"),
+             py::arg("definition"), py::arg("reference"), py::arg("properties") = py::dict{})
+        .def("module_component_pin_by_name", &PyCircuit::module_component_pin_by_name,
+             py::arg("component"), py::arg("name"))
+        .def("module_component_pin_by_number", &PyCircuit::module_component_pin_by_number,
+             py::arg("component"), py::arg("number"))
+        .def("connect_module_pin", &PyCircuit::connect_module_pin, py::arg("module"),
+             py::arg("net"), py::arg("component"), py::arg("pin"))
+        .def("instantiate_root_module", &PyCircuit::instantiate_root_module, py::arg("definition"),
+             py::arg("name"))
+        .def("concrete_component_for", &PyCircuit::concrete_component_for, py::arg("instance"),
+             py::arg("component"))
+        .def("bind_port", &PyCircuit::bind_port, py::arg("instance"), py::arg("port"),
+             py::arg("parent_net"))
         .def("validate", &PyCircuit::validate)
         .def("validate_for_pcb", &PyCircuit::validate_for_pcb)
         .def("to_json", &PyCircuit::to_json);

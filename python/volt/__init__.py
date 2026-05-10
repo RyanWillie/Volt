@@ -102,6 +102,191 @@ class ComponentDefinition:
         return f"ComponentDefinition(name={self.name!r}, index={self._index})"
 
 
+class ModuleDefinition:
+    """Handle to a kernel-owned reusable module definition."""
+
+    def __init__(self, design: Design, index: int, name: str):
+        self._design = design
+        self._index = index
+        self.name = name
+        self._ports_by_name: dict[str, int] = {}
+        self._components_by_ref: dict[str, int] = {}
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def net(self, name: str, *, kind: str = "signal") -> ModuleNet:
+        net = self._design._circuit.add_template_net(self._index, name, kind)
+        return ModuleNet(self, net, name)
+
+    def port(
+        self,
+        name: str,
+        *,
+        kind: str = "signal",
+        role: str = "passive",
+        required: bool = True,
+    ) -> ModulePort:
+        net = self._design._circuit.add_template_net(self._index, name, kind)
+        port = self._design._circuit.add_port(self._index, name, net, role, required)
+        self._ports_by_name[name] = port
+        return ModulePort(self, net, port, name)
+
+    def instantiate(
+        self,
+        definition: ComponentDefinition,
+        *,
+        ref: str,
+        properties: dict | None = None,
+    ) -> ModuleComponent:
+        if not isinstance(definition, ComponentDefinition):
+            raise TypeError("Module instantiate expects a ComponentDefinition handle")
+        if definition._design is not self._design:
+            raise ValueError("Component definition belongs to a different design")
+        component = self._design._circuit.add_module_component(
+            self._index, definition.index, ref, properties or {}
+        )
+        self._components_by_ref[ref] = component
+        return ModuleComponent(self, component, ref)
+
+    def connect(self, *endpoints) -> ModuleNet:
+        return _connect_module_endpoints(_flatten_module_endpoints(endpoints))
+
+    def __repr__(self) -> str:
+        return f"ModuleDefinition(name={self.name!r}, index={self._index})"
+
+
+class ModuleNet:
+    """Handle to a template-local module net."""
+
+    def __init__(self, module: ModuleDefinition, index: int, name: str):
+        self._module = module
+        self._index = index
+        self.name = name
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def connect(self, *pins: ModulePin | Iterable[ModulePin]) -> ModuleNet:
+        return _connect_module_endpoints((self, *_flatten_module_endpoints(pins)))
+
+    def __iadd__(self, pins: ModulePin | Iterable[ModulePin]) -> ModuleNet:
+        return self.connect(pins)
+
+    def __repr__(self) -> str:
+        return f"ModuleNet(name={self.name!r}, index={self._index})"
+
+
+class ModulePort(ModuleNet):
+    """Handle to a module boundary port and its internal template net."""
+
+    def __init__(self, module: ModuleDefinition, net_index: int, port_index: int, name: str):
+        super().__init__(module, net_index, name)
+        self._port_index = port_index
+
+    @property
+    def port_index(self) -> int:
+        return self._port_index
+
+    def __repr__(self) -> str:
+        return (
+            f"ModulePort(name={self.name!r}, net_index={self._index}, "
+            f"port_index={self._port_index})"
+        )
+
+
+class ModulePin:
+    """Handle to a reusable pin definition on a module-local component template."""
+
+    def __init__(self, component: ModuleComponent, index: int):
+        self._component = component
+        self._index = index
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def __repr__(self) -> str:
+        return f"ModulePin(index={self._index})"
+
+
+class ModuleComponent:
+    """Handle to a component occurrence inside a reusable module definition."""
+
+    def __init__(self, module: ModuleDefinition, index: int, reference: str):
+        self._module = module
+        self._index = index
+        self.reference = reference
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def __getitem__(self, key: int | str) -> ModulePin:
+        if isinstance(key, int):
+            pin = self._module._design._circuit.module_component_pin_by_number(
+                self._index, str(key)
+            )
+        elif isinstance(key, str):
+            pin = self._module._design._circuit.module_component_pin_by_name(self._index, key)
+        else:
+            raise TypeError("Module component pins are addressed by int number or str name")
+
+        return ModulePin(self, pin)
+
+    def __repr__(self) -> str:
+        return f"ModuleComponent(reference={self.reference!r}, index={self._index})"
+
+
+class ModuleInstancePort:
+    """Handle to a root module instance port endpoint."""
+
+    def __init__(self, instance: ModuleInstance, port_index: int, name: str):
+        self._instance = instance
+        self._port_index = port_index
+        self.name = name
+
+    @property
+    def port_index(self) -> int:
+        return self._port_index
+
+    def __repr__(self) -> str:
+        return f"ModuleInstancePort(name={self.name!r}, port_index={self._port_index})"
+
+
+class ModuleInstance:
+    """Handle to a kernel-owned root module instance."""
+
+    def __init__(self, design: Design, definition: ModuleDefinition, index: int, name: str):
+        self._design = design
+        self._definition = definition
+        self._index = index
+        self.name = name
+        self._ports_by_name: dict[str, int] = {}
+        self._components_by_ref: dict[str, int] = {}
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def __getitem__(self, key: str) -> ModuleInstancePort:
+        if not isinstance(key, str):
+            raise TypeError("Module instance ports are addressed by str name")
+        if key not in self._ports_by_name:
+            raise KeyError(key)
+        return ModuleInstancePort(self, self._ports_by_name[key], key)
+
+    def component(self, ref: str) -> Component:
+        if ref not in self._components_by_ref:
+            raise KeyError(ref)
+        return Component(self._design, self._components_by_ref[ref])
+
+    def __repr__(self) -> str:
+        return f"ModuleInstance(name={self.name!r}, index={self._index})"
+
+
 class Pin:
     """Handle to a kernel-owned concrete pin."""
 
@@ -191,14 +376,21 @@ class Net:
     def index(self) -> int:
         return self._index
 
-    def connect(self, *pins: Pin | Iterable[Pin]) -> Net:
+    def connect(self, *pins: Pin | ModuleInstancePort | Iterable[Pin | ModuleInstancePort]) -> Net:
         for pin in _flatten_pins(pins):
-            if not isinstance(pin, Pin):
-                raise TypeError("Nets can only connect Pin handles")
-            self._design._circuit.connect(self._index, pin.index)
+            if isinstance(pin, Pin):
+                self._design._circuit.connect(self._index, pin.index)
+            elif isinstance(pin, ModuleInstancePort):
+                if pin._instance._design is not self._design:
+                    raise ValueError("Module instance port belongs to a different design")
+                self._design._circuit.bind_port(
+                    pin._instance.index, pin.port_index, self._index
+                )
+            else:
+                raise TypeError("Nets can only connect Pin or ModuleInstancePort handles")
         return self
 
-    def __iadd__(self, pins: Pin | Iterable[Pin]) -> Net:
+    def __iadd__(self, pins: Pin | ModuleInstancePort | Iterable[Pin | ModuleInstancePort]) -> Net:
         return self.connect(pins)
 
     def __repr__(self) -> str:
@@ -278,16 +470,35 @@ class Design:
         )
         return ComponentDefinition(self, definition, name)
 
+    def define_module(self, name: str) -> ModuleDefinition:
+        module = self._circuit.define_module(name)
+        return ModuleDefinition(self, module, name)
+
     def instantiate(
         self,
-        definition: ComponentDefinition,
+        definition: ComponentDefinition | ModuleDefinition,
         *,
         ref: str | None = None,
         prefix: str = "U",
         properties: dict | None = None,
-    ) -> Component:
+    ) -> Component | ModuleInstance:
+        if isinstance(definition, ModuleDefinition):
+            if definition._design is not self:
+                raise ValueError("Module definition belongs to a different design")
+            if ref is None:
+                raise ValueError("Module instances require an explicit ref")
+            instance = self._circuit.instantiate_root_module(definition.index, ref)
+            result = ModuleInstance(self, definition, instance, ref)
+            for name, port in definition._ports_by_name.items():
+                result._ports_by_name[name] = port
+            for reference, component in definition._components_by_ref.items():
+                result._components_by_ref[reference] = self._circuit.concrete_component_for(
+                    instance, component
+                )
+            return result
+
         if not isinstance(definition, ComponentDefinition):
-            raise TypeError("instantiate expects a ComponentDefinition handle")
+            raise TypeError("instantiate expects a ComponentDefinition or ModuleDefinition handle")
         if definition._design is not self:
             raise ValueError("Component definition belongs to a different design")
         if ref is None:
@@ -353,6 +564,36 @@ def _flatten_pins(values):
             yield value
 
 
+def _flatten_module_endpoints(values):
+    for value in values:
+        if isinstance(value, (ModuleNet, ModulePin)):
+            yield value
+        elif isinstance(value, (tuple, list)):
+            yield from _flatten_module_endpoints(value)
+        else:
+            yield value
+
+
+def _connect_module_endpoints(endpoints) -> ModuleNet:
+    endpoints = tuple(endpoints)
+    nets = [endpoint for endpoint in endpoints if isinstance(endpoint, ModuleNet)]
+    if len(nets) != 1:
+        raise TypeError("Module connections need exactly one ModuleNet or ModulePort")
+
+    net = nets[0]
+    for endpoint in endpoints:
+        if endpoint is net:
+            continue
+        if not isinstance(endpoint, ModulePin):
+            raise TypeError("Module nets can only connect ModulePin handles")
+        if endpoint._component._module is not net._module:
+            raise ValueError("Module pin belongs to a different module")
+        net._module._design._circuit.connect_module_pin(
+            net._module.index, net.index, endpoint._component.index, endpoint.index
+        )
+    return net
+
+
 def _diagnostic_from_dict(item) -> Diagnostic:
     return Diagnostic(
         severity=item["severity"],
@@ -371,6 +612,13 @@ __all__ = [
     "Diagnostic",
     "DiagnosticEntity",
     "DiagnosticReport",
+    "ModuleComponent",
+    "ModuleDefinition",
+    "ModuleInstance",
+    "ModuleInstancePort",
+    "ModuleNet",
+    "ModulePin",
+    "ModulePort",
     "Net",
     "Pin",
     "PinSpec",

@@ -387,6 +387,10 @@ inline void write_electrical_attributes(std::ostream &out, const ElectricalAttri
     return "template_net:" + std::to_string(id.index());
 }
 
+[[nodiscard]] inline std::string module_component_id(ModuleComponentId id) {
+    return "module_component:" + std::to_string(id.index());
+}
+
 [[nodiscard]] inline std::string port_def_id(PortDefId id) {
     return "port:" + std::to_string(id.index());
 }
@@ -600,6 +604,43 @@ inline void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
                 << ", \"kind\": " << detail::json_string(detail::net_kind_name(template_net.kind()))
                 << " }";
         }
+        out << "], \"components\": [";
+        for (std::size_t component_index = 0; component_index < definition.components().size();
+             ++component_index) {
+            const auto component_id = definition.components()[component_index];
+            const auto &component = circuit.module_component_template(component_id);
+            if (component_index != 0) {
+                out << ", ";
+            }
+            out << "{ \"id\": " << detail::json_string(detail::module_component_id(component_id))
+                << ", \"definition\": "
+                << detail::json_string(detail::component_def_id(component.definition()))
+                << ", \"reference\": " << detail::json_string(component.reference().value())
+                << ", \"properties\": ";
+            detail::write_properties(out, component.properties());
+            out << " }";
+        }
+        out << "], \"connections\": [";
+        auto wrote_connection = false;
+        for (const auto component_id : definition.components()) {
+            const auto &component = circuit.module_component_template(component_id);
+            const auto &component_definition = circuit.component_definition(component.definition());
+            for (const auto pin_id : component_definition.pins()) {
+                const auto net = circuit.template_net_for(id, component_id, pin_id);
+                if (!net.has_value()) {
+                    continue;
+                }
+                if (wrote_connection) {
+                    out << ", ";
+                }
+                wrote_connection = true;
+                out << "{ \"net\": "
+                    << detail::json_string(detail::template_net_def_id(net.value()))
+                    << ", \"component\": "
+                    << detail::json_string(detail::module_component_id(component_id))
+                    << ", \"pin\": " << detail::json_string(detail::pin_def_id(pin_id)) << " }";
+            }
+        }
         out << "], \"ports\": [";
         for (std::size_t port_index = 0; port_index < definition.ports().size(); ++port_index) {
             const auto port_id = definition.ports()[port_index];
@@ -646,6 +687,23 @@ inline void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
                 << detail::json_string(detail::template_net_def_id(template_net_id))
                 << ", \"net\": " << detail::json_string(detail::net_id(concrete_net.value()))
                 << " }";
+        }
+        out << "], \"component_origins\": [";
+        for (std::size_t component_index = 0; component_index < definition.components().size();
+             ++component_index) {
+            const auto template_component_id = definition.components()[component_index];
+            const auto concrete_component =
+                circuit.concrete_component_for(id, template_component_id);
+            if (!concrete_component.has_value()) {
+                throw std::logic_error{"Module instance is missing concrete component origin"};
+            }
+            if (component_index != 0) {
+                out << ", ";
+            }
+            out << "{ \"template_component\": "
+                << detail::json_string(detail::module_component_id(template_component_id))
+                << ", \"component\": "
+                << detail::json_string(detail::component_id(concrete_component.value())) << " }";
         }
         out << "], \"port_bindings\": [";
         auto wrote_binding = false;

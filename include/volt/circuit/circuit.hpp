@@ -244,9 +244,10 @@ class Circuit {
     }
 
     /** Restore a root module instance over existing concrete nets while loading JSON. */
-    [[nodiscard]] ModuleInstanceId
-    restore_root_module_instance(ModuleDefId definition, ModuleInstanceName name,
-                                 const std::vector<std::pair<TemplateNetDefId, NetId>> &origins) {
+    [[nodiscard]] ModuleInstanceId restore_root_module_instance(
+        ModuleDefId definition, ModuleInstanceName name,
+        const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
+        const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins = {}) {
         require_module_definition(definition);
         if (module_instance_by_name(name).has_value()) {
             throw std::logic_error{"Module instance name already exists"};
@@ -284,10 +285,53 @@ class Circuit {
             }
         }
 
+        const auto &module_components = module_definitions_.get(definition).components();
+        if (component_origins.size() != module_components.size()) {
+            throw std::logic_error{
+                "Module instance component origin count does not match definition"};
+        }
+
+        auto seen_template_components = std::vector<ModuleComponentId>{};
+        auto seen_concrete_components = std::vector<ComponentId>{};
+        for (const auto &[template_component, concrete_component] : component_origins) {
+            require_module_component_in_module(definition, template_component);
+            require_component(concrete_component);
+            if (std::find(seen_template_components.begin(), seen_template_components.end(),
+                          template_component) != seen_template_components.end()) {
+                throw std::logic_error{"Duplicate module instance template-component origin"};
+            }
+            if (std::find(seen_concrete_components.begin(), seen_concrete_components.end(),
+                          concrete_component) != seen_concrete_components.end()) {
+                throw std::logic_error{"Duplicate module instance concrete-component origin"};
+            }
+            if (is_module_origin_component(concrete_component)) {
+                throw std::logic_error{"Concrete component already has module origin metadata"};
+            }
+            if (components_.get(concrete_component).definition() !=
+                module_component_templates_.get(template_component).definition()) {
+                throw std::logic_error{
+                    "Module instance concrete component definition does not match template"};
+            }
+            seen_template_components.push_back(template_component);
+            seen_concrete_components.push_back(concrete_component);
+        }
+
+        for (const auto template_component : module_components) {
+            if (std::find(seen_template_components.begin(), seen_template_components.end(),
+                          template_component) == seen_template_components.end()) {
+                throw std::logic_error{"Missing module instance template-component origin"};
+            }
+        }
+
         const auto instance = module_instances_.insert(ModuleInstance{definition, std::move(name)});
         for (const auto &[template_net, concrete_net] : origins) {
             module_net_origins_.push_back(ModuleNetOrigin{instance, template_net});
             module_origin_nets_.push_back(concrete_net);
+        }
+        for (const auto &[template_component, concrete_component] : component_origins) {
+            module_component_origins_.push_back(
+                ModuleComponentOrigin{instance, template_component});
+            module_origin_components_.push_back(concrete_component);
         }
         return instance;
     }
@@ -531,6 +575,13 @@ class Circuit {
         require_net(net);
         return std::find(module_origin_nets_.begin(), module_origin_nets_.end(), net) !=
                module_origin_nets_.end();
+    }
+
+    /** Return whether a component is a concrete module-origin component. */
+    [[nodiscard]] bool is_module_origin_component(ComponentId component) const {
+        require_component(component);
+        return std::find(module_origin_components_.begin(), module_origin_components_.end(),
+                         component) != module_origin_components_.end();
     }
 
     /** Return the concrete net created for a module instance template-local net, if any. */

@@ -186,12 +186,22 @@ TEST_CASE("Logical circuit writer emits pin electrical semantics") {
 
 TEST_CASE("Logical circuit writer emits hierarchy module scaffold") {
     volt::Circuit circuit;
+    const auto left =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto right =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto resistor =
+        circuit.add_component_definition(volt::ComponentDefinition{"Resistor", {left, right}});
     const auto module =
         circuit.add_module_definition(volt::ModuleDefinition{volt::ModuleName{"BuckConverter"}});
     const auto vin = circuit.add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    [[maybe_unused]] const auto fb = circuit.add_template_net(
+    const auto fb = circuit.add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"FB"}, volt::NetKind::Signal});
+    const auto template_component = circuit.add_module_component(
+        module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
+    CHECK(circuit.connect_module_pin(module, vin, template_component, left));
+    CHECK(circuit.connect_module_pin(module, fb, template_component, right));
     const auto port = circuit.add_port_definition(
         module, volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
     const auto instance =
@@ -209,6 +219,15 @@ TEST_CASE("Logical circuit writer emits hierarchy module scaffold") {
     CHECK(module_json["local_nets"][0]["name"] == "VIN");
     CHECK(module_json["local_nets"][0]["kind"] == "Power");
     CHECK(module_json["local_nets"][1]["id"] == "template_net:1");
+    CHECK(module_json["components"][0]["id"] == "module_component:0");
+    CHECK(module_json["components"][0]["definition"] == "component_def:0");
+    CHECK(module_json["components"][0]["reference"] == "R1");
+    CHECK(module_json["connections"][0]["net"] == "template_net:0");
+    CHECK(module_json["connections"][0]["component"] == "module_component:0");
+    CHECK(module_json["connections"][0]["pin"] == "pin_def:0");
+    CHECK(module_json["connections"][1]["net"] == "template_net:1");
+    CHECK(module_json["connections"][1]["component"] == "module_component:0");
+    CHECK(module_json["connections"][1]["pin"] == "pin_def:1");
     CHECK(module_json["ports"][0]["id"] == "port:0");
     CHECK(module_json["ports"][0]["name"] == "VIN");
     CHECK(module_json["ports"][0]["internal_net"] == "template_net:0");
@@ -221,6 +240,8 @@ TEST_CASE("Logical circuit writer emits hierarchy module scaffold") {
     CHECK(instance_json["net_origins"][0]["net"] == "net:0");
     CHECK(instance_json["net_origins"][1]["template_net"] == "template_net:1");
     CHECK(instance_json["net_origins"][1]["net"] == "net:1");
+    CHECK(instance_json["component_origins"][0]["template_component"] == "module_component:0");
+    CHECK(instance_json["component_origins"][0]["component"] == "component:0");
     CHECK(instance_json["port_bindings"][0]["port"] == "port:0");
     CHECK(instance_json["port_bindings"][0]["parent_net"] == "net:2");
 }
