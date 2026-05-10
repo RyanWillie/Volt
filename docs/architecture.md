@@ -156,8 +156,7 @@ volt-schematic
   schematic projection data over logical components and canonical nets
 
 volt-io
-  deterministic save/load formats; the first logical circuit format is specified in
-  logical-circuit-format.md
+  deterministic save/load formats for logical circuits and schematic projections
 
 volt-python
   planned Python bindings and authoring syntax over kernel-owned state
@@ -180,8 +179,8 @@ Volt::Schematic
   schematic projection model; depends on Volt::Circuit
 
 Volt::IO
-  deterministic logical circuit persistence; depends on Volt::Circuit and owns JSON
-  dependencies
+  deterministic logical circuit and schematic projection persistence; depends on
+  Volt::Circuit, Volt::Schematic, and owns JSON dependencies
 
 Volt::Volt
   umbrella target for applications that want the full public surface
