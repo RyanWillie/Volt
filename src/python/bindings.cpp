@@ -4,6 +4,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -17,6 +19,9 @@
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/properties.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
+#include <volt/io/schematic_writer.hpp>
+#include <volt/schematic/schematic.hpp>
+#include <volt/schematic/symbols.hpp>
 
 namespace py = pybind11;
 
@@ -31,6 +36,8 @@ namespace {
 [[nodiscard]] volt::PinId pin_id(std::size_t index) { return volt::PinId{index}; }
 
 [[nodiscard]] volt::NetId net_id(std::size_t index) { return volt::NetId{index}; }
+
+[[nodiscard]] volt::SheetId sheet_id(std::size_t index) { return volt::SheetId{index}; }
 
 [[nodiscard]] volt::ModuleDefId module_def_id(std::size_t index) {
     return volt::ModuleDefId{index};
@@ -343,6 +350,61 @@ selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimensi
     return volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{name},
                                          volt::ElectricalAttributeOwner::Net,
                                          volt::ElectricalAttributeKind::DesignInput, dimension};
+}
+
+void add_two_pin_anchors(volt::SymbolDefinition &symbol, const std::string &left_name,
+                         const std::string &left_number, const std::string &right_name,
+                         const std::string &right_number) {
+    symbol.add_pin(volt::SymbolPin{left_name, left_number, volt::Point{0.0, 0.0},
+                                   volt::SchematicOrientation::Left});
+    symbol.add_pin(volt::SymbolPin{right_name, right_number, volt::Point{20.0, 0.0},
+                                   volt::SchematicOrientation::Right});
+}
+
+[[nodiscard]] std::optional<volt::SymbolDefinition> built_in_symbol(const std::string &name) {
+    if (name == "resistor") {
+        auto symbol = volt::SymbolDefinition{name};
+        add_two_pin_anchors(symbol, "1", "1", "2", "2");
+        symbol.add_primitive(volt::SymbolLine{volt::Point{0.0, 0.0}, volt::Point{4.0, 0.0}});
+        symbol.add_primitive(volt::SymbolRectangle{volt::Point{4.0, -3.0}, volt::Point{16.0, 3.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{16.0, 0.0}, volt::Point{20.0, 0.0}});
+        symbol.add_primitive(volt::SymbolText{"R", volt::Point{10.0, -8.0}});
+        return symbol;
+    }
+    if (name == "capacitor") {
+        auto symbol = volt::SymbolDefinition{name};
+        add_two_pin_anchors(symbol, "1", "1", "2", "2");
+        symbol.add_primitive(volt::SymbolLine{volt::Point{0.0, 0.0}, volt::Point{8.0, 0.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{8.0, -5.0}, volt::Point{8.0, 5.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{12.0, -5.0}, volt::Point{12.0, 5.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{12.0, 0.0}, volt::Point{20.0, 0.0}});
+        symbol.add_primitive(volt::SymbolText{"C", volt::Point{10.0, -10.0}});
+        return symbol;
+    }
+    if (name == "led") {
+        auto symbol = volt::SymbolDefinition{name};
+        add_two_pin_anchors(symbol, "K", "1", "A", "2");
+        symbol.add_primitive(volt::SymbolLine{volt::Point{0.0, 0.0}, volt::Point{7.0, 0.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{7.0, -5.0}, volt::Point{7.0, 5.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{7.0, -5.0}, volt::Point{13.0, 0.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{7.0, 5.0}, volt::Point{13.0, 0.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{13.0, 0.0}, volt::Point{20.0, 0.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{13.0, -6.0}, volt::Point{17.0, -10.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{15.0, -4.0}, volt::Point{19.0, -8.0}});
+        symbol.add_primitive(volt::SymbolText{"D", volt::Point{10.0, -13.0}});
+        return symbol;
+    }
+    if (name == "connector_1x02") {
+        auto symbol = volt::SymbolDefinition{name};
+        add_two_pin_anchors(symbol, "+", "1", "-", "2");
+        symbol.add_primitive(volt::SymbolRectangle{volt::Point{6.0, -7.0}, volt::Point{14.0, 7.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{0.0, 0.0}, volt::Point{6.0, 0.0}});
+        symbol.add_primitive(volt::SymbolLine{volt::Point{14.0, 0.0}, volt::Point{20.0, 0.0}});
+        symbol.add_primitive(volt::SymbolText{"J", volt::Point{10.0, -12.0}});
+        return symbol;
+    }
+
+    return std::nullopt;
 }
 
 [[nodiscard]] std::string entity_kind_name(volt::EntityKind kind) {
@@ -862,6 +924,40 @@ class PyCircuit {
         return result;
     }
 
+    [[nodiscard]] std::size_t schematic_sheet(const std::string &name) {
+        auto &projection = schematic_projection();
+        if (const auto existing = projection.sheet_by_name(name); existing.has_value()) {
+            return existing.value().index();
+        }
+        return projection.add_sheet(volt::Sheet{name}).index();
+    }
+
+    [[nodiscard]] std::size_t place_schematic_symbol(std::size_t sheet, std::size_t component,
+                                                     const std::string &symbol, double x,
+                                                     double y) {
+        require_finite(x, "Schematic coordinates must be finite");
+        require_finite(y, "Schematic coordinates must be finite");
+
+        auto &projection = schematic_projection();
+        const auto sheet_handle = sheet_id(sheet);
+        static_cast<void>(projection.sheet(sheet_handle));
+
+        const auto component_handle = component_id(component);
+        static_cast<void>(circuit_.component(component_handle));
+
+        const auto symbol_definition = ensure_schematic_symbol(symbol);
+        return projection
+            .place_symbol(sheet_handle, volt::SymbolInstance{symbol_definition, component_handle,
+                                                             volt::Point{x, y}})
+            .index();
+    }
+
+    [[nodiscard]] std::string schematic_to_json() {
+        auto out = std::ostringstream{};
+        volt::io::write_schematic(out, schematic_projection());
+        return out.str();
+    }
+
     [[nodiscard]] py::list validate() const {
         return diagnostics_to_list(volt::validate_circuit(circuit_));
     }
@@ -877,7 +973,29 @@ class PyCircuit {
     }
 
   private:
+    [[nodiscard]] volt::Schematic &schematic_projection() {
+        if (!schematic_.has_value()) {
+            schematic_.emplace(circuit_);
+        }
+        return schematic_.value();
+    }
+
+    [[nodiscard]] volt::SymbolDefId ensure_schematic_symbol(const std::string &name) {
+        auto &projection = schematic_projection();
+        if (const auto existing = projection.symbol_definition_by_name(name);
+            existing.has_value()) {
+            return existing.value();
+        }
+
+        auto symbol = built_in_symbol(name);
+        if (!symbol.has_value()) {
+            throw std::invalid_argument{"Unknown schematic symbol"};
+        }
+        return projection.add_symbol_definition(std::move(symbol.value()));
+    }
+
     volt::Circuit circuit_;
+    std::optional<volt::Schematic> schematic_;
 };
 
 } // namespace
@@ -941,6 +1059,10 @@ PYBIND11_MODULE(_volt, module) {
         .def("module_net_origins", &PyCircuit::module_net_origins, py::arg("instance"))
         .def("module_component_origins", &PyCircuit::module_component_origins, py::arg("instance"))
         .def("port_bindings", &PyCircuit::port_bindings, py::arg("instance"))
+        .def("schematic_sheet", &PyCircuit::schematic_sheet, py::arg("name"))
+        .def("place_schematic_symbol", &PyCircuit::place_schematic_symbol, py::arg("sheet"),
+             py::arg("component"), py::arg("symbol"), py::arg("x"), py::arg("y"))
+        .def("schematic_to_json", &PyCircuit::schematic_to_json)
         .def("validate", &PyCircuit::validate)
         .def("validate_for_pcb", &PyCircuit::validate_for_pcb)
         .def("to_json", &PyCircuit::to_json);

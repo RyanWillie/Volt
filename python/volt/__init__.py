@@ -508,6 +508,59 @@ class Net:
         return f"Net(name={self.name!r}, index={self._index})"
 
 
+class SchematicSymbol:
+    """Read-only handle to a placed schematic symbol instance."""
+
+    def __init__(self, schematic: Schematic, index: int):
+        self._schematic = schematic
+        self._index = index
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def __repr__(self) -> str:
+        return f"SchematicSymbol(index={self._index})"
+
+
+class Schematic:
+    """Handle to kernel-owned schematic projection data for one sheet."""
+
+    def __init__(self, design: Design, sheet_index: int, name: str):
+        self._design = design
+        self._sheet_index = sheet_index
+        self.name = name
+
+    @property
+    def sheet_index(self) -> int:
+        return self._sheet_index
+
+    def place(self, component: Component, *, at: tuple[float, float], symbol: str) -> SchematicSymbol:
+        if not isinstance(component, Component):
+            raise TypeError("Schematic placement expects a Component handle")
+        if component._design is not self._design:
+            raise ValueError("Component belongs to a different design")
+        if not isinstance(symbol, str):
+            raise TypeError("symbol must be a string")
+        if not symbol:
+            raise ValueError("symbol must not be empty")
+        if not isinstance(at, tuple) or len(at) != 2:
+            raise TypeError("at must be an (x, y) tuple")
+
+        x = _coordinate(at[0])
+        y = _coordinate(at[1])
+        instance = self._design._circuit.place_schematic_symbol(
+            self._sheet_index, component.index, symbol, x, y
+        )
+        return SchematicSymbol(self, instance)
+
+    def to_json(self) -> str:
+        return self._design._circuit.schematic_to_json()
+
+    def __repr__(self) -> str:
+        return f"Schematic(name={self.name!r}, sheet_index={self._sheet_index})"
+
+
 class Design:
     """Root Python handle for one kernel-owned logical circuit."""
 
@@ -518,6 +571,7 @@ class Design:
         self.name = name
         self._circuit = _volt.Circuit()
         self._definitions: dict[str, int] = {}
+        self._schematic_sheets: dict[str, int] = {}
 
     def net(self, name: str, *, kind: str = "signal", voltage: float | None = None) -> Net:
         net = Net(self, self._circuit.add_net(name, kind), name)
@@ -626,6 +680,15 @@ class Design:
             "connector_1x02", self._circuit.define_connector_1x02, "J", ref, {}
         )
 
+    def schematic(self, name: str) -> Schematic:
+        if not isinstance(name, str):
+            raise TypeError("Schematic name must be a string")
+        if not name:
+            raise ValueError("Schematic name must not be empty")
+        if name not in self._schematic_sheets:
+            self._schematic_sheets[name] = self._circuit.schematic_sheet(name)
+        return Schematic(self, self._schematic_sheets[name], name)
+
     def validate(self) -> DiagnosticReport:
         return DiagnosticReport(_diagnostic_from_dict(item) for item in self._circuit.validate())
 
@@ -662,6 +725,17 @@ def _number(value: float) -> float:
     result = float(value)
     if not isfinite(result):
         raise ValueError("Electrical attribute values must be finite")
+    return result
+
+
+def _coordinate(value: float) -> float:
+    if isinstance(value, bool):
+        raise TypeError("Schematic coordinates must be numbers")
+    if not isinstance(value, (int, float)):
+        raise TypeError("Schematic coordinates must be numbers")
+    result = float(value)
+    if not isfinite(result):
+        raise ValueError("Schematic coordinates must be finite")
     return result
 
 
@@ -739,5 +813,7 @@ __all__ = [
     "PinSpec",
     "PortBindingInfo",
     "PortInfo",
+    "Schematic",
+    "SchematicSymbol",
     "TemplateNetInfo",
 ]

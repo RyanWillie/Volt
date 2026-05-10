@@ -3,7 +3,8 @@
 Volt's Python layer should be an expressive authoring surface over kernel-owned state. It
 should make circuit generation pleasant without becoming the circuit kernel.
 
-The current focus is logical circuit generation:
+The current Python surface covers logical circuit generation plus the first schematic
+projection entry point:
 
 - create component definitions and instances
 - create nets
@@ -11,10 +12,13 @@ The current focus is logical circuit generation:
 - attach values, selected parts, and properties
 - validate through kernel diagnostics
 - serialize deterministic logical circuit files
+- create schematic sheets
+- place existing logical components with built-in schematic symbols
+- serialize deterministic schematic projection files
 
-Schematic drawing, PCB design, and richer ERC remain planned layers. The Python API should
-not introduce semantics that those future kernel layers cannot load, validate, serialize,
-or inspect.
+PCB design, richer schematic drawing, and richer ERC remain planned layers. The Python API
+should not introduce semantics that those future kernel layers cannot load, validate,
+serialize, or inspect.
 
 ## Core Rule
 
@@ -87,9 +91,9 @@ import volt
 design = volt.Design("divider")
 ```
 
-For the first implementation, `Design` owns one kernel logical circuit. Future kernel
-layers may add schematic projections, PCB layouts, constraints, and reports under the same
-root, but the first Python milestone should stay focused on logical circuit generation.
+`Design` owns one kernel logical circuit and can create kernel-owned schematic projection
+data over that circuit. Future kernel layers may add PCB layouts, constraints, and reports
+under the same root.
 
 Python handles should be lightweight views over kernel-owned IDs:
 
@@ -330,8 +334,8 @@ nets with scoped names such as `DIV_A/R1` and `DIV_A/VIN`, then records origin m
 and explicit port bindings in logical JSON.
 
 The first module API deliberately supports root-level module instances containing
-component templates. Nested modules, schematic placement, PCB data, and ERC rules over
-hierarchy are separate future slices.
+component templates. Nested modules, PCB data, and ERC rules over hierarchy are separate
+future slices.
 
 Modules and module instances also expose read-only inspection views for projection layers
 and debugging:
@@ -349,6 +353,41 @@ div_a.port_bindings()
 
 These methods return small immutable data objects with kernel IDs and labels. They are
 not mutation handles; edits still go through the explicit module authoring methods above.
+
+## Schematic Placement
+
+Schematic authoring starts from the same `Design`. A schematic sheet can place existing
+logical components; it does not create components, nets, or connectivity:
+
+```python
+d = volt.Design("led")
+
+vcc = d.net("VCC", kind="power")
+led_a = d.net("LED_A")
+gnd = d.net("GND", kind="ground")
+
+r1 = d.R(resistance=330, ref="R1")
+d1 = d.LED(ref="D1")
+
+vcc += r1[1]
+led_a += r1[2], d1["A"]
+gnd += d1["K"]
+
+sch = d.schematic("Main")
+sch.place(r1, at=(40, 20), symbol="resistor")
+sch.place(d1, at=(90, 20), symbol="led")
+
+schematic_json = sch.to_json()
+```
+
+`d.schematic(name)` creates or returns a kernel-owned sheet. `sch.place()` stores a
+`SymbolInstance` over an existing `ComponentId`, with a finite `(x, y)` position and a
+kernel-owned `SymbolDefinition`. The first built-in symbol set is intentionally small:
+`resistor`, `capacitor`, `led`, and `connector_1x02`.
+
+`Design.to_json()` still writes the logical circuit. `Schematic.to_json()` writes the
+`volt.schematic` projection JSON. The two formats remain separate so schematic placement
+can be loaded, inspected, or regenerated without becoming a second owner of the netlist.
 
 ## Function Composition
 
@@ -428,14 +467,9 @@ Projection data references the circuit.
 Projection data does not mutate circuit connectivity.
 ```
 
-This is an ordering constraint, not only a style preference. Python schematic drawing
-should not be implemented until the C++ kernel has a schematic representation, mutation
-API, validation story, and serialization plan. Python PCB layout APIs should wait for the
-same kernel foundation in the board layer.
-
-For example, a future schematic API may place symbols or draw visual representations of
-nets, but it should not create, merge, split, or reconnect logical nets. A future PCB API
-may place footprints and route copper for an existing net, but it should not define the
-netlist.
-
-Those APIs are intentionally deferred until the logical circuit generation layer is stable.
+This is an ordering constraint, not only a style preference. Python schematic extensions
+such as wires, labels, and renderer helpers should continue to lower into kernel-owned
+projection data. They should not create, merge, split, or reconnect logical nets. Python
+PCB layout APIs should wait for the same kernel foundation in the board layer: a future
+PCB API may place footprints and route copper for an existing net, but it should not define
+the netlist.
