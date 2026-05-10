@@ -115,20 +115,53 @@ TEST_CASE("Logical circuit reader preserves pin electrical semantics") {
 
 TEST_CASE("Logical circuit reader preserves hierarchy module scaffold") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["pin_definitions"].push_back({{"id", "pin_def:6"},
+                                          {"name", "1"},
+                                          {"number", "1"},
+                                          {"role", "Passive"},
+                                          {"connection_requirement", "Required"}});
+    fixture["pin_definitions"].push_back({{"id", "pin_def:7"},
+                                          {"name", "2"},
+                                          {"number", "2"},
+                                          {"role", "Passive"},
+                                          {"connection_requirement", "Required"}});
+    fixture["component_definitions"].push_back(
+        {{"id", "component_def:3"},
+         {"name", "Resistor"},
+         {"pins", nlohmann::json::array({"pin_def:6", "pin_def:7"})},
+         {"properties", nlohmann::json::object()}});
+    fixture["components"].push_back({{"id", "component:3"},
+                                     {"definition", "component_def:3"},
+                                     {"reference", "BUCK_A/R1"},
+                                     {"properties", nlohmann::json::object()}});
+    fixture["pins"].push_back(
+        {{"id", "pin:6"}, {"component", "component:3"}, {"definition", "pin_def:6"}});
+    fixture["pins"].push_back(
+        {{"id", "pin:7"}, {"component", "component:3"}, {"definition", "pin_def:7"}});
     fixture["nets"].push_back({{"id", "net:3"},
                                {"name", "BUCK_A/VIN"},
                                {"kind", "Power"},
-                               {"pins", nlohmann::json::array()}});
+                               {"pins", nlohmann::json::array({"pin:6"})}});
     fixture["nets"].push_back({{"id", "net:4"},
                                {"name", "BUCK_A/FB"},
                                {"kind", "Signal"},
-                               {"pins", nlohmann::json::array()}});
+                               {"pins", nlohmann::json::array({"pin:7"})}});
     fixture["module_definitions"] = nlohmann::json::array(
         {{{"id", "module_def:0"},
           {"name", "BuckConverter"},
           {"local_nets",
            nlohmann::json::array({{{"id", "template_net:0"}, {"name", "VIN"}, {"kind", "Power"}},
                                   {{"id", "template_net:1"}, {"name", "FB"}, {"kind", "Signal"}}})},
+          {"components", nlohmann::json::array({{{"id", "module_component:0"},
+                                                 {"definition", "component_def:3"},
+                                                 {"reference", "R1"},
+                                                 {"properties", nlohmann::json::object()}}})},
+          {"connections", nlohmann::json::array({{{"net", "template_net:0"},
+                                                  {"component", "module_component:0"},
+                                                  {"pin", "pin_def:6"}},
+                                                 {{"net", "template_net:1"},
+                                                  {"component", "module_component:0"},
+                                                  {"pin", "pin_def:7"}}})},
           {"ports", nlohmann::json::array({{{"id", "port:0"},
                                             {"name", "VIN"},
                                             {"internal_net", "template_net:0"},
@@ -141,6 +174,9 @@ TEST_CASE("Logical circuit reader preserves hierarchy module scaffold") {
           {"net_origins",
            nlohmann::json::array({{{"template_net", "template_net:0"}, {"net", "net:3"}},
                                   {{"template_net", "template_net:1"}, {"net", "net:4"}}})},
+          {"component_origins",
+           nlohmann::json::array(
+               {{{"template_component", "module_component:0"}, {"component", "component:3"}}})},
           {"port_bindings",
            nlohmann::json::array({{{"port", "port:0"}, {"parent_net", "net:0"}}})}}});
 
@@ -149,6 +185,8 @@ TEST_CASE("Logical circuit reader preserves hierarchy module scaffold") {
     CHECK(circuit.module_definition_count() == 1);
     CHECK(circuit.template_net_definition_count() == 2);
     CHECK(circuit.port_definition_count() == 1);
+    CHECK(circuit.module_component_count() == 1);
+    CHECK(circuit.module_pin_connection_count() == 2);
     CHECK(circuit.module_instance_count() == 1);
     CHECK(circuit.port_binding_count() == 1);
     CHECK(circuit.module_definition(volt::ModuleDefId{0}).name() ==
@@ -157,6 +195,8 @@ TEST_CASE("Logical circuit reader preserves hierarchy module scaffold") {
           volt::NetId{3});
     CHECK(circuit.concrete_net_for(volt::ModuleInstanceId{0}, volt::TemplateNetDefId{1}) ==
           volt::NetId{4});
+    CHECK(circuit.concrete_component_for(volt::ModuleInstanceId{0}, volt::ModuleComponentId{0}) ==
+          volt::ComponentId{3});
     CHECK(circuit.port_binding(volt::PortBindingId{0}).parent_net() == volt::NetId{0});
 }
 

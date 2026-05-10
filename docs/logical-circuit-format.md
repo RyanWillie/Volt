@@ -39,6 +39,7 @@ Every persisted entity has a required document-local ID using a typed prefix:
 - `module_def:<number>`
 - `template_net:<number>`
 - `port:<number>`
+- `module_component:<number>`
 - `module:<number>`
 
 Local IDs are non-semantic. A component ID such as `component:0` is independent of the
@@ -298,11 +299,12 @@ Net `electrical_attributes` use the same typed payload encoding described above 
 for design-bearing net facts such as nominal voltage. Empty net electrical attribute maps
 are omitted from canonical output and load as empty maps.
 
-## Hierarchy Module Scaffold
+## Hierarchy Modules
 
 Hierarchy is optional in v1 files. When present, `module_definitions` define reusable
-module-local net and port shapes, while `module_instances` attach a concrete root module
-instance to already-persisted concrete nets:
+module-local nets, ports, component templates, and template pin connections, while
+`module_instances` attach a concrete root module instance to already-persisted concrete
+nets and components:
 
 ```json
 {
@@ -322,6 +324,26 @@ instance to already-persisted concrete nets:
           "role": "PowerInput",
           "required": true
         }
+      ],
+      "components": [
+        {
+          "id": "module_component:0",
+          "definition": "component_def:0",
+          "reference": "R1",
+          "properties": {}
+        }
+      ],
+      "connections": [
+        {
+          "net": "template_net:0",
+          "component": "module_component:0",
+          "pin": "pin_def:0"
+        },
+        {
+          "net": "template_net:1",
+          "component": "module_component:0",
+          "pin": "pin_def:1"
+        }
       ]
     }
   ],
@@ -333,6 +355,9 @@ instance to already-persisted concrete nets:
       "net_origins": [
         { "template_net": "template_net:0", "net": "net:0" },
         { "template_net": "template_net:1", "net": "net:1" }
+      ],
+      "component_origins": [
+        { "template_component": "module_component:0", "component": "component:0" }
       ],
       "port_bindings": [
         { "port": "port:0", "parent_net": "net:2" }
@@ -349,13 +374,27 @@ template net in its definition, and each entry points to a concrete top-level `n
 Ports expose one internal template net to the parent design. `role` uses the public
 `PortRole` spellings: `Passive`, `Input`, `Output`, `Bidirectional`, `PowerInput`,
 `PowerOutput`, and `Ground`. `required` defaults to `true` when omitted.
-`port_bindings` connect instance ports to parent concrete nets without merging the
-parent net and internal module-origin net into one logical net.
 
-This scaffold intentionally persists only the current kernel-owned hierarchy state:
-module definitions, template-local nets, ports, root module instances, concrete net
-origins, and port bindings. It does not yet persist component templates, nested module
-instances, schematic placement, PCB implementation, alias nets, or power ties.
+`components` are module-local component templates. Each entry points to a reusable
+`component_def` and has a module-local reference designator. The concrete components
+created from these templates use the module instance name as a prefix, such as
+`BUCK_A/R1`.
+
+`connections` connect module component template pins to template-local nets. The `pin`
+must belong to the module component's component definition. A module component pin may
+appear in at most one template connection.
+
+Each module instance must provide exactly one `component_origins` entry for every
+module component template in its definition. Each entry points to the concrete
+`component` created for that module instance. `port_bindings` connect instance ports to
+parent concrete nets without merging the parent net and internal module-origin net into
+one logical net.
+
+This hierarchy model intentionally persists only the current kernel-owned logical
+state: module definitions, template-local nets, ports, component templates, template pin
+connections, root module instances, concrete origins, and port bindings. It does not yet
+persist nested module instances, schematic placement, PCB implementation, alias nets, or
+power ties.
 
 ## Reader Validation
 
@@ -378,8 +417,15 @@ including:
 - a pin appearing in more than one net
 - module definitions with duplicate names
 - template nets or ports that reference the wrong module
+- module component templates that reference missing component definitions
+- module component template connections whose component, net, or pin belongs to the wrong
+  module or component definition
 - module instances that do not provide exactly one concrete net origin for every
   template-local net
+- module instances that do not provide exactly one concrete component origin for every
+  module component template
+- module component origins whose concrete component definition does not match the
+  template component definition
 - port bindings whose port does not belong to the module instance definition
 - port bindings that bind a module port to its own module-origin net
 - selected part mappings that do not exactly match the component definition

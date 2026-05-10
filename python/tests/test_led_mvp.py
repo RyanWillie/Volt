@@ -454,6 +454,68 @@ def test_power_pin_semantics_drive_diagnostics():
     assert "POWER_INPUT_WITHOUT_SOURCE" in {diagnostic.code for diagnostic in report}
 
 
+def test_module_authoring_serializes_kernel_owned_contents():
+    design = volt.Design("module-authoring")
+    resistor = design.define_component(
+        "Resistor",
+        pins=[
+            volt.PinSpec("1", 1),
+            volt.PinSpec("2", 2),
+        ],
+    )
+
+    divider = design.define_module("Divider")
+    vin = divider.port("VIN", kind="power", role="power_input")
+    out = divider.port("OUT")
+    r1 = divider.instantiate(resistor, ref="R1")
+    vin += r1[1]
+    out += r1[2]
+
+    vbat = design.net("VBAT", kind="power", voltage=12.0)
+    sense = design.net("SENSE")
+    div_a = design.instantiate(divider, ref="DIV_A")
+    vbat += div_a["VIN"]
+    sense += div_a["OUT"]
+
+    circuit = json.loads(design.to_json())
+
+    module = circuit["module_definitions"][0]
+    assert module["name"] == "Divider"
+    assert module["components"] == [
+        {
+            "id": "module_component:0",
+            "definition": "component_def:0",
+            "reference": "R1",
+            "properties": {},
+        }
+    ]
+    assert module["connections"] == [
+        {
+            "net": "template_net:0",
+            "component": "module_component:0",
+            "pin": "pin_def:0",
+        },
+        {
+            "net": "template_net:1",
+            "component": "module_component:0",
+            "pin": "pin_def:1",
+        },
+    ]
+
+    instance = circuit["module_instances"][0]
+    assert instance["name"] == "DIV_A"
+    assert instance["component_origins"] == [
+        {"template_component": "module_component:0", "component": "component:0"}
+    ]
+    assert instance["port_bindings"] == [
+        {"port": "port:0", "parent_net": "net:0"},
+        {"port": "port:1", "parent_net": "net:1"},
+    ]
+
+    component = div_a.component("R1")
+    assert circuit["components"][component.index]["reference"] == "DIV_A/R1"
+
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")
@@ -479,4 +541,5 @@ if __name__ == "__main__":
     test_pin_voltage_range_diagnostic_is_inspectable()
     test_pcb_readiness_requires_selected_physical_parts()
     test_power_pin_semantics_drive_diagnostics()
+    test_module_authoring_serializes_kernel_owned_contents()
     test_diagnostics_are_inspectable()

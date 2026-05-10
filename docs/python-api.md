@@ -288,10 +288,55 @@ physical implementation record that owns package, footprint, logical-pin-to-pad 
 and selected-part electrical ratings. `voltage_rating` and `power_rating` lower into
 typed selected-part electrical attributes.
 
-## Composition
+## Module Definitions
 
-Reusable circuit construction should start as ordinary Python functions that receive a
-`Design` and explicit ports:
+Modules are reusable logical sub-circuits. Their Python API mirrors ordinary circuit
+authoring where possible: define nets, instantiate component definitions, connect pins,
+then instantiate the module in a parent design.
+
+```python
+d = volt.Design("front_end")
+
+resistor = d.define_component(
+    "Resistor",
+    pins=[
+        volt.PinSpec("1", 1),
+        volt.PinSpec("2", 2),
+    ],
+)
+
+divider = d.define_module("Divider")
+vin = divider.port("VIN", kind="power", role="power_input")
+out = divider.port("OUT")
+r1 = divider.instantiate(resistor, ref="R1")
+
+vin += r1[1]
+out += r1[2]
+
+vbat = d.net("VBAT", kind="power", voltage=12)
+sense = d.net("SENSE")
+
+div_a = d.instantiate(divider, ref="DIV_A")
+vbat += div_a["VIN"]
+sense += div_a["OUT"]
+
+inner_r1 = div_a.component("R1")
+```
+
+The module body is not Python-only structure. `define_module()`, `module.port()`,
+`module.net()`, `module.instantiate()`, and module-local connections all lower into
+kernel-owned hierarchy data. Instantiating the module materializes concrete components and
+nets with scoped names such as `DIV_A/R1` and `DIV_A/VIN`, then records origin metadata
+and explicit port bindings in logical JSON.
+
+The first module API deliberately supports root-level module instances containing
+component templates. Nested modules, schematic placement, PCB data, and ERC rules over
+hierarchy are separate future slices.
+
+## Function Composition
+
+Non-hierarchical reusable construction can still be ordinary Python functions that receive
+a `Design` and explicit ports:
 
 ```python
 def voltage_divider(d, vin, vout, gnd, top=10_000, bottom=20_000):
@@ -305,9 +350,10 @@ def voltage_divider(d, vin, vout, gnd, top=10_000, bottom=20_000):
     return {"top": r_top, "bottom": r_bottom, "out": vout}
 ```
 
-This avoids hidden global design state and keeps data flow visible. Decorator syntax such
-as `@subcircuit` is not required for v1. It can be considered later only if the underlying
-kernel-backed block and hierarchy semantics are already clear.
+This avoids hidden global design state and keeps data flow visible when the design does
+not need persisted hierarchy. Decorator syntax such as `@subcircuit` is not required for
+v1. It can be considered later only if the underlying kernel-backed block and hierarchy
+semantics are already clear.
 
 An explicit block API may be added later:
 

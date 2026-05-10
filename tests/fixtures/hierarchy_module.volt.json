@@ -2,22 +2,28 @@
   "format": "volt.logical_circuit",
   "version": 1,
   "pin_definitions": [
+    { "id": "pin_def:0", "name": "1", "number": "1", "role": "Passive", "connection_requirement": "Required" },
+    { "id": "pin_def:1", "name": "2", "number": "2", "role": "Passive", "connection_requirement": "Required" }
   ],
   "component_definitions": [
+    { "id": "component_def:0", "name": "Resistor", "pins": ["pin_def:0", "pin_def:1"], "properties": {} }
   ],
   "components": [
+    { "id": "component:0", "definition": "component_def:0", "reference": "BUCK_A/R1", "properties": {} }
   ],
   "pins": [
+    { "id": "pin:0", "component": "component:0", "definition": "pin_def:0" },
+    { "id": "pin:1", "component": "component:0", "definition": "pin_def:1" }
   ],
   "nets": [
-    { "id": "net:0", "name": "BUCK_A/VIN", "kind": "Power", "pins": [] },
-    { "id": "net:1", "name": "BUCK_A/FB", "kind": "Signal", "pins": [] },
+    { "id": "net:0", "name": "BUCK_A/VIN", "kind": "Power", "pins": ["pin:0"] },
+    { "id": "net:1", "name": "BUCK_A/FB", "kind": "Signal", "pins": ["pin:1"] },
     { "id": "net:2", "name": "VIN", "kind": "Power", "pins": [] }
   ],
   "module_definitions": [
-    { "id": "module_def:0", "name": "BuckConverter", "local_nets": [{ "id": "template_net:0", "name": "VIN", "kind": "Power" }, { "id": "template_net:1", "name": "FB", "kind": "Signal" }], "ports": [{ "id": "port:0", "name": "VIN", "internal_net": "template_net:0", "role": "PowerInput", "required": true }] }
+    { "id": "module_def:0", "name": "BuckConverter", "local_nets": [{ "id": "template_net:0", "name": "VIN", "kind": "Power" }, { "id": "template_net:1", "name": "FB", "kind": "Signal" }], "components": [{ "id": "module_component:0", "definition": "component_def:0", "reference": "R1", "properties": {} }], "connections": [{ "net": "template_net:0", "component": "module_component:0", "pin": "pin_def:0" }, { "net": "template_net:1", "component": "module_component:0", "pin": "pin_def:1" }], "ports": [{ "id": "port:0", "name": "VIN", "internal_net": "template_net:0", "role": "PowerInput", "required": true }] }
   ],
   "module_instances": [
-    { "id": "module:0", "definition": "module_def:0", "name": "BUCK_A", "net_origins": [{ "template_net": "template_net:0", "net": "net:0" }, { "template_net": "template_net:1", "net": "net:1" }], "port_bindings": [{ "port": "port:0", "parent_net": "net:2" }] }
+    { "id": "module:0", "definition": "module_def:0", "name": "BUCK_A", "net_origins": [{ "template_net": "template_net:0", "net": "net:0" }, { "template_net": "template_net:1", "net": "net:1" }], "component_origins": [{ "template_component": "module_component:0", "component": "component:0" }], "port_bindings": [{ "port": "port:0", "parent_net": "net:2" }] }
   ]
 }

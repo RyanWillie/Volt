@@ -107,6 +107,40 @@ class Circuit {
         return id;
     }
 
+    /** Add a component occurrence to a reusable module definition. */
+    [[nodiscard]] ModuleComponentId add_module_component(ModuleDefId module,
+                                                         ModuleComponentTemplate component) {
+        require_module_definition(module);
+        require_component_definition(component.definition());
+        if (module_component_by_reference(module, component.reference()).has_value()) {
+            throw std::logic_error{"Module component reference designator already exists"};
+        }
+
+        const auto id = module_component_templates_.insert(std::move(component));
+        module_definitions_.get(module).add_component(id);
+        return id;
+    }
+
+    /** Connect a module component template pin to a template-local net. */
+    bool connect_module_pin(ModuleDefId module, TemplateNetDefId net, ModuleComponentId component,
+                            PinDefId pin) {
+        require_template_net_in_module(module, net);
+        require_module_component_in_module(module, component);
+        require_pin_in_module_component(component, pin);
+
+        const auto existing = template_net_for(module, component, pin);
+        if (existing.has_value()) {
+            if (existing.value() == net) {
+                return false;
+            }
+
+            throw std::logic_error{"Module component pin is already connected"};
+        }
+
+        module_pin_connections_.push_back(ModulePinConnection{net, component, pin});
+        return true;
+    }
+
     /** Instantiate a module at the root and create concrete nets for its template-local nets. */
     [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition,
                                                            ModuleInstanceName name) {
@@ -126,12 +160,57 @@ class Circuit {
             concrete_nets.emplace_back(std::move(concrete_name), template_net_definition.kind());
         }
 
+        std::vector<ComponentInstance> concrete_components;
+        for (const auto component : module_definitions_.get(definition).components()) {
+            const auto &component_template = module_component_templates_.get(component);
+            auto concrete_reference =
+                ReferenceDesignator{name.value() + "/" + component_template.reference().value()};
+            if (component_by_reference(concrete_reference).has_value()) {
+                throw std::logic_error{"Module instance concrete component reference exists"};
+            }
+            concrete_components.emplace_back(component_template.definition(),
+                                             std::move(concrete_reference),
+                                             component_template.properties());
+        }
+
         const auto instance = module_instances_.insert(ModuleInstance{definition, std::move(name)});
+        const auto &module_components = module_definitions_.get(definition).components();
+        for (std::size_t index = 0; index < module_components.size(); ++index) {
+            const auto component =
+                instantiate_component(concrete_components.at(index).definition(),
+                                      concrete_components.at(index).reference(),
+                                      concrete_components.at(index).properties());
+            module_component_origins_.push_back(
+                ModuleComponentOrigin{instance, module_components.at(index)});
+            module_origin_components_.push_back(component);
+        }
+
         const auto &template_nets = module_definitions_.get(definition).template_nets();
         for (std::size_t index = 0; index < template_nets.size(); ++index) {
             const auto net = add_net(std::move(concrete_nets.at(index)));
             module_net_origins_.push_back(ModuleNetOrigin{instance, template_nets.at(index)});
             module_origin_nets_.push_back(net);
+        }
+
+        for (const auto &connection : module_pin_connections_) {
+            if (!require_template_net_in_module_if_present(definition, connection.net()) ||
+                !require_module_component_in_module_if_present(definition,
+                                                               connection.component())) {
+                continue;
+            }
+            const auto concrete_component =
+                concrete_component_for(instance, connection.component());
+            const auto concrete_net = concrete_net_for(instance, connection.net());
+            if (!concrete_component.has_value() || !concrete_net.has_value()) {
+                throw std::logic_error{"Module instance origin metadata is incomplete"};
+            }
+            const auto concrete_pin =
+                pin_by_definition(concrete_component.value(), connection.pin());
+            if (!concrete_pin.has_value()) {
+                throw std::logic_error{"Concrete module component pin is missing"};
+            }
+            [[maybe_unused]] const auto changed =
+                connect(concrete_net.value(), concrete_pin.value());
         }
 
         return instance;
@@ -165,9 +244,10 @@ class Circuit {
     }
 
     /** Restore a root module instance over existing concrete nets while loading JSON. */
-    [[nodiscard]] ModuleInstanceId
-    restore_root_module_instance(ModuleDefId definition, ModuleInstanceName name,
-                                 const std::vector<std::pair<TemplateNetDefId, NetId>> &origins) {
+    [[nodiscard]] ModuleInstanceId restore_root_module_instance(
+        ModuleDefId definition, ModuleInstanceName name,
+        const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
+        const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins = {}) {
         require_module_definition(definition);
         if (module_instance_by_name(name).has_value()) {
             throw std::logic_error{"Module instance name already exists"};
@@ -205,10 +285,53 @@ class Circuit {
             }
         }
 
+        const auto &module_components = module_definitions_.get(definition).components();
+        if (component_origins.size() != module_components.size()) {
+            throw std::logic_error{
+                "Module instance component origin count does not match definition"};
+        }
+
+        auto seen_template_components = std::vector<ModuleComponentId>{};
+        auto seen_concrete_components = std::vector<ComponentId>{};
+        for (const auto &[template_component, concrete_component] : component_origins) {
+            require_module_component_in_module(definition, template_component);
+            require_component(concrete_component);
+            if (std::find(seen_template_components.begin(), seen_template_components.end(),
+                          template_component) != seen_template_components.end()) {
+                throw std::logic_error{"Duplicate module instance template-component origin"};
+            }
+            if (std::find(seen_concrete_components.begin(), seen_concrete_components.end(),
+                          concrete_component) != seen_concrete_components.end()) {
+                throw std::logic_error{"Duplicate module instance concrete-component origin"};
+            }
+            if (is_module_origin_component(concrete_component)) {
+                throw std::logic_error{"Concrete component already has module origin metadata"};
+            }
+            if (components_.get(concrete_component).definition() !=
+                module_component_templates_.get(template_component).definition()) {
+                throw std::logic_error{
+                    "Module instance concrete component definition does not match template"};
+            }
+            seen_template_components.push_back(template_component);
+            seen_concrete_components.push_back(concrete_component);
+        }
+
+        for (const auto template_component : module_components) {
+            if (std::find(seen_template_components.begin(), seen_template_components.end(),
+                          template_component) == seen_template_components.end()) {
+                throw std::logic_error{"Missing module instance template-component origin"};
+            }
+        }
+
         const auto instance = module_instances_.insert(ModuleInstance{definition, std::move(name)});
         for (const auto &[template_net, concrete_net] : origins) {
             module_net_origins_.push_back(ModuleNetOrigin{instance, template_net});
             module_origin_nets_.push_back(concrete_net);
+        }
+        for (const auto &[template_component, concrete_component] : component_origins) {
+            module_component_origins_.push_back(
+                ModuleComponentOrigin{instance, template_component});
+            module_origin_components_.push_back(concrete_component);
         }
         return instance;
     }
@@ -388,6 +511,34 @@ class Circuit {
         return std::nullopt;
     }
 
+    /** Return a module component by local reference designator, if it exists. */
+    [[nodiscard]] std::optional<ModuleComponentId>
+    module_component_by_reference(ModuleDefId module, const ReferenceDesignator &reference) const {
+        require_module_definition(module);
+        for (const auto component : module_definitions_.get(module).components()) {
+            if (module_component_templates_.get(component).reference() == reference) {
+                return component;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    /** Return the template net connected to a module component pin, if any. */
+    [[nodiscard]] std::optional<TemplateNetDefId>
+    template_net_for(ModuleDefId module, ModuleComponentId component, PinDefId pin) const {
+        require_module_definition(module);
+        require_module_component_in_module(module, component);
+        require_pin_in_module_component(component, pin);
+        for (const auto &connection : module_pin_connections_) {
+            if (connection.component() == component && connection.pin() == pin) {
+                return connection.net();
+            }
+        }
+
+        return std::nullopt;
+    }
+
     /** Return the explicit binding for a module instance port, if it exists. */
     [[nodiscard]] std::optional<PortBindingId> port_binding_for(ModuleInstanceId instance,
                                                                 PortDefId port) const {
@@ -404,11 +555,33 @@ class Circuit {
         return std::nullopt;
     }
 
+    /** Return the concrete component created for a module instance component template, if any. */
+    [[nodiscard]] std::optional<ComponentId>
+    concrete_component_for(ModuleInstanceId instance, ModuleComponentId component) const {
+        require_module_instance(instance);
+        require_module_component_in_module(module_instances_.get(instance).definition(), component);
+        for (std::size_t index = 0; index < module_component_origins_.size(); ++index) {
+            const auto &origin = module_component_origins_.at(index);
+            if (origin.instance() == instance && origin.component() == component) {
+                return module_origin_components_.at(index);
+            }
+        }
+
+        return std::nullopt;
+    }
+
     /** Return whether a net is concrete module-origin net. */
     [[nodiscard]] bool is_module_origin_net(NetId net) const {
         require_net(net);
         return std::find(module_origin_nets_.begin(), module_origin_nets_.end(), net) !=
                module_origin_nets_.end();
+    }
+
+    /** Return whether a component is a concrete module-origin component. */
+    [[nodiscard]] bool is_module_origin_component(ComponentId component) const {
+        require_component(component);
+        return std::find(module_origin_components_.begin(), module_origin_components_.end(),
+                         component) != module_origin_components_.end();
     }
 
     /** Return the concrete net created for a module instance template-local net, if any. */
@@ -466,6 +639,18 @@ class Circuit {
         return std::nullopt;
     }
 
+    /** Return a component pin by reusable pin definition, if it exists. */
+    [[nodiscard]] std::optional<PinId> pin_by_definition(ComponentId component,
+                                                         PinDefId definition) const {
+        for (const auto pin_id : pins_for(component)) {
+            if (pins_.get(pin_id).definition() == definition) {
+                return pin_id;
+            }
+        }
+
+        return std::nullopt;
+    }
+
     /** Return a component pin by reusable pin definition number, if it exists. */
     [[nodiscard]] std::optional<PinId> pin_by_number(ComponentId component,
                                                      std::string_view number) const {
@@ -515,6 +700,12 @@ class Circuit {
         return port_definitions_.get(id);
     }
 
+    /** Return a module component template by ID. */
+    [[nodiscard]] const ModuleComponentTemplate &
+    module_component_template(ModuleComponentId id) const {
+        return module_component_templates_.get(id);
+    }
+
     /** Return a root-level module instance by ID. */
     [[nodiscard]] const ModuleInstance &module_instance(ModuleInstanceId id) const {
         return module_instances_.get(id);
@@ -557,6 +748,16 @@ class Circuit {
     /** Return the number of module port definitions. */
     [[nodiscard]] std::size_t port_definition_count() const noexcept {
         return port_definitions_.size();
+    }
+
+    /** Return the number of module component templates. */
+    [[nodiscard]] std::size_t module_component_count() const noexcept {
+        return module_component_templates_.size();
+    }
+
+    /** Return the number of module pin template connections. */
+    [[nodiscard]] std::size_t module_pin_connection_count() const noexcept {
+        return module_pin_connections_.size();
     }
 
     /** Return the number of root-level module instances. */
@@ -604,6 +805,12 @@ class Circuit {
         }
     }
 
+    void require_module_component(ModuleComponentId component) const {
+        if (!module_component_templates_.contains(component)) {
+            throw std::out_of_range{"Module component ID does not belong to this circuit"};
+        }
+    }
+
     void require_module_instance(ModuleInstanceId instance) const {
         if (!module_instances_.contains(instance)) {
             throw std::out_of_range{"Module instance ID does not belong to this circuit"};
@@ -625,6 +832,43 @@ class Circuit {
         const auto &ports = module_definitions_.get(module).ports();
         if (std::find(ports.begin(), ports.end(), port) == ports.end()) {
             throw std::logic_error{"Port does not belong to module definition"};
+        }
+    }
+
+    void require_module_component_in_module(ModuleDefId module, ModuleComponentId component) const {
+        require_module_definition(module);
+        require_module_component(component);
+        const auto &components = module_definitions_.get(module).components();
+        if (std::find(components.begin(), components.end(), component) == components.end()) {
+            throw std::logic_error{"Module component does not belong to module definition"};
+        }
+    }
+
+    [[nodiscard]] bool require_template_net_in_module_if_present(ModuleDefId module,
+                                                                 TemplateNetDefId net) const {
+        require_module_definition(module);
+        require_template_net(net);
+        const auto &nets = module_definitions_.get(module).template_nets();
+        return std::find(nets.begin(), nets.end(), net) != nets.end();
+    }
+
+    [[nodiscard]] bool
+    require_module_component_in_module_if_present(ModuleDefId module,
+                                                  ModuleComponentId component) const {
+        require_module_definition(module);
+        require_module_component(component);
+        const auto &components = module_definitions_.get(module).components();
+        return std::find(components.begin(), components.end(), component) != components.end();
+    }
+
+    void require_pin_in_module_component(ModuleComponentId component, PinDefId pin) const {
+        require_module_component(component);
+        require_pin_definition(pin);
+        const auto &definition =
+            component_definitions_.get(module_component_templates_.get(component).definition());
+        const auto &pins = definition.pins();
+        if (std::find(pins.begin(), pins.end(), pin) == pins.end()) {
+            throw std::logic_error{"Pin definition does not belong to module component definition"};
         }
     }
 
@@ -687,11 +931,15 @@ class Circuit {
     EntityTable<Net, NetId> nets_;
     EntityTable<ModuleDefinition, ModuleDefId> module_definitions_;
     EntityTable<TemplateNetDefinition, TemplateNetDefId> template_net_definitions_;
+    EntityTable<ModuleComponentTemplate, ModuleComponentId> module_component_templates_;
     EntityTable<PortDefinition, PortDefId> port_definitions_;
     EntityTable<ModuleInstance, ModuleInstanceId> module_instances_;
     EntityTable<PortBinding, PortBindingId> port_bindings_;
+    std::vector<ModulePinConnection> module_pin_connections_;
     std::vector<ModuleNetOrigin> module_net_origins_;
     std::vector<NetId> module_origin_nets_;
+    std::vector<ModuleComponentOrigin> module_component_origins_;
+    std::vector<ComponentId> module_origin_components_;
 };
 
 } // namespace volt

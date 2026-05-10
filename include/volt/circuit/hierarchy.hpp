@@ -5,8 +5,10 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/properties.hpp>
 
 namespace volt {
 
@@ -128,6 +130,48 @@ class PortDefinition {
     bool required_;
 };
 
+/** Component occurrence declared inside a reusable module definition. */
+class ModuleComponentTemplate {
+  public:
+    /** Construct a module-local component occurrence from a reusable component definition. */
+    ModuleComponentTemplate(ComponentDefId definition, ReferenceDesignator reference,
+                            PropertyMap properties = {})
+        : definition_{definition}, reference_{std::move(reference)},
+          properties_{std::move(properties)} {}
+
+    /** Return the reusable component definition instantiated by this template. */
+    [[nodiscard]] ComponentDefId definition() const noexcept { return definition_; }
+    /** Return the module-local reference designator. */
+    [[nodiscard]] const ReferenceDesignator &reference() const noexcept { return reference_; }
+    /** Return module-local instance properties copied to concrete instances. */
+    [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
+
+  private:
+    ComponentDefId definition_;
+    ReferenceDesignator reference_;
+    PropertyMap properties_;
+};
+
+/** Template-local connection from one module component pin to one module template net. */
+class ModulePinConnection {
+  public:
+    /** Construct a module-local pin connection. */
+    ModulePinConnection(TemplateNetDefId net, ModuleComponentId component, PinDefId pin)
+        : net_{net}, component_{component}, pin_{pin} {}
+
+    /** Return the template net connected to the pin. */
+    [[nodiscard]] TemplateNetDefId net() const noexcept { return net_; }
+    /** Return the module component template that owns the pin. */
+    [[nodiscard]] ModuleComponentId component() const noexcept { return component_; }
+    /** Return the reusable pin definition connected on that component template. */
+    [[nodiscard]] PinDefId pin() const noexcept { return pin_; }
+
+  private:
+    TemplateNetDefId net_;
+    ModuleComponentId component_;
+    PinDefId pin_;
+};
+
 /** Reusable logical module template. */
 class ModuleDefinition {
   public:
@@ -142,16 +186,22 @@ class ModuleDefinition {
     }
     /** Return module ports in deterministic insertion order. */
     [[nodiscard]] const std::vector<PortDefId> &ports() const noexcept { return ports_; }
+    /** Return component templates in deterministic insertion order. */
+    [[nodiscard]] const std::vector<ModuleComponentId> &components() const noexcept {
+        return components_;
+    }
 
   private:
     friend class Circuit;
 
     void add_template_net(TemplateNetDefId net) { template_nets_.push_back(net); }
     void add_port(PortDefId port) { ports_.push_back(port); }
+    void add_component(ModuleComponentId component) { components_.push_back(component); }
 
     ModuleName name_;
     std::vector<TemplateNetDefId> template_nets_;
     std::vector<PortDefId> ports_;
+    std::vector<ModuleComponentId> components_;
 };
 
 /** Root-level occurrence of a reusable module definition. */
@@ -186,6 +236,23 @@ class ModuleNetOrigin {
   private:
     ModuleInstanceId instance_;
     TemplateNetDefId template_net_;
+};
+
+/** Concrete component created from a module component template. */
+class ModuleComponentOrigin {
+  public:
+    /** Construct origin metadata for a concrete component copied from a module template. */
+    ModuleComponentOrigin(ModuleInstanceId instance, ModuleComponentId component)
+        : instance_{instance}, component_{component} {}
+
+    /** Return the module instance that owns the concrete component. */
+    [[nodiscard]] ModuleInstanceId instance() const noexcept { return instance_; }
+    /** Return the module component template copied into the concrete component. */
+    [[nodiscard]] ModuleComponentId component() const noexcept { return component_; }
+
+  private:
+    ModuleInstanceId instance_;
+    ModuleComponentId component_;
 };
 
 /** Explicit edge from an instance-local concrete port net to a parent concrete net. */

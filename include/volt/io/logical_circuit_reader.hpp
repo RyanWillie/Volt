@@ -533,6 +533,7 @@ class LogicalCircuitReader {
 
         auto seen = std::set<std::string>{};
         auto seen_template_nets = std::set<std::string>{};
+        auto seen_module_components = std::set<std::string>{};
         auto seen_ports = std::set<std::string>{};
         for (const auto &module_object : *modules) {
             const auto id = local_id(module_object, "module_def:", seen);
@@ -546,6 +547,31 @@ class LogicalCircuitReader {
                     module, TemplateNetDefinition{NetName{string_field(net_object, "name")},
                                                   net_kind(string_field(net_object, "kind"))});
                 template_net_ids_.emplace(net_id, template_net);
+            }
+
+            if (const auto components = optional_array_field(module_object, "components")) {
+                for (const auto &component_object : *components) {
+                    const auto component_id =
+                        local_id(component_object, "module_component:", seen_module_components);
+                    const auto component = circuit_.add_module_component(
+                        module,
+                        ModuleComponentTemplate{
+                            resolve(component_def_ids_,
+                                    string_field(component_object, "definition")),
+                            ReferenceDesignator{string_field(component_object, "reference")},
+                            properties(field(component_object, "properties"))});
+                    module_component_ids_.emplace(component_id, component);
+                }
+            }
+
+            if (const auto connections = optional_array_field(module_object, "connections")) {
+                for (const auto &connection_object : *connections) {
+                    [[maybe_unused]] const auto changed = circuit_.connect_module_pin(
+                        module, resolve(template_net_ids_, string_field(connection_object, "net")),
+                        resolve(module_component_ids_,
+                                string_field(connection_object, "component")),
+                        resolve(pin_def_ids_, string_field(connection_object, "pin")));
+                }
             }
 
             for (const auto &port_object : array_field(module_object, "ports")) {
@@ -585,8 +611,19 @@ class LogicalCircuitReader {
                     resolve(template_net_ids_, string_field(origin_object, "template_net")),
                     resolve(net_ids_, string_field(origin_object, "net")));
             }
+            auto component_origins = std::vector<std::pair<ModuleComponentId, ComponentId>>{};
+            if (const auto components =
+                    optional_array_field(instance_object, "component_origins")) {
+                for (const auto &origin_object : *components) {
+                    component_origins.emplace_back(
+                        resolve(module_component_ids_,
+                                string_field(origin_object, "template_component")),
+                        resolve(component_ids_, string_field(origin_object, "component")));
+                }
+            }
             const auto instance = circuit_.restore_root_module_instance(
-                definition, ModuleInstanceName{string_field(instance_object, "name")}, origins);
+                definition, ModuleInstanceName{string_field(instance_object, "name")}, origins,
+                component_origins);
             module_instance_ids_.emplace(id, instance);
 
             for (const auto &binding_object : array_field(instance_object, "port_bindings")) {
@@ -634,6 +671,7 @@ class LogicalCircuitReader {
     std::map<std::string, NetId> net_ids_;
     std::map<std::string, ModuleDefId> module_def_ids_;
     std::map<std::string, TemplateNetDefId> template_net_ids_;
+    std::map<std::string, ModuleComponentId> module_component_ids_;
     std::map<std::string, PortDefId> port_def_ids_;
     std::map<std::string, ModuleInstanceId> module_instance_ids_;
     std::vector<std::pair<std::string, nlohmann::json>> selected_parts_;

@@ -38,6 +38,7 @@ struct NetIdTag;
 struct ModuleDefIdTag;
 struct ModuleInstanceIdTag;
 struct TemplateNetDefIdTag;
+struct ModuleComponentIdTag;
 struct PortDefIdTag;
 struct PortBindingIdTag;
 
@@ -59,6 +60,8 @@ using ModuleDefId = EntityId<detail::ModuleDefIdTag>;
 using ModuleInstanceId = EntityId<detail::ModuleInstanceIdTag>;
 /** ID for a template-local net declared by a module definition. */
 using TemplateNetDefId = EntityId<detail::TemplateNetDefIdTag>;
+/** ID for a component occurrence declared inside a reusable module definition. */
+using ModuleComponentId = EntityId<detail::ModuleComponentIdTag>;
 /** ID for a module port definition. */
 using PortDefId = EntityId<detail::PortDefIdTag>;
 /** ID for an explicit module port binding edge. */
