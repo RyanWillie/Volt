@@ -41,6 +41,9 @@ struct TemplateNetDefIdTag;
 struct ModuleComponentIdTag;
 struct PortDefIdTag;
 struct PortBindingIdTag;
+struct SymbolDefIdTag;
+struct SheetIdTag;
+struct SymbolInstanceIdTag;
 
 } // namespace detail
 
@@ -66,5 +69,11 @@ using ModuleComponentId = EntityId<detail::ModuleComponentIdTag>;
 using PortDefId = EntityId<detail::PortDefIdTag>;
 /** ID for an explicit module port binding edge. */
 using PortBindingId = EntityId<detail::PortBindingIdTag>;
+/** ID for a reusable schematic symbol definition. */
+using SymbolDefId = EntityId<detail::SymbolDefIdTag>;
+/** ID for a schematic sheet projection. */
+using SheetId = EntityId<detail::SheetIdTag>;
+/** ID for a placed schematic symbol instance. */
+using SymbolInstanceId = EntityId<detail::SymbolInstanceIdTag>;
 
 } // namespace volt

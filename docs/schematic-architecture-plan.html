@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt schematic architecture plan</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f4ef;
+      --ink: #17201c;
+      --muted: #66706b;
+      --line: #d8d1c4;
+      --panel: #fffdf8;
+      --green: #23684f;
+      --blue: #2e5f88;
+      --amber: #9a681f;
+      --red: #953b35;
+      --code: #eee7d9;
+      --soft-green: #e7f0e9;
+      --soft-blue: #e6eef5;
+      --soft-amber: #f3e6cc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 44px 0 76px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.72fr);
+      gap: 38px;
+      align-items: end;
+      padding-bottom: 34px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 850px;
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(42px, 7vw, 82px);
+      line-height: 0.94;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(27px, 3vw, 40px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 18px;
+      line-height: 1.22;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 14px;
+      border-top: 2px solid var(--green);
+      padding-top: 10px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dek {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    section {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 42px;
+      padding: 38px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    aside {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stack { display: grid; gap: 18px; }
+
+    .callout {
+      border-left: 6px solid var(--green);
+      background: var(--soft-green);
+      padding: 17px 19px;
+      color: #173629;
+    }
+
+    .warning {
+      border-left-color: var(--amber);
+      background: var(--soft-amber);
+      color: #3f3018;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      min-height: 164px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 17px;
+    }
+
+    .card h3 { margin-bottom: 8px; }
+    .card p, li, td { color: var(--muted); }
+
+    .decision {
+      display: grid;
+      grid-template-columns: 116px minmax(0, 1fr);
+      gap: 18px;
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .badge {
+      display: inline-block;
+      width: max-content;
+      padding: 5px 8px;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .core { background: var(--green); }
+    .later { background: var(--blue); }
+    .risk { background: var(--amber); }
+    .no { background: var(--red); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .flow div {
+      min-height: 106px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 14px;
+    }
+
+    .flow strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--blue);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    ul, ol {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    li + li { margin-top: 7px; }
+
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 16px;
+      border-left: 4px solid var(--blue);
+      background: var(--code);
+      color: #202721;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    footer {
+      padding-top: 30px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 920px) {
+      header, section, .decision {
+        grid-template-columns: 1fr;
+      }
+
+      .grid, .two, .flow {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <span class="eyebrow">Volt schematic plan</span>
+        <h1>Schematic is a projection, not a second circuit.</h1>
+      </div>
+      <p class="dek">
+        The goal is a schematic system that can be authored from Python, rendered to SVG,
+        and eventually imported/exported through KiCad, while preserving Volt's core rule:
+        logical connectivity remains owned by the C++ circuit kernel.
+      </p>
+    </header>
+
+    <section>
+      <aside>North star</aside>
+      <div class="stack">
+        <div class="callout">
+          Logical circuit owns meaning. Schematic owns presentation. Libraries provide
+          reusable definitions. Import/export adapters translate at the edges. Python is
+          syntax over kernel-owned schematic data.
+        </div>
+        <p>
+          This means drawing a wire must never silently create a second netlist. A
+          schematic wire can visualize an existing <code>NetId</code>. A Python helper may
+          feel like Schemdraw, but any operation that changes connectivity must first call
+          the logical circuit mutation API, then create projection data over the result.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <aside>Layer split</aside>
+      <div class="grid">
+        <div class="card">
+          <h3>Logical circuit</h3>
+          <p>
+            Owns component definitions, component instances, pins, nets, selected parts,
+            modules, port bindings, and typed electrical semantics.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Schematic projection</h3>
+          <p>
+            Owns sheets, symbol placement, symbol pin presentation, wire geometry,
+            labels, no-connect markers, and annotations referencing logical entities.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Adapters</h3>
+          <p>
+            KiCad, SVG, PDF, and future tool formats import/export to Volt's canonical
+            model. They are not the internal schema.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Architecture</aside>
+      <div class="flow">
+        <div>
+          <strong>Library</strong>
+          Component definitions, symbol definitions, and physical part templates with
+          provenance.
+        </div>
+        <div>
+          <strong>Logical</strong>
+          Concrete components, pins, nets, modules, and selected physical parts.
+        </div>
+        <div>
+          <strong>Schematic</strong>
+          Sheets, placed symbols, labels, wire runs, and drawing metadata.
+        </div>
+        <div>
+          <strong>Renderer</strong>
+          SVG first, then PDF/PNG if needed. Deterministic and inspectable.
+        </div>
+        <div>
+          <strong>Adapters</strong>
+          KiCad symbol/schematic import/export once the internal model is stable.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Vocabulary</aside>
+      <div class="stack">
+        <table>
+          <thead>
+            <tr>
+              <th>Concept</th>
+              <th>Owns</th>
+              <th>References</th>
+              <th>Does not own</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Schematic</code></td>
+              <td>A collection of sheets for one design</td>
+              <td>The logical circuit it projects</td>
+              <td>Connectivity</td>
+            </tr>
+            <tr>
+              <td><code>Sheet</code></td>
+              <td>Page size, title, placed visual objects</td>
+              <td>Symbols, wires, labels, notes</td>
+              <td>Module semantics</td>
+            </tr>
+            <tr>
+              <td><code>SymbolDefinition</code></td>
+              <td>Structured vector drawing and symbol pins</td>
+              <td>Optional library provenance</td>
+              <td>Component electrical meaning</td>
+            </tr>
+            <tr>
+              <td><code>SymbolPin</code></td>
+              <td>Anchor position, orientation, visible name/number</td>
+              <td><code>PinDefId</code> when attached to a component definition</td>
+              <td>Concrete pin connectivity</td>
+            </tr>
+            <tr>
+              <td><code>SymbolInstance</code></td>
+              <td>Position, rotation, mirror, field positions</td>
+              <td><code>ComponentId</code> or future module instance entity</td>
+              <td>Logical component data</td>
+            </tr>
+            <tr>
+              <td><code>WireRun</code></td>
+              <td>Polyline geometry on a sheet</td>
+              <td><code>NetId</code></td>
+              <td>Pin-to-net membership</td>
+            </tr>
+            <tr>
+              <td><code>Label</code></td>
+              <td>Displayed text and placement</td>
+              <td><code>NetId</code> or schematic object</td>
+              <td>Net naming authority</td>
+            </tr>
+            <tr>
+              <td><code>NoConnectMarker</code></td>
+              <td>Visual marker location</td>
+              <td>Kernel-owned no-connect assertion once it exists</td>
+              <td>Board intent by itself</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <aside>Key decisions</aside>
+      <div class="stack">
+        <div class="decision">
+          <span class="badge core">Decision 1</span>
+          <div class="stack">
+            <h3>Use structured vector primitives as the canonical symbol format.</h3>
+            <p>
+              Do not store raw SVG as the source of truth. Store lines, rectangles,
+              circles, arcs, text, and pin anchors in the kernel. SVG is a renderer output.
+            </p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <span class="badge core">Decision 2</span>
+          <div class="stack">
+            <h3>Keep KiCad as an adapter, not the internal model.</h3>
+            <p>
+              KiCad import/export is valuable, but Volt's schematic model should be small,
+              deterministic, and kernel-owned. KiCad libraries translate into Volt
+              component, symbol, and physical part structures.
+            </p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <span class="badge core">Decision 3</span>
+          <div class="stack">
+            <h3>Let Python feel like Schemdraw without becoming the model.</h3>
+            <p>
+              Python can expose fluent placement and drawing helpers, but every meaningful
+              operation must lower into C++ schematic projection data or logical circuit
+              mutations.
+            </p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <span class="badge risk">Decision 4</span>
+          <div class="stack">
+            <h3>Defer auto-layout until explicit placement works.</h3>
+            <p>
+              Auto-layout is tempting and expensive. Start with deterministic explicit
+              placement, then add helper defaults, then consider layout engines after the
+              renderer proves the model.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Library model</aside>
+      <div class="two">
+        <div class="card">
+          <h3>Canonical split</h3>
+          <ul>
+            <li><code>ComponentDefinition</code>: logical pins and electrical semantics.</li>
+            <li><code>SymbolDefinition</code>: schematic drawing and pin presentation.</li>
+            <li><code>PhysicalPart</code>: manufacturer, package, footprint, pin-pad mapping.</li>
+            <li><code>LibrarySource</code>: provenance, such as KiCad symbol library import.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Import/export direction</h3>
+          <ul>
+            <li>Import KiCad symbols into Volt symbol definitions.</li>
+            <li>Import KiCad footprint refs into selected physical part data.</li>
+            <li>Export Volt schematics to SVG first, KiCad later.</li>
+            <li>Do not require KiCad libraries for the first working schematic.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Python shape</aside>
+      <div class="stack">
+        <p>
+          The first Python API should be compact and explicit. It should feel natural for
+          code-authored schematics while making the ownership boundary obvious.
+        </p>
+        <pre><code>d = volt.Design("front_end")
+
+r1 = d.R(resistance=10_000, ref="R1")
+c1 = d.C(capacitance=100e-9, ref="C1")
+vin = d.net("VIN", kind="power", voltage=3.3)
+out = d.net("OUT")
+
+vin += r1[1]
+out += r1[2], c1[1]
+
+sch = d.schematic("main")
+
+r1s = sch.place(r1, at=(40, 20), symbol="resistor_eu")
+c1s = sch.place(c1, at=(70, 20), rotate=90)
+
+sch.wire(vin, path=[(10, 20), r1s.pin(1)])
+sch.wire(out, path=[r1s.pin(2), c1s.pin(1)])
+sch.label(vin, "VIN", at=(10, 20))
+sch.render_svg("front_end.svg")</code></pre>
+        <div class="callout warning">
+          If <code>sch.wire()</code> is asked to connect two pins that are not already on
+          the same logical net, it must either reject the operation or explicitly perform
+          the logical circuit connection first. Silent schematic-only connectivity is not
+          allowed.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Work packages</aside>
+      <div class="stack">
+        <div class="decision">
+          <span class="badge core">PR 1</span>
+          <div>
+            <h3>Schematic vocabulary design</h3>
+            <p>
+              Lock names, ownership, references, coordinate units, symbol primitive set,
+              and serialization boundaries in a design document before implementation.
+            </p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <span class="badge core">PR 2</span>
+          <div>
+            <h3>Kernel IDs and schematic primitives</h3>
+            <p>
+              Add typed IDs, geometry/value types, symbol vector primitives, and basic
+              storage tables. No renderer yet.
+            </p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <span class="badge core">PR 3</span>
+          <div>
+            <h3>Symbol definition model</h3>
+            <p>
+              Add symbol definitions, symbol pins, pin anchors, and fixture tests for
+              common two-pin symbols.
+            </p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <span class="badge core">PR 4</span>
+          <div>
+            <h3>Sheet and symbol instance model</h3>
+            <p>
+              Place symbol instances on sheets and reference logical component instances.
+              Add consistency checks for missing or wrong references.
+            </p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <span class="badge core">PR 5</span>
+          <div>
+            <h3>Schematic JSON</h3>
+            <p>
+              Persist and round-trip schematic projection data separately from logical
+              circuit JSON or as an explicitly named projection section.
+            </p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <span class="badge later">PR 6</span>
+          <div>
+            <h3>Python placement API</h3>
+            <p>
+              Add <code>d.schematic()</code>, <code>sch.place()</code>, symbol lookup,
+              and read-only handles over kernel schematic objects.
+            </p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <span class="badge later">PR 7</span>
+          <div>
+            <h3>SVG renderer</h3>
+            <p>
+              Render placed symbols, text, simple wires, labels, and basic page geometry
+              to deterministic SVG.
+            </p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <span class="badge later">PR 8</span>
+          <div>
+            <h3>Wire and label projection</h3>
+            <p>
+              Add wire runs and labels referencing existing <code>NetId</code>s. Validate
+              that visual connectivity does not contradict the logical circuit.
+            </p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <span class="badge later">PR 9</span>
+          <div>
+            <h3>KiCad adapter design</h3>
+            <p>
+              Map KiCad symbols and schematics into Volt structures after the canonical
+              model is proven by SVG output and Python authoring.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Out of scope now</aside>
+      <div class="grid">
+        <div class="card">
+          <h3>No full KiCad clone</h3>
+          <p>
+            KiCad compatibility is an adapter track. The first schematic model should not
+            inherit KiCad's full connection-graph complexity.
+          </p>
+        </div>
+        <div class="card">
+          <h3>No automatic layout</h3>
+          <p>
+            Explicit placement first. Automatic layout can come later when the model and
+            renderer are stable.
+          </p>
+        </div>
+        <div class="card">
+          <h3>No ERC expansion</h3>
+          <p>
+            Schematic readiness diagnostics are allowed. Broader electrical-rule work
+            stays in the validation track.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Acceptance</aside>
+      <div class="stack">
+        <table>
+          <thead>
+            <tr>
+              <th>Milestone</th>
+              <th>Evidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Kernel model exists</td>
+              <td>Tests can create sheets, symbol definitions, and symbol instances referencing logical components.</td>
+            </tr>
+            <tr>
+              <td>Projection does not own connectivity</td>
+              <td>Wire runs reference existing <code>NetId</code>s and cannot create hidden pin-to-net membership.</td>
+            </tr>
+            <tr>
+              <td>Python is ergonomic</td>
+              <td>A small circuit can place symbols and wires with concise Python syntax.</td>
+            </tr>
+            <tr>
+              <td>Renderer works</td>
+              <td>A deterministic SVG shows placed components, visible pins, labels, and wire runs.</td>
+            </tr>
+            <tr>
+              <td>Adapters are cleanly separated</td>
+              <td>KiCad code depends on Volt schematic structures, not the other way around.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      This page intentionally plans the schematic foundation before Python drawing sugar
+      or KiCad interoperability. The goal is a useful schematic layer that remains faithful
+      to Volt's kernel-owned EDA semantics.
+    </footer>
+  </main>
+</body>
+</html>

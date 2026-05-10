@@ -105,11 +105,12 @@ In short:
 Minimal primitives, progressive disclosure, kernel-owned meaning.
 ```
 
-## Deferred Projection Layers
+## Projection Layers
 
-Schematics and PCB design are planned projection layers, not current implementation
-targets. They should be designed when the logical circuit generation, serialization,
-validation, and Python logical-authoring foundation are stable.
+Schematics and PCB design are projection layers. Schematics now have an initial kernel
+model; PCB remains a planned projection layer. Each projection should be designed after
+the logical circuit generation, serialization, validation, and Python logical-authoring
+foundation is stable enough to support it.
 
 Projection-layer workflow is kernel-first:
 
@@ -133,8 +134,10 @@ The current thinking is:
   missing symbol for a component, an unrouted net, or visual geometry that references the
   wrong logical net.
 
-Detailed schematic objects, wire graphs, drawing algorithms, and PCB geometry are
-intentionally deferred.
+Detailed wire graphs, drawing algorithms, renderers, and PCB geometry are intentionally
+deferred. The first schematic implementation starts with kernel-owned presentation data:
+typed schematic IDs, structured symbol geometry, sheets, and symbol instances that
+reference logical component instances.
 
 ## Initial Layers
 
@@ -150,7 +153,7 @@ volt-authoring
   over volt-circuit
 
 volt-schematic
-  planned projection data and consistency checks over canonical nets; deferred
+  schematic projection data over logical components and canonical nets
 
 volt-io
   deterministic save/load formats; the first logical circuit format is specified in
@@ -172,6 +175,9 @@ Volt::Circuit
 Volt::Authoring
   component library, reference allocation, and ergonomic connection helpers;
   depends on Volt::Circuit
+
+Volt::Schematic
+  schematic projection model; depends on Volt::Circuit
 
 Volt::IO
   deterministic logical circuit persistence; depends on Volt::Circuit and owns JSON
@@ -198,8 +204,7 @@ The first logical-kernel IDs are deliberately narrow:
 - `PinId`
 - `NetId`
 
-Schematic IDs such as page, symbol, and wire IDs are intentionally deferred until the
-schematic view layer exists.
+Schematic projection entities use their own typed IDs, separate from logical circuit IDs.
 
 ## Entity Storage
 

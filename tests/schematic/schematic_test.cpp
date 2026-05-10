@@ -1,0 +1,151 @@
+#include <catch2/catch_test_macros.hpp>
+
+#include <limits>
+#include <stdexcept>
+#include <variant>
+#include <vector>
+
+#include <volt/circuit/circuit.hpp>
+#include <volt/circuit/definitions.hpp>
+#include <volt/circuit/instances.hpp>
+#include <volt/schematic/schematic.hpp>
+#include <volt/schematic/symbols.hpp>
+
+namespace {
+
+volt::ComponentId add_resistor(volt::Circuit &circuit) {
+    const auto first_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto second_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    return circuit.instantiate_component(definition, volt::ReferenceDesignator{"R1"});
+}
+
+volt::SymbolDefinition make_resistor_symbol() {
+    auto symbol = volt::SymbolDefinition{"Resistor"};
+    symbol.add_pin(
+        volt::SymbolPin{"1", "1", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left});
+    symbol.add_pin(
+        volt::SymbolPin{"2", "2", volt::Point{20.0, 0.0}, volt::SchematicOrientation::Right});
+    symbol.add_primitive(volt::SymbolLine{volt::Point{0.0, 0.0}, volt::Point{20.0, 0.0}});
+    return symbol;
+}
+
+} // namespace
+
+TEST_CASE("Symbol definitions store structured drawing primitives and pins") {
+    const auto symbol = make_resistor_symbol();
+
+    CHECK(symbol.name() == "Resistor");
+    REQUIRE(symbol.pins().size() == 2);
+    CHECK(symbol.pins().front().name() == "1");
+    CHECK(symbol.pins().front().number() == "1");
+    CHECK(symbol.pins().front().anchor() == volt::Point{0.0, 0.0});
+    CHECK(symbol.pins().front().orientation() == volt::SchematicOrientation::Left);
+
+    REQUIRE(symbol.primitives().size() == 1);
+    REQUIRE(std::holds_alternative<volt::SymbolLine>(symbol.primitives().front()));
+    const auto &line = std::get<volt::SymbolLine>(symbol.primitives().front());
+    CHECK(line.start() == volt::Point{0.0, 0.0});
+    CHECK(line.end() == volt::Point{20.0, 0.0});
+}
+
+TEST_CASE("Symbol primitives store basic vector geometry") {
+    const auto rectangle = volt::SymbolRectangle{volt::Point{0.0, -5.0}, volt::Point{10.0, 5.0}};
+    CHECK(rectangle.first_corner() == volt::Point{0.0, -5.0});
+    CHECK(rectangle.second_corner() == volt::Point{10.0, 5.0});
+
+    const auto circle = volt::SymbolCircle{volt::Point{4.0, 2.0}, 3.0};
+    CHECK(circle.center() == volt::Point{4.0, 2.0});
+    CHECK(circle.radius() == 3.0);
+
+    const auto arc = volt::SymbolArc{volt::Point{2.0, 2.0}, 4.0, 90.0, 180.0};
+    CHECK(arc.center() == volt::Point{2.0, 2.0});
+    CHECK(arc.radius() == 4.0);
+    CHECK(arc.start_degrees() == 90.0);
+    CHECK(arc.sweep_degrees() == 180.0);
+
+    const auto text = volt::SymbolText{"U?", volt::Point{0.0, 12.0}};
+    CHECK(text.text() == "U?");
+    CHECK(text.anchor() == volt::Point{0.0, 12.0});
+    CHECK(text.orientation() == volt::SchematicOrientation::Right);
+}
+
+TEST_CASE("Schematic stores sheets and symbol instances over logical components") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0},
+                                    volt::SchematicOrientation::Right});
+
+    CHECK(sheet == volt::SheetId{0});
+    CHECK(symbol == volt::SymbolDefId{0});
+    CHECK(instance == volt::SymbolInstanceId{0});
+    CHECK(schematic.sheet_count() == 1);
+    CHECK(schematic.symbol_definition_count() == 1);
+    CHECK(schematic.symbol_instance_count() == 1);
+    CHECK(schematic.symbol_instance(instance).component() == component);
+    CHECK(schematic.symbol_instance(instance).symbol_definition() == symbol);
+    CHECK(schematic.symbol_instance(instance).position() == volt::Point{40.0, 20.0});
+    CHECK(schematic.sheet(sheet).symbol_instances() == std::vector{instance});
+    CHECK(circuit.net_count() == 0);
+}
+
+TEST_CASE("Schematic rejects empty presentation names") {
+    CHECK_THROWS_AS(volt::SymbolDefinition{""}, std::invalid_argument);
+    CHECK_THROWS_AS(volt::Sheet{""}, std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::SymbolPin{"", "1", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::SymbolPin{"A", "", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left}),
+        std::invalid_argument);
+}
+
+TEST_CASE("Symbol definitions reject duplicate pin numbers") {
+    auto symbol = volt::SymbolDefinition{"Connector"};
+    symbol.add_pin(
+        volt::SymbolPin{"A", "1", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left});
+
+    CHECK_THROWS_AS(symbol.add_pin(volt::SymbolPin{"B", "1", volt::Point{10.0, 0.0},
+                                                   volt::SchematicOrientation::Right}),
+                    std::logic_error);
+}
+
+TEST_CASE("Schematic rejects symbol placements with missing references") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+
+    CHECK_THROWS_AS(
+        schematic.place_symbol(volt::SheetId{99},
+                               volt::SymbolInstance{symbol, component, volt::Point{0.0, 0.0}}),
+        std::out_of_range);
+    CHECK_THROWS_AS(
+        schematic.place_symbol(
+            sheet, volt::SymbolInstance{volt::SymbolDefId{99}, component, volt::Point{0.0, 0.0}}),
+        std::out_of_range);
+    CHECK_THROWS_AS(
+        schematic.place_symbol(
+            sheet, volt::SymbolInstance{symbol, volt::ComponentId{99}, volt::Point{0.0, 0.0}}),
+        std::out_of_range);
+}
+
+TEST_CASE("Schematic geometry rejects non-finite coordinates") {
+    CHECK_THROWS_AS(volt::Point(0.0, std::numeric_limits<double>::infinity()),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::SymbolCircle(volt::Point{0.0, 0.0}, -1.0), std::invalid_argument);
+    CHECK_THROWS_AS(
+        volt::SymbolArc(volt::Point{0.0, 0.0}, 1.0, std::numeric_limits<double>::infinity(), 90.0),
+        std::invalid_argument);
+    CHECK_THROWS_AS(volt::SymbolText("", volt::Point{0.0, 0.0}), std::invalid_argument);
+}
