@@ -953,6 +953,34 @@ class PyCircuit {
             .index();
     }
 
+    [[nodiscard]] std::size_t
+    add_schematic_wire(std::size_t sheet, std::size_t net,
+                       const std::vector<std::pair<double, double>> &points) {
+        auto wire_points = std::vector<volt::Point>{};
+        wire_points.reserve(points.size());
+        for (const auto &[x, y] : points) {
+            require_finite(x, "Schematic coordinates must be finite");
+            require_finite(y, "Schematic coordinates must be finite");
+            wire_points.emplace_back(x, y);
+        }
+
+        auto &projection = schematic_projection();
+        return projection
+            .add_wire_run(sheet_id(sheet), volt::WireRun{net_id(net), std::move(wire_points)})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t add_schematic_net_label(std::size_t sheet, std::size_t net, double x,
+                                                      double y) {
+        require_finite(x, "Schematic coordinates must be finite");
+        require_finite(y, "Schematic coordinates must be finite");
+
+        auto &projection = schematic_projection();
+        return projection
+            .add_net_label(sheet_id(sheet), volt::NetLabel{net_id(net), volt::Point{x, y}})
+            .index();
+    }
+
     [[nodiscard]] std::string schematic_to_json() {
         auto out = std::ostringstream{};
         volt::io::write_schematic(out, schematic_projection());
@@ -1069,6 +1097,10 @@ PYBIND11_MODULE(_volt, module) {
         .def("schematic_sheet", &PyCircuit::schematic_sheet, py::arg("name"))
         .def("place_schematic_symbol", &PyCircuit::place_schematic_symbol, py::arg("sheet"),
              py::arg("component"), py::arg("symbol"), py::arg("x"), py::arg("y"))
+        .def("add_schematic_wire", &PyCircuit::add_schematic_wire, py::arg("sheet"), py::arg("net"),
+             py::arg("points"))
+        .def("add_schematic_net_label", &PyCircuit::add_schematic_net_label, py::arg("sheet"),
+             py::arg("net"), py::arg("x"), py::arg("y"))
         .def("schematic_to_json", &PyCircuit::schematic_to_json)
         .def("schematic_to_svg", &PyCircuit::schematic_to_svg)
         .def("validate", &PyCircuit::validate)

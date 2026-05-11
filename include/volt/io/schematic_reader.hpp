@@ -38,7 +38,11 @@ class SchematicReader {
         read_symbol_definitions();
         read_sheets();
         read_symbol_instances();
+        read_wire_runs();
+        read_net_labels();
         require_sheet_instance_lists_match();
+        require_sheet_wire_run_lists_match();
+        require_sheet_net_label_lists_match();
 
         return std::move(schematic_);
     }
@@ -76,6 +80,18 @@ class SchematicReader {
         const auto &value = field(object, name);
         require(value.is_array(), std::string{"Expected array field: "} + name);
         return value;
+    }
+
+    static const nlohmann::json &optional_array_field(const nlohmann::json &object,
+                                                      const char *name) {
+        require(object.is_object(), "Expected object while reading schematic");
+        const auto it = object.find(name);
+        if (it == object.end()) {
+            static const auto empty = nlohmann::json::array();
+            return empty;
+        }
+        require(it->is_array(), std::string{"Expected array field: "} + name);
+        return *it;
     }
 
     static void require_format(const nlohmann::json &object) {
@@ -146,6 +162,23 @@ class SchematicReader {
         return component;
     }
 
+    [[nodiscard]] NetId net_id(const std::string &id) const {
+        const auto net = NetId{local_index(id, "net:")};
+        require(net.index() < circuit_.net_count(),
+                "Net reference points to a missing logical net: " + id);
+        return net;
+    }
+
+    [[nodiscard]] static std::vector<Point> point_list(const nlohmann::json &array) {
+        require(array.is_array(), "Schematic wire points must be an array");
+        auto points = std::vector<Point>{};
+        points.reserve(array.size());
+        for (const auto &point_object : array) {
+            points.push_back(point(point_object));
+        }
+        return points;
+    }
+
     [[nodiscard]] static SymbolPrimitive primitive(const nlohmann::json &object) {
         require(object.is_object(), "Symbol primitive must be an object");
         const auto type = string_field(object, "type");
@@ -201,6 +234,18 @@ class SchematicReader {
                 instances.push_back(instance.get<std::string>());
             }
             expected_sheet_instances_.emplace_back(sheet, std::move(instances));
+            auto wire_runs = std::vector<std::string>{};
+            for (const auto &wire : optional_array_field(sheet_object, "wire_runs")) {
+                require(wire.is_string(), "Sheet wire run reference must be a string");
+                wire_runs.push_back(wire.get<std::string>());
+            }
+            expected_sheet_wire_runs_.emplace_back(sheet, std::move(wire_runs));
+            auto net_labels = std::vector<std::string>{};
+            for (const auto &label : optional_array_field(sheet_object, "net_labels")) {
+                require(label.is_string(), "Sheet net label reference must be a string");
+                net_labels.push_back(label.get<std::string>());
+            }
+            expected_sheet_net_labels_.emplace_back(sheet, std::move(net_labels));
         }
     }
 
@@ -219,6 +264,31 @@ class SchematicReader {
         }
     }
 
+    void read_wire_runs() {
+        auto seen = std::set<std::string>{};
+        for (const auto &wire_object : optional_array_field(document_, "wire_runs")) {
+            const auto id = local_id(wire_object, "wire_run:", seen);
+            const auto sheet = resolve(sheet_ids_, string_field(wire_object, "sheet"));
+            const auto net = net_id(string_field(wire_object, "net"));
+            const auto wire = schematic_.add_wire_run(
+                sheet, WireRun{net, point_list(field(wire_object, "points"))});
+            wire_run_ids_.emplace(id, wire);
+        }
+    }
+
+    void read_net_labels() {
+        auto seen = std::set<std::string>{};
+        for (const auto &label_object : optional_array_field(document_, "net_labels")) {
+            const auto id = local_id(label_object, "net_label:", seen);
+            const auto sheet = resolve(sheet_ids_, string_field(label_object, "sheet"));
+            const auto net = net_id(string_field(label_object, "net"));
+            const auto label = schematic_.add_net_label(
+                sheet, NetLabel{net, point(field(label_object, "position")),
+                                orientation(string_field(label_object, "orientation"))});
+            net_label_ids_.emplace(id, label);
+        }
+    }
+
     void require_sheet_instance_lists_match() const {
         for (const auto &[sheet, expected_ids] : expected_sheet_instances_) {
             auto expected = std::vector<SymbolInstanceId>{};
@@ -231,13 +301,41 @@ class SchematicReader {
         }
     }
 
+    void require_sheet_wire_run_lists_match() const {
+        for (const auto &[sheet, expected_ids] : expected_sheet_wire_runs_) {
+            auto expected = std::vector<WireRunId>{};
+            expected.reserve(expected_ids.size());
+            for (const auto &id : expected_ids) {
+                expected.push_back(resolve(wire_run_ids_, id));
+            }
+            require(schematic_.sheet(sheet).wire_runs() == expected,
+                    "Sheet wire run list does not match placed wires");
+        }
+    }
+
+    void require_sheet_net_label_lists_match() const {
+        for (const auto &[sheet, expected_ids] : expected_sheet_net_labels_) {
+            auto expected = std::vector<NetLabelId>{};
+            expected.reserve(expected_ids.size());
+            for (const auto &id : expected_ids) {
+                expected.push_back(resolve(net_label_ids_, id));
+            }
+            require(schematic_.sheet(sheet).net_labels() == expected,
+                    "Sheet net label list does not match placed labels");
+        }
+    }
+
     const nlohmann::json &document_;
     const Circuit &circuit_;
     Schematic schematic_;
     std::map<std::string, SymbolDefId> symbol_def_ids_;
     std::map<std::string, SheetId> sheet_ids_;
     std::map<std::string, SymbolInstanceId> symbol_instance_ids_;
+    std::map<std::string, WireRunId> wire_run_ids_;
+    std::map<std::string, NetLabelId> net_label_ids_;
     std::vector<std::pair<SheetId, std::vector<std::string>>> expected_sheet_instances_;
+    std::vector<std::pair<SheetId, std::vector<std::string>>> expected_sheet_wire_runs_;
+    std::vector<std::pair<SheetId, std::vector<std::string>>> expected_sheet_net_labels_;
 };
 
 } // namespace detail

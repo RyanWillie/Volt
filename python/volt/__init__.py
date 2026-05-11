@@ -523,6 +523,36 @@ class SchematicSymbol:
         return f"SchematicSymbol(index={self._index})"
 
 
+class SchematicWire:
+    """Read-only handle to a schematic wire run projection."""
+
+    def __init__(self, schematic: Schematic, index: int):
+        self._schematic = schematic
+        self._index = index
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def __repr__(self) -> str:
+        return f"SchematicWire(index={self._index})"
+
+
+class SchematicNetLabel:
+    """Read-only handle to a schematic net label projection."""
+
+    def __init__(self, schematic: Schematic, index: int):
+        self._schematic = schematic
+        self._index = index
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def __repr__(self) -> str:
+        return f"SchematicNetLabel(index={self._index})"
+
+
 class Schematic:
     """Handle to kernel-owned schematic projection data for one sheet."""
 
@@ -553,6 +583,40 @@ class Schematic:
             self._sheet_index, component.index, symbol, x, y
         )
         return SchematicSymbol(self, instance)
+
+    def wire(self, net: Net, points: Iterable[tuple[float, float]]) -> SchematicWire:
+        if not isinstance(net, Net):
+            raise TypeError("Schematic wires expect a Net handle")
+        if net._design is not self._design:
+            raise ValueError("Net belongs to a different design")
+
+        wire_points = tuple(points)
+        if len(wire_points) < 2:
+            raise ValueError("Schematic wires need at least two points")
+
+        converted = []
+        for point in wire_points:
+            if not isinstance(point, (tuple, list)) or len(point) != 2:
+                raise TypeError("Schematic wire points must be (x, y) pairs")
+            converted.append((_coordinate(point[0]), _coordinate(point[1])))
+
+        wire = self._design._circuit.add_schematic_wire(
+            self._sheet_index, net.index, converted
+        )
+        return SchematicWire(self, wire)
+
+    def label(self, net: Net, *, at: tuple[float, float]) -> SchematicNetLabel:
+        if not isinstance(net, Net):
+            raise TypeError("Schematic labels expect a Net handle")
+        if net._design is not self._design:
+            raise ValueError("Net belongs to a different design")
+        if not isinstance(at, tuple) or len(at) != 2:
+            raise TypeError("at must be an (x, y) tuple")
+
+        label = self._design._circuit.add_schematic_net_label(
+            self._sheet_index, net.index, _coordinate(at[0]), _coordinate(at[1])
+        )
+        return SchematicNetLabel(self, label)
 
     def to_json(self) -> str:
         return self._design._circuit.schematic_to_json()

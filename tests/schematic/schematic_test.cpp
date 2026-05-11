@@ -23,6 +23,10 @@ volt::ComponentId add_resistor(volt::Circuit &circuit) {
     return circuit.instantiate_component(definition, volt::ReferenceDesignator{"R1"});
 }
 
+volt::NetId add_net(volt::Circuit &circuit) {
+    return circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+}
+
 volt::SymbolDefinition make_resistor_symbol() {
     auto symbol = volt::SymbolDefinition{"Resistor"};
     symbol.add_pin(
@@ -98,6 +102,31 @@ TEST_CASE("Schematic stores sheets and symbol instances over logical components"
     CHECK(circuit.net_count() == 0);
 }
 
+TEST_CASE("Schematic stores wire runs and labels over canonical logical nets") {
+    volt::Circuit circuit;
+    const auto net = add_net(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{10.0, 20.0}, volt::Point{40.0, 20.0}}});
+    const auto label = schematic.add_net_label(
+        sheet, volt::NetLabel{net, volt::Point{12.0, 16.0}, volt::SchematicOrientation::Right});
+
+    CHECK(wire == volt::WireRunId{0});
+    CHECK(label == volt::NetLabelId{0});
+    CHECK(schematic.wire_run_count() == 1);
+    CHECK(schematic.net_label_count() == 1);
+    CHECK(schematic.sheet(sheet).wire_runs() == std::vector{wire});
+    CHECK(schematic.sheet(sheet).net_labels() == std::vector{label});
+    CHECK(schematic.wire_run(wire).net() == net);
+    CHECK(schematic.wire_run(wire).points() ==
+          std::vector{volt::Point{10.0, 20.0}, volt::Point{40.0, 20.0}});
+    CHECK(schematic.net_label(label).net() == net);
+    CHECK(schematic.net_label(label).position() == volt::Point{12.0, 16.0});
+    CHECK(schematic.net_label(label).orientation() == volt::SchematicOrientation::Right);
+}
+
 TEST_CASE("Schematic rejects empty presentation names") {
     CHECK_THROWS_AS(volt::SymbolDefinition{""}, std::invalid_argument);
     CHECK_THROWS_AS(volt::Sheet{""}, std::invalid_argument);
@@ -139,6 +168,52 @@ TEST_CASE("Schematic rejects symbol placements with missing references") {
         schematic.place_symbol(
             sheet, volt::SymbolInstance{symbol, volt::ComponentId{99}, volt::Point{0.0, 0.0}}),
         std::out_of_range);
+}
+
+TEST_CASE("Schematic rejects wire and label projections with missing references") {
+    volt::Circuit circuit;
+    const auto net = add_net(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+
+    CHECK_THROWS_AS(schematic.add_wire_run(volt::SheetId{99},
+                                           volt::WireRun{net, std::vector{volt::Point{0.0, 0.0},
+                                                                          volt::Point{10.0, 0.0}}}),
+                    std::out_of_range);
+    CHECK_THROWS_AS(schematic.add_wire_run(
+                        sheet, volt::WireRun{volt::NetId{99}, std::vector{volt::Point{0.0, 0.0},
+                                                                          volt::Point{10.0, 0.0}}}),
+                    std::out_of_range);
+    CHECK_THROWS_AS(
+        schematic.add_net_label(sheet, volt::NetLabel{volt::NetId{99}, volt::Point{0.0, 0.0}}),
+        std::out_of_range);
+    CHECK_THROWS_AS((volt::WireRun{net, std::vector{volt::Point{0.0, 0.0}}}),
+                    std::invalid_argument);
+}
+
+TEST_CASE("Schematic rejects wire runs that visually join different logical nets") {
+    volt::Circuit circuit;
+    const auto vcc = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    [[maybe_unused]] const auto first = schematic.add_wire_run(
+        sheet, volt::WireRun{vcc, std::vector{volt::Point{0.0, 0.0}, volt::Point{10.0, 0.0}}});
+
+    CHECK_THROWS_AS(
+        schematic.add_wire_run(
+            sheet, volt::WireRun{gnd, std::vector{volt::Point{10.0, 0.0}, volt::Point{20.0, 0.0}}}),
+        std::logic_error);
+    CHECK_THROWS_AS(
+        schematic.add_wire_run(
+            sheet, volt::WireRun{gnd, std::vector{volt::Point{5.0, -5.0}, volt::Point{5.0, 5.0}}}),
+        std::logic_error);
+    CHECK_THROWS_AS(
+        schematic.add_wire_run(
+            sheet, volt::WireRun{gnd, std::vector{volt::Point{5.0, 0.0}, volt::Point{15.0, 0.0}}}),
+        std::logic_error);
 }
 
 TEST_CASE("Schematic geometry rejects non-finite coordinates") {

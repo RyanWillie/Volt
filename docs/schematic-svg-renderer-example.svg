@@ -1,8 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 297 210" width="297" height="210">
-  <style>.sheet{fill:#fff;stroke:#c7c7c7;stroke-width:0.5}.sheet-title{font:6px sans-serif;fill:#333}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:1.2}.symbol-text,.reference,.pin-label{font:5px sans-serif;fill:#111;text-anchor:middle}.pin-anchor{fill:#fff;stroke:#111;stroke-width:0.8}</style>
+  <style>.sheet{fill:#fff;stroke:#c7c7c7;stroke-width:0.5}.sheet-title{font:6px sans-serif;fill:#333}.wire-run{fill:none;stroke:#111;stroke-width:1.2}.net-label{font:5px sans-serif;fill:#0645ad;text-anchor:start}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:1.2}.symbol-text,.reference,.pin-label{font:5px sans-serif;fill:#111;text-anchor:middle}.pin-anchor{fill:#fff;stroke:#111;stroke-width:0.8}</style>
   <g class="schematic-sheet" data-sheet="sheet:0" transform="translate(0 0)">
     <rect class="sheet" x="0" y="0" width="297" height="210"/>
     <text class="sheet-title" x="10" y="16">LED example</text>
+    <polyline class="wire-run" data-net="net:0" points="28,50 20,50 20,35 88,35 88,50"/>
+    <polyline class="wire-run" data-net="net:1" points="108,50 108,35 168,35 168,50"/>
+    <polyline class="wire-run" data-net="net:2" points="48,50 48,70 148,70 148,50"/>
     <g class="symbol-instance" data-component="component:0" data-symbol-definition="symbol_def:0" transform="translate(28 50) rotate(0)">
       <text class="reference" x="0" y="-12">J1</text>
       <rect class="symbol-rectangle" x="6" y="-7" width="8" height="14"/>
@@ -40,5 +43,8 @@
       <circle class="pin-anchor" cx="20" cy="0" r="1.5"/>
       <text class="pin-label" x="20" y="4">A</text>
     </g>
+    <text class="net-label" data-net="net:0" x="48" y="31" transform="rotate(0 48 31)">VCC</text>
+    <text class="net-label" data-net="net:1" x="126" y="31" transform="rotate(0 126 31)">LED_A</text>
+    <text class="net-label" data-net="net:2" x="70" y="66" transform="rotate(0 70 66)">GND</text>
   </g>
 </svg>

@@ -37,6 +37,14 @@ namespace detail {
     return "symbol_instance:" + std::to_string(id.index());
 }
 
+[[nodiscard]] inline std::string wire_run_id(WireRunId id) {
+    return "wire_run:" + std::to_string(id.index());
+}
+
+[[nodiscard]] inline std::string net_label_id(NetLabelId id) {
+    return "net_label:" + std::to_string(id.index());
+}
+
 [[nodiscard]] inline std::string schematic_orientation_name(SchematicOrientation orientation) {
     switch (orientation) {
     case SchematicOrientation::Right:
@@ -120,6 +128,28 @@ inline void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &pri
     throw std::logic_error{"Symbol instance is not placed on a schematic sheet"};
 }
 
+[[nodiscard]] inline SheetId sheet_for_wire_run(const Schematic &schematic, WireRunId wire) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+        const auto sheet = SheetId{sheet_index};
+        const auto &wires = schematic.sheet(sheet).wire_runs();
+        if (std::find(wires.begin(), wires.end(), wire) != wires.end()) {
+            return sheet;
+        }
+    }
+    throw std::logic_error{"Wire run is not placed on a schematic sheet"};
+}
+
+[[nodiscard]] inline SheetId sheet_for_net_label(const Schematic &schematic, NetLabelId label) {
+    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+        const auto sheet = SheetId{sheet_index};
+        const auto &labels = schematic.sheet(sheet).net_labels();
+        if (std::find(labels.begin(), labels.end(), label) != labels.end()) {
+            return sheet;
+        }
+    }
+    throw std::logic_error{"Net label is not placed on a schematic sheet"};
+}
+
 } // namespace detail
 
 /** Write a deterministic JSON representation of a schematic projection to an output stream. */
@@ -176,6 +206,20 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             out << detail::json_string(
                 detail::symbol_instance_id(sheet.symbol_instances()[instance_index]));
         }
+        out << "], \"wire_runs\": [";
+        for (std::size_t wire_index = 0; wire_index < sheet.wire_runs().size(); ++wire_index) {
+            if (wire_index != 0) {
+                out << ", ";
+            }
+            out << detail::json_string(detail::wire_run_id(sheet.wire_runs()[wire_index]));
+        }
+        out << "], \"net_labels\": [";
+        for (std::size_t label_index = 0; label_index < sheet.net_labels().size(); ++label_index) {
+            if (label_index != 0) {
+                out << ", ";
+            }
+            out << detail::json_string(detail::net_label_id(sheet.net_labels()[label_index]));
+        }
         out << "] }";
         if (index + 1 != schematic.sheet_count()) {
             out << ',';
@@ -202,6 +246,46 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << detail::json_string(detail::schematic_orientation_name(instance.orientation()))
             << " }";
         if (index + 1 != schematic.symbol_instance_count()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "  ],\n";
+
+    out << "  \"wire_runs\": [\n";
+    for (std::size_t index = 0; index < schematic.wire_run_count(); ++index) {
+        const auto id = WireRunId{index};
+        const auto &wire = schematic.wire_run(id);
+        out << "    { \"id\": " << detail::json_string(detail::wire_run_id(id)) << ", \"sheet\": "
+            << detail::json_string(detail::sheet_id(detail::sheet_for_wire_run(schematic, id)))
+            << ", \"net\": " << detail::json_string(detail::net_id(wire.net()))
+            << ", \"points\": [";
+        for (std::size_t point_index = 0; point_index < wire.points().size(); ++point_index) {
+            if (point_index != 0) {
+                out << ", ";
+            }
+            detail::write_point(out, wire.points()[point_index]);
+        }
+        out << "] }";
+        if (index + 1 != schematic.wire_run_count()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "  ],\n";
+
+    out << "  \"net_labels\": [\n";
+    for (std::size_t index = 0; index < schematic.net_label_count(); ++index) {
+        const auto id = NetLabelId{index};
+        const auto &label = schematic.net_label(id);
+        out << "    { \"id\": " << detail::json_string(detail::net_label_id(id)) << ", \"sheet\": "
+            << detail::json_string(detail::sheet_id(detail::sheet_for_net_label(schematic, id)))
+            << ", \"net\": " << detail::json_string(detail::net_id(label.net()))
+            << ", \"position\": ";
+        detail::write_point(out, label.position());
+        out << ", \"orientation\": "
+            << detail::json_string(detail::schematic_orientation_name(label.orientation())) << " }";
+        if (index + 1 != schematic.net_label_count()) {
             out << ',';
         }
         out << '\n';

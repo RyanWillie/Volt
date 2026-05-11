@@ -27,6 +27,7 @@ volt::ComponentId add_resistor(volt::Circuit &circuit) {
 TEST_CASE("Schematic JSON round-trips deterministically") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
     auto schematic = volt::Schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -39,6 +40,10 @@ TEST_CASE("Schematic JSON round-trips deterministically") {
     const auto symbol_id = schematic.add_symbol_definition(std::move(symbol));
     [[maybe_unused]] const auto instance = schematic.place_symbol(
         sheet, volt::SymbolInstance{symbol_id, component, volt::Point{40.0, 20.0}});
+    [[maybe_unused]] const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{20.0, 20.0}, volt::Point{40.0, 20.0}}});
+    [[maybe_unused]] const auto label =
+        schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{20.0, 16.0}});
 
     const auto output = volt::io::write_schematic(schematic);
     const auto loaded = volt::io::read_schematic_text(output, circuit);
