@@ -609,10 +609,19 @@ class PyCircuit {
     }
 
     [[nodiscard]] std::size_t define_component(const std::string &name, const py::list &pins,
-                                               const py::dict &properties) {
+                                               const py::dict &properties,
+                                               const std::string &source_namespace,
+                                               const std::string &source_name,
+                                               const std::string &source_version) {
+        auto source = std::optional<volt::DefinitionSource>{};
+        if (!source_namespace.empty() || !source_name.empty() || !source_version.empty()) {
+            source = volt::DefinitionSource{source_namespace, source_name, source_version};
+        }
+
         return volt::authoring::define_component(
-                   circuit_, volt::authoring::ComponentSpec{name, pin_specs_from_list(pins),
-                                                            properties_from_dict(properties)})
+                   circuit_,
+                   volt::authoring::ComponentSpec{name, pin_specs_from_list(pins),
+                                                  properties_from_dict(properties), source})
             .index();
     }
 
@@ -1045,7 +1054,8 @@ PYBIND11_MODULE(_volt, module) {
         .def("define_led", &PyCircuit::define_led)
         .def("define_connector_1x02", &PyCircuit::define_connector_1x02)
         .def("define_component", &PyCircuit::define_component, py::arg("name"), py::arg("pins"),
-             py::arg("properties") = py::dict{})
+             py::arg("properties") = py::dict{}, py::arg("source_namespace") = "",
+             py::arg("source_name") = "", py::arg("source_version") = "")
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
         .def("select_physical_part", &PyCircuit::select_physical_part, py::arg("component"),
              py::arg("manufacturer"), py::arg("part_number"), py::arg("package"),

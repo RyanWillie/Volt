@@ -149,6 +149,113 @@ class PinSpec:
         return result
 
 
+@dataclass(frozen=True)
+class PhysicalPartSpec:
+    """Reusable selected physical part data for library-authored components."""
+
+    manufacturer: str
+    part_number: str
+    package: str
+    footprint: tuple[str, str]
+    pin_pads: dict[int | str, str] | None = None
+    properties: dict | None = None
+    voltage_rating: float | None = None
+    power_rating: float | None = None
+    same_numbered_pads: bool = False
+
+    @classmethod
+    def same_numbered(
+        cls,
+        *,
+        manufacturer: str,
+        part_number: str,
+        package: str,
+        footprint: tuple[str, str],
+        properties: dict | None = None,
+        voltage_rating: float | None = None,
+        power_rating: float | None = None,
+    ) -> PhysicalPartSpec:
+        return cls(
+            manufacturer=manufacturer,
+            part_number=part_number,
+            package=package,
+            footprint=footprint,
+            properties=properties,
+            voltage_rating=voltage_rating,
+            power_rating=power_rating,
+            same_numbered_pads=True,
+        )
+
+    def pin_pads_for(self, component: LibraryComponent) -> dict[int | str, str]:
+        if self.same_numbered_pads:
+            return {pin.number: str(pin.number) for pin in component.pins}
+        if self.pin_pads is None:
+            raise ValueError("physical part requires pin_pads or same_numbered_pads")
+        return dict(self.pin_pads)
+
+
+@dataclass(frozen=True)
+class LibraryComponent:
+    """Reusable component entry owned by a Python library."""
+
+    library: Library
+    name: str
+    pins: tuple[PinSpec, ...]
+    properties: dict
+    source_name: str
+    source_version: str
+    physical_part: PhysicalPartSpec | None = None
+    prefix: str = "U"
+
+    @property
+    def cache_key(self) -> tuple[str, str, str]:
+        return (self.library.namespace, self.source_name, self.source_version)
+
+
+class Library:
+    """Collection of reusable Python-authored component definitions."""
+
+    def __init__(self, namespace: str, *, version: str = "1.0.0"):
+        if not namespace:
+            raise ValueError("Library namespace must not be empty")
+        if not version:
+            raise ValueError("Library version must not be empty")
+        self.namespace = namespace
+        self.version = version
+        self._components: dict[str, LibraryComponent] = {}
+
+    def component(
+        self,
+        name: str,
+        *,
+        pins: Iterable[PinSpec],
+        properties: dict | None = None,
+        source_name: str | None = None,
+        source_version: str | None = None,
+        physical_part: PhysicalPartSpec | None = None,
+        prefix: str = "U",
+    ) -> LibraryComponent:
+        if not name:
+            raise ValueError("Library component name must not be empty")
+        if not prefix:
+            raise ValueError("Library component prefix must not be empty")
+        component = LibraryComponent(
+            library=self,
+            name=name,
+            pins=tuple(pins),
+            properties=dict(properties or {}),
+            source_name=source_name or name,
+            source_version=source_version or self.version,
+            physical_part=physical_part,
+            prefix=prefix,
+        )
+        self._components[name] = component
+        return component
+
+    def __getitem__(self, name: str) -> LibraryComponent:
+        return self._components[name]
+
+
 class ComponentDefinition:
     """Handle to a kernel-owned reusable component definition."""
 
@@ -641,6 +748,7 @@ class Design:
         self.name = name
         self._circuit = _volt.Circuit()
         self._definitions: dict[str, int] = {}
+        self._library_definitions: dict[tuple[str, str, str], ComponentDefinition] = {}
         self._schematic_sheets: dict[str, int] = {}
 
     def net(self, name: str, *, kind: str = "signal", voltage: float | None = None) -> Net:
@@ -698,10 +806,27 @@ class Design:
         return component
 
     def define_component(
-        self, name: str, *, pins: Iterable[PinSpec], properties: dict | None = None
+        self,
+        name: str,
+        *,
+        pins: Iterable[PinSpec],
+        properties: dict | None = None,
+        source: tuple[str, str, str] | None = None,
     ) -> ComponentDefinition:
+        source_namespace = ""
+        source_name = ""
+        source_version = ""
+        if source is not None:
+            if not isinstance(source, tuple) or len(source) != 3:
+                raise TypeError("source must be a (namespace, name, version) tuple")
+            source_namespace, source_name, source_version = source
         definition = self._circuit.define_component(
-            name, [pin._to_dict() for pin in pins], properties or {}
+            name,
+            [pin._to_dict() for pin in pins],
+            properties or {},
+            source_namespace,
+            source_name,
+            source_version,
         )
         return ComponentDefinition(self, definition, name)
 
@@ -711,12 +836,34 @@ class Design:
 
     def instantiate(
         self,
-        definition: ComponentDefinition | ModuleDefinition,
+        definition: ComponentDefinition | ModuleDefinition | LibraryComponent,
         *,
         ref: str | None = None,
         prefix: str = "U",
         properties: dict | None = None,
     ) -> Component | ModuleInstance:
+        if isinstance(definition, LibraryComponent):
+            component_definition = self._define_library_component(definition)
+            component = self.instantiate(
+                component_definition,
+                ref=ref,
+                prefix=definition.prefix if prefix == "U" else prefix,
+                properties=properties,
+            )
+            if definition.physical_part is not None:
+                part = definition.physical_part
+                component.select_part(
+                    manufacturer=part.manufacturer,
+                    part_number=part.part_number,
+                    package=part.package,
+                    footprint=part.footprint,
+                    pin_pads=part.pin_pads_for(definition),
+                    properties=part.properties,
+                    voltage_rating=part.voltage_rating,
+                    power_rating=part.power_rating,
+                )
+            return component
+
         if isinstance(definition, ModuleDefinition):
             if definition._design is not self:
                 raise ValueError("Module definition belongs to a different design")
@@ -741,6 +888,20 @@ class Design:
         else:
             component = self._circuit.instantiate_ref(definition.index, ref, properties or {})
         return Component(self, component)
+
+    def _define_library_component(self, component: LibraryComponent) -> ComponentDefinition:
+        if component.cache_key not in self._library_definitions:
+            self._library_definitions[component.cache_key] = self.define_component(
+                component.name,
+                pins=component.pins,
+                properties=component.properties,
+                source=(
+                    component.library.namespace,
+                    component.source_name,
+                    component.source_version,
+                ),
+            )
+        return self._library_definitions[component.cache_key]
 
     def LED(self, *, ref: str | None = None) -> Component:
         return self._instantiate("led", self._circuit.define_led, "D", ref, {})
@@ -867,6 +1028,8 @@ __all__ = [
     "Diagnostic",
     "DiagnosticEntity",
     "DiagnosticReport",
+    "Library",
+    "LibraryComponent",
     "ModuleComponent",
     "ModuleComponentInfo",
     "ModuleComponentOriginInfo",
@@ -881,6 +1044,7 @@ __all__ = [
     "Net",
     "Pin",
     "PinSpec",
+    "PhysicalPartSpec",
     "PortBindingInfo",
     "PortInfo",
     "Schematic",
