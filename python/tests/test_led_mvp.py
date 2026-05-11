@@ -667,6 +667,13 @@ def test_python_schematic_writes_svg_projection():
         assert path.read_text(encoding="utf-8") == svg
 
 
+def test_python_schematic_handles_are_publicly_exported():
+    assert "Schematic" in volt.__all__
+    assert "SchematicSymbol" in volt.__all__
+    assert "SchematicWire" in volt.__all__
+    assert "SchematicNetLabel" in volt.__all__
+
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")
@@ -696,4 +703,5 @@ if __name__ == "__main__":
     test_module_authoring_exposes_hierarchy_inspection_views()
     test_python_schematic_placement_serializes_kernel_projection()
     test_python_schematic_writes_svg_projection()
+    test_python_schematic_handles_are_publicly_exported()
     test_diagnostics_are_inspectable()

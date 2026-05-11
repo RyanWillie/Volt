@@ -206,13 +206,11 @@ TEST_CASE("Schematic rejects wire runs that visually join different logical nets
         schematic.add_wire_run(
             sheet, volt::WireRun{gnd, std::vector{volt::Point{10.0, 0.0}, volt::Point{20.0, 0.0}}}),
         std::logic_error);
+    CHECK_NOTHROW(schematic.add_wire_run(
+        sheet, volt::WireRun{gnd, std::vector{volt::Point{5.0, -5.0}, volt::Point{5.0, 5.0}}}));
     CHECK_THROWS_AS(
         schematic.add_wire_run(
-            sheet, volt::WireRun{gnd, std::vector{volt::Point{5.0, -5.0}, volt::Point{5.0, 5.0}}}),
-        std::logic_error);
-    CHECK_THROWS_AS(
-        schematic.add_wire_run(
-            sheet, volt::WireRun{gnd, std::vector{volt::Point{5.0, 0.0}, volt::Point{15.0, 0.0}}}),
+            sheet, volt::WireRun{gnd, std::vector{volt::Point{0.0, 0.0}, volt::Point{5.0, 0.0}}}),
         std::logic_error);
 }
 

@@ -884,6 +884,8 @@ __all__ = [
     "PortBindingInfo",
     "PortInfo",
     "Schematic",
+    "SchematicNetLabel",
     "SchematicSymbol",
+    "SchematicWire",
     "TemplateNetInfo",
 ]
