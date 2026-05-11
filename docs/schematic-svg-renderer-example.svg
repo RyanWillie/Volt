@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 297 210" width="297" height="210">
+  <style>.sheet{fill:#fff;stroke:#c7c7c7;stroke-width:0.5}.sheet-title{font:6px sans-serif;fill:#333}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:1.2}.symbol-text,.reference,.pin-label{font:5px sans-serif;fill:#111;text-anchor:middle}.pin-anchor{fill:#fff;stroke:#111;stroke-width:0.8}</style>
+  <g class="schematic-sheet" data-sheet="sheet:0" transform="translate(0 0)">
+    <rect class="sheet" x="0" y="0" width="297" height="210"/>
+    <text class="sheet-title" x="10" y="16">LED example</text>
+    <g class="symbol-instance" data-component="component:0" data-symbol-definition="symbol_def:0" transform="translate(28 50) rotate(0)">
+      <text class="reference" x="0" y="-12">J1</text>
+      <rect class="symbol-rectangle" x="6" y="-7" width="8" height="14"/>
+      <line class="symbol-line" x1="0" y1="0" x2="6" y2="0"/>
+      <line class="symbol-line" x1="14" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-12" transform="rotate(0 10 -12)">J</text>
+      <circle class="pin-anchor" cx="0" cy="0" r="1.5"/>
+      <text class="pin-label" x="0" y="4">+</text>
+      <circle class="pin-anchor" cx="20" cy="0" r="1.5"/>
+      <text class="pin-label" x="20" y="4">-</text>
+    </g>
+    <g class="symbol-instance" data-component="component:1" data-symbol-definition="symbol_def:1" transform="translate(88 50) rotate(0)">
+      <text class="reference" x="0" y="-12">R1</text>
+      <line class="symbol-line" x1="0" y1="0" x2="4" y2="0"/>
+      <rect class="symbol-rectangle" x="4" y="-3" width="12" height="6"/>
+      <line class="symbol-line" x1="16" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-8" transform="rotate(0 10 -8)">R</text>
+      <circle class="pin-anchor" cx="0" cy="0" r="1.5"/>
+      <text class="pin-label" x="0" y="4">1</text>
+      <circle class="pin-anchor" cx="20" cy="0" r="1.5"/>
+      <text class="pin-label" x="20" y="4">2</text>
+    </g>
+    <g class="symbol-instance" data-component="component:2" data-symbol-definition="symbol_def:2" transform="translate(148 50) rotate(0)">
+      <text class="reference" x="0" y="-12">D1</text>
+      <line class="symbol-line" x1="0" y1="0" x2="7" y2="0"/>
+      <line class="symbol-line" x1="7" y1="-5" x2="7" y2="5"/>
+      <line class="symbol-line" x1="7" y1="-5" x2="13" y2="0"/>
+      <line class="symbol-line" x1="7" y1="5" x2="13" y2="0"/>
+      <line class="symbol-line" x1="13" y1="0" x2="20" y2="0"/>
+      <line class="symbol-line" x1="13" y1="-6" x2="17" y2="-10"/>
+      <line class="symbol-line" x1="15" y1="-4" x2="19" y2="-8"/>
+      <text class="symbol-text" x="10" y="-13" transform="rotate(0 10 -13)">D</text>
+      <circle class="pin-anchor" cx="0" cy="0" r="1.5"/>
+      <text class="pin-label" x="0" y="4">K</text>
+      <circle class="pin-anchor" cx="20" cy="0" r="1.5"/>
+      <text class="pin-label" x="20" y="4">A</text>
+    </g>
+  </g>
+</svg>

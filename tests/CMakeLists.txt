@@ -38,6 +38,7 @@ add_executable(
     io/logical_circuit_writer_test.cpp
     io/schematic_reader_test.cpp
     io/schematic_round_trip_test.cpp
+    io/schematic_svg_writer_test.cpp
     io/schematic_writer_test.cpp
     schematic/schematic_test.cpp
 )

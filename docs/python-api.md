@@ -378,6 +378,8 @@ sch.place(r1, at=(40, 20), symbol="resistor")
 sch.place(d1, at=(90, 20), symbol="led")
 
 schematic_json = sch.to_json()
+schematic_svg = sch.to_svg()
+sch.write_svg("led.svg")
 ```
 
 `d.schematic(name)` creates or returns a kernel-owned sheet. `sch.place()` stores a
@@ -388,6 +390,9 @@ kernel-owned `SymbolDefinition`. The first built-in symbol set is intentionally 
 `Design.to_json()` still writes the logical circuit. `Schematic.to_json()` writes the
 `volt.schematic` projection JSON. The two formats remain separate so schematic placement
 can be loaded, inspected, or regenerated without becoming a second owner of the netlist.
+`Schematic.to_svg()` and `Schematic.write_svg(path)` render the same kernel-owned
+projection to deterministic SVG for viewing. SVG is an output artifact, not the source of
+truth.
 
 ## Function Composition
 

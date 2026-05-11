@@ -19,6 +19,7 @@
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/properties.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
+#include <volt/io/schematic_svg_writer.hpp>
 #include <volt/io/schematic_writer.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
@@ -958,6 +959,12 @@ class PyCircuit {
         return out.str();
     }
 
+    [[nodiscard]] std::string schematic_to_svg() {
+        auto out = std::ostringstream{};
+        volt::io::write_schematic_svg(out, schematic_projection());
+        return out.str();
+    }
+
     [[nodiscard]] py::list validate() const {
         return diagnostics_to_list(volt::validate_circuit(circuit_));
     }
@@ -1063,6 +1070,7 @@ PYBIND11_MODULE(_volt, module) {
         .def("place_schematic_symbol", &PyCircuit::place_schematic_symbol, py::arg("sheet"),
              py::arg("component"), py::arg("symbol"), py::arg("x"), py::arg("y"))
         .def("schematic_to_json", &PyCircuit::schematic_to_json)
+        .def("schematic_to_svg", &PyCircuit::schematic_to_svg)
         .def("validate", &PyCircuit::validate)
         .def("validate_for_pcb", &PyCircuit::validate_for_pcb)
         .def("to_json", &PyCircuit::to_json);
