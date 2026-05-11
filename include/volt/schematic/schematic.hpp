@@ -281,24 +281,13 @@ class Schematic {
                between(point.y(), start.y(), end.y());
     }
 
-    [[nodiscard]] static bool segments_intersect(Point first_start, Point first_end,
-                                                 Point second_start, Point second_end) noexcept {
-        if (point_on_segment(second_start, first_start, first_end) ||
-            point_on_segment(second_end, first_start, first_end) ||
-            point_on_segment(first_start, second_start, second_end) ||
-            point_on_segment(first_end, second_start, second_end)) {
-            return true;
-        }
-
-        const auto first_side_start = cross(first_start, first_end, second_start);
-        const auto first_side_end = cross(first_start, first_end, second_end);
-        const auto second_side_start = cross(second_start, second_end, first_start);
-        const auto second_side_end = cross(second_start, second_end, first_end);
-
-        return ((first_side_start > 0.0 && first_side_end < 0.0) ||
-                (first_side_start < 0.0 && first_side_end > 0.0)) &&
-               ((second_side_start > 0.0 && second_side_end < 0.0) ||
-                (second_side_start < 0.0 && second_side_end > 0.0));
+    [[nodiscard]] static bool segments_join_visually(Point first_start, Point first_end,
+                                                     Point second_start,
+                                                     Point second_end) noexcept {
+        return point_on_segment(second_start, first_start, first_end) ||
+               point_on_segment(second_end, first_start, first_end) ||
+               point_on_segment(first_start, second_start, second_end) ||
+               point_on_segment(first_end, second_start, second_end);
     }
 
     void require_wire_run_does_not_join_different_net(SheetId sheet, const WireRun &wire) const {
@@ -310,10 +299,10 @@ class Schematic {
             for (std::size_t wire_index = 1; wire_index < wire.points().size(); ++wire_index) {
                 for (std::size_t existing_index = 1; existing_index < existing.points().size();
                      ++existing_index) {
-                    if (segments_intersect(wire.points()[wire_index - 1U],
-                                           wire.points()[wire_index],
-                                           existing.points()[existing_index - 1U],
-                                           existing.points()[existing_index])) {
+                    if (segments_join_visually(wire.points()[wire_index - 1U],
+                                               wire.points()[wire_index],
+                                               existing.points()[existing_index - 1U],
+                                               existing.points()[existing_index])) {
                         throw std::logic_error{
                             "Schematic wire run visually joins a different logical net"};
                     }

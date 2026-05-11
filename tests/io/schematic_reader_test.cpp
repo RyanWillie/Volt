@@ -206,6 +206,10 @@ TEST_CASE("Schematic reader rejects wire runs that visually join different logic
          {"points",
           nlohmann::json::array({{{"x", 25.0}, {"y", 10.0}}, {{"x", 25.0}, {"y", 30.0}}})}});
 
+    CHECK_NOTHROW(volt::io::read_schematic(fixture, circuit));
+
+    fixture["wire_runs"][1]["points"] =
+        nlohmann::json::array({{{"x", 10.0}, {"y", 20.0}}, {{"x", 25.0}, {"y", 20.0}}});
     CHECK_THROWS_MATCHES(
         volt::io::read_schematic(fixture, circuit), std::logic_error,
         Catch::Matchers::Message("Schematic wire run visually joins a different logical net"));
