@@ -98,6 +98,44 @@ inline void write_xy_attributes(std::ostream &out, Point point, std::string_view
     out << '"';
 }
 
+[[nodiscard]] inline Point point_on_arc(const SymbolArc &arc, double degrees) {
+    const auto radians = degrees * svg_pi / 180.0;
+    return Point{arc.center().x() + (arc.radius() * std::cos(radians)),
+                 arc.center().y() + (arc.radius() * std::sin(radians))};
+}
+
+inline void write_symbol_arc_svg(std::ostream &out, const SymbolArc &arc) {
+    const auto sweep_magnitude = std::abs(arc.sweep_degrees());
+    const auto segment_count =
+        std::max<std::size_t>(1U, static_cast<std::size_t>(std::ceil(sweep_magnitude / 180.0)));
+    const auto segment_sweep = arc.sweep_degrees() / static_cast<double>(segment_count);
+
+    out << "      <path class=\"symbol-arc\" d=\"M ";
+    const auto start = point_on_arc(arc, arc.start_degrees());
+    write_svg_number(out, start.x());
+    out << ' ';
+    write_svg_number(out, start.y());
+
+    for (std::size_t segment = 0; segment < segment_count; ++segment) {
+        const auto end_degrees =
+            arc.start_degrees() + (segment_sweep * static_cast<double>(segment + 1U));
+        const auto end = point_on_arc(arc, end_degrees);
+        const auto large_arc = std::abs(segment_sweep) > 180.0 ? 1 : 0;
+        const auto sweep = segment_sweep >= 0.0 ? 1 : 0;
+
+        out << " A ";
+        write_svg_number(out, arc.radius());
+        out << ' ';
+        write_svg_number(out, arc.radius());
+        out << " 0 " << large_arc << ' ' << sweep << ' ';
+        write_svg_number(out, end.x());
+        out << ' ';
+        write_svg_number(out, end.y());
+    }
+
+    out << "\"/>\n";
+}
+
 inline void write_symbol_primitive_svg(std::ostream &out, const SymbolPrimitive &primitive) {
     if (std::holds_alternative<SymbolLine>(primitive)) {
         const auto &line = std::get<SymbolLine>(primitive);
@@ -136,28 +174,7 @@ inline void write_symbol_primitive_svg(std::ostream &out, const SymbolPrimitive 
         return;
     }
     if (std::holds_alternative<SymbolArc>(primitive)) {
-        const auto &arc = std::get<SymbolArc>(primitive);
-        const auto start = arc.start_degrees() * svg_pi / 180.0;
-        const auto end = (arc.start_degrees() + arc.sweep_degrees()) * svg_pi / 180.0;
-        const auto start_x = arc.center().x() + (arc.radius() * std::cos(start));
-        const auto start_y = arc.center().y() + (arc.radius() * std::sin(start));
-        const auto end_x = arc.center().x() + (arc.radius() * std::cos(end));
-        const auto end_y = arc.center().y() + (arc.radius() * std::sin(end));
-        const auto large_arc = std::abs(arc.sweep_degrees()) > 180.0 ? 1 : 0;
-        const auto sweep = arc.sweep_degrees() >= 0.0 ? 1 : 0;
-        out << "      <path class=\"symbol-arc\" d=\"M ";
-        write_svg_number(out, start_x);
-        out << ' ';
-        write_svg_number(out, start_y);
-        out << " A ";
-        write_svg_number(out, arc.radius());
-        out << ' ';
-        write_svg_number(out, arc.radius());
-        out << " 0 " << large_arc << ' ' << sweep << ' ';
-        write_svg_number(out, end_x);
-        out << ' ';
-        write_svg_number(out, end_y);
-        out << "\"/>\n";
+        write_symbol_arc_svg(out, std::get<SymbolArc>(primitive));
         return;
     }
 

@@ -31,6 +31,7 @@ volt::SymbolDefinition make_symbol() {
     symbol.add_primitive(volt::SymbolRectangle{volt::Point{4.0, -3.0}, volt::Point{16.0, 3.0}});
     symbol.add_primitive(volt::SymbolCircle{volt::Point{10.0, 0.0}, 2.0});
     symbol.add_primitive(volt::SymbolArc{volt::Point{10.0, 0.0}, 5.0, 0.0, 180.0});
+    symbol.add_primitive(volt::SymbolArc{volt::Point{30.0, 0.0}, 5.0, 0.0, 360.0});
     symbol.add_primitive(volt::SymbolText{"R<&", volt::Point{10.0, -8.0}});
     return symbol;
 }
@@ -72,6 +73,8 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(svg.find("<circle class=\"symbol-circle\" cx=\"10\" cy=\"0\" r=\"2\"/>") !=
           std::string::npos);
     CHECK(svg.find("<path class=\"symbol-arc\" d=\"M 15 0 A 5 5 0 0 1 5 ") != std::string::npos);
+    CHECK(svg.find("<path class=\"symbol-arc\" d=\"M 35 0 A 5 5 0 0 1 25 0 A 5 5 0 0 1 35 0\"/>") !=
+          std::string::npos);
     CHECK(svg.find("<text class=\"symbol-text\" x=\"10\" y=\"-8\"") != std::string::npos);
     CHECK(svg.find(">R&lt;&amp;</text>") != std::string::npos);
     CHECK(svg.find("<circle class=\"pin-anchor\" cx=\"0\" cy=\"0\" r=\"1.5\"/>") !=
