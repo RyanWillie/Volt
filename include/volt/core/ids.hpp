@@ -44,6 +44,8 @@ struct PortBindingIdTag;
 struct SymbolDefIdTag;
 struct SheetIdTag;
 struct SymbolInstanceIdTag;
+struct WireRunIdTag;
+struct NetLabelIdTag;
 
 } // namespace detail
 
@@ -75,5 +77,9 @@ using SymbolDefId = EntityId<detail::SymbolDefIdTag>;
 using SheetId = EntityId<detail::SheetIdTag>;
 /** ID for a placed schematic symbol instance. */
 using SymbolInstanceId = EntityId<detail::SymbolInstanceIdTag>;
+/** ID for a schematic wire run projection over a canonical net. */
+using WireRunId = EntityId<detail::WireRunIdTag>;
+/** ID for a schematic net label projection over a canonical net. */
+using NetLabelId = EntityId<detail::NetLabelIdTag>;
 
 } // namespace volt

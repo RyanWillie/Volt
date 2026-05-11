@@ -67,6 +67,10 @@ inline void write_svg_number(std::ostream &out, double value) {
     return "component:" + std::to_string(id.index());
 }
 
+[[nodiscard]] inline std::string svg_net_id(NetId id) {
+    return "net:" + std::to_string(id.index());
+}
+
 [[nodiscard]] inline std::string svg_sheet_id(SheetId id) {
     return "sheet:" + std::to_string(id.index());
 }
@@ -232,6 +236,40 @@ inline void write_symbol_instance_svg(std::ostream &out, const Schematic &schema
     out << "    </g>\n";
 }
 
+inline void write_wire_run_svg(std::ostream &out, const Schematic &schematic, WireRunId id) {
+    const auto &wire = schematic.wire_run(id);
+
+    out << "    <polyline class=\"wire-run\" data-net=\"" << svg_escape(svg_net_id(wire.net()))
+        << "\" points=\"";
+    for (std::size_t index = 0; index < wire.points().size(); ++index) {
+        if (index != 0) {
+            out << ' ';
+        }
+        write_svg_number(out, wire.points()[index].x());
+        out << ',';
+        write_svg_number(out, wire.points()[index].y());
+    }
+    out << "\"/>\n";
+}
+
+inline void write_net_label_svg(std::ostream &out, const Schematic &schematic, NetLabelId id) {
+    const auto &label = schematic.net_label(id);
+    const auto &net = schematic.circuit().net(label.net());
+
+    out << "    <text class=\"net-label\" data-net=\"" << svg_escape(svg_net_id(label.net()))
+        << "\" x=\"";
+    write_svg_number(out, label.position().x());
+    out << "\" y=\"";
+    write_svg_number(out, label.position().y());
+    out << "\" transform=\"rotate(";
+    write_svg_number(out, orientation_degrees(label.orientation()));
+    out << ' ';
+    write_svg_number(out, label.position().x());
+    out << ' ';
+    write_svg_number(out, label.position().y());
+    out << ")\">" << svg_escape(net.name().value()) << "</text>\n";
+}
+
 } // namespace detail
 
 /** Write a deterministic SVG rendering of a schematic projection. */
@@ -253,6 +291,8 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
     out << "  <style>"
            ".sheet{fill:#fff;stroke:#c7c7c7;stroke-width:0.5}"
            ".sheet-title{font:6px sans-serif;fill:#333}"
+           ".wire-run{fill:none;stroke:#111;stroke-width:1.2}"
+           ".net-label{font:5px sans-serif;fill:#0645ad;text-anchor:start}"
            ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-"
            "width:1.2}"
            ".symbol-text,.reference,.pin-label{font:5px sans-serif;fill:#111;text-anchor:middle}"
@@ -276,8 +316,14 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
         out << "\"/>\n";
         out << "    <text class=\"sheet-title\" x=\"10\" y=\"16\">"
             << detail::svg_escape(sheet.name()) << "</text>\n";
+        for (const auto wire : sheet.wire_runs()) {
+            detail::write_wire_run_svg(out, schematic, wire);
+        }
         for (const auto instance : sheet.symbol_instances()) {
             detail::write_symbol_instance_svg(out, schematic, instance);
+        }
+        for (const auto label : sheet.net_labels()) {
+            detail::write_net_label_svg(out, schematic, label);
         }
         out << "  </g>\n";
     }

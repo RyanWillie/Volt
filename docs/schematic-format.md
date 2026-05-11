@@ -12,7 +12,9 @@ The v1 format is deterministic JSON:
   "version": 1,
   "symbol_definitions": [],
   "sheets": [],
-  "symbol_instances": []
+  "symbol_instances": [],
+  "wire_runs": [],
+  "net_labels": []
 }
 ```
 
@@ -28,9 +30,12 @@ Schematic-local IDs are document structure, not domain meaning:
 - `symbol_def:<number>`
 - `sheet:<number>`
 - `symbol_instance:<number>`
+- `wire_run:<number>`
+- `net_label:<number>`
 
 References inside the schematic document must point to existing IDs of the correct type.
-`component:<number>` references point into the associated logical circuit document.
+`component:<number>` and `net:<number>` references point into the associated logical
+circuit document.
 
 ## Symbol Definitions
 
@@ -59,7 +64,8 @@ Valid orientations are `Right`, `Down`, `Left`, and `Up`.
 Volt can render a `Schematic` projection to deterministic SVG. The SVG writer consumes
 the loaded kernel model and the associated logical circuit; it does not own or mutate
 connectivity. SVG output includes basic sheet geometry, placed symbol primitives, visible
-symbol pins, symbol text, and component reference labels from the logical circuit.
+symbol pins, symbol text, wire runs, net labels, and component reference labels from the
+logical circuit.
 
 SVG is an output artifact. It should not be treated as the canonical schematic source,
 because the structured `volt.schematic` model is the data that can be validated,
@@ -73,7 +79,9 @@ Sheets own page-level placement lists:
 {
   "id": "sheet:0",
   "name": "Main",
-  "symbol_instances": ["symbol_instance:0"]
+  "symbol_instances": ["symbol_instance:0"],
+  "wire_runs": ["wire_run:0"],
+  "net_labels": ["net_label:0"]
 }
 ```
 
@@ -90,9 +98,41 @@ Symbol instances present existing logical components:
 }
 ```
 
-The sheet's `symbol_instances` list must match the instances whose `sheet` field points
-to that sheet. This keeps the stored document deterministic and prevents orphaned
-presentation objects.
+Wire runs and net labels present existing logical nets:
+
+```json
+{
+  "id": "wire_run:0",
+  "sheet": "sheet:0",
+  "net": "net:0",
+  "points": [
+    { "x": 20, "y": 20 },
+    { "x": 40, "y": 20 }
+  ]
+}
+```
+
+```json
+{
+  "id": "net_label:0",
+  "sheet": "sheet:0",
+  "net": "net:0",
+  "position": { "x": 20, "y": 16 },
+  "orientation": "Right"
+}
+```
+
+Net labels do not store independent label text. The visible label is derived from the
+referenced logical net's canonical name, so schematic labels cannot create hidden net
+semantics that contradict the circuit.
+
+Wire runs on the same sheet may touch, cross, or overlap only when they reference the
+same logical net. An intersection between two different `NetId` values would visually
+imply a connection the logical circuit does not own, so the kernel rejects it.
+
+The sheet's `symbol_instances`, `wire_runs`, and `net_labels` lists must match the
+objects whose `sheet` field points to that sheet. This keeps the stored document
+deterministic and prevents orphaned presentation objects.
 
 ## Deterministic Writer Rules
 
@@ -101,6 +141,6 @@ A canonical writer must:
 - emit top-level fields in the order shown in this document
 - emit arrays in kernel table/insertion order
 - generate local IDs deterministically from table order
-- preserve sheet symbol-instance order
+- preserve sheet symbol-instance, wire-run, and net-label order
 - use the enum and primitive spellings shown here
 - omit timestamps and process-local data

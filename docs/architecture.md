@@ -138,9 +138,9 @@ The current thinking is:
 
 Detailed wire graphs, auto-layout, and PCB geometry are intentionally deferred. The first
 schematic implementation starts with kernel-owned presentation data: typed schematic IDs,
-structured symbol geometry, sheets, and symbol instances that reference logical component
-instances. Deterministic SVG rendering is an output path over that model, not a source of
-schematic truth.
+structured symbol geometry, sheets, symbol instances that reference logical component
+instances, and wire/label projection objects that reference canonical nets. Deterministic
+SVG rendering is an output path over that model, not a source of schematic truth.
 
 ## Initial Layers
 

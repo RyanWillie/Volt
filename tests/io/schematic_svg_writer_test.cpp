@@ -21,6 +21,10 @@ volt::ComponentId add_resistor(volt::Circuit &circuit) {
     return circuit.instantiate_component(definition, volt::ReferenceDesignator{"R&1"});
 }
 
+volt::NetId add_net(volt::Circuit &circuit) {
+    return circuit.add_net(volt::Net{volt::NetName{"V&CC"}, volt::NetKind::Power});
+}
+
 volt::SymbolDefinition make_symbol() {
     auto symbol = volt::SymbolDefinition{"Resistor"};
     symbol.add_pin(
@@ -46,12 +50,24 @@ volt::Schematic make_schematic(const volt::Circuit &circuit, volt::ComponentId c
     return schematic;
 }
 
+volt::Schematic make_schematic_with_wires(const volt::Circuit &circuit, volt::ComponentId component,
+                                          volt::NetId net) {
+    auto schematic = make_schematic(circuit, component);
+    [[maybe_unused]] const auto wire = schematic.add_wire_run(
+        volt::SheetId{0},
+        volt::WireRun{net, std::vector{volt::Point{10.0, 20.0}, volt::Point{30.0, 20.0}}});
+    [[maybe_unused]] const auto label =
+        schematic.add_net_label(volt::SheetId{0}, volt::NetLabel{net, volt::Point{12.0, 16.0}});
+    return schematic;
+}
+
 } // namespace
 
 TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto schematic = make_schematic(circuit, component);
+    const auto net = add_net(circuit);
+    const auto schematic = make_schematic_with_wires(circuit, component, net);
 
     const auto svg = volt::io::write_schematic_svg(schematic);
 
@@ -62,6 +78,11 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
           std::string::npos);
     CHECK(svg.find("<text class=\"sheet-title\" x=\"10\" y=\"16\">Main &amp; Aux</text>") !=
           std::string::npos);
+    CHECK(svg.find("<polyline class=\"wire-run\" data-net=\"net:0\" points=\"10,20 30,20\"/>") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"net-label\" data-net=\"net:0\" x=\"12\" y=\"16\"") !=
+          std::string::npos);
+    CHECK(svg.find(">V&amp;CC</text>") != std::string::npos);
     CHECK(svg.find("data-component=\"component:0\"") != std::string::npos);
     CHECK(svg.find("data-symbol-definition=\"symbol_def:0\"") != std::string::npos);
     CHECK(svg.find("transform=\"translate(40 20) rotate(0)\"") != std::string::npos);

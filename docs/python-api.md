@@ -14,6 +14,7 @@ projection entry point:
 - serialize deterministic logical circuit files
 - create schematic sheets
 - place existing logical components with built-in schematic symbols
+- draw schematic wire runs and net labels over existing logical nets
 - serialize deterministic schematic projection files
 
 PCB design, richer schematic drawing, and richer ERC remain planned layers. The Python API
@@ -376,6 +377,8 @@ gnd += d1["K"]
 sch = d.schematic("Main")
 sch.place(r1, at=(40, 20), symbol="resistor")
 sch.place(d1, at=(90, 20), symbol="led")
+sch.wire(vcc, [(20, 20), (40, 20)])
+sch.label(vcc, at=(20, 16))
 
 schematic_json = sch.to_json()
 schematic_svg = sch.to_svg()
@@ -386,6 +389,12 @@ sch.write_svg("led.svg")
 `SymbolInstance` over an existing `ComponentId`, with a finite `(x, y)` position and a
 kernel-owned `SymbolDefinition`. The first built-in symbol set is intentionally small:
 `resistor`, `capacitor`, `led`, and `connector_1x02`.
+
+`sch.wire(net, points)` stores a `WireRun` over an existing `NetId`. `sch.label(net,
+at=(x, y))` stores a `NetLabel` over that same canonical net; the visible text comes from
+the logical net name, not from a separate schematic-only string. These helpers visualize
+connectivity that already exists in the logical circuit. They do not connect pins, create
+nets, or merge net names.
 
 `Design.to_json()` still writes the logical circuit. `Schematic.to_json()` writes the
 `volt.schematic` projection JSON. The two formats remain separate so schematic placement

@@ -573,23 +573,30 @@ def test_module_authoring_exposes_hierarchy_inspection_views():
 
 def test_python_schematic_placement_serializes_kernel_projection():
     design = volt.Design("schematic-placement")
+    vcc = design.net("VCC", kind="power")
     r1 = design.R(resistance=330, ref="R1")
     d1 = design.LED(ref="D1")
 
     schematic = design.schematic("Main")
     first = schematic.place(r1, at=(40, 20), symbol="resistor")
     second = schematic.place(d1, at=(90, 20), symbol="led")
+    wire = schematic.wire(vcc, [(20, 20), (40, 20)])
+    label = schematic.label(vcc, at=(20, 16))
 
     projection = json.loads(schematic.to_json())
 
     assert first.index == 0
     assert second.index == 1
+    assert wire.index == 0
+    assert label.index == 0
     assert projection["format"] == "volt.schematic"
     assert projection["sheets"] == [
         {
             "id": "sheet:0",
             "name": "Main",
             "symbol_instances": ["symbol_instance:0", "symbol_instance:1"],
+            "wire_runs": ["wire_run:0"],
+            "net_labels": ["net_label:0"],
         }
     ]
     assert [symbol["name"] for symbol in projection["symbol_definitions"]] == [
@@ -614,14 +621,34 @@ def test_python_schematic_placement_serializes_kernel_projection():
             "orientation": "Right",
         },
     ]
+    assert projection["wire_runs"] == [
+        {
+            "id": "wire_run:0",
+            "sheet": "sheet:0",
+            "net": "net:0",
+            "points": [{"x": 20.0, "y": 20.0}, {"x": 40.0, "y": 20.0}],
+        }
+    ]
+    assert projection["net_labels"] == [
+        {
+            "id": "net_label:0",
+            "sheet": "sheet:0",
+            "net": "net:0",
+            "position": {"x": 20.0, "y": 16.0},
+            "orientation": "Right",
+        }
+    ]
 
 
 def test_python_schematic_writes_svg_projection():
     design = volt.Design("schematic-svg")
+    vcc = design.net("VCC", kind="power")
     r1 = design.R(resistance=330, ref="R1")
 
     schematic = design.schematic("Main")
     schematic.place(r1, at=(40, 20), symbol="resistor")
+    schematic.wire(vcc, [(20, 20), (40, 20)])
+    schematic.label(vcc, at=(20, 16))
 
     svg = schematic.to_svg()
 
@@ -629,6 +656,9 @@ def test_python_schematic_writes_svg_projection():
     assert 'class="schematic-sheet"' in svg
     assert 'class="symbol-instance"' in svg
     assert 'data-component="component:0"' in svg
+    assert '<polyline class="wire-run" data-net="net:0" points="20,20 40,20"/>' in svg
+    assert '<text class="net-label" data-net="net:0" x="20" y="16"' in svg
+    assert ">VCC</text>" in svg
     assert '<text class="reference" x="0" y="-12">R1</text>' in svg
 
     with TemporaryDirectory() as directory:
