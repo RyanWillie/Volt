@@ -54,6 +54,17 @@ Coordinates and numeric geometry values must be finite.
 
 Valid orientations are `Right`, `Down`, `Left`, and `Up`.
 
+## SVG Rendering
+
+Volt can render a `Schematic` projection to deterministic SVG. The SVG writer consumes
+the loaded kernel model and the associated logical circuit; it does not own or mutate
+connectivity. SVG output includes basic sheet geometry, placed symbol primitives, visible
+symbol pins, symbol text, and component reference labels from the logical circuit.
+
+SVG is an output artifact. It should not be treated as the canonical schematic source,
+because the structured `volt.schematic` model is the data that can be validated,
+round-tripped, edited, and adapted to future renderers or EDA import/export tools.
+
 ## Sheets And Instances
 
 Sheets own page-level placement lists:

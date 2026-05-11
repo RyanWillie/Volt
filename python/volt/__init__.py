@@ -557,6 +557,12 @@ class Schematic:
     def to_json(self) -> str:
         return self._design._circuit.schematic_to_json()
 
+    def to_svg(self) -> str:
+        return self._design._circuit.schematic_to_svg()
+
+    def write_svg(self, path: str | Path) -> None:
+        Path(path).write_text(self.to_svg(), encoding="utf-8")
+
     def __repr__(self) -> str:
         return f"Schematic(name={self.name!r}, sheet_index={self._sheet_index})"
 

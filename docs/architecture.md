@@ -117,7 +117,9 @@ Projection-layer workflow is kernel-first:
 1. Design the C++ kernel representation for the projection layer.
 2. Add kernel mutation APIs and validation for that representation.
 3. Add serialization and round-trip coverage for the kernel data.
-4. Then add Python bindings and Python syntax over that kernel-owned data.
+4. Add deterministic renderers or adapters that consume the kernel model without owning
+   EDA meaning.
+5. Then add Python bindings and Python syntax over that kernel-owned data.
 
 Do not add Python schematic drawing APIs before the C++ schematic model exists. Likewise,
 do not add Python PCB layout APIs before the C++ board model exists.
@@ -134,10 +136,11 @@ The current thinking is:
   missing symbol for a component, an unrouted net, or visual geometry that references the
   wrong logical net.
 
-Detailed wire graphs, drawing algorithms, renderers, and PCB geometry are intentionally
-deferred. The first schematic implementation starts with kernel-owned presentation data:
-typed schematic IDs, structured symbol geometry, sheets, and symbol instances that
-reference logical component instances.
+Detailed wire graphs, auto-layout, and PCB geometry are intentionally deferred. The first
+schematic implementation starts with kernel-owned presentation data: typed schematic IDs,
+structured symbol geometry, sheets, and symbol instances that reference logical component
+instances. Deterministic SVG rendering is an output path over that model, not a source of
+schematic truth.
 
 ## Initial Layers
 

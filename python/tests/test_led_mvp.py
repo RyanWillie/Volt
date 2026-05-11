@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import volt
 
@@ -614,6 +616,27 @@ def test_python_schematic_placement_serializes_kernel_projection():
     ]
 
 
+def test_python_schematic_writes_svg_projection():
+    design = volt.Design("schematic-svg")
+    r1 = design.R(resistance=330, ref="R1")
+
+    schematic = design.schematic("Main")
+    schematic.place(r1, at=(40, 20), symbol="resistor")
+
+    svg = schematic.to_svg()
+
+    assert svg.startswith('<svg xmlns="http://www.w3.org/2000/svg"')
+    assert 'class="schematic-sheet"' in svg
+    assert 'class="symbol-instance"' in svg
+    assert 'data-component="component:0"' in svg
+    assert '<text class="reference" x="0" y="-12">R1</text>' in svg
+
+    with TemporaryDirectory() as directory:
+        path = Path(directory) / "schematic.svg"
+        schematic.write_svg(path)
+        assert path.read_text(encoding="utf-8") == svg
+
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")
@@ -642,4 +665,5 @@ if __name__ == "__main__":
     test_module_authoring_serializes_kernel_owned_contents()
     test_module_authoring_exposes_hierarchy_inspection_views()
     test_python_schematic_placement_serializes_kernel_projection()
+    test_python_schematic_writes_svg_projection()
     test_diagnostics_are_inspectable()
