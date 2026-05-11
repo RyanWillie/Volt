@@ -282,7 +282,8 @@ class Schematic {
     }
 
     [[nodiscard]] static bool segments_join_visually(Point first_start, Point first_end,
-                                                     Point second_start, Point second_end) noexcept {
+                                                     Point second_start,
+                                                     Point second_end) noexcept {
         return point_on_segment(second_start, first_start, first_end) ||
                point_on_segment(second_end, first_start, first_end) ||
                point_on_segment(first_start, second_start, second_end) ||
