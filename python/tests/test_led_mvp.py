@@ -569,6 +569,51 @@ def test_module_authoring_exposes_hierarchy_inspection_views():
     )
 
 
+def test_python_schematic_placement_serializes_kernel_projection():
+    design = volt.Design("schematic-placement")
+    r1 = design.R(resistance=330, ref="R1")
+    d1 = design.LED(ref="D1")
+
+    schematic = design.schematic("Main")
+    first = schematic.place(r1, at=(40, 20), symbol="resistor")
+    second = schematic.place(d1, at=(90, 20), symbol="led")
+
+    projection = json.loads(schematic.to_json())
+
+    assert first.index == 0
+    assert second.index == 1
+    assert projection["format"] == "volt.schematic"
+    assert projection["sheets"] == [
+        {
+            "id": "sheet:0",
+            "name": "Main",
+            "symbol_instances": ["symbol_instance:0", "symbol_instance:1"],
+        }
+    ]
+    assert [symbol["name"] for symbol in projection["symbol_definitions"]] == [
+        "resistor",
+        "led",
+    ]
+    assert projection["symbol_instances"] == [
+        {
+            "id": "symbol_instance:0",
+            "sheet": "sheet:0",
+            "symbol_definition": "symbol_def:0",
+            "component": "component:0",
+            "position": {"x": 40.0, "y": 20.0},
+            "orientation": "Right",
+        },
+        {
+            "id": "symbol_instance:1",
+            "sheet": "sheet:0",
+            "symbol_definition": "symbol_def:1",
+            "component": "component:1",
+            "position": {"x": 90.0, "y": 20.0},
+            "orientation": "Right",
+        },
+    ]
+
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")
@@ -596,4 +641,5 @@ if __name__ == "__main__":
     test_power_pin_semantics_drive_diagnostics()
     test_module_authoring_serializes_kernel_owned_contents()
     test_module_authoring_exposes_hierarchy_inspection_views()
+    test_python_schematic_placement_serializes_kernel_projection()
     test_diagnostics_are_inspectable()
