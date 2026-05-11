@@ -435,6 +435,28 @@ class Circuit {
         nets_.get(net).set_electrical_attribute(spec, std::move(value));
     }
 
+    /** Record that an otherwise empty or single-ended named net is intentionally exported. */
+    bool mark_intentional_stub_net(NetId net) {
+        require_net(net);
+        if (is_intentional_stub_net(net)) {
+            return false;
+        }
+
+        intentional_stub_nets_.push_back(net);
+        return true;
+    }
+
+    /** Record that an otherwise connectable concrete pin is intentionally left open. */
+    bool mark_intentional_no_connect_pin(PinId pin) {
+        require_pin(pin);
+        if (is_intentional_no_connect_pin(pin)) {
+            return false;
+        }
+
+        intentional_no_connect_pins_.push_back(pin);
+        return true;
+    }
+
     /** Return the selected physical implementation for a component, if one has been assigned. */
     [[nodiscard]] const std::optional<PhysicalPart> &
     selected_physical_part(ComponentId component) const {
@@ -636,6 +658,30 @@ class Circuit {
         require_net(net);
         return std::find(module_origin_nets_.begin(), module_origin_nets_.end(), net) !=
                module_origin_nets_.end();
+    }
+
+    /** Return whether this net has explicit author intent as a named/exported stub. */
+    [[nodiscard]] bool is_intentional_stub_net(NetId net) const {
+        require_net(net);
+        return std::find(intentional_stub_nets_.begin(), intentional_stub_nets_.end(), net) !=
+               intentional_stub_nets_.end();
+    }
+
+    /** Return whether this concrete pin has explicit no-connect author intent. */
+    [[nodiscard]] bool is_intentional_no_connect_pin(PinId pin) const {
+        require_pin(pin);
+        return std::find(intentional_no_connect_pins_.begin(), intentional_no_connect_pins_.end(),
+                         pin) != intentional_no_connect_pins_.end();
+    }
+
+    /** Return intentional stub-net assertions in deterministic insertion order. */
+    [[nodiscard]] const std::vector<NetId> &intentional_stub_nets() const noexcept {
+        return intentional_stub_nets_;
+    }
+
+    /** Return intentional no-connect pin assertions in deterministic insertion order. */
+    [[nodiscard]] const std::vector<PinId> &intentional_no_connect_pins() const noexcept {
+        return intentional_no_connect_pins_;
     }
 
     /** Return whether a component is a concrete module-origin component. */
@@ -1032,6 +1078,8 @@ class Circuit {
     std::vector<NetId> module_origin_nets_;
     std::vector<ModuleComponentOrigin> module_component_origins_;
     std::vector<ComponentId> module_origin_components_;
+    std::vector<NetId> intentional_stub_nets_;
+    std::vector<PinId> intentional_no_connect_pins_;
 };
 
 } // namespace volt

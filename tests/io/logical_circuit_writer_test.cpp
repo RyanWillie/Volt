@@ -146,6 +146,27 @@ TEST_CASE("Logical circuit writer emits net typed electrical attributes") {
     CHECK(attributes["voltage"]["value"] == 3.3);
 }
 
+TEST_CASE("Logical circuit writer emits design intent") {
+    volt::Circuit circuit;
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "BOOT0", "1", volt::PinRole::DigitalInput, volt::ConnectionRequirement::Required});
+    const auto component_def =
+        circuit.add_component_definition(volt::ComponentDefinition{"MCU", std::vector{pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+    const auto pin = circuit.pin_by_name(component, "BOOT0").value();
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"BOOT0"}, volt::NetKind::Signal});
+
+    circuit.mark_intentional_stub_net(net);
+    circuit.mark_intentional_no_connect_pin(pin);
+
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+
+    REQUIRE(output.contains("design_intent"));
+    CHECK(output["design_intent"]["stub_nets"] == nlohmann::json::array({"net:0"}));
+    CHECK(output["design_intent"]["no_connect_pins"] == nlohmann::json::array({"pin:0"}));
+}
+
 TEST_CASE("Logical circuit writer emits pin electrical semantics") {
     volt::Circuit circuit;
     const auto pin = circuit.add_pin_definition(volt::PinDefinition{
