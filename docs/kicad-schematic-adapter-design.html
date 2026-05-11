@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt KiCad schematic adapter design</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f5f0;
+      --ink: #17211d;
+      --muted: #65706a;
+      --line: #d8d1c4;
+      --panel: #fffdf8;
+      --green: #23684f;
+      --blue: #2e5f88;
+      --amber: #93651f;
+      --red: #963c35;
+      --code: #eee7d9;
+      --soft-green: #e7f0e9;
+      --soft-blue: #e7eef5;
+      --soft-amber: #f3e6cc;
+      --soft-red: #f2dfdc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 46px 0 76px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.76fr);
+      gap: 38px;
+      align-items: end;
+      padding-bottom: 34px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 860px;
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(40px, 7vw, 80px);
+      line-height: 0.94;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(27px, 3vw, 40px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 18px;
+      line-height: 1.22;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 14px;
+      border-top: 2px solid var(--green);
+      padding-top: 10px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dek {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    section {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 42px;
+      padding: 38px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    aside {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stack { display: grid; gap: 18px; }
+
+    .callout {
+      border-left: 6px solid var(--green);
+      background: var(--soft-green);
+      padding: 17px 19px;
+      color: #173629;
+    }
+
+    .warning {
+      border-left-color: var(--amber);
+      background: var(--soft-amber);
+      color: #3f3018;
+    }
+
+    .danger {
+      border-left-color: var(--red);
+      background: var(--soft-red);
+      color: #48201c;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      min-height: 160px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 17px;
+    }
+
+    .card h3 { margin-bottom: 8px; }
+    .card p, li, td { color: var(--muted); }
+
+    .decision {
+      display: grid;
+      grid-template-columns: 120px minmax(0, 1fr);
+      gap: 18px;
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .badge {
+      display: inline-block;
+      width: max-content;
+      padding: 5px 8px;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .core { background: var(--green); }
+    .edge { background: var(--blue); }
+    .risk { background: var(--amber); }
+    .no { background: var(--red); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .flow div {
+      min-height: 112px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 14px;
+    }
+
+    .flow strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--blue);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    ul, ol {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    li + li { margin-top: 7px; }
+
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 16px;
+      border-left: 4px solid var(--blue);
+      background: var(--code);
+      color: #202721;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    footer {
+      padding-top: 30px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 920px) {
+      header, section, .decision {
+        grid-template-columns: 1fr;
+      }
+
+      .grid, .two, .flow {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <span class="eyebrow">Schematic PR 9</span>
+        <h1>KiCad is an adapter, not Volt's schematic model.</h1>
+      </div>
+      <p class="dek">
+        Volt now has the canonical pieces a KiCad adapter should target: logical
+        circuits, selected physical parts, schematic symbols, sheets, symbol placement,
+        wire runs, net labels, JSON persistence, Python authoring, and SVG output. The
+        next step is to define how KiCad import/export lowers into those structures
+        without letting KiCad become the internal architecture.
+      </p>
+    </header>
+
+    <section>
+      <aside>Thesis</aside>
+      <div class="stack">
+        <div class="callout">
+          KiCad files are interoperability documents. Volt data is the source of truth
+          once imported, and Volt's kernel-owned logical and schematic models remain the
+          only place EDA meaning lives.
+        </div>
+        <div class="two">
+          <div class="card">
+            <h3>What this slice decides</h3>
+            <ul>
+              <li>How KiCad schematic and symbol data maps into Volt structures.</li>
+              <li>Which KiCad constructs are accepted, deferred, or reported as loss.</li>
+              <li>How export should consume Volt data without re-inferring a netlist.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>What this slice does not implement</h3>
+            <ul>
+              <li>No KiCad parser.</li>
+              <li>No KiCad writer.</li>
+              <li>No schematic auto-layout.</li>
+              <li>No ERC, simulation, or PCB routing work.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Architecture rule</aside>
+      <div class="stack">
+        <h2>Import may create Volt objects; projection may not create connectivity.</h2>
+        <p>
+          A KiCad import is allowed to build a logical circuit by calling the logical
+          circuit mutation APIs. After that, imported schematic data must reference the
+          resulting <code>ComponentId</code> and <code>NetId</code> values. A wire drawn
+          in KiCad can help the adapter determine the logical net during import, but once
+          lowered into Volt it becomes a <code>WireRun</code> over a canonical net, not a
+          second connection graph.
+        </p>
+        <pre><code>KiCad file
+  -> adapter-local parsed S-expression nodes
+  -> Circuit mutations for components, pins, nets, selected parts
+  -> Schematic mutations for sheets, symbols, placement, wires, labels
+  -> deterministic Volt logical JSON + Volt schematic JSON</code></pre>
+        <div class="callout warning">
+          This keeps import powerful without weakening the projection boundary. The
+          adapter can infer connectivity while importing a foreign file, but the stored
+          Volt schematic never owns that connectivity.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Import pipeline</aside>
+      <div class="flow">
+        <div>
+          <strong>1. Parse</strong>
+          Read <code>.kicad_sch</code> and <code>.kicad_sym</code> into adapter-local
+          S-expression structures. Do not expose these structures through Volt core.
+        </div>
+        <div>
+          <strong>2. Resolve</strong>
+          Resolve library identifiers, references, pin names, pin numbers, labels,
+          footprint fields, and sheet paths into an import context.
+        </div>
+        <div>
+          <strong>3. Lower logic</strong>
+          Create or match <code>ComponentDefinition</code>, component instances, pins,
+          nets, and selected physical part data through kernel APIs.
+        </div>
+        <div>
+          <strong>4. Lower schematic</strong>
+          Create <code>SymbolDefinition</code>, sheets, symbol instances, wire runs, and
+          net labels over existing logical IDs.
+        </div>
+        <div>
+          <strong>5. Report loss</strong>
+          Return warnings for unsupported constructs, generated names, hierarchy gaps, or
+          footprint-only data that cannot safely become a selected part.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Export pipeline</aside>
+      <div class="stack">
+        <h2>Export should be boring: Volt in, KiCad out.</h2>
+        <p>
+          KiCad export consumes the same canonical data used by SVG rendering and JSON
+          persistence. It should not look at wire geometry to rediscover what connects to
+          what. It should write KiCad symbols, schematic symbol instances, wires, labels,
+          and properties from Volt tables.
+        </p>
+        <pre><code>Circuit + Schematic
+  -> KiCad symbol definitions from SymbolDefinition
+  -> KiCad schematic symbols from SymbolInstance + ComponentInstance
+  -> KiCad wires from WireRun
+  -> KiCad labels from NetLabel + canonical NetName
+  -> KiCad properties from selected parts and safe provenance metadata</code></pre>
+        <div class="callout">
+          Export-first implementation is the safer first code slice after this design:
+          it proves Volt can speak KiCad while keeping Volt as the source system. Import
+          can follow once the mapping and loss-report shape are explicit.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Mapping table</aside>
+      <div class="stack">
+        <table>
+          <thead>
+            <tr>
+              <th>KiCad construct</th>
+              <th>Volt target</th>
+              <th>Rule</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>.kicad_sym</code> symbol</td>
+              <td><code>SymbolDefinition</code></td>
+              <td>Import supported drawing primitives and pin anchors into Volt's structured symbol model.</td>
+            </tr>
+            <tr>
+              <td>KiCad symbol pin</td>
+              <td><code>SymbolPin</code> plus logical <code>PinDef</code> match</td>
+              <td>Match by stable pin number first, then name if needed. Mismatches become import errors or warnings.</td>
+            </tr>
+            <tr>
+              <td>Schematic symbol instance</td>
+              <td><code>ComponentInstance</code> and <code>SymbolInstance</code></td>
+              <td>The component owns identity and reference designator. The symbol instance owns placement only.</td>
+            </tr>
+            <tr>
+              <td>KiCad reference/value/properties</td>
+              <td>Component reference and safe property metadata</td>
+              <td>Known fields lower into typed Volt fields; unknown fields stay metadata.</td>
+            </tr>
+            <tr>
+              <td>KiCad footprint field</td>
+              <td><code>PhysicalPart</code> only when complete</td>
+              <td>Do not invent a manufacturer part from a footprint string. Preserve footprint-only data as provenance until Volt has a footprint-only assignment primitive.</td>
+            </tr>
+            <tr>
+              <td>KiCad wires</td>
+              <td><code>WireRun</code> over <code>NetId</code></td>
+              <td>During import, wires help resolve nets. In Volt storage, they reference existing nets.</td>
+            </tr>
+            <tr>
+              <td>Local/global labels</td>
+              <td><code>NetName</code> plus <code>NetLabel</code></td>
+              <td>Labels create or resolve logical net names during import; schematic labels render the canonical net name afterward.</td>
+            </tr>
+            <tr>
+              <td>Power symbols</td>
+              <td>Named nets and optional typed net attributes</td>
+              <td>Power symbols are import syntax. They do not create a special power-rail object by themselves.</td>
+            </tr>
+            <tr>
+              <td>No-connect marker</td>
+              <td>Future explicit no-connect assertion</td>
+              <td>Report as unsupported until Volt owns this design-intent primitive.</td>
+            </tr>
+            <tr>
+              <td>Hierarchical sheets</td>
+              <td>Future module-aware schematic projection</td>
+              <td>Reject or warn initially. Do not flatten silently if it changes meaning.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <aside>Key decisions</aside>
+      <div class="stack">
+        <div class="decision">
+          <span class="badge core">Decision 1</span>
+          <div class="stack">
+            <h3>Adapter-local KiCad AST only.</h3>
+            <p>
+              KiCad S-expression structures belong under an adapter namespace or target.
+              Core schematic, circuit, authoring, and validation targets must not depend
+              on KiCad parser types.
+            </p>
+          </div>
+        </div>
+        <div class="decision">
+          <span class="badge core">Decision 2</span>
+          <div class="stack">
+            <h3>Do not fake selected physical parts.</h3>
+            <p>
+              A KiCad footprint reference is useful, but it is not automatically a
+              manufacturer part. Populate <code>PhysicalPart</code> only when the source
+              data is complete enough to satisfy the kernel's selected-part invariants.
+            </p>
+          </div>
+        </div>
+        <div class="decision">
+          <span class="badge core">Decision 3</span>
+          <div class="stack">
+            <h3>Use a loss report for imperfect interoperability.</h3>
+            <p>
+              Import/export should return a structured report with warnings for unsupported
+              fields, generated identifiers, graphical details Volt does not model, and
+              deferred design-intent features.
+            </p>
+          </div>
+        </div>
+        <div class="decision">
+          <span class="badge edge">Decision 4</span>
+          <div class="stack">
+            <h3>Export flat schematics before importing complex KiCad projects.</h3>
+            <p>
+              Exporting Volt's own flat schematic model to KiCad is the smallest proof of
+              interoperability. Import, hierarchy, and richer library compatibility should
+              follow after the first writer is deterministic.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Implementation slices</aside>
+      <div class="stack">
+        <div class="decision">
+          <span class="badge edge">Next 1</span>
+          <div>
+            <h3>KiCad adapter target and loss report types</h3>
+            <p>
+              Add an isolated adapter target with no core reverse dependency, a small
+              result object, and tests proving the core targets do not include KiCad
+              headers.
+            </p>
+          </div>
+        </div>
+        <div class="decision">
+          <span class="badge edge">Next 2</span>
+          <div>
+            <h3>Minimal flat KiCad schematic export</h3>
+            <p>
+              Export one sheet with symbol definitions, symbol instances, wire runs, and
+              labels from Volt's canonical model. Use <code>volt</code> as the generator
+              identifier.
+            </p>
+          </div>
+        </div>
+        <div class="decision">
+          <span class="badge edge">Next 3</span>
+          <div>
+            <h3>KiCad symbol import for supported primitives</h3>
+            <p>
+              Parse a small subset of <code>.kicad_sym</code> into
+              <code>SymbolDefinition</code>. Unsupported drawing features become warnings,
+              not partial silent conversion.
+            </p>
+          </div>
+        </div>
+        <div class="decision">
+          <span class="badge edge">Next 4</span>
+          <div>
+            <h3>Flat KiCad schematic import</h3>
+            <p>
+              Resolve components, labels, and wires into a logical circuit first, then
+              create schematic projection objects over the resulting IDs.
+            </p>
+          </div>
+        </div>
+        <div class="decision">
+          <span class="badge risk">Later</span>
+          <div>
+            <h3>Hierarchy, no-connects, buses, and footprint-only assignments</h3>
+            <p>
+              These need explicit Volt primitives or module-aware projection support before
+              they can be imported without guessing.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Acceptance</aside>
+      <div class="grid">
+        <div class="card">
+          <h3>Architecture preserved</h3>
+          <p>
+            KiCad code depends on Volt circuit and schematic structures. Volt core does
+            not depend on KiCad file-format types.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Mapping is explicit</h3>
+          <p>
+            Components, symbols, selected parts, sheets, placements, wires, and labels all
+            have a documented target or a documented deferral.
+          </p>
+        </div>
+        <div class="card">
+          <h3>No hidden netlist</h3>
+          <p>
+            Export uses canonical Volt nets. Import may infer nets only while creating the
+            logical circuit, before schematic projection objects are stored.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Hard no</aside>
+      <div class="stack">
+        <div class="callout danger">
+          Do not make KiCad's file schema Volt's internal schematic schema. Do not store
+          raw KiCad S-expressions as the only source of truth. Do not let schematic wires
+          become a second connectivity model.
+        </div>
+        <div class="two">
+          <div class="card">
+            <h3>Not now</h3>
+            <ul>
+              <li>Full KiCad project import.</li>
+              <li>Hierarchical sheet import/export.</li>
+              <li>Bus semantics.</li>
+              <li>No-connect design-intent primitives.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Still separate</h3>
+            <ul>
+              <li>PCB placement and routing.</li>
+              <li>ERC and simulation.</li>
+              <li>BOM generation and supplier logic.</li>
+              <li>Automatic schematic layout.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Notes: KiCad documents modern schematic files as <code>.kicad_sch</code> and symbol
+      libraries as <code>.kicad_sym</code>, both using KiCad's S-expression format. The
+      KiCad docs also ask third-party writers to use their own generator identifier rather
+      than pretending to be KiCad. Sources:
+      <a href="https://dev-docs.kicad.org/en/file-formats/sexpr-schematic/index.html">schematic file format</a>,
+      <a href="https://dev-docs.kicad.org/en/file-formats/sexpr-symbol-lib/">symbol library file format</a>.
+    </footer>
+  </main>
+</body>
+</html>
