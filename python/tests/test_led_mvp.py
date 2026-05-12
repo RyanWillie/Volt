@@ -112,6 +112,67 @@ def test_custom_component_definitions_are_kernel_owned():
     assert {diagnostic.code for diagnostic in report} == {"UNCONNECTED_REQUIRED_PIN", "SINGLE_PIN_NET"}
 
 
+def test_python_design_intent_serializes_as_kernel_design_intent():
+    design = volt.Design("intent")
+    mcu = design.define_component(
+        "MCU",
+        pins=[volt.PinSpec("PB2", 1, role="input")],
+    )
+    u1 = design.instantiate(mcu, ref="U1")
+
+    boot = design.net("BOOT_TRACE").mark_stub()
+    u1["PB2"].mark_no_connect()
+
+    circuit = json.loads(design.to_json())
+
+    assert boot.index == 0
+    assert u1["PB2"].index == 0
+    assert circuit["design_intent"] == {
+        "stub_nets": ["net:0"],
+        "no_connect_pins": ["pin:0"],
+    }
+
+
+def test_python_stub_net_intent_suppresses_only_intended_net_shape_diagnostics():
+    design = volt.Design("stub-validation")
+    probe_definition = design.define_component(
+        "Probe",
+        pins=[volt.PinSpec("SWDIO", 1, requirement="optional")],
+    )
+    tp1 = design.instantiate(probe_definition, ref="TP1")
+
+    design.net("BOOT_TRACE").mark_stub()
+    swdio = design.net("SWDIO").mark_stub()
+    swdio += tp1["SWDIO"]
+    design.net("REAL_FLOATING_NET")
+
+    report = design.validate()
+
+    assert [diagnostic.code for diagnostic in report] == ["EMPTY_NET"]
+    assert report[0].entities[0].kind == "net"
+    assert report[0].entities[0].index == 2
+
+
+def test_python_no_connect_intent_suppresses_only_intended_missing_pin_diagnostics():
+    design = volt.Design("no-connect-validation")
+    mcu = design.define_component(
+        "MCU",
+        pins=[
+            volt.PinSpec("PB2", 1, role="input"),
+            volt.PinSpec("PB3", 2, role="input"),
+        ],
+    )
+    u1 = design.instantiate(mcu, ref="U1")
+
+    u1["PB2"].mark_no_connect()
+
+    report = design.validate()
+
+    assert [diagnostic.code for diagnostic in report] == ["UNCONNECTED_REQUIRED_PIN"]
+    assert report[0].entities[0].kind == "pin"
+    assert report[0].entities[0].index == u1["PB3"].index
+
+
 def test_library_component_instantiates_kernel_owned_definition_once():
     design = volt.Design("library")
     library = volt.Library("volt.test")
@@ -185,6 +246,75 @@ def test_stm32_usb_buck_library_exposes_native_components():
         "name": "LQFP-64_10x10mm_P0.5mm",
     }
     assert stm32_part["pin_pad_mappings"][44] == {"pin": "pin_def:44", "pad": "45"}
+
+
+def test_repeated_pin_labels_require_explicit_single_pin_addressing():
+    design = volt.Design("repeated-pins")
+    package = design.define_component(
+        "RepeatedSupply",
+        pins=[
+            volt.PinSpec("VDD", 19, role="power", terminal="power", direction="input"),
+            volt.PinSpec("VDD", 32, role="power", terminal="power", direction="input"),
+            volt.PinSpec("GPIO", 1, role="bidirectional"),
+        ],
+    )
+    u1 = design.instantiate(package, ref="U1")
+
+    try:
+        u1["VDD"]
+    except ValueError as error:
+        assert "ambiguous" in str(error)
+        assert "pins('VDD')" in str(error)
+    else:
+        raise AssertionError("repeated pin label should require explicit addressing")
+
+    assert u1[19].index == 0
+    assert u1["VDD_32"].index == 1
+    assert u1["GPIO"].index == 2
+
+
+def test_repeated_pin_group_connects_all_matching_package_pins():
+    design = volt.Design("repeated-group")
+    package = design.define_component(
+        "RepeatedSupply",
+        pins=[
+            volt.PinSpec("VDD", 19, role="power", terminal="power", direction="input"),
+            volt.PinSpec("VDD", 32, role="power", terminal="power", direction="input"),
+            volt.PinSpec("VSS", 18, role="ground", terminal="ground", direction="passive"),
+            volt.PinSpec("VSS", 63, role="ground", terminal="ground", direction="passive"),
+        ],
+    )
+    u1 = design.instantiate(package, ref="U1")
+
+    vdd = design.net("VDD", kind="power")
+    gnd = design.net("GND", kind="ground")
+    vdd += u1.pins("VDD")
+    gnd += u1.pins("VSS")
+
+    circuit = json.loads(design.to_json())
+    nets = {net["name"]: net for net in circuit["nets"]}
+
+    assert len(u1.pins("VDD")) == 2
+    assert nets["VDD"]["pins"] == ["pin:0", "pin:1"]
+    assert nets["GND"]["pins"] == ["pin:2", "pin:3"]
+
+
+def test_stm32_repeated_supply_groups_connect_without_bespoke_code():
+    design = volt.Design("stm32-repeated-supplies")
+    mcu = design.instantiate(stm32_usb_buck.STM32F405RGTx, ref="U1")
+
+    vdd = design.net("VDD", kind="power", voltage=3.3)
+    gnd = design.net("GND", kind="ground")
+    vdd += mcu.pins("VDD")
+    gnd += mcu.pins("VSS")
+
+    circuit = json.loads(design.to_json())
+    nets = {net["name"]: net for net in circuit["nets"]}
+
+    assert [pin.index for pin in mcu.pins("VDD")] == [18, 31, 47, 63]
+    assert [pin.index for pin in mcu.pins("VSS")] == [17, 62]
+    assert nets["VDD"]["pins"] == ["pin:18", "pin:31", "pin:47", "pin:63"]
+    assert nets["GND"]["pins"] == ["pin:17", "pin:62"]
 
 
 def test_pin_spec_electrical_semantics_are_kernel_owned():
@@ -800,8 +930,14 @@ if __name__ == "__main__":
     test_led_circuit_validates()
     test_natural_electrical_values_serialize_as_kernel_attributes()
     test_custom_component_definitions_are_kernel_owned()
+    test_python_design_intent_serializes_as_kernel_design_intent()
+    test_python_stub_net_intent_suppresses_only_intended_net_shape_diagnostics()
+    test_python_no_connect_intent_suppresses_only_intended_missing_pin_diagnostics()
     test_library_component_instantiates_kernel_owned_definition_once()
     test_stm32_usb_buck_library_exposes_native_components()
+    test_repeated_pin_labels_require_explicit_single_pin_addressing()
+    test_repeated_pin_group_connects_all_matching_package_pins()
+    test_stm32_repeated_supply_groups_connect_without_bespoke_code()
     test_pin_spec_electrical_semantics_are_kernel_owned()
     test_component_selected_part_serializes()
     test_custom_component_selected_part_accepts_named_pin_mappings()

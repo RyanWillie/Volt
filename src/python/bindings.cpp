@@ -757,7 +757,13 @@ class PyCircuit {
             if (py::isinstance<py::int_>(item.first)) {
                 pin = circuit_.pin_by_number(component_handle, key);
             } else {
-                pin = circuit_.pin_by_name(component_handle, key);
+                const auto matches = pins_by_name(component_handle, key);
+                if (matches.size() > 1) {
+                    throw std::invalid_argument{"Component pin name is ambiguous"};
+                }
+                if (!matches.empty()) {
+                    pin = matches.front();
+                }
             }
             if (!pin.has_value()) {
                 throw std::out_of_range{"Component has no pin with that name or number"};
@@ -840,12 +846,15 @@ class PyCircuit {
     }
 
     [[nodiscard]] std::size_t pin_by_name(std::size_t component, const std::string &name) const {
-        const auto pin = circuit_.pin_by_name(component_id(component), name);
-        if (!pin.has_value()) {
+        const auto matches = pins_by_name(component_id(component), name);
+        if (matches.empty()) {
             throw std::out_of_range{"Component has no pin with that name"};
         }
+        if (matches.size() > 1) {
+            throw std::invalid_argument{"Component pin name is ambiguous"};
+        }
 
-        return pin.value().index();
+        return matches.front().index();
     }
 
     [[nodiscard]] std::size_t pin_by_number(std::size_t component,
@@ -858,7 +867,28 @@ class PyCircuit {
         return pin.value().index();
     }
 
+    [[nodiscard]] py::list pin_refs(std::size_t component) const {
+        auto result = py::list{};
+        for (const auto pin : circuit_.pins_for(component_id(component))) {
+            const auto &definition = circuit_.pin_definition(circuit_.pin(pin).definition());
+            auto item = py::dict{};
+            item["index"] = pin.index();
+            item["name"] = definition.name();
+            item["number"] = definition.number();
+            result.append(std::move(item));
+        }
+        return result;
+    }
+
     void connect(std::size_t net, std::size_t pin) { circuit_.connect(net_id(net), pin_id(pin)); }
+
+    void mark_intentional_stub_net(std::size_t net) {
+        static_cast<void>(circuit_.mark_intentional_stub_net(net_id(net)));
+    }
+
+    void mark_intentional_no_connect_pin(std::size_t pin) {
+        static_cast<void>(circuit_.mark_intentional_no_connect_pin(pin_id(pin)));
+    }
 
     [[nodiscard]] std::size_t define_module(const std::string &name) {
         return circuit_.add_module_definition(volt::ModuleDefinition{volt::ModuleName{name}})
@@ -899,16 +929,15 @@ class PyCircuit {
 
     [[nodiscard]] std::size_t module_component_pin_by_name(std::size_t component,
                                                            const std::string &name) const {
-        const auto component_handle = module_component_id(component);
-        const auto &component_template = circuit_.module_component_template(component_handle);
-        const auto &definition = circuit_.component_definition(component_template.definition());
-        for (const auto pin : definition.pins()) {
-            if (circuit_.pin_definition(pin).name() == name) {
-                return pin.index();
-            }
+        const auto matches = module_component_pins_by_name(module_component_id(component), name);
+        if (matches.empty()) {
+            throw std::out_of_range{"Module component has no pin with that name"};
+        }
+        if (matches.size() > 1) {
+            throw std::invalid_argument{"Module component pin name is ambiguous"};
         }
 
-        throw std::out_of_range{"Module component has no pin with that name"};
+        return matches.front().index();
     }
 
     [[nodiscard]] std::size_t module_component_pin_by_number(std::size_t component,
@@ -923,6 +952,22 @@ class PyCircuit {
         }
 
         throw std::out_of_range{"Module component has no pin with that number"};
+    }
+
+    [[nodiscard]] py::list module_component_pin_refs(std::size_t component) const {
+        auto result = py::list{};
+        const auto component_handle = module_component_id(component);
+        const auto &component_template = circuit_.module_component_template(component_handle);
+        const auto &definition = circuit_.component_definition(component_template.definition());
+        for (const auto pin : definition.pins()) {
+            const auto &pin_definition = circuit_.pin_definition(pin);
+            auto item = py::dict{};
+            item["index"] = pin.index();
+            item["name"] = pin_definition.name();
+            item["number"] = pin_definition.number();
+            result.append(std::move(item));
+        }
+        return result;
     }
 
     void connect_module_pin(std::size_t module, std::size_t net, std::size_t component,
@@ -1139,6 +1184,32 @@ class PyCircuit {
     }
 
   private:
+    [[nodiscard]] std::vector<volt::PinId> pins_by_name(volt::ComponentId component,
+                                                        const std::string &name) const {
+        auto result = std::vector<volt::PinId>{};
+        for (const auto pin : circuit_.pins_for(component)) {
+            const auto definition = circuit_.pin(pin).definition();
+            if (circuit_.pin_definition(definition).name() == name) {
+                result.push_back(pin);
+            }
+        }
+        return result;
+    }
+
+    [[nodiscard]] std::vector<volt::PinDefId>
+    module_component_pins_by_name(volt::ModuleComponentId component,
+                                  const std::string &name) const {
+        auto result = std::vector<volt::PinDefId>{};
+        const auto &component_template = circuit_.module_component_template(component);
+        const auto &definition = circuit_.component_definition(component_template.definition());
+        for (const auto pin : definition.pins()) {
+            if (circuit_.pin_definition(pin).name() == name) {
+                result.push_back(pin);
+            }
+        }
+        return result;
+    }
+
     [[nodiscard]] volt::Schematic &schematic_projection() {
         if (!schematic_.has_value()) {
             schematic_.emplace(circuit_);
@@ -1199,7 +1270,11 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("prefix"), py::arg("properties") = py::dict{})
         .def("pin_by_name", &PyCircuit::pin_by_name, py::arg("component"), py::arg("name"))
         .def("pin_by_number", &PyCircuit::pin_by_number, py::arg("component"), py::arg("number"))
+        .def("pin_refs", &PyCircuit::pin_refs, py::arg("component"))
         .def("connect", &PyCircuit::connect, py::arg("net"), py::arg("pin"))
+        .def("mark_intentional_stub_net", &PyCircuit::mark_intentional_stub_net, py::arg("net"))
+        .def("mark_intentional_no_connect_pin", &PyCircuit::mark_intentional_no_connect_pin,
+             py::arg("pin"))
         .def("define_module", &PyCircuit::define_module, py::arg("name"))
         .def("add_template_net", &PyCircuit::add_template_net, py::arg("module"), py::arg("name"),
              py::arg("kind") = "signal")
@@ -1211,6 +1286,8 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("component"), py::arg("name"))
         .def("module_component_pin_by_number", &PyCircuit::module_component_pin_by_number,
              py::arg("component"), py::arg("number"))
+        .def("module_component_pin_refs", &PyCircuit::module_component_pin_refs,
+             py::arg("component"))
         .def("connect_module_pin", &PyCircuit::connect_module_pin, py::arg("module"),
              py::arg("net"), py::arg("component"), py::arg("pin"))
         .def("instantiate_root_module", &PyCircuit::instantiate_root_module, py::arg("definition"),
