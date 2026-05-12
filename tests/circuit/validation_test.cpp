@@ -190,6 +190,81 @@ TEST_CASE("Circuit validation reports connected intentional no-connect pins") {
     CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
 }
 
+TEST_CASE("Circuit validation treats bound module port nets as connected for net shape") {
+    volt::Circuit circuit;
+    const auto input_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "IN", "1", volt::PinRole::Passive, volt::ConnectionRequirement::Required});
+    const auto output_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "OUT", "1", volt::PinRole::Passive, volt::ConnectionRequirement::Required});
+    const auto module_component_def =
+        circuit.add_component_definition(volt::ComponentDefinition{"Load", std::vector{input_pin}});
+    const auto parent_component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Source", std::vector{output_pin}});
+
+    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"LoadBlock"},
+    });
+    const auto template_net = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
+    const auto port = circuit.add_port_definition(
+        module,
+        volt::PortDefinition{volt::PortName{"VIN"}, template_net, volt::PortRole::PowerInput});
+    const auto module_component = circuit.add_module_component(
+        module,
+        volt::ModuleComponentTemplate{module_component_def, volt::ReferenceDesignator{"U1"}});
+    CHECK(circuit.connect_module_pin(module, template_net, module_component, input_pin));
+    const auto instance =
+        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"LOAD_A"});
+    const auto parent_component =
+        circuit.instantiate_component(parent_component_def, volt::ReferenceDesignator{"U2"});
+    const auto parent_net = circuit.add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
+
+    circuit.connect(parent_net, circuit.pin_by_name(parent_component, "OUT").value());
+    [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);
+
+    const auto report = volt::validate_connectivity(circuit);
+
+    CHECK(report.empty());
+}
+
+TEST_CASE("Circuit validation treats bound module port nets as connected for power sources") {
+    volt::Circuit circuit;
+    const auto power_input = circuit.add_pin_definition(volt::PinDefinition{
+        "VCC", "1", volt::PinRole::PowerInput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
+    const auto power_source = circuit.add_pin_definition(volt::PinDefinition{
+        "OUT", "1", volt::PinRole::PowerOutput, volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Output});
+    const auto load_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Load", std::vector{power_input}});
+    const auto regulator_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Regulator", std::vector{power_source}});
+
+    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
+        volt::ModuleName{"LoadBlock"},
+    });
+    const auto template_net = circuit.add_template_net(
+        module, volt::TemplateNetDefinition{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto port = circuit.add_port_definition(
+        module,
+        volt::PortDefinition{volt::PortName{"VCC"}, template_net, volt::PortRole::PowerInput});
+    const auto module_component = circuit.add_module_component(
+        module, volt::ModuleComponentTemplate{load_def, volt::ReferenceDesignator{"U1"}});
+    CHECK(circuit.connect_module_pin(module, template_net, module_component, power_input));
+    const auto instance =
+        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"LOAD_A"});
+    const auto regulator =
+        circuit.instantiate_component(regulator_def, volt::ReferenceDesignator{"U2"});
+    const auto parent_net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    circuit.connect(parent_net, circuit.pin_by_name(regulator, "OUT").value());
+    [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);
+
+    const auto report = volt::validate_circuit(circuit);
+
+    CHECK(report.empty());
+}
+
 TEST_CASE("Circuit connectivity validation excludes electrical rule diagnostics") {
     volt::Circuit circuit;
     const auto power_input = circuit.add_pin_definition(volt::PinDefinition{
