@@ -754,6 +754,14 @@ class PyCircuit {
 
     void connect(std::size_t net, std::size_t pin) { circuit_.connect(net_id(net), pin_id(pin)); }
 
+    void mark_intentional_stub_net(std::size_t net) {
+        static_cast<void>(circuit_.mark_intentional_stub_net(net_id(net)));
+    }
+
+    void mark_intentional_no_connect_pin(std::size_t pin) {
+        static_cast<void>(circuit_.mark_intentional_no_connect_pin(pin_id(pin)));
+    }
+
     [[nodiscard]] std::size_t define_module(const std::string &name) {
         return circuit_.add_module_definition(volt::ModuleDefinition{volt::ModuleName{name}})
             .index();
@@ -1084,6 +1092,9 @@ PYBIND11_MODULE(_volt, module) {
         .def("pin_by_name", &PyCircuit::pin_by_name, py::arg("component"), py::arg("name"))
         .def("pin_by_number", &PyCircuit::pin_by_number, py::arg("component"), py::arg("number"))
         .def("connect", &PyCircuit::connect, py::arg("net"), py::arg("pin"))
+        .def("mark_intentional_stub_net", &PyCircuit::mark_intentional_stub_net, py::arg("net"))
+        .def("mark_intentional_no_connect_pin", &PyCircuit::mark_intentional_no_connect_pin,
+             py::arg("pin"))
         .def("define_module", &PyCircuit::define_module, py::arg("name"))
         .def("add_template_net", &PyCircuit::add_template_net, py::arg("module"), py::arg("name"),
              py::arg("kind") = "signal")
