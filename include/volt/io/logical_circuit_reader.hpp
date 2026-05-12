@@ -36,6 +36,7 @@ class LogicalCircuitReader {
         read_components();
         read_pins();
         read_nets();
+        read_design_intent();
         read_module_definitions();
         read_module_instances();
         read_selected_physical_parts();
@@ -522,6 +523,33 @@ class LogicalCircuitReader {
             const auto net_id = circuit_.add_net(std::move(net));
             net_ids_.emplace(id, net_id);
             read_net_electrical_attributes(net_object, net_id);
+        }
+    }
+
+    void read_design_intent() {
+        const auto it = document_.find("design_intent");
+        if (it == document_.end()) {
+            return;
+        }
+        require(it->is_object(), "Design intent must be an object");
+
+        auto seen_stub_nets = std::set<std::string>{};
+        for (const auto &net : array_field(*it, "stub_nets")) {
+            require(net.is_string(), "Stub-net design intent reference must be a string");
+            const auto id = net.get<std::string>();
+            require(seen_stub_nets.insert(id).second, "Duplicate stub-net design intent");
+            [[maybe_unused]] const auto changed =
+                circuit_.mark_intentional_stub_net(resolve(net_ids_, id));
+        }
+
+        auto seen_no_connect_pins = std::set<std::string>{};
+        for (const auto &pin : array_field(*it, "no_connect_pins")) {
+            require(pin.is_string(), "No-connect design intent reference must be a string");
+            const auto id = pin.get<std::string>();
+            require(seen_no_connect_pins.insert(id).second,
+                    "Duplicate no-connect pin design intent");
+            [[maybe_unused]] const auto changed =
+                circuit_.mark_intentional_no_connect_pin(resolve(pin_ids_, id));
         }
     }
 

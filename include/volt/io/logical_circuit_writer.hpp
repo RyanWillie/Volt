@@ -576,9 +576,30 @@ inline void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         }
         out << '\n';
     }
+    const auto has_design_intent =
+        !circuit.intentional_stub_nets().empty() || !circuit.intentional_no_connect_pins().empty();
     const auto has_hierarchy =
         circuit.module_definition_count() != 0 || circuit.module_instance_count() != 0;
-    out << (has_hierarchy ? "  ],\n" : "  ]\n");
+    out << ((has_design_intent || has_hierarchy) ? "  ],\n" : "  ]\n");
+
+    if (has_design_intent) {
+        out << "  \"design_intent\": { \"stub_nets\": [";
+        for (std::size_t index = 0; index < circuit.intentional_stub_nets().size(); ++index) {
+            if (index != 0) {
+                out << ", ";
+            }
+            out << detail::json_string(detail::net_id(circuit.intentional_stub_nets()[index]));
+        }
+        out << "], \"no_connect_pins\": [";
+        for (std::size_t index = 0; index < circuit.intentional_no_connect_pins().size(); ++index) {
+            if (index != 0) {
+                out << ", ";
+            }
+            out << detail::json_string(
+                detail::pin_id(circuit.intentional_no_connect_pins()[index]));
+        }
+        out << "] }" << (has_hierarchy ? ",\n" : "\n");
+    }
 
     if (!has_hierarchy) {
         out << "}\n";

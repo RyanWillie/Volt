@@ -82,6 +82,31 @@ TEST_CASE("Logical circuit reader preserves net typed electrical attributes") {
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 3.3});
 }
 
+TEST_CASE("Logical circuit reader preserves design intent") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["design_intent"] = {
+        {"stub_nets", nlohmann::json::array({"net:0"})},
+        {"no_connect_pins", nlohmann::json::array({"pin:5"})},
+    };
+
+    const auto circuit = volt::io::read_logical_circuit(fixture);
+
+    CHECK(circuit.is_intentional_stub_net(volt::NetId{0}));
+    CHECK(circuit.is_intentional_no_connect_pin(volt::PinId{5}));
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+    CHECK(output["design_intent"] == fixture["design_intent"]);
+}
+
+TEST_CASE("Logical circuit reader rejects malformed design intent references") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["design_intent"] = {
+        {"stub_nets", nlohmann::json::array({"net:99"})},
+        {"no_connect_pins", nlohmann::json::array()},
+    };
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+}
+
 TEST_CASE("Logical circuit reader preserves pin electrical semantics") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     auto &pin = fixture["pin_definitions"][0];

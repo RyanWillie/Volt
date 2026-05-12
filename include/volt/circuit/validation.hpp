@@ -64,6 +64,23 @@ inline void validate_pin_connection_requirements(const Circuit &circuit, Diagnos
             continue;
         }
 
+        if (circuit.is_intentional_no_connect_pin(pin_id)) {
+            if (connected_net.has_value()) {
+                report.add(Diagnostic{
+                    Severity::Error,
+                    DiagnosticCode{"PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED"},
+                    "Intentional no-connect pin is connected",
+                    std::vector{
+                        EntityRef::pin(pin_id),
+                        EntityRef::component(pin.component()),
+                        EntityRef::pin_def(pin.definition()),
+                        EntityRef::net(connected_net.value()),
+                    },
+                });
+            }
+            continue;
+        }
+
         if (definition.connection_requirement() == ConnectionRequirement::Required &&
             !connected_net.has_value()) {
             report.add(Diagnostic{
@@ -267,6 +284,9 @@ inline void validate_net_shapes(const Circuit &circuit, DiagnosticReport &report
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
         const auto net_id = NetId{index};
         const auto &net = circuit.net(net_id);
+        if (circuit.is_intentional_stub_net(net_id)) {
+            continue;
+        }
 
         validate_net_shape(net_id, net, report);
     }
@@ -289,7 +309,9 @@ inline void validate_net_semantics(const Circuit &circuit, DiagnosticReport &rep
         const auto net_id = NetId{index};
         const auto &net = circuit.net(net_id);
 
-        validate_net_shape(net_id, net, report);
+        if (!circuit.is_intentional_stub_net(net_id)) {
+            validate_net_shape(net_id, net, report);
+        }
         validate_power_and_ground_semantics(circuit, net_id, net, report);
         validate_selected_part_voltage_ratings(circuit, net_id, net, report);
         validate_pin_voltage_ranges(circuit, net_id, net, report);

@@ -25,11 +25,12 @@ TEST_CASE("Circuit validation diagnostic code catalog remains stable") {
         "POWER_INPUT_WITHOUT_SOURCE",
         "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
         "SINGLE_PIN_NET",
+        "PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED",
         "UNBOUND_REQUIRED_PORT",
         "UNCONNECTED_REQUIRED_PIN",
     };
 
-    CHECK(codes.size() == 12);
+    CHECK(codes.size() == 13);
 }
 
 TEST_CASE("Circuit validation reports required pins that are not connected") {
@@ -120,6 +121,73 @@ TEST_CASE("Circuit validation reports empty and single-pin nets") {
     CHECK(report.diagnostics()[1].severity() == volt::Severity::Warning);
     CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
     CHECK(report.diagnostics()[1].entities().front() == volt::EntityRef::net(single_pin_net));
+}
+
+TEST_CASE("Circuit validation accepts intentional stub nets") {
+    volt::Circuit circuit;
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "SWDIO", "1", volt::PinRole::Bidirectional, volt::ConnectionRequirement::Optional});
+    const auto component_def =
+        circuit.add_component_definition(volt::ComponentDefinition{"MCU", std::vector{pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+    const auto pin = circuit.pin_by_name(component, "SWDIO").value();
+    const auto empty_stub =
+        circuit.add_net(volt::Net{volt::NetName{"BOOT_TRACE"}, volt::NetKind::Signal});
+    const auto single_pin_stub =
+        circuit.add_net(volt::Net{volt::NetName{"SWDIO"}, volt::NetKind::Signal});
+
+    circuit.connect(single_pin_stub, pin);
+    circuit.mark_intentional_stub_net(empty_stub);
+    circuit.mark_intentional_stub_net(single_pin_stub);
+
+    CHECK(circuit.is_intentional_stub_net(empty_stub));
+    CHECK(circuit.is_intentional_stub_net(single_pin_stub));
+    CHECK(volt::validate_connectivity(circuit).empty());
+}
+
+TEST_CASE("Circuit validation accepts intentional no-connect pins") {
+    volt::Circuit circuit;
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "PB2", "1", volt::PinRole::DigitalInput, volt::ConnectionRequirement::Required});
+    const auto component_def =
+        circuit.add_component_definition(volt::ComponentDefinition{"MCU", std::vector{pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+    const auto pin = circuit.pin_by_name(component, "PB2").value();
+
+    circuit.mark_intentional_no_connect_pin(pin);
+
+    CHECK(circuit.is_intentional_no_connect_pin(pin));
+    CHECK(volt::validate_connectivity(circuit).empty());
+}
+
+TEST_CASE("Circuit validation reports connected intentional no-connect pins") {
+    volt::Circuit circuit;
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "PB2", "1", volt::PinRole::DigitalInput, volt::ConnectionRequirement::Required});
+    const auto component_def =
+        circuit.add_component_definition(volt::ComponentDefinition{"MCU", std::vector{pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
+    const auto pin = circuit.pin_by_name(component, "PB2").value();
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"PB2"}, volt::NetKind::Signal});
+
+    circuit.connect(net, pin);
+    circuit.mark_intentional_no_connect_pin(pin);
+
+    const auto report = volt::validate_connectivity(circuit);
+
+    REQUIRE(report.count() == 2);
+    CHECK(report.diagnostics()[0].severity() == volt::Severity::Error);
+    CHECK(report.diagnostics()[0].code() ==
+          volt::DiagnosticCode{"PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED"});
+    REQUIRE(report.diagnostics()[0].entities().size() == 4);
+    CHECK(report.diagnostics()[0].entities()[0] == volt::EntityRef::pin(pin));
+    CHECK(report.diagnostics()[0].entities()[1] == volt::EntityRef::component(component));
+    CHECK(report.diagnostics()[0].entities()[2] == volt::EntityRef::pin_def(pin_def));
+    CHECK(report.diagnostics()[0].entities()[3] == volt::EntityRef::net(net));
+    CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
 }
 
 TEST_CASE("Circuit connectivity validation excludes electrical rule diagnostics") {
