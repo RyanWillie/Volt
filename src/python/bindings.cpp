@@ -362,6 +362,112 @@ void add_two_pin_anchors(volt::SymbolDefinition &symbol, const std::string &left
                                    volt::SchematicOrientation::Right});
 }
 
+[[nodiscard]] std::string required_string_field(const py::dict &dict, const char *field,
+                                                const char *context) {
+    if (!dict.contains(field)) {
+        throw std::invalid_argument{std::string{context} + " must include " + field};
+    }
+    return py::cast<std::string>(dict[field]);
+}
+
+[[nodiscard]] py::dict required_dict_field(const py::dict &dict, const char *field,
+                                           const char *context) {
+    if (!dict.contains(field)) {
+        throw std::invalid_argument{std::string{context} + " must include " + field};
+    }
+    return py::cast<py::dict>(dict[field]);
+}
+
+[[nodiscard]] double required_number_field(const py::dict &dict, const char *field,
+                                           const char *context) {
+    if (!dict.contains(field)) {
+        throw std::invalid_argument{std::string{context} + " must include " + field};
+    }
+    const auto value = py::cast<double>(dict[field]);
+    require_finite(value, "Schematic symbol numbers must be finite");
+    return value;
+}
+
+[[nodiscard]] volt::Point point_from_dict(const py::dict &dict) {
+    return volt::Point{required_number_field(dict, "x", "Symbol point"),
+                       required_number_field(dict, "y", "Symbol point")};
+}
+
+[[nodiscard]] volt::SchematicOrientation
+schematic_orientation_from_string(const std::string &value) {
+    if (value == "Right") {
+        return volt::SchematicOrientation::Right;
+    }
+    if (value == "Down") {
+        return volt::SchematicOrientation::Down;
+    }
+    if (value == "Left") {
+        return volt::SchematicOrientation::Left;
+    }
+    if (value == "Up") {
+        return volt::SchematicOrientation::Up;
+    }
+    throw std::invalid_argument{"Unknown schematic orientation"};
+}
+
+[[nodiscard]] volt::SymbolPin symbol_pin_from_dict(const py::dict &dict) {
+    return volt::SymbolPin{required_string_field(dict, "name", "Symbol pin"),
+                           required_string_field(dict, "number", "Symbol pin"),
+                           point_from_dict(required_dict_field(dict, "anchor", "Symbol pin")),
+                           schematic_orientation_from_string(
+                               required_string_field(dict, "orientation", "Symbol pin"))};
+}
+
+[[nodiscard]] volt::SymbolPrimitive symbol_primitive_from_dict(const py::dict &dict) {
+    const auto type = required_string_field(dict, "type", "Symbol primitive");
+    if (type == "line") {
+        return volt::SymbolLine{point_from_dict(required_dict_field(dict, "start", "Symbol line")),
+                                point_from_dict(required_dict_field(dict, "end", "Symbol line"))};
+    }
+    if (type == "rectangle") {
+        return volt::SymbolRectangle{
+            point_from_dict(required_dict_field(dict, "first_corner", "Symbol rectangle")),
+            point_from_dict(required_dict_field(dict, "second_corner", "Symbol rectangle"))};
+    }
+    if (type == "circle") {
+        return volt::SymbolCircle{
+            point_from_dict(required_dict_field(dict, "center", "Symbol circle")),
+            required_number_field(dict, "radius", "Symbol circle")};
+    }
+    if (type == "arc") {
+        return volt::SymbolArc{point_from_dict(required_dict_field(dict, "center", "Symbol arc")),
+                               required_number_field(dict, "radius", "Symbol arc"),
+                               required_number_field(dict, "start_degrees", "Symbol arc"),
+                               required_number_field(dict, "sweep_degrees", "Symbol arc")};
+    }
+    if (type == "text") {
+        return volt::SymbolText{required_string_field(dict, "text", "Symbol text"),
+                                point_from_dict(required_dict_field(dict, "anchor", "Symbol text")),
+                                schematic_orientation_from_string(
+                                    required_string_field(dict, "orientation", "Symbol text"))};
+    }
+
+    throw std::invalid_argument{"Unknown schematic symbol primitive"};
+}
+
+[[nodiscard]] volt::SymbolDefinition symbol_definition_from_dict(const py::dict &dict) {
+    auto symbol = volt::SymbolDefinition{required_string_field(dict, "name", "Symbol definition")};
+    if (!dict.contains("pins")) {
+        throw std::invalid_argument{"Symbol definition must include pins"};
+    }
+    if (!dict.contains("primitives")) {
+        throw std::invalid_argument{"Symbol definition must include primitives"};
+    }
+
+    for (const auto item : py::cast<py::list>(dict["pins"])) {
+        symbol.add_pin(symbol_pin_from_dict(py::cast<py::dict>(item)));
+    }
+    for (const auto item : py::cast<py::list>(dict["primitives"])) {
+        symbol.add_primitive(symbol_primitive_from_dict(py::cast<py::dict>(item)));
+    }
+    return symbol;
+}
+
 [[nodiscard]] std::optional<volt::SymbolDefinition> built_in_symbol(const std::string &name) {
     if (name == "resistor") {
         auto symbol = volt::SymbolDefinition{name};
@@ -948,6 +1054,16 @@ class PyCircuit {
         return projection.add_sheet(volt::Sheet{name}).index();
     }
 
+    [[nodiscard]] std::size_t register_schematic_symbol(const py::dict &symbol_data) {
+        auto symbol = symbol_definition_from_dict(symbol_data);
+        auto &projection = schematic_projection();
+        if (const auto existing = projection.symbol_definition_by_name(symbol.name());
+            existing.has_value()) {
+            return existing.value().index();
+        }
+        return projection.add_symbol_definition(std::move(symbol)).index();
+    }
+
     [[nodiscard]] std::size_t place_schematic_symbol(std::size_t sheet, std::size_t component,
                                                      const std::string &symbol, double x,
                                                      double y) {
@@ -1111,6 +1227,7 @@ PYBIND11_MODULE(_volt, module) {
         .def("module_component_origins", &PyCircuit::module_component_origins, py::arg("instance"))
         .def("port_bindings", &PyCircuit::port_bindings, py::arg("instance"))
         .def("schematic_sheet", &PyCircuit::schematic_sheet, py::arg("name"))
+        .def("register_schematic_symbol", &PyCircuit::register_schematic_symbol, py::arg("symbol"))
         .def("place_schematic_symbol", &PyCircuit::place_schematic_symbol, py::arg("sheet"),
              py::arg("component"), py::arg("symbol"), py::arg("x"), py::arg("y"))
         .def("add_schematic_wire", &PyCircuit::add_schematic_wire, py::arg("sheet"), py::arg("net"),

@@ -204,6 +204,101 @@ class PhysicalPartSpec:
 
 
 @dataclass(frozen=True)
+class SchematicSymbolPinSpec:
+    """Reusable visual pin anchor data for Python-authored schematic symbols."""
+
+    name: str
+    number: int | str
+    at: tuple[float, float]
+    orientation: str = "Right"
+
+    def _to_dict(self):
+        return {
+            "name": self.name,
+            "number": str(self.number),
+            "anchor": _symbol_point(self.at),
+            "orientation": _orientation(self.orientation),
+        }
+
+
+@dataclass(frozen=True)
+class SchematicSymbolSpec:
+    """Reusable Volt-native schematic symbol data for Python-authored libraries."""
+
+    name: str
+    pins: tuple[SchematicSymbolPinSpec, ...]
+    primitives: tuple[dict, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "pins", tuple(self.pins))
+        object.__setattr__(
+            self,
+            "primitives",
+            tuple(dict(primitive) for primitive in self.primitives),
+        )
+
+    def _to_dict(self):
+        return {
+            "name": self.name,
+            "pins": [pin._to_dict() for pin in self.pins],
+            "primitives": [dict(primitive) for primitive in self.primitives],
+        }
+
+    @staticmethod
+    def pin(
+        name: str,
+        number: int | str,
+        at: tuple[float, float],
+        orientation: str = "Right",
+    ) -> SchematicSymbolPinSpec:
+        return SchematicSymbolPinSpec(name, number, at, orientation)
+
+    @staticmethod
+    def line(start: tuple[float, float], end: tuple[float, float]) -> dict:
+        return {"type": "line", "start": _symbol_point(start), "end": _symbol_point(end)}
+
+    @staticmethod
+    def rectangle(first_corner: tuple[float, float], second_corner: tuple[float, float]) -> dict:
+        return {
+            "type": "rectangle",
+            "first_corner": _symbol_point(first_corner),
+            "second_corner": _symbol_point(second_corner),
+        }
+
+    @staticmethod
+    def circle(center: tuple[float, float], radius: float) -> dict:
+        return {"type": "circle", "center": _symbol_point(center), "radius": _coordinate(radius)}
+
+    @staticmethod
+    def arc(
+        center: tuple[float, float],
+        radius: float,
+        start_degrees: float,
+        sweep_degrees: float,
+    ) -> dict:
+        return {
+            "type": "arc",
+            "center": _symbol_point(center),
+            "radius": _coordinate(radius),
+            "start_degrees": _coordinate(start_degrees),
+            "sweep_degrees": _coordinate(sweep_degrees),
+        }
+
+    @staticmethod
+    def text(
+        text: str,
+        at: tuple[float, float],
+        orientation: str = "Right",
+    ) -> dict:
+        return {
+            "type": "text",
+            "text": text,
+            "anchor": _symbol_point(at),
+            "orientation": _orientation(orientation),
+        }
+
+
+@dataclass(frozen=True)
 class LibraryComponent:
     """Reusable component entry owned by a Python library."""
 
@@ -215,6 +310,7 @@ class LibraryComponent:
     source_version: str
     physical_part: PhysicalPartSpec | None = None
     prefix: str = "U"
+    schematic_symbol: SchematicSymbolSpec | None = None
 
     @property
     def cache_key(self) -> tuple[str, str, str, str]:
@@ -243,6 +339,7 @@ class Library:
         source_version: str | None = None,
         physical_part: PhysicalPartSpec | None = None,
         prefix: str = "U",
+        schematic_symbol: SchematicSymbolSpec | None = None,
     ) -> LibraryComponent:
         if not name:
             raise ValueError("Library component name must not be empty")
@@ -259,6 +356,7 @@ class Library:
             source_version=source_version or self.version,
             physical_part=physical_part,
             prefix=prefix,
+            schematic_symbol=schematic_symbol,
         )
         self._components[name] = component
         return component
@@ -534,13 +632,23 @@ class Pin:
 class Component:
     """Handle to a kernel-owned component instance."""
 
-    def __init__(self, design: Design, index: int):
+    def __init__(
+        self,
+        design: Design,
+        index: int,
+        schematic_symbol: SchematicSymbolSpec | None = None,
+    ):
         self._design = design
         self._index = index
+        self._schematic_symbol = schematic_symbol
 
     @property
     def index(self) -> int:
         return self._index
+
+    @property
+    def schematic_symbol(self) -> SchematicSymbolSpec | None:
+        return self._schematic_symbol
 
     def __getitem__(self, key: int | str) -> Pin:
         if isinstance(key, int):
@@ -683,14 +791,27 @@ class Schematic:
     def sheet_index(self) -> int:
         return self._sheet_index
 
-    def place(self, component: Component, *, at: tuple[float, float], symbol: str) -> SchematicSymbol:
+    def place(
+        self,
+        component: Component,
+        *,
+        at: tuple[float, float],
+        symbol: str | SchematicSymbolSpec | None = None,
+    ) -> SchematicSymbol:
         if not isinstance(component, Component):
             raise TypeError("Schematic placement expects a Component handle")
         if component._design is not self._design:
             raise ValueError("Component belongs to a different design")
-        if not isinstance(symbol, str):
-            raise TypeError("symbol must be a string")
-        if not symbol:
+        if symbol is None:
+            symbol = component.schematic_symbol
+        if isinstance(symbol, SchematicSymbolSpec):
+            self.register_symbol(symbol)
+            symbol_name = symbol.name
+        elif isinstance(symbol, str):
+            symbol_name = symbol
+        else:
+            raise TypeError("symbol must be a string or SchematicSymbolSpec")
+        if not symbol_name:
             raise ValueError("symbol must not be empty")
         if not isinstance(at, tuple) or len(at) != 2:
             raise TypeError("at must be an (x, y) tuple")
@@ -698,9 +819,14 @@ class Schematic:
         x = _coordinate(at[0])
         y = _coordinate(at[1])
         instance = self._design._circuit.place_schematic_symbol(
-            self._sheet_index, component.index, symbol, x, y
+            self._sheet_index, component.index, symbol_name, x, y
         )
         return SchematicSymbol(self, instance)
+
+    def register_symbol(self, symbol: SchematicSymbolSpec) -> None:
+        if not isinstance(symbol, SchematicSymbolSpec):
+            raise TypeError("register_symbol expects a SchematicSymbolSpec")
+        self._design._circuit.register_schematic_symbol(symbol._to_dict())
 
     def wire(self, net: Net, points: Iterable[tuple[float, float]]) -> SchematicWire:
         if not isinstance(net, Net):
@@ -870,6 +996,7 @@ class Design:
                 prefix=definition.prefix if prefix is None else prefix,
                 properties=properties,
             )
+            component._schematic_symbol = definition.schematic_symbol
             if definition.physical_part is not None:
                 part = definition.physical_part
                 component.select_part(
@@ -992,6 +1119,18 @@ def _coordinate(value: float) -> float:
     return result
 
 
+def _symbol_point(value: tuple[float, float]) -> dict:
+    if not isinstance(value, (tuple, list)) or len(value) != 2:
+        raise TypeError("Schematic symbol points must be (x, y) pairs")
+    return {"x": _coordinate(value[0]), "y": _coordinate(value[1])}
+
+
+def _orientation(value: str) -> str:
+    if value not in {"Right", "Down", "Left", "Up"}:
+        raise ValueError("Schematic orientation must be Right, Down, Left, or Up")
+    return value
+
+
 def _flatten_pins(values):
     for value in values:
         if isinstance(value, Pin):
@@ -1071,6 +1210,8 @@ __all__ = [
     "PortInfo",
     "Schematic",
     "SchematicNetLabel",
+    "SchematicSymbolPinSpec",
+    "SchematicSymbolSpec",
     "SchematicSymbol",
     "SchematicWire",
     "TemplateNetInfo",
