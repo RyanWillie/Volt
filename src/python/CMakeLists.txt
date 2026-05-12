@@ -10,9 +10,20 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(pybind11)
 
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt)
+file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt/libraries)
 configure_file(
     ${PROJECT_SOURCE_DIR}/python/volt/__init__.py
     ${PROJECT_BINARY_DIR}/python/volt/__init__.py
+    COPYONLY
+)
+configure_file(
+    ${PROJECT_SOURCE_DIR}/python/volt/libraries/__init__.py
+    ${PROJECT_BINARY_DIR}/python/volt/libraries/__init__.py
+    COPYONLY
+)
+configure_file(
+    ${PROJECT_SOURCE_DIR}/python/volt/libraries/stm32_usb_buck.py
+    ${PROJECT_BINARY_DIR}/python/volt/libraries/stm32_usb_buck.py
     COPYONLY
 )
 

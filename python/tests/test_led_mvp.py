@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import volt
+from volt.libraries import stm32_usb_buck
 
 
 def test_led_circuit_validates():
@@ -109,6 +110,81 @@ def test_custom_component_definitions_are_kernel_owned():
     report = design.validate()
     assert report.has_errors
     assert {diagnostic.code for diagnostic in report} == {"UNCONNECTED_REQUIRED_PIN", "SINGLE_PIN_NET"}
+
+
+def test_library_component_instantiates_kernel_owned_definition_once():
+    design = volt.Design("library")
+    library = volt.Library("volt.test")
+    sensor = library.component(
+        "Sensor",
+        pins=[
+            volt.PinSpec("VDD", 1, role="power", terminal="power", direction="input"),
+            volt.PinSpec("OUT", 2, role="output", terminal="signal", direction="output"),
+            volt.PinSpec("GND", 3, role="ground", terminal="ground", direction="passive"),
+        ],
+        properties={"category": "sensor"},
+        physical_part=volt.PhysicalPartSpec.same_numbered(
+            manufacturer="Example",
+            part_number="SENSOR-3",
+            package="SOT-23-3",
+            footprint=("Package_TO_SOT_SMD", "SOT-23"),
+        ),
+    )
+
+    u1 = design.instantiate(sensor, ref="U1")
+    u2 = design.instantiate(sensor, ref="U2")
+
+    circuit = json.loads(design.to_json())
+
+    assert len(circuit["component_definitions"]) == 1
+    definition = circuit["component_definitions"][0]
+    assert definition["name"] == "Sensor"
+    assert definition["source"] == {
+        "namespace": "volt.test",
+        "name": "Sensor",
+        "version": "1.0.0",
+    }
+    assert definition["properties"]["category"] == {"type": "string", "value": "sensor"}
+    assert [component["reference"] for component in circuit["components"]] == ["U1", "U2"]
+    assert u1["OUT"].index == 1
+    assert u2["OUT"].index == 4
+    assert circuit["components"][0]["selected_physical_part"]["pin_pad_mappings"] == [
+        {"pin": "pin_def:0", "pad": "1"},
+        {"pin": "pin_def:1", "pad": "2"},
+        {"pin": "pin_def:2", "pad": "3"},
+    ]
+
+
+def test_stm32_usb_buck_library_exposes_native_components():
+    design = volt.Design("stm32-library")
+
+    mcu = design.instantiate(stm32_usb_buck.STM32F405RGTx, ref="U1")
+    usb = design.instantiate(stm32_usb_buck.USB_B_MICRO, ref="J1")
+    protection = design.instantiate(stm32_usb_buck.USBLC6_4SC6, ref="U2")
+    regulator = design.instantiate(stm32_usb_buck.AP1117_15, ref="U3")
+
+    circuit = json.loads(design.to_json())
+    definitions = {definition["name"]: definition for definition in circuit["component_definitions"]}
+
+    assert definitions["STM32F405RGTx"]["source"]["namespace"] == (
+        "volt.benchmarks.stm32_usb_buck"
+    )
+    assert len(definitions["STM32F405RGTx"]["pins"]) == 64
+    assert mcu["PA12"].index == 44
+    assert usb["D+"].index == 66
+    assert protection["VBUS"].index == 74
+    assert regulator["VO"].index == 77
+
+    stm32_part = circuit["components"][0]["selected_physical_part"]
+    assert stm32_part["manufacturer_part"] == {
+        "manufacturer": "STMicroelectronics",
+        "part_number": "STM32F405RGT6",
+    }
+    assert stm32_part["footprint"] == {
+        "library": "Package_QFP",
+        "name": "LQFP-64_10x10mm_P0.5mm",
+    }
+    assert stm32_part["pin_pad_mappings"][44] == {"pin": "pin_def:44", "pad": "45"}
 
 
 def test_pin_spec_electrical_semantics_are_kernel_owned():
@@ -690,6 +766,8 @@ if __name__ == "__main__":
     test_led_circuit_validates()
     test_natural_electrical_values_serialize_as_kernel_attributes()
     test_custom_component_definitions_are_kernel_owned()
+    test_library_component_instantiates_kernel_owned_definition_once()
+    test_stm32_usb_buck_library_exposes_native_components()
     test_pin_spec_electrical_semantics_are_kernel_owned()
     test_component_selected_part_serializes()
     test_custom_component_selected_part_accepts_named_pin_mappings()
