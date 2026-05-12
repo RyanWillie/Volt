@@ -423,6 +423,27 @@ class ModulePin:
         return f"ModulePin(index={self._index})"
 
 
+class ModulePinGroup:
+    """Repeated-label module component pins selected as a group."""
+
+    def __init__(self, component: ModuleComponent, name: str, pins: Iterable[ModulePin]):
+        self._component = component
+        self.name = name
+        self._pins = tuple(pins)
+
+    def __iter__(self) -> Iterator[ModulePin]:
+        return iter(self._pins)
+
+    def __len__(self) -> int:
+        return len(self._pins)
+
+    def __getitem__(self, index: int) -> ModulePin:
+        return self._pins[index]
+
+    def __repr__(self) -> str:
+        return f"ModulePinGroup(name={self.name!r}, pins={self._pins!r})"
+
+
 class ModuleComponent:
     """Handle to a component occurrence inside a reusable module definition."""
 
@@ -441,11 +462,30 @@ class ModuleComponent:
                 self._index, str(key)
             )
         elif isinstance(key, str):
-            pin = self._module._design._circuit.module_component_pin_by_name(self._index, key)
+            pin = _resolve_single_pin_ref(
+                self._pin_refs(),
+                key,
+                missing_message="Module component has no pin with that name",
+                ambiguous_message=(
+                    f"Module component pin name {key!r} is ambiguous; use pins({key!r}) "
+                    "for the group or address one physical pin by number"
+                ),
+            )
         else:
             raise TypeError("Module component pins are addressed by int number or str name")
 
         return ModulePin(self, pin)
+
+    def pins(self, name: str) -> ModulePinGroup:
+        if not isinstance(name, str):
+            raise TypeError("Module component pin groups are addressed by str name")
+        matches = _pin_refs_by_name(self._pin_refs(), name)
+        if not matches:
+            raise IndexError("Module component has no pin with that name")
+        return ModulePinGroup(self, name, (ModulePin(self, item["index"]) for item in matches))
+
+    def _pin_refs(self):
+        return self._module._design._circuit.module_component_pin_refs(self._index)
 
     def __repr__(self) -> str:
         return f"ModuleComponent(reference={self.reference!r}, index={self._index})"
@@ -531,6 +571,27 @@ class Pin:
         return f"Pin(index={self._index})"
 
 
+class PinGroup:
+    """Repeated-label concrete pins selected as a group."""
+
+    def __init__(self, component: Component, name: str, pins: Iterable[Pin]):
+        self._component = component
+        self.name = name
+        self._pins = tuple(pins)
+
+    def __iter__(self) -> Iterator[Pin]:
+        return iter(self._pins)
+
+    def __len__(self) -> int:
+        return len(self._pins)
+
+    def __getitem__(self, index: int) -> Pin:
+        return self._pins[index]
+
+    def __repr__(self) -> str:
+        return f"PinGroup(name={self.name!r}, pins={self._pins!r})"
+
+
 class Component:
     """Handle to a kernel-owned component instance."""
 
@@ -546,11 +607,30 @@ class Component:
         if isinstance(key, int):
             pin = self._design._circuit.pin_by_number(self._index, str(key))
         elif isinstance(key, str):
-            pin = self._design._circuit.pin_by_name(self._index, key)
+            pin = _resolve_single_pin_ref(
+                self._pin_refs(),
+                key,
+                missing_message="Component has no pin with that name",
+                ambiguous_message=(
+                    f"Component pin name {key!r} is ambiguous; use pins({key!r}) "
+                    "for the group or address one physical pin by number"
+                ),
+            )
         else:
             raise TypeError("Component pins are addressed by int number or str name")
 
         return Pin(self._design, pin)
+
+    def pins(self, name: str) -> PinGroup:
+        if not isinstance(name, str):
+            raise TypeError("Component pin groups are addressed by str name")
+        matches = _pin_refs_by_name(self._pin_refs(), name)
+        if not matches:
+            raise IndexError("Component has no pin with that name")
+        return PinGroup(self, name, (Pin(self._design, item["index"]) for item in matches))
+
+    def _pin_refs(self):
+        return self._design._circuit.pin_refs(self._index)
 
     def select_part(
         self,
@@ -992,10 +1072,37 @@ def _coordinate(value: float) -> float:
     return result
 
 
+def _pin_refs_by_name(pin_refs, name: str):
+    return tuple(item for item in pin_refs if item["name"] == name)
+
+
+def _pin_ref_alias(pin_ref) -> str:
+    return f"{pin_ref['name']}_{pin_ref['number']}"
+
+
+def _resolve_single_pin_ref(pin_refs, key: str, *, missing_message: str, ambiguous_message: str):
+    matches = _pin_refs_by_name(pin_refs, key)
+    if len(matches) == 1:
+        return matches[0]["index"]
+    if len(matches) > 1:
+        aliases = ", ".join(repr(_pin_ref_alias(item)) for item in matches)
+        raise ValueError(f"{ambiguous_message}; explicit aliases: {aliases}")
+
+    alias_matches = tuple(item for item in pin_refs if _pin_ref_alias(item) == key)
+    if len(alias_matches) == 1:
+        return alias_matches[0]["index"]
+    if len(alias_matches) > 1:
+        raise ValueError(f"Pin alias {key!r} is ambiguous")
+
+    raise IndexError(missing_message)
+
+
 def _flatten_pins(values):
     for value in values:
         if isinstance(value, Pin):
             yield value
+        elif isinstance(value, PinGroup):
+            yield from value
         elif isinstance(value, (tuple, list)):
             yield from _flatten_pins(value)
         else:
@@ -1006,6 +1113,8 @@ def _flatten_module_endpoints(values):
     for value in values:
         if isinstance(value, (ModuleNet, ModulePin)):
             yield value
+        elif isinstance(value, ModulePinGroup):
+            yield from value
         elif isinstance(value, (tuple, list)):
             yield from _flatten_module_endpoints(value)
         else:
@@ -1061,10 +1170,12 @@ __all__ = [
     "ModuleInstancePort",
     "ModuleNetOriginInfo",
     "ModuleNet",
+    "ModulePinGroup",
     "ModulePin",
     "ModulePort",
     "Net",
     "Pin",
+    "PinGroup",
     "PinSpec",
     "PhysicalPartSpec",
     "PortBindingInfo",
