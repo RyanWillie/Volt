@@ -527,6 +527,10 @@ class Pin:
     def index(self) -> int:
         return self._index
 
+    def mark_no_connect(self) -> Pin:
+        self._design._circuit.mark_intentional_no_connect_pin(self._index)
+        return self
+
     def __repr__(self) -> str:
         return f"Pin(index={self._index})"
 
@@ -604,6 +608,10 @@ class Net:
     @property
     def index(self) -> int:
         return self._index
+
+    def mark_stub(self) -> Net:
+        self._design._circuit.mark_intentional_stub_net(self._index)
+        return self
 
     def connect(self, *pins: Pin | ModuleInstancePort | Iterable[Pin | ModuleInstancePort]) -> Net:
         for pin in _flatten_pins(pins):

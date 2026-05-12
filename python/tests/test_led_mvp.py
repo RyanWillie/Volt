@@ -112,6 +112,67 @@ def test_custom_component_definitions_are_kernel_owned():
     assert {diagnostic.code for diagnostic in report} == {"UNCONNECTED_REQUIRED_PIN", "SINGLE_PIN_NET"}
 
 
+def test_python_design_intent_serializes_as_kernel_design_intent():
+    design = volt.Design("intent")
+    mcu = design.define_component(
+        "MCU",
+        pins=[volt.PinSpec("PB2", 1, role="input")],
+    )
+    u1 = design.instantiate(mcu, ref="U1")
+
+    boot = design.net("BOOT_TRACE").mark_stub()
+    u1["PB2"].mark_no_connect()
+
+    circuit = json.loads(design.to_json())
+
+    assert boot.index == 0
+    assert u1["PB2"].index == 0
+    assert circuit["design_intent"] == {
+        "stub_nets": ["net:0"],
+        "no_connect_pins": ["pin:0"],
+    }
+
+
+def test_python_stub_net_intent_suppresses_only_intended_net_shape_diagnostics():
+    design = volt.Design("stub-validation")
+    probe_definition = design.define_component(
+        "Probe",
+        pins=[volt.PinSpec("SWDIO", 1, requirement="optional")],
+    )
+    tp1 = design.instantiate(probe_definition, ref="TP1")
+
+    design.net("BOOT_TRACE").mark_stub()
+    swdio = design.net("SWDIO").mark_stub()
+    swdio += tp1["SWDIO"]
+    design.net("REAL_FLOATING_NET")
+
+    report = design.validate()
+
+    assert [diagnostic.code for diagnostic in report] == ["EMPTY_NET"]
+    assert report[0].entities[0].kind == "net"
+    assert report[0].entities[0].index == 2
+
+
+def test_python_no_connect_intent_suppresses_only_intended_missing_pin_diagnostics():
+    design = volt.Design("no-connect-validation")
+    mcu = design.define_component(
+        "MCU",
+        pins=[
+            volt.PinSpec("PB2", 1, role="input"),
+            volt.PinSpec("PB3", 2, role="input"),
+        ],
+    )
+    u1 = design.instantiate(mcu, ref="U1")
+
+    u1["PB2"].mark_no_connect()
+
+    report = design.validate()
+
+    assert [diagnostic.code for diagnostic in report] == ["UNCONNECTED_REQUIRED_PIN"]
+    assert report[0].entities[0].kind == "pin"
+    assert report[0].entities[0].index == u1["PB3"].index
+
+
 def test_library_component_instantiates_kernel_owned_definition_once():
     design = volt.Design("library")
     library = volt.Library("volt.test")
@@ -766,6 +827,9 @@ if __name__ == "__main__":
     test_led_circuit_validates()
     test_natural_electrical_values_serialize_as_kernel_attributes()
     test_custom_component_definitions_are_kernel_owned()
+    test_python_design_intent_serializes_as_kernel_design_intent()
+    test_python_stub_net_intent_suppresses_only_intended_net_shape_diagnostics()
+    test_python_no_connect_intent_suppresses_only_intended_missing_pin_diagnostics()
     test_library_component_instantiates_kernel_owned_definition_once()
     test_stm32_usb_buck_library_exposes_native_components()
     test_pin_spec_electrical_semantics_are_kernel_owned()
