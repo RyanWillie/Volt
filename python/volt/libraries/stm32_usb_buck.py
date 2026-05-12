@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from volt import Library, PhysicalPartSpec, PinSpec
+from volt import Library, PhysicalPartSpec, PinSpec, SchematicSymbolSpec
 
 LIB = Library("volt.benchmarks.stm32_usb_buck")
 
@@ -45,74 +45,118 @@ def _passive(name: str, number: int | str) -> PinSpec:
     return PinSpec(name, number, role="passive", terminal="passive", direction="passive")
 
 
+def _symbol_name(name: str) -> str:
+    return f"{LIB.namespace}:{name}"
+
+
+def _two_pin_symbol(name: str, label: str) -> SchematicSymbolSpec:
+    return SchematicSymbolSpec(
+        _symbol_name(name),
+        pins=(
+            SchematicSymbolSpec.pin("1", 1, (0, 0), "Left"),
+            SchematicSymbolSpec.pin("2", 2, (20, 0), "Right"),
+        ),
+        primitives=(
+            SchematicSymbolSpec.line((0, 0), (4, 0)),
+            SchematicSymbolSpec.rectangle((4, -3), (16, 3)),
+            SchematicSymbolSpec.line((16, 0), (20, 0)),
+            SchematicSymbolSpec.text(label, (10, -8)),
+        ),
+    )
+
+
+def _stm32_symbol(name: str, pins: tuple[PinSpec, ...]) -> SchematicSymbolSpec:
+    symbol_pins = []
+    primitives = [
+        SchematicSymbolSpec.rectangle((20, -10), (80, 165)),
+        SchematicSymbolSpec.text("STM32F405", (50, 70)),
+    ]
+    for index, pin in enumerate(pins):
+        if index < 32:
+            y = index * 5
+            symbol_pins.append(SchematicSymbolSpec.pin(pin.name, pin.number, (0, y), "Left"))
+            primitives.append(SchematicSymbolSpec.line((0, y), (20, y)))
+        else:
+            y = (63 - index) * 5
+            symbol_pins.append(SchematicSymbolSpec.pin(pin.name, pin.number, (100, y), "Right"))
+            primitives.append(SchematicSymbolSpec.line((80, y), (100, y)))
+    return SchematicSymbolSpec(
+        _symbol_name(name),
+        pins=tuple(symbol_pins),
+        primitives=tuple(primitives),
+    )
+
+
+STM32F405RGTx_PINS = (
+    _power_input("VBAT", 1),
+    _bidirectional("PC13", 2),
+    _bidirectional("PC14", 3),
+    _bidirectional("PC15", 4),
+    _digital_input("PH0", 5),
+    _digital_input("PH1", 6),
+    _digital_input("NRST", 7),
+    _bidirectional("PC0", 8),
+    _bidirectional("PC1", 9),
+    _bidirectional("PC2", 10),
+    _bidirectional("PC3", 11),
+    _ground("VSSA", 12),
+    _power_input("VDDA", 13),
+    _bidirectional("PA0", 14),
+    _bidirectional("PA1", 15),
+    _bidirectional("PA2", 16),
+    _bidirectional("PA3", 17),
+    _ground("VSS", 18),
+    _power_input("VDD", 19),
+    _bidirectional("PA4", 20),
+    _bidirectional("PA5", 21),
+    _bidirectional("PA6", 22),
+    _bidirectional("PA7", 23),
+    _bidirectional("PC4", 24),
+    _bidirectional("PC5", 25),
+    _bidirectional("PB0", 26),
+    _bidirectional("PB1", 27),
+    _bidirectional("PB2", 28),
+    _bidirectional("PB10", 29),
+    _bidirectional("PB11", 30),
+    _power_output("VCAP_1", 31),
+    _power_input("VDD", 32),
+    _bidirectional("PB12", 33),
+    _bidirectional("PB13", 34),
+    _bidirectional("PB14", 35),
+    _bidirectional("PB15", 36),
+    _bidirectional("PC6", 37),
+    _bidirectional("PC7", 38),
+    _bidirectional("PC8", 39),
+    _bidirectional("PC9", 40),
+    _bidirectional("PA8", 41),
+    _bidirectional("PA9", 42),
+    _bidirectional("PA10", 43),
+    _bidirectional("PA11", 44),
+    _bidirectional("PA12", 45),
+    _bidirectional("PA13", 46),
+    _power_output("VCAP_2", 47),
+    _power_input("VDD", 48),
+    _bidirectional("PA14", 49),
+    _bidirectional("PA15", 50),
+    _bidirectional("PC10", 51),
+    _bidirectional("PC11", 52),
+    _bidirectional("PC12", 53),
+    _bidirectional("PD2", 54),
+    _bidirectional("PB3", 55),
+    _bidirectional("PB4", 56),
+    _bidirectional("PB5", 57),
+    _bidirectional("PB6", 58),
+    _bidirectional("PB7", 59),
+    _digital_input("BOOT0", 60),
+    _bidirectional("PB8", 61),
+    _bidirectional("PB9", 62),
+    _ground("VSS", 63),
+    _power_input("VDD", 64),
+)
+
 STM32F405RGTx = LIB.component(
     "STM32F405RGTx",
-    pins=[
-        _power_input("VBAT", 1),
-        _bidirectional("PC13", 2),
-        _bidirectional("PC14", 3),
-        _bidirectional("PC15", 4),
-        _digital_input("PH0", 5),
-        _digital_input("PH1", 6),
-        _digital_input("NRST", 7),
-        _bidirectional("PC0", 8),
-        _bidirectional("PC1", 9),
-        _bidirectional("PC2", 10),
-        _bidirectional("PC3", 11),
-        _ground("VSSA", 12),
-        _power_input("VDDA", 13),
-        _bidirectional("PA0", 14),
-        _bidirectional("PA1", 15),
-        _bidirectional("PA2", 16),
-        _bidirectional("PA3", 17),
-        _ground("VSS", 18),
-        _power_input("VDD", 19),
-        _bidirectional("PA4", 20),
-        _bidirectional("PA5", 21),
-        _bidirectional("PA6", 22),
-        _bidirectional("PA7", 23),
-        _bidirectional("PC4", 24),
-        _bidirectional("PC5", 25),
-        _bidirectional("PB0", 26),
-        _bidirectional("PB1", 27),
-        _bidirectional("PB2", 28),
-        _bidirectional("PB10", 29),
-        _bidirectional("PB11", 30),
-        _power_output("VCAP_1", 31),
-        _power_input("VDD", 32),
-        _bidirectional("PB12", 33),
-        _bidirectional("PB13", 34),
-        _bidirectional("PB14", 35),
-        _bidirectional("PB15", 36),
-        _bidirectional("PC6", 37),
-        _bidirectional("PC7", 38),
-        _bidirectional("PC8", 39),
-        _bidirectional("PC9", 40),
-        _bidirectional("PA8", 41),
-        _bidirectional("PA9", 42),
-        _bidirectional("PA10", 43),
-        _bidirectional("PA11", 44),
-        _bidirectional("PA12", 45),
-        _bidirectional("PA13", 46),
-        _power_output("VCAP_2", 47),
-        _power_input("VDD", 48),
-        _bidirectional("PA14", 49),
-        _bidirectional("PA15", 50),
-        _bidirectional("PC10", 51),
-        _bidirectional("PC11", 52),
-        _bidirectional("PC12", 53),
-        _bidirectional("PD2", 54),
-        _bidirectional("PB3", 55),
-        _bidirectional("PB4", 56),
-        _bidirectional("PB5", 57),
-        _bidirectional("PB6", 58),
-        _bidirectional("PB7", 59),
-        _digital_input("BOOT0", 60),
-        _bidirectional("PB8", 61),
-        _bidirectional("PB9", 62),
-        _ground("VSS", 63),
-        _power_input("VDD", 64),
-    ],
+    pins=STM32F405RGTx_PINS,
     properties={"category": "mcu", "package": "LQFP-64"},
     physical_part=PhysicalPartSpec.same_numbered(
         manufacturer="STMicroelectronics",
@@ -121,6 +165,7 @@ STM32F405RGTx = LIB.component(
         footprint=("Package_QFP", "LQFP-64_10x10mm_P0.5mm"),
     ),
     prefix="U",
+    schematic_symbol=_stm32_symbol("STM32F405RGTx", STM32F405RGTx_PINS),
 )
 
 USB_B_MICRO = LIB.component(
@@ -254,6 +299,7 @@ RESISTOR = LIB.component(
     pins=[_passive("1", 1), _passive("2", 2)],
     properties={"category": "passive"},
     prefix="R",
+    schematic_symbol=_two_pin_symbol("Resistor", "R"),
 )
 
 CAPACITOR = LIB.component(

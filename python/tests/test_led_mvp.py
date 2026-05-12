@@ -873,11 +873,45 @@ def test_python_schematic_writes_svg_projection():
         assert path.read_text(encoding="utf-8") == svg
 
 
+def test_stm32_usb_buck_native_symbols_place_and_render():
+    design = volt.Design("stm32-native-symbols")
+    mcu = design.instantiate(stm32_usb_buck.STM32F405RGTx, ref="U1")
+    resistor = design.instantiate(stm32_usb_buck.RESISTOR, ref="R1")
+
+    schematic = design.schematic("Main")
+    schematic.place(mcu, at=(60, 60))
+    schematic.place(resistor, at=(160, 60))
+
+    projection = json.loads(schematic.to_json())
+
+    assert [symbol["name"] for symbol in projection["symbol_definitions"]] == [
+        "volt.benchmarks.stm32_usb_buck:STM32F405RGTx",
+        "volt.benchmarks.stm32_usb_buck:Resistor",
+    ]
+    stm32_symbol = projection["symbol_definitions"][0]
+    resistor_symbol = projection["symbol_definitions"][1]
+    assert len(stm32_symbol["pins"]) == 64
+    assert any(pin["name"] == "PA11" and pin["number"] == "44" for pin in stm32_symbol["pins"])
+    assert any(primitive["type"] == "rectangle" for primitive in stm32_symbol["primitives"])
+    assert len(resistor_symbol["pins"]) == 2
+    assert projection["sheets"][0]["symbol_instances"] == [
+        "symbol_instance:0",
+        "symbol_instance:1",
+    ]
+
+    svg = schematic.to_svg()
+    assert 'data-component="component:0"' in svg
+    assert 'data-component="component:1"' in svg
+    assert ">U1</text>" in svg
+    assert ">R1</text>" in svg
+
+
 def test_python_schematic_handles_are_publicly_exported():
     assert "Schematic" in volt.__all__
     assert "SchematicSymbol" in volt.__all__
     assert "SchematicWire" in volt.__all__
     assert "SchematicNetLabel" in volt.__all__
+    assert "SchematicSymbolSpec" in volt.__all__
 
 
 def test_diagnostics_are_inspectable():
@@ -917,5 +951,6 @@ if __name__ == "__main__":
     test_module_authoring_exposes_hierarchy_inspection_views()
     test_python_schematic_placement_serializes_kernel_projection()
     test_python_schematic_writes_svg_projection()
+    test_stm32_usb_buck_native_symbols_place_and_render()
     test_python_schematic_handles_are_publicly_exported()
     test_diagnostics_are_inspectable()
