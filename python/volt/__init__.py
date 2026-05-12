@@ -188,7 +188,16 @@ class PhysicalPartSpec:
 
     def pin_pads_for(self, component: LibraryComponent) -> dict[int | str, str]:
         if self.same_numbered_pads:
-            return {pin.number: str(pin.number) for pin in component.pins}
+            result: dict[int | str, str] = {}
+            for pin in component.pins:
+                number = pin.number
+                key: int | str
+                if isinstance(number, str) and number.isdigit():
+                    key = int(number)
+                else:
+                    key = number
+                result[key] = str(number)
+            return result
         if self.pin_pads is None:
             raise ValueError("physical part requires pin_pads or same_numbered_pads")
         return dict(self.pin_pads)
@@ -208,8 +217,8 @@ class LibraryComponent:
     prefix: str = "U"
 
     @property
-    def cache_key(self) -> tuple[str, str, str]:
-        return (self.library.namespace, self.source_name, self.source_version)
+    def cache_key(self) -> tuple[str, str, str, str]:
+        return (self.library.namespace, self.source_name, self.source_version, self.name)
 
 
 class Library:
@@ -239,6 +248,8 @@ class Library:
             raise ValueError("Library component name must not be empty")
         if not prefix:
             raise ValueError("Library component prefix must not be empty")
+        if name in self._components:
+            raise ValueError(f"Library component {name!r} already exists")
         component = LibraryComponent(
             library=self,
             name=name,
@@ -820,6 +831,15 @@ class Design:
             if not isinstance(source, tuple) or len(source) != 3:
                 raise TypeError("source must be a (namespace, name, version) tuple")
             source_namespace, source_name, source_version = source
+            for value, label in (
+                (source_namespace, "namespace"),
+                (source_name, "name"),
+                (source_version, "version"),
+            ):
+                if not isinstance(value, str):
+                    raise TypeError(f"source {label} must be a string")
+                if not value:
+                    raise ValueError(f"source {label} must not be empty")
         definition = self._circuit.define_component(
             name,
             [pin._to_dict() for pin in pins],
@@ -839,7 +859,7 @@ class Design:
         definition: ComponentDefinition | ModuleDefinition | LibraryComponent,
         *,
         ref: str | None = None,
-        prefix: str = "U",
+        prefix: str | None = None,
         properties: dict | None = None,
     ) -> Component | ModuleInstance:
         if isinstance(definition, LibraryComponent):
@@ -847,7 +867,7 @@ class Design:
             component = self.instantiate(
                 component_definition,
                 ref=ref,
-                prefix=definition.prefix if prefix == "U" else prefix,
+                prefix=definition.prefix if prefix is None else prefix,
                 properties=properties,
             )
             if definition.physical_part is not None:
@@ -883,6 +903,8 @@ class Design:
             raise TypeError("instantiate expects a ComponentDefinition or ModuleDefinition handle")
         if definition._design is not self:
             raise ValueError("Component definition belongs to a different design")
+        if prefix is None:
+            prefix = "U"
         if ref is None:
             component = self._circuit.instantiate_auto(definition.index, prefix, properties or {})
         else:

@@ -614,7 +614,13 @@ class PyCircuit {
                                                const std::string &source_name,
                                                const std::string &source_version) {
         auto source = std::optional<volt::DefinitionSource>{};
-        if (!source_namespace.empty() || !source_name.empty() || !source_version.empty()) {
+        const auto wants_source =
+            !source_namespace.empty() || !source_name.empty() || !source_version.empty();
+        if (wants_source) {
+            if (source_namespace.empty() || source_name.empty() || source_version.empty()) {
+                throw py::value_error{
+                    "define_component source must include namespace, name, and version"};
+            }
             source = volt::DefinitionSource{source_namespace, source_name, source_version};
         }
 
