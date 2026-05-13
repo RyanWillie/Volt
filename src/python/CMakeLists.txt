@@ -58,4 +58,14 @@ if(VOLT_BUILD_TESTS)
         volt_python_led_mvp
         PROPERTIES ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
     )
+    add_test(
+        NAME volt_python_stm32_usb_buck_example
+        COMMAND
+            ${Python3_EXECUTABLE}
+            ${PROJECT_SOURCE_DIR}/python/tests/test_stm32_usb_buck_example.py
+    )
+    set_tests_properties(
+        volt_python_stm32_usb_buck_example
+        PROPERTIES ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
+    )
 endif()
