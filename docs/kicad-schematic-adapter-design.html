@@ -489,6 +489,20 @@
           </div>
         </div>
         <div class="decision">
+          <span class="badge core">Decision 3a</span>
+          <div class="stack">
+            <h3>Return warnings through adapter results.</h3>
+            <p>
+              Python and CLI callers should receive the same KiCad adapter loss report:
+              each warning carries a severity, a category such as unsupported,
+              incomplete, or lossy, the KiCad construct name, and a human-readable
+              message. CLI commands can render those records to stderr or JSON, while
+              Python bindings can expose the records as structured objects next to the
+              imported or exported Volt data.
+            </p>
+          </div>
+        </div>
+        <div class="decision">
           <span class="badge edge">Decision 4</span>
           <div class="stack">
             <h3>Export flat schematics before importing complex KiCad projects.</h3>

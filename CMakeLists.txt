@@ -26,6 +26,7 @@ add_subdirectory(src/circuit)
 add_subdirectory(src/authoring)
 add_subdirectory(src/schematic)
 add_subdirectory(src/io)
+add_subdirectory(src/adapters/kicad)
 
 if(VOLT_BUILD_PYTHON)
     add_subdirectory(src/python)
