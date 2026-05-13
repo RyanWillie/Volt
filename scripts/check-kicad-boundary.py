@@ -42,9 +42,14 @@ def check_core_has_no_kicad_dependency() -> None:
         "include/volt/volt.hpp",
     )
 
-    for path in core_paths:
-        text = read(path).lower()
-        require("kicad" not in text, f"{path} must not mention KiCad adapter types or targets")
+    violations = [
+        f"{path} must not mention KiCad adapter types or targets"
+        for path in core_paths
+        if "kicad" in read(path).lower()
+    ]
+
+    if violations:
+        raise AssertionError("\n  ".join(violations))
 
 
 def main() -> int:

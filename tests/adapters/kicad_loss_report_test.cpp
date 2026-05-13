@@ -27,3 +27,24 @@ TEST_CASE("KiCad adapter reports structured unsupported incomplete and lossy war
     CHECK(report.warnings().at(2).kind == volt::adapters::kicad::LossKind::LossyConstruct);
     CHECK(report.warnings().at(2).severity == volt::adapters::kicad::LossSeverity::Warning);
 }
+
+TEST_CASE("KiCad LossReport is empty by default") {
+    volt::adapters::kicad::LossReport report;
+
+    CHECK_FALSE(report.has_warnings());
+    CHECK(report.warnings().empty());
+}
+
+TEST_CASE("KiCad LossReport rejects empty construct or message") {
+    volt::adapters::kicad::LossReport report;
+
+    CHECK_THROWS_AS(report.add_warning(volt::adapters::kicad::LossKind::UnsupportedConstruct, "",
+                                       "some message"),
+                    std::invalid_argument);
+
+    CHECK_THROWS_AS(
+        report.add_warning(volt::adapters::kicad::LossKind::UnsupportedConstruct, "construct", ""),
+        std::invalid_argument);
+
+    CHECK_FALSE(report.has_warnings());
+}

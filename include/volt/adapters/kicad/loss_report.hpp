@@ -1,3 +1,6 @@
+// NOTE: #ifndef guard is intentional. The macro VOLT_KICAD_ADAPTER_LOSS_REPORT_HPP is used as a
+// compile-time sentinel by tests/adapters/kicad_boundary_test.cpp to verify that volt/volt.hpp
+// does not transitively include this header. Do not replace with #pragma once.
 #ifndef VOLT_KICAD_ADAPTER_LOSS_REPORT_HPP
 #define VOLT_KICAD_ADAPTER_LOSS_REPORT_HPP
 
