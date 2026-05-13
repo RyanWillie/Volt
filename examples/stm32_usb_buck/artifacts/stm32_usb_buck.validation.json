@@ -1,0 +1,39 @@
+{
+  "diagnostics": [
+    {
+      "code": "POWER_INPUT_WITHOUT_SOURCE",
+      "entities": [
+        {
+          "index": 3,
+          "kind": "net"
+        },
+        {
+          "index": 83,
+          "kind": "pin"
+        }
+      ],
+      "message": "Power input is connected to a net with no typed supply source",
+      "severity": "error"
+    },
+    {
+      "code": "POWER_INPUT_WITHOUT_SOURCE",
+      "entities": [
+        {
+          "index": 8,
+          "kind": "net"
+        },
+        {
+          "index": 83,
+          "kind": "pin"
+        }
+      ],
+      "message": "Power input is connected to a net with no typed supply source",
+      "severity": "error"
+    }
+  ],
+  "summary": {
+    "errors": 2,
+    "infos": 0,
+    "warnings": 0
+  }
+}
