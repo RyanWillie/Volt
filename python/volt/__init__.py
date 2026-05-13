@@ -956,6 +956,12 @@ class Schematic:
     def to_svg(self) -> str:
         return self._design._circuit.schematic_to_svg()
 
+    def validate(self) -> DiagnosticReport:
+        return DiagnosticReport(
+            _diagnostic_from_dict(item)
+            for item in self._design._circuit.validate_schematic()
+        )
+
     def write_svg(self, path: str | Path) -> None:
         Path(path).write_text(self.to_svg(), encoding="utf-8")
 

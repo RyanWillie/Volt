@@ -51,6 +51,15 @@ def validation_report_json(report: volt.DiagnosticReport) -> str:
     ) + "\n"
 
 
+def require_schematic_ready(schematic: volt.Schematic) -> None:
+    report = schematic.validate()
+    if not report.has_errors:
+        return
+
+    codes = ", ".join(diagnostic.code for diagnostic in report)
+    raise RuntimeError(f"STM32 USB buck schematic readiness failed: {codes}")
+
+
 def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
     if output_dir is None:
         output_dir = Path(__file__).resolve().parent / "artifacts"
@@ -65,6 +74,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
     schematic_svg = output_path / "stm32_usb_buck.svg"
     validation_report = output_path / "stm32_usb_buck.validation.json"
 
+    require_schematic_ready(schematic)
     design.write(logical_json)
     schematic_json.write_text(schematic.to_json(), encoding="utf-8")
     schematic.write_svg(schematic_svg)

@@ -10,6 +10,7 @@
 #include <volt/circuit/instances.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
+#include <volt/schematic/validation.hpp>
 
 namespace {
 
@@ -25,6 +26,11 @@ volt::ComponentId add_resistor(volt::Circuit &circuit) {
 
 volt::NetId add_net(volt::Circuit &circuit) {
     return circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+}
+
+void connect_pin_by_number(volt::Circuit &circuit, volt::NetId net, volt::ComponentId component,
+                           const std::string &number) {
+    circuit.connect(net, circuit.pin_by_number(component, number).value());
 }
 
 volt::SymbolDefinition make_resistor_symbol() {
@@ -212,6 +218,61 @@ TEST_CASE("Schematic rejects wire runs that visually join different logical nets
         schematic.add_wire_run(
             sheet, volt::WireRun{gnd, std::vector{volt::Point{0.0, 0.0}, volt::Point{5.0, 0.0}}}),
         std::logic_error);
+}
+
+TEST_CASE("Schematic readiness reports connected symbol pins without visual net coverage") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = add_net(circuit);
+    connect_pin_by_number(circuit, net, component, "1");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    [[maybe_unused]] const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}});
+    [[maybe_unused]] const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{0.0, 0.0}, volt::Point{10.0, 0.0}}});
+    [[maybe_unused]] const auto label =
+        schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{0.0, -2.0}});
+
+    const auto report = volt::validate_schematic_readiness(schematic);
+
+    REQUIRE(report.count() == 1);
+    const auto &diagnostic = report.diagnostics().front();
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    CHECK(diagnostic.code() == volt::DiagnosticCode{"SCHEMATIC_PIN_NET_NOT_VISUALLY_COVERED"});
+    CHECK(diagnostic.message() == "Schematic omits visual net coverage for R1 pin 1 (1) on VCC");
+    REQUIRE(diagnostic.entities().size() == 4);
+    CHECK(diagnostic.entities()[0] == volt::EntityRef::component(component));
+    const auto pin = circuit.pin_by_number(component, "1").value();
+    CHECK(diagnostic.entities()[1] == volt::EntityRef::pin(pin));
+    CHECK(diagnostic.entities()[2] == volt::EntityRef::pin_def(circuit.pin(pin).definition()));
+    CHECK(diagnostic.entities()[3] == volt::EntityRef::net(net));
+}
+
+TEST_CASE("Schematic readiness accepts wires and labels at connected symbol pin anchors") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = add_net(circuit);
+    connect_pin_by_number(circuit, net, component, "1");
+    connect_pin_by_number(circuit, net, component, "2");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    [[maybe_unused]] const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}});
+    [[maybe_unused]] const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{40.0, 20.0}, volt::Point{30.0, 20.0}}});
+    [[maybe_unused]] const auto label =
+        schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{60.0, 20.0}});
+
+    const auto pins_before = circuit.net(net).pins();
+    const auto report = volt::validate_schematic_readiness(schematic);
+
+    CHECK(report.empty());
+    CHECK(circuit.net(net).pins() == pins_before);
 }
 
 TEST_CASE("Schematic geometry rejects non-finite coordinates") {

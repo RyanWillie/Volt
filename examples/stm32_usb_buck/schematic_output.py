@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import volt
 from volt.libraries import stm32_usb_buck as lib
 
@@ -81,7 +83,76 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
     schematic.place(led.component("D"), at=(54, 176), symbol=_indicator_led_symbol())
 
     _add_labelled_net_stubs(schematic, board.nets)
+    _add_pin_anchor_net_labels(schematic, board)
     return schematic
+
+
+def _add_pin_anchor_net_labels(schematic: volt.Schematic, board: Stm32UsbBuckBoard) -> None:
+    """Add local net labels at connected symbol pins so readiness validation can prove coverage."""
+
+    logical = json.loads(board.design.to_json())
+    projection = json.loads(schematic.to_json())
+    nets_by_id = {
+        net["id"]: volt.Net(
+            board.design,
+            int(net["id"].removeprefix("net:")),
+            net["name"],
+        )
+        for net in logical["nets"]
+    }
+    component_definitions = {
+        definition["id"]: definition for definition in logical["component_definitions"]
+    }
+    pin_definitions = {pin["id"]: pin for pin in logical["pin_definitions"]}
+    components = {component["id"]: component for component in logical["components"]}
+    pins_by_component_and_definition = {
+        (pin["component"], pin["definition"]): pin["id"] for pin in logical["pins"]
+    }
+    net_by_pin = {
+        pin_id: net["id"] for net in logical["nets"] for pin_id in net.get("pins", [])
+    }
+    symbols = {
+        symbol["id"]: symbol for symbol in projection["symbol_definitions"]
+    }
+
+    for instance in projection["symbol_instances"]:
+        component = components[instance["component"]]
+        component_definition = component_definitions[component["definition"]]
+        pin_definition_by_number = {
+            pin_definitions[pin_id]["number"]: pin_id for pin_id in component_definition["pins"]
+        }
+        symbol = symbols[instance["symbol_definition"]]
+        for symbol_pin in symbol["pins"]:
+            pin_definition_id = pin_definition_by_number.get(symbol_pin["number"])
+            if pin_definition_id is None:
+                continue
+            pin_id = pins_by_component_and_definition.get((component["id"], pin_definition_id))
+            if pin_id is None:
+                continue
+            net_id = net_by_pin.get(pin_id)
+            if net_id not in nets_by_id:
+                continue
+            schematic.label(
+                nets_by_id[net_id],
+                at=_transformed_pin_anchor(symbol_pin["anchor"], instance),
+            )
+
+
+def _transformed_pin_anchor(anchor: dict, instance: dict) -> tuple[float, float]:
+    x = anchor["x"]
+    y = anchor["y"]
+    orientation = instance["orientation"]
+    if orientation == "Right":
+        dx, dy = x, y
+    elif orientation == "Down":
+        dx, dy = -y, x
+    elif orientation == "Left":
+        dx, dy = -x, -y
+    elif orientation == "Up":
+        dx, dy = y, -x
+    else:
+        raise ValueError(f"unknown schematic orientation {orientation!r}")
+    return (instance["position"]["x"] + dx, instance["position"]["y"] + dy)
 
 
 def _add_labelled_net_stubs(schematic: volt.Schematic, nets: dict[str, volt.Net]) -> None:
