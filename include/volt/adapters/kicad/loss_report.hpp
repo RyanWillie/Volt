@@ -24,9 +24,16 @@ enum class LossKind {
 
 /** One structured adapter warning for a construct that could not round-trip perfectly. */
 struct LossWarning {
+    /** Category describing why the KiCad construct could not map perfectly. */
     LossKind kind;
+
+    /** KiCad construct name, such as a field, marker, stroke, or sheet feature. */
     std::string construct;
+
+    /** Human-readable explanation for Python, CLI, and diagnostic presentation. */
     std::string message;
+
+    /** Severity callers can use to decide whether to continue or fail the adapter run. */
     LossSeverity severity = LossSeverity::Warning;
 };
 
