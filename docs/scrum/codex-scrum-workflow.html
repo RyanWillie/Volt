@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt Codex Scrum Workflow</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17211b;
+      --muted: #5f6c64;
+      --line: #d9e1dc;
+      --paper: #fbfcfa;
+      --panel: #ffffff;
+      --green: #1f7a4d;
+      --blue: #245f9f;
+      --gold: #8a6818;
+      --rose: #a33f4f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1080px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 48px 0 64px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 28px;
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 5vw, 4rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 34px 0 12px;
+      font-size: 1.45rem;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      background: #eef3ef;
+      padding: 0.1rem 0.28rem;
+      border-radius: 4px;
+    }
+
+    .lede {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 1.12rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .panel p:last-child,
+    .step p:last-child {
+      margin-bottom: 0;
+    }
+
+    .role {
+      border-top: 4px solid var(--green);
+    }
+
+    .role.tech {
+      border-top-color: var(--blue);
+    }
+
+    .role.scrum {
+      border-top-color: var(--gold);
+    }
+
+    .flow {
+      display: grid;
+      gap: 12px;
+      counter-reset: step;
+    }
+
+    .step {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 16px 16px 58px;
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--ink);
+      color: white;
+      font-weight: 700;
+      font-size: 0.88rem;
+    }
+
+    .commands {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .command {
+      border-left: 4px solid var(--blue);
+    }
+
+    .warning {
+      border-left: 4px solid var(--rose);
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 1.1rem;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    @media (max-width: 780px) {
+      main {
+        width: min(100% - 24px, 1080px);
+        padding-top: 28px;
+      }
+
+      .grid,
+      .commands {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Codex Scrum for Volt</h1>
+      <p class="lede">A lightweight operating model for using Codex as a Scrum system around Linear, GitHub, and repo-local skills. The model instantiates Product Owner, Developer/Tech Lead, and Scrum Master responsibilities on demand while keeping durable state in Linear, GitHub, docs, and skills.</p>
+    </header>
+
+    <section>
+      <h2>Role Boundaries</h2>
+      <div class="grid">
+        <article class="panel role">
+          <h3>Product Owner</h3>
+          <p>Owns direction, value, priority, and acceptance. The PO decides why work matters, what outcome is wanted, and what should come next.</p>
+          <ul>
+            <li>Shapes backlog items around user or project value.</li>
+            <li>Orders work by roadmap impact, dependency pressure, and risk.</li>
+            <li>Rejects work that is technically interesting but not product-relevant.</li>
+          </ul>
+        </article>
+        <article class="panel role tech">
+          <h3>Developer / Tech Lead</h3>
+          <p>Owns architecture, feasibility, decomposition, and verification. The developer makes sure tasks are implementable without weakening Volt's kernel boundaries.</p>
+          <ul>
+            <li>Checks layer ownership and invariants before implementation.</li>
+            <li>Splits work into scoped PR-sized technical slices.</li>
+            <li>Defines test and CI evidence for done work.</li>
+          </ul>
+        </article>
+        <article class="panel role scrum">
+          <h3>Scrum Master</h3>
+          <p>Owns ceremony quality, flow, blockers, and improvement. The Scrum Master keeps the process honest and makes sure the workflow tightens after each sprint.</p>
+          <ul>
+            <li>Maintains Definition of Ready and Definition of Done.</li>
+            <li>Tracks blockers, dependencies, and stale work.</li>
+            <li>Turns retrospectives into concrete process changes.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Operating Loop</h2>
+      <div class="flow">
+        <article class="step">
+          <h3>Backlog Refinement</h3>
+          <p>Use <code>volt-backlog-refinement</code>. Codex reads Linear, docs, recent PRs, and architecture notes. The PO clarifies value and priority. The Developer tightens technical shape. The Scrum Master produces ready/not-ready outcomes and proposed Linear edits.</p>
+        </article>
+        <article class="step">
+          <h3>Sprint Planning</h3>
+          <p>Use <code>volt-sprint-planning</code>. Codex selects a coherent sprint goal and candidate tickets, checks dependencies, and defines branch strategy, expected verification, and capacity risks.</p>
+        </article>
+        <article class="step">
+          <h3>Sprint Kickoff</h3>
+          <p>Use <code>volt-sprint-kickoff</code>. Codex creates isolated branches or worktrees, dispatches developer agents only for independent work, and keeps Linear and GitHub state synchronized.</p>
+        </article>
+        <article class="step">
+          <h3>Sprint Review</h3>
+          <p>Use <code>volt-sprint-review</code>. Codex summarizes what shipped, what changed architecturally, open PR or CI state, unfinished work, and the resulting product capability.</p>
+        </article>
+        <article class="step">
+          <h3>Retrospective</h3>
+          <p>Use <code>volt-retrospective</code>. Codex reviews tickets, PRs, CI, and conversation friction. It proposes updates to skills, AGENTS.md, docs, or ceremony checklists when the same problem repeats.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Agile Ticket Standard</h2>
+      <div class="grid">
+        <article class="panel role">
+          <h3>Ticket Shape</h3>
+          <p>Every sprint candidate should read as a small promise of value, not just a task title. The Product Owner owns the outcome and acceptance criteria; the Developer owns the technical approach and verification notes.</p>
+          <ul>
+            <li>Problem, user/project value, and intended outcome.</li>
+            <li>Acceptance criteria written as observable results.</li>
+            <li>Non-goals, dependencies, blockers, and related tickets.</li>
+            <li>Technical notes for architecture fit, touched surfaces, and verification.</li>
+          </ul>
+        </article>
+        <article class="panel role tech">
+          <h3>Definition of Ready</h3>
+          <p>A ticket is ready when it can enter a sprint without hidden product decisions or undefined technical ownership. Not-ready work stays in refinement, even if it is important.</p>
+          <ul>
+            <li>Value, priority, and sprint-goal fit are clear.</li>
+            <li>Acceptance criteria and non-goals are testable.</li>
+            <li>Dependencies and blockers are named.</li>
+            <li>Scope is small enough for one PR or an explicit sequence.</li>
+          </ul>
+        </article>
+        <article class="panel role scrum">
+          <h3>Definition of Done</h3>
+          <p>Done means the increment is usable, reviewed, and traceable. A merged PR alone is not enough if acceptance, verification, Linear hygiene, or follow-up capture is missing.</p>
+          <ul>
+            <li>Acceptance criteria are met and out-of-scope work is captured separately.</li>
+            <li>Volt architecture boundaries and kernel-owned semantics are preserved.</li>
+            <li>Relevant tests, docs, local checks, and CI are passing or explicitly waived.</li>
+            <li>PR, review notes, Linear status, and follow-up tickets are complete.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Commands To Try</h2>
+      <div class="commands">
+        <article class="panel command">
+          <h3>Refine</h3>
+          <p><code>Run Volt backlog refinement for VOL-7.</code></p>
+        </article>
+        <article class="panel command">
+          <h3>Plan</h3>
+          <p><code>Plan the next Volt sprint from ready tickets under VOL-7.</code></p>
+        </article>
+        <article class="panel command">
+          <h3>Kick Off</h3>
+          <p><code>Kick off the sprint using separate branches per ticket.</code></p>
+        </article>
+        <article class="panel command">
+          <h3>Review</h3>
+          <p><code>Run a sprint review for the work merged this week.</code></p>
+        </article>
+        <article class="panel command">
+          <h3>Retro</h3>
+          <p><code>Run a Volt retrospective and propose skill improvements.</code></p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Guardrails</h2>
+      <article class="panel warning">
+        <p>The Product Owner does not decide architecture. The Developer does not reorder product priorities without explaining the technical constraint. The Scrum Master does not invent product scope. Codex may orchestrate all three roles, but every output must preserve these boundaries.</p>
+        <p>Durable memory belongs in Linear, GitHub, repo docs, and skills. Subagents are temporary workers; they should receive scoped prompts and report back with evidence.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
