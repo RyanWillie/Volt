@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import volt
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -109,5 +111,45 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert validation["summary"]["errors"] == len(validation["diagnostics"])
 
 
+def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage():
+    main = importlib.import_module("examples.stm32_usb_buck.main")
+
+    def build_invalid_schematic(board):
+        schematic = board.design.schematic("Main")
+        component = board.components["VIN_SRC"]
+        net = board.nets["+12V"]
+        schematic.place(
+            component,
+            at=(12, 34),
+            symbol=volt.SchematicSymbolSpec(
+                "volt.test:ExternalSupply",
+                pins=(volt.SchematicSymbolSpec.pin("OUT", 1, (44, 8), "Right"),),
+                primitives=(volt.SchematicSymbolSpec.line((34, 8), (44, 8)),),
+            ),
+        )
+        schematic.wire(net, ((0, 0), (10, 0)))
+        schematic.label(net, at=(0, -2))
+        return schematic
+
+    original = main.build_schematic
+    main.build_schematic = build_invalid_schematic
+    try:
+        with TemporaryDirectory() as temp_dir:
+            output_dir = Path(temp_dir)
+            try:
+                main.write_artifacts(output_dir)
+            except RuntimeError as error:
+                assert "SCHEMATIC_PIN_NET_NOT_VISUALLY_COVERED" in str(error)
+            else:
+                raise AssertionError("invalid schematic readiness should fail artifact generation")
+
+            assert not (output_dir / "stm32_usb_buck.volt.json").exists()
+            assert not (output_dir / "stm32_usb_buck.volt.schematic.json").exists()
+            assert not (output_dir / "stm32_usb_buck.svg").exists()
+    finally:
+        main.build_schematic = original
+
+
 if __name__ == "__main__":
     test_stm32_usb_buck_example_writes_stable_logical_artifacts()
+    test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage()

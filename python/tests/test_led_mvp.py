@@ -873,6 +873,32 @@ def test_python_schematic_writes_svg_projection():
         assert path.read_text(encoding="utf-8") == svg
 
 
+def test_python_schematic_readiness_reports_detached_net_stubs():
+    design = volt.Design("schematic-readiness")
+    vcc = design.net("VCC", kind="power")
+    r1 = design.R(resistance=330, ref="R1")
+    vcc += r1[1]
+
+    schematic = design.schematic("Main")
+    schematic.place(r1, at=(40, 20), symbol="resistor")
+    schematic.wire(vcc, [(0, 0), (10, 0)])
+    schematic.label(vcc, at=(0, -2))
+
+    report = schematic.validate()
+
+    assert report.has_errors
+    assert len(report) == 1
+    diagnostic = report[0]
+    assert diagnostic.code == "SCHEMATIC_PIN_NET_NOT_VISUALLY_COVERED"
+    assert diagnostic.message == "Schematic omits visual net coverage for R1 pin 1 (1) on VCC"
+    assert [(entity.kind, entity.index) for entity in diagnostic.entities] == [
+        ("component", r1.index),
+        ("pin", r1[1].index),
+        ("pin_definition", 0),
+        ("net", vcc.index),
+    ]
+
+
 def test_stm32_usb_buck_native_symbols_place_and_render():
     design = volt.Design("stm32-native-symbols")
     mcu = design.instantiate(stm32_usb_buck.STM32F405RGTx, ref="U1")
@@ -951,6 +977,7 @@ if __name__ == "__main__":
     test_module_authoring_exposes_hierarchy_inspection_views()
     test_python_schematic_placement_serializes_kernel_projection()
     test_python_schematic_writes_svg_projection()
+    test_python_schematic_readiness_reports_detached_net_stubs()
     test_stm32_usb_buck_native_symbols_place_and_render()
     test_python_schematic_handles_are_publicly_exported()
     test_diagnostics_are_inspectable()
