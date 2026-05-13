@@ -23,6 +23,7 @@
 #include <volt/io/schematic_writer.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
+#include <volt/schematic/validation.hpp>
 
 namespace py = pybind11;
 
@@ -1173,6 +1174,10 @@ class PyCircuit {
         return diagnostics_to_list(volt::validate_circuit(circuit_));
     }
 
+    [[nodiscard]] py::list validate_schematic() {
+        return diagnostics_to_list(volt::validate_schematic_readiness(schematic_projection()));
+    }
+
     [[nodiscard]] py::list validate_for_pcb() const {
         return diagnostics_to_list(volt::validate_for_pcb(circuit_));
     }
@@ -1314,6 +1319,7 @@ PYBIND11_MODULE(_volt, module) {
         .def("schematic_to_json", &PyCircuit::schematic_to_json)
         .def("schematic_to_svg", &PyCircuit::schematic_to_svg)
         .def("validate", &PyCircuit::validate)
+        .def("validate_schematic", &PyCircuit::validate_schematic)
         .def("validate_for_pcb", &PyCircuit::validate_for_pcb)
         .def("to_json", &PyCircuit::to_json);
 }

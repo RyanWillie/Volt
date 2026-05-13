@@ -65,6 +65,121 @@ def _two_pin_symbol(name: str, label: str) -> SchematicSymbolSpec:
     )
 
 
+def _vertical_two_pin_symbol(name: str, label: str) -> SchematicSymbolSpec:
+    return SchematicSymbolSpec(
+        _symbol_name(name),
+        pins=(
+            SchematicSymbolSpec.pin("1", 1, (0, 0), "Up"),
+            SchematicSymbolSpec.pin("2", 2, (0, 20), "Down"),
+        ),
+        primitives=(
+            SchematicSymbolSpec.line((0, 0), (0, 4)),
+            SchematicSymbolSpec.rectangle((-3, 4), (3, 16)),
+            SchematicSymbolSpec.line((0, 16), (0, 20)),
+            SchematicSymbolSpec.text(label, (8, 10)),
+        ),
+    )
+
+
+def _three_pin_regulator_symbol(name: str) -> SchematicSymbolSpec:
+    return SchematicSymbolSpec(
+        _symbol_name(name),
+        pins=(
+            SchematicSymbolSpec.pin("VI", 3, (0, 10), "Left"),
+            SchematicSymbolSpec.pin("VO", 2, (50, 10), "Right"),
+            SchematicSymbolSpec.pin("GND", 1, (25, 30), "Down"),
+        ),
+        primitives=(
+            SchematicSymbolSpec.rectangle((10, 0), (40, 25)),
+            SchematicSymbolSpec.line((0, 10), (10, 10)),
+            SchematicSymbolSpec.line((40, 10), (50, 10)),
+            SchematicSymbolSpec.line((25, 25), (25, 30)),
+            SchematicSymbolSpec.text("LDO", (25, 14)),
+        ),
+    )
+
+
+def _connector_symbol(name: str, pins: tuple[PinSpec, ...], label: str) -> SchematicSymbolSpec:
+    symbol_pins = []
+    primitives = [
+        SchematicSymbolSpec.rectangle((10, -5), (34, (len(pins) - 1) * 8 + 5)),
+        SchematicSymbolSpec.text(label, (22, -10)),
+    ]
+    for index, pin in enumerate(pins):
+        y = index * 8
+        symbol_pins.append(SchematicSymbolSpec.pin(pin.name, pin.number, (0, y), "Left"))
+        primitives.append(SchematicSymbolSpec.line((0, y), (10, y)))
+    return SchematicSymbolSpec(
+        _symbol_name(name),
+        pins=tuple(symbol_pins),
+        primitives=tuple(primitives),
+    )
+
+
+def _usb_protection_symbol(name: str) -> SchematicSymbolSpec:
+    return SchematicSymbolSpec(
+        _symbol_name(name),
+        pins=(
+            SchematicSymbolSpec.pin("I/O1", 1, (0, 8), "Left"),
+            SchematicSymbolSpec.pin("I/O2", 3, (0, 20), "Left"),
+            SchematicSymbolSpec.pin("I/O4", 6, (54, 8), "Right"),
+            SchematicSymbolSpec.pin("I/O3", 4, (54, 20), "Right"),
+            SchematicSymbolSpec.pin("VBUS", 5, (27, -10), "Up"),
+            SchematicSymbolSpec.pin("GND", 2, (27, 38), "Down"),
+        ),
+        primitives=(
+            SchematicSymbolSpec.rectangle((10, 0), (44, 30)),
+            SchematicSymbolSpec.line((0, 8), (10, 8)),
+            SchematicSymbolSpec.line((0, 20), (10, 20)),
+            SchematicSymbolSpec.line((44, 8), (54, 8)),
+            SchematicSymbolSpec.line((44, 20), (54, 20)),
+            SchematicSymbolSpec.line((27, -10), (27, 0)),
+            SchematicSymbolSpec.line((27, 30), (27, 38)),
+            SchematicSymbolSpec.text("ESD", (27, 16)),
+        ),
+    )
+
+
+def _crystal_symbol(name: str) -> SchematicSymbolSpec:
+    return SchematicSymbolSpec(
+        _symbol_name(name),
+        pins=(
+            SchematicSymbolSpec.pin("1", 1, (0, 10), "Left"),
+            SchematicSymbolSpec.pin("3", 3, (44, 10), "Right"),
+            SchematicSymbolSpec.pin("GND", 2, (14, 28), "Down"),
+            SchematicSymbolSpec.pin("GND", 4, (30, 28), "Down"),
+        ),
+        primitives=(
+            SchematicSymbolSpec.line((0, 10), (12, 10)),
+            SchematicSymbolSpec.line((32, 10), (44, 10)),
+            SchematicSymbolSpec.line((18, 0), (18, 20)),
+            SchematicSymbolSpec.line((26, 0), (26, 20)),
+            SchematicSymbolSpec.rectangle((12, 4), (32, 16)),
+            SchematicSymbolSpec.line((14, 16), (14, 28)),
+            SchematicSymbolSpec.line((30, 16), (30, 28)),
+            SchematicSymbolSpec.text("XTAL", (22, -6)),
+        ),
+    )
+
+
+def _switch_symbol(name: str) -> SchematicSymbolSpec:
+    return SchematicSymbolSpec(
+        _symbol_name(name),
+        pins=(
+            SchematicSymbolSpec.pin("A", 1, (0, 0), "Left"),
+            SchematicSymbolSpec.pin("C", 2, (44, 10), "Right"),
+            SchematicSymbolSpec.pin("B", 3, (0, 20), "Left"),
+        ),
+        primitives=(
+            SchematicSymbolSpec.line((0, 0), (14, 0)),
+            SchematicSymbolSpec.line((0, 20), (14, 20)),
+            SchematicSymbolSpec.line((30, 10), (44, 10)),
+            SchematicSymbolSpec.line((14, 0), (30, 10)),
+            SchematicSymbolSpec.text("SW", (22, -8)),
+        ),
+    )
+
+
 def _stm32_symbol(name: str, pins: tuple[PinSpec, ...]) -> SchematicSymbolSpec:
     symbol_pins = []
     primitives = [
@@ -180,6 +295,18 @@ USB_B_MICRO = LIB.component(
     ],
     properties={"category": "connector"},
     prefix="J",
+    schematic_symbol=_connector_symbol(
+        "USB_B_Micro",
+        (
+            _power_input("VBUS", 1),
+            _bidirectional("D-", 2),
+            _bidirectional("D+", 3),
+            PinSpec("ID", 4, role="no_connect", requirement="optional", terminal="signal"),
+            _ground("GND", 5),
+            _ground("Shield", 6),
+        ),
+        "USB",
+    ),
 )
 
 USBLC6_4SC6 = LIB.component(
@@ -194,6 +321,7 @@ USBLC6_4SC6 = LIB.component(
     ],
     properties={"category": "protection"},
     prefix="U",
+    schematic_symbol=_usb_protection_symbol("USBLC6-4SC6"),
 )
 
 AP1117_15 = LIB.component(
@@ -205,6 +333,7 @@ AP1117_15 = LIB.component(
     ],
     properties={"category": "regulator"},
     prefix="U",
+    schematic_symbol=_three_pin_regulator_symbol("AP1117_15"),
 )
 
 PMOS_DGS = LIB.component(
@@ -233,6 +362,7 @@ CRYSTAL_GND24 = LIB.component(
     pins=[_passive("1", 1), _ground("GND", 2), _passive("3", 3), _ground("GND", 4)],
     properties={"category": "crystal"},
     prefix="Y",
+    schematic_symbol=_crystal_symbol("Crystal_GND24"),
 )
 
 SPDT_SWITCH = LIB.component(
@@ -240,6 +370,7 @@ SPDT_SWITCH = LIB.component(
     pins=[_passive("A", 1), _passive("C", 2), _passive("B", 3)],
     properties={"category": "switch"},
     prefix="SW",
+    schematic_symbol=_switch_symbol("SW_SPDT"),
 )
 
 JTAG_SWD_10 = LIB.component(
@@ -258,6 +389,22 @@ JTAG_SWD_10 = LIB.component(
     ],
     properties={"category": "connector"},
     prefix="J",
+    schematic_symbol=_connector_symbol(
+        "Conn_ARM_JTAG_SWD_10",
+        (
+            _power_input("VTref", 1),
+            _bidirectional("SWDIO", 2),
+            _ground("GND", 3),
+            _digital_input("SWCLK", 4),
+            _ground("GND", 5),
+            _bidirectional("SWO", 6),
+            PinSpec("NC", 7, role="no_connect", requirement="optional", terminal="no_connect"),
+            _digital_input("TDI", 8),
+            _ground("GNDDetect", 9),
+            _digital_input("nRESET", 10),
+        ),
+        "SWD",
+    ),
 )
 
 CONNECTOR_1X04 = LIB.component(
@@ -270,6 +417,16 @@ CONNECTOR_1X04 = LIB.component(
     ],
     properties={"category": "connector"},
     prefix="J",
+    schematic_symbol=_connector_symbol(
+        "Conn_01x04",
+        (
+            _bidirectional("1", 1),
+            _bidirectional("2", 2),
+            _bidirectional("3", 3),
+            _bidirectional("4", 4),
+        ),
+        "HDR",
+    ),
 )
 
 MOUNTING_HOLE_PAD = LIB.component(
@@ -284,6 +441,7 @@ DIODE = LIB.component(
     pins=[_passive("A", 1), _passive("K", 2)],
     properties={"category": "diode"},
     prefix="D",
+    schematic_symbol=_two_pin_symbol("Diode", "D"),
 )
 
 ZENER_DIODE = LIB.component(
@@ -307,6 +465,7 @@ CAPACITOR = LIB.component(
     pins=[_passive("1", 1), _passive("2", 2)],
     properties={"category": "passive"},
     prefix="C",
+    schematic_symbol=_vertical_two_pin_symbol("Capacitor", "C"),
 )
 
 INDUCTOR = LIB.component(
