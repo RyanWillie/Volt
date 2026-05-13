@@ -1,4 +1,4 @@
-"""Generate the Volt-native STM32 USB buck logical benchmark artifacts."""
+"""Generate the Volt-native STM32 USB buck benchmark artifacts."""
 
 from __future__ import annotations
 
@@ -8,12 +8,15 @@ from pathlib import Path
 
 import volt
 
-from .stm32_board import build_design
+from .schematic_output import build_schematic
+from .stm32_board import build_board
 
 
 @dataclass(frozen=True)
 class BenchmarkArtifacts:
     logical_json: Path
+    schematic_json: Path
+    schematic_svg: Path
     validation_report: Path
 
 
@@ -54,13 +57,24 @@ def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    design = build_design()
+    board = build_board()
+    design = board.design
+    schematic = build_schematic(board)
     logical_json = output_path / "stm32_usb_buck.volt.json"
+    schematic_json = output_path / "stm32_usb_buck.volt.schematic.json"
+    schematic_svg = output_path / "stm32_usb_buck.svg"
     validation_report = output_path / "stm32_usb_buck.validation.json"
 
     design.write(logical_json)
+    schematic_json.write_text(schematic.to_json(), encoding="utf-8")
+    schematic.write_svg(schematic_svg)
     validation_report.write_text(validation_report_json(design.validate()), encoding="utf-8")
-    return BenchmarkArtifacts(logical_json=logical_json, validation_report=validation_report)
+    return BenchmarkArtifacts(
+        logical_json=logical_json,
+        schematic_json=schematic_json,
+        schematic_svg=schematic_svg,
+        validation_report=validation_report,
+    )
 
 
 if __name__ == "__main__":

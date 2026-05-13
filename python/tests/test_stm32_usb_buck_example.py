@@ -16,12 +16,17 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         artifacts = main.write_artifacts(Path(temp_dir))
 
         logical = json.loads(artifacts.logical_json.read_text(encoding="utf-8"))
+        schematic = json.loads(artifacts.schematic_json.read_text(encoding="utf-8"))
         validation = json.loads(artifacts.validation_report.read_text(encoding="utf-8"))
         first_logical_text = artifacts.logical_json.read_text(encoding="utf-8")
+        first_schematic_text = artifacts.schematic_json.read_text(encoding="utf-8")
+        first_svg_text = artifacts.schematic_svg.read_text(encoding="utf-8")
         first_validation_text = artifacts.validation_report.read_text(encoding="utf-8")
 
         second_artifacts = main.write_artifacts(Path(temp_dir) / "second")
         assert second_artifacts.logical_json.read_text(encoding="utf-8") == first_logical_text
+        assert second_artifacts.schematic_json.read_text(encoding="utf-8") == first_schematic_text
+        assert second_artifacts.schematic_svg.read_text(encoding="utf-8") == first_svg_text
         assert (
             second_artifacts.validation_report.read_text(encoding="utf-8")
             == first_validation_text
@@ -41,6 +46,23 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
 
     net_names = {net["name"] for net in logical["nets"]}
     assert {"+12V", "+5V", "+3V3", "VDDA", "GND", "USB_DP", "USB_DM"} <= net_names
+    net_ids = {net["id"] for net in logical["nets"]}
+    component_ids = {component["id"] for component in logical["components"]}
+
+    assert schematic["format"] == "volt.schematic"
+    assert [sheet["name"] for sheet in schematic["sheets"]] == ["Main"]
+    assert len(schematic["symbol_instances"]) >= 10
+    assert len(schematic["wire_runs"]) >= 12
+    assert len(schematic["net_labels"]) >= 12
+    assert {instance["component"] for instance in schematic["symbol_instances"]} <= component_ids
+    assert {wire["net"] for wire in schematic["wire_runs"]} <= net_ids
+    assert {label["net"] for label in schematic["net_labels"]} <= net_ids
+    assert {definition["name"] for definition in schematic["symbol_definitions"]} >= {
+        "volt.benchmarks.stm32_usb_buck:STM32F405RGTx",
+        "volt.benchmarks.stm32_usb_buck:AP1117_15",
+        "volt.benchmarks.stm32_usb_buck:Capacitor",
+        "volt.benchmarks.stm32_usb_buck:USB_B_Micro",
+    }
 
     stm32 = next(component for component in logical["components"] if component["reference"] == "U1")
     assert stm32["selected_physical_part"]["footprint"] == {
@@ -73,6 +95,12 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "design_intent" in logical
     assert len(logical["design_intent"]["stub_nets"]) >= 4
     assert len(logical["design_intent"]["no_connect_pins"]) >= 20
+
+    assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in first_svg_text
+    assert ">U1</text>" in first_svg_text
+    assert ">+3V3</text>" in first_svg_text
+    assert ">GND</text>" in first_svg_text
+    assert "data-net=\"net:" in first_svg_text
 
     codes = {diagnostic["code"] for diagnostic in validation["diagnostics"]}
     assert "POWER_INPUT_WITHOUT_SOURCE" in codes
