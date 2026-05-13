@@ -1,28 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 297 210" width="297" height="210">
-  <style>.sheet{fill:#fff;stroke:#c7c7c7;stroke-width:0.5}.sheet-title{font:6px sans-serif;fill:#333}.wire-run{fill:none;stroke:#111;stroke-width:1.2}.net-label{font:5px sans-serif;fill:#0645ad;text-anchor:start}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:1.2}.symbol-text,.reference,.pin-label{font:5px sans-serif;fill:#111;text-anchor:middle}.pin-anchor{fill:#fff;stroke:#111;stroke-width:0.8}</style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 594 1324" width="594" height="1324">
+  <style>.sheet{fill:#fffef8;stroke:#c23b2a;stroke-width:0.7}.sheet-title{font:8px sans-serif;fill:#0645ad}.wire-run{fill:none;stroke:#16843a;stroke-width:2;stroke-linecap:square}.net-label{font:7px monospace;fill:#c21f1a;text-anchor:start}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:1.2}.symbol-text,.reference{font:6px sans-serif;fill:#111;text-anchor:middle}.pin-label{font:4px sans-serif;fill:#333;text-anchor:middle}.pin-anchor{fill:#fff;stroke:#111;stroke-width:0.8}</style>
   <g class="schematic-sheet" data-sheet="sheet:0" transform="translate(0 0)">
-    <rect class="sheet" x="0" y="0" width="297" height="210"/>
-    <text class="sheet-title" x="10" y="16">Main</text>
-    <polyline class="wire-run" data-net="net:0" points="8,18 44,18"/>
-    <polyline class="wire-run" data-net="net:1" points="52,18 88,18"/>
-    <polyline class="wire-run" data-net="net:2" points="96,18 132,18"/>
-    <polyline class="wire-run" data-net="net:3" points="8,202 44,202"/>
-    <polyline class="wire-run" data-net="net:4" points="52,202 88,202"/>
-    <polyline class="wire-run" data-net="net:10" points="180,18 216,18"/>
-    <polyline class="wire-run" data-net="net:11" points="224,18 260,18"/>
-    <polyline class="wire-run" data-net="net:12" points="180,126 216,126"/>
-    <polyline class="wire-run" data-net="net:13" points="224,126 260,126"/>
-    <polyline class="wire-run" data-net="net:28" points="8,164 44,164"/>
-    <polyline class="wire-run" data-net="net:29" points="52,164 88,164"/>
-    <polyline class="wire-run" data-net="net:30" points="180,166 216,166"/>
-    <polyline class="wire-run" data-net="net:31" points="224,166 260,166"/>
-    <polyline class="wire-run" data-net="net:32" points="8,194 44,194"/>
-    <polyline class="wire-run" data-net="net:33" points="96,194 132,194"/>
-    <polyline class="wire-run" data-net="net:34" points="252,96 288,96"/>
-    <polyline class="wire-run" data-net="net:35" points="252,104 288,104"/>
-    <polyline class="wire-run" data-net="net:36" points="252,136 288,136"/>
-    <polyline class="wire-run" data-net="net:37" points="8,156 44,156"/>
-    <g class="symbol-instance" data-component="component:0" data-symbol-definition="symbol_def:0" transform="translate(12 34) rotate(0)">
+    <rect class="sheet" x="0" y="0" width="594" height="420"/>
+    <text class="sheet-title" x="10" y="16">Power</text>
+    <g class="symbol-instance" data-component="component:0" data-symbol-definition="symbol_def:0" transform="translate(70 70) rotate(0)">
       <text class="reference" x="0" y="-12">VIN_SRC</text>
       <rect class="symbol-rectangle" x="0" y="0" width="34" height="32"/>
       <line class="symbol-line" x1="34" y1="8" x2="44" y2="8"/>
@@ -33,7 +14,7 @@
       <circle class="pin-anchor" cx="44" cy="24" r="1.5"/>
       <text class="pin-label" x="44" y="28">GND</text>
     </g>
-    <g class="symbol-instance" data-component="component:1" data-symbol-definition="symbol_def:1" transform="translate(12 82) rotate(0)">
+    <g class="symbol-instance" data-component="component:1" data-symbol-definition="symbol_def:1" transform="translate(110 180) rotate(0)">
       <text class="reference" x="0" y="-12">PWR/J</text>
       <rect class="symbol-rectangle" x="10" y="-5" width="24" height="34"/>
       <text class="symbol-text" x="22" y="-10" transform="rotate(0 22 -10)">HDR</text>
@@ -50,7 +31,7 @@
       <circle class="pin-anchor" cx="0" cy="24" r="1.5"/>
       <text class="pin-label" x="0" y="28">4</text>
     </g>
-    <g class="symbol-instance" data-component="component:2" data-symbol-definition="symbol_def:2" transform="translate(68 42) rotate(0)">
+    <g class="symbol-instance" data-component="component:2" data-symbol-definition="symbol_def:2" transform="translate(210 90) rotate(0)">
       <text class="reference" x="0" y="-12">PWR/U5</text>
       <rect class="symbol-rectangle" x="10" y="0" width="30" height="25"/>
       <line class="symbol-line" x1="0" y1="10" x2="10" y2="10"/>
@@ -64,7 +45,7 @@
       <circle class="pin-anchor" cx="25" cy="30" r="1.5"/>
       <text class="pin-label" x="25" y="34">GND</text>
     </g>
-    <g class="symbol-instance" data-component="component:3" data-symbol-definition="symbol_def:2" transform="translate(68 86) rotate(0)">
+    <g class="symbol-instance" data-component="component:3" data-symbol-definition="symbol_def:2" transform="translate(360 90) rotate(0)">
       <text class="reference" x="0" y="-12">PWR/U3V3</text>
       <rect class="symbol-rectangle" x="10" y="0" width="30" height="25"/>
       <line class="symbol-line" x1="0" y1="10" x2="10" y2="10"/>
@@ -78,7 +59,7 @@
       <circle class="pin-anchor" cx="25" cy="30" r="1.5"/>
       <text class="pin-label" x="25" y="34">GND</text>
     </g>
-    <g class="symbol-instance" data-component="component:4" data-symbol-definition="symbol_def:3" transform="translate(24 130) rotate(0)">
+    <g class="symbol-instance" data-component="component:4" data-symbol-definition="symbol_def:3" transform="translate(140 270) rotate(0)">
       <text class="reference" x="0" y="-12">PWR/CIN</text>
       <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
       <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
@@ -89,7 +70,7 @@
       <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
       <text class="pin-label" x="0" y="24">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:5" data-symbol-definition="symbol_def:3" transform="translate(52 130) rotate(0)">
+    <g class="symbol-instance" data-component="component:5" data-symbol-definition="symbol_def:3" transform="translate(260 270) rotate(0)">
       <text class="reference" x="0" y="-12">PWR/C5V</text>
       <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
       <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
@@ -100,7 +81,7 @@
       <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
       <text class="pin-label" x="0" y="24">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:3" transform="translate(80 130) rotate(0)">
+    <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:3" transform="translate(400 270) rotate(0)">
       <text class="reference" x="0" y="-12">PWR/C3V3</text>
       <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
       <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
@@ -111,7 +92,7 @@
       <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
       <text class="pin-label" x="0" y="24">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:7" data-symbol-definition="symbol_def:3" transform="translate(108 130) rotate(0)">
+    <g class="symbol-instance" data-component="component:7" data-symbol-definition="symbol_def:3" transform="translate(500 270) rotate(0)">
       <text class="reference" x="0" y="-12">PWR/CVDDA</text>
       <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
       <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
@@ -122,53 +103,51 @@
       <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
       <text class="pin-label" x="0" y="24">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:8" data-symbol-definition="symbol_def:4" transform="translate(198 30) rotate(0)">
-      <text class="reference" x="0" y="-12">USB/J1</text>
-      <rect class="symbol-rectangle" x="10" y="-5" width="24" height="50"/>
-      <text class="symbol-text" x="22" y="-10" transform="rotate(0 22 -10)">USB</text>
-      <line class="symbol-line" x1="0" y1="0" x2="10" y2="0"/>
-      <line class="symbol-line" x1="0" y1="8" x2="10" y2="8"/>
-      <line class="symbol-line" x1="0" y1="16" x2="10" y2="16"/>
-      <line class="symbol-line" x1="0" y1="24" x2="10" y2="24"/>
-      <line class="symbol-line" x1="0" y1="32" x2="10" y2="32"/>
-      <line class="symbol-line" x1="0" y1="40" x2="10" y2="40"/>
-      <circle class="pin-anchor" cx="0" cy="0" r="1.5"/>
-      <text class="pin-label" x="0" y="4">VBUS</text>
-      <circle class="pin-anchor" cx="0" cy="8" r="1.5"/>
-      <text class="pin-label" x="0" y="12">D-</text>
-      <circle class="pin-anchor" cx="0" cy="16" r="1.5"/>
-      <text class="pin-label" x="0" y="20">D+</text>
-      <circle class="pin-anchor" cx="0" cy="24" r="1.5"/>
-      <text class="pin-label" x="0" y="28">ID</text>
-      <circle class="pin-anchor" cx="0" cy="32" r="1.5"/>
-      <text class="pin-label" x="0" y="36">GND</text>
-      <circle class="pin-anchor" cx="0" cy="40" r="1.5"/>
-      <text class="pin-label" x="0" y="44">Shield</text>
-    </g>
-    <g class="symbol-instance" data-component="component:9" data-symbol-definition="symbol_def:5" transform="translate(226 74) rotate(0)">
-      <text class="reference" x="0" y="-12">USB/U1</text>
-      <rect class="symbol-rectangle" x="10" y="0" width="34" height="30"/>
-      <line class="symbol-line" x1="0" y1="8" x2="10" y2="8"/>
-      <line class="symbol-line" x1="0" y1="20" x2="10" y2="20"/>
-      <line class="symbol-line" x1="44" y1="8" x2="54" y2="8"/>
-      <line class="symbol-line" x1="44" y1="20" x2="54" y2="20"/>
-      <line class="symbol-line" x1="27" y1="-10" x2="27" y2="0"/>
-      <line class="symbol-line" x1="27" y1="30" x2="27" y2="38"/>
-      <text class="symbol-text" x="27" y="16" transform="rotate(0 27 16)">ESD</text>
-      <circle class="pin-anchor" cx="0" cy="8" r="1.5"/>
-      <text class="pin-label" x="0" y="12">I/O1</text>
-      <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
-      <text class="pin-label" x="0" y="24">I/O2</text>
-      <circle class="pin-anchor" cx="54" cy="8" r="1.5"/>
-      <text class="pin-label" x="54" y="12">I/O4</text>
-      <circle class="pin-anchor" cx="54" cy="20" r="1.5"/>
-      <text class="pin-label" x="54" y="24">I/O3</text>
-      <circle class="pin-anchor" cx="27" cy="-10" r="1.5"/>
-      <text class="pin-label" x="27" y="-6">VBUS</text>
-      <circle class="pin-anchor" cx="27" cy="38" r="1.5"/>
-      <text class="pin-label" x="27" y="42">GND</text>
-    </g>
-    <g class="symbol-instance" data-component="component:23" data-symbol-definition="symbol_def:6" transform="translate(132 24) rotate(0)">
+    <polyline class="wire-run" data-net="net:0" points="114,78 156,78"/>
+    <polyline class="wire-run" data-net="net:4" points="114,94 156,94"/>
+    <polyline class="wire-run" data-net="net:5" points="110,180 68,180"/>
+    <polyline class="wire-run" data-net="net:9" points="110,188 68,188"/>
+    <polyline class="wire-run" data-net="net:9" points="110,196 68,196"/>
+    <polyline class="wire-run" data-net="net:9" points="110,204 68,204"/>
+    <polyline class="wire-run" data-net="net:5" points="210,100 168,100"/>
+    <polyline class="wire-run" data-net="net:6" points="260,100 302,100"/>
+    <polyline class="wire-run" data-net="net:9" points="235,120 235,154"/>
+    <polyline class="wire-run" data-net="net:6" points="360,100 318,100"/>
+    <polyline class="wire-run" data-net="net:7" points="410,100 452,100"/>
+    <polyline class="wire-run" data-net="net:9" points="385,120 385,154"/>
+    <polyline class="wire-run" data-net="net:5" points="140,270 140,236"/>
+    <polyline class="wire-run" data-net="net:9" points="140,290 140,324"/>
+    <polyline class="wire-run" data-net="net:6" points="260,270 260,236"/>
+    <polyline class="wire-run" data-net="net:9" points="260,290 260,324"/>
+    <polyline class="wire-run" data-net="net:7" points="400,270 400,236"/>
+    <polyline class="wire-run" data-net="net:9" points="400,290 400,324"/>
+    <polyline class="wire-run" data-net="net:8" points="500,270 500,236"/>
+    <polyline class="wire-run" data-net="net:9" points="500,290 500,324"/>
+    <text class="net-label" data-net="net:0" x="160" y="75" transform="rotate(0 160 75)">+12V</text>
+    <text class="net-label" data-net="net:4" x="160" y="91" transform="rotate(0 160 91)">GND</text>
+    <text class="net-label" data-net="net:5" x="38" y="177" transform="rotate(0 38 177)">PWR/IN_12V</text>
+    <text class="net-label" data-net="net:9" x="38" y="185" transform="rotate(0 38 185)">PWR/GND</text>
+    <text class="net-label" data-net="net:9" x="38" y="193" transform="rotate(0 38 193)">PWR/GND</text>
+    <text class="net-label" data-net="net:9" x="38" y="201" transform="rotate(0 38 201)">PWR/GND</text>
+    <text class="net-label" data-net="net:5" x="138" y="97" transform="rotate(0 138 97)">PWR/IN_12V</text>
+    <text class="net-label" data-net="net:6" x="306" y="97" transform="rotate(0 306 97)">PWR/OUT_5V</text>
+    <text class="net-label" data-net="net:9" x="240" y="162" transform="rotate(0 240 162)">PWR/GND</text>
+    <text class="net-label" data-net="net:6" x="288" y="97" transform="rotate(0 288 97)">PWR/OUT_5V</text>
+    <text class="net-label" data-net="net:7" x="456" y="97" transform="rotate(0 456 97)">PWR/OUT_3V3</text>
+    <text class="net-label" data-net="net:9" x="390" y="162" transform="rotate(0 390 162)">PWR/GND</text>
+    <text class="net-label" data-net="net:5" x="145" y="230" transform="rotate(0 145 230)">PWR/IN_12V</text>
+    <text class="net-label" data-net="net:9" x="145" y="332" transform="rotate(0 145 332)">PWR/GND</text>
+    <text class="net-label" data-net="net:6" x="265" y="230" transform="rotate(0 265 230)">PWR/OUT_5V</text>
+    <text class="net-label" data-net="net:9" x="265" y="332" transform="rotate(0 265 332)">PWR/GND</text>
+    <text class="net-label" data-net="net:7" x="405" y="230" transform="rotate(0 405 230)">PWR/OUT_3V3</text>
+    <text class="net-label" data-net="net:9" x="405" y="332" transform="rotate(0 405 332)">PWR/GND</text>
+    <text class="net-label" data-net="net:8" x="505" y="230" transform="rotate(0 505 230)">PWR/VDDA</text>
+    <text class="net-label" data-net="net:9" x="505" y="332" transform="rotate(0 505 332)">PWR/GND</text>
+  </g>
+  <g class="schematic-sheet" data-sheet="sheet:1" transform="translate(0 452)">
+    <rect class="sheet" x="0" y="0" width="594" height="420"/>
+    <text class="sheet-title" x="10" y="16">STM32 Microcontroller</text>
+    <g class="symbol-instance" data-component="component:23" data-symbol-definition="symbol_def:4" transform="translate(220 90) rotate(0)">
       <text class="reference" x="0" y="-12">U1</text>
       <rect class="symbol-rectangle" x="20" y="-10" width="60" height="175"/>
       <text class="symbol-text" x="50" y="70" transform="rotate(0 50 70)">STM32F405</text>
@@ -365,7 +344,7 @@
       <circle class="pin-anchor" cx="100" cy="0" r="1.5"/>
       <text class="pin-label" x="100" y="4">VDD</text>
     </g>
-    <g class="symbol-instance" data-component="component:10" data-symbol-definition="symbol_def:3" transform="translate(104 28) rotate(0)">
+    <g class="symbol-instance" data-component="component:10" data-symbol-definition="symbol_def:3" transform="translate(80 80) rotate(0)">
       <text class="reference" x="0" y="-12">SUPPORT/CVDD</text>
       <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
       <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
@@ -376,7 +355,7 @@
       <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
       <text class="pin-label" x="0" y="24">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:11" data-symbol-definition="symbol_def:3" transform="translate(104 58) rotate(0)">
+    <g class="symbol-instance" data-component="component:11" data-symbol-definition="symbol_def:3" transform="translate(125 80) rotate(0)">
       <text class="reference" x="0" y="-12">SUPPORT/CVCAP1</text>
       <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
       <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
@@ -387,7 +366,7 @@
       <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
       <text class="pin-label" x="0" y="24">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:12" data-symbol-definition="symbol_def:3" transform="translate(104 88) rotate(0)">
+    <g class="symbol-instance" data-component="component:12" data-symbol-definition="symbol_def:3" transform="translate(170 80) rotate(0)">
       <text class="reference" x="0" y="-12">SUPPORT/CVCAP2</text>
       <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
       <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
@@ -398,7 +377,7 @@
       <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
       <text class="pin-label" x="0" y="24">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:13" data-symbol-definition="symbol_def:7" transform="translate(104 120) rotate(0)">
+    <g class="symbol-instance" data-component="component:13" data-symbol-definition="symbol_def:5" transform="translate(80 175) rotate(0)">
       <text class="reference" x="0" y="-12">SUPPORT/RRESET</text>
       <line class="symbol-line" x1="0" y1="0" x2="4" y2="0"/>
       <rect class="symbol-rectangle" x="4" y="-3" width="12" height="6"/>
@@ -409,7 +388,7 @@
       <circle class="pin-anchor" cx="20" cy="0" r="1.5"/>
       <text class="pin-label" x="20" y="4">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:14" data-symbol-definition="symbol_def:7" transform="translate(104 148) rotate(0)">
+    <g class="symbol-instance" data-component="component:14" data-symbol-definition="symbol_def:5" transform="translate(80 230) rotate(0)">
       <text class="reference" x="0" y="-12">SUPPORT/RBOOT</text>
       <line class="symbol-line" x1="0" y1="0" x2="4" y2="0"/>
       <rect class="symbol-rectangle" x="4" y="-3" width="12" height="6"/>
@@ -420,7 +399,7 @@
       <circle class="pin-anchor" cx="20" cy="0" r="1.5"/>
       <text class="pin-label" x="20" y="4">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:15" data-symbol-definition="symbol_def:8" transform="translate(160 176) rotate(0)">
+    <g class="symbol-instance" data-component="component:15" data-symbol-definition="symbol_def:6" transform="translate(440 100) rotate(0)">
       <text class="reference" x="0" y="-12">SUPPORT/SWBOOT</text>
       <line class="symbol-line" x1="0" y1="0" x2="14" y2="0"/>
       <line class="symbol-line" x1="0" y1="20" x2="14" y2="20"/>
@@ -434,7 +413,7 @@
       <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
       <text class="pin-label" x="0" y="24">B</text>
     </g>
-    <g class="symbol-instance" data-component="component:16" data-symbol-definition="symbol_def:9" transform="translate(206 142) rotate(0)">
+    <g class="symbol-instance" data-component="component:16" data-symbol-definition="symbol_def:7" transform="translate(430 245) rotate(0)">
       <text class="reference" x="0" y="-12">SUPPORT/Y1</text>
       <line class="symbol-line" x1="0" y1="10" x2="12" y2="10"/>
       <line class="symbol-line" x1="32" y1="10" x2="44" y2="10"/>
@@ -453,7 +432,7 @@
       <circle class="pin-anchor" cx="30" cy="28" r="1.5"/>
       <text class="pin-label" x="30" y="32">GND</text>
     </g>
-    <g class="symbol-instance" data-component="component:17" data-symbol-definition="symbol_def:3" transform="translate(208 176) rotate(0)">
+    <g class="symbol-instance" data-component="component:17" data-symbol-definition="symbol_def:3" transform="translate(430 315) rotate(0)">
       <text class="reference" x="0" y="-12">SUPPORT/CHSEIN</text>
       <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
       <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
@@ -464,7 +443,7 @@
       <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
       <text class="pin-label" x="0" y="24">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:18" data-symbol-definition="symbol_def:3" transform="translate(236 176) rotate(0)">
+    <g class="symbol-instance" data-component="component:18" data-symbol-definition="symbol_def:3" transform="translate(500 315) rotate(0)">
       <text class="reference" x="0" y="-12">SUPPORT/CHSEOUT</text>
       <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
       <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
@@ -475,7 +454,174 @@
       <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
       <text class="pin-label" x="0" y="24">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:19" data-symbol-definition="symbol_def:10" transform="translate(252 18) rotate(0)">
+    <g class="symbol-instance" data-component="component:21" data-symbol-definition="symbol_def:5" transform="translate(80 345) rotate(0)">
+      <text class="reference" x="0" y="-12">LED_STATUS/R</text>
+      <line class="symbol-line" x1="0" y1="0" x2="4" y2="0"/>
+      <rect class="symbol-rectangle" x="4" y="-3" width="12" height="6"/>
+      <line class="symbol-line" x1="16" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-8" transform="rotate(0 10 -8)">R</text>
+      <circle class="pin-anchor" cx="0" cy="0" r="1.5"/>
+      <text class="pin-label" x="0" y="4">1</text>
+      <circle class="pin-anchor" cx="20" cy="0" r="1.5"/>
+      <text class="pin-label" x="20" y="4">2</text>
+    </g>
+    <g class="symbol-instance" data-component="component:22" data-symbol-definition="symbol_def:8" transform="translate(155 345) rotate(0)">
+      <text class="reference" x="0" y="-12">LED_STATUS/D</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="16" y1="0" x2="24" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-6" x2="8" y2="6"/>
+      <line class="symbol-line" x1="8" y1="-6" x2="16" y2="0"/>
+      <line class="symbol-line" x1="8" y1="6" x2="16" y2="0"/>
+      <line class="symbol-line" x1="16" y1="-6" x2="16" y2="6"/>
+      <text class="symbol-text" x="12" y="-10" transform="rotate(0 12 -10)">LED</text>
+      <circle class="pin-anchor" cx="0" cy="0" r="1.5"/>
+      <text class="pin-label" x="0" y="4">A</text>
+      <circle class="pin-anchor" cx="24" cy="0" r="1.5"/>
+      <text class="pin-label" x="24" y="4">K</text>
+    </g>
+    <polyline class="wire-run" data-net="net:2" points="220,90 178,90"/>
+    <polyline class="wire-run" data-net="net:37" points="220,95 178,95"/>
+    <polyline class="wire-run" data-net="net:30" points="220,110 178,110"/>
+    <polyline class="wire-run" data-net="net:31" points="220,115 178,115"/>
+    <polyline class="wire-run" data-net="net:28" points="220,120 178,120"/>
+    <polyline class="wire-run" data-net="net:4" points="220,145 178,145"/>
+    <polyline class="wire-run" data-net="net:3" points="220,150 178,150"/>
+    <polyline class="wire-run" data-net="net:4" points="220,175 178,175"/>
+    <polyline class="wire-run" data-net="net:2" points="220,180 178,180"/>
+    <polyline class="wire-run" data-net="net:32" points="220,240 178,240"/>
+    <polyline class="wire-run" data-net="net:2" points="220,245 178,245"/>
+    <polyline class="wire-run" data-net="net:13" points="320,190 362,190"/>
+    <polyline class="wire-run" data-net="net:12" points="320,185 362,185"/>
+    <polyline class="wire-run" data-net="net:34" points="320,180 362,180"/>
+    <polyline class="wire-run" data-net="net:33" points="320,175 362,175"/>
+    <polyline class="wire-run" data-net="net:2" points="320,170 362,170"/>
+    <polyline class="wire-run" data-net="net:35" points="320,165 362,165"/>
+    <polyline class="wire-run" data-net="net:36" points="320,135 362,135"/>
+    <polyline class="wire-run" data-net="net:29" points="320,110 362,110"/>
+    <polyline class="wire-run" data-net="net:4" points="320,95 362,95"/>
+    <polyline class="wire-run" data-net="net:2" points="320,90 362,90"/>
+    <polyline class="wire-run" data-net="net:20" points="80,80 80,46"/>
+    <polyline class="wire-run" data-net="net:21" points="80,100 80,134"/>
+    <polyline class="wire-run" data-net="net:26" points="125,80 125,46"/>
+    <polyline class="wire-run" data-net="net:21" points="125,100 125,134"/>
+    <polyline class="wire-run" data-net="net:27" points="170,80 170,46"/>
+    <polyline class="wire-run" data-net="net:21" points="170,100 170,134"/>
+    <polyline class="wire-run" data-net="net:20" points="80,175 38,175"/>
+    <polyline class="wire-run" data-net="net:22" points="100,175 142,175"/>
+    <polyline class="wire-run" data-net="net:23" points="80,230 38,230"/>
+    <polyline class="wire-run" data-net="net:21" points="100,230 142,230"/>
+    <polyline class="wire-run" data-net="net:20" points="440,100 398,100"/>
+    <polyline class="wire-run" data-net="net:23" points="484,110 526,110"/>
+    <polyline class="wire-run" data-net="net:21" points="440,120 398,120"/>
+    <polyline class="wire-run" data-net="net:24" points="430,255 388,255"/>
+    <polyline class="wire-run" data-net="net:25" points="474,255 516,255"/>
+    <polyline class="wire-run" data-net="net:21" points="444,273 444,307"/>
+    <polyline class="wire-run" data-net="net:21" points="460,273 460,307"/>
+    <polyline class="wire-run" data-net="net:24" points="430,315 430,281"/>
+    <polyline class="wire-run" data-net="net:21" points="430,335 430,369"/>
+    <polyline class="wire-run" data-net="net:25" points="500,315 500,281"/>
+    <polyline class="wire-run" data-net="net:21" points="500,335 500,369"/>
+    <polyline class="wire-run" data-net="net:38" points="80,345 38,345"/>
+    <polyline class="wire-run" data-net="net:39" points="100,345 142,345"/>
+    <polyline class="wire-run" data-net="net:39" points="155,345 113,345"/>
+    <polyline class="wire-run" data-net="net:40" points="179,345 221,345"/>
+    <text class="net-label" data-net="net:2" x="148" y="87" transform="rotate(0 148 87)">+3V3</text>
+    <text class="net-label" data-net="net:37" x="148" y="92" transform="rotate(0 148 92)">STATUS_LED</text>
+    <text class="net-label" data-net="net:30" x="148" y="107" transform="rotate(0 148 107)">HSE_IN</text>
+    <text class="net-label" data-net="net:31" x="148" y="112" transform="rotate(0 148 112)">HSE_OUT</text>
+    <text class="net-label" data-net="net:28" x="148" y="117" transform="rotate(0 148 117)">NRST</text>
+    <text class="net-label" data-net="net:4" x="148" y="142" transform="rotate(0 148 142)">GND</text>
+    <text class="net-label" data-net="net:3" x="148" y="147" transform="rotate(0 148 147)">VDDA</text>
+    <text class="net-label" data-net="net:4" x="148" y="172" transform="rotate(0 148 172)">GND</text>
+    <text class="net-label" data-net="net:2" x="148" y="177" transform="rotate(0 148 177)">+3V3</text>
+    <text class="net-label" data-net="net:32" x="148" y="237" transform="rotate(0 148 237)">VCAP_1</text>
+    <text class="net-label" data-net="net:2" x="148" y="242" transform="rotate(0 148 242)">+3V3</text>
+    <text class="net-label" data-net="net:13" x="366" y="187" transform="rotate(0 366 187)">MCU_USB_DM</text>
+    <text class="net-label" data-net="net:12" x="366" y="182" transform="rotate(0 366 182)">MCU_USB_DP</text>
+    <text class="net-label" data-net="net:34" x="366" y="177" transform="rotate(0 366 177)">SWDIO</text>
+    <text class="net-label" data-net="net:33" x="366" y="172" transform="rotate(0 366 172)">VCAP_2</text>
+    <text class="net-label" data-net="net:2" x="366" y="167" transform="rotate(0 366 167)">+3V3</text>
+    <text class="net-label" data-net="net:35" x="366" y="162" transform="rotate(0 366 162)">SWCLK</text>
+    <text class="net-label" data-net="net:36" x="366" y="132" transform="rotate(0 366 132)">SWO</text>
+    <text class="net-label" data-net="net:29" x="366" y="107" transform="rotate(0 366 107)">BOOT0</text>
+    <text class="net-label" data-net="net:4" x="366" y="92" transform="rotate(0 366 92)">GND</text>
+    <text class="net-label" data-net="net:2" x="366" y="87" transform="rotate(0 366 87)">+3V3</text>
+    <text class="net-label" data-net="net:20" x="85" y="40" transform="rotate(0 85 40)">SUPPORT/VDD</text>
+    <text class="net-label" data-net="net:21" x="85" y="142" transform="rotate(0 85 142)">SUPPORT/GND</text>
+    <text class="net-label" data-net="net:26" x="130" y="40" transform="rotate(0 130 40)">SUPPORT/VCAP_1</text>
+    <text class="net-label" data-net="net:21" x="130" y="142" transform="rotate(0 130 142)">SUPPORT/GND</text>
+    <text class="net-label" data-net="net:27" x="175" y="40" transform="rotate(0 175 40)">SUPPORT/VCAP_2</text>
+    <text class="net-label" data-net="net:21" x="175" y="142" transform="rotate(0 175 142)">SUPPORT/GND</text>
+    <text class="net-label" data-net="net:20" x="8" y="172" transform="rotate(0 8 172)">SUPPORT/VDD</text>
+    <text class="net-label" data-net="net:22" x="146" y="172" transform="rotate(0 146 172)">SUPPORT/NRST</text>
+    <text class="net-label" data-net="net:23" x="8" y="227" transform="rotate(0 8 227)">SUPPORT/BOOT0</text>
+    <text class="net-label" data-net="net:21" x="146" y="227" transform="rotate(0 146 227)">SUPPORT/GND</text>
+    <text class="net-label" data-net="net:20" x="368" y="97" transform="rotate(0 368 97)">SUPPORT/VDD</text>
+    <text class="net-label" data-net="net:23" x="530" y="107" transform="rotate(0 530 107)">SUPPORT/BOOT0</text>
+    <text class="net-label" data-net="net:21" x="368" y="117" transform="rotate(0 368 117)">SUPPORT/GND</text>
+    <text class="net-label" data-net="net:24" x="358" y="252" transform="rotate(0 358 252)">SUPPORT/HSE_IN</text>
+    <text class="net-label" data-net="net:25" x="520" y="252" transform="rotate(0 520 252)">SUPPORT/HSE_OUT</text>
+    <text class="net-label" data-net="net:21" x="449" y="315" transform="rotate(0 449 315)">SUPPORT/GND</text>
+    <text class="net-label" data-net="net:21" x="465" y="315" transform="rotate(0 465 315)">SUPPORT/GND</text>
+    <text class="net-label" data-net="net:24" x="435" y="275" transform="rotate(0 435 275)">SUPPORT/HSE_IN</text>
+    <text class="net-label" data-net="net:21" x="435" y="377" transform="rotate(0 435 377)">SUPPORT/GND</text>
+    <text class="net-label" data-net="net:25" x="505" y="275" transform="rotate(0 505 275)">SUPPORT/HSE_OUT</text>
+    <text class="net-label" data-net="net:21" x="505" y="377" transform="rotate(0 505 377)">SUPPORT/GND</text>
+    <text class="net-label" data-net="net:38" x="8" y="342" transform="rotate(0 8 342)">LED_STATUS/SUPPLY</text>
+    <text class="net-label" data-net="net:39" x="146" y="342" transform="rotate(0 146 342)">LED_STATUS/SIGNAL</text>
+    <text class="net-label" data-net="net:39" x="83" y="342" transform="rotate(0 83 342)">LED_STATUS/SIGNAL</text>
+    <text class="net-label" data-net="net:40" x="225" y="342" transform="rotate(0 225 342)">LED_STATUS/GND</text>
+  </g>
+  <g class="schematic-sheet" data-sheet="sheet:2" transform="translate(0 904)">
+    <rect class="sheet" x="0" y="0" width="594" height="420"/>
+    <text class="sheet-title" x="10" y="16">Connectors and USB</text>
+    <g class="symbol-instance" data-component="component:8" data-symbol-definition="symbol_def:9" transform="translate(95 250) rotate(0)">
+      <text class="reference" x="0" y="-12">USB/J1</text>
+      <rect class="symbol-rectangle" x="10" y="-5" width="24" height="50"/>
+      <text class="symbol-text" x="22" y="-10" transform="rotate(0 22 -10)">USB</text>
+      <line class="symbol-line" x1="0" y1="0" x2="10" y2="0"/>
+      <line class="symbol-line" x1="0" y1="8" x2="10" y2="8"/>
+      <line class="symbol-line" x1="0" y1="16" x2="10" y2="16"/>
+      <line class="symbol-line" x1="0" y1="24" x2="10" y2="24"/>
+      <line class="symbol-line" x1="0" y1="32" x2="10" y2="32"/>
+      <line class="symbol-line" x1="0" y1="40" x2="10" y2="40"/>
+      <circle class="pin-anchor" cx="0" cy="0" r="1.5"/>
+      <text class="pin-label" x="0" y="4">VBUS</text>
+      <circle class="pin-anchor" cx="0" cy="8" r="1.5"/>
+      <text class="pin-label" x="0" y="12">D-</text>
+      <circle class="pin-anchor" cx="0" cy="16" r="1.5"/>
+      <text class="pin-label" x="0" y="20">D+</text>
+      <circle class="pin-anchor" cx="0" cy="24" r="1.5"/>
+      <text class="pin-label" x="0" y="28">ID</text>
+      <circle class="pin-anchor" cx="0" cy="32" r="1.5"/>
+      <text class="pin-label" x="0" y="36">GND</text>
+      <circle class="pin-anchor" cx="0" cy="40" r="1.5"/>
+      <text class="pin-label" x="0" y="44">Shield</text>
+    </g>
+    <g class="symbol-instance" data-component="component:9" data-symbol-definition="symbol_def:10" transform="translate(275 255) rotate(0)">
+      <text class="reference" x="0" y="-12">USB/U1</text>
+      <rect class="symbol-rectangle" x="10" y="0" width="34" height="30"/>
+      <line class="symbol-line" x1="0" y1="8" x2="10" y2="8"/>
+      <line class="symbol-line" x1="0" y1="20" x2="10" y2="20"/>
+      <line class="symbol-line" x1="44" y1="8" x2="54" y2="8"/>
+      <line class="symbol-line" x1="44" y1="20" x2="54" y2="20"/>
+      <line class="symbol-line" x1="27" y1="-10" x2="27" y2="0"/>
+      <line class="symbol-line" x1="27" y1="30" x2="27" y2="38"/>
+      <text class="symbol-text" x="27" y="16" transform="rotate(0 27 16)">ESD</text>
+      <circle class="pin-anchor" cx="0" cy="8" r="1.5"/>
+      <text class="pin-label" x="0" y="12">I/O1</text>
+      <circle class="pin-anchor" cx="0" cy="20" r="1.5"/>
+      <text class="pin-label" x="0" y="24">I/O2</text>
+      <circle class="pin-anchor" cx="54" cy="8" r="1.5"/>
+      <text class="pin-label" x="54" y="12">I/O4</text>
+      <circle class="pin-anchor" cx="54" cy="20" r="1.5"/>
+      <text class="pin-label" x="54" y="24">I/O3</text>
+      <circle class="pin-anchor" cx="27" cy="-10" r="1.5"/>
+      <text class="pin-label" x="27" y="-6">VBUS</text>
+      <circle class="pin-anchor" cx="27" cy="38" r="1.5"/>
+      <text class="pin-label" x="27" y="42">GND</text>
+    </g>
+    <g class="symbol-instance" data-component="component:19" data-symbol-definition="symbol_def:11" transform="translate(360 75) rotate(0)">
       <text class="reference" x="0" y="-12">J2</text>
       <rect class="symbol-rectangle" x="10" y="-5" width="24" height="82"/>
       <text class="symbol-text" x="22" y="-10" transform="rotate(0 22 -10)">SWD</text>
@@ -510,7 +656,7 @@
       <circle class="pin-anchor" cx="0" cy="72" r="1.5"/>
       <text class="pin-label" x="0" y="76">nRESET</text>
     </g>
-    <g class="symbol-instance" data-component="component:20" data-symbol-definition="symbol_def:1" transform="translate(252 110) rotate(0)">
+    <g class="symbol-instance" data-component="component:20" data-symbol-definition="symbol_def:1" transform="translate(360 265) rotate(0)">
       <text class="reference" x="0" y="-12">J3</text>
       <rect class="symbol-rectangle" x="10" y="-5" width="24" height="34"/>
       <text class="symbol-text" x="22" y="-10" transform="rotate(0 22 -10)">HDR</text>
@@ -527,138 +673,95 @@
       <circle class="pin-anchor" cx="0" cy="24" r="1.5"/>
       <text class="pin-label" x="0" y="28">4</text>
     </g>
-    <g class="symbol-instance" data-component="component:21" data-symbol-definition="symbol_def:7" transform="translate(18 176) rotate(0)">
-      <text class="reference" x="0" y="-12">LED_STATUS/R</text>
-      <line class="symbol-line" x1="0" y1="0" x2="4" y2="0"/>
-      <rect class="symbol-rectangle" x="4" y="-3" width="12" height="6"/>
-      <line class="symbol-line" x1="16" y1="0" x2="20" y2="0"/>
-      <text class="symbol-text" x="10" y="-8" transform="rotate(0 10 -8)">R</text>
+    <g class="symbol-instance" data-component="component:24" data-symbol-definition="symbol_def:12" transform="translate(500 105) rotate(0)">
+      <text class="reference" x="0" y="-12">H1</text>
+      <line class="symbol-line" x1="0" y1="0" x2="10" y2="0"/>
+      <circle class="symbol-circle" cx="16" cy="0" r="5"/>
+      <circle class="symbol-circle" cx="16" cy="0" r="2"/>
+      <text class="symbol-text" x="16" y="-9" transform="rotate(0 16 -9)">HOLE</text>
       <circle class="pin-anchor" cx="0" cy="0" r="1.5"/>
       <text class="pin-label" x="0" y="4">1</text>
-      <circle class="pin-anchor" cx="20" cy="0" r="1.5"/>
-      <text class="pin-label" x="20" y="4">2</text>
     </g>
-    <g class="symbol-instance" data-component="component:22" data-symbol-definition="symbol_def:11" transform="translate(54 176) rotate(0)">
-      <text class="reference" x="0" y="-12">LED_STATUS/D</text>
-      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
-      <line class="symbol-line" x1="16" y1="0" x2="24" y2="0"/>
-      <line class="symbol-line" x1="8" y1="-6" x2="8" y2="6"/>
-      <line class="symbol-line" x1="8" y1="-6" x2="16" y2="0"/>
-      <line class="symbol-line" x1="8" y1="6" x2="16" y2="0"/>
-      <line class="symbol-line" x1="16" y1="-6" x2="16" y2="6"/>
-      <text class="symbol-text" x="12" y="-10" transform="rotate(0 12 -10)">LED</text>
+    <g class="symbol-instance" data-component="component:25" data-symbol-definition="symbol_def:12" transform="translate(500 155) rotate(0)">
+      <text class="reference" x="0" y="-12">H2</text>
+      <line class="symbol-line" x1="0" y1="0" x2="10" y2="0"/>
+      <circle class="symbol-circle" cx="16" cy="0" r="5"/>
+      <circle class="symbol-circle" cx="16" cy="0" r="2"/>
+      <text class="symbol-text" x="16" y="-9" transform="rotate(0 16 -9)">HOLE</text>
       <circle class="pin-anchor" cx="0" cy="0" r="1.5"/>
-      <text class="pin-label" x="0" y="4">A</text>
-      <circle class="pin-anchor" cx="24" cy="0" r="1.5"/>
-      <text class="pin-label" x="24" y="4">K</text>
+      <text class="pin-label" x="0" y="4">1</text>
     </g>
-    <text class="net-label" data-net="net:0" x="8" y="16" transform="rotate(0 8 16)">+12V</text>
-    <text class="net-label" data-net="net:1" x="52" y="16" transform="rotate(0 52 16)">+5V</text>
-    <text class="net-label" data-net="net:2" x="96" y="16" transform="rotate(0 96 16)">+3V3</text>
-    <text class="net-label" data-net="net:3" x="8" y="200" transform="rotate(0 8 200)">VDDA</text>
-    <text class="net-label" data-net="net:4" x="52" y="200" transform="rotate(0 52 200)">GND</text>
-    <text class="net-label" data-net="net:10" x="180" y="16" transform="rotate(0 180 16)">USB_DP</text>
-    <text class="net-label" data-net="net:11" x="224" y="16" transform="rotate(0 224 16)">USB_DM</text>
-    <text class="net-label" data-net="net:12" x="180" y="124" transform="rotate(0 180 124)">MCU_USB_DP</text>
-    <text class="net-label" data-net="net:13" x="224" y="124" transform="rotate(0 224 124)">MCU_USB_DM</text>
-    <text class="net-label" data-net="net:28" x="8" y="162" transform="rotate(0 8 162)">NRST</text>
-    <text class="net-label" data-net="net:29" x="52" y="162" transform="rotate(0 52 162)">BOOT0</text>
-    <text class="net-label" data-net="net:30" x="180" y="164" transform="rotate(0 180 164)">HSE_IN</text>
-    <text class="net-label" data-net="net:31" x="224" y="164" transform="rotate(0 224 164)">HSE_OUT</text>
-    <text class="net-label" data-net="net:32" x="8" y="192" transform="rotate(0 8 192)">VCAP_1</text>
-    <text class="net-label" data-net="net:33" x="96" y="192" transform="rotate(0 96 192)">VCAP_2</text>
-    <text class="net-label" data-net="net:34" x="252" y="94" transform="rotate(0 252 94)">SWDIO</text>
-    <text class="net-label" data-net="net:35" x="252" y="102" transform="rotate(0 252 102)">SWCLK</text>
-    <text class="net-label" data-net="net:36" x="252" y="134" transform="rotate(0 252 134)">SWO</text>
-    <text class="net-label" data-net="net:37" x="8" y="154" transform="rotate(0 8 154)">STATUS_LED</text>
-    <text class="net-label" data-net="net:0" x="56" y="42" transform="rotate(0 56 42)">+12V</text>
-    <text class="net-label" data-net="net:4" x="56" y="58" transform="rotate(0 56 58)">GND</text>
-    <text class="net-label" data-net="net:5" x="12" y="82" transform="rotate(0 12 82)">PWR/IN_12V</text>
-    <text class="net-label" data-net="net:9" x="12" y="90" transform="rotate(0 12 90)">PWR/GND</text>
-    <text class="net-label" data-net="net:9" x="12" y="98" transform="rotate(0 12 98)">PWR/GND</text>
-    <text class="net-label" data-net="net:9" x="12" y="106" transform="rotate(0 12 106)">PWR/GND</text>
-    <text class="net-label" data-net="net:5" x="68" y="52" transform="rotate(0 68 52)">PWR/IN_12V</text>
-    <text class="net-label" data-net="net:6" x="118" y="52" transform="rotate(0 118 52)">PWR/OUT_5V</text>
-    <text class="net-label" data-net="net:9" x="93" y="72" transform="rotate(0 93 72)">PWR/GND</text>
-    <text class="net-label" data-net="net:6" x="68" y="96" transform="rotate(0 68 96)">PWR/OUT_5V</text>
-    <text class="net-label" data-net="net:7" x="118" y="96" transform="rotate(0 118 96)">PWR/OUT_3V3</text>
-    <text class="net-label" data-net="net:9" x="93" y="116" transform="rotate(0 93 116)">PWR/GND</text>
-    <text class="net-label" data-net="net:5" x="24" y="130" transform="rotate(0 24 130)">PWR/IN_12V</text>
-    <text class="net-label" data-net="net:9" x="24" y="150" transform="rotate(0 24 150)">PWR/GND</text>
-    <text class="net-label" data-net="net:6" x="52" y="130" transform="rotate(0 52 130)">PWR/OUT_5V</text>
-    <text class="net-label" data-net="net:9" x="52" y="150" transform="rotate(0 52 150)">PWR/GND</text>
-    <text class="net-label" data-net="net:7" x="80" y="130" transform="rotate(0 80 130)">PWR/OUT_3V3</text>
-    <text class="net-label" data-net="net:9" x="80" y="150" transform="rotate(0 80 150)">PWR/GND</text>
-    <text class="net-label" data-net="net:8" x="108" y="130" transform="rotate(0 108 130)">PWR/VDDA</text>
-    <text class="net-label" data-net="net:9" x="108" y="150" transform="rotate(0 108 150)">PWR/GND</text>
-    <text class="net-label" data-net="net:14" x="198" y="30" transform="rotate(0 198 30)">USB/VBUS</text>
-    <text class="net-label" data-net="net:16" x="198" y="38" transform="rotate(0 198 38)">USB/USB_DM</text>
-    <text class="net-label" data-net="net:15" x="198" y="46" transform="rotate(0 198 46)">USB/USB_DP</text>
-    <text class="net-label" data-net="net:19" x="198" y="62" transform="rotate(0 198 62)">USB/GND</text>
-    <text class="net-label" data-net="net:19" x="198" y="70" transform="rotate(0 198 70)">USB/GND</text>
-    <text class="net-label" data-net="net:15" x="226" y="82" transform="rotate(0 226 82)">USB/USB_DP</text>
-    <text class="net-label" data-net="net:16" x="226" y="94" transform="rotate(0 226 94)">USB/USB_DM</text>
-    <text class="net-label" data-net="net:17" x="280" y="82" transform="rotate(0 280 82)">USB/MCU_USB_DP</text>
-    <text class="net-label" data-net="net:18" x="280" y="94" transform="rotate(0 280 94)">USB/MCU_USB_DM</text>
-    <text class="net-label" data-net="net:14" x="253" y="64" transform="rotate(0 253 64)">USB/VBUS</text>
-    <text class="net-label" data-net="net:19" x="253" y="112" transform="rotate(0 253 112)">USB/GND</text>
-    <text class="net-label" data-net="net:2" x="132" y="24" transform="rotate(0 132 24)">+3V3</text>
-    <text class="net-label" data-net="net:37" x="132" y="29" transform="rotate(0 132 29)">STATUS_LED</text>
-    <text class="net-label" data-net="net:30" x="132" y="44" transform="rotate(0 132 44)">HSE_IN</text>
-    <text class="net-label" data-net="net:31" x="132" y="49" transform="rotate(0 132 49)">HSE_OUT</text>
-    <text class="net-label" data-net="net:28" x="132" y="54" transform="rotate(0 132 54)">NRST</text>
-    <text class="net-label" data-net="net:4" x="132" y="79" transform="rotate(0 132 79)">GND</text>
-    <text class="net-label" data-net="net:3" x="132" y="84" transform="rotate(0 132 84)">VDDA</text>
-    <text class="net-label" data-net="net:4" x="132" y="109" transform="rotate(0 132 109)">GND</text>
-    <text class="net-label" data-net="net:2" x="132" y="114" transform="rotate(0 132 114)">+3V3</text>
-    <text class="net-label" data-net="net:32" x="132" y="174" transform="rotate(0 132 174)">VCAP_1</text>
-    <text class="net-label" data-net="net:2" x="132" y="179" transform="rotate(0 132 179)">+3V3</text>
-    <text class="net-label" data-net="net:13" x="232" y="124" transform="rotate(0 232 124)">MCU_USB_DM</text>
-    <text class="net-label" data-net="net:12" x="232" y="119" transform="rotate(0 232 119)">MCU_USB_DP</text>
-    <text class="net-label" data-net="net:34" x="232" y="114" transform="rotate(0 232 114)">SWDIO</text>
-    <text class="net-label" data-net="net:33" x="232" y="109" transform="rotate(0 232 109)">VCAP_2</text>
-    <text class="net-label" data-net="net:2" x="232" y="104" transform="rotate(0 232 104)">+3V3</text>
-    <text class="net-label" data-net="net:35" x="232" y="99" transform="rotate(0 232 99)">SWCLK</text>
-    <text class="net-label" data-net="net:36" x="232" y="69" transform="rotate(0 232 69)">SWO</text>
-    <text class="net-label" data-net="net:29" x="232" y="44" transform="rotate(0 232 44)">BOOT0</text>
-    <text class="net-label" data-net="net:4" x="232" y="29" transform="rotate(0 232 29)">GND</text>
-    <text class="net-label" data-net="net:2" x="232" y="24" transform="rotate(0 232 24)">+3V3</text>
-    <text class="net-label" data-net="net:20" x="104" y="28" transform="rotate(0 104 28)">SUPPORT/VDD</text>
-    <text class="net-label" data-net="net:21" x="104" y="48" transform="rotate(0 104 48)">SUPPORT/GND</text>
-    <text class="net-label" data-net="net:26" x="104" y="58" transform="rotate(0 104 58)">SUPPORT/VCAP_1</text>
-    <text class="net-label" data-net="net:21" x="104" y="78" transform="rotate(0 104 78)">SUPPORT/GND</text>
-    <text class="net-label" data-net="net:27" x="104" y="88" transform="rotate(0 104 88)">SUPPORT/VCAP_2</text>
-    <text class="net-label" data-net="net:21" x="104" y="108" transform="rotate(0 104 108)">SUPPORT/GND</text>
-    <text class="net-label" data-net="net:20" x="104" y="120" transform="rotate(0 104 120)">SUPPORT/VDD</text>
-    <text class="net-label" data-net="net:22" x="124" y="120" transform="rotate(0 124 120)">SUPPORT/NRST</text>
-    <text class="net-label" data-net="net:23" x="104" y="148" transform="rotate(0 104 148)">SUPPORT/BOOT0</text>
-    <text class="net-label" data-net="net:21" x="124" y="148" transform="rotate(0 124 148)">SUPPORT/GND</text>
-    <text class="net-label" data-net="net:20" x="160" y="176" transform="rotate(0 160 176)">SUPPORT/VDD</text>
-    <text class="net-label" data-net="net:23" x="204" y="186" transform="rotate(0 204 186)">SUPPORT/BOOT0</text>
-    <text class="net-label" data-net="net:21" x="160" y="196" transform="rotate(0 160 196)">SUPPORT/GND</text>
-    <text class="net-label" data-net="net:24" x="206" y="152" transform="rotate(0 206 152)">SUPPORT/HSE_IN</text>
-    <text class="net-label" data-net="net:25" x="250" y="152" transform="rotate(0 250 152)">SUPPORT/HSE_OUT</text>
-    <text class="net-label" data-net="net:21" x="220" y="170" transform="rotate(0 220 170)">SUPPORT/GND</text>
-    <text class="net-label" data-net="net:21" x="236" y="170" transform="rotate(0 236 170)">SUPPORT/GND</text>
-    <text class="net-label" data-net="net:24" x="208" y="176" transform="rotate(0 208 176)">SUPPORT/HSE_IN</text>
-    <text class="net-label" data-net="net:21" x="208" y="196" transform="rotate(0 208 196)">SUPPORT/GND</text>
-    <text class="net-label" data-net="net:25" x="236" y="176" transform="rotate(0 236 176)">SUPPORT/HSE_OUT</text>
-    <text class="net-label" data-net="net:21" x="236" y="196" transform="rotate(0 236 196)">SUPPORT/GND</text>
-    <text class="net-label" data-net="net:2" x="252" y="18" transform="rotate(0 252 18)">+3V3</text>
-    <text class="net-label" data-net="net:34" x="252" y="26" transform="rotate(0 252 26)">SWDIO</text>
-    <text class="net-label" data-net="net:4" x="252" y="34" transform="rotate(0 252 34)">GND</text>
-    <text class="net-label" data-net="net:35" x="252" y="42" transform="rotate(0 252 42)">SWCLK</text>
-    <text class="net-label" data-net="net:4" x="252" y="50" transform="rotate(0 252 50)">GND</text>
-    <text class="net-label" data-net="net:36" x="252" y="58" transform="rotate(0 252 58)">SWO</text>
-    <text class="net-label" data-net="net:29" x="252" y="74" transform="rotate(0 252 74)">BOOT0</text>
-    <text class="net-label" data-net="net:4" x="252" y="82" transform="rotate(0 252 82)">GND</text>
-    <text class="net-label" data-net="net:28" x="252" y="90" transform="rotate(0 252 90)">NRST</text>
-    <text class="net-label" data-net="net:2" x="252" y="110" transform="rotate(0 252 110)">+3V3</text>
-    <text class="net-label" data-net="net:29" x="252" y="118" transform="rotate(0 252 118)">BOOT0</text>
-    <text class="net-label" data-net="net:4" x="252" y="134" transform="rotate(0 252 134)">GND</text>
-    <text class="net-label" data-net="net:38" x="18" y="176" transform="rotate(0 18 176)">LED_STATUS/SUPPLY</text>
-    <text class="net-label" data-net="net:39" x="38" y="176" transform="rotate(0 38 176)">LED_STATUS/SIGNAL</text>
-    <text class="net-label" data-net="net:39" x="54" y="176" transform="rotate(0 54 176)">LED_STATUS/SIGNAL</text>
-    <text class="net-label" data-net="net:40" x="78" y="176" transform="rotate(0 78 176)">LED_STATUS/GND</text>
+    <g class="symbol-instance" data-component="component:26" data-symbol-definition="symbol_def:12" transform="translate(500 205) rotate(0)">
+      <text class="reference" x="0" y="-12">H3</text>
+      <line class="symbol-line" x1="0" y1="0" x2="10" y2="0"/>
+      <circle class="symbol-circle" cx="16" cy="0" r="5"/>
+      <circle class="symbol-circle" cx="16" cy="0" r="2"/>
+      <text class="symbol-text" x="16" y="-9" transform="rotate(0 16 -9)">HOLE</text>
+      <circle class="pin-anchor" cx="0" cy="0" r="1.5"/>
+      <text class="pin-label" x="0" y="4">1</text>
+    </g>
+    <g class="symbol-instance" data-component="component:27" data-symbol-definition="symbol_def:12" transform="translate(500 255) rotate(0)">
+      <text class="reference" x="0" y="-12">H4</text>
+      <line class="symbol-line" x1="0" y1="0" x2="10" y2="0"/>
+      <circle class="symbol-circle" cx="16" cy="0" r="5"/>
+      <circle class="symbol-circle" cx="16" cy="0" r="2"/>
+      <text class="symbol-text" x="16" y="-9" transform="rotate(0 16 -9)">HOLE</text>
+      <circle class="pin-anchor" cx="0" cy="0" r="1.5"/>
+      <text class="pin-label" x="0" y="4">1</text>
+    </g>
+    <polyline class="wire-run" data-net="net:14" points="95,250 53,250"/>
+    <polyline class="wire-run" data-net="net:16" points="95,258 53,258"/>
+    <polyline class="wire-run" data-net="net:15" points="95,266 53,266"/>
+    <polyline class="wire-run" data-net="net:19" points="95,282 53,282"/>
+    <polyline class="wire-run" data-net="net:19" points="95,290 53,290"/>
+    <polyline class="wire-run" data-net="net:15" points="275,263 233,263"/>
+    <polyline class="wire-run" data-net="net:16" points="275,275 233,275"/>
+    <polyline class="wire-run" data-net="net:17" points="329,263 371,263"/>
+    <polyline class="wire-run" data-net="net:18" points="329,275 371,275"/>
+    <polyline class="wire-run" data-net="net:14" points="302,245 302,211"/>
+    <polyline class="wire-run" data-net="net:19" points="302,293 302,327"/>
+    <polyline class="wire-run" data-net="net:2" points="360,75 318,75"/>
+    <polyline class="wire-run" data-net="net:34" points="360,83 318,83"/>
+    <polyline class="wire-run" data-net="net:4" points="360,91 318,91"/>
+    <polyline class="wire-run" data-net="net:35" points="360,99 318,99"/>
+    <polyline class="wire-run" data-net="net:4" points="360,107 318,107"/>
+    <polyline class="wire-run" data-net="net:36" points="360,115 318,115"/>
+    <polyline class="wire-run" data-net="net:29" points="360,131 318,131"/>
+    <polyline class="wire-run" data-net="net:4" points="360,139 318,139"/>
+    <polyline class="wire-run" data-net="net:28" points="360,147 318,147"/>
+    <polyline class="wire-run" data-net="net:2" points="360,265 318,265"/>
+    <polyline class="wire-run" data-net="net:29" points="360,273 318,273"/>
+    <polyline class="wire-run" data-net="net:4" points="360,289 318,289"/>
+    <polyline class="wire-run" data-net="net:4" points="500,105 458,105"/>
+    <polyline class="wire-run" data-net="net:4" points="500,155 458,155"/>
+    <polyline class="wire-run" data-net="net:4" points="500,205 458,205"/>
+    <polyline class="wire-run" data-net="net:4" points="500,255 458,255"/>
+    <text class="net-label" data-net="net:14" x="23" y="247" transform="rotate(0 23 247)">USB/VBUS</text>
+    <text class="net-label" data-net="net:16" x="23" y="255" transform="rotate(0 23 255)">USB/USB_DM</text>
+    <text class="net-label" data-net="net:15" x="23" y="263" transform="rotate(0 23 263)">USB/USB_DP</text>
+    <text class="net-label" data-net="net:19" x="23" y="279" transform="rotate(0 23 279)">USB/GND</text>
+    <text class="net-label" data-net="net:19" x="23" y="287" transform="rotate(0 23 287)">USB/GND</text>
+    <text class="net-label" data-net="net:15" x="203" y="260" transform="rotate(0 203 260)">USB/USB_DP</text>
+    <text class="net-label" data-net="net:16" x="203" y="272" transform="rotate(0 203 272)">USB/USB_DM</text>
+    <text class="net-label" data-net="net:17" x="375" y="260" transform="rotate(0 375 260)">USB/MCU_USB_DP</text>
+    <text class="net-label" data-net="net:18" x="375" y="272" transform="rotate(0 375 272)">USB/MCU_USB_DM</text>
+    <text class="net-label" data-net="net:14" x="307" y="205" transform="rotate(0 307 205)">USB/VBUS</text>
+    <text class="net-label" data-net="net:19" x="307" y="335" transform="rotate(0 307 335)">USB/GND</text>
+    <text class="net-label" data-net="net:2" x="288" y="72" transform="rotate(0 288 72)">+3V3</text>
+    <text class="net-label" data-net="net:34" x="288" y="80" transform="rotate(0 288 80)">SWDIO</text>
+    <text class="net-label" data-net="net:4" x="288" y="88" transform="rotate(0 288 88)">GND</text>
+    <text class="net-label" data-net="net:35" x="288" y="96" transform="rotate(0 288 96)">SWCLK</text>
+    <text class="net-label" data-net="net:4" x="288" y="104" transform="rotate(0 288 104)">GND</text>
+    <text class="net-label" data-net="net:36" x="288" y="112" transform="rotate(0 288 112)">SWO</text>
+    <text class="net-label" data-net="net:29" x="288" y="128" transform="rotate(0 288 128)">BOOT0</text>
+    <text class="net-label" data-net="net:4" x="288" y="136" transform="rotate(0 288 136)">GND</text>
+    <text class="net-label" data-net="net:28" x="288" y="144" transform="rotate(0 288 144)">NRST</text>
+    <text class="net-label" data-net="net:2" x="288" y="262" transform="rotate(0 288 262)">+3V3</text>
+    <text class="net-label" data-net="net:29" x="288" y="270" transform="rotate(0 288 270)">BOOT0</text>
+    <text class="net-label" data-net="net:4" x="288" y="286" transform="rotate(0 288 286)">GND</text>
+    <text class="net-label" data-net="net:4" x="428" y="102" transform="rotate(0 428 102)">GND</text>
+    <text class="net-label" data-net="net:4" x="428" y="152" transform="rotate(0 428 152)">GND</text>
+    <text class="net-label" data-net="net:4" x="428" y="202" transform="rotate(0 428 202)">GND</text>
+    <text class="net-label" data-net="net:4" x="428" y="252" transform="rotate(0 428 252)">GND</text>
   </g>
 </svg>

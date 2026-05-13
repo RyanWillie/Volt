@@ -50,12 +50,17 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert {"+12V", "+5V", "+3V3", "VDDA", "GND", "USB_DP", "USB_DM"} <= net_names
     net_ids = {net["id"] for net in logical["nets"]}
     component_ids = {component["id"] for component in logical["components"]}
+    net_id_by_name = {net["name"]: net["id"] for net in logical["nets"]}
 
     assert schematic["format"] == "volt.schematic"
-    assert [sheet["name"] for sheet in schematic["sheets"]] == ["Main"]
-    assert len(schematic["symbol_instances"]) >= 10
-    assert len(schematic["wire_runs"]) >= 12
-    assert len(schematic["net_labels"]) >= 12
+    assert [sheet["name"] for sheet in schematic["sheets"]] == [
+        "Power",
+        "STM32 Microcontroller",
+        "Connectors and USB",
+    ]
+    assert len(schematic["symbol_instances"]) >= 28
+    assert len(schematic["wire_runs"]) >= 90
+    assert len(schematic["net_labels"]) >= 90
     assert {instance["component"] for instance in schematic["symbol_instances"]} <= component_ids
     assert {wire["net"] for wire in schematic["wire_runs"]} <= net_ids
     assert {label["net"] for label in schematic["net_labels"]} <= net_ids
@@ -65,6 +70,23 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "volt.benchmarks.stm32_usb_buck:Capacitor",
         "volt.benchmarks.stm32_usb_buck:USB_B_Micro",
     }
+    stm32_instance = next(
+        instance for instance in schematic["symbol_instances"] if instance["component"] == "component:23"
+    )
+    stm32_symbol = next(
+        symbol
+        for symbol in schematic["symbol_definitions"]
+        if symbol["id"] == stm32_instance["symbol_definition"]
+    )
+    pa12_anchor = next(pin["anchor"] for pin in stm32_symbol["pins"] if pin["name"] == "PA12")
+    pa12_point = {
+        "x": stm32_instance["position"]["x"] + pa12_anchor["x"],
+        "y": stm32_instance["position"]["y"] + pa12_anchor["y"],
+    }
+    assert any(
+        wire["net"] == net_id_by_name["MCU_USB_DP"] and wire["points"][0] == pa12_point
+        for wire in schematic["wire_runs"]
+    )
 
     stm32 = next(component for component in logical["components"] if component["reference"] == "U1")
     assert stm32["selected_physical_part"]["footprint"] == {
@@ -99,6 +121,11 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert len(logical["design_intent"]["no_connect_pins"]) >= 20
 
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in first_svg_text
+    assert 'viewBox="0 0 594 1324"' in first_svg_text
+    assert ".wire-run{fill:none;stroke:#16843a;stroke-width:2;stroke-linecap:square}" in first_svg_text
+    assert ">Power</text>" in first_svg_text
+    assert ">STM32 Microcontroller</text>" in first_svg_text
+    assert ">Connectors and USB</text>" in first_svg_text
     assert ">U1</text>" in first_svg_text
     assert ">+3V3</text>" in first_svg_text
     assert ">GND</text>" in first_svg_text

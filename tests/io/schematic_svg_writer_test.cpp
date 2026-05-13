@@ -72,9 +72,11 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     const auto svg = volt::io::write_schematic_svg(schematic);
 
     CHECK(svg == volt::io::write_schematic_svg(schematic));
-    CHECK(svg.find("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 297 210\"") !=
+    CHECK(svg.find("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 594 420\"") !=
           std::string::npos);
-    CHECK(svg.find("<rect class=\"sheet\" x=\"0\" y=\"0\" width=\"297\" height=\"210\"/>") !=
+    CHECK(svg.find("<rect class=\"sheet\" x=\"0\" y=\"0\" width=\"594\" height=\"420\"/>") !=
+          std::string::npos);
+    CHECK(svg.find(".wire-run{fill:none;stroke:#16843a;stroke-width:2;stroke-linecap:square}") !=
           std::string::npos);
     CHECK(svg.find("<text class=\"sheet-title\" x=\"10\" y=\"16\">Main &amp; Aux</text>") !=
           std::string::npos);

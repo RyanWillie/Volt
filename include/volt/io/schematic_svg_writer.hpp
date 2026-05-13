@@ -18,9 +18,9 @@ namespace volt::io {
 
 namespace detail {
 
-inline constexpr double svg_sheet_width = 297.0;
-inline constexpr double svg_sheet_height = 210.0;
-inline constexpr double svg_sheet_gap = 20.0;
+inline constexpr double svg_sheet_width = 594.0;
+inline constexpr double svg_sheet_height = 420.0;
+inline constexpr double svg_sheet_gap = 32.0;
 inline constexpr double svg_pi = 3.14159265358979323846;
 
 [[nodiscard]] inline std::string svg_escape(std::string_view value) {
@@ -289,13 +289,14 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
     detail::write_svg_number(out, height);
     out << "\">\n";
     out << "  <style>"
-           ".sheet{fill:#fff;stroke:#c7c7c7;stroke-width:0.5}"
-           ".sheet-title{font:6px sans-serif;fill:#333}"
-           ".wire-run{fill:none;stroke:#111;stroke-width:1.2}"
-           ".net-label{font:5px sans-serif;fill:#0645ad;text-anchor:start}"
+           ".sheet{fill:#fffef8;stroke:#c23b2a;stroke-width:0.7}"
+           ".sheet-title{font:8px sans-serif;fill:#0645ad}"
+           ".wire-run{fill:none;stroke:#16843a;stroke-width:2;stroke-linecap:square}"
+           ".net-label{font:7px monospace;fill:#c21f1a;text-anchor:start}"
            ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-"
            "width:1.2}"
-           ".symbol-text,.reference,.pin-label{font:5px sans-serif;fill:#111;text-anchor:middle}"
+           ".symbol-text,.reference{font:6px sans-serif;fill:#111;text-anchor:middle}"
+           ".pin-label{font:4px sans-serif;fill:#333;text-anchor:middle}"
            ".pin-anchor{fill:#fff;stroke:#111;stroke-width:0.8}"
            "</style>\n";
 
@@ -316,11 +317,11 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
         out << "\"/>\n";
         out << "    <text class=\"sheet-title\" x=\"10\" y=\"16\">"
             << detail::svg_escape(sheet.name()) << "</text>\n";
-        for (const auto wire : sheet.wire_runs()) {
-            detail::write_wire_run_svg(out, schematic, wire);
-        }
         for (const auto instance : sheet.symbol_instances()) {
             detail::write_symbol_instance_svg(out, schematic, instance);
+        }
+        for (const auto wire : sheet.wire_runs()) {
+            detail::write_wire_run_svg(out, schematic, wire);
         }
         for (const auto label : sheet.net_labels()) {
             detail::write_net_label_svg(out, schematic, label);
