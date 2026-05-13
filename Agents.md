@@ -112,5 +112,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Issue Tracking
 
-This project uses [Pebble](https://github.com/pebble-tracker/pebble) (`pb`) for local issue tracking. Run `pb --help` for commands.
-See `.agents/skills/pebble/SKILL.md` for detailed usage guidance.
+This project uses Linear for issue tracking, backlog refinement, sprint planning, and
+status updates.
+
+Use Linear as the source of truth for current backlog state. Do not use Pebble (`pb`) for
+active planning or refinement unless the user explicitly asks for historical local issue
+data.
