@@ -1,6 +1,7 @@
 build*/
 .worktrees/
 .agents/
+.codex/
 .cache/
 .DS_Store
 compile_commands.json
