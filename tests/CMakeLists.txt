@@ -43,6 +43,7 @@ add_executable(
     io/schematic_writer_test.cpp
     adapters/kicad_boundary_test.cpp
     adapters/kicad_loss_report_test.cpp
+    adapters/kicad_schematic_writer_test.cpp
     schematic/schematic_test.cpp
 )
 target_link_libraries(
