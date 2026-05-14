@@ -453,6 +453,228 @@
     </section>
 
     <section>
+      <aside>Compatibility snapshot</aside>
+      <div class="stack">
+        <h2>The current KiCad boundary is a narrow flat-schematic subset.</h2>
+        <p>
+          This matrix describes the supported adapter contract for the first KiCad
+          schematic path. It is intentionally a compatibility boundary, not a promise
+          that Volt stores KiCad's full file model internally. On <code>main</code> as of
+          VOL-65, the adapter target and loss-report vocabulary exist, while the flat
+          <code>.kicad_sch</code> writer and golden KiCad fixtures are still expected from
+          VOL-63. Until those fixtures land, fixture-backed evidence comes from Volt's
+          canonical logical and schematic fixtures plus the KiCad boundary tests.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Construct</th>
+              <th>Supported subset</th>
+              <th>Fixture or test evidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Symbol primitives</td>
+              <td>
+                Lines, rectangles, circles, arcs, and text are the supported Volt symbol
+                primitives that a KiCad writer may emit. KiCad stroke, fill, font, and
+                graphical styling beyond those structured primitives is lossy unless Volt
+                later owns equivalent presentation data.
+              </td>
+              <td>
+                <a href="../tests/io/schematic_writer_test.cpp">schematic_writer_test.cpp</a>
+                and
+                <a href="../tests/io/schematic_svg_writer_test.cpp">schematic_svg_writer_test.cpp</a>
+              </td>
+            </tr>
+            <tr>
+              <td>Symbol pins</td>
+              <td>
+                Pin name, pin number, anchor, and orientation are supported where they
+                map to <code>SymbolPin</code>. Pin electrical meaning remains owned by
+                Volt logical pin definitions, not the KiCad drawing.
+              </td>
+              <td>
+                <a href="../tests/schematic/schematic_test.cpp">schematic_test.cpp</a>
+                and
+                <a href="../tests/io/schematic_reader_test.cpp">schematic_reader_test.cpp</a>
+              </td>
+            </tr>
+            <tr>
+              <td>Symbol instances</td>
+              <td>
+                A placed symbol may carry its symbol definition, component reference,
+                sheet, position, and orientation. It must point at an existing Volt
+                component; it must not create connectivity by itself.
+              </td>
+              <td>
+                <a href="../tests/io/schematic_writer_test.cpp">schematic_writer_test.cpp</a>
+                and
+                <a href="../examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt.schematic.json">STM32 schematic fixture</a>
+              </td>
+            </tr>
+            <tr>
+              <td>Wires</td>
+              <td>
+                Wire geometry is supported as <code>WireRun</code> presentation over an
+                existing <code>NetId</code>. Export must use the canonical net attached
+                to the wire run; it must not rediscover a netlist from geometry.
+              </td>
+              <td>
+                <a href="../tests/schematic/schematic_test.cpp">schematic_test.cpp</a>
+                and
+                <a href="../tests/io/schematic_writer_test.cpp">schematic_writer_test.cpp</a>
+              </td>
+            </tr>
+            <tr>
+              <td>Labels</td>
+              <td>
+                Local net labels are supported when they render a canonical Volt net
+                name at a schematic point. Global labels, hierarchical labels, and sheet
+                pins are deferred until Volt owns the matching hierarchy semantics.
+              </td>
+              <td>
+                <a href="../tests/io/schematic_writer_test.cpp">schematic_writer_test.cpp</a>
+                and
+                <a href="../examples/stm32_usb_buck/schematic_output.py">stm32_usb_buck/schematic_output.py</a>
+              </td>
+            </tr>
+            <tr>
+              <td>References, values, and properties</td>
+              <td>
+                Component references are supported through Volt reference designators.
+                Values and safe user properties may be emitted from Volt component or
+                selected-part metadata when they do not imply new EDA meaning. Unknown
+                KiCad fields should remain provenance or produce a loss warning.
+              </td>
+              <td>
+                <a href="../tests/circuit/parts_test.cpp">parts_test.cpp</a>,
+                <a href="../tests/io/logical_circuit_writer_test.cpp">logical_circuit_writer_test.cpp</a>,
+                and
+                <a href="../tests/fixtures/led_circuit.volt.json">led_circuit.volt.json</a>
+              </td>
+            </tr>
+            <tr>
+              <td>Footprint fields</td>
+              <td>
+                A complete Volt selected physical part may carry a footprint library and
+                name. A bare KiCad footprint string is incomplete selected-part data; it
+                should be preserved as provenance or reported as incomplete until Volt
+                owns a footprint-only assignment primitive.
+              </td>
+              <td>
+                <a href="../tests/circuit/led_circuit_test.cpp">led_circuit_test.cpp</a>
+                and
+                <a href="../tests/fixtures/typed_electrical_attributes.volt.json">typed_electrical_attributes.volt.json</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          When VOL-63 lands the flat writer, this section should link directly to the
+          golden <code>.kicad_sch</code> fixture. Until then it is a pre-export boundary
+          snapshot grounded in Volt's existing schematic and logical fixtures.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Unsupported and lossy</aside>
+      <div class="stack">
+        <h2>Unsupported KiCad constructs are reported; they are not smuggled into core.</h2>
+        <p>
+          The adapter reports imperfect interoperability through
+          <code>LossReport</code>. A warning has a severity, a category, the KiCad
+          construct name, and a human-readable message. Import/export callers can render
+          those warnings in Python, CLI output, or structured logs without giving KiCad
+          file-format details ownership over Volt's kernel model.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>KiCad construct</th>
+              <th>Boundary behavior</th>
+              <th>Report category</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>No-connect markers</td>
+              <td>
+                Reject or warn until Volt has an explicit no-connect design-intent
+                primitive. Do not model them as missing wires or hidden properties.
+              </td>
+              <td><code>UnsupportedConstruct</code></td>
+            </tr>
+            <tr>
+              <td>Hierarchical sheets, sheet pins, hierarchical labels</td>
+              <td>
+                Defer until module-aware schematic projection can preserve meaning.
+                Do not flatten silently when it would change connectivity or scope.
+              </td>
+              <td><code>UnsupportedConstruct</code></td>
+            </tr>
+            <tr>
+              <td>Buses and bus entries</td>
+              <td>
+                Defer until Volt owns bus semantics. Individual wire runs may only be
+                exported when they already refer to canonical scalar Volt nets.
+              </td>
+              <td><code>UnsupportedConstruct</code></td>
+            </tr>
+            <tr>
+              <td>Junction dots, graphical connection hints</td>
+              <td>
+                Import may use them while lowering a foreign file into logical nets.
+                Stored Volt schematic data must reference canonical nets afterward.
+              </td>
+              <td><code>LossyConstruct</code> if presentation is approximated</td>
+            </tr>
+            <tr>
+              <td>Rich symbol styling</td>
+              <td>
+                Stroke details, fill details, fonts, text effects, and KiCad-only
+                graphical flags are approximated or omitted unless represented by Volt
+                symbol primitives.
+              </td>
+              <td><code>LossyConstruct</code></td>
+            </tr>
+            <tr>
+              <td>Footprint-only assignments</td>
+              <td>
+                Preserve as provenance or warn until Volt has a kernel-owned
+                footprint-assignment concept. Do not create incomplete selected parts.
+              </td>
+              <td><code>IncompleteConstruct</code></td>
+            </tr>
+            <tr>
+              <td>PCB, routing, ERC, simulation, project metadata</td>
+              <td>
+                Out of scope for the schematic adapter. These belong to future explicit
+                Volt model data or validation layers, not to the KiCad schematic path.
+              </td>
+              <td><code>UnsupportedConstruct</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout warning">
+          Missing compatibility coverage should become a follow-up ticket such as VOL-63
+          fixture linkage or a future hierarchy/bus/no-connect ticket. VOL-65 should not
+          grow the KiCad parser or writer behavior.
+        </div>
+        <p>
+          Boundary tests:
+          <a href="../tests/adapters/kicad_boundary_test.cpp">kicad_boundary_test.cpp</a>
+          keeps KiCad adapter headers outside the Volt umbrella, and
+          <a href="../tests/adapters/kicad_loss_report_test.cpp">kicad_loss_report_test.cpp</a>
+          fixes the structured warning vocabulary used by unsupported, incomplete, and
+          lossy constructs.
+        </p>
+      </div>
+    </section>
+
+    <section>
       <aside>Key decisions</aside>
       <div class="stack">
         <div class="decision">
