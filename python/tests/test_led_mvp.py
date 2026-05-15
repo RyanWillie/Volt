@@ -846,6 +846,17 @@ def test_python_schematic_placement_serializes_kernel_projection():
     ]
 
 
+def test_python_schematic_symbol_handles_expose_pin_anchors():
+    design = volt.Design("schematic-anchors")
+    r1 = design.R(resistance=330, ref="R1")
+
+    schematic = design.schematic("Main")
+    symbol = schematic.place(r1, at=(40, 20), symbol="resistor")
+
+    assert symbol.pin_anchor(1) == (40.0, 20.0)
+    assert symbol.pin_anchor("2") == (60.0, 20.0)
+
+
 def test_python_schematic_writes_svg_projection():
     design = volt.Design("schematic-svg")
     vcc = design.net("VCC", kind="power")
@@ -976,6 +987,7 @@ if __name__ == "__main__":
     test_module_authoring_serializes_kernel_owned_contents()
     test_module_authoring_exposes_hierarchy_inspection_views()
     test_python_schematic_placement_serializes_kernel_projection()
+    test_python_schematic_symbol_handles_expose_pin_anchors()
     test_python_schematic_writes_svg_projection()
     test_python_schematic_readiness_reports_detached_net_stubs()
     test_stm32_usb_buck_native_symbols_place_and_render()

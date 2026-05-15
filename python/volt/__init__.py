@@ -833,6 +833,13 @@ class SchematicSymbol:
     def index(self) -> int:
         return self._index
 
+    def pin_anchor(self, number: int | str) -> tuple[float, float]:
+        if not isinstance(number, (int, str)):
+            raise TypeError("pin_anchor expects a pin number")
+        return self._schematic._design._circuit.schematic_symbol_pin_anchor(
+            self._index, str(number)
+        )
+
     def __repr__(self) -> str:
         return f"SchematicSymbol(index={self._index})"
 

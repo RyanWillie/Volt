@@ -1,7 +1,5 @@
 #pragma once
 
-#include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <optional>
 #include <stdexcept>
@@ -167,7 +165,7 @@ class Schematic {
     [[nodiscard]] WireRunId add_wire_run(SheetId sheet, WireRun wire) {
         require_sheet(sheet);
         static_cast<void>(circuit_.net(wire.net()));
-        require_wire_run_does_not_join_different_net(sheet, wire);
+        require_wire_run_does_not_collide_with_different_net(sheet, wire);
 
         const auto id = wire_runs_.insert(std::move(wire));
         sheets_.get(sheet).add_wire_run(id);
@@ -263,34 +261,8 @@ class Schematic {
         }
     }
 
-    [[nodiscard]] static double cross(Point origin, Point a, Point b) noexcept {
-        return ((a.x() - origin.x()) * (b.y() - origin.y())) -
-               ((a.y() - origin.y()) * (b.x() - origin.x()));
-    }
-
-    [[nodiscard]] static bool near_zero(double value) noexcept { return std::abs(value) <= 1e-9; }
-
-    [[nodiscard]] static bool between(double value, double first, double second) noexcept {
-        const auto minimum = std::min(first, second) - 1e-9;
-        const auto maximum = std::max(first, second) + 1e-9;
-        return minimum <= value && value <= maximum;
-    }
-
-    [[nodiscard]] static bool point_on_segment(Point point, Point start, Point end) noexcept {
-        return near_zero(cross(start, end, point)) && between(point.x(), start.x(), end.x()) &&
-               between(point.y(), start.y(), end.y());
-    }
-
-    [[nodiscard]] static bool segments_join_visually(Point first_start, Point first_end,
-                                                     Point second_start,
-                                                     Point second_end) noexcept {
-        return point_on_segment(second_start, first_start, first_end) ||
-               point_on_segment(second_end, first_start, first_end) ||
-               point_on_segment(first_start, second_start, second_end) ||
-               point_on_segment(first_end, second_start, second_end);
-    }
-
-    void require_wire_run_does_not_join_different_net(SheetId sheet, const WireRun &wire) const {
+    void require_wire_run_does_not_collide_with_different_net(SheetId sheet,
+                                                              const WireRun &wire) const {
         for (const auto existing_id : sheets_.get(sheet).wire_runs()) {
             const auto &existing = wire_runs_.get(existing_id);
             if (existing.net() == wire.net()) {
@@ -299,12 +271,13 @@ class Schematic {
             for (std::size_t wire_index = 1; wire_index < wire.points().size(); ++wire_index) {
                 for (std::size_t existing_index = 1; existing_index < existing.points().size();
                      ++existing_index) {
-                    if (segments_join_visually(wire.points()[wire_index - 1U],
-                                               wire.points()[wire_index],
-                                               existing.points()[existing_index - 1U],
-                                               existing.points()[existing_index])) {
+                    const auto relationship = classify_segment_relationship(
+                        SchematicSegment{wire.points()[wire_index - 1U], wire.points()[wire_index]},
+                        SchematicSegment{existing.points()[existing_index - 1U],
+                                         existing.points()[existing_index]});
+                    if (different_net_segments_collide(relationship, SchematicJunction::Absent)) {
                         throw std::logic_error{
-                            "Schematic wire run visually joins a different logical net"};
+                            "Schematic wire run collides with a different logical net"};
                     }
                 }
             }
