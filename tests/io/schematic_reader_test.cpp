@@ -117,6 +117,81 @@ TEST_CASE("Schematic reader loads projection JSON over a logical circuit") {
     CHECK(schematic.net_label(volt::NetLabelId{0}).net() == net);
 }
 
+TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto vcc = add_net(circuit);
+    const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto no_connect_pin = circuit.pin_by_number(component, "2").value();
+    circuit.mark_intentional_no_connect_pin(no_connect_pin);
+
+    auto fixture = schematic_json();
+    fixture["sheets"][0]["metadata"] = {
+        {"title", "Power sheet"},
+        {"size", {{"width", 420.0}, {"height", 297.0}}},
+        {"title_block", nlohmann::json::array({{{"key", "Revision"}, {"value", "A"}}})}};
+    fixture["sheets"][0]["junctions"] = nlohmann::json::array({"junction:0"});
+    fixture["sheets"][0]["power_ports"] = nlohmann::json::array({"power_port:0", "power_port:1"});
+    fixture["sheets"][0]["no_connect_markers"] = nlohmann::json::array({"no_connect_marker:0"});
+    fixture["sheets"][0]["sheet_ports"] = nlohmann::json::array({"sheet_port:0"});
+    fixture["sheets"][0]["symbol_fields"] = nlohmann::json::array({"symbol_field:0"});
+    fixture["wire_runs"][0]["route_intent"] = "Orthogonal";
+    fixture["junctions"] = nlohmann::json::array({{{"id", "junction:0"},
+                                                   {"sheet", "sheet:0"},
+                                                   {"net", "net:0"},
+                                                   {"position", {{"x", 40.0}, {"y", 20.0}}}}});
+    fixture["power_ports"] = nlohmann::json::array({{{"id", "power_port:0"},
+                                                     {"sheet", "sheet:0"},
+                                                     {"net", "net:0"},
+                                                     {"kind", "Power"},
+                                                     {"position", {{"x", 12.0}, {"y", 16.0}}},
+                                                     {"orientation", "Up"}},
+                                                    {{"id", "power_port:1"},
+                                                     {"sheet", "sheet:0"},
+                                                     {"net", "net:1"},
+                                                     {"kind", "Ground"},
+                                                     {"position", {{"x", 60.0}, {"y", 24.0}}},
+                                                     {"orientation", "Down"}}});
+    fixture["no_connect_markers"] =
+        nlohmann::json::array({{{"id", "no_connect_marker:0"},
+                                {"sheet", "sheet:0"},
+                                {"pin", "pin:1"},
+                                {"position", {{"x", 65.0}, {"y", 20.0}}},
+                                {"orientation", "Right"}}});
+    fixture["sheet_ports"] = nlohmann::json::array({{{"id", "sheet_port:0"},
+                                                     {"sheet", "sheet:0"},
+                                                     {"net", "net:0"},
+                                                     {"name", "VIN"},
+                                                     {"kind", "OffPage"},
+                                                     {"position", {{"x", 5.0}, {"y", 20.0}}},
+                                                     {"orientation", "Right"}}});
+    fixture["symbol_fields"] = nlohmann::json::array({{{"id", "symbol_field:0"},
+                                                       {"sheet", "sheet:0"},
+                                                       {"symbol_instance", "symbol_instance:0"},
+                                                       {"name", "value"},
+                                                       {"value", "10k"},
+                                                       {"position", {{"x", 40.0}, {"y", 32.0}}},
+                                                       {"orientation", "Right"}}});
+
+    const auto schematic = volt::io::read_schematic(fixture, circuit);
+
+    CHECK(schematic.sheet(volt::SheetId{0}).metadata().title() == "Power sheet");
+    CHECK(schematic.sheet(volt::SheetId{0}).metadata().size().width() == 420.0);
+    CHECK(schematic.wire_run(volt::WireRunId{0}).route_intent() == volt::RouteIntent::Orthogonal);
+    CHECK(schematic.junction_count() == 1);
+    CHECK(schematic.power_port_count() == 2);
+    CHECK(schematic.no_connect_marker_count() == 1);
+    CHECK(schematic.sheet_port_count() == 1);
+    CHECK(schematic.symbol_field_count() == 1);
+    CHECK(schematic.junction(volt::JunctionId{0}).net() == vcc);
+    CHECK(schematic.power_port(volt::PowerPortId{1}).net() == gnd);
+    CHECK(schematic.no_connect_marker(volt::NoConnectMarkerId{0}).pin() == no_connect_pin);
+    CHECK(schematic.sheet_port(volt::SheetPortId{0}).name() == "VIN");
+    CHECK(schematic.symbol_field(volt::SymbolFieldId{0}).value() == "10k");
+    CHECK(circuit.net(vcc).pins().empty());
+    CHECK(circuit.net(gnd).pins().empty());
+}
+
 TEST_CASE("Schematic reader rejects dangling projection references") {
     volt::Circuit circuit;
     add_resistor(circuit);
@@ -142,6 +217,49 @@ TEST_CASE("Schematic reader rejects dangling projection references") {
     CHECK_THROWS_MATCHES(
         volt::io::read_schematic(missing_net, circuit), std::logic_error,
         Catch::Matchers::Message("Net reference points to a missing logical net: net:99"));
+}
+
+TEST_CASE("Schematic reader rejects dangling professional primitive references") {
+    volt::Circuit circuit;
+    add_resistor(circuit);
+    add_net(circuit);
+
+    auto missing_power_net = schematic_json();
+    missing_power_net["sheets"][0]["power_ports"] = nlohmann::json::array({"power_port:0"});
+    missing_power_net["power_ports"] =
+        nlohmann::json::array({{{"id", "power_port:0"},
+                                {"sheet", "sheet:0"},
+                                {"net", "net:99"},
+                                {"kind", "Power"},
+                                {"position", {{"x", 0.0}, {"y", 0.0}}},
+                                {"orientation", "Up"}}});
+    CHECK_THROWS_MATCHES(
+        volt::io::read_schematic(missing_power_net, circuit), std::logic_error,
+        Catch::Matchers::Message("Net reference points to a missing logical net: net:99"));
+
+    auto missing_pin = schematic_json();
+    missing_pin["sheets"][0]["no_connect_markers"] = nlohmann::json::array({"no_connect_marker:0"});
+    missing_pin["no_connect_markers"] =
+        nlohmann::json::array({{{"id", "no_connect_marker:0"},
+                                {"sheet", "sheet:0"},
+                                {"pin", "pin:99"},
+                                {"position", {{"x", 0.0}, {"y", 0.0}}},
+                                {"orientation", "Right"}}});
+    CHECK_THROWS_MATCHES(
+        volt::io::read_schematic(missing_pin, circuit), std::logic_error,
+        Catch::Matchers::Message("Pin reference points to a missing logical pin: pin:99"));
+
+    auto missing_instance = schematic_json();
+    missing_instance["sheets"][0]["symbol_fields"] = nlohmann::json::array({"symbol_field:0"});
+    missing_instance["symbol_fields"] =
+        nlohmann::json::array({{{"id", "symbol_field:0"},
+                                {"sheet", "sheet:0"},
+                                {"symbol_instance", "symbol_instance:99"},
+                                {"name", "value"},
+                                {"value", "10k"},
+                                {"position", {{"x", 0.0}, {"y", 0.0}}},
+                                {"orientation", "Right"}}});
+    CHECK_THROWS_AS(volt::io::read_schematic(missing_instance, circuit), std::logic_error);
 }
 
 TEST_CASE("Schematic reader rejects overflowing local ID indices") {

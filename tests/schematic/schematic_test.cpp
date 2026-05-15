@@ -134,9 +134,93 @@ TEST_CASE("Schematic stores wire runs and labels over canonical logical nets") {
     CHECK(schematic.net_label(label).orientation() == volt::SchematicOrientation::Right);
 }
 
+TEST_CASE("Schematic stores professional primitives without changing logical connectivity") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto vcc = add_net(circuit);
+    const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto no_connect_pin = circuit.pin_by_number(component, "2").value();
+    circuit.mark_intentional_no_connect_pin(no_connect_pin);
+
+    auto metadata = volt::SheetMetadata{
+        "Power sheet",
+        volt::SheetSize{420.0, 297.0},
+        std::vector{volt::TitleBlockField{"Revision", "A"}, volt::TitleBlockField{"Owner", "Volt"}},
+    };
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Power", std::move(metadata)});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}});
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{vcc,
+                             std::vector{volt::Point{10.0, 20.0}, volt::Point{30.0, 20.0},
+                                         volt::Point{30.0, 40.0}},
+                             volt::RouteIntent::Orthogonal});
+
+    const auto junction =
+        schematic.add_junction(sheet, volt::Junction{vcc, volt::Point{30.0, 20.0}});
+    const auto power = schematic.add_power_port(
+        sheet, volt::PowerPort{vcc, volt::PowerPortKind::Power, volt::Point{10.0, 16.0},
+                               volt::SchematicOrientation::Up});
+    const auto ground = schematic.add_power_port(
+        sheet, volt::PowerPort{gnd, volt::PowerPortKind::Ground, volt::Point{50.0, 24.0},
+                               volt::SchematicOrientation::Down});
+    const auto no_connect = schematic.add_no_connect_marker(
+        sheet, volt::NoConnectMarker{no_connect_pin, volt::Point{60.0, 20.0}});
+    const auto sheet_port = schematic.add_sheet_port(
+        sheet, volt::SheetPort{vcc, "VIN", volt::SheetPortKind::OffPage, volt::Point{5.0, 20.0},
+                               volt::SchematicOrientation::Right});
+    const auto field = schematic.add_symbol_field(
+        sheet, volt::SymbolField{instance, "value", "10k", volt::Point{40.0, 32.0},
+                                 volt::SchematicOrientation::Right});
+
+    CHECK(schematic.sheet(sheet).metadata().title() == "Power sheet");
+    CHECK(schematic.sheet(sheet).metadata().size().width() == 420.0);
+    CHECK(schematic.sheet(sheet).metadata().size().height() == 297.0);
+    REQUIRE(schematic.sheet(sheet).metadata().title_block().size() == 2);
+    CHECK(schematic.sheet(sheet).metadata().title_block()[0].key() == "Revision");
+    CHECK(schematic.sheet(sheet).metadata().title_block()[0].value() == "A");
+    CHECK(schematic.wire_run(wire).route_intent() == volt::RouteIntent::Orthogonal);
+    CHECK(junction == volt::JunctionId{0});
+    CHECK(power == volt::PowerPortId{0});
+    CHECK(ground == volt::PowerPortId{1});
+    CHECK(no_connect == volt::NoConnectMarkerId{0});
+    CHECK(sheet_port == volt::SheetPortId{0});
+    CHECK(field == volt::SymbolFieldId{0});
+    CHECK(schematic.sheet(sheet).junctions() == std::vector{junction});
+    CHECK(schematic.sheet(sheet).power_ports() == std::vector{power, ground});
+    CHECK(schematic.sheet(sheet).no_connect_markers() == std::vector{no_connect});
+    CHECK(schematic.sheet(sheet).sheet_ports() == std::vector{sheet_port});
+    CHECK(schematic.sheet(sheet).symbol_fields() == std::vector{field});
+    CHECK(schematic.junction(junction).net() == vcc);
+    CHECK(schematic.power_port(power).kind() == volt::PowerPortKind::Power);
+    CHECK(schematic.power_port(ground).net() == gnd);
+    CHECK(schematic.no_connect_marker(no_connect).pin() == no_connect_pin);
+    CHECK(schematic.sheet_port(sheet_port).name() == "VIN");
+    CHECK(schematic.symbol_field(field).symbol_instance() == instance);
+    CHECK(schematic.symbol_field(field).name() == "value");
+    CHECK(schematic.symbol_field(field).value() == "10k");
+    CHECK(circuit.net(vcc).pins().empty());
+    CHECK(circuit.net(gnd).pins().empty());
+    CHECK_FALSE(circuit.net_of(no_connect_pin).has_value());
+}
+
 TEST_CASE("Schematic rejects empty presentation names") {
     CHECK_THROWS_AS(volt::SymbolDefinition{""}, std::invalid_argument);
     CHECK_THROWS_AS(volt::Sheet{""}, std::invalid_argument);
+    CHECK_THROWS_AS(volt::SheetMetadata{""}, std::invalid_argument);
+    CHECK_THROWS_AS((volt::SheetSize{0.0, 210.0}), std::invalid_argument);
+    CHECK_THROWS_AS((volt::TitleBlockField{"", "A"}), std::invalid_argument);
+    CHECK_THROWS_AS((volt::TitleBlockField{"Revision", ""}), std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::SheetPort{volt::NetId{0}, "", volt::SheetPortKind::OffPage, volt::Point{0.0, 0.0}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS((volt::SymbolField{volt::SymbolInstanceId{0}, "", "R1", volt::Point{0.0, 0.0}}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::SymbolField{volt::SymbolInstanceId{0}, "reference", "", volt::Point{0.0, 0.0}}),
+        std::invalid_argument);
     CHECK_THROWS_AS(
         (volt::SymbolPin{"", "1", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left}),
         std::invalid_argument);
@@ -197,6 +281,48 @@ TEST_CASE("Schematic rejects wire and label projections with missing references"
         std::out_of_range);
     CHECK_THROWS_AS((volt::WireRun{net, std::vector{volt::Point{0.0, 0.0}}}),
                     std::invalid_argument);
+}
+
+TEST_CASE("Schematic rejects professional primitives with missing references") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = add_net(circuit);
+    const auto pin = circuit.pin_by_number(component, "1").value();
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto other_sheet = schematic.add_sheet(volt::Sheet{"Other"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}});
+
+    CHECK_THROWS_AS(
+        schematic.add_junction(volt::SheetId{99}, volt::Junction{net, volt::Point{0.0, 0.0}}),
+        std::out_of_range);
+    CHECK_THROWS_AS(
+        schematic.add_junction(sheet, volt::Junction{volt::NetId{99}, volt::Point{0.0, 0.0}}),
+        std::out_of_range);
+    CHECK_THROWS_AS(
+        schematic.add_power_port(sheet, volt::PowerPort{volt::NetId{99}, volt::PowerPortKind::Power,
+                                                        volt::Point{0.0, 0.0}}),
+        std::out_of_range);
+    CHECK_THROWS_AS(schematic.add_no_connect_marker(
+                        sheet, volt::NoConnectMarker{volt::PinId{99}, volt::Point{0.0, 0.0}}),
+                    std::out_of_range);
+    CHECK_THROWS_AS(schematic.add_sheet_port(sheet, volt::SheetPort{volt::NetId{99}, "VIN",
+                                                                    volt::SheetPortKind::OffPage,
+                                                                    volt::Point{0.0, 0.0}}),
+                    std::out_of_range);
+    CHECK_THROWS_AS(
+        schematic.add_symbol_field(sheet, volt::SymbolField{volt::SymbolInstanceId{99}, "reference",
+                                                            "R1", volt::Point{0.0, 0.0}}),
+        std::out_of_range);
+    CHECK_THROWS_AS(
+        schematic.add_symbol_field(
+            other_sheet, volt::SymbolField{instance, "reference", "R1", volt::Point{0.0, 0.0}}),
+        std::logic_error);
+    CHECK_NOTHROW(
+        schematic.add_no_connect_marker(sheet, volt::NoConnectMarker{pin, volt::Point{0.0, 0.0}}));
 }
 
 TEST_CASE("Schematic geometry transforms symbol points by orientation") {
@@ -267,6 +393,8 @@ TEST_CASE("Schematic allows same-net joins but rejects different-net wire collis
         sheet, volt::WireRun{vcc, std::vector{volt::Point{5.0, 0.0}, volt::Point{15.0, 0.0}}}));
     CHECK_NOTHROW(schematic.add_wire_run(
         sheet, volt::WireRun{gnd, std::vector{volt::Point{2.0, -5.0}, volt::Point{2.0, 5.0}}}));
+    CHECK_THROWS_AS(schematic.add_junction(sheet, volt::Junction{vcc, volt::Point{2.0, 0.0}}),
+                    std::logic_error);
     CHECK_THROWS_AS(
         schematic.add_wire_run(
             sheet, volt::WireRun{gnd, std::vector{volt::Point{10.0, 0.0}, volt::Point{20.0, 0.0}}}),

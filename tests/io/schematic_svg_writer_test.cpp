@@ -67,7 +67,26 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
     const auto net = add_net(circuit);
-    const auto schematic = make_schematic_with_wires(circuit, component, net);
+    const auto ground = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto no_connect_pin = circuit.pin_by_number(component, "2").value();
+    circuit.mark_intentional_no_connect_pin(no_connect_pin);
+    auto schematic = make_schematic_with_wires(circuit, component, net);
+    [[maybe_unused]] const auto junction =
+        schematic.add_junction(volt::SheetId{0}, volt::Junction{net, volt::Point{30.0, 20.0}});
+    [[maybe_unused]] const auto power =
+        schematic.add_power_port(volt::SheetId{0}, volt::PowerPort{net, volt::PowerPortKind::Power,
+                                                                   volt::Point{10.0, 16.0}});
+    [[maybe_unused]] const auto ground_port = schematic.add_power_port(
+        volt::SheetId{0},
+        volt::PowerPort{ground, volt::PowerPortKind::Ground, volt::Point{50.0, 24.0}});
+    [[maybe_unused]] const auto no_connect = schematic.add_no_connect_marker(
+        volt::SheetId{0}, volt::NoConnectMarker{no_connect_pin, volt::Point{60.0, 20.0}});
+    [[maybe_unused]] const auto sheet_port = schematic.add_sheet_port(
+        volt::SheetId{0},
+        volt::SheetPort{net, "VIN", volt::SheetPortKind::OffPage, volt::Point{5.0, 20.0}});
+    [[maybe_unused]] const auto field = schematic.add_symbol_field(
+        volt::SheetId{0},
+        volt::SymbolField{volt::SymbolInstanceId{0}, "value", "10k", volt::Point{40.0, 32.0}});
 
     const auto svg = volt::io::write_schematic_svg(schematic);
 
@@ -102,5 +121,31 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
           std::string::npos);
     CHECK(svg.find("<text class=\"pin-label\" x=\"0\" y=\"4\">1&amp;</text>") != std::string::npos);
     CHECK(svg.find("<text class=\"reference\" x=\"0\" y=\"-12\">R&amp;1</text>") !=
+          std::string::npos);
+    CHECK(
+        svg.find("<circle class=\"junction\" data-net=\"net:0\" cx=\"30\" cy=\"20\" r=\"1.8\"/>") !=
+        std::string::npos);
+    CHECK(svg.find("<g class=\"power-port power\" data-net=\"net:0\"") != std::string::npos);
+    CHECK(svg.find("<g class=\"power-port ground\" data-net=\"net:1\"") != std::string::npos);
+    CHECK(svg.find("<g class=\"no-connect-marker\" data-pin=\"pin:1\"") != std::string::npos);
+    CHECK(svg.find("<g class=\"sheet-port off-page\" data-net=\"net:0\"") != std::string::npos);
+    CHECK(svg.find(">VIN</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"symbol-field\" data-symbol-instance=\"symbol_instance:0\" "
+                   "data-field=\"value\" x=\"40\" y=\"32\"") != std::string::npos);
+    CHECK(svg.find(">10k</text>") != std::string::npos);
+}
+
+TEST_CASE("Schematic SVG writer expands the root viewport to sheet metadata") {
+    volt::Circuit circuit;
+    auto schematic = volt::Schematic{circuit};
+    [[maybe_unused]] const auto sheet = schematic.add_sheet(
+        volt::Sheet{"Wide", volt::SheetMetadata{"Wide", volt::SheetSize{420.0, 297.0}}});
+
+    const auto svg = volt::io::write_schematic_svg(schematic);
+
+    CHECK(svg.find("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 420 297\"") !=
+          std::string::npos);
+    CHECK(svg.find("width=\"420\" height=\"297\"") != std::string::npos);
+    CHECK(svg.find("<rect class=\"sheet\" x=\"0\" y=\"0\" width=\"420\" height=\"297\"/>") !=
           std::string::npos);
 }

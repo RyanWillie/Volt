@@ -122,6 +122,68 @@ TEST_CASE("Schematic writer emits wire runs and net labels over canonical nets")
     CHECK(output["net_labels"][0]["orientation"] == "Right");
 }
 
+TEST_CASE("Schematic writer emits professional primitives and sheet metadata") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto vcc = add_net(circuit);
+    const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    const auto no_connect_pin = circuit.pin_by_number(component, "2").value();
+    circuit.mark_intentional_no_connect_pin(no_connect_pin);
+
+    auto schematic = volt::Schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{
+        "Power",
+        volt::SheetMetadata{"Power sheet", volt::SheetSize{420.0, 297.0},
+                            std::vector{volt::TitleBlockField{"Revision", "A"}}},
+    });
+    const auto symbol = schematic.add_symbol_definition(make_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}});
+    [[maybe_unused]] const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{vcc, std::vector{volt::Point{10.0, 20.0}, volt::Point{30.0, 20.0}},
+                             volt::RouteIntent::Orthogonal});
+    [[maybe_unused]] const auto junction =
+        schematic.add_junction(sheet, volt::Junction{vcc, volt::Point{30.0, 20.0}});
+    [[maybe_unused]] const auto power = schematic.add_power_port(
+        sheet, volt::PowerPort{vcc, volt::PowerPortKind::Power, volt::Point{10.0, 16.0}});
+    [[maybe_unused]] const auto ground = schematic.add_power_port(
+        sheet, volt::PowerPort{gnd, volt::PowerPortKind::Ground, volt::Point{50.0, 24.0}});
+    [[maybe_unused]] const auto marker = schematic.add_no_connect_marker(
+        sheet, volt::NoConnectMarker{no_connect_pin, volt::Point{60.0, 20.0}});
+    [[maybe_unused]] const auto port = schematic.add_sheet_port(
+        sheet, volt::SheetPort{vcc, "VIN", volt::SheetPortKind::OffPage, volt::Point{5.0, 20.0}});
+    [[maybe_unused]] const auto field = schematic.add_symbol_field(
+        sheet, volt::SymbolField{instance, "value", "10k", volt::Point{40.0, 32.0}});
+
+    const auto output = nlohmann::json::parse(volt::io::write_schematic(schematic));
+
+    CHECK(output["sheets"][0]["metadata"]["title"] == "Power sheet");
+    CHECK(output["sheets"][0]["metadata"]["size"] ==
+          nlohmann::json({{"width", 420.0}, {"height", 297.0}}));
+    CHECK(output["sheets"][0]["metadata"]["title_block"] ==
+          nlohmann::json::array({{{"key", "Revision"}, {"value", "A"}}}));
+    CHECK(output["sheets"][0]["junctions"] == nlohmann::json::array({"junction:0"}));
+    CHECK(output["sheets"][0]["power_ports"] ==
+          nlohmann::json::array({"power_port:0", "power_port:1"}));
+    CHECK(output["sheets"][0]["no_connect_markers"] ==
+          nlohmann::json::array({"no_connect_marker:0"}));
+    CHECK(output["sheets"][0]["sheet_ports"] == nlohmann::json::array({"sheet_port:0"}));
+    CHECK(output["sheets"][0]["symbol_fields"] == nlohmann::json::array({"symbol_field:0"}));
+    CHECK(output["wire_runs"][0]["route_intent"] == "Orthogonal");
+    CHECK(output["junctions"][0]["id"] == "junction:0");
+    CHECK(output["junctions"][0]["sheet"] == "sheet:0");
+    CHECK(output["junctions"][0]["net"] == "net:0");
+    CHECK(output["junctions"][0]["position"] == nlohmann::json({{"x", 30.0}, {"y", 20.0}}));
+    CHECK(output["power_ports"][0]["kind"] == "Power");
+    CHECK(output["power_ports"][1]["kind"] == "Ground");
+    CHECK(output["no_connect_markers"][0]["pin"] == "pin:1");
+    CHECK(output["sheet_ports"][0]["name"] == "VIN");
+    CHECK(output["sheet_ports"][0]["kind"] == "OffPage");
+    CHECK(output["symbol_fields"][0]["symbol_instance"] == "symbol_instance:0");
+    CHECK(output["symbol_fields"][0]["name"] == "value");
+    CHECK(output["symbol_fields"][0]["value"] == "10k");
+}
+
 TEST_CASE("Schematic writer is deterministic") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);

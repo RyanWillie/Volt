@@ -40,9 +40,19 @@ class SchematicReader {
         read_symbol_instances();
         read_wire_runs();
         read_net_labels();
+        read_junctions();
+        read_power_ports();
+        read_no_connect_markers();
+        read_sheet_ports();
+        read_symbol_fields();
         require_sheet_instance_lists_match();
         require_sheet_wire_run_lists_match();
         require_sheet_net_label_lists_match();
+        require_sheet_junction_lists_match();
+        require_sheet_power_port_lists_match();
+        require_sheet_no_connect_marker_lists_match();
+        require_sheet_port_lists_match();
+        require_sheet_symbol_field_lists_match();
 
         return std::move(schematic_);
     }
@@ -155,6 +165,34 @@ class SchematicReader {
         throw std::logic_error{"Invalid schematic orientation value"};
     }
 
+    [[nodiscard]] static RouteIntent route_intent(const std::string &value) {
+        if (value == "Direct")
+            return RouteIntent::Direct;
+        if (value == "Orthogonal")
+            return RouteIntent::Orthogonal;
+        throw std::logic_error{"Invalid schematic route intent value"};
+    }
+
+    [[nodiscard]] static PowerPortKind power_port_kind(const std::string &value) {
+        if (value == "Power")
+            return PowerPortKind::Power;
+        if (value == "Ground")
+            return PowerPortKind::Ground;
+        throw std::logic_error{"Invalid schematic power port kind"};
+    }
+
+    [[nodiscard]] static SheetPortKind sheet_port_kind(const std::string &value) {
+        if (value == "Input")
+            return SheetPortKind::Input;
+        if (value == "Output")
+            return SheetPortKind::Output;
+        if (value == "Bidirectional")
+            return SheetPortKind::Bidirectional;
+        if (value == "OffPage")
+            return SheetPortKind::OffPage;
+        throw std::logic_error{"Invalid schematic sheet port kind"};
+    }
+
     [[nodiscard]] ComponentId component_id(const std::string &id) const {
         const auto component = ComponentId{local_index(id, "component:")};
         require(component.index() < circuit_.component_count(),
@@ -167,6 +205,13 @@ class SchematicReader {
         require(net.index() < circuit_.net_count(),
                 "Net reference points to a missing logical net: " + id);
         return net;
+    }
+
+    [[nodiscard]] PinId pin_id(const std::string &id) const {
+        const auto pin = PinId{local_index(id, "pin:")};
+        require(pin.index() < circuit_.pin_count(),
+                "Pin reference points to a missing logical pin: " + id);
+        return pin;
     }
 
     [[nodiscard]] static std::vector<Point> point_list(const nlohmann::json &array) {
@@ -204,6 +249,36 @@ class SchematicReader {
         throw std::logic_error{"Invalid symbol primitive type"};
     }
 
+    [[nodiscard]] static SheetMetadata sheet_metadata(const nlohmann::json &sheet_object,
+                                                      const std::string &fallback_title) {
+        const auto metadata_it = sheet_object.find("metadata");
+        if (metadata_it == sheet_object.end()) {
+            return SheetMetadata{fallback_title};
+        }
+        const auto &metadata_object = *metadata_it;
+        require(metadata_object.is_object(), "Sheet metadata must be an object");
+        const auto &size_object = field(metadata_object, "size");
+        require(size_object.is_object(), "Sheet size must be an object");
+        auto title_block = std::vector<TitleBlockField>{};
+        for (const auto &field_object : optional_array_field(metadata_object, "title_block")) {
+            title_block.emplace_back(string_field(field_object, "key"),
+                                     string_field(field_object, "value"));
+        }
+        return SheetMetadata{
+            string_field(metadata_object, "title"),
+            SheetSize{number_field(size_object, "width"), number_field(size_object, "height")},
+            std::move(title_block)};
+    }
+
+    static void append_sheet_references(const nlohmann::json &sheet_object, const char *field_name,
+                                        std::vector<std::string> &references,
+                                        const std::string &error_message) {
+        for (const auto &reference : optional_array_field(sheet_object, field_name)) {
+            require(reference.is_string(), error_message);
+            references.push_back(reference.get<std::string>());
+        }
+    }
+
     void read_symbol_definitions() {
         auto seen = std::set<std::string>{};
         for (const auto &symbol_object : array_field(document_, "symbol_definitions")) {
@@ -226,7 +301,9 @@ class SchematicReader {
         auto seen = std::set<std::string>{};
         for (const auto &sheet_object : array_field(document_, "sheets")) {
             const auto id = local_id(sheet_object, "sheet:", seen);
-            const auto sheet = schematic_.add_sheet(Sheet{string_field(sheet_object, "name")});
+            const auto name = string_field(sheet_object, "name");
+            const auto sheet =
+                schematic_.add_sheet(Sheet{name, sheet_metadata(sheet_object, name)});
             sheet_ids_.emplace(id, sheet);
             auto instances = std::vector<std::string>{};
             for (const auto &instance : array_field(sheet_object, "symbol_instances")) {
@@ -235,17 +312,33 @@ class SchematicReader {
             }
             expected_sheet_instances_.emplace_back(sheet, std::move(instances));
             auto wire_runs = std::vector<std::string>{};
-            for (const auto &wire : optional_array_field(sheet_object, "wire_runs")) {
-                require(wire.is_string(), "Sheet wire run reference must be a string");
-                wire_runs.push_back(wire.get<std::string>());
-            }
+            append_sheet_references(sheet_object, "wire_runs", wire_runs,
+                                    "Sheet wire run reference must be a string");
             expected_sheet_wire_runs_.emplace_back(sheet, std::move(wire_runs));
             auto net_labels = std::vector<std::string>{};
-            for (const auto &label : optional_array_field(sheet_object, "net_labels")) {
-                require(label.is_string(), "Sheet net label reference must be a string");
-                net_labels.push_back(label.get<std::string>());
-            }
+            append_sheet_references(sheet_object, "net_labels", net_labels,
+                                    "Sheet net label reference must be a string");
             expected_sheet_net_labels_.emplace_back(sheet, std::move(net_labels));
+            auto junctions = std::vector<std::string>{};
+            append_sheet_references(sheet_object, "junctions", junctions,
+                                    "Sheet junction reference must be a string");
+            expected_sheet_junctions_.emplace_back(sheet, std::move(junctions));
+            auto power_ports = std::vector<std::string>{};
+            append_sheet_references(sheet_object, "power_ports", power_ports,
+                                    "Sheet power port reference must be a string");
+            expected_sheet_power_ports_.emplace_back(sheet, std::move(power_ports));
+            auto no_connect_markers = std::vector<std::string>{};
+            append_sheet_references(sheet_object, "no_connect_markers", no_connect_markers,
+                                    "Sheet no-connect marker reference must be a string");
+            expected_sheet_no_connect_markers_.emplace_back(sheet, std::move(no_connect_markers));
+            auto sheet_ports = std::vector<std::string>{};
+            append_sheet_references(sheet_object, "sheet_ports", sheet_ports,
+                                    "Sheet port reference must be a string");
+            expected_sheet_ports_.emplace_back(sheet, std::move(sheet_ports));
+            auto symbol_fields = std::vector<std::string>{};
+            append_sheet_references(sheet_object, "symbol_fields", symbol_fields,
+                                    "Sheet symbol field reference must be a string");
+            expected_sheet_symbol_fields_.emplace_back(sheet, std::move(symbol_fields));
         }
     }
 
@@ -270,8 +363,14 @@ class SchematicReader {
             const auto id = local_id(wire_object, "wire_run:", seen);
             const auto sheet = resolve(sheet_ids_, string_field(wire_object, "sheet"));
             const auto net = net_id(string_field(wire_object, "net"));
+            auto intent = RouteIntent::Direct;
+            const auto intent_it = wire_object.find("route_intent");
+            if (intent_it != wire_object.end()) {
+                require(intent_it->is_string(), "Expected string field: route_intent");
+                intent = route_intent(intent_it->get<std::string>());
+            }
             const auto wire = schematic_.add_wire_run(
-                sheet, WireRun{net, point_list(field(wire_object, "points"))});
+                sheet, WireRun{net, point_list(field(wire_object, "points")), intent});
             wire_run_ids_.emplace(id, wire);
         }
     }
@@ -286,6 +385,76 @@ class SchematicReader {
                 sheet, NetLabel{net, point(field(label_object, "position")),
                                 orientation(string_field(label_object, "orientation"))});
             net_label_ids_.emplace(id, label);
+        }
+    }
+
+    void read_junctions() {
+        auto seen = std::set<std::string>{};
+        for (const auto &junction_object : optional_array_field(document_, "junctions")) {
+            const auto id = local_id(junction_object, "junction:", seen);
+            const auto sheet = resolve(sheet_ids_, string_field(junction_object, "sheet"));
+            const auto net = net_id(string_field(junction_object, "net"));
+            const auto junction = schematic_.add_junction(
+                sheet, Junction{net, point(field(junction_object, "position"))});
+            junction_ids_.emplace(id, junction);
+        }
+    }
+
+    void read_power_ports() {
+        auto seen = std::set<std::string>{};
+        for (const auto &port_object : optional_array_field(document_, "power_ports")) {
+            const auto id = local_id(port_object, "power_port:", seen);
+            const auto sheet = resolve(sheet_ids_, string_field(port_object, "sheet"));
+            const auto net = net_id(string_field(port_object, "net"));
+            const auto port = schematic_.add_power_port(
+                sheet, PowerPort{net, power_port_kind(string_field(port_object, "kind")),
+                                 point(field(port_object, "position")),
+                                 orientation(string_field(port_object, "orientation"))});
+            power_port_ids_.emplace(id, port);
+        }
+    }
+
+    void read_no_connect_markers() {
+        auto seen = std::set<std::string>{};
+        for (const auto &marker_object : optional_array_field(document_, "no_connect_markers")) {
+            const auto id = local_id(marker_object, "no_connect_marker:", seen);
+            const auto sheet = resolve(sheet_ids_, string_field(marker_object, "sheet"));
+            const auto pin = pin_id(string_field(marker_object, "pin"));
+            const auto marker = schematic_.add_no_connect_marker(
+                sheet, NoConnectMarker{pin, point(field(marker_object, "position")),
+                                       orientation(string_field(marker_object, "orientation"))});
+            no_connect_marker_ids_.emplace(id, marker);
+        }
+    }
+
+    void read_sheet_ports() {
+        auto seen = std::set<std::string>{};
+        for (const auto &port_object : optional_array_field(document_, "sheet_ports")) {
+            const auto id = local_id(port_object, "sheet_port:", seen);
+            const auto sheet = resolve(sheet_ids_, string_field(port_object, "sheet"));
+            const auto net = net_id(string_field(port_object, "net"));
+            const auto port = schematic_.add_sheet_port(
+                sheet, SheetPort{net, string_field(port_object, "name"),
+                                 sheet_port_kind(string_field(port_object, "kind")),
+                                 point(field(port_object, "position")),
+                                 orientation(string_field(port_object, "orientation"))});
+            sheet_port_ids_.emplace(id, port);
+        }
+    }
+
+    void read_symbol_fields() {
+        auto seen = std::set<std::string>{};
+        for (const auto &field_object : optional_array_field(document_, "symbol_fields")) {
+            const auto id = local_id(field_object, "symbol_field:", seen);
+            const auto sheet = resolve(sheet_ids_, string_field(field_object, "sheet"));
+            const auto instance =
+                resolve(symbol_instance_ids_, string_field(field_object, "symbol_instance"));
+            const auto field_id = schematic_.add_symbol_field(
+                sheet, SymbolField{instance, string_field(field_object, "name"),
+                                   string_field(field_object, "value"),
+                                   point(field(field_object, "position")),
+                                   orientation(string_field(field_object, "orientation"))});
+            symbol_field_ids_.emplace(id, field_id);
         }
     }
 
@@ -325,6 +494,66 @@ class SchematicReader {
         }
     }
 
+    void require_sheet_junction_lists_match() const {
+        for (const auto &[sheet, expected_ids] : expected_sheet_junctions_) {
+            auto expected = std::vector<JunctionId>{};
+            expected.reserve(expected_ids.size());
+            for (const auto &id : expected_ids) {
+                expected.push_back(resolve(junction_ids_, id));
+            }
+            require(schematic_.sheet(sheet).junctions() == expected,
+                    "Sheet junction list does not match placed junctions");
+        }
+    }
+
+    void require_sheet_power_port_lists_match() const {
+        for (const auto &[sheet, expected_ids] : expected_sheet_power_ports_) {
+            auto expected = std::vector<PowerPortId>{};
+            expected.reserve(expected_ids.size());
+            for (const auto &id : expected_ids) {
+                expected.push_back(resolve(power_port_ids_, id));
+            }
+            require(schematic_.sheet(sheet).power_ports() == expected,
+                    "Sheet power port list does not match placed ports");
+        }
+    }
+
+    void require_sheet_no_connect_marker_lists_match() const {
+        for (const auto &[sheet, expected_ids] : expected_sheet_no_connect_markers_) {
+            auto expected = std::vector<NoConnectMarkerId>{};
+            expected.reserve(expected_ids.size());
+            for (const auto &id : expected_ids) {
+                expected.push_back(resolve(no_connect_marker_ids_, id));
+            }
+            require(schematic_.sheet(sheet).no_connect_markers() == expected,
+                    "Sheet no-connect marker list does not match placed markers");
+        }
+    }
+
+    void require_sheet_port_lists_match() const {
+        for (const auto &[sheet, expected_ids] : expected_sheet_ports_) {
+            auto expected = std::vector<SheetPortId>{};
+            expected.reserve(expected_ids.size());
+            for (const auto &id : expected_ids) {
+                expected.push_back(resolve(sheet_port_ids_, id));
+            }
+            require(schematic_.sheet(sheet).sheet_ports() == expected,
+                    "Sheet port list does not match placed ports");
+        }
+    }
+
+    void require_sheet_symbol_field_lists_match() const {
+        for (const auto &[sheet, expected_ids] : expected_sheet_symbol_fields_) {
+            auto expected = std::vector<SymbolFieldId>{};
+            expected.reserve(expected_ids.size());
+            for (const auto &id : expected_ids) {
+                expected.push_back(resolve(symbol_field_ids_, id));
+            }
+            require(schematic_.sheet(sheet).symbol_fields() == expected,
+                    "Sheet symbol field list does not match placed fields");
+        }
+    }
+
     const nlohmann::json &document_;
     const Circuit &circuit_;
     Schematic schematic_;
@@ -333,9 +562,19 @@ class SchematicReader {
     std::map<std::string, SymbolInstanceId> symbol_instance_ids_;
     std::map<std::string, WireRunId> wire_run_ids_;
     std::map<std::string, NetLabelId> net_label_ids_;
+    std::map<std::string, JunctionId> junction_ids_;
+    std::map<std::string, PowerPortId> power_port_ids_;
+    std::map<std::string, NoConnectMarkerId> no_connect_marker_ids_;
+    std::map<std::string, SheetPortId> sheet_port_ids_;
+    std::map<std::string, SymbolFieldId> symbol_field_ids_;
     std::vector<std::pair<SheetId, std::vector<std::string>>> expected_sheet_instances_;
     std::vector<std::pair<SheetId, std::vector<std::string>>> expected_sheet_wire_runs_;
     std::vector<std::pair<SheetId, std::vector<std::string>>> expected_sheet_net_labels_;
+    std::vector<std::pair<SheetId, std::vector<std::string>>> expected_sheet_junctions_;
+    std::vector<std::pair<SheetId, std::vector<std::string>>> expected_sheet_power_ports_;
+    std::vector<std::pair<SheetId, std::vector<std::string>>> expected_sheet_no_connect_markers_;
+    std::vector<std::pair<SheetId, std::vector<std::string>>> expected_sheet_ports_;
+    std::vector<std::pair<SheetId, std::vector<std::string>>> expected_sheet_symbol_fields_;
 };
 
 } // namespace detail
