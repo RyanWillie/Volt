@@ -1,7 +1,5 @@
 #pragma once
 
-#include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -14,53 +12,10 @@ namespace volt {
 
 namespace detail {
 
-[[nodiscard]] inline Point transform_symbol_point(Point local, const SymbolInstance &instance) {
-    auto rotated = local;
-    switch (instance.orientation()) {
-    case SchematicOrientation::Right:
-        rotated = local;
-        break;
-    case SchematicOrientation::Down:
-        rotated = Point{-local.y(), local.x()};
-        break;
-    case SchematicOrientation::Left:
-        rotated = Point{-local.x(), -local.y()};
-        break;
-    case SchematicOrientation::Up:
-        rotated = Point{local.y(), -local.x()};
-        break;
-    }
-
-    return Point{instance.position().x() + rotated.x(), instance.position().y() + rotated.y()};
-}
-
-[[nodiscard]] inline double cross(Point origin, Point a, Point b) noexcept {
-    return ((a.x() - origin.x()) * (b.y() - origin.y())) -
-           ((a.y() - origin.y()) * (b.x() - origin.x()));
-}
-
-[[nodiscard]] inline bool nearly_equal(double lhs, double rhs) noexcept {
-    return std::abs(lhs - rhs) <= 1e-9;
-}
-
-[[nodiscard]] inline bool same_point(Point lhs, Point rhs) noexcept {
-    return nearly_equal(lhs.x(), rhs.x()) && nearly_equal(lhs.y(), rhs.y());
-}
-
-[[nodiscard]] inline bool between(double value, double first, double second) noexcept {
-    const auto minimum = std::min(first, second) - 1e-9;
-    const auto maximum = std::max(first, second) + 1e-9;
-    return minimum <= value && value <= maximum;
-}
-
-[[nodiscard]] inline bool point_on_segment(Point point, Point start, Point end) noexcept {
-    return nearly_equal(cross(start, end, point), 0.0) && between(point.x(), start.x(), end.x()) &&
-           between(point.y(), start.y(), end.y());
-}
-
 [[nodiscard]] inline bool wire_covers_point(const WireRun &wire, Point point) noexcept {
     for (std::size_t index = 1; index < wire.points().size(); ++index) {
-        if (point_on_segment(point, wire.points()[index - 1U], wire.points()[index])) {
+        if (point_on_schematic_segment(
+                point, SchematicSegment{wire.points()[index - 1U], wire.points()[index]})) {
             return true;
         }
     }
@@ -79,7 +34,7 @@ namespace detail {
 
     for (const auto label_id : sheet.net_labels()) {
         const auto &label = schematic.net_label(label_id);
-        if (label.net() == net && same_point(label.position(), point)) {
+        if (label.net() == net && same_schematic_point(label.position(), point)) {
             return true;
         }
     }
@@ -117,7 +72,8 @@ inline void validate_symbol_instance_net_coverage(const Schematic &schematic, co
             continue;
         }
 
-        const auto pin_point = transform_symbol_point(symbol_pin.anchor(), instance);
+        const auto pin_point = transform_schematic_point(symbol_pin.anchor(), instance.position(),
+                                                         instance.orientation());
         if (sheet_visually_covers_net_at_pin(schematic, sheet, net.value(), pin_point)) {
             continue;
         }

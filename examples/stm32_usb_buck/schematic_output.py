@@ -49,45 +49,56 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
     """Create a deterministic, manually authored schematic projection."""
 
     schematic = board.design.schematic("Main")
+    placements: dict[str, volt.SchematicSymbol] = {}
+
+    def place(component: volt.Component, *, at: tuple[float, float], symbol) -> None:
+        placements[f"component:{component.index}"] = schematic.place(
+            component, at=at, symbol=symbol
+        )
+
     pwr = board.modules["PWR"]
     usb = board.modules["USB"]
     support = board.modules["SUPPORT"]
     led = board.modules["LED_STATUS"]
 
-    schematic.place(board.components["VIN_SRC"], at=(12, 34), symbol=_external_supply_symbol())
-    schematic.place(pwr.component("J"), at=(12, 82), symbol=lib.CONNECTOR_1X04.schematic_symbol)
-    schematic.place(pwr.component("U5"), at=(68, 42), symbol=lib.AP1117_15.schematic_symbol)
-    schematic.place(pwr.component("U3V3"), at=(68, 86), symbol=lib.AP1117_15.schematic_symbol)
-    schematic.place(pwr.component("CIN"), at=(24, 130), symbol=lib.CAPACITOR.schematic_symbol)
-    schematic.place(pwr.component("C5V"), at=(52, 130), symbol=lib.CAPACITOR.schematic_symbol)
-    schematic.place(pwr.component("C3V3"), at=(80, 130), symbol=lib.CAPACITOR.schematic_symbol)
-    schematic.place(pwr.component("CVDDA"), at=(108, 130), symbol=lib.CAPACITOR.schematic_symbol)
+    place(board.components["VIN_SRC"], at=(12, 34), symbol=_external_supply_symbol())
+    place(pwr.component("J"), at=(12, 82), symbol=lib.CONNECTOR_1X04.schematic_symbol)
+    place(pwr.component("U5"), at=(68, 42), symbol=lib.AP1117_15.schematic_symbol)
+    place(pwr.component("U3V3"), at=(68, 86), symbol=lib.AP1117_15.schematic_symbol)
+    place(pwr.component("CIN"), at=(24, 130), symbol=lib.CAPACITOR.schematic_symbol)
+    place(pwr.component("C5V"), at=(52, 130), symbol=lib.CAPACITOR.schematic_symbol)
+    place(pwr.component("C3V3"), at=(80, 130), symbol=lib.CAPACITOR.schematic_symbol)
+    place(pwr.component("CVDDA"), at=(108, 130), symbol=lib.CAPACITOR.schematic_symbol)
 
-    schematic.place(usb.component("J1"), at=(198, 30), symbol=lib.USB_B_MICRO.schematic_symbol)
-    schematic.place(usb.component("U1"), at=(226, 74), symbol=lib.USBLC6_4SC6.schematic_symbol)
+    place(usb.component("J1"), at=(198, 30), symbol=lib.USB_B_MICRO.schematic_symbol)
+    place(usb.component("U1"), at=(226, 74), symbol=lib.USBLC6_4SC6.schematic_symbol)
 
-    schematic.place(board.components["U1"], at=(132, 24), symbol=lib.STM32F405RGTx.schematic_symbol)
-    schematic.place(support.component("CVDD"), at=(104, 28), symbol=lib.CAPACITOR.schematic_symbol)
-    schematic.place(support.component("CVCAP1"), at=(104, 58), symbol=lib.CAPACITOR.schematic_symbol)
-    schematic.place(support.component("CVCAP2"), at=(104, 88), symbol=lib.CAPACITOR.schematic_symbol)
-    schematic.place(support.component("RRESET"), at=(104, 120), symbol=lib.RESISTOR.schematic_symbol)
-    schematic.place(support.component("RBOOT"), at=(104, 148), symbol=lib.RESISTOR.schematic_symbol)
-    schematic.place(support.component("SWBOOT"), at=(160, 176), symbol=lib.SPDT_SWITCH.schematic_symbol)
-    schematic.place(support.component("Y1"), at=(206, 142), symbol=lib.CRYSTAL_GND24.schematic_symbol)
-    schematic.place(support.component("CHSEIN"), at=(208, 176), symbol=lib.CAPACITOR.schematic_symbol)
-    schematic.place(support.component("CHSEOUT"), at=(236, 176), symbol=lib.CAPACITOR.schematic_symbol)
+    place(board.components["U1"], at=(132, 24), symbol=lib.STM32F405RGTx.schematic_symbol)
+    place(support.component("CVDD"), at=(104, 28), symbol=lib.CAPACITOR.schematic_symbol)
+    place(support.component("CVCAP1"), at=(104, 58), symbol=lib.CAPACITOR.schematic_symbol)
+    place(support.component("CVCAP2"), at=(104, 88), symbol=lib.CAPACITOR.schematic_symbol)
+    place(support.component("RRESET"), at=(104, 120), symbol=lib.RESISTOR.schematic_symbol)
+    place(support.component("RBOOT"), at=(104, 148), symbol=lib.RESISTOR.schematic_symbol)
+    place(support.component("SWBOOT"), at=(160, 176), symbol=lib.SPDT_SWITCH.schematic_symbol)
+    place(support.component("Y1"), at=(206, 142), symbol=lib.CRYSTAL_GND24.schematic_symbol)
+    place(support.component("CHSEIN"), at=(208, 176), symbol=lib.CAPACITOR.schematic_symbol)
+    place(support.component("CHSEOUT"), at=(236, 176), symbol=lib.CAPACITOR.schematic_symbol)
 
-    schematic.place(board.components["J2"], at=(252, 18), symbol=lib.JTAG_SWD_10.schematic_symbol)
-    schematic.place(board.components["J3"], at=(252, 110), symbol=lib.CONNECTOR_1X04.schematic_symbol)
-    schematic.place(led.component("R"), at=(18, 176), symbol=lib.RESISTOR.schematic_symbol)
-    schematic.place(led.component("D"), at=(54, 176), symbol=_indicator_led_symbol())
+    place(board.components["J2"], at=(252, 18), symbol=lib.JTAG_SWD_10.schematic_symbol)
+    place(board.components["J3"], at=(252, 110), symbol=lib.CONNECTOR_1X04.schematic_symbol)
+    place(led.component("R"), at=(18, 176), symbol=lib.RESISTOR.schematic_symbol)
+    place(led.component("D"), at=(54, 176), symbol=_indicator_led_symbol())
 
     _add_labelled_net_stubs(schematic, board.nets)
-    _add_pin_anchor_net_labels(schematic, board)
+    _add_pin_anchor_net_labels(schematic, board, placements)
     return schematic
 
 
-def _add_pin_anchor_net_labels(schematic: volt.Schematic, board: Stm32UsbBuckBoard) -> None:
+def _add_pin_anchor_net_labels(
+    schematic: volt.Schematic,
+    board: Stm32UsbBuckBoard,
+    placements: dict[str, volt.SchematicSymbol],
+) -> None:
     """Add local net labels at connected symbol pins so readiness validation can prove coverage."""
 
     logical = json.loads(board.design.to_json())
@@ -116,6 +127,7 @@ def _add_pin_anchor_net_labels(schematic: volt.Schematic, board: Stm32UsbBuckBoa
     }
 
     for instance in projection["symbol_instances"]:
+        placement = placements[instance["component"]]
         component = components[instance["component"]]
         component_definition = component_definitions[component["definition"]]
         pin_definition_by_number = {
@@ -134,25 +146,8 @@ def _add_pin_anchor_net_labels(schematic: volt.Schematic, board: Stm32UsbBuckBoa
                 continue
             schematic.label(
                 nets_by_id[net_id],
-                at=_transformed_pin_anchor(symbol_pin["anchor"], instance),
+                at=placement.pin_anchor(symbol_pin["number"]),
             )
-
-
-def _transformed_pin_anchor(anchor: dict, instance: dict) -> tuple[float, float]:
-    x = anchor["x"]
-    y = anchor["y"]
-    orientation = instance["orientation"]
-    if orientation == "Right":
-        dx, dy = x, y
-    elif orientation == "Down":
-        dx, dy = -y, x
-    elif orientation == "Left":
-        dx, dy = -x, -y
-    elif orientation == "Up":
-        dx, dy = y, -x
-    else:
-        raise ValueError(f"unknown schematic orientation {orientation!r}")
-    return (instance["position"]["x"] + dx, instance["position"]["y"] + dy)
 
 
 def _add_labelled_net_stubs(schematic: volt.Schematic, nets: dict[str, volt.Net]) -> None:

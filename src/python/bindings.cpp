@@ -1130,6 +1130,23 @@ class PyCircuit {
             .index();
     }
 
+    [[nodiscard]] std::pair<double, double> schematic_symbol_pin_anchor(std::size_t instance,
+                                                                        const std::string &number) {
+        auto &projection = schematic_projection();
+        const auto &symbol_instance = projection.symbol_instance(volt::SymbolInstanceId{instance});
+        const auto &symbol = projection.symbol_definition(symbol_instance.symbol_definition());
+
+        for (const auto &pin : symbol.pins()) {
+            if (pin.number() == number) {
+                const auto anchor = volt::transform_schematic_point(
+                    pin.anchor(), symbol_instance.position(), symbol_instance.orientation());
+                return {anchor.x(), anchor.y()};
+            }
+        }
+
+        throw std::out_of_range{"Schematic symbol has no pin with that number"};
+    }
+
     [[nodiscard]] std::size_t
     add_schematic_wire(std::size_t sheet, std::size_t net,
                        const std::vector<std::pair<double, double>> &points) {
@@ -1312,6 +1329,8 @@ PYBIND11_MODULE(_volt, module) {
         .def("register_schematic_symbol", &PyCircuit::register_schematic_symbol, py::arg("symbol"))
         .def("place_schematic_symbol", &PyCircuit::place_schematic_symbol, py::arg("sheet"),
              py::arg("component"), py::arg("symbol"), py::arg("x"), py::arg("y"))
+        .def("schematic_symbol_pin_anchor", &PyCircuit::schematic_symbol_pin_anchor,
+             py::arg("instance"), py::arg("number"))
         .def("add_schematic_wire", &PyCircuit::add_schematic_wire, py::arg("sheet"), py::arg("net"),
              py::arg("points"))
         .def("add_schematic_net_label", &PyCircuit::add_schematic_net_label, py::arg("sheet"),

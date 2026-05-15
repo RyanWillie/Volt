@@ -396,6 +396,10 @@ the logical net name, not from a separate schematic-only string. These helpers v
 connectivity that already exists in the logical circuit. They do not connect pins, create
 nets, or merge net names.
 
+`sch.place(...)` returns a `SchematicSymbol` handle. `symbol.pin_anchor(number)` returns
+the kernel-transformed sheet coordinate for a symbol pin number, so Python examples can
+place wires and labels relative to pins without reimplementing schematic orientation math.
+
 `Design.to_json()` still writes the logical circuit. `Schematic.to_json()` writes the
 `volt.schematic` projection JSON. The two formats remain separate so schematic placement
 can be loaded, inspected, or regenerated without becoming a second owner of the netlist.
