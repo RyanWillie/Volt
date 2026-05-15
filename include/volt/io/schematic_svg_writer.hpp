@@ -71,12 +71,44 @@ inline void write_svg_number(std::ostream &out, double value) {
     return "net:" + std::to_string(id.index());
 }
 
+[[nodiscard]] inline std::string svg_pin_id(PinId id) {
+    return "pin:" + std::to_string(id.index());
+}
+
 [[nodiscard]] inline std::string svg_sheet_id(SheetId id) {
     return "sheet:" + std::to_string(id.index());
 }
 
 [[nodiscard]] inline std::string svg_symbol_def_id(SymbolDefId id) {
     return "symbol_def:" + std::to_string(id.index());
+}
+
+[[nodiscard]] inline std::string svg_symbol_instance_id(SymbolInstanceId id) {
+    return "symbol_instance:" + std::to_string(id.index());
+}
+
+[[nodiscard]] inline std::string power_port_class(PowerPortKind kind) {
+    switch (kind) {
+    case PowerPortKind::Power:
+        return "power";
+    case PowerPortKind::Ground:
+        return "ground";
+    }
+    throw std::logic_error{"Unhandled power port kind"};
+}
+
+[[nodiscard]] inline std::string sheet_port_class(SheetPortKind kind) {
+    switch (kind) {
+    case SheetPortKind::Input:
+        return "input";
+    case SheetPortKind::Output:
+        return "output";
+    case SheetPortKind::Bidirectional:
+        return "bidirectional";
+    case SheetPortKind::OffPage:
+        return "off-page";
+    }
+    throw std::logic_error{"Unhandled sheet port kind"};
 }
 
 [[nodiscard]] inline double orientation_degrees(SchematicOrientation orientation) {
@@ -270,14 +302,128 @@ inline void write_net_label_svg(std::ostream &out, const Schematic &schematic, N
     out << ")\">" << svg_escape(net.name().value()) << "</text>\n";
 }
 
+inline void write_junction_svg(std::ostream &out, const Schematic &schematic, JunctionId id) {
+    const auto &junction = schematic.junction(id);
+
+    out << "    <circle class=\"junction\" data-net=\"" << svg_escape(svg_net_id(junction.net()))
+        << "\" cx=\"";
+    write_svg_number(out, junction.position().x());
+    out << "\" cy=\"";
+    write_svg_number(out, junction.position().y());
+    out << "\" r=\"1.8\"/>\n";
+}
+
+inline void write_power_port_svg(std::ostream &out, const Schematic &schematic, PowerPortId id) {
+    const auto &port = schematic.power_port(id);
+    const auto &net = schematic.circuit().net(port.net());
+    const auto kind_class = power_port_class(port.kind());
+
+    out << "    <g class=\"power-port " << kind_class << "\" data-net=\""
+        << svg_escape(svg_net_id(port.net())) << "\" transform=\"translate(";
+    write_svg_number(out, port.position().x());
+    out << ' ';
+    write_svg_number(out, port.position().y());
+    out << ") rotate(";
+    write_svg_number(out, orientation_degrees(port.orientation()));
+    out << ")\">\n";
+    if (port.kind() == PowerPortKind::Ground) {
+        out << "      <line class=\"power-port-line\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"4\"/>\n";
+        out << "      <line class=\"ground-bar\" x1=\"-5\" y1=\"4\" x2=\"5\" y2=\"4\"/>\n";
+        out << "      <line class=\"ground-bar\" x1=\"-3\" y1=\"6\" x2=\"3\" y2=\"6\"/>\n";
+        out << "      <line class=\"ground-bar\" x1=\"-1\" y1=\"8\" x2=\"1\" y2=\"8\"/>\n";
+    } else {
+        out << "      <line class=\"power-port-line\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"-7\"/>\n";
+        out << "      <path class=\"power-port-shape\" d=\"M -4 -7 L 0 -12 L 4 -7 Z\"/>\n";
+    }
+    out << "      <text class=\"power-port-label\" x=\"0\" y=\"-14\">"
+        << svg_escape(net.name().value()) << "</text>\n";
+    out << "    </g>\n";
+}
+
+inline void write_no_connect_marker_svg(std::ostream &out, const Schematic &schematic,
+                                        NoConnectMarkerId id) {
+    const auto &marker = schematic.no_connect_marker(id);
+
+    out << "    <g class=\"no-connect-marker\" data-pin=\"" << svg_escape(svg_pin_id(marker.pin()))
+        << "\" transform=\"translate(";
+    write_svg_number(out, marker.position().x());
+    out << ' ';
+    write_svg_number(out, marker.position().y());
+    out << ") rotate(";
+    write_svg_number(out, orientation_degrees(marker.orientation()));
+    out << ")\">\n";
+    out << "      <line class=\"no-connect-line\" x1=\"-3\" y1=\"-3\" x2=\"3\" y2=\"3\"/>\n";
+    out << "      <line class=\"no-connect-line\" x1=\"-3\" y1=\"3\" x2=\"3\" y2=\"-3\"/>\n";
+    out << "    </g>\n";
+    static_cast<void>(schematic);
+}
+
+inline void write_sheet_port_svg(std::ostream &out, const Schematic &schematic, SheetPortId id) {
+    const auto &port = schematic.sheet_port(id);
+    const auto kind_class = sheet_port_class(port.kind());
+
+    out << "    <g class=\"sheet-port " << kind_class << "\" data-net=\""
+        << svg_escape(svg_net_id(port.net())) << "\" transform=\"translate(";
+    write_svg_number(out, port.position().x());
+    out << ' ';
+    write_svg_number(out, port.position().y());
+    out << ") rotate(";
+    write_svg_number(out, orientation_degrees(port.orientation()));
+    out << ")\">\n";
+    out << "      <path class=\"sheet-port-shape\" d=\"M 0 -4 L 14 -4 L 20 0 L 14 4 L 0 4 Z\"/>\n";
+    out << "      <text class=\"sheet-port-label\" x=\"4\" y=\"2\">" << svg_escape(port.name())
+        << "</text>\n";
+    out << "    </g>\n";
+    static_cast<void>(schematic);
+}
+
+inline void write_symbol_field_svg(std::ostream &out, const Schematic &schematic,
+                                   SymbolFieldId id) {
+    const auto &field = schematic.symbol_field(id);
+
+    out << "    <text class=\"symbol-field\" data-symbol-instance=\""
+        << svg_escape(svg_symbol_instance_id(field.symbol_instance())) << "\" data-field=\""
+        << svg_escape(field.name()) << "\" x=\"";
+    write_svg_number(out, field.position().x());
+    out << "\" y=\"";
+    write_svg_number(out, field.position().y());
+    out << "\" transform=\"rotate(";
+    write_svg_number(out, orientation_degrees(field.orientation()));
+    out << ' ';
+    write_svg_number(out, field.position().x());
+    out << ' ';
+    write_svg_number(out, field.position().y());
+    out << ")\">" << svg_escape(field.value()) << "</text>\n";
+    static_cast<void>(schematic);
+}
+
+inline void write_title_block_svg(std::ostream &out, const SheetMetadata &metadata) {
+    auto y = metadata.size().height() - 8.0;
+    for (const auto &field : metadata.title_block()) {
+        out << "    <text class=\"title-block-field\" x=\"";
+        write_svg_number(out, metadata.size().width() - 72.0);
+        out << "\" y=\"";
+        write_svg_number(out, y);
+        out << "\">" << svg_escape(field.key()) << ": " << svg_escape(field.value()) << "</text>\n";
+        y -= 6.0;
+    }
+}
+
 } // namespace detail
 
 /** Write a deterministic SVG rendering of a schematic projection. */
 inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
     const auto sheet_count = schematic.sheet_count();
-    const auto rendered_sheet_count = sheet_count == 0 ? 1U : sheet_count;
-    const auto height = (static_cast<double>(rendered_sheet_count) * detail::svg_sheet_height) +
-                        (static_cast<double>(rendered_sheet_count - 1U) * detail::svg_sheet_gap);
+    auto width = detail::svg_sheet_width;
+    auto height = sheet_count == 0 ? detail::svg_sheet_height : 0.0;
+    for (std::size_t sheet_index = 0; sheet_index < sheet_count; ++sheet_index) {
+        const auto &metadata = schematic.sheet(SheetId{sheet_index}).metadata();
+        width = std::max(width, metadata.size().width());
+        if (sheet_index != 0) {
+            height += detail::svg_sheet_gap;
+        }
+        height += metadata.size().height();
+    }
 
     out << "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ";
     detail::write_svg_number(out, detail::svg_sheet_width);
@@ -291,33 +437,46 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
     out << "  <style>"
            ".sheet{fill:#fff;stroke:#c7c7c7;stroke-width:0.5}"
            ".sheet-title{font:6px sans-serif;fill:#333}"
+           ".title-block-field{font:4px sans-serif;fill:#333;text-anchor:start}"
            ".wire-run{fill:none;stroke:#111;stroke-width:1.2}"
            ".net-label{font:5px sans-serif;fill:#0645ad;text-anchor:start}"
+           ".junction{fill:#111;stroke:none}"
+           ".power-port-line,.ground-bar,.no-connect-line{stroke:#111;stroke-width:1.2}"
+           ".power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:1.2}"
+           ".power-port-label,.sheet-port-label,.symbol-field{font:5px sans-serif;fill:#111;"
+           "text-anchor:middle}"
            ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-"
            "width:1.2}"
            ".symbol-text,.reference,.pin-label{font:5px sans-serif;fill:#111;text-anchor:middle}"
            ".pin-anchor{fill:#fff;stroke:#111;stroke-width:0.8}"
            "</style>\n";
 
+    auto y_offset = 0.0;
     for (std::size_t sheet_index = 0; sheet_index < sheet_count; ++sheet_index) {
         const auto sheet_id = SheetId{sheet_index};
         const auto &sheet = schematic.sheet(sheet_id);
-        const auto y_offset =
-            static_cast<double>(sheet_index) * (detail::svg_sheet_height + detail::svg_sheet_gap);
+        const auto &metadata = sheet.metadata();
 
         out << "  <g class=\"schematic-sheet\" data-sheet=\""
             << detail::svg_escape(detail::svg_sheet_id(sheet_id)) << "\" transform=\"translate(0 ";
         detail::write_svg_number(out, y_offset);
         out << ")\">\n";
         out << "    <rect class=\"sheet\" x=\"0\" y=\"0\" width=\"";
-        detail::write_svg_number(out, detail::svg_sheet_width);
+        detail::write_svg_number(out, metadata.size().width());
         out << "\" height=\"";
-        detail::write_svg_number(out, detail::svg_sheet_height);
+        detail::write_svg_number(out, metadata.size().height());
         out << "\"/>\n";
         out << "    <text class=\"sheet-title\" x=\"10\" y=\"16\">"
-            << detail::svg_escape(sheet.name()) << "</text>\n";
+            << detail::svg_escape(metadata.title()) << "</text>\n";
+        detail::write_title_block_svg(out, metadata);
         for (const auto wire : sheet.wire_runs()) {
             detail::write_wire_run_svg(out, schematic, wire);
+        }
+        for (const auto junction : sheet.junctions()) {
+            detail::write_junction_svg(out, schematic, junction);
+        }
+        for (const auto port : sheet.power_ports()) {
+            detail::write_power_port_svg(out, schematic, port);
         }
         for (const auto instance : sheet.symbol_instances()) {
             detail::write_symbol_instance_svg(out, schematic, instance);
@@ -325,7 +484,17 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
         for (const auto label : sheet.net_labels()) {
             detail::write_net_label_svg(out, schematic, label);
         }
+        for (const auto marker : sheet.no_connect_markers()) {
+            detail::write_no_connect_marker_svg(out, schematic, marker);
+        }
+        for (const auto port : sheet.sheet_ports()) {
+            detail::write_sheet_port_svg(out, schematic, port);
+        }
+        for (const auto field : sheet.symbol_fields()) {
+            detail::write_symbol_field_svg(out, schematic, field);
+        }
         out << "  </g>\n";
+        y_offset += metadata.size().height() + detail::svg_sheet_gap;
     }
 
     out << "</svg>\n";

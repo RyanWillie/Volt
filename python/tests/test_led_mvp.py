@@ -800,9 +800,19 @@ def test_python_schematic_placement_serializes_kernel_projection():
         {
             "id": "sheet:0",
             "name": "Main",
+            "metadata": {
+                "title": "Main",
+                "size": {"width": 297.0, "height": 210.0},
+                "title_block": [],
+            },
             "symbol_instances": ["symbol_instance:0", "symbol_instance:1"],
             "wire_runs": ["wire_run:0"],
             "net_labels": ["net_label:0"],
+            "junctions": [],
+            "power_ports": [],
+            "no_connect_markers": [],
+            "sheet_ports": [],
+            "symbol_fields": [],
         }
     ]
     assert [symbol["name"] for symbol in projection["symbol_definitions"]] == [
@@ -833,6 +843,7 @@ def test_python_schematic_placement_serializes_kernel_projection():
             "sheet": "sheet:0",
             "net": "net:0",
             "points": [{"x": 20.0, "y": 20.0}, {"x": 40.0, "y": 20.0}],
+            "route_intent": "Direct",
         }
     ]
     assert projection["net_labels"] == [
@@ -844,6 +855,11 @@ def test_python_schematic_placement_serializes_kernel_projection():
             "orientation": "Right",
         }
     ]
+    assert projection["junctions"] == []
+    assert projection["power_ports"] == []
+    assert projection["no_connect_markers"] == []
+    assert projection["sheet_ports"] == []
+    assert projection["symbol_fields"] == []
 
 
 def test_python_schematic_symbol_handles_expose_pin_anchors():

@@ -46,6 +46,11 @@ struct SheetIdTag;
 struct SymbolInstanceIdTag;
 struct WireRunIdTag;
 struct NetLabelIdTag;
+struct JunctionIdTag;
+struct PowerPortIdTag;
+struct NoConnectMarkerIdTag;
+struct SheetPortIdTag;
+struct SymbolFieldIdTag;
 
 } // namespace detail
 
@@ -81,5 +86,15 @@ using SymbolInstanceId = EntityId<detail::SymbolInstanceIdTag>;
 using WireRunId = EntityId<detail::WireRunIdTag>;
 /** ID for a schematic net label projection over a canonical net. */
 using NetLabelId = EntityId<detail::NetLabelIdTag>;
+/** ID for an explicit schematic junction projection over a canonical net. */
+using JunctionId = EntityId<detail::JunctionIdTag>;
+/** ID for a schematic power or ground port projection over a canonical net. */
+using PowerPortId = EntityId<detail::PowerPortIdTag>;
+/** ID for a schematic no-connect marker projection over a concrete pin. */
+using NoConnectMarkerId = EntityId<detail::NoConnectMarkerIdTag>;
+/** ID for a schematic sheet/off-page port projection over a canonical net. */
+using SheetPortId = EntityId<detail::SheetPortIdTag>;
+/** ID for a placed symbol field projection owned by a symbol instance. */
+using SymbolFieldId = EntityId<detail::SymbolFieldIdTag>;
 
 } // namespace volt
