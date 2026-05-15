@@ -453,6 +453,247 @@
     </section>
 
     <section>
+      <aside>Compatibility snapshot</aside>
+      <div class="stack">
+        <h2>The current KiCad boundary is a narrow flat-schematic subset.</h2>
+        <p>
+          This matrix describes the supported adapter contract for the first KiCad
+          schematic path. It is intentionally a compatibility boundary, not a promise
+          that Volt stores KiCad's full file model internally. Since VOL-63, the adapter
+          can export one deterministic flat <code>.kicad_sch</code> sheet through
+          <code>write_flat_schematic</code>. The golden KiCad fixture backs the current
+          export subset; richer KiCad constructs remain explicit warnings or deferrals.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Construct</th>
+              <th>Supported subset</th>
+              <th>Fixture or test evidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Symbol primitives</td>
+              <td>
+                Lines export as KiCad polylines, rectangles export as KiCad rectangles,
+                and text exports as KiCad text. Circles and arcs are intentionally outside
+                the first writer subset and produce loss-report warnings instead of silent
+                omission. KiCad stroke, fill, font, and graphical styling beyond Volt's
+                structured primitives is lossy unless Volt later owns equivalent
+                presentation data.
+              </td>
+              <td>
+                <a href="../tests/adapters/kicad_schematic_writer_test.cpp">kicad_schematic_writer_test.cpp</a>,
+                <a href="../tests/fixtures/kicad_flat_resistor.kicad_sch">kicad_flat_resistor.kicad_sch</a>,
+                and
+                <a href="../tests/io/schematic_svg_writer_test.cpp">schematic_svg_writer_test.cpp</a>
+              </td>
+            </tr>
+            <tr>
+              <td>Symbol pins</td>
+              <td>
+                Pin name, pin number, anchor, and orientation are supported where they
+                map to <code>SymbolPin</code>; the first writer emits passive KiCad pins.
+                Pin electrical meaning remains owned by Volt logical pin definitions, not
+                the KiCad drawing.
+              </td>
+              <td>
+                <a href="../tests/adapters/kicad_schematic_writer_test.cpp">kicad_schematic_writer_test.cpp</a>,
+                <a href="../tests/fixtures/kicad_flat_resistor.kicad_sch">kicad_flat_resistor.kicad_sch</a>,
+                and
+                <a href="../tests/schematic/schematic_test.cpp">schematic_test.cpp</a>
+              </td>
+            </tr>
+            <tr>
+              <td>Symbol instances</td>
+              <td>
+                A placed symbol may carry its symbol definition, component reference,
+                first-sheet placement, orientation, generated KiCad UUIDs, pin UUIDs, and
+                a hidden <code>VoltComponentId</code> property. It must point at an
+                existing Volt component; it must not create connectivity by itself.
+              </td>
+              <td>
+                <a href="../tests/adapters/kicad_schematic_writer_test.cpp">kicad_schematic_writer_test.cpp</a>,
+                <a href="../tests/fixtures/kicad_flat_resistor.kicad_sch">kicad_flat_resistor.kicad_sch</a>,
+                and
+                <a href="../examples/stm32_usb_buck/artifacts/stm32_usb_buck.volt.schematic.json">STM32 schematic fixture</a>
+              </td>
+            </tr>
+            <tr>
+              <td>Wires</td>
+              <td>
+                Wire geometry is supported as <code>WireRun</code> presentation over an
+                existing <code>NetId</code>. Export must use the canonical net attached
+                to the wire run; it must not rediscover a netlist from geometry. The
+                current writer emits wire point runs from the first schematic sheet.
+              </td>
+              <td>
+                <a href="../tests/adapters/kicad_schematic_writer_test.cpp">kicad_schematic_writer_test.cpp</a>,
+                <a href="../tests/fixtures/kicad_flat_resistor.kicad_sch">kicad_flat_resistor.kicad_sch</a>,
+                and
+                <a href="../tests/schematic/schematic_test.cpp">schematic_test.cpp</a>
+              </td>
+            </tr>
+            <tr>
+              <td>Labels</td>
+              <td>
+                Local net labels are supported when they render a canonical Volt net
+                name at a schematic point. The writer emits local KiCad labels from the
+                first sheet. Global labels, hierarchical labels, and sheet pins are
+                deferred until Volt owns the matching hierarchy semantics.
+              </td>
+              <td>
+                <a href="../tests/adapters/kicad_schematic_writer_test.cpp">kicad_schematic_writer_test.cpp</a>,
+                <a href="../tests/fixtures/kicad_flat_resistor.kicad_sch">kicad_flat_resistor.kicad_sch</a>,
+                and
+                <a href="../examples/stm32_usb_buck/schematic_output.py">stm32_usb_buck/schematic_output.py</a>
+              </td>
+            </tr>
+            <tr>
+              <td>References, values, and properties</td>
+              <td>
+                Component references are supported through Volt reference designators.
+                The writer emits <code>Reference</code>, <code>Value</code>, hidden
+                <code>VoltComponentId</code>, and additional component properties that
+                do not imply new EDA meaning. Unknown KiCad fields should remain
+                provenance or produce a loss warning on import.
+              </td>
+              <td>
+                <a href="../tests/adapters/kicad_schematic_writer_test.cpp">kicad_schematic_writer_test.cpp</a>,
+                <a href="../tests/fixtures/kicad_flat_resistor.kicad_sch">kicad_flat_resistor.kicad_sch</a>,
+                and
+                <a href="../tests/fixtures/led_circuit.volt.json">led_circuit.volt.json</a>
+              </td>
+            </tr>
+            <tr>
+              <td>Footprint fields</td>
+              <td>
+                A complete Volt selected physical part may carry a footprint library and
+                name. The writer emits a KiCad <code>Footprint</code> property when the
+                component has selected-part data. A bare KiCad footprint string remains
+                incomplete selected-part data on import; it should be preserved as
+                provenance or reported as incomplete until Volt owns a footprint-only
+                assignment primitive.
+              </td>
+              <td>
+                <a href="../include/volt/adapters/kicad/schematic_writer.hpp">schematic_writer.hpp</a>,
+                <a href="../tests/circuit/led_circuit_test.cpp">led_circuit_test.cpp</a>,
+                and
+                <a href="../tests/fixtures/typed_electrical_attributes.volt.json">typed_electrical_attributes.volt.json</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          The current golden KiCad fixture is intentionally small:
+          <a href="../tests/fixtures/kicad_flat_resistor.kicad_sch">kicad_flat_resistor.kicad_sch</a>
+          proves a flat resistor schematic with symbol definition, symbol instance, wire,
+          label, reference, value, hidden Volt provenance, and component property output.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Unsupported and lossy</aside>
+      <div class="stack">
+        <h2>Unsupported KiCad constructs are reported; they are not smuggled into core.</h2>
+        <p>
+          The adapter reports imperfect interoperability through
+          <code>LossReport</code>. A warning has a severity, a category, the KiCad
+          construct name, and a human-readable message. Import/export callers can render
+          those warnings in Python, CLI output, or structured logs without giving KiCad
+          file-format details ownership over Volt's kernel model.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>KiCad construct</th>
+              <th>Boundary behavior</th>
+              <th>Report category</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>No-connect markers</td>
+              <td>
+                Reject or warn until Volt has an explicit no-connect design-intent
+                primitive. Do not model them as missing wires or hidden properties.
+              </td>
+              <td><code>UnsupportedConstruct</code></td>
+            </tr>
+            <tr>
+              <td>Hierarchical sheets, sheet pins, hierarchical labels</td>
+              <td>
+                The writer exports only the first flat schematic sheet and reports
+                additional sheets. Hierarchical constructs are deferred until module-aware
+                schematic projection can preserve meaning. Do not flatten silently when it
+                would change connectivity or scope.
+              </td>
+              <td><code>UnsupportedConstruct</code></td>
+            </tr>
+            <tr>
+              <td>Buses and bus entries</td>
+              <td>
+                Defer until Volt owns bus semantics. Individual wire runs may only be
+                exported when they already refer to canonical scalar Volt nets.
+              </td>
+              <td><code>UnsupportedConstruct</code></td>
+            </tr>
+            <tr>
+              <td>Junction dots, graphical connection hints</td>
+              <td>
+                Import may use them while lowering a foreign file into logical nets.
+                Stored Volt schematic data must reference canonical nets afterward.
+              </td>
+              <td><code>LossyConstruct</code> if presentation is approximated</td>
+            </tr>
+            <tr>
+              <td>Circles, arcs, and rich symbol styling</td>
+              <td>
+                Symbol circles and arcs are reported by the first writer subset. Stroke
+                details, fill details, fonts, text effects, and KiCad-only graphical flags
+                are approximated or omitted unless represented by Volt symbol primitives.
+              </td>
+              <td><code>UnsupportedConstruct</code> or <code>LossyConstruct</code></td>
+            </tr>
+            <tr>
+              <td>Footprint-only assignments</td>
+              <td>
+                Preserve as provenance or warn until Volt has a kernel-owned
+                footprint-assignment concept. Do not create incomplete selected parts.
+              </td>
+              <td><code>IncompleteConstruct</code></td>
+            </tr>
+            <tr>
+              <td>PCB, routing, ERC, simulation, project metadata</td>
+              <td>
+                Out of scope for the schematic adapter. These belong to future explicit
+                Volt model data or validation layers, not to the KiCad schematic path.
+              </td>
+              <td><code>UnsupportedConstruct</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout warning">
+          Missing compatibility coverage should become a follow-up ticket such as a future
+          hierarchy, bus, no-connect, or richer symbol-primitive ticket. VOL-65 should not
+          grow the KiCad parser or writer behavior.
+        </div>
+        <p>
+          Boundary tests:
+          <a href="../tests/adapters/kicad_boundary_test.cpp">kicad_boundary_test.cpp</a>
+          keeps KiCad adapter headers outside the Volt umbrella, and
+          <a href="../tests/adapters/kicad_loss_report_test.cpp">kicad_loss_report_test.cpp</a>
+          fixes the structured warning vocabulary used by unsupported, incomplete, and
+          lossy constructs. Export tests:
+          <a href="../tests/adapters/kicad_schematic_writer_test.cpp">kicad_schematic_writer_test.cpp</a>
+          compare current writer output with the golden KiCad fixture.
+        </p>
+      </div>
+    </section>
+
+    <section>
       <aside>Key decisions</aside>
       <div class="stack">
         <div class="decision">
