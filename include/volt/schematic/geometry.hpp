@@ -132,6 +132,24 @@ inline constexpr double schematic_geometry_tolerance = 1e-9;
 /** Classify how two schematic segments relate geometrically. */
 [[nodiscard]] inline SchematicSegmentRelationship
 classify_segment_relationship(SchematicSegment first, SchematicSegment second) noexcept {
+    const auto first_is_point = same_schematic_point(first.start(), first.end());
+    const auto second_is_point = same_schematic_point(second.start(), second.end());
+    if (first_is_point && second_is_point) {
+        return same_schematic_point(first.start(), second.start())
+                   ? SchematicSegmentRelationship::EndpointTouch
+                   : SchematicSegmentRelationship::Disjoint;
+    }
+    if (first_is_point) {
+        return point_on_schematic_segment(first.start(), second)
+                   ? SchematicSegmentRelationship::EndpointTouch
+                   : SchematicSegmentRelationship::Disjoint;
+    }
+    if (second_is_point) {
+        return point_on_schematic_segment(second.start(), first)
+                   ? SchematicSegmentRelationship::EndpointTouch
+                   : SchematicSegmentRelationship::Disjoint;
+    }
+
     const auto first_to_second_start = detail::cross(first.start(), first.end(), second.start());
     const auto first_to_second_end = detail::cross(first.start(), first.end(), second.end());
     const auto second_to_first_start = detail::cross(second.start(), second.end(), first.start());

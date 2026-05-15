@@ -241,6 +241,14 @@ TEST_CASE("Schematic geometry classifies segment relationships and junction sema
     CHECK(disjoint == volt::SchematicSegmentRelationship::Disjoint);
     CHECK_FALSE(volt::same_net_segments_join(disjoint, volt::SchematicJunction::Present));
     CHECK_FALSE(volt::different_net_segments_collide(disjoint, volt::SchematicJunction::Present));
+
+    const auto repeated_point_far_away = volt::classify_segment_relationship(
+        volt::SchematicSegment{volt::Point{5.0, 10.0}, volt::Point{5.0, 10.0}}, horizontal);
+    CHECK(repeated_point_far_away == volt::SchematicSegmentRelationship::Disjoint);
+
+    const auto repeated_point_on_segment = volt::classify_segment_relationship(
+        volt::SchematicSegment{volt::Point{5.0, 0.0}, volt::Point{5.0, 0.0}}, horizontal);
+    CHECK(repeated_point_on_segment == volt::SchematicSegmentRelationship::EndpointTouch);
 }
 
 TEST_CASE("Schematic allows same-net joins but rejects different-net wire collisions") {
