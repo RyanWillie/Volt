@@ -355,7 +355,6 @@ inline void write_no_connect_marker_svg(std::ostream &out, const Schematic &sche
     out << "      <line class=\"no-connect-line\" x1=\"-3\" y1=\"-3\" x2=\"3\" y2=\"3\"/>\n";
     out << "      <line class=\"no-connect-line\" x1=\"-3\" y1=\"3\" x2=\"3\" y2=\"-3\"/>\n";
     out << "    </g>\n";
-    static_cast<void>(schematic);
 }
 
 inline void write_sheet_port_svg(std::ostream &out, const Schematic &schematic, SheetPortId id) {
@@ -374,7 +373,6 @@ inline void write_sheet_port_svg(std::ostream &out, const Schematic &schematic, 
     out << "      <text class=\"sheet-port-label\" x=\"4\" y=\"2\">" << svg_escape(port.name())
         << "</text>\n";
     out << "    </g>\n";
-    static_cast<void>(schematic);
 }
 
 inline void write_symbol_field_svg(std::ostream &out, const Schematic &schematic,
@@ -394,7 +392,6 @@ inline void write_symbol_field_svg(std::ostream &out, const Schematic &schematic
     out << ' ';
     write_svg_number(out, field.position().y());
     out << ")\">" << svg_escape(field.value()) << "</text>\n";
-    static_cast<void>(schematic);
 }
 
 inline void write_title_block_svg(std::ostream &out, const SheetMetadata &metadata) {
@@ -426,11 +423,11 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
     }
 
     out << "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ";
-    detail::write_svg_number(out, detail::svg_sheet_width);
+    detail::write_svg_number(out, width);
     out << ' ';
     detail::write_svg_number(out, height);
     out << "\" width=\"";
-    detail::write_svg_number(out, detail::svg_sheet_width);
+    detail::write_svg_number(out, width);
     out << "\" height=\"";
     detail::write_svg_number(out, height);
     out << "\">\n";

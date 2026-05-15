@@ -134,3 +134,18 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
                    "data-field=\"value\" x=\"40\" y=\"32\"") != std::string::npos);
     CHECK(svg.find(">10k</text>") != std::string::npos);
 }
+
+TEST_CASE("Schematic SVG writer expands the root viewport to sheet metadata") {
+    volt::Circuit circuit;
+    auto schematic = volt::Schematic{circuit};
+    [[maybe_unused]] const auto sheet = schematic.add_sheet(
+        volt::Sheet{"Wide", volt::SheetMetadata{"Wide", volt::SheetSize{420.0, 297.0}}});
+
+    const auto svg = volt::io::write_schematic_svg(schematic);
+
+    CHECK(svg.find("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 420 297\"") !=
+          std::string::npos);
+    CHECK(svg.find("width=\"420\" height=\"297\"") != std::string::npos);
+    CHECK(svg.find("<rect class=\"sheet\" x=\"0\" y=\"0\" width=\"420\" height=\"297\"/>") !=
+          std::string::npos);
+}
