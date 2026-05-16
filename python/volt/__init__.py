@@ -1063,10 +1063,14 @@ class SchematicSymbol:
         return self._schematic._design._circuit.schematic_symbol_pin_refs(self._index)
 
     def _pin_anchor_for_ref(self, pin_ref) -> SchematicPinAnchor:
+        if self._component is None:
+            raise ValueError(
+                "Schematic pin anchors require the Component handle returned by Schematic.place()"
+            )
         pin = Pin(
             self._schematic._design,
             self._schematic._design._circuit.pin_by_number(
-                self.component.index, pin_ref["number"]
+                self._component.index, pin_ref["number"]
             ),
         )
         return SchematicPinAnchor(
@@ -1113,7 +1117,12 @@ class SchematicNetLabel:
 
 
 class SchematicWireBuilder:
-    """Fluent authoring helper for one schematic wire run."""
+    """Fluent authoring helper for one schematic wire run.
+
+    Start with ``from_()``, append any explicit intermediate anchors with ``via()``,
+    append the intended endpoint with ``to()``, then persist the run with ``direct()``
+    or ``orthogonal()``.
+    """
 
     def __init__(self, schematic: Schematic, net: Net):
         self._schematic = schematic
@@ -1125,19 +1134,23 @@ class SchematicWireBuilder:
         return self
 
     def via(self, point) -> SchematicWireBuilder:
+        """Append an explicit intermediate point that the route should preserve."""
         self._require_started()
         self._points.append(_schematic_point(point, design=self._schematic._design))
         return self
 
     def to(self, point) -> SchematicWireBuilder:
+        """Append the next route point, normally the terminal endpoint."""
         self._require_started()
         self._points.append(_schematic_point(point, design=self._schematic._design))
         return self
 
     def direct(self) -> SchematicWire:
+        """Persist the collected points without inserting an automatic bend."""
         return self._schematic._add_wire(self._net, self._points, route_intent="Direct")
 
     def orthogonal(self) -> SchematicWire:
+        """Persist the run, inserting one bend only for a two-point diagonal route."""
         return self._schematic._add_wire(
             self._net, _orthogonal_wire_points(self._points), route_intent="Orthogonal"
         )
@@ -1209,11 +1222,7 @@ class Schematic:
         if points is None:
             return SchematicWireBuilder(self, net)
 
-        return self._add_wire(
-            net,
-            tuple(_schematic_point(point, design=self._design) for point in points),
-            route_intent="Direct",
-        )
+        return self._add_wire(net, points, route_intent="Direct")
 
     def _add_wire(
         self,
@@ -1770,6 +1779,11 @@ def _resolve_schematic_symbol_pin_ref(pin_refs, key: int | str):
 def _orthogonal_wire_points(
     points: Iterable[tuple[float, float]],
 ) -> tuple[tuple[float, float], ...]:
+    """Return orthogonal route points while preserving explicit author points.
+
+    For a simple two-point diagonal route, insert a single horizontal-then-vertical
+    bend. For routes with explicit ``via()`` points, keep the authored path unchanged.
+    """
     result = tuple(points)
     if len(result) == 2:
         start, end = result

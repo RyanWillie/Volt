@@ -1138,6 +1138,7 @@ def test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects():
     schematic.wire(vcc).from_(vcc_port).to(r1_left).orthogonal()
     schematic.wire(led_a).from_(r1_right).to(led_anode).orthogonal()
     schematic.wire(gnd).from_(led_cathode).to(ground_port).orthogonal()
+    schematic.wire(led_a).from_(r1_right).via(r1_right.right(30)).to(led_anode).orthogonal()
     schematic.wire(led_a, points=(sheet_port.pin, led_anode.right(8)))
 
     logical = json.loads(design.to_json())
@@ -1155,7 +1156,13 @@ def test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects():
         {"x": 110.0, "y": 40.0},
         {"x": 110.0, "y": 30.0},
     ]
-    assert projection["wire_runs"][3]["route_intent"] == "Direct"
+    assert projection["wire_runs"][3]["route_intent"] == "Orthogonal"
+    assert projection["wire_runs"][3]["points"] == [
+        {"x": 40.0, "y": 40.0},
+        {"x": 70.0, "y": 40.0},
+        {"x": 110.0, "y": 30.0},
+    ]
+    assert projection["wire_runs"][4]["route_intent"] == "Direct"
     assert projection["net_labels"][0]["orientation"] == "Left"
     assert label.orientation == "Left"
     assert projection["junctions"][0]["position"] == {"x": 75.0, "y": 40.0}
@@ -1172,6 +1179,27 @@ def test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects():
     assert 'class="power-port power"' in svg
     assert 'class="no-connect-marker"' in svg
     assert 'class="sheet-port off-page"' in svg
+
+
+def test_python_schematic_explicit_wire_points_are_normalized_once():
+    design = volt.Design("schematic-wire-normalization")
+    vcc = design.net("VCC", kind="power")
+    original = volt._schematic_point
+    calls = 0
+
+    def counting_schematic_point(value, *, design):
+        nonlocal calls
+        calls += 1
+        return original(value, design=design)
+
+    schematic = design.schematic("Main")
+    volt._schematic_point = counting_schematic_point
+    try:
+        schematic.wire(vcc, points=[(20, 20), (40, 20)])
+    finally:
+        volt._schematic_point = original
+
+    assert calls == 2
 
 
 def test_python_schematic_dsl_rejects_invalid_references():
@@ -1206,6 +1234,23 @@ def test_python_schematic_dsl_rejects_invalid_references():
         assert str(error) == "Schematic anchor belongs to a different design"
     else:
         raise AssertionError("no-connect markers must reject pins from another design")
+
+
+def test_detached_schematic_symbol_pin_helpers_report_missing_component_context():
+    design = volt.Design("schematic-detached-symbol")
+    r1 = design.R("10k", ref="R1")
+    schematic = design.schematic("Main")
+    placed = schematic.place(r1, at=(40, 20), symbol="resistor")
+    detached = volt.SchematicSymbol(schematic, placed.index)
+
+    try:
+        detached.pin(1)
+    except ValueError as error:
+        assert str(error) == (
+            "Schematic pin anchors require the Component handle returned by Schematic.place()"
+        )
+    else:
+        raise AssertionError("detached symbol pin helpers should explain missing component context")
 
 
 def test_python_schematic_writes_svg_projection():
@@ -1352,7 +1397,9 @@ if __name__ == "__main__":
     test_python_schematic_placement_serializes_kernel_projection()
     test_python_schematic_symbol_handles_expose_pin_anchors()
     test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects()
+    test_python_schematic_explicit_wire_points_are_normalized_once()
     test_python_schematic_dsl_rejects_invalid_references()
+    test_detached_schematic_symbol_pin_helpers_report_missing_component_context()
     test_python_schematic_writes_svg_projection()
     test_python_schematic_readiness_reports_detached_net_stubs()
     test_stm32_usb_buck_native_symbols_place_and_render()

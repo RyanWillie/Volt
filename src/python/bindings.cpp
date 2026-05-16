@@ -435,11 +435,39 @@ schematic_orientation_from_string(const std::string &value) {
     throw std::logic_error{"Unhandled schematic orientation"};
 }
 
+[[nodiscard]] int schematic_orientation_quarter_turns(volt::SchematicOrientation value) {
+    switch (value) {
+    case volt::SchematicOrientation::Right:
+        return 0;
+    case volt::SchematicOrientation::Down:
+        return 1;
+    case volt::SchematicOrientation::Left:
+        return 2;
+    case volt::SchematicOrientation::Up:
+        return 3;
+    }
+    throw std::logic_error{"Unhandled schematic orientation"};
+}
+
+[[nodiscard]] volt::SchematicOrientation schematic_orientation_from_quarter_turns(int value) {
+    switch (value % 4) {
+    case 0:
+        return volt::SchematicOrientation::Right;
+    case 1:
+        return volt::SchematicOrientation::Down;
+    case 2:
+        return volt::SchematicOrientation::Left;
+    case 3:
+        return volt::SchematicOrientation::Up;
+    }
+    throw std::logic_error{"Unhandled schematic orientation turn count"};
+}
+
 [[nodiscard]] volt::SchematicOrientation
 rotated_schematic_orientation(volt::SchematicOrientation local,
                               volt::SchematicOrientation instance) {
-    const auto combined = (static_cast<int>(local) + static_cast<int>(instance)) % 4;
-    return static_cast<volt::SchematicOrientation>(combined);
+    return schematic_orientation_from_quarter_turns(schematic_orientation_quarter_turns(local) +
+                                                    schematic_orientation_quarter_turns(instance));
 }
 
 [[nodiscard]] volt::RouteIntent route_intent_from_string(const std::string &value) {

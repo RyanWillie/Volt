@@ -14,7 +14,9 @@ projection entry point:
 - serialize deterministic logical circuit files
 - create schematic sheets
 - place existing logical components with built-in schematic symbols
-- draw schematic wire runs and net labels over existing logical nets
+- draw schematic wire runs from anchors, pins, ports, and explicit points
+- place schematic net labels, power/ground ports, junctions, sheet ports, and
+  no-connect markers over existing logical nets and pins
 - serialize deterministic schematic projection files
 
 PCB design, richer schematic drawing, and richer ERC remain planned layers. The Python API
@@ -375,10 +377,18 @@ led_a += r1[2], d1["A"]
 gnd += d1["K"]
 
 sch = d.schematic("Main")
-sch.place(r1, at=(40, 20), symbol="resistor")
-sch.place(d1, at=(90, 20), symbol="led")
-sch.wire(vcc, [(20, 20), (40, 20)])
-sch.label(vcc, at=(20, 16))
+r_sym = sch.place(r1, at=(40, 20), symbol="resistor")
+d_sym = sch.place(d1, at=(110, 30), symbol="led")
+
+vcc_port = sch.power("VCC", net=vcc, at=r_sym.pin(1).left(20))
+gnd_port = sch.ground(net=gnd, at=d_sym.pin("K").down(30))
+
+sch.wire(vcc).from_(vcc_port).to(r_sym.pin(1)).orthogonal()
+sch.wire(led_a).from_(r_sym.pin(2)).via(r_sym.pin(2).right(30)).to(d_sym.pin("A")).orthogonal()
+sch.wire(gnd).from_(d_sym.pin("K")).to(gnd_port).orthogonal()
+
+sch.label(led_a, at=r_sym.pin(2).right(8), orient="Left")
+sch.junction(led_a, at=r_sym.pin(2).right(35))
 
 schematic_json = sch.to_json()
 schematic_svg = sch.to_svg()
@@ -393,21 +403,36 @@ loaded = d.load_schematic_json(schematic_json)
 kernel-owned `SymbolDefinition`. The first built-in symbol set is intentionally small:
 `resistor`, `capacitor`, `led`, and `connector_1x02`.
 
-`sch.wire(net, points)` stores a `WireRun` over an existing `NetId`. `sch.label(net,
-at=(x, y))` stores a `NetLabel` over that same canonical net; the visible text comes from
-the logical net name, not from a separate schematic-only string. These helpers visualize
-connectivity that already exists in the logical circuit. They do not connect pins, create
-nets, or merge net names.
+`sch.place(...)` returns a `SchematicSymbol` handle. `symbol.pin(key)` returns a
+`SchematicPinAnchor` containing the sheet coordinate, the kernel-owned logical pin, the
+pin name, number, and transformed orientation. Anchors have `.left(distance)`,
+`.right(distance)`, `.up(distance)`, and `.down(distance)` helpers for nearby labels,
+ports, and bends. `symbol.pin_anchor(number)` remains available when only the coordinate
+tuple is needed.
 
-`sch.place(...)` returns a `SchematicSymbol` handle. `symbol.pin_anchor(number)` returns
-the kernel-transformed sheet coordinate for a symbol pin number, so Python examples can
-place wires and labels relative to pins without reimplementing schematic orientation math.
+`sch.wire(net)` returns a builder: start with `from_()`, add explicit intermediate
+points with `via()`, append the endpoint with `to()`, then call `direct()` or
+`orthogonal()`. Orthogonal routing inserts one bend only for a simple two-point diagonal
+route; explicit `via()` points are preserved. Direct point authoring is still available
+as `sch.wire(net, points=[...])`. Every wire stores a `WireRun` over an existing `NetId`.
+
+`sch.label(net, at=..., orient=...)` stores a `NetLabel` over that same canonical net;
+the visible text comes from the logical net name, not from a separate schematic-only
+string. `sch.power()`, `sch.ground()`, `sch.junction()`, `sch.sheet_port()`,
+`sch.off_page()`, and `sch.no_connect(symbol.pin("NC"), reason="...")` lower to
+kernel-owned schematic objects. These helpers visualize connectivity and design intent
+that already exists in the logical circuit. They do not connect pins, create nets, or
+merge net names.
+
+`Design.nets()` and `Net.pins()` expose kernel net membership for inspection and
+authoring convenience. They are not alternate mutation handles; connectivity still
+changes through the logical circuit APIs.
 
 `Design.to_json()` still writes the logical circuit. `Schematic.to_json()` and
 `Schematic.write_json(path)` write the `volt.schematic` document JSON. The schematic
 document is owned alongside the logical circuit as a project artifact: it stores sheets,
-symbols, wire runs, labels, and presentation metadata that reference existing logical
-`ComponentId`, `PinId`, and `NetId` values.
+symbols, wire runs, labels, ports, junctions, no-connect markers, and presentation
+metadata that reference existing logical `ComponentId`, `PinId`, and `NetId` values.
 
 `Design.load_schematic_json(text)` and `Design.load_schematic(path)` replace the current
 schematic document after the kernel reader validates every logical reference against the
