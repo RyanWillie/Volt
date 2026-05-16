@@ -177,6 +177,10 @@ class SymbolPin {
     /** Return the pin orientation at the anchor. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
 
+    /** Return whether two symbol pins have the same displayed endpoint. */
+    [[nodiscard]] friend bool operator==(const SymbolPin &lhs,
+                                         const SymbolPin &rhs) noexcept = default;
+
   private:
     std::string name_;
     std::string number_;
@@ -219,6 +223,10 @@ class SymbolDefinition {
     [[nodiscard]] const std::vector<SymbolPrimitive> &primitives() const noexcept {
         return primitives_;
     }
+
+    /** Return whether two symbol definitions have the same name and geometry. */
+    [[nodiscard]] friend bool operator==(const SymbolDefinition &lhs,
+                                         const SymbolDefinition &rhs) noexcept = default;
 
   private:
     std::string name_;

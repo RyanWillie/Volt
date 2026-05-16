@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cstddef>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -197,20 +199,51 @@ class DefinitionSource {
     std::string version_;
 };
 
+/** Named schematic symbol choice attached to a reusable component definition. */
+class SchematicSymbolReference {
+  public:
+    /** Construct a schematic symbol reference with a variant label. */
+    explicit SchematicSymbolReference(std::string name, std::string variant = "default")
+        : name_{std::move(name)}, variant_{std::move(variant)} {
+        if (name_.empty()) {
+            throw std::invalid_argument{"Schematic symbol name must not be empty"};
+        }
+        if (variant_.empty()) {
+            throw std::invalid_argument{"Schematic symbol variant must not be empty"};
+        }
+    }
+
+    /** Return the schematic symbol definition name. */
+    [[nodiscard]] const std::string &name() const noexcept { return name_; }
+
+    /** Return the component-local symbol variant label. */
+    [[nodiscard]] const std::string &variant() const noexcept { return variant_; }
+
+    /** Return whether two references point at the same named variant. */
+    [[nodiscard]] friend bool operator==(const SchematicSymbolReference &lhs,
+                                         const SchematicSymbolReference &rhs) noexcept = default;
+
+  private:
+    std::string name_;
+    std::string variant_;
+};
+
 /** Reusable logical component definition made from pin definition IDs. */
 class ComponentDefinition {
   public:
     /** Construct a component definition with a name, ordered pin definitions, and properties. */
     ComponentDefinition(std::string name, std::vector<PinDefId> pins, PropertyMap properties = {},
-                        std::optional<DefinitionSource> source = std::nullopt)
+                        std::optional<DefinitionSource> source = std::nullopt,
+                        std::vector<SchematicSymbolReference> schematic_symbols = {})
         : name_{std::move(name)}, pins_{std::move(pins)}, properties_{std::move(properties)},
-          source_{std::move(source)} {
+          source_{std::move(source)}, schematic_symbols_{std::move(schematic_symbols)} {
         if (name_.empty()) {
             throw std::invalid_argument{"Component definition name must not be empty"};
         }
         if (pins_.empty()) {
             throw std::invalid_argument{"Component definition must contain at least one pin"};
         }
+        require_unique_schematic_symbol_variants();
     }
 
     /** Return the reusable component name, such as Resistor or LED. */
@@ -225,11 +258,31 @@ class ComponentDefinition {
     /** Return source provenance for this definition, if it was imported from a library. */
     [[nodiscard]] const std::optional<DefinitionSource> &source() const noexcept { return source_; }
 
+    /** Return schematic symbol choices available for this component definition. */
+    [[nodiscard]] const std::vector<SchematicSymbolReference> &schematic_symbols() const noexcept {
+        return schematic_symbols_;
+    }
+
   private:
+    void require_unique_schematic_symbol_variants() const {
+        for (std::size_t index = 0; index < schematic_symbols_.size(); ++index) {
+            const auto duplicate =
+                std::any_of(schematic_symbols_.begin() + static_cast<std::ptrdiff_t>(index + 1U),
+                            schematic_symbols_.end(), [this, index](const auto &candidate) {
+                                return candidate.variant() == schematic_symbols_[index].variant();
+                            });
+            if (duplicate) {
+                throw std::invalid_argument{
+                    "Component definition schematic symbol variants must be unique"};
+            }
+        }
+    }
+
     std::string name_;
     std::vector<PinDefId> pins_;
     PropertyMap properties_;
     std::optional<DefinitionSource> source_;
+    std::vector<SchematicSymbolReference> schematic_symbols_;
 };
 
 } // namespace volt

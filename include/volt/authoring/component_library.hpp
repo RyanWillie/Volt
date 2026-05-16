@@ -48,6 +48,8 @@ struct ComponentSpec {
     PropertyMap properties = {};
     /** Optional provenance for built-in or imported library definitions. */
     std::optional<DefinitionSource> source = std::nullopt;
+    /** Optional schematic symbol choices owned by the component definition. */
+    std::vector<SchematicSymbolReference> schematic_symbols = {};
 };
 
 /** Return a simple passive pin preset. */
@@ -80,7 +82,8 @@ struct ComponentSpec {
     }
 
     return circuit.add_component_definition(
-        ComponentDefinition{spec.name, std::move(pin_definitions), spec.properties, spec.source});
+        ComponentDefinition{spec.name, std::move(pin_definitions), spec.properties, spec.source,
+                            spec.schematic_symbols});
 }
 
 /** Return a two-pin passive resistor component specification. */

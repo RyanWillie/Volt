@@ -444,6 +444,7 @@ class Schematic {
         require_sheet(sheet);
         require_symbol_definition(instance.symbol_definition());
         static_cast<void>(circuit_.component(instance.component()));
+        require_symbol_matches_component(instance.symbol_definition(), instance.component());
 
         const auto id = symbol_instances_.insert(std::move(instance));
         sheets_.get(sheet).add_symbol_instance(id);
@@ -643,6 +644,16 @@ class Schematic {
     void require_symbol_instance(SymbolInstanceId instance) const {
         if (!symbol_instances_.contains(instance)) {
             throw std::out_of_range{"Symbol instance ID does not belong to this schematic"};
+        }
+    }
+
+    void require_symbol_matches_component(SymbolDefId symbol_definition,
+                                          ComponentId component) const {
+        const auto &symbol = symbol_definitions_.get(symbol_definition);
+        for (const auto &pin : symbol.pins()) {
+            if (!circuit_.pin_by_number(component, pin.number()).has_value()) {
+                throw std::logic_error{"Schematic symbol pin does not match component pin"};
+            }
         }
     }
 
