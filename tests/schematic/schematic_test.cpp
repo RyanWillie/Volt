@@ -700,6 +700,34 @@ TEST_CASE("Schematic validation reports no-connect markers without kernel-owned 
                       volt::EntityRef::component(component)});
 }
 
+TEST_CASE("Schematic validation accepts no-connect markers on no-connect pin definitions") {
+    volt::Circuit circuit;
+    const auto pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+        "NC", "1", volt::PinRole::NoConnect, volt::ConnectionRequirement::Optional});
+    const auto component_definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"NoConnectPad", std::vector{pin_definition}});
+    const auto component =
+        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"TP1"});
+    const auto pin = circuit.pin_by_number(component, "1").value();
+
+    auto symbol_definition = volt::SymbolDefinition{"NoConnectPad"};
+    symbol_definition.add_pin(
+        volt::SymbolPin{"NC", "1", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Right});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(std::move(symbol_definition));
+    [[maybe_unused]] const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}});
+    [[maybe_unused]] const auto marker =
+        schematic.add_no_connect_marker(sheet, volt::NoConnectMarker{pin, volt::Point{40.0, 20.0}});
+
+    const auto report = volt::validate_schematic_readiness(schematic);
+
+    CHECK_FALSE(report.has_errors());
+    CHECK(report.count() == 0);
+}
+
 TEST_CASE("Schematic geometry rejects non-finite coordinates") {
     CHECK_THROWS_AS(volt::Point(0.0, std::numeric_limits<double>::infinity()),
                     std::invalid_argument);

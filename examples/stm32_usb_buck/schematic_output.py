@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import volt
 from volt.libraries import stm32_usb_buck as lib
 
@@ -198,7 +200,7 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
         led_d,
     )
     _mark_no_connects(mcu, connectors, placements, net_by_pin)
-    author.cover_remaining_pin_anchors(placements)
+    author.audit_no_fallback_pin_coverage(placements)
     return power
 
 
@@ -270,10 +272,11 @@ class _SchematicAuthor:
         label_at = anchor.right(6) if label else None
         self.wire(sheet, net, anchor, port.pin, label_at=label_at)
 
-    def cover_remaining_pin_anchors(
+    def audit_no_fallback_pin_coverage(
         self,
         placements: list[tuple[volt.Schematic, volt.SchematicSymbol]],
     ) -> None:
+        missing: list[str] = []
         for sheet, placement in placements:
             for anchor in placement.pin_anchors():
                 if anchor.pin.index in self._covered_pins:
@@ -281,11 +284,27 @@ class _SchematicAuthor:
                 net = self._net_by_pin.get(anchor.pin.index)
                 if net is None:
                     continue
-                self.rail(sheet, net, anchor, orient=anchor.orientation)
+                component_ref = self._component_reference(placement.component)
+                missing.append(f"{sheet.name}: {component_ref}.{anchor.name} -> {net.name}")
+        if missing:
+            details = "\n".join(f"- {item}" for item in missing)
+            raise RuntimeError(
+                "fallback schematic pin coverage would hide unauthored connected pins:\n"
+                f"{details}"
+            )
 
     def _cover(self, point) -> None:
         if isinstance(point, volt.SchematicPinAnchor):
             self._covered_pins.add(point.pin.index)
+
+    @staticmethod
+    def _component_reference(component: volt.Component) -> str:
+        logical = json.loads(component._design.to_json())
+        component_id = f"component:{component.index}"
+        for item in logical["components"]:
+            if item["id"] == component_id:
+                return item["reference"]
+        return component_id
 
 
 def _author_power_sheet(
