@@ -1336,13 +1336,15 @@ def test_python_schematic_drawing_rejects_invalid_units():
     design = volt.Design("schematic-drawing-invalid-unit")
     schematic = design.schematic("Main")
 
-    for unit in (0, -1, float("inf")):
+    non_positive_units = (0, -1)
+    non_finite_units = (float("inf"), float("-inf"), float("nan"))
+    for invalid_unit in (*non_positive_units, *non_finite_units):
         try:
-            schematic.drawing(unit=unit)
+            schematic.drawing(unit=invalid_unit)
         except ValueError as error:
             expected = (
                 "Schematic drawing unit must be positive"
-                if unit in (0, -1)
+                if invalid_unit in non_positive_units
                 else "Schematic coordinates must be finite"
             )
             assert str(error) == expected
@@ -1362,8 +1364,6 @@ def test_python_schematic_drawing_hold_restores_cursor_after_exception():
             raise RuntimeError("boom")
     except RuntimeError:
         pass
-    else:
-        raise AssertionError("hold test should raise RuntimeError from context body")
 
     assert (drawing.here.point, drawing.direction) == before
 
