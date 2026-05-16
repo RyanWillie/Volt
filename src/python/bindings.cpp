@@ -1429,6 +1429,22 @@ class PyCircuit {
             .index();
     }
 
+    [[nodiscard]] std::size_t add_schematic_symbol_field(std::size_t sheet, std::size_t instance,
+                                                         const std::string &name,
+                                                         const std::string &value, double x,
+                                                         double y, const std::string &orientation) {
+        require_finite(x, "Schematic coordinates must be finite");
+        require_finite(y, "Schematic coordinates must be finite");
+
+        auto &projection = schematic_projection();
+        return projection
+            .add_symbol_field(sheet_id(sheet),
+                              volt::SymbolField{volt::SymbolInstanceId{instance}, name, value,
+                                                volt::Point{x, y},
+                                                schematic_orientation_from_string(orientation)})
+            .index();
+    }
+
     [[nodiscard]] std::string schematic_to_json() {
         auto out = std::ostringstream{};
         volt::io::write_schematic(out, schematic_document_);
@@ -1629,6 +1645,9 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("reason") = "")
         .def("add_schematic_sheet_port", &PyCircuit::add_schematic_sheet_port, py::arg("sheet"),
              py::arg("net"), py::arg("name"), py::arg("kind"), py::arg("x"), py::arg("y"),
+             py::arg("orientation"))
+        .def("add_schematic_symbol_field", &PyCircuit::add_schematic_symbol_field, py::arg("sheet"),
+             py::arg("instance"), py::arg("name"), py::arg("value"), py::arg("x"), py::arg("y"),
              py::arg("orientation"))
         .def("schematic_to_json", &PyCircuit::schematic_to_json)
         .def("schematic_to_svg", &PyCircuit::schematic_to_svg)
