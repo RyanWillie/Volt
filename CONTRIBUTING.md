@@ -61,6 +61,12 @@ find include src tests examples -type f \( -name '*.cpp' -o -name '*.hpp' \) -pr
   | xargs -0 clang-format -i
 ```
 
+To install the repo-owned pre-push hook that blocks pushes when formatting is invalid:
+
+```sh
+python3 scripts/install-git-hooks.py
+```
+
 ## Testing Expectations
 
 Use test-driven development for non-trivial behavior changes:

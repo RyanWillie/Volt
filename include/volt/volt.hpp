@@ -24,5 +24,6 @@
 #include <volt/io/schematic_writer.hpp>
 #include <volt/schematic/geometry.hpp>
 #include <volt/schematic/schematic.hpp>
+#include <volt/schematic/schematic_document.hpp>
 #include <volt/schematic/symbols.hpp>
 #include <volt/schematic/validation.hpp>

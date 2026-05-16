@@ -1026,6 +1026,53 @@ def test_python_schematic_placement_serializes_kernel_projection():
     assert projection["symbol_fields"] == []
 
 
+def test_python_schematic_json_round_trips_as_design_document():
+    design = volt.Design("schematic-round-trip")
+    vcc = design.net("VCC", kind="power")
+    r1 = design.R(resistance=330, ref="R1")
+
+    schematic = design.schematic("Main")
+    schematic.place(r1, at=(40, 20), symbol="resistor")
+    schematic.wire(vcc, [(20, 20), (40, 20)])
+    schematic.label(vcc, at=(20, 16))
+
+    json_text = schematic.to_json()
+
+    loaded = design.load_schematic_json(json_text)
+
+    assert loaded.name == "Main"
+    assert json.loads(loaded.to_json()) == json.loads(json_text)
+    assert not loaded.validate().has_errors
+    assert '<polyline class="wire-run" data-net="net:0" points="20,20 40,20"/>' in loaded.to_svg()
+
+    with TemporaryDirectory() as directory:
+        path = Path(directory) / "schematic.volt.json"
+        loaded.write_json(path)
+        assert json.loads(path.read_text(encoding="utf-8")) == json.loads(json_text)
+        reloaded = design.load_schematic(path)
+        assert json.loads(reloaded.to_json()) == json.loads(json_text)
+
+
+def test_python_schematic_json_load_rejects_stale_logical_ids():
+    design = volt.Design("schematic-stale-reference")
+    vcc = design.net("VCC", kind="power")
+    r1 = design.R(resistance=330, ref="R1")
+
+    schematic = design.schematic("Main")
+    schematic.place(r1, at=(40, 20), symbol="resistor")
+    schematic.wire(vcc, [(20, 20), (40, 20)])
+
+    projection = json.loads(schematic.to_json())
+    projection["wire_runs"][0]["net"] = "net:99"
+
+    try:
+        design.load_schematic_json(json.dumps(projection))
+    except RuntimeError as error:
+        assert str(error) == "Net reference points to a missing logical net: net:99"
+    else:
+        raise AssertionError("stale schematic logical references must fail at load time")
+
+
 def test_python_schematic_symbol_handles_expose_pin_anchors():
     design = volt.Design("schematic-anchors")
     r1 = design.R(resistance=330, ref="R1")
