@@ -71,4 +71,14 @@ if(VOLT_BUILD_TESTS)
         volt_python_stm32_usb_buck_example
         PROPERTIES ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
     )
+    add_test(
+        NAME volt_python_schematic_sugar_examples
+        COMMAND
+            ${Python3_EXECUTABLE}
+            ${PROJECT_SOURCE_DIR}/python/tests/test_schematic_sugar_examples.py
+    )
+    set_tests_properties(
+        volt_python_schematic_sugar_examples
+        PROPERTIES ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
+    )
 endif()
