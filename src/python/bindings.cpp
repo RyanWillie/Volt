@@ -640,6 +640,26 @@ schematic_symbol_references_from_list(const py::list &symbols) {
         return "module_instance";
     case volt::EntityKind::PortDef:
         return "port_definition";
+    case volt::EntityKind::SymbolDef:
+        return "symbol_definition";
+    case volt::EntityKind::Sheet:
+        return "sheet";
+    case volt::EntityKind::SymbolInstance:
+        return "symbol_instance";
+    case volt::EntityKind::WireRun:
+        return "wire_run";
+    case volt::EntityKind::NetLabel:
+        return "net_label";
+    case volt::EntityKind::Junction:
+        return "junction";
+    case volt::EntityKind::PowerPort:
+        return "power_port";
+    case volt::EntityKind::NoConnectMarker:
+        return "no_connect_marker";
+    case volt::EntityKind::SheetPort:
+        return "sheet_port";
+    case volt::EntityKind::SymbolField:
+        return "symbol_field";
     }
 
     throw std::logic_error{"Unhandled diagnostic entity kind"};

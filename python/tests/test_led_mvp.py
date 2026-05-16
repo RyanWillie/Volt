@@ -1288,8 +1288,8 @@ def test_python_schematic_readiness_reports_detached_net_stubs():
 
     schematic = design.schematic("Main")
     schematic.place(r1, at=(40, 20), symbol="resistor")
-    schematic.wire(vcc, [(0, 0), (10, 0)])
-    schematic.label(vcc, at=(0, -2))
+    schematic.wire(vcc, [(0, 12), (10, 12)])
+    schematic.label(vcc, at=(0, 10))
 
     report = schematic.validate()
 
@@ -1304,6 +1304,31 @@ def test_python_schematic_readiness_reports_detached_net_stubs():
         ("pin_definition", 0),
         ("net", vcc.index),
     ]
+
+
+def test_python_schematic_validation_reports_quality_diagnostics():
+    design = volt.Design("schematic-quality")
+    vcc = design.net("VCC", kind="power")
+    r1 = design.R(resistance=330, ref="R1")
+    r2 = design.R(resistance=330, ref="R2")
+    r3 = design.R(resistance=330, ref="R3")
+    vcc += (r1[1], r2[1], r3[1])
+    r1[2].mark_no_connect()
+
+    schematic = design.schematic("Main")
+    first = schematic.place(r1, at=(40, 20), symbol="resistor")
+    second = schematic.place(r2, at=(80, 20), symbol="resistor")
+    third = schematic.place(r3, at=(120, 20), symbol="resistor")
+    schematic.label(vcc, at=first.pin(1))
+    schematic.label(vcc, at=second.pin(1))
+    schematic.label(vcc, at=third.pin(1))
+
+    report = schematic.validate()
+    codes = {diagnostic.code for diagnostic in report}
+
+    assert "SCHEMATIC_NET_FRAGMENTED_PIN_LABELS" in codes
+    assert "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED" in codes
+    assert not report.has_errors
 
 
 def test_stm32_usb_buck_native_symbols_place_and_render():
@@ -1402,6 +1427,7 @@ if __name__ == "__main__":
     test_detached_schematic_symbol_pin_helpers_report_missing_component_context()
     test_python_schematic_writes_svg_projection()
     test_python_schematic_readiness_reports_detached_net_stubs()
+    test_python_schematic_validation_reports_quality_diagnostics()
     test_stm32_usb_buck_native_symbols_place_and_render()
     test_python_schematic_handles_are_publicly_exported()
     test_diagnostics_are_inspectable()

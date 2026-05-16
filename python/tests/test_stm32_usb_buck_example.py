@@ -98,6 +98,12 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert len(logical["design_intent"]["stub_nets"]) >= 4
     assert len(logical["design_intent"]["no_connect_pins"]) >= 20
 
+    schematic_report = main.build_schematic(main.build_board()).validate()
+    schematic_codes = {diagnostic.code for diagnostic in schematic_report}
+    assert not schematic_report.has_errors
+    assert "SCHEMATIC_NET_FRAGMENTED_PIN_LABELS" in schematic_codes
+    assert "SCHEMATIC_REPEATED_NET_LABELS" in schematic_codes
+
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in first_svg_text
     assert ">U1</text>" in first_svg_text
     assert ">+3V3</text>" in first_svg_text
