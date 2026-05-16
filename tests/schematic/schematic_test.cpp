@@ -451,13 +451,15 @@ TEST_CASE("Schematic readiness reports connected symbol pins without visual net 
     const auto &diagnostic = report.diagnostics().front();
     CHECK(diagnostic.severity() == volt::Severity::Error);
     CHECK(diagnostic.code() == volt::DiagnosticCode{"SCHEMATIC_PIN_NET_NOT_VISUALLY_COVERED"});
-    CHECK(diagnostic.message() == "Schematic omits visual net coverage for R1 pin 1 (1) on VCC");
-    REQUIRE(diagnostic.entities().size() == 4);
-    CHECK(diagnostic.entities()[0] == volt::EntityRef::component(component));
+    CHECK(diagnostic.message() ==
+          "Schematic sheet 'Main' omits visual net coverage for R1 pin 1 (1) on VCC");
+    REQUIRE(diagnostic.entities().size() == 5);
+    CHECK(diagnostic.entities()[0] == volt::EntityRef::sheet(sheet));
+    CHECK(diagnostic.entities()[1] == volt::EntityRef::component(component));
     const auto pin = circuit.pin_by_number(component, "1").value();
-    CHECK(diagnostic.entities()[1] == volt::EntityRef::pin(pin));
-    CHECK(diagnostic.entities()[2] == volt::EntityRef::pin_def(circuit.pin(pin).definition()));
-    CHECK(diagnostic.entities()[3] == volt::EntityRef::net(net));
+    CHECK(diagnostic.entities()[2] == volt::EntityRef::pin(pin));
+    CHECK(diagnostic.entities()[3] == volt::EntityRef::pin_def(circuit.pin(pin).definition()));
+    CHECK(diagnostic.entities()[4] == volt::EntityRef::net(net));
 }
 
 TEST_CASE("Schematic readiness accepts wires and labels at connected symbol pin anchors") {

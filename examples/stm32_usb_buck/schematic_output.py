@@ -289,6 +289,7 @@ class _SchematicAuthor:
         if missing:
             details = "\n".join(f"- {item}" for item in missing)
             raise RuntimeError(
+                "No visible schematic coverage for connected pins after sugar authoring; "
                 "fallback schematic pin coverage would hide unauthored connected pins:\n"
                 f"{details}"
             )

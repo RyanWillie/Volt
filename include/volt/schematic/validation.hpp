@@ -215,15 +215,14 @@ inline void validate_component_placement_coverage(const Schematic &schematic, co
         report.add(Diagnostic{
             Severity::Error,
             DiagnosticCode{"SCHEMATIC_PIN_NET_NOT_VISUALLY_COVERED"},
-            "Schematic omits visual net coverage for " + component.reference().value() + " pin " +
-                pin_definition.number() + " (" + pin_definition.name() + ") on " +
-                net_model.name().value(),
-            std::vector{EntityRef::component(instance.component()), EntityRef::pin(pin_id),
-                        EntityRef::pin_def(pin_def_id), EntityRef::net(net.value())},
+            "Schematic sheet '" + sheet.name() + "' omits visual net coverage for " +
+                component.reference().value() + " pin " + pin_definition.number() + " (" +
+                pin_definition.name() + ") on " + net_model.name().value(),
+            std::vector{EntityRef::sheet(sheet_id), EntityRef::component(instance.component()),
+                        EntityRef::pin(pin_id), EntityRef::pin_def(pin_def_id),
+                        EntityRef::net(net.value())},
         });
     }
-
-    static_cast<void>(sheet_id);
 }
 
 inline void validate_component_placements(const Schematic &schematic, DiagnosticReport &report) {
