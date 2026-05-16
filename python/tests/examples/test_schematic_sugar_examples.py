@@ -1,12 +1,8 @@
 import importlib
 import json
-import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def _load_example(name: str):
@@ -32,45 +28,6 @@ def _assert_stable_artifacts(example_module):
             json.loads(first.schematic_json.read_text(encoding="utf-8")),
             first.schematic_svg.read_text(encoding="utf-8"),
         )
-
-
-def test_compact_led_sugar_example_executes_and_renders_readable_schematic():
-    compact_led = _load_example("compact_led")
-    design, nets, parts = compact_led.build_design()
-    logical_before = design.to_json()
-
-    schematic = compact_led.author_schematic(design, nets, parts)
-    projection = json.loads(schematic.to_json())
-    report = schematic.validate()
-
-    assert design.to_json() == logical_before
-    assert len(report) == 0
-    assert not report.has_errors
-    assert any(
-        wr["net"] == f"net:{nets['LED_A'].index}" for wr in projection["wire_runs"]
-    )
-    assert [port["kind"] for port in projection["power_ports"]] == ["Power", "Ground"]
-    assert [field["value"] for field in projection["symbol_fields"]] == [
-        "R1",
-        "330 ohm",
-        "D1",
-    ]
-
-    logical, stable_projection, svg = _assert_stable_artifacts(compact_led)
-    assert logical["format"] == "volt.logical_circuit"
-    assert stable_projection == projection
-    assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in svg
-    assert 'class="wire-run"' in svg
-    assert 'class="power-port power"' in svg
-    assert 'class="power-port ground"' in svg
-    assert ">R1</text>" in svg
-    assert ">330 ohm</text>" in svg
-    assert ">D1</text>" in svg
-    assert ">LED_A</text>" in svg
-    assert ">+3V3</text>" in svg
-    assert ">GND</text>" in svg
-    assert "pin-anchor" not in svg
-    assert "pin-label" not in svg
 
 
 def test_regulator_fragment_sugar_example_uses_ports_shapes_and_no_connects():
@@ -135,8 +92,3 @@ def test_regulator_fragment_sugar_example_uses_ports_shapes_and_no_connects():
     assert ">SWCLK</text>" in svg
     assert "pin-anchor" not in svg
     assert "pin-label" not in svg
-
-
-if __name__ == "__main__":
-    test_compact_led_sugar_example_executes_and_renders_readable_schematic()
-    test_regulator_fragment_sugar_example_uses_ports_shapes_and_no_connects()

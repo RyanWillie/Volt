@@ -1,16 +1,12 @@
 import importlib
 import inspect
 import json
-import sys
 from collections import Counter
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import volt
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
@@ -229,9 +225,3 @@ def test_stm32_usb_buck_schematic_author_fails_on_fallback_connected_pin_coverag
         assert "+12V" in str(error)
     else:
         raise AssertionError("connected pins must not be silently covered by fallback")
-
-
-if __name__ == "__main__":
-    test_stm32_usb_buck_example_writes_stable_logical_artifacts()
-    test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage()
-    test_stm32_usb_buck_schematic_author_fails_on_fallback_connected_pin_coverage()
