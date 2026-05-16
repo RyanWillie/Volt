@@ -1196,7 +1196,7 @@ def test_python_schematic_drawing_handle_reports_ambiguous_attribute_names():
 
     try:
         handle.VDD
-    except ValueError as error:
+    except AttributeError as error:
         message = str(error)
         assert "ambiguous" in message
         assert "bracket" in message
@@ -1204,8 +1204,83 @@ def test_python_schematic_drawing_handle_reports_ambiguous_attribute_names():
     else:
         raise AssertionError("ambiguous pin names should not be exposed as attributes")
 
+    # Ambiguity must not break hasattr or getattr-with-default
+    assert not hasattr(handle, "VDD")
+    assert getattr(handle, "VDD", None) is None
+
     assert handle[19].number == "19"
     assert handle["32"].number == "32"
+
+
+def test_python_schematic_drawing_handle_start_end_raise_for_single_pin():
+    design = volt.Design("schematic-authoring-handle-single-pin")
+    test_point = design.define_component(
+        "TestPoint",
+        pins=[volt.PinSpec("NC", 1, requirement="optional")],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:point",
+            pins=(volt.SchematicSymbolSpec.pin("NC", 1, (0, 0), "Right"),),
+            primitives=(volt.SchematicSymbolSpec.circle((0, 0), 1.5),),
+        ),
+    )
+    tp1 = design.instantiate(test_point, ref="TP1")
+    with design.schematic("Main").drawing(at=(5, 5)) as drawing:
+        handle = drawing.place(tp1)
+
+    try:
+        handle.start
+    except ValueError as error:
+        assert "start" in str(error)
+        assert "two pin anchors" in str(error)
+    else:
+        raise AssertionError("start must raise for single-pin components")
+
+    try:
+        handle.end
+    except ValueError as error:
+        assert "end" in str(error)
+        assert "two pin anchors" in str(error)
+    else:
+        raise AssertionError("end must raise for single-pin components")
+
+    # center still works with one pin
+    assert handle.center.point == (5.0, 5.0)
+    assert handle["NC"].number == "1"
+
+
+def test_python_schematic_drawing_handle_dir_exposes_unique_pin_names_only():
+    design = volt.Design("schematic-authoring-handle-dir")
+    component = design.define_component(
+        "MixedPins",
+        pins=[
+            volt.PinSpec("IN", 1),
+            volt.PinSpec("OUT", 2),
+            volt.PinSpec("VDD", 3, role="power"),
+            volt.PinSpec("VDD", 4, role="power"),
+        ],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:mixed",
+            pins=(
+                volt.SchematicSymbolSpec.pin("IN", 1, (0, 0), "Left"),
+                volt.SchematicSymbolSpec.pin("OUT", 2, (20, 0), "Right"),
+                volt.SchematicSymbolSpec.pin("VDD", 3, (10, 10), "Up"),
+                volt.SchematicSymbolSpec.pin("VDD", 4, (10, -10), "Down"),
+            ),
+            primitives=(volt.SchematicSymbolSpec.line((0, 0), (20, 0)),),
+        ),
+    )
+    m1 = design.instantiate(component, ref="M1")
+    with design.schematic("Main").drawing(at=(0, 0)) as drawing:
+        handle = drawing.place(m1)
+
+    listed = dir(handle)
+    assert "IN" in listed
+    assert "OUT" in listed
+    assert "VDD" not in listed  # ambiguous - must not appear
+    assert "start" in listed
+    assert "end" in listed
+    assert "center" in listed
+    assert "symbol" in listed
 
 
 def test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects():
@@ -1739,6 +1814,8 @@ if __name__ == "__main__":
     test_python_schematic_drawing_place_returns_authoring_handle_with_core_anchors()
     test_python_schematic_drawing_handle_resolves_pin_names_as_attributes_and_items()
     test_python_schematic_drawing_handle_reports_ambiguous_attribute_names()
+    test_python_schematic_drawing_handle_start_end_raise_for_single_pin()
+    test_python_schematic_drawing_handle_dir_exposes_unique_pin_names_only()
     test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects()
     test_python_schematic_explicit_wire_points_are_normalized_once()
     test_python_schematic_drawing_cursor_defaults_and_moves()

@@ -1118,7 +1118,7 @@ class PlacedSchematicElement:
     def center(self) -> SchematicAnchor:
         anchors = self.pin_anchors()
         if not anchors:
-            raise AttributeError("Placed schematic element center requires at least one pin anchor")
+            raise ValueError("Placed schematic element center requires at least one pin anchor")
         xs = tuple(anchor.x for anchor in anchors)
         ys = tuple(anchor.y for anchor in anchors)
         return SchematicAnchor(
@@ -1142,7 +1142,7 @@ class PlacedSchematicElement:
             raise AttributeError(f"Placed schematic element has no anchor named {name!r}")
         if len(matches) > 1:
             numbers = ", ".join(f"{item['number']!r}" for item in matches)
-            raise ValueError(
+            raise AttributeError(
                 f"Placed schematic element pin name {name!r} is ambiguous; use bracket "
                 f"access by pin number or pin(number). Matching pin numbers: {numbers}"
             )
@@ -1163,7 +1163,7 @@ class PlacedSchematicElement:
     def _terminal_anchor(self, index: int, label: str) -> SchematicPinAnchor:
         anchors = self.pin_anchors()
         if len(anchors) < 2:
-            raise AttributeError(
+            raise ValueError(
                 f"Placed schematic element {label} requires at least two pin anchors"
             )
         return anchors[index]
