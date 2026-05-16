@@ -119,10 +119,11 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     }
     supply_net = next(net for net in logical["nets"] if net["name"] == "+3V3")
     supply_pin_refs = set(supply_net["pins"])
+    pins_by_id = {pin["id"]: pin for pin in logical["pins"]}
     connected_stm32_vdd_pin_ids = {
-        logical["pins"][int(pin_ref.removeprefix("pin:"))]["definition"]
+        pins_by_id[pin_ref]["definition"]
         for pin_ref in supply_pin_refs
-        if logical["pins"][int(pin_ref.removeprefix("pin:"))]["component"] == stm32["id"]
+        if pins_by_id[pin_ref]["component"] == stm32["id"]
     }
     assert connected_stm32_vdd_pin_ids & stm32_vdd_pin_ids == stm32_vdd_pin_ids
 

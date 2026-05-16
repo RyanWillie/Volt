@@ -837,6 +837,8 @@ def test_python_schematic_explicit_wire_points_are_normalized_once():
     original = volt._schematic_point
     calls = 0
 
+    # This is intentionally white-box: duplicate normalization has no distinct
+    # serialized output, but it regressed cross-design error context before.
     def counting_schematic_point(value, *, design):
         nonlocal calls
         calls += 1

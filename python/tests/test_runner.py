@@ -3,7 +3,8 @@
 CTest owns the top-level test workflow because CMake also owns the Python
 interpreter that builds the private ``_volt`` extension module. This runner keeps
 Python test discovery dependency-free while still letting CTest register each
-``test_*`` function as a separate test.
+``test_*`` function as a separate test. It expects CTest to provide the build
+tree's Python package directory through ``PYTHONPATH``.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ def _ensure_import_paths() -> None:
 
 def _test_functions(path: Path) -> list[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    # Keep discovery intentionally narrow: module-level synchronous test functions only.
     return [
         node.name
         for node in tree.body
