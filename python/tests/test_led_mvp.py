@@ -312,6 +312,26 @@ def test_schematic_placement_can_select_symbol_variant_from_component_default():
     assert projection["symbol_instances"][0]["symbol_definition"] == "symbol_def:1"
 
 
+def test_schematic_placement_rejects_unknown_component_symbol_variant():
+    design = volt.Design("library-symbol-missing-variant")
+    library = volt.Library("volt.test")
+    sensor = library.component(
+        "Sensor",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        schematic_symbol=_two_pin_test_symbol("volt.test:Sensor"),
+    )
+
+    u1 = design.instantiate(sensor, ref="U1")
+    schematic = design.schematic("Main")
+
+    try:
+        schematic.place(u1, at=(10, 20), variant="vertical")
+    except ValueError as error:
+        assert "No schematic symbol found for variant 'vertical'" in str(error)
+    else:
+        raise AssertionError("missing schematic symbol variants should be rejected")
+
+
 def test_schematic_symbol_name_conflicts_reject_different_definitions():
     design = volt.Design("library-symbol-conflict")
     library = volt.Library("volt.test")
@@ -1134,6 +1154,7 @@ if __name__ == "__main__":
     test_library_component_schematic_symbol_default_is_definition_owned()
     test_module_instance_component_resolves_library_symbol_default()
     test_schematic_placement_can_select_symbol_variant_from_component_default()
+    test_schematic_placement_rejects_unknown_component_symbol_variant()
     test_schematic_symbol_name_conflicts_reject_different_definitions()
     test_schematic_placement_rejects_symbol_with_unknown_component_pin()
     test_stm32_usb_buck_library_exposes_native_components()

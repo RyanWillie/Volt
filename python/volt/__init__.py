@@ -947,6 +947,8 @@ class Schematic:
             raise ValueError("Component belongs to a different design")
         if symbol is None:
             symbol = component.schematic_symbol_variant(variant)
+            if symbol is None:
+                raise ValueError(f"No schematic symbol found for variant {variant!r}")
         if isinstance(symbol, SchematicSymbolSpec):
             self.register_symbol(symbol)
             symbol_name = symbol.name
