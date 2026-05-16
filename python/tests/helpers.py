@@ -17,10 +17,12 @@ def _two_pin_test_symbol(name: str, *, variant: str = "default", label: str = "S
         ),
     )
 
+
 def _definition_for_component(circuit: dict, reference: str) -> dict:
     component = next(item for item in circuit["components"] if item["reference"] == reference)
     definition_index = int(component["definition"].split(":")[1])
     return circuit["component_definitions"][definition_index]
+
 
 def _common_catalog_components(design: volt.Design):
     return [
@@ -49,6 +51,7 @@ def _common_catalog_components(design: volt.Design):
             ("3", "2", "1", "5", "4"),
         ),
     ]
+
 
 def _wire_points(projection, index=0):
     return [
