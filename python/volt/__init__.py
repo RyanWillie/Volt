@@ -1284,43 +1284,175 @@ class SchematicWireBuilder:
 
     Start with ``from_()``, append any explicit intermediate anchors with ``via()``,
     append the intended endpoint with ``to()``, then persist the run with ``direct()``
-    or ``orthogonal()``.
+    or ``orthogonal()``. Shape shortcuts are Python authoring sugar that lower to
+    ordinary schematic wire points on the same logical net.
     """
 
-    def __init__(self, schematic: Schematic, net: Net):
+    def __init__(self, schematic: Schematic, net: Net, *, drawing=None):
         self._schematic = schematic
         self._net = net
         self._points: list[tuple[float, float]] = []
+        self._drawing = drawing
+        self._start_here = drawing.here if drawing is not None else None
+        self._start_direction = drawing.direction if drawing is not None else None
+        self._wire: SchematicWire | None = None
+
+    def at(self, point) -> SchematicWireBuilder:
+        return self.from_(point)
 
     def from_(self, point) -> SchematicWireBuilder:
+        self._require_unmaterialized()
         self._points = [_schematic_point(point, design=self._schematic._design)]
+        self._update_drawing_cursor(self._points[-1])
         return self
 
     def via(self, point) -> SchematicWireBuilder:
         """Append an explicit intermediate point that the route should preserve."""
+        self._require_unmaterialized()
         self._require_started()
-        self._points.append(_schematic_point(point, design=self._schematic._design))
+        self._append_point(_schematic_point(point, design=self._schematic._design))
         return self
 
-    def to(self, point) -> SchematicWireBuilder:
+    def to(self, point, *, shape: str | None = None, k: float | None = None):
         """Append the next route point, normally the terminal endpoint."""
+        self._require_unmaterialized()
         self._require_started()
-        self._points.append(_schematic_point(point, design=self._schematic._design))
+        self._append_point(_schematic_point(point, design=self._schematic._design))
+        if shape is not None:
+            return self.shape(shape, k=k)
         return self
+
+    def tox(self, anchor_or_x) -> SchematicWireBuilder:
+        """Append a horizontal segment ending at the target x coordinate."""
+        self._require_unmaterialized()
+        self._require_started()
+        current_x, current_y = self._points[-1]
+        self._append_point(
+            (
+                _schematic_axis_target(anchor_or_x, self._schematic._design, "x"),
+                current_y,
+            )
+        )
+        return self
+
+    def toy(self, anchor_or_y) -> SchematicWireBuilder:
+        """Append a vertical segment ending at the target y coordinate."""
+        self._require_unmaterialized()
+        self._require_started()
+        current_x, current_y = self._points[-1]
+        self._append_point(
+            (
+                current_x,
+                _schematic_axis_target(anchor_or_y, self._schematic._design, "y"),
+            )
+        )
+        return self
+
+    def right(self, length: float) -> SchematicWireBuilder:
+        return self._relative(dx=_coordinate(length), dy=0)
+
+    def left(self, length: float) -> SchematicWireBuilder:
+        return self._relative(dx=-_coordinate(length), dy=0)
+
+    def up(self, length: float) -> SchematicWireBuilder:
+        return self._relative(dx=0, dy=-_coordinate(length))
+
+    def down(self, length: float) -> SchematicWireBuilder:
+        return self._relative(dx=0, dy=_coordinate(length))
 
     def direct(self) -> SchematicWire:
         """Persist the collected points without inserting an automatic bend."""
-        return self._schematic._add_wire(self._net, self._points, route_intent="Direct")
+        return self._persist(self._points, route_intent="Direct")
 
     def orthogonal(self) -> SchematicWire:
         """Persist the run, inserting one bend only for a two-point diagonal route."""
-        return self._schematic._add_wire(
-            self._net, _orthogonal_wire_points(self._points), route_intent="Orthogonal"
+        return self._persist(
+            _orthogonal_wire_points(self._points), route_intent="Orthogonal"
         )
+
+    def shape(self, shape: str, *, k: float | None = None) -> SchematicWire:
+        """Persist a SchemDraw-style point-to-point wire shape."""
+        self._require_unmaterialized()
+        self._require_started()
+        if len(self._points) != 2:
+            raise ValueError("Schematic wire shape routes need exactly two endpoints")
+        route_intent = "Direct" if shape == "-" else "Orthogonal"
+        return self._persist(
+            _shape_wire_points(self._points[0], self._points[1], shape=shape, k=k),
+            route_intent=route_intent,
+            normalize=True,
+        )
+
+    def _materialize(self) -> SchematicWire:
+        try:
+            if not _schematic_route_has_distinct_points(self._points):
+                raise ValueError(
+                    "Schematic drawing wire needs an endpoint before materialization"
+                )
+            return self._persist(self._points, route_intent="Direct", normalize=True)
+        except Exception:
+            self._clear_pending()
+            self._restore_drawing_state()
+            raise
+
+    def _relative(self, *, dx: float, dy: float) -> SchematicWireBuilder:
+        self._require_unmaterialized()
+        self._require_started()
+        current_x, current_y = self._points[-1]
+        self._append_point((current_x + dx, current_y + dy))
+        return self
+
+    def _append_point(self, point: tuple[float, float]) -> None:
+        self._points.append(point)
+        self._update_drawing_cursor(point)
+
+    def _persist(
+        self,
+        points: Iterable[tuple[float, float]],
+        *,
+        route_intent: str,
+        normalize: bool = False,
+    ) -> SchematicWire:
+        if self._wire is None:
+            wire_points = (
+                _normalize_schematic_route_points(points) if normalize else tuple(points)
+            )
+            try:
+                self._wire = self._schematic._add_wire(
+                    self._net,
+                    wire_points,
+                    route_intent=route_intent,
+                )
+            except Exception:
+                self._clear_pending()
+                self._restore_drawing_state()
+                raise
+        self._clear_pending()
+        return self._wire
+
+    def _update_drawing_cursor(self, point: tuple[float, float]) -> None:
+        if self._drawing is not None:
+            self._drawing._here = SchematicAnchor(
+                point,
+                design=self._schematic._design,
+            )
+
+    def _require_unmaterialized(self) -> None:
+        if self._wire is not None:
+            raise ValueError("Cannot modify a materialized schematic wire")
 
     def _require_started(self) -> None:
         if not self._points:
             raise ValueError("Schematic wire builder must start with from_()")
+
+    def _clear_pending(self) -> None:
+        if self._drawing is not None and self._drawing._pending is self:
+            self._drawing._pending = None
+
+    def _restore_drawing_state(self) -> None:
+        if self._drawing is not None and self._start_here is not None:
+            self._drawing._here = self._start_here
+            self._drawing._direction = self._start_direction
 
 
 class SchematicDrawing:
@@ -1341,7 +1473,7 @@ class SchematicDrawing:
         if self._unit <= 0:
             raise ValueError("Schematic drawing unit must be positive")
         self._stack: list[tuple[SchematicAnchor, str]] = []
-        self._pending: SchematicTwoTerminalElement | None = None
+        self._pending: SchematicTwoTerminalElement | SchematicWireBuilder | None = None
 
     @property
     def here(self) -> SchematicAnchor:
@@ -1473,9 +1605,24 @@ class SchematicDrawing:
         end: tuple[float, float] | SchematicAnchor | SchematicPort,
         *,
         net: Net | None = None,
+        shape: str | None = None,
+        k: float | None = None,
     ) -> SchematicWire:
         self._flush_pending()
-        return self._schematic.connect(start, end, net=net)
+        return self._schematic.connect(start, end, net=net, shape=shape, k=k)
+
+    def wire(self, net: Net) -> SchematicWireBuilder:
+        self._flush_pending()
+        builder = self._schematic.wire(net)
+        builder._drawing = self
+        builder._start_here = self._here
+        builder._start_direction = self._direction
+        builder.from_(self._here)
+        self._pending = builder
+        return builder
+
+    def line(self, net: Net) -> SchematicWireBuilder:
+        return self.wire(net)
 
     def power(
         self,
@@ -1971,9 +2118,14 @@ class Schematic:
         end: tuple[float, float] | SchematicAnchor | SchematicPort,
         *,
         net: Net | None = None,
+        shape: str | None = None,
+        k: float | None = None,
     ) -> SchematicWire:
         resolved_net = _resolve_schematic_connection_net(self._design, start, end, net)
-        return self.wire(resolved_net).from_(start).to(end).orthogonal()
+        builder = self.wire(resolved_net).from_(start).to(end)
+        if shape is None:
+            return builder.orthogonal()
+        return builder.shape(shape, k=k)
 
     def _add_wire(
         self,
@@ -3153,6 +3305,82 @@ def _orthogonal_wire_points(
             midpoint = (end[0], start[1])
             return (start, midpoint, end)
     return result
+
+
+def _schematic_axis_target(value, design: Design, axis: str) -> float:
+    if isinstance(value, bool):
+        raise TypeError("Schematic coordinates must be numbers")
+    if isinstance(value, (int, float)):
+        return _coordinate(value)
+    point = _schematic_point(value, design=design)
+    return point[0] if axis == "x" else point[1]
+
+
+def _normalize_schematic_route_points(
+    points: Iterable[tuple[float, float]],
+) -> tuple[tuple[float, float], ...]:
+    result: list[tuple[float, float]] = []
+    for point in points:
+        converted = (_coordinate(point[0]), _coordinate(point[1]))
+        if not result or result[-1] != converted:
+            result.append(converted)
+    if len(result) < 2:
+        raise ValueError("Schematic wire route must contain at least two distinct points")
+    return tuple(result)
+
+
+def _schematic_route_has_distinct_points(points: Iterable[tuple[float, float]]) -> bool:
+    first: tuple[float, float] | None = None
+    for point in points:
+        if first is None:
+            first = point
+        elif point != first:
+            return True
+    return False
+
+
+def _shape_wire_points(
+    start: tuple[float, float],
+    end: tuple[float, float],
+    *,
+    shape: str,
+    k: float | None,
+) -> tuple[tuple[float, float], ...]:
+    if not isinstance(shape, str):
+        raise TypeError("Schematic wire shape must be a string")
+    normalized_shape = {"n": "|-|", "c": "-|-"}.get(shape, shape)
+    valid_shapes = ("-", "-|", "|-", "|-|", "-|-")
+    if normalized_shape not in valid_shapes:
+        raise ValueError(
+            "Schematic wire shape must be one of -, -|, |-, |-|, n, -|-, or c"
+        )
+
+    sx, sy = start
+    ex, ey = end
+    if normalized_shape == "-":
+        return _normalize_schematic_route_points((start, end))
+
+    offset = None if k is None else _coordinate(k)
+    if normalized_shape == "-|":
+        bend_x = ex if offset is None else sx + offset
+        return _normalize_schematic_route_points(
+            (start, (bend_x, sy), (bend_x, ey), end)
+        )
+    if normalized_shape == "|-":
+        bend_y = ey if offset is None else sy + offset
+        return _normalize_schematic_route_points(
+            (start, (sx, bend_y), (ex, bend_y), end)
+        )
+    if normalized_shape == "|-|":
+        bend_y = (sy + ey) / 2 if offset is None else sy + offset
+        return _normalize_schematic_route_points(
+            (start, (sx, bend_y), (ex, bend_y), end)
+        )
+
+    bend_x = (sx + ex) / 2 if offset is None else sx + offset
+    return _normalize_schematic_route_points(
+        (start, (bend_x, sy), (bend_x, ey), end)
+    )
 
 
 def _pin_refs_by_name(pin_refs, name: str):
