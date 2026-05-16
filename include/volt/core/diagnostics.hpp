@@ -57,6 +57,16 @@ enum class EntityKind {
     ModuleDef,
     ModuleInstance,
     PortDef,
+    SymbolDef,
+    Sheet,
+    SymbolInstance,
+    WireRun,
+    NetLabel,
+    Junction,
+    PowerPort,
+    NoConnectMarker,
+    SheetPort,
+    SymbolField,
 };
 
 /**
@@ -105,6 +115,56 @@ class EntityRef {
     /** Create a reference to a module port definition. */
     [[nodiscard]] static EntityRef port_def(PortDefId id) noexcept {
         return EntityRef{EntityKind::PortDef, id.index()};
+    }
+
+    /** Create a reference to a schematic symbol definition. */
+    [[nodiscard]] static EntityRef symbol_def(SymbolDefId id) noexcept {
+        return EntityRef{EntityKind::SymbolDef, id.index()};
+    }
+
+    /** Create a reference to a schematic sheet. */
+    [[nodiscard]] static EntityRef sheet(SheetId id) noexcept {
+        return EntityRef{EntityKind::Sheet, id.index()};
+    }
+
+    /** Create a reference to a placed schematic symbol instance. */
+    [[nodiscard]] static EntityRef symbol_instance(SymbolInstanceId id) noexcept {
+        return EntityRef{EntityKind::SymbolInstance, id.index()};
+    }
+
+    /** Create a reference to a schematic wire run. */
+    [[nodiscard]] static EntityRef wire_run(WireRunId id) noexcept {
+        return EntityRef{EntityKind::WireRun, id.index()};
+    }
+
+    /** Create a reference to a schematic net label. */
+    [[nodiscard]] static EntityRef net_label(NetLabelId id) noexcept {
+        return EntityRef{EntityKind::NetLabel, id.index()};
+    }
+
+    /** Create a reference to a schematic junction. */
+    [[nodiscard]] static EntityRef junction(JunctionId id) noexcept {
+        return EntityRef{EntityKind::Junction, id.index()};
+    }
+
+    /** Create a reference to a schematic power or ground port. */
+    [[nodiscard]] static EntityRef power_port(PowerPortId id) noexcept {
+        return EntityRef{EntityKind::PowerPort, id.index()};
+    }
+
+    /** Create a reference to a schematic no-connect marker. */
+    [[nodiscard]] static EntityRef no_connect_marker(NoConnectMarkerId id) noexcept {
+        return EntityRef{EntityKind::NoConnectMarker, id.index()};
+    }
+
+    /** Create a reference to a schematic sheet/off-page port. */
+    [[nodiscard]] static EntityRef sheet_port(SheetPortId id) noexcept {
+        return EntityRef{EntityKind::SheetPort, id.index()};
+    }
+
+    /** Create a reference to a schematic symbol field. */
+    [[nodiscard]] static EntityRef symbol_field(SymbolFieldId id) noexcept {
+        return EntityRef{EntityKind::SymbolField, id.index()};
     }
 
     /** Return the kind of entity referenced. */
