@@ -1332,6 +1332,42 @@ def test_python_schematic_drawing_rejects_invalid_points_and_directions():
         raise AssertionError("drawing cursor should reject cross-design anchors")
 
 
+def test_python_schematic_drawing_rejects_invalid_units():
+    design = volt.Design("schematic-drawing-invalid-unit")
+    schematic = design.schematic("Main")
+
+    for unit in (0, -1, float("inf")):
+        try:
+            schematic.drawing(unit=unit)
+        except ValueError as error:
+            expected = (
+                "Schematic drawing unit must be positive"
+                if unit in (0, -1)
+                else "Schematic coordinates must be finite"
+            )
+            assert str(error) == expected
+        else:
+            raise AssertionError("invalid drawing unit should be rejected")
+
+
+def test_python_schematic_drawing_hold_restores_cursor_after_exception():
+    design = volt.Design("schematic-drawing-hold-restore")
+    drawing = design.schematic("Main").drawing(at=(2, 3), direction="Right")
+    before = drawing.here.point, drawing.direction
+
+    try:
+        with drawing.hold():
+            drawing.move(dx=10, dy=20)
+            drawing.move_from(drawing.here, direction="Down")
+            raise RuntimeError("boom")
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("hold test should raise RuntimeError from context body")
+
+    assert (drawing.here.point, drawing.direction) == before
+
+
 def test_python_schematic_drawing_session_does_not_mutate_logical_design():
     design = volt.Design("schematic-drawing-logical-boundary")
     design.R("10k", ref="R1")
@@ -1580,6 +1616,8 @@ if __name__ == "__main__":
     test_python_schematic_drawing_move_from_accepts_sheet_points_and_anchors()
     test_python_schematic_drawing_push_pop_and_hold_restore_cursor_state()
     test_python_schematic_drawing_rejects_invalid_points_and_directions()
+    test_python_schematic_drawing_rejects_invalid_units()
+    test_python_schematic_drawing_hold_restores_cursor_after_exception()
     test_python_schematic_drawing_session_does_not_mutate_logical_design()
     test_python_schematic_dsl_rejects_invalid_references()
     test_detached_schematic_symbol_pin_helpers_report_missing_component_context()
