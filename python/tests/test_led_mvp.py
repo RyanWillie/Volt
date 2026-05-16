@@ -2217,6 +2217,20 @@ def test_python_schematic_wire_shortcuts_reject_invalid_shapes_clearly():
     drawing.move(dx=1)
     assert schematic.to_json() == before
 
+    drawing = schematic.drawing(at=(90, 100))
+    try:
+        drawing.wire(net).shape("-|")
+    except ValueError as error:
+        message = str(error)
+        assert "need exactly two endpoints" in message
+        assert "sheet 'Main'" in message
+    else:
+        raise AssertionError("single-endpoint shape calls should restore drawing state")
+
+    assert drawing.here.point == (90.0, 100.0)
+    drawing.move(dx=1)
+    assert schematic.to_json() == before
+
 
 def test_python_schematic_wire_shape_rejects_reuse_after_materialization():
     design = volt.Design("schematic-wire-shape-reuse")
