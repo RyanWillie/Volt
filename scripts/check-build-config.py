@@ -94,8 +94,28 @@ def check_benchmarks() -> None:
     require("benchmarks" in workflow_presets, "benchmarks workflow preset must exist")
 
 
+def check_ci_tooling() -> None:
+    ci_workflow = read(".github/workflows/ci.yml")
+
+    require("graphviz" not in ci_workflow, "CI must not install Graphviz when Doxygen dot output is disabled")
+    require(
+        "choco install" not in ci_workflow,
+        "Windows CI must use preinstalled hosted-runner tools instead of Chocolatey installs",
+    )
+    require(
+        "if: runner.os == 'Linux'\n        run: cmake --build --preset dev --target docs" in ci_workflow,
+        "CI must build documentation only on Ubuntu",
+    )
+
+
 def main() -> int:
-    checks = (check_test_presets, check_fetchcontent, check_coverage, check_benchmarks)
+    checks = (
+        check_test_presets,
+        check_fetchcontent,
+        check_coverage,
+        check_benchmarks,
+        check_ci_tooling,
+    )
     failures = []
     for check in checks:
         try:

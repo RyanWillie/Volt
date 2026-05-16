@@ -22,15 +22,17 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build doxygen graphviz clang-format
+          sudo apt-get install -y ninja-build doxygen clang-format
 
       - name: Install tools on macOS
         if: runner.os == 'macOS'
-        run: brew install ninja doxygen graphviz clang-format
+        run: brew install ninja clang-format
 
-      - name: Install tools on Windows
+      - name: Verify tools on Windows
         if: runner.os == 'Windows'
-        run: choco install ninja doxygen.install graphviz llvm -y --no-progress
+        run: |
+          ninja --version
+          clang-format --version
 
       - name: Check formatting
         run: python scripts/check-format.py
@@ -48,6 +50,7 @@ jobs:
         run: ctest --preset dev
 
       - name: Build docs
+        if: runner.os == 'Linux'
         run: cmake --build --preset dev --target docs
 
   coverage:
