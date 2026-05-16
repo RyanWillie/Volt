@@ -1433,6 +1433,27 @@ def test_python_schematic_label_sugar_rejects_invalid_inputs_clearly():
         else:
             raise AssertionError("net label sugar should reject cross-design anchors")
 
+        try:
+            drawing.sheet_port("MISSING", at=(0, 0))
+        except ValueError as error:
+            assert "existing logical net named 'MISSING'" in str(error)
+        else:
+            raise AssertionError("sheet port sugar should require an existing logical net")
+
+        try:
+            drawing.sheet_port(123, at=(0, 0))
+        except TypeError as error:
+            assert str(error) == "Schematic sheet port names must be strings"
+        else:
+            raise AssertionError("sheet port sugar should reject non-string names")
+
+        try:
+            drawing.sheet_port("SIG", at=other_anchor)
+        except ValueError as error:
+            assert str(error) == "Schematic anchor belongs to a different design"
+        else:
+            raise AssertionError("sheet port sugar should reject cross-design anchors")
+
         assert schematic.to_json() == before
 
 
