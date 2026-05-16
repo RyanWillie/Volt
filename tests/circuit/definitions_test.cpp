@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -145,6 +146,43 @@ TEST_CASE("ComponentDefinition stores explicit properties") {
     CHECK(component.properties().get(volt::PropertyKey{"category"}) ==
           volt::PropertyValue{"passive"});
     CHECK(component.properties().get(volt::PropertyKey{"polarized"}) == volt::PropertyValue{false});
+}
+
+TEST_CASE("ComponentDefinition stores default schematic symbol variants") {
+    const auto component = volt::ComponentDefinition{
+        "Sensor",
+        std::vector{volt::PinDefId{0}, volt::PinDefId{1}},
+        {},
+        std::nullopt,
+        std::vector{
+            volt::SchematicSymbolReference{"volt.test:Sensor"},
+            volt::SchematicSymbolReference{"volt.test:SensorVertical", "vertical"},
+        },
+    };
+
+    REQUIRE(component.schematic_symbols().size() == 2);
+    CHECK(component.schematic_symbols()[0].name() == "volt.test:Sensor");
+    CHECK(component.schematic_symbols()[0].variant() == "default");
+    CHECK(component.schematic_symbols()[1].name() == "volt.test:SensorVertical");
+    CHECK(component.schematic_symbols()[1].variant() == "vertical");
+}
+
+TEST_CASE("ComponentDefinition rejects invalid schematic symbol variants") {
+    CHECK_THROWS_AS(([] { return volt::SchematicSymbolReference{""}; }()), std::invalid_argument);
+    CHECK_THROWS_AS(([] { return volt::SchematicSymbolReference{"volt.test:Sensor", ""}; }()),
+                    std::invalid_argument);
+
+    const auto duplicate_default_variant = [] {
+        return volt::ComponentDefinition{
+            "Sensor",
+            std::vector{volt::PinDefId{0}},
+            {},
+            std::nullopt,
+            std::vector{volt::SchematicSymbolReference{"volt.test:Sensor"},
+                        volt::SchematicSymbolReference{"volt.test:SensorAlt"}},
+        };
+    };
+    CHECK_THROWS_AS(duplicate_default_variant(), std::invalid_argument);
 }
 
 TEST_CASE("ComponentDefinition stores optional source provenance") {

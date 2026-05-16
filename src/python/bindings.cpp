@@ -371,6 +371,14 @@ void add_two_pin_anchors(volt::SymbolDefinition &symbol, const std::string &left
     return py::cast<std::string>(dict[field]);
 }
 
+[[nodiscard]] std::string optional_string_field(const py::dict &dict, const char *field,
+                                                std::string default_value) {
+    if (!dict.contains(field)) {
+        return default_value;
+    }
+    return py::cast<std::string>(dict[field]);
+}
+
 [[nodiscard]] py::dict required_dict_field(const py::dict &dict, const char *field,
                                            const char *context) {
     if (!dict.contains(field)) {
@@ -467,6 +475,18 @@ schematic_orientation_from_string(const std::string &value) {
         symbol.add_primitive(symbol_primitive_from_dict(py::cast<py::dict>(item)));
     }
     return symbol;
+}
+
+[[nodiscard]] std::vector<volt::SchematicSymbolReference>
+schematic_symbol_references_from_list(const py::list &symbols) {
+    auto result = std::vector<volt::SchematicSymbolReference>{};
+    result.reserve(static_cast<std::size_t>(py::len(symbols)));
+    for (const auto item : symbols) {
+        const auto symbol = py::cast<py::dict>(item);
+        result.emplace_back(required_string_field(symbol, "name", "Schematic symbol reference"),
+                            optional_string_field(symbol, "variant", "default"));
+    }
+    return result;
 }
 
 [[nodiscard]] std::optional<volt::SymbolDefinition> built_in_symbol(const std::string &name) {
@@ -699,27 +719,33 @@ schematic_orientation_from_string(const std::string &value) {
 class PyCircuit {
   public:
     [[nodiscard]] std::size_t define_resistor() {
-        return volt::authoring::define_component(circuit_, volt::authoring::resistor()).index();
+        auto spec = volt::authoring::resistor();
+        spec.schematic_symbols = {volt::SchematicSymbolReference{"resistor"}};
+        return volt::authoring::define_component(circuit_, spec).index();
     }
 
     [[nodiscard]] std::size_t define_capacitor() {
-        return volt::authoring::define_component(circuit_, volt::authoring::capacitor()).index();
+        auto spec = volt::authoring::capacitor();
+        spec.schematic_symbols = {volt::SchematicSymbolReference{"capacitor"}};
+        return volt::authoring::define_component(circuit_, spec).index();
     }
 
     [[nodiscard]] std::size_t define_led() {
-        return volt::authoring::define_component(circuit_, volt::authoring::led()).index();
+        auto spec = volt::authoring::led();
+        spec.schematic_symbols = {volt::SchematicSymbolReference{"led"}};
+        return volt::authoring::define_component(circuit_, spec).index();
     }
 
     [[nodiscard]] std::size_t define_connector_1x02() {
-        return volt::authoring::define_component(circuit_, volt::authoring::connector_1x02())
-            .index();
+        auto spec = volt::authoring::connector_1x02();
+        spec.schematic_symbols = {volt::SchematicSymbolReference{"connector_1x02"}};
+        return volt::authoring::define_component(circuit_, spec).index();
     }
 
-    [[nodiscard]] std::size_t define_component(const std::string &name, const py::list &pins,
-                                               const py::dict &properties,
-                                               const std::string &source_namespace,
-                                               const std::string &source_name,
-                                               const std::string &source_version) {
+    [[nodiscard]] std::size_t
+    define_component(const std::string &name, const py::list &pins, const py::dict &properties,
+                     const std::string &source_namespace, const std::string &source_name,
+                     const std::string &source_version, const py::list &schematic_symbols) {
         auto source = std::optional<volt::DefinitionSource>{};
         const auto wants_source =
             !source_namespace.empty() || !source_name.empty() || !source_version.empty();
@@ -733,8 +759,9 @@ class PyCircuit {
 
         return volt::authoring::define_component(
                    circuit_,
-                   volt::authoring::ComponentSpec{name, pin_specs_from_list(pins),
-                                                  properties_from_dict(properties), source})
+                   volt::authoring::ComponentSpec{
+                       name, pin_specs_from_list(pins), properties_from_dict(properties), source,
+                       schematic_symbol_references_from_list(schematic_symbols)})
             .index();
     }
 
@@ -879,6 +906,19 @@ class PyCircuit {
             result.append(std::move(item));
         }
         return result;
+    }
+
+    [[nodiscard]] std::optional<std::string>
+    component_schematic_symbol(std::size_t component, const std::string &variant) const {
+        const auto component_handle = component_id(component);
+        const auto &definition =
+            circuit_.component_definition(circuit_.component(component_handle).definition());
+        for (const auto &symbol : definition.schematic_symbols()) {
+            if (symbol.variant() == variant) {
+                return symbol.name();
+            }
+        }
+        return std::nullopt;
     }
 
     void connect(std::size_t net, std::size_t pin) { circuit_.connect(net_id(net), pin_id(pin)); }
@@ -1105,6 +1145,10 @@ class PyCircuit {
         auto &projection = schematic_projection();
         if (const auto existing = projection.symbol_definition_by_name(symbol.name());
             existing.has_value()) {
+            if (projection.symbol_definition(existing.value()) != symbol) {
+                throw std::invalid_argument{
+                    "Schematic symbol name already exists with a different definition"};
+            }
             return existing.value().index();
         }
         return projection.add_symbol_definition(std::move(symbol)).index();
@@ -1270,7 +1314,8 @@ PYBIND11_MODULE(_volt, module) {
         .def("define_connector_1x02", &PyCircuit::define_connector_1x02)
         .def("define_component", &PyCircuit::define_component, py::arg("name"), py::arg("pins"),
              py::arg("properties") = py::dict{}, py::arg("source_namespace") = "",
-             py::arg("source_name") = "", py::arg("source_version") = "")
+             py::arg("source_name") = "", py::arg("source_version") = "",
+             py::arg("schematic_symbols") = py::list{})
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
         .def("select_physical_part", &PyCircuit::select_physical_part, py::arg("component"),
              py::arg("manufacturer"), py::arg("part_number"), py::arg("package"),
@@ -1293,6 +1338,8 @@ PYBIND11_MODULE(_volt, module) {
         .def("pin_by_name", &PyCircuit::pin_by_name, py::arg("component"), py::arg("name"))
         .def("pin_by_number", &PyCircuit::pin_by_number, py::arg("component"), py::arg("number"))
         .def("pin_refs", &PyCircuit::pin_refs, py::arg("component"))
+        .def("component_schematic_symbol", &PyCircuit::component_schematic_symbol,
+             py::arg("component"), py::arg("variant"))
         .def("connect", &PyCircuit::connect, py::arg("net"), py::arg("pin"))
         .def("mark_intentional_stub_net", &PyCircuit::mark_intentional_stub_net, py::arg("net"))
         .def("mark_intentional_no_connect_pin", &PyCircuit::mark_intentional_no_connect_pin,

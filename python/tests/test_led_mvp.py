@@ -6,6 +6,23 @@ import volt
 from volt.libraries import stm32_usb_buck
 
 
+def _two_pin_test_symbol(name: str, *, variant: str = "default", label: str = "SYM"):
+    return volt.SchematicSymbolSpec(
+        name,
+        variant=variant,
+        pins=(
+            volt.SchematicSymbolSpec.pin("1", 1, (0, 0), "Left"),
+            volt.SchematicSymbolSpec.pin("2", 2, (20, 0), "Right"),
+        ),
+        primitives=(
+            volt.SchematicSymbolSpec.line((0, 0), (4, 0)),
+            volt.SchematicSymbolSpec.rectangle((4, -3), (16, 3)),
+            volt.SchematicSymbolSpec.line((16, 0), (20, 0)),
+            volt.SchematicSymbolSpec.text(label, (10, -8)),
+        ),
+    )
+
+
 def test_led_circuit_validates():
     design = volt.Design("led")
 
@@ -214,6 +231,133 @@ def test_library_component_instantiates_kernel_owned_definition_once():
         {"pin": "pin_def:1", "pad": "2"},
         {"pin": "pin_def:2", "pad": "3"},
     ]
+
+
+def test_library_component_schematic_symbol_default_is_definition_owned():
+    design = volt.Design("library-symbol")
+    library = volt.Library("volt.test")
+    symbol = _two_pin_test_symbol("volt.test:Sensor")
+    sensor = library.component(
+        "Sensor",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        schematic_symbol=symbol,
+    )
+
+    u1 = design.instantiate(sensor, ref="U1")
+    schematic = design.schematic("Main")
+    schematic.place(u1, at=(10, 20))
+
+    circuit = json.loads(design.to_json())
+    projection = json.loads(schematic.to_json())
+
+    assert circuit["component_definitions"][0]["schematic_symbols"] == [
+        {"name": "volt.test:Sensor", "variant": "default"}
+    ]
+    assert u1.schematic_symbol == symbol
+    assert projection["symbol_definitions"][0]["name"] == "volt.test:Sensor"
+    assert projection["symbol_instances"][0]["symbol_definition"] == "symbol_def:0"
+
+
+def test_module_instance_component_resolves_library_symbol_default():
+    design = volt.Design("module-library-symbol")
+    library = volt.Library("volt.test")
+    symbol = _two_pin_test_symbol("volt.test:Sensor")
+    sensor = library.component(
+        "Sensor",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        schematic_symbol=symbol,
+    )
+
+    module = design.define_module("SensorBlock")
+    module.instantiate(sensor, ref="U1")
+
+    block = design.instantiate(module, ref="BLOCK_A")
+    u1 = block.component("U1")
+    schematic = design.schematic("Main")
+    schematic.place(u1, at=(10, 20))
+
+    projection = json.loads(schematic.to_json())
+
+    assert u1.schematic_symbol == symbol
+    assert projection["symbol_definitions"][0]["name"] == "volt.test:Sensor"
+    assert projection["symbol_instances"][0]["component"] == "component:0"
+
+
+def test_schematic_placement_can_select_symbol_variant_from_component_default():
+    design = volt.Design("library-symbol-variant")
+    library = volt.Library("volt.test")
+    horizontal = _two_pin_test_symbol("volt.test:Sensor")
+    vertical = _two_pin_test_symbol(
+        "volt.test:SensorVertical", variant="vertical", label="VERT"
+    )
+    sensor = library.component(
+        "Sensor",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        schematic_symbol=(horizontal, vertical),
+    )
+
+    u1 = design.instantiate(sensor, ref="U1")
+    schematic = design.schematic("Main")
+    schematic.place(u1, at=(10, 20), variant="vertical")
+
+    circuit = json.loads(design.to_json())
+    projection = json.loads(schematic.to_json())
+
+    assert circuit["component_definitions"][0]["schematic_symbols"] == [
+        {"name": "volt.test:Sensor", "variant": "default"},
+        {"name": "volt.test:SensorVertical", "variant": "vertical"},
+    ]
+    assert u1.schematic_symbol_variant("vertical") == vertical
+    assert projection["symbol_definitions"][1]["name"] == "volt.test:SensorVertical"
+    assert projection["symbol_instances"][0]["symbol_definition"] == "symbol_def:1"
+
+
+def test_schematic_symbol_name_conflicts_reject_different_definitions():
+    design = volt.Design("library-symbol-conflict")
+    library = volt.Library("volt.test")
+    first = library.component(
+        "SensorA",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        schematic_symbol=_two_pin_test_symbol("volt.test:Sensor", label="A"),
+    )
+    second = library.component(
+        "SensorB",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        schematic_symbol=_two_pin_test_symbol("volt.test:Sensor", label="B"),
+    )
+
+    design.instantiate(first, ref="U1")
+    try:
+        design.instantiate(second, ref="U2")
+    except ValueError as error:
+        assert "already exists with a different definition" in str(error)
+    else:
+        raise AssertionError("conflicting schematic symbol definitions should be rejected")
+
+
+def test_schematic_placement_rejects_symbol_with_unknown_component_pin():
+    design = volt.Design("bad-symbol")
+    library = volt.Library("volt.test")
+    bad_symbol = volt.SchematicSymbolSpec(
+        "volt.test:Sensor",
+        pins=(volt.SchematicSymbolSpec.pin("BOGUS", 99, (0, 0), "Left"),),
+        primitives=(volt.SchematicSymbolSpec.line((0, 0), (10, 0)),),
+    )
+    sensor = library.component(
+        "Sensor",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        schematic_symbol=bad_symbol,
+    )
+
+    u1 = design.instantiate(sensor, ref="U1")
+    schematic = design.schematic("Main")
+
+    try:
+        schematic.place(u1, at=(10, 20))
+    except RuntimeError as error:
+        assert "symbol pin does not match component pin" in str(error)
+    else:
+        raise AssertionError("incompatible schematic symbol should be rejected")
 
 
 def test_stm32_usb_buck_library_exposes_native_components():
@@ -987,6 +1131,11 @@ if __name__ == "__main__":
     test_python_stub_net_intent_suppresses_only_intended_net_shape_diagnostics()
     test_python_no_connect_intent_suppresses_only_intended_missing_pin_diagnostics()
     test_library_component_instantiates_kernel_owned_definition_once()
+    test_library_component_schematic_symbol_default_is_definition_owned()
+    test_module_instance_component_resolves_library_symbol_default()
+    test_schematic_placement_can_select_symbol_variant_from_component_default()
+    test_schematic_symbol_name_conflicts_reject_different_definitions()
+    test_schematic_placement_rejects_symbol_with_unknown_component_pin()
     test_stm32_usb_buck_library_exposes_native_components()
     test_repeated_pin_labels_require_explicit_single_pin_addressing()
     test_repeated_pin_group_connects_all_matching_package_pins()

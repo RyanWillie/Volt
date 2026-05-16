@@ -228,8 +228,11 @@ class SchematicSymbolSpec:
     name: str
     pins: tuple[SchematicSymbolPinSpec, ...]
     primitives: tuple[dict, ...]
+    variant: str = "default"
 
     def __post_init__(self) -> None:
+        if not self.variant:
+            raise ValueError("Schematic symbol variant must not be empty")
         object.__setattr__(self, "pins", tuple(self.pins))
         object.__setattr__(
             self,
@@ -310,11 +313,15 @@ class LibraryComponent:
     source_version: str
     physical_part: PhysicalPartSpec | None = None
     prefix: str = "U"
-    schematic_symbol: SchematicSymbolSpec | None = None
+    schematic_symbols: tuple[SchematicSymbolSpec, ...] = ()
 
     @property
     def cache_key(self) -> tuple[str, str, str, str]:
         return (self.library.namespace, self.source_name, self.source_version, self.name)
+
+    @property
+    def schematic_symbol(self) -> SchematicSymbolSpec | None:
+        return _schematic_symbol_for_variant(self.schematic_symbols, "default")
 
 
 class Library:
@@ -339,7 +346,7 @@ class Library:
         source_version: str | None = None,
         physical_part: PhysicalPartSpec | None = None,
         prefix: str = "U",
-        schematic_symbol: SchematicSymbolSpec | None = None,
+        schematic_symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
     ) -> LibraryComponent:
         if not name:
             raise ValueError("Library component name must not be empty")
@@ -356,13 +363,45 @@ class Library:
             source_version=source_version or self.version,
             physical_part=physical_part,
             prefix=prefix,
-            schematic_symbol=schematic_symbol,
+            schematic_symbols=_normalize_schematic_symbols(schematic_symbol),
         )
         self._components[name] = component
         return component
 
     def __getitem__(self, name: str) -> LibraryComponent:
         return self._components[name]
+
+
+def _normalize_schematic_symbols(
+    symbols: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None,
+) -> tuple[SchematicSymbolSpec, ...]:
+    if symbols is None:
+        return ()
+    if isinstance(symbols, SchematicSymbolSpec):
+        result = (symbols,)
+    else:
+        result = tuple(symbols)
+    variants = set()
+    for symbol in result:
+        if not isinstance(symbol, SchematicSymbolSpec):
+            raise TypeError("schematic_symbol entries must be SchematicSymbolSpec instances")
+        if symbol.variant in variants:
+            raise ValueError("schematic symbol variants must be unique")
+        variants.add(symbol.variant)
+    return result
+
+
+def _schematic_symbol_refs(symbols: Iterable[SchematicSymbolSpec]) -> list[dict[str, str]]:
+    return [{"name": symbol.name, "variant": symbol.variant} for symbol in symbols]
+
+
+def _schematic_symbol_for_variant(
+    symbols: Iterable[SchematicSymbolSpec], variant: str
+) -> SchematicSymbolSpec | None:
+    for symbol in symbols:
+        if symbol.variant == variant:
+            return symbol
+    return None
 
 
 class ComponentDefinition:
@@ -414,11 +453,15 @@ class ModuleDefinition:
 
     def instantiate(
         self,
-        definition: ComponentDefinition,
+        definition: ComponentDefinition | LibraryComponent,
         *,
         ref: str,
         properties: dict | None = None,
     ) -> ModuleComponent:
+        if isinstance(definition, LibraryComponent):
+            if definition.physical_part is not None:
+                raise ValueError("Module library components do not support selected physical parts")
+            definition = self._design._define_library_component(definition)
         if not isinstance(definition, ComponentDefinition):
             raise TypeError("Module instantiate expects a ComponentDefinition handle")
         if definition._design is not self._design:
@@ -697,23 +740,27 @@ class PinGroup:
 class Component:
     """Handle to a kernel-owned component instance."""
 
-    def __init__(
-        self,
-        design: Design,
-        index: int,
-        schematic_symbol: SchematicSymbolSpec | None = None,
-    ):
+    def __init__(self, design: Design, index: int):
         self._design = design
         self._index = index
-        self._schematic_symbol = schematic_symbol
 
     @property
     def index(self) -> int:
         return self._index
 
     @property
-    def schematic_symbol(self) -> SchematicSymbolSpec | None:
-        return self._schematic_symbol
+    def schematic_symbol(self) -> SchematicSymbolSpec | str | None:
+        return self.schematic_symbol_variant("default")
+
+    def schematic_symbol_variant(self, variant: str) -> SchematicSymbolSpec | str | None:
+        if not isinstance(variant, str):
+            raise TypeError("schematic symbol variant must be a string")
+        if not variant:
+            raise ValueError("schematic symbol variant must not be empty")
+        name = self._design._circuit.component_schematic_symbol(self._index, variant)
+        if name is None:
+            return None
+        return self._design._schematic_symbols.get(name, name)
 
     def __getitem__(self, key: int | str) -> Pin:
         if isinstance(key, int):
@@ -892,13 +939,14 @@ class Schematic:
         *,
         at: tuple[float, float],
         symbol: str | SchematicSymbolSpec | None = None,
+        variant: str = "default",
     ) -> SchematicSymbol:
         if not isinstance(component, Component):
             raise TypeError("Schematic placement expects a Component handle")
         if component._design is not self._design:
             raise ValueError("Component belongs to a different design")
         if symbol is None:
-            symbol = component.schematic_symbol
+            symbol = component.schematic_symbol_variant(variant)
         if isinstance(symbol, SchematicSymbolSpec):
             self.register_symbol(symbol)
             symbol_name = symbol.name
@@ -921,7 +969,7 @@ class Schematic:
     def register_symbol(self, symbol: SchematicSymbolSpec) -> None:
         if not isinstance(symbol, SchematicSymbolSpec):
             raise TypeError("register_symbol expects a SchematicSymbolSpec")
-        self._design._circuit.register_schematic_symbol(symbol._to_dict())
+        self._design._register_schematic_symbol(symbol)
 
     def wire(self, net: Net, points: Iterable[tuple[float, float]]) -> SchematicWire:
         if not isinstance(net, Net):
@@ -987,6 +1035,7 @@ class Design:
         self._circuit = _volt.Circuit()
         self._definitions: dict[str, int] = {}
         self._library_definitions: dict[tuple[str, str, str], ComponentDefinition] = {}
+        self._schematic_symbols: dict[str, SchematicSymbolSpec] = {}
         self._schematic_sheets: dict[str, int] = {}
 
     def net(self, name: str, *, kind: str = "signal", voltage: float | None = None) -> Net:
@@ -1050,7 +1099,12 @@ class Design:
         pins: Iterable[PinSpec],
         properties: dict | None = None,
         source: tuple[str, str, str] | None = None,
+        schematic_symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
     ) -> ComponentDefinition:
+        schematic_symbols = _normalize_schematic_symbols(schematic_symbol)
+        for symbol in schematic_symbols:
+            self._register_schematic_symbol(symbol)
+
         source_namespace = ""
         source_name = ""
         source_version = ""
@@ -1074,6 +1128,7 @@ class Design:
             source_namespace,
             source_name,
             source_version,
+            _schematic_symbol_refs(schematic_symbols),
         )
         return ComponentDefinition(self, definition, name)
 
@@ -1097,7 +1152,6 @@ class Design:
                 prefix=definition.prefix if prefix is None else prefix,
                 properties=properties,
             )
-            component._schematic_symbol = definition.schematic_symbol
             if definition.physical_part is not None:
                 part = definition.physical_part
                 component.select_part(
@@ -1150,8 +1204,13 @@ class Design:
                     component.source_name,
                     component.source_version,
                 ),
+                schematic_symbol=component.schematic_symbols,
             )
         return self._library_definitions[component.cache_key]
+
+    def _register_schematic_symbol(self, symbol: SchematicSymbolSpec) -> None:
+        self._circuit.register_schematic_symbol(symbol._to_dict())
+        self._schematic_symbols[symbol.name] = symbol
 
     def LED(self, *, ref: str | None = None) -> Component:
         return self._instantiate("led", self._circuit.define_led, "D", ref, {})

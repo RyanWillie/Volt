@@ -491,6 +491,19 @@ inline void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
                 << ", \"name\": " << detail::json_string(definition.source()->name())
                 << ", \"version\": " << detail::json_string(definition.source()->version()) << " }";
         }
+        if (!definition.schematic_symbols().empty()) {
+            out << ", \"schematic_symbols\": [";
+            for (std::size_t symbol_index = 0; symbol_index < definition.schematic_symbols().size();
+                 ++symbol_index) {
+                const auto &symbol = definition.schematic_symbols()[symbol_index];
+                out << "{ \"name\": " << detail::json_string(symbol.name())
+                    << ", \"variant\": " << detail::json_string(symbol.variant()) << " }";
+                if (symbol_index + 1U != definition.schematic_symbols().size()) {
+                    out << ", ";
+                }
+            }
+            out << "]";
+        }
         out << ", \"pins\": [";
         for (std::size_t pin_index = 0; pin_index < definition.pins().size(); ++pin_index) {
             out << detail::json_string(detail::pin_def_id(definition.pins()[pin_index]));

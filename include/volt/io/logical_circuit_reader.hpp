@@ -433,6 +433,23 @@ class LogicalCircuitReader {
                                 string_field(*it, "version")};
     }
 
+    [[nodiscard]] static std::vector<SchematicSymbolReference>
+    schematic_symbol_references(const nlohmann::json &object) {
+        auto result = std::vector<SchematicSymbolReference>{};
+        const auto symbols = optional_array_field(object, "schematic_symbols");
+        if (symbols == nullptr) {
+            return result;
+        }
+
+        result.reserve(symbols->size());
+        for (const auto &symbol : *symbols) {
+            require(symbol.is_object(), "Schematic symbol reference must be an object");
+            result.emplace_back(string_field(symbol, "name"),
+                                optional_string_field(symbol, "variant", "default"));
+        }
+        return result;
+    }
+
     template <typename Id>
     [[nodiscard]] Id resolve(const std::map<std::string, Id> &ids, const std::string &id) const {
         const auto it = ids.find(id);
@@ -469,10 +486,11 @@ class LogicalCircuitReader {
                 require(pin.is_string(), "Component definition pin reference must be a string");
                 pins.push_back(resolve(pin_def_ids_, pin.get<std::string>()));
             }
-            component_def_ids_.emplace(id, circuit_.add_component_definition(ComponentDefinition{
-                                               string_field(definition, "name"), std::move(pins),
-                                               properties(field(definition, "properties")),
-                                               definition_source(definition)}));
+            component_def_ids_.emplace(
+                id, circuit_.add_component_definition(ComponentDefinition{
+                        string_field(definition, "name"), std::move(pins),
+                        properties(field(definition, "properties")), definition_source(definition),
+                        schematic_symbol_references(definition)}));
         }
     }
 
