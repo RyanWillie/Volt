@@ -1111,6 +1111,103 @@ def test_python_schematic_symbol_handles_expose_pin_anchors():
     assert symbol.pin_anchor("2") == (60.0, 20.0)
 
 
+def test_python_schematic_drawing_place_returns_authoring_handle_with_core_anchors():
+    design = volt.Design("schematic-authoring-handle")
+    vcc = design.net("VCC", kind="power")
+    gnd = design.net("GND", kind="ground")
+    r1 = design.R("10k", ref="R1")
+    vcc += r1[1]
+    gnd += r1[2]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+    with schematic.drawing(at=(40, 20), direction="down", unit=20) as drawing:
+        resistor = drawing.place(r1)
+
+    assert resistor.symbol.index == 0
+    assert resistor.index == resistor.symbol.index
+    assert resistor.component is r1
+    assert resistor.orientation == "Down"
+    assert resistor.start.point == (40.0, 20.0)
+    assert resistor.end.point == (40.0, 40.0)
+    assert resistor.center.point == (40.0, 30.0)
+    assert resistor["1"].pin.index == r1[1].index
+    assert resistor[2].point == resistor.end.point
+    assert resistor.pin("2").point == resistor.end.point
+    assert tuple(anchor.number for anchor in resistor.pin_anchors()) == ("1", "2")
+
+    vcc_port = schematic.power("VCC", net=vcc, at=resistor.start.left(20))
+    gnd_port = schematic.ground(net=gnd, at=resistor.end.right(20))
+    schematic.wire(vcc).from_(vcc_port).to(resistor.start).orthogonal()
+    schematic.wire(gnd, points=(resistor.end, gnd_port.pin))
+
+    assert design.to_json() == logical_before
+
+
+def test_python_schematic_drawing_handle_resolves_pin_names_as_attributes_and_items():
+    design = volt.Design("schematic-authoring-handle-names")
+    component = design.define_component(
+        "Probe",
+        pins=[
+            volt.PinSpec("LEFT", 1),
+            volt.PinSpec("DATA+", 2),
+        ],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:probe",
+            pins=(
+                volt.SchematicSymbolSpec.pin("left_pin", 1, (0, 0), "Left"),
+                volt.SchematicSymbolSpec.pin("DATA+", 2, (20, 0), "Right"),
+            ),
+            primitives=(volt.SchematicSymbolSpec.line((0, 0), (20, 0)),),
+        ),
+    )
+    p1 = design.instantiate(component, ref="P1")
+
+    with design.schematic("Main").drawing(at=(10, 5)) as drawing:
+        probe = drawing.place(p1)
+
+    assert probe.left_pin.number == "1"
+    assert probe["left_pin"].point == (10.0, 5.0)
+    assert probe["DATA+"].number == "2"
+    assert probe["2"].name == "DATA+"
+
+
+def test_python_schematic_drawing_handle_reports_ambiguous_attribute_names():
+    design = volt.Design("schematic-authoring-handle-ambiguous")
+    component = design.define_component(
+        "RepeatedSupply",
+        pins=[
+            volt.PinSpec("VDD", 19, role="power"),
+            volt.PinSpec("VDD", 32, role="power"),
+        ],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:repeated-supply",
+            pins=(
+                volt.SchematicSymbolSpec.pin("VDD", 19, (0, 0), "Left"),
+                volt.SchematicSymbolSpec.pin("VDD", 32, (20, 0), "Right"),
+            ),
+            primitives=(volt.SchematicSymbolSpec.line((0, 0), (20, 0)),),
+        ),
+    )
+    u1 = design.instantiate(component, ref="U1")
+
+    with design.schematic("Main").drawing(at=(0, 0)) as drawing:
+        handle = drawing.place(u1)
+
+    try:
+        handle.VDD
+    except ValueError as error:
+        message = str(error)
+        assert "ambiguous" in message
+        assert "bracket" in message
+        assert "pin number" in message
+    else:
+        raise AssertionError("ambiguous pin names should not be exposed as attributes")
+
+    assert handle[19].number == "19"
+    assert handle["32"].number == "32"
+
+
 def test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects():
     design = volt.Design("schematic-dsl")
     vcc = design.net("VCC", kind="power")
@@ -1418,6 +1515,8 @@ def test_python_schematic_dsl_rejects_invalid_references():
     schematic = design.schematic("Main")
     symbol = schematic.place(r1, at=(40, 20), symbol="resistor")
     other_symbol = other.schematic("Main").place(other_r1, at=(40, 20), symbol="resistor")
+    handle = schematic.drawing(at=(80, 20)).place(r1)
+    other_handle = other.schematic("Other").drawing(at=(80, 20)).place(other_r1)
 
     try:
         schematic.power("BAD", net=other_vcc, at=(0, 0))
@@ -1439,6 +1538,13 @@ def test_python_schematic_dsl_rejects_invalid_references():
         assert str(error) == "Schematic anchor belongs to a different design"
     else:
         raise AssertionError("no-connect markers must reject pins from another design")
+
+    try:
+        schematic.wire(vcc).from_(other_handle.start).to(handle.start).orthogonal()
+    except ValueError as error:
+        assert str(error) == "Schematic anchor belongs to a different design"
+    else:
+        raise AssertionError("authoring handle anchors must reject pins from another design")
 
 
 def test_detached_schematic_symbol_pin_helpers_report_missing_component_context():
@@ -1575,6 +1681,7 @@ def test_python_schematic_handles_are_publicly_exported():
     assert "Schematic" in volt.__all__
     assert "SchematicAnchor" in volt.__all__
     assert "SchematicDrawing" in volt.__all__
+    assert "PlacedSchematicElement" in volt.__all__
     assert "SchematicJunction" in volt.__all__
     assert "SchematicSymbol" in volt.__all__
     assert "SchematicPinAnchor" in volt.__all__
@@ -1629,6 +1736,9 @@ if __name__ == "__main__":
     test_module_authoring_exposes_hierarchy_inspection_views()
     test_python_schematic_placement_serializes_kernel_projection()
     test_python_schematic_symbol_handles_expose_pin_anchors()
+    test_python_schematic_drawing_place_returns_authoring_handle_with_core_anchors()
+    test_python_schematic_drawing_handle_resolves_pin_names_as_attributes_and_items()
+    test_python_schematic_drawing_handle_reports_ambiguous_attribute_names()
     test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects()
     test_python_schematic_explicit_wire_points_are_normalized_once()
     test_python_schematic_drawing_cursor_defaults_and_moves()
