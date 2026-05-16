@@ -471,9 +471,37 @@ def test_schematic_placement_rejects_unknown_component_symbol_variant():
     try:
         schematic.place(u1, at=(10, 20), variant="vertical")
     except ValueError as error:
-        assert "No schematic symbol found for variant 'vertical'" in str(error)
+        message = str(error)
+        assert "No schematic symbol variant 'vertical'" in message
+        assert "U1" in message
+        assert "sheet 'Main'" in message
     else:
         raise AssertionError("missing schematic symbol variants should be rejected")
+
+
+def test_schematic_placement_missing_default_symbol_reports_author_context():
+    design = volt.Design("library-symbol-missing-default")
+    sensor = design.define_component(
+        "Sensor",
+        pins=[volt.PinSpec("OUT", 1)],
+    )
+    u1 = design.instantiate(sensor, ref="U1")
+    schematic = design.schematic("Main")
+    before = schematic.to_json()
+
+    try:
+        schematic.place(u1, at=(10, 20))
+    except ValueError as error:
+        message = str(error)
+        assert "No default schematic symbol" in message
+        assert "U1" in message
+        assert "sheet 'Main'" in message
+        assert "pass symbol=" in message
+        assert "schematic_symbol=" in message
+    else:
+        raise AssertionError("missing default schematic symbols should explain the fix")
+
+    assert schematic.to_json() == before
 
 
 def test_schematic_symbol_name_conflicts_reject_different_definitions():
@@ -595,6 +623,42 @@ def test_repeated_pin_labels_require_explicit_single_pin_addressing():
     assert u1[19].index == 0
     assert u1["VDD_32"].index == 1
     assert u1["GPIO"].index == 2
+
+
+def test_schematic_placed_symbol_ambiguous_pin_name_reports_author_context():
+    design = volt.Design("schematic-ambiguous-pin-context")
+    supply = design.define_component(
+        "Supply",
+        pins=[
+            volt.PinSpec("VDD", 1, role="power"),
+            volt.PinSpec("VDD", 2, role="power"),
+        ],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "volt.test:Supply",
+            pins=(
+                volt.SchematicSymbolSpec.pin("VDD", 1, (0, 0), "Left"),
+                volt.SchematicSymbolSpec.pin("VDD", 2, (20, 0), "Right"),
+            ),
+            primitives=(volt.SchematicSymbolSpec.line((0, 0), (20, 0)),),
+        ),
+    )
+    u1 = design.instantiate(supply, ref="U1")
+    schematic = design.schematic("Main")
+    placed = schematic.place(u1, at=(10, 20))
+
+    try:
+        placed.pin("VDD")
+    except ValueError as error:
+        message = str(error)
+        assert "ambiguous" in message
+        assert "VDD" in message
+        assert "U1" in message
+        assert "sheet 'Main'" in message
+        assert "'1'" in message
+        assert "'2'" in message
+        assert "pins('VDD')" in message
+    else:
+        raise AssertionError("ambiguous schematic pin names should carry author context")
 
 
 def test_repeated_pin_group_connects_all_matching_package_pins():
@@ -1429,7 +1493,9 @@ def test_python_schematic_label_sugar_rejects_invalid_inputs_clearly():
         try:
             drawing.net_label(sig, at=other_anchor)
         except ValueError as error:
-            assert str(error) == "Schematic anchor belongs to a different design"
+            message = str(error)
+            assert "different design" in message
+            assert "sheet 'Main'" in message
         else:
             raise AssertionError("net label sugar should reject cross-design anchors")
 
@@ -1450,7 +1516,9 @@ def test_python_schematic_label_sugar_rejects_invalid_inputs_clearly():
         try:
             drawing.sheet_port("SIG", at=other_anchor)
         except ValueError as error:
-            assert str(error) == "Schematic anchor belongs to a different design"
+            message = str(error)
+            assert "different design" in message
+            assert "sheet 'Main'" in message
         else:
             raise AssertionError("sheet port sugar should reject cross-design anchors")
 
@@ -1546,7 +1614,10 @@ def test_python_schematic_two_terminal_grammar_rejects_invalid_components_clearl
         try:
             drawing.two_terminal(bare).right()
         except ValueError as error:
-            assert str(error) == "No schematic symbol found for variant 'default'"
+            message = str(error)
+            assert "No default schematic symbol" in message
+            assert "U1" in message
+            assert "sheet 'Main'" in message
         else:
             raise AssertionError("two-terminal placement should reject missing symbols")
 
@@ -1937,6 +2008,7 @@ def test_python_schematic_drawing_connect_rejects_different_pin_nets_without_wir
         except ValueError as error:
             message = str(error)
             assert "different logical nets" in message
+            assert "sheet 'Main'" in message
             assert "R1 pin 2 (2)" in message
             assert "D1 pin 1 (K)" in message
             assert "LED_A" in message
@@ -1967,7 +2039,9 @@ def test_python_schematic_drawing_connect_requires_explicit_net_for_plain_coordi
         try:
             drawing.connect(resistor.start, (0, -20))
         except ValueError as error:
-            assert "explicit net" in str(error)
+            message = str(error)
+            assert "explicit net" in message
+            assert "sheet 'Main'" in message
         else:
             raise AssertionError("pin-to-coordinate wires must require explicit net")
 
@@ -2100,16 +2174,62 @@ def test_python_schematic_wire_shortcuts_reject_invalid_shapes_clearly():
     design = volt.Design("schematic-wire-invalid-shape")
     net = design.net("ROUTE")
     schematic = design.schematic("Main")
+    before = schematic.to_json()
 
     try:
         schematic.wire(net).at((0, 0)).to((20, 20)).shape("z")
     except ValueError as error:
-        assert (
-            str(error)
-            == "Schematic wire shape must be one of -, -|, |-, |-|, n, -|-, or c"
-        )
+        message = str(error)
+        assert "Invalid schematic wire shape 'z'" in message
+        assert "ROUTE" in message
+        assert "sheet 'Main'" in message
+        assert "expected one of -, -|, |-, |-|, n, -|-, or c" in message
     else:
         raise AssertionError("invalid wire shapes should be rejected")
+
+    assert schematic.to_json() == before
+
+    drawing = schematic.drawing(at=(5, 6))
+    try:
+        drawing.wire(net).to((25, 26), shape="bad")
+    except ValueError as error:
+        message = str(error)
+        assert "Invalid schematic wire shape 'bad'" in message
+        assert "sheet 'Main'" in message
+    else:
+        raise AssertionError("drawing wire invalid shapes should restore authoring state")
+
+    assert drawing.here.point == (5.0, 6.0)
+    drawing.move(dx=1)
+    assert schematic.to_json() == before
+
+    drawing = schematic.drawing(at=(50, 60))
+    try:
+        drawing.wire(net).to((70, 60)).via((70, 80)).shape("-|")
+    except ValueError as error:
+        message = str(error)
+        assert "need exactly two endpoints" in message
+        assert "sheet 'Main'" in message
+    else:
+        raise AssertionError("shape endpoint errors should restore drawing authoring state")
+
+    assert drawing.here.point == (50.0, 60.0)
+    drawing.move(dx=1)
+    assert schematic.to_json() == before
+
+    drawing = schematic.drawing(at=(90, 100))
+    try:
+        drawing.wire(net).shape("-|")
+    except ValueError as error:
+        message = str(error)
+        assert "need exactly two endpoints" in message
+        assert "sheet 'Main'" in message
+    else:
+        raise AssertionError("single-endpoint shape calls should restore drawing state")
+
+    assert drawing.here.point == (90.0, 100.0)
+    drawing.move(dx=1)
+    assert schematic.to_json() == before
 
 
 def test_python_schematic_wire_shape_rejects_reuse_after_materialization():
@@ -2311,7 +2431,10 @@ def test_python_schematic_drawing_push_pop_and_hold_restore_cursor_state():
     try:
         drawing.pop()
     except ValueError as error:
-        assert str(error) == "Schematic drawing state stack is empty"
+        message = str(error)
+        assert "Cannot pop schematic drawing cursor state" in message
+        assert "sheet 'Main'" in message
+        assert "stack is empty" in message
     else:
         raise AssertionError("empty schematic drawing state stack should be rejected")
 
@@ -2340,7 +2463,9 @@ def test_python_schematic_drawing_rejects_invalid_points_and_directions():
     try:
         drawing.move_from(other_anchor)
     except ValueError as error:
-        assert str(error) == "Schematic anchor belongs to a different design"
+        message = str(error)
+        assert "different design" in message
+        assert "sheet 'Main'" in message
     else:
         raise AssertionError("drawing cursor should reject cross-design anchors")
 
@@ -2395,7 +2520,10 @@ def test_python_schematic_drawing_hold_restores_cursor_after_nested_push():
     try:
         drawing.pop()
     except ValueError as error:
-        assert str(error) == "Schematic drawing state stack is empty"
+        message = str(error)
+        assert "Cannot pop schematic drawing cursor state" in message
+        assert "sheet 'Main'" in message
+        assert "stack is empty" in message
     else:
         raise AssertionError("hold should restore the drawing stack depth")
 
@@ -2437,28 +2565,40 @@ def test_python_schematic_dsl_rejects_invalid_references():
     try:
         schematic.power("BAD", net=other_vcc, at=(0, 0))
     except ValueError as error:
-        assert str(error) == "Net belongs to a different design"
+        message = str(error)
+        assert "different design" in message
+        assert "VCC" in message
+        assert "sheet 'Main'" in message
     else:
         raise AssertionError("power ports must reject nets from another design")
 
     try:
         schematic.wire(vcc).from_(other_symbol.pin(1)).to(symbol.pin(1)).orthogonal()
     except ValueError as error:
-        assert str(error) == "Schematic anchor belongs to a different design"
+        message = str(error)
+        assert "different design" in message
+        assert "R1 pin 1 (1)" in message
+        assert "sheet 'Main'" in message
     else:
         raise AssertionError("wire anchors must reject pins from another design")
 
     try:
         schematic.no_connect(other_symbol.pin(1))
     except ValueError as error:
-        assert str(error) == "Schematic anchor belongs to a different design"
+        message = str(error)
+        assert "different design" in message
+        assert "R1 pin 1 (1)" in message
+        assert "sheet 'Main'" in message
     else:
         raise AssertionError("no-connect markers must reject pins from another design")
 
     try:
         schematic.wire(vcc).from_(other_handle.start).to(handle.start).orthogonal()
     except ValueError as error:
-        assert str(error) == "Schematic anchor belongs to a different design"
+        message = str(error)
+        assert "different design" in message
+        assert "R1 pin 1 (1)" in message
+        assert "sheet 'Main'" in message
     else:
         raise AssertionError("authoring handle anchors must reject pins from another design")
 
@@ -2473,9 +2613,9 @@ def test_detached_schematic_symbol_pin_helpers_report_missing_component_context(
     try:
         detached.pin(1)
     except ValueError as error:
-        assert str(error) == (
-            "Schematic pin anchors require the Component handle returned by Schematic.place()"
-        )
+        message = str(error)
+        assert "Component handle returned by Schematic.place()" in message
+        assert "sheet 'Main'" in message
     else:
         raise AssertionError("detached symbol pin helpers should explain missing component context")
 
@@ -2526,8 +2666,12 @@ def test_python_schematic_readiness_reports_detached_net_stubs():
     assert len(report) == 1
     diagnostic = report[0]
     assert diagnostic.code == "SCHEMATIC_PIN_NET_NOT_VISUALLY_COVERED"
-    assert diagnostic.message == "Schematic omits visual net coverage for R1 pin 1 (1) on VCC"
+    assert (
+        diagnostic.message
+        == "Schematic sheet 'Main' omits visual net coverage for R1 pin 1 (1) on VCC"
+    )
     assert [(entity.kind, entity.index) for entity in diagnostic.entities] == [
+        ("sheet", 0),
         ("component", r1.index),
         ("pin", r1[1].index),
         ("pin_definition", 0),
@@ -2638,11 +2782,13 @@ if __name__ == "__main__":
     test_common_catalog_symbols_place_through_drawing_and_render()
     test_legacy_common_symbol_names_still_place_and_resolve()
     test_schematic_placement_rejects_unknown_component_symbol_variant()
+    test_schematic_placement_missing_default_symbol_reports_author_context()
     test_schematic_symbol_name_conflicts_reject_different_definitions()
     test_default_catalog_symbol_name_conflicts_reject_different_definitions()
     test_schematic_placement_rejects_symbol_with_unknown_component_pin()
     test_stm32_usb_buck_library_exposes_native_components()
     test_repeated_pin_labels_require_explicit_single_pin_addressing()
+    test_schematic_placed_symbol_ambiguous_pin_name_reports_author_context()
     test_repeated_pin_group_connects_all_matching_package_pins()
     test_stm32_repeated_supply_groups_connect_without_bespoke_code()
     test_pin_spec_electrical_semantics_are_kernel_owned()
