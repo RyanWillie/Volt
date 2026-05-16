@@ -1221,11 +1221,16 @@ class SchematicDrawing:
 
     @contextmanager
     def hold(self):
+        saved_stack = list(self._stack)
+        saved_here = self._here
+        saved_direction = self._direction
         self.push()
         try:
             yield self
         finally:
-            self.pop()
+            self._stack = saved_stack
+            self._here = saved_here
+            self._direction = saved_direction
 
     def __enter__(self) -> SchematicDrawing:
         return self

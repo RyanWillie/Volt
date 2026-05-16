@@ -1368,6 +1368,25 @@ def test_python_schematic_drawing_hold_restores_cursor_after_exception():
     assert (drawing.here.point, drawing.direction) == before
 
 
+def test_python_schematic_drawing_hold_restores_cursor_after_nested_push():
+    design = volt.Design("schematic-drawing-hold-nested-push")
+    drawing = design.schematic("Main").drawing(at=(1, 2), direction="Right")
+    before = drawing.here.point, drawing.direction
+
+    with drawing.hold():
+        drawing.move(dx=10)
+        drawing.push()
+        drawing.move(dy=20)
+
+    assert (drawing.here.point, drawing.direction) == before
+    try:
+        drawing.pop()
+    except ValueError as error:
+        assert str(error) == "Schematic drawing state stack is empty"
+    else:
+        raise AssertionError("hold should restore the drawing stack depth")
+
+
 def test_python_schematic_drawing_session_does_not_mutate_logical_design():
     design = volt.Design("schematic-drawing-logical-boundary")
     design.R("10k", ref="R1")
@@ -1618,6 +1637,7 @@ if __name__ == "__main__":
     test_python_schematic_drawing_rejects_invalid_points_and_directions()
     test_python_schematic_drawing_rejects_invalid_units()
     test_python_schematic_drawing_hold_restores_cursor_after_exception()
+    test_python_schematic_drawing_hold_restores_cursor_after_nested_push()
     test_python_schematic_drawing_session_does_not_mutate_logical_design()
     test_python_schematic_dsl_rejects_invalid_references()
     test_detached_schematic_symbol_pin_helpers_report_missing_component_context()
