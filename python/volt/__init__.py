@@ -1449,6 +1449,8 @@ class SchematicWireBuilder:
         self._require_unmaterialized()
         self._require_started()
         if len(self._points) != 2:
+            self._clear_pending()
+            self._restore_drawing_state()
             raise ValueError(
                 "Schematic wire shape routes need exactly two endpoints "
                 f"for {_net_label(self._net)} on {_schematic_sheet_phrase(self._schematic)}"
