@@ -1086,6 +1086,98 @@ class SchematicSymbol:
         return f"SchematicSymbol(index={self._index})"
 
 
+class PlacedSchematicElement:
+    """Drawing-session authoring view over one placed schematic symbol."""
+
+    def __init__(self, symbol: SchematicSymbol):
+        if not isinstance(symbol, SchematicSymbol):
+            raise TypeError("Placed schematic elements wrap a SchematicSymbol handle")
+        self.symbol = symbol
+
+    @property
+    def index(self) -> int:
+        return self.symbol.index
+
+    @property
+    def component(self) -> Component:
+        return self.symbol.component
+
+    @property
+    def orientation(self) -> str:
+        return self.symbol.orientation
+
+    @property
+    def start(self) -> SchematicPinAnchor:
+        return self._terminal_anchor(0, "start")
+
+    @property
+    def end(self) -> SchematicPinAnchor:
+        return self._terminal_anchor(-1, "end")
+
+    @property
+    def center(self) -> SchematicAnchor:
+        anchors = self.pin_anchors()
+        if not anchors:
+            raise ValueError("Placed schematic element center requires at least one pin anchor")
+        xs = tuple(anchor.x for anchor in anchors)
+        ys = tuple(anchor.y for anchor in anchors)
+        return SchematicAnchor(
+            ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2),
+            design=self.symbol._schematic._design,
+        )
+
+    def __getitem__(self, key: int | str) -> SchematicPinAnchor:
+        return self.pin(key)
+
+    def __getattr__(self, name: str) -> SchematicPinAnchor:
+        if name.startswith("__") and name.endswith("__"):
+            raise AttributeError(name)
+        if not name.isidentifier():
+            raise AttributeError(
+                f"Placed schematic element pin name {name!r} is not a valid Python "
+                "attribute; use bracket access"
+            )
+        matches = _pin_refs_by_name(self.symbol._pin_refs(), name)
+        if not matches:
+            raise AttributeError(f"Placed schematic element has no anchor named {name!r}")
+        if len(matches) > 1:
+            numbers = ", ".join(f"{item['number']!r}" for item in matches)
+            raise AttributeError(
+                f"Placed schematic element pin name {name!r} is ambiguous; use bracket "
+                f"access by pin number or pin(number). Matching pin numbers: {numbers}"
+            )
+        return self.symbol._pin_anchor_for_ref(matches[0])
+
+    def pin_anchor(self, number: int | str) -> tuple[float, float]:
+        return self.symbol.pin_anchor(number)
+
+    def pin(self, key: int | str) -> SchematicPinAnchor:
+        return self.symbol.pin(key)
+
+    def pins(self, name: str) -> tuple[SchematicPinAnchor, ...]:
+        return self.symbol.pins(name)
+
+    def pin_anchors(self) -> tuple[SchematicPinAnchor, ...]:
+        return self.symbol.pin_anchors()
+
+    def _terminal_anchor(self, index: int, label: str) -> SchematicPinAnchor:
+        anchors = self.pin_anchors()
+        if len(anchors) < 2:
+            raise ValueError(
+                f"Placed schematic element {label} requires at least two pin anchors"
+            )
+        return anchors[index]
+
+    def __dir__(self) -> list[str]:
+        result = set(super().__dir__())
+        names = [item["name"] for item in self.symbol._pin_refs()]
+        result.update(name for name in names if name.isidentifier() and names.count(name) == 1)
+        return sorted(result)
+
+    def __repr__(self) -> str:
+        return f"PlacedSchematicElement(symbol={self.symbol!r})"
+
+
 class SchematicWire:
     """Read-only handle to a schematic wire run projection."""
 
@@ -1218,6 +1310,24 @@ class SchematicDrawing:
             raise ValueError("Schematic drawing state stack is empty")
         self._here, self._direction = self._stack.pop()
         return self
+
+    def place(
+        self,
+        component: Component,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        orient: str | None = None,
+        symbol: str | SchematicSymbolSpec | None = None,
+        variant: str = "default",
+    ) -> PlacedSchematicElement:
+        placed = self._schematic.place(
+            component,
+            at=self._here if at is None else at,
+            orient=self._direction if orient is None else orient,
+            symbol=symbol,
+            variant=variant,
+        )
+        return PlacedSchematicElement(placed)
 
     @contextmanager
     def hold(self):
@@ -2000,6 +2110,7 @@ __all__ = [
     "PinGroup",
     "PinSpec",
     "PhysicalPartSpec",
+    "PlacedSchematicElement",
     "PortBindingInfo",
     "PortInfo",
     "Schematic",
