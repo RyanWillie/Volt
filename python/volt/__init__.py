@@ -972,6 +972,9 @@ class Schematic:
     def write_svg(self, path: str | Path) -> None:
         Path(path).write_text(self.to_svg(), encoding="utf-8")
 
+    def write_json(self, path: str | Path) -> None:
+        Path(path).write_text(self.to_json(), encoding="utf-8")
+
     def __repr__(self) -> str:
         return f"Schematic(name={self.name!r}, sheet_index={self._sheet_index})"
 
@@ -1169,6 +1172,20 @@ class Design:
         if name not in self._schematic_sheets:
             self._schematic_sheets[name] = self._circuit.schematic_sheet(name)
         return Schematic(self, self._schematic_sheets[name], name)
+
+    def load_schematic_json(self, text: str) -> Schematic:
+        if not isinstance(text, str):
+            raise TypeError("Schematic JSON must be a string")
+
+        self._circuit.load_schematic_json(text)
+        self._schematic_sheets.clear()
+        sheet_names = tuple(self._circuit.schematic_sheet_names())
+        if not sheet_names:
+            raise ValueError("Schematic document must contain at least one sheet")
+        return self.schematic(sheet_names[0])
+
+    def load_schematic(self, path: str | Path) -> Schematic:
+        return self.load_schematic_json(Path(path).read_text(encoding="utf-8"))
 
     def validate(self) -> DiagnosticReport:
         return DiagnosticReport(_diagnostic_from_dict(item) for item in self._circuit.validate())

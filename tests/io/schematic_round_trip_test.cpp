@@ -8,6 +8,7 @@
 #include <volt/io/schematic_reader.hpp>
 #include <volt/io/schematic_writer.hpp>
 #include <volt/schematic/schematic.hpp>
+#include <volt/schematic/schematic_document.hpp>
 #include <volt/schematic/symbols.hpp>
 
 namespace {
@@ -63,4 +64,31 @@ TEST_CASE("Schematic JSON round-trips deterministically") {
 
     CHECK(volt::io::write_schematic(loaded) == output);
     CHECK(circuit.net(net).pins().empty());
+}
+
+TEST_CASE("Schematic document round-trips as a project artifact") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    auto document = volt::SchematicDocument{circuit};
+    auto &schematic = document.schematic();
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    auto symbol = volt::SymbolDefinition{"Resistor"};
+    symbol.add_pin(
+        volt::SymbolPin{"1", "1", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left});
+    symbol.add_pin(
+        volt::SymbolPin{"2", "2", volt::Point{20.0, 0.0}, volt::SchematicOrientation::Right});
+    const auto symbol_id = schematic.add_symbol_definition(std::move(symbol));
+    [[maybe_unused]] const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol_id, component, volt::Point{40.0, 20.0}});
+    [[maybe_unused]] const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{20.0, 20.0}, volt::Point{40.0, 20.0}}});
+
+    const auto output = volt::io::write_schematic(document);
+    const auto loaded = volt::io::read_schematic_document_text(output, circuit);
+
+    CHECK(&document.circuit() == &circuit);
+    CHECK(&loaded.circuit() == &circuit);
+    CHECK(volt::io::write_schematic(loaded) == output);
 }

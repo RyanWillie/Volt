@@ -597,4 +597,22 @@ class SchematicReader {
     return read_schematic_text(buffer.str(), circuit);
 }
 
+/** Read a schematic document from parsed JSON, rejecting structurally invalid input. */
+[[nodiscard]] inline SchematicDocument read_schematic_document(const nlohmann::json &document,
+                                                              const Circuit &circuit) {
+    return SchematicDocument{read_schematic(document, circuit)};
+}
+
+/** Read a schematic document from a JSON string, rejecting structurally invalid input. */
+[[nodiscard]] inline SchematicDocument read_schematic_document_text(std::string_view text,
+                                                                   const Circuit &circuit) {
+    return SchematicDocument{read_schematic_text(text, circuit)};
+}
+
+/** Read a schematic document from a JSON stream, rejecting structurally invalid input. */
+[[nodiscard]] inline SchematicDocument read_schematic_document(std::istream &input,
+                                                              const Circuit &circuit) {
+    return SchematicDocument{read_schematic(input, circuit)};
+}
+
 } // namespace volt::io

@@ -382,7 +382,10 @@ sch.label(vcc, at=(20, 16))
 
 schematic_json = sch.to_json()
 schematic_svg = sch.to_svg()
+sch.write_json("led.schematic.volt.json")
 sch.write_svg("led.svg")
+
+loaded = d.load_schematic_json(schematic_json)
 ```
 
 `d.schematic(name)` creates or returns a kernel-owned sheet. `sch.place()` stores a
@@ -400,11 +403,19 @@ nets, or merge net names.
 the kernel-transformed sheet coordinate for a symbol pin number, so Python examples can
 place wires and labels relative to pins without reimplementing schematic orientation math.
 
-`Design.to_json()` still writes the logical circuit. `Schematic.to_json()` writes the
-`volt.schematic` projection JSON. The two formats remain separate so schematic placement
-can be loaded, inspected, or regenerated without becoming a second owner of the netlist.
+`Design.to_json()` still writes the logical circuit. `Schematic.to_json()` and
+`Schematic.write_json(path)` write the `volt.schematic` document JSON. The schematic
+document is owned alongside the logical circuit as a project artifact: it stores sheets,
+symbols, wire runs, labels, and presentation metadata that reference existing logical
+`ComponentId`, `PinId`, and `NetId` values.
+
+`Design.load_schematic_json(text)` and `Design.load_schematic(path)` replace the current
+schematic document after the kernel reader validates every logical reference against the
+design's circuit. Stale references fail at load time; schematic objects still cannot
+connect pins, create nets, or merge logical connectivity.
+
 `Schematic.to_svg()` and `Schematic.write_svg(path)` render the same kernel-owned
-projection to deterministic SVG for viewing. SVG is an output artifact, not the source of
+document to deterministic SVG for viewing. SVG is an output artifact, not the source of
 truth.
 
 ## Function Composition

@@ -19,9 +19,11 @@
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/properties.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
+#include <volt/io/schematic_reader.hpp>
 #include <volt/io/schematic_svg_writer.hpp>
 #include <volt/io/schematic_writer.hpp>
 #include <volt/schematic/schematic.hpp>
+#include <volt/schematic/schematic_document.hpp>
 #include <volt/schematic/symbols.hpp>
 #include <volt/schematic/validation.hpp>
 
@@ -698,6 +700,8 @@ schematic_orientation_from_string(const std::string &value) {
 
 class PyCircuit {
   public:
+    PyCircuit() : circuit_{}, schematic_document_{circuit_} {}
+
     [[nodiscard]] std::size_t define_resistor() {
         return volt::authoring::define_component(circuit_, volt::authoring::resistor()).index();
     }
@@ -1177,7 +1181,7 @@ class PyCircuit {
 
     [[nodiscard]] std::string schematic_to_json() {
         auto out = std::ostringstream{};
-        volt::io::write_schematic(out, schematic_projection());
+        volt::io::write_schematic(out, schematic_document_);
         return out.str();
     }
 
@@ -1185,6 +1189,20 @@ class PyCircuit {
         auto out = std::ostringstream{};
         volt::io::write_schematic_svg(out, schematic_projection());
         return out.str();
+    }
+
+    void load_schematic_json(const std::string &text) {
+        schematic_document_.replace_schematic(volt::io::read_schematic_text(text, circuit_));
+    }
+
+    [[nodiscard]] std::vector<std::string> schematic_sheet_names() const {
+        const auto &projection = schematic_document_.schematic();
+        auto names = std::vector<std::string>{};
+        names.reserve(projection.sheet_count());
+        for (std::size_t index = 0; index < projection.sheet_count(); ++index) {
+            names.push_back(projection.sheet(volt::SheetId{index}).name());
+        }
+        return names;
     }
 
     [[nodiscard]] py::list validate() const {
@@ -1233,10 +1251,7 @@ class PyCircuit {
     }
 
     [[nodiscard]] volt::Schematic &schematic_projection() {
-        if (!schematic_.has_value()) {
-            schematic_.emplace(circuit_);
-        }
-        return schematic_.value();
+        return schematic_document_.schematic();
     }
 
     [[nodiscard]] volt::SymbolDefId ensure_schematic_symbol(const std::string &name) {
@@ -1254,7 +1269,7 @@ class PyCircuit {
     }
 
     volt::Circuit circuit_;
-    std::optional<volt::Schematic> schematic_;
+    volt::SchematicDocument schematic_document_;
 };
 
 } // namespace
@@ -1337,6 +1352,8 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("net"), py::arg("x"), py::arg("y"))
         .def("schematic_to_json", &PyCircuit::schematic_to_json)
         .def("schematic_to_svg", &PyCircuit::schematic_to_svg)
+        .def("load_schematic_json", &PyCircuit::load_schematic_json, py::arg("text"))
+        .def("schematic_sheet_names", &PyCircuit::schematic_sheet_names)
         .def("validate", &PyCircuit::validate)
         .def("validate_schematic", &PyCircuit::validate_schematic)
         .def("validate_for_pcb", &PyCircuit::validate_for_pcb)

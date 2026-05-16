@@ -11,6 +11,7 @@
 
 #include <volt/io/logical_circuit_writer.hpp>
 #include <volt/schematic/schematic.hpp>
+#include <volt/schematic/schematic_document.hpp>
 #include <volt/schematic/symbols.hpp>
 
 namespace volt::io {
@@ -567,6 +568,16 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
     auto out = std::ostringstream{};
     write_schematic(out, schematic);
     return out.str();
+}
+
+/** Write a deterministic JSON representation of a schematic document. */
+inline void write_schematic(std::ostream &out, const SchematicDocument &document) {
+    write_schematic(out, document.schematic());
+}
+
+/** Return a deterministic JSON representation of a schematic document. */
+[[nodiscard]] inline std::string write_schematic(const SchematicDocument &document) {
+    return write_schematic(document.schematic());
 }
 
 } // namespace volt::io

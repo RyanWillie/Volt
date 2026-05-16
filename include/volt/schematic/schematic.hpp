@@ -421,6 +421,24 @@ class Schematic {
     /** Construct a schematic projection for one logical circuit context. */
     explicit Schematic(const Circuit &circuit) : circuit_{circuit} {}
 
+    /** Replace projection contents with another schematic over the same logical circuit. */
+    void replace_with(Schematic replacement) {
+        if (&replacement.circuit() != &circuit_) {
+            throw std::logic_error{"Schematic replacement must reference the same logical circuit"};
+        }
+
+        symbol_definitions_ = std::move(replacement.symbol_definitions_);
+        sheets_ = std::move(replacement.sheets_);
+        symbol_instances_ = std::move(replacement.symbol_instances_);
+        wire_runs_ = std::move(replacement.wire_runs_);
+        net_labels_ = std::move(replacement.net_labels_);
+        junctions_ = std::move(replacement.junctions_);
+        power_ports_ = std::move(replacement.power_ports_);
+        no_connect_markers_ = std::move(replacement.no_connect_markers_);
+        sheet_ports_ = std::move(replacement.sheet_ports_);
+        symbol_fields_ = std::move(replacement.symbol_fields_);
+    }
+
     /** Store a reusable symbol definition and return its stable schematic ID. */
     [[nodiscard]] SymbolDefId add_symbol_definition(SymbolDefinition definition) {
         if (symbol_definition_by_name(definition.name()).has_value()) {
