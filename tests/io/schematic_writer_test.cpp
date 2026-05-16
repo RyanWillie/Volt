@@ -149,7 +149,8 @@ TEST_CASE("Schematic writer emits professional primitives and sheet metadata") {
     [[maybe_unused]] const auto ground = schematic.add_power_port(
         sheet, volt::PowerPort{gnd, volt::PowerPortKind::Ground, volt::Point{50.0, 24.0}});
     [[maybe_unused]] const auto marker = schematic.add_no_connect_marker(
-        sheet, volt::NoConnectMarker{no_connect_pin, volt::Point{60.0, 20.0}});
+        sheet, volt::NoConnectMarker{no_connect_pin, volt::Point{60.0, 20.0},
+                                     volt::SchematicOrientation::Right, "not populated"});
     [[maybe_unused]] const auto port = schematic.add_sheet_port(
         sheet, volt::SheetPort{vcc, "VIN", volt::SheetPortKind::OffPage, volt::Point{5.0, 20.0}});
     [[maybe_unused]] const auto field = schematic.add_symbol_field(
@@ -177,6 +178,7 @@ TEST_CASE("Schematic writer emits professional primitives and sheet metadata") {
     CHECK(output["power_ports"][0]["kind"] == "Power");
     CHECK(output["power_ports"][1]["kind"] == "Ground");
     CHECK(output["no_connect_markers"][0]["pin"] == "pin:1");
+    CHECK(output["no_connect_markers"][0]["reason"] == "not populated");
     CHECK(output["sheet_ports"][0]["name"] == "VIN");
     CHECK(output["sheet_ports"][0]["kind"] == "OffPage");
     CHECK(output["symbol_fields"][0]["symbol_instance"] == "symbol_instance:0");

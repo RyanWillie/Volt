@@ -848,6 +848,11 @@ class Net:
         self._design._circuit.mark_intentional_stub_net(self._index)
         return self
 
+    def pins(self) -> tuple[Pin, ...]:
+        return tuple(
+            Pin(self._design, index) for index in self._design._circuit.net_pins(self._index)
+        )
+
     def connect(self, *pins: Pin | ModuleInstancePort | Iterable[Pin | ModuleInstancePort]) -> Net:
         for pin in _flatten_pins(pins):
             if isinstance(pin, Pin):
@@ -869,8 +874,110 @@ class Net:
         return f"Net(name={self.name!r}, index={self._index})"
 
 
-class SchematicSymbol:
-    """Read-only handle to a placed schematic symbol instance."""
+class SchematicAnchor:
+    """Sheet point that can be offset directionally while preserving author intent."""
+
+    def __init__(self, point: tuple[float, float], *, design: Design | None = None):
+        self._point = _schematic_point_tuple(point)
+        self._design = design
+
+    @property
+    def x(self) -> float:
+        return self._point[0]
+
+    @property
+    def y(self) -> float:
+        return self._point[1]
+
+    @property
+    def point(self) -> tuple[float, float]:
+        return self._point
+
+    def offset(self, dx: float = 0, dy: float = 0) -> SchematicAnchor:
+        return SchematicAnchor(
+            (self.x + _coordinate(dx), self.y + _coordinate(dy)),
+            design=self._design,
+        )
+
+    def left(self, distance: float) -> SchematicAnchor:
+        return self.offset(dx=-_coordinate(distance))
+
+    def right(self, distance: float) -> SchematicAnchor:
+        return self.offset(dx=_coordinate(distance))
+
+    def up(self, distance: float) -> SchematicAnchor:
+        return self.offset(dy=-_coordinate(distance))
+
+    def down(self, distance: float) -> SchematicAnchor:
+        return self.offset(dy=_coordinate(distance))
+
+    def __iter__(self):
+        return iter(self._point)
+
+    def __repr__(self) -> str:
+        return f"SchematicAnchor(point={self._point!r})"
+
+
+class SchematicPinAnchor(SchematicAnchor):
+    """Anchor for one placed symbol pin and its kernel-owned logical pin."""
+
+    def __init__(
+        self,
+        point: tuple[float, float],
+        *,
+        pin: Pin,
+        name: str,
+        number: str,
+        orientation: str,
+    ):
+        super().__init__(point, design=pin._design)
+        self.pin = pin
+        self.name = name
+        self.number = number
+        self.orientation = orientation
+
+    def __repr__(self) -> str:
+        return (
+            f"SchematicPinAnchor(name={self.name!r}, number={self.number!r}, "
+            f"point={self.point!r})"
+        )
+
+
+class SchematicPort:
+    """Handle to a placed power, ground, sheet, or off-page schematic port."""
+
+    def __init__(
+        self,
+        schematic: Schematic,
+        index: int,
+        *,
+        net: Net,
+        name: str,
+        kind: str,
+        at: tuple[float, float],
+        orientation: str,
+    ):
+        self._schematic = schematic
+        self._index = index
+        self.net = net
+        self.name = name
+        self.kind = kind
+        self.orientation = orientation
+        self.pin = SchematicAnchor(at, design=net._design)
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def __repr__(self) -> str:
+        return (
+            f"SchematicPort(name={self.name!r}, kind={self.kind!r}, "
+            f"index={self._index})"
+        )
+
+
+class SchematicJunction:
+    """Read-only handle to an explicit schematic junction."""
 
     def __init__(self, schematic: Schematic, index: int):
         self._schematic = schematic
@@ -880,11 +987,94 @@ class SchematicSymbol:
     def index(self) -> int:
         return self._index
 
+    def __repr__(self) -> str:
+        return f"SchematicJunction(index={self._index})"
+
+
+class SchematicNoConnect:
+    """Read-only handle to a schematic no-connect marker."""
+
+    def __init__(self, schematic: Schematic, index: int, pin: Pin):
+        self._schematic = schematic
+        self._index = index
+        self.pin = pin
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def __repr__(self) -> str:
+        return f"SchematicNoConnect(index={self._index})"
+
+
+class SchematicSymbol:
+    """Read-only handle to a placed schematic symbol instance."""
+
+    def __init__(
+        self,
+        schematic: Schematic,
+        index: int,
+        component: Component | None = None,
+        orientation: str | None = None,
+    ):
+        self._schematic = schematic
+        self._index = index
+        self._component = component
+        self._orientation = orientation
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    @property
+    def component(self) -> Component:
+        if self._component is None:
+            raise ValueError("Placed symbol component is not available")
+        return self._component
+
+    @property
+    def orientation(self) -> str:
+        if self._orientation is None:
+            return self._schematic._design._circuit.schematic_symbol_orientation(self._index)
+        return self._orientation
+
     def pin_anchor(self, number: int | str) -> tuple[float, float]:
         if not isinstance(number, (int, str)):
             raise TypeError("pin_anchor expects a pin number")
         return self._schematic._design._circuit.schematic_symbol_pin_anchor(
             self._index, str(number)
+        )
+
+    def pin(self, key: int | str) -> SchematicPinAnchor:
+        return self._pin_anchor_for_ref(_resolve_schematic_symbol_pin_ref(self._pin_refs(), key))
+
+    def pins(self, name: str) -> tuple[SchematicPinAnchor, ...]:
+        if not isinstance(name, str):
+            raise TypeError("Schematic symbol pin groups are addressed by str name")
+        matches = tuple(item for item in self._pin_refs() if item["name"] == name)
+        if not matches:
+            raise IndexError("Schematic symbol has no pin with that name")
+        return tuple(self._pin_anchor_for_ref(item) for item in matches)
+
+    def pin_anchors(self) -> tuple[SchematicPinAnchor, ...]:
+        return tuple(self._pin_anchor_for_ref(item) for item in self._pin_refs())
+
+    def _pin_refs(self):
+        return self._schematic._design._circuit.schematic_symbol_pin_refs(self._index)
+
+    def _pin_anchor_for_ref(self, pin_ref) -> SchematicPinAnchor:
+        pin = Pin(
+            self._schematic._design,
+            self._schematic._design._circuit.pin_by_number(
+                self.component.index, pin_ref["number"]
+            ),
+        )
+        return SchematicPinAnchor(
+            pin_ref["anchor"],
+            pin=pin,
+            name=pin_ref["name"],
+            number=pin_ref["number"],
+            orientation=pin_ref["orientation"],
         )
 
     def __repr__(self) -> str:
@@ -909,9 +1099,10 @@ class SchematicWire:
 class SchematicNetLabel:
     """Read-only handle to a schematic net label projection."""
 
-    def __init__(self, schematic: Schematic, index: int):
+    def __init__(self, schematic: Schematic, index: int, orientation: str = "Right"):
         self._schematic = schematic
         self._index = index
+        self.orientation = orientation
 
     @property
     def index(self) -> int:
@@ -919,6 +1110,41 @@ class SchematicNetLabel:
 
     def __repr__(self) -> str:
         return f"SchematicNetLabel(index={self._index})"
+
+
+class SchematicWireBuilder:
+    """Fluent authoring helper for one schematic wire run."""
+
+    def __init__(self, schematic: Schematic, net: Net):
+        self._schematic = schematic
+        self._net = net
+        self._points: list[tuple[float, float]] = []
+
+    def from_(self, point) -> SchematicWireBuilder:
+        self._points = [_schematic_point(point, design=self._schematic._design)]
+        return self
+
+    def via(self, point) -> SchematicWireBuilder:
+        self._require_started()
+        self._points.append(_schematic_point(point, design=self._schematic._design))
+        return self
+
+    def to(self, point) -> SchematicWireBuilder:
+        self._require_started()
+        self._points.append(_schematic_point(point, design=self._schematic._design))
+        return self
+
+    def direct(self) -> SchematicWire:
+        return self._schematic._add_wire(self._net, self._points, route_intent="Direct")
+
+    def orthogonal(self) -> SchematicWire:
+        return self._schematic._add_wire(
+            self._net, _orthogonal_wire_points(self._points), route_intent="Orthogonal"
+        )
+
+    def _require_started(self) -> None:
+        if not self._points:
+            raise ValueError("Schematic wire builder must start with from_()")
 
 
 class Schematic:
@@ -938,6 +1164,7 @@ class Schematic:
         component: Component,
         *,
         at: tuple[float, float],
+        orient: str = "Right",
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
     ) -> SchematicSymbol:
@@ -958,54 +1185,202 @@ class Schematic:
             raise TypeError("symbol must be a string or SchematicSymbolSpec")
         if not symbol_name:
             raise ValueError("symbol must not be empty")
-        if not isinstance(at, tuple) or len(at) != 2:
-            raise TypeError("at must be an (x, y) tuple")
-
-        x = _coordinate(at[0])
-        y = _coordinate(at[1])
+        orientation = _orientation(orient)
+        x, y = _schematic_point(at, design=self._design)
         instance = self._design._circuit.place_schematic_symbol(
-            self._sheet_index, component.index, symbol_name, x, y
+            self._sheet_index, component.index, symbol_name, x, y, orientation
         )
-        return SchematicSymbol(self, instance)
+        return SchematicSymbol(self, instance, component, orientation)
 
     def register_symbol(self, symbol: SchematicSymbolSpec) -> None:
         if not isinstance(symbol, SchematicSymbolSpec):
             raise TypeError("register_symbol expects a SchematicSymbolSpec")
         self._design._register_schematic_symbol(symbol)
 
-    def wire(self, net: Net, points: Iterable[tuple[float, float]]) -> SchematicWire:
+    def wire(
+        self,
+        net: Net,
+        points: Iterable[tuple[float, float] | SchematicAnchor | SchematicPort] | None = None,
+    ) -> SchematicWire | SchematicWireBuilder:
         if not isinstance(net, Net):
             raise TypeError("Schematic wires expect a Net handle")
         if net._design is not self._design:
             raise ValueError("Net belongs to a different design")
+        if points is None:
+            return SchematicWireBuilder(self, net)
 
+        return self._add_wire(
+            net,
+            tuple(_schematic_point(point, design=self._design) for point in points),
+            route_intent="Direct",
+        )
+
+    def _add_wire(
+        self,
+        net: Net,
+        points: Iterable[tuple[float, float]],
+        *,
+        route_intent: str,
+    ) -> SchematicWire:
         wire_points = tuple(points)
         if len(wire_points) < 2:
             raise ValueError("Schematic wires need at least two points")
 
         converted = []
         for point in wire_points:
-            if not isinstance(point, (tuple, list)) or len(point) != 2:
-                raise TypeError("Schematic wire points must be (x, y) pairs")
-            converted.append((_coordinate(point[0]), _coordinate(point[1])))
+            converted.append(_schematic_point(point, design=self._design))
 
         wire = self._design._circuit.add_schematic_wire(
-            self._sheet_index, net.index, converted
+            self._sheet_index, net.index, converted, route_intent
         )
         return SchematicWire(self, wire)
 
-    def label(self, net: Net, *, at: tuple[float, float]) -> SchematicNetLabel:
+    def label(
+        self,
+        net: Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        orient: str = "Right",
+    ) -> SchematicNetLabel:
         if not isinstance(net, Net):
             raise TypeError("Schematic labels expect a Net handle")
         if net._design is not self._design:
             raise ValueError("Net belongs to a different design")
-        if not isinstance(at, tuple) or len(at) != 2:
-            raise TypeError("at must be an (x, y) tuple")
+        x, y = _schematic_point(at, design=self._design)
+        orientation = _orientation(orient)
 
         label = self._design._circuit.add_schematic_net_label(
-            self._sheet_index, net.index, _coordinate(at[0]), _coordinate(at[1])
+            self._sheet_index, net.index, x, y, orientation
         )
-        return SchematicNetLabel(self, label)
+        return SchematicNetLabel(self, label, orientation)
+
+    def junction(
+        self, net: Net, *, at: tuple[float, float] | SchematicAnchor | SchematicPort
+    ) -> SchematicJunction:
+        if not isinstance(net, Net):
+            raise TypeError("Schematic junctions expect a Net handle")
+        if net._design is not self._design:
+            raise ValueError("Net belongs to a different design")
+        x, y = _schematic_point(at, design=self._design)
+        junction = self._design._circuit.add_schematic_junction(
+            self._sheet_index, net.index, x, y
+        )
+        return SchematicJunction(self, junction)
+
+    def power(
+        self,
+        name: str,
+        *,
+        net: Net,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        orient: str = "Up",
+    ) -> SchematicPort:
+        return self._power_port(name, net=net, at=at, orient=orient, kind="Power")
+
+    def ground(
+        self,
+        *,
+        net: Net,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        orient: str = "Down",
+    ) -> SchematicPort:
+        return self._power_port(net.name, net=net, at=at, orient=orient, kind="Ground")
+
+    def _power_port(
+        self,
+        name: str,
+        *,
+        net: Net,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        orient: str,
+        kind: str,
+    ) -> SchematicPort:
+        if not isinstance(name, str):
+            raise TypeError("Schematic power port names must be strings")
+        if not name:
+            raise ValueError("Schematic power port names must not be empty")
+        if not isinstance(net, Net):
+            raise TypeError("Schematic power ports expect a Net handle")
+        if net._design is not self._design:
+            raise ValueError("Net belongs to a different design")
+        if name != net.name:
+            raise ValueError("Schematic power port names must match the logical net name")
+        x, y = _schematic_point(at, design=self._design)
+        orientation = _orientation(orient)
+        port = self._design._circuit.add_schematic_power_port(
+            self._sheet_index, net.index, kind, x, y, orientation
+        )
+        return SchematicPort(
+            self,
+            port,
+            net=net,
+            name=name,
+            kind=kind,
+            at=(x, y),
+            orientation=orientation,
+        )
+
+    def no_connect(
+        self,
+        pin: SchematicPinAnchor,
+        *,
+        orient: str = "Right",
+        reason: str | None = None,
+    ) -> SchematicNoConnect:
+        if not isinstance(pin, SchematicPinAnchor):
+            raise TypeError("Schematic no-connect markers expect a placed pin anchor")
+        if reason is not None and not isinstance(reason, str):
+            raise TypeError("Schematic no-connect reasons must be strings")
+        _require_schematic_point_design(pin, self._design)
+        orientation = _orientation(orient)
+        pin.pin.mark_no_connect()
+        marker = self._design._circuit.add_schematic_no_connect_marker(
+            self._sheet_index, pin.pin.index, pin.x, pin.y, orientation, reason or ""
+        )
+        return SchematicNoConnect(self, marker, pin.pin)
+
+    def sheet_port(
+        self,
+        name: str,
+        *,
+        net: Net,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        kind: str = "Bidirectional",
+        orient: str = "Right",
+    ) -> SchematicPort:
+        if not isinstance(name, str):
+            raise TypeError("Schematic sheet port names must be strings")
+        if not name:
+            raise ValueError("Schematic sheet port names must not be empty")
+        if not isinstance(net, Net):
+            raise TypeError("Schematic sheet ports expect a Net handle")
+        if net._design is not self._design:
+            raise ValueError("Net belongs to a different design")
+        x, y = _schematic_point(at, design=self._design)
+        orientation = _orientation(orient)
+        port_kind = _sheet_port_kind(kind)
+        port = self._design._circuit.add_schematic_sheet_port(
+            self._sheet_index, net.index, name, port_kind, x, y, orientation
+        )
+        return SchematicPort(
+            self,
+            port,
+            net=net,
+            name=name,
+            kind=port_kind,
+            at=(x, y),
+            orientation=orientation,
+        )
+
+    def off_page(
+        self,
+        name: str,
+        *,
+        net: Net,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        orient: str = "Right",
+    ) -> SchematicPort:
+        return self.sheet_port(name, net=net, at=at, kind="OffPage", orient=orient)
 
     def to_json(self) -> str:
         return self._design._circuit.schematic_to_json()
@@ -1048,6 +1423,9 @@ class Design:
         if voltage is not None:
             self._circuit.set_net_quantity(net.index, "voltage", "voltage", _number(voltage))
         return net
+
+    def nets(self) -> tuple[Net, ...]:
+        return tuple(Net(self, item["index"], item["name"]) for item in self._circuit.net_refs())
 
     def R(
         self,
@@ -1298,6 +1676,29 @@ def _coordinate(value: float) -> float:
     return result
 
 
+def _schematic_point_tuple(value) -> tuple[float, float]:
+    if not isinstance(value, (tuple, list)) or len(value) != 2:
+        raise TypeError("Schematic points must be anchors, ports, or (x, y) pairs")
+    return (_coordinate(value[0]), _coordinate(value[1]))
+
+
+def _require_schematic_point_design(value, design: Design) -> None:
+    point_design = getattr(value, "_design", None)
+    if point_design is not None and point_design is not design:
+        raise ValueError("Schematic anchor belongs to a different design")
+
+
+def _schematic_point(value, *, design: Design) -> tuple[float, float]:
+    if isinstance(value, SchematicPort):
+        if value.net._design is not design:
+            raise ValueError("Schematic anchor belongs to a different design")
+        return value.pin.point
+    if isinstance(value, SchematicAnchor):
+        _require_schematic_point_design(value, design)
+        return value.point
+    return _schematic_point_tuple(value)
+
+
 def _symbol_point(value: tuple[float, float]) -> dict:
     if not isinstance(value, (tuple, list)) or len(value) != 2:
         raise TypeError("Schematic symbol points must be (x, y) pairs")
@@ -1305,9 +1706,77 @@ def _symbol_point(value: tuple[float, float]) -> dict:
 
 
 def _orientation(value: str) -> str:
-    if value not in {"Right", "Down", "Left", "Up"}:
+    if not isinstance(value, str):
+        raise TypeError("Schematic orientation must be a string")
+    normalized = {
+        "right": "Right",
+        "down": "Down",
+        "left": "Left",
+        "up": "Up",
+    }.get(value.casefold())
+    if normalized is None:
         raise ValueError("Schematic orientation must be Right, Down, Left, or Up")
-    return value
+    return normalized
+
+
+def _sheet_port_kind(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError("Schematic sheet port kind must be a string")
+    normalized = {
+        "input": "Input",
+        "output": "Output",
+        "bidirectional": "Bidirectional",
+        "offpage": "OffPage",
+        "off_page": "OffPage",
+        "off-page": "OffPage",
+    }.get(value.casefold())
+    if normalized is None:
+        raise ValueError(
+            "Schematic sheet port kind must be Input, Output, Bidirectional, or OffPage"
+        )
+    return normalized
+
+
+def _resolve_schematic_symbol_pin_ref(pin_refs, key: int | str):
+    if isinstance(key, int):
+        matches = tuple(item for item in pin_refs if item["number"] == str(key))
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise ValueError(f"Schematic symbol pin number {key!r} is ambiguous")
+        raise IndexError("Schematic symbol has no pin with that number")
+
+    if not isinstance(key, str):
+        raise TypeError("Schematic symbol pins are addressed by int number or str name")
+
+    name_matches = tuple(item for item in pin_refs if item["name"] == key)
+    if len(name_matches) == 1:
+        return name_matches[0]
+    if len(name_matches) > 1:
+        raise ValueError(
+            f"Schematic symbol pin name {key!r} is ambiguous; use pins({key!r}) "
+            "for the group or address one physical pin by number"
+        )
+
+    number_matches = tuple(item for item in pin_refs if item["number"] == key)
+    if len(number_matches) == 1:
+        return number_matches[0]
+    if len(number_matches) > 1:
+        raise ValueError(f"Schematic symbol pin number {key!r} is ambiguous")
+
+    raise IndexError("Schematic symbol has no pin with that name or number")
+
+
+def _orthogonal_wire_points(
+    points: Iterable[tuple[float, float]],
+) -> tuple[tuple[float, float], ...]:
+    result = tuple(points)
+    if len(result) == 2:
+        start, end = result
+        if start[0] != end[0] and start[1] != end[1]:
+            midpoint = (end[0], start[1])
+            return (start, midpoint, end)
+    return result
 
 
 def _pin_refs_by_name(pin_refs, name: str):
@@ -1419,10 +1888,16 @@ __all__ = [
     "PortBindingInfo",
     "PortInfo",
     "Schematic",
+    "SchematicAnchor",
+    "SchematicJunction",
     "SchematicNetLabel",
+    "SchematicNoConnect",
+    "SchematicPinAnchor",
+    "SchematicPort",
     "SchematicSymbolPinSpec",
     "SchematicSymbolSpec",
     "SchematicSymbol",
     "SchematicWire",
+    "SchematicWireBuilder",
     "TemplateNetInfo",
 ]

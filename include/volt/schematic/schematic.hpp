@@ -314,8 +314,9 @@ class NoConnectMarker {
   public:
     /** Construct a no-connect marker for an existing concrete pin. */
     NoConnectMarker(PinId pin, Point position,
-                    SchematicOrientation orientation = SchematicOrientation::Right)
-        : pin_{pin}, position_{position}, orientation_{orientation} {}
+                    SchematicOrientation orientation = SchematicOrientation::Right,
+                    std::string reason = {})
+        : pin_{pin}, position_{position}, orientation_{orientation}, reason_{std::move(reason)} {}
 
     /** Return the concrete pin marked as intentionally open. */
     [[nodiscard]] PinId pin() const noexcept { return pin_; }
@@ -326,10 +327,14 @@ class NoConnectMarker {
     /** Return the marker orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
 
+    /** Return the optional author-supplied reason for the no-connect marker. */
+    [[nodiscard]] const std::string &reason() const noexcept { return reason_; }
+
   private:
     PinId pin_;
     Point position_;
     SchematicOrientation orientation_;
+    std::string reason_;
 };
 
 /** Sheet-port visual and authoring direction. */

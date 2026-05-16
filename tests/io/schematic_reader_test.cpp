@@ -157,7 +157,8 @@ TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
                                 {"sheet", "sheet:0"},
                                 {"pin", "pin:1"},
                                 {"position", {{"x", 65.0}, {"y", 20.0}}},
-                                {"orientation", "Right"}}});
+                                {"orientation", "Right"},
+                                {"reason", "not populated"}}});
     fixture["sheet_ports"] = nlohmann::json::array({{{"id", "sheet_port:0"},
                                                      {"sheet", "sheet:0"},
                                                      {"net", "net:0"},
@@ -186,6 +187,7 @@ TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
     CHECK(schematic.junction(volt::JunctionId{0}).net() == vcc);
     CHECK(schematic.power_port(volt::PowerPortId{1}).net() == gnd);
     CHECK(schematic.no_connect_marker(volt::NoConnectMarkerId{0}).pin() == no_connect_pin);
+    CHECK(schematic.no_connect_marker(volt::NoConnectMarkerId{0}).reason() == "not populated");
     CHECK(schematic.sheet_port(volt::SheetPortId{0}).name() == "VIN");
     CHECK(schematic.symbol_field(volt::SymbolFieldId{0}).value() == "10k");
     CHECK(circuit.net(vcc).pins().empty());

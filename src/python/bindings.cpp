@@ -421,6 +421,63 @@ schematic_orientation_from_string(const std::string &value) {
     throw std::invalid_argument{"Unknown schematic orientation"};
 }
 
+[[nodiscard]] std::string schematic_orientation_name(volt::SchematicOrientation value) {
+    switch (value) {
+    case volt::SchematicOrientation::Right:
+        return "Right";
+    case volt::SchematicOrientation::Down:
+        return "Down";
+    case volt::SchematicOrientation::Left:
+        return "Left";
+    case volt::SchematicOrientation::Up:
+        return "Up";
+    }
+    throw std::logic_error{"Unhandled schematic orientation"};
+}
+
+[[nodiscard]] volt::SchematicOrientation
+rotated_schematic_orientation(volt::SchematicOrientation local,
+                              volt::SchematicOrientation instance) {
+    const auto combined = (static_cast<int>(local) + static_cast<int>(instance)) % 4;
+    return static_cast<volt::SchematicOrientation>(combined);
+}
+
+[[nodiscard]] volt::RouteIntent route_intent_from_string(const std::string &value) {
+    if (value == "Direct") {
+        return volt::RouteIntent::Direct;
+    }
+    if (value == "Orthogonal") {
+        return volt::RouteIntent::Orthogonal;
+    }
+    throw std::invalid_argument{"Unknown schematic route intent"};
+}
+
+[[nodiscard]] volt::PowerPortKind power_port_kind_from_string(const std::string &value) {
+    if (value == "Power") {
+        return volt::PowerPortKind::Power;
+    }
+    if (value == "Ground") {
+        return volt::PowerPortKind::Ground;
+    }
+    throw std::invalid_argument{"Unknown schematic power port kind"};
+}
+
+[[nodiscard]] volt::SheetPortKind sheet_port_kind_from_string(const std::string &value) {
+    if (value == "Input") {
+        return volt::SheetPortKind::Input;
+    }
+    if (value == "Output") {
+        return volt::SheetPortKind::Output;
+    }
+    if (value == "Bidirectional") {
+        return volt::SheetPortKind::Bidirectional;
+    }
+    if (value == "OffPage") {
+        return volt::SheetPortKind::OffPage;
+    }
+    throw std::invalid_argument{"Unknown schematic sheet port kind"};
+}
+
 [[nodiscard]] volt::SymbolPin symbol_pin_from_dict(const py::dict &dict) {
     return volt::SymbolPin{required_string_field(dict, "name", "Symbol pin"),
                            required_string_field(dict, "number", "Symbol pin"),
@@ -773,6 +830,19 @@ class PyCircuit {
         return circuit_.add_net(volt::Net{volt::NetName{name}, parse_net_kind(kind)}).index();
     }
 
+    [[nodiscard]] py::list net_refs() const {
+        auto result = py::list{};
+        for (std::size_t index = 0; index < circuit_.net_count(); ++index) {
+            const auto id = volt::NetId{index};
+            const auto &net = circuit_.net(id);
+            auto item = py::dict{};
+            item["index"] = id.index();
+            item["name"] = net.name().value();
+            result.append(std::move(item));
+        }
+        return result;
+    }
+
     void select_physical_part(std::size_t component, const std::string &manufacturer,
                               const std::string &part_number, const std::string &package,
                               const std::string &footprint_library,
@@ -926,6 +996,14 @@ class PyCircuit {
     }
 
     void connect(std::size_t net, std::size_t pin) { circuit_.connect(net_id(net), pin_id(pin)); }
+
+    [[nodiscard]] py::list net_pins(std::size_t net) const {
+        auto result = py::list{};
+        for (const auto pin : circuit_.net(net_id(net)).pins()) {
+            result.append(pin.index());
+        }
+        return result;
+    }
 
     void mark_intentional_stub_net(std::size_t net) {
         static_cast<void>(circuit_.mark_intentional_stub_net(net_id(net)));
@@ -1159,8 +1237,8 @@ class PyCircuit {
     }
 
     [[nodiscard]] std::size_t place_schematic_symbol(std::size_t sheet, std::size_t component,
-                                                     const std::string &symbol, double x,
-                                                     double y) {
+                                                     const std::string &symbol, double x, double y,
+                                                     const std::string &orientation) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
@@ -1173,9 +1251,17 @@ class PyCircuit {
 
         const auto symbol_definition = ensure_schematic_symbol(symbol);
         return projection
-            .place_symbol(sheet_handle, volt::SymbolInstance{symbol_definition, component_handle,
-                                                             volt::Point{x, y}})
+            .place_symbol(sheet_handle,
+                          volt::SymbolInstance{symbol_definition, component_handle,
+                                               volt::Point{x, y},
+                                               schematic_orientation_from_string(orientation)})
             .index();
+    }
+
+    [[nodiscard]] std::string schematic_symbol_orientation(std::size_t instance) {
+        auto &projection = schematic_projection();
+        const auto &symbol_instance = projection.symbol_instance(volt::SymbolInstanceId{instance});
+        return schematic_orientation_name(symbol_instance.orientation());
     }
 
     [[nodiscard]] std::pair<double, double> schematic_symbol_pin_anchor(std::size_t instance,
@@ -1195,9 +1281,30 @@ class PyCircuit {
         throw std::out_of_range{"Schematic symbol has no pin with that number"};
     }
 
+    [[nodiscard]] py::list schematic_symbol_pin_refs(std::size_t instance) {
+        auto result = py::list{};
+        auto &projection = schematic_projection();
+        const auto &symbol_instance = projection.symbol_instance(volt::SymbolInstanceId{instance});
+        const auto &symbol = projection.symbol_definition(symbol_instance.symbol_definition());
+
+        for (const auto &pin : symbol.pins()) {
+            const auto anchor = volt::transform_schematic_point(
+                pin.anchor(), symbol_instance.position(), symbol_instance.orientation());
+            auto item = py::dict{};
+            item["name"] = pin.name();
+            item["number"] = pin.number();
+            item["anchor"] = std::pair<double, double>{anchor.x(), anchor.y()};
+            item["orientation"] = schematic_orientation_name(
+                rotated_schematic_orientation(pin.orientation(), symbol_instance.orientation()));
+            result.append(std::move(item));
+        }
+        return result;
+    }
+
     [[nodiscard]] std::size_t
     add_schematic_wire(std::size_t sheet, std::size_t net,
-                       const std::vector<std::pair<double, double>> &points) {
+                       const std::vector<std::pair<double, double>> &points,
+                       const std::string &route_intent) {
         auto wire_points = std::vector<volt::Point>{};
         wire_points.reserve(points.size());
         for (const auto &[x, y] : points) {
@@ -1208,18 +1315,79 @@ class PyCircuit {
 
         auto &projection = schematic_projection();
         return projection
-            .add_wire_run(sheet_id(sheet), volt::WireRun{net_id(net), std::move(wire_points)})
+            .add_wire_run(sheet_id(sheet), volt::WireRun{net_id(net), std::move(wire_points),
+                                                         route_intent_from_string(route_intent)})
             .index();
     }
 
     [[nodiscard]] std::size_t add_schematic_net_label(std::size_t sheet, std::size_t net, double x,
-                                                      double y) {
+                                                      double y, const std::string &orientation) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
         auto &projection = schematic_projection();
         return projection
-            .add_net_label(sheet_id(sheet), volt::NetLabel{net_id(net), volt::Point{x, y}})
+            .add_net_label(sheet_id(sheet),
+                           volt::NetLabel{net_id(net), volt::Point{x, y},
+                                          schematic_orientation_from_string(orientation)})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t add_schematic_junction(std::size_t sheet, std::size_t net, double x,
+                                                     double y) {
+        require_finite(x, "Schematic coordinates must be finite");
+        require_finite(y, "Schematic coordinates must be finite");
+
+        auto &projection = schematic_projection();
+        return projection
+            .add_junction(sheet_id(sheet), volt::Junction{net_id(net), volt::Point{x, y}})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t add_schematic_power_port(std::size_t sheet, std::size_t net,
+                                                       const std::string &kind, double x, double y,
+                                                       const std::string &orientation) {
+        require_finite(x, "Schematic coordinates must be finite");
+        require_finite(y, "Schematic coordinates must be finite");
+
+        auto &projection = schematic_projection();
+        return projection
+            .add_power_port(sheet_id(sheet),
+                            volt::PowerPort{net_id(net), power_port_kind_from_string(kind),
+                                            volt::Point{x, y},
+                                            schematic_orientation_from_string(orientation)})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t add_schematic_no_connect_marker(std::size_t sheet, std::size_t pin,
+                                                              double x, double y,
+                                                              const std::string &orientation,
+                                                              const std::string &reason) {
+        require_finite(x, "Schematic coordinates must be finite");
+        require_finite(y, "Schematic coordinates must be finite");
+
+        auto &projection = schematic_projection();
+        return projection
+            .add_no_connect_marker(
+                sheet_id(sheet),
+                volt::NoConnectMarker{pin_id(pin), volt::Point{x, y},
+                                      schematic_orientation_from_string(orientation), reason})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t add_schematic_sheet_port(std::size_t sheet, std::size_t net,
+                                                       const std::string &name,
+                                                       const std::string &kind, double x, double y,
+                                                       const std::string &orientation) {
+        require_finite(x, "Schematic coordinates must be finite");
+        require_finite(y, "Schematic coordinates must be finite");
+
+        auto &projection = schematic_projection();
+        return projection
+            .add_sheet_port(sheet_id(sheet),
+                            volt::SheetPort{net_id(net), name, sheet_port_kind_from_string(kind),
+                                            volt::Point{x, y},
+                                            schematic_orientation_from_string(orientation)})
             .index();
     }
 
@@ -1332,6 +1500,7 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("source_name") = "", py::arg("source_version") = "",
              py::arg("schematic_symbols") = py::list{})
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
+        .def("net_refs", &PyCircuit::net_refs)
         .def("select_physical_part", &PyCircuit::select_physical_part, py::arg("component"),
              py::arg("manufacturer"), py::arg("part_number"), py::arg("package"),
              py::arg("footprint_library"), py::arg("footprint_name"), py::arg("pin_pads"),
@@ -1356,6 +1525,7 @@ PYBIND11_MODULE(_volt, module) {
         .def("component_schematic_symbol", &PyCircuit::component_schematic_symbol,
              py::arg("component"), py::arg("variant"))
         .def("connect", &PyCircuit::connect, py::arg("net"), py::arg("pin"))
+        .def("net_pins", &PyCircuit::net_pins, py::arg("net"))
         .def("mark_intentional_stub_net", &PyCircuit::mark_intentional_stub_net, py::arg("net"))
         .def("mark_intentional_no_connect_pin", &PyCircuit::mark_intentional_no_connect_pin,
              py::arg("pin"))
@@ -1390,13 +1560,28 @@ PYBIND11_MODULE(_volt, module) {
         .def("schematic_sheet", &PyCircuit::schematic_sheet, py::arg("name"))
         .def("register_schematic_symbol", &PyCircuit::register_schematic_symbol, py::arg("symbol"))
         .def("place_schematic_symbol", &PyCircuit::place_schematic_symbol, py::arg("sheet"),
-             py::arg("component"), py::arg("symbol"), py::arg("x"), py::arg("y"))
+             py::arg("component"), py::arg("symbol"), py::arg("x"), py::arg("y"),
+             py::arg("orientation"))
+        .def("schematic_symbol_orientation", &PyCircuit::schematic_symbol_orientation,
+             py::arg("instance"))
         .def("schematic_symbol_pin_anchor", &PyCircuit::schematic_symbol_pin_anchor,
              py::arg("instance"), py::arg("number"))
+        .def("schematic_symbol_pin_refs", &PyCircuit::schematic_symbol_pin_refs,
+             py::arg("instance"))
         .def("add_schematic_wire", &PyCircuit::add_schematic_wire, py::arg("sheet"), py::arg("net"),
-             py::arg("points"))
+             py::arg("points"), py::arg("route_intent"))
         .def("add_schematic_net_label", &PyCircuit::add_schematic_net_label, py::arg("sheet"),
+             py::arg("net"), py::arg("x"), py::arg("y"), py::arg("orientation"))
+        .def("add_schematic_junction", &PyCircuit::add_schematic_junction, py::arg("sheet"),
              py::arg("net"), py::arg("x"), py::arg("y"))
+        .def("add_schematic_power_port", &PyCircuit::add_schematic_power_port, py::arg("sheet"),
+             py::arg("net"), py::arg("kind"), py::arg("x"), py::arg("y"), py::arg("orientation"))
+        .def("add_schematic_no_connect_marker", &PyCircuit::add_schematic_no_connect_marker,
+             py::arg("sheet"), py::arg("pin"), py::arg("x"), py::arg("y"), py::arg("orientation"),
+             py::arg("reason") = "")
+        .def("add_schematic_sheet_port", &PyCircuit::add_schematic_sheet_port, py::arg("sheet"),
+             py::arg("net"), py::arg("name"), py::arg("kind"), py::arg("x"), py::arg("y"),
+             py::arg("orientation"))
         .def("schematic_to_json", &PyCircuit::schematic_to_json)
         .def("schematic_to_svg", &PyCircuit::schematic_to_svg)
         .def("load_schematic_json", &PyCircuit::load_schematic_json, py::arg("text"))

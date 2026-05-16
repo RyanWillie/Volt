@@ -77,6 +77,16 @@ class SchematicReader {
         return value.get<std::string>();
     }
 
+    static std::string optional_string_field(const nlohmann::json &object, const char *name) {
+        require(object.is_object(), "Expected object while reading schematic");
+        const auto it = object.find(name);
+        if (it == object.end()) {
+            return {};
+        }
+        require(it->is_string(), std::string{"Expected string field: "} + name);
+        return it->get<std::string>();
+    }
+
     static double number_field(const nlohmann::json &object, const char *name) {
         const auto &value = field(object, name);
         require(value.is_number(), std::string{"Expected number field: "} + name);
@@ -422,7 +432,8 @@ class SchematicReader {
             const auto pin = pin_id(string_field(marker_object, "pin"));
             const auto marker = schematic_.add_no_connect_marker(
                 sheet, NoConnectMarker{pin, point(field(marker_object, "position")),
-                                       orientation(string_field(marker_object, "orientation"))});
+                                       orientation(string_field(marker_object, "orientation")),
+                                       optional_string_field(marker_object, "reason")});
             no_connect_marker_ids_.emplace(id, marker);
         }
     }
