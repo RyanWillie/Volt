@@ -1695,6 +1695,55 @@ class Design:
             )
         return component
 
+    def CP(
+        self,
+        value: str | None = None,
+        *,
+        capacitance: float | None = None,
+        voltage_rating: float | None = None,
+        ref: str | None = None,
+    ) -> Component:
+        properties = {}
+        if value is not None:
+            properties["value"] = value
+        component = self._instantiate(
+            "polarized_capacitor",
+            self._circuit.define_polarized_capacitor,
+            "C",
+            ref,
+            properties,
+        )
+        if capacitance is not None:
+            self._circuit.set_component_quantity(
+                component.index, "capacitance", "capacitance", _number(capacitance)
+            )
+        if voltage_rating is not None:
+            voltage_rating_value = _number(voltage_rating)
+            self._circuit.select_generic_physical_part(component.index)
+            self._circuit.set_selected_part_quantity(
+                component.index, "voltage_rating", "voltage", voltage_rating_value
+            )
+        return component
+
+    def L(
+        self,
+        value: str | None = None,
+        *,
+        inductance: float | None = None,
+        ref: str | None = None,
+    ) -> Component:
+        properties = {}
+        if value is not None:
+            properties["value"] = value
+        component = self._instantiate(
+            "inductor", self._circuit.define_inductor, "L", ref, properties
+        )
+        if inductance is not None:
+            self._circuit.set_component_quantity(
+                component.index, "inductance", "inductance", _number(inductance)
+            )
+        return component
+
     def define_component(
         self,
         name: str,
@@ -1818,10 +1867,40 @@ class Design:
     def LED(self, *, ref: str | None = None) -> Component:
         return self._instantiate("led", self._circuit.define_led, "D", ref, {})
 
+    def diode(self, *, ref: str | None = None) -> Component:
+        return self._instantiate("diode", self._circuit.define_diode, "D", ref, {})
+
+    def switch(self, *, ref: str | None = None) -> Component:
+        return self._instantiate("switch_spst", self._circuit.define_switch_spst, "SW", ref, {})
+
+    def crystal(self, *, ref: str | None = None) -> Component:
+        return self._instantiate("crystal_2pin", self._circuit.define_crystal_2pin, "Y", ref, {})
+
+    def test_point(self, *, ref: str | None = None) -> Component:
+        return self._instantiate("test_point", self._circuit.define_test_point, "TP", ref, {})
+
+    def connector_1x01(self, *, ref: str | None = None) -> Component:
+        return self._instantiate(
+            "connector_1x01", self._circuit.define_connector_1x01, "J", ref, {}
+        )
+
     def connector_1x02(self, *, ref: str | None = None) -> Component:
         return self._instantiate(
             "connector_1x02", self._circuit.define_connector_1x02, "J", ref, {}
         )
+
+    def connector_1x03(self, *, ref: str | None = None) -> Component:
+        return self._instantiate(
+            "connector_1x03", self._circuit.define_connector_1x03, "J", ref, {}
+        )
+
+    def regulator(self, *, ref: str | None = None) -> Component:
+        return self._instantiate(
+            "regulator_3pin", self._circuit.define_regulator_3pin, "U", ref, {}
+        )
+
+    def op_amp(self, *, ref: str | None = None) -> Component:
+        return self._instantiate("op_amp_5pin", self._circuit.define_op_amp_5pin, "U", ref, {})
 
     def schematic(self, name: str) -> Schematic:
         if not isinstance(name, str):

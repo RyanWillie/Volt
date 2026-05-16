@@ -10,11 +10,11 @@
     { "id": "pin_def:5", "name": "K", "number": "1", "role": "Passive", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" }
   ],
   "component_definitions": [
-    { "id": "component_def:0", "name": "Two-pin connector", "source": { "namespace": "volt.connectors", "name": "connector_1x02", "version": "1.0.0" }, "pins": ["pin_def:0", "pin_def:1"], "properties": {} },
-    { "id": "component_def:1", "name": "Resistor", "source": { "namespace": "volt.passives", "name": "resistor_2pin", "version": "1.0.0" }, "pins": ["pin_def:2", "pin_def:3"], "properties": {
+    { "id": "component_def:0", "name": "Two-pin connector", "source": { "namespace": "volt.connectors", "name": "connector_1x02", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.connectors:connector_1x02", "variant": "default" }], "pins": ["pin_def:0", "pin_def:1"], "properties": {} },
+    { "id": "component_def:1", "name": "Resistor", "source": { "namespace": "volt.passives", "name": "resistor_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.passives:resistor", "variant": "default" }], "pins": ["pin_def:2", "pin_def:3"], "properties": {
         "category": { "type": "string", "value": "passive" }
       } },
-    { "id": "component_def:2", "name": "LED", "source": { "namespace": "volt.optos", "name": "led_2pin", "version": "1.0.0" }, "pins": ["pin_def:4", "pin_def:5"], "properties": {} }
+    { "id": "component_def:2", "name": "LED", "source": { "namespace": "volt.optos", "name": "led_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.optos:led", "variant": "default" }], "pins": ["pin_def:4", "pin_def:5"], "properties": {} }
   ],
   "components": [
     { "id": "component:0", "definition": "component_def:0", "reference": "J1", "properties": {}, "selected_physical_part": {

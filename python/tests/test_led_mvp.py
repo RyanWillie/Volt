@@ -339,6 +339,123 @@ def test_schematic_placement_can_select_symbol_variant_from_component_default():
     assert projection["symbol_instances"][0]["symbol_definition"] == "symbol_def:1"
 
 
+def _definition_for_component(circuit: dict, reference: str) -> dict:
+    component = next(item for item in circuit["components"] if item["reference"] == reference)
+    definition_index = int(component["definition"].split(":")[1])
+    return circuit["component_definitions"][definition_index]
+
+
+def _common_catalog_components(design: volt.Design):
+    return [
+        ("R1", design.R("10k", ref="R1"), "volt.passives:resistor", ("1", "2")),
+        ("C1", design.C("100nF", ref="C1"), "volt.passives:capacitor", ("1", "2")),
+        ("C2", design.CP("10uF", ref="C2"), "volt.passives:capacitor_polarized", ("1", "2")),
+        ("L1", design.L("10uH", ref="L1"), "volt.passives:inductor", ("1", "2")),
+        ("D1", design.diode(ref="D1"), "volt.discretes:diode", ("1", "2")),
+        ("D2", design.LED(ref="D2"), "volt.optos:led", ("1", "2")),
+        ("SW1", design.switch(ref="SW1"), "volt.switches:switch_spst", ("1", "2")),
+        ("Y1", design.crystal(ref="Y1"), "volt.frequency:crystal_2pin", ("1", "2")),
+        ("TP1", design.test_point(ref="TP1"), "volt.testpoints:test_point", ("1",)),
+        ("J1", design.connector_1x01(ref="J1"), "volt.connectors:connector_1x01", ("1",)),
+        ("J2", design.connector_1x02(ref="J2"), "volt.connectors:connector_1x02", ("1", "2")),
+        (
+            "J3",
+            design.connector_1x03(ref="J3"),
+            "volt.connectors:connector_1x03",
+            ("1", "2", "3"),
+        ),
+        ("U1", design.regulator(ref="U1"), "volt.power:regulator_3pin", ("3", "2", "1")),
+        (
+            "U2",
+            design.op_amp(ref="U2"),
+            "volt.analog:op_amp_5pin",
+            ("3", "2", "1", "5", "4"),
+        ),
+    ]
+
+
+def test_common_catalog_components_have_namespaced_default_symbol_refs():
+    design = volt.Design("common-default-symbols")
+    cases = _common_catalog_components(design)
+
+    circuit = json.loads(design.to_json())
+
+    for reference, component, expected_symbol, _expected_numbers in cases:
+        assert component.schematic_symbol == expected_symbol
+        definition = _definition_for_component(circuit, reference)
+        assert definition["schematic_symbols"] == [
+            {"name": expected_symbol, "variant": "default"}
+        ]
+
+
+def test_common_catalog_symbols_place_through_drawing_and_render():
+    design = volt.Design("common-default-symbol-drawing")
+    cases = _common_catalog_components(design)
+    schematic = design.schematic("Main")
+
+    placed = []
+    with schematic.drawing(at=(20, 20), unit=20) as drawing:
+        for index, (_reference, component, _symbol, _numbers) in enumerate(cases):
+            placed.append(
+                drawing.place(
+                    component,
+                    at=(20 + (index % 4) * 45, 20 + (index // 4) * 35),
+                )
+            )
+
+    projection = json.loads(schematic.to_json())
+    svg = schematic.to_svg()
+
+    assert [symbol["name"] for symbol in projection["symbol_definitions"]] == [
+        expected_symbol for _reference, _component, expected_symbol, _numbers in cases
+    ]
+    assert len(projection["symbol_instances"]) == len(cases)
+    assert all(symbol["primitives"] for symbol in projection["symbol_definitions"])
+    assert all(
+        tuple(anchor.number for anchor in element.pin_anchors()) == expected_numbers
+        for element, (_reference, _component, _symbol, expected_numbers) in zip(placed, cases)
+    )
+    assert placed[0].start.point == (20.0, 20.0)
+    assert placed[0].end.point == (40.0, 20.0)
+    assert tuple(anchor.name for anchor in placed[10].pin_anchors()) == ("+", "-")
+    assert placed[12].IN.number == "3"
+    assert placed[12].OUT.number == "2"
+    assert placed[13]["IN+"].number == "3"
+    assert placed[13]["IN-"].number == "2"
+
+    for _reference, component, _symbol, _numbers in cases:
+        assert f'data-component="component:{component.index}"' in svg
+    assert "symbol-line" in svg
+    assert "symbol-rectangle" in svg
+    assert "symbol-circle" in svg
+
+
+def test_legacy_common_symbol_names_still_place_and_resolve():
+    design = volt.Design("legacy-common-symbol-names")
+    schematic = design.schematic("Main")
+    placements = [
+        ("resistor", design.R("10k", ref="R1"), (20, 20)),
+        ("capacitor", design.C("100nF", ref="C1"), (70, 20)),
+        ("led", design.LED(ref="D1"), (120, 20)),
+        ("connector_1x02", design.connector_1x02(ref="J1"), (170, 20)),
+    ]
+
+    placed = [
+        schematic.place(component, at=point, symbol=symbol_name)
+        for symbol_name, component, point in placements
+    ]
+
+    projection = json.loads(schematic.to_json())
+    assert [symbol["name"] for symbol in projection["symbol_definitions"]] == [
+        symbol_name for symbol_name, _component, _point in placements
+    ]
+    assert tuple(anchor.number for anchor in placed[0].pin_anchors()) == ("1", "2")
+    assert tuple(anchor.number for anchor in placed[1].pin_anchors()) == ("1", "2")
+    assert tuple(anchor.number for anchor in placed[2].pin_anchors()) == ("1", "2")
+    assert tuple(anchor.name for anchor in placed[3].pin_anchors()) == ("+", "-")
+    assert tuple(anchor.number for anchor in placed[3].pin_anchors()) == ("1", "2")
+
+
 def test_schematic_placement_rejects_unknown_component_symbol_variant():
     design = volt.Design("library-symbol-missing-variant")
     library = volt.Library("volt.test")
@@ -380,6 +497,22 @@ def test_schematic_symbol_name_conflicts_reject_different_definitions():
         assert "already exists with a different definition" in str(error)
     else:
         raise AssertionError("conflicting schematic symbol definitions should be rejected")
+
+
+def test_default_catalog_symbol_name_conflicts_reject_different_definitions():
+    design = volt.Design("default-catalog-symbol-conflict")
+    r1 = design.R("10k", ref="R1")
+    schematic = design.schematic("Main")
+    schematic.place(r1, at=(10, 20))
+
+    try:
+        schematic.register_symbol(
+            _two_pin_test_symbol("volt.passives:resistor", label="CUSTOM")
+        )
+    except ValueError as error:
+        assert "already exists with a different definition" in str(error)
+    else:
+        raise AssertionError("default catalog symbol name conflicts should be rejected")
 
 
 def test_schematic_placement_rejects_symbol_with_unknown_component_pin():
@@ -1791,8 +1924,12 @@ if __name__ == "__main__":
     test_library_component_schematic_symbol_default_is_definition_owned()
     test_module_instance_component_resolves_library_symbol_default()
     test_schematic_placement_can_select_symbol_variant_from_component_default()
+    test_common_catalog_components_have_namespaced_default_symbol_refs()
+    test_common_catalog_symbols_place_through_drawing_and_render()
+    test_legacy_common_symbol_names_still_place_and_resolve()
     test_schematic_placement_rejects_unknown_component_symbol_variant()
     test_schematic_symbol_name_conflicts_reject_different_definitions()
+    test_default_catalog_symbol_name_conflicts_reject_different_definitions()
     test_schematic_placement_rejects_symbol_with_unknown_component_pin()
     test_stm32_usb_buck_library_exposes_native_components()
     test_repeated_pin_labels_require_explicit_single_pin_addressing()

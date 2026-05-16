@@ -22,6 +22,7 @@
 #include <volt/io/schematic_reader.hpp>
 #include <volt/io/schematic_svg_writer.hpp>
 #include <volt/io/schematic_writer.hpp>
+#include <volt/schematic/default_symbols.hpp>
 #include <volt/schematic/geometry.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/schematic_document.hpp>

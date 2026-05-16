@@ -22,6 +22,7 @@
 #include <volt/io/schematic_reader.hpp>
 #include <volt/io/schematic_svg_writer.hpp>
 #include <volt/io/schematic_writer.hpp>
+#include <volt/schematic/default_symbols.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/schematic_document.hpp>
 #include <volt/schematic/symbols.hpp>
@@ -322,6 +323,9 @@ void require_finite(double value, const char *message) {
     if (value == "capacitance") {
         return volt::UnitDimension::Capacitance;
     }
+    if (value == "inductance") {
+        return volt::UnitDimension::Inductance;
+    }
     if (value == "voltage") {
         return volt::UnitDimension::Voltage;
     }
@@ -354,15 +358,6 @@ selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimensi
     return volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{name},
                                          volt::ElectricalAttributeOwner::Net,
                                          volt::ElectricalAttributeKind::DesignInput, dimension};
-}
-
-void add_two_pin_anchors(volt::SymbolDefinition &symbol, const std::string &left_name,
-                         const std::string &left_number, const std::string &right_name,
-                         const std::string &right_number) {
-    symbol.add_pin(volt::SymbolPin{left_name, left_number, volt::Point{0.0, 0.0},
-                                   volt::SchematicOrientation::Left});
-    symbol.add_pin(volt::SymbolPin{right_name, right_number, volt::Point{20.0, 0.0},
-                                   volt::SchematicOrientation::Right});
 }
 
 [[nodiscard]] std::string required_string_field(const py::dict &dict, const char *field,
@@ -577,49 +572,7 @@ schematic_symbol_references_from_list(const py::list &symbols) {
 }
 
 [[nodiscard]] std::optional<volt::SymbolDefinition> built_in_symbol(const std::string &name) {
-    if (name == "resistor") {
-        auto symbol = volt::SymbolDefinition{name};
-        add_two_pin_anchors(symbol, "1", "1", "2", "2");
-        symbol.add_primitive(volt::SymbolLine{volt::Point{0.0, 0.0}, volt::Point{4.0, 0.0}});
-        symbol.add_primitive(volt::SymbolRectangle{volt::Point{4.0, -3.0}, volt::Point{16.0, 3.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{16.0, 0.0}, volt::Point{20.0, 0.0}});
-        symbol.add_primitive(volt::SymbolText{"R", volt::Point{10.0, -8.0}});
-        return symbol;
-    }
-    if (name == "capacitor") {
-        auto symbol = volt::SymbolDefinition{name};
-        add_two_pin_anchors(symbol, "1", "1", "2", "2");
-        symbol.add_primitive(volt::SymbolLine{volt::Point{0.0, 0.0}, volt::Point{8.0, 0.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{8.0, -5.0}, volt::Point{8.0, 5.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{12.0, -5.0}, volt::Point{12.0, 5.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{12.0, 0.0}, volt::Point{20.0, 0.0}});
-        symbol.add_primitive(volt::SymbolText{"C", volt::Point{10.0, -10.0}});
-        return symbol;
-    }
-    if (name == "led") {
-        auto symbol = volt::SymbolDefinition{name};
-        add_two_pin_anchors(symbol, "K", "1", "A", "2");
-        symbol.add_primitive(volt::SymbolLine{volt::Point{0.0, 0.0}, volt::Point{7.0, 0.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{7.0, -5.0}, volt::Point{7.0, 5.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{7.0, -5.0}, volt::Point{13.0, 0.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{7.0, 5.0}, volt::Point{13.0, 0.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{13.0, 0.0}, volt::Point{20.0, 0.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{13.0, -6.0}, volt::Point{17.0, -10.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{15.0, -4.0}, volt::Point{19.0, -8.0}});
-        symbol.add_primitive(volt::SymbolText{"D", volt::Point{10.0, -13.0}});
-        return symbol;
-    }
-    if (name == "connector_1x02") {
-        auto symbol = volt::SymbolDefinition{name};
-        add_two_pin_anchors(symbol, "+", "1", "-", "2");
-        symbol.add_primitive(volt::SymbolRectangle{volt::Point{6.0, -7.0}, volt::Point{14.0, 7.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{0.0, 0.0}, volt::Point{6.0, 0.0}});
-        symbol.add_primitive(volt::SymbolLine{volt::Point{14.0, 0.0}, volt::Point{20.0, 0.0}});
-        symbol.add_primitive(volt::SymbolText{"J", volt::Point{10.0, -12.0}});
-        return symbol;
-    }
-
-    return std::nullopt;
+    return volt::default_schematic_symbol(name);
 }
 
 [[nodiscard]] std::string entity_kind_name(volt::EntityKind kind) {
@@ -828,27 +781,64 @@ class PyCircuit {
     PyCircuit() : circuit_{}, schematic_document_{circuit_} {}
 
     [[nodiscard]] std::size_t define_resistor() {
-        auto spec = volt::authoring::resistor();
-        spec.schematic_symbols = {volt::SchematicSymbolReference{"resistor"}};
-        return volt::authoring::define_component(circuit_, spec).index();
+        return volt::authoring::define_component(circuit_, volt::authoring::resistor()).index();
     }
 
     [[nodiscard]] std::size_t define_capacitor() {
-        auto spec = volt::authoring::capacitor();
-        spec.schematic_symbols = {volt::SchematicSymbolReference{"capacitor"}};
-        return volt::authoring::define_component(circuit_, spec).index();
+        return volt::authoring::define_component(circuit_, volt::authoring::capacitor()).index();
+    }
+
+    [[nodiscard]] std::size_t define_polarized_capacitor() {
+        return volt::authoring::define_component(circuit_, volt::authoring::polarized_capacitor())
+            .index();
+    }
+
+    [[nodiscard]] std::size_t define_inductor() {
+        return volt::authoring::define_component(circuit_, volt::authoring::inductor()).index();
+    }
+
+    [[nodiscard]] std::size_t define_diode() {
+        return volt::authoring::define_component(circuit_, volt::authoring::diode()).index();
     }
 
     [[nodiscard]] std::size_t define_led() {
-        auto spec = volt::authoring::led();
-        spec.schematic_symbols = {volt::SchematicSymbolReference{"led"}};
-        return volt::authoring::define_component(circuit_, spec).index();
+        return volt::authoring::define_component(circuit_, volt::authoring::led()).index();
+    }
+
+    [[nodiscard]] std::size_t define_switch_spst() {
+        return volt::authoring::define_component(circuit_, volt::authoring::switch_spst()).index();
+    }
+
+    [[nodiscard]] std::size_t define_crystal_2pin() {
+        return volt::authoring::define_component(circuit_, volt::authoring::crystal_2pin()).index();
+    }
+
+    [[nodiscard]] std::size_t define_test_point() {
+        return volt::authoring::define_component(circuit_, volt::authoring::test_point()).index();
+    }
+
+    [[nodiscard]] std::size_t define_connector_1x01() {
+        return volt::authoring::define_component(circuit_, volt::authoring::connector_1x01())
+            .index();
     }
 
     [[nodiscard]] std::size_t define_connector_1x02() {
-        auto spec = volt::authoring::connector_1x02();
-        spec.schematic_symbols = {volt::SchematicSymbolReference{"connector_1x02"}};
-        return volt::authoring::define_component(circuit_, spec).index();
+        return volt::authoring::define_component(circuit_, volt::authoring::connector_1x02())
+            .index();
+    }
+
+    [[nodiscard]] std::size_t define_connector_1x03() {
+        return volt::authoring::define_component(circuit_, volt::authoring::connector_1x03())
+            .index();
+    }
+
+    [[nodiscard]] std::size_t define_regulator_3pin() {
+        return volt::authoring::define_component(circuit_, volt::authoring::regulator_3pin())
+            .index();
+    }
+
+    [[nodiscard]] std::size_t define_op_amp_5pin() {
+        return volt::authoring::define_component(circuit_, volt::authoring::op_amp_5pin()).index();
     }
 
     [[nodiscard]] std::size_t
@@ -1541,8 +1531,18 @@ PYBIND11_MODULE(_volt, module) {
         .def(py::init<>())
         .def("define_resistor", &PyCircuit::define_resistor)
         .def("define_capacitor", &PyCircuit::define_capacitor)
+        .def("define_polarized_capacitor", &PyCircuit::define_polarized_capacitor)
+        .def("define_inductor", &PyCircuit::define_inductor)
+        .def("define_diode", &PyCircuit::define_diode)
         .def("define_led", &PyCircuit::define_led)
+        .def("define_switch_spst", &PyCircuit::define_switch_spst)
+        .def("define_crystal_2pin", &PyCircuit::define_crystal_2pin)
+        .def("define_test_point", &PyCircuit::define_test_point)
+        .def("define_connector_1x01", &PyCircuit::define_connector_1x01)
         .def("define_connector_1x02", &PyCircuit::define_connector_1x02)
+        .def("define_connector_1x03", &PyCircuit::define_connector_1x03)
+        .def("define_regulator_3pin", &PyCircuit::define_regulator_3pin)
+        .def("define_op_amp_5pin", &PyCircuit::define_op_amp_5pin)
         .def("define_component", &PyCircuit::define_component, py::arg("name"), py::arg("pins"),
              py::arg("properties") = py::dict{}, py::arg("source_namespace") = "",
              py::arg("source_name") = "", py::arg("source_version") = "",
