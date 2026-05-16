@@ -1035,6 +1035,14 @@ class PyCircuit {
 
     void connect(std::size_t net, std::size_t pin) { circuit_.connect(net_id(net), pin_id(pin)); }
 
+    [[nodiscard]] std::optional<std::size_t> net_of(std::size_t pin) const {
+        const auto net = circuit_.net_of(pin_id(pin));
+        if (!net.has_value()) {
+            return std::nullopt;
+        }
+        return net.value().index();
+    }
+
     [[nodiscard]] py::list net_pins(std::size_t net) const {
         auto result = py::list{};
         for (const auto pin : circuit_.net(net_id(net)).pins()) {
@@ -1589,6 +1597,7 @@ PYBIND11_MODULE(_volt, module) {
         .def("component_schematic_symbol", &PyCircuit::component_schematic_symbol,
              py::arg("component"), py::arg("variant"))
         .def("connect", &PyCircuit::connect, py::arg("net"), py::arg("pin"))
+        .def("net_of", &PyCircuit::net_of, py::arg("pin"))
         .def("net_pins", &PyCircuit::net_pins, py::arg("net"))
         .def("mark_intentional_stub_net", &PyCircuit::mark_intentional_stub_net, py::arg("net"))
         .def("mark_intentional_no_connect_pin", &PyCircuit::mark_intentional_no_connect_pin,
