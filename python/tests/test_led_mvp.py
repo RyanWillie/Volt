@@ -1709,6 +1709,143 @@ def test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects():
     assert 'class="sheet-port off-page"' in svg
 
 
+def test_python_schematic_drawing_connect_infers_shared_pin_net_and_readiness():
+    design = volt.Design("schematic-inferred-led")
+    vcc = design.net("+3V3", kind="power")
+    led_a = design.net("LED_A")
+    gnd = design.net("GND", kind="ground")
+    r1 = design.R("330 ohm", ref="R1")
+    d1 = design.LED(ref="D1")
+    vcc += r1[1]
+    led_a += r1[2], d1["A"]
+    gnd += d1["K"]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=20) as drawing:
+        resistor = drawing.R(r1).right()
+        led = drawing.LED(d1).right().reverse()
+
+        drawing.connect(resistor.end, led.start)
+        drawing.power("+3V3", at=resistor.start)
+        drawing.ground(at=led.end)
+
+    projection = json.loads(schematic.to_json())
+    report = schematic.validate()
+
+    assert design.to_json() == logical_before
+    assert len(projection["wire_runs"]) == 1
+    assert projection["wire_runs"][0]["net"] == f"net:{led_a.index}"
+    assert projection["wire_runs"][0]["points"][0] == {"x": 20.0, "y": 0.0}
+    assert projection["wire_runs"][0]["points"][-1] == {"x": 20.0, "y": 0.0}
+    assert [port["net"] for port in projection["power_ports"]] == [
+        f"net:{vcc.index}",
+        f"net:{gnd.index}",
+    ]
+    assert len(report) == 0
+    assert not report.has_errors
+
+
+def test_python_schematic_drawing_connect_rejects_different_pin_nets_without_wire():
+    design = volt.Design("schematic-inferred-mismatch")
+    led_a = design.net("LED_A")
+    gnd = design.net("GND", kind="ground")
+    r1 = design.R("330 ohm", ref="R1")
+    d1 = design.LED(ref="D1")
+    led_a += r1[2], d1["A"]
+    gnd += d1["K"]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=20) as drawing:
+        resistor = drawing.R(r1).right()
+        led = drawing.LED(d1).right().reverse()
+        _ = (resistor.end, led.end)
+        before = schematic.to_json()
+
+        try:
+            drawing.connect(resistor.end, led.end)
+        except ValueError as error:
+            message = str(error)
+            assert "different logical nets" in message
+            assert "R1 pin 2 (2)" in message
+            assert "D1 pin 1 (K)" in message
+            assert "LED_A" in message
+            assert "GND" in message
+        else:
+            raise AssertionError("different logical nets must not be visually auto-wired")
+
+        assert schematic.to_json() == before
+
+    assert design.to_json() == logical_before
+    assert json.loads(schematic.to_json())["wire_runs"] == []
+
+
+def test_python_schematic_drawing_connect_requires_explicit_net_for_plain_coordinate():
+    design = volt.Design("schematic-explicit-coordinate-net")
+    vcc = design.net("VCC", kind="power")
+    r1 = design.R("10k", ref="R1")
+    vcc += r1[1]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=20) as drawing:
+        resistor = drawing.R(r1).right()
+        _ = resistor.start
+        before = schematic.to_json()
+
+        try:
+            drawing.connect(resistor.start, (0, -20))
+        except ValueError as error:
+            assert "explicit net" in str(error)
+        else:
+            raise AssertionError("pin-to-coordinate wires must require explicit net")
+
+        assert schematic.to_json() == before
+        drawing.connect(resistor.start, (0, -20), net=vcc)
+
+    projection = json.loads(schematic.to_json())
+
+    assert design.to_json() == logical_before
+    assert len(projection["wire_runs"]) == 1
+    assert projection["wire_runs"][0]["net"] == f"net:{vcc.index}"
+
+
+def test_python_schematic_power_and_ground_require_explicit_net_for_non_pin_anchor():
+    design = volt.Design("schematic-explicit-port-net")
+    vcc = design.net("VCC", kind="power")
+    gnd = design.net("GND", kind="ground")
+    r1 = design.R("10k", ref="R1")
+    vcc += r1[1]
+    gnd += r1[2]
+
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(unit=20) as drawing:
+        resistor = drawing.R(r1).right()
+        _ = resistor.start
+        before = schematic.to_json()
+
+        try:
+            drawing.power("VCC", at=(0, -20))
+        except ValueError as error:
+            assert "non-pin anchor" in str(error)
+        else:
+            raise AssertionError("power ports on plain coordinates must require explicit net")
+
+        try:
+            drawing.ground(at=(0, 20))
+        except ValueError as error:
+            assert "non-pin anchor" in str(error)
+        else:
+            raise AssertionError("ground ports on plain coordinates must require explicit net")
+
+        assert schematic.to_json() == before
+
+
 def test_python_schematic_explicit_wire_points_are_normalized_once():
     design = volt.Design("schematic-wire-normalization")
     vcc = design.net("VCC", kind="power")
@@ -2158,6 +2295,10 @@ if __name__ == "__main__":
     test_python_schematic_drawing_handle_start_end_raise_for_single_pin()
     test_python_schematic_drawing_handle_dir_exposes_unique_pin_names_only()
     test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects()
+    test_python_schematic_drawing_connect_infers_shared_pin_net_and_readiness()
+    test_python_schematic_drawing_connect_rejects_different_pin_nets_without_wire()
+    test_python_schematic_drawing_connect_requires_explicit_net_for_plain_coordinate()
+    test_python_schematic_power_and_ground_require_explicit_net_for_non_pin_anchor()
     test_python_schematic_explicit_wire_points_are_normalized_once()
     test_python_schematic_drawing_cursor_defaults_and_moves()
     test_python_schematic_drawing_move_from_accepts_sheet_points_and_anchors()

@@ -1467,6 +1467,37 @@ class SchematicDrawing:
         )
         return PlacedSchematicElement(placed)
 
+    def connect(
+        self,
+        start: tuple[float, float] | SchematicAnchor | SchematicPort,
+        end: tuple[float, float] | SchematicAnchor | SchematicPort,
+        *,
+        net: Net | None = None,
+    ) -> SchematicWire:
+        self._flush_pending()
+        return self._schematic.connect(start, end, net=net)
+
+    def power(
+        self,
+        name: str,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        orient: str = "Up",
+    ) -> SchematicPort:
+        self._flush_pending()
+        return self._schematic.power(name, at=at, net=net, orient=orient)
+
+    def ground(
+        self,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        orient: str = "Down",
+    ) -> SchematicPort:
+        self._flush_pending()
+        return self._schematic.ground(at=at, net=net, orient=orient)
+
     @contextmanager
     def hold(self):
         self._flush_pending()
@@ -1934,6 +1965,16 @@ class Schematic:
 
         return self._add_wire(net, points, route_intent="Direct")
 
+    def connect(
+        self,
+        start: tuple[float, float] | SchematicAnchor | SchematicPort,
+        end: tuple[float, float] | SchematicAnchor | SchematicPort,
+        *,
+        net: Net | None = None,
+    ) -> SchematicWire:
+        resolved_net = _resolve_schematic_connection_net(self._design, start, end, net)
+        return self.wire(resolved_net).from_(start).to(end).orthogonal()
+
     def _add_wire(
         self,
         net: Net,
@@ -2019,19 +2060,21 @@ class Schematic:
         self,
         name: str,
         *,
-        net: Net,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
         orient: str = "Up",
     ) -> SchematicPort:
+        net = _resolve_schematic_port_net(self._design, at, net, context="power port")
         return self._power_port(name, net=net, at=at, orient=orient, kind="Power")
 
     def ground(
         self,
         *,
-        net: Net,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
         orient: str = "Down",
     ) -> SchematicPort:
+        net = _resolve_schematic_port_net(self._design, at, net, context="ground port")
         return self._power_port(net.name, net=net, at=at, orient=orient, kind="Ground")
 
     def _power_port(
@@ -2523,6 +2566,157 @@ def _schematic_point(value, *, design: Design) -> tuple[float, float]:
         _require_schematic_point_design(value, design)
         return value.point
     return _schematic_point_tuple(value)
+
+
+def _require_schematic_net(net: Net, design: Design, *, type_message: str) -> None:
+    if not isinstance(net, Net):
+        raise TypeError(type_message)
+    if net._design is not design:
+        raise ValueError("Net belongs to a different design")
+
+
+def _net_by_index(design: Design, index: int) -> Net:
+    for net in design.nets():
+        if net.index == index:
+            return net
+    raise ValueError(f"Kernel returned missing logical net net:{index}")
+
+
+def _pin_anchor_net(anchor: SchematicPinAnchor) -> Net | None:
+    net_index = anchor.pin._design._circuit.net_of(anchor.pin.index)
+    if net_index is None:
+        return None
+    return _net_by_index(anchor.pin._design, net_index)
+
+
+def _pin_anchor_label(anchor: SchematicPinAnchor) -> str:
+    component_index = anchor.pin._design._circuit.pin_component(anchor.pin.index)
+    component_reference = anchor.pin._design._circuit.component_reference(component_index)
+    return f"{component_reference} pin {anchor.number} ({anchor.name})"
+
+
+def _net_label(net: Net) -> str:
+    return f"{net.name} (net:{net.index})"
+
+
+def _validate_explicit_schematic_net(
+    design: Design,
+    net: Net | None,
+    *,
+    type_message: str,
+) -> Net | None:
+    if net is None:
+        return None
+    _require_schematic_net(net, design, type_message=type_message)
+    return net
+
+
+def _require_pin_anchor_matches_net(anchor: SchematicPinAnchor, net: Net) -> None:
+    pin_net = _pin_anchor_net(anchor)
+    pin_label = _pin_anchor_label(anchor)
+    if pin_net is None:
+        raise ValueError(
+            f"Cannot draw {_net_label(net)} at {pin_label}: the pin is not connected "
+            "to any logical net"
+        )
+    if pin_net.index != net.index:
+        raise ValueError(
+            f"Cannot draw {_net_label(net)} at {pin_label}: the pin belongs to "
+            f"{_net_label(pin_net)}"
+        )
+
+
+def _require_port_matches_net(port: SchematicPort, net: Net) -> None:
+    if port.net._design is not net._design:
+        raise ValueError("Schematic anchor belongs to a different design")
+    if port.net.index != net.index:
+        raise ValueError(
+            f"Cannot draw {_net_label(net)} through schematic port {port.name!r}: "
+            f"the port belongs to {_net_label(port.net)}"
+        )
+
+
+def _resolve_schematic_port_net(
+    design: Design,
+    at: tuple[float, float] | SchematicAnchor | SchematicPort,
+    net: Net | None,
+    *,
+    context: str,
+) -> Net:
+    explicit = _validate_explicit_schematic_net(
+        design,
+        net,
+        type_message="Schematic power ports expect a Net handle",
+    )
+    if isinstance(at, SchematicPinAnchor):
+        _require_schematic_point_design(at, design)
+        if explicit is None:
+            inferred = _pin_anchor_net(at)
+            if inferred is None:
+                raise ValueError(
+                    f"Cannot infer logical net for {context} at {_pin_anchor_label(at)}; "
+                    "connect the pin in the logical model first or pass net="
+                )
+            return inferred
+        _require_pin_anchor_matches_net(at, explicit)
+        return explicit
+    if isinstance(at, SchematicPort) and explicit is not None:
+        _require_port_matches_net(at, explicit)
+    if explicit is None:
+        raise ValueError(
+            f"Cannot infer logical net for {context} from a non-pin anchor; pass net="
+        )
+    return explicit
+
+
+def _resolve_schematic_connection_net(
+    design: Design,
+    start: tuple[float, float] | SchematicAnchor | SchematicPort,
+    end: tuple[float, float] | SchematicAnchor | SchematicPort,
+    net: Net | None,
+) -> Net:
+    explicit = _validate_explicit_schematic_net(
+        design,
+        net,
+        type_message="Schematic connections expect a Net handle",
+    )
+    pin_nets: list[tuple[SchematicPinAnchor, Net | None]] = []
+    for endpoint in (start, end):
+        if isinstance(endpoint, SchematicPinAnchor):
+            _require_schematic_point_design(endpoint, design)
+            pin_nets.append((endpoint, _pin_anchor_net(endpoint)))
+        elif isinstance(endpoint, SchematicPort) and explicit is not None:
+            _require_port_matches_net(endpoint, explicit)
+
+    if explicit is not None:
+        for anchor, _pin_net in pin_nets:
+            _require_pin_anchor_matches_net(anchor, explicit)
+        return explicit
+
+    if len(pin_nets) != 2:
+        raise ValueError(
+            "Cannot infer schematic wire net unless both endpoints are placed pin "
+            "anchors on the same logical net; pass explicit net="
+        )
+
+    (first_anchor, first_net), (second_anchor, second_net) = pin_nets
+    if first_net is None:
+        raise ValueError(
+            f"Cannot infer schematic wire net: {_pin_anchor_label(first_anchor)} is not "
+            "connected to any logical net"
+        )
+    if second_net is None:
+        raise ValueError(
+            f"Cannot infer schematic wire net: {_pin_anchor_label(second_anchor)} is not "
+            "connected to any logical net"
+        )
+    if first_net.index != second_net.index:
+        raise ValueError(
+            "Cannot infer schematic wire net because endpoints belong to different "
+            f"logical nets: {_pin_anchor_label(first_anchor)} is on {_net_label(first_net)}, "
+            f"but {_pin_anchor_label(second_anchor)} is on {_net_label(second_net)}"
+        )
+    return first_net
 
 
 def _symbol_point(value: tuple[float, float]) -> dict:
