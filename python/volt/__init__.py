@@ -1342,7 +1342,6 @@ class Schematic:
             raise TypeError("Schematic no-connect reasons must be strings")
         _require_schematic_point_design(pin, self._design)
         orientation = _orientation(orient)
-        pin.pin.mark_no_connect()
         marker = self._design._circuit.add_schematic_no_connect_marker(
             self._sheet_index, pin.pin.index, pin.x, pin.y, orientation, reason or ""
         )

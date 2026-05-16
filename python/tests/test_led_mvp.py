@@ -190,6 +190,33 @@ def test_python_no_connect_intent_suppresses_only_intended_missing_pin_diagnosti
     assert report[0].entities[0].index == u1["PB3"].index
 
 
+def test_python_schematic_no_connect_marker_does_not_mutate_logical_intent():
+    design = volt.Design("schematic-no-connect-boundary")
+    test_point = design.define_component(
+        "TestPoint",
+        pins=[volt.PinSpec("NC", 1)],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:point",
+            pins=(volt.SchematicSymbolSpec.pin("NC", 1, (0, 0), "Right"),),
+            primitives=(volt.SchematicSymbolSpec.circle((0, 0), 1.5),),
+        ),
+    )
+    tp1 = design.instantiate(test_point, ref="TP1")
+    schematic = design.schematic("Main")
+    pin = schematic.place(tp1, at=(10, 20), symbol="test:point").pin("NC")
+
+    schematic.no_connect(pin, reason="open test pad")
+
+    logical = json.loads(design.to_json())
+    projection = json.loads(schematic.to_json())
+    report = design.validate()
+
+    assert logical.get("design_intent", {}).get("no_connect_pins", []) == []
+    assert projection["no_connect_markers"][0]["pin"] == f"pin:{pin.pin.index}"
+    assert [diagnostic.code for diagnostic in report] == ["UNCONNECTED_REQUIRED_PIN"]
+    assert report[0].entities[0].index == pin.pin.index
+
+
 def test_library_component_instantiates_kernel_owned_definition_once():
     design = volt.Design("library")
     library = volt.Library("volt.test")
@@ -1147,7 +1174,7 @@ def test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects():
     assert logical["nets"][0]["pins"] == [f"pin:{r1[1].index}"]
     assert logical["nets"][1]["pins"] == [f"pin:{r1[2].index}", f"pin:{d1['A'].index}"]
     assert logical["nets"][2]["pins"] == [f"pin:{d1['K'].index}"]
-    assert logical["design_intent"]["no_connect_pins"] == [f"pin:{no_connect_pin.pin.index}"]
+    assert logical.get("design_intent", {}).get("no_connect_pins", []) == []
 
     assert projection["symbol_instances"][0]["orientation"] == "Down"
     assert projection["wire_runs"][0]["route_intent"] == "Orthogonal"

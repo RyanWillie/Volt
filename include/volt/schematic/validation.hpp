@@ -472,7 +472,7 @@ inline void validate_no_connect_markers(const Schematic &schematic, SheetId shee
             });
             continue;
         }
-        if (!circuit.is_intentional_no_connect_pin(marker.pin())) {
+        if (!schematic_readiness_exempts_pin(circuit, marker.pin(), pin.definition())) {
             report.add(Diagnostic{
                 Severity::Error,
                 DiagnosticCode{"SCHEMATIC_NO_CONNECT_MARKER_WITHOUT_INTENT"},

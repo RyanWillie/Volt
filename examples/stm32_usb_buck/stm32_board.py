@@ -79,7 +79,6 @@ def build_board() -> Stm32UsbBuckBoard:
         mcu_dm=mcu_usb_dm,
         ground=power.ground,
     )
-
     mcu_support = define_mcu_support(design)
     support = design.instantiate(mcu_support, ref="SUPPORT")
     modules["SUPPORT"] = support

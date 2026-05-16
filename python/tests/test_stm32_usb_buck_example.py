@@ -203,6 +203,35 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
         main.build_schematic = original
 
 
+def test_stm32_usb_buck_schematic_author_fails_on_fallback_connected_pin_coverage():
+    board_module = importlib.import_module("examples.stm32_usb_buck.stm32_board")
+    schematic_output = importlib.import_module("examples.stm32_usb_buck.schematic_output")
+
+    board = board_module.build_board()
+    sheet = board.design.schematic("Coverage audit")
+    placed = sheet.place(
+        board.components["VIN_SRC"],
+        at=(12, 34),
+        symbol=schematic_output._external_supply_symbol(),
+    )
+    net_by_pin = {
+        pin.index: net
+        for net in board.design.nets()
+        for pin in net.pins()
+    }
+    author = schematic_output._SchematicAuthor(net_by_pin, set())
+
+    try:
+        author.audit_no_fallback_pin_coverage([(sheet, placed)])
+    except RuntimeError as error:
+        assert "fallback schematic pin coverage" in str(error)
+        assert "VIN_SRC.OUT" in str(error)
+        assert "+12V" in str(error)
+    else:
+        raise AssertionError("connected pins must not be silently covered by fallback")
+
+
 if __name__ == "__main__":
     test_stm32_usb_buck_example_writes_stable_logical_artifacts()
     test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage()
+    test_stm32_usb_buck_schematic_author_fails_on_fallback_connected_pin_coverage()
