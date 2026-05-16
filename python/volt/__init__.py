@@ -1052,13 +1052,13 @@ class SchematicSymbol:
         )
 
     def pin(self, key: int | str) -> SchematicPinAnchor:
-        return self._pin_anchor_for_ref(
-            _resolve_schematic_symbol_pin_ref(
-                self._pin_refs(),
-                key,
-                context=self._pin_context(),
-            )
-        )
+        try:
+            pin_ref = _resolve_schematic_symbol_pin_ref(self._pin_refs(), key)
+        except ValueError as error:
+            if "ambiguous" in str(error):
+                raise ValueError(f"{error} for {self._pin_context()}") from error
+            raise
+        return self._pin_anchor_for_ref(pin_ref)
 
     def pins(self, name: str) -> tuple[SchematicPinAnchor, ...]:
         if not isinstance(name, str):
@@ -1349,10 +1349,11 @@ class SchematicWireBuilder:
     def from_(self, point) -> SchematicWireBuilder:
         self._require_unmaterialized()
         self._points = [
-            _schematic_point(
+            _schematic_point_for_authoring(
                 point,
                 design=self._schematic._design,
-                context=self._context(),
+                schematic=self._schematic,
+                action="schematic wire",
             )
         ]
         self._update_drawing_cursor(self._points[-1])
@@ -1363,10 +1364,11 @@ class SchematicWireBuilder:
         self._require_unmaterialized()
         self._require_started()
         self._append_point(
-            _schematic_point(
+            _schematic_point_for_authoring(
                 point,
                 design=self._schematic._design,
-                context=self._context(),
+                schematic=self._schematic,
+                action="schematic wire",
             )
         )
         return self
@@ -1376,10 +1378,11 @@ class SchematicWireBuilder:
         self._require_unmaterialized()
         self._require_started()
         self._append_point(
-            _schematic_point(
+            _schematic_point_for_authoring(
                 point,
                 design=self._schematic._design,
-                context=self._context(),
+                schematic=self._schematic,
+                action="schematic wire",
             )
         )
         if shape is not None:
@@ -1397,7 +1400,8 @@ class SchematicWireBuilder:
                     anchor_or_x,
                     self._schematic._design,
                     "x",
-                    context=self._context(),
+                    schematic=self._schematic,
+                    action="schematic wire",
                 ),
                 current_y,
             )
@@ -1416,7 +1420,8 @@ class SchematicWireBuilder:
                     anchor_or_y,
                     self._schematic._design,
                     "y",
-                    context=self._context(),
+                    schematic=self._schematic,
+                    action="schematic wire",
                 ),
             )
         )
@@ -1461,12 +1466,25 @@ class SchematicWireBuilder:
                 self._points[1],
                 shape=shape,
                 k=k,
-                schematic=self._schematic,
-                net=self._net,
             )
-        except Exception:
+        except TypeError as error:
             self._clear_pending()
             self._restore_drawing_state()
+            if str(error) == "Schematic wire shape must be a string":
+                raise TypeError(
+                    f"Invalid schematic wire shape for {_net_label(self._net)} on "
+                    f"{_schematic_sheet_phrase(self._schematic)}: expected a string"
+                ) from error
+            raise
+        except ValueError as error:
+            self._clear_pending()
+            self._restore_drawing_state()
+            if str(error) == "Schematic wire shape must be one of -, -|, |-, |-|, n, -|-, or c":
+                raise ValueError(
+                    f"Invalid schematic wire shape {shape!r} for {_net_label(self._net)} on "
+                    f"{_schematic_sheet_phrase(self._schematic)}; expected one of -, -|, "
+                    "|-, |-|, n, -|-, or c"
+                ) from error
             raise
         route_intent = "Direct" if shape == "-" else "Orthogonal"
         return self._persist(shaped_points, route_intent=route_intent, normalize=True)
@@ -1541,9 +1559,6 @@ class SchematicWireBuilder:
         if self._drawing is not None and self._start_here is not None:
             self._drawing._here = self._start_here
             self._drawing._direction = self._start_direction
-
-    def _context(self) -> str:
-        return _schematic_authoring_context(self._schematic, "schematic wire")
 
 
 class SchematicDrawing:
@@ -1825,10 +1840,11 @@ class SchematicDrawing:
         self, value: tuple[float, float] | SchematicAnchor | SchematicPort
     ) -> SchematicAnchor:
         return SchematicAnchor(
-            _schematic_point(
+            _schematic_point_for_authoring(
                 value,
                 design=self._schematic._design,
-                context=_schematic_authoring_context(self._schematic, "drawing cursor"),
+                schematic=self._schematic,
+                action="drawing cursor",
             ),
             design=self._schematic._design,
         )
@@ -2278,10 +2294,11 @@ class Schematic:
         if not symbol_name:
             raise ValueError("symbol must not be empty")
         orientation = _orientation(orient)
-        x, y = _schematic_point(
+        x, y = _schematic_point_for_authoring(
             at,
             design=self._design,
-            context=_schematic_authoring_context(self, "symbol placement"),
+            schematic=self,
+            action="symbol placement",
         )
         instance = self._design._circuit.place_schematic_symbol(
             self._sheet_index, component.index, symbol_name, x, y, orientation
@@ -2302,9 +2319,8 @@ class Schematic:
             raise TypeError("Schematic wires expect a Net handle")
         if net._design is not self._design:
             raise ValueError(
-                _cross_design_net_message(
-                    net,
-                    _schematic_authoring_context(self, "schematic wire"),
+                _with_schematic_context(
+                    _cross_design_net_message(net), self, "schematic wire"
                 )
             )
         if points is None:
@@ -2347,10 +2363,11 @@ class Schematic:
         converted = []
         for point in wire_points:
             converted.append(
-                _schematic_point(
+                _schematic_point_for_authoring(
                     point,
                     design=self._design,
-                    context=_schematic_authoring_context(self, "schematic wire"),
+                    schematic=self,
+                    action="schematic wire",
                 )
             )
 
@@ -2370,15 +2387,13 @@ class Schematic:
             raise TypeError("Schematic labels expect a Net handle")
         if net._design is not self._design:
             raise ValueError(
-                _cross_design_net_message(
-                    net,
-                    _schematic_authoring_context(self, "net label"),
-                )
+                _with_schematic_context(_cross_design_net_message(net), self, "net label")
             )
-        x, y = _schematic_point(
+        x, y = _schematic_point_for_authoring(
             at,
             design=self._design,
-            context=_schematic_authoring_context(self, "net label"),
+            schematic=self,
+            action="net label",
         )
         orientation = _orientation(orient)
 
@@ -2394,11 +2409,11 @@ class Schematic:
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
     ) -> SchematicNetLabel:
-        return self.label(
-            _resolve_schematic_net_label(self._design, name_or_net),
-            at=at,
-            orient=orient,
-        )
+        try:
+            net = _resolve_schematic_net_label(self._design, name_or_net)
+        except ValueError as error:
+            _raise_cross_design_with_context(error, self, "net label")
+        return self.label(net, at=at, orient=orient)
 
     def _add_symbol_field(
         self,
@@ -2413,10 +2428,11 @@ class Schematic:
             raise TypeError("Schematic symbol fields expect a placed symbol handle")
         if symbol._schematic is not self:
             raise ValueError("Schematic symbol belongs to a different schematic")
-        x, y = _schematic_point(
+        x, y = _schematic_point_for_authoring(
             at,
             design=self._design,
-            context=_schematic_authoring_context(self, "symbol field"),
+            schematic=self,
+            action="symbol field",
         )
         orientation = _orientation(orient)
 
@@ -2440,15 +2456,13 @@ class Schematic:
             raise TypeError("Schematic junctions expect a Net handle")
         if net._design is not self._design:
             raise ValueError(
-                _cross_design_net_message(
-                    net,
-                    _schematic_authoring_context(self, "junction"),
-                )
+                _with_schematic_context(_cross_design_net_message(net), self, "junction")
             )
-        x, y = _schematic_point(
+        x, y = _schematic_point_for_authoring(
             at,
             design=self._design,
-            context=_schematic_authoring_context(self, "junction"),
+            schematic=self,
+            action="junction",
         )
         junction = self._design._circuit.add_schematic_junction(
             self._sheet_index, net.index, x, y
@@ -2467,7 +2481,8 @@ class Schematic:
             self._design,
             at,
             net,
-            context=_schematic_authoring_context(self, "power port"),
+            schematic=self,
+            action="power port",
         )
         return self._power_port(name, net=net, at=at, orient=orient, kind="Power")
 
@@ -2482,7 +2497,8 @@ class Schematic:
             self._design,
             at,
             net,
-            context=_schematic_authoring_context(self, "ground port"),
+            schematic=self,
+            action="ground port",
         )
         return self._power_port(net.name, net=net, at=at, orient=orient, kind="Ground")
 
@@ -2503,17 +2519,15 @@ class Schematic:
             raise TypeError("Schematic power ports expect a Net handle")
         if net._design is not self._design:
             raise ValueError(
-                _cross_design_net_message(
-                    net,
-                    _schematic_authoring_context(self, "power port"),
-                )
+                _with_schematic_context(_cross_design_net_message(net), self, "power port")
             )
         if name != net.name:
             raise ValueError("Schematic power port names must match the logical net name")
-        x, y = _schematic_point(
+        x, y = _schematic_point_for_authoring(
             at,
             design=self._design,
-            context=_schematic_authoring_context(self, "power port"),
+            schematic=self,
+            action="power port",
         )
         orientation = _orientation(orient)
         port = self._design._circuit.add_schematic_power_port(
@@ -2540,10 +2554,11 @@ class Schematic:
             raise TypeError("Schematic no-connect markers expect a placed pin anchor")
         if reason is not None and not isinstance(reason, str):
             raise TypeError("Schematic no-connect reasons must be strings")
-        _require_schematic_point_design(
+        _require_schematic_point_design_for_authoring(
             pin,
             self._design,
-            context=_schematic_authoring_context(self, "no-connect marker"),
+            schematic=self,
+            action="no-connect marker",
         )
         orientation = _orientation(orient)
         marker = self._design._circuit.add_schematic_no_connect_marker(
@@ -2569,12 +2584,13 @@ class Schematic:
             name,
             at,
             net,
-            context=_schematic_authoring_context(self, "sheet port"),
+            schematic=self,
         )
-        x, y = _schematic_point(
+        x, y = _schematic_point_for_authoring(
             at,
             design=self._design,
-            context=_schematic_authoring_context(self, "sheet port"),
+            schematic=self,
+            action="sheet port",
         )
         orientation = _orientation(orient)
         port_kind = _sheet_port_kind(kind)
@@ -2988,7 +3004,11 @@ def _schematic_authoring_context(schematic: Schematic, action: str) -> str:
     return f"{action} on {_schematic_sheet_phrase(schematic)}"
 
 
-def _cross_design_anchor_message(value, context: str | None = None) -> str:
+def _with_schematic_context(message: str, schematic: Schematic, action: str) -> str:
+    return f"{message} while authoring {_schematic_authoring_context(schematic, action)}"
+
+
+def _cross_design_anchor_message(value) -> str:
     if isinstance(value, SchematicPinAnchor):
         subject = _pin_anchor_label(value)
     elif isinstance(value, SchematicPort):
@@ -2997,38 +3017,53 @@ def _cross_design_anchor_message(value, context: str | None = None) -> str:
         subject = f"schematic anchor at {value.point!r}"
     else:
         subject = "Schematic anchor"
-    message = f"{subject} belongs to a different design"
-    if context is not None:
-        message += f" while authoring {context}"
-    return message
+    return f"{subject} belongs to a different design"
 
 
-def _cross_design_net_message(net: Net, context: str | None = None) -> str:
-    message = f"{_net_label(net)} belongs to a different design"
-    if context is not None:
-        message += f" while authoring {context}"
-    return message
+def _cross_design_net_message(net: Net) -> str:
+    return f"{_net_label(net)} belongs to a different design"
 
 
-def _require_schematic_point_design(
-    value, design: Design, *, context: str | None = None
-) -> None:
+def _raise_cross_design_with_context(error: ValueError, schematic: Schematic, action: str) -> None:
+    message = str(error)
+    if "different design" in message:
+        raise ValueError(_with_schematic_context(message, schematic, action)) from error
+    raise error
+
+
+def _require_schematic_point_design(value, design: Design) -> None:
     point_design = getattr(value, "_design", None)
     if point_design is not None and point_design is not design:
-        raise ValueError(_cross_design_anchor_message(value, context))
+        raise ValueError(_cross_design_anchor_message(value))
 
 
-def _schematic_point(
-    value, *, design: Design, context: str | None = None
-) -> tuple[float, float]:
+def _require_schematic_point_design_for_authoring(
+    value, design: Design, *, schematic: Schematic, action: str
+) -> None:
+    try:
+        _require_schematic_point_design(value, design)
+    except ValueError as error:
+        _raise_cross_design_with_context(error, schematic, action)
+
+
+def _schematic_point(value, *, design: Design) -> tuple[float, float]:
     if isinstance(value, SchematicPort):
         if value.net._design is not design:
-            raise ValueError(_cross_design_anchor_message(value, context))
+            raise ValueError(_cross_design_anchor_message(value))
         return value.pin.point
     if isinstance(value, SchematicAnchor):
-        _require_schematic_point_design(value, design, context=context)
+        _require_schematic_point_design(value, design)
         return value.point
     return _schematic_point_tuple(value)
+
+
+def _schematic_point_for_authoring(
+    value, *, design: Design, schematic: Schematic, action: str
+) -> tuple[float, float]:
+    try:
+        return _schematic_point(value, design=design)
+    except ValueError as error:
+        _raise_cross_design_with_context(error, schematic, action)
 
 
 def _require_schematic_net(
@@ -3036,12 +3071,11 @@ def _require_schematic_net(
     design: Design,
     *,
     type_message: str,
-    context: str | None = None,
 ) -> None:
     if not isinstance(net, Net):
         raise TypeError(type_message)
     if net._design is not design:
-        raise ValueError(_cross_design_net_message(net, context))
+        raise ValueError(_cross_design_net_message(net))
 
 
 def _net_by_index(design: Design, index: int) -> Net:
@@ -3111,37 +3145,31 @@ def _validate_explicit_schematic_net(
     net: Net | None,
     *,
     type_message: str,
-    context: str | None = None,
 ) -> Net | None:
     if net is None:
         return None
-    _require_schematic_net(net, design, type_message=type_message, context=context)
+    _require_schematic_net(net, design, type_message=type_message)
     return net
 
 
-def _require_pin_anchor_matches_net(
-    anchor: SchematicPinAnchor, net: Net, *, context: str | None = None
-) -> None:
+def _require_pin_anchor_matches_net(anchor: SchematicPinAnchor, net: Net) -> None:
     pin_net = _pin_anchor_net(anchor)
     pin_label = _pin_anchor_label(anchor)
-    context_text = "" if context is None else f" while authoring {context}"
     if pin_net is None:
         raise ValueError(
-            f"Cannot draw {_net_label(net)} at {pin_label}{context_text}: the pin is "
-            "not connected to any logical net"
+            f"Cannot draw {_net_label(net)} at {pin_label}: the pin is not connected "
+            "to any logical net"
         )
     if pin_net.index != net.index:
         raise ValueError(
-            f"Cannot draw {_net_label(net)} at {pin_label}{context_text}: the pin belongs to "
+            f"Cannot draw {_net_label(net)} at {pin_label}: the pin belongs to "
             f"{_net_label(pin_net)}"
         )
 
 
-def _require_port_matches_net(
-    port: SchematicPort, net: Net, *, context: str | None = None
-) -> None:
+def _require_port_matches_net(port: SchematicPort, net: Net) -> None:
     if port.net._design is not net._design:
-        raise ValueError(_cross_design_anchor_message(port, context))
+        raise ValueError(_cross_design_anchor_message(port))
     if port.net.index != net.index:
         raise ValueError(
             f"Cannot draw {_net_label(net)} through schematic port {port.name!r}: "
@@ -3154,17 +3182,19 @@ def _resolve_schematic_port_net(
     at: tuple[float, float] | SchematicAnchor | SchematicPort,
     net: Net | None,
     *,
-    context: str,
+    schematic: Schematic,
+    action: str,
     type_message: str = "Schematic power ports expect a Net handle",
 ) -> Net:
-    explicit = _validate_explicit_schematic_net(
-        design,
-        net,
-        type_message=type_message,
-        context=context,
-    )
+    context = _schematic_authoring_context(schematic, action)
+    try:
+        explicit = _validate_explicit_schematic_net(design, net, type_message=type_message)
+    except ValueError as error:
+        _raise_cross_design_with_context(error, schematic, action)
     if isinstance(at, SchematicPinAnchor):
-        _require_schematic_point_design(at, design, context=context)
+        _require_schematic_point_design_for_authoring(
+            at, design, schematic=schematic, action=action
+        )
         if explicit is None:
             inferred = _pin_anchor_net(at)
             if inferred is None:
@@ -3173,16 +3203,26 @@ def _resolve_schematic_port_net(
                     "connect the pin in the logical model first or pass net="
                 )
             return inferred
-        _require_pin_anchor_matches_net(at, explicit, context=context)
+        try:
+            _require_pin_anchor_matches_net(at, explicit)
+        except ValueError as error:
+            raise ValueError(_with_schematic_context(str(error), schematic, action)) from error
         return explicit
     if isinstance(at, SchematicPort):
         if explicit is None:
             if at.net._design is not design:
-                raise ValueError(_cross_design_anchor_message(at, context))
+                raise ValueError(
+                    _with_schematic_context(_cross_design_anchor_message(at), schematic, action)
+                )
             return at.net
-        _require_port_matches_net(at, explicit, context=context)
+        try:
+            _require_port_matches_net(at, explicit)
+        except ValueError as error:
+            raise ValueError(_with_schematic_context(str(error), schematic, action)) from error
     elif isinstance(at, SchematicAnchor):
-        _require_schematic_point_design(at, design, context=context)
+        _require_schematic_point_design_for_authoring(
+            at, design, schematic=schematic, action=action
+        )
     if explicit is None:
         raise ValueError(
             f"Cannot infer logical net for {context} from a non-pin anchor; pass net="
@@ -3196,7 +3236,7 @@ def _resolve_schematic_sheet_port_net(
     at: tuple[float, float] | SchematicAnchor | SchematicPort,
     net: Net | None,
     *,
-    context: str,
+    schematic: Schematic,
 ) -> Net:
     if net is None and not isinstance(at, (SchematicPinAnchor, SchematicPort)):
         return _net_by_name(design, name, context="Schematic sheet ports")
@@ -3204,7 +3244,8 @@ def _resolve_schematic_sheet_port_net(
         design,
         at,
         net,
-        context=context,
+        schematic=schematic,
+        action="sheet port",
         type_message="Schematic sheet ports expect a Net handle",
     )
 
@@ -3218,29 +3259,49 @@ def _resolve_schematic_connection_net(
     schematic: Schematic,
 ) -> Net:
     context = _schematic_authoring_context(schematic, "schematic wire")
-    explicit = _validate_explicit_schematic_net(
-        design,
-        net,
-        type_message="Schematic connections expect a Net handle",
-        context=context,
-    )
+    try:
+        explicit = _validate_explicit_schematic_net(
+            design, net, type_message="Schematic connections expect a Net handle"
+        )
+    except ValueError as error:
+        _raise_cross_design_with_context(error, schematic, "schematic wire")
     pin_nets: list[tuple[SchematicPinAnchor, Net | None]] = []
     for endpoint in (start, end):
         if isinstance(endpoint, SchematicPinAnchor):
-            _require_schematic_point_design(endpoint, design, context=context)
+            _require_schematic_point_design_for_authoring(
+                endpoint, design, schematic=schematic, action="schematic wire"
+            )
             pin_nets.append((endpoint, _pin_anchor_net(endpoint)))
         elif isinstance(endpoint, SchematicPort):
             if explicit is None:
                 if endpoint.net._design is not design:
-                    raise ValueError(_cross_design_anchor_message(endpoint, context))
+                    raise ValueError(
+                        _with_schematic_context(
+                            _cross_design_anchor_message(endpoint),
+                            schematic,
+                            "schematic wire",
+                        )
+                    )
             else:
-                _require_port_matches_net(endpoint, explicit, context=context)
+                try:
+                    _require_port_matches_net(endpoint, explicit)
+                except ValueError as error:
+                    raise ValueError(
+                        _with_schematic_context(str(error), schematic, "schematic wire")
+                    ) from error
         elif isinstance(endpoint, SchematicAnchor):
-            _require_schematic_point_design(endpoint, design, context=context)
+            _require_schematic_point_design_for_authoring(
+                endpoint, design, schematic=schematic, action="schematic wire"
+            )
 
     if explicit is not None:
         for anchor, _pin_net in pin_nets:
-            _require_pin_anchor_matches_net(anchor, explicit, context=context)
+            try:
+                _require_pin_anchor_matches_net(anchor, explicit)
+            except ValueError as error:
+                raise ValueError(
+                    _with_schematic_context(str(error), schematic, "schematic wire")
+                ) from error
         return explicit
 
     if len(pin_nets) != 2:
@@ -3715,16 +3776,13 @@ def _sheet_port_kind(value: str) -> str:
     return normalized
 
 
-def _resolve_schematic_symbol_pin_ref(
-    pin_refs, key: int | str, *, context: str | None = None
-):
-    context_text = "" if context is None else f" for {context}"
+def _resolve_schematic_symbol_pin_ref(pin_refs, key: int | str):
     if isinstance(key, int):
         matches = tuple(item for item in pin_refs if item["number"] == str(key))
         if len(matches) == 1:
             return matches[0]
         if len(matches) > 1:
-            raise ValueError(f"Schematic symbol pin number {key!r} is ambiguous{context_text}")
+            raise ValueError(f"Schematic symbol pin number {key!r} is ambiguous")
         raise IndexError("Schematic symbol has no pin with that number")
 
     if not isinstance(key, str):
@@ -3736,8 +3794,8 @@ def _resolve_schematic_symbol_pin_ref(
     if len(name_matches) > 1:
         numbers = ", ".join(f"{item['number']!r}" for item in name_matches)
         raise ValueError(
-            f"Schematic symbol pin name {key!r} is ambiguous{context_text}; "
-            f"use pins({key!r}) for the group or address one physical pin by number. "
+            f"Schematic symbol pin name {key!r} is ambiguous; use pins({key!r}) "
+            "for the group or address one physical pin by number. "
             f"Matching pin numbers: {numbers}"
         )
 
@@ -3745,7 +3803,7 @@ def _resolve_schematic_symbol_pin_ref(
     if len(number_matches) == 1:
         return number_matches[0]
     if len(number_matches) > 1:
-        raise ValueError(f"Schematic symbol pin number {key!r} is ambiguous{context_text}")
+        raise ValueError(f"Schematic symbol pin number {key!r} is ambiguous")
 
     raise IndexError("Schematic symbol has no pin with that name or number")
 
@@ -3768,13 +3826,20 @@ def _orthogonal_wire_points(
 
 
 def _schematic_axis_target(
-    value, design: Design, axis: str, *, context: str | None = None
+    value,
+    design: Design,
+    axis: str,
+    *,
+    schematic: Schematic,
+    action: str,
 ) -> float:
     if isinstance(value, bool):
         raise TypeError("Schematic coordinates must be numbers")
     if isinstance(value, (int, float)):
         return _coordinate(value)
-    point = _schematic_point(value, design=design, context=context)
+    point = _schematic_point_for_authoring(
+        value, design=design, schematic=schematic, action=action
+    )
     return point[0] if axis == "x" else point[1]
 
 
@@ -3807,21 +3872,14 @@ def _shape_wire_points(
     *,
     shape: str,
     k: float | None,
-    schematic: Schematic,
-    net: Net,
 ) -> tuple[tuple[float, float], ...]:
     if not isinstance(shape, str):
-        raise TypeError(
-            f"Invalid schematic wire shape for {_net_label(net)} on "
-            f"{_schematic_sheet_phrase(schematic)}: expected a string"
-        )
+        raise TypeError("Schematic wire shape must be a string")
     normalized_shape = {"n": "|-|", "c": "-|-"}.get(shape, shape)
     valid_shapes = ("-", "-|", "|-", "|-|", "-|-")
     if normalized_shape not in valid_shapes:
         raise ValueError(
-            f"Invalid schematic wire shape {shape!r} for {_net_label(net)} on "
-            f"{_schematic_sheet_phrase(schematic)}; expected one of -, -|, |-, |-|, "
-            "n, -|-, or c"
+            "Schematic wire shape must be one of -, -|, |-, |-|, n, -|-, or c"
         )
 
     sx, sy = start

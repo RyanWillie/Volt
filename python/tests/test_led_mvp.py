@@ -2347,10 +2347,10 @@ def test_python_schematic_explicit_wire_points_are_normalized_once():
     original = volt._schematic_point
     calls = 0
 
-    def counting_schematic_point(value, *, design, context=None):
+    def counting_schematic_point(value, *, design):
         nonlocal calls
         calls += 1
-        return original(value, design=design, context=context)
+        return original(value, design=design)
 
     schematic = design.schematic("Main")
     volt._schematic_point = counting_schematic_point
