@@ -110,3 +110,38 @@ TEST_CASE("LED and connector catalog specs preserve expected logical pin convent
           volt::PinRole::Bidirectional);
     CHECK(circuit.pin_definition(connector_definition.pins()[1]).number() == "2");
 }
+
+TEST_CASE("Common component catalog specs carry stable default schematic symbol references") {
+    struct CatalogCase {
+        std::string source_name;
+        volt::authoring::ComponentSpec spec;
+        std::string symbol_name;
+    };
+
+    const auto cases = std::vector<CatalogCase>{
+        {"resistor_2pin", volt::authoring::resistor(), "volt.passives:resistor"},
+        {"capacitor_2pin", volt::authoring::capacitor(), "volt.passives:capacitor"},
+        {"capacitor_polarized_2pin", volt::authoring::polarized_capacitor(),
+         "volt.passives:capacitor_polarized"},
+        {"inductor_2pin", volt::authoring::inductor(), "volt.passives:inductor"},
+        {"diode_2pin", volt::authoring::diode(), "volt.discretes:diode"},
+        {"led_2pin", volt::authoring::led(), "volt.optos:led"},
+        {"switch_spst", volt::authoring::switch_spst(), "volt.switches:switch_spst"},
+        {"crystal_2pin", volt::authoring::crystal_2pin(), "volt.frequency:crystal_2pin"},
+        {"test_point_1pin", volt::authoring::test_point(), "volt.testpoints:test_point"},
+        {"connector_1x01", volt::authoring::connector_1x01(), "volt.connectors:connector_1x01"},
+        {"connector_1x02", volt::authoring::connector_1x02(), "volt.connectors:connector_1x02"},
+        {"connector_1x03", volt::authoring::connector_1x03(), "volt.connectors:connector_1x03"},
+        {"regulator_3pin", volt::authoring::regulator_3pin(), "volt.power:regulator_3pin"},
+        {"op_amp_5pin", volt::authoring::op_amp_5pin(), "volt.analog:op_amp_5pin"},
+    };
+
+    for (const auto &item : cases) {
+        INFO(item.source_name);
+        REQUIRE(item.spec.source.has_value());
+        CHECK(item.spec.source->name() == item.source_name);
+        REQUIRE(item.spec.schematic_symbols.size() == 1);
+        CHECK(item.spec.schematic_symbols[0].name() == item.symbol_name);
+        CHECK(item.spec.schematic_symbols[0].variant() == "default");
+    }
+}
