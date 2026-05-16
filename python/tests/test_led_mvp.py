@@ -430,6 +430,32 @@ def test_common_catalog_symbols_place_through_drawing_and_render():
     assert "symbol-circle" in svg
 
 
+def test_legacy_common_symbol_names_still_place_and_resolve():
+    design = volt.Design("legacy-common-symbol-names")
+    schematic = design.schematic("Main")
+    placements = [
+        ("resistor", design.R("10k", ref="R1"), (20, 20)),
+        ("capacitor", design.C("100nF", ref="C1"), (70, 20)),
+        ("led", design.LED(ref="D1"), (120, 20)),
+        ("connector_1x02", design.connector_1x02(ref="J1"), (170, 20)),
+    ]
+
+    placed = [
+        schematic.place(component, at=point, symbol=symbol_name)
+        for symbol_name, component, point in placements
+    ]
+
+    projection = json.loads(schematic.to_json())
+    assert [symbol["name"] for symbol in projection["symbol_definitions"]] == [
+        symbol_name for symbol_name, _component, _point in placements
+    ]
+    assert tuple(anchor.number for anchor in placed[0].pin_anchors()) == ("1", "2")
+    assert tuple(anchor.number for anchor in placed[1].pin_anchors()) == ("1", "2")
+    assert tuple(anchor.number for anchor in placed[2].pin_anchors()) == ("1", "2")
+    assert tuple(anchor.name for anchor in placed[3].pin_anchors()) == ("+", "-")
+    assert tuple(anchor.number for anchor in placed[3].pin_anchors()) == ("1", "2")
+
+
 def test_schematic_placement_rejects_unknown_component_symbol_variant():
     design = volt.Design("library-symbol-missing-variant")
     library = volt.Library("volt.test")
@@ -1884,6 +1910,7 @@ if __name__ == "__main__":
     test_schematic_placement_can_select_symbol_variant_from_component_default()
     test_common_catalog_components_have_namespaced_default_symbol_refs()
     test_common_catalog_symbols_place_through_drawing_and_render()
+    test_legacy_common_symbol_names_still_place_and_resolve()
     test_schematic_placement_rejects_unknown_component_symbol_variant()
     test_schematic_symbol_name_conflicts_reject_different_definitions()
     test_schematic_placement_rejects_symbol_with_unknown_component_pin()
