@@ -83,7 +83,7 @@ def author_schematic(
 
         drawing.power("+5V", at=regulator.IN)
         drawing.power("+3V3", at=regulator.OUT)
-        drawing.net_label("+3V3", at=output_cap.start.up(12))
+        drawing.net_label(nets["+3V3"], at=output_cap.start.up(12))
         drawing.connect(input_cap.start, regulator.IN, shape="-")
         drawing.connect(regulator.OUT, output_cap.start, shape="-")
         drawing.connect(output_cap.start, reset_pullup.start, shape="-")
@@ -131,8 +131,9 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
     output_path.mkdir(parents=True, exist_ok=True)
 
     design, schematic = build_example()
-    if schematic.validate().has_errors:
-        codes = ", ".join(diagnostic.code for diagnostic in schematic.validate())
+    report = schematic.validate()
+    if report.has_errors:
+        codes = ", ".join(diagnostic.code for diagnostic in report)
         raise RuntimeError(f"regulator fragment schematic readiness failed: {codes}")
 
     logical_json = output_path / "regulator_fragment.volt.json"
