@@ -1273,6 +1273,8 @@ def test_python_schematic_writes_svg_projection():
     assert '<text class="net-label" data-net="net:0" x="20" y="16"' in svg
     assert ">VCC</text>" in svg
     assert '<text class="reference" x="0" y="-12">R1</text>' in svg
+    assert "pin-anchor" not in svg
+    assert "pin-label" not in svg
 
     with TemporaryDirectory() as directory:
         path = Path(directory) / "schematic.svg"

@@ -16,6 +16,12 @@
 
 namespace volt::io {
 
+/** Options that control deterministic schematic SVG rendering. */
+struct SchematicSvgOptions {
+    /** Include development overlays such as symbol pin anchors and labels. */
+    bool debug_overlays = false;
+};
+
 namespace detail {
 
 inline constexpr double svg_sheet_width = 297.0;
@@ -262,10 +268,28 @@ inline void write_symbol_instance_svg(std::ostream &out, const Schematic &schema
     for (const auto &primitive : symbol.primitives()) {
         write_symbol_primitive_svg(out, primitive);
     }
+    out << "    </g>\n";
+}
+
+inline void write_symbol_debug_overlay_svg(std::ostream &out, const Schematic &schematic,
+                                           SymbolInstanceId id) {
+    const auto &instance = schematic.symbol_instance(id);
+    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+
+    out << "      <g class=\"symbol-debug-overlay\" data-component=\""
+        << svg_escape(svg_component_id(instance.component())) << "\" data-symbol-definition=\""
+        << svg_escape(svg_symbol_def_id(instance.symbol_definition()))
+        << "\" transform=\"translate(";
+    write_svg_number(out, instance.position().x());
+    out << ' ';
+    write_svg_number(out, instance.position().y());
+    out << ") rotate(";
+    write_svg_number(out, orientation_degrees(instance.orientation()));
+    out << ")\">\n";
     for (const auto &pin : symbol.pins()) {
         write_symbol_pin_svg(out, pin);
     }
-    out << "    </g>\n";
+    out << "      </g>\n";
 }
 
 inline void write_wire_run_svg(std::ostream &out, const Schematic &schematic, WireRunId id) {
@@ -406,10 +430,33 @@ inline void write_title_block_svg(std::ostream &out, const SheetMetadata &metada
     }
 }
 
+inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
+    out << "  <style>"
+           ".sheet{fill:#fff;stroke:#111;stroke-width:0.5}"
+           ".sheet-title{font:6px sans-serif;fill:#111}"
+           ".title-block-field{font:4px sans-serif;fill:#111;text-anchor:start}"
+           ".wire-run{fill:none;stroke:#111;stroke-width:1}"
+           ".net-label{font:5px sans-serif;fill:#111;text-anchor:start}"
+           ".junction{fill:#111;stroke:none}"
+           ".power-port-line,.ground-bar,.no-connect-line{stroke:#111;stroke-width:1}"
+           ".power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:1}"
+           ".power-port-label,.sheet-port-label,.symbol-field{font:5px sans-serif;fill:#111;"
+           "text-anchor:middle}"
+           ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-"
+           "width:1}"
+           ".symbol-text,.reference{font:5px sans-serif;fill:#111;text-anchor:middle}";
+    if (options.debug_overlays) {
+        out << ".pin-anchor{fill:#fff;stroke:#c2410c;stroke-width:0.8}"
+               ".pin-label{font:4px sans-serif;fill:#c2410c;text-anchor:middle}";
+    }
+    out << "</style>\n";
+}
+
 } // namespace detail
 
 /** Write a deterministic SVG rendering of a schematic projection. */
-inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
+inline void write_schematic_svg(std::ostream &out, const Schematic &schematic,
+                                SchematicSvgOptions options = {}) {
     const auto sheet_count = schematic.sheet_count();
     auto width = detail::svg_sheet_width;
     auto height = sheet_count == 0 ? detail::svg_sheet_height : 0.0;
@@ -431,22 +478,7 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
     out << "\" height=\"";
     detail::write_svg_number(out, height);
     out << "\">\n";
-    out << "  <style>"
-           ".sheet{fill:#fff;stroke:#c7c7c7;stroke-width:0.5}"
-           ".sheet-title{font:6px sans-serif;fill:#333}"
-           ".title-block-field{font:4px sans-serif;fill:#333;text-anchor:start}"
-           ".wire-run{fill:none;stroke:#111;stroke-width:1.2}"
-           ".net-label{font:5px sans-serif;fill:#0645ad;text-anchor:start}"
-           ".junction{fill:#111;stroke:none}"
-           ".power-port-line,.ground-bar,.no-connect-line{stroke:#111;stroke-width:1.2}"
-           ".power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:1.2}"
-           ".power-port-label,.sheet-port-label,.symbol-field{font:5px sans-serif;fill:#111;"
-           "text-anchor:middle}"
-           ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-"
-           "width:1.2}"
-           ".symbol-text,.reference,.pin-label{font:5px sans-serif;fill:#111;text-anchor:middle}"
-           ".pin-anchor{fill:#fff;stroke:#111;stroke-width:0.8}"
-           "</style>\n";
+    detail::write_svg_style(out, options);
 
     auto y_offset = 0.0;
     for (std::size_t sheet_index = 0; sheet_index < sheet_count; ++sheet_index) {
@@ -466,20 +498,24 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
         out << "    <text class=\"sheet-title\" x=\"10\" y=\"16\">"
             << detail::svg_escape(metadata.title()) << "</text>\n";
         detail::write_title_block_svg(out, metadata);
-        for (const auto wire : sheet.wire_runs()) {
-            detail::write_wire_run_svg(out, schematic, wire);
-        }
-        for (const auto junction : sheet.junctions()) {
-            detail::write_junction_svg(out, schematic, junction);
-        }
-        for (const auto port : sheet.power_ports()) {
-            detail::write_power_port_svg(out, schematic, port);
-        }
+        out << "    <g class=\"layer layer-symbols\">\n";
         for (const auto instance : sheet.symbol_instances()) {
             detail::write_symbol_instance_svg(out, schematic, instance);
         }
-        for (const auto label : sheet.net_labels()) {
-            detail::write_net_label_svg(out, schematic, label);
+        out << "    </g>\n";
+        out << "    <g class=\"layer layer-wires\">\n";
+        for (const auto wire : sheet.wire_runs()) {
+            detail::write_wire_run_svg(out, schematic, wire);
+        }
+        out << "    </g>\n";
+        out << "    <g class=\"layer layer-junctions\">\n";
+        for (const auto junction : sheet.junctions()) {
+            detail::write_junction_svg(out, schematic, junction);
+        }
+        out << "    </g>\n";
+        out << "    <g class=\"layer layer-ports\">\n";
+        for (const auto port : sheet.power_ports()) {
+            detail::write_power_port_svg(out, schematic, port);
         }
         for (const auto marker : sheet.no_connect_markers()) {
             detail::write_no_connect_marker_svg(out, schematic, marker);
@@ -487,8 +523,23 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
         for (const auto port : sheet.sheet_ports()) {
             detail::write_sheet_port_svg(out, schematic, port);
         }
+        out << "    </g>\n";
+        out << "    <g class=\"layer layer-labels\">\n";
+        for (const auto label : sheet.net_labels()) {
+            detail::write_net_label_svg(out, schematic, label);
+        }
+        out << "    </g>\n";
+        out << "    <g class=\"layer layer-fields\">\n";
         for (const auto field : sheet.symbol_fields()) {
             detail::write_symbol_field_svg(out, schematic, field);
+        }
+        out << "    </g>\n";
+        if (options.debug_overlays) {
+            out << "    <g class=\"layer layer-debug\">\n";
+            for (const auto instance : sheet.symbol_instances()) {
+                detail::write_symbol_debug_overlay_svg(out, schematic, instance);
+            }
+            out << "    </g>\n";
         }
         out << "  </g>\n";
         y_offset += metadata.size().height() + detail::svg_sheet_gap;
@@ -498,9 +549,10 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic) {
 }
 
 /** Return a deterministic SVG rendering of a schematic projection. */
-[[nodiscard]] inline std::string write_schematic_svg(const Schematic &schematic) {
+[[nodiscard]] inline std::string write_schematic_svg(const Schematic &schematic,
+                                                     SchematicSvgOptions options = {}) {
     auto out = std::ostringstream{};
-    write_schematic_svg(out, schematic);
+    write_schematic_svg(out, schematic, options);
     return out.str();
 }
 

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
@@ -42,12 +43,20 @@ volt::SymbolDefinition make_symbol() {
 
 volt::Schematic make_schematic(const volt::Circuit &circuit, volt::ComponentId component) {
     auto schematic = volt::Schematic{circuit};
-    const auto sheet = schematic.add_sheet(volt::Sheet{"Main & Aux"});
+    const auto sheet = schematic.add_sheet(volt::Sheet{
+        "Main & Aux", volt::SheetMetadata{"Main & Aux", volt::SheetSize{},
+                                          std::vector{volt::TitleBlockField{"Revision", "A"}}}});
     const auto symbol = schematic.add_symbol_definition(make_symbol());
     [[maybe_unused]] const auto instance = schematic.place_symbol(
         sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0},
                                     volt::SchematicOrientation::Right});
     return schematic;
+}
+
+std::size_t require_contains(std::string_view text, std::string_view needle) {
+    const auto position = text.find(needle);
+    REQUIRE(position != std::string_view::npos);
+    return position;
 }
 
 volt::Schematic make_schematic_with_wires(const volt::Circuit &circuit, volt::ComponentId component,
@@ -97,6 +106,12 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
           std::string::npos);
     CHECK(svg.find("<text class=\"sheet-title\" x=\"10\" y=\"16\">Main &amp; Aux</text>") !=
           std::string::npos);
+    CHECK(svg.find("<text class=\"title-block-field\" x=\"225\" y=\"202\">Revision: A</text>") !=
+          std::string::npos);
+    CHECK(svg.find(".wire-run{fill:none;stroke:#111;stroke-width:1}") != std::string::npos);
+    CHECK(svg.find(".net-label{font:5px sans-serif;fill:#111;text-anchor:start}") !=
+          std::string::npos);
+    CHECK(svg.find("#0645ad") == std::string::npos);
     CHECK(svg.find("<polyline class=\"wire-run\" data-net=\"net:0\" points=\"10,20 30,20\"/>") !=
           std::string::npos);
     CHECK(svg.find("<text class=\"net-label\" data-net=\"net:0\" x=\"12\" y=\"16\"") !=
@@ -117,9 +132,8 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
           std::string::npos);
     CHECK(svg.find("<text class=\"symbol-text\" x=\"10\" y=\"-8\"") != std::string::npos);
     CHECK(svg.find(">R&lt;&amp;</text>") != std::string::npos);
-    CHECK(svg.find("<circle class=\"pin-anchor\" cx=\"0\" cy=\"0\" r=\"1.5\"/>") !=
-          std::string::npos);
-    CHECK(svg.find("<text class=\"pin-label\" x=\"0\" y=\"4\">1&amp;</text>") != std::string::npos);
+    CHECK(svg.find("pin-anchor") == std::string::npos);
+    CHECK(svg.find("pin-label") == std::string::npos);
     CHECK(svg.find("<text class=\"reference\" x=\"0\" y=\"-12\">R&amp;1</text>") !=
           std::string::npos);
     CHECK(
@@ -133,6 +147,38 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(svg.find("<text class=\"symbol-field\" data-symbol-instance=\"symbol_instance:0\" "
                    "data-field=\"value\" x=\"40\" y=\"32\"") != std::string::npos);
     CHECK(svg.find(">10k</text>") != std::string::npos);
+
+    const auto symbols = require_contains(svg, "<g class=\"layer layer-symbols\">");
+    const auto wires = require_contains(svg, "<g class=\"layer layer-wires\">");
+    const auto junctions = require_contains(svg, "<g class=\"layer layer-junctions\">");
+    const auto ports = require_contains(svg, "<g class=\"layer layer-ports\">");
+    const auto labels = require_contains(svg, "<g class=\"layer layer-labels\">");
+    const auto fields = require_contains(svg, "<g class=\"layer layer-fields\">");
+    CHECK(symbols < wires);
+    CHECK(wires < junctions);
+    CHECK(junctions < ports);
+    CHECK(ports < labels);
+    CHECK(labels < fields);
+    CHECK(svg.find("layer-debug") == std::string::npos);
+}
+
+TEST_CASE("Schematic SVG writer renders debug pin overlays only when enabled") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = add_net(circuit);
+    auto schematic = make_schematic_with_wires(circuit, component, net);
+
+    auto options = volt::io::SchematicSvgOptions{};
+    options.debug_overlays = true;
+    const auto svg = volt::io::write_schematic_svg(schematic, options);
+
+    CHECK(svg.find("<g class=\"layer layer-debug\">") != std::string::npos);
+    CHECK(svg.find(".pin-anchor{fill:#fff;stroke:#c2410c;stroke-width:0.8}") != std::string::npos);
+    CHECK(svg.find("<circle class=\"pin-anchor\" cx=\"0\" cy=\"0\" r=\"1.5\"/>") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"pin-label\" x=\"0\" y=\"4\">1&amp;</text>") != std::string::npos);
+    CHECK(require_contains(svg, "<g class=\"layer layer-fields\">") <
+          require_contains(svg, "<g class=\"layer layer-debug\">"));
 }
 
 TEST_CASE("Schematic SVG writer expands the root viewport to sheet metadata") {
