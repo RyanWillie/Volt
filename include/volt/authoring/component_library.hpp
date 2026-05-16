@@ -290,7 +290,7 @@ struct ComponentSpec {
     return ComponentSpec{
         "Op amp",
         std::vector{analog_output_pin("OUT", "1"), analog_input_pin("IN-", "2"),
-                    analog_input_pin("IN+", "3"), ground_pin("V-", "4"),
+                    analog_input_pin("IN+", "3"), power_input_pin("V-", "4"),
                     power_input_pin("V+", "5")},
         PropertyMap{{PropertyKey{"category"}, PropertyValue{"analog"}}},
         DefinitionSource{"volt.analog", "op_amp_5pin", "1.0.0"},

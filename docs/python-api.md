@@ -400,8 +400,11 @@ loaded = d.load_schematic_json(schematic_json)
 
 `d.schematic(name)` creates or returns a kernel-owned sheet. `sch.place()` stores a
 `SymbolInstance` over an existing `ComponentId`, with a finite `(x, y)` position and a
-kernel-owned `SymbolDefinition`. The first built-in symbol set is intentionally small:
-`resistor`, `capacitor`, `led`, and `connector_1x02`.
+kernel-owned `SymbolDefinition`. Common component helpers serialize stable namespaced
+default symbol references such as `volt.passives:resistor`, `volt.optos:led`, and
+`volt.connectors:connector_1x02`. The legacy explicit names `resistor`, `capacitor`,
+`led`, and `connector_1x02` remain accepted by `sch.place(..., symbol=...)` for older
+scripts.
 
 `sch.place(...)` returns a `SchematicSymbol` handle. `symbol.pin(key)` returns a
 `SchematicPinAnchor` containing the sheet coordinate, the kernel-owned logical pin, the

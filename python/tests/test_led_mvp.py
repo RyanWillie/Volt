@@ -499,6 +499,22 @@ def test_schematic_symbol_name_conflicts_reject_different_definitions():
         raise AssertionError("conflicting schematic symbol definitions should be rejected")
 
 
+def test_default_catalog_symbol_name_conflicts_reject_different_definitions():
+    design = volt.Design("default-catalog-symbol-conflict")
+    r1 = design.R("10k", ref="R1")
+    schematic = design.schematic("Main")
+    schematic.place(r1, at=(10, 20))
+
+    try:
+        schematic.register_symbol(
+            _two_pin_test_symbol("volt.passives:resistor", label="CUSTOM")
+        )
+    except ValueError as error:
+        assert "already exists with a different definition" in str(error)
+    else:
+        raise AssertionError("default catalog symbol name conflicts should be rejected")
+
+
 def test_schematic_placement_rejects_symbol_with_unknown_component_pin():
     design = volt.Design("bad-symbol")
     library = volt.Library("volt.test")
@@ -1913,6 +1929,7 @@ if __name__ == "__main__":
     test_legacy_common_symbol_names_still_place_and_resolve()
     test_schematic_placement_rejects_unknown_component_symbol_variant()
     test_schematic_symbol_name_conflicts_reject_different_definitions()
+    test_default_catalog_symbol_name_conflicts_reject_different_definitions()
     test_schematic_placement_rejects_symbol_with_unknown_component_pin()
     test_stm32_usb_buck_library_exposes_native_components()
     test_repeated_pin_labels_require_explicit_single_pin_addressing()

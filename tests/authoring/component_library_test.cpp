@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -7,6 +8,7 @@
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/definitions.hpp>
 #include <volt/core/properties.hpp>
+#include <volt/schematic/default_symbols.hpp>
 
 TEST_CASE("Component library defines a component from a data-driven spec") {
     auto circuit = volt::Circuit{};
@@ -143,5 +145,45 @@ TEST_CASE("Common component catalog specs carry stable default schematic symbol 
         REQUIRE(item.spec.schematic_symbols.size() == 1);
         CHECK(item.spec.schematic_symbols[0].name() == item.symbol_name);
         CHECK(item.spec.schematic_symbols[0].variant() == "default");
+
+        const auto symbol = volt::default_schematic_symbol(item.symbol_name);
+        REQUIRE(symbol.has_value());
+        CHECK(symbol->name() == item.symbol_name);
+        CHECK(symbol->pins().size() == item.spec.pins.size());
+        CHECK_FALSE(symbol->primitives().empty());
+        for (const auto &symbol_pin : symbol->pins()) {
+            CHECK(std::any_of(item.spec.pins.begin(), item.spec.pins.end(),
+                              [&](const auto &pin) { return pin.number == symbol_pin.number(); }));
+        }
     }
+}
+
+TEST_CASE("Op amp catalog spec models both supply rails as power inputs") {
+    auto circuit = volt::Circuit{};
+
+    const auto op_amp = volt::authoring::define_component(circuit, volt::authoring::op_amp_5pin());
+    const auto &definition = circuit.component_definition(op_amp);
+
+    const auto find_pin = [&](const std::string &name) -> const volt::PinDefinition * {
+        for (const auto pin_id : definition.pins()) {
+            const auto &pin = circuit.pin_definition(pin_id);
+            if (pin.name() == name) {
+                return &pin;
+            }
+        }
+        return nullptr;
+    };
+
+    const auto *positive_supply = find_pin("V+");
+    const auto *negative_supply = find_pin("V-");
+
+    REQUIRE(positive_supply != nullptr);
+    CHECK(positive_supply->role() == volt::PinRole::PowerInput);
+    CHECK(positive_supply->terminal_kind() == volt::ElectricalTerminalKind::Power);
+    CHECK(positive_supply->direction() == volt::ElectricalDirection::Input);
+
+    REQUIRE(negative_supply != nullptr);
+    CHECK(negative_supply->role() == volt::PinRole::PowerInput);
+    CHECK(negative_supply->terminal_kind() == volt::ElectricalTerminalKind::Power);
+    CHECK(negative_supply->direction() == volt::ElectricalDirection::Input);
 }
