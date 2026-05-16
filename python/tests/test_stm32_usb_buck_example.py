@@ -105,6 +105,14 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "SCHEMATIC_REPEATED_NET_LABELS" in schematic_codes
 
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in first_svg_text
+    assert ".wire-run{fill:none;stroke:#111;stroke-width:1}" in first_svg_text
+    assert ".net-label{font:5px sans-serif;fill:#111;text-anchor:start}" in first_svg_text
+    assert "#0645ad" not in first_svg_text
+    assert "pin-anchor" not in first_svg_text
+    assert "pin-label" not in first_svg_text
+    assert 'class="layer layer-symbols"' in first_svg_text
+    assert 'class="layer layer-wires"' in first_svg_text
+    assert 'class="layer layer-labels"' in first_svg_text
     assert ">U1</text>" in first_svg_text
     assert ">+3V3</text>" in first_svg_text
     assert ">GND</text>" in first_svg_text
