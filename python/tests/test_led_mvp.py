@@ -1812,6 +1812,38 @@ def test_python_schematic_drawing_connect_requires_explicit_net_for_plain_coordi
     assert projection["wire_runs"][0]["net"] == f"net:{vcc.index}"
 
 
+def test_python_schematic_power_and_ground_require_explicit_net_for_non_pin_anchor():
+    design = volt.Design("schematic-explicit-port-net")
+    vcc = design.net("VCC", kind="power")
+    gnd = design.net("GND", kind="ground")
+    r1 = design.R("10k", ref="R1")
+    vcc += r1[1]
+    gnd += r1[2]
+
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(unit=20) as drawing:
+        resistor = drawing.R(r1).right()
+        _ = resistor.start
+        before = schematic.to_json()
+
+        try:
+            drawing.power("VCC", at=(0, -20))
+        except ValueError as error:
+            assert "non-pin anchor" in str(error)
+        else:
+            raise AssertionError("power ports on plain coordinates must require explicit net")
+
+        try:
+            drawing.ground(at=(0, 20))
+        except ValueError as error:
+            assert "non-pin anchor" in str(error)
+        else:
+            raise AssertionError("ground ports on plain coordinates must require explicit net")
+
+        assert schematic.to_json() == before
+
+
 def test_python_schematic_explicit_wire_points_are_normalized_once():
     design = volt.Design("schematic-wire-normalization")
     vcc = design.net("VCC", kind="power")
@@ -2264,6 +2296,7 @@ if __name__ == "__main__":
     test_python_schematic_drawing_connect_infers_shared_pin_net_and_readiness()
     test_python_schematic_drawing_connect_rejects_different_pin_nets_without_wire()
     test_python_schematic_drawing_connect_requires_explicit_net_for_plain_coordinate()
+    test_python_schematic_power_and_ground_require_explicit_net_for_non_pin_anchor()
     test_python_schematic_explicit_wire_points_are_normalized_once()
     test_python_schematic_drawing_cursor_defaults_and_moves()
     test_python_schematic_drawing_move_from_accepts_sheet_points_and_anchors()

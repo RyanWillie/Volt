@@ -2590,16 +2590,7 @@ def _pin_anchor_net(anchor: SchematicPinAnchor) -> Net | None:
 
 
 def _pin_anchor_label(anchor: SchematicPinAnchor) -> str:
-    try:
-        logical = json.loads(anchor.pin._design.to_json())
-        pin_id = f"pin:{anchor.pin.index}"
-        pin = next(item for item in logical["pins"] if item["id"] == pin_id)
-        component = next(
-            item for item in logical["components"] if item["id"] == pin["component"]
-        )
-        return f"{component['reference']} pin {anchor.number} ({anchor.name})"
-    except (KeyError, StopIteration, TypeError, ValueError):
-        return f"pin:{anchor.pin.index} ({anchor.name})"
+    return f"pin:{anchor.pin.index} {anchor.number} ({anchor.name})"
 
 
 def _net_label(net: Net) -> str:
