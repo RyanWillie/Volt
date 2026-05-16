@@ -1293,6 +1293,8 @@ class SchematicWireBuilder:
         self._net = net
         self._points: list[tuple[float, float]] = []
         self._drawing = drawing
+        self._start_here = drawing.here if drawing is not None else None
+        self._start_direction = drawing.direction if drawing is not None else None
         self._wire: SchematicWire | None = None
 
     def at(self, point) -> SchematicWireBuilder:
@@ -1370,6 +1372,7 @@ class SchematicWireBuilder:
 
     def shape(self, shape: str, *, k: float | None = None) -> SchematicWire:
         """Persist a SchemDraw-style point-to-point wire shape."""
+        self._require_unmaterialized()
         self._require_started()
         if len(self._points) != 2:
             raise ValueError("Schematic wire shape routes need exactly two endpoints")
@@ -1381,7 +1384,16 @@ class SchematicWireBuilder:
         )
 
     def _materialize(self) -> SchematicWire:
-        return self._persist(self._points, route_intent="Direct", normalize=True)
+        try:
+            if not _schematic_route_has_distinct_points(self._points):
+                raise ValueError(
+                    "Schematic drawing wire needs an endpoint before materialization"
+                )
+            return self._persist(self._points, route_intent="Direct", normalize=True)
+        except Exception:
+            self._clear_pending()
+            self._restore_drawing_state()
+            raise
 
     def _relative(self, *, dx: float, dy: float) -> SchematicWireBuilder:
         self._require_unmaterialized()
@@ -1405,13 +1417,17 @@ class SchematicWireBuilder:
             wire_points = (
                 _normalize_schematic_route_points(points) if normalize else tuple(points)
             )
-            self._wire = self._schematic._add_wire(
-                self._net,
-                wire_points,
-                route_intent=route_intent,
-            )
-        if self._drawing is not None and self._drawing._pending is self:
-            self._drawing._pending = None
+            try:
+                self._wire = self._schematic._add_wire(
+                    self._net,
+                    wire_points,
+                    route_intent=route_intent,
+                )
+            except Exception:
+                self._clear_pending()
+                self._restore_drawing_state()
+                raise
+        self._clear_pending()
         return self._wire
 
     def _update_drawing_cursor(self, point: tuple[float, float]) -> None:
@@ -1428,6 +1444,15 @@ class SchematicWireBuilder:
     def _require_started(self) -> None:
         if not self._points:
             raise ValueError("Schematic wire builder must start with from_()")
+
+    def _clear_pending(self) -> None:
+        if self._drawing is not None and self._drawing._pending is self:
+            self._drawing._pending = None
+
+    def _restore_drawing_state(self) -> None:
+        if self._drawing is not None and self._start_here is not None:
+            self._drawing._here = self._start_here
+            self._drawing._direction = self._start_direction
 
 
 class SchematicDrawing:
@@ -1589,9 +1614,9 @@ class SchematicDrawing:
     def wire(self, net: Net) -> SchematicWireBuilder:
         self._flush_pending()
         builder = self._schematic.wire(net)
-        if not isinstance(builder, SchematicWireBuilder):
-            raise TypeError("Schematic wires expect a Net handle")
         builder._drawing = self
+        builder._start_here = self._here
+        builder._start_direction = self._direction
         builder.from_(self._here)
         self._pending = builder
         return builder
@@ -3302,6 +3327,16 @@ def _normalize_schematic_route_points(
     if len(result) < 2:
         raise ValueError("Schematic wire route must contain at least two distinct points")
     return tuple(result)
+
+
+def _schematic_route_has_distinct_points(points: Iterable[tuple[float, float]]) -> bool:
+    first: tuple[float, float] | None = None
+    for point in points:
+        if first is None:
+            first = point
+        elif point != first:
+            return True
+    return False
 
 
 def _shape_wire_points(

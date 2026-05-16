@@ -1945,6 +1945,45 @@ def test_python_schematic_wire_shortcuts_reject_invalid_shapes_clearly():
         raise AssertionError("invalid wire shapes should be rejected")
 
 
+def test_python_schematic_wire_shape_rejects_reuse_after_materialization():
+    design = volt.Design("schematic-wire-shape-reuse")
+    net = design.net("ROUTE")
+    schematic = design.schematic("Main")
+
+    builder = schematic.wire(net).at((0, 0)).to((20, 20))
+    builder.shape("-|")
+    before = schematic.to_json()
+
+    try:
+        builder.shape("|-")
+    except ValueError as error:
+        assert str(error) == "Cannot modify a materialized schematic wire"
+    else:
+        raise AssertionError("materialized schematic wire builders should reject reuse")
+
+    assert schematic.to_json() == before
+
+
+def test_python_schematic_drawing_wire_without_endpoint_clears_pending():
+    design = volt.Design("schematic-wire-missing-endpoint")
+    net = design.net("ROUTE")
+    schematic = design.schematic("Main")
+    drawing = schematic.drawing(at=(5, 6))
+    before = schematic.to_json()
+
+    drawing.wire(net)
+    try:
+        drawing.move(dx=10)
+    except ValueError as error:
+        assert str(error) == "Schematic drawing wire needs an endpoint before materialization"
+    else:
+        raise AssertionError("drawing wires without endpoints should fail clearly")
+
+    assert schematic.to_json() == before
+    drawing.move(dx=10)
+    assert drawing.here.point == (15.0, 6.0)
+
+
 def test_python_schematic_wire_shortcuts_draw_rectangular_loop_without_logical_mutation():
     design = volt.Design("schematic-wire-logical-boundary")
     vcc = design.net("VCC", kind="power")
@@ -2472,6 +2511,8 @@ if __name__ == "__main__":
     test_python_schematic_drawing_wire_tox_toy_and_line_update_cursor()
     test_python_schematic_wire_shortcuts_use_existing_collision_rules()
     test_python_schematic_wire_shortcuts_reject_invalid_shapes_clearly()
+    test_python_schematic_wire_shape_rejects_reuse_after_materialization()
+    test_python_schematic_drawing_wire_without_endpoint_clears_pending()
     test_python_schematic_wire_shortcuts_draw_rectangular_loop_without_logical_mutation()
     test_python_schematic_power_and_ground_require_explicit_net_for_non_pin_anchor()
     test_python_schematic_explicit_wire_points_are_normalized_once()
