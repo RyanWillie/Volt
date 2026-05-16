@@ -1,6 +1,8 @@
 import importlib
+import inspect
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -13,6 +15,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     main = importlib.import_module("examples.stm32_usb_buck.main")
+    schematic_output = importlib.import_module("examples.stm32_usb_buck.schematic_output")
 
     with TemporaryDirectory() as temp_dir:
         artifacts = main.write_artifacts(Path(temp_dir))
@@ -52,19 +55,52 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     component_ids = {component["id"] for component in logical["components"]}
 
     assert schematic["format"] == "volt.schematic"
-    assert [sheet["name"] for sheet in schematic["sheets"]] == ["Main"]
+    assert [sheet["name"] for sheet in schematic["sheets"]] == [
+        "Power",
+        "MCU",
+        "USB and Connectors",
+    ]
     assert len(schematic["symbol_instances"]) >= 10
-    assert len(schematic["wire_runs"]) >= 12
-    assert len(schematic["net_labels"]) >= 12
+    assert len(schematic["wire_runs"]) >= 20
+    assert len(schematic["net_labels"]) <= 36
+    assert len(schematic["power_ports"]) >= 20
+    assert len(schematic["sheet_ports"]) >= 10
+    assert len(schematic["no_connect_markers"]) >= 20
     assert {instance["component"] for instance in schematic["symbol_instances"]} <= component_ids
     assert {wire["net"] for wire in schematic["wire_runs"]} <= net_ids
     assert {label["net"] for label in schematic["net_labels"]} <= net_ids
+    assert {port["net"] for port in schematic["power_ports"]} <= net_ids
+    assert {port["net"] for port in schematic["sheet_ports"]} <= net_ids
+    assert {
+        marker["pin"] for marker in schematic["no_connect_markers"]
+    } <= {pin["id"] for pin in logical["pins"]}
     assert {definition["name"] for definition in schematic["symbol_definitions"]} >= {
         "volt.benchmarks.stm32_usb_buck:STM32F405RGTx",
         "volt.benchmarks.stm32_usb_buck:AP1117_15",
         "volt.benchmarks.stm32_usb_buck:Capacitor",
         "volt.benchmarks.stm32_usb_buck:USB_B_Micro",
     }
+    assert ".to_json(" not in inspect.getsource(schematic_output.build_schematic)
+    label_counts = Counter(
+        (label["sheet"], label["net"]) for label in schematic["net_labels"]
+    )
+    assert label_counts
+    assert max(label_counts.values()) <= 4
+
+    net_pin_counts = {
+        net["id"]: len(net["pins"]) for net in logical["nets"] if len(net["pins"]) > 1
+    }
+    wire_or_port_net_ids = {
+        *(wire["net"] for wire in schematic["wire_runs"]),
+        *(port["net"] for port in schematic["power_ports"]),
+        *(port["net"] for port in schematic["sheet_ports"]),
+    }
+    labelled_only_multi_pin_nets = {
+        label["net"]
+        for label in schematic["net_labels"]
+        if label["net"] in net_pin_counts and label["net"] not in wire_or_port_net_ids
+    }
+    assert labelled_only_multi_pin_nets == set()
 
     stm32 = next(component for component in logical["components"] if component["reference"] == "U1")
     assert stm32["selected_physical_part"]["footprint"] == {
@@ -99,23 +135,26 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert len(logical["design_intent"]["no_connect_pins"]) >= 20
 
     schematic_report = main.build_schematic(main.build_board()).validate()
-    schematic_codes = {diagnostic.code for diagnostic in schematic_report}
-    assert not schematic_report.has_errors
-    assert "SCHEMATIC_NET_FRAGMENTED_PIN_LABELS" in schematic_codes
-    assert "SCHEMATIC_REPEATED_NET_LABELS" in schematic_codes
+    assert list(schematic_report) == []
 
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in first_svg_text
-    assert ".wire-run{fill:none;stroke:#111;stroke-width:1}" in first_svg_text
-    assert ".net-label{font:5px sans-serif;fill:#111;text-anchor:start}" in first_svg_text
-    assert "#0645ad" not in first_svg_text
+    assert ".wire-run" in first_svg_text
+    assert ".net-label" in first_svg_text
     assert "pin-anchor" not in first_svg_text
     assert "pin-label" not in first_svg_text
     assert 'class="layer layer-symbols"' in first_svg_text
     assert 'class="layer layer-wires"' in first_svg_text
     assert 'class="layer layer-labels"' in first_svg_text
+    assert 'class="symbol-instance"' in first_svg_text
+    assert 'class="wire-run"' in first_svg_text
+    assert 'class="net-label"' in first_svg_text
     assert ">U1</text>" in first_svg_text
     assert ">+3V3</text>" in first_svg_text
     assert ">GND</text>" in first_svg_text
+    assert 'class="power-port power"' in first_svg_text
+    assert 'class="power-port ground"' in first_svg_text
+    assert 'class="sheet-port off-page"' in first_svg_text
+    assert 'class="no-connect-marker"' in first_svg_text
     assert "data-net=\"net:" in first_svg_text
 
     codes = {diagnostic["code"] for diagnostic in validation["diagnostics"]}
