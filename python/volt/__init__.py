@@ -751,6 +751,10 @@ class Component:
         return self._index
 
     @property
+    def reference(self) -> str:
+        return self._design._circuit.component_reference(self._index)
+
+    @property
     def schematic_symbol(self) -> SchematicSymbolSpec | str | None:
         return self.schematic_symbol_variant("default")
 
@@ -1167,7 +1171,8 @@ class PlacedSchematicElement:
         *,
         loc: str = "top",
         name: str = "label",
-        offset: float = 10,
+        offset: float | None = None,
+        ofst: float | None = None,
         orient: str | None = None,
     ) -> PlacedSchematicElement:
         if not isinstance(text, str):
@@ -1178,7 +1183,7 @@ class PlacedSchematicElement:
             raise TypeError("Schematic element label field names must be strings")
         if not name:
             raise ValueError("Schematic element label field names must not be empty")
-        at = _element_label_point(self, loc, offset)
+        at = _element_label_point(self, loc, _label_offset(offset, ofst))
         self.symbol._schematic._add_symbol_field(
             self.symbol,
             name=name,
@@ -1188,17 +1193,42 @@ class PlacedSchematicElement:
         )
         return self
 
-    def label_value(
+    def label_ref(
         self,
         *,
         loc: str = "top",
-        offset: float = 10,
+        offset: float | None = None,
+        ofst: float | None = None,
         orient: str | None = None,
     ) -> PlacedSchematicElement:
-        value = _component_property(self.component, "value")
+        return self.label(
+            self.component.reference,
+            loc=loc,
+            name="reference",
+            offset=offset,
+            ofst=ofst,
+            orient=orient,
+        )
+
+    def label_value(
+        self,
+        *,
+        loc: str = "bottom",
+        offset: float | None = None,
+        ofst: float | None = None,
+        orient: str | None = None,
+    ) -> PlacedSchematicElement:
+        value = _component_value_label(self.component)
         if value is None:
-            raise ValueError("Component has no value property to label")
-        return self.label(str(value), loc=loc, name="value", offset=offset, orient=orient)
+            raise ValueError("Component has no value or electrical property to label")
+        return self.label(
+            str(value),
+            loc=loc,
+            name="value",
+            offset=offset,
+            ofst=ofst,
+            orient=orient,
+        )
 
     def _terminal_anchor(self, index: int, label: str) -> SchematicPinAnchor:
         anchors = self.pin_anchors()
@@ -1628,22 +1658,79 @@ class SchematicDrawing:
         self,
         name: str,
         *,
-        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
         net: Net | None = None,
         orient: str = "Up",
     ) -> SchematicPort:
         self._flush_pending()
-        return self._schematic.power(name, at=at, net=net, orient=orient)
+        return self._schematic.power(
+            name, at=self._here if at is None else at, net=net, orient=orient
+        )
 
     def ground(
         self,
         *,
-        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
         net: Net | None = None,
         orient: str = "Down",
     ) -> SchematicPort:
         self._flush_pending()
-        return self._schematic.ground(at=at, net=net, orient=orient)
+        return self._schematic.ground(
+            at=self._here if at is None else at, net=net, orient=orient
+        )
+
+    def net_label(
+        self,
+        name_or_net: str | Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        orient: str = "Right",
+    ) -> SchematicNetLabel:
+        self._flush_pending()
+        return self._schematic.net_label(
+            name_or_net, at=self._here if at is None else at, orient=orient
+        )
+
+    def no_connect(
+        self,
+        anchor: SchematicPinAnchor,
+        *,
+        orient: str = "Right",
+        reason: str | None = None,
+    ) -> SchematicNoConnect:
+        self._flush_pending()
+        return self._schematic.no_connect(anchor, orient=orient, reason=reason)
+
+    def sheet_port(
+        self,
+        name: str,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        net: Net | None = None,
+        kind: str = "Bidirectional",
+        orient: str = "Right",
+    ) -> SchematicPort:
+        self._flush_pending()
+        return self._schematic.sheet_port(
+            name,
+            at=self._here if at is None else at,
+            net=net,
+            kind=kind,
+            orient=orient,
+        )
+
+    def off_page(
+        self,
+        name: str,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        net: Net | None = None,
+        orient: str = "Right",
+    ) -> SchematicPort:
+        self._flush_pending()
+        return self._schematic.off_page(
+            name, at=self._here if at is None else at, net=net, orient=orient
+        )
 
     @contextmanager
     def hold(self):
@@ -1806,21 +1893,37 @@ class SchematicTwoTerminalElement:
         *,
         loc: str = "top",
         name: str = "label",
-        offset: float = 10,
+        offset: float | None = None,
+        ofst: float | None = None,
         orient: str | None = None,
     ) -> PlacedSchematicElement:
         return self._materialize().label(
-            text, loc=loc, name=name, offset=offset, orient=orient
+            text, loc=loc, name=name, offset=offset, ofst=ofst, orient=orient
+        )
+
+    def label_ref(
+        self,
+        *,
+        loc: str = "top",
+        offset: float | None = None,
+        ofst: float | None = None,
+        orient: str | None = None,
+    ) -> PlacedSchematicElement:
+        return self._materialize().label_ref(
+            loc=loc, offset=offset, ofst=ofst, orient=orient
         )
 
     def label_value(
         self,
         *,
-        loc: str = "top",
-        offset: float = 10,
+        loc: str = "bottom",
+        offset: float | None = None,
+        ofst: float | None = None,
         orient: str | None = None,
     ) -> PlacedSchematicElement:
-        return self._materialize().label_value(loc=loc, offset=offset, orient=orient)
+        return self._materialize().label_value(
+            loc=loc, offset=offset, ofst=ofst, orient=orient
+        )
 
     def __getitem__(self, key: int | str) -> SchematicPinAnchor:
         return self._materialize()[key]
@@ -2009,6 +2112,7 @@ class SchematicTwoTerminalElement:
                 "flip",
                 "index",
                 "label",
+                "label_ref",
                 "label_value",
                 "left",
                 "length",
@@ -2166,6 +2270,19 @@ class Schematic:
         )
         return SchematicNetLabel(self, label, orientation)
 
+    def net_label(
+        self,
+        name_or_net: str | Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        orient: str = "Right",
+    ) -> SchematicNetLabel:
+        return self.label(
+            _resolve_schematic_net_label(self._design, name_or_net),
+            at=at,
+            orient=orient,
+        )
+
     def _add_symbol_field(
         self,
         symbol: SchematicSymbol,
@@ -2285,8 +2402,8 @@ class Schematic:
         self,
         name: str,
         *,
-        net: Net,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
         kind: str = "Bidirectional",
         orient: str = "Right",
     ) -> SchematicPort:
@@ -2294,10 +2411,7 @@ class Schematic:
             raise TypeError("Schematic sheet port names must be strings")
         if not name:
             raise ValueError("Schematic sheet port names must not be empty")
-        if not isinstance(net, Net):
-            raise TypeError("Schematic sheet ports expect a Net handle")
-        if net._design is not self._design:
-            raise ValueError("Net belongs to a different design")
+        net = _resolve_schematic_sheet_port_net(self._design, name, at, net)
         x, y = _schematic_point(at, design=self._design)
         orientation = _orientation(orient)
         port_kind = _sheet_port_kind(kind)
@@ -2318,11 +2432,11 @@ class Schematic:
         self,
         name: str,
         *,
-        net: Net,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
         orient: str = "Right",
     ) -> SchematicPort:
-        return self.sheet_port(name, net=net, at=at, kind="OffPage", orient=orient)
+        return self.sheet_port(name, at=at, net=net, kind="OffPage", orient=orient)
 
     def to_json(self) -> str:
         return self._design._circuit.schematic_to_json()
@@ -2734,6 +2848,30 @@ def _net_by_index(design: Design, index: int) -> Net:
     raise ValueError(f"Kernel returned missing logical net net:{index}")
 
 
+def _net_by_name(design: Design, name: str, *, context: str) -> Net:
+    if not isinstance(name, str):
+        raise TypeError(f"{context} names must be strings")
+    if not name:
+        raise ValueError(f"{context} names must not be empty")
+    for net in design.nets():
+        if net.name == name:
+            return net
+    raise ValueError(f"{context} require an existing logical net named {name!r}")
+
+
+def _resolve_schematic_net_label(design: Design, value: str | Net) -> Net:
+    if isinstance(value, Net):
+        _require_schematic_net(
+            value,
+            design,
+            type_message="Schematic net labels expect a Net handle or existing net name",
+        )
+        return value
+    if isinstance(value, str):
+        return _net_by_name(design, value, context="Schematic net labels")
+    raise TypeError("Schematic net labels expect a Net handle or existing net name")
+
+
 def _pin_anchor_net(anchor: SchematicPinAnchor) -> Net | None:
     net_index = anchor.pin._design._circuit.net_of(anchor.pin.index)
     if net_index is None:
@@ -2794,11 +2932,12 @@ def _resolve_schematic_port_net(
     net: Net | None,
     *,
     context: str,
+    type_message: str = "Schematic power ports expect a Net handle",
 ) -> Net:
     explicit = _validate_explicit_schematic_net(
         design,
         net,
-        type_message="Schematic power ports expect a Net handle",
+        type_message=type_message,
     )
     if isinstance(at, SchematicPinAnchor):
         _require_schematic_point_design(at, design)
@@ -2812,13 +2951,34 @@ def _resolve_schematic_port_net(
             return inferred
         _require_pin_anchor_matches_net(at, explicit)
         return explicit
-    if isinstance(at, SchematicPort) and explicit is not None:
+    if isinstance(at, SchematicPort):
+        if explicit is None:
+            if at.net._design is not design:
+                raise ValueError("Schematic anchor belongs to a different design")
+            return at.net
         _require_port_matches_net(at, explicit)
     if explicit is None:
         raise ValueError(
             f"Cannot infer logical net for {context} from a non-pin anchor; pass net="
         )
     return explicit
+
+
+def _resolve_schematic_sheet_port_net(
+    design: Design,
+    name: str,
+    at: tuple[float, float] | SchematicAnchor | SchematicPort,
+    net: Net | None,
+) -> Net:
+    if net is None and not isinstance(at, (SchematicPinAnchor, SchematicPort)):
+        return _net_by_name(design, name, context="Schematic sheet ports")
+    return _resolve_schematic_port_net(
+        design,
+        at,
+        net,
+        context="sheet port",
+        type_message="Schematic sheet ports expect a Net handle",
+    )
 
 
 def _resolve_schematic_connection_net(
@@ -3218,6 +3378,54 @@ def _component_property(component: Component, name: str):
     return value["value"]
 
 
+def _component_value_label(component: Component) -> str | None:
+    for name in ("value", "Value"):
+        value = _component_property(component, name)
+        if value is not None:
+            return str(value)
+
+    logical = json.loads(component._design.to_json())
+    target = next(
+        item for item in logical["components"] if item["id"] == f"component:{component.index}"
+    )
+    attributes = target.get("electrical_attributes", {})
+    for name in ("resistance", "capacitance", "inductance", "voltage", "current", "power"):
+        if name in attributes:
+            formatted = _format_electrical_attribute(name, attributes[name])
+            if formatted is not None:
+                return formatted
+    for name in sorted(attributes):
+        formatted = _format_electrical_attribute(name, attributes[name])
+        if formatted is not None:
+            return formatted
+    return None
+
+
+def _format_electrical_attribute(name: str, attribute: dict) -> str | None:
+    if attribute.get("type") != "quantity":
+        return None
+    value = attribute.get("value")
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    unit = {
+        "resistance": "ohm",
+        "capacitance": "F",
+        "inductance": "H",
+        "voltage": "V",
+        "current": "A",
+        "power": "W",
+    }.get(name, attribute.get("dimension", ""))
+    number = f"{float(value):g}"
+    return f"{number} {unit}" if unit else number
+
+
+def _label_offset(offset: float | None, ofst: float | None) -> float:
+    if offset is not None and ofst is not None:
+        raise ValueError("Use either offset= or ofst= for schematic element labels")
+    value = 10 if offset is None and ofst is None else offset if ofst is None else ofst
+    return _coordinate(value)
+
+
 def _element_label_point(
     element: PlacedSchematicElement, loc: str, offset: float
 ) -> SchematicAnchor:
@@ -3233,13 +3441,18 @@ def _element_label_point(
     if normalized is None:
         raise ValueError("Schematic element label loc must be top, bottom, left, or right")
     center = element.center
+    anchors = element.pin_anchors()
+    min_x = min(anchor.x for anchor in anchors)
+    max_x = max(anchor.x for anchor in anchors)
+    min_y = min(anchor.y for anchor in anchors)
+    max_y = max(anchor.y for anchor in anchors)
     if normalized == "top":
-        return center.up(distance)
+        return SchematicAnchor((center.x, min_y - distance), design=center._design)
     if normalized == "bottom":
-        return center.down(distance)
+        return SchematicAnchor((center.x, max_y + distance), design=center._design)
     if normalized == "left":
-        return center.left(distance)
-    return center.right(distance)
+        return SchematicAnchor((min_x - distance, center.y), design=center._design)
+    return SchematicAnchor((max_x + distance, center.y), design=center._design)
 
 
 def _sheet_port_kind(value: str) -> str:

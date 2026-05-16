@@ -1336,6 +1336,106 @@ def test_python_schematic_two_terminal_grammar_places_chain_and_preserves_logica
     assert design.to_json() == logical_before
 
 
+def test_python_schematic_label_sugar_uses_symbol_fields_and_net_labels():
+    design = volt.Design("schematic-label-sugar")
+    sig = design.net("SIG")
+    r1 = design.R("10k", ref="R1")
+    c1 = design.C(capacitance=100e-9, ref="C1")
+    sig += r1[2], c1[1]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=20) as drawing:
+        resistor = drawing.R(r1).right().label_ref().label_value()
+        capacitor = drawing.C(c1).down().label("100n", loc="bottom", ofst=5)
+        capacitor.label_value(loc="right", ofst=6)
+        drawing.net_label("SIG", at=resistor.end.right(8), orient="left")
+
+    projection = json.loads(schematic.to_json())
+    fields = projection["symbol_fields"]
+
+    assert [field["name"] for field in fields] == [
+        "reference",
+        "value",
+        "label",
+        "value",
+    ]
+    assert [field["value"] for field in fields] == ["R1", "10k", "100n", "1e-07 F"]
+    assert fields[0]["position"] == {"x": 10.0, "y": -10.0}
+    assert fields[1]["position"] == {"x": 10.0, "y": 10.0}
+    assert fields[2]["position"] == {"x": 20.0, "y": 25.0}
+    assert fields[3]["position"] == {"x": 26.0, "y": 10.0}
+    assert projection["net_labels"] == [
+        {
+            "id": "net_label:0",
+            "sheet": "sheet:0",
+            "net": f"net:{sig.index}",
+            "position": {"x": 28.0, "y": 0.0},
+            "orientation": "Left",
+        }
+    ]
+    assert design.to_json() == logical_before
+
+    svg = schematic.to_svg()
+    assert 'data-field="reference"' in svg
+    assert ">R1</text>" in svg
+    assert ">10k</text>" in svg
+    assert ">100n</text>" in svg
+    assert ">SIG</text>" in svg
+
+
+def test_python_schematic_label_sugar_rejects_invalid_inputs_clearly():
+    design = volt.Design("schematic-label-invalid")
+    other = volt.Design("schematic-label-invalid-other")
+    sig = design.net("SIG")
+    r1 = design.R("10k", ref="R1")
+    schematic = design.schematic("Main")
+    other_anchor = volt.SchematicAnchor((0, 0), design=other)
+
+    with schematic.drawing(unit=20) as drawing:
+        resistor = drawing.R(r1).right()
+        _ = resistor.start
+        before = schematic.to_json()
+
+        try:
+            resistor.label(123)
+        except TypeError as error:
+            assert str(error) == "Schematic element labels must be strings"
+        else:
+            raise AssertionError("element labels should reject non-string text")
+
+        try:
+            resistor.label("x", offset=4, ofst=4)
+        except ValueError as error:
+            assert str(error) == "Use either offset= or ofst= for schematic element labels"
+        else:
+            raise AssertionError("element labels should reject competing offsets")
+
+        try:
+            drawing.net_label("MISSING", at=(0, 0))
+        except ValueError as error:
+            assert "existing logical net named 'MISSING'" in str(error)
+        else:
+            raise AssertionError("net label sugar should require an existing logical net")
+
+        try:
+            drawing.net_label(123, at=(0, 0))
+        except TypeError as error:
+            assert str(error) == "Schematic net labels expect a Net handle or existing net name"
+        else:
+            raise AssertionError("net label sugar should reject non-string, non-net names")
+
+        try:
+            drawing.net_label(sig, at=other_anchor)
+        except ValueError as error:
+            assert str(error) == "Schematic anchor belongs to a different design"
+        else:
+            raise AssertionError("net label sugar should reject cross-design anchors")
+
+        assert schematic.to_json() == before
+
+
 def test_python_schematic_two_terminal_grammar_length_anchor_drop_and_hold():
     design = volt.Design("schematic-two-terminal-placement-options")
     c1 = design.C("100nF", ref="C1")
@@ -1707,6 +1807,52 @@ def test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects():
     assert 'class="power-port power"' in svg
     assert 'class="no-connect-marker"' in svg
     assert 'class="sheet-port off-page"' in svg
+
+
+def test_python_schematic_drawing_annotation_helpers_stay_presentation_only():
+    design = volt.Design("schematic-drawing-annotation-sugar")
+    swdio = design.net("SWDIO")
+    probe_definition = design.define_component(
+        "Probe",
+        pins=[
+            volt.PinSpec("SWDIO", 1),
+            volt.PinSpec("NC", 2, requirement="optional"),
+        ],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:probe",
+            pins=(
+                volt.SchematicSymbolSpec.pin("SWDIO", 1, (0, 0), "Left"),
+                volt.SchematicSymbolSpec.pin("NC", 2, (20, 0), "Right"),
+            ),
+            primitives=(volt.SchematicSymbolSpec.line((0, 0), (20, 0)),),
+        ),
+    )
+    probe = design.instantiate(probe_definition, ref="TP1")
+    swdio += probe["SWDIO"]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(at=(40, 40), unit=20) as drawing:
+        placed = drawing.place(probe)
+        drawing.net_label(swdio, at=placed.SWDIO.left(10), orient="right")
+        drawing.off_page("SWDIO", at=placed.SWDIO.left(20), orient="left")
+        drawing.sheet_port("SWDIO_IN", net=swdio, at=placed.SWDIO.left(30), kind="Input")
+        drawing.no_connect(placed.NC, reason="test pad not populated")
+
+    projection = json.loads(schematic.to_json())
+    logical = json.loads(design.to_json())
+
+    assert design.to_json() == logical_before
+    assert logical.get("design_intent", {}).get("no_connect_pins", []) == []
+    assert projection["net_labels"][0]["net"] == f"net:{swdio.index}"
+    assert projection["sheet_ports"][0]["name"] == "SWDIO"
+    assert projection["sheet_ports"][0]["kind"] == "OffPage"
+    assert projection["sheet_ports"][0]["net"] == f"net:{swdio.index}"
+    assert projection["sheet_ports"][1]["name"] == "SWDIO_IN"
+    assert projection["sheet_ports"][1]["kind"] == "Input"
+    assert projection["no_connect_markers"][0]["pin"] == f"pin:{placed.NC.pin.index}"
+    assert projection["no_connect_markers"][0]["reason"] == "test pad not populated"
 
 
 def test_python_schematic_drawing_connect_infers_shared_pin_net_and_readiness():
