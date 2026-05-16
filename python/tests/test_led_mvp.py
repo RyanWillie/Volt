@@ -1770,6 +1770,8 @@ def test_python_schematic_drawing_connect_rejects_different_pin_nets_without_wir
         except ValueError as error:
             message = str(error)
             assert "different logical nets" in message
+            assert "R1 pin 2 (2)" in message
+            assert "D1 pin 1 (K)" in message
             assert "LED_A" in message
             assert "GND" in message
         else:

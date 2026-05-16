@@ -1007,6 +1007,14 @@ class PyCircuit {
         return pin.value().index();
     }
 
+    [[nodiscard]] std::size_t pin_component(std::size_t pin) const {
+        return circuit_.pin(pin_id(pin)).component().index();
+    }
+
+    [[nodiscard]] std::string component_reference(std::size_t component) const {
+        return circuit_.component(component_id(component)).reference().value();
+    }
+
     [[nodiscard]] py::list pin_refs(std::size_t component) const {
         auto result = py::list{};
         for (const auto pin : circuit_.pins_for(component_id(component))) {
@@ -1593,6 +1601,8 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("prefix"), py::arg("properties") = py::dict{})
         .def("pin_by_name", &PyCircuit::pin_by_name, py::arg("component"), py::arg("name"))
         .def("pin_by_number", &PyCircuit::pin_by_number, py::arg("component"), py::arg("number"))
+        .def("pin_component", &PyCircuit::pin_component, py::arg("pin"))
+        .def("component_reference", &PyCircuit::component_reference, py::arg("component"))
         .def("pin_refs", &PyCircuit::pin_refs, py::arg("component"))
         .def("component_schematic_symbol", &PyCircuit::component_schematic_symbol,
              py::arg("component"), py::arg("variant"))

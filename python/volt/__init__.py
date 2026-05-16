@@ -2590,7 +2590,9 @@ def _pin_anchor_net(anchor: SchematicPinAnchor) -> Net | None:
 
 
 def _pin_anchor_label(anchor: SchematicPinAnchor) -> str:
-    return f"pin:{anchor.pin.index} {anchor.number} ({anchor.name})"
+    component_index = anchor.pin._design._circuit.pin_component(anchor.pin.index)
+    component_reference = anchor.pin._design._circuit.component_reference(component_index)
+    return f"{component_reference} pin {anchor.number} ({anchor.name})"
 
 
 def _net_label(net: Net) -> str:
