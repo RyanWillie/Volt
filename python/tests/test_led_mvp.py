@@ -1229,6 +1229,184 @@ def test_python_schematic_explicit_wire_points_are_normalized_once():
     assert calls == 2
 
 
+def test_python_schematic_drawing_cursor_defaults_and_moves():
+    design = volt.Design("schematic-drawing")
+    schematic = design.schematic("Main")
+
+    with schematic.drawing() as drawing:
+        assert isinstance(drawing.here, volt.SchematicAnchor)
+        assert drawing.here.point == (0.0, 0.0)
+        assert drawing.direction == "Right"
+
+        drawing.move(dx=20)
+        assert drawing.here.point == (20.0, 0.0)
+        assert drawing.direction == "Right"
+
+        drawing.move_from(drawing.here, dy=-10, direction="up")
+        assert drawing.here.point == (20.0, -10.0)
+        assert drawing.direction == "Up"
+
+    configured = schematic.drawing(at=(5, 6), direction="left", unit=25)
+    assert configured.here.point == (5.0, 6.0)
+    assert configured.direction == "Left"
+    assert configured.unit == 25.0
+
+
+def test_python_schematic_drawing_move_from_accepts_sheet_points_and_anchors():
+    design = volt.Design("schematic-drawing-move-from")
+    vcc = design.net("VCC", kind="power")
+    schematic = design.schematic("Main")
+    port = schematic.power("VCC", net=vcc, at=(10, 15))
+
+    drawing = schematic.drawing()
+    drawing.move_from(port, dx=5, dy=-5, direction="down")
+
+    assert drawing.here.point == (15.0, 10.0)
+    assert drawing.direction == "Down"
+
+    drawing.move_from(drawing.here.right(10))
+
+    assert drawing.here.point == (25.0, 10.0)
+    assert drawing.direction == "Down"
+
+
+def test_python_schematic_drawing_push_pop_and_hold_restore_cursor_state():
+    design = volt.Design("schematic-drawing-stack")
+    drawing = design.schematic("Main").drawing(at=(10, 20), direction="Left")
+
+    drawing.push()
+    drawing.move_from(drawing.here, dx=30, direction="Down")
+    drawing.push()
+    drawing.move_from(drawing.here, dy=40, direction="Right")
+
+    drawing.pop()
+    assert drawing.here.point == (40.0, 20.0)
+    assert drawing.direction == "Down"
+
+    with drawing.hold():
+        drawing.move_from(drawing.here, dx=-5, dy=5, direction="Up")
+        assert drawing.here.point == (35.0, 25.0)
+        assert drawing.direction == "Up"
+
+    assert drawing.here.point == (40.0, 20.0)
+    assert drawing.direction == "Down"
+
+    drawing.pop()
+    assert drawing.here.point == (10.0, 20.0)
+    assert drawing.direction == "Left"
+
+    try:
+        drawing.pop()
+    except ValueError as error:
+        assert str(error) == "Schematic drawing state stack is empty"
+    else:
+        raise AssertionError("empty schematic drawing state stack should be rejected")
+
+
+def test_python_schematic_drawing_rejects_invalid_points_and_directions():
+    design = volt.Design("schematic-drawing-invalid")
+    other = volt.Design("schematic-drawing-other")
+    schematic = design.schematic("Main")
+    other_anchor = volt.SchematicAnchor((1, 2), design=other)
+
+    try:
+        schematic.drawing(at=(0, float("inf")))
+    except ValueError as error:
+        assert str(error) == "Schematic coordinates must be finite"
+    else:
+        raise AssertionError("non-finite drawing cursor point should be rejected")
+
+    try:
+        schematic.drawing(direction="North")
+    except ValueError as error:
+        assert str(error) == "Schematic orientation must be Right, Down, Left, or Up"
+    else:
+        raise AssertionError("invalid drawing direction should be rejected")
+
+    drawing = schematic.drawing()
+    try:
+        drawing.move_from(other_anchor)
+    except ValueError as error:
+        assert str(error) == "Schematic anchor belongs to a different design"
+    else:
+        raise AssertionError("drawing cursor should reject cross-design anchors")
+
+
+def test_python_schematic_drawing_rejects_invalid_units():
+    design = volt.Design("schematic-drawing-invalid-unit")
+    schematic = design.schematic("Main")
+
+    non_positive_units = (0, -1)
+    non_finite_units = (float("inf"), float("-inf"), float("nan"))
+    for invalid_unit in (*non_positive_units, *non_finite_units):
+        try:
+            schematic.drawing(unit=invalid_unit)
+        except ValueError as error:
+            expected = (
+                "Schematic drawing unit must be positive"
+                if invalid_unit in non_positive_units
+                else "Schematic coordinates must be finite"
+            )
+            assert str(error) == expected
+        else:
+            raise AssertionError("invalid drawing unit should be rejected")
+
+
+def test_python_schematic_drawing_hold_restores_cursor_after_exception():
+    design = volt.Design("schematic-drawing-hold-restore")
+    drawing = design.schematic("Main").drawing(at=(2, 3), direction="Right")
+    before = drawing.here.point, drawing.direction
+
+    try:
+        with drawing.hold():
+            drawing.move(dx=10, dy=20)
+            drawing.move_from(drawing.here, direction="Down")
+            raise RuntimeError("boom")
+    except RuntimeError:
+        pass
+
+    assert (drawing.here.point, drawing.direction) == before
+
+
+def test_python_schematic_drawing_hold_restores_cursor_after_nested_push():
+    design = volt.Design("schematic-drawing-hold-nested-push")
+    drawing = design.schematic("Main").drawing(at=(1, 2), direction="Right")
+    before = drawing.here.point, drawing.direction
+
+    with drawing.hold():
+        drawing.move(dx=10)
+        drawing.push()
+        drawing.move(dy=20)
+
+    assert (drawing.here.point, drawing.direction) == before
+    try:
+        drawing.pop()
+    except ValueError as error:
+        assert str(error) == "Schematic drawing state stack is empty"
+    else:
+        raise AssertionError("hold should restore the drawing stack depth")
+
+
+def test_python_schematic_drawing_session_does_not_mutate_logical_design():
+    design = volt.Design("schematic-drawing-logical-boundary")
+    design.R("10k", ref="R1")
+    schematic = design.schematic("Main")
+    before = design.to_json()
+    projection_before = schematic.to_json()
+
+    drawing = schematic.drawing()
+    drawing.move(dx=20, dy=10)
+    drawing.push()
+    drawing.move_from((40, 50), direction="Down")
+    with drawing.hold():
+        drawing.move_from(volt.SchematicAnchor((5, 5), design=design), dx=1, dy=2)
+    drawing.pop()
+
+    assert design.to_json() == before
+    assert schematic.to_json() == projection_before
+    assert json.loads(before)["components"][0]["reference"] == "R1"
+
+
 def test_python_schematic_dsl_rejects_invalid_references():
     design = volt.Design("schematic-dsl-reference-checks")
     other = volt.Design("other-schematic-dsl-reference-checks")
@@ -1396,6 +1574,7 @@ def test_stm32_usb_buck_native_symbols_place_and_render():
 def test_python_schematic_handles_are_publicly_exported():
     assert "Schematic" in volt.__all__
     assert "SchematicAnchor" in volt.__all__
+    assert "SchematicDrawing" in volt.__all__
     assert "SchematicJunction" in volt.__all__
     assert "SchematicSymbol" in volt.__all__
     assert "SchematicPinAnchor" in volt.__all__
@@ -1452,6 +1631,14 @@ if __name__ == "__main__":
     test_python_schematic_symbol_handles_expose_pin_anchors()
     test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects()
     test_python_schematic_explicit_wire_points_are_normalized_once()
+    test_python_schematic_drawing_cursor_defaults_and_moves()
+    test_python_schematic_drawing_move_from_accepts_sheet_points_and_anchors()
+    test_python_schematic_drawing_push_pop_and_hold_restore_cursor_state()
+    test_python_schematic_drawing_rejects_invalid_points_and_directions()
+    test_python_schematic_drawing_rejects_invalid_units()
+    test_python_schematic_drawing_hold_restores_cursor_after_exception()
+    test_python_schematic_drawing_hold_restores_cursor_after_nested_push()
+    test_python_schematic_drawing_session_does_not_mutate_logical_design()
     test_python_schematic_dsl_rejects_invalid_references()
     test_detached_schematic_symbol_pin_helpers_report_missing_component_context()
     test_python_schematic_writes_svg_projection()

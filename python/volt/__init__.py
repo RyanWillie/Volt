@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from math import isfinite
 from pathlib import Path
@@ -1160,6 +1161,98 @@ class SchematicWireBuilder:
             raise ValueError("Schematic wire builder must start with from_()")
 
 
+class SchematicDrawing:
+    """Cursor state for SchemDraw-style schematic authoring on one sheet."""
+
+    def __init__(
+        self,
+        schematic: Schematic,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort = (0, 0),
+        direction: str = "Right",
+        unit: float = 20,
+    ):
+        self._schematic = schematic
+        self._here = self._anchor_at(at)
+        self._direction = _orientation(direction)
+        self._unit = _coordinate(unit)
+        if self._unit <= 0:
+            raise ValueError("Schematic drawing unit must be positive")
+        self._stack: list[tuple[SchematicAnchor, str]] = []
+
+    @property
+    def here(self) -> SchematicAnchor:
+        return self._here
+
+    @property
+    def direction(self) -> str:
+        return self._direction
+
+    @property
+    def unit(self) -> float:
+        return self._unit
+
+    def move(self, *, dx: float = 0, dy: float = 0) -> SchematicDrawing:
+        self._here = self._here.offset(dx=dx, dy=dy)
+        return self
+
+    def move_from(
+        self,
+        anchor: tuple[float, float] | SchematicAnchor | SchematicPort,
+        *,
+        dx: float = 0,
+        dy: float = 0,
+        direction: str | None = None,
+    ) -> SchematicDrawing:
+        next_direction = self._direction if direction is None else _orientation(direction)
+        self._here = self._anchor_at(anchor).offset(dx=dx, dy=dy)
+        self._direction = next_direction
+        return self
+
+    def push(self) -> SchematicDrawing:
+        self._stack.append((self._here, self._direction))
+        return self
+
+    def pop(self) -> SchematicDrawing:
+        if not self._stack:
+            raise ValueError("Schematic drawing state stack is empty")
+        self._here, self._direction = self._stack.pop()
+        return self
+
+    @contextmanager
+    def hold(self):
+        saved_stack = list(self._stack)
+        saved_here = self._here
+        saved_direction = self._direction
+        self.push()
+        try:
+            yield self
+        finally:
+            self._stack = saved_stack
+            self._here = saved_here
+            self._direction = saved_direction
+
+    def __enter__(self) -> SchematicDrawing:
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> bool:
+        return False
+
+    def _anchor_at(
+        self, value: tuple[float, float] | SchematicAnchor | SchematicPort
+    ) -> SchematicAnchor:
+        return SchematicAnchor(
+            _schematic_point(value, design=self._schematic._design),
+            design=self._schematic._design,
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"SchematicDrawing(here={self._here.point!r}, "
+            f"direction={self._direction!r}, unit={self._unit!r})"
+        )
+
+
 class Schematic:
     """Handle to kernel-owned schematic projection data for one sheet."""
 
@@ -1171,6 +1264,15 @@ class Schematic:
     @property
     def sheet_index(self) -> int:
         return self._sheet_index
+
+    def drawing(
+        self,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort = (0, 0),
+        direction: str = "Right",
+        unit: float = 20,
+    ) -> SchematicDrawing:
+        return SchematicDrawing(self, at=at, direction=direction, unit=unit)
 
     def place(
         self,
@@ -1902,6 +2004,7 @@ __all__ = [
     "PortInfo",
     "Schematic",
     "SchematicAnchor",
+    "SchematicDrawing",
     "SchematicJunction",
     "SchematicNetLabel",
     "SchematicNoConnect",
