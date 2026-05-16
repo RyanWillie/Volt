@@ -3367,11 +3367,15 @@ def _transform_symbol_point(
     return (origin[0] + rotated[0], origin[1] + rotated[1])
 
 
-def _component_property(component: Component, name: str):
+def _component_json(component: Component) -> dict:
     logical = json.loads(component._design.to_json())
-    target = next(
+    return next(
         item for item in logical["components"] if item["id"] == f"component:{component.index}"
     )
+
+
+def _component_property(component: Component, name: str):
+    target = _component_json(component)
     value = target["properties"].get(name)
     if value is None:
         return None
@@ -3379,15 +3383,12 @@ def _component_property(component: Component, name: str):
 
 
 def _component_value_label(component: Component) -> str | None:
+    target = _component_json(component)
     for name in ("value", "Value"):
-        value = _component_property(component, name)
+        value = target["properties"].get(name)
         if value is not None:
-            return str(value)
+            return str(value["value"])
 
-    logical = json.loads(component._design.to_json())
-    target = next(
-        item for item in logical["components"] if item["id"] == f"component:{component.index}"
-    )
     attributes = target.get("electrical_attributes", {})
     for name in ("resistance", "capacitance", "inductance", "voltage", "current", "power"):
         if name in attributes:
@@ -3405,6 +3406,7 @@ def _format_electrical_attribute(name: str, attribute: dict) -> str | None:
     if attribute.get("type") != "quantity":
         return None
     value = attribute.get("value")
+    # JSON booleans are ints in Python; quantities must render only real numbers.
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         return None
     unit = {
