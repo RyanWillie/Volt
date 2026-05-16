@@ -24,3 +24,5 @@ USE_MDFILE_AS_MAINPAGE = @PROJECT_SOURCE_DIR@/README.md
 
 FILE_PATTERNS          = *.hpp *.md
 EXTENSION_MAPPING      = hpp=C++
+
+HAVE_DOT               = NO

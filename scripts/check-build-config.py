@@ -99,6 +99,10 @@ def check_ci_tooling() -> None:
 
     require("graphviz" not in ci_workflow, "CI must not install Graphviz when Doxygen dot output is disabled")
     require(
+        "HAVE_DOT               = NO" in read("docs/Doxyfile.in"),
+        "Doxygen dot output must be disabled when CI does not install Graphviz",
+    )
+    require(
         "choco install" not in ci_workflow,
         "Windows CI must use preinstalled hosted-runner tools instead of Chocolatey installs",
     )

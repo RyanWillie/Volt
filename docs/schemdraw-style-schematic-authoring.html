@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt SchemDraw-Style Schematic Authoring</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f3ea;
+      --ink: #17201c;
+      --muted: #5f6863;
+      --line: #d7cdbd;
+      --panel: #fffdf8;
+      --green: #23684f;
+      --blue: #2e5f88;
+      --amber: #9a681f;
+      --red: #953b35;
+      --code: #eee7d9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 42px 0 72px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.62fr);
+      gap: 36px;
+      align-items: end;
+      padding-bottom: 32px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 800px;
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(39px, 6.8vw, 76px);
+      line-height: 0.96;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(26px, 3vw, 38px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin-bottom: 8px;
+      font-size: 17px;
+      line-height: 1.2;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 14px;
+      border-top: 2px solid var(--green);
+      padding-top: 10px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dek {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    section {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 40px;
+      padding: 34px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    aside {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stack { display: grid; gap: 16px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      min-height: 148px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 16px;
+    }
+
+    .card p, li, td { color: var(--muted); }
+
+    .callout {
+      border-left: 6px solid var(--green);
+      background: #e7f0e9;
+      padding: 16px 18px;
+      color: #173629;
+    }
+
+    .warning {
+      border-left-color: var(--amber);
+      background: #f3e6cc;
+      color: #3f3018;
+    }
+
+    .danger {
+      border-left-color: var(--red);
+      background: #f2dfdc;
+      color: #44201d;
+    }
+
+    .badge {
+      display: inline-block;
+      width: max-content;
+      margin-bottom: 8px;
+      padding: 5px 8px;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .core { background: var(--green); }
+    .boundary { background: var(--blue); }
+    .fix { background: var(--amber); }
+
+    ul {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    li + li { margin-top: 7px; }
+
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    code {
+      border-radius: 3px;
+      background: var(--code);
+      padding: 1px 4px;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 16px;
+      border-left: 4px solid var(--blue);
+      background: var(--code);
+      color: #202721;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    a {
+      color: var(--blue);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    a:hover { text-decoration: underline; }
+
+    @media (max-width: 820px) {
+      header, section, .grid, .two {
+        grid-template-columns: 1fr;
+      }
+
+      main { padding-top: 28px; }
+      section { gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <span class="eyebrow">Volt authoring guide</span>
+        <h1>SchemDraw-style grammar, Volt-owned semantics.</h1>
+      </div>
+      <p class="dek">Use the drawing sugar to place a readable schematic quickly, while logical nets, pins, components, validation, JSON, and SVG remain owned by the Volt kernel.</p>
+    </header>
+
+    <section>
+      <aside>Read this once before authoring examples or documentation. The boundary is the important part.</aside>
+      <div class="stack">
+        <div class="callout">
+          <strong>SchemDraw is an inspiration, not a dependency.</strong> Volt borrows the pleasant cursor grammar and visual quality target. It does not delegate EDA meaning to SchemDraw or to Python-only state.
+        </div>
+        <div class="grid">
+          <div class="card">
+            <span class="badge core">First</span>
+            <h3>Author the logical circuit</h3>
+            <p>Create components, nets, pin membership, intentional stubs, and logical no-connect intent before drawing.</p>
+          </div>
+          <div class="card">
+            <span class="badge boundary">Then</span>
+            <h3>Project the schematic</h3>
+            <p>Place symbols, route wires, add labels, ports, and markers. These objects visualize existing kernel state.</p>
+          </div>
+          <div class="card">
+            <span class="badge fix">Verify</span>
+            <h3>Validate readiness</h3>
+            <p>Run schematic validation to catch missing pin coverage, weak no-connect presentation, and fragmented visual nets.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Minimal resistor and LED flow. Full source: <a href="../examples/schematic_sugar/compact_led.py">examples/schematic_sugar/compact_led.py</a>.</aside>
+      <div class="stack">
+        <pre><code>design = volt.Design("sugar-led")
+vcc = design.net("+3V3", kind="power", voltage=3.3)
+sig = design.net("LED_A")
+gnd = design.net("GND", kind="ground")
+r1 = design.R("330 ohm", ref="R1")
+d1 = design.LED(ref="D1")
+
+vcc += r1[1]
+sig += r1[2], d1["A"]
+gnd += d1["K"]
+
+sheet = design.schematic("Main")
+with sheet.drawing(unit=20) as d:
+    r = d.R(r1).right().label_ref().label_value()
+    led = d.LED(d1).right().reverse().label_ref()
+
+    d.connect(r.end, led.start)
+    d.power("+3V3", at=r.start)
+    d.ground(at=led.end)</code></pre>
+        <p>The LED is reversed for presentation so the anode anchor is on the left and the cathode anchor is on the right. That changes the symbol orientation only; the logical netlist was already authored above.</p>
+      </div>
+    </section>
+
+    <section>
+      <aside>The cursor is local to one drawing session. It stores only presentation position and direction.</aside>
+      <div class="grid">
+        <div class="card">
+          <h3><code>here</code></h3>
+          <p>The current sheet point. Two-terminal placement starts here and advances the cursor to the dropped endpoint.</p>
+        </div>
+        <div class="card">
+          <h3><code>direction</code></h3>
+          <p>One of <code>Right</code>, <code>Down</code>, <code>Left</code>, or <code>Up</code>. Placement helpers use it unless overridden.</p>
+        </div>
+        <div class="card">
+          <h3><code>unit</code></h3>
+          <p>The drawing distance used by <code>.right()</code>, <code>.down()</code>, and other unit-based element placement calls.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Two-terminal elements are sugar over normal symbol placement.</aside>
+      <div class="stack">
+        <div class="two">
+          <div class="card">
+            <h3>Common passives</h3>
+            <p>Use <code>d.R(r1)</code>, <code>d.C(c1)</code>, <code>d.L(l1)</code>, <code>d.D(d1)</code>, and <code>d.LED(d1)</code> for exactly two-pin components with default symbols.</p>
+          </div>
+          <div class="card">
+            <h3>Anchors</h3>
+            <p>The returned handle exposes <code>start</code>, <code>end</code>, <code>center</code>, pin numbers, and unique pin names. These are schematic anchors tied back to kernel pins.</p>
+          </div>
+        </div>
+        <pre><code>with sheet.drawing(at=(20, 20), unit=20) as d:
+    c_in = d.C(cin).down().label_value()
+    d.move_from(c_in.start.right(60))
+    c_out = d.C(cout).down().label_value()</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <aside>Net inference is intentionally conservative.</aside>
+      <div class="stack">
+        <div class="callout">
+          <strong>Inference never creates connectivity.</strong> <code>d.connect(a, b)</code> can infer a net only when the endpoints already prove the same logical net in the kernel.
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Call</th>
+              <th>When it works</th>
+              <th>When to pass <code>net=</code></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>d.connect(pin_a, pin_b)</code></td>
+              <td>Both pin anchors belong to the same logical net.</td>
+              <td>If either endpoint is a plain coordinate or a non-pin port.</td>
+            </tr>
+            <tr>
+              <td><code>d.power("+3V3", at=pin)</code></td>
+              <td>The pin anchor is already connected to <code>+3V3</code>.</td>
+              <td>If the port is placed away from the pin, such as <code>at=pin.up(20)</code>.</td>
+            </tr>
+            <tr>
+              <td><code>d.off_page("SWDIO", at=point)</code></td>
+              <td>The name matches an existing logical net and the point is inferable.</td>
+              <td>When routing to a label or coordinate: <code>d.off_page("SWDIO", net=swdio, at=...)</code>.</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre><code>d.connect(regulator.OUT, output_cap.start, shape="-")
+d.connect(regulator.GND, ground_port, net=gnd, shape="|-", k=10)</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <aside>Labels and ports are schematic projection data, not alternate netlist data.</aside>
+      <div class="grid">
+        <div class="card">
+          <h3>Reference and value</h3>
+          <p><code>.label_ref()</code> and <code>.label_value()</code> emit symbol fields. Generic <code>.label(...)</code> is for local presentation text.</p>
+        </div>
+        <div class="card">
+          <h3>Net labels and ports</h3>
+          <p><code>d.net_label(...)</code>, <code>d.power(...)</code>, <code>d.ground(...)</code>, and <code>d.off_page(...)</code> must resolve to existing logical nets.</p>
+        </div>
+        <div class="card">
+          <h3>No-connect markers</h3>
+          <p><code>d.no_connect(pin)</code> draws a marker. Use <code>pin.mark_no_connect()</code> separately when the logical design intent is that the pin is unused.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Common authoring failures and the fastest fixes.</aside>
+      <div class="stack">
+        <table>
+          <thead>
+            <tr>
+              <th>Message pattern</th>
+              <th>Meaning</th>
+              <th>Fix</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>different logical nets</code></td>
+              <td>You tried to draw one visual wire between pins that the logical circuit says are separate.</td>
+              <td>Fix the logical net membership, or route each net separately.</td>
+            </tr>
+            <tr>
+              <td><code>explicit net</code> or <code>non-pin anchor</code></td>
+              <td>A coordinate, offset anchor, or port does not prove a kernel net by itself.</td>
+              <td>Pass <code>net=existing_net</code> and keep the logical circuit unchanged.</td>
+            </tr>
+            <tr>
+              <td><code>No default schematic symbol</code></td>
+              <td>The component definition has no durable default symbol for placement.</td>
+              <td>Use a component with a default symbol, pass <code>symbol=</code>, or define kernel-owned symbol metadata on the component definition.</td>
+            </tr>
+            <tr>
+              <td><code>SCHEMATIC_PIN_NET_NOT_VISUALLY_COVERED</code></td>
+              <td>A connected logical pin is not visibly covered by a wire, label, port, or compatible schematic object.</td>
+              <td>Add a route or port that touches the placed pin anchor.</td>
+            </tr>
+            <tr>
+              <td><code>SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED</code></td>
+              <td>The logical circuit marks a pin intentionally unused, but the schematic does not show it.</td>
+              <td>Add <code>d.no_connect(pin, reason=...)</code> at the placed pin anchor.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout warning">
+          <strong>Do not patch meaning into the schematic.</strong> If a wire fails because the logical nets differ, change the logical circuit first. The schematic layer is a projection surface.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Next example to read: <a href="../examples/schematic_sugar/regulator_fragment.py">examples/schematic_sugar/regulator_fragment.py</a>.</aside>
+      <div class="stack">
+        <p>The medium example uses a regulator, input and output capacitors, a reset pull-up, off-page SWD ports, shaped wire routes, reference and value labels, and a no-connect marker for an intentionally unused pad.</p>
+        <div class="callout danger">
+          <strong>Boundary reminder:</strong> Python authoring is ergonomic syntax over kernel-owned state. It should not contain EDA semantics that cannot be serialized, validated, reloaded, or inspected by the kernel.
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
