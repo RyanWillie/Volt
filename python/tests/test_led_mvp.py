@@ -1277,6 +1277,202 @@ def test_python_schematic_drawing_place_returns_authoring_handle_with_core_ancho
     assert design.to_json() == logical_before
 
 
+def test_python_schematic_two_terminal_grammar_places_chain_and_preserves_logical_json():
+    design = volt.Design("schematic-two-terminal-chain")
+    r1 = design.R("330 ohm", ref="R1")
+    d1 = design.LED(ref="D1")
+    d2 = design.diode(ref="D2")
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    drawing = schematic.drawing(unit=20)
+    with drawing as d:
+        resistor = d.R(r1).right().label_value()
+        led = d.LED(d1).right()
+        diode = d.two_terminal(d2).right()
+
+    projection = json.loads(schematic.to_json())
+
+    assert resistor.orientation == "Right"
+    assert led.orientation == "Right"
+    assert resistor.start.point == (0.0, 0.0)
+    assert resistor.end.point == (20.0, 0.0)
+    assert resistor.center.point == (10.0, 0.0)
+    assert led.start.point == (20.0, 0.0)
+    assert led.end.point == (40.0, 0.0)
+    assert led.center.point == (30.0, 0.0)
+    assert diode.start.point == (40.0, 0.0)
+    assert diode.end.point == (60.0, 0.0)
+    assert drawing.here.point == (60.0, 0.0)
+
+    assert projection["symbol_instances"] == [
+        {
+            "id": "symbol_instance:0",
+            "sheet": "sheet:0",
+            "symbol_definition": "symbol_def:0",
+            "component": "component:0",
+            "position": {"x": 0.0, "y": 0.0},
+            "orientation": "Right",
+        },
+        {
+            "id": "symbol_instance:1",
+            "sheet": "sheet:0",
+            "symbol_definition": "symbol_def:1",
+            "component": "component:1",
+            "position": {"x": 20.0, "y": 0.0},
+            "orientation": "Right",
+        },
+        {
+            "id": "symbol_instance:2",
+            "sheet": "sheet:0",
+            "symbol_definition": "symbol_def:2",
+            "component": "component:2",
+            "position": {"x": 40.0, "y": 0.0},
+            "orientation": "Right",
+        },
+    ]
+    assert projection["symbol_fields"][0]["name"] == "value"
+    assert projection["symbol_fields"][0]["value"] == "330 ohm"
+    assert design.to_json() == logical_before
+
+
+def test_python_schematic_two_terminal_grammar_length_anchor_drop_and_hold():
+    design = volt.Design("schematic-two-terminal-placement-options")
+    c1 = design.C("100nF", ref="C1")
+    l1 = design.L("10uH", ref="L1")
+    schematic = design.schematic("Main")
+    drawing = schematic.drawing(at=(10, 10), unit=20)
+
+    with drawing as d:
+        capacitor = d.C(c1).at((10, 10)).anchor("center").right(1.5).drop("start")
+        assert capacitor.start.point == (-5.0, 10.0)
+        assert capacitor.center.point == (10.0, 10.0)
+        assert capacitor.end.point == (25.0, 10.0)
+        assert d.here.point == (-5.0, 10.0)
+
+        with d.hold():
+            inductor = d.L(l1).right(2)
+            assert inductor.start.point == (-5.0, 10.0)
+            assert inductor.end.point == (35.0, 10.0)
+            assert d.here.point == (35.0, 10.0)
+
+        assert d.here.point == (-5.0, 10.0)
+
+    projection = json.loads(schematic.to_json())
+
+    assert projection["symbol_instances"][0]["position"] == {"x": -5.0, "y": 10.0}
+    assert projection["symbol_instances"][0]["orientation"] == "Right"
+    assert projection["symbol_instances"][1]["position"] == {"x": -5.0, "y": 10.0}
+    assert projection["symbol_instances"][1]["orientation"] == "Right"
+    assert capacitor.pin_anchor(2) == (25.0, 10.0)
+    assert inductor.pin_anchor(2) == (35.0, 10.0)
+
+
+def test_python_schematic_two_terminal_grammar_reverse_and_flip_presentations():
+    design = volt.Design("schematic-two-terminal-presentation-options")
+    d1 = design.LED(ref="D1")
+    d2 = design.diode(ref="D2")
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=20) as drawing:
+        reversed_led = drawing.LED(d1).right().reverse()
+        flipped_diode = drawing.D(d2).right().flip()
+
+    projection = json.loads(schematic.to_json())
+    reversed_symbol = projection["symbol_definitions"][0]
+    flipped_symbol = projection["symbol_definitions"][1]
+
+    assert reversed_led.start.number == "2"
+    assert reversed_led.start.point == (0.0, 0.0)
+    assert reversed_led.end.number == "1"
+    assert reversed_led.end.point == (20.0, 0.0)
+    assert flipped_diode.start.point == (20.0, 0.0)
+    assert flipped_diode.end.point == (40.0, 0.0)
+    assert [pin["number"] for pin in reversed_symbol["pins"]] == ["2", "1"]
+    assert any(
+        primitive["type"] == "line" and primitive["start"]["y"] > 0
+        for primitive in flipped_symbol["primitives"]
+    )
+    assert design.to_json() == logical_before
+
+
+def test_python_schematic_two_terminal_grammar_rejects_invalid_components_clearly():
+    design = volt.Design("schematic-two-terminal-invalid")
+    test_point = design.test_point(ref="TP1")
+    bare_definition = design.define_component(
+        "BareTwoPin",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+    )
+    bare = design.instantiate(bare_definition, ref="U1")
+    schematic = design.schematic("Main")
+
+    with schematic.drawing() as drawing:
+        try:
+            drawing.R(object()).right()
+        except TypeError as error:
+            assert str(error) == "Two-terminal placement expects a Component handle"
+        else:
+            raise AssertionError("two-terminal placement should reject non-components")
+
+        try:
+            drawing.two_terminal(test_point).right()
+        except ValueError as error:
+            assert str(error) == "Two-terminal placement requires exactly two component pins"
+        else:
+            raise AssertionError("two-terminal placement should reject one-pin components")
+
+        try:
+            drawing.two_terminal(bare).right()
+        except ValueError as error:
+            assert str(error) == "No schematic symbol found for variant 'default'"
+        else:
+            raise AssertionError("two-terminal placement should reject missing symbols")
+
+
+def test_python_schematic_two_terminal_failed_materialization_restores_cursor():
+    design = volt.Design("schematic-two-terminal-failed-materialization")
+    r1 = design.R("10k", ref="R1")
+    schematic = design.schematic("Main")
+    drawing = schematic.drawing(at=(5, 6), direction="Up")
+
+    try:
+        with drawing as d:
+            d.R(r1, symbol="missing-symbol").right()
+    except ValueError as error:
+        assert str(error) == "Unknown schematic symbol"
+    else:
+        raise AssertionError("unknown two-terminal symbol should fail when materialized")
+
+    projection = json.loads(schematic.to_json())
+    assert projection["symbol_instances"] == []
+    assert drawing.here.point == (5.0, 6.0)
+    assert drawing.direction == "Up"
+
+    with drawing as d:
+        recovered = d.R(r1).right()
+
+    assert recovered.start.point == (5.0, 6.0)
+    assert recovered.end.point == (25.0, 6.0)
+
+
+def test_python_schematic_two_terminal_dir_has_no_placement_side_effects():
+    design = volt.Design("schematic-two-terminal-dir-side-effects")
+    r1 = design.R("10k", ref="R1")
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(unit=20) as drawing:
+        resistor = drawing.R(r1)
+        listing = dir(resistor)
+        assert "right" in listing
+        assert json.loads(schematic.to_json())["symbol_instances"] == []
+
+        resistor.right()
+        assert drawing.here.point == (20.0, 0.0)
+
+    assert json.loads(schematic.to_json())["symbol_instances"][0]["component"] == "component:0"
+
+
 def test_python_schematic_drawing_handle_resolves_pin_names_as_attributes_and_items():
     design = volt.Design("schematic-authoring-handle-names")
     component = design.define_component(
@@ -1899,6 +2095,8 @@ def test_python_schematic_handles_are_publicly_exported():
     assert "SchematicNetLabel" in volt.__all__
     assert "SchematicNoConnect" in volt.__all__
     assert "SchematicSymbolSpec" in volt.__all__
+    assert "SchematicSymbolField" in volt.__all__
+    assert "SchematicTwoTerminalElement" in volt.__all__
 
 
 def test_diagnostics_are_inspectable():
@@ -1949,6 +2147,12 @@ if __name__ == "__main__":
     test_python_schematic_placement_serializes_kernel_projection()
     test_python_schematic_symbol_handles_expose_pin_anchors()
     test_python_schematic_drawing_place_returns_authoring_handle_with_core_anchors()
+    test_python_schematic_two_terminal_grammar_places_chain_and_preserves_logical_json()
+    test_python_schematic_two_terminal_grammar_length_anchor_drop_and_hold()
+    test_python_schematic_two_terminal_grammar_reverse_and_flip_presentations()
+    test_python_schematic_two_terminal_grammar_rejects_invalid_components_clearly()
+    test_python_schematic_two_terminal_failed_materialization_restores_cursor()
+    test_python_schematic_two_terminal_dir_has_no_placement_side_effects()
     test_python_schematic_drawing_handle_resolves_pin_names_as_attributes_and_items()
     test_python_schematic_drawing_handle_reports_ambiguous_attribute_names()
     test_python_schematic_drawing_handle_start_end_raise_for_single_pin()

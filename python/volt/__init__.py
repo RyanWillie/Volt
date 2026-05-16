@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from contextlib import contextmanager
 from dataclasses import dataclass
 from math import isfinite
@@ -1160,6 +1161,45 @@ class PlacedSchematicElement:
     def pin_anchors(self) -> tuple[SchematicPinAnchor, ...]:
         return self.symbol.pin_anchors()
 
+    def label(
+        self,
+        text: str,
+        *,
+        loc: str = "top",
+        name: str = "label",
+        offset: float = 10,
+        orient: str | None = None,
+    ) -> PlacedSchematicElement:
+        if not isinstance(text, str):
+            raise TypeError("Schematic element labels must be strings")
+        if not text:
+            raise ValueError("Schematic element labels must not be empty")
+        if not isinstance(name, str):
+            raise TypeError("Schematic element label field names must be strings")
+        if not name:
+            raise ValueError("Schematic element label field names must not be empty")
+        at = _element_label_point(self, loc, offset)
+        self.symbol._schematic._add_symbol_field(
+            self.symbol,
+            name=name,
+            value=text,
+            at=at,
+            orient=self.orientation if orient is None else orient,
+        )
+        return self
+
+    def label_value(
+        self,
+        *,
+        loc: str = "top",
+        offset: float = 10,
+        orient: str | None = None,
+    ) -> PlacedSchematicElement:
+        value = _component_property(self.component, "value")
+        if value is None:
+            raise ValueError("Component has no value property to label")
+        return self.label(str(value), loc=loc, name="value", offset=offset, orient=orient)
+
     def _terminal_anchor(self, index: int, label: str) -> SchematicPinAnchor:
         anchors = self.pin_anchors()
         if len(anchors) < 2:
@@ -1207,6 +1247,36 @@ class SchematicNetLabel:
 
     def __repr__(self) -> str:
         return f"SchematicNetLabel(index={self._index})"
+
+
+class SchematicSymbolField:
+    """Read-only handle to a placed schematic symbol field projection."""
+
+    def __init__(
+        self,
+        schematic: Schematic,
+        index: int,
+        *,
+        symbol: SchematicSymbol,
+        name: str,
+        value: str,
+        at: tuple[float, float],
+        orientation: str,
+    ):
+        self._schematic = schematic
+        self._index = index
+        self.symbol = symbol
+        self.name = name
+        self.value = value
+        self.position = SchematicAnchor(at, design=schematic._design)
+        self.orientation = orientation
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    def __repr__(self) -> str:
+        return f"SchematicSymbolField(name={self.name!r}, index={self._index})"
 
 
 class SchematicWireBuilder:
@@ -1271,6 +1341,7 @@ class SchematicDrawing:
         if self._unit <= 0:
             raise ValueError("Schematic drawing unit must be positive")
         self._stack: list[tuple[SchematicAnchor, str]] = []
+        self._pending: SchematicTwoTerminalElement | None = None
 
     @property
     def here(self) -> SchematicAnchor:
@@ -1285,6 +1356,7 @@ class SchematicDrawing:
         return self._unit
 
     def move(self, *, dx: float = 0, dy: float = 0) -> SchematicDrawing:
+        self._flush_pending()
         self._here = self._here.offset(dx=dx, dy=dy)
         return self
 
@@ -1296,20 +1368,85 @@ class SchematicDrawing:
         dy: float = 0,
         direction: str | None = None,
     ) -> SchematicDrawing:
+        self._flush_pending()
         next_direction = self._direction if direction is None else _orientation(direction)
         self._here = self._anchor_at(anchor).offset(dx=dx, dy=dy)
         self._direction = next_direction
         return self
 
     def push(self) -> SchematicDrawing:
+        self._flush_pending()
         self._stack.append((self._here, self._direction))
         return self
 
     def pop(self) -> SchematicDrawing:
+        self._flush_pending()
         if not self._stack:
             raise ValueError("Schematic drawing state stack is empty")
         self._here, self._direction = self._stack.pop()
         return self
+
+    def two_terminal(
+        self,
+        component: Component,
+        *,
+        symbol: str | SchematicSymbolSpec | None = None,
+        variant: str = "default",
+    ) -> SchematicTwoTerminalElement:
+        self._flush_pending()
+        element = SchematicTwoTerminalElement(
+            self,
+            component,
+            symbol=symbol,
+            variant=variant,
+        )
+        self._pending = element
+        return element
+
+    def R(
+        self,
+        component: Component,
+        *,
+        symbol: str | SchematicSymbolSpec | None = None,
+        variant: str = "default",
+    ) -> SchematicTwoTerminalElement:
+        return self.two_terminal(component, symbol=symbol, variant=variant)
+
+    def C(
+        self,
+        component: Component,
+        *,
+        symbol: str | SchematicSymbolSpec | None = None,
+        variant: str = "default",
+    ) -> SchematicTwoTerminalElement:
+        return self.two_terminal(component, symbol=symbol, variant=variant)
+
+    def L(
+        self,
+        component: Component,
+        *,
+        symbol: str | SchematicSymbolSpec | None = None,
+        variant: str = "default",
+    ) -> SchematicTwoTerminalElement:
+        return self.two_terminal(component, symbol=symbol, variant=variant)
+
+    def D(
+        self,
+        component: Component,
+        *,
+        symbol: str | SchematicSymbolSpec | None = None,
+        variant: str = "default",
+    ) -> SchematicTwoTerminalElement:
+        return self.two_terminal(component, symbol=symbol, variant=variant)
+
+    def LED(
+        self,
+        component: Component,
+        *,
+        symbol: str | SchematicSymbolSpec | None = None,
+        variant: str = "default",
+    ) -> SchematicTwoTerminalElement:
+        return self.two_terminal(component, symbol=symbol, variant=variant)
 
     def place(
         self,
@@ -1320,6 +1457,7 @@ class SchematicDrawing:
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
     ) -> PlacedSchematicElement:
+        self._flush_pending()
         placed = self._schematic.place(
             component,
             at=self._here if at is None else at,
@@ -1331,21 +1469,27 @@ class SchematicDrawing:
 
     @contextmanager
     def hold(self):
+        self._flush_pending()
         saved_stack = list(self._stack)
         saved_here = self._here
         saved_direction = self._direction
+        saved_pending = self._pending
         self.push()
         try:
             yield self
+            self._flush_pending()
         finally:
             self._stack = saved_stack
             self._here = saved_here
             self._direction = saved_direction
+            self._pending = saved_pending
 
     def __enter__(self) -> SchematicDrawing:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> bool:
+        if exc_type is None:
+            self._flush_pending()
         return False
 
     def _anchor_at(
@@ -1356,10 +1500,364 @@ class SchematicDrawing:
             design=self._schematic._design,
         )
 
+    def _flush_pending(self) -> None:
+        pending = self._pending
+        if pending is not None:
+            pending._materialize()
+            if self._pending is pending:
+                self._pending = None
+
     def __repr__(self) -> str:
         return (
             f"SchematicDrawing(here={self._here.point!r}, "
             f"direction={self._direction!r}, unit={self._unit!r})"
+        )
+
+
+class SchematicTwoTerminalElement:
+    """Deferred fluent placement for one two-terminal schematic component."""
+
+    def __init__(
+        self,
+        drawing: SchematicDrawing,
+        component: Component,
+        *,
+        symbol: str | SchematicSymbolSpec | None = None,
+        variant: str = "default",
+    ):
+        if not isinstance(component, Component):
+            raise TypeError("Two-terminal placement expects a Component handle")
+        if component._design is not drawing._schematic._design:
+            raise ValueError("Component belongs to a different design")
+        pins = tuple(component._pin_refs())
+        if len(pins) != 2:
+            raise ValueError("Two-terminal placement requires exactly two component pins")
+        self._drawing = drawing
+        self._component = component
+        self._symbol = symbol
+        self._variant = variant
+        self._start_here = drawing.here
+        self._start_direction = drawing.direction
+        self._at = drawing.here
+        self._anchor_ref: str | int = "start"
+        self._drop_ref: str | int = "end"
+        self._orientation = drawing.direction
+        self._length = drawing.unit
+        self._reverse = False
+        self._flip = False
+        self._cursor_committed = False
+        self._placed: PlacedSchematicElement | None = None
+
+    @property
+    def index(self) -> int:
+        return self._materialize().index
+
+    @property
+    def component(self) -> Component:
+        return self._component
+
+    @property
+    def orientation(self) -> str:
+        return self._materialize().orientation
+
+    @property
+    def start(self) -> SchematicPinAnchor:
+        return self._materialize().start
+
+    @property
+    def end(self) -> SchematicPinAnchor:
+        return self._materialize().end
+
+    @property
+    def center(self) -> SchematicAnchor:
+        return self._materialize().center
+
+    def at(
+        self, point: tuple[float, float] | SchematicAnchor | SchematicPort
+    ) -> SchematicTwoTerminalElement:
+        self._require_unplaced("at")
+        self._at = self._drawing._anchor_at(point)
+        self._commit_cursor()
+        return self
+
+    def anchor(self, ref: str | int) -> SchematicTwoTerminalElement:
+        self._require_unplaced("anchor")
+        self._anchor_ref = ref
+        self._commit_cursor()
+        return self
+
+    def drop(self, ref: str | int) -> SchematicTwoTerminalElement:
+        self._require_unplaced("drop")
+        self._drop_ref = ref
+        self._commit_cursor()
+        return self
+
+    def length(self, value: float) -> SchematicTwoTerminalElement:
+        self._require_unplaced("length")
+        self._length = self._length_from_units(value)
+        self._commit_cursor()
+        return self
+
+    def right(self, length: float | None = None) -> SchematicTwoTerminalElement:
+        return self._direction("Right", length)
+
+    def left(self, length: float | None = None) -> SchematicTwoTerminalElement:
+        return self._direction("Left", length)
+
+    def up(self, length: float | None = None) -> SchematicTwoTerminalElement:
+        return self._direction("Up", length)
+
+    def down(self, length: float | None = None) -> SchematicTwoTerminalElement:
+        return self._direction("Down", length)
+
+    def reverse(self) -> SchematicTwoTerminalElement:
+        self._require_unplaced("reverse")
+        self._reverse = not self._reverse
+        self._commit_cursor()
+        return self
+
+    def flip(self) -> SchematicTwoTerminalElement:
+        self._require_unplaced("flip")
+        self._flip = not self._flip
+        self._commit_cursor()
+        return self
+
+    def label(
+        self,
+        text: str,
+        *,
+        loc: str = "top",
+        name: str = "label",
+        offset: float = 10,
+        orient: str | None = None,
+    ) -> PlacedSchematicElement:
+        return self._materialize().label(
+            text, loc=loc, name=name, offset=offset, orient=orient
+        )
+
+    def label_value(
+        self,
+        *,
+        loc: str = "top",
+        offset: float = 10,
+        orient: str | None = None,
+    ) -> PlacedSchematicElement:
+        return self._materialize().label_value(loc=loc, offset=offset, orient=orient)
+
+    def __getitem__(self, key: int | str) -> SchematicPinAnchor:
+        return self._materialize()[key]
+
+    def __getattr__(self, name: str) -> SchematicPinAnchor:
+        return getattr(self._materialize(), name)
+
+    def pin_anchor(self, number: int | str) -> tuple[float, float]:
+        return self._materialize().pin_anchor(number)
+
+    def pin(self, key: int | str) -> SchematicPinAnchor:
+        return self._materialize().pin(key)
+
+    def pins(self, name: str) -> tuple[SchematicPinAnchor, ...]:
+        return self._materialize().pins(name)
+
+    def pin_anchors(self) -> tuple[SchematicPinAnchor, ...]:
+        return self._materialize().pin_anchors()
+
+    def _direction(
+        self, orientation: str, length: float | None
+    ) -> SchematicTwoTerminalElement:
+        self._require_unplaced(orientation.lower())
+        self._orientation = _orientation(orientation)
+        if length is not None:
+            self._length = self._length_from_units(length)
+        self._commit_cursor()
+        return self
+
+    def _length_from_units(self, value: float) -> float:
+        length = _coordinate(value) * self._drawing.unit
+        if length <= 0:
+            raise ValueError("Two-terminal element length must be positive")
+        return length
+
+    def _require_unplaced(self, method: str) -> None:
+        if self._placed is not None:
+            raise ValueError(f"Cannot call {method}() after two-terminal placement is materialized")
+
+    def _commit_cursor(self) -> None:
+        try:
+            origin = self._origin()
+            drop = _transform_symbol_point(
+                self._local_anchor(self._drop_ref), origin, self._orientation
+            )
+            self._drawing._here = SchematicAnchor(drop, design=self._component._design)
+            self._drawing._direction = self._orientation
+            self._cursor_committed = True
+        except Exception:
+            if self._drawing._pending is self:
+                self._drawing._pending = None
+            self._restore_drawing_state()
+            raise
+
+    def _materialize(self) -> PlacedSchematicElement:
+        if self._placed is not None:
+            return self._placed
+        try:
+            origin = self._origin()
+            symbol = self._placement_symbol()
+            placed = self._drawing._schematic.place(
+                self._component,
+                at=origin,
+                orient=self._orientation,
+                symbol=symbol,
+                variant=self._variant,
+            )
+            self._placed = PlacedSchematicElement(placed)
+            if not self._cursor_committed:
+                self._commit_cursor()
+            if self._drawing._pending is self:
+                self._drawing._pending = None
+            return self._placed
+        except Exception:
+            if self._drawing._pending is self:
+                self._drawing._pending = None
+            self._restore_drawing_state()
+            raise
+
+    def _restore_drawing_state(self) -> None:
+        if self._cursor_committed:
+            self._drawing._here = self._start_here
+            self._drawing._direction = self._start_direction
+            self._cursor_committed = False
+
+    def _origin(self) -> tuple[float, float]:
+        aligned = self._at.point
+        anchor = self._local_anchor(self._anchor_ref)
+        rotated = _rotate_symbol_point(anchor, self._orientation)
+        return (aligned[0] - rotated[0], aligned[1] - rotated[1])
+
+    def _local_anchor(self, ref: str | int) -> tuple[float, float]:
+        pins = self._presentation_pins()
+        if isinstance(ref, str):
+            normalized = ref.casefold()
+            if normalized == "start":
+                return pins[0]["at"]
+            if normalized == "end":
+                return pins[-1]["at"]
+            if normalized == "center":
+                start = pins[0]["at"]
+                end = pins[-1]["at"]
+                return ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2)
+
+        matches = _presentation_pin_matches(pins, ref)
+        if len(matches) == 1:
+            return matches[0]["at"]
+        if len(matches) > 1:
+            raise ValueError(f"Two-terminal anchor {ref!r} is ambiguous")
+        raise ValueError(f"Two-terminal element has no anchor named {ref!r}")
+
+    def _presentation_pins(self) -> tuple[dict, ...]:
+        spec = self._base_symbol_spec()
+        if spec is not None:
+            return _presentation_symbol_pins(
+                spec,
+                length=self._length,
+                reverse=self._reverse,
+                flip=self._flip,
+            )
+
+        pins = tuple(self._component._pin_refs())
+        local = (
+            {
+                "name": pins[0]["name"],
+                "number": pins[0]["number"],
+                "at": (0.0, 0.0),
+                "orientation": "Left",
+            },
+            {
+                "name": pins[1]["name"],
+                "number": pins[1]["number"],
+                "at": (20.0, 0.0),
+                "orientation": "Right",
+            },
+        )
+        if self._reverse or self._flip or self._length != 20.0:
+            raise ValueError(
+                "Two-terminal placement cannot adjust an unknown schematic symbol"
+            )
+        return local
+
+    def _placement_symbol(self) -> str | SchematicSymbolSpec | None:
+        symbol = self._base_symbol()
+        spec = self._base_symbol_spec()
+        if spec is None:
+            return self._symbol
+        if not _needs_generated_two_terminal_symbol(
+            spec, length=self._length, reverse=self._reverse, flip=self._flip
+        ):
+            return symbol
+        return _presentation_symbol_spec(
+            spec,
+            length=self._length,
+            reverse=self._reverse,
+            flip=self._flip,
+        )
+
+    def _base_symbol(self) -> str | SchematicSymbolSpec:
+        symbol = self._symbol
+        if symbol is None:
+            symbol = self._component.schematic_symbol_variant(self._variant)
+            if symbol is None:
+                raise ValueError(f"No schematic symbol found for variant {self._variant!r}")
+        if isinstance(symbol, (str, SchematicSymbolSpec)):
+            return symbol
+        raise TypeError("symbol must be a string or SchematicSymbolSpec")
+
+    def _base_symbol_spec(self) -> SchematicSymbolSpec | None:
+        symbol = self._base_symbol()
+        if isinstance(symbol, SchematicSymbolSpec):
+            return symbol
+        return _default_two_terminal_symbol_spec(symbol)
+
+    def __dir__(self) -> list[str]:
+        result = set(super().__dir__())
+        result.update(
+            {
+                "anchor",
+                "at",
+                "center",
+                "component",
+                "down",
+                "drop",
+                "end",
+                "flip",
+                "index",
+                "label",
+                "label_value",
+                "left",
+                "length",
+                "orientation",
+                "pin",
+                "pin_anchor",
+                "pin_anchors",
+                "pins",
+                "reverse",
+                "right",
+                "start",
+                "up",
+            }
+        )
+        try:
+            pin_names = [pin["name"] for pin in self._presentation_pins()]
+        except Exception:
+            pin_names = []
+        result.update(
+            name for name in pin_names if name.isidentifier() and pin_names.count(name) == 1
+        )
+        return sorted(result)
+
+    def __repr__(self) -> str:
+        return (
+            f"SchematicTwoTerminalElement(component={self._component!r}, "
+            f"orientation={self._orientation!r})"
         )
 
 
@@ -1474,6 +1972,35 @@ class Schematic:
             self._sheet_index, net.index, x, y, orientation
         )
         return SchematicNetLabel(self, label, orientation)
+
+    def _add_symbol_field(
+        self,
+        symbol: SchematicSymbol,
+        *,
+        name: str,
+        value: str,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        orient: str = "Right",
+    ) -> SchematicSymbolField:
+        if not isinstance(symbol, SchematicSymbol):
+            raise TypeError("Schematic symbol fields expect a placed symbol handle")
+        if symbol._schematic is not self:
+            raise ValueError("Schematic symbol belongs to a different schematic")
+        x, y = _schematic_point(at, design=self._design)
+        orientation = _orientation(orient)
+
+        field = self._design._circuit.add_schematic_symbol_field(
+            self._sheet_index, symbol.index, name, value, x, y, orientation
+        )
+        return SchematicSymbolField(
+            self,
+            field,
+            symbol=symbol,
+            name=name,
+            value=value,
+            at=(x, y),
+            orientation=orientation,
+        )
 
     def junction(
         self, net: Net, *, at: tuple[float, float] | SchematicAnchor | SchematicPort
@@ -2018,6 +2545,357 @@ def _orientation(value: str) -> str:
     return normalized
 
 
+def _default_two_terminal_symbol_spec(name: str) -> SchematicSymbolSpec | None:
+    if name in ("resistor", "volt.passives:resistor"):
+        return _resistor_symbol_spec(name)
+    if name in ("capacitor", "volt.passives:capacitor"):
+        return _capacitor_symbol_spec(name)
+    if name in ("inductor", "volt.passives:inductor"):
+        return _inductor_symbol_spec(name)
+    if name in ("diode", "volt.discretes:diode"):
+        return _diode_symbol_spec(name)
+    if name in ("led", "volt.optos:led"):
+        return _led_symbol_spec(name)
+    return None
+
+
+def _two_terminal_pins(
+    left_name: str,
+    left_number: int | str,
+    right_name: str,
+    right_number: int | str,
+) -> tuple[SchematicSymbolPinSpec, SchematicSymbolPinSpec]:
+    return (
+        SchematicSymbolSpec.pin(left_name, left_number, (0, 0), "Left"),
+        SchematicSymbolSpec.pin(right_name, right_number, (20, 0), "Right"),
+    )
+
+
+def _resistor_symbol_spec(name: str) -> SchematicSymbolSpec:
+    return SchematicSymbolSpec(
+        name,
+        pins=_two_terminal_pins("1", 1, "2", 2),
+        primitives=(
+            SchematicSymbolSpec.line((0, 0), (4, 0)),
+            SchematicSymbolSpec.rectangle((4, -3), (16, 3)),
+            SchematicSymbolSpec.line((16, 0), (20, 0)),
+            SchematicSymbolSpec.text("R", (10, -8)),
+        ),
+    )
+
+
+def _capacitor_symbol_spec(name: str) -> SchematicSymbolSpec:
+    return SchematicSymbolSpec(
+        name,
+        pins=_two_terminal_pins("1", 1, "2", 2),
+        primitives=(
+            SchematicSymbolSpec.line((0, 0), (8, 0)),
+            SchematicSymbolSpec.line((8, -5), (8, 5)),
+            SchematicSymbolSpec.line((12, -5), (12, 5)),
+            SchematicSymbolSpec.line((12, 0), (20, 0)),
+            SchematicSymbolSpec.text("C", (10, -10)),
+        ),
+    )
+
+
+def _inductor_symbol_spec(name: str) -> SchematicSymbolSpec:
+    return SchematicSymbolSpec(
+        name,
+        pins=_two_terminal_pins("1", 1, "2", 2),
+        primitives=(
+            SchematicSymbolSpec.line((0, 0), (4, 0)),
+            SchematicSymbolSpec.arc((6, 0), 2, 180, -180),
+            SchematicSymbolSpec.arc((10, 0), 2, 180, -180),
+            SchematicSymbolSpec.arc((14, 0), 2, 180, -180),
+            SchematicSymbolSpec.line((16, 0), (20, 0)),
+            SchematicSymbolSpec.text("L", (10, -8)),
+        ),
+    )
+
+
+def _diode_symbol_spec(name: str) -> SchematicSymbolSpec:
+    return SchematicSymbolSpec(
+        name,
+        pins=_two_terminal_pins("K", 1, "A", 2),
+        primitives=(
+            SchematicSymbolSpec.line((0, 0), (7, 0)),
+            SchematicSymbolSpec.line((7, -5), (7, 5)),
+            SchematicSymbolSpec.line((7, -5), (13, 0)),
+            SchematicSymbolSpec.line((7, 5), (13, 0)),
+            SchematicSymbolSpec.line((13, 0), (20, 0)),
+            SchematicSymbolSpec.text("D", (10, -11)),
+        ),
+    )
+
+
+def _led_symbol_spec(name: str) -> SchematicSymbolSpec:
+    diode = _diode_symbol_spec(name)
+    return SchematicSymbolSpec(
+        name,
+        pins=diode.pins,
+        primitives=(
+            *diode.primitives,
+            SchematicSymbolSpec.line((13, -6), (17, -10)),
+            SchematicSymbolSpec.line((15, -4), (19, -8)),
+        ),
+    )
+
+
+def _symbol_pin_dict(pin: SchematicSymbolPinSpec) -> dict:
+    return {
+        "name": pin.name,
+        "number": str(pin.number),
+        "at": pin.at,
+        "orientation": _orientation(pin.orientation),
+    }
+
+
+def _symbol_terminal_frame(symbol: SchematicSymbolSpec) -> tuple[tuple[float, float], float]:
+    pins = tuple(symbol.pins)
+    if len(pins) != 2:
+        raise ValueError("Two-terminal placement requires exactly two symbol pins")
+    start = pins[0].at
+    end = pins[-1].at
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    distance = (dx * dx + dy * dy) ** 0.5
+    if distance <= 0:
+        raise ValueError("Two-terminal symbol pins must not overlap")
+    return (start, distance)
+
+
+def _presentation_symbol_pins(
+    symbol: SchematicSymbolSpec,
+    *,
+    length: float,
+    reverse: bool,
+    flip: bool,
+) -> tuple[dict, ...]:
+    pins = tuple(_symbol_pin_dict(pin) for pin in symbol.pins)
+    transformed = []
+    for pin in pins:
+        transformed.append(
+            {
+                "name": pin["name"],
+                "number": pin["number"],
+                "at": _presentation_point(symbol, pin["at"], length, reverse, flip),
+                "orientation": _presentation_orientation(pin["orientation"], reverse, flip),
+            }
+        )
+    if reverse:
+        transformed.reverse()
+    return tuple(transformed)
+
+
+def _needs_generated_two_terminal_symbol(
+    symbol: SchematicSymbolSpec,
+    *,
+    length: float,
+    reverse: bool,
+    flip: bool,
+) -> bool:
+    _start, base_length = _symbol_terminal_frame(symbol)
+    return reverse or flip or length != base_length
+
+
+def _presentation_symbol_spec(
+    symbol: SchematicSymbolSpec,
+    *,
+    length: float,
+    reverse: bool,
+    flip: bool,
+) -> SchematicSymbolSpec:
+    pins = tuple(
+        SchematicSymbolSpec.pin(
+            pin["name"], pin["number"], pin["at"], pin["orientation"]
+        )
+        for pin in _presentation_symbol_pins(
+            symbol, length=length, reverse=reverse, flip=flip
+        )
+    )
+    primitives = tuple(
+        _presentation_primitive(symbol, primitive, length, reverse, flip)
+        for primitive in symbol.primitives
+    )
+    return SchematicSymbolSpec(
+        _presentation_symbol_name(symbol.name, length, reverse, flip),
+        pins=pins,
+        primitives=primitives,
+    )
+
+
+def _presentation_symbol_name(
+    base_name: str, length: float, reverse: bool, flip: bool
+) -> str:
+    length_token = f"{length:g}".replace("-", "m").replace(".", "p")
+    flags = []
+    if reverse:
+        flags.append("reverse")
+    if flip:
+        flags.append("flip")
+    flag_token = "-".join(flags) if flags else "scaled"
+    return f"{base_name}#two-terminal-{flag_token}-{length_token}"
+
+
+def _presentation_primitive(
+    symbol: SchematicSymbolSpec,
+    primitive: dict,
+    length: float,
+    reverse: bool,
+    flip: bool,
+) -> dict:
+    primitive_type = primitive["type"]
+    if primitive_type == "line":
+        return SchematicSymbolSpec.line(
+            _presentation_point_dict(symbol, primitive["start"], length, reverse, flip),
+            _presentation_point_dict(symbol, primitive["end"], length, reverse, flip),
+        )
+    if primitive_type == "rectangle":
+        return SchematicSymbolSpec.rectangle(
+            _presentation_point_dict(
+                symbol, primitive["first_corner"], length, reverse, flip
+            ),
+            _presentation_point_dict(
+                symbol, primitive["second_corner"], length, reverse, flip
+            ),
+        )
+    if primitive_type == "circle":
+        return SchematicSymbolSpec.circle(
+            _presentation_point_dict(symbol, primitive["center"], length, reverse, flip),
+            primitive["radius"],
+        )
+    if primitive_type == "arc":
+        return SchematicSymbolSpec.arc(
+            _presentation_point_dict(symbol, primitive["center"], length, reverse, flip),
+            primitive["radius"],
+            primitive["start_degrees"],
+            primitive["sweep_degrees"],
+        )
+    if primitive_type == "text":
+        return SchematicSymbolSpec.text(
+            primitive["text"],
+            _presentation_point_dict(symbol, primitive["anchor"], length, reverse, flip),
+            _presentation_orientation(primitive["orientation"], reverse, flip),
+        )
+    raise ValueError(f"Unknown schematic symbol primitive type: {primitive_type!r}")
+
+
+def _presentation_point_dict(
+    symbol: SchematicSymbolSpec,
+    point: dict,
+    length: float,
+    reverse: bool,
+    flip: bool,
+) -> tuple[float, float]:
+    return _presentation_point(
+        symbol, (point["x"], point["y"]), length, reverse, flip
+    )
+
+
+def _presentation_point(
+    symbol: SchematicSymbolSpec,
+    point: tuple[float, float],
+    length: float,
+    reverse: bool,
+    flip: bool,
+) -> tuple[float, float]:
+    pins = tuple(symbol.pins)
+    start, base_length = _symbol_terminal_frame(symbol)
+    end = pins[-1].at
+    ux = (end[0] - start[0]) / base_length
+    uy = (end[1] - start[1]) / base_length
+    vx = -uy
+    vy = ux
+    dx = point[0] - start[0]
+    dy = point[1] - start[1]
+    along = dx * ux + dy * uy
+    across = dx * vx + dy * vy
+    scaled_along = along * length / base_length
+    if reverse:
+        scaled_along = length - scaled_along
+    if flip:
+        across = -across
+    return (_coordinate(scaled_along), _coordinate(across))
+
+
+def _presentation_orientation(orientation: str, reverse: bool, flip: bool) -> str:
+    result = _orientation(orientation)
+    if reverse and result in ("Left", "Right"):
+        result = "Left" if result == "Right" else "Right"
+    if flip and result in ("Up", "Down"):
+        result = "Up" if result == "Down" else "Down"
+    return result
+
+
+def _presentation_pin_matches(pins: tuple[dict, ...], ref: str | int) -> tuple[dict, ...]:
+    if isinstance(ref, int):
+        return tuple(pin for pin in pins if pin["number"] == str(ref))
+    if not isinstance(ref, str):
+        raise TypeError("Two-terminal anchors are addressed by name or pin number")
+    by_number = tuple(pin for pin in pins if pin["number"] == ref)
+    if by_number:
+        return by_number
+    return tuple(pin for pin in pins if pin["name"] == ref)
+
+
+def _rotate_symbol_point(point: tuple[float, float], orientation: str) -> tuple[float, float]:
+    x, y = point
+    match _orientation(orientation):
+        case "Right":
+            return (x, y)
+        case "Down":
+            return (-y, x)
+        case "Left":
+            return (-x, -y)
+        case "Up":
+            return (y, -x)
+    raise ValueError("Schematic orientation must be Right, Down, Left, or Up")
+
+
+def _transform_symbol_point(
+    point: tuple[float, float],
+    origin: tuple[float, float],
+    orientation: str,
+) -> tuple[float, float]:
+    rotated = _rotate_symbol_point(point, orientation)
+    return (origin[0] + rotated[0], origin[1] + rotated[1])
+
+
+def _component_property(component: Component, name: str):
+    logical = json.loads(component._design.to_json())
+    target = next(
+        item for item in logical["components"] if item["id"] == f"component:{component.index}"
+    )
+    value = target["properties"].get(name)
+    if value is None:
+        return None
+    return value["value"]
+
+
+def _element_label_point(
+    element: PlacedSchematicElement, loc: str, offset: float
+) -> SchematicAnchor:
+    distance = _coordinate(offset)
+    normalized = {
+        "top": "top",
+        "above": "top",
+        "bottom": "bottom",
+        "below": "bottom",
+        "left": "left",
+        "right": "right",
+    }.get(loc.casefold() if isinstance(loc, str) else loc)
+    if normalized is None:
+        raise ValueError("Schematic element label loc must be top, bottom, left, or right")
+    center = element.center
+    if normalized == "top":
+        return center.up(distance)
+    if normalized == "bottom":
+        return center.down(distance)
+    if normalized == "left":
+        return center.left(distance)
+    return center.right(distance)
+
+
 def _sheet_port_kind(value: str) -> str:
     if not isinstance(value, str):
         raise TypeError("Schematic sheet port kind must be a string")
@@ -2200,9 +3078,11 @@ __all__ = [
     "SchematicNoConnect",
     "SchematicPinAnchor",
     "SchematicPort",
+    "SchematicSymbolField",
     "SchematicSymbolPinSpec",
     "SchematicSymbolSpec",
     "SchematicSymbol",
+    "SchematicTwoTerminalElement",
     "SchematicWire",
     "SchematicWireBuilder",
     "TemplateNetInfo",
