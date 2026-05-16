@@ -511,8 +511,11 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << ", \"position\": ";
         detail::write_point(out, marker.position());
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(marker.orientation()))
-            << " }";
+            << detail::json_string(detail::schematic_orientation_name(marker.orientation()));
+        if (!marker.reason().empty()) {
+            out << ", \"reason\": " << detail::json_string(marker.reason());
+        }
+        out << " }";
         if (index + 1 != schematic.no_connect_marker_count()) {
             out << ',';
         }

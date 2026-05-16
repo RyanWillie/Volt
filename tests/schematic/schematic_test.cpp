@@ -167,7 +167,8 @@ TEST_CASE("Schematic stores professional primitives without changing logical con
         sheet, volt::PowerPort{gnd, volt::PowerPortKind::Ground, volt::Point{50.0, 24.0},
                                volt::SchematicOrientation::Down});
     const auto no_connect = schematic.add_no_connect_marker(
-        sheet, volt::NoConnectMarker{no_connect_pin, volt::Point{60.0, 20.0}});
+        sheet, volt::NoConnectMarker{no_connect_pin, volt::Point{60.0, 20.0},
+                                     volt::SchematicOrientation::Right, "factory option"});
     const auto sheet_port = schematic.add_sheet_port(
         sheet, volt::SheetPort{vcc, "VIN", volt::SheetPortKind::OffPage, volt::Point{5.0, 20.0},
                                volt::SchematicOrientation::Right});
@@ -197,6 +198,7 @@ TEST_CASE("Schematic stores professional primitives without changing logical con
     CHECK(schematic.power_port(power).kind() == volt::PowerPortKind::Power);
     CHECK(schematic.power_port(ground).net() == gnd);
     CHECK(schematic.no_connect_marker(no_connect).pin() == no_connect_pin);
+    CHECK(schematic.no_connect_marker(no_connect).reason() == "factory option");
     CHECK(schematic.sheet_port(sheet_port).name() == "VIN");
     CHECK(schematic.symbol_field(field).symbol_instance() == instance);
     CHECK(schematic.symbol_field(field).name() == "value");

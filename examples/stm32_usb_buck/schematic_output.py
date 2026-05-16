@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 import volt
 from volt.libraries import stm32_usb_buck as lib
 
@@ -49,12 +47,10 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
     """Create a deterministic, manually authored schematic projection."""
 
     schematic = board.design.schematic("Main")
-    placements: dict[str, volt.SchematicSymbol] = {}
+    placements: list[volt.SchematicSymbol] = []
 
     def place(component: volt.Component, *, at: tuple[float, float], symbol) -> None:
-        placements[f"component:{component.index}"] = schematic.place(
-            component, at=at, symbol=symbol
-        )
+        placements.append(schematic.place(component, at=at, symbol=symbol))
 
     pwr = board.modules["PWR"]
     usb = board.modules["USB"]
@@ -97,57 +93,21 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
 def _add_pin_anchor_net_labels(
     schematic: volt.Schematic,
     board: Stm32UsbBuckBoard,
-    placements: dict[str, volt.SchematicSymbol],
+    placements: list[volt.SchematicSymbol],
 ) -> None:
     """Add local net labels at connected symbol pins so readiness validation can prove coverage."""
 
-    logical = json.loads(board.design.to_json())
-    projection = json.loads(schematic.to_json())
-    nets_by_id = {
-        net["id"]: volt.Net(
-            board.design,
-            int(net["id"].removeprefix("net:")),
-            net["name"],
-        )
-        for net in logical["nets"]
-    }
-    component_definitions = {
-        definition["id"]: definition for definition in logical["component_definitions"]
-    }
-    pin_definitions = {pin["id"]: pin for pin in logical["pin_definitions"]}
-    components = {component["id"]: component for component in logical["components"]}
-    pins_by_component_and_definition = {
-        (pin["component"], pin["definition"]): pin["id"] for pin in logical["pins"]
-    }
     net_by_pin = {
-        pin_id: net["id"] for net in logical["nets"] for pin_id in net.get("pins", [])
-    }
-    symbols = {
-        symbol["id"]: symbol for symbol in projection["symbol_definitions"]
+        pin.index: net
+        for net in board.design.nets()
+        for pin in net.pins()
     }
 
-    for instance in projection["symbol_instances"]:
-        placement = placements[instance["component"]]
-        component = components[instance["component"]]
-        component_definition = component_definitions[component["definition"]]
-        pin_definition_by_number = {
-            pin_definitions[pin_id]["number"]: pin_id for pin_id in component_definition["pins"]
-        }
-        symbol = symbols[instance["symbol_definition"]]
-        for symbol_pin in symbol["pins"]:
-            pin_definition_id = pin_definition_by_number.get(symbol_pin["number"])
-            if pin_definition_id is None:
-                continue
-            pin_id = pins_by_component_and_definition.get((component["id"], pin_definition_id))
-            if pin_id is None:
-                continue
-            net_id = net_by_pin.get(pin_id)
-            if net_id not in nets_by_id:
-                continue
-            schematic.label(
-                nets_by_id[net_id],
-                at=placement.pin_anchor(symbol_pin["number"]),
-            )
+    for placement in placements:
+        for anchor in placement.pin_anchors():
+            net = net_by_pin.get(anchor.pin.index)
+            if net is not None:
+                schematic.label(net, at=anchor)
 
 
 def _add_labelled_net_stubs(schematic: volt.Schematic, nets: dict[str, volt.Net]) -> None:

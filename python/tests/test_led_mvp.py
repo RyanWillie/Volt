@@ -1084,6 +1084,175 @@ def test_python_schematic_symbol_handles_expose_pin_anchors():
     assert symbol.pin_anchor("2") == (60.0, 20.0)
 
 
+def test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects():
+    design = volt.Design("schematic-dsl")
+    vcc = design.net("VCC", kind="power")
+    led_a = design.net("LED_A")
+    gnd = design.net("GND", kind="ground")
+    r1 = design.R("330 ohm", ref="R1")
+    d1 = design.LED(ref="D1")
+    test_point = design.define_component(
+        "TestPoint",
+        pins=[volt.PinSpec("NC", 1, requirement="optional")],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:point",
+            pins=(volt.SchematicSymbolSpec.pin("NC", 1, (0, 0), "Right"),),
+            primitives=(volt.SchematicSymbolSpec.circle((0, 0), 1.5),),
+        ),
+    )
+    tp1 = design.instantiate(test_point, ref="TP1")
+
+    vcc += r1[1]
+    led_a += r1[2], d1["A"]
+    gnd += d1["K"]
+    assert {net.name for net in design.nets()} >= {"VCC", "LED_A", "GND"}
+    assert tuple(pin.index for pin in led_a.pins()) == (r1[2].index, d1["A"].index)
+
+    schematic = design.schematic("Main")
+    resistor = schematic.place(r1, at=(40, 20), orient="down", symbol="resistor")
+    led = schematic.place(d1, at=(90, 30), symbol="led")
+    no_connect_target = schematic.place(tp1, at=(130, 70), symbol="test:point")
+
+    r1_left = resistor.pin(1)
+    r1_right = resistor.pin("2")
+    led_anode = led.pin("A")
+    led_cathode = led.pin(1)
+    no_connect_pin = no_connect_target.pin("NC")
+
+    assert resistor.orientation == "Down"
+    assert r1_left.point == (40.0, 20.0)
+    assert r1_left.pin.index == r1[1].index
+    assert r1_right.point == (40.0, 40.0)
+    assert tuple(anchor.number for anchor in resistor.pin_anchors()) == ("1", "2")
+    assert resistor.pin_anchor("2") == r1_right.point
+    assert led_anode.point == (110.0, 30.0)
+    assert led_cathode.down(30).point == (90.0, 60.0)
+
+    vcc_port = schematic.power("VCC", net=vcc, at=r1_left.left(20))
+    ground_port = schematic.ground(net=gnd, at=led_cathode.down(30), orient="down")
+    sheet_port = schematic.off_page("LED_A", net=led_a, at=led_anode.right(20))
+    label = schematic.label(led_a, at=r1_right.right(8), orient="left")
+    schematic.junction(led_a, at=r1_right.right(35))
+    schematic.no_connect(no_connect_pin, reason="open test pad")
+
+    schematic.wire(vcc).from_(vcc_port).to(r1_left).orthogonal()
+    schematic.wire(led_a).from_(r1_right).to(led_anode).orthogonal()
+    schematic.wire(gnd).from_(led_cathode).to(ground_port).orthogonal()
+    schematic.wire(led_a).from_(r1_right).via(r1_right.right(30)).to(led_anode).orthogonal()
+    schematic.wire(led_a, points=(sheet_port.pin, led_anode.right(8)))
+
+    logical = json.loads(design.to_json())
+    projection = json.loads(schematic.to_json())
+
+    assert logical["nets"][0]["pins"] == [f"pin:{r1[1].index}"]
+    assert logical["nets"][1]["pins"] == [f"pin:{r1[2].index}", f"pin:{d1['A'].index}"]
+    assert logical["nets"][2]["pins"] == [f"pin:{d1['K'].index}"]
+    assert logical["design_intent"]["no_connect_pins"] == [f"pin:{no_connect_pin.pin.index}"]
+
+    assert projection["symbol_instances"][0]["orientation"] == "Down"
+    assert projection["wire_runs"][0]["route_intent"] == "Orthogonal"
+    assert projection["wire_runs"][1]["points"] == [
+        {"x": 40.0, "y": 40.0},
+        {"x": 110.0, "y": 40.0},
+        {"x": 110.0, "y": 30.0},
+    ]
+    assert projection["wire_runs"][3]["route_intent"] == "Orthogonal"
+    assert projection["wire_runs"][3]["points"] == [
+        {"x": 40.0, "y": 40.0},
+        {"x": 70.0, "y": 40.0},
+        {"x": 110.0, "y": 30.0},
+    ]
+    assert projection["wire_runs"][4]["route_intent"] == "Direct"
+    assert projection["net_labels"][0]["orientation"] == "Left"
+    assert label.orientation == "Left"
+    assert projection["junctions"][0]["position"] == {"x": 75.0, "y": 40.0}
+    assert projection["power_ports"][0]["kind"] == "Power"
+    assert projection["power_ports"][0]["position"] == {"x": 20.0, "y": 20.0}
+    assert projection["power_ports"][1]["kind"] == "Ground"
+    assert projection["power_ports"][1]["orientation"] == "Down"
+    assert projection["no_connect_markers"][0]["pin"] == f"pin:{no_connect_pin.pin.index}"
+    assert projection["no_connect_markers"][0]["reason"] == "open test pad"
+    assert projection["sheet_ports"][0]["name"] == "LED_A"
+    assert projection["sheet_ports"][0]["kind"] == "OffPage"
+
+    svg = schematic.to_svg()
+    assert 'class="power-port power"' in svg
+    assert 'class="no-connect-marker"' in svg
+    assert 'class="sheet-port off-page"' in svg
+
+
+def test_python_schematic_explicit_wire_points_are_normalized_once():
+    design = volt.Design("schematic-wire-normalization")
+    vcc = design.net("VCC", kind="power")
+    original = volt._schematic_point
+    calls = 0
+
+    def counting_schematic_point(value, *, design):
+        nonlocal calls
+        calls += 1
+        return original(value, design=design)
+
+    schematic = design.schematic("Main")
+    volt._schematic_point = counting_schematic_point
+    try:
+        schematic.wire(vcc, points=[(20, 20), (40, 20)])
+    finally:
+        volt._schematic_point = original
+
+    assert calls == 2
+
+
+def test_python_schematic_dsl_rejects_invalid_references():
+    design = volt.Design("schematic-dsl-reference-checks")
+    other = volt.Design("other-schematic-dsl-reference-checks")
+    vcc = design.net("VCC", kind="power")
+    other_vcc = other.net("VCC", kind="power")
+    r1 = design.R("10k", ref="R1")
+    other_r1 = other.R("10k", ref="R1")
+
+    schematic = design.schematic("Main")
+    symbol = schematic.place(r1, at=(40, 20), symbol="resistor")
+    other_symbol = other.schematic("Main").place(other_r1, at=(40, 20), symbol="resistor")
+
+    try:
+        schematic.power("BAD", net=other_vcc, at=(0, 0))
+    except ValueError as error:
+        assert str(error) == "Net belongs to a different design"
+    else:
+        raise AssertionError("power ports must reject nets from another design")
+
+    try:
+        schematic.wire(vcc).from_(other_symbol.pin(1)).to(symbol.pin(1)).orthogonal()
+    except ValueError as error:
+        assert str(error) == "Schematic anchor belongs to a different design"
+    else:
+        raise AssertionError("wire anchors must reject pins from another design")
+
+    try:
+        schematic.no_connect(other_symbol.pin(1))
+    except ValueError as error:
+        assert str(error) == "Schematic anchor belongs to a different design"
+    else:
+        raise AssertionError("no-connect markers must reject pins from another design")
+
+
+def test_detached_schematic_symbol_pin_helpers_report_missing_component_context():
+    design = volt.Design("schematic-detached-symbol")
+    r1 = design.R("10k", ref="R1")
+    schematic = design.schematic("Main")
+    placed = schematic.place(r1, at=(40, 20), symbol="resistor")
+    detached = volt.SchematicSymbol(schematic, placed.index)
+
+    try:
+        detached.pin(1)
+    except ValueError as error:
+        assert str(error) == (
+            "Schematic pin anchors require the Component handle returned by Schematic.place()"
+        )
+    else:
+        raise AssertionError("detached symbol pin helpers should explain missing component context")
+
+
 def test_python_schematic_writes_svg_projection():
     design = volt.Design("schematic-svg")
     vcc = design.net("VCC", kind="power")
@@ -1172,9 +1341,15 @@ def test_stm32_usb_buck_native_symbols_place_and_render():
 
 def test_python_schematic_handles_are_publicly_exported():
     assert "Schematic" in volt.__all__
+    assert "SchematicAnchor" in volt.__all__
+    assert "SchematicJunction" in volt.__all__
     assert "SchematicSymbol" in volt.__all__
+    assert "SchematicPinAnchor" in volt.__all__
+    assert "SchematicPort" in volt.__all__
     assert "SchematicWire" in volt.__all__
+    assert "SchematicWireBuilder" in volt.__all__
     assert "SchematicNetLabel" in volt.__all__
+    assert "SchematicNoConnect" in volt.__all__
     assert "SchematicSymbolSpec" in volt.__all__
 
 
@@ -1221,6 +1396,10 @@ if __name__ == "__main__":
     test_module_authoring_exposes_hierarchy_inspection_views()
     test_python_schematic_placement_serializes_kernel_projection()
     test_python_schematic_symbol_handles_expose_pin_anchors()
+    test_python_schematic_dsl_authors_anchors_routes_and_semantic_objects()
+    test_python_schematic_explicit_wire_points_are_normalized_once()
+    test_python_schematic_dsl_rejects_invalid_references()
+    test_detached_schematic_symbol_pin_helpers_report_missing_component_context()
     test_python_schematic_writes_svg_projection()
     test_python_schematic_readiness_reports_detached_net_stubs()
     test_stm32_usb_buck_native_symbols_place_and_render()
