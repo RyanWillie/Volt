@@ -3369,12 +3369,20 @@ def _positive_count(value, label: str) -> int:
     return value
 
 
+def _visibility_flag(value, label: str) -> bool:
+    if not isinstance(value, bool):
+        raise TypeError(f"{label} must be a boolean")
+    return value
+
+
 def _coordinate_zones(value) -> dict[str, int | bool]:
     if isinstance(value, dict):
         return {
             "columns": _positive_count(value["columns"], "Coordinate zone columns"),
             "rows": _positive_count(value["rows"], "Coordinate zone rows"),
-            "visible": bool(value.get("visible", True)),
+            "visible": _visibility_flag(
+                value.get("visible", True), "Coordinate zone visibility"
+            ),
         }
     if isinstance(value, (tuple, list)) and len(value) == 2:
         return {
@@ -3389,7 +3397,9 @@ def _sheet_grid(value) -> dict[str, float | bool]:
     if isinstance(value, dict):
         return {
             "spacing": _positive_coordinate(value["spacing"], "Schematic grid spacing"),
-            "visible": bool(value.get("visible", True)),
+            "visible": _visibility_flag(
+                value.get("visible", True), "Schematic grid visibility"
+            ),
         }
     return {"spacing": _positive_coordinate(value, "Schematic grid spacing"), "visible": True}
 

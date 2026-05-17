@@ -89,6 +89,46 @@ def test_python_schematic_sheet_backwards_compatibility_keeps_default_page():
     assert projection["sheets"][0]["regions"] == []
 
 
+def test_python_schematic_visibility_flags_require_booleans():
+    design = volt.Design("schematic-page-visibility")
+
+    invalid_cases = [
+        (
+            "coordinate_zones",
+            {"columns": 10, "rows": 6, "visible": "false"},
+            "Coordinate zone visibility must be a boolean",
+        ),
+        (
+            "grid",
+            {"spacing": 2.5, "visible": 1},
+            "Schematic grid visibility must be a boolean",
+        ),
+    ]
+    for field, value, message in invalid_cases:
+        try:
+            design.schematic("Main", **{field: value})
+        except TypeError as error:
+            assert message in str(error)
+        else:
+            raise AssertionError(f"expected non-boolean {field} visibility to be rejected")
+
+    sheet = design.schematic(
+        "Main",
+        coordinate_zones={"columns": 10, "rows": 6, "visible": False},
+        grid={"spacing": 2.5, "visible": False},
+    )
+    projection = json.loads(sheet.to_json())
+    assert projection["sheets"][0]["metadata"]["coordinate_zones"] == {
+        "columns": 10,
+        "rows": 6,
+        "visible": False,
+    }
+    assert projection["sheets"][0]["metadata"]["grid"] == {
+        "spacing": 2.5,
+        "visible": False,
+    }
+
+
 def test_python_schematic_regions_require_unique_name_per_sheet():
     design = volt.Design("schematic-region-uniqueness")
     sheet = design.schematic("Main")
