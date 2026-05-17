@@ -1770,6 +1770,15 @@ class SchematicDrawing:
             name_or_net, at=self._here if at is None else at, orient=orient
         )
 
+    def junction(
+        self,
+        net: Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+    ) -> SchematicJunction:
+        self._flush_pending()
+        return self._schematic.junction(net, at=self._here if at is None else at)
+
     def no_connect(
         self,
         anchor: SchematicPinAnchor,

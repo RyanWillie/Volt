@@ -7,6 +7,10 @@ from volt.libraries import stm32_usb_buck as lib
 
 from .stm32_board import Stm32UsbBuckBoard
 
+# Use the generic two-terminal symbols so drawing.C/R can orient the passives.
+TWO_TERMINAL_CAPACITOR = "capacitor"
+TWO_TERMINAL_RESISTOR = "resistor"
+
 
 def _external_supply_symbol() -> volt.SchematicSymbolSpec:
     return volt.SchematicSymbolSpec(
@@ -72,7 +76,7 @@ def _author_power_sheet(
     pwr = board.modules["PWR"]
 
     with sheet.drawing(unit=20) as drawing:
-        _rail_legend(drawing, board.nets, (222, 18), ("+12V", "+5V", "+3V3", "VDDA", "GND"))
+        _rail_legend(drawing, nets, (222, 18), ("+12V", "+5V", "+3V3", "VDDA", "GND"))
 
         vin = drawing.place(
             board.components["VIN_SRC"],
@@ -90,13 +94,17 @@ def _author_power_sheet(
             at=(154, 42),
             symbol=lib.AP1117_15.schematic_symbol,
         )
-        cin = drawing.C(pwr.component("CIN"), symbol="capacitor").at((60, 118)).down()
-        c5v = drawing.C(pwr.component("C5V"), symbol="capacitor").at((118, 118)).down()
-        c3v3 = drawing.C(pwr.component("C3V3"), symbol="capacitor").at((176, 118)).down()
-        cvdda = drawing.C(pwr.component("CVDDA"), symbol="capacitor").at((234, 118)).down()
+        cin = drawing.C(pwr.component("CIN"), symbol=TWO_TERMINAL_CAPACITOR).at((60, 118)).down()
+        c5v = drawing.C(pwr.component("C5V"), symbol=TWO_TERMINAL_CAPACITOR).at((118, 118)).down()
+        c3v3 = drawing.C(pwr.component("C3V3"), symbol=TWO_TERMINAL_CAPACITOR).at(
+            (176, 118)
+        ).down()
+        cvdda = drawing.C(pwr.component("CVDDA"), symbol=TWO_TERMINAL_CAPACITOR).at(
+            (234, 118)
+        ).down()
 
-        _rail(drawing, board.nets["+12V"], vin.OUT, orient="Right")
-        _rail(drawing, board.nets["GND"], vin.GND, orient="Down")
+        _rail(drawing, nets["+12V"], vin.OUT, orient="Right")
+        _rail(drawing, nets["GND"], vin.GND, orient="Down")
 
         pwr_in = nets["PWR/IN_12V"]
         pwr_5v = nets["PWR/OUT_5V"]
@@ -107,12 +115,12 @@ def _author_power_sheet(
         drawing.connect(pwr_j[1], u5.VI, net=pwr_in, shape="-|-", k=22)
         drawing.connect(cin.start, u5.VI, net=pwr_in, shape="|-")
         drawing.net_label(pwr_in, at=(42, 47))
-        sheet.junction(pwr_in, at=(60, 52))
+        drawing.junction(pwr_in, at=(60, 52))
 
         drawing.connect(u5.VO, u3v3.VI, net=pwr_5v, shape="-")
         drawing.connect(c5v.start, u5.VO, net=pwr_5v, shape="|-")
         drawing.net_label(pwr_5v, at=(123, 47))
-        sheet.junction(pwr_5v, at=(118, 52))
+        drawing.junction(pwr_5v, at=(118, 52))
 
         drawing.connect(u3v3.VO, c3v3.start, net=pwr_3v3, shape="-|", k=10)
         drawing.off_page("+3V3", net=pwr_3v3, at=(214, 34), orient="Up")
@@ -134,7 +142,7 @@ def _author_power_sheet(
             cvdda.end,
         ):
             drawing.connect(anchor, ground_bus, net=pwr_gnd, shape="|-")
-            sheet.junction(pwr_gnd, at=(anchor.x, 154))
+            drawing.junction(pwr_gnd, at=(anchor.x, 154))
 
 
 def _author_usb_sheet(
@@ -184,7 +192,7 @@ def _author_usb_sheet(
         usb_gnd = nets["USB/GND"]
         for anchor in (usb_j.GND, usb_j.Shield, usb_esd.GND):
             drawing.connect(anchor, (72, 124), net=usb_gnd, shape="|-")
-            sheet.junction(usb_gnd, at=(anchor.x, 124))
+            drawing.junction(usb_gnd, at=(anchor.x, 124))
         drawing.off_page("GND", net=usb_gnd, at=(72, 124), orient="Down")
 
         for anchor in (swd.VTref, gpio[1]):
@@ -222,11 +230,21 @@ def _author_mcu_sheet(
             at=(102, 18),
             symbol=lib.STM32F405RGTx.schematic_symbol,
         )
-        cvdd = drawing.C(support.component("CVDD"), symbol="capacitor").at((24, 26)).down()
-        cvcap1 = drawing.C(support.component("CVCAP1"), symbol="capacitor").at((24, 58)).down()
-        cvcap2 = drawing.C(support.component("CVCAP2"), symbol="capacitor").at((24, 90)).down()
-        rreset = drawing.R(support.component("RRESET"), symbol="resistor").at((24, 122)).right()
-        rboot = drawing.R(support.component("RBOOT"), symbol="resistor").at((24, 150)).right()
+        cvdd = drawing.C(support.component("CVDD"), symbol=TWO_TERMINAL_CAPACITOR).at(
+            (24, 26)
+        ).down()
+        cvcap1 = drawing.C(support.component("CVCAP1"), symbol=TWO_TERMINAL_CAPACITOR).at(
+            (24, 58)
+        ).down()
+        cvcap2 = drawing.C(support.component("CVCAP2"), symbol=TWO_TERMINAL_CAPACITOR).at(
+            (24, 90)
+        ).down()
+        rreset = drawing.R(support.component("RRESET"), symbol=TWO_TERMINAL_RESISTOR).at(
+            (24, 122)
+        ).right()
+        rboot = drawing.R(support.component("RBOOT"), symbol=TWO_TERMINAL_RESISTOR).at(
+            (24, 150)
+        ).right()
         swboot = drawing.place(
             support.component("SWBOOT"),
             at=(70, 140),
@@ -237,9 +255,15 @@ def _author_mcu_sheet(
             at=(26, 174),
             symbol=lib.CRYSTAL_GND24.schematic_symbol,
         )
-        chsein = drawing.C(support.component("CHSEIN"), symbol="capacitor").at((74, 172)).down()
-        chseout = drawing.C(support.component("CHSEOUT"), symbol="capacitor").at((74, 188)).down()
-        led_r = drawing.R(led.component("R"), symbol="resistor").at((218, 184)).right()
+        chsein = drawing.C(support.component("CHSEIN"), symbol=TWO_TERMINAL_CAPACITOR).at(
+            (74, 172)
+        ).down()
+        chseout = drawing.C(support.component("CHSEOUT"), symbol=TWO_TERMINAL_CAPACITOR).at(
+            (74, 188)
+        ).down()
+        led_r = drawing.R(led.component("R"), symbol=TWO_TERMINAL_RESISTOR).at(
+            (218, 184)
+        ).right()
         led_d = drawing.LED(led.component("D"), symbol=_indicator_led_symbol()).at(
             (254, 184)
         ).right(1.2)
@@ -291,7 +315,7 @@ def _author_mcu_sheet(
         drawing.off_page("+3V3", net=support_vdd, at=(64, 22), orient="Up")
         for anchor in (cvdd.start, rreset.start, swboot.A):
             drawing.connect(anchor, (64, 22), net=support_vdd, shape="-|")
-            sheet.junction(support_vdd, at=(64, anchor.y))
+            drawing.junction(support_vdd, at=(64, anchor.y))
 
         for anchor in (
             cvdd.end,
