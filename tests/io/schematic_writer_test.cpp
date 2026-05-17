@@ -186,6 +186,49 @@ TEST_CASE("Schematic writer emits professional primitives and sheet metadata") {
     CHECK(output["symbol_fields"][0]["value"] == "10k");
 }
 
+TEST_CASE("Schematic writer emits drawing page metadata and named regions") {
+    volt::Circuit circuit;
+
+    auto schematic = volt::Schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{
+        "Main",
+        volt::SheetMetadata{
+            "STM32 USB Buck Board",
+            volt::SheetSize{297.0, 210.0},
+            std::vector{volt::TitleBlockField{"Number", "1/1"},
+                        volt::TitleBlockField{"Revision", "2.0"}},
+            volt::SheetOrientation::Landscape,
+            volt::SheetFrame{true, volt::SheetMargins{12.0, 10.0, 12.0, 10.0}},
+            volt::SheetCoordinateZones{10U, 6U},
+            volt::SheetGrid{2.5, true},
+        },
+    });
+    [[maybe_unused]] const auto region = schematic.add_sheet_region(
+        sheet, volt::SheetRegion{
+                   "Power Circuitry",
+                   "Power Circuitry",
+                   volt::SheetRegionBounds{10.0, 12.0, 260.0, 55.0},
+                   std::vector{volt::SheetRegionStyleField{"accent", "orange"}},
+               });
+
+    const auto output = nlohmann::json::parse(volt::io::write_schematic(schematic));
+
+    const auto &metadata = output["sheets"][0]["metadata"];
+    CHECK(metadata["orientation"] == "Landscape");
+    CHECK(metadata["frame"]["visible"] == true);
+    CHECK(metadata["frame"]["margins"] ==
+          nlohmann::json({{"left", 12.0}, {"top", 10.0}, {"right", 12.0}, {"bottom", 10.0}}));
+    CHECK(metadata["coordinate_zones"] ==
+          nlohmann::json({{"columns", 10}, {"rows", 6}, {"visible", true}}));
+    CHECK(metadata["grid"] == nlohmann::json({{"spacing", 2.5}, {"visible", true}}));
+    CHECK(output["sheets"][0]["regions"] ==
+          nlohmann::json::array(
+              {{{"name", "Power Circuitry"},
+                {"title", "Power Circuitry"},
+                {"bounds", {{"x", 10.0}, {"y", 12.0}, {"width", 260.0}, {"height", 55.0}}},
+                {"style", {{"accent", "orange"}}}}}));
+}
+
 TEST_CASE("Schematic writer is deterministic") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);

@@ -394,9 +394,165 @@ selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimensi
     return value;
 }
 
+[[nodiscard]] double required_finite_number_field(const py::dict &dict, const char *field,
+                                                  const char *context) {
+    if (!dict.contains(field)) {
+        throw std::invalid_argument{std::string{context} + " must include " + field};
+    }
+    const auto value = py::cast<double>(dict[field]);
+    const auto message = std::string{context} + " numbers must be finite";
+    require_finite(value, message.c_str());
+    return value;
+}
+
+[[nodiscard]] bool optional_bool_field(const py::dict &dict, const char *field,
+                                       bool default_value) {
+    if (!dict.contains(field)) {
+        return default_value;
+    }
+    return py::cast<bool>(dict[field]);
+}
+
+[[nodiscard]] std::size_t required_size_field(const py::dict &dict, const char *field,
+                                              const char *context) {
+    if (!dict.contains(field)) {
+        throw std::invalid_argument{std::string{context} + " must include " + field};
+    }
+    const auto value = py::cast<std::size_t>(dict[field]);
+    if (value == 0U) {
+        throw std::invalid_argument{std::string{context} + " counts must be positive"};
+    }
+    return value;
+}
+
 [[nodiscard]] volt::Point point_from_dict(const py::dict &dict) {
     return volt::Point{required_number_field(dict, "x", "Symbol point"),
                        required_number_field(dict, "y", "Symbol point")};
+}
+
+[[nodiscard]] volt::SheetOrientation sheet_orientation_from_string(const std::string &value) {
+    if (value == "Portrait") {
+        return volt::SheetOrientation::Portrait;
+    }
+    if (value == "Landscape") {
+        return volt::SheetOrientation::Landscape;
+    }
+    throw std::invalid_argument{"Unknown schematic sheet orientation"};
+}
+
+[[nodiscard]] volt::SheetSize sheet_size_from_dict(const py::dict &dict) {
+    return volt::SheetSize{required_finite_number_field(dict, "width", "Sheet size"),
+                           required_finite_number_field(dict, "height", "Sheet size")};
+}
+
+[[nodiscard]] std::vector<volt::TitleBlockField> title_block_from_list(const py::list &fields) {
+    auto result = std::vector<volt::TitleBlockField>{};
+    result.reserve(static_cast<std::size_t>(py::len(fields)));
+    for (const auto item : fields) {
+        const auto field = py::cast<py::dict>(item);
+        result.emplace_back(required_string_field(field, "key", "Title block field"),
+                            required_string_field(field, "value", "Title block field"));
+    }
+    return result;
+}
+
+[[nodiscard]] volt::SheetMargins sheet_margins_from_dict(const py::dict &dict) {
+    return volt::SheetMargins{required_finite_number_field(dict, "left", "Sheet margins"),
+                              required_finite_number_field(dict, "top", "Sheet margins"),
+                              required_finite_number_field(dict, "right", "Sheet margins"),
+                              required_finite_number_field(dict, "bottom", "Sheet margins")};
+}
+
+[[nodiscard]] volt::SheetFrame sheet_frame_from_dict(const py::dict &dict) {
+    auto margins = volt::SheetMargins{};
+    if (dict.contains("margins")) {
+        margins = sheet_margins_from_dict(py::cast<py::dict>(dict["margins"]));
+    }
+    return volt::SheetFrame{optional_bool_field(dict, "visible", true), margins};
+}
+
+[[nodiscard]] std::optional<volt::SheetCoordinateZones>
+sheet_coordinate_zones_from_object(const py::object &object) {
+    if (object.is_none()) {
+        return std::nullopt;
+    }
+    const auto dict = py::cast<py::dict>(object);
+    return volt::SheetCoordinateZones{required_size_field(dict, "columns", "Coordinate zones"),
+                                      required_size_field(dict, "rows", "Coordinate zones"),
+                                      optional_bool_field(dict, "visible", true)};
+}
+
+[[nodiscard]] std::optional<volt::SheetGrid> sheet_grid_from_object(const py::object &object) {
+    if (object.is_none()) {
+        return std::nullopt;
+    }
+    const auto dict = py::cast<py::dict>(object);
+    return volt::SheetGrid{required_finite_number_field(dict, "spacing", "Sheet grid"),
+                           optional_bool_field(dict, "visible", true)};
+}
+
+[[nodiscard]] volt::SheetMetadata sheet_metadata_from_dict(const py::dict &dict,
+                                                           const std::string &fallback_title) {
+    if (py::len(dict) == 0) {
+        return volt::SheetMetadata{fallback_title};
+    }
+
+    auto size = volt::SheetSize{};
+    if (dict.contains("size")) {
+        size = sheet_size_from_dict(py::cast<py::dict>(dict["size"]));
+    }
+    auto title_block = std::vector<volt::TitleBlockField>{};
+    if (dict.contains("title_block")) {
+        title_block = title_block_from_list(py::cast<py::list>(dict["title_block"]));
+    }
+    auto frame = volt::SheetFrame{};
+    if (dict.contains("frame")) {
+        frame = sheet_frame_from_dict(py::cast<py::dict>(dict["frame"]));
+    }
+    auto coordinate_zones = std::optional<volt::SheetCoordinateZones>{};
+    if (dict.contains("coordinate_zones")) {
+        coordinate_zones = sheet_coordinate_zones_from_object(
+            py::reinterpret_borrow<py::object>(dict["coordinate_zones"]));
+    }
+    auto grid = std::optional<volt::SheetGrid>{};
+    if (dict.contains("grid")) {
+        grid = sheet_grid_from_object(py::reinterpret_borrow<py::object>(dict["grid"]));
+    }
+    return volt::SheetMetadata{
+        optional_string_field(dict, "title", fallback_title),
+        size,
+        std::move(title_block),
+        sheet_orientation_from_string(optional_string_field(dict, "orientation", "Landscape")),
+        frame,
+        coordinate_zones,
+        grid};
+}
+
+[[nodiscard]] std::vector<volt::SheetRegionStyleField>
+region_style_from_dict(const py::dict &dict) {
+    auto result = std::vector<volt::SheetRegionStyleField>{};
+    result.reserve(static_cast<std::size_t>(py::len(dict)));
+    for (const auto item : dict) {
+        result.emplace_back(py::cast<std::string>(item.first), py::cast<std::string>(item.second));
+    }
+    return result;
+}
+
+[[nodiscard]] volt::SheetRegion sheet_region_from_dict(const py::dict &dict) {
+    const auto bounds = required_dict_field(dict, "bounds", "Sheet region");
+    auto style = std::vector<volt::SheetRegionStyleField>{};
+    if (dict.contains("style")) {
+        style = region_style_from_dict(py::cast<py::dict>(dict["style"]));
+    }
+    return volt::SheetRegion{
+        required_string_field(dict, "name", "Sheet region"),
+        required_string_field(dict, "title", "Sheet region"),
+        volt::SheetRegionBounds{
+            required_finite_number_field(bounds, "x", "Sheet region bounds"),
+            required_finite_number_field(bounds, "y", "Sheet region bounds"),
+            required_finite_number_field(bounds, "width", "Sheet region bounds"),
+            required_finite_number_field(bounds, "height", "Sheet region bounds")},
+        std::move(style)};
 }
 
 [[nodiscard]] volt::SchematicOrientation
@@ -1268,12 +1424,35 @@ class PyCircuit {
         return result;
     }
 
-    [[nodiscard]] std::size_t schematic_sheet(const std::string &name) {
+    [[nodiscard]] std::size_t schematic_sheet(const std::string &name, const py::dict &metadata) {
         auto &projection = schematic_projection();
         if (const auto existing = projection.sheet_by_name(name); existing.has_value()) {
+            if (py::len(metadata) != 0) {
+                const auto requested = sheet_metadata_from_dict(metadata, name);
+                if (!(projection.sheet(existing.value()).metadata() == requested)) {
+                    throw std::invalid_argument{
+                        "Schematic sheet already exists with different metadata"};
+                }
+            }
             return existing.value().index();
         }
-        return projection.add_sheet(volt::Sheet{name}).index();
+        return projection.add_sheet(volt::Sheet{name, sheet_metadata_from_dict(metadata, name)})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t schematic_region(std::size_t sheet, const py::dict &region_data) {
+        auto &projection = schematic_projection();
+        const auto sheet_handle = sheet_id(sheet);
+        const auto requested = sheet_region_from_dict(region_data);
+        if (const auto existing = projection.sheet_region_by_name(sheet_handle, requested.name());
+            existing.has_value()) {
+            if (!(projection.sheet_region(sheet_handle, existing.value()) == requested)) {
+                throw std::invalid_argument{
+                    "Schematic region already exists with different metadata"};
+            }
+            return existing.value();
+        }
+        return projection.add_sheet_region(sheet_handle, std::move(requested));
     }
 
     [[nodiscard]] std::size_t register_schematic_symbol(const py::dict &symbol_data) {
@@ -1640,7 +1819,9 @@ PYBIND11_MODULE(_volt, module) {
         .def("module_net_origins", &PyCircuit::module_net_origins, py::arg("instance"))
         .def("module_component_origins", &PyCircuit::module_component_origins, py::arg("instance"))
         .def("port_bindings", &PyCircuit::port_bindings, py::arg("instance"))
-        .def("schematic_sheet", &PyCircuit::schematic_sheet, py::arg("name"))
+        .def("schematic_sheet", &PyCircuit::schematic_sheet, py::arg("name"),
+             py::arg("metadata") = py::dict{})
+        .def("schematic_region", &PyCircuit::schematic_region, py::arg("sheet"), py::arg("region"))
         .def("register_schematic_symbol", &PyCircuit::register_schematic_symbol, py::arg("symbol"))
         .def("place_schematic_symbol", &PyCircuit::place_schematic_symbol, py::arg("sheet"),
              py::arg("component"), py::arg("symbol"), py::arg("x"), py::arg("y"),

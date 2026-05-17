@@ -28,9 +28,20 @@ def test_python_schematic_placement_serializes_kernel_projection():
             "name": "Main",
             "metadata": {
                 "title": "Main",
+                "orientation": "Landscape",
                 "size": {"width": 297.0, "height": 210.0},
                 "title_block": [],
+                "frame": {
+                    "visible": True,
+                    "margins": {
+                        "left": 10.0,
+                        "top": 10.0,
+                        "right": 10.0,
+                        "bottom": 10.0,
+                    },
+                },
             },
+            "regions": [],
             "symbol_instances": ["symbol_instance:0", "symbol_instance:1"],
             "wire_runs": ["wire_run:0"],
             "net_labels": ["net_label:0"],
