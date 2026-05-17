@@ -875,6 +875,34 @@ def test_python_schematic_drawing_cursor_defaults_and_moves():
     assert configured.direction == "Left"
     assert configured.unit == 25.0
 
+def test_python_schematic_drawing_junction_delegates_to_sheet():
+    design = volt.Design("schematic-drawing-junction")
+    net = design.net("TRACE")
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(at=(12, 34)) as drawing:
+        explicit = drawing.junction(net, at=(10, 20))
+        implicit = drawing.junction(net)
+
+    projection = json.loads(schematic.to_json())
+
+    assert explicit.index == 0
+    assert implicit.index == 1
+    assert projection["junctions"] == [
+        {
+            "id": "junction:0",
+            "sheet": "sheet:0",
+            "net": f"net:{net.index}",
+            "position": {"x": 10.0, "y": 20.0},
+        },
+        {
+            "id": "junction:1",
+            "sheet": "sheet:0",
+            "net": f"net:{net.index}",
+            "position": {"x": 12.0, "y": 34.0},
+        },
+    ]
+
 def test_python_schematic_drawing_move_from_accepts_sheet_points_and_anchors():
     design = volt.Design("schematic-drawing-move-from")
     vcc = design.net("VCC", kind="power")
