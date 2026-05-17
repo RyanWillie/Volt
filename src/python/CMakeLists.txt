@@ -82,6 +82,9 @@ if(VOLT_BUILD_TESTS)
         if(test_relative MATCHES "^examples/")
             list(APPEND test_labels example integration)
         endif()
+        # ENVIRONMENT_MODIFICATION applies path_list_prepend in reverse order.
+        # Effective PYTHONPATH: build tree, source root, test helpers.
+        # This ensures the built _volt extension is imported before source files.
         set(
             test_environment
             "PYTHONPATH=path_list_prepend:${PROJECT_SOURCE_DIR}/python/tests"
