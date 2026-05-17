@@ -37,6 +37,13 @@ instead of running an arbitrary shell `pytest`:
 python scripts/install-python-dev-deps.py
 ```
 
+Pytest is used for assertion diagnostics and a standard path to fixtures and
+parameterized cases as the Python suite grows. CTest still owns the cross-language
+workflow; it registers one Python entry per file because collecting individual pytest
+node IDs during CMake configure would import test modules before the `_volt` extension
+has been built. For a single Python test function, run the same interpreter directly
+with a pytest node ID after the dev build exists.
+
 Run common test slices with:
 
 ```sh

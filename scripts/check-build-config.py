@@ -115,10 +115,16 @@ def check_ci_tooling() -> None:
 def check_python_pytest_harness() -> None:
     python_cmake = read("src/python/CMakeLists.txt")
     ci_workflow = read(".github/workflows/ci.yml")
+    gitignore = read(".gitignore")
+    pytest_config = read("pytest.ini")
     requirements = read("requirements-dev.txt")
     install_script = read("scripts/install-python-dev-deps.py")
 
     require("pytest" in requirements, "pytest must be an explicit dev/test dependency")
+    require("testpaths = python/tests" in pytest_config, "pytest discovery must be scoped to Python tests")
+    require("python_files = test_*.py" in pytest_config, "pytest file discovery must stay explicit")
+    require("--tb=short" in pytest_config, "pytest failures must keep useful tracebacks in CTest output")
+    require(".pytest_cache/" in gitignore, "pytest cache output must be ignored")
     require(
         "python scripts/install-python-dev-deps.py" in ci_workflow,
         "CI must install Python dev/test dependencies through the CMake-selected interpreter",
@@ -138,6 +144,14 @@ def check_python_pytest_harness() -> None:
     require(
         "PYTHONPATH=path_list_prepend:${PROJECT_BINARY_DIR}/python" in python_cmake,
         "Python pytest entries must import the built Python package from the build tree",
+    )
+    require(
+        "Effective PYTHONPATH: build tree, source root, test helpers." in python_cmake,
+        "Python pytest entries must document the path precedence that imports the built extension",
+    )
+    require(
+        'string(REPLACE "\\\\" "." test_name ${test_name})' in python_cmake,
+        "Python pytest CTest names must handle native Windows separators",
     )
     require(
         "test_runner.py" not in python_cmake,
