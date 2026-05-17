@@ -25,8 +25,11 @@ struct SchematicSvgOptions {
 
 /** One production-oriented SVG page exported from a schematic sheet. */
 struct SchematicSvgPage {
+    /** Source schematic sheet ID. */
     SheetId sheet;
+    /** Human-readable sheet name used for filenames and labels. */
     std::string name;
+    /** Complete SVG document for the sheet. */
     std::string svg;
 };
 
@@ -40,10 +43,15 @@ inline constexpr double title_block_width = 82.0;
 inline constexpr double title_block_label_width = 22.0;
 inline constexpr double title_block_row_height = 6.0;
 
+/** Sheet-local rectangle used by SVG layout helpers. */
 struct SvgRect {
+    /** Rectangle x origin. */
     double x;
+    /** Rectangle y origin. */
     double y;
+    /** Rectangle width. */
     double width;
+    /** Rectangle height. */
     double height;
 };
 
