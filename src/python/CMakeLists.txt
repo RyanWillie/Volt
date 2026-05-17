@@ -75,6 +75,7 @@ if(VOLT_BUILD_TESTS)
     foreach(test_file IN LISTS VOLT_PYTHON_TEST_FILES)
         file(RELATIVE_PATH test_relative ${PROJECT_SOURCE_DIR}/python/tests ${test_file})
         string(REPLACE "/" "." test_name ${test_relative})
+        string(REPLACE "\\" "." test_name ${test_name})
         string(REGEX REPLACE "\\.py$" "" test_name ${test_name})
 
         set(test_labels python)
