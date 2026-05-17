@@ -288,9 +288,10 @@
     <div class="stack">
       <div class="callout">
         <strong>VOL-112 applied the first slice:</strong> the LED MVP file was removed,
-        Python behavior was split into focused CTest-visible files, and a stdlib runner now
-        uses the same interpreter that CMake used to build the Python extension. The rest
-        of this document remains as the baseline review and trust model behind the work.
+        Python behavior was split into focused CTest-visible files, and the Python test
+        entrypoint now uses the same interpreter that CMake used to build the Python
+        extension. The rest of this document remains as the baseline review and trust model
+        behind the work.
       </div>
     </div>
   </section>
@@ -399,7 +400,7 @@
     <aside>Recommended structure</aside>
     <div class="stack">
       <pre><code>python/tests/
-  conftest.py                         # shared factories and JSON helpers, if pytest is adopted
+  conftest.py                         # shared factories and JSON helpers, when needed
   test_design_authoring.py             # Design, nets, components, custom definitions
   test_component_library.py            # LibraryComponent, selected parts, pin mapping, STM32 catalog
   test_design_intent.py                # stub nets, no-connect intent, diagnostic suppression
@@ -415,15 +416,15 @@
           <h3>Keep CTest as the top-level contract</h3>
           <p>
             CMake already chooses the interpreter that built <code>_volt</code>. Every local and CI command
-            should go through that same interpreter, whether Python tests stay as scripts or move to pytest.
+            should go through that same interpreter.
           </p>
         </div>
         <div class="card">
-          <h3>Use pytest only if it is explicit</h3>
+          <h3>Keep pytest explicit</h3>
           <p>
-            If pytest is adopted, add a dependency path for the CMake-selected interpreter and run
-            <code>${Python3_EXECUTABLE} -m pytest</code> from CTest. Otherwise use a tiny stdlib runner that
-            discovers <code>test_*</code> functions so the manual <code>if __name__ == "__main__"</code> lists disappear.
+            Pytest is now an explicit dev dependency. CTest runs
+            <code>${Python3_EXECUTABLE} -m pytest</code> so the Python facade is tested by the interpreter
+            that built the extension.
           </p>
         </div>
       </div>

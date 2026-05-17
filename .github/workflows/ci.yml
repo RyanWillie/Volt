@@ -34,6 +34,9 @@ jobs:
           ninja --version
           clang-format --version
 
+      - name: Install Python dev dependencies
+        run: python scripts/install-python-dev-deps.py
+
       - name: Check formatting
         run: python scripts/check-format.py
 
@@ -65,6 +68,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build lcov
+
+      - name: Install Python dev dependencies
+        run: python -m pip install -r requirements-dev.txt
 
       - name: Generate coverage report
         run: cmake --workflow --preset coverage
