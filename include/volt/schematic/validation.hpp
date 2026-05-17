@@ -926,7 +926,8 @@ inline void validate_duplicate_junctions(const Schematic &schematic, SheetId she
                                                           SymbolInstanceId instance) {
     for (const auto field_id : sheet.symbol_fields()) {
         const auto &field = schematic.symbol_field(field_id);
-        if (field.symbol_instance() == instance && field.name() == "value") {
+        if (field.symbol_instance() == instance &&
+            (field.name() == "value" || field.name() == "Value")) {
             return true;
         }
     }

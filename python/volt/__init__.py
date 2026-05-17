@@ -3016,6 +3016,20 @@ class SchematicRegion:
             _authored_region=self._index,
         )
 
+    def no_connect(
+        self,
+        anchor: SchematicPinAnchor,
+        *,
+        orient: str = "Right",
+        reason: str | None = None,
+    ) -> SchematicNoConnect:
+        return self._sheet.no_connect(
+            anchor,
+            orient=orient,
+            reason=reason,
+            _authored_region=self._index,
+        )
+
     def _local_point(
         self, value: tuple[float, float] | SchematicAnchor | SchematicPort
     ) -> tuple[float, float] | SchematicAnchor | SchematicPort:

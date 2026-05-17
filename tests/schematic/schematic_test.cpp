@@ -855,6 +855,28 @@ TEST_CASE("Schematic readability reports missing passive values and dense no-con
     }
 }
 
+TEST_CASE("Schematic readability reports overlapping text bounds") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "VCC");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto first = schematic.add_net_label(
+        sheet, volt::NetLabel{net, volt::Point{40.0, 20.0}});
+    const auto second = schematic.add_net_label(
+        sheet, volt::NetLabel{net, volt::Point{42.0, 20.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &collision = require_diagnostic(report, "SCHEMATIC_TEXT_COLLISION");
+    CHECK(collision.severity() == volt::Severity::Warning);
+    const auto &entities = collision.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(first)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(second)) !=
+          entities.end());
+}
+
 TEST_CASE("Schematic validation accepts no-connect markers on no-connect pin definitions") {
     volt::Circuit circuit;
     const auto pin_definition = circuit.add_pin_definition(volt::PinDefinition{
