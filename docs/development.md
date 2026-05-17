@@ -28,10 +28,17 @@ authoring surface is exercised with the normal local test run. The binding targe
 `pybind11` through CMake `FetchContent` and writes the importable package into
 `build/dev/python`.
 
-Run only the Python authoring MVP test with:
+Python tests are registered in CTest as individual `test_*` functions through the
+stdlib runner in `python/tests/test_runner.py`. CTest invokes that runner with the same
+`Python3_EXECUTABLE` that CMake used to build `_volt`; do not run an arbitrary shell
+`pytest` unless you have deliberately installed it for that exact interpreter.
+
+Run common test slices with:
 
 ```sh
-ctest --preset dev -R volt_python_led_mvp --output-on-failure
+ctest --preset dev -L python --output-on-failure
+ctest --preset dev -L cpp --output-on-failure
+ctest --preset dev -L example --output-on-failure
 ```
 
 Generate API documentation with:

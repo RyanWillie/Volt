@@ -60,9 +60,10 @@ volt_apply_sanitizers(volt_core_tests)
 volt_apply_coverage(volt_core_tests)
 
 include(Catch)
-catch_discover_tests(volt_core_tests)
+catch_discover_tests(volt_core_tests PROPERTIES LABELS cpp)
 
 add_test(
     NAME kicad_adapter_boundary
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-kicad-boundary.py
 )
+set_tests_properties(kicad_adapter_boundary PROPERTIES LABELS cpp)

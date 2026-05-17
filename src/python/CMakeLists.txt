@@ -53,32 +53,44 @@ if(WIN32)
 endif()
 
 if(VOLT_BUILD_TESTS)
-    add_test(
-        NAME volt_python_led_mvp
-        COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/python/tests/test_led_mvp.py
+    file(
+        GLOB_RECURSE VOLT_PYTHON_TEST_FILES CONFIGURE_DEPENDS
+        ${PROJECT_SOURCE_DIR}/python/tests/test_*.py
     )
-    set_tests_properties(
-        volt_python_led_mvp
-        PROPERTIES ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
-    )
-    add_test(
-        NAME volt_python_stm32_usb_buck_example
+    list(REMOVE_ITEM VOLT_PYTHON_TEST_FILES ${PROJECT_SOURCE_DIR}/python/tests/test_runner.py)
+
+    execute_process(
         COMMAND
-            ${Python3_EXECUTABLE}
-            ${PROJECT_SOURCE_DIR}/python/tests/test_stm32_usb_buck_example.py
+            ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/python/tests/test_runner.py
+            discover-cmake ${VOLT_PYTHON_TEST_FILES}
+        OUTPUT_VARIABLE VOLT_PYTHON_TEST_ENTRIES
+        COMMAND_ERROR_IS_FATAL ANY
     )
-    set_tests_properties(
-        volt_python_stm32_usb_buck_example
-        PROPERTIES ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
-    )
-    add_test(
-        NAME volt_python_schematic_sugar_examples
-        COMMAND
-            ${Python3_EXECUTABLE}
-            ${PROJECT_SOURCE_DIR}/python/tests/test_schematic_sugar_examples.py
-    )
-    set_tests_properties(
-        volt_python_schematic_sugar_examples
-        PROPERTIES ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
-    )
+    string(REPLACE "\n" ";" VOLT_PYTHON_TEST_ENTRIES "${VOLT_PYTHON_TEST_ENTRIES}")
+
+    foreach(entry IN LISTS VOLT_PYTHON_TEST_ENTRIES)
+        if(entry STREQUAL "")
+            continue()
+        endif()
+
+        string(REPLACE "|" ";" fields "${entry}")
+        list(GET fields 0 test_name)
+        list(GET fields 1 test_path)
+        list(GET fields 2 test_function)
+        list(GET fields 3 test_labels)
+        string(REPLACE "," ";" test_labels "${test_labels}")
+
+        add_test(
+            NAME ${test_name}
+            COMMAND
+                ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/python/tests/test_runner.py
+                run ${test_path} ${test_function}
+        )
+        set_tests_properties(
+            ${test_name}
+            PROPERTIES
+                ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
+                LABELS "${test_labels}"
+        )
+    endforeach()
 endif()

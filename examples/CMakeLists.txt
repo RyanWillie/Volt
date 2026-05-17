@@ -8,4 +8,5 @@ volt_apply_coverage(volt_led_circuit_example)
 
 if(VOLT_BUILD_TESTS)
     add_test(NAME volt_led_circuit_example COMMAND volt_led_circuit_example)
+    set_tests_properties(volt_led_circuit_example PROPERTIES LABELS "cpp;example;coverage")
 endif()

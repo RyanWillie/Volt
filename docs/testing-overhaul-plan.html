@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt testing overhaul baseline review</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f5ef;
+      --ink: #17201c;
+      --muted: #5f6965;
+      --line: #d8d1c4;
+      --panel: #fffdf8;
+      --green: #23684f;
+      --blue: #2e5f88;
+      --amber: #9a681f;
+      --red: #953b35;
+      --code: #eee7d9;
+      --soft-green: #e7f0e9;
+      --soft-blue: #e6eef5;
+      --soft-amber: #f3e6cc;
+      --soft-red: #f1dedc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1160px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 42px 0 72px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.7fr);
+      gap: 36px;
+      align-items: end;
+      padding-bottom: 32px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 760px;
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(40px, 7vw, 78px);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(27px, 3vw, 38px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 18px;
+      line-height: 1.22;
+    }
+
+    a { color: var(--blue); }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 13px;
+      border-top: 2px solid var(--green);
+      padding-top: 10px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dek {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    section {
+      display: grid;
+      grid-template-columns: 245px minmax(0, 1fr);
+      gap: 40px;
+      padding: 36px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    aside {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stack { display: grid; gap: 18px; }
+
+    .callout {
+      border-left: 6px solid var(--green);
+      background: var(--soft-green);
+      padding: 17px 19px;
+      color: #173629;
+    }
+
+    .warning {
+      border-left-color: var(--amber);
+      background: var(--soft-amber);
+      color: #3f3018;
+    }
+
+    .danger {
+      border-left-color: var(--red);
+      background: var(--soft-red);
+      color: #3c2220;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      min-height: 150px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 17px;
+    }
+
+    .card h3 { margin-bottom: 8px; }
+    .card p, li, td { color: var(--muted); }
+
+    .metric {
+      display: grid;
+      gap: 4px;
+    }
+
+    .metric strong {
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: 34px;
+      line-height: 1;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .decision {
+      display: grid;
+      grid-template-columns: 116px minmax(0, 1fr);
+      gap: 18px;
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .badge {
+      display: inline-block;
+      width: max-content;
+      padding: 5px 8px;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .core { background: var(--green); }
+    .later { background: var(--blue); }
+    .risk { background: var(--amber); }
+    .no { background: var(--red); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .flow div {
+      min-height: 122px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 14px;
+    }
+
+    .flow strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--blue);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    ul, ol {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    li + li { margin-top: 7px; }
+
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 16px;
+      border-left: 4px solid var(--blue);
+      background: var(--code);
+      color: #202721;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .small { color: var(--muted); font-size: 13px; }
+
+    @media (max-width: 880px) {
+      header, section, .grid, .two, .flow {
+        grid-template-columns: 1fr;
+      }
+
+      main { width: min(100% - 24px, 720px); }
+      section { gap: 18px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <span class="eyebrow">Baseline testing review · 2026-05-16</span>
+      <h1>Volt needed a test suite, not a giant LED story.</h1>
+    </div>
+    <p class="dek">
+      This review captured the pre-overhaul baseline that motivated VOL-112. The C++
+      tests were fast and well aligned with the kernel. The Python surface had useful
+      coverage, but it was concentrated in one giant file that acted as example,
+      regression pack, fixture library, and API contract all at once.
+    </p>
+  </header>
+
+  <section>
+    <aside>Implementation note</aside>
+    <div class="stack">
+      <div class="callout">
+        <strong>VOL-112 applied the first slice:</strong> the LED MVP file was removed,
+        Python behavior was split into focused CTest-visible files, and a stdlib runner now
+        uses the same interpreter that CMake used to build the Python extension. The rest
+        of this document remains as the baseline review and trust model behind the work.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>Verified baseline</aside>
+    <div class="stack">
+      <div class="grid">
+        <div class="card metric">
+          <strong>243</strong>
+          <span>CTest cases after rebuilding <code>dev</code>; all pass.</span>
+        </div>
+        <div class="card metric">
+          <strong>81</strong>
+          <span>Python tests inside <code>python/tests/test_led_mvp.py</code>.</span>
+        </div>
+        <div class="card metric">
+          <strong>90.7%</strong>
+          <span>C++ filtered line coverage from <code>cmake --workflow --preset coverage</code>.</span>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>The important positive:</strong> the suite is quick. A rebuilt
+        <code>ctest --preset dev</code> run completed in under a second locally, and the CI matrix already
+        runs Linux, macOS, Windows, formatting, build config, tests, docs, and Linux coverage.
+      </div>
+      <div class="warning">
+        <strong>The important warning:</strong> before rebuilding, CTest failed because the build tree
+        was stale. Direct <code>pytest</code> also failed because the shell had Python 3.13 while CMake built
+        the extension for Python 3.14, and that 3.14 interpreter does not have <code>pytest</code> installed.
+        Testing needs one blessed Python entrypoint.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>Baseline shape</aside>
+    <div class="stack">
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>What exists</th>
+            <th>Read</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>C++ kernel and projections</td>
+            <td>31 focused <code>*_test.cpp</code> files, one <code>volt_core_tests</code> binary, 239 Catch2 cases discovered into CTest.</td>
+            <td>Mostly healthy. It maps well to architecture layers and the kernel principle.</td>
+          </tr>
+          <tr>
+            <td>Python facade</td>
+            <td>2 files: <code>test_led_mvp.py</code> with 81 tests and <code>test_stm32_usb_buck_example.py</code> with 3 tests.</td>
+            <td>Too much behavior is hidden in one file; failures are harder to localize than they should be.</td>
+          </tr>
+          <tr>
+            <td>Examples</td>
+            <td>C++ LED example is a CTest executable. Python STM32 USB buck example is an acceptance-style script.</td>
+            <td>Good ingredients, but LED should become a small readable smoke example, not the regression archive.</td>
+          </tr>
+          <tr>
+            <td>Coverage</td>
+            <td>Coverage preset disables Python bindings and reports C++ headers/sources only; threshold is 80% in CI.</td>
+            <td>Useful signal, not sufficient trust. It misses Python facade behavior and binding glue.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <aside>Trust model</aside>
+    <div class="stack">
+      <div class="flow">
+        <div>
+          <strong>Kernel invariants</strong>
+          Reject impossible structure at mutation and load boundaries: missing IDs, dangling refs, duplicate pin-net membership.
+        </div>
+        <div>
+          <strong>Diagnostics</strong>
+          Report bad design intent without mutating structure: unconnected pins, single-pin nets, electrical role conflicts.
+        </div>
+        <div>
+          <strong>Serialization</strong>
+          Guarantee deterministic write, parse, write cycles across logical circuit and schematic documents.
+        </div>
+        <div>
+          <strong>Python API</strong>
+          Prove the facade is ergonomic but still kernel-owned: no Python-only EDA meaning, no hidden logical mutation by schematics.
+        </div>
+        <div>
+          <strong>Examples</strong>
+          Keep examples as readable acceptance tests that show real usage and catch integration breaks.
+        </div>
+      </div>
+      <p>
+        This mirrors Volt's architecture: C++ owns EDA meaning, Python authors through it, schematic and future PCB layers project
+        or implement existing logical state.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <aside>Recommended structure</aside>
+    <div class="stack">
+      <pre><code>python/tests/
+  conftest.py                         # shared factories and JSON helpers, if pytest is adopted
+  test_design_authoring.py             # Design, nets, components, custom definitions
+  test_component_library.py            # LibraryComponent, selected parts, pin mapping, STM32 catalog
+  test_design_intent.py                # stub nets, no-connect intent, diagnostic suppression
+  test_schematic_projection.py         # place/wire/label/power/no-connect projection JSON
+  test_schematic_drawing.py            # cursor, two-terminal grammar, anchors, route shortcuts
+  test_schematic_io.py                 # schematic JSON load/write/SVG smoke
+  test_python_diagnostics.py           # DiagnosticReport and EntityRef inspectability
+  examples/
+    test_led_example.py                # clean LED example as documentation-quality smoke test
+    test_stm32_usb_buck_example.py     # larger acceptance test, still kept separate</code></pre>
+      <div class="two">
+        <div class="card">
+          <h3>Keep CTest as the top-level contract</h3>
+          <p>
+            CMake already chooses the interpreter that built <code>_volt</code>. Every local and CI command
+            should go through that same interpreter, whether Python tests stay as scripts or move to pytest.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Use pytest only if it is explicit</h3>
+          <p>
+            If pytest is adopted, add a dependency path for the CMake-selected interpreter and run
+            <code>${Python3_EXECUTABLE} -m pytest</code> from CTest. Otherwise use a tiny stdlib runner that
+            discovers <code>test_*</code> functions so the manual <code>if __name__ == "__main__"</code> lists disappear.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>Recommended work</aside>
+    <div class="stack">
+      <div class="decision">
+        <span class="badge core">Phase 1</span>
+        <div>
+          <h3>Make the Python harness boring</h3>
+          <p>
+            Add one blessed Python test entrypoint in CMake. It must use the exact <code>Python3_EXECUTABLE</code>
+            that built the extension, set <code>PYTHONPATH</code> to <code>build/dev/python</code>, and expose useful
+            per-test failure names. Add CTest labels such as <code>python</code>, <code>cpp</code>, <code>example</code>,
+            <code>coverage</code>, and <code>integration</code>.
+          </p>
+        </div>
+      </div>
+      <div class="decision">
+        <span class="badge core">Phase 2</span>
+        <div>
+          <h3>Split <code>test_led_mvp.py</code> by behavior</h3>
+          <p>
+            Move tests without changing semantics. Create shared factories only after the first two splits reveal repeated
+            setup. The LED example should shrink to one happy-path logical circuit test and one optional rendered schematic
+            smoke test.
+          </p>
+        </div>
+      </div>
+      <div class="decision">
+        <span class="badge core">Phase 3</span>
+        <div>
+          <h3>Add invariant and metamorphic checks</h3>
+          <p>
+            Add generated or table-driven cases for connect/disconnect idempotence, one-net-per-pin enforcement,
+            schematic presentation operations preserving logical JSON, and logical/schematic read-write determinism.
+            Keep random tests seeded and small enough for normal CTest.
+          </p>
+        </div>
+      </div>
+      <div class="decision">
+        <span class="badge later">Phase 4</span>
+        <div>
+          <h3>Raise trust gates after the split</h3>
+          <p>
+            Ratchet C++ coverage by module instead of only the global 80% line gate, add Python facade coverage if pytest
+            and coverage.py are accepted dependencies, and keep sanitizer runs on the C++ path. Do not chase 100%; chase
+            missing behavior at ownership boundaries.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>Specific gaps</aside>
+    <div class="stack">
+      <div class="grid">
+        <div class="card">
+          <h3>Python failure isolation</h3>
+          <p>
+            CTest sees the giant LED file as one test. A regression in one Python behavior can hide the health of the
+            rest of the facade.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Interpreter drift</h3>
+          <p>
+            The repo currently makes it easy to run Python tests with a different interpreter than the extension was built
+            for. That is a sharp edge for contributors and agents.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Python coverage blind spot</h3>
+          <p>
+            The coverage preset disables Python, so <code>python/volt/__init__.py</code> and the binding experience are
+            trusted only through pass/fail tests.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Fixture granularity</h3>
+          <p>
+            There are good C++ golden fixtures, but Python does many direct JSON shape assertions inline. Shared assertion
+            helpers would make intent easier to read.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Example responsibility</h3>
+          <p>
+            LED should teach the API. STM32 can remain an acceptance test. Neither should be the only home for core Python
+            behavior regressions.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Validation boundary proof</h3>
+          <p>
+            The suite should repeatedly prove the project rule: structural impossibility is rejected at mutation/load time,
+            while design intent issues are diagnostics.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>Definition of done</aside>
+    <div class="stack">
+      <ol>
+        <li><code>cmake --workflow --preset dev</code> passes from a clean build tree.</li>
+        <li><code>ctest --preset dev -L python</code> can run just Python tests with individual failure names.</li>
+        <li><code>ctest --preset dev -L example</code> runs the readable LED smoke test and the STM32 acceptance test.</li>
+        <li><code>cmake --workflow --preset coverage</code> still passes and reports no unexplained drop from the current 90.7% filtered C++ line coverage.</li>
+        <li>The old <code>test_led_mvp.py</code> is gone or reduced to a compatibility shim with no unique assertions.</li>
+        <li>The testing docs explain the interpreter rule so nobody reaches for the wrong <code>pytest</code> binary again.</li>
+      </ol>
+      <div class="danger">
+        <strong>Do not start by rewriting the Python API or the examples.</strong> This is a test-structure task first.
+        Move assertions intact, preserve current behavior, then add missing trust checks in the new homes.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>References</aside>
+    <div class="stack small">
+      <p>
+        External guidance checked against primary docs:
+        <a href="https://docs.pytest.org/en/stable/explanation/goodpractices.html">pytest good integration practices</a>,
+        <a href="https://docs.pytest.org/en/stable/explanation/pythonpath.html">pytest import modes</a>,
+        <a href="https://catch2-temp.readthedocs.io/en/latest/cmake-integration.html">Catch2 CMake integration</a>,
+        <a href="https://cmake.org/cmake/help/latest/manual/ctest.1.html">CTest labels and execution</a>, and
+        <a href="https://pybind11.readthedocs.io/en/stable/cmake/index.html">pybind11 CMake helpers</a>.
+      </p>
+    </div>
+  </section>
+</main>
+</body>
+</html>

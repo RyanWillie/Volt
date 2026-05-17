@@ -1,16 +1,12 @@
 import importlib
 import inspect
 import json
-import sys
 from collections import Counter
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import volt
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
@@ -123,10 +119,11 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     }
     supply_net = next(net for net in logical["nets"] if net["name"] == "+3V3")
     supply_pin_refs = set(supply_net["pins"])
+    pins_by_id = {pin["id"]: pin for pin in logical["pins"]}
     connected_stm32_vdd_pin_ids = {
-        logical["pins"][int(pin_ref.removeprefix("pin:"))]["definition"]
+        pins_by_id[pin_ref]["definition"]
         for pin_ref in supply_pin_refs
-        if logical["pins"][int(pin_ref.removeprefix("pin:"))]["component"] == stm32["id"]
+        if pins_by_id[pin_ref]["component"] == stm32["id"]
     }
     assert connected_stm32_vdd_pin_ids & stm32_vdd_pin_ids == stm32_vdd_pin_ids
 
@@ -229,9 +226,3 @@ def test_stm32_usb_buck_schematic_author_fails_on_fallback_connected_pin_coverag
         assert "+12V" in str(error)
     else:
         raise AssertionError("connected pins must not be silently covered by fallback")
-
-
-if __name__ == "__main__":
-    test_stm32_usb_buck_example_writes_stable_logical_artifacts()
-    test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage()
-    test_stm32_usb_buck_schematic_author_fails_on_fallback_connected_pin_coverage()
