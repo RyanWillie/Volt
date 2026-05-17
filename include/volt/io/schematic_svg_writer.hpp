@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 #include <volt/core/ids.hpp>
 #include <volt/schematic/schematic.hpp>
@@ -22,12 +23,29 @@ struct SchematicSvgOptions {
     bool debug_overlays = false;
 };
 
+/** One production-oriented SVG page exported from a schematic sheet. */
+struct SchematicSvgPage {
+    SheetId sheet;
+    std::string name;
+    std::string svg;
+};
+
 namespace detail {
 
 inline constexpr double svg_sheet_width = 297.0;
 inline constexpr double svg_sheet_height = 210.0;
 inline constexpr double svg_sheet_gap = 20.0;
 inline constexpr double svg_pi = 3.14159265358979323846;
+inline constexpr double title_block_width = 82.0;
+inline constexpr double title_block_label_width = 22.0;
+inline constexpr double title_block_row_height = 6.0;
+
+struct SvgRect {
+    double x;
+    double y;
+    double width;
+    double height;
+};
 
 [[nodiscard]] inline std::string svg_escape(std::string_view value) {
     auto result = std::string{};
@@ -85,6 +103,10 @@ inline void write_svg_number(std::ostream &out, double value) {
     return "sheet:" + std::to_string(id.index());
 }
 
+[[nodiscard]] inline std::string svg_sheet_token(SheetId id) {
+    return "sheet-" + std::to_string(id.index());
+}
+
 [[nodiscard]] inline std::string svg_symbol_def_id(SymbolDefId id) {
     return "symbol_def:" + std::to_string(id.index());
 }
@@ -129,6 +151,33 @@ inline void write_svg_number(std::ostream &out, double value) {
         return 270.0;
     }
     throw std::logic_error{"Unhandled schematic orientation"};
+}
+
+[[nodiscard]] inline SvgRect drawing_area(const SheetMetadata &metadata) {
+    const auto margins = metadata.frame().margins();
+    const auto width = std::max(0.0, metadata.size().width() - margins.left() - margins.right());
+    const auto height = std::max(0.0, metadata.size().height() - margins.top() - margins.bottom());
+    return SvgRect{margins.left(), margins.top(), width, height};
+}
+
+[[nodiscard]] inline SvgRect title_block_rect(const SheetMetadata &metadata) {
+    const auto area = drawing_area(metadata);
+    const auto rows = 1U + metadata.title_block().size();
+    const auto height = title_block_row_height * static_cast<double>(rows);
+    const auto width = std::min(title_block_width, area.width);
+    return SvgRect{area.x + std::max(0.0, area.width - width),
+                   area.y + std::max(0.0, area.height - height), width, height};
+}
+
+[[nodiscard]] inline std::string zone_row_label(std::size_t row) {
+    auto value = row + 1U;
+    auto label = std::string{};
+    while (value != 0U) {
+        --value;
+        label.insert(label.begin(), static_cast<char>('A' + (value % 26U)));
+        value /= 26U;
+    }
+    return label;
 }
 
 inline void write_xy_attributes(std::ostream &out, Point point, std::string_view x_name,
@@ -418,23 +467,226 @@ inline void write_symbol_field_svg(std::ostream &out, const Schematic &schematic
     out << ")\">" << svg_escape(field.value()) << "</text>\n";
 }
 
-inline void write_title_block_svg(std::ostream &out, const SheetMetadata &metadata) {
-    auto y = metadata.size().height() - 8.0;
-    for (const auto &field : metadata.title_block()) {
-        out << "    <text class=\"title-block-field\" x=\"";
-        write_svg_number(out, metadata.size().width() - 72.0);
+[[nodiscard]] inline bool region_uses_dashed_frame(const SheetRegion &region) {
+    for (const auto &field : region.style()) {
+        if (field.value() == "dashed") {
+            return true;
+        }
+    }
+    return false;
+}
+
+inline void write_sheet_defs_svg(std::ostream &out, SheetId sheet_id, const Sheet &sheet) {
+    const auto &metadata = sheet.metadata();
+    const auto area = drawing_area(metadata);
+    const auto sheet_token = svg_sheet_token(sheet_id);
+
+    out << "    <defs>\n";
+    const auto title_block = title_block_rect(metadata);
+    out << "      <clipPath id=\"title-block-clip-" << sheet_token << "\">\n";
+    out << "        <rect x=\"0\" y=\"0\" width=\"";
+    write_svg_number(out, title_block.width);
+    out << "\" height=\"";
+    write_svg_number(out, title_block.height);
+    out << "\"/>\n";
+    out << "      </clipPath>\n";
+
+    for (std::size_t index = 0; index < sheet.regions().size(); ++index) {
+        const auto bounds = sheet.region(index).bounds();
+        out << "      <clipPath id=\"region-title-clip-" << sheet_token << '-' << index << "\">\n";
+        out << "        <rect x=\"";
+        write_svg_number(out, bounds.x());
+        out << "\" y=\"";
+        write_svg_number(out, bounds.y());
+        out << "\" width=\"";
+        write_svg_number(out, bounds.width());
+        out << "\" height=\"10\"/>\n";
+        out << "      </clipPath>\n";
+    }
+
+    if (metadata.grid().has_value() && metadata.grid()->visible()) {
+        out << "      <pattern id=\"grid-" << sheet_token << "\" x=\"";
+        write_svg_number(out, area.x);
+        out << "\" y=\"";
+        write_svg_number(out, area.y);
+        out << "\" width=\"";
+        write_svg_number(out, metadata.grid()->spacing());
+        out << "\" height=\"";
+        write_svg_number(out, metadata.grid()->spacing());
+        out << "\" patternUnits=\"userSpaceOnUse\">\n";
+        out << "        <circle class=\"sheet-grid-dot\" cx=\"0\" cy=\"0\" r=\"0.25\"/>\n";
+        out << "      </pattern>\n";
+    }
+    out << "    </defs>\n";
+}
+
+inline void write_sheet_grid_svg(std::ostream &out, SheetId sheet_id,
+                                 const SheetMetadata &metadata) {
+    if (!metadata.grid().has_value() || !metadata.grid()->visible()) {
+        return;
+    }
+
+    const auto area = drawing_area(metadata);
+    out << "    <rect class=\"sheet-grid\" x=\"";
+    write_svg_number(out, area.x);
+    out << "\" y=\"";
+    write_svg_number(out, area.y);
+    out << "\" width=\"";
+    write_svg_number(out, area.width);
+    out << "\" height=\"";
+    write_svg_number(out, area.height);
+    out << "\" fill=\"url(#grid-" << svg_sheet_token(sheet_id) << ")\"/>\n";
+}
+
+inline void write_coordinate_zones_svg(std::ostream &out, const SheetMetadata &metadata) {
+    if (!metadata.coordinate_zones().has_value() || !metadata.coordinate_zones()->visible()) {
+        return;
+    }
+
+    const auto area = drawing_area(metadata);
+    if (area.width <= 0.0 || area.height <= 0.0) {
+        return;
+    }
+
+    const auto &zones = metadata.coordinate_zones().value();
+    const auto column_width = area.width / static_cast<double>(zones.columns());
+    const auto row_height = area.height / static_cast<double>(zones.rows());
+
+    out << "    <g class=\"coordinate-zones\">\n";
+    for (std::size_t column = 0; column < zones.columns(); ++column) {
+        const auto x = area.x + (column_width * (static_cast<double>(column) + 0.5));
+        out << "      <text class=\"coordinate-zone-label column\" x=\"";
+        write_svg_number(out, x);
+        out << "\" y=\"";
+        write_svg_number(out, metadata.frame().margins().top() / 2.0);
+        out << "\">" << column + 1U << "</text>\n";
+        out << "      <text class=\"coordinate-zone-label column\" x=\"";
+        write_svg_number(out, x);
+        out << "\" y=\"";
+        write_svg_number(out,
+                         metadata.size().height() - (metadata.frame().margins().bottom() / 2.0));
+        out << "\">" << column + 1U << "</text>\n";
+    }
+    for (std::size_t row = 0; row < zones.rows(); ++row) {
+        const auto y = area.y + (row_height * (static_cast<double>(row) + 0.5));
+        const auto label = zone_row_label(row);
+        out << "      <text class=\"coordinate-zone-label row\" x=\"";
+        write_svg_number(out, metadata.frame().margins().left() / 2.0);
         out << "\" y=\"";
         write_svg_number(out, y);
-        out << "\">" << svg_escape(field.key()) << ": " << svg_escape(field.value()) << "</text>\n";
-        y -= 6.0;
+        out << "\">" << label << "</text>\n";
+        out << "      <text class=\"coordinate-zone-label row\" x=\"";
+        write_svg_number(out, metadata.size().width() - (metadata.frame().margins().right() / 2.0));
+        out << "\" y=\"";
+        write_svg_number(out, y);
+        out << "\">" << label << "</text>\n";
+    }
+    out << "    </g>\n";
+}
+
+inline void write_title_block_row_svg(std::ostream &out, std::size_t row, std::string_view key,
+                                      std::string_view value) {
+    const auto text_y = (static_cast<double>(row) * title_block_row_height) + 4.2;
+    out << "      <text class=\"title-block-label\" x=\"2\" y=\"";
+    write_svg_number(out, text_y);
+    out << "\">" << svg_escape(key) << "</text>\n";
+    out << "      <text class=\"title-block-value";
+    if (row == 0U) {
+        out << " sheet-title";
+    }
+    out << "\" x=\"";
+    write_svg_number(out, title_block_label_width + 2.0);
+    out << "\" y=\"";
+    write_svg_number(out, text_y);
+    out << "\">" << svg_escape(value) << "</text>\n";
+}
+
+inline void write_title_block_svg(std::ostream &out, SheetId sheet_id,
+                                  const SheetMetadata &metadata) {
+    const auto rect = title_block_rect(metadata);
+    out << "    <g class=\"title-block\" transform=\"translate(";
+    write_svg_number(out, rect.x);
+    out << ' ';
+    write_svg_number(out, rect.y);
+    out << ")\" clip-path=\"url(#title-block-clip-" << svg_sheet_token(sheet_id) << ")\">\n";
+    out << "      <rect class=\"title-block-outline\" x=\"0\" y=\"0\" width=\"";
+    write_svg_number(out, rect.width);
+    out << "\" height=\"";
+    write_svg_number(out, rect.height);
+    out << "\"/>\n";
+    out << "      <line class=\"title-block-rule\" x1=\"";
+    write_svg_number(out, title_block_label_width);
+    out << "\" y1=\"0\" x2=\"";
+    write_svg_number(out, title_block_label_width);
+    out << "\" y2=\"";
+    write_svg_number(out, rect.height);
+    out << "\"/>\n";
+    for (std::size_t row = 1; row < 1U + metadata.title_block().size(); ++row) {
+        const auto y = title_block_row_height * static_cast<double>(row);
+        out << "      <line class=\"title-block-rule\" x1=\"0\" y1=\"";
+        write_svg_number(out, y);
+        out << "\" x2=\"";
+        write_svg_number(out, rect.width);
+        out << "\" y2=\"";
+        write_svg_number(out, y);
+        out << "\"/>\n";
+    }
+
+    write_title_block_row_svg(out, 0U, "Title", metadata.title());
+    for (std::size_t index = 0; index < metadata.title_block().size(); ++index) {
+        const auto &field = metadata.title_block()[index];
+        write_title_block_row_svg(out, index + 1U, field.key(), field.value());
+    }
+    out << "    </g>\n";
+}
+
+inline void write_regions_svg(std::ostream &out, SheetId sheet_id, const Sheet &sheet) {
+    const auto sheet_token = svg_sheet_token(sheet_id);
+    for (std::size_t index = 0; index < sheet.regions().size(); ++index) {
+        const auto &region = sheet.region(index);
+        const auto bounds = region.bounds();
+        out << "    <g class=\"sheet-region\" data-region=\"" << svg_escape(region.name())
+            << "\">\n";
+        out << "      <rect class=\"sheet-region-frame";
+        if (region_uses_dashed_frame(region)) {
+            out << " dashed";
+        }
+        out << "\" data-region=\"" << svg_escape(region.name()) << "\" x=\"";
+        write_svg_number(out, bounds.x());
+        out << "\" y=\"";
+        write_svg_number(out, bounds.y());
+        out << "\" width=\"";
+        write_svg_number(out, bounds.width());
+        out << "\" height=\"";
+        write_svg_number(out, bounds.height());
+        out << "\"/>\n";
+        out << "      <text class=\"sheet-region-title\" x=\"";
+        write_svg_number(out, bounds.x() + 3.0);
+        out << "\" y=\"";
+        write_svg_number(out, bounds.y() + 6.0);
+        out << "\" clip-path=\"url(#region-title-clip-" << sheet_token << '-' << index << ")\">"
+            << svg_escape(region.title()) << "</text>\n";
+        out << "    </g>\n";
     }
 }
 
 inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
     out << "  <style>"
-           ".sheet{fill:#fff;stroke:#111;stroke-width:0.5}"
-           ".sheet-title{font:6px sans-serif;fill:#111}"
-           ".title-block-field{font:4px sans-serif;fill:#111;text-anchor:start}"
+           ".document-background,.sheet{fill:#fff;stroke:none}"
+           ".sheet-border{fill:none;stroke:#111;stroke-width:0.6}"
+           ".drawing-frame{fill:none;stroke:#111;stroke-width:0.45}"
+           ".sheet-grid{stroke:none}"
+           ".sheet-grid-dot{fill:#d7d7d7;stroke:none}"
+           ".coordinate-zone-label{font:3.5px sans-serif;fill:#444;text-anchor:middle;"
+           "dominant-baseline:middle}"
+           ".sheet-title{font-weight:600}"
+           ".title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.35}"
+           ".title-block-label{font:3.2px sans-serif;fill:#444;text-anchor:start}"
+           ".title-block-value{font:3.6px sans-serif;fill:#111;text-anchor:start}"
+           ".sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.45}"
+           ".sheet-region-frame.dashed{stroke-dasharray:3 2}"
+           ".sheet-region-title{font:4px sans-serif;fill:#57534e;text-anchor:start;"
+           "font-weight:600}"
            ".wire-run{fill:none;stroke:#111;stroke-width:1}"
            ".net-label{font:5px sans-serif;fill:#111;text-anchor:start}"
            ".junction{fill:#111;stroke:none}"
@@ -450,6 +702,90 @@ inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
                ".pin-label{font:4px sans-serif;fill:#c2410c;text-anchor:middle}";
     }
     out << "</style>\n";
+}
+
+inline void write_sheet_svg(std::ostream &out, const Schematic &schematic, SheetId sheet_id,
+                            double y_offset, SchematicSvgOptions options) {
+    const auto &sheet = schematic.sheet(sheet_id);
+    const auto &metadata = sheet.metadata();
+    const auto area = drawing_area(metadata);
+
+    out << "  <g class=\"schematic-sheet\" data-sheet=\"" << svg_escape(svg_sheet_id(sheet_id))
+        << "\" transform=\"translate(0 ";
+    write_svg_number(out, y_offset);
+    out << ")\">\n";
+    write_sheet_defs_svg(out, sheet_id, sheet);
+    out << "    <rect class=\"sheet\" x=\"0\" y=\"0\" width=\"";
+    write_svg_number(out, metadata.size().width());
+    out << "\" height=\"";
+    write_svg_number(out, metadata.size().height());
+    out << "\"/>\n";
+    write_sheet_grid_svg(out, sheet_id, metadata);
+    if (metadata.frame().visible()) {
+        out << "    <rect class=\"sheet-border\" x=\"0\" y=\"0\" width=\"";
+        write_svg_number(out, metadata.size().width());
+        out << "\" height=\"";
+        write_svg_number(out, metadata.size().height());
+        out << "\"/>\n";
+        out << "    <rect class=\"drawing-frame\" x=\"";
+        write_svg_number(out, area.x);
+        out << "\" y=\"";
+        write_svg_number(out, area.y);
+        out << "\" width=\"";
+        write_svg_number(out, area.width);
+        out << "\" height=\"";
+        write_svg_number(out, area.height);
+        out << "\"/>\n";
+    }
+    write_coordinate_zones_svg(out, metadata);
+    write_title_block_svg(out, sheet_id, metadata);
+    out << "    <g class=\"layer layer-regions\">\n";
+    write_regions_svg(out, sheet_id, sheet);
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-symbols\">\n";
+    for (const auto instance : sheet.symbol_instances()) {
+        write_symbol_instance_svg(out, schematic, instance);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-wires\">\n";
+    for (const auto wire : sheet.wire_runs()) {
+        write_wire_run_svg(out, schematic, wire);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-junctions\">\n";
+    for (const auto junction : sheet.junctions()) {
+        write_junction_svg(out, schematic, junction);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-ports\">\n";
+    for (const auto port : sheet.power_ports()) {
+        write_power_port_svg(out, schematic, port);
+    }
+    for (const auto marker : sheet.no_connect_markers()) {
+        write_no_connect_marker_svg(out, schematic, marker);
+    }
+    for (const auto port : sheet.sheet_ports()) {
+        write_sheet_port_svg(out, schematic, port);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-labels\">\n";
+    for (const auto label : sheet.net_labels()) {
+        write_net_label_svg(out, schematic, label);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-fields\">\n";
+    for (const auto field : sheet.symbol_fields()) {
+        write_symbol_field_svg(out, schematic, field);
+    }
+    out << "    </g>\n";
+    if (options.debug_overlays) {
+        out << "    <g class=\"layer layer-debug\">\n";
+        for (const auto instance : sheet.symbol_instances()) {
+            write_symbol_debug_overlay_svg(out, schematic, instance);
+        }
+        out << "    </g>\n";
+    }
+    out << "  </g>\n";
 }
 
 } // namespace detail
@@ -479,70 +815,17 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic,
     detail::write_svg_number(out, height);
     out << "\">\n";
     detail::write_svg_style(out, options);
+    out << "  <rect class=\"document-background\" x=\"0\" y=\"0\" width=\"";
+    detail::write_svg_number(out, width);
+    out << "\" height=\"";
+    detail::write_svg_number(out, height);
+    out << "\"/>\n";
 
     auto y_offset = 0.0;
     for (std::size_t sheet_index = 0; sheet_index < sheet_count; ++sheet_index) {
         const auto sheet_id = SheetId{sheet_index};
-        const auto &sheet = schematic.sheet(sheet_id);
-        const auto &metadata = sheet.metadata();
-
-        out << "  <g class=\"schematic-sheet\" data-sheet=\""
-            << detail::svg_escape(detail::svg_sheet_id(sheet_id)) << "\" transform=\"translate(0 ";
-        detail::write_svg_number(out, y_offset);
-        out << ")\">\n";
-        out << "    <rect class=\"sheet\" x=\"0\" y=\"0\" width=\"";
-        detail::write_svg_number(out, metadata.size().width());
-        out << "\" height=\"";
-        detail::write_svg_number(out, metadata.size().height());
-        out << "\"/>\n";
-        out << "    <text class=\"sheet-title\" x=\"10\" y=\"16\">"
-            << detail::svg_escape(metadata.title()) << "</text>\n";
-        detail::write_title_block_svg(out, metadata);
-        out << "    <g class=\"layer layer-symbols\">\n";
-        for (const auto instance : sheet.symbol_instances()) {
-            detail::write_symbol_instance_svg(out, schematic, instance);
-        }
-        out << "    </g>\n";
-        out << "    <g class=\"layer layer-wires\">\n";
-        for (const auto wire : sheet.wire_runs()) {
-            detail::write_wire_run_svg(out, schematic, wire);
-        }
-        out << "    </g>\n";
-        out << "    <g class=\"layer layer-junctions\">\n";
-        for (const auto junction : sheet.junctions()) {
-            detail::write_junction_svg(out, schematic, junction);
-        }
-        out << "    </g>\n";
-        out << "    <g class=\"layer layer-ports\">\n";
-        for (const auto port : sheet.power_ports()) {
-            detail::write_power_port_svg(out, schematic, port);
-        }
-        for (const auto marker : sheet.no_connect_markers()) {
-            detail::write_no_connect_marker_svg(out, schematic, marker);
-        }
-        for (const auto port : sheet.sheet_ports()) {
-            detail::write_sheet_port_svg(out, schematic, port);
-        }
-        out << "    </g>\n";
-        out << "    <g class=\"layer layer-labels\">\n";
-        for (const auto label : sheet.net_labels()) {
-            detail::write_net_label_svg(out, schematic, label);
-        }
-        out << "    </g>\n";
-        out << "    <g class=\"layer layer-fields\">\n";
-        for (const auto field : sheet.symbol_fields()) {
-            detail::write_symbol_field_svg(out, schematic, field);
-        }
-        out << "    </g>\n";
-        if (options.debug_overlays) {
-            out << "    <g class=\"layer layer-debug\">\n";
-            for (const auto instance : sheet.symbol_instances()) {
-                detail::write_symbol_debug_overlay_svg(out, schematic, instance);
-            }
-            out << "    </g>\n";
-        }
-        out << "  </g>\n";
-        y_offset += metadata.size().height() + detail::svg_sheet_gap;
+        detail::write_sheet_svg(out, schematic, sheet_id, y_offset, options);
+        y_offset += schematic.sheet(sheet_id).metadata().size().height() + detail::svg_sheet_gap;
     }
 
     out << "</svg>\n";
@@ -554,6 +837,58 @@ inline void write_schematic_svg(std::ostream &out, const Schematic &schematic,
     auto out = std::ostringstream{};
     write_schematic_svg(out, schematic, options);
     return out.str();
+}
+
+/** Write one deterministic SVG page for a single schematic sheet. */
+inline void write_schematic_sheet_svg(std::ostream &out, const Schematic &schematic,
+                                      SheetId sheet_id, SchematicSvgOptions options = {}) {
+    const auto &metadata = schematic.sheet(sheet_id).metadata();
+    const auto width = metadata.size().width();
+    const auto height = metadata.size().height();
+
+    out << "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ";
+    detail::write_svg_number(out, width);
+    out << ' ';
+    detail::write_svg_number(out, height);
+    out << "\" width=\"";
+    detail::write_svg_number(out, width);
+    out << "\" height=\"";
+    detail::write_svg_number(out, height);
+    out << "\">\n";
+    detail::write_svg_style(out, options);
+    out << "  <rect class=\"document-background\" x=\"0\" y=\"0\" width=\"";
+    detail::write_svg_number(out, width);
+    out << "\" height=\"";
+    detail::write_svg_number(out, height);
+    out << "\"/>\n";
+    detail::write_sheet_svg(out, schematic, sheet_id, 0.0, options);
+    out << "</svg>\n";
+}
+
+/** Return one deterministic SVG page for a single schematic sheet. */
+[[nodiscard]] inline std::string write_schematic_sheet_svg(const Schematic &schematic,
+                                                           SheetId sheet_id,
+                                                           SchematicSvgOptions options = {}) {
+    auto out = std::ostringstream{};
+    write_schematic_sheet_svg(out, schematic, sheet_id, options);
+    return out.str();
+}
+
+/** Return separate SVG pages for production-oriented multi-sheet export. */
+[[nodiscard]] inline std::vector<SchematicSvgPage>
+write_schematic_svg_pages(const Schematic &schematic, SchematicSvgOptions options = {}) {
+    auto pages = std::vector<SchematicSvgPage>{};
+    pages.reserve(schematic.sheet_count());
+    for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
+        const auto sheet_id = SheetId{sheet_index};
+        const auto &sheet = schematic.sheet(sheet_id);
+        pages.push_back(SchematicSvgPage{
+            sheet_id,
+            sheet.name(),
+            write_schematic_sheet_svg(schematic, sheet_id, options),
+        });
+    }
+    return pages;
 }
 
 } // namespace volt::io

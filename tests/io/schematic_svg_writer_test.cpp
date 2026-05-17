@@ -102,11 +102,25 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(svg == volt::io::write_schematic_svg(schematic));
     CHECK(svg.find("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 297 210\"") !=
           std::string::npos);
+    CHECK(svg.find("<rect class=\"document-background\" x=\"0\" y=\"0\" width=\"297\" "
+                   "height=\"210\"/>") != std::string::npos);
     CHECK(svg.find("<rect class=\"sheet\" x=\"0\" y=\"0\" width=\"297\" height=\"210\"/>") !=
           std::string::npos);
-    CHECK(svg.find("<text class=\"sheet-title\" x=\"10\" y=\"16\">Main &amp; Aux</text>") !=
+    CHECK(svg.find("<rect class=\"sheet-border\" x=\"0\" y=\"0\" width=\"297\" height=\"210\"/>") !=
           std::string::npos);
-    CHECK(svg.find("<text class=\"title-block-field\" x=\"225\" y=\"202\">Revision: A</text>") !=
+    CHECK(svg.find(
+              "<rect class=\"drawing-frame\" x=\"10\" y=\"10\" width=\"277\" height=\"190\"/>") !=
+          std::string::npos);
+    CHECK(svg.find("sheet-title-clip") == std::string::npos);
+    CHECK(svg.find("<g class=\"title-block\" transform=\"translate(205 188)\"") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"title-block-label\" x=\"2\" y=\"4.2\">Title</text>") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"title-block-value sheet-title\" x=\"24\" "
+                   "y=\"4.2\">Main &amp; Aux</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"title-block-label\" x=\"2\" y=\"10.2\">Revision</text>") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"title-block-value\" x=\"24\" y=\"10.2\">A</text>") !=
           std::string::npos);
     CHECK(svg.find(".wire-run{fill:none;stroke:#111;stroke-width:1}") != std::string::npos);
     CHECK(svg.find(".net-label{font:5px sans-serif;fill:#111;text-anchor:start}") !=
@@ -148,12 +162,14 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
                    "data-field=\"value\" x=\"40\" y=\"32\"") != std::string::npos);
     CHECK(svg.find(">10k</text>") != std::string::npos);
 
+    const auto regions = require_contains(svg, "<g class=\"layer layer-regions\">");
     const auto symbols = require_contains(svg, "<g class=\"layer layer-symbols\">");
     const auto wires = require_contains(svg, "<g class=\"layer layer-wires\">");
     const auto junctions = require_contains(svg, "<g class=\"layer layer-junctions\">");
     const auto ports = require_contains(svg, "<g class=\"layer layer-ports\">");
     const auto labels = require_contains(svg, "<g class=\"layer layer-labels\">");
     const auto fields = require_contains(svg, "<g class=\"layer layer-fields\">");
+    CHECK(regions < symbols);
     CHECK(symbols < wires);
     CHECK(wires < junctions);
     CHECK(junctions < ports);
@@ -193,5 +209,92 @@ TEST_CASE("Schematic SVG writer expands the root viewport to sheet metadata") {
           std::string::npos);
     CHECK(svg.find("width=\"420\" height=\"297\"") != std::string::npos);
     CHECK(svg.find("<rect class=\"sheet\" x=\"0\" y=\"0\" width=\"420\" height=\"297\"/>") !=
+          std::string::npos);
+    CHECK(svg.find(
+              "<rect class=\"drawing-frame\" x=\"10\" y=\"10\" width=\"400\" height=\"277\"/>") !=
+          std::string::npos);
+}
+
+TEST_CASE("Schematic SVG writer renders professional page metadata") {
+    volt::Circuit circuit;
+    auto schematic = volt::Schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{
+        "Power",
+        volt::SheetMetadata{
+            "Power & Control",
+            volt::SheetSize{120.0, 90.0},
+            std::vector{volt::TitleBlockField{"Project", "Volt"},
+                        volt::TitleBlockField{"Revision", "B"}},
+            volt::SheetOrientation::Landscape,
+            volt::SheetFrame{true, volt::SheetMargins{12.0, 8.0, 10.0, 14.0}},
+            volt::SheetCoordinateZones{4U, 3U},
+            volt::SheetGrid{5.0, true},
+        },
+    });
+    [[maybe_unused]] const auto region = schematic.add_sheet_region(
+        sheet, volt::SheetRegion{
+                   "power",
+                   "Power Regulation",
+                   volt::SheetRegionBounds{18.0, 20.0, 70.0, 30.0},
+                   std::vector{volt::SheetRegionStyleField{"border", "dashed"}},
+               });
+
+    const auto svg = volt::io::write_schematic_svg(schematic);
+
+    CHECK(svg.find("<rect class=\"drawing-frame\" x=\"12\" y=\"8\" width=\"98\" height=\"68\"/>") !=
+          std::string::npos);
+    CHECK(svg.find("<pattern id=\"grid-sheet-0\" x=\"12\" y=\"8\" width=\"5\" height=\"5\"") !=
+          std::string::npos);
+    CHECK(svg.find("<rect class=\"sheet-grid\" x=\"12\" y=\"8\" width=\"98\" height=\"68\"") !=
+          std::string::npos);
+    CHECK(svg.find("<g class=\"coordinate-zones\">") != std::string::npos);
+    CHECK(svg.find("<text class=\"coordinate-zone-label column\" x=\"24.25\" y=\"4\">1</text>") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"coordinate-zone-label column\" x=\"97.75\" y=\"83\">4</text>") !=
+          std::string::npos);
+    CHECK(
+        svg.find(
+            "<text class=\"coordinate-zone-label row\" x=\"6\" y=\"19.3333333333333\">A</text>") !=
+        std::string::npos);
+    CHECK(svg.find("<text class=\"coordinate-zone-label row\" x=\"115\" "
+                   "y=\"64.6666666666667\">C</text>") != std::string::npos);
+    CHECK(svg.find("<clipPath id=\"title-block-clip-sheet-0\">") != std::string::npos);
+    CHECK(svg.find("<rect class=\"sheet-region-frame dashed\" data-region=\"power\" x=\"18\" "
+                   "y=\"20\" width=\"70\" height=\"30\"/>") != std::string::npos);
+    CHECK(svg.find("<clipPath id=\"region-title-clip-sheet-0-0\">") != std::string::npos);
+    CHECK(svg.find("<text class=\"sheet-region-title\" x=\"21\" y=\"26\" "
+                   "clip-path=\"url(#region-title-clip-sheet-0-0)\">Power Regulation</text>") !=
+          std::string::npos);
+    CHECK(svg.find("<g class=\"title-block\" transform=\"translate(28 58)\"") != std::string::npos);
+    CHECK(svg.find("<text class=\"title-block-value sheet-title\" x=\"24\" "
+                   "y=\"4.2\">Power &amp; Control</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"title-block-value\" x=\"24\" y=\"10.2\">Volt</text>") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"title-block-value\" x=\"24\" y=\"16.2\">B</text>") !=
+          std::string::npos);
+}
+
+TEST_CASE("Schematic SVG writer can export one SVG per sheet") {
+    volt::Circuit circuit;
+    auto schematic = volt::Schematic{circuit};
+    [[maybe_unused]] const auto first = schematic.add_sheet(
+        volt::Sheet{"Power", volt::SheetMetadata{"Power", volt::SheetSize{100.0, 80.0}}});
+    [[maybe_unused]] const auto second = schematic.add_sheet(
+        volt::Sheet{"MCU", volt::SheetMetadata{"MCU", volt::SheetSize{120.0, 90.0}}});
+
+    const auto pages = volt::io::write_schematic_svg_pages(schematic);
+
+    REQUIRE(pages.size() == 2U);
+    CHECK(pages[0].sheet == volt::SheetId{0});
+    CHECK(pages[0].name == "Power");
+    CHECK(pages[0].svg.find("viewBox=\"0 0 100 80\"") != std::string::npos);
+    CHECK(pages[0].svg.find("data-sheet=\"sheet:0\"") != std::string::npos);
+    CHECK(pages[0].svg.find("data-sheet=\"sheet:1\"") == std::string::npos);
+    CHECK(pages[1].sheet == volt::SheetId{1});
+    CHECK(pages[1].name == "MCU");
+    CHECK(pages[1].svg.find("viewBox=\"0 0 120 90\"") != std::string::npos);
+    CHECK(pages[1].svg.find("data-sheet=\"sheet:1\"") != std::string::npos);
+    CHECK(pages[1].svg.find("data-sheet=\"sheet:0\"") == std::string::npos);
+    CHECK(volt::io::write_schematic_svg(schematic).find("viewBox=\"0 0 297 190\"") !=
           std::string::npos);
 }

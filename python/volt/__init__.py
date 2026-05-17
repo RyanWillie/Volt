@@ -2698,6 +2698,16 @@ class Schematic:
     def to_svg(self) -> str:
         return self._design._circuit.schematic_to_svg()
 
+    def to_svg_pages(self) -> tuple[dict[str, int | str], ...]:
+        return tuple(
+            {
+                "sheet": int(page["sheet"]),
+                "name": str(page["name"]),
+                "svg": str(page["svg"]),
+            }
+            for page in self._design._circuit.schematic_svg_pages()
+        )
+
     def validate(self) -> DiagnosticReport:
         return DiagnosticReport(
             _diagnostic_from_dict(item)
@@ -2706,6 +2716,30 @@ class Schematic:
 
     def write_svg(self, path: str | Path) -> None:
         Path(path).write_text(self.to_svg(), encoding="utf-8")
+
+    def write_svg_pages(
+        self, directory: str | Path, *, prefix: str | None = None
+    ) -> tuple[Path, ...]:
+        if prefix is not None and not isinstance(prefix, str):
+            raise TypeError("Schematic SVG page prefixes must be strings")
+        target = Path(directory)
+        target.mkdir(parents=True, exist_ok=True)
+
+        paths = []
+        used_names = set()
+        for page in self.to_svg_pages():
+            stem = _schematic_svg_page_filename(page["name"])
+            if prefix:
+                stem = f"{prefix}_{stem}"
+            filename = f"{stem}.svg"
+            if filename in used_names:
+                filename = f"{stem}_sheet_{page['sheet']}.svg"
+            used_names.add(filename)
+
+            path = target / filename
+            path.write_text(str(page["svg"]), encoding="utf-8")
+            paths.append(path)
+        return tuple(paths)
 
     def write_json(self, path: str | Path) -> None:
         Path(path).write_text(self.to_json(), encoding="utf-8")
@@ -3458,6 +3492,16 @@ def _schematic_sheet_metadata(
     if grid is not None:
         metadata["grid"] = _sheet_grid(grid)
     return metadata
+
+
+def _schematic_svg_page_filename(name: str) -> str:
+    safe = "".join(
+        character
+        if character.isascii() and (character.isalnum() or character in "._-")
+        else "_"
+        for character in name
+    ).strip("._")
+    return safe or "sheet"
 
 
 def _schematic_point_tuple(value) -> tuple[float, float]:

@@ -1,0 +1,248 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 297 210" width="297" height="210">
+  <style>.document-background,.sheet{fill:#fff;stroke:none}.sheet-border{fill:none;stroke:#111;stroke-width:0.6}.drawing-frame{fill:none;stroke:#111;stroke-width:0.45}.sheet-grid{stroke:none}.sheet-grid-dot{fill:#d7d7d7;stroke:none}.coordinate-zone-label{font:3.5px sans-serif;fill:#444;text-anchor:middle;dominant-baseline:middle}.sheet-title{font-weight:600}.title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.35}.title-block-label{font:3.2px sans-serif;fill:#444;text-anchor:start}.title-block-value{font:3.6px sans-serif;fill:#111;text-anchor:start}.sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.45}.sheet-region-frame.dashed{stroke-dasharray:3 2}.sheet-region-title{font:4px sans-serif;fill:#57534e;text-anchor:start;font-weight:600}.wire-run{fill:none;stroke:#111;stroke-width:1}.net-label{font:5px sans-serif;fill:#111;text-anchor:start}.junction{fill:#111;stroke:none}.power-port-line,.ground-bar,.no-connect-line{stroke:#111;stroke-width:1}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:1}.power-port-label,.sheet-port-label,.symbol-field{font:5px sans-serif;fill:#111;text-anchor:middle}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:1}.symbol-text,.reference{font:5px sans-serif;fill:#111;text-anchor:middle}</style>
+  <rect class="document-background" x="0" y="0" width="297" height="210"/>
+  <g class="schematic-sheet" data-sheet="sheet:0" transform="translate(0 0)">
+    <defs>
+      <clipPath id="title-block-clip-sheet-0">
+        <rect x="0" y="0" width="82" height="30"/>
+      </clipPath>
+      <clipPath id="region-title-clip-sheet-0-0">
+        <rect x="8" y="16" width="50" height="10"/>
+      </clipPath>
+      <clipPath id="region-title-clip-sheet-0-1">
+        <rect x="58" y="28" width="72" height="10"/>
+      </clipPath>
+      <clipPath id="region-title-clip-sheet-0-2">
+        <rect x="132" y="28" width="124" height="10"/>
+      </clipPath>
+      <pattern id="grid-sheet-0" x="12" y="10" width="5" height="5" patternUnits="userSpaceOnUse">
+        <circle class="sheet-grid-dot" cx="0" cy="0" r="0.25"/>
+      </pattern>
+    </defs>
+    <rect class="sheet" x="0" y="0" width="297" height="210"/>
+    <rect class="sheet-grid" x="12" y="10" width="273" height="190" fill="url(#grid-sheet-0)"/>
+    <rect class="sheet-border" x="0" y="0" width="297" height="210"/>
+    <rect class="drawing-frame" x="12" y="10" width="273" height="190"/>
+    <g class="coordinate-zones">
+      <text class="coordinate-zone-label column" x="25.65" y="5">1</text>
+      <text class="coordinate-zone-label column" x="25.65" y="205">1</text>
+      <text class="coordinate-zone-label column" x="52.95" y="5">2</text>
+      <text class="coordinate-zone-label column" x="52.95" y="205">2</text>
+      <text class="coordinate-zone-label column" x="80.25" y="5">3</text>
+      <text class="coordinate-zone-label column" x="80.25" y="205">3</text>
+      <text class="coordinate-zone-label column" x="107.55" y="5">4</text>
+      <text class="coordinate-zone-label column" x="107.55" y="205">4</text>
+      <text class="coordinate-zone-label column" x="134.85" y="5">5</text>
+      <text class="coordinate-zone-label column" x="134.85" y="205">5</text>
+      <text class="coordinate-zone-label column" x="162.15" y="5">6</text>
+      <text class="coordinate-zone-label column" x="162.15" y="205">6</text>
+      <text class="coordinate-zone-label column" x="189.45" y="5">7</text>
+      <text class="coordinate-zone-label column" x="189.45" y="205">7</text>
+      <text class="coordinate-zone-label column" x="216.75" y="5">8</text>
+      <text class="coordinate-zone-label column" x="216.75" y="205">8</text>
+      <text class="coordinate-zone-label column" x="244.05" y="5">9</text>
+      <text class="coordinate-zone-label column" x="244.05" y="205">9</text>
+      <text class="coordinate-zone-label column" x="271.35" y="5">10</text>
+      <text class="coordinate-zone-label column" x="271.35" y="205">10</text>
+      <text class="coordinate-zone-label row" x="6" y="25.8333333333333">A</text>
+      <text class="coordinate-zone-label row" x="291" y="25.8333333333333">A</text>
+      <text class="coordinate-zone-label row" x="6" y="57.5">B</text>
+      <text class="coordinate-zone-label row" x="291" y="57.5">B</text>
+      <text class="coordinate-zone-label row" x="6" y="89.1666666666667">C</text>
+      <text class="coordinate-zone-label row" x="291" y="89.1666666666667">C</text>
+      <text class="coordinate-zone-label row" x="6" y="120.833333333333">D</text>
+      <text class="coordinate-zone-label row" x="291" y="120.833333333333">D</text>
+      <text class="coordinate-zone-label row" x="6" y="152.5">E</text>
+      <text class="coordinate-zone-label row" x="291" y="152.5">E</text>
+      <text class="coordinate-zone-label row" x="6" y="184.166666666667">F</text>
+      <text class="coordinate-zone-label row" x="291" y="184.166666666667">F</text>
+    </g>
+    <g class="title-block" transform="translate(203 170)" clip-path="url(#title-block-clip-sheet-0)">
+      <rect class="title-block-outline" x="0" y="0" width="82" height="30"/>
+      <line class="title-block-rule" x1="22" y1="0" x2="22" y2="30"/>
+      <line class="title-block-rule" x1="0" y1="6" x2="82" y2="6"/>
+      <line class="title-block-rule" x1="0" y1="12" x2="82" y2="12"/>
+      <line class="title-block-rule" x1="0" y1="18" x2="82" y2="18"/>
+      <line class="title-block-rule" x1="0" y1="24" x2="82" y2="24"/>
+      <text class="title-block-label" x="2" y="4.2">Title</text>
+      <text class="title-block-value sheet-title" x="24" y="4.2">Power Input and Regulators</text>
+      <text class="title-block-label" x="2" y="10.2">Number</text>
+      <text class="title-block-value" x="24" y="10.2">1/3</text>
+      <text class="title-block-label" x="2" y="16.2">Revision</text>
+      <text class="title-block-value" x="24" y="16.2">A</text>
+      <text class="title-block-label" x="2" y="22.2">Project</text>
+      <text class="title-block-value" x="24" y="22.2">STM32 USB Buck</text>
+      <text class="title-block-label" x="2" y="28.2">File</text>
+      <text class="title-block-value" x="24" y="28.2">power_blocks.py</text>
+    </g>
+    <g class="layer layer-regions">
+    <g class="sheet-region" data-region="Input Connector">
+      <rect class="sheet-region-frame dashed" data-region="Input Connector" x="8" y="16" width="50" height="84"/>
+      <text class="sheet-region-title" x="11" y="22" clip-path="url(#region-title-clip-sheet-0-0)">Input Connector</text>
+    </g>
+    <g class="sheet-region" data-region="5 V Regulation">
+      <rect class="sheet-region-frame dashed" data-region="5 V Regulation" x="58" y="28" width="72" height="126"/>
+      <text class="sheet-region-title" x="61" y="34" clip-path="url(#region-title-clip-sheet-0-1)">5 V Regulation</text>
+    </g>
+    <g class="sheet-region" data-region="3.3 V and VDDA">
+      <rect class="sheet-region-frame dashed" data-region="3.3 V and VDDA" x="132" y="28" width="124" height="126"/>
+      <text class="sheet-region-title" x="135" y="34" clip-path="url(#region-title-clip-sheet-0-2)">3.3 V and VDDA</text>
+    </g>
+    </g>
+    <g class="layer layer-symbols">
+    <g class="symbol-instance" data-component="component:0" data-symbol-definition="symbol_def:3" transform="translate(14 24) rotate(0)">
+      <text class="reference" x="0" y="-12">VIN_SRC</text>
+      <rect class="symbol-rectangle" x="0" y="0" width="34" height="32"/>
+      <line class="symbol-line" x1="34" y1="8" x2="44" y2="8"/>
+      <line class="symbol-line" x1="34" y1="24" x2="44" y2="24"/>
+      <text class="symbol-text" x="17" y="17" transform="rotate(0 17 17)">VIN</text>
+    </g>
+    <g class="symbol-instance" data-component="component:1" data-symbol-definition="symbol_def:1" transform="translate(16 78) rotate(0)">
+      <text class="reference" x="0" y="-12">PWR/J</text>
+      <rect class="symbol-rectangle" x="10" y="-5" width="24" height="34"/>
+      <text class="symbol-text" x="22" y="-10" transform="rotate(0 22 -10)">HDR</text>
+      <line class="symbol-line" x1="0" y1="0" x2="10" y2="0"/>
+      <line class="symbol-line" x1="0" y1="8" x2="10" y2="8"/>
+      <line class="symbol-line" x1="0" y1="16" x2="10" y2="16"/>
+      <line class="symbol-line" x1="0" y1="24" x2="10" y2="24"/>
+    </g>
+    <g class="symbol-instance" data-component="component:2" data-symbol-definition="symbol_def:4" transform="translate(76 42) rotate(0)">
+      <text class="reference" x="0" y="-12">PWR/U5</text>
+      <rect class="symbol-rectangle" x="10" y="0" width="30" height="25"/>
+      <line class="symbol-line" x1="0" y1="10" x2="10" y2="10"/>
+      <line class="symbol-line" x1="40" y1="10" x2="50" y2="10"/>
+      <line class="symbol-line" x1="25" y1="25" x2="25" y2="30"/>
+      <text class="symbol-text" x="25" y="14" transform="rotate(0 25 14)">LDO</text>
+    </g>
+    <g class="symbol-instance" data-component="component:3" data-symbol-definition="symbol_def:4" transform="translate(154 42) rotate(0)">
+      <text class="reference" x="0" y="-12">PWR/U3V3</text>
+      <rect class="symbol-rectangle" x="10" y="0" width="30" height="25"/>
+      <line class="symbol-line" x1="0" y1="10" x2="10" y2="10"/>
+      <line class="symbol-line" x1="40" y1="10" x2="50" y2="10"/>
+      <line class="symbol-line" x1="25" y1="25" x2="25" y2="30"/>
+      <text class="symbol-text" x="25" y="14" transform="rotate(0 25 14)">LDO</text>
+    </g>
+    <g class="symbol-instance" data-component="component:4" data-symbol-definition="symbol_def:5" transform="translate(60 118) rotate(90)">
+      <text class="reference" x="0" y="-12">PWR/CIN</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
+    </g>
+    <g class="symbol-instance" data-component="component:5" data-symbol-definition="symbol_def:5" transform="translate(118 118) rotate(90)">
+      <text class="reference" x="0" y="-12">PWR/C5V</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
+    </g>
+    <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:5" transform="translate(176 118) rotate(90)">
+      <text class="reference" x="0" y="-12">PWR/C3V3</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
+    </g>
+    <g class="symbol-instance" data-component="component:7" data-symbol-definition="symbol_def:5" transform="translate(234 118) rotate(90)">
+      <text class="reference" x="0" y="-12">PWR/CVDDA</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
+    </g>
+    </g>
+    <g class="layer layer-wires">
+    <polyline class="wire-run" data-net="net:5" points="16,78 38,78 38,52 76,52"/>
+    <polyline class="wire-run" data-net="net:5" points="60,118 60,52 76,52"/>
+    <polyline class="wire-run" data-net="net:6" points="126,52 154,52"/>
+    <polyline class="wire-run" data-net="net:6" points="118,118 118,52 126,52"/>
+    <polyline class="wire-run" data-net="net:7" points="204,52 214,52 214,118 176,118"/>
+    <polyline class="wire-run" data-net="net:9" points="16,86 16,154 34,154"/>
+    <polyline class="wire-run" data-net="net:9" points="16,94 16,154 34,154"/>
+    <polyline class="wire-run" data-net="net:9" points="16,102 16,154 34,154"/>
+    <polyline class="wire-run" data-net="net:9" points="101,72 101,154 34,154"/>
+    <polyline class="wire-run" data-net="net:9" points="179,72 179,154 34,154"/>
+    <polyline class="wire-run" data-net="net:9" points="60,138 60,154 34,154"/>
+    <polyline class="wire-run" data-net="net:9" points="118,138 118,154 34,154"/>
+    <polyline class="wire-run" data-net="net:9" points="176,138 176,154 34,154"/>
+    <polyline class="wire-run" data-net="net:9" points="234,138 234,154 34,154"/>
+    </g>
+    <g class="layer layer-junctions">
+    <circle class="junction" data-net="net:5" cx="60" cy="52" r="1.8"/>
+    <circle class="junction" data-net="net:6" cx="118" cy="52" r="1.8"/>
+    <circle class="junction" data-net="net:9" cx="16" cy="154" r="1.8"/>
+    <circle class="junction" data-net="net:9" cx="16" cy="154" r="1.8"/>
+    <circle class="junction" data-net="net:9" cx="16" cy="154" r="1.8"/>
+    <circle class="junction" data-net="net:9" cx="101" cy="154" r="1.8"/>
+    <circle class="junction" data-net="net:9" cx="179" cy="154" r="1.8"/>
+    <circle class="junction" data-net="net:9" cx="60" cy="154" r="1.8"/>
+    <circle class="junction" data-net="net:9" cx="118" cy="154" r="1.8"/>
+    <circle class="junction" data-net="net:9" cx="176" cy="154" r="1.8"/>
+    <circle class="junction" data-net="net:9" cx="234" cy="154" r="1.8"/>
+    </g>
+    <g class="layer layer-ports">
+    <g class="power-port power" data-net="net:0" transform="translate(222 18) rotate(270)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-7"/>
+      <path class="power-port-shape" d="M -4 -7 L 0 -12 L 4 -7 Z"/>
+      <text class="power-port-label" x="0" y="-14">+12V</text>
+    </g>
+    <g class="power-port power" data-net="net:1" transform="translate(236 18) rotate(270)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-7"/>
+      <path class="power-port-shape" d="M -4 -7 L 0 -12 L 4 -7 Z"/>
+      <text class="power-port-label" x="0" y="-14">+5V</text>
+    </g>
+    <g class="power-port power" data-net="net:2" transform="translate(250 18) rotate(270)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-7"/>
+      <path class="power-port-shape" d="M -4 -7 L 0 -12 L 4 -7 Z"/>
+      <text class="power-port-label" x="0" y="-14">+3V3</text>
+    </g>
+    <g class="power-port power" data-net="net:3" transform="translate(264 18) rotate(270)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-7"/>
+      <path class="power-port-shape" d="M -4 -7 L 0 -12 L 4 -7 Z"/>
+      <text class="power-port-label" x="0" y="-14">VDDA</text>
+    </g>
+    <g class="power-port ground" data-net="net:4" transform="translate(278 18) rotate(90)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="4"/>
+      <line class="ground-bar" x1="-5" y1="4" x2="5" y2="4"/>
+      <line class="ground-bar" x1="-3" y1="6" x2="3" y2="6"/>
+      <line class="ground-bar" x1="-1" y1="8" x2="1" y2="8"/>
+      <text class="power-port-label" x="0" y="-14">GND</text>
+    </g>
+    <g class="power-port power" data-net="net:0" transform="translate(58 32) rotate(0)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-7"/>
+      <path class="power-port-shape" d="M -4 -7 L 0 -12 L 4 -7 Z"/>
+      <text class="power-port-label" x="0" y="-14">+12V</text>
+    </g>
+    <g class="power-port ground" data-net="net:4" transform="translate(58 48) rotate(90)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="4"/>
+      <line class="ground-bar" x1="-5" y1="4" x2="5" y2="4"/>
+      <line class="ground-bar" x1="-3" y1="6" x2="3" y2="6"/>
+      <line class="ground-bar" x1="-1" y1="8" x2="1" y2="8"/>
+      <text class="power-port-label" x="0" y="-14">GND</text>
+    </g>
+    <g class="sheet-port off-page" data-net="net:7" transform="translate(214 34) rotate(270)">
+      <path class="sheet-port-shape" d="M 0 -4 L 14 -4 L 20 0 L 14 4 L 0 4 Z"/>
+      <text class="sheet-port-label" x="4" y="2">+3V3</text>
+    </g>
+    <g class="sheet-port off-page" data-net="net:8" transform="translate(234 118) rotate(270)">
+      <path class="sheet-port-shape" d="M 0 -4 L 14 -4 L 20 0 L 14 4 L 0 4 Z"/>
+      <text class="sheet-port-label" x="4" y="2">VDDA</text>
+    </g>
+    <g class="sheet-port off-page" data-net="net:9" transform="translate(34 154) rotate(90)">
+      <path class="sheet-port-shape" d="M 0 -4 L 14 -4 L 20 0 L 14 4 L 0 4 Z"/>
+      <text class="sheet-port-label" x="4" y="2">GND</text>
+    </g>
+    </g>
+    <g class="layer layer-labels">
+    <text class="net-label" data-net="net:5" x="42" y="47" transform="rotate(0 42 47)">PWR/IN_12V</text>
+    <text class="net-label" data-net="net:6" x="123" y="47" transform="rotate(0 123 47)">PWR/OUT_5V</text>
+    <text class="net-label" data-net="net:7" x="204" y="47" transform="rotate(0 204 47)">PWR/OUT_3V3</text>
+    </g>
+    <g class="layer layer-fields">
+    </g>
+  </g>
+</svg>

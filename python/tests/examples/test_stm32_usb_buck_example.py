@@ -22,12 +22,19 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         first_logical_text = artifacts.logical_json.read_text(encoding="utf-8")
         first_schematic_text = artifacts.schematic_json.read_text(encoding="utf-8")
         first_svg_text = artifacts.schematic_svg.read_text(encoding="utf-8")
+        first_page_texts = tuple(
+            path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages
+        )
         first_validation_text = artifacts.validation_report.read_text(encoding="utf-8")
 
         second_artifacts = main.write_artifacts(Path(temp_dir) / "second")
         assert second_artifacts.logical_json.read_text(encoding="utf-8") == first_logical_text
         assert second_artifacts.schematic_json.read_text(encoding="utf-8") == first_schematic_text
         assert second_artifacts.schematic_svg.read_text(encoding="utf-8") == first_svg_text
+        assert (
+            tuple(path.read_text(encoding="utf-8") for path in second_artifacts.schematic_svg_pages)
+            == first_page_texts
+        )
         assert (
             second_artifacts.validation_report.read_text(encoding="utf-8")
             == first_validation_text
@@ -56,6 +63,14 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "MCU",
         "USB and Connectors",
     ]
+    assert [sheet["metadata"]["title"] for sheet in schematic["sheets"]] == [
+        "Power Input and Regulators",
+        "MCU, Clock, Boot, and Status",
+        "USB, Debug, and External Connectors",
+    ]
+    assert all(sheet["metadata"]["coordinate_zones"] for sheet in schematic["sheets"])
+    assert all(sheet["metadata"]["grid"] for sheet in schematic["sheets"])
+    assert all(sheet["regions"] for sheet in schematic["sheets"])
     assert len(schematic["symbol_instances"]) >= 10
     assert len(schematic["wire_runs"]) >= 20
     assert len(schematic["net_labels"]) <= 36
@@ -169,6 +184,19 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert 'class="sheet-port off-page"' in first_svg_text
     assert 'class="no-connect-marker"' in first_svg_text
     assert "data-net=\"net:" in first_svg_text
+    assert 'class="title-block"' in first_svg_text
+    assert 'class="coordinate-zones"' in first_svg_text
+    assert 'class="sheet-region-frame dashed"' in first_svg_text
+    assert [path.name for path in artifacts.schematic_svg_pages] == [
+        "stm32_usb_buck_Power.svg",
+        "stm32_usb_buck_MCU.svg",
+        "stm32_usb_buck_USB_and_Connectors.svg",
+    ]
+    assert all('viewBox="0 0 297 210"' in text for text in first_page_texts)
+    assert 'data-sheet="sheet:0"' in first_page_texts[0]
+    assert 'data-sheet="sheet:1"' not in first_page_texts[0]
+    assert 'data-sheet="sheet:1"' in first_page_texts[1]
+    assert 'data-sheet="sheet:2"' in first_page_texts[2]
 
     codes = {diagnostic["code"] for diagnostic in validation["diagnostics"]}
     assert "POWER_INPUT_WITHOUT_SOURCE" in codes
@@ -212,6 +240,7 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
             assert not (output_dir / "stm32_usb_buck.volt.json").exists()
             assert not (output_dir / "stm32_usb_buck.volt.schematic.json").exists()
             assert not (output_dir / "stm32_usb_buck.svg").exists()
+            assert not (output_dir / "stm32_usb_buck.pages").exists()
     finally:
         main.build_schematic = original
 

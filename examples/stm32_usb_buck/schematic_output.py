@@ -10,6 +10,15 @@ from .stm32_board import Stm32UsbBuckBoard
 # Use the generic two-terminal symbols so drawing.C/R can orient the passives.
 TWO_TERMINAL_CAPACITOR = "capacitor"
 TWO_TERMINAL_RESISTOR = "resistor"
+SHEET_OPTIONS = {
+    "size": "A4",
+    "orientation": "landscape",
+    "revision": "A",
+    "project": "STM32 USB Buck",
+    "margins": (12, 10, 12, 10),
+    "coordinate_zones": (10, 6),
+    "grid": {"spacing": 5, "visible": True},
+}
 
 
 def _external_supply_symbol() -> volt.SchematicSymbolSpec:
@@ -57,9 +66,27 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
         for pin in net.pins()
     }
 
-    power = board.design.schematic("Power")
-    mcu = board.design.schematic("MCU")
-    connectors = board.design.schematic("USB and Connectors")
+    power = board.design.schematic(
+        "Power",
+        title="Power Input and Regulators",
+        number="1/3",
+        file="power_blocks.py",
+        **SHEET_OPTIONS,
+    )
+    mcu = board.design.schematic(
+        "MCU",
+        title="MCU, Clock, Boot, and Status",
+        number="2/3",
+        file="stm32_board.py",
+        **SHEET_OPTIONS,
+    )
+    connectors = board.design.schematic(
+        "USB and Connectors",
+        title="USB, Debug, and External Connectors",
+        number="3/3",
+        file="connection_blocks.py",
+        **SHEET_OPTIONS,
+    )
 
     _author_power_sheet(power, board, nets, net_by_pin)
     _author_usb_sheet(connectors, board, nets, net_by_pin)
@@ -74,6 +101,9 @@ def _author_power_sheet(
     net_by_pin: dict[int, volt.Net],
 ) -> None:
     pwr = board.modules["PWR"]
+    sheet.region("Input Connector", x=8, y=16, w=50, h=84, style={"border": "dashed"})
+    sheet.region("5 V Regulation", x=58, y=28, w=72, h=126, style={"border": "dashed"})
+    sheet.region("3.3 V and VDDA", x=132, y=28, w=124, h=126, style={"border": "dashed"})
 
     with sheet.drawing(unit=20) as drawing:
         _rail_legend(drawing, nets, (222, 18), ("+12V", "+5V", "+3V3", "VDDA", "GND"))
@@ -152,6 +182,9 @@ def _author_usb_sheet(
     net_by_pin: dict[int, volt.Net],
 ) -> None:
     usb = board.modules["USB"]
+    sheet.region("USB Data Path", x=14, y=28, w=150, h=118, style={"border": "dashed"})
+    sheet.region("Debug Header", x=196, y=12, w=86, h=96, style={"border": "dashed"})
+    sheet.region("GPIO Header", x=196, y=116, w=86, h=70, style={"border": "dashed"})
 
     with sheet.drawing(unit=20) as drawing:
         _rail_legend(drawing, nets, (24, 18), ("+5V", "+3V3", "GND"))
@@ -221,6 +254,10 @@ def _author_mcu_sheet(
 ) -> None:
     support = board.modules["SUPPORT"]
     led = board.modules["LED_STATUS"]
+    sheet.region("Power Decoupling", x=10, y=14, w=74, h=98, style={"border": "dashed"})
+    sheet.region("Boot and Clock", x=10, y=112, w=84, h=94, style={"border": "dashed"})
+    sheet.region("MCU Core", x=94, y=12, w=116, h=156, style={"border": "dashed"})
+    sheet.region("Status LED", x=210, y=154, w=70, h=54, style={"border": "dashed"})
 
     with sheet.drawing(unit=20) as drawing:
         _rail_legend(drawing, nets, (236, 18), ("+3V3", "VDDA", "GND"))
