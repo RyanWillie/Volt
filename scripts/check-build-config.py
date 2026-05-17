@@ -116,11 +116,20 @@ def check_python_pytest_harness() -> None:
     python_cmake = read("src/python/CMakeLists.txt")
     ci_workflow = read(".github/workflows/ci.yml")
     requirements = read("requirements-dev.txt")
+    install_script = read("scripts/install-python-dev-deps.py")
 
     require("pytest" in requirements, "pytest must be an explicit dev/test dependency")
     require(
-        "python -m pip install -r requirements-dev.txt" in ci_workflow,
-        "CI must install Python dev/test dependencies before configuring",
+        "python scripts/install-python-dev-deps.py" in ci_workflow,
+        "CI must install Python dev/test dependencies through the CMake-selected interpreter",
+    )
+    require(
+        '"cmake", "--preset", "dev"' in install_script,
+        "Python dev dependency installer must discover the dev preset interpreter",
+    )
+    require(
+        "Python3_EXECUTABLE" in install_script,
+        "Python dev dependency installer must install into CMake's selected interpreter",
     )
     require(
         "${Python3_EXECUTABLE} -m pytest" in python_cmake,

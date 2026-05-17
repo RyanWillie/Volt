@@ -68,7 +68,7 @@ if(VOLT_BUILD_TESTS)
         message(
             FATAL_ERROR
                 "pytest is required for Volt Python tests. Install dev dependencies with "
-                "'${Python3_EXECUTABLE} -m pip install -r ${PROJECT_SOURCE_DIR}/requirements-dev.txt'."
+                "'python ${PROJECT_SOURCE_DIR}/scripts/install-python-dev-deps.py'."
         )
     endif()
 

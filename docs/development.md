@@ -34,7 +34,7 @@ Python tests are registered in CTest by file, then executed with pytest through 
 instead of running an arbitrary shell `pytest`:
 
 ```sh
-python -m pip install -r requirements-dev.txt
+python scripts/install-python-dev-deps.py
 ```
 
 Run common test slices with:
