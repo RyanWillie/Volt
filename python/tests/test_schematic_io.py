@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
 import volt
 
 
@@ -107,9 +108,7 @@ def test_python_schematic_write_svg_pages_rejects_path_separators_in_prefix():
     schematic = design.schematic("Power", size=(100, 80))
 
     with TemporaryDirectory() as directory:
-        try:
+        with pytest.raises(
+            ValueError, match="Schematic SVG page prefixes must not contain path separators"
+        ):
             schematic.write_svg_pages(directory, prefix="../unsafe")
-        except ValueError as error:
-            assert str(error) == "Schematic SVG page prefixes must not contain path separators"
-        else:
-            raise AssertionError("prefix path separators must be rejected")
