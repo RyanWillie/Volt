@@ -73,10 +73,22 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert {definition["name"] for definition in schematic["symbol_definitions"]} >= {
         "volt.benchmarks.stm32_usb_buck:STM32F405RGTx",
         "volt.benchmarks.stm32_usb_buck:AP1117_15",
-        "volt.benchmarks.stm32_usb_buck:Capacitor",
         "volt.benchmarks.stm32_usb_buck:USB_B_Micro",
+        "capacitor",
+        "resistor",
     }
     assert ".to_json(" not in inspect.getsource(schematic_output.build_schematic)
+    schematic_source = inspect.getsource(schematic_output)
+    assert "class _SchematicAuthor" not in schematic_source
+    assert "audit_no_fallback_pin_coverage" not in schematic_source
+    assert ".drawing(" in schematic_source
+    assert "drawing.C(" in schematic_source
+    assert "drawing.R(" in schematic_source
+    assert "drawing.LED(" in schematic_source
+    assert "drawing.connect(" in schematic_source
+    assert "drawing.off_page(" in schematic_source
+    assert "drawing.no_connect(" in schematic_source
+    assert "shape=" in schematic_source
     label_counts = Counter(
         (label["sheet"], label["net"]) for label in schematic["net_labels"]
     )
@@ -133,6 +145,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
 
     schematic_report = main.build_schematic(main.build_board()).validate()
     assert list(schematic_report) == []
+    board = main.build_board()
+    logical_before_schematic = board.design.to_json()
+    main.build_schematic(board)
+    assert board.design.to_json() == logical_before_schematic
 
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in first_svg_text
     assert ".wire-run" in first_svg_text
@@ -200,29 +216,18 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
         main.build_schematic = original
 
 
-def test_stm32_usb_buck_schematic_author_fails_on_fallback_connected_pin_coverage():
-    board_module = importlib.import_module("examples.stm32_usb_buck.stm32_board")
+def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():
     schematic_output = importlib.import_module("examples.stm32_usb_buck.schematic_output")
 
-    board = board_module.build_board()
-    sheet = board.design.schematic("Coverage audit")
-    placed = sheet.place(
-        board.components["VIN_SRC"],
-        at=(12, 34),
-        symbol=schematic_output._external_supply_symbol(),
-    )
-    net_by_pin = {
-        pin.index: net
-        for net in board.design.nets()
-        for pin in net.pins()
-    }
-    author = schematic_output._SchematicAuthor(net_by_pin, set())
+    source = inspect.getsource(schematic_output)
 
-    try:
-        author.audit_no_fallback_pin_coverage([(sheet, placed)])
-    except RuntimeError as error:
-        assert "fallback schematic pin coverage" in str(error)
-        assert "VIN_SRC.OUT" in str(error)
-        assert "+12V" in str(error)
-    else:
-        raise AssertionError("connected pins must not be silently covered by fallback")
+    assert "_SchematicAuthor" not in source
+    assert "fallback schematic pin coverage" not in source
+    assert "sheet.drawing(" in source
+    assert "drawing.C(" in source
+    assert "drawing.R(" in source
+    assert "drawing.LED(" in source
+    assert "drawing.connect(" in source
+    assert "drawing.net_label(" in source
+    assert "drawing.off_page(" in source
+    assert "drawing.no_connect(" in source

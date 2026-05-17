@@ -36,41 +36,45 @@
       <line class="symbol-line" x1="25" y1="25" x2="25" y2="30"/>
       <text class="symbol-text" x="25" y="14" transform="rotate(0 25 14)">LDO</text>
     </g>
-    <g class="symbol-instance" data-component="component:4" data-symbol-definition="symbol_def:5" transform="translate(60 118) rotate(0)">
+    <g class="symbol-instance" data-component="component:4" data-symbol-definition="symbol_def:5" transform="translate(60 118) rotate(90)">
       <text class="reference" x="0" y="-12">PWR/CIN</text>
-      <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
-      <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
-      <line class="symbol-line" x1="0" y1="16" x2="0" y2="20"/>
-      <text class="symbol-text" x="8" y="10" transform="rotate(0 8 10)">C</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
     </g>
-    <g class="symbol-instance" data-component="component:5" data-symbol-definition="symbol_def:5" transform="translate(118 118) rotate(0)">
+    <g class="symbol-instance" data-component="component:5" data-symbol-definition="symbol_def:5" transform="translate(118 118) rotate(90)">
       <text class="reference" x="0" y="-12">PWR/C5V</text>
-      <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
-      <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
-      <line class="symbol-line" x1="0" y1="16" x2="0" y2="20"/>
-      <text class="symbol-text" x="8" y="10" transform="rotate(0 8 10)">C</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
     </g>
-    <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:5" transform="translate(176 118) rotate(0)">
+    <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:5" transform="translate(176 118) rotate(90)">
       <text class="reference" x="0" y="-12">PWR/C3V3</text>
-      <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
-      <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
-      <line class="symbol-line" x1="0" y1="16" x2="0" y2="20"/>
-      <text class="symbol-text" x="8" y="10" transform="rotate(0 8 10)">C</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
     </g>
-    <g class="symbol-instance" data-component="component:7" data-symbol-definition="symbol_def:5" transform="translate(234 118) rotate(0)">
+    <g class="symbol-instance" data-component="component:7" data-symbol-definition="symbol_def:5" transform="translate(234 118) rotate(90)">
       <text class="reference" x="0" y="-12">PWR/CVDDA</text>
-      <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
-      <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
-      <line class="symbol-line" x1="0" y1="16" x2="0" y2="20"/>
-      <text class="symbol-text" x="8" y="10" transform="rotate(0 8 10)">C</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
     </g>
     </g>
     <g class="layer layer-wires">
-    <polyline class="wire-run" data-net="net:5" points="16,78 38,78 38,52 58,52 76,52"/>
-    <polyline class="wire-run" data-net="net:5" points="60,118 60,52 58,52"/>
-    <polyline class="wire-run" data-net="net:6" points="126,52 136,52 154,52"/>
-    <polyline class="wire-run" data-net="net:6" points="118,118 118,52 136,52"/>
-    <polyline class="wire-run" data-net="net:7" points="204,52 214,52 176,118"/>
+    <polyline class="wire-run" data-net="net:5" points="16,78 38,78 38,52 76,52"/>
+    <polyline class="wire-run" data-net="net:5" points="60,118 60,52 76,52"/>
+    <polyline class="wire-run" data-net="net:6" points="126,52 154,52"/>
+    <polyline class="wire-run" data-net="net:6" points="118,118 118,52 126,52"/>
+    <polyline class="wire-run" data-net="net:7" points="204,52 214,52 214,118 176,118"/>
     <polyline class="wire-run" data-net="net:9" points="16,86 16,154 34,154"/>
     <polyline class="wire-run" data-net="net:9" points="16,94 16,154 34,154"/>
     <polyline class="wire-run" data-net="net:9" points="16,102 16,154 34,154"/>
@@ -82,6 +86,8 @@
     <polyline class="wire-run" data-net="net:9" points="234,138 234,154 34,154"/>
     </g>
     <g class="layer layer-junctions">
+    <circle class="junction" data-net="net:5" cx="60" cy="52" r="1.8"/>
+    <circle class="junction" data-net="net:6" cx="118" cy="52" r="1.8"/>
     <circle class="junction" data-net="net:9" cx="16" cy="154" r="1.8"/>
     <circle class="junction" data-net="net:9" cx="16" cy="154" r="1.8"/>
     <circle class="junction" data-net="net:9" cx="16" cy="154" r="1.8"/>
@@ -226,26 +232,29 @@
       <line class="symbol-line" x1="80" y1="5" x2="100" y2="5"/>
       <line class="symbol-line" x1="80" y1="0" x2="100" y2="0"/>
     </g>
-    <g class="symbol-instance" data-component="component:10" data-symbol-definition="symbol_def:5" transform="translate(24 26) rotate(0)">
+    <g class="symbol-instance" data-component="component:10" data-symbol-definition="symbol_def:5" transform="translate(24 26) rotate(90)">
       <text class="reference" x="0" y="-12">SUPPORT/CVDD</text>
-      <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
-      <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
-      <line class="symbol-line" x1="0" y1="16" x2="0" y2="20"/>
-      <text class="symbol-text" x="8" y="10" transform="rotate(0 8 10)">C</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
     </g>
-    <g class="symbol-instance" data-component="component:11" data-symbol-definition="symbol_def:5" transform="translate(24 58) rotate(0)">
+    <g class="symbol-instance" data-component="component:11" data-symbol-definition="symbol_def:5" transform="translate(24 58) rotate(90)">
       <text class="reference" x="0" y="-12">SUPPORT/CVCAP1</text>
-      <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
-      <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
-      <line class="symbol-line" x1="0" y1="16" x2="0" y2="20"/>
-      <text class="symbol-text" x="8" y="10" transform="rotate(0 8 10)">C</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
     </g>
-    <g class="symbol-instance" data-component="component:12" data-symbol-definition="symbol_def:5" transform="translate(24 90) rotate(0)">
+    <g class="symbol-instance" data-component="component:12" data-symbol-definition="symbol_def:5" transform="translate(24 90) rotate(90)">
       <text class="reference" x="0" y="-12">SUPPORT/CVCAP2</text>
-      <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
-      <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
-      <line class="symbol-line" x1="0" y1="16" x2="0" y2="20"/>
-      <text class="symbol-text" x="8" y="10" transform="rotate(0 8 10)">C</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
     </g>
     <g class="symbol-instance" data-component="component:13" data-symbol-definition="symbol_def:8" transform="translate(24 122) rotate(0)">
       <text class="reference" x="0" y="-12">SUPPORT/RRESET</text>
@@ -280,19 +289,21 @@
       <line class="symbol-line" x1="30" y1="16" x2="30" y2="28"/>
       <text class="symbol-text" x="22" y="-6" transform="rotate(0 22 -6)">XTAL</text>
     </g>
-    <g class="symbol-instance" data-component="component:17" data-symbol-definition="symbol_def:5" transform="translate(74 172) rotate(0)">
+    <g class="symbol-instance" data-component="component:17" data-symbol-definition="symbol_def:5" transform="translate(74 172) rotate(90)">
       <text class="reference" x="0" y="-12">SUPPORT/CHSEIN</text>
-      <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
-      <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
-      <line class="symbol-line" x1="0" y1="16" x2="0" y2="20"/>
-      <text class="symbol-text" x="8" y="10" transform="rotate(0 8 10)">C</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
     </g>
-    <g class="symbol-instance" data-component="component:18" data-symbol-definition="symbol_def:5" transform="translate(74 188) rotate(0)">
+    <g class="symbol-instance" data-component="component:18" data-symbol-definition="symbol_def:5" transform="translate(74 188) rotate(90)">
       <text class="reference" x="0" y="-12">SUPPORT/CHSEOUT</text>
-      <line class="symbol-line" x1="0" y1="0" x2="0" y2="4"/>
-      <rect class="symbol-rectangle" x="-3" y="4" width="6" height="12"/>
-      <line class="symbol-line" x1="0" y1="16" x2="0" y2="20"/>
-      <text class="symbol-text" x="8" y="10" transform="rotate(0 8 10)">C</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
+      <text class="symbol-text" x="10" y="-10" transform="rotate(0 10 -10)">C</text>
     </g>
     <g class="symbol-instance" data-component="component:21" data-symbol-definition="symbol_def:8" transform="translate(218 184) rotate(0)">
       <text class="reference" x="0" y="-12">LED_STATUS/R</text>
@@ -328,13 +339,15 @@
     <polyline class="wire-run" data-net="net:20" points="24,26 64,26 64,22"/>
     <polyline class="wire-run" data-net="net:20" points="24,122 64,122 64,22"/>
     <polyline class="wire-run" data-net="net:20" points="70,140 64,140 64,22"/>
-    <polyline class="wire-run" data-net="net:23" points="24,150 62,150 114,150"/>
-    <polyline class="wire-run" data-net="net:23" points="114,150 92,150"/>
+    <polyline class="wire-run" data-net="net:23" points="24,150 114,150"/>
     <polyline class="wire-run" data-net="net:38" points="218,184 218,168"/>
     <polyline class="wire-run" data-net="net:39" points="238,184 254,184"/>
     <polyline class="wire-run" data-net="net:40" points="278,184 278,200"/>
     </g>
     <g class="layer layer-junctions">
+    <circle class="junction" data-net="net:20" cx="64" cy="26" r="1.8"/>
+    <circle class="junction" data-net="net:20" cx="64" cy="122" r="1.8"/>
+    <circle class="junction" data-net="net:20" cx="64" cy="140" r="1.8"/>
     </g>
     <g class="layer layer-ports">
     <g class="power-port power" data-net="net:2" transform="translate(236 18) rotate(270)">
@@ -771,8 +784,8 @@
     </g>
     </g>
     <g class="layer layer-wires">
-    <polyline class="wire-run" data-net="net:14" points="24,44 70,44 125,48"/>
-    <polyline class="wire-run" data-net="net:15" points="24,60 70,60 98,66"/>
+    <polyline class="wire-run" data-net="net:14" points="24,44 70,44 70,48 125,48"/>
+    <polyline class="wire-run" data-net="net:15" points="24,60 70,60 70,66 98,66"/>
     <polyline class="wire-run" data-net="net:16" points="24,52 74,54 98,78"/>
     <polyline class="wire-run" data-net="net:17" points="152,66 176,66"/>
     <polyline class="wire-run" data-net="net:18" points="152,78 176,78"/>
