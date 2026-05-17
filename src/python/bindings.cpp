@@ -1652,6 +1652,18 @@ class PyCircuit {
         return out.str();
     }
 
+    [[nodiscard]] py::list schematic_svg_pages() {
+        auto result = py::list{};
+        for (const auto &page : volt::io::write_schematic_svg_pages(schematic_projection())) {
+            auto item = py::dict{};
+            item["sheet"] = page.sheet.index();
+            item["name"] = page.name;
+            item["svg"] = page.svg;
+            result.append(std::move(item));
+        }
+        return result;
+    }
+
     void load_schematic_json(const std::string &text) {
         schematic_document_.replace_schematic(volt::io::read_schematic_text(text, circuit_));
     }
@@ -1851,6 +1863,7 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("orientation"))
         .def("schematic_to_json", &PyCircuit::schematic_to_json)
         .def("schematic_to_svg", &PyCircuit::schematic_to_svg)
+        .def("schematic_svg_pages", &PyCircuit::schematic_svg_pages)
         .def("load_schematic_json", &PyCircuit::load_schematic_json, py::arg("text"))
         .def("schematic_sheet_names", &PyCircuit::schematic_sheet_names)
         .def("validate", &PyCircuit::validate)

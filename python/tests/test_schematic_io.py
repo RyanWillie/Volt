@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
 import volt
 
 
@@ -77,3 +78,37 @@ def test_python_schematic_writes_svg_projection():
         path = Path(directory) / "schematic.svg"
         schematic.write_svg(path)
         assert path.read_text(encoding="utf-8") == svg
+
+
+def test_python_schematic_writes_one_svg_per_sheet():
+    design = volt.Design("schematic-svg-pages")
+
+    schematic = design.schematic("Power", size=(100, 80))
+    design.schematic("USB and Connectors", size=(120, 90))
+
+    pages = schematic.to_svg_pages()
+
+    assert [page["name"] for page in pages] == ["Power", "USB and Connectors"]
+    assert 'viewBox="0 0 100 80"' in pages[0]["svg"]
+    assert 'data-sheet="sheet:0"' in pages[0]["svg"]
+    assert 'data-sheet="sheet:1"' not in pages[0]["svg"]
+    assert 'viewBox="0 0 120 90"' in pages[1]["svg"]
+    assert 'data-sheet="sheet:1"' in pages[1]["svg"]
+
+    with TemporaryDirectory() as directory:
+        paths = schematic.write_svg_pages(directory)
+
+        assert [path.name for path in paths] == ["Power.svg", "USB_and_Connectors.svg"]
+        assert paths[0].read_text(encoding="utf-8") == pages[0]["svg"]
+        assert paths[1].read_text(encoding="utf-8") == pages[1]["svg"]
+
+
+def test_python_schematic_write_svg_pages_rejects_path_separators_in_prefix():
+    design = volt.Design("schematic-svg-pages-prefix")
+    schematic = design.schematic("Power", size=(100, 80))
+
+    with TemporaryDirectory() as directory:
+        with pytest.raises(
+            ValueError, match="Schematic SVG page prefixes must not contain path separators"
+        ):
+            schematic.write_svg_pages(directory, prefix="../unsafe")
