@@ -87,3 +87,19 @@ def test_python_schematic_sheet_backwards_compatibility_keeps_default_page():
     assert projection["sheets"][0]["metadata"]["orientation"] == "Landscape"
     assert projection["sheets"][0]["metadata"]["size"] == {"width": 297.0, "height": 210.0}
     assert projection["sheets"][0]["regions"] == []
+
+
+def test_python_schematic_regions_require_unique_name_per_sheet():
+    design = volt.Design("schematic-region-uniqueness")
+    sheet = design.schematic("Main")
+
+    first = sheet.region("Power", x=10, y=12, w=260, h=55)
+    same = sheet.region("Power", x=10, y=12, w=260, h=55)
+    assert same.index == first.index
+
+    try:
+        sheet.region("Power", x=12, y=12, w=260, h=55)
+    except ValueError as error:
+        assert "already exists with different metadata" in str(error)
+    else:
+        raise AssertionError("expected duplicate region names with different bounds to be rejected")

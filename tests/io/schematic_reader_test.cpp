@@ -238,6 +238,30 @@ TEST_CASE("Schematic reader loads drawing page metadata and named regions") {
     CHECK(sheet.regions()[0].style()[0].value() == "orange");
 }
 
+TEST_CASE("Schematic reader rejects duplicate sheet region names") {
+    volt::Circuit circuit;
+
+    auto fixture = schematic_json();
+    fixture["sheets"][0]["symbol_instances"] = nlohmann::json::array();
+    fixture["symbol_instances"] = nlohmann::json::array();
+    fixture["wire_runs"] = nlohmann::json::array();
+    fixture["net_labels"] = nlohmann::json::array();
+    fixture["sheets"][0]["wire_runs"] = nlohmann::json::array();
+    fixture["sheets"][0]["net_labels"] = nlohmann::json::array();
+    fixture["sheets"][0]["regions"] = nlohmann::json::array(
+        {{{"name", "Power"},
+          {"title", "Power"},
+          {"bounds", {{"x", 10.0}, {"y", 12.0}, {"width", 260.0}, {"height", 55.0}}},
+          {"style", nlohmann::json::object()}},
+         {{"name", "Power"},
+          {"title", "Power"},
+          {"bounds", {{"x", 15.0}, {"y", 12.0}, {"width", 260.0}, {"height", 55.0}}},
+          {"style", nlohmann::json::object()}}});
+
+    CHECK_THROWS_MATCHES(volt::io::read_schematic(fixture, circuit), std::logic_error,
+                         Catch::Matchers::Message("Sheet region name already exists"));
+}
+
 TEST_CASE("Schematic reader rejects dangling projection references") {
     volt::Circuit circuit;
     add_resistor(circuit);
