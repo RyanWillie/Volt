@@ -63,15 +63,19 @@ def test_python_schematic_page_metadata_and_regions_are_kernel_owned():
         }
     ]
     assert projection["symbol_instances"][0]["position"] == {"x": 11.0, "y": 14.0}
+    assert projection["symbol_instances"][0]["authored_region"] == "Power Circuitry"
     assert projection["wire_runs"][0]["points"] == [
         {"x": 10.0, "y": 22.0},
         {"x": 20.0, "y": 22.0},
     ]
+    assert projection["wire_runs"][0]["authored_region"] == "Power Circuitry"
     assert projection["wire_runs"][1]["points"] == [
         {"x": 10.0, "y": 12.0},
         {"x": 30.0, "y": 12.0},
     ]
+    assert projection["wire_runs"][1]["authored_region"] == "Power Circuitry"
     assert projection["net_labels"][0]["position"] == {"x": 30.0, "y": 15.0}
+    assert projection["net_labels"][0]["authored_region"] == "Power Circuitry"
     assert json.loads(design.load_schematic_json(sheet.to_json()).to_json()) == projection
     assert design.to_json() == logical_before
 

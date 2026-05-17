@@ -143,6 +143,37 @@ def test_python_schematic_validation_reports_quality_diagnostics():
     assert "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED" in codes
     assert not report.has_errors
 
+def test_python_schematic_readability_reports_presentation_diagnostics():
+    design = volt.Design("schematic-readability")
+    scoped = design.net("PWR/OUT_3V3", kind="power")
+    r1 = design.R("10k", ref="R1")
+
+    schematic = design.schematic(
+        "Main",
+        size=(100, 80),
+        margins=(10, 10, 10, 10),
+        revision="A",
+    )
+    power = schematic.region("Power", x=10, y=10, w=20, h=20)
+    power.label(scoped, at=(35, 5), orient="down")
+    schematic.label(scoped, at=(20, 65))
+    with schematic.drawing(at=(40, 20)) as drawing:
+        placed = drawing.place(r1, symbol="resistor")
+        placed.label_ref()
+
+    report = schematic.validate_readability()
+    codes = {diagnostic.code for diagnostic in report}
+
+    assert "SCHEMATIC_OBJECT_OUTSIDE_AUTHORED_REGION" in codes
+    assert "SCHEMATIC_OBJECT_OVERLAPS_TITLE_BLOCK" in codes
+    assert "SCHEMATIC_TEXT_NOT_HORIZONTAL" in codes
+    assert "SCHEMATIC_OVERLONG_DISPLAY_LABEL" in codes
+    assert "SCHEMATIC_PASSIVE_VALUE_FIELD_MISSING" in codes
+    assert "SCHEMATIC_OBJECT_OUTSIDE_AUTHORED_REGION" not in {
+        diagnostic.code for diagnostic in schematic.validate()
+    }
+    assert any(diagnostic.severity == "error" for diagnostic in report)
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")

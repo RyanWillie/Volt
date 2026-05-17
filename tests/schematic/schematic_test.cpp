@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -44,6 +45,10 @@ volt::NetId add_net(volt::Circuit &circuit) {
     return circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 }
 
+volt::NetId add_named_net(volt::Circuit &circuit, std::string name) {
+    return circuit.add_net(volt::Net{volt::NetName{std::move(name)}, volt::NetKind::Signal});
+}
+
 void connect_pin_by_number(volt::Circuit &circuit, volt::NetId net, volt::ComponentId component,
                            const std::string &number) {
     circuit.connect(net, circuit.pin_by_number(component, number).value());
@@ -64,6 +69,16 @@ bool report_has_code(const volt::DiagnosticReport &report, const std::string &co
                        [&code](const volt::Diagnostic &diagnostic) {
                            return diagnostic.code() == volt::DiagnosticCode{code};
                        });
+}
+
+const volt::Diagnostic &require_diagnostic(const volt::DiagnosticReport &report,
+                                           const std::string &code) {
+    const auto it = std::find_if(report.diagnostics().begin(), report.diagnostics().end(),
+                                 [&code](const volt::Diagnostic &diagnostic) {
+                                     return diagnostic.code() == volt::DiagnosticCode{code};
+                                 });
+    REQUIRE(it != report.diagnostics().end());
+    return *it;
 }
 
 } // namespace
@@ -700,6 +715,144 @@ TEST_CASE("Schematic validation reports no-connect markers without kernel-owned 
     CHECK(report.diagnostics().front().entities() ==
           std::vector{volt::EntityRef::no_connect_marker(marker), volt::EntityRef::pin(pin),
                       volt::EntityRef::component(component)});
+}
+
+TEST_CASE("Schematic readability reports usable-area and title-block layout issues") {
+    volt::Circuit circuit;
+    const auto net = add_net(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{
+        "Main",
+        volt::SheetMetadata{
+            "Main",
+            volt::SheetSize{100.0, 80.0},
+            std::vector{volt::TitleBlockField{"Revision", "A"}},
+            volt::SheetOrientation::Landscape,
+            volt::SheetFrame{true, volt::SheetMargins{10.0, 10.0, 10.0, 10.0}},
+        },
+    });
+    const auto margin_label =
+        schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{5.0, 20.0}});
+    const auto title_label =
+        schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{20.0, 65.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &outside = require_diagnostic(report, "SCHEMATIC_OBJECT_OUTSIDE_USABLE_AREA");
+    CHECK(outside.severity() == volt::Severity::Error);
+    CHECK(outside.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                            volt::EntityRef::net_label(margin_label),
+                                            volt::EntityRef::net(net)});
+
+    const auto &title = require_diagnostic(report, "SCHEMATIC_OBJECT_OVERLAPS_TITLE_BLOCK");
+    CHECK(title.severity() == volt::Severity::Warning);
+    CHECK(title.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                          volt::EntityRef::net_label(title_label),
+                                          volt::EntityRef::net(net)});
+}
+
+TEST_CASE("Schematic readability reports objects outside their authored region") {
+    volt::Circuit circuit;
+    const auto net = add_net(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto region = schematic.add_sheet_region(
+        sheet,
+        volt::SheetRegion{"power", "Power", volt::SheetRegionBounds{10.0, 10.0, 20.0, 20.0}});
+    const auto label =
+        schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{35.0, 15.0},
+                                                      volt::SchematicOrientation::Right, region});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_OBJECT_OUTSIDE_AUTHORED_REGION");
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::net_label(label),
+                                               volt::EntityRef::net(net)});
+}
+
+TEST_CASE("Schematic readability reports duplicate junctions and hard-to-read labels") {
+    volt::Circuit circuit;
+    const auto scoped = add_named_net(circuit, "PWR/OUT_3V3");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto first =
+        schematic.add_junction(sheet, volt::Junction{scoped, volt::Point{30.0, 20.0}});
+    const auto second =
+        schematic.add_junction(sheet, volt::Junction{scoped, volt::Point{30.0, 20.0}});
+    const auto label = schematic.add_net_label(
+        sheet, volt::NetLabel{scoped, volt::Point{40.0, 20.0}, volt::SchematicOrientation::Down});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &duplicate = require_diagnostic(report, "SCHEMATIC_DUPLICATE_JUNCTION_MARKERS");
+    CHECK(duplicate.severity() == volt::Severity::Warning);
+    CHECK(duplicate.entities() ==
+          std::vector{volt::EntityRef::sheet(sheet), volt::EntityRef::net(scoped),
+                      volt::EntityRef::junction(first), volt::EntityRef::junction(second)});
+
+    const auto &rotated = require_diagnostic(report, "SCHEMATIC_TEXT_NOT_HORIZONTAL");
+    CHECK(rotated.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                            volt::EntityRef::net_label(label),
+                                            volt::EntityRef::net(scoped)});
+
+    const auto &long_label = require_diagnostic(report, "SCHEMATIC_OVERLONG_DISPLAY_LABEL");
+    CHECK(long_label.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::net_label(label),
+                                               volt::EntityRef::net(scoped)});
+}
+
+TEST_CASE("Schematic readability reports missing passive values and dense no-connect clusters") {
+    volt::Circuit circuit;
+    const auto resistor = add_resistor(circuit);
+    circuit.set_component_property(resistor, volt::PropertyKey{"value"},
+                                   volt::PropertyValue{"10k"});
+
+    auto pin_definitions = std::vector<volt::PinDefId>{};
+    for (auto index = 1; index <= 6; ++index) {
+        pin_definitions.push_back(circuit.add_pin_definition(
+            volt::PinDefinition{"NC" + std::to_string(index), std::to_string(index),
+                                volt::PinRole::NoConnect, volt::ConnectionRequirement::Optional}));
+    }
+    const auto connector_definition =
+        circuit.add_component_definition(volt::ComponentDefinition{"Header", pin_definitions});
+    const auto connector =
+        circuit.instantiate_component(connector_definition, volt::ReferenceDesignator{"J1"});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto resistor_symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto resistor_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{resistor_symbol, resistor, volt::Point{40.0, 20.0}});
+    const auto connector_symbol = schematic.add_symbol_definition(volt::SymbolDefinition{"Header"});
+    const auto connector_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{connector_symbol, connector, volt::Point{80.0, 40.0}});
+    auto markers = std::vector<volt::NoConnectMarkerId>{};
+    for (auto index = 1; index <= 6; ++index) {
+        markers.push_back(schematic.add_no_connect_marker(
+            sheet,
+            volt::NoConnectMarker{circuit.pin_by_number(connector, std::to_string(index)).value(),
+                                  volt::Point{80.0 + static_cast<double>(index), 40.0}}));
+    }
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &missing_value = require_diagnostic(report, "SCHEMATIC_PASSIVE_VALUE_FIELD_MISSING");
+    CHECK(missing_value.entities() ==
+          std::vector{volt::EntityRef::sheet(sheet), volt::EntityRef::component(resistor),
+                      volt::EntityRef::symbol_instance(resistor_instance)});
+
+    const auto &cluster = require_diagnostic(report, "SCHEMATIC_DENSE_NO_CONNECT_MARKERS");
+    CHECK(cluster.severity() == volt::Severity::Warning);
+    CHECK(cluster.entities().front() == volt::EntityRef::sheet(sheet));
+    CHECK(cluster.entities()[1] == volt::EntityRef::symbol_instance(connector_instance));
+    for (std::size_t index = 0; index < markers.size(); ++index) {
+        CHECK(cluster.entities()[index + 2U] == volt::EntityRef::no_connect_marker(markers[index]));
+    }
 }
 
 TEST_CASE("Schematic validation accepts no-connect markers on no-connect pin definitions") {

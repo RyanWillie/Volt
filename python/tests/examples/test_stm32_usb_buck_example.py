@@ -160,6 +160,13 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
 
     schematic_report = main.build_schematic(main.build_board()).validate()
     assert list(schematic_report) == []
+    readability_report = main.build_schematic(main.build_board()).validate_readability()
+    readability_codes = {diagnostic.code for diagnostic in readability_report}
+    assert "SCHEMATIC_OBJECT_OUTSIDE_USABLE_AREA" in readability_codes
+    assert "SCHEMATIC_OBJECT_OVERLAPS_TITLE_BLOCK" in readability_codes
+    assert "SCHEMATIC_DUPLICATE_JUNCTION_MARKERS" in readability_codes
+    assert "SCHEMATIC_OVERLONG_DISPLAY_LABEL" in readability_codes
+    assert readability_report.has_errors
     board = main.build_board()
     logical_before_schematic = board.design.to_json()
     main.build_schematic(board)
