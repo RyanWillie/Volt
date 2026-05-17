@@ -80,6 +80,16 @@ namespace detail {
     throw std::logic_error{"Unhandled schematic orientation"};
 }
 
+[[nodiscard]] inline std::string sheet_orientation_name(SheetOrientation orientation) {
+    switch (orientation) {
+    case SheetOrientation::Portrait:
+        return "Portrait";
+    case SheetOrientation::Landscape:
+        return "Landscape";
+    }
+    throw std::logic_error{"Unhandled sheet orientation"};
+}
+
 [[nodiscard]] inline std::string route_intent_name(RouteIntent intent) {
     switch (intent) {
     case RouteIntent::Direct:
@@ -122,8 +132,68 @@ inline void write_point(std::ostream &out, Point point) {
     out << " }";
 }
 
+inline void write_sheet_margins(std::ostream &out, SheetMargins margins) {
+    out << "{ \"left\": ";
+    write_json_number(out, margins.left());
+    out << ", \"top\": ";
+    write_json_number(out, margins.top());
+    out << ", \"right\": ";
+    write_json_number(out, margins.right());
+    out << ", \"bottom\": ";
+    write_json_number(out, margins.bottom());
+    out << " }";
+}
+
+inline void write_sheet_frame(std::ostream &out, SheetFrame frame) {
+    out << "{ \"visible\": " << (frame.visible() ? "true" : "false") << ", \"margins\": ";
+    write_sheet_margins(out, frame.margins());
+    out << " }";
+}
+
+inline void write_sheet_coordinate_zones(std::ostream &out, SheetCoordinateZones zones) {
+    out << "{ \"columns\": " << zones.columns() << ", \"rows\": " << zones.rows()
+        << ", \"visible\": " << (zones.visible() ? "true" : "false") << " }";
+}
+
+inline void write_sheet_grid(std::ostream &out, SheetGrid grid) {
+    out << "{ \"spacing\": ";
+    write_json_number(out, grid.spacing());
+    out << ", \"visible\": " << (grid.visible() ? "true" : "false") << " }";
+}
+
+inline void write_sheet_region_style(std::ostream &out,
+                                     const std::vector<SheetRegionStyleField> &style) {
+    out << "{";
+    for (std::size_t index = 0; index < style.size(); ++index) {
+        const auto &field = style[index];
+        if (index != 0) {
+            out << ", ";
+        }
+        out << json_string(field.key()) << ": " << json_string(field.value());
+    }
+    out << "}";
+}
+
+inline void write_sheet_region(std::ostream &out, const SheetRegion &region) {
+    const auto bounds = region.bounds();
+    out << "{ \"name\": " << json_string(region.name())
+        << ", \"title\": " << json_string(region.title()) << ", \"bounds\": { \"x\": ";
+    write_json_number(out, bounds.x());
+    out << ", \"y\": ";
+    write_json_number(out, bounds.y());
+    out << ", \"width\": ";
+    write_json_number(out, bounds.width());
+    out << ", \"height\": ";
+    write_json_number(out, bounds.height());
+    out << " }, \"style\": ";
+    write_sheet_region_style(out, region.style());
+    out << " }";
+}
+
 inline void write_sheet_metadata(std::ostream &out, const SheetMetadata &metadata) {
-    out << "{ \"title\": " << json_string(metadata.title()) << ", \"size\": { \"width\": ";
+    out << "{ \"title\": " << json_string(metadata.title())
+        << ", \"orientation\": " << json_string(sheet_orientation_name(metadata.orientation()))
+        << ", \"size\": { \"width\": ";
     write_json_number(out, metadata.size().width());
     out << ", \"height\": ";
     write_json_number(out, metadata.size().height());
@@ -136,7 +206,17 @@ inline void write_sheet_metadata(std::ostream &out, const SheetMetadata &metadat
         out << "{ \"key\": " << json_string(field.key())
             << ", \"value\": " << json_string(field.value()) << " }";
     }
-    out << "] }";
+    out << "], \"frame\": ";
+    write_sheet_frame(out, metadata.frame());
+    if (metadata.coordinate_zones().has_value()) {
+        out << ", \"coordinate_zones\": ";
+        write_sheet_coordinate_zones(out, metadata.coordinate_zones().value());
+    }
+    if (metadata.grid().has_value()) {
+        out << ", \"grid\": ";
+        write_sheet_grid(out, metadata.grid().value());
+    }
+    out << " }";
 }
 
 inline void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive) {
@@ -328,7 +408,14 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
         out << "    { \"id\": " << detail::json_string(detail::sheet_id(id))
             << ", \"name\": " << detail::json_string(sheet.name()) << ", \"metadata\": ";
         detail::write_sheet_metadata(out, sheet.metadata());
-        out << ", \"symbol_instances\": [";
+        out << ", \"regions\": [";
+        for (std::size_t region_index = 0; region_index < sheet.regions().size(); ++region_index) {
+            if (region_index != 0) {
+                out << ", ";
+            }
+            detail::write_sheet_region(out, sheet.regions()[region_index]);
+        }
+        out << "], \"symbol_instances\": [";
         for (std::size_t instance_index = 0; instance_index < sheet.symbol_instances().size();
              ++instance_index) {
             if (instance_index != 0) {

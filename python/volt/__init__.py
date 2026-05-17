@@ -1348,14 +1348,7 @@ class SchematicWireBuilder:
 
     def from_(self, point) -> SchematicWireBuilder:
         self._require_unmaterialized()
-        self._points = [
-            _schematic_point_for_authoring(
-                point,
-                design=self._schematic._design,
-                schematic=self._schematic,
-                action="schematic wire",
-            )
-        ]
+        self._points = [self._point_for_authoring(point)]
         self._update_drawing_cursor(self._points[-1])
         return self
 
@@ -1363,28 +1356,14 @@ class SchematicWireBuilder:
         """Append an explicit intermediate point that the route should preserve."""
         self._require_unmaterialized()
         self._require_started()
-        self._append_point(
-            _schematic_point_for_authoring(
-                point,
-                design=self._schematic._design,
-                schematic=self._schematic,
-                action="schematic wire",
-            )
-        )
+        self._append_point(self._point_for_authoring(point))
         return self
 
     def to(self, point, *, shape: str | None = None, k: float | None = None):
         """Append the next route point, normally the terminal endpoint."""
         self._require_unmaterialized()
         self._require_started()
-        self._append_point(
-            _schematic_point_for_authoring(
-                point,
-                design=self._schematic._design,
-                schematic=self._schematic,
-                action="schematic wire",
-            )
-        )
+        self._append_point(self._point_for_authoring(point))
         if shape is not None:
             return self.shape(shape, k=k)
         return self
@@ -1397,7 +1376,7 @@ class SchematicWireBuilder:
         self._append_point(
             (
                 _schematic_axis_target(
-                    anchor_or_x,
+                    self._axis_target_arg(anchor_or_x, "x"),
                     self._schematic._design,
                     "x",
                     schematic=self._schematic,
@@ -1417,7 +1396,7 @@ class SchematicWireBuilder:
             (
                 current_x,
                 _schematic_axis_target(
-                    anchor_or_y,
+                    self._axis_target_arg(anchor_or_y, "y"),
                     self._schematic._design,
                     "y",
                     schematic=self._schematic,
@@ -1512,6 +1491,26 @@ class SchematicWireBuilder:
         self._points.append(point)
         self._update_drawing_cursor(point)
 
+    def _point_for_authoring(self, point) -> tuple[float, float]:
+        if self._drawing is not None:
+            point = self._drawing._point_arg(point)
+        return _schematic_point_for_authoring(
+            point,
+            design=self._schematic._design,
+            schematic=self._schematic,
+            action="schematic wire",
+        )
+
+    def _axis_target_arg(self, target, axis: str):
+        if (
+            self._drawing is not None
+            and isinstance(target, (int, float))
+            and not isinstance(target, bool)
+        ):
+            offset = self._drawing._coordinate_origin[0 if axis == "x" else 1]
+            return _coordinate(target) + offset
+        return target
+
     def _persist(
         self,
         points: Iterable[tuple[float, float]],
@@ -1571,8 +1570,10 @@ class SchematicDrawing:
         at: tuple[float, float] | SchematicAnchor | SchematicPort = (0, 0),
         direction: str = "Right",
         unit: float = 20,
+        coordinate_origin: tuple[float, float] = (0, 0),
     ):
         self._schematic = schematic
+        self._coordinate_origin = _schematic_point_tuple(coordinate_origin)
         self._here = self._anchor_at(at)
         self._direction = _orientation(direction)
         self._unit = _coordinate(unit)
@@ -1701,7 +1702,7 @@ class SchematicDrawing:
         self._flush_pending()
         placed = self._schematic.place(
             component,
-            at=self._here if at is None else at,
+            at=self._here if at is None else self._point_arg(at),
             orient=self._direction if orient is None else orient,
             symbol=symbol,
             variant=variant,
@@ -1718,7 +1719,13 @@ class SchematicDrawing:
         k: float | None = None,
     ) -> SchematicWire:
         self._flush_pending()
-        return self._schematic.connect(start, end, net=net, shape=shape, k=k)
+        return self._schematic.connect(
+            self._point_arg(start),
+            self._point_arg(end),
+            net=net,
+            shape=shape,
+            k=k,
+        )
 
     def wire(self, net: Net) -> SchematicWireBuilder:
         self._flush_pending()
@@ -1743,7 +1750,7 @@ class SchematicDrawing:
     ) -> SchematicPort:
         self._flush_pending()
         return self._schematic.power(
-            name, at=self._here if at is None else at, net=net, orient=orient
+            name, at=self._here if at is None else self._point_arg(at), net=net, orient=orient
         )
 
     def ground(
@@ -1755,7 +1762,7 @@ class SchematicDrawing:
     ) -> SchematicPort:
         self._flush_pending()
         return self._schematic.ground(
-            at=self._here if at is None else at, net=net, orient=orient
+            at=self._here if at is None else self._point_arg(at), net=net, orient=orient
         )
 
     def net_label(
@@ -1767,7 +1774,9 @@ class SchematicDrawing:
     ) -> SchematicNetLabel:
         self._flush_pending()
         return self._schematic.net_label(
-            name_or_net, at=self._here if at is None else at, orient=orient
+            name_or_net,
+            at=self._here if at is None else self._point_arg(at),
+            orient=orient,
         )
 
     def junction(
@@ -1777,7 +1786,7 @@ class SchematicDrawing:
         at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
     ) -> SchematicJunction:
         self._flush_pending()
-        return self._schematic.junction(net, at=self._here if at is None else at)
+        return self._schematic.junction(net, at=self._here if at is None else self._point_arg(at))
 
     def no_connect(
         self,
@@ -1801,7 +1810,7 @@ class SchematicDrawing:
         self._flush_pending()
         return self._schematic.sheet_port(
             name,
-            at=self._here if at is None else at,
+            at=self._here if at is None else self._point_arg(at),
             net=net,
             kind=kind,
             orient=orient,
@@ -1817,7 +1826,7 @@ class SchematicDrawing:
     ) -> SchematicPort:
         self._flush_pending()
         return self._schematic.off_page(
-            name, at=self._here if at is None else at, net=net, orient=orient
+            name, at=self._here if at is None else self._point_arg(at), net=net, orient=orient
         )
 
     @contextmanager
@@ -1848,15 +1857,27 @@ class SchematicDrawing:
     def _anchor_at(
         self, value: tuple[float, float] | SchematicAnchor | SchematicPort
     ) -> SchematicAnchor:
-        return SchematicAnchor(
-            _schematic_point_for_authoring(
-                value,
-                design=self._schematic._design,
-                schematic=self._schematic,
-                action="drawing cursor",
-            ),
+        point = _schematic_point_for_authoring(
+            value,
             design=self._schematic._design,
+            schematic=self._schematic,
+            action="drawing cursor",
         )
+        if isinstance(value, (tuple, list)):
+            point = (
+                point[0] + self._coordinate_origin[0],
+                point[1] + self._coordinate_origin[1],
+            )
+        return SchematicAnchor(point, design=self._schematic._design)
+
+    def _point_arg(self, value):
+        if isinstance(value, (tuple, list)):
+            point = _schematic_point_tuple(value)
+            return (
+                point[0] + self._coordinate_origin[0],
+                point[1] + self._coordinate_origin[1],
+            )
+        return value
 
     def _flush_pending(self) -> None:
         pending = self._pending
@@ -2273,6 +2294,51 @@ class Schematic:
     ) -> SchematicDrawing:
         return SchematicDrawing(self, at=at, direction=direction, unit=unit)
 
+    def region(
+        self,
+        name: str,
+        *,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        title: str | None = None,
+        style: dict[str, str] | None = None,
+    ) -> SchematicRegion:
+        if not isinstance(name, str):
+            raise TypeError("Schematic region names must be strings")
+        if not name:
+            raise ValueError("Schematic region names must not be empty")
+        region_title = name if title is None else title
+        if not isinstance(region_title, str):
+            raise TypeError("Schematic region titles must be strings")
+        if not region_title:
+            raise ValueError("Schematic region titles must not be empty")
+        bounds = {
+            "x": _coordinate(x),
+            "y": _coordinate(y),
+            "width": _positive_coordinate(w, "Schematic region widths"),
+            "height": _positive_coordinate(h, "Schematic region heights"),
+        }
+        region_style = _string_dict(style or {}, "Schematic region style")
+        index = self._design._circuit.schematic_region(
+            self._sheet_index,
+            {
+                "name": name,
+                "title": region_title,
+                "bounds": bounds,
+                "style": region_style,
+            },
+        )
+        return SchematicRegion(
+            self,
+            index,
+            name=name,
+            title=region_title,
+            bounds=(bounds["x"], bounds["y"], bounds["width"], bounds["height"]),
+            style=region_style,
+        )
+
     def place(
         self,
         component: Component,
@@ -2648,6 +2714,162 @@ class Schematic:
         return f"Schematic(name={self.name!r}, sheet_index={self._sheet_index})"
 
 
+class SchematicRegion:
+    """Presentation-only authoring surface for a named region on one schematic sheet."""
+
+    def __init__(
+        self,
+        sheet: Schematic,
+        index: int,
+        *,
+        name: str,
+        title: str,
+        bounds: tuple[float, float, float, float],
+        style: dict[str, str],
+    ):
+        self._sheet = sheet
+        self._design = sheet._design
+        self._sheet_index = sheet.sheet_index
+        self._index = index
+        self.name = name
+        self.title = title
+        self.bounds = bounds
+        self.style = dict(style)
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    @property
+    def origin(self) -> tuple[float, float]:
+        return (self.bounds[0], self.bounds[1])
+
+    def drawing(
+        self,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort = (0, 0),
+        direction: str = "Right",
+        unit: float = 20,
+    ) -> SchematicDrawing:
+        return SchematicDrawing(
+            self._sheet,
+            at=at,
+            direction=direction,
+            unit=unit,
+            coordinate_origin=self.origin,
+        )
+
+    def place(
+        self,
+        component: Component,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        orient: str = "Right",
+        symbol: str | SchematicSymbolSpec | None = None,
+        variant: str = "default",
+    ) -> SchematicSymbol:
+        return self._sheet.place(
+            component,
+            at=self._local_point(at),
+            orient=orient,
+            symbol=symbol,
+            variant=variant,
+        )
+
+    def wire(
+        self,
+        net: Net,
+        points: Iterable[tuple[float, float] | SchematicAnchor | SchematicPort],
+    ) -> SchematicWire:
+        return self._sheet.wire(net, tuple(self._local_point(point) for point in points))
+
+    def label(
+        self,
+        net: Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        orient: str = "Right",
+    ) -> SchematicNetLabel:
+        return self._sheet.label(net, at=self._local_point(at), orient=orient)
+
+    def net_label(
+        self,
+        name_or_net: str | Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        orient: str = "Right",
+    ) -> SchematicNetLabel:
+        return self._sheet.net_label(name_or_net, at=self._local_point(at), orient=orient)
+
+    def junction(
+        self,
+        net: Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+    ) -> SchematicJunction:
+        return self._sheet.junction(net, at=self._local_point(at))
+
+    def power(
+        self,
+        name: str,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        orient: str = "Up",
+    ) -> SchematicPort:
+        return self._sheet.power(name, at=self._local_point(at), net=net, orient=orient)
+
+    def ground(
+        self,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        orient: str = "Down",
+    ) -> SchematicPort:
+        return self._sheet.ground(at=self._local_point(at), net=net, orient=orient)
+
+    def sheet_port(
+        self,
+        name: str,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        kind: str = "Bidirectional",
+        orient: str = "Right",
+    ) -> SchematicPort:
+        return self._sheet.sheet_port(
+            name,
+            at=self._local_point(at),
+            net=net,
+            kind=kind,
+            orient=orient,
+        )
+
+    def off_page(
+        self,
+        name: str,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        orient: str = "Right",
+    ) -> SchematicPort:
+        return self._sheet.off_page(name, at=self._local_point(at), net=net, orient=orient)
+
+    def _local_point(
+        self, value: tuple[float, float] | SchematicAnchor | SchematicPort
+    ) -> tuple[float, float] | SchematicAnchor | SchematicPort:
+        if isinstance(value, (tuple, list)):
+            x, y = _schematic_point_tuple(value)
+            return (self.bounds[0] + x, self.bounds[1] + y)
+        return value
+
+    def __repr__(self) -> str:
+        return (
+            f"SchematicRegion(name={self.name!r}, sheet={self._sheet.name!r}, "
+            f"index={self._index})"
+        )
+
+
 class Design:
     """Root Python handle for one kernel-owned logical circuit."""
 
@@ -2926,13 +3148,46 @@ class Design:
     def op_amp(self, *, ref: str | None = None) -> Component:
         return self._instantiate("op_amp_5pin", self._circuit.define_op_amp_5pin, "U", ref, {})
 
-    def schematic(self, name: str) -> Schematic:
+    def schematic(
+        self,
+        name: str,
+        *,
+        size: str | tuple[float, float] | dict | None = None,
+        orientation: str | None = None,
+        title: str | None = None,
+        number: str | int | None = None,
+        page_count: str | int | None = None,
+        revision: str | None = None,
+        date: str | None = None,
+        project: str | None = None,
+        file: str | None = None,
+        title_block: dict[str, str] | Iterable[tuple[str, str] | dict] | None = None,
+        margins: float | tuple[float, float, float, float] | dict | None = None,
+        coordinate_zones: tuple[int, int] | dict | None = None,
+        grid: float | dict | None = None,
+    ) -> Schematic:
         if not isinstance(name, str):
             raise TypeError("Schematic name must be a string")
         if not name:
             raise ValueError("Schematic name must not be empty")
-        if name not in self._schematic_sheets:
-            self._schematic_sheets[name] = self._circuit.schematic_sheet(name)
+        metadata = _schematic_sheet_metadata(
+            name,
+            size=size,
+            orientation=orientation,
+            title=title,
+            number=number,
+            page_count=page_count,
+            revision=revision,
+            date=date,
+            project=project,
+            file=file,
+            title_block=title_block,
+            margins=margins,
+            coordinate_zones=coordinate_zones,
+            grid=grid,
+        )
+        if name not in self._schematic_sheets or metadata:
+            self._schematic_sheets[name] = self._circuit.schematic_sheet(name, metadata)
         return Schematic(self, self._schematic_sheets[name], name)
 
     def load_schematic_json(self, text: str) -> Schematic:
@@ -2997,6 +3252,212 @@ def _coordinate(value: float) -> float:
     if not isfinite(result):
         raise ValueError("Schematic coordinates must be finite")
     return result
+
+
+def _positive_coordinate(value: float, label: str) -> float:
+    result = _coordinate(value)
+    if result <= 0:
+        raise ValueError(f"{label} must be positive")
+    return result
+
+
+def _string_dict(values: dict, context: str) -> dict[str, str]:
+    if not isinstance(values, dict):
+        raise TypeError(f"{context} must be a dict")
+    result: dict[str, str] = {}
+    for key, value in values.items():
+        if not isinstance(key, str):
+            raise TypeError(f"{context} keys must be strings")
+        if not key:
+            raise ValueError(f"{context} keys must not be empty")
+        if not isinstance(value, str):
+            raise TypeError(f"{context} values must be strings")
+        if not value:
+            raise ValueError(f"{context} values must not be empty")
+        result[key] = value
+    return result
+
+
+def _sheet_orientation(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError("Schematic sheet orientation must be a string")
+    normalized = value.casefold()
+    if normalized == "portrait":
+        return "Portrait"
+    if normalized == "landscape":
+        return "Landscape"
+    raise ValueError("Schematic sheet orientation must be portrait or landscape")
+
+
+def _schematic_sheet_size(value, orientation: str) -> dict[str, float]:
+    if isinstance(value, str):
+        if value.casefold() != "a4":
+            raise ValueError("Schematic sheet size names must be A4")
+        if orientation == "Portrait":
+            return {"width": 210.0, "height": 297.0}
+        return {"width": 297.0, "height": 210.0}
+    if isinstance(value, dict):
+        return {
+            "width": _positive_coordinate(value["width"], "Schematic sheet widths"),
+            "height": _positive_coordinate(value["height"], "Schematic sheet heights"),
+        }
+    if isinstance(value, (tuple, list)) and len(value) == 2:
+        return {
+            "width": _positive_coordinate(value[0], "Schematic sheet widths"),
+            "height": _positive_coordinate(value[1], "Schematic sheet heights"),
+        }
+    raise TypeError("Schematic sheet size must be A4, a (width, height) pair, or a dict")
+
+
+def _title_block_value(value, label: str) -> str:
+    if not isinstance(value, (str, int)):
+        raise TypeError(f"Schematic title-block {label} must be a string or integer")
+    result = str(value)
+    if not result:
+        raise ValueError(f"Schematic title-block {label} must not be empty")
+    return result
+
+
+def _title_block_items(values) -> list[dict[str, str]]:
+    if values is None:
+        return []
+    if isinstance(values, dict):
+        iterable = values.items()
+    else:
+        iterable = values
+    result: list[dict[str, str]] = []
+    for item in iterable:
+        if isinstance(item, dict):
+            key = item["key"]
+            value = item["value"]
+        else:
+            key, value = item
+        if not isinstance(key, str):
+            raise TypeError("Schematic title-block keys must be strings")
+        if not key:
+            raise ValueError("Schematic title-block keys must not be empty")
+        result.append({"key": key, "value": _title_block_value(value, key)})
+    return result
+
+
+def _sheet_margins(value) -> dict[str, float]:
+    if isinstance(value, dict):
+        return {
+            "left": _coordinate(value["left"]),
+            "top": _coordinate(value["top"]),
+            "right": _coordinate(value["right"]),
+            "bottom": _coordinate(value["bottom"]),
+        }
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        margin = _coordinate(value)
+        return {"left": margin, "top": margin, "right": margin, "bottom": margin}
+    if isinstance(value, (tuple, list)) and len(value) == 4:
+        return {
+            "left": _coordinate(value[0]),
+            "top": _coordinate(value[1]),
+            "right": _coordinate(value[2]),
+            "bottom": _coordinate(value[3]),
+        }
+    raise TypeError("Schematic sheet margins must be a number, four-value tuple, or dict")
+
+
+def _positive_count(value, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{label} must be an integer")
+    if value <= 0:
+        raise ValueError(f"{label} must be positive")
+    return value
+
+
+def _visibility_flag(value, label: str) -> bool:
+    if not isinstance(value, bool):
+        raise TypeError(f"{label} must be a boolean")
+    return value
+
+
+def _coordinate_zones(value) -> dict[str, int | bool]:
+    if isinstance(value, dict):
+        return {
+            "columns": _positive_count(value["columns"], "Coordinate zone columns"),
+            "rows": _positive_count(value["rows"], "Coordinate zone rows"),
+            "visible": _visibility_flag(
+                value.get("visible", True), "Coordinate zone visibility"
+            ),
+        }
+    if isinstance(value, (tuple, list)) and len(value) == 2:
+        return {
+            "columns": _positive_count(value[0], "Coordinate zone columns"),
+            "rows": _positive_count(value[1], "Coordinate zone rows"),
+            "visible": True,
+        }
+    raise TypeError("Coordinate zones must be a (columns, rows) pair or dict")
+
+
+def _sheet_grid(value) -> dict[str, float | bool]:
+    if isinstance(value, dict):
+        return {
+            "spacing": _positive_coordinate(value["spacing"], "Schematic grid spacing"),
+            "visible": _visibility_flag(
+                value.get("visible", True), "Schematic grid visibility"
+            ),
+        }
+    return {"spacing": _positive_coordinate(value, "Schematic grid spacing"), "visible": True}
+
+
+def _schematic_sheet_metadata(
+    name: str,
+    *,
+    size,
+    orientation,
+    title,
+    number,
+    page_count,
+    revision,
+    date,
+    project,
+    file,
+    title_block,
+    margins,
+    coordinate_zones,
+    grid,
+) -> dict:
+    metadata: dict = {}
+    orientation_value: str | None = None
+    if orientation is not None:
+        orientation_value = _sheet_orientation(orientation)
+        metadata["orientation"] = orientation_value
+    if size is not None:
+        orientation_value = orientation_value or "Landscape"
+        metadata["orientation"] = orientation_value
+        metadata["size"] = _schematic_sheet_size(size, orientation_value)
+    if title is not None:
+        if not isinstance(title, str):
+            raise TypeError("Schematic sheet titles must be strings")
+        if not title:
+            raise ValueError("Schematic sheet titles must not be empty")
+        metadata["title"] = title
+
+    fields = []
+    for key, value in (
+        ("Number", number),
+        ("Page Count", page_count),
+        ("Revision", revision),
+        ("Date", date),
+        ("Project", project),
+        ("File", file),
+    ):
+        if value is not None:
+            fields.append({"key": key, "value": _title_block_value(value, key)})
+    fields.extend(_title_block_items(title_block))
+    if fields:
+        metadata["title_block"] = fields
+    if margins is not None:
+        metadata["frame"] = {"visible": True, "margins": _sheet_margins(margins)}
+    if coordinate_zones is not None:
+        metadata["coordinate_zones"] = _coordinate_zones(coordinate_zones)
+    if grid is not None:
+        metadata["grid"] = _sheet_grid(grid)
+    return metadata
 
 
 def _schematic_point_tuple(value) -> tuple[float, float]:
@@ -4036,6 +4497,7 @@ __all__ = [
     "SchematicNoConnect",
     "SchematicPinAnchor",
     "SchematicPort",
+    "SchematicRegion",
     "SchematicSymbolField",
     "SchematicSymbolPinSpec",
     "SchematicSymbolSpec",

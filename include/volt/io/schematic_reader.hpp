@@ -3,6 +3,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <istream>
 #include <limits>
 #include <map>
@@ -87,6 +88,16 @@ class SchematicReader {
         return it->get<std::string>();
     }
 
+    static bool optional_bool_field(const nlohmann::json &object, const char *name, bool fallback) {
+        require(object.is_object(), "Expected object while reading schematic");
+        const auto it = object.find(name);
+        if (it == object.end()) {
+            return fallback;
+        }
+        require(it->is_boolean(), std::string{"Expected boolean field: "} + name);
+        return it->get<bool>();
+    }
+
     static double number_field(const nlohmann::json &object, const char *name) {
         const auto &value = field(object, name);
         require(value.is_number(), std::string{"Expected number field: "} + name);
@@ -112,6 +123,15 @@ class SchematicReader {
         }
         require(it->is_array(), std::string{"Expected array field: "} + name);
         return *it;
+    }
+
+    static std::size_t positive_size_field(const nlohmann::json &object, const char *name) {
+        const auto &value = field(object, name);
+        require(value.is_number_unsigned() || value.is_number_integer(),
+                std::string{"Expected integer field: "} + name);
+        const auto signed_value = value.get<std::int64_t>();
+        require(signed_value > 0, std::string{"Expected positive integer field: "} + name);
+        return static_cast<std::size_t>(signed_value);
     }
 
     static void require_format(const nlohmann::json &object) {
@@ -173,6 +193,14 @@ class SchematicReader {
         if (value == "Up")
             return SchematicOrientation::Up;
         throw std::logic_error{"Invalid schematic orientation value"};
+    }
+
+    [[nodiscard]] static SheetOrientation sheet_orientation(const std::string &value) {
+        if (value == "Portrait")
+            return SheetOrientation::Portrait;
+        if (value == "Landscape")
+            return SheetOrientation::Landscape;
+        throw std::logic_error{"Invalid schematic sheet orientation value"};
     }
 
     [[nodiscard]] static RouteIntent route_intent(const std::string &value) {
@@ -259,6 +287,52 @@ class SchematicReader {
         throw std::logic_error{"Invalid symbol primitive type"};
     }
 
+    [[nodiscard]] static SheetMargins sheet_margins(const nlohmann::json &object) {
+        require(object.is_object(), "Sheet margins must be an object");
+        return SheetMargins{number_field(object, "left"), number_field(object, "top"),
+                            number_field(object, "right"), number_field(object, "bottom")};
+    }
+
+    [[nodiscard]] static SheetFrame sheet_frame(const nlohmann::json &metadata_object) {
+        const auto frame_it = metadata_object.find("frame");
+        if (frame_it == metadata_object.end()) {
+            return SheetFrame{};
+        }
+        const auto &frame_object = *frame_it;
+        require(frame_object.is_object(), "Sheet frame must be an object");
+        auto margins = SheetMargins{};
+        const auto margins_it = frame_object.find("margins");
+        if (margins_it != frame_object.end()) {
+            margins = sheet_margins(*margins_it);
+        }
+        return SheetFrame{optional_bool_field(frame_object, "visible", true), margins};
+    }
+
+    [[nodiscard]] static std::optional<SheetCoordinateZones>
+    sheet_coordinate_zones(const nlohmann::json &metadata_object) {
+        const auto zones_it = metadata_object.find("coordinate_zones");
+        if (zones_it == metadata_object.end() || zones_it->is_null()) {
+            return std::nullopt;
+        }
+        const auto &zones_object = *zones_it;
+        require(zones_object.is_object(), "Sheet coordinate zones must be an object");
+        return SheetCoordinateZones{positive_size_field(zones_object, "columns"),
+                                    positive_size_field(zones_object, "rows"),
+                                    optional_bool_field(zones_object, "visible", true)};
+    }
+
+    [[nodiscard]] static std::optional<SheetGrid>
+    sheet_grid(const nlohmann::json &metadata_object) {
+        const auto grid_it = metadata_object.find("grid");
+        if (grid_it == metadata_object.end() || grid_it->is_null()) {
+            return std::nullopt;
+        }
+        const auto &grid_object = *grid_it;
+        require(grid_object.is_object(), "Sheet grid must be an object");
+        return SheetGrid{number_field(grid_object, "spacing"),
+                         optional_bool_field(grid_object, "visible", true)};
+    }
+
     [[nodiscard]] static SheetMetadata sheet_metadata(const nlohmann::json &sheet_object,
                                                       const std::string &fallback_title) {
         const auto metadata_it = sheet_object.find("metadata");
@@ -274,10 +348,48 @@ class SchematicReader {
             title_block.emplace_back(string_field(field_object, "key"),
                                      string_field(field_object, "value"));
         }
+        auto orientation = SheetOrientation::Landscape;
+        const auto orientation_value = optional_string_field(metadata_object, "orientation");
+        if (!orientation_value.empty()) {
+            orientation = sheet_orientation(orientation_value);
+        }
         return SheetMetadata{
             string_field(metadata_object, "title"),
             SheetSize{number_field(size_object, "width"), number_field(size_object, "height")},
-            std::move(title_block)};
+            std::move(title_block),
+            orientation,
+            sheet_frame(metadata_object),
+            sheet_coordinate_zones(metadata_object),
+            sheet_grid(metadata_object)};
+    }
+
+    [[nodiscard]] static std::vector<SheetRegionStyleField>
+    sheet_region_style(const nlohmann::json &region_object) {
+        const auto style_it = region_object.find("style");
+        if (style_it == region_object.end() || style_it->is_null()) {
+            return {};
+        }
+        const auto &style_object = *style_it;
+        require(style_object.is_object(), "Sheet region style must be an object");
+        auto style = std::vector<SheetRegionStyleField>{};
+        style.reserve(style_object.size());
+        for (auto it = style_object.begin(); it != style_object.end(); ++it) {
+            require(it.value().is_string(), "Sheet region style values must be strings");
+            style.emplace_back(it.key(), it.value().get<std::string>());
+        }
+        return style;
+    }
+
+    [[nodiscard]] static SheetRegion sheet_region(const nlohmann::json &region_object) {
+        require(region_object.is_object(), "Sheet region must be an object");
+        const auto &bounds_object = field(region_object, "bounds");
+        require(bounds_object.is_object(), "Sheet region bounds must be an object");
+        return SheetRegion{
+            string_field(region_object, "name"), string_field(region_object, "title"),
+            SheetRegionBounds{number_field(bounds_object, "x"), number_field(bounds_object, "y"),
+                              number_field(bounds_object, "width"),
+                              number_field(bounds_object, "height")},
+            sheet_region_style(region_object)};
     }
 
     static void append_sheet_references(const nlohmann::json &sheet_object, const char *field_name,
@@ -315,6 +427,9 @@ class SchematicReader {
             const auto sheet =
                 schematic_.add_sheet(Sheet{name, sheet_metadata(sheet_object, name)});
             sheet_ids_.emplace(id, sheet);
+            for (const auto &region_object : optional_array_field(sheet_object, "regions")) {
+                static_cast<void>(schematic_.add_sheet_region(sheet, sheet_region(region_object)));
+            }
             auto instances = std::vector<std::string>{};
             for (const auto &instance : array_field(sheet_object, "symbol_instances")) {
                 require(instance.is_string(), "Sheet symbol instance reference must be a string");

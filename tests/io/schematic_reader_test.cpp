@@ -194,6 +194,74 @@ TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
     CHECK(circuit.net(gnd).pins().empty());
 }
 
+TEST_CASE("Schematic reader loads drawing page metadata and named regions") {
+    volt::Circuit circuit;
+
+    auto fixture = schematic_json();
+    fixture["sheets"][0]["symbol_instances"] = nlohmann::json::array();
+    fixture["symbol_instances"] = nlohmann::json::array();
+    fixture["wire_runs"] = nlohmann::json::array();
+    fixture["net_labels"] = nlohmann::json::array();
+    fixture["sheets"][0]["wire_runs"] = nlohmann::json::array();
+    fixture["sheets"][0]["net_labels"] = nlohmann::json::array();
+    fixture["sheets"][0]["metadata"] = {
+        {"title", "STM32 USB Buck Board"},
+        {"orientation", "Landscape"},
+        {"size", {{"width", 297.0}, {"height", 210.0}}},
+        {"title_block", nlohmann::json::array({{{"key", "Number"}, {"value", "1/1"}},
+                                               {{"key", "Revision"}, {"value", "2.0"}}})},
+        {"frame",
+         {{"visible", true},
+          {"margins", {{"left", 12.0}, {"top", 10.0}, {"right", 12.0}, {"bottom", 10.0}}}}},
+        {"coordinate_zones", {{"columns", 10}, {"rows", 6}, {"visible", true}}},
+        {"grid", {{"spacing", 2.5}, {"visible", true}}},
+    };
+    fixture["sheets"][0]["regions"] = nlohmann::json::array(
+        {{{"name", "Power Circuitry"},
+          {"title", "Power Circuitry"},
+          {"bounds", {{"x", 10.0}, {"y", 12.0}, {"width", 260.0}, {"height", 55.0}}},
+          {"style", {{"accent", "orange"}}}}});
+
+    const auto schematic = volt::io::read_schematic(fixture, circuit);
+    const auto &sheet = schematic.sheet(volt::SheetId{0});
+
+    CHECK(sheet.metadata().orientation() == volt::SheetOrientation::Landscape);
+    CHECK(sheet.metadata().frame().margins().left() == 12.0);
+    REQUIRE(sheet.metadata().coordinate_zones().has_value());
+    CHECK(sheet.metadata().coordinate_zones()->columns() == 10U);
+    REQUIRE(sheet.metadata().grid().has_value());
+    CHECK(sheet.metadata().grid()->spacing() == 2.5);
+    REQUIRE(sheet.regions().size() == 1);
+    CHECK(sheet.regions()[0].name() == "Power Circuitry");
+    CHECK(sheet.regions()[0].bounds().x() == 10.0);
+    CHECK(sheet.regions()[0].style()[0].key() == "accent");
+    CHECK(sheet.regions()[0].style()[0].value() == "orange");
+}
+
+TEST_CASE("Schematic reader rejects duplicate sheet region names") {
+    volt::Circuit circuit;
+
+    auto fixture = schematic_json();
+    fixture["sheets"][0]["symbol_instances"] = nlohmann::json::array();
+    fixture["symbol_instances"] = nlohmann::json::array();
+    fixture["wire_runs"] = nlohmann::json::array();
+    fixture["net_labels"] = nlohmann::json::array();
+    fixture["sheets"][0]["wire_runs"] = nlohmann::json::array();
+    fixture["sheets"][0]["net_labels"] = nlohmann::json::array();
+    fixture["sheets"][0]["regions"] = nlohmann::json::array(
+        {{{"name", "Power"},
+          {"title", "Power"},
+          {"bounds", {{"x", 10.0}, {"y", 12.0}, {"width", 260.0}, {"height", 55.0}}},
+          {"style", nlohmann::json::object()}},
+         {{"name", "Power"},
+          {"title", "Power"},
+          {"bounds", {{"x", 15.0}, {"y", 12.0}, {"width", 260.0}, {"height", 55.0}}},
+          {"style", nlohmann::json::object()}}});
+
+    CHECK_THROWS_MATCHES(volt::io::read_schematic(fixture, circuit), std::logic_error,
+                         Catch::Matchers::Message("Sheet region name already exists"));
+}
+
 TEST_CASE("Schematic reader rejects dangling projection references") {
     volt::Circuit circuit;
     add_resistor(circuit);

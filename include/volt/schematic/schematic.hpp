@@ -32,9 +32,127 @@ class SheetSize {
     /** Return the sheet height. */
     [[nodiscard]] double height() const noexcept { return height_; }
 
+    /** Return whether two sheet sizes have the same dimensions. */
+    [[nodiscard]] friend bool operator==(SheetSize lhs, SheetSize rhs) noexcept = default;
+
   private:
     double width_;
     double height_;
+};
+
+/** Page orientation for a schematic drawing sheet. */
+enum class SheetOrientation {
+    Portrait,
+    Landscape,
+};
+
+/** Margins between the physical sheet frame and the drawing area. */
+class SheetMargins {
+  public:
+    /** Construct sheet margins from finite non-negative distances. */
+    SheetMargins(double left = 10.0, double top = 10.0, double right = 10.0, double bottom = 10.0)
+        : left_{left}, top_{top}, right_{right}, bottom_{bottom} {
+        if (!std::isfinite(left_) || !std::isfinite(top_) || !std::isfinite(right_) ||
+            !std::isfinite(bottom_) || left_ < 0.0 || top_ < 0.0 || right_ < 0.0 || bottom_ < 0.0) {
+            throw std::invalid_argument{"Sheet margins must be finite and non-negative"};
+        }
+    }
+
+    /** Return the left margin. */
+    [[nodiscard]] double left() const noexcept { return left_; }
+
+    /** Return the top margin. */
+    [[nodiscard]] double top() const noexcept { return top_; }
+
+    /** Return the right margin. */
+    [[nodiscard]] double right() const noexcept { return right_; }
+
+    /** Return the bottom margin. */
+    [[nodiscard]] double bottom() const noexcept { return bottom_; }
+
+    /** Return whether two margin sets are identical. */
+    [[nodiscard]] friend bool operator==(SheetMargins lhs, SheetMargins rhs) noexcept = default;
+
+  private:
+    double left_;
+    double top_;
+    double right_;
+    double bottom_;
+};
+
+/** Outer frame configuration for a schematic drawing sheet. */
+class SheetFrame {
+  public:
+    /** Construct a sheet frame with optional visibility and margins. */
+    explicit SheetFrame(bool visible = true, SheetMargins margins = {})
+        : visible_{visible}, margins_{margins} {}
+
+    /** Return whether the outer frame should be visible. */
+    [[nodiscard]] bool visible() const noexcept { return visible_; }
+
+    /** Return the inner drawing-area margins. */
+    [[nodiscard]] SheetMargins margins() const noexcept { return margins_; }
+
+    /** Return whether two frame configurations are identical. */
+    [[nodiscard]] friend bool operator==(SheetFrame lhs, SheetFrame rhs) noexcept = default;
+
+  private:
+    bool visible_;
+    SheetMargins margins_;
+};
+
+/** Optional coordinate zone labels shown along a schematic sheet border. */
+class SheetCoordinateZones {
+  public:
+    /** Construct border coordinate zones from positive row and column counts. */
+    SheetCoordinateZones(std::size_t columns, std::size_t rows, bool visible = true)
+        : columns_{columns}, rows_{rows}, visible_{visible} {
+        if (columns_ == 0U || rows_ == 0U) {
+            throw std::invalid_argument{"Sheet coordinate zones must have positive counts"};
+        }
+    }
+
+    /** Return the number of horizontal zones. */
+    [[nodiscard]] std::size_t columns() const noexcept { return columns_; }
+
+    /** Return the number of vertical zones. */
+    [[nodiscard]] std::size_t rows() const noexcept { return rows_; }
+
+    /** Return whether coordinate zone labels should be visible. */
+    [[nodiscard]] bool visible() const noexcept { return visible_; }
+
+    /** Return whether two coordinate-zone configurations are identical. */
+    [[nodiscard]] friend bool operator==(SheetCoordinateZones lhs,
+                                         SheetCoordinateZones rhs) noexcept = default;
+
+  private:
+    std::size_t columns_;
+    std::size_t rows_;
+    bool visible_;
+};
+
+/** Optional visible grid metadata for a schematic sheet. */
+class SheetGrid {
+  public:
+    /** Construct grid metadata from a positive finite spacing. */
+    explicit SheetGrid(double spacing, bool visible = true) : spacing_{spacing}, visible_{visible} {
+        if (!std::isfinite(spacing_) || spacing_ <= 0.0) {
+            throw std::invalid_argument{"Sheet grid spacing must be finite and positive"};
+        }
+    }
+
+    /** Return the grid spacing in sheet units. */
+    [[nodiscard]] double spacing() const noexcept { return spacing_; }
+
+    /** Return whether the grid should be visible. */
+    [[nodiscard]] bool visible() const noexcept { return visible_; }
+
+    /** Return whether two grid configurations are identical. */
+    [[nodiscard]] friend bool operator==(SheetGrid lhs, SheetGrid rhs) noexcept = default;
+
+  private:
+    double spacing_;
+    bool visible_;
 };
 
 /** One key/value entry in a schematic sheet title block. */
@@ -57,9 +175,119 @@ class TitleBlockField {
     /** Return the field value. */
     [[nodiscard]] const std::string &value() const noexcept { return value_; }
 
+    /** Return whether two title-block fields are identical. */
+    [[nodiscard]] friend bool operator==(const TitleBlockField &lhs,
+                                         const TitleBlockField &rhs) noexcept = default;
+
   private:
     std::string key_;
     std::string value_;
+};
+
+/** One key/value style metadata entry for a schematic region. */
+class SheetRegionStyleField {
+  public:
+    /** Construct a region style field. */
+    SheetRegionStyleField(std::string key, std::string value)
+        : key_{std::move(key)}, value_{std::move(value)} {
+        if (key_.empty()) {
+            throw std::invalid_argument{"Region style field key must not be empty"};
+        }
+        if (value_.empty()) {
+            throw std::invalid_argument{"Region style field value must not be empty"};
+        }
+    }
+
+    /** Return the style field key. */
+    [[nodiscard]] const std::string &key() const noexcept { return key_; }
+
+    /** Return the style field value. */
+    [[nodiscard]] const std::string &value() const noexcept { return value_; }
+
+    /** Return whether two style fields are identical. */
+    [[nodiscard]] friend bool operator==(const SheetRegionStyleField &lhs,
+                                         const SheetRegionStyleField &rhs) noexcept = default;
+
+  private:
+    std::string key_;
+    std::string value_;
+};
+
+/** Sheet-local rectangular bounds for a named schematic region. */
+class SheetRegionBounds {
+  public:
+    /** Construct region bounds from an origin and positive size. */
+    SheetRegionBounds(double x, double y, double width, double height)
+        : x_{x}, y_{y}, width_{width}, height_{height} {
+        if (!std::isfinite(x_) || !std::isfinite(y_) || !std::isfinite(width_) ||
+            !std::isfinite(height_) || width_ <= 0.0 || height_ <= 0.0) {
+            throw std::invalid_argument{
+                "Sheet region bounds must be finite with positive width and height"};
+        }
+    }
+
+    /** Return the region's sheet-local x origin. */
+    [[nodiscard]] double x() const noexcept { return x_; }
+
+    /** Return the region's sheet-local y origin. */
+    [[nodiscard]] double y() const noexcept { return y_; }
+
+    /** Return the region width. */
+    [[nodiscard]] double width() const noexcept { return width_; }
+
+    /** Return the region height. */
+    [[nodiscard]] double height() const noexcept { return height_; }
+
+    /** Return whether two region bounds are identical. */
+    [[nodiscard]] friend bool operator==(SheetRegionBounds lhs,
+                                         SheetRegionBounds rhs) noexcept = default;
+
+  private:
+    double x_;
+    double y_;
+    double width_;
+    double height_;
+};
+
+/** A named functional drawing region on a physical schematic sheet. */
+class SheetRegion {
+  public:
+    /** Construct a named rectangular sheet region. */
+    SheetRegion(std::string name, std::string title, SheetRegionBounds bounds,
+                std::vector<SheetRegionStyleField> style = {})
+        : name_{std::move(name)}, title_{std::move(title)}, bounds_{bounds},
+          style_{std::move(style)} {
+        if (name_.empty()) {
+            throw std::invalid_argument{"Sheet region name must not be empty"};
+        }
+        if (title_.empty()) {
+            throw std::invalid_argument{"Sheet region title must not be empty"};
+        }
+    }
+
+    /** Return the stable region name. */
+    [[nodiscard]] const std::string &name() const noexcept { return name_; }
+
+    /** Return the displayed region title. */
+    [[nodiscard]] const std::string &title() const noexcept { return title_; }
+
+    /** Return the sheet-local region bounds. */
+    [[nodiscard]] SheetRegionBounds bounds() const noexcept { return bounds_; }
+
+    /** Return region style metadata in insertion order. */
+    [[nodiscard]] const std::vector<SheetRegionStyleField> &style() const noexcept {
+        return style_;
+    }
+
+    /** Return whether two regions are identical. */
+    [[nodiscard]] friend bool operator==(const SheetRegion &lhs,
+                                         const SheetRegion &rhs) noexcept = default;
+
+  private:
+    std::string name_;
+    std::string title_;
+    SheetRegionBounds bounds_;
+    std::vector<SheetRegionStyleField> style_;
 };
 
 /** Sheet-level metadata used by renderers and authoring tools. */
@@ -67,8 +295,14 @@ class SheetMetadata {
   public:
     /** Construct sheet metadata from a title, size, and optional title-block fields. */
     explicit SheetMetadata(std::string title, SheetSize size = {},
-                           std::vector<TitleBlockField> title_block = {})
-        : title_{std::move(title)}, size_{size}, title_block_{std::move(title_block)} {
+                           std::vector<TitleBlockField> title_block = {},
+                           SheetOrientation orientation = SheetOrientation::Landscape,
+                           SheetFrame frame = SheetFrame{},
+                           std::optional<SheetCoordinateZones> coordinate_zones = std::nullopt,
+                           std::optional<SheetGrid> grid = std::nullopt)
+        : title_{std::move(title)}, size_{size}, orientation_{orientation},
+          title_block_{std::move(title_block)}, frame_{frame}, coordinate_zones_{coordinate_zones},
+          grid_{grid} {
         if (title_.empty()) {
             throw std::invalid_argument{"Sheet title must not be empty"};
         }
@@ -80,15 +314,37 @@ class SheetMetadata {
     /** Return the sheet drawing size. */
     [[nodiscard]] SheetSize size() const noexcept { return size_; }
 
+    /** Return the sheet orientation. */
+    [[nodiscard]] SheetOrientation orientation() const noexcept { return orientation_; }
+
     /** Return title-block fields in insertion order. */
     [[nodiscard]] const std::vector<TitleBlockField> &title_block() const noexcept {
         return title_block_;
     }
 
+    /** Return the sheet frame and margins. */
+    [[nodiscard]] SheetFrame frame() const noexcept { return frame_; }
+
+    /** Return optional coordinate zone metadata. */
+    [[nodiscard]] const std::optional<SheetCoordinateZones> &coordinate_zones() const noexcept {
+        return coordinate_zones_;
+    }
+
+    /** Return optional visible grid metadata. */
+    [[nodiscard]] const std::optional<SheetGrid> &grid() const noexcept { return grid_; }
+
+    /** Return whether two metadata objects are identical. */
+    [[nodiscard]] friend bool operator==(const SheetMetadata &lhs,
+                                         const SheetMetadata &rhs) noexcept = default;
+
   private:
     std::string title_;
     SheetSize size_;
+    SheetOrientation orientation_;
     std::vector<TitleBlockField> title_block_;
+    SheetFrame frame_;
+    std::optional<SheetCoordinateZones> coordinate_zones_;
+    std::optional<SheetGrid> grid_;
 };
 
 /** A schematic sheet that owns presentation objects for one drawing page. */
@@ -145,8 +401,34 @@ class Sheet {
         return symbol_fields_;
     }
 
+    /** Return named functional regions in insertion order. */
+    [[nodiscard]] const std::vector<SheetRegion> &regions() const noexcept { return regions_; }
+
+    /** Return the region with this name, if it exists on this sheet. */
+    [[nodiscard]] std::optional<std::size_t> region_by_name(const std::string &name) const {
+        for (std::size_t index = 0; index < regions_.size(); ++index) {
+            if (regions_[index].name() == name) {
+                return index;
+            }
+        }
+        return std::nullopt;
+    }
+
+    /** Return a region by sheet-local region index. */
+    [[nodiscard]] const SheetRegion &region(std::size_t index) const {
+        if (index >= regions_.size()) {
+            throw std::out_of_range{"Sheet region index does not belong to this sheet"};
+        }
+        return regions_[index];
+    }
+
   private:
     friend class Schematic;
+
+    std::size_t add_region(SheetRegion region) {
+        regions_.push_back(std::move(region));
+        return regions_.size() - 1U;
+    }
 
     void add_symbol_instance(SymbolInstanceId instance) { symbol_instances_.push_back(instance); }
 
@@ -174,6 +456,7 @@ class Sheet {
     std::vector<NoConnectMarkerId> no_connect_markers_;
     std::vector<SheetPortId> sheet_ports_;
     std::vector<SymbolFieldId> symbol_fields_;
+    std::vector<SheetRegion> regions_;
 };
 
 /** A placed schematic symbol that presents an existing logical component instance. */
@@ -462,6 +745,17 @@ class Schematic {
         return sheets_.insert(std::move(sheet));
     }
 
+    /** Add a named presentation region to a schematic sheet. */
+    [[nodiscard]] std::size_t add_sheet_region(SheetId sheet, SheetRegion region) {
+        require_sheet(sheet);
+        auto &sheet_ref = sheets_.get(sheet);
+        if (sheet_ref.region_by_name(region.name()).has_value()) {
+            throw std::logic_error{"Sheet region name already exists"};
+        }
+
+        return sheet_ref.add_region(std::move(region));
+    }
+
     /** Place a symbol on a sheet for an existing logical component instance. */
     [[nodiscard]] SymbolInstanceId place_symbol(SheetId sheet, SymbolInstance instance) {
         require_sheet(sheet);
@@ -574,6 +868,13 @@ class Schematic {
         return std::nullopt;
     }
 
+    /** Return a region with this name on the given sheet, if it exists. */
+    [[nodiscard]] std::optional<std::size_t> sheet_region_by_name(SheetId sheet,
+                                                                  const std::string &name) const {
+        require_sheet(sheet);
+        return sheets_.get(sheet).region_by_name(name);
+    }
+
     /** Return a symbol definition by ID. */
     [[nodiscard]] const SymbolDefinition &symbol_definition(SymbolDefId id) const {
         return symbol_definitions_.get(id);
@@ -581,6 +882,12 @@ class Schematic {
 
     /** Return a schematic sheet by ID. */
     [[nodiscard]] const Sheet &sheet(SheetId id) const { return sheets_.get(id); }
+
+    /** Return a named presentation region by sheet and sheet-local region index. */
+    [[nodiscard]] const SheetRegion &sheet_region(SheetId sheet, std::size_t region) const {
+        require_sheet(sheet);
+        return sheets_.get(sheet).region(region);
+    }
 
     /** Return a placed symbol instance by ID. */
     [[nodiscard]] const SymbolInstance &symbol_instance(SymbolInstanceId id) const {
