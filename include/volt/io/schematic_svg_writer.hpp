@@ -469,7 +469,7 @@ inline void write_symbol_field_svg(std::ostream &out, const Schematic &schematic
 
 [[nodiscard]] inline bool region_uses_dashed_frame(const SheetRegion &region) {
     for (const auto &field : region.style()) {
-        if (field.value() == "dashed") {
+        if (field.key() == "border" && field.value() == "dashed") {
             return true;
         }
     }

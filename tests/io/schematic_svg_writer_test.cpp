@@ -238,6 +238,13 @@ TEST_CASE("Schematic SVG writer renders professional page metadata") {
                    volt::SheetRegionBounds{18.0, 20.0, 70.0, 30.0},
                    std::vector{volt::SheetRegionStyleField{"border", "dashed"}},
                });
+    [[maybe_unused]] const auto solid_region = schematic.add_sheet_region(
+        sheet, volt::SheetRegion{
+                   "signals",
+                   "Signals",
+                   volt::SheetRegionBounds{22.0, 55.0, 60.0, 12.0},
+                   std::vector{volt::SheetRegionStyleField{"accent", "dashed"}},
+               });
 
     const auto svg = volt::io::write_schematic_svg(schematic);
 
@@ -261,6 +268,8 @@ TEST_CASE("Schematic SVG writer renders professional page metadata") {
     CHECK(svg.find("<clipPath id=\"title-block-clip-sheet-0\">") != std::string::npos);
     CHECK(svg.find("<rect class=\"sheet-region-frame dashed\" data-region=\"power\" x=\"18\" "
                    "y=\"20\" width=\"70\" height=\"30\"/>") != std::string::npos);
+    CHECK(svg.find("<rect class=\"sheet-region-frame\" data-region=\"signals\" x=\"22\" "
+                   "y=\"55\" width=\"60\" height=\"12\"/>") != std::string::npos);
     CHECK(svg.find("<clipPath id=\"region-title-clip-sheet-0-0\">") != std::string::npos);
     CHECK(svg.find("<text class=\"sheet-region-title\" x=\"21\" y=\"26\" "
                    "clip-path=\"url(#region-title-clip-sheet-0-0)\">Power Regulation</text>") !=
