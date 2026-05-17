@@ -112,6 +112,30 @@ def check_ci_tooling() -> None:
     )
 
 
+def check_python_pytest_harness() -> None:
+    python_cmake = read("src/python/CMakeLists.txt")
+    ci_workflow = read(".github/workflows/ci.yml")
+    requirements = read("requirements-dev.txt")
+
+    require("pytest" in requirements, "pytest must be an explicit dev/test dependency")
+    require(
+        "python -m pip install -r requirements-dev.txt" in ci_workflow,
+        "CI must install Python dev/test dependencies before configuring",
+    )
+    require(
+        "${Python3_EXECUTABLE} -m pytest" in python_cmake,
+        "Python tests must run pytest through CMake's selected interpreter",
+    )
+    require(
+        "PYTHONPATH=path_list_prepend:${PROJECT_BINARY_DIR}/python" in python_cmake,
+        "Python pytest entries must import the built Python package from the build tree",
+    )
+    require(
+        "test_runner.py" not in python_cmake,
+        "Python CTest registration must not depend on the old custom runner",
+    )
+
+
 def main() -> int:
     checks = (
         check_test_presets,
@@ -119,6 +143,7 @@ def main() -> int:
         check_coverage,
         check_benchmarks,
         check_ci_tooling,
+        check_python_pytest_harness,
     )
     failures = []
     for check in checks:

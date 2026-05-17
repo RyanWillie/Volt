@@ -57,39 +57,46 @@ if(VOLT_BUILD_TESTS)
         GLOB_RECURSE VOLT_PYTHON_TEST_FILES CONFIGURE_DEPENDS
         ${PROJECT_SOURCE_DIR}/python/tests/test_*.py
     )
-    list(REMOVE_ITEM VOLT_PYTHON_TEST_FILES ${PROJECT_SOURCE_DIR}/python/tests/test_runner.py)
 
     execute_process(
-        COMMAND
-            ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/python/tests/test_runner.py
-            discover-cmake ${VOLT_PYTHON_TEST_FILES}
-        OUTPUT_VARIABLE VOLT_PYTHON_TEST_ENTRIES
-        COMMAND_ERROR_IS_FATAL ANY
+        COMMAND ${Python3_EXECUTABLE} -c "import pytest"
+        RESULT_VARIABLE VOLT_PYTEST_IMPORT_RESULT
+        OUTPUT_QUIET
+        ERROR_QUIET
     )
-    string(REPLACE "\n" ";" VOLT_PYTHON_TEST_ENTRIES "${VOLT_PYTHON_TEST_ENTRIES}")
+    if(NOT VOLT_PYTEST_IMPORT_RESULT EQUAL 0)
+        message(
+            FATAL_ERROR
+                "pytest is required for Volt Python tests. Install dev dependencies with "
+                "'${Python3_EXECUTABLE} -m pip install -r ${PROJECT_SOURCE_DIR}/requirements-dev.txt'."
+        )
+    endif()
 
-    foreach(entry IN LISTS VOLT_PYTHON_TEST_ENTRIES)
-        if(entry STREQUAL "")
-            continue()
+    foreach(test_file IN LISTS VOLT_PYTHON_TEST_FILES)
+        file(RELATIVE_PATH test_relative ${PROJECT_SOURCE_DIR}/python/tests ${test_file})
+        string(REPLACE "/" "." test_name ${test_relative})
+        string(REGEX REPLACE "\\.py$" "" test_name ${test_name})
+
+        set(test_labels python)
+        if(test_relative MATCHES "^examples/")
+            list(APPEND test_labels example integration)
         endif()
-
-        string(REPLACE "|" ";" fields "${entry}")
-        list(GET fields 0 test_name)
-        list(GET fields 1 test_path)
-        list(GET fields 2 test_function)
-        list(GET fields 3 test_labels)
-        string(REPLACE "," ";" test_labels "${test_labels}")
+        set(
+            test_environment
+            "PYTHONPATH=path_list_prepend:${PROJECT_SOURCE_DIR}/python/tests"
+            "PYTHONPATH=path_list_prepend:${PROJECT_SOURCE_DIR}"
+            "PYTHONPATH=path_list_prepend:${PROJECT_BINARY_DIR}/python"
+        )
 
         add_test(
-            NAME ${test_name}
-            COMMAND
-                ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/python/tests/test_runner.py
-                run ${test_path} ${test_function}
+            NAME python.${test_name}
+            COMMAND ${Python3_EXECUTABLE} -m pytest -q ${test_file}
         )
         set_tests_properties(
-            ${test_name}
+            python.${test_name}
             PROPERTIES
-                ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
+                WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+                ENVIRONMENT_MODIFICATION "${test_environment}"
                 LABELS "${test_labels}"
         )
     endforeach()

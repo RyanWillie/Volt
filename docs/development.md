@@ -5,6 +5,7 @@
 - CMake 3.25 or newer
 - A C++20 compiler
 - Ninja
+- Python dev dependencies from `requirements-dev.txt`
 
 ## Common Commands
 
@@ -28,10 +29,13 @@ authoring surface is exercised with the normal local test run. The binding targe
 `pybind11` through CMake `FetchContent` and writes the importable package into
 `build/dev/python`.
 
-Python tests are registered in CTest as individual `test_*` functions through the
-stdlib runner in `python/tests/test_runner.py`. CTest invokes that runner with the same
-`Python3_EXECUTABLE` that CMake used to build `_volt`; do not run an arbitrary shell
-`pytest` unless you have deliberately installed it for that exact interpreter.
+Python tests are registered in CTest by file, then executed with pytest through the same
+`Python3_EXECUTABLE` that CMake used to build `_volt`. Install pytest for that interpreter
+instead of running an arbitrary shell `pytest`:
+
+```sh
+python -m pip install -r requirements-dev.txt
+```
 
 Run common test slices with:
 
