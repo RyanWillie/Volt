@@ -2722,6 +2722,8 @@ class Schematic:
     ) -> tuple[Path, ...]:
         if prefix is not None and not isinstance(prefix, str):
             raise TypeError("Schematic SVG page prefixes must be strings")
+        if prefix is not None and ("/" in prefix or "\\" in prefix):
+            raise ValueError("Schematic SVG page prefixes must not contain path separators")
         target = Path(directory)
         target.mkdir(parents=True, exist_ok=True)
 

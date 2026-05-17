@@ -100,3 +100,16 @@ def test_python_schematic_writes_one_svg_per_sheet():
         assert [path.name for path in paths] == ["Power.svg", "USB_and_Connectors.svg"]
         assert paths[0].read_text(encoding="utf-8") == pages[0]["svg"]
         assert paths[1].read_text(encoding="utf-8") == pages[1]["svg"]
+
+
+def test_python_schematic_write_svg_pages_rejects_path_separators_in_prefix():
+    design = volt.Design("schematic-svg-pages-prefix")
+    schematic = design.schematic("Power", size=(100, 80))
+
+    with TemporaryDirectory() as directory:
+        try:
+            schematic.write_svg_pages(directory, prefix="../unsafe")
+        except ValueError as error:
+            assert str(error) == "Schematic SVG page prefixes must not contain path separators"
+        else:
+            raise AssertionError("prefix path separators must be rejected")
