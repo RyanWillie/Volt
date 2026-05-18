@@ -119,3 +119,25 @@ def test_regulator_fragment_sugar_example_uses_local_frame_authoring():
         volt.SchematicDrawing.frame = original_frame
 
     assert len(frame_calls) == 1
+
+
+def test_regulator_fragment_sugar_example_uses_anchor_stack_authoring():
+    regulator_fragment = _load_example("regulator_fragment")
+    design, nets, parts = regulator_fragment.build_design()
+    original_stack = volt.SchematicDrawing.stack
+    stack_calls = []
+
+    def recording_stack(self, *args, **kwargs):
+        stack_calls.append((args, kwargs))
+        return original_stack(self, *args, **kwargs)
+
+    volt.SchematicDrawing.stack = recording_stack
+    try:
+        regulator_fragment.author_schematic(design, nets, parts)
+    finally:
+        volt.SchematicDrawing.stack = original_stack
+
+    assert len(stack_calls) == 1
+    assert stack_calls[0][1]["count"] == 3
+    assert stack_calls[0][1]["direction"] == "Down"
+    assert stack_calls[0][1]["pitch"] == 8
