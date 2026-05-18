@@ -22,17 +22,42 @@ inline constexpr std::size_t repeated_label_warning_threshold = 4U;
 inline constexpr std::size_t fragmented_pin_label_threshold = 3U;
 inline constexpr std::size_t overlong_label_character_threshold = 24U;
 inline constexpr std::size_t dense_no_connect_marker_threshold = 6U;
+inline constexpr std::size_t dense_region_port_tag_threshold = 12U;
 inline constexpr double dense_no_connect_cluster_radius = 18.0;
 inline constexpr double title_block_width = 82.0;
 inline constexpr double title_block_row_height = 6.0;
-inline constexpr double conservative_text_character_width = 3.0;
-inline constexpr double conservative_text_height = 6.0;
+inline constexpr double rendered_text_width_factor = 0.56;
+inline constexpr double rendered_text_descent_factor = 0.25;
+inline constexpr double net_label_rendered_font_size = 2.5;
+inline constexpr double symbol_text_rendered_font_size = 2.7;
+inline constexpr double symbol_field_rendered_font_size = 2.5;
+inline constexpr double tag_stack_min_spacing = 6.0;
+inline constexpr double tag_stack_alignment_tolerance = 1.0;
+inline constexpr double label_symbol_clearance = 1.5;
+inline constexpr double oversized_port_tag_rendered_length = 28.0;
+inline constexpr double power_port_stem_length = 4.2;
+inline constexpr double power_port_tip_offset = 7.6;
+inline constexpr double power_port_half_width = 3.0;
+inline constexpr double power_port_label_offset = 9.4;
+inline constexpr double ground_port_stem_length = 3.0;
+inline constexpr double ground_port_label_offset = 8.2;
 inline constexpr double sheet_port_rendered_half_height = 2.4;
 inline constexpr double sheet_port_rendered_min_body_length = 7.0;
 inline constexpr double sheet_port_rendered_tip_length = 3.2;
 inline constexpr double sheet_port_rendered_label_padding = 2.1;
 inline constexpr double sheet_port_rendered_label_font_size = 2.45;
-inline constexpr double sheet_port_rendered_text_width_factor = 0.56;
+
+/** Broad schematic object kinds used to keep readability checks scoped. */
+enum class ReadabilityObjectKind {
+    SymbolInstance,
+    WireRun,
+    NetLabel,
+    Junction,
+    PowerPort,
+    NoConnectMarker,
+    SheetPort,
+    SymbolField,
+};
 
 /** Conservative sheet-space bounds used by schematic readability diagnostics. */
 struct SchematicBounds {
@@ -48,6 +73,8 @@ struct SchematicBounds {
 
 /** Schematic object geometry and context gathered for readability checks. */
 struct ReadabilityObject {
+    /** Schematic object category. */
+    ReadabilityObjectKind kind;
     /** Primary schematic entity referenced by diagnostics. */
     EntityRef entity;
     /** Related logical or schematic entities that explain the object. */
@@ -66,6 +93,22 @@ struct ReadabilityTextObject {
     std::vector<EntityRef> context;
     /** Conservative sheet-space text bounds. */
     SchematicBounds bounds;
+};
+
+/** Rendered tag/port geometry used for stack and density checks. */
+struct ReadabilityTagObject {
+    /** Primary tag entity referenced by diagnostics. */
+    EntityRef entity;
+    /** Related logical entities that explain the tag. */
+    std::vector<EntityRef> context;
+    /** Rendered tag bounds. */
+    SchematicBounds bounds;
+    /** Sheet-space anchor point. */
+    Point position;
+    /** Port orientation. */
+    SchematicOrientation orientation;
+    /** Sheet-local authored region index, if the tag was placed through one. */
+    std::optional<std::size_t> authored_region;
 };
 
 [[nodiscard]] inline SchematicBounds bounds_from_point(Point point) noexcept {
@@ -145,14 +188,19 @@ inline void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexc
     return rect_bounds(bounds.x(), bounds.y(), bounds.width(), bounds.height());
 }
 
+[[nodiscard]] inline double rendered_text_width(std::string_view text, double font_size) noexcept {
+    return std::max(font_size * rendered_text_width_factor,
+                    font_size * rendered_text_width_factor * static_cast<double>(text.size()));
+}
+
 [[nodiscard]] inline SchematicBounds text_bounds(Point anchor, SchematicOrientation orientation,
-                                                 const std::string &text, bool centered) {
-    const auto width =
-        std::max(conservative_text_character_width,
-                 conservative_text_character_width * static_cast<double>(text.size()));
+                                                 std::string_view text, double font_size,
+                                                 bool centered) {
+    const auto width = rendered_text_width(text, font_size);
     const auto min_x = centered ? -width / 2.0 : 0.0;
     const auto max_x = centered ? width / 2.0 : width;
-    return transform_rect_bounds(min_x, -conservative_text_height, max_x, 1.0, anchor, orientation);
+    return transform_rect_bounds(min_x, -font_size, max_x, font_size * rendered_text_descent_factor,
+                                 anchor, orientation);
 }
 
 [[nodiscard]] inline bool wire_covers_point(const WireRun &wire, Point point) noexcept {
@@ -326,7 +374,8 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
     const auto &text = std::get<SymbolText>(primitive);
     const auto anchor =
         transform_schematic_point(text.anchor(), instance.position(), instance.orientation());
-    return text_bounds(anchor, instance.orientation(), text.text(), true);
+    return text_bounds(anchor, instance.orientation(), text.text(), symbol_text_rendered_font_size,
+                       true);
 }
 
 [[nodiscard]] inline SchematicBounds symbol_instance_bounds(const Schematic &schematic,
@@ -345,7 +394,8 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
     include_bounds(bounds,
                    text_bounds(transform_schematic_point(Point{0.0, -12.0}, instance.position(),
                                                          instance.orientation()),
-                               SchematicOrientation::Right, reference_label, true));
+                               SchematicOrientation::Right, reference_label,
+                               symbol_text_rendered_font_size, true));
     return bounds;
 }
 
@@ -357,8 +407,29 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
     return padded_bounds(bounds, 0.5);
 }
 
-[[nodiscard]] inline SchematicBounds power_port_bounds(const PowerPort &port) {
-    return transform_rect_bounds(-7.0, -16.0, 7.0, 9.0, port.position(), port.orientation());
+[[nodiscard]] inline Point transformed_port_anchor(const PowerPort &port, Point local_anchor) {
+    return transform_schematic_point(local_anchor, port.position(), port.orientation());
+}
+
+[[nodiscard]] inline SchematicBounds power_port_label_bounds(const PowerPort &port,
+                                                             std::string_view label) {
+    const auto label_y =
+        port.kind() == PowerPortKind::Ground ? ground_port_label_offset : -power_port_label_offset;
+    return text_bounds(transformed_port_anchor(port, Point{0.0, label_y}),
+                       SchematicOrientation::Right, label, sheet_port_rendered_label_font_size,
+                       true);
+}
+
+[[nodiscard]] inline SchematicBounds power_port_bounds(const PowerPort &port,
+                                                       std::string_view label) {
+    auto bounds =
+        port.kind() == PowerPortKind::Ground
+            ? transform_rect_bounds(-3.6, 0.0, 3.6, 6.0, port.position(), port.orientation())
+            : transform_rect_bounds(-power_port_half_width, -power_port_tip_offset,
+                                    power_port_half_width, 0.0, port.position(),
+                                    port.orientation());
+    include_bounds(bounds, power_port_label_bounds(port, label));
+    return bounds;
 }
 
 [[nodiscard]] inline SchematicBounds no_connect_marker_bounds(const NoConnectMarker &marker) {
@@ -367,18 +438,30 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
 
 [[nodiscard]] inline double sheet_port_rendered_body_length(std::string_view label) {
     const auto label_width = static_cast<double>(label.size()) *
-                             sheet_port_rendered_label_font_size *
-                             sheet_port_rendered_text_width_factor;
+                             sheet_port_rendered_label_font_size * rendered_text_width_factor;
     return std::max(sheet_port_rendered_min_body_length,
                     label_width + (sheet_port_rendered_label_padding * 2.0));
+}
+
+[[nodiscard]] inline Point transformed_port_anchor(const SheetPort &port, Point local_anchor) {
+    return transform_schematic_point(local_anchor, port.position(), port.orientation());
+}
+
+[[nodiscard]] inline SchematicBounds sheet_port_label_bounds(const SheetPort &port) {
+    const auto body_length = sheet_port_rendered_body_length(port.name());
+    return text_bounds(transformed_port_anchor(port, Point{body_length * 0.5, 0.9}),
+                       SchematicOrientation::Right, port.name(),
+                       sheet_port_rendered_label_font_size, true);
 }
 
 [[nodiscard]] inline SchematicBounds sheet_port_bounds(const SheetPort &port) {
     const auto max_x =
         sheet_port_rendered_body_length(port.name()) + sheet_port_rendered_tip_length;
-    return transform_rect_bounds(0.0, -sheet_port_rendered_half_height, max_x,
-                                 sheet_port_rendered_half_height, port.position(),
-                                 port.orientation());
+    auto bounds =
+        transform_rect_bounds(0.0, -sheet_port_rendered_half_height, max_x,
+                              sheet_port_rendered_half_height, port.position(), port.orientation());
+    include_bounds(bounds, sheet_port_label_bounds(port));
+    return bounds;
 }
 
 inline void add_readability_diagnostic(DiagnosticReport &report, Severity severity,
@@ -752,28 +835,32 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     auto objects = std::vector<ReadabilityObject>{};
     for (const auto instance_id : sheet.symbol_instances()) {
         const auto &instance = schematic.symbol_instance(instance_id);
-        objects.push_back(ReadabilityObject{EntityRef::symbol_instance(instance_id),
-                                            std::vector{EntityRef::component(instance.component())},
-                                            symbol_instance_bounds(schematic, instance_id),
-                                            instance.authored_region()});
+        objects.push_back(ReadabilityObject{
+            ReadabilityObjectKind::SymbolInstance, EntityRef::symbol_instance(instance_id),
+            std::vector{EntityRef::component(instance.component())},
+            symbol_instance_bounds(schematic, instance_id), instance.authored_region()});
     }
     for (const auto wire_id : sheet.wire_runs()) {
         const auto &wire = schematic.wire_run(wire_id);
-        objects.push_back(ReadabilityObject{EntityRef::wire_run(wire_id),
+        objects.push_back(ReadabilityObject{ReadabilityObjectKind::WireRun,
+                                            EntityRef::wire_run(wire_id),
                                             std::vector{EntityRef::net(wire.net())},
                                             wire_run_bounds(wire), wire.authored_region()});
     }
     for (const auto label_id : sheet.net_labels()) {
         const auto &label = schematic.net_label(label_id);
         const auto &net = schematic.circuit().net(label.net());
-        objects.push_back(ReadabilityObject{
-            EntityRef::net_label(label_id), std::vector{EntityRef::net(label.net())},
-            text_bounds(label.position(), label.orientation(), net.name().value(), false),
-            label.authored_region()});
+        objects.push_back(
+            ReadabilityObject{ReadabilityObjectKind::NetLabel, EntityRef::net_label(label_id),
+                              std::vector{EntityRef::net(label.net())},
+                              text_bounds(label.position(), label.orientation(), net.name().value(),
+                                          net_label_rendered_font_size, false),
+                              label.authored_region()});
     }
     for (const auto junction_id : sheet.junctions()) {
         const auto &junction = schematic.junction(junction_id);
         objects.push_back(ReadabilityObject{
+            ReadabilityObjectKind::Junction,
             EntityRef::junction(junction_id),
             std::vector{EntityRef::net(junction.net())},
             padded_bounds(bounds_from_point(junction.position()), 1.8),
@@ -782,31 +869,67 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     }
     for (const auto port_id : sheet.power_ports()) {
         const auto &port = schematic.power_port(port_id);
-        objects.push_back(ReadabilityObject{EntityRef::power_port(port_id),
-                                            std::vector{EntityRef::net(port.net())},
-                                            power_port_bounds(port), port.authored_region()});
+        const auto &net = schematic.circuit().net(port.net());
+        const auto label = port.label().value_or(net.name().value());
+        objects.push_back(
+            ReadabilityObject{ReadabilityObjectKind::PowerPort, EntityRef::power_port(port_id),
+                              std::vector{EntityRef::net(port.net())},
+                              power_port_bounds(port, label), port.authored_region()});
     }
     for (const auto marker_id : sheet.no_connect_markers()) {
         const auto &marker = schematic.no_connect_marker(marker_id);
         objects.push_back(ReadabilityObject{
-            EntityRef::no_connect_marker(marker_id), std::vector{EntityRef::pin(marker.pin())},
-            no_connect_marker_bounds(marker), marker.authored_region()});
+            ReadabilityObjectKind::NoConnectMarker, EntityRef::no_connect_marker(marker_id),
+            std::vector{EntityRef::pin(marker.pin())}, no_connect_marker_bounds(marker),
+            marker.authored_region()});
     }
     for (const auto port_id : sheet.sheet_ports()) {
         const auto &port = schematic.sheet_port(port_id);
-        objects.push_back(ReadabilityObject{EntityRef::sheet_port(port_id),
+        objects.push_back(ReadabilityObject{ReadabilityObjectKind::SheetPort,
+                                            EntityRef::sheet_port(port_id),
                                             std::vector{EntityRef::net(port.net())},
                                             sheet_port_bounds(port), port.authored_region()});
     }
     for (const auto field_id : sheet.symbol_fields()) {
         const auto &field = schematic.symbol_field(field_id);
-        objects.push_back(ReadabilityObject{
-            EntityRef::symbol_field(field_id),
-            std::vector{EntityRef::symbol_instance(field.symbol_instance())},
-            text_bounds(field.position(), field.orientation(), field.value(), true),
-            field.authored_region()});
+        objects.push_back(
+            ReadabilityObject{ReadabilityObjectKind::SymbolField, EntityRef::symbol_field(field_id),
+                              std::vector{EntityRef::symbol_instance(field.symbol_instance())},
+                              text_bounds(field.position(), field.orientation(), field.value(),
+                                          symbol_field_rendered_font_size, true),
+                              field.authored_region()});
     }
     return objects;
+}
+
+[[nodiscard]] inline std::vector<ReadabilityTagObject>
+readability_tags_for_sheet(const Schematic &schematic, const Sheet &sheet) {
+    auto tags = std::vector<ReadabilityTagObject>{};
+    for (const auto port_id : sheet.power_ports()) {
+        const auto &port = schematic.power_port(port_id);
+        const auto &net = schematic.circuit().net(port.net());
+        const auto label = port.label().value_or(net.name().value());
+        tags.push_back(ReadabilityTagObject{
+            EntityRef::power_port(port_id),
+            std::vector{EntityRef::net(port.net())},
+            power_port_bounds(port, label),
+            port.position(),
+            port.orientation(),
+            port.authored_region(),
+        });
+    }
+    for (const auto port_id : sheet.sheet_ports()) {
+        const auto &port = schematic.sheet_port(port_id);
+        tags.push_back(ReadabilityTagObject{
+            EntityRef::sheet_port(port_id),
+            std::vector{EntityRef::net(port.net())},
+            sheet_port_bounds(port),
+            port.position(),
+            port.orientation(),
+            port.authored_region(),
+        });
+    }
+    return tags;
 }
 
 inline void validate_readability_bounds(const Schematic &schematic, SheetId sheet_id,
@@ -836,6 +959,194 @@ inline void validate_readability_bounds(const Schematic &schematic, SheetId shee
                                            sheet_id, object.entity, object.context);
             }
         }
+    }
+}
+
+inline void validate_port_tag_scale(const Schematic &schematic, SheetId sheet_id,
+                                    const Sheet &sheet, DiagnosticReport &report) {
+    for (const auto port_id : sheet.power_ports()) {
+        const auto &port = schematic.power_port(port_id);
+        const auto &net = schematic.circuit().net(port.net());
+        const auto label = port.label().value_or(net.name().value());
+        if (rendered_text_width(label, sheet_port_rendered_label_font_size) <=
+            oversized_port_tag_rendered_length) {
+            continue;
+        }
+        add_readability_diagnostic(
+            report, Severity::Warning, "SCHEMATIC_OVERSIZED_PORT_TAG",
+            "Schematic power port label is visually oversized for the rendered tag scale", sheet_id,
+            EntityRef::power_port(port_id), std::vector{EntityRef::net(port.net())});
+    }
+    for (const auto port_id : sheet.sheet_ports()) {
+        const auto &port = schematic.sheet_port(port_id);
+        const auto rendered_length =
+            sheet_port_rendered_body_length(port.name()) + sheet_port_rendered_tip_length;
+        if (rendered_length <= oversized_port_tag_rendered_length) {
+            continue;
+        }
+        add_readability_diagnostic(
+            report, Severity::Warning, "SCHEMATIC_OVERSIZED_PORT_TAG",
+            "Schematic sheet/off-page port is visually oversized for the rendered tag scale",
+            sheet_id, EntityRef::sheet_port(port_id), std::vector{EntityRef::net(port.net())});
+    }
+}
+
+[[nodiscard]] inline bool label_or_tag_crowds_symbols(ReadabilityObjectKind kind) noexcept {
+    return kind == ReadabilityObjectKind::NetLabel || kind == ReadabilityObjectKind::PowerPort ||
+           kind == ReadabilityObjectKind::SheetPort;
+}
+
+inline void validate_symbol_crowding(const Schematic &schematic, SheetId sheet_id,
+                                     const Sheet &sheet, DiagnosticReport &report) {
+    const auto objects = readability_objects_for_sheet(schematic, sheet);
+    for (const auto &symbol : objects) {
+        if (symbol.kind != ReadabilityObjectKind::SymbolInstance) {
+            continue;
+        }
+        const auto symbol_clearance = padded_bounds(symbol.bounds, label_symbol_clearance);
+        auto crowded = std::vector<const ReadabilityObject *>{};
+        for (const auto &object : objects) {
+            if (!label_or_tag_crowds_symbols(object.kind) ||
+                !intersects_bounds(symbol_clearance, object.bounds)) {
+                continue;
+            }
+            crowded.push_back(&object);
+        }
+        if (crowded.empty()) {
+            continue;
+        }
+        auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id), symbol.entity};
+        for (const auto *object : crowded) {
+            refs.push_back(object->entity);
+        }
+        refs.insert(refs.end(), symbol.context.begin(), symbol.context.end());
+        for (const auto *object : crowded) {
+            refs.insert(refs.end(), object->context.begin(), object->context.end());
+        }
+        report.add(Diagnostic{
+            Severity::Warning,
+            DiagnosticCode{"SCHEMATIC_LABEL_CROWDS_SYMBOL"},
+            "Schematic tags or net labels crowd a symbol; add spacing or use compact stubs",
+            std::move(refs),
+        });
+    }
+}
+
+[[nodiscard]] inline double tag_stack_primary_position(const ReadabilityTagObject &tag) noexcept {
+    switch (tag.orientation) {
+    case SchematicOrientation::Right:
+    case SchematicOrientation::Left:
+        return tag.position.y();
+    case SchematicOrientation::Up:
+    case SchematicOrientation::Down:
+        return tag.position.x();
+    }
+    return tag.position.y();
+}
+
+[[nodiscard]] inline double tag_stack_cross_position(const ReadabilityTagObject &tag) noexcept {
+    switch (tag.orientation) {
+    case SchematicOrientation::Right:
+    case SchematicOrientation::Left:
+        return tag.position.x();
+    case SchematicOrientation::Up:
+    case SchematicOrientation::Down:
+        return tag.position.y();
+    }
+    return tag.position.x();
+}
+
+inline void add_crowded_tag_stack_diagnostic(DiagnosticReport &report, SheetId sheet_id,
+                                             const std::vector<ReadabilityTagObject> &tags,
+                                             const std::vector<std::size_t> &cluster) {
+    auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id)};
+    for (const auto tag_index : cluster) {
+        refs.push_back(tags[tag_index].entity);
+    }
+    for (const auto tag_index : cluster) {
+        refs.insert(refs.end(), tags[tag_index].context.begin(), tags[tag_index].context.end());
+    }
+    report.add(Diagnostic{
+        Severity::Warning,
+        DiagnosticCode{"SCHEMATIC_CROWDED_TAG_STACK"},
+        "Repeated schematic tags are stacked too tightly for the rendered tag scale",
+        std::move(refs),
+    });
+}
+
+inline void validate_crowded_tag_stacks(const Schematic &schematic, SheetId sheet_id,
+                                        const Sheet &sheet, DiagnosticReport &report) {
+    const auto tags = readability_tags_for_sheet(schematic, sheet);
+    auto order = std::vector<std::size_t>{};
+    order.reserve(tags.size());
+    for (std::size_t index = 0; index < tags.size(); ++index) {
+        order.push_back(index);
+    }
+    std::sort(order.begin(), order.end(), [&tags](std::size_t lhs, std::size_t rhs) {
+        if (tags[lhs].orientation != tags[rhs].orientation) {
+            return tags[lhs].orientation < tags[rhs].orientation;
+        }
+        const auto lhs_cross = tag_stack_cross_position(tags[lhs]);
+        const auto rhs_cross = tag_stack_cross_position(tags[rhs]);
+        if (std::abs(lhs_cross - rhs_cross) > tag_stack_alignment_tolerance) {
+            return lhs_cross < rhs_cross;
+        }
+        return tag_stack_primary_position(tags[lhs]) < tag_stack_primary_position(tags[rhs]);
+    });
+
+    auto cluster = std::vector<std::size_t>{};
+    for (const auto tag_index : order) {
+        if (cluster.empty()) {
+            cluster.push_back(tag_index);
+            continue;
+        }
+        const auto previous_index = cluster.back();
+        const auto same_stack =
+            tags[tag_index].orientation == tags[previous_index].orientation &&
+            std::abs(tag_stack_cross_position(tags[tag_index]) -
+                     tag_stack_cross_position(tags[previous_index])) <=
+                tag_stack_alignment_tolerance &&
+            std::abs(tag_stack_primary_position(tags[tag_index]) -
+                     tag_stack_primary_position(tags[previous_index])) <= tag_stack_min_spacing;
+        if (same_stack) {
+            cluster.push_back(tag_index);
+            continue;
+        }
+        if (cluster.size() > 1U) {
+            add_crowded_tag_stack_diagnostic(report, sheet_id, tags, cluster);
+        }
+        cluster = std::vector<std::size_t>{tag_index};
+    }
+    if (cluster.size() > 1U) {
+        add_crowded_tag_stack_diagnostic(report, sheet_id, tags, cluster);
+    }
+}
+
+inline void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_id,
+                                            const Sheet &sheet, DiagnosticReport &report) {
+    const auto tags = readability_tags_for_sheet(schematic, sheet);
+    auto tags_by_region = std::vector<std::vector<std::size_t>>(sheet.regions().size());
+    for (std::size_t index = 0; index < tags.size(); ++index) {
+        if (tags[index].authored_region.has_value()) {
+            tags_by_region[tags[index].authored_region.value()].push_back(index);
+        }
+    }
+    for (std::size_t region_index = 0; region_index < tags_by_region.size(); ++region_index) {
+        const auto &region_tags = tags_by_region[region_index];
+        if (region_tags.size() < dense_region_port_tag_threshold) {
+            continue;
+        }
+        auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id)};
+        for (const auto tag_index : region_tags) {
+            refs.push_back(tags[tag_index].entity);
+        }
+        report.add(Diagnostic{
+            Severity::Warning,
+            DiagnosticCode{"SCHEMATIC_DENSE_PORT_TAGS"},
+            "Schematic region '" + sheet.region(region_index).name() +
+                "' contains dense sheet or power tags; prefer compact local labels where possible",
+            std::move(refs),
+        });
     }
 }
 
@@ -1020,14 +1331,16 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         const auto &net = schematic.circuit().net(label.net());
         texts.push_back(ReadabilityTextObject{
             EntityRef::net_label(label_id), std::vector{EntityRef::net(label.net())},
-            text_bounds(label.position(), label.orientation(), net.name().value(), false)});
+            text_bounds(label.position(), label.orientation(), net.name().value(),
+                        net_label_rendered_font_size, false)});
     }
     for (const auto field_id : sheet.symbol_fields()) {
         const auto &field = schematic.symbol_field(field_id);
-        texts.push_back(ReadabilityTextObject{
-            EntityRef::symbol_field(field_id),
-            std::vector{EntityRef::symbol_instance(field.symbol_instance())},
-            text_bounds(field.position(), field.orientation(), field.value(), true)});
+        texts.push_back(
+            ReadabilityTextObject{EntityRef::symbol_field(field_id),
+                                  std::vector{EntityRef::symbol_instance(field.symbol_instance())},
+                                  text_bounds(field.position(), field.orientation(), field.value(),
+                                              symbol_field_rendered_font_size, true)});
     }
 
     for (std::size_t first = 0; first < texts.size(); ++first) {
@@ -1091,6 +1404,10 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         detail::validate_readability_bounds(schematic, sheet_id, sheet, report);
         detail::validate_duplicate_junctions(schematic, sheet_id, sheet, report);
         detail::validate_label_readability(schematic, sheet_id, sheet, report);
+        detail::validate_port_tag_scale(schematic, sheet_id, sheet, report);
+        detail::validate_symbol_crowding(schematic, sheet_id, sheet, report);
+        detail::validate_crowded_tag_stacks(schematic, sheet_id, sheet, report);
+        detail::validate_dense_region_port_tags(schematic, sheet_id, sheet, report);
         detail::validate_missing_passive_value_fields(schematic, sheet_id, sheet, report);
         detail::validate_dense_no_connect_clusters(schematic, sheet_id, sheet, report);
         detail::validate_text_collisions(schematic, sheet_id, sheet, report);
