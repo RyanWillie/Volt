@@ -752,6 +752,34 @@ TEST_CASE("Schematic readability reports usable-area and title-block layout issu
                                           volt::EntityRef::net(net)});
 }
 
+TEST_CASE("Schematic readability uses label-dependent sheet-port bounds") {
+    volt::Circuit circuit;
+    const auto net = add_net(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{
+        "Main",
+        volt::SheetMetadata{
+            "Main",
+            volt::SheetSize{70.0, 40.0},
+            {},
+            volt::SheetOrientation::Landscape,
+            volt::SheetFrame{true, volt::SheetMargins{10.0, 10.0, 10.0, 10.0}},
+        },
+    });
+    const auto port = schematic.add_sheet_port(sheet, volt::SheetPort{net, "LONG_PORT_LABEL",
+                                                                      volt::SheetPortKind::OffPage,
+                                                                      volt::Point{38.0, 20.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &outside = require_diagnostic(report, "SCHEMATIC_OBJECT_OUTSIDE_USABLE_AREA");
+    CHECK(outside.severity() == volt::Severity::Error);
+    CHECK(outside.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                            volt::EntityRef::sheet_port(port),
+                                            volt::EntityRef::net(net)});
+}
+
 TEST_CASE("Schematic readability reports objects outside their authored region") {
     volt::Circuit circuit;
     const auto net = add_net(circuit);
