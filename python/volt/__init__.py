@@ -1298,6 +1298,34 @@ class SchematicNetLabel:
         return f"SchematicNetLabel(index={self._index})"
 
 
+class SchematicSignalStub:
+    """Read-only handle to a compact local signal-stub projection."""
+
+    def __init__(
+        self,
+        schematic: Schematic,
+        *,
+        net: Net,
+        side: str,
+        wire: SchematicWire,
+        label: SchematicNetLabel,
+        start: tuple[float, float],
+        end: tuple[float, float],
+        label_position: tuple[float, float],
+    ):
+        self._schematic = schematic
+        self.net = net
+        self.side = side
+        self.wire = wire
+        self.label = label
+        self.start = SchematicAnchor(start, design=schematic._design)
+        self.end = SchematicAnchor(end, design=schematic._design)
+        self.label_position = SchematicAnchor(label_position, design=schematic._design)
+
+    def __repr__(self) -> str:
+        return f"SchematicSignalStub(net={self.net.name!r}, side={self.side!r})"
+
+
 class SchematicSymbolField:
     """Read-only handle to a placed schematic symbol field projection."""
 
@@ -1821,6 +1849,73 @@ class SchematicDrawing:
         return self._schematic.net_label(
             name_or_net,
             at=self._here if at is None else self._point_arg(at),
+            orient=orient,
+            _authored_region=self._authored_region,
+        )
+
+    def local_label(
+        self,
+        name_or_net: str | Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        side: str = "Right",
+        offset: float = 2,
+        orient: str | None = None,
+    ) -> SchematicNetLabel:
+        self._flush_pending()
+        return self._schematic.local_label(
+            name_or_net,
+            at=self._here if at is None else self._point_arg(at),
+            side=side,
+            offset=offset,
+            orient=orient,
+            _authored_region=self._authored_region,
+        )
+
+    def signal_stub(
+        self,
+        name_or_net: str | Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        side: str = "Right",
+        length: float = 8,
+        label_gap: float = 2,
+        orient: str | None = None,
+    ) -> SchematicSignalStub:
+        self._flush_pending()
+        return self._schematic.signal_stub(
+            name_or_net,
+            at=self._here if at is None else self._point_arg(at),
+            side=side,
+            length=length,
+            label_gap=label_gap,
+            orient=orient,
+            _authored_region=self._authored_region,
+        )
+
+    def signal_stubs(
+        self,
+        items,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        side: str = "Right",
+        pitch: float = 8,
+        length: float = 8,
+        label_gap: float = 2,
+        orient: str | None = None,
+    ) -> tuple[SchematicSignalStub, ...]:
+        self._flush_pending()
+        entries = tuple(items)
+        base_at = self._point_arg(at) if at is not None else None
+        if base_at is None and any(not _signal_stub_entry_has_anchor(item) for item in entries):
+            base_at = self._here
+        return self._schematic.signal_stubs(
+            entries,
+            at=base_at,
+            side=side,
+            pitch=pitch,
+            length=length,
+            label_gap=label_gap,
             orient=orient,
             _authored_region=self._authored_region,
         )
@@ -2575,6 +2670,137 @@ class Schematic:
             _raise_cross_design_with_context(error, self, "net label")
         return self.label(net, at=at, orient=orient, _authored_region=_authored_region)
 
+    def local_label(
+        self,
+        name_or_net: str | Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        side: str = "Right",
+        offset: float = 2,
+        orient: str | None = None,
+        _authored_region: int | None = None,
+    ) -> SchematicNetLabel:
+        side_orientation = _orientation(side)
+        label_orientation = side_orientation if orient is None else _orientation(orient)
+        net = _resolve_schematic_signal_net(
+            self._design,
+            name_or_net,
+            at,
+            schematic=self,
+            action="local net label",
+        )
+        anchor = _schematic_point_for_authoring(
+            at,
+            design=self._design,
+            schematic=self,
+            action="local net label",
+        )
+        position = _offset_schematic_point(
+            anchor,
+            side_orientation,
+            _nonnegative_coordinate(offset, "Local net label offsets"),
+        )
+        return self.label(
+            net,
+            at=position,
+            orient=label_orientation,
+            _authored_region=_authored_region,
+        )
+
+    def signal_stub(
+        self,
+        name_or_net: str | Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        side: str = "Right",
+        length: float = 8,
+        label_gap: float = 2,
+        orient: str | None = None,
+        _authored_region: int | None = None,
+    ) -> SchematicSignalStub:
+        side_orientation = _orientation(side)
+        label_orientation = side_orientation if orient is None else _orientation(orient)
+        net = _resolve_schematic_signal_net(
+            self._design,
+            name_or_net,
+            at,
+            schematic=self,
+            action="signal stub",
+        )
+        start = _schematic_point_for_authoring(
+            at,
+            design=self._design,
+            schematic=self,
+            action="signal stub",
+        )
+        end = _offset_schematic_point(
+            start,
+            side_orientation,
+            _positive_coordinate(length, "Signal stub lengths"),
+        )
+        label_position = _offset_schematic_point(
+            end,
+            side_orientation,
+            _nonnegative_coordinate(label_gap, "Signal stub label gaps"),
+        )
+        wire = self._add_wire(
+            net,
+            (start, end),
+            route_intent="Direct",
+            _authored_region=_authored_region,
+        )
+        label = self.label(
+            net,
+            at=label_position,
+            orient=label_orientation,
+            _authored_region=_authored_region,
+        )
+        return SchematicSignalStub(
+            self,
+            net=net,
+            side=side_orientation,
+            wire=wire,
+            label=label,
+            start=start,
+            end=end,
+            label_position=label_position,
+        )
+
+    def signal_stubs(
+        self,
+        items,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        side: str = "Right",
+        pitch: float = 8,
+        length: float = 8,
+        label_gap: float = 2,
+        orient: str | None = None,
+        _authored_region: int | None = None,
+    ) -> tuple[SchematicSignalStub, ...]:
+        side_orientation = _orientation(side)
+        entries = tuple(items)
+        if not entries:
+            return ()
+        starts = _signal_stub_entries(
+            entries,
+            at=at,
+            side=side_orientation,
+            pitch=_positive_coordinate(pitch, "Signal stub pitches"),
+        )
+        return tuple(
+            self.signal_stub(
+                name_or_net,
+                at=anchor,
+                side=side_orientation,
+                length=length,
+                label_gap=label_gap,
+                orient=orient,
+                _authored_region=_authored_region,
+            )
+            for name_or_net, anchor in starts
+        )
+
     def _add_symbol_field(
         self,
         symbol: SchematicSymbol,
@@ -2983,6 +3209,76 @@ class SchematicRegion:
         return self._sheet.net_label(
             name_or_net,
             at=self._local_point(at),
+            orient=orient,
+            _authored_region=self._index,
+        )
+
+    def local_label(
+        self,
+        name_or_net: str | Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        side: str = "Right",
+        offset: float = 2,
+        orient: str | None = None,
+    ) -> SchematicNetLabel:
+        return self._sheet.local_label(
+            name_or_net,
+            at=self._local_point(at),
+            side=side,
+            offset=offset,
+            orient=orient,
+            _authored_region=self._index,
+        )
+
+    def signal_stub(
+        self,
+        name_or_net: str | Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        side: str = "Right",
+        length: float = 8,
+        label_gap: float = 2,
+        orient: str | None = None,
+    ) -> SchematicSignalStub:
+        return self._sheet.signal_stub(
+            name_or_net,
+            at=self._local_point(at),
+            side=side,
+            length=length,
+            label_gap=label_gap,
+            orient=orient,
+            _authored_region=self._index,
+        )
+
+    def signal_stubs(
+        self,
+        items,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        side: str = "Right",
+        pitch: float = 8,
+        length: float = 8,
+        label_gap: float = 2,
+        orient: str | None = None,
+    ) -> tuple[SchematicSignalStub, ...]:
+        base_at = None if at is None else self._local_point(at)
+        localized = (
+            (
+                item[0],
+                self._local_point(item[1]),
+            )
+            if _signal_stub_entry_has_anchor(item)
+            else item
+            for item in items
+        )
+        return self._sheet.signal_stubs(
+            localized,
+            at=base_at,
+            side=side,
+            pitch=pitch,
+            length=length,
+            label_gap=label_gap,
             orient=orient,
             _authored_region=self._index,
         )
@@ -3480,6 +3776,13 @@ def _positive_coordinate(value: float, label: str) -> float:
     result = _coordinate(value)
     if result <= 0:
         raise ValueError(f"{label} must be positive")
+    return result
+
+
+def _nonnegative_coordinate(value: float, label: str) -> float:
+    result = _coordinate(value)
+    if result < 0:
+        raise ValueError(f"{label} must not be negative")
     return result
 
 
@@ -4032,6 +4335,102 @@ def _resolve_schematic_connection_net(
             f"{_pin_anchor_label(second_anchor)} is on {_net_label(second_net)}"
         )
     return first_net
+
+
+def _resolve_schematic_signal_net(
+    design: Design,
+    name_or_net: str | Net,
+    at: tuple[float, float] | SchematicAnchor | SchematicPort,
+    *,
+    schematic: Schematic,
+    action: str,
+) -> Net:
+    try:
+        net = _resolve_schematic_net_label(design, name_or_net)
+    except ValueError as error:
+        _raise_cross_design_with_context(error, schematic, action)
+    if isinstance(at, SchematicPinAnchor):
+        _require_schematic_point_design_for_authoring(
+            at,
+            design,
+            schematic=schematic,
+            action=action,
+        )
+        try:
+            _require_pin_anchor_matches_net(at, net)
+        except ValueError as error:
+            raise ValueError(_with_schematic_context(str(error), schematic, action)) from error
+    elif isinstance(at, SchematicPort):
+        try:
+            _require_port_matches_net(at, net)
+        except ValueError as error:
+            _raise_cross_design_with_context(error, schematic, action)
+    elif isinstance(at, SchematicAnchor):
+        _require_schematic_point_design_for_authoring(
+            at,
+            design,
+            schematic=schematic,
+            action=action,
+        )
+    return net
+
+
+def _offset_schematic_point(
+    point: tuple[float, float], orientation: str, distance: float
+) -> tuple[float, float]:
+    x, y = point
+    if orientation == "Right":
+        return (x + distance, y)
+    if orientation == "Down":
+        return (x, y + distance)
+    if orientation == "Left":
+        return (x - distance, y)
+    if orientation == "Up":
+        return (x, y - distance)
+    raise ValueError("Schematic orientation must be Right, Down, Left, or Up")
+
+
+def _signal_stub_entry_has_anchor(item) -> bool:
+    return isinstance(item, (tuple, list)) and len(item) == 2
+
+
+def _signal_stub_entries(
+    items,
+    *,
+    at: tuple[float, float] | SchematicAnchor | SchematicPort | None,
+    side: str,
+    pitch: float,
+):
+    if at is None:
+        for item in items:
+            if not _signal_stub_entry_has_anchor(item):
+                raise TypeError(
+                    "Signal stub groups need (net, anchor) entries unless at= is provided"
+                )
+            yield item[0], item[1]
+        return
+
+    base = at
+    for index, item in enumerate(items):
+        if _signal_stub_entry_has_anchor(item):
+            yield item[0], item[1]
+            continue
+        offset = _signal_stub_pitch_offset(side, pitch * index)
+        if index == 0 and isinstance(base, (SchematicPinAnchor, SchematicPort)):
+            yield item, base
+        elif isinstance(base, SchematicAnchor):
+            yield item, base.offset(dx=offset[0], dy=offset[1])
+        elif isinstance(base, SchematicPort):
+            yield item, base.pin.offset(dx=offset[0], dy=offset[1])
+        else:
+            point = _schematic_point_tuple(base)
+            yield item, (point[0] + offset[0], point[1] + offset[1])
+
+
+def _signal_stub_pitch_offset(side: str, distance: float) -> tuple[float, float]:
+    if side in ("Right", "Left"):
+        return (0.0, distance)
+    return (distance, 0.0)
 
 
 def _symbol_point(value: tuple[float, float]) -> dict:
@@ -4730,6 +5129,7 @@ __all__ = [
     "SchematicPinAnchor",
     "SchematicPort",
     "SchematicRegion",
+    "SchematicSignalStub",
     "SchematicSymbolField",
     "SchematicSymbolPinSpec",
     "SchematicSymbolSpec",

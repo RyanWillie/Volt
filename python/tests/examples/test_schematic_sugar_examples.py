@@ -30,7 +30,7 @@ def _assert_stable_artifacts(example_module):
         )
 
 
-def test_regulator_fragment_sugar_example_uses_ports_shapes_and_no_connects():
+def test_regulator_fragment_sugar_example_uses_local_stubs_shapes_and_no_connects():
     regulator_fragment = _load_example("regulator_fragment")
     design, nets, parts = regulator_fragment.build_design()
     logical_before = design.to_json()
@@ -46,11 +46,14 @@ def test_regulator_fragment_sugar_example_uses_ports_shapes_and_no_connects():
         "Direct",
         "Orthogonal",
     }
-    assert {port["name"] for port in projection["sheet_ports"]} == {
-        "NRST",
-        "SWDIO",
-        "SWCLK",
-    }
+    assert projection["sheet_ports"] == []
+    stub_labels = projection["net_labels"][-3:]
+    assert [label["net"] for label in stub_labels] == [
+        f"net:{nets['NRST'].index}",
+        f"net:{nets['SWDIO'].index}",
+        f"net:{nets['SWCLK'].index}",
+    ]
+    assert [label["orientation"] for label in stub_labels] == ["Right", "Right", "Right"]
     no_connect_markers = projection["no_connect_markers"]
     assert len(no_connect_markers) == 1
     assert no_connect_markers[0]["pin"] == f"pin:{parts['TP2']['TP'].index}"
@@ -79,7 +82,8 @@ def test_regulator_fragment_sugar_example_uses_ports_shapes_and_no_connects():
         f"pin:{parts['TP2']['TP'].index}"
     ]
     assert stable_projection == projection
-    assert 'class="sheet-port off-page"' in svg
+    assert 'class="sheet-port off-page"' not in svg
+    assert svg.count('class="net-label"') >= 4
     assert 'class="no-connect-marker"' in svg
     assert 'class="power-port power"' in svg
     assert 'class="power-port ground"' in svg
