@@ -1178,6 +1178,12 @@ inline void validate_dense_region_port_tags(const Schematic &schematic, SheetId 
     return character >= '0' && character <= '9';
 }
 
+// Returns true if the label looks like a conventional EDA reference designator: 1–4 uppercase
+// letters followed by one or more decimal digits (e.g. R1, C12, U3, CONN4, TP10).  Labels
+// containing scope separators ('/', "::"), underscores, mixed-case suffixes, or all-letter
+// tokens are treated as unconventional.  Prefixes longer than four characters are also flagged
+// to keep designators compact and readable; use a shorter type prefix instead (e.g. "FB" for
+// ferrite bead rather than "FBEAD").
 [[nodiscard]] inline bool
 visible_reference_label_looks_conventional(std::string_view label) noexcept {
     auto prefix_length = std::size_t{0};
