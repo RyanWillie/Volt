@@ -92,25 +92,22 @@ def author_schematic(
         ground = drawing.ground(net=nets["GND"], at=regulator.GND.down(24))
         drawing.connect(regulator.GND, ground, net=nets["GND"], shape="-")
 
-        reset_tp = drawing.place(parts["TP1"], at=reset_pullup.end.right(28)).label_ref(
-            loc="bottom"
-        )
-        header = drawing.place(
-            parts["J1"],
-            at=reset_tp.TP.right(20).down(20),
-            orient="Right",
-        ).label_ref(loc="top")
-        drawing.connect(reset_pullup.end, reset_tp.TP, shape="-")
-        drawing.connect(reset_tp.TP, header[1], shape="-|", k=24)
+        with drawing.frame(reset_pullup.end.right(28)):
+            reset_tp = drawing.place(parts["TP1"], at=(0, 0)).label_ref(loc="bottom")
+            header = drawing.place(parts["J1"], at=(20, 20), orient="Right").label_ref(
+                loc="top"
+            )
+            drawing.connect(reset_pullup.end, reset_tp.TP, shape="-")
+            drawing.connect(reset_tp.TP, header[1], shape="-|", k=24)
 
-        drawing.signal_stub(nets["NRST"], at=header[1], side="Right", length=18)
-        drawing.signal_stub(nets["SWDIO"], at=header[2], side="Right", length=18)
-        drawing.signal_stub(nets["SWCLK"], at=header[3], side="Right", length=18)
+            drawing.signal_stub(nets["NRST"], at=header[1], side="Right", length=18)
+            drawing.signal_stub(nets["SWDIO"], at=header[2], side="Right", length=18)
+            drawing.signal_stub(nets["SWCLK"], at=header[3], side="Right", length=18)
 
-        unused_pad = drawing.place(parts["TP2"], at=header[3].down(34)).label_ref(
-            loc="bottom"
-        )
-        drawing.no_connect(unused_pad.TP, reason="reserved pad not populated")
+            unused_pad = drawing.place(parts["TP2"], at=header[3].down(34)).label_ref(
+                loc="bottom"
+            )
+            drawing.no_connect(unused_pad.TP, reason="reserved pad not populated")
 
     return sheet
 

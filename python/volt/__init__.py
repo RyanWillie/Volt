@@ -1908,7 +1908,7 @@ class SchematicDrawing:
         orient: str | None = None,
     ) -> tuple[SchematicSignalStub, ...]:
         self._flush_pending()
-        entries = tuple(items)
+        entries = self._signal_stub_items_arg(tuple(items))
         base_at = self._point_arg(at) if at is not None else None
         if base_at is None and any(not _signal_stub_entry_has_anchor(item) for item in entries):
             base_at = self._here
@@ -2066,6 +2066,18 @@ class SchematicDrawing:
                 point[1] + self._coordinate_origin[1],
             )
         return value
+
+    def _signal_stub_items_arg(self, items):
+        entries = []
+        for item in items:
+            name_or_net, anchor, label = _signal_stub_entry_parts(item)
+            if anchor is None:
+                entries.append((name_or_net, label) if label is not None else name_or_net)
+            elif label is None:
+                entries.append((name_or_net, self._point_arg(anchor)))
+            else:
+                entries.append((name_or_net, self._point_arg(anchor), label))
+        return tuple(entries)
 
     def _flush_pending(self) -> None:
         pending = self._pending

@@ -1393,6 +1393,82 @@ def test_python_schematic_drawing_frame_restores_state_after_exception():
         raise AssertionError("frame should restore the drawing stack depth")
 
 
+def test_python_schematic_drawing_frame_offsets_point_accepting_operations():
+    design = volt.Design("schematic-drawing-frame-operations")
+    vcc = design.net("VCC", kind="power")
+    gnd = design.net("GND", kind="ground")
+    sig = design.net("SIG")
+    aux = design.net("AUX")
+    probe = design.test_point(ref="TP1")
+    resistor_part = design.R("10k", ref="R1")
+    probe["TP"].mark_no_connect()
+
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(direction="Left") as drawing:
+        with drawing.frame((100, 50), direction="Down"):
+            placed_probe = drawing.place(probe, at=(1, 2))
+            resistor = drawing.R(resistor_part).at((10, 0)).right()
+            drawing.connect((0, 0), (10, 0), net=sig, shape="-")
+            drawing.wire(sig).at((0, 5)).to((10, 5)).direct()
+            drawing.local_label(sig, at=(2, 8), side="Right", offset=3)
+            stub = drawing.signal_stub(
+                sig,
+                at=(3, 10),
+                side="Right",
+                length=4,
+                label_gap=1,
+                label="S1",
+            )
+            stubs = drawing.signal_stubs(
+                ((sig, (4, 14), "S2"), (aux, (4, 18), "AUX")),
+                side="Right",
+                length=4,
+                label_gap=1,
+            )
+            drawing.junction(sig, at=(5, 22))
+            drawing.power("VCC", net=vcc, at=(6, 24), orient="Up")
+            drawing.ground(net=gnd, at=(8, 24), orient="Down")
+            sheet_port = drawing.sheet_port("SIG", net=sig, at=(10, 24))
+            drawing.off_page("AUX", net=aux, at=(12, 24))
+            drawing.net_label(sig, at=sheet_port, label="PORT")
+            drawing.no_connect(placed_probe.TP, reason="reserved")
+
+    projection = json.loads(schematic.to_json())
+
+    assert placed_probe.TP.point == (101.0, 52.0)
+    assert resistor.start.point == (110.0, 50.0)
+    assert resistor.end.point == (130.0, 50.0)
+    assert stub.start.point == (103.0, 60.0)
+    assert stub.end.point == (107.0, 60.0)
+    assert [item.start.point for item in stubs] == [(104.0, 64.0), (104.0, 68.0)]
+    assert [item.end.point for item in stubs] == [(108.0, 64.0), (108.0, 68.0)]
+    assert [_wire_points(projection, index) for index in range(5)] == [
+        [(100.0, 50.0), (110.0, 50.0)],
+        [(100.0, 55.0), (110.0, 55.0)],
+        [(103.0, 60.0), (107.0, 60.0)],
+        [(104.0, 64.0), (108.0, 64.0)],
+        [(104.0, 68.0), (108.0, 68.0)],
+    ]
+    assert [label["position"] for label in projection["net_labels"]] == [
+        {"x": 105.0, "y": 58.0},
+        {"x": 108.0, "y": 60.0},
+        {"x": 109.0, "y": 64.0},
+        {"x": 109.0, "y": 68.0},
+        {"x": 110.0, "y": 74.0},
+    ]
+    assert projection["junctions"][0]["position"] == {"x": 105.0, "y": 72.0}
+    assert [port["position"] for port in projection["power_ports"]] == [
+        {"x": 106.0, "y": 74.0},
+        {"x": 108.0, "y": 74.0},
+    ]
+    assert [port["position"] for port in projection["sheet_ports"]] == [
+        {"x": 110.0, "y": 74.0},
+        {"x": 112.0, "y": 74.0},
+    ]
+    assert projection["no_connect_markers"][0]["position"] == {"x": 101.0, "y": 52.0}
+
+
 def test_python_schematic_drawing_session_does_not_mutate_logical_design():
     design = volt.Design("schematic-drawing-logical-boundary")
     design.R("10k", ref="R1")

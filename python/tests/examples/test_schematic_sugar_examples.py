@@ -1,7 +1,10 @@
+from contextlib import contextmanager
 import importlib
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
+import volt
 
 
 
@@ -96,3 +99,24 @@ def test_regulator_fragment_sugar_example_uses_local_stubs_shapes_and_no_connect
     assert ">SWCLK</text>" in svg
     assert "pin-anchor" not in svg
     assert "pin-label" not in svg
+
+
+def test_regulator_fragment_sugar_example_uses_local_frame_authoring():
+    regulator_fragment = _load_example("regulator_fragment")
+    design, nets, parts = regulator_fragment.build_design()
+    original_frame = volt.SchematicDrawing.frame
+    frame_calls = []
+
+    @contextmanager
+    def recording_frame(self, *args, **kwargs):
+        frame_calls.append((args, kwargs))
+        with original_frame(self, *args, **kwargs) as frame:
+            yield frame
+
+    volt.SchematicDrawing.frame = recording_frame
+    try:
+        regulator_fragment.author_schematic(design, nets, parts)
+    finally:
+        volt.SchematicDrawing.frame = original_frame
+
+    assert frame_calls
