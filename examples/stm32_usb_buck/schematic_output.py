@@ -18,7 +18,7 @@ SHEET_OPTIONS = {
     "project": "Volt STM32 USB Buck",
     "margins": (16, 14, 16, 14),
     "coordinate_zones": (16, 10),
-    "grid": {"spacing": 5, "visible": True},
+    "grid": {"spacing": 5, "visible": False},
 }
 SHEET_FILE = "examples/stm32_usb_buck/schematic_output.py"
 
@@ -309,11 +309,10 @@ def _author_power_region(
         drawing.junction(pwr_in, at=(60, 54))
 
         pwr_5v_port = drawing.power("+5V", net=pwr_5v, at=u5.VO.right(28).up(10), orient="Up")
-        drawing.wire(pwr_5v).at(u5.VO).via((112, 58)).via((112, 102)).via(
-            (36, 102)
-        ).via((36, 128)).to(u3v3.VI).orthogonal()
+        u3v3_input = drawing.power("+5V", net=pwr_5v, at=u3v3.VI.left(18), orient="Left")
         drawing.connect(u5.VO, pwr_5v_port, net=pwr_5v, shape="-|")
         drawing.connect(c5v.start, u5.VO, net=pwr_5v, shape="|-")
+        drawing.connect(u3v3.VI, u3v3_input, net=pwr_5v, shape="-")
 
         drawing.connect(u3v3.VO, c3v3.start, net=pwr_3v3, shape="-|")
         drawing.power("+3V3", net=pwr_3v3, at=u3v3.VO.right(14), orient="Right")
@@ -322,21 +321,24 @@ def _author_power_region(
         drawing.connect(cvdda.start, cvdda.start.up(16), net=pwr_vdda, shape="-")
         drawing.net_label(nets["+12V"], at=(18, 222))
 
-        ground_bus = (60, 214)
-        drawing.ground("GND", net=pwr_gnd, at=ground_bus, orient="Down")
-        for anchor in (
-            pwr_j[2],
-            pwr_j[3],
-            pwr_j[4],
-            u5.GND,
-            u3v3.GND,
-            cin.end,
-            c5v.end,
-            c3v3.end,
-            cvdda.end,
-        ):
-            drawing.connect(anchor, ground_bus, net=pwr_gnd, shape="|-")
-        drawing.junction(pwr_gnd, at=(54, 160))
+        connector_ground = drawing.ground(
+            "GND",
+            net=pwr_gnd,
+            at=pwr_j[3].right(48).down(32),
+            orient="Down",
+        )
+        for anchor in (pwr_j[2], pwr_j[3], pwr_j[4]):
+            drawing.connect(anchor, connector_ground, net=pwr_gnd, shape="|-")
+
+        u5_ground = drawing.ground("GND", net=pwr_gnd, at=u5.GND.down(16), orient="Down")
+        drawing.connect(u5.GND, u5_ground, net=pwr_gnd, shape="-")
+        drawing.connect(c5v.end, u5_ground, net=pwr_gnd, shape="|-")
+        for anchor in (u3v3.GND, cin.end):
+            ground = drawing.ground("GND", net=pwr_gnd, at=anchor.down(16), orient="Down")
+            drawing.connect(anchor, ground, net=pwr_gnd, shape="-")
+        output_ground = drawing.ground("GND", net=pwr_gnd, at=c3v3.end.right(9).down(16), orient="Down")
+        for anchor in (c3v3.end, cvdda.end):
+            drawing.connect(anchor, output_ground, net=pwr_gnd, shape="|-")
 
 
 def _author_connectors_region(
@@ -398,13 +400,14 @@ def _author_connectors_region(
         drawing.ground("GND", net=usb_gnd, at=(76, 94), orient="Down")
         drawing.junction(usb_gnd, at=(76, 94))
 
-        debug_power = drawing.power("+3V3", net=nets["+3V3"], at=(142, 128), orient="Up")
         for anchor in (swd.VTref, gpio[1]):
-            drawing.connect(anchor, debug_power, net=nets["+3V3"], shape="-|")
-        debug_ground = drawing.ground("GND", net=nets["GND"], at=(92, 252), orient="Down")
-        for anchor in (swd[3], swd[5], swd[9], gpio[4]):
+            power = drawing.power("+3V3", net=nets["+3V3"], at=anchor.up(28), orient="Up")
+            drawing.connect(anchor, power, net=nets["+3V3"], shape="-")
+        debug_ground = drawing.ground("GND", net=nets["GND"], at=swd[9].right(24).down(34), orient="Down")
+        for anchor in (swd[3], swd[5], swd[9]):
             drawing.connect(anchor, debug_ground, net=nets["GND"], shape="-|")
-        drawing.junction(nets["GND"], at=(92, 252))
+        gpio_ground = drawing.ground("GND", net=nets["GND"], at=gpio[4].down(18), orient="Down")
+        drawing.connect(gpio[4], gpio_ground, net=nets["GND"], shape="-")
         drawing.signal_stubs(
             (
                 (nets["SWDIO"], swd.SWDIO, "SWDIO"),
@@ -566,23 +569,18 @@ def _author_mcu_region(
             rail = drawing.power("+3V3", net=support_vdd, at=anchor.up(26), orient="Up")
             drawing.connect(anchor, rail, net=support_vdd, shape="-")
 
-        support_ground = drawing.ground("GND", net=support_gnd, at=(18, 330), orient="Down")
-        for anchor in (
-            cvdd.end,
-            swboot.B,
-            crystal[2],
-            crystal[4],
-            chsein.end,
-            chseout.end,
-        ):
-            drawing.connect(anchor, support_ground, net=support_gnd, shape="-|")
-        for cap in (cvcap1, cvcap2):
-            cap_ground = drawing.ground("GND", net=support_gnd, at=cap.end.down(24), orient="Down")
-            drawing.connect(cap.end, cap_ground, net=support_gnd, shape="-")
+        decoupling_ground = drawing.ground("GND", net=support_gnd, at=cvcap1.end.down(24), orient="Down")
+        for cap in (cvdd, cvcap1, cvcap2):
+            drawing.connect(cap.end, decoupling_ground, net=support_gnd, shape="|-")
+        crystal_ground = drawing.ground("GND", net=support_gnd, at=crystal[4].right(34).down(18), orient="Down")
+        for anchor in (crystal[2], crystal[4]):
+            drawing.connect(anchor, crystal_ground, net=support_gnd, shape="|-")
+        oscillator_ground = drawing.ground("GND", net=support_gnd, at=chsein.end.right(15).down(18), orient="Down")
+        for anchor in (chsein.end, chseout.end):
+            drawing.connect(anchor, oscillator_ground, net=support_gnd, shape="|-")
         rboot_ground = drawing.ground("GND", net=support_gnd, at=rboot.end.down(22), orient="Down")
         drawing.connect(rboot.end, rboot_ground, net=support_gnd, shape="-")
-        drawing.junction(support_gnd, at=rboot.end.down(2))
-        drawing.junction(support_gnd, at=(18, 330))
+        drawing.connect(swboot.B, rboot_ground, net=support_gnd, shape="-|")
 
         drawing.signal_stub(
             support_reset,
@@ -592,9 +590,6 @@ def _author_mcu_region(
             orient="Right",
             label="NRST",
         )
-        drawing.wire(support_boot).at(rboot.start).via((28, 314)).via((126, 314)).to(
-            swboot.C
-        ).orthogonal()
         drawing.signal_stub(
             support_boot,
             at=rboot.start,
@@ -603,9 +598,19 @@ def _author_mcu_region(
             orient="Right",
             label="BOOT0",
         )
+        drawing.signal_stub(
+            support_boot,
+            at=swboot.C,
+            side="Right",
+            length=12,
+            orient="Right",
+            label="BOOT0",
+        )
 
-        drawing.connect(crystal[1], chsein.start, net=support_hse_in, shape="-")
-        drawing.connect(crystal[3], chseout.start, net=support_hse_out, shape="-")
+        drawing.wire(support_hse_in).at(crystal[1]).via(crystal[1].right(24)).via(
+            chsein.start.left(32)
+        ).to(chsein.start).orthogonal()
+        drawing.connect(crystal[3], chseout.start, net=support_hse_out, shape="-|")
         for cap, net, label in (
             (chsein, support_hse_in, "HSE IN"),
             (chseout, support_hse_out, "HSE OUT"),

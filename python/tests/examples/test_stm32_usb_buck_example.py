@@ -76,7 +76,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "rows": 10,
         "visible": True,
     }
-    assert sheet["metadata"]["grid"] == {"spacing": 5, "visible": True}
+    assert sheet["metadata"]["grid"] == {"spacing": 5, "visible": False}
     assert sheet["metadata"]["title_block"] == [
         {"key": "Number", "value": "1"},
         {"key": "Page Count", "value": "1"},
@@ -94,7 +94,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert len(schematic["symbol_instances"]) >= 10
     assert len(schematic["wire_runs"]) >= 20
     assert 12 <= len(schematic["net_labels"]) <= 40
-    assert 8 <= len(schematic["power_ports"]) <= 24
+    assert 8 <= len(schematic["power_ports"]) <= 32
     assert schematic["sheet_ports"] == []
     assert len(schematic["no_connect_markers"]) <= 6
     assert {instance["component"] for instance in schematic["symbol_instances"]} <= component_ids
