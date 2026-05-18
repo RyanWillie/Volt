@@ -334,10 +334,11 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
         include_bounds(bounds, symbol_primitive_bounds(primitive, instance));
     }
     const auto &component = schematic.circuit().component(instance.component());
+    const auto reference_label = instance.reference_label().value_or(component.reference().value());
     include_bounds(bounds,
                    text_bounds(transform_schematic_point(Point{0.0, -12.0}, instance.position(),
                                                          instance.orientation()),
-                               instance.orientation(), component.reference().value(), true));
+                               SchematicOrientation::Right, reference_label, true));
     return bounds;
 }
 

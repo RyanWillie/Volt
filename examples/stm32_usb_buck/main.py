@@ -77,6 +77,9 @@ def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
     validation_report = output_path / "stm32_usb_buck.validation.json"
 
     require_schematic_ready(schematic)
+    if schematic_svg_pages_dir.exists():
+        for page_path in schematic_svg_pages_dir.glob("*.svg"):
+            page_path.unlink()
     design.write(logical_json)
     schematic_json.write_text(schematic.to_json(), encoding="utf-8")
     schematic.write_svg(schematic_svg)

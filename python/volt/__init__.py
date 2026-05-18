@@ -1648,6 +1648,7 @@ class SchematicDrawing:
         *,
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
+        reference_label: str | None = None,
     ) -> SchematicTwoTerminalElement:
         self._flush_pending()
         element = SchematicTwoTerminalElement(
@@ -1655,6 +1656,7 @@ class SchematicDrawing:
             component,
             symbol=symbol,
             variant=variant,
+            reference_label=reference_label,
         )
         self._pending = element
         return element
@@ -1665,8 +1667,11 @@ class SchematicDrawing:
         *,
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
+        reference_label: str | None = None,
     ) -> SchematicTwoTerminalElement:
-        return self.two_terminal(component, symbol=symbol, variant=variant)
+        return self.two_terminal(
+            component, symbol=symbol, variant=variant, reference_label=reference_label
+        )
 
     def C(
         self,
@@ -1674,8 +1679,11 @@ class SchematicDrawing:
         *,
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
+        reference_label: str | None = None,
     ) -> SchematicTwoTerminalElement:
-        return self.two_terminal(component, symbol=symbol, variant=variant)
+        return self.two_terminal(
+            component, symbol=symbol, variant=variant, reference_label=reference_label
+        )
 
     def L(
         self,
@@ -1683,8 +1691,11 @@ class SchematicDrawing:
         *,
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
+        reference_label: str | None = None,
     ) -> SchematicTwoTerminalElement:
-        return self.two_terminal(component, symbol=symbol, variant=variant)
+        return self.two_terminal(
+            component, symbol=symbol, variant=variant, reference_label=reference_label
+        )
 
     def D(
         self,
@@ -1692,8 +1703,11 @@ class SchematicDrawing:
         *,
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
+        reference_label: str | None = None,
     ) -> SchematicTwoTerminalElement:
-        return self.two_terminal(component, symbol=symbol, variant=variant)
+        return self.two_terminal(
+            component, symbol=symbol, variant=variant, reference_label=reference_label
+        )
 
     def LED(
         self,
@@ -1701,8 +1715,11 @@ class SchematicDrawing:
         *,
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
+        reference_label: str | None = None,
     ) -> SchematicTwoTerminalElement:
-        return self.two_terminal(component, symbol=symbol, variant=variant)
+        return self.two_terminal(
+            component, symbol=symbol, variant=variant, reference_label=reference_label
+        )
 
     def place(
         self,
@@ -1712,6 +1729,7 @@ class SchematicDrawing:
         orient: str | None = None,
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
+        reference_label: str | None = None,
     ) -> PlacedSchematicElement:
         self._flush_pending()
         placed = self._schematic.place(
@@ -1720,6 +1738,7 @@ class SchematicDrawing:
             orient=self._direction if orient is None else orient,
             symbol=symbol,
             variant=variant,
+            reference_label=reference_label,
             _authored_region=self._authored_region,
         )
         return PlacedSchematicElement(placed)
@@ -1776,6 +1795,7 @@ class SchematicDrawing:
 
     def ground(
         self,
+        name: str | None = None,
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
         net: Net | None = None,
@@ -1783,6 +1803,7 @@ class SchematicDrawing:
     ) -> SchematicPort:
         self._flush_pending()
         return self._schematic.ground(
+            name,
             at=self._here if at is None else self._point_arg(at),
             net=net,
             orient=orient,
@@ -1942,6 +1963,7 @@ class SchematicTwoTerminalElement:
         *,
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
+        reference_label: str | None = None,
     ):
         if not isinstance(component, Component):
             raise TypeError("Two-terminal placement expects a Component handle")
@@ -1958,6 +1980,7 @@ class SchematicTwoTerminalElement:
         self._component = component
         self._symbol = symbol
         self._variant = variant
+        self._reference_label = reference_label
         self._start_here = drawing.here
         self._start_direction = drawing.direction
         self._at = drawing.here
@@ -2147,6 +2170,7 @@ class SchematicTwoTerminalElement:
                 orient=self._orientation,
                 symbol=symbol,
                 variant=self._variant,
+                reference_label=self._reference_label,
             )
             self._placed = PlacedSchematicElement(placed)
             if not self._cursor_committed:
@@ -2387,6 +2411,7 @@ class Schematic:
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
         _authored_region: int | None = None,
+        reference_label: str | None = None,
     ) -> SchematicSymbol:
         if not isinstance(component, Component):
             raise TypeError("Schematic placement expects a Component handle")
@@ -2408,6 +2433,11 @@ class Schematic:
             raise TypeError("symbol must be a string or SchematicSymbolSpec")
         if not symbol_name:
             raise ValueError("symbol must not be empty")
+        if reference_label is not None:
+            if not isinstance(reference_label, str):
+                raise TypeError("Schematic symbol reference labels must be strings")
+            if not reference_label:
+                raise ValueError("Schematic symbol reference labels must not be empty")
         orientation = _orientation(orient)
         x, y = _schematic_point_for_authoring(
             at,
@@ -2416,7 +2446,14 @@ class Schematic:
             action="symbol placement",
         )
         instance = self._design._circuit.place_schematic_symbol(
-            self._sheet_index, component.index, symbol_name, x, y, orientation, _authored_region
+            self._sheet_index,
+            component.index,
+            symbol_name,
+            x,
+            y,
+            orientation,
+            _authored_region,
+            reference_label,
         )
         return SchematicSymbol(self, instance, component, orientation, _authored_region)
 
@@ -2624,6 +2661,7 @@ class Schematic:
 
     def ground(
         self,
+        name: str | None = None,
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         net: Net | None = None,
@@ -2638,7 +2676,7 @@ class Schematic:
             action="ground port",
         )
         return self._power_port(
-            net.name,
+            net.name if name is None else name,
             net=net,
             at=at,
             orient=orient,
@@ -2666,8 +2704,6 @@ class Schematic:
             raise ValueError(
                 _with_schematic_context(_cross_design_net_message(net), self, "power port")
             )
-        if name != net.name:
-            raise ValueError("Schematic power port names must match the logical net name")
         x, y = _schematic_point_for_authoring(
             at,
             design=self._design,
@@ -2676,7 +2712,14 @@ class Schematic:
         )
         orientation = _orientation(orient)
         port = self._design._circuit.add_schematic_power_port(
-            self._sheet_index, net.index, kind, x, y, orientation, _authored_region
+            self._sheet_index,
+            net.index,
+            kind,
+            x,
+            y,
+            orientation,
+            _authored_region,
+            None if name == net.name else name,
         )
         return SchematicPort(
             self,
@@ -2896,6 +2939,7 @@ class SchematicRegion:
         orient: str = "Right",
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
+        reference_label: str | None = None,
     ) -> SchematicSymbol:
         return self._sheet.place(
             component,
@@ -2903,6 +2947,7 @@ class SchematicRegion:
             orient=orient,
             symbol=symbol,
             variant=variant,
+            reference_label=reference_label,
             _authored_region=self._index,
         )
 
@@ -2970,12 +3015,14 @@ class SchematicRegion:
 
     def ground(
         self,
+        name: str | None = None,
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         net: Net | None = None,
         orient: str = "Down",
     ) -> SchematicPort:
         return self._sheet.ground(
+            name,
             at=self._local_point(at),
             net=net,
             orient=orient,
