@@ -2821,7 +2821,11 @@ class Schematic:
         orient: str | None = None,
         _authored_region: int | None = None,
     ) -> tuple[SchematicSignalStub, ...]:
-        side_orientation = _orientation("Right" if side is None else side)
+        side_orientation = (
+            _signal_stub_side(side, at)
+            if at is not None
+            else _orientation("Right" if side is None else side)
+        )
         entries = tuple(items)
         if not entries:
             return ()
@@ -2835,14 +2839,14 @@ class Schematic:
             self.signal_stub(
                 name_or_net,
                 at=anchor,
-                side=side,
+                side=side if side is not None or not generated else side_orientation,
                 length=length,
                 label_gap=label_gap,
                 orient=orient,
                 label=label,
                 _authored_region=_authored_region,
             )
-            for name_or_net, anchor, label in starts
+            for name_or_net, anchor, label, generated in starts
         )
 
     def _add_symbol_field(
@@ -3333,7 +3337,7 @@ class SchematicRegion:
         if anchor is None:
             if label is None:
                 return item
-            return name_or_net, label
+            return name_or_net, None, label
         localized = self._local_point(anchor)
         if label is None:
             return name_or_net, localized
@@ -4477,10 +4481,23 @@ def _signal_stub_entry_parts(item):
                 return item[0], item[1], None
             if item[1] is None or isinstance(item[1], str):
                 return item[0], None, item[1]
-        elif len(item) == 3 and _is_schematic_authoring_anchor(item[1]):
+            raise TypeError(
+                "Signal stub entries must be bare nets/names, (net, anchor), "
+                "(net, label), or (net, anchor, label)"
+            )
+        if len(item) == 3:
             if item[2] is not None and not isinstance(item[2], str):
                 raise TypeError("Signal stub labels must be strings")
-            return item[0], item[1], item[2]
+            if item[1] is None or _is_schematic_authoring_anchor(item[1]):
+                return item[0], item[1], item[2]
+            raise TypeError(
+                "Signal stub entries must be bare nets/names, (net, anchor), "
+                "(net, label), or (net, anchor, label)"
+            )
+        raise TypeError(
+            "Signal stub entries must be bare nets/names, (net, anchor), "
+            "(net, label), or (net, anchor, label)"
+        )
     return item, None, None
 
 
@@ -4508,25 +4525,25 @@ def _signal_stub_entries(
                 raise TypeError(
                     "Signal stub groups need (net, anchor) entries unless at= is provided"
                 )
-            yield name_or_net, anchor, label
+            yield name_or_net, anchor, label, False
         return
 
     base = at
     for index, item in enumerate(items):
         name_or_net, anchor, label = _signal_stub_entry_parts(item)
         if anchor is not None:
-            yield name_or_net, anchor, label
+            yield name_or_net, anchor, label, False
             continue
         offset = _signal_stub_pitch_offset(side, pitch * index)
         if index == 0 and isinstance(base, (SchematicPinAnchor, SchematicPort)):
-            yield name_or_net, base, label
+            yield name_or_net, base, label, True
         elif isinstance(base, SchematicAnchor):
-            yield name_or_net, base.offset(dx=offset[0], dy=offset[1]), label
+            yield name_or_net, base.offset(dx=offset[0], dy=offset[1]), label, True
         elif isinstance(base, SchematicPort):
-            yield name_or_net, base.pin.offset(dx=offset[0], dy=offset[1]), label
+            yield name_or_net, base.pin.offset(dx=offset[0], dy=offset[1]), label, True
         else:
             point = _schematic_point_tuple(base)
-            yield name_or_net, (point[0] + offset[0], point[1] + offset[1]), label
+            yield name_or_net, (point[0] + offset[0], point[1] + offset[1]), label, True
 
 
 def _signal_stub_pitch_offset(side: str, distance: float) -> tuple[float, float]:
