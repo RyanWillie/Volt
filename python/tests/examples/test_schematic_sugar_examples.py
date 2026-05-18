@@ -7,7 +7,6 @@ from tempfile import TemporaryDirectory
 import volt
 
 
-
 def _load_example(name: str):
     return importlib.import_module(f"examples.schematic_sugar.{name}")
 
@@ -119,4 +118,4 @@ def test_regulator_fragment_sugar_example_uses_local_frame_authoring():
     finally:
         volt.SchematicDrawing.frame = original_frame
 
-    assert frame_calls
+    assert len(frame_calls) == 1

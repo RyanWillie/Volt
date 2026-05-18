@@ -1469,6 +1469,31 @@ def test_python_schematic_drawing_frame_offsets_point_accepting_operations():
     assert projection["no_connect_markers"][0]["position"] == {"x": 101.0, "y": 52.0}
 
 
+def test_python_schematic_drawing_frame_signal_stubs_absolute_anchor_passes_through():
+    design = volt.Design("schematic-drawing-frame-stub-anchor")
+    sig = design.net("SIG")
+    aux = design.net("AUX")
+
+    schematic = design.schematic("Main")
+    absolute_anchor = volt.SchematicAnchor((7, 9), design=design)
+
+    with schematic.drawing() as drawing:
+        with drawing.frame((100, 50)):
+            stubs = drawing.signal_stubs(
+                ((sig, (2, 4), "TUPLE"), (aux, absolute_anchor, "ABS")),
+                side="Right",
+                length=4,
+                label_gap=1,
+            )
+
+    # Tuple anchor (2, 4) is translated by the frame origin (100, 50).
+    assert stubs[0].start.point == (102.0, 54.0)
+    assert stubs[0].end.point == (106.0, 54.0)
+    # Absolute SchematicAnchor passes through the frame without any offset.
+    assert stubs[1].start.point == (7.0, 9.0)
+    assert stubs[1].end.point == (11.0, 9.0)
+
+
 def test_python_schematic_drawing_session_does_not_mutate_logical_design():
     design = volt.Design("schematic-drawing-logical-boundary")
     design.R("10k", ref="R1")
