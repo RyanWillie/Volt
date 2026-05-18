@@ -165,6 +165,8 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert ".drawing(" in schematic_source
     assert "region.drawing(" in schematic_source
     assert ".drawing(" in schematic_source
+    assert schematic_source.count("drawing.frame(") >= 3
+    assert "drawing.stack(" in schematic_source
     assert "drawing.C(" in schematic_source
     assert "drawing.R(" in schematic_source
     assert "drawing.LED(" in schematic_source
@@ -231,13 +233,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         diagnostic.code for diagnostic in schematic_report
     } <= {"SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED"}
     readability_report = main.build_schematic(main.build_board()).validate_readability()
-    readability_codes = Counter(diagnostic.code for diagnostic in readability_report)
-    assert set(readability_codes) <= {
-        "SCHEMATIC_LABEL_CROWDS_SYMBOL",
-        "SCHEMATIC_TEXT_COLLISION",
-    }
-    assert readability_codes["SCHEMATIC_LABEL_CROWDS_SYMBOL"] <= 13
-    assert readability_codes["SCHEMATIC_TEXT_COLLISION"] <= 1
+    assert list(readability_report) == []
     board = main.build_board()
     logical_before_schematic = board.design.to_json()
     main.build_schematic(board)
@@ -331,6 +327,8 @@ def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():
     assert "_SchematicAuthor" not in source
     assert "fallback schematic pin coverage" not in source
     assert "region.drawing(" in source
+    assert source.count("drawing.frame(") >= 3
+    assert "drawing.stack(" in source
     assert "drawing.C(" in source
     assert "drawing.R(" in source
     assert "drawing.LED(" in source
