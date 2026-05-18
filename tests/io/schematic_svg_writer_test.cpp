@@ -123,7 +123,7 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(svg.find("<text class=\"title-block-value\" x=\"24\" y=\"10.2\">A</text>") !=
           std::string::npos);
     CHECK(svg.find(".wire-run{fill:none;stroke:#111;stroke-width:1}") != std::string::npos);
-    CHECK(svg.find(".net-label{font:5px sans-serif;fill:#111;text-anchor:start}") !=
+    CHECK(svg.find(".net-label{font:2.8px sans-serif;fill:#111;text-anchor:start}") !=
           std::string::npos);
     CHECK(svg.find("#0645ad") == std::string::npos);
     CHECK(svg.find("<polyline class=\"wire-run\" data-net=\"net:0\" points=\"10,20 30,20\"/>") !=

@@ -82,6 +82,14 @@ struct SvgRect {
     return result;
 }
 
+[[nodiscard]] inline std::string display_scoped_label(std::string_view label) {
+    const auto separator = label.find_last_of('/');
+    if (separator == std::string_view::npos || separator + 1U >= label.size()) {
+        return std::string{label};
+    }
+    return std::string{label.substr(separator + 1U)};
+}
+
 inline void write_svg_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
         throw std::invalid_argument{"SVG numeric values must be finite"};
@@ -159,6 +167,22 @@ inline void write_svg_number(std::ostream &out, double value) {
         return 270.0;
     }
     throw std::logic_error{"Unhandled schematic orientation"};
+}
+
+inline void write_upright_text_transform(std::ostream &out, SchematicOrientation parent_orientation,
+                                         Point anchor) {
+    const auto degrees = -orientation_degrees(parent_orientation);
+    if (std::abs(degrees) < 1e-12) {
+        return;
+    }
+
+    out << " transform=\"rotate(";
+    write_svg_number(out, degrees);
+    out << ' ';
+    write_svg_number(out, anchor.x());
+    out << ' ';
+    write_svg_number(out, anchor.y());
+    out << ")\"";
 }
 
 [[nodiscard]] inline SvgRect drawing_area(const SheetMetadata &metadata) {
@@ -320,8 +344,9 @@ inline void write_symbol_instance_svg(std::ostream &out, const Schematic &schema
     out << ") rotate(";
     write_svg_number(out, orientation_degrees(instance.orientation()));
     out << ")\">\n";
-    out << "      <text class=\"reference\" x=\"0\" y=\"-12\">"
-        << svg_escape(component.reference().value()) << "</text>\n";
+    out << "      <text class=\"reference\" x=\"0\" y=\"-12\"";
+    write_upright_text_transform(out, instance.orientation(), Point{0.0, -12.0});
+    out << ">" << svg_escape(display_scoped_label(component.reference().value())) << "</text>\n";
     for (const auto &primitive : symbol.primitives()) {
         write_symbol_primitive_svg(out, primitive);
     }
@@ -380,7 +405,7 @@ inline void write_net_label_svg(std::ostream &out, const Schematic &schematic, N
     write_svg_number(out, label.position().x());
     out << ' ';
     write_svg_number(out, label.position().y());
-    out << ")\">" << svg_escape(net.name().value()) << "</text>\n";
+    out << ")\">" << svg_escape(display_scoped_label(net.name().value())) << "</text>\n";
 }
 
 inline void write_junction_svg(std::ostream &out, const Schematic &schematic, JunctionId id) {
@@ -416,8 +441,9 @@ inline void write_power_port_svg(std::ostream &out, const Schematic &schematic, 
         out << "      <line class=\"power-port-line\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"-7\"/>\n";
         out << "      <path class=\"power-port-shape\" d=\"M -4 -7 L 0 -12 L 4 -7 Z\"/>\n";
     }
-    out << "      <text class=\"power-port-label\" x=\"0\" y=\"-14\">"
-        << svg_escape(net.name().value()) << "</text>\n";
+    out << "      <text class=\"power-port-label\" x=\"0\" y=\"-14\"";
+    write_upright_text_transform(out, port.orientation(), Point{0.0, -14.0});
+    out << ">" << svg_escape(display_scoped_label(net.name().value())) << "</text>\n";
     out << "    </g>\n";
 }
 
@@ -451,8 +477,9 @@ inline void write_sheet_port_svg(std::ostream &out, const Schematic &schematic, 
     write_svg_number(out, orientation_degrees(port.orientation()));
     out << ")\">\n";
     out << "      <path class=\"sheet-port-shape\" d=\"M 0 -4 L 14 -4 L 20 0 L 14 4 L 0 4 Z\"/>\n";
-    out << "      <text class=\"sheet-port-label\" x=\"4\" y=\"2\">" << svg_escape(port.name())
-        << "</text>\n";
+    out << "      <text class=\"sheet-port-label\" x=\"10\" y=\"2\"";
+    write_upright_text_transform(out, port.orientation(), Point{10.0, 2.0});
+    out << ">" << svg_escape(port.name()) << "</text>\n";
     out << "    </g>\n";
 }
 
@@ -689,22 +716,22 @@ inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
            "dominant-baseline:middle}"
            ".sheet-title{font-weight:600}"
            ".title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.35}"
-           ".title-block-label{font:3.2px sans-serif;fill:#444;text-anchor:start}"
-           ".title-block-value{font:3.6px sans-serif;fill:#111;text-anchor:start}"
+           ".title-block-label{font:2.8px sans-serif;fill:#444;text-anchor:start}"
+           ".title-block-value{font:2.8px sans-serif;fill:#111;text-anchor:start}"
            ".sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.45}"
            ".sheet-region-frame.dashed{stroke-dasharray:3 2}"
            ".sheet-region-title{font:4px sans-serif;fill:#57534e;text-anchor:start;"
            "font-weight:600}"
            ".wire-run{fill:none;stroke:#111;stroke-width:1}"
-           ".net-label{font:5px sans-serif;fill:#111;text-anchor:start}"
+           ".net-label{font:2.8px sans-serif;fill:#111;text-anchor:start}"
            ".junction{fill:#111;stroke:none}"
            ".power-port-line,.ground-bar,.no-connect-line{stroke:#111;stroke-width:1}"
            ".power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:1}"
-           ".power-port-label,.sheet-port-label,.symbol-field{font:5px sans-serif;fill:#111;"
+           ".power-port-label,.sheet-port-label,.symbol-field{font:2.8px sans-serif;fill:#111;"
            "text-anchor:middle}"
            ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-"
            "width:1}"
-           ".symbol-text,.reference{font:5px sans-serif;fill:#111;text-anchor:middle}";
+           ".symbol-text,.reference{font:2.8px sans-serif;fill:#111;text-anchor:middle}";
     if (options.debug_overlays) {
         out << ".pin-anchor{fill:#fff;stroke:#c2410c;stroke-width:0.8}"
                ".pin-label{font:4px sans-serif;fill:#c2410c;text-anchor:middle}";
