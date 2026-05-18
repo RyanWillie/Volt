@@ -509,6 +509,9 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
         detail::write_point(out, instance.position());
         out << ", \"orientation\": "
             << detail::json_string(detail::schematic_orientation_name(instance.orientation()));
+        if (instance.reference_label().has_value()) {
+            out << ", \"reference_label\": " << detail::json_string(*instance.reference_label());
+        }
         detail::write_authored_region(
             out, schematic.sheet(detail::sheet_for_symbol_instance(schematic, id)),
             instance.authored_region());
@@ -601,6 +604,9 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
         detail::write_point(out, port.position());
         out << ", \"orientation\": "
             << detail::json_string(detail::schematic_orientation_name(port.orientation()));
+        if (port.label().has_value()) {
+            out << ", \"label\": " << detail::json_string(*port.label());
+        }
         detail::write_authored_region(out,
                                       schematic.sheet(detail::sheet_for_power_port(schematic, id)),
                                       port.authored_region());

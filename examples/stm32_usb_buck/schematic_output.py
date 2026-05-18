@@ -23,6 +23,10 @@ SHEET_OPTIONS = {
 SHEET_FILE = "examples/stm32_usb_buck/schematic_output.py"
 
 
+def _display_reference(component: volt.Component) -> str:
+    return component.reference.rsplit("/", 1)[-1]
+
+
 def _external_supply_symbol() -> volt.SchematicSymbolSpec:
     return volt.SchematicSymbolSpec(
         "volt.examples.stm32_usb_buck:ExternalSupply",
@@ -241,22 +245,46 @@ def _author_power_region(
             board.components["VIN_SRC"],
             at=(12, 38),
             symbol=_external_supply_symbol(),
+            reference_label=_display_reference(board.components["VIN_SRC"]),
         )
         pwr_j = drawing.place(
             pwr.component("J"),
             at=(12, 92),
             symbol=_compact_connector_1x04_symbol(),
+            reference_label=_display_reference(pwr.component("J")),
         )
-        u5 = drawing.place(pwr.component("U5"), at=(34, 44), symbol=lib.AP1117_15.schematic_symbol)
+        u5 = drawing.place(
+            pwr.component("U5"),
+            at=(34, 44),
+            symbol=lib.AP1117_15.schematic_symbol,
+            reference_label=_display_reference(pwr.component("U5")),
+        )
         u3v3 = drawing.place(
             pwr.component("U3V3"),
             at=(34, 94),
             symbol=lib.AP1117_15.schematic_symbol,
+            reference_label=_display_reference(pwr.component("U3V3")),
         )
-        cin = drawing.C(pwr.component("CIN"), symbol=TWO_TERMINAL_CAPACITOR).at((60, 118)).down()
-        c5v = drawing.C(pwr.component("C5V"), symbol=TWO_TERMINAL_CAPACITOR).at((78, 74)).down()
-        c3v3 = drawing.C(pwr.component("C3V3"), symbol=TWO_TERMINAL_CAPACITOR).at((84, 126)).down()
-        cvdda = drawing.C(pwr.component("CVDDA"), symbol=TWO_TERMINAL_CAPACITOR).at((66, 136)).down()
+        cin = drawing.C(
+            pwr.component("CIN"),
+            symbol=TWO_TERMINAL_CAPACITOR,
+            reference_label=_display_reference(pwr.component("CIN")),
+        ).at((60, 118)).down()
+        c5v = drawing.C(
+            pwr.component("C5V"),
+            symbol=TWO_TERMINAL_CAPACITOR,
+            reference_label=_display_reference(pwr.component("C5V")),
+        ).at((78, 74)).down()
+        c3v3 = drawing.C(
+            pwr.component("C3V3"),
+            symbol=TWO_TERMINAL_CAPACITOR,
+            reference_label=_display_reference(pwr.component("C3V3")),
+        ).at((84, 126)).down()
+        cvdda = drawing.C(
+            pwr.component("CVDDA"),
+            symbol=TWO_TERMINAL_CAPACITOR,
+            reference_label=_display_reference(pwr.component("CVDDA")),
+        ).at((66, 136)).down()
 
         u5.label("AP1117-5.0", name="value", loc="bottom", ofst=10, orient="Right")
         u3v3.label("AP1117-3.3", name="value", loc="bottom", ofst=10, orient="Right")
@@ -288,7 +316,7 @@ def _author_power_region(
         drawing.net_label(nets["+12V"], at=(18, 170))
 
         ground_bus = (54, 160)
-        drawing.ground(net=pwr_gnd, at=ground_bus, orient="Down")
+        drawing.ground("GND", net=pwr_gnd, at=ground_bus, orient="Down")
         for anchor in (
             pwr_j[2],
             pwr_j[3],
@@ -318,21 +346,25 @@ def _author_connectors_region(
             usb.component("J1"),
             at=(18, 42),
             symbol=lib.USB_B_MICRO.schematic_symbol,
+            reference_label=_display_reference(usb.component("J1")),
         )
         usb_esd = drawing.place(
             usb.component("U1"),
             at=(29, 42),
             symbol=_readable_usb_protection_symbol(),
+            reference_label=_display_reference(usb.component("U1")),
         )
         swd = drawing.place(
             board.components["J2"],
             at=(16, 82),
             symbol=_compact_swd_symbol(),
+            reference_label=_display_reference(board.components["J2"]),
         )
         gpio = drawing.place(
             board.components["J3"],
             at=(50, 88),
             symbol=_compact_connector_1x04_symbol(),
+            reference_label=_display_reference(board.components["J3"]),
         )
 
         usb_j.label("USB Micro-B", name="value", loc="bottom", ofst=12, orient="Right")
@@ -348,7 +380,7 @@ def _author_connectors_region(
         usb_gnd = nets["USB/GND"]
         for anchor in (usb_j.GND, usb_j.Shield, usb_esd.GND):
             drawing.connect(anchor, (44, 72), net=usb_gnd, shape="|-")
-        drawing.ground(net=usb_gnd, at=(44, 72), orient="Down")
+        drawing.ground("GND", net=usb_gnd, at=(44, 72), orient="Down")
         drawing.junction(usb_gnd, at=(44, 72))
 
         for anchor in (swd.VTref, gpio[1]):
@@ -383,44 +415,65 @@ def _author_mcu_region(
             board.components["U1"],
             at=(4, 34),
             symbol=_compact_stm32_symbol(),
+            reference_label=_display_reference(board.components["U1"]),
         )
-        cvdd = drawing.C(support.component("CVDD"), symbol=TWO_TERMINAL_CAPACITOR).at(
-            (14, 30)
-        ).down()
-        cvcap1 = drawing.C(support.component("CVCAP1"), symbol=TWO_TERMINAL_CAPACITOR).at(
-            (30, 30)
-        ).down()
-        cvcap2 = drawing.C(support.component("CVCAP2"), symbol=TWO_TERMINAL_CAPACITOR).at(
-            (46, 30)
-        ).down()
-        rreset = drawing.R(support.component("RRESET"), symbol=TWO_TERMINAL_RESISTOR).at(
-            (8, 138)
-        ).right()
-        rboot = drawing.R(support.component("RBOOT"), symbol=TWO_TERMINAL_RESISTOR).at(
-            (8, 154)
-        ).right()
+        cvdd = drawing.C(
+            support.component("CVDD"),
+            symbol=TWO_TERMINAL_CAPACITOR,
+            reference_label=_display_reference(support.component("CVDD")),
+        ).at((14, 30)).down()
+        cvcap1 = drawing.C(
+            support.component("CVCAP1"),
+            symbol=TWO_TERMINAL_CAPACITOR,
+            reference_label=_display_reference(support.component("CVCAP1")),
+        ).at((30, 30)).down()
+        cvcap2 = drawing.C(
+            support.component("CVCAP2"),
+            symbol=TWO_TERMINAL_CAPACITOR,
+            reference_label=_display_reference(support.component("CVCAP2")),
+        ).at((46, 30)).down()
+        rreset = drawing.R(
+            support.component("RRESET"),
+            symbol=TWO_TERMINAL_RESISTOR,
+            reference_label=_display_reference(support.component("RRESET")),
+        ).at((8, 138)).right()
+        rboot = drawing.R(
+            support.component("RBOOT"),
+            symbol=TWO_TERMINAL_RESISTOR,
+            reference_label=_display_reference(support.component("RBOOT")),
+        ).at((8, 154)).right()
         swboot = drawing.place(
             support.component("SWBOOT"),
             at=(42, 140),
             symbol=lib.SPDT_SWITCH.schematic_symbol,
+            reference_label=_display_reference(support.component("SWBOOT")),
         )
         crystal = drawing.place(
             support.component("Y1"),
             at=(20, 112),
             symbol=lib.CRYSTAL_GND24.schematic_symbol,
+            reference_label=_display_reference(support.component("Y1")),
         )
-        chsein = drawing.C(support.component("CHSEIN"), symbol=TWO_TERMINAL_CAPACITOR).at(
-            (60, 108)
-        ).down()
-        chseout = drawing.C(support.component("CHSEOUT"), symbol=TWO_TERMINAL_CAPACITOR).at(
-            (76, 108)
-        ).down()
-        led_r = drawing.R(led.component("R"), symbol=TWO_TERMINAL_RESISTOR).at(
-            (44, 18)
-        ).right()
-        led_d = drawing.LED(led.component("D"), symbol=_indicator_led_symbol()).at(
-            (62, 18)
-        ).right(1.2)
+        chsein = drawing.C(
+            support.component("CHSEIN"),
+            symbol=TWO_TERMINAL_CAPACITOR,
+            reference_label=_display_reference(support.component("CHSEIN")),
+        ).at((60, 108)).down()
+        chseout = drawing.C(
+            support.component("CHSEOUT"),
+            symbol=TWO_TERMINAL_CAPACITOR,
+            reference_label=_display_reference(support.component("CHSEOUT")),
+        ).at((76, 108)).down()
+        led_r = drawing.R(
+            led.component("R"),
+            symbol=TWO_TERMINAL_RESISTOR,
+            reference_label=_display_reference(led.component("R")),
+        ).at((44, 18)).right()
+        led_d = drawing.LED(
+            led.component("D"),
+            symbol=_indicator_led_symbol(),
+            reference_label=_display_reference(led.component("D")),
+        ).at((62, 18)).right(1.2)
 
         stm32.label("STM32F405RGT6", name="value", loc="bottom", ofst=8, orient="Right")
         rreset.label("10 kOhm", name="value", loc="top", ofst=8, orient="Right")
@@ -440,6 +493,7 @@ def _author_mcu_region(
         for anchor in stm32.pins("VSS"):
             _rail(drawing, net_by_pin[anchor.pin.index], anchor, orient="Down")
         vssa = drawing.ground(
+            "GND",
             net=net_by_pin[stm32.VSSA.pin.index],
             at=stm32.VSSA.right(12),
             orient="Right",
@@ -488,7 +542,7 @@ def _author_mcu_region(
             chsein.end,
             chseout.end,
         ):
-            drawing.ground(net=support_gnd, at=anchor, orient="Down")
+            drawing.ground("GND", net=support_gnd, at=anchor, orient="Down")
 
         drawing.off_page("NRST", net=support_reset, at=rreset.end, orient="Right")
         drawing.connect(rboot.start, swboot.C, net=support_boot, shape="-")
@@ -513,7 +567,12 @@ def _author_mcu_region(
         drawing.connect(led_r.start, led_supply_port, net=led_supply, shape="-")
         drawing.connect(led_r.end, led_d.start, net=led_signal, shape="-")
         drawing.off_page("LED", net=led_signal, at=(76, 18), orient="Left")
-        led_ground = drawing.ground(net=led_gnd, at=led_d.end.down(12).left(6), orient="Left")
+        led_ground = drawing.ground(
+            "GND",
+            net=led_gnd,
+            at=led_d.end.down(12).left(6),
+            orient="Left",
+        )
         drawing.connect(led_d.end, led_ground, net=led_gnd, shape="-")
 
 
@@ -527,7 +586,7 @@ def _rail_legend(
     for index, name in enumerate(names):
         point = (x + index * 14, y)
         if name == "GND":
-            drawing.ground(net=nets[name], at=point, orient="Down")
+            drawing.ground("GND", net=nets[name], at=point, orient="Down")
         else:
             drawing.power(name, net=nets[name], at=point, orient="Up")
 
@@ -540,8 +599,8 @@ def _rail(
     orient: str = "Up",
 ) -> None:
     name = _display_net_name(net.name)
-    if net.name == "GND":
-        drawing.ground(net=net, at=at, orient=orient)
+    if name == "GND":
+        drawing.ground("GND", net=net, at=at, orient=orient)
     elif name == net.name and (name.startswith("+") or name == "VDDA"):
         drawing.power(name, net=net, at=at, orient=orient)
     else:

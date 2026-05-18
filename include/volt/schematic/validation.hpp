@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -27,14 +26,6 @@ inline constexpr double title_block_width = 82.0;
 inline constexpr double title_block_row_height = 6.0;
 inline constexpr double conservative_text_character_width = 3.0;
 inline constexpr double conservative_text_height = 6.0;
-
-[[nodiscard]] inline std::string display_scoped_label(std::string_view label) {
-    const auto separator = label.find_last_of('/');
-    if (separator == std::string_view::npos || separator + 1U >= label.size()) {
-        return std::string{label};
-    }
-    return std::string{label.substr(separator + 1U)};
-}
 
 /** Conservative sheet-space bounds used by schematic readability diagnostics. */
 struct SchematicBounds {
@@ -343,11 +334,11 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
         include_bounds(bounds, symbol_primitive_bounds(primitive, instance));
     }
     const auto &component = schematic.circuit().component(instance.component());
+    const auto reference_label = instance.reference_label().value_or(component.reference().value());
     include_bounds(bounds,
                    text_bounds(transform_schematic_point(Point{0.0, -12.0}, instance.position(),
                                                          instance.orientation()),
-                               SchematicOrientation::Right,
-                               display_scoped_label(component.reference().value()), true));
+                               SchematicOrientation::Right, reference_label, true));
     return bounds;
 }
 
@@ -758,8 +749,7 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
         const auto &net = schematic.circuit().net(label.net());
         objects.push_back(ReadabilityObject{
             EntityRef::net_label(label_id), std::vector{EntityRef::net(label.net())},
-            text_bounds(label.position(), label.orientation(),
-                        display_scoped_label(net.name().value()), false),
+            text_bounds(label.position(), label.orientation(), net.name().value(), false),
             label.authored_region()});
     }
     for (const auto junction_id : sheet.junctions()) {
@@ -1011,8 +1001,7 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         const auto &net = schematic.circuit().net(label.net());
         texts.push_back(ReadabilityTextObject{
             EntityRef::net_label(label_id), std::vector{EntityRef::net(label.net())},
-            text_bounds(label.position(), label.orientation(),
-                        display_scoped_label(net.name().value()), false)});
+            text_bounds(label.position(), label.orientation(), net.name().value(), false)});
     }
     for (const auto field_id : sheet.symbol_fields()) {
         const auto &field = schematic.symbol_field(field_id);

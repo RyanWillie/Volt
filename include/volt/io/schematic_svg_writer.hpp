@@ -82,14 +82,6 @@ struct SvgRect {
     return result;
 }
 
-[[nodiscard]] inline std::string display_scoped_label(std::string_view label) {
-    const auto separator = label.find_last_of('/');
-    if (separator == std::string_view::npos || separator + 1U >= label.size()) {
-        return std::string{label};
-    }
-    return std::string{label.substr(separator + 1U)};
-}
-
 inline void write_svg_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
         throw std::invalid_argument{"SVG numeric values must be finite"};
@@ -346,7 +338,8 @@ inline void write_symbol_instance_svg(std::ostream &out, const Schematic &schema
     out << ")\">\n";
     out << "      <text class=\"reference\" x=\"0\" y=\"-12\"";
     write_upright_text_transform(out, instance.orientation(), Point{0.0, -12.0});
-    out << ">" << svg_escape(display_scoped_label(component.reference().value())) << "</text>\n";
+    const auto reference_label = instance.reference_label().value_or(component.reference().value());
+    out << ">" << svg_escape(reference_label) << "</text>\n";
     for (const auto &primitive : symbol.primitives()) {
         write_symbol_primitive_svg(out, primitive);
     }
@@ -405,7 +398,7 @@ inline void write_net_label_svg(std::ostream &out, const Schematic &schematic, N
     write_svg_number(out, label.position().x());
     out << ' ';
     write_svg_number(out, label.position().y());
-    out << ")\">" << svg_escape(display_scoped_label(net.name().value())) << "</text>\n";
+    out << ")\">" << svg_escape(net.name().value()) << "</text>\n";
 }
 
 inline void write_junction_svg(std::ostream &out, const Schematic &schematic, JunctionId id) {
@@ -443,7 +436,8 @@ inline void write_power_port_svg(std::ostream &out, const Schematic &schematic, 
     }
     out << "      <text class=\"power-port-label\" x=\"0\" y=\"-14\"";
     write_upright_text_transform(out, port.orientation(), Point{0.0, -14.0});
-    out << ">" << svg_escape(display_scoped_label(net.name().value())) << "</text>\n";
+    const auto port_label = port.label().value_or(net.name().value());
+    out << ">" << svg_escape(port_label) << "</text>\n";
     out << "    </g>\n";
 }
 

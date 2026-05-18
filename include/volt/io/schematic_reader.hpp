@@ -89,6 +89,19 @@ class SchematicReader {
         return it->get<std::string>();
     }
 
+    static std::optional<std::string> optional_non_empty_string_field(const nlohmann::json &object,
+                                                                      const char *name) {
+        require(object.is_object(), "Expected object while reading schematic");
+        const auto it = object.find(name);
+        if (it == object.end()) {
+            return std::nullopt;
+        }
+        require(it->is_string(), std::string{"Expected string field: "} + name);
+        auto value = it->get<std::string>();
+        require(!value.empty(), std::string{"Expected non-empty string field: "} + name);
+        return value;
+    }
+
     static bool optional_bool_field(const nlohmann::json &object, const char *name, bool fallback) {
         require(object.is_object(), "Expected object while reading schematic");
         const auto it = object.find(name);
@@ -488,9 +501,11 @@ class SchematicReader {
                 resolve(symbol_def_ids_, string_field(instance_object, "symbol_definition"));
             const auto component = component_id(string_field(instance_object, "component"));
             const auto instance = schematic_.place_symbol(
-                sheet, SymbolInstance{symbol, component, point(field(instance_object, "position")),
-                                      orientation(string_field(instance_object, "orientation")),
-                                      authored_region(sheet, instance_object)});
+                sheet, SymbolInstance{
+                           symbol, component, point(field(instance_object, "position")),
+                           orientation(string_field(instance_object, "orientation")),
+                           authored_region(sheet, instance_object),
+                           optional_non_empty_string_field(instance_object, "reference_label")});
             symbol_instance_ids_.emplace(id, instance);
         }
     }
@@ -551,7 +566,8 @@ class SchematicReader {
                 sheet, PowerPort{net, power_port_kind(string_field(port_object, "kind")),
                                  point(field(port_object, "position")),
                                  orientation(string_field(port_object, "orientation")),
-                                 authored_region(sheet, port_object)});
+                                 authored_region(sheet, port_object),
+                                 optional_non_empty_string_field(port_object, "label")});
             power_port_ids_.emplace(id, port);
         }
     }

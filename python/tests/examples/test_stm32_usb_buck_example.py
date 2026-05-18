@@ -129,6 +129,18 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         for item in schematic[collection]
         if "authored_region" in item
     } >= {"Power Circuitry", "STM32 Microcontroller", "Connectors and USB"}
+    reference_labels = {
+        instance["reference_label"]
+        for instance in schematic["symbol_instances"]
+        if "reference_label" in instance
+    }
+    assert {"J", "J1", "U1", "U5", "U3V3", "CVDD", "R", "D"} <= reference_labels
+    assert all("/" not in label for label in reference_labels)
+    power_port_labels = {
+        port["label"] for port in schematic["power_ports"] if "label" in port
+    }
+    assert "GND" in power_port_labels
+    assert all("/" not in label for label in power_port_labels)
     symbol_field_values = {field["value"] for field in schematic["symbol_fields"]}
     assert {
         "AP1117-5.0",

@@ -465,9 +465,15 @@ class SymbolInstance {
     /** Construct a symbol instance over an existing logical component. */
     SymbolInstance(SymbolDefId symbol_definition, ComponentId component, Point position,
                    SchematicOrientation orientation = SchematicOrientation::Right,
-                   std::optional<std::size_t> authored_region = std::nullopt)
+                   std::optional<std::size_t> authored_region = std::nullopt,
+                   std::optional<std::string> reference_label = std::nullopt)
         : symbol_definition_{symbol_definition}, component_{component}, position_{position},
-          orientation_{orientation}, authored_region_{authored_region} {}
+          orientation_{orientation}, authored_region_{authored_region},
+          reference_label_{std::move(reference_label)} {
+        if (reference_label_.has_value() && reference_label_->empty()) {
+            throw std::invalid_argument{"Schematic symbol reference label must not be empty"};
+        }
+    }
 
     /** Return the reusable symbol definition used by this placement. */
     [[nodiscard]] SymbolDefId symbol_definition() const noexcept { return symbol_definition_; }
@@ -486,12 +492,18 @@ class SymbolInstance {
         return authored_region_;
     }
 
+    /** Return the optional presentation label used instead of the logical component reference. */
+    [[nodiscard]] const std::optional<std::string> &reference_label() const noexcept {
+        return reference_label_;
+    }
+
   private:
     SymbolDefId symbol_definition_;
     ComponentId component_;
     Point position_;
     SchematicOrientation orientation_;
     std::optional<std::size_t> authored_region_;
+    std::optional<std::string> reference_label_;
 };
 
 /** Authoring route intent retained on a drawn wire run. */
@@ -605,9 +617,14 @@ class PowerPort {
     /** Construct a power or ground port over an existing logical net. */
     PowerPort(NetId net, PowerPortKind kind, Point position,
               SchematicOrientation orientation = SchematicOrientation::Up,
-              std::optional<std::size_t> authored_region = std::nullopt)
+              std::optional<std::size_t> authored_region = std::nullopt,
+              std::optional<std::string> label = std::nullopt)
         : net_{net}, kind_{kind}, position_{position}, orientation_{orientation},
-          authored_region_{authored_region} {}
+          authored_region_{authored_region}, label_{std::move(label)} {
+        if (label_.has_value() && label_->empty()) {
+            throw std::invalid_argument{"Schematic power port label must not be empty"};
+        }
+    }
 
     /** Return the canonical logical net presented by this port. */
     [[nodiscard]] NetId net() const noexcept { return net_; }
@@ -626,12 +643,16 @@ class PowerPort {
         return authored_region_;
     }
 
+    /** Return the optional presentation label used instead of the logical net name. */
+    [[nodiscard]] const std::optional<std::string> &label() const noexcept { return label_; }
+
   private:
     NetId net_;
     PowerPortKind kind_;
     Point position_;
     SchematicOrientation orientation_;
     std::optional<std::size_t> authored_region_;
+    std::optional<std::string> label_;
 };
 
 /** A schematic no-connect marker tied to an existing concrete pin. */
