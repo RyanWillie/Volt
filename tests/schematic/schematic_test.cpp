@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <variant>
@@ -69,6 +70,14 @@ bool report_has_code(const volt::DiagnosticReport &report, const std::string &co
                        [&code](const volt::Diagnostic &diagnostic) {
                            return diagnostic.code() == volt::DiagnosticCode{code};
                        });
+}
+
+std::size_t diagnostic_count(const volt::DiagnosticReport &report, const std::string &code) {
+    return static_cast<std::size_t>(
+        std::count_if(report.diagnostics().begin(), report.diagnostics().end(),
+                      [&code](const volt::Diagnostic &diagnostic) {
+                          return diagnostic.code() == volt::DiagnosticCode{code};
+                      }));
 }
 
 const volt::Diagnostic &require_diagnostic(const volt::DiagnosticReport &report,
@@ -927,6 +936,26 @@ TEST_CASE("Schematic readability reports oversized sheet and off-page tags") {
                                                volt::EntityRef::net(net)});
 }
 
+TEST_CASE("Schematic readability reports oversized power-port labels") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "POWER_DEBUG_RAIL_WITH_A_LONG_NAME");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto port = schematic.add_power_port(
+        sheet, volt::PowerPort{net, volt::PowerPortKind::Power, volt::Point{40.0, 50.0},
+                               volt::SchematicOrientation::Up, std::nullopt,
+                               std::optional<std::string>{"POWER_DEBUG_RAIL_WITH_A_LONG_NAME"}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_OVERSIZED_PORT_TAG");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::power_port(port),
+                                               volt::EntityRef::net(net)});
+}
+
 TEST_CASE("Schematic readability reports crowded repeated tag stacks") {
     volt::Circuit circuit;
     const auto first_net = add_named_net(circuit, "GPIO_A");
@@ -955,6 +984,35 @@ TEST_CASE("Schematic readability reports crowded repeated tag stacks") {
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::sheet_port(second)) !=
           entities.end());
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::sheet_port(third)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability reports dense port tags in authored regions") {
+    volt::Circuit circuit;
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto region = schematic.add_sheet_region(
+        sheet, volt::SheetRegion{"mcu", "MCU", volt::SheetRegionBounds{20.0, 20.0, 120.0, 120.0}});
+
+    auto ports = std::vector<volt::SheetPortId>{};
+    for (std::size_t index = 0; index < 12U; ++index) {
+        const auto net = add_named_net(circuit, "SIG_" + std::to_string(index));
+        ports.push_back(schematic.add_sheet_port(
+            sheet, volt::SheetPort{net, "S" + std::to_string(index), volt::SheetPortKind::OffPage,
+                                   volt::Point{30.0, 25.0 + (static_cast<double>(index) * 7.0)},
+                                   volt::SchematicOrientation::Right, region}));
+    }
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DENSE_PORT_TAGS");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic_count(report, "SCHEMATIC_DENSE_PORT_TAGS") == 1U);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::sheet_port(ports.front())) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::sheet_port(ports.back())) !=
           entities.end());
 }
 

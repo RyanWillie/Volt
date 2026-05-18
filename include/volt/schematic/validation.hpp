@@ -1088,10 +1088,15 @@ inline void validate_crowded_tag_stacks(const Schematic &schematic, SheetId shee
         }
         const auto lhs_cross = tag_stack_cross_position(tags[lhs]);
         const auto rhs_cross = tag_stack_cross_position(tags[rhs]);
-        if (std::abs(lhs_cross - rhs_cross) > tag_stack_alignment_tolerance) {
+        if (lhs_cross != rhs_cross) {
             return lhs_cross < rhs_cross;
         }
-        return tag_stack_primary_position(tags[lhs]) < tag_stack_primary_position(tags[rhs]);
+        const auto lhs_primary = tag_stack_primary_position(tags[lhs]);
+        const auto rhs_primary = tag_stack_primary_position(tags[rhs]);
+        if (lhs_primary != rhs_primary) {
+            return lhs_primary < rhs_primary;
+        }
+        return lhs < rhs;
     });
 
     auto cluster = std::vector<std::size_t>{};
