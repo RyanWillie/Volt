@@ -556,9 +556,14 @@ class NetLabel {
     /** Construct a net label over an existing logical net. */
     NetLabel(NetId net, Point position,
              SchematicOrientation orientation = SchematicOrientation::Right,
-             std::optional<std::size_t> authored_region = std::nullopt)
+             std::optional<std::size_t> authored_region = std::nullopt,
+             std::optional<std::string> label = std::nullopt)
         : net_{net}, position_{position}, orientation_{orientation},
-          authored_region_{authored_region} {}
+          authored_region_{authored_region}, label_{std::move(label)} {
+        if (label_ && label_->empty()) {
+            throw std::invalid_argument{"Net label display text must not be empty"};
+        }
+    }
 
     /** Return the canonical logical net named by this label. */
     [[nodiscard]] NetId net() const noexcept { return net_; }
@@ -574,11 +579,15 @@ class NetLabel {
         return authored_region_;
     }
 
+    /** Return optional display text for the label. Falls back to the logical net name. */
+    [[nodiscard]] const std::optional<std::string> &label() const noexcept { return label_; }
+
   private:
     NetId net_;
     Point position_;
     SchematicOrientation orientation_;
     std::optional<std::size_t> authored_region_;
+    std::optional<std::string> label_;
 };
 
 /** An explicit junction dot over an existing logical net. */

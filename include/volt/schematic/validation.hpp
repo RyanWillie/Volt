@@ -850,12 +850,13 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     for (const auto label_id : sheet.net_labels()) {
         const auto &label = schematic.net_label(label_id);
         const auto &net = schematic.circuit().net(label.net());
-        objects.push_back(
-            ReadabilityObject{ReadabilityObjectKind::NetLabel, EntityRef::net_label(label_id),
-                              std::vector{EntityRef::net(label.net())},
-                              text_bounds(label.position(), label.orientation(), net.name().value(),
-                                          net_label_rendered_font_size, false),
-                              label.authored_region()});
+        objects.push_back(ReadabilityObject{ReadabilityObjectKind::NetLabel,
+                                            EntityRef::net_label(label_id),
+                                            std::vector{EntityRef::net(label.net())},
+                                            text_bounds(label.position(), label.orientation(),
+                                                        label.label().value_or(net.name().value()),
+                                                        net_label_rendered_font_size, false),
+                                            label.authored_region()});
     }
     for (const auto junction_id : sheet.junctions()) {
         const auto &junction = schematic.junction(junction_id);
@@ -1171,7 +1172,7 @@ inline void validate_label_readability(const Schematic &schematic, SheetId sheet
                 "Schematic net label is rotated where horizontal text is expected", sheet_id,
                 EntityRef::net_label(label_id), std::vector{EntityRef::net(label.net())});
         }
-        if (display_label_is_overlong_or_scoped(net.name().value())) {
+        if (display_label_is_overlong_or_scoped(label.label().value_or(net.name().value()))) {
             add_readability_diagnostic(
                 report, Severity::Warning, "SCHEMATIC_OVERLONG_DISPLAY_LABEL",
                 "Schematic display label is long or exposes an internal scoped name", sheet_id,
@@ -1336,8 +1337,9 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         const auto &net = schematic.circuit().net(label.net());
         texts.push_back(ReadabilityTextObject{
             EntityRef::net_label(label_id), std::vector{EntityRef::net(label.net())},
-            text_bounds(label.position(), label.orientation(), net.name().value(),
-                        net_label_rendered_font_size, false)});
+            text_bounds(label.position(), label.orientation(),
+                        label.label().value_or(net.name().value()), net_label_rendered_font_size,
+                        false)});
     }
     for (const auto field_id : sheet.symbol_fields()) {
         const auto &field = schematic.symbol_field(field_id);

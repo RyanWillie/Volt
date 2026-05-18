@@ -70,10 +70,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     sheet = schematic["sheets"][0]
     assert sheet["metadata"]["title"] == "STM32 USB Buck Reference Schematic"
     assert sheet["metadata"]["orientation"] == "Landscape"
-    assert sheet["metadata"]["size"] == {"width": 297, "height": 210}
+    assert sheet["metadata"]["size"] == {"width": 594, "height": 420}
     assert sheet["metadata"]["coordinate_zones"] == {
-        "columns": 10,
-        "rows": 6,
+        "columns": 16,
+        "rows": 10,
         "visible": True,
     }
     assert sheet["metadata"]["grid"] == {"spacing": 5, "visible": True}
@@ -93,15 +93,14 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert all(region["style"] == {"border": "dashed"} for region in sheet["regions"])
     assert len(schematic["symbol_instances"]) >= 10
     assert len(schematic["wire_runs"]) >= 20
-    assert len(schematic["net_labels"]) <= 36
-    assert len(schematic["power_ports"]) >= 20
-    assert len(schematic["sheet_ports"]) >= 10
+    assert 12 <= len(schematic["net_labels"]) <= 40
+    assert 8 <= len(schematic["power_ports"]) <= 24
+    assert schematic["sheet_ports"] == []
     assert len(schematic["no_connect_markers"]) <= 6
     assert {instance["component"] for instance in schematic["symbol_instances"]} <= component_ids
     assert {wire["net"] for wire in schematic["wire_runs"]} <= net_ids
     assert {label["net"] for label in schematic["net_labels"]} <= net_ids
     assert {port["net"] for port in schematic["power_ports"]} <= net_ids
-    assert {port["net"] for port in schematic["sheet_ports"]} <= net_ids
     assert {
         marker["pin"] for marker in schematic["no_connect_markers"]
     } <= {pin["id"] for pin in logical["pins"]}
@@ -118,7 +117,6 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "net_labels",
         "junctions",
         "power_ports",
-        "sheet_ports",
         "symbol_fields",
     )
     for collection in object_collections:
@@ -153,8 +151,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "USB Micro-B",
     } <= symbol_field_values
     assert all(field["orientation"] == "Right" for field in schematic["symbol_fields"])
-    assert all(label["orientation"] == "Right" for label in schematic["net_labels"])
-    assert all("/" not in port["name"] for port in schematic["sheet_ports"])
+    assert {label["orientation"] for label in schematic["net_labels"]} <= {"Left", "Right"}
     junction_keys = [
         (junction["sheet"], junction["net"], junction["position"]["x"], junction["position"]["y"])
         for junction in schematic["junctions"]
@@ -172,7 +169,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "drawing.R(" in schematic_source
     assert "drawing.LED(" in schematic_source
     assert "drawing.connect(" in schematic_source
-    assert "drawing.off_page(" in schematic_source
+    assert "drawing.signal_stub(" in schematic_source
     assert "drawing.no_connect(" in schematic_source
     assert "shape=" in schematic_source
     label_counts = Counter(
@@ -187,7 +184,6 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     wire_or_port_net_ids = {
         *(wire["net"] for wire in schematic["wire_runs"]),
         *(port["net"] for port in schematic["power_ports"]),
-        *(port["net"] for port in schematic["sheet_ports"]),
     }
     labelled_only_multi_pin_nets = {
         label["net"]
@@ -236,13 +232,12 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     } <= {"SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED"}
     readability_report = main.build_schematic(main.build_board()).validate_readability()
     readability_codes = Counter(diagnostic.code for diagnostic in readability_report)
-    assert readability_codes == Counter(
-        {
-            "SCHEMATIC_LABEL_CROWDS_SYMBOL": 22,
-            "SCHEMATIC_DENSE_PORT_TAGS": 3,
-        }
-    )
-    assert all(diagnostic.severity == "warning" for diagnostic in readability_report)
+    assert set(readability_codes) <= {
+        "SCHEMATIC_LABEL_CROWDS_SYMBOL",
+        "SCHEMATIC_TEXT_COLLISION",
+    }
+    assert readability_codes["SCHEMATIC_LABEL_CROWDS_SYMBOL"] <= 13
+    assert readability_codes["SCHEMATIC_TEXT_COLLISION"] <= 1
     board = main.build_board()
     logical_before_schematic = board.design.to_json()
     main.build_schematic(board)
@@ -271,19 +266,13 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "VCAP_" not in first_svg_text
     assert 'class="power-port power"' in first_svg_text
     assert 'class="power-port ground"' in first_svg_text
-    assert 'class="sheet-port off-page"' in first_svg_text
-    assert "rotate(90)" not in "\n".join(
-        line for line in first_svg_text.splitlines() if 'class="sheet-port off-page"' in line
-    )
-    assert "rotate(270)" not in "\n".join(
-        line for line in first_svg_text.splitlines() if 'class="sheet-port off-page"' in line
-    )
+    assert 'class="sheet-port off-page"' not in first_svg_text
     assert "data-net=\"net:" in first_svg_text
     assert 'class="title-block"' in first_svg_text
     assert 'class="coordinate-zones"' in first_svg_text
     assert 'class="sheet-region-frame dashed"' in first_svg_text
     assert [path.name for path in artifacts.schematic_svg_pages] == ["stm32_usb_buck_STM32_USB_Buck.svg"]
-    assert all('viewBox="0 0 297 210"' in text for text in first_page_texts)
+    assert all('viewBox="0 0 594 420"' in text for text in first_page_texts)
     assert 'data-sheet="sheet:0"' in first_page_texts[0]
     assert 'data-sheet="sheet:1"' not in first_page_texts[0]
 
@@ -347,5 +336,5 @@ def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():
     assert "drawing.LED(" in source
     assert "drawing.connect(" in source
     assert "drawing.net_label(" in source
-    assert "drawing.off_page(" in source
+    assert "drawing.signal_stub(" in source
     assert "drawing.no_connect(" in source

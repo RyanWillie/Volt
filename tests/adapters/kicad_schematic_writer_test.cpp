@@ -101,3 +101,20 @@ TEST_CASE("KiCad schematic writer reports unsupported out-of-subset constructs")
           volt::adapters::kicad::LossKind::UnsupportedConstruct);
     CHECK(result.loss_report.warnings().at(1).construct == "symbol.circle");
 }
+
+TEST_CASE("KiCad schematic writer preserves canonical net label names") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net =
+        circuit.add_net(volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+    auto schematic = make_flat_schematic(circuit, component, net);
+    [[maybe_unused]] const auto label = schematic.add_net_label(
+        volt::SheetId{0},
+        volt::NetLabel{net, volt::Point{14.0, 16.0}, volt::SchematicOrientation::Right,
+                       std::nullopt, std::string{"SWDIO"}});
+
+    const auto result = volt::adapters::kicad::write_flat_schematic(schematic);
+
+    CHECK(result.text.find("(label \"SUPPORT/SWDIO\"") != std::string::npos);
+    CHECK(result.text.find("(label \"SWDIO\"") == std::string::npos);
+}
