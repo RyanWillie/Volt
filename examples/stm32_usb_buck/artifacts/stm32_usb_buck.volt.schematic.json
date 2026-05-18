@@ -192,9 +192,9 @@
     { "id": "power_port:19", "sheet": "sheet:0", "net": "net:4", "kind": "Ground", "position": { "x": 506, "y": 270 }, "orientation": "Down", "authored_region": "Connectors and USB" }
   ],
   "no_connect_markers": [
-    { "id": "no_connect_marker:0", "sheet": "sheet:0", "pin": "pin:23", "position": { "x": 434, "y": 86 }, "orientation": "Right", "reason": "intentionally unused", "authored_region": "Connectors and USB" },
-    { "id": "no_connect_marker:1", "sheet": "sheet:0", "pin": "pin:59", "position": { "x": 466, "y": 186 }, "orientation": "Right", "reason": "intentionally unused", "authored_region": "Connectors and USB" },
-    { "id": "no_connect_marker:2", "sheet": "sheet:0", "pin": "pin:65", "position": { "x": 526, "y": 202 }, "orientation": "Right", "reason": "intentionally unused", "authored_region": "Connectors and USB" }
+    { "id": "no_connect_marker:0", "sheet": "sheet:0", "pin": "pin:23", "position": { "x": 434, "y": 86 }, "orientation": "Right", "reason": "USB ID not used", "authored_region": "Connectors and USB" },
+    { "id": "no_connect_marker:1", "sheet": "sheet:0", "pin": "pin:59", "position": { "x": 466, "y": 186 }, "orientation": "Right", "reason": "reserved debug pin not populated", "authored_region": "Connectors and USB" },
+    { "id": "no_connect_marker:2", "sheet": "sheet:0", "pin": "pin:65", "position": { "x": 526, "y": 202 }, "orientation": "Right", "reason": "reserved GPIO header pin not populated", "authored_region": "Connectors and USB" }
   ],
   "sheet_ports": [
   ],

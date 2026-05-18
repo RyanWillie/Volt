@@ -222,6 +222,32 @@ def test_python_schematic_local_label_and_aligned_signal_stubs_are_side_aware():
     ]
 
 
+def test_python_schematic_signal_stubs_infer_anchor_side_and_accept_group_labels():
+    design = volt.Design("schematic-signal-stub-anchor-defaults")
+    swdio = design.net("SWDIO")
+    swclk = design.net("SWCLK")
+    header = design.connector_1x02(ref="J1")
+    swdio += header[1]
+    swclk += header[2]
+
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(unit=20) as drawing:
+        placed = drawing.place(header, at=(40, 20))
+        stub = drawing.signal_stub(swdio, at=placed[1], length=5, label="DIO")
+        group = drawing.signal_stubs(
+            ((swclk, placed[2], "CLK"),),
+            length=4,
+            label_gap=1,
+        )
+
+    projection = json.loads(schematic.to_json())
+
+    assert stub.side == placed[1].orientation
+    assert group[0].side == placed[2].orientation
+    assert {label["label"] for label in projection["net_labels"]} == {"DIO", "CLK"}
+
+
 def test_python_schematic_signal_stub_group_preserves_base_pin_net_validation():
     design = volt.Design("schematic-local-signal-stub-group-validation")
     swdio = design.net("SWDIO")
@@ -1241,6 +1267,33 @@ def test_python_schematic_drawing_hold_restores_cursor_after_nested_push():
         assert "stack is empty" in message
     else:
         raise AssertionError("hold should restore the drawing stack depth")
+
+
+def test_python_schematic_drawing_frame_scopes_tuple_coordinates_and_restores_state():
+    design = volt.Design("schematic-drawing-frame")
+    sig = design.net("SIG")
+    probe = design.test_point(ref="TP1")
+    sig += probe["TP"]
+
+    schematic = design.schematic("Main")
+    drawing = schematic.drawing(at=(10, 20), direction="Left")
+    before = drawing.here.point, drawing.direction
+
+    with drawing.frame((100, 50), direction="Down") as frame:
+        placed = frame.place(probe, at=(2, 3))
+        frame.net_label(sig, at=(4, 5), label="IN_FRAME")
+        assert frame.direction == "Down"
+
+    drawing.net_label(sig, at=(4, 5), label="OUTSIDE")
+    projection = json.loads(schematic.to_json())
+
+    assert placed.TP.point == (102.0, 53.0)
+    assert (drawing.here.point, drawing.direction) == before
+    assert [label["position"] for label in projection["net_labels"]] == [
+        {"x": 104.0, "y": 55.0},
+        {"x": 4.0, "y": 5.0},
+    ]
+
 
 def test_python_schematic_drawing_session_does_not_mutate_logical_design():
     design = volt.Design("schematic-drawing-logical-boundary")
