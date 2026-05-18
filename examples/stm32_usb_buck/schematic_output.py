@@ -186,11 +186,6 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
     """Create a deterministic schematic projection for the benchmark board."""
 
     nets = {net.name: net for net in board.design.nets()}
-    net_by_pin = {
-        pin.index: net
-        for net in board.design.nets()
-        for pin in net.pins()
-    }
 
     sheet = board.design.schematic(
         "STM32 USB Buck",
@@ -227,8 +222,8 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
     )
 
     _author_power_region(power_region, board, nets)
-    _author_mcu_region(mcu_region, board, nets, net_by_pin)
-    _author_connectors_region(connectors_region, board, nets, net_by_pin)
+    _author_mcu_region(mcu_region, board, nets)
+    _author_connectors_region(connectors_region, board, nets)
     return sheet
 
 
@@ -289,8 +284,8 @@ def _author_power_region(
         cin.label("4.7 uF", name="value", loc="top", ofst=8, orient="Right")
         cvdda.label("100 nF", name="value", loc="left", ofst=10, orient="Right")
 
-        _rail(drawing, nets["+12V"], vin.OUT, orient="Right")
-        _rail(drawing, nets["GND"], vin.GND, orient="Down")
+        drawing.power("+12V", net=nets["+12V"], at=vin.OUT, orient="Right")
+        drawing.ground("GND", net=nets["GND"], at=vin.GND, orient="Down")
 
         pwr_in = nets["PWR/IN_12V"]
         pwr_5v = nets["PWR/OUT_5V"]
@@ -337,7 +332,6 @@ def _author_connectors_region(
     region: volt.SchematicRegion,
     board: Stm32UsbBuckBoard,
     nets: dict[str, volt.Net],
-    net_by_pin: dict[int, volt.Net],
 ) -> None:
     usb = board.modules["USB"]
     with region.drawing(unit=20) as drawing:
@@ -373,8 +367,14 @@ def _author_connectors_region(
         drawing.wire(nets["USB/USB_DM"]).at(usb_j["D-"]).via((48, 58)).to(
             usb_esd["I/O2"]
         ).orthogonal()
-        _connect_to_signal_stub(drawing, net_by_pin, usb_esd["I/O4"], "USB D+", length=10)
-        _connect_to_signal_stub(drawing, net_by_pin, usb_esd["I/O3"], "USB D-", length=10)
+        drawing.signal_stubs(
+            (
+                (nets["USB/MCU_USB_DP"], usb_esd["I/O4"], "USB D+"),
+                (nets["USB/MCU_USB_DM"], usb_esd["I/O3"], "USB D-"),
+            ),
+            length=10,
+            orient="Right",
+        )
 
         usb_gnd = nets["USB/GND"]
         for anchor in (usb_j.GND, usb_j.Shield, usb_esd.GND):
@@ -389,25 +389,27 @@ def _author_connectors_region(
         for anchor in (swd[3], swd[5], swd[9], gpio[4]):
             drawing.connect(anchor, debug_ground, net=nets["GND"], shape="-|")
         drawing.junction(nets["GND"], at=(92, 252))
-        for name in ("SWDIO", "SWCLK", "SWO", "nRESET"):
-            display = "NRST" if name == "nRESET" else name
-            _connect_to_signal_stub(
-                drawing,
-                net_by_pin,
-                swd[name],
-                display,
-                length=12,
-            )
-        _connect_to_signal_stub(drawing, net_by_pin, swd.TDI, "BOOT0", length=12)
-        _connect_to_signal_stub(drawing, net_by_pin, gpio[2], "BOOT0", length=12)
-        _mark_no_connects(drawing, (usb_j, swd, gpio), net_by_pin)
+        drawing.signal_stubs(
+            (
+                (nets["SWDIO"], swd.SWDIO, "SWDIO"),
+                (nets["SWCLK"], swd.SWCLK, "SWCLK"),
+                (nets["SWO"], swd.SWO, "SWO"),
+                (nets["NRST"], swd.nRESET, "NRST"),
+                (nets["BOOT0"], swd.TDI, "BOOT0"),
+                (nets["BOOT0"], gpio[2], "BOOT0"),
+            ),
+            length=12,
+            orient="Right",
+        )
+        drawing.no_connect(usb_j.ID, reason="USB ID not used")
+        drawing.no_connect(swd.NC, reason="reserved debug pin not populated")
+        drawing.no_connect(gpio[3], reason="reserved GPIO header pin not populated")
 
 
 def _author_mcu_region(
     region: volt.SchematicRegion,
     board: Stm32UsbBuckBoard,
     nets: dict[str, volt.Net],
-    net_by_pin: dict[int, volt.Net],
 ) -> None:
     support = board.modules["SUPPORT"]
     led = board.modules["LED_STATUS"]
@@ -492,27 +494,24 @@ def _author_mcu_region(
             drawing.connect(anchor, mcu_ground, net=nets["GND"], shape="|-")
         drawing.junction(nets["GND"], at=(98, 222))
 
-        for name, pin_name in (
-            ("USB D-", "PA11"),
-            ("USB D+", "PA12"),
-            ("SWDIO", "PA13"),
-            ("SWCLK", "PA14"),
-            ("SWO", "PB3"),
-            ("BOOT0", "BOOT0"),
-            ("NRST", "NRST"),
-            ("HSE IN", "PH0"),
-            ("HSE OUT", "PH1"),
-            ("VCAP1", "VCAP_1"),
-            ("VCAP2", "VCAP_2"),
-            ("LED", "PC13"),
-        ):
-            _connect_to_signal_stub(
-                drawing,
-                net_by_pin,
-                stm32[pin_name],
-                name,
-                length=14,
-            )
+        drawing.signal_stubs(
+            (
+                (nets["MCU_USB_DM"], stm32.PA11, "USB D-"),
+                (nets["MCU_USB_DP"], stm32.PA12, "USB D+"),
+                (nets["SWDIO"], stm32.PA13, "SWDIO"),
+                (nets["SWCLK"], stm32.PA14, "SWCLK"),
+                (nets["SWO"], stm32.PB3, "SWO"),
+                (nets["BOOT0"], stm32.BOOT0, "BOOT0"),
+                (nets["NRST"], stm32.NRST, "NRST"),
+                (nets["HSE_IN"], stm32.PH0, "HSE IN"),
+                (nets["HSE_OUT"], stm32.PH1, "HSE OUT"),
+                (nets["VCAP_1"], stm32.VCAP_1, "VCAP1"),
+                (nets["VCAP_2"], stm32.VCAP_2, "VCAP2"),
+                (nets["STATUS_LED"], stm32.PC13, "LED"),
+            ),
+            length=14,
+            orient="Right",
+        )
 
         support_vdd = nets["SUPPORT/VDD"]
         support_gnd = nets["SUPPORT/GND"]
@@ -643,79 +642,3 @@ def _author_mcu_region(
             orient="Left",
         )
         drawing.connect(led_d.end, led_ground, net=led_gnd, shape="-")
-
-
-def _rail(
-    drawing: volt.SchematicDrawing,
-    net: volt.Net,
-    at: volt.SchematicPinAnchor,
-    *,
-    orient: str = "Up",
-) -> None:
-    name = _display_net_name(net.name)
-    if name == "GND":
-        drawing.ground("GND", net=net, at=at, orient=orient)
-    elif name == net.name and (name.startswith("+") or name == "VDDA"):
-        drawing.power(name, net=net, at=at, orient=orient)
-    else:
-        drawing.signal_stub(
-            net,
-            at=at,
-            side=_signal_stub_side(at),
-            length=10,
-            orient="Right",
-            label=name,
-        )
-
-
-def _connect_to_signal_stub(
-    drawing: volt.SchematicDrawing,
-    net_by_pin: dict[int, volt.Net],
-    anchor: volt.SchematicPinAnchor,
-    name: str,
-    *,
-    length: float = 10,
-) -> None:
-    net = net_by_pin[anchor.pin.index]
-    drawing.signal_stub(
-        net,
-        at=anchor,
-        side=_signal_stub_side(anchor),
-        length=length,
-        orient="Right",
-        label=name,
-    )
-
-
-def _signal_stub_side(anchor: volt.SchematicPinAnchor) -> str:
-    return {
-        "Left": "Left",
-        "Right": "Right",
-        "Up": "Up",
-        "Down": "Down",
-    }[anchor.orientation]
-
-
-def _mark_no_connects(
-    drawing: volt.SchematicDrawing,
-    placements: tuple[volt.PlacedSchematicElement, ...],
-    net_by_pin: dict[int, volt.Net],
-) -> None:
-    for placement in placements:
-        for anchor in placement.pin_anchors():
-            if anchor.pin.index not in net_by_pin:
-                drawing.no_connect(anchor, reason="intentionally unused")
-
-
-def _display_net_name(name: str) -> str:
-    local_name = name.rsplit("/", 1)[-1]
-    return {
-        "IN_12V": "+12V",
-        "OUT_5V": "+5V",
-        "OUT_3V3": "+3V3",
-        "VDD": "+3V3",
-        "SUPPLY": "+3V3",
-        "VBUS": "+5V",
-        "GNDDetect": "GND",
-        "SIGNAL": "LED",
-    }.get(local_name, local_name)

@@ -1878,7 +1878,7 @@ class SchematicDrawing:
         name_or_net: str | Net,
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
-        side: str = "Right",
+        side: str | None = None,
         length: float = 8,
         label_gap: float = 2,
         orient: str | None = None,
@@ -1901,7 +1901,7 @@ class SchematicDrawing:
         items,
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
-        side: str = "Right",
+        side: str | None = None,
         pitch: float = 8,
         length: float = 8,
         label_gap: float = 2,
@@ -1999,6 +1999,36 @@ class SchematicDrawing:
             yield self
             self._flush_pending()
         finally:
+            self._stack = saved_stack
+            self._here = saved_here
+            self._direction = saved_direction
+            self._pending = saved_pending
+
+    @contextmanager
+    def frame(
+        self,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort = (0, 0),
+        *,
+        direction: str | None = None,
+    ):
+        self._flush_pending()
+        saved_origin = self._coordinate_origin
+        saved_stack = list(self._stack)
+        saved_here = self._here
+        saved_direction = self._direction
+        saved_pending = self._pending
+        origin = self._anchor_at(at).point
+        self._coordinate_origin = origin
+        self._here = SchematicAnchor(origin, design=self._schematic._design)
+        if direction is not None:
+            self._direction = _orientation(direction)
+        self._stack = []
+        self._pending = None
+        try:
+            yield self
+            self._flush_pending()
+        finally:
+            self._coordinate_origin = saved_origin
             self._stack = saved_stack
             self._here = saved_here
             self._direction = saved_direction
@@ -2723,14 +2753,14 @@ class Schematic:
         name_or_net: str | Net,
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
-        side: str = "Right",
+        side: str | None = None,
         length: float = 8,
         label_gap: float = 2,
         orient: str | None = None,
         label: str | None = None,
         _authored_region: int | None = None,
     ) -> SchematicSignalStub:
-        side_orientation = _orientation(side)
+        side_orientation = _signal_stub_side(side, at)
         label_orientation = side_orientation if orient is None else _orientation(orient)
         net = _resolve_schematic_signal_net(
             self._design,
@@ -2784,14 +2814,18 @@ class Schematic:
         items,
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
-        side: str = "Right",
+        side: str | None = None,
         pitch: float = 8,
         length: float = 8,
         label_gap: float = 2,
         orient: str | None = None,
         _authored_region: int | None = None,
     ) -> tuple[SchematicSignalStub, ...]:
-        side_orientation = _orientation(side)
+        side_orientation = (
+            _signal_stub_side(side, at)
+            if at is not None
+            else _orientation("Right" if side is None else side)
+        )
         entries = tuple(items)
         if not entries:
             return ()
@@ -2805,13 +2839,14 @@ class Schematic:
             self.signal_stub(
                 name_or_net,
                 at=anchor,
-                side=side_orientation,
+                side=side if side is not None or not generated else side_orientation,
                 length=length,
                 label_gap=label_gap,
                 orient=orient,
+                label=label,
                 _authored_region=_authored_region,
             )
-            for name_or_net, anchor in starts
+            for name_or_net, anchor, label, generated in starts
         )
 
     def _add_symbol_field(
@@ -3256,7 +3291,7 @@ class SchematicRegion:
         name_or_net: str | Net,
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
-        side: str = "Right",
+        side: str | None = None,
         length: float = 8,
         label_gap: float = 2,
         orient: str | None = None,
@@ -3278,22 +3313,14 @@ class SchematicRegion:
         items,
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
-        side: str = "Right",
+        side: str | None = None,
         pitch: float = 8,
         length: float = 8,
         label_gap: float = 2,
         orient: str | None = None,
     ) -> tuple[SchematicSignalStub, ...]:
         base_at = None if at is None else self._local_point(at)
-        localized = (
-            (
-                item[0],
-                self._local_point(item[1]),
-            )
-            if _signal_stub_entry_has_anchor(item)
-            else item
-            for item in items
-        )
+        localized = (self._local_signal_stub_item(item) for item in items)
         return self._sheet.signal_stubs(
             localized,
             at=base_at,
@@ -3304,6 +3331,17 @@ class SchematicRegion:
             orient=orient,
             _authored_region=self._index,
         )
+
+    def _local_signal_stub_item(self, item):
+        name_or_net, anchor, label = _signal_stub_entry_parts(item)
+        if anchor is None:
+            if label is None:
+                return item
+            return name_or_net, None, label
+        localized = self._local_point(anchor)
+        if label is None:
+            return name_or_net, localized
+        return name_or_net, localized, label
 
     def junction(
         self,
@@ -4422,8 +4460,55 @@ def _offset_schematic_point(
     raise ValueError("Schematic orientation must be Right, Down, Left, or Up")
 
 
+def _signal_stub_side(
+    side: str | None, at: tuple[float, float] | SchematicAnchor | SchematicPort
+) -> str:
+    if side is not None:
+        return _orientation(side)
+    if isinstance(at, (SchematicPinAnchor, SchematicPort)):
+        return _orientation(at.orientation)
+    return "Right"
+
+
 def _signal_stub_entry_has_anchor(item) -> bool:
-    return isinstance(item, (tuple, list)) and len(item) == 2
+    return _signal_stub_entry_parts(item)[1] is not None
+
+
+def _signal_stub_entry_parts(item):
+    if isinstance(item, (tuple, list)):
+        if len(item) == 2:
+            if _is_schematic_authoring_anchor(item[1]):
+                return item[0], item[1], None
+            if item[1] is None or isinstance(item[1], str):
+                return item[0], None, item[1]
+            raise TypeError(
+                "Signal stub entries must be bare nets/names, (net, anchor), "
+                "(net, label), or (net, anchor, label)"
+            )
+        if len(item) == 3:
+            if item[2] is not None and not isinstance(item[2], str):
+                raise TypeError("Signal stub labels must be strings")
+            if item[1] is None or _is_schematic_authoring_anchor(item[1]):
+                return item[0], item[1], item[2]
+            raise TypeError(
+                "Signal stub entries must be bare nets/names, (net, anchor), "
+                "(net, label), or (net, anchor, label)"
+            )
+        raise TypeError(
+            "Signal stub entries must be bare nets/names, (net, anchor), "
+            "(net, label), or (net, anchor, label)"
+        )
+    return item, None, None
+
+
+def _is_schematic_authoring_anchor(value) -> bool:
+    if isinstance(value, (SchematicAnchor, SchematicPort)):
+        return True
+    try:
+        _schematic_point_tuple(value)
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 def _signal_stub_entries(
@@ -4435,28 +4520,30 @@ def _signal_stub_entries(
 ):
     if at is None:
         for item in items:
-            if not _signal_stub_entry_has_anchor(item):
+            name_or_net, anchor, label = _signal_stub_entry_parts(item)
+            if anchor is None:
                 raise TypeError(
                     "Signal stub groups need (net, anchor) entries unless at= is provided"
                 )
-            yield item[0], item[1]
+            yield name_or_net, anchor, label, False
         return
 
     base = at
     for index, item in enumerate(items):
-        if _signal_stub_entry_has_anchor(item):
-            yield item[0], item[1]
+        name_or_net, anchor, label = _signal_stub_entry_parts(item)
+        if anchor is not None:
+            yield name_or_net, anchor, label, False
             continue
         offset = _signal_stub_pitch_offset(side, pitch * index)
         if index == 0 and isinstance(base, (SchematicPinAnchor, SchematicPort)):
-            yield item, base
+            yield name_or_net, base, label, True
         elif isinstance(base, SchematicAnchor):
-            yield item, base.offset(dx=offset[0], dy=offset[1])
+            yield name_or_net, base.offset(dx=offset[0], dy=offset[1]), label, True
         elif isinstance(base, SchematicPort):
-            yield item, base.pin.offset(dx=offset[0], dy=offset[1])
+            yield name_or_net, base.pin.offset(dx=offset[0], dy=offset[1]), label, True
         else:
             point = _schematic_point_tuple(base)
-            yield item, (point[0] + offset[0], point[1] + offset[1])
+            yield name_or_net, (point[0] + offset[0], point[1] + offset[1]), label, True
 
 
 def _signal_stub_pitch_offset(side: str, distance: float) -> tuple[float, float]:
