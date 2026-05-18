@@ -103,12 +103,9 @@ def author_schematic(
         drawing.connect(reset_pullup.end, reset_tp.TP, shape="-")
         drawing.connect(reset_tp.TP, header[1], shape="-|", k=24)
 
-        nrst = drawing.off_page("NRST", net=nets["NRST"], at=header[1].right(30))
-        swdio = drawing.off_page("SWDIO", net=nets["SWDIO"], at=header[2].right(30))
-        swclk = drawing.off_page("SWCLK", net=nets["SWCLK"], at=header[3].right(30))
-        drawing.connect(header[1], nrst, net=nets["NRST"], shape="-")
-        drawing.connect(header[2], swdio, net=nets["SWDIO"], shape="-")
-        drawing.connect(header[3], swclk, net=nets["SWCLK"], shape="-")
+        drawing.signal_stub(nets["NRST"], at=header[1], side="Right", length=18)
+        drawing.signal_stub(nets["SWDIO"], at=header[2], side="Right", length=18)
+        drawing.signal_stub(nets["SWCLK"], at=header[3], side="Right", length=18)
 
         unused_pad = drawing.place(parts["TP2"], at=header[3].down(34)).label_ref(
             loc="bottom"
