@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <variant>
@@ -69,6 +70,14 @@ bool report_has_code(const volt::DiagnosticReport &report, const std::string &co
                        [&code](const volt::Diagnostic &diagnostic) {
                            return diagnostic.code() == volt::DiagnosticCode{code};
                        });
+}
+
+std::size_t diagnostic_count(const volt::DiagnosticReport &report, const std::string &code) {
+    return static_cast<std::size_t>(
+        std::count_if(report.diagnostics().begin(), report.diagnostics().end(),
+                      [&code](const volt::Diagnostic &diagnostic) {
+                          return diagnostic.code() == volt::DiagnosticCode{code};
+                      }));
 }
 
 const volt::Diagnostic &require_diagnostic(const volt::DiagnosticReport &report,
@@ -906,6 +915,154 @@ TEST_CASE("Schematic readability reports overlapping text bounds") {
           entities.end());
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(second)) !=
           entities.end());
+}
+
+TEST_CASE("Schematic readability reports oversized sheet and off-page tags") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "A_VERY_WIDE_DEBUG_SIGNAL_NAME");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto port = schematic.add_sheet_port(
+        sheet, volt::SheetPort{net, "A_VERY_WIDE_DEBUG_SIGNAL_NAME", volt::SheetPortKind::OffPage,
+                               volt::Point{40.0, 50.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_OVERSIZED_PORT_TAG");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::sheet_port(port),
+                                               volt::EntityRef::net(net)});
+}
+
+TEST_CASE("Schematic readability reports oversized power-port labels") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "POWER_DEBUG_RAIL_WITH_A_LONG_NAME");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto port = schematic.add_power_port(
+        sheet, volt::PowerPort{net, volt::PowerPortKind::Power, volt::Point{40.0, 50.0},
+                               volt::SchematicOrientation::Up, std::nullopt,
+                               std::optional<std::string>{"POWER_DEBUG_RAIL_WITH_A_LONG_NAME"}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_OVERSIZED_PORT_TAG");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::power_port(port),
+                                               volt::EntityRef::net(net)});
+}
+
+TEST_CASE("Schematic readability reports crowded repeated tag stacks") {
+    volt::Circuit circuit;
+    const auto first_net = add_named_net(circuit, "GPIO_A");
+    const auto second_net = add_named_net(circuit, "GPIO_B");
+    const auto third_net = add_named_net(circuit, "GPIO_C");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto first = schematic.add_sheet_port(sheet, volt::SheetPort{first_net, "GPIO_A",
+                                                                       volt::SheetPortKind::OffPage,
+                                                                       volt::Point{40.0, 40.0}});
+    const auto second = schematic.add_sheet_port(
+        sheet, volt::SheetPort{second_net, "GPIO_B", volt::SheetPortKind::OffPage,
+                               volt::Point{40.0, 43.0}});
+    const auto third = schematic.add_sheet_port(sheet, volt::SheetPort{third_net, "GPIO_C",
+                                                                       volt::SheetPortKind::OffPage,
+                                                                       volt::Point{40.0, 46.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_CROWDED_TAG_STACK");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::sheet_port(first)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::sheet_port(second)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::sheet_port(third)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability reports dense port tags in authored regions") {
+    volt::Circuit circuit;
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto region = schematic.add_sheet_region(
+        sheet, volt::SheetRegion{"mcu", "MCU", volt::SheetRegionBounds{20.0, 20.0, 120.0, 120.0}});
+
+    auto ports = std::vector<volt::SheetPortId>{};
+    for (std::size_t index = 0; index < 12U; ++index) {
+        const auto net = add_named_net(circuit, "SIG_" + std::to_string(index));
+        ports.push_back(schematic.add_sheet_port(
+            sheet, volt::SheetPort{net, "S" + std::to_string(index), volt::SheetPortKind::OffPage,
+                                   volt::Point{30.0, 25.0 + (static_cast<double>(index) * 7.0)},
+                                   volt::SchematicOrientation::Right, region}));
+    }
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DENSE_PORT_TAGS");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic_count(report, "SCHEMATIC_DENSE_PORT_TAGS") == 1U);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::sheet_port(ports.front())) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::sheet_port(ports.back())) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability reports labels crowding symbols") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = add_named_net(circuit, "SIG");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{60.0, 60.0}});
+    const auto label = schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{62.0, 60.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_LABEL_CROWDS_SYMBOL");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(label)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::symbol_instance(instance)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability accepts compact labels and spaced tag ports") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto signal = add_named_net(circuit, "SIG");
+    const auto status = add_named_net(circuit, "STAT");
+    const auto enable = add_named_net(circuit, "EN");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    static_cast<void>(schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{70.0, 70.0}}));
+    static_cast<void>(
+        schematic.add_net_label(sheet, volt::NetLabel{signal, volt::Point{115.0, 72.0}}));
+    static_cast<void>(schematic.add_sheet_port(
+        sheet,
+        volt::SheetPort{status, "STAT", volt::SheetPortKind::OffPage, volt::Point{30.0, 50.0}}));
+    static_cast<void>(
+        schematic.add_sheet_port(sheet, volt::SheetPort{enable, "EN", volt::SheetPortKind::OffPage,
+                                                        volt::Point{30.0, 62.0}}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(report.empty());
 }
 
 TEST_CASE("Schematic validation accepts no-connect markers on no-connect pin definitions") {

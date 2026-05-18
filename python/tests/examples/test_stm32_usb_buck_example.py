@@ -235,7 +235,14 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         diagnostic.code for diagnostic in schematic_report
     } <= {"SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED"}
     readability_report = main.build_schematic(main.build_board()).validate_readability()
-    assert list(readability_report) == []
+    readability_codes = Counter(diagnostic.code for diagnostic in readability_report)
+    assert readability_codes == Counter(
+        {
+            "SCHEMATIC_LABEL_CROWDS_SYMBOL": 22,
+            "SCHEMATIC_DENSE_PORT_TAGS": 3,
+        }
+    )
+    assert all(diagnostic.severity == "warning" for diagnostic in readability_report)
     board = main.build_board()
     logical_before_schematic = board.design.to_json()
     main.build_schematic(board)
