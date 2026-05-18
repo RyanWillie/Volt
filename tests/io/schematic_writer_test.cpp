@@ -122,6 +122,22 @@ TEST_CASE("Schematic writer emits wire runs and net labels over canonical nets")
     CHECK(output["net_labels"][0]["orientation"] == "Right");
 }
 
+TEST_CASE("Schematic writer emits optional net label display text") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+    auto schematic = make_schematic(circuit, component);
+    [[maybe_unused]] const auto label = schematic.add_net_label(
+        volt::SheetId{0},
+        volt::NetLabel{net, volt::Point{12.0, 16.0}, volt::SchematicOrientation::Right,
+                       std::nullopt, std::string{"SWDIO"}});
+
+    const auto output = nlohmann::json::parse(volt::io::write_schematic(schematic));
+
+    CHECK(output["net_labels"][0]["net"] == "net:0");
+    CHECK(output["net_labels"][0]["label"] == "SWDIO");
+}
+
 TEST_CASE("Schematic writer emits professional primitives and sheet metadata") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);

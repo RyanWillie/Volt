@@ -4,7 +4,9 @@
 #include <nlohmann/json.hpp>
 
 #include <limits>
+#include <optional>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
@@ -115,6 +117,21 @@ TEST_CASE("Schematic reader loads projection JSON over a logical circuit") {
     CHECK(schematic.sheet(volt::SheetId{0}).net_labels() == std::vector{volt::NetLabelId{0}});
     CHECK(schematic.wire_run(volt::WireRunId{0}).net() == net);
     CHECK(schematic.net_label(volt::NetLabelId{0}).net() == net);
+}
+
+TEST_CASE("Schematic reader loads optional net label display text") {
+    volt::Circuit circuit;
+    [[maybe_unused]] const auto component = add_resistor(circuit);
+    [[maybe_unused]] const auto net = circuit.add_net(
+        volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+
+    auto fixture = schematic_json();
+    fixture["net_labels"][0]["label"] = "SWDIO";
+
+    const auto schematic = volt::io::read_schematic(fixture, circuit);
+
+    REQUIRE(schematic.net_label_count() == 1);
+    CHECK(schematic.net_label(volt::NetLabelId{0}).label() == std::optional<std::string>{"SWDIO"});
 }
 
 TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
