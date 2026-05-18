@@ -275,6 +275,14 @@ TEST_CASE("Schematic rejects empty presentation names") {
     CHECK_THROWS_AS(
         (volt::SymbolPin{"A", "", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left}),
         std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::NetLabel{volt::NetId{0}, volt::Point{0.0, 0.0}, volt::SchematicOrientation::Right,
+                        std::nullopt, std::string{""}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::PowerPort{volt::NetId{0}, volt::PowerPortKind::Power, volt::Point{0.0, 0.0},
+                         volt::SchematicOrientation::Up, std::nullopt, std::string{""}}),
+        std::invalid_argument);
 }
 
 TEST_CASE("Symbol definitions reject duplicate pin numbers") {
