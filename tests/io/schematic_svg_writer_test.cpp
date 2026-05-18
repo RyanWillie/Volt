@@ -98,6 +98,13 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
         volt::SheetId{0},
         volt::SheetPort{net, "VIN_LEFT", volt::SheetPortKind::OffPage, volt::Point{25.0, 26.0},
                         volt::SchematicOrientation::Left});
+    [[maybe_unused]] const auto up_sheet_port = schematic.add_sheet_port(
+        volt::SheetId{0}, volt::SheetPort{net, "VIN_UP", volt::SheetPortKind::OffPage,
+                                          volt::Point{25.0, 32.0}, volt::SchematicOrientation::Up});
+    [[maybe_unused]] const auto down_sheet_port = schematic.add_sheet_port(
+        volt::SheetId{0},
+        volt::SheetPort{net, "VIN_DOWN", volt::SheetPortKind::OffPage, volt::Point{25.0, 38.0},
+                        volt::SchematicOrientation::Down});
     [[maybe_unused]] const auto field = schematic.add_symbol_field(
         volt::SheetId{0},
         volt::SymbolField{volt::SymbolInstanceId{0}, "value", "10k", volt::Point{40.0, 32.0}});
@@ -182,6 +189,10 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
           std::string::npos);
     CHECK(svg.find("<text class=\"sheet-port-label\" x=\"7.588\" y=\"0.9\" "
                    "transform=\"rotate(-180 7.588 0.9)\">VIN_LEFT</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"sheet-port-label\" x=\"6.216\" y=\"0.9\" "
+                   "transform=\"rotate(-270 6.216 0.9)\">VIN_UP</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"sheet-port-label\" x=\"7.588\" y=\"0.9\" "
+                   "transform=\"rotate(-90 7.588 0.9)\">VIN_DOWN</text>") != std::string::npos);
     CHECK(svg.find(">VIN</text>") != std::string::npos);
     CHECK(svg.find("<text class=\"symbol-field\" data-symbol-instance=\"symbol_instance:0\" "
                    "data-field=\"value\" x=\"40\" y=\"32\"") != std::string::npos);

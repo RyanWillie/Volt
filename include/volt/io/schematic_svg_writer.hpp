@@ -43,7 +43,12 @@ inline constexpr double title_block_width = 82.0;
 inline constexpr double title_block_label_width = 22.0;
 inline constexpr double title_block_row_height = 6.0;
 
-/** Production schematic rendering scale: page chrome stays quiet, circuit marks stay primary. */
+/** Production schematic rendering scale: page chrome stays quiet, circuit marks stay primary.
+ *
+ * Values are tuned from dense schematic visual inspection so page chrome is lighter than circuit
+ * content, tags are lighter than wires and symbols, and labels stay readable without becoming the
+ * dominant marks on the sheet.
+ */
 struct SchematicSvgVisualScale {
     /** Outer sheet border stroke width. */
     double sheet_border_stroke_width = 0.45;
@@ -96,6 +101,7 @@ inline constexpr double sheet_port_half_height = 2.4;
 inline constexpr double sheet_port_min_body_length = 7.0;
 inline constexpr double sheet_port_tip_length = 3.2;
 inline constexpr double sheet_port_label_padding = 2.1;
+/** Deterministic average sans-serif character width used instead of browser font metrics. */
 inline constexpr double sheet_port_text_width_factor = 0.56;
 inline constexpr double sheet_port_label_baseline = 0.9;
 

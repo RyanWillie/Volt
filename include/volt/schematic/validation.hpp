@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -26,6 +27,12 @@ inline constexpr double title_block_width = 82.0;
 inline constexpr double title_block_row_height = 6.0;
 inline constexpr double conservative_text_character_width = 3.0;
 inline constexpr double conservative_text_height = 6.0;
+inline constexpr double sheet_port_rendered_half_height = 2.4;
+inline constexpr double sheet_port_rendered_min_body_length = 7.0;
+inline constexpr double sheet_port_rendered_tip_length = 3.2;
+inline constexpr double sheet_port_rendered_label_padding = 2.1;
+inline constexpr double sheet_port_rendered_label_font_size = 2.45;
+inline constexpr double sheet_port_rendered_text_width_factor = 0.56;
 
 /** Conservative sheet-space bounds used by schematic readability diagnostics. */
 struct SchematicBounds {
@@ -358,8 +365,20 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
     return transform_rect_bounds(-4.0, -4.0, 4.0, 4.0, marker.position(), marker.orientation());
 }
 
+[[nodiscard]] inline double sheet_port_rendered_body_length(std::string_view label) {
+    const auto label_width = static_cast<double>(label.size()) *
+                             sheet_port_rendered_label_font_size *
+                             sheet_port_rendered_text_width_factor;
+    return std::max(sheet_port_rendered_min_body_length,
+                    label_width + (sheet_port_rendered_label_padding * 2.0));
+}
+
 [[nodiscard]] inline SchematicBounds sheet_port_bounds(const SheetPort &port) {
-    return transform_rect_bounds(0.0, -6.0, 22.0, 6.0, port.position(), port.orientation());
+    const auto max_x =
+        sheet_port_rendered_body_length(port.name()) + sheet_port_rendered_tip_length;
+    return transform_rect_bounds(0.0, -sheet_port_rendered_half_height, max_x,
+                                 sheet_port_rendered_half_height, port.position(),
+                                 port.orientation());
 }
 
 inline void add_readability_diagnostic(DiagnosticReport &report, Severity severity,
