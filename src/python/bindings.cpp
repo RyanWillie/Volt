@@ -1471,7 +1471,8 @@ class PyCircuit {
 
     [[nodiscard]] std::size_t place_schematic_symbol(std::size_t sheet, std::size_t component,
                                                      const std::string &symbol, double x, double y,
-                                                     const std::string &orientation) {
+                                                     const std::string &orientation,
+                                                     std::optional<std::size_t> authored_region) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
@@ -1485,9 +1486,9 @@ class PyCircuit {
         const auto symbol_definition = ensure_schematic_symbol(symbol);
         return projection
             .place_symbol(sheet_handle,
-                          volt::SymbolInstance{symbol_definition, component_handle,
-                                               volt::Point{x, y},
-                                               schematic_orientation_from_string(orientation)})
+                          volt::SymbolInstance{
+                              symbol_definition, component_handle, volt::Point{x, y},
+                              schematic_orientation_from_string(orientation), authored_region})
             .index();
     }
 
@@ -1534,10 +1535,9 @@ class PyCircuit {
         return result;
     }
 
-    [[nodiscard]] std::size_t
-    add_schematic_wire(std::size_t sheet, std::size_t net,
-                       const std::vector<std::pair<double, double>> &points,
-                       const std::string &route_intent) {
+    [[nodiscard]] std::size_t add_schematic_wire(
+        std::size_t sheet, std::size_t net, const std::vector<std::pair<double, double>> &points,
+        const std::string &route_intent, std::optional<std::size_t> authored_region) {
         auto wire_points = std::vector<volt::Point>{};
         wire_points.reserve(points.size());
         for (const auto &[x, y] : points) {
@@ -1548,13 +1548,15 @@ class PyCircuit {
 
         auto &projection = schematic_projection();
         return projection
-            .add_wire_run(sheet_id(sheet), volt::WireRun{net_id(net), std::move(wire_points),
-                                                         route_intent_from_string(route_intent)})
+            .add_wire_run(sheet_id(sheet),
+                          volt::WireRun{net_id(net), std::move(wire_points),
+                                        route_intent_from_string(route_intent), authored_region})
             .index();
     }
 
     [[nodiscard]] std::size_t add_schematic_net_label(std::size_t sheet, std::size_t net, double x,
-                                                      double y, const std::string &orientation) {
+                                                      double y, const std::string &orientation,
+                                                      std::optional<std::size_t> authored_region) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
@@ -1562,40 +1564,44 @@ class PyCircuit {
         return projection
             .add_net_label(sheet_id(sheet),
                            volt::NetLabel{net_id(net), volt::Point{x, y},
-                                          schematic_orientation_from_string(orientation)})
+                                          schematic_orientation_from_string(orientation),
+                                          authored_region})
             .index();
     }
 
     [[nodiscard]] std::size_t add_schematic_junction(std::size_t sheet, std::size_t net, double x,
-                                                     double y) {
+                                                     double y,
+                                                     std::optional<std::size_t> authored_region) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
         auto &projection = schematic_projection();
         return projection
-            .add_junction(sheet_id(sheet), volt::Junction{net_id(net), volt::Point{x, y}})
+            .add_junction(sheet_id(sheet),
+                          volt::Junction{net_id(net), volt::Point{x, y}, authored_region})
             .index();
     }
 
     [[nodiscard]] std::size_t add_schematic_power_port(std::size_t sheet, std::size_t net,
                                                        const std::string &kind, double x, double y,
-                                                       const std::string &orientation) {
+                                                       const std::string &orientation,
+                                                       std::optional<std::size_t> authored_region) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
         auto &projection = schematic_projection();
         return projection
-            .add_power_port(sheet_id(sheet),
-                            volt::PowerPort{net_id(net), power_port_kind_from_string(kind),
-                                            volt::Point{x, y},
-                                            schematic_orientation_from_string(orientation)})
+            .add_power_port(
+                sheet_id(sheet),
+                volt::PowerPort{net_id(net), power_port_kind_from_string(kind), volt::Point{x, y},
+                                schematic_orientation_from_string(orientation), authored_region})
             .index();
     }
 
-    [[nodiscard]] std::size_t add_schematic_no_connect_marker(std::size_t sheet, std::size_t pin,
-                                                              double x, double y,
-                                                              const std::string &orientation,
-                                                              const std::string &reason) {
+    [[nodiscard]] std::size_t
+    add_schematic_no_connect_marker(std::size_t sheet, std::size_t pin, double x, double y,
+                                    const std::string &orientation, const std::string &reason,
+                                    std::optional<std::size_t> authored_region) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
@@ -1604,14 +1610,16 @@ class PyCircuit {
             .add_no_connect_marker(
                 sheet_id(sheet),
                 volt::NoConnectMarker{pin_id(pin), volt::Point{x, y},
-                                      schematic_orientation_from_string(orientation), reason})
+                                      schematic_orientation_from_string(orientation), reason,
+                                      authored_region})
             .index();
     }
 
     [[nodiscard]] std::size_t add_schematic_sheet_port(std::size_t sheet, std::size_t net,
                                                        const std::string &name,
                                                        const std::string &kind, double x, double y,
-                                                       const std::string &orientation) {
+                                                       const std::string &orientation,
+                                                       std::optional<std::size_t> authored_region) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
@@ -1620,23 +1628,25 @@ class PyCircuit {
             .add_sheet_port(sheet_id(sheet),
                             volt::SheetPort{net_id(net), name, sheet_port_kind_from_string(kind),
                                             volt::Point{x, y},
-                                            schematic_orientation_from_string(orientation)})
+                                            schematic_orientation_from_string(orientation),
+                                            authored_region})
             .index();
     }
 
-    [[nodiscard]] std::size_t add_schematic_symbol_field(std::size_t sheet, std::size_t instance,
-                                                         const std::string &name,
-                                                         const std::string &value, double x,
-                                                         double y, const std::string &orientation) {
+    [[nodiscard]] std::size_t
+    add_schematic_symbol_field(std::size_t sheet, std::size_t instance, const std::string &name,
+                               const std::string &value, double x, double y,
+                               const std::string &orientation,
+                               std::optional<std::size_t> authored_region) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
         auto &projection = schematic_projection();
         return projection
-            .add_symbol_field(sheet_id(sheet),
-                              volt::SymbolField{volt::SymbolInstanceId{instance}, name, value,
-                                                volt::Point{x, y},
-                                                schematic_orientation_from_string(orientation)})
+            .add_symbol_field(
+                sheet_id(sheet),
+                volt::SymbolField{volt::SymbolInstanceId{instance}, name, value, volt::Point{x, y},
+                                  schematic_orientation_from_string(orientation), authored_region})
             .index();
     }
 
@@ -1684,6 +1694,10 @@ class PyCircuit {
 
     [[nodiscard]] py::list validate_schematic() {
         return diagnostics_to_list(volt::validate_schematic_readiness(schematic_projection()));
+    }
+
+    [[nodiscard]] py::list validate_schematic_readability() {
+        return diagnostics_to_list(volt::validate_schematic_readability(schematic_projection()));
     }
 
     [[nodiscard]] py::list validate_for_pcb() const {
@@ -1837,7 +1851,7 @@ PYBIND11_MODULE(_volt, module) {
         .def("register_schematic_symbol", &PyCircuit::register_schematic_symbol, py::arg("symbol"))
         .def("place_schematic_symbol", &PyCircuit::place_schematic_symbol, py::arg("sheet"),
              py::arg("component"), py::arg("symbol"), py::arg("x"), py::arg("y"),
-             py::arg("orientation"))
+             py::arg("orientation"), py::arg("authored_region") = std::nullopt)
         .def("schematic_symbol_orientation", &PyCircuit::schematic_symbol_orientation,
              py::arg("instance"))
         .def("schematic_symbol_pin_anchor", &PyCircuit::schematic_symbol_pin_anchor,
@@ -1845,22 +1859,24 @@ PYBIND11_MODULE(_volt, module) {
         .def("schematic_symbol_pin_refs", &PyCircuit::schematic_symbol_pin_refs,
              py::arg("instance"))
         .def("add_schematic_wire", &PyCircuit::add_schematic_wire, py::arg("sheet"), py::arg("net"),
-             py::arg("points"), py::arg("route_intent"))
+             py::arg("points"), py::arg("route_intent"), py::arg("authored_region") = std::nullopt)
         .def("add_schematic_net_label", &PyCircuit::add_schematic_net_label, py::arg("sheet"),
-             py::arg("net"), py::arg("x"), py::arg("y"), py::arg("orientation"))
+             py::arg("net"), py::arg("x"), py::arg("y"), py::arg("orientation"),
+             py::arg("authored_region") = std::nullopt)
         .def("add_schematic_junction", &PyCircuit::add_schematic_junction, py::arg("sheet"),
-             py::arg("net"), py::arg("x"), py::arg("y"))
+             py::arg("net"), py::arg("x"), py::arg("y"), py::arg("authored_region") = std::nullopt)
         .def("add_schematic_power_port", &PyCircuit::add_schematic_power_port, py::arg("sheet"),
-             py::arg("net"), py::arg("kind"), py::arg("x"), py::arg("y"), py::arg("orientation"))
+             py::arg("net"), py::arg("kind"), py::arg("x"), py::arg("y"), py::arg("orientation"),
+             py::arg("authored_region") = std::nullopt)
         .def("add_schematic_no_connect_marker", &PyCircuit::add_schematic_no_connect_marker,
              py::arg("sheet"), py::arg("pin"), py::arg("x"), py::arg("y"), py::arg("orientation"),
-             py::arg("reason") = "")
+             py::arg("reason") = "", py::arg("authored_region") = std::nullopt)
         .def("add_schematic_sheet_port", &PyCircuit::add_schematic_sheet_port, py::arg("sheet"),
              py::arg("net"), py::arg("name"), py::arg("kind"), py::arg("x"), py::arg("y"),
-             py::arg("orientation"))
+             py::arg("orientation"), py::arg("authored_region") = std::nullopt)
         .def("add_schematic_symbol_field", &PyCircuit::add_schematic_symbol_field, py::arg("sheet"),
              py::arg("instance"), py::arg("name"), py::arg("value"), py::arg("x"), py::arg("y"),
-             py::arg("orientation"))
+             py::arg("orientation"), py::arg("authored_region") = std::nullopt)
         .def("schematic_to_json", &PyCircuit::schematic_to_json)
         .def("schematic_to_svg", &PyCircuit::schematic_to_svg)
         .def("schematic_svg_pages", &PyCircuit::schematic_svg_pages)
@@ -1868,6 +1884,7 @@ PYBIND11_MODULE(_volt, module) {
         .def("schematic_sheet_names", &PyCircuit::schematic_sheet_names)
         .def("validate", &PyCircuit::validate)
         .def("validate_schematic", &PyCircuit::validate_schematic)
+        .def("validate_schematic_readability", &PyCircuit::validate_schematic_readability)
         .def("validate_for_pcb", &PyCircuit::validate_for_pcb)
         .def("to_json", &PyCircuit::to_json);
 }

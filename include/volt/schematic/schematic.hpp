@@ -464,9 +464,10 @@ class SymbolInstance {
   public:
     /** Construct a symbol instance over an existing logical component. */
     SymbolInstance(SymbolDefId symbol_definition, ComponentId component, Point position,
-                   SchematicOrientation orientation = SchematicOrientation::Right)
+                   SchematicOrientation orientation = SchematicOrientation::Right,
+                   std::optional<std::size_t> authored_region = std::nullopt)
         : symbol_definition_{symbol_definition}, component_{component}, position_{position},
-          orientation_{orientation} {}
+          orientation_{orientation}, authored_region_{authored_region} {}
 
     /** Return the reusable symbol definition used by this placement. */
     [[nodiscard]] SymbolDefId symbol_definition() const noexcept { return symbol_definition_; }
@@ -480,11 +481,17 @@ class SymbolInstance {
     /** Return the symbol orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
 
+    /** Return the sheet-local region this object was authored through, if any. */
+    [[nodiscard]] const std::optional<std::size_t> &authored_region() const noexcept {
+        return authored_region_;
+    }
+
   private:
     SymbolDefId symbol_definition_;
     ComponentId component_;
     Point position_;
     SchematicOrientation orientation_;
+    std::optional<std::size_t> authored_region_;
 };
 
 /** Authoring route intent retained on a drawn wire run. */
@@ -498,7 +505,13 @@ class WireRun {
   public:
     /** Construct a wire run over an existing logical net. */
     WireRun(NetId net, std::vector<Point> points, RouteIntent route_intent = RouteIntent::Direct)
-        : net_{net}, points_{std::move(points)}, route_intent_{route_intent} {
+        : WireRun{net, std::move(points), route_intent, std::nullopt} {}
+
+    /** Construct a wire run over an existing logical net with authored-region metadata. */
+    WireRun(NetId net, std::vector<Point> points, RouteIntent route_intent,
+            std::optional<std::size_t> authored_region)
+        : net_{net}, points_{std::move(points)}, route_intent_{route_intent},
+          authored_region_{authored_region} {
         if (points_.size() < 2U) {
             throw std::invalid_argument{"Schematic wire run must contain at least two points"};
         }
@@ -513,10 +526,16 @@ class WireRun {
     /** Return the authoring route intent for this wire run. */
     [[nodiscard]] RouteIntent route_intent() const noexcept { return route_intent_; }
 
+    /** Return the sheet-local region this object was authored through, if any. */
+    [[nodiscard]] const std::optional<std::size_t> &authored_region() const noexcept {
+        return authored_region_;
+    }
+
   private:
     NetId net_;
     std::vector<Point> points_;
     RouteIntent route_intent_;
+    std::optional<std::size_t> authored_region_;
 };
 
 /** A schematic label whose visible text is derived from a canonical logical net name. */
@@ -524,8 +543,10 @@ class NetLabel {
   public:
     /** Construct a net label over an existing logical net. */
     NetLabel(NetId net, Point position,
-             SchematicOrientation orientation = SchematicOrientation::Right)
-        : net_{net}, position_{position}, orientation_{orientation} {}
+             SchematicOrientation orientation = SchematicOrientation::Right,
+             std::optional<std::size_t> authored_region = std::nullopt)
+        : net_{net}, position_{position}, orientation_{orientation},
+          authored_region_{authored_region} {}
 
     /** Return the canonical logical net named by this label. */
     [[nodiscard]] NetId net() const noexcept { return net_; }
@@ -536,17 +557,24 @@ class NetLabel {
     /** Return the label orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
 
+    /** Return the sheet-local region this object was authored through, if any. */
+    [[nodiscard]] const std::optional<std::size_t> &authored_region() const noexcept {
+        return authored_region_;
+    }
+
   private:
     NetId net_;
     Point position_;
     SchematicOrientation orientation_;
+    std::optional<std::size_t> authored_region_;
 };
 
 /** An explicit junction dot over an existing logical net. */
 class Junction {
   public:
     /** Construct a junction over an existing logical net. */
-    Junction(NetId net, Point position) : net_{net}, position_{position} {}
+    Junction(NetId net, Point position, std::optional<std::size_t> authored_region = std::nullopt)
+        : net_{net}, position_{position}, authored_region_{authored_region} {}
 
     /** Return the canonical logical net joined by this junction. */
     [[nodiscard]] NetId net() const noexcept { return net_; }
@@ -554,9 +582,15 @@ class Junction {
     /** Return the junction position. */
     [[nodiscard]] Point position() const noexcept { return position_; }
 
+    /** Return the sheet-local region this object was authored through, if any. */
+    [[nodiscard]] const std::optional<std::size_t> &authored_region() const noexcept {
+        return authored_region_;
+    }
+
   private:
     NetId net_;
     Point position_;
+    std::optional<std::size_t> authored_region_;
 };
 
 /** Power-port visual style. */
@@ -570,8 +604,10 @@ class PowerPort {
   public:
     /** Construct a power or ground port over an existing logical net. */
     PowerPort(NetId net, PowerPortKind kind, Point position,
-              SchematicOrientation orientation = SchematicOrientation::Up)
-        : net_{net}, kind_{kind}, position_{position}, orientation_{orientation} {}
+              SchematicOrientation orientation = SchematicOrientation::Up,
+              std::optional<std::size_t> authored_region = std::nullopt)
+        : net_{net}, kind_{kind}, position_{position}, orientation_{orientation},
+          authored_region_{authored_region} {}
 
     /** Return the canonical logical net presented by this port. */
     [[nodiscard]] NetId net() const noexcept { return net_; }
@@ -585,11 +621,17 @@ class PowerPort {
     /** Return the port orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
 
+    /** Return the sheet-local region this object was authored through, if any. */
+    [[nodiscard]] const std::optional<std::size_t> &authored_region() const noexcept {
+        return authored_region_;
+    }
+
   private:
     NetId net_;
     PowerPortKind kind_;
     Point position_;
     SchematicOrientation orientation_;
+    std::optional<std::size_t> authored_region_;
 };
 
 /** A schematic no-connect marker tied to an existing concrete pin. */
@@ -598,8 +640,10 @@ class NoConnectMarker {
     /** Construct a no-connect marker for an existing concrete pin. */
     NoConnectMarker(PinId pin, Point position,
                     SchematicOrientation orientation = SchematicOrientation::Right,
-                    std::string reason = {})
-        : pin_{pin}, position_{position}, orientation_{orientation}, reason_{std::move(reason)} {}
+                    std::string reason = {},
+                    std::optional<std::size_t> authored_region = std::nullopt)
+        : pin_{pin}, position_{position}, orientation_{orientation}, reason_{std::move(reason)},
+          authored_region_{authored_region} {}
 
     /** Return the concrete pin marked as intentionally open. */
     [[nodiscard]] PinId pin() const noexcept { return pin_; }
@@ -613,11 +657,17 @@ class NoConnectMarker {
     /** Return the optional author-supplied reason for the no-connect marker. */
     [[nodiscard]] const std::string &reason() const noexcept { return reason_; }
 
+    /** Return the sheet-local region this object was authored through, if any. */
+    [[nodiscard]] const std::optional<std::size_t> &authored_region() const noexcept {
+        return authored_region_;
+    }
+
   private:
     PinId pin_;
     Point position_;
     SchematicOrientation orientation_;
     std::string reason_;
+    std::optional<std::size_t> authored_region_;
 };
 
 /** Sheet-port visual and authoring direction. */
@@ -633,9 +683,10 @@ class SheetPort {
   public:
     /** Construct a sheet/off-page port over an existing logical net. */
     SheetPort(NetId net, std::string name, SheetPortKind kind, Point position,
-              SchematicOrientation orientation = SchematicOrientation::Right)
+              SchematicOrientation orientation = SchematicOrientation::Right,
+              std::optional<std::size_t> authored_region = std::nullopt)
         : net_{net}, name_{std::move(name)}, kind_{kind}, position_{position},
-          orientation_{orientation} {
+          orientation_{orientation}, authored_region_{authored_region} {
         if (name_.empty()) {
             throw std::invalid_argument{"Sheet port name must not be empty"};
         }
@@ -656,12 +707,18 @@ class SheetPort {
     /** Return the port orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
 
+    /** Return the sheet-local region this object was authored through, if any. */
+    [[nodiscard]] const std::optional<std::size_t> &authored_region() const noexcept {
+        return authored_region_;
+    }
+
   private:
     NetId net_;
     std::string name_;
     SheetPortKind kind_;
     Point position_;
     SchematicOrientation orientation_;
+    std::optional<std::size_t> authored_region_;
 };
 
 /** A placed symbol field owned by an existing symbol instance. */
@@ -669,9 +726,10 @@ class SymbolField {
   public:
     /** Construct a symbol field for an existing symbol instance. */
     SymbolField(SymbolInstanceId symbol_instance, std::string name, std::string value,
-                Point position, SchematicOrientation orientation = SchematicOrientation::Right)
+                Point position, SchematicOrientation orientation = SchematicOrientation::Right,
+                std::optional<std::size_t> authored_region = std::nullopt)
         : symbol_instance_{symbol_instance}, name_{std::move(name)}, value_{std::move(value)},
-          position_{position}, orientation_{orientation} {
+          position_{position}, orientation_{orientation}, authored_region_{authored_region} {
         if (name_.empty()) {
             throw std::invalid_argument{"Symbol field name must not be empty"};
         }
@@ -695,12 +753,18 @@ class SymbolField {
     /** Return the field orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
 
+    /** Return the sheet-local region this object was authored through, if any. */
+    [[nodiscard]] const std::optional<std::size_t> &authored_region() const noexcept {
+        return authored_region_;
+    }
+
   private:
     SymbolInstanceId symbol_instance_;
     std::string name_;
     std::string value_;
     Point position_;
     SchematicOrientation orientation_;
+    std::optional<std::size_t> authored_region_;
 };
 
 /** Kernel-owned schematic projection over a logical circuit. */
@@ -762,6 +826,7 @@ class Schematic {
         require_symbol_definition(instance.symbol_definition());
         static_cast<void>(circuit_.component(instance.component()));
         require_symbol_matches_component(instance.symbol_definition(), instance.component());
+        require_authored_region(sheet, instance.authored_region());
 
         const auto id = symbol_instances_.insert(std::move(instance));
         sheets_.get(sheet).add_symbol_instance(id);
@@ -772,6 +837,7 @@ class Schematic {
     [[nodiscard]] JunctionId add_junction(SheetId sheet, Junction junction) {
         require_sheet(sheet);
         static_cast<void>(circuit_.net(junction.net()));
+        require_authored_region(sheet, junction.authored_region());
         require_junction_does_not_touch_different_net(sheet, junction);
 
         const auto id = junctions_.insert(std::move(junction));
@@ -783,6 +849,7 @@ class Schematic {
     [[nodiscard]] PowerPortId add_power_port(SheetId sheet, PowerPort port) {
         require_sheet(sheet);
         static_cast<void>(circuit_.net(port.net()));
+        require_authored_region(sheet, port.authored_region());
 
         const auto id = power_ports_.insert(std::move(port));
         sheets_.get(sheet).add_power_port(id);
@@ -793,6 +860,7 @@ class Schematic {
     [[nodiscard]] NoConnectMarkerId add_no_connect_marker(SheetId sheet, NoConnectMarker marker) {
         require_sheet(sheet);
         static_cast<void>(circuit_.pin(marker.pin()));
+        require_authored_region(sheet, marker.authored_region());
 
         const auto id = no_connect_markers_.insert(std::move(marker));
         sheets_.get(sheet).add_no_connect_marker(id);
@@ -803,6 +871,7 @@ class Schematic {
     [[nodiscard]] SheetPortId add_sheet_port(SheetId sheet, SheetPort port) {
         require_sheet(sheet);
         static_cast<void>(circuit_.net(port.net()));
+        require_authored_region(sheet, port.authored_region());
 
         const auto id = sheet_ports_.insert(std::move(port));
         sheets_.get(sheet).add_sheet_port(id);
@@ -813,6 +882,7 @@ class Schematic {
     [[nodiscard]] SymbolFieldId add_symbol_field(SheetId sheet, SymbolField field) {
         require_sheet(sheet);
         require_symbol_instance(field.symbol_instance());
+        require_authored_region(sheet, field.authored_region());
         if (!sheet_contains_symbol_instance(sheet, field.symbol_instance())) {
             throw std::logic_error{"Symbol field must be placed on the symbol instance sheet"};
         }
@@ -826,6 +896,7 @@ class Schematic {
     [[nodiscard]] WireRunId add_wire_run(SheetId sheet, WireRun wire) {
         require_sheet(sheet);
         static_cast<void>(circuit_.net(wire.net()));
+        require_authored_region(sheet, wire.authored_region());
         require_wire_run_does_not_collide_with_different_net(sheet, wire);
 
         const auto id = wire_runs_.insert(std::move(wire));
@@ -837,6 +908,7 @@ class Schematic {
     [[nodiscard]] NetLabelId add_net_label(SheetId sheet, NetLabel label) {
         require_sheet(sheet);
         static_cast<void>(circuit_.net(label.net()));
+        require_authored_region(sheet, label.authored_region());
 
         const auto id = net_labels_.insert(std::move(label));
         sheets_.get(sheet).add_net_label(id);
@@ -974,6 +1046,12 @@ class Schematic {
     void require_symbol_instance(SymbolInstanceId instance) const {
         if (!symbol_instances_.contains(instance)) {
             throw std::out_of_range{"Symbol instance ID does not belong to this schematic"};
+        }
+    }
+
+    void require_authored_region(SheetId sheet, const std::optional<std::size_t> &region) const {
+        if (region.has_value() && region.value() >= sheets_.get(sheet).regions().size()) {
+            throw std::out_of_range{"Authored schematic region does not belong to this sheet"};
         }
     }
 

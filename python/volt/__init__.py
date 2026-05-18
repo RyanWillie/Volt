@@ -1022,11 +1022,13 @@ class SchematicSymbol:
         index: int,
         component: Component | None = None,
         orientation: str | None = None,
+        authored_region: int | None = None,
     ):
         self._schematic = schematic
         self._index = index
         self._component = component
         self._orientation = orientation
+        self._authored_region = authored_region
 
     @property
     def index(self) -> int:
@@ -1206,6 +1208,7 @@ class PlacedSchematicElement:
             value=text,
             at=at,
             orient=self.orientation if orient is None else orient,
+            _authored_region=self.symbol._authored_region,
         )
         return self
 
@@ -1334,11 +1337,19 @@ class SchematicWireBuilder:
     ordinary schematic wire points on the same logical net.
     """
 
-    def __init__(self, schematic: Schematic, net: Net, *, drawing=None):
+    def __init__(
+        self,
+        schematic: Schematic,
+        net: Net,
+        *,
+        drawing=None,
+        authored_region: int | None = None,
+    ):
         self._schematic = schematic
         self._net = net
         self._points: list[tuple[float, float]] = []
         self._drawing = drawing
+        self._authored_region = authored_region
         self._start_here = drawing.here if drawing is not None else None
         self._start_direction = drawing.direction if drawing is not None else None
         self._wire: SchematicWire | None = None
@@ -1527,6 +1538,7 @@ class SchematicWireBuilder:
                     self._net,
                     wire_points,
                     route_intent=route_intent,
+                    _authored_region=self._authored_region,
                 )
             except Exception:
                 self._clear_pending()
@@ -1571,9 +1583,11 @@ class SchematicDrawing:
         direction: str = "Right",
         unit: float = 20,
         coordinate_origin: tuple[float, float] = (0, 0),
+        authored_region: int | None = None,
     ):
         self._schematic = schematic
         self._coordinate_origin = _schematic_point_tuple(coordinate_origin)
+        self._authored_region = authored_region
         self._here = self._anchor_at(at)
         self._direction = _orientation(direction)
         self._unit = _coordinate(unit)
@@ -1706,6 +1720,7 @@ class SchematicDrawing:
             orient=self._direction if orient is None else orient,
             symbol=symbol,
             variant=variant,
+            _authored_region=self._authored_region,
         )
         return PlacedSchematicElement(placed)
 
@@ -1725,14 +1740,16 @@ class SchematicDrawing:
             net=net,
             shape=shape,
             k=k,
+            _authored_region=self._authored_region,
         )
 
     def wire(self, net: Net) -> SchematicWireBuilder:
         self._flush_pending()
-        builder = self._schematic.wire(net)
+        builder = self._schematic.wire(net, _authored_region=self._authored_region)
         builder._drawing = self
         builder._start_here = self._here
         builder._start_direction = self._direction
+        builder._authored_region = self._authored_region
         builder.from_(self._here)
         self._pending = builder
         return builder
@@ -1750,7 +1767,11 @@ class SchematicDrawing:
     ) -> SchematicPort:
         self._flush_pending()
         return self._schematic.power(
-            name, at=self._here if at is None else self._point_arg(at), net=net, orient=orient
+            name,
+            at=self._here if at is None else self._point_arg(at),
+            net=net,
+            orient=orient,
+            _authored_region=self._authored_region,
         )
 
     def ground(
@@ -1762,7 +1783,10 @@ class SchematicDrawing:
     ) -> SchematicPort:
         self._flush_pending()
         return self._schematic.ground(
-            at=self._here if at is None else self._point_arg(at), net=net, orient=orient
+            at=self._here if at is None else self._point_arg(at),
+            net=net,
+            orient=orient,
+            _authored_region=self._authored_region,
         )
 
     def net_label(
@@ -1777,6 +1801,7 @@ class SchematicDrawing:
             name_or_net,
             at=self._here if at is None else self._point_arg(at),
             orient=orient,
+            _authored_region=self._authored_region,
         )
 
     def junction(
@@ -1786,7 +1811,11 @@ class SchematicDrawing:
         at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
     ) -> SchematicJunction:
         self._flush_pending()
-        return self._schematic.junction(net, at=self._here if at is None else self._point_arg(at))
+        return self._schematic.junction(
+            net,
+            at=self._here if at is None else self._point_arg(at),
+            _authored_region=self._authored_region,
+        )
 
     def no_connect(
         self,
@@ -1796,7 +1825,12 @@ class SchematicDrawing:
         reason: str | None = None,
     ) -> SchematicNoConnect:
         self._flush_pending()
-        return self._schematic.no_connect(anchor, orient=orient, reason=reason)
+        return self._schematic.no_connect(
+            anchor,
+            orient=orient,
+            reason=reason,
+            _authored_region=self._authored_region,
+        )
 
     def sheet_port(
         self,
@@ -1814,6 +1848,7 @@ class SchematicDrawing:
             net=net,
             kind=kind,
             orient=orient,
+            _authored_region=self._authored_region,
         )
 
     def off_page(
@@ -1826,7 +1861,11 @@ class SchematicDrawing:
     ) -> SchematicPort:
         self._flush_pending()
         return self._schematic.off_page(
-            name, at=self._here if at is None else self._point_arg(at), net=net, orient=orient
+            name,
+            at=self._here if at is None else self._point_arg(at),
+            net=net,
+            orient=orient,
+            _authored_region=self._authored_region,
         )
 
     @contextmanager
@@ -2347,6 +2386,7 @@ class Schematic:
         orient: str = "Right",
         symbol: str | SchematicSymbolSpec | None = None,
         variant: str = "default",
+        _authored_region: int | None = None,
     ) -> SchematicSymbol:
         if not isinstance(component, Component):
             raise TypeError("Schematic placement expects a Component handle")
@@ -2376,9 +2416,9 @@ class Schematic:
             action="symbol placement",
         )
         instance = self._design._circuit.place_schematic_symbol(
-            self._sheet_index, component.index, symbol_name, x, y, orientation
+            self._sheet_index, component.index, symbol_name, x, y, orientation, _authored_region
         )
-        return SchematicSymbol(self, instance, component, orientation)
+        return SchematicSymbol(self, instance, component, orientation, _authored_region)
 
     def register_symbol(self, symbol: SchematicSymbolSpec) -> None:
         if not isinstance(symbol, SchematicSymbolSpec):
@@ -2389,6 +2429,8 @@ class Schematic:
         self,
         net: Net,
         points: Iterable[tuple[float, float] | SchematicAnchor | SchematicPort] | None = None,
+        *,
+        _authored_region: int | None = None,
     ) -> SchematicWire | SchematicWireBuilder:
         if not isinstance(net, Net):
             raise TypeError("Schematic wires expect a Net handle")
@@ -2399,9 +2441,11 @@ class Schematic:
                 )
             )
         if points is None:
-            return SchematicWireBuilder(self, net)
+            return SchematicWireBuilder(self, net, authored_region=_authored_region)
 
-        return self._add_wire(net, points, route_intent="Direct")
+        return self._add_wire(
+            net, points, route_intent="Direct", _authored_region=_authored_region
+        )
 
     def connect(
         self,
@@ -2411,6 +2455,7 @@ class Schematic:
         net: Net | None = None,
         shape: str | None = None,
         k: float | None = None,
+        _authored_region: int | None = None,
     ) -> SchematicWire:
         resolved_net = _resolve_schematic_connection_net(
             self._design,
@@ -2419,7 +2464,7 @@ class Schematic:
             net,
             schematic=self,
         )
-        builder = self.wire(resolved_net).from_(start).to(end)
+        builder = self.wire(resolved_net, _authored_region=_authored_region).from_(start).to(end)
         if shape is None:
             return builder.orthogonal()
         return builder.shape(shape, k=k)
@@ -2430,6 +2475,7 @@ class Schematic:
         points: Iterable[tuple[float, float]],
         *,
         route_intent: str,
+        _authored_region: int | None = None,
     ) -> SchematicWire:
         wire_points = tuple(points)
         if len(wire_points) < 2:
@@ -2447,7 +2493,7 @@ class Schematic:
             )
 
         wire = self._design._circuit.add_schematic_wire(
-            self._sheet_index, net.index, converted, route_intent
+            self._sheet_index, net.index, converted, route_intent, _authored_region
         )
         return SchematicWire(self, wire)
 
@@ -2457,6 +2503,7 @@ class Schematic:
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
+        _authored_region: int | None = None,
     ) -> SchematicNetLabel:
         if not isinstance(net, Net):
             raise TypeError("Schematic labels expect a Net handle")
@@ -2473,7 +2520,7 @@ class Schematic:
         orientation = _orientation(orient)
 
         label = self._design._circuit.add_schematic_net_label(
-            self._sheet_index, net.index, x, y, orientation
+            self._sheet_index, net.index, x, y, orientation, _authored_region
         )
         return SchematicNetLabel(self, label, orientation)
 
@@ -2483,12 +2530,13 @@ class Schematic:
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
+        _authored_region: int | None = None,
     ) -> SchematicNetLabel:
         try:
             net = _resolve_schematic_net_label(self._design, name_or_net)
         except ValueError as error:
             _raise_cross_design_with_context(error, self, "net label")
-        return self.label(net, at=at, orient=orient)
+        return self.label(net, at=at, orient=orient, _authored_region=_authored_region)
 
     def _add_symbol_field(
         self,
@@ -2498,6 +2546,7 @@ class Schematic:
         value: str,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
+        _authored_region: int | None = None,
     ) -> SchematicSymbolField:
         if not isinstance(symbol, SchematicSymbol):
             raise TypeError("Schematic symbol fields expect a placed symbol handle")
@@ -2512,7 +2561,7 @@ class Schematic:
         orientation = _orientation(orient)
 
         field = self._design._circuit.add_schematic_symbol_field(
-            self._sheet_index, symbol.index, name, value, x, y, orientation
+            self._sheet_index, symbol.index, name, value, x, y, orientation, _authored_region
         )
         return SchematicSymbolField(
             self,
@@ -2525,7 +2574,11 @@ class Schematic:
         )
 
     def junction(
-        self, net: Net, *, at: tuple[float, float] | SchematicAnchor | SchematicPort
+        self,
+        net: Net,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        _authored_region: int | None = None,
     ) -> SchematicJunction:
         if not isinstance(net, Net):
             raise TypeError("Schematic junctions expect a Net handle")
@@ -2540,7 +2593,7 @@ class Schematic:
             action="junction",
         )
         junction = self._design._circuit.add_schematic_junction(
-            self._sheet_index, net.index, x, y
+            self._sheet_index, net.index, x, y, _authored_region
         )
         return SchematicJunction(self, junction)
 
@@ -2551,6 +2604,7 @@ class Schematic:
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         net: Net | None = None,
         orient: str = "Up",
+        _authored_region: int | None = None,
     ) -> SchematicPort:
         net = _resolve_schematic_port_net(
             self._design,
@@ -2559,7 +2613,14 @@ class Schematic:
             schematic=self,
             action="power port",
         )
-        return self._power_port(name, net=net, at=at, orient=orient, kind="Power")
+        return self._power_port(
+            name,
+            net=net,
+            at=at,
+            orient=orient,
+            kind="Power",
+            _authored_region=_authored_region,
+        )
 
     def ground(
         self,
@@ -2567,6 +2628,7 @@ class Schematic:
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         net: Net | None = None,
         orient: str = "Down",
+        _authored_region: int | None = None,
     ) -> SchematicPort:
         net = _resolve_schematic_port_net(
             self._design,
@@ -2575,7 +2637,14 @@ class Schematic:
             schematic=self,
             action="ground port",
         )
-        return self._power_port(net.name, net=net, at=at, orient=orient, kind="Ground")
+        return self._power_port(
+            net.name,
+            net=net,
+            at=at,
+            orient=orient,
+            kind="Ground",
+            _authored_region=_authored_region,
+        )
 
     def _power_port(
         self,
@@ -2585,6 +2654,7 @@ class Schematic:
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str,
         kind: str,
+        _authored_region: int | None = None,
     ) -> SchematicPort:
         if not isinstance(name, str):
             raise TypeError("Schematic power port names must be strings")
@@ -2606,7 +2676,7 @@ class Schematic:
         )
         orientation = _orientation(orient)
         port = self._design._circuit.add_schematic_power_port(
-            self._sheet_index, net.index, kind, x, y, orientation
+            self._sheet_index, net.index, kind, x, y, orientation, _authored_region
         )
         return SchematicPort(
             self,
@@ -2624,6 +2694,7 @@ class Schematic:
         *,
         orient: str = "Right",
         reason: str | None = None,
+        _authored_region: int | None = None,
     ) -> SchematicNoConnect:
         if not isinstance(pin, SchematicPinAnchor):
             raise TypeError("Schematic no-connect markers expect a placed pin anchor")
@@ -2637,7 +2708,13 @@ class Schematic:
         )
         orientation = _orientation(orient)
         marker = self._design._circuit.add_schematic_no_connect_marker(
-            self._sheet_index, pin.pin.index, pin.x, pin.y, orientation, reason or ""
+            self._sheet_index,
+            pin.pin.index,
+            pin.x,
+            pin.y,
+            orientation,
+            reason or "",
+            _authored_region,
         )
         return SchematicNoConnect(self, marker, pin.pin)
 
@@ -2649,6 +2726,7 @@ class Schematic:
         net: Net | None = None,
         kind: str = "Bidirectional",
         orient: str = "Right",
+        _authored_region: int | None = None,
     ) -> SchematicPort:
         if not isinstance(name, str):
             raise TypeError("Schematic sheet port names must be strings")
@@ -2670,7 +2748,7 @@ class Schematic:
         orientation = _orientation(orient)
         port_kind = _sheet_port_kind(kind)
         port = self._design._circuit.add_schematic_sheet_port(
-            self._sheet_index, net.index, name, port_kind, x, y, orientation
+            self._sheet_index, net.index, name, port_kind, x, y, orientation, _authored_region
         )
         return SchematicPort(
             self,
@@ -2689,8 +2767,16 @@ class Schematic:
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         net: Net | None = None,
         orient: str = "Right",
+        _authored_region: int | None = None,
     ) -> SchematicPort:
-        return self.sheet_port(name, at=at, net=net, kind="OffPage", orient=orient)
+        return self.sheet_port(
+            name,
+            at=at,
+            net=net,
+            kind="OffPage",
+            orient=orient,
+            _authored_region=_authored_region,
+        )
 
     def to_json(self) -> str:
         return self._design._circuit.schematic_to_json()
@@ -2712,6 +2798,12 @@ class Schematic:
         return DiagnosticReport(
             _diagnostic_from_dict(item)
             for item in self._design._circuit.validate_schematic()
+        )
+
+    def validate_readability(self) -> DiagnosticReport:
+        return DiagnosticReport(
+            _diagnostic_from_dict(item)
+            for item in self._design._circuit.validate_schematic_readability()
         )
 
     def write_svg(self, path: str | Path) -> None:
@@ -2793,6 +2885,7 @@ class SchematicRegion:
             direction=direction,
             unit=unit,
             coordinate_origin=self.origin,
+            authored_region=self._index,
         )
 
     def place(
@@ -2810,6 +2903,7 @@ class SchematicRegion:
             orient=orient,
             symbol=symbol,
             variant=variant,
+            _authored_region=self._index,
         )
 
     def wire(
@@ -2817,7 +2911,11 @@ class SchematicRegion:
         net: Net,
         points: Iterable[tuple[float, float] | SchematicAnchor | SchematicPort],
     ) -> SchematicWire:
-        return self._sheet.wire(net, tuple(self._local_point(point) for point in points))
+        return self._sheet.wire(
+            net,
+            tuple(self._local_point(point) for point in points),
+            _authored_region=self._index,
+        )
 
     def label(
         self,
@@ -2826,7 +2924,9 @@ class SchematicRegion:
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
     ) -> SchematicNetLabel:
-        return self._sheet.label(net, at=self._local_point(at), orient=orient)
+        return self._sheet.label(
+            net, at=self._local_point(at), orient=orient, _authored_region=self._index
+        )
 
     def net_label(
         self,
@@ -2835,7 +2935,12 @@ class SchematicRegion:
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
     ) -> SchematicNetLabel:
-        return self._sheet.net_label(name_or_net, at=self._local_point(at), orient=orient)
+        return self._sheet.net_label(
+            name_or_net,
+            at=self._local_point(at),
+            orient=orient,
+            _authored_region=self._index,
+        )
 
     def junction(
         self,
@@ -2843,7 +2948,9 @@ class SchematicRegion:
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
     ) -> SchematicJunction:
-        return self._sheet.junction(net, at=self._local_point(at))
+        return self._sheet.junction(
+            net, at=self._local_point(at), _authored_region=self._index
+        )
 
     def power(
         self,
@@ -2853,7 +2960,13 @@ class SchematicRegion:
         net: Net | None = None,
         orient: str = "Up",
     ) -> SchematicPort:
-        return self._sheet.power(name, at=self._local_point(at), net=net, orient=orient)
+        return self._sheet.power(
+            name,
+            at=self._local_point(at),
+            net=net,
+            orient=orient,
+            _authored_region=self._index,
+        )
 
     def ground(
         self,
@@ -2862,7 +2975,12 @@ class SchematicRegion:
         net: Net | None = None,
         orient: str = "Down",
     ) -> SchematicPort:
-        return self._sheet.ground(at=self._local_point(at), net=net, orient=orient)
+        return self._sheet.ground(
+            at=self._local_point(at),
+            net=net,
+            orient=orient,
+            _authored_region=self._index,
+        )
 
     def sheet_port(
         self,
@@ -2879,6 +2997,7 @@ class SchematicRegion:
             net=net,
             kind=kind,
             orient=orient,
+            _authored_region=self._index,
         )
 
     def off_page(
@@ -2889,7 +3008,27 @@ class SchematicRegion:
         net: Net | None = None,
         orient: str = "Right",
     ) -> SchematicPort:
-        return self._sheet.off_page(name, at=self._local_point(at), net=net, orient=orient)
+        return self._sheet.off_page(
+            name,
+            at=self._local_point(at),
+            net=net,
+            orient=orient,
+            _authored_region=self._index,
+        )
+
+    def no_connect(
+        self,
+        anchor: SchematicPinAnchor,
+        *,
+        orient: str = "Right",
+        reason: str | None = None,
+    ) -> SchematicNoConnect:
+        return self._sheet.no_connect(
+            anchor,
+            orient=orient,
+            reason=reason,
+            _authored_region=self._index,
+        )
 
     def _local_point(
         self, value: tuple[float, float] | SchematicAnchor | SchematicPort

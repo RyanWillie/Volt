@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -188,6 +189,13 @@ inline void write_sheet_region(std::ostream &out, const SheetRegion &region) {
     out << " }, \"style\": ";
     write_sheet_region_style(out, region.style());
     out << " }";
+}
+
+inline void write_authored_region(std::ostream &out, const Sheet &sheet,
+                                  const std::optional<std::size_t> &region) {
+    if (region.has_value()) {
+        out << ", \"authored_region\": " << json_string(sheet.region(region.value()).name());
+    }
 }
 
 inline void write_sheet_metadata(std::ostream &out, const SheetMetadata &metadata) {
@@ -500,8 +508,11 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << ", \"position\": ";
         detail::write_point(out, instance.position());
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(instance.orientation()))
-            << " }";
+            << detail::json_string(detail::schematic_orientation_name(instance.orientation()));
+        detail::write_authored_region(
+            out, schematic.sheet(detail::sheet_for_symbol_instance(schematic, id)),
+            instance.authored_region());
+        out << " }";
         if (index + 1 != schematic.symbol_instance_count()) {
             out << ',';
         }
@@ -524,7 +535,11 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             detail::write_point(out, wire.points()[point_index]);
         }
         out << "], \"route_intent\": "
-            << detail::json_string(detail::route_intent_name(wire.route_intent())) << " }";
+            << detail::json_string(detail::route_intent_name(wire.route_intent()));
+        detail::write_authored_region(out,
+                                      schematic.sheet(detail::sheet_for_wire_run(schematic, id)),
+                                      wire.authored_region());
+        out << " }";
         if (index + 1 != schematic.wire_run_count()) {
             out << ',';
         }
@@ -542,7 +557,11 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << ", \"position\": ";
         detail::write_point(out, label.position());
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(label.orientation())) << " }";
+            << detail::json_string(detail::schematic_orientation_name(label.orientation()));
+        detail::write_authored_region(out,
+                                      schematic.sheet(detail::sheet_for_net_label(schematic, id)),
+                                      label.authored_region());
+        out << " }";
         if (index + 1 != schematic.net_label_count()) {
             out << ',';
         }
@@ -559,6 +578,9 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << ", \"net\": " << detail::json_string(detail::net_id(junction.net()))
             << ", \"position\": ";
         detail::write_point(out, junction.position());
+        detail::write_authored_region(out,
+                                      schematic.sheet(detail::sheet_for_junction(schematic, id)),
+                                      junction.authored_region());
         out << " }";
         if (index + 1 != schematic.junction_count()) {
             out << ',';
@@ -578,7 +600,11 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << ", \"position\": ";
         detail::write_point(out, port.position());
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(port.orientation())) << " }";
+            << detail::json_string(detail::schematic_orientation_name(port.orientation()));
+        detail::write_authored_region(out,
+                                      schematic.sheet(detail::sheet_for_power_port(schematic, id)),
+                                      port.authored_region());
+        out << " }";
         if (index + 1 != schematic.power_port_count()) {
             out << ',';
         }
@@ -602,6 +628,9 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
         if (!marker.reason().empty()) {
             out << ", \"reason\": " << detail::json_string(marker.reason());
         }
+        detail::write_authored_region(
+            out, schematic.sheet(detail::sheet_for_no_connect_marker(schematic, id)),
+            marker.authored_region());
         out << " }";
         if (index + 1 != schematic.no_connect_marker_count()) {
             out << ',';
@@ -622,7 +651,11 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << ", \"position\": ";
         detail::write_point(out, port.position());
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(port.orientation())) << " }";
+            << detail::json_string(detail::schematic_orientation_name(port.orientation()));
+        detail::write_authored_region(out,
+                                      schematic.sheet(detail::sheet_for_sheet_port(schematic, id)),
+                                      port.authored_region());
+        out << " }";
         if (index + 1 != schematic.sheet_port_count()) {
             out << ',';
         }
@@ -643,7 +676,11 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << ", \"value\": " << detail::json_string(field.value()) << ", \"position\": ";
         detail::write_point(out, field.position());
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(field.orientation())) << " }";
+            << detail::json_string(detail::schematic_orientation_name(field.orientation()));
+        detail::write_authored_region(
+            out, schematic.sheet(detail::sheet_for_symbol_field(schematic, id)),
+            field.authored_region());
+        out << " }";
         if (index + 1 != schematic.symbol_field_count()) {
             out << ',';
         }

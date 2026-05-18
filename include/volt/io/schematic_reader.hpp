@@ -7,6 +7,7 @@
 #include <istream>
 #include <limits>
 #include <map>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -392,6 +393,17 @@ class SchematicReader {
             sheet_region_style(region_object)};
     }
 
+    [[nodiscard]] std::optional<std::size_t> authored_region(SheetId sheet,
+                                                             const nlohmann::json &object) const {
+        const auto name = optional_string_field(object, "authored_region");
+        if (name.empty()) {
+            return std::nullopt;
+        }
+        const auto region = schematic_.sheet_region_by_name(sheet, name);
+        require(region.has_value(), "Authored region reference points to a missing sheet region");
+        return region.value();
+    }
+
     static void append_sheet_references(const nlohmann::json &sheet_object, const char *field_name,
                                         std::vector<std::string> &references,
                                         const std::string &error_message) {
@@ -477,7 +489,8 @@ class SchematicReader {
             const auto component = component_id(string_field(instance_object, "component"));
             const auto instance = schematic_.place_symbol(
                 sheet, SymbolInstance{symbol, component, point(field(instance_object, "position")),
-                                      orientation(string_field(instance_object, "orientation"))});
+                                      orientation(string_field(instance_object, "orientation")),
+                                      authored_region(sheet, instance_object)});
             symbol_instance_ids_.emplace(id, instance);
         }
     }
@@ -495,7 +508,8 @@ class SchematicReader {
                 intent = route_intent(intent_it->get<std::string>());
             }
             const auto wire = schematic_.add_wire_run(
-                sheet, WireRun{net, point_list(field(wire_object, "points")), intent});
+                sheet, WireRun{net, point_list(field(wire_object, "points")), intent,
+                               authored_region(sheet, wire_object)});
             wire_run_ids_.emplace(id, wire);
         }
     }
@@ -508,7 +522,8 @@ class SchematicReader {
             const auto net = net_id(string_field(label_object, "net"));
             const auto label = schematic_.add_net_label(
                 sheet, NetLabel{net, point(field(label_object, "position")),
-                                orientation(string_field(label_object, "orientation"))});
+                                orientation(string_field(label_object, "orientation")),
+                                authored_region(sheet, label_object)});
             net_label_ids_.emplace(id, label);
         }
     }
@@ -520,7 +535,8 @@ class SchematicReader {
             const auto sheet = resolve(sheet_ids_, string_field(junction_object, "sheet"));
             const auto net = net_id(string_field(junction_object, "net"));
             const auto junction = schematic_.add_junction(
-                sheet, Junction{net, point(field(junction_object, "position"))});
+                sheet, Junction{net, point(field(junction_object, "position")),
+                                authored_region(sheet, junction_object)});
             junction_ids_.emplace(id, junction);
         }
     }
@@ -534,7 +550,8 @@ class SchematicReader {
             const auto port = schematic_.add_power_port(
                 sheet, PowerPort{net, power_port_kind(string_field(port_object, "kind")),
                                  point(field(port_object, "position")),
-                                 orientation(string_field(port_object, "orientation"))});
+                                 orientation(string_field(port_object, "orientation")),
+                                 authored_region(sheet, port_object)});
             power_port_ids_.emplace(id, port);
         }
     }
@@ -548,7 +565,8 @@ class SchematicReader {
             const auto marker = schematic_.add_no_connect_marker(
                 sheet, NoConnectMarker{pin, point(field(marker_object, "position")),
                                        orientation(string_field(marker_object, "orientation")),
-                                       optional_string_field(marker_object, "reason")});
+                                       optional_string_field(marker_object, "reason"),
+                                       authored_region(sheet, marker_object)});
             no_connect_marker_ids_.emplace(id, marker);
         }
     }
@@ -563,7 +581,8 @@ class SchematicReader {
                 sheet, SheetPort{net, string_field(port_object, "name"),
                                  sheet_port_kind(string_field(port_object, "kind")),
                                  point(field(port_object, "position")),
-                                 orientation(string_field(port_object, "orientation"))});
+                                 orientation(string_field(port_object, "orientation")),
+                                 authored_region(sheet, port_object)});
             sheet_port_ids_.emplace(id, port);
         }
     }
@@ -579,7 +598,8 @@ class SchematicReader {
                 sheet, SymbolField{instance, string_field(field_object, "name"),
                                    string_field(field_object, "value"),
                                    point(field(field_object, "position")),
-                                   orientation(string_field(field_object, "orientation"))});
+                                   orientation(string_field(field_object, "orientation")),
+                                   authored_region(sheet, field_object)});
             symbol_field_ids_.emplace(id, field_id);
         }
     }
