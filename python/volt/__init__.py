@@ -1313,7 +1313,6 @@ class SchematicSignalStub:
         end: tuple[float, float],
         label_position: tuple[float, float],
     ):
-        self._schematic = schematic
         self.net = net
         self.side = side
         self.wire = wire
@@ -4364,7 +4363,7 @@ def _resolve_schematic_signal_net(
         try:
             _require_port_matches_net(at, net)
         except ValueError as error:
-            _raise_cross_design_with_context(error, schematic, action)
+            raise ValueError(_with_schematic_context(str(error), schematic, action)) from error
     elif isinstance(at, SchematicAnchor):
         _require_schematic_point_design_for_authoring(
             at,

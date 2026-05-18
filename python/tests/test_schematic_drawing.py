@@ -235,6 +235,75 @@ def test_python_schematic_signal_stub_group_preserves_base_pin_net_validation():
             raise AssertionError("grouped signal stubs should validate the base pin net")
 
 
+def test_python_schematic_signal_stub_sugar_rejects_invalid_inputs_clearly():
+    design = volt.Design("signal-stub-invalid")
+    other = volt.Design("signal-stub-invalid-other")
+    sig = design.net("SIG")
+    wrong = design.net("WRONG")
+    other_net = other.net("X")
+    probe = design.test_point(ref="TP1")
+    sig += probe["TP"]
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(at=(0, 0), unit=20) as drawing:
+        placed = drawing.place(probe)
+        before = schematic.to_json()
+
+        try:
+            drawing.local_label(other_net, at=(0, 0))
+        except ValueError as error:
+            assert "different design" in str(error)
+            assert "sheet 'Main'" in str(error)
+        else:
+            raise AssertionError("local_label should reject cross-design net")
+
+        try:
+            drawing.local_label(sig, at=(0, 0), offset=-1)
+        except ValueError as error:
+            assert "negative" in str(error).lower() or "offset" in str(error).lower()
+        else:
+            raise AssertionError("local_label should reject negative offset")
+
+        try:
+            drawing.signal_stub(other_net, at=(0, 0))
+        except ValueError as error:
+            assert "different design" in str(error)
+            assert "sheet 'Main'" in str(error)
+        else:
+            raise AssertionError("signal_stub should reject cross-design net")
+
+        try:
+            drawing.signal_stub(wrong, at=placed.TP)
+        except ValueError as error:
+            assert "WRONG" in str(error)
+            assert "sheet 'Main'" in str(error)
+        else:
+            raise AssertionError("signal_stub should reject net mismatch at pin anchor")
+
+        try:
+            drawing.signal_stub(sig, at=(0, 0), length=0)
+        except ValueError as error:
+            assert "positive" in str(error).lower() or "length" in str(error).lower()
+        else:
+            raise AssertionError("signal_stub should reject zero length")
+
+        try:
+            drawing.signal_stub(sig, at=(0, 0), length=-4)
+        except ValueError as error:
+            assert "positive" in str(error).lower() or "length" in str(error).lower()
+        else:
+            raise AssertionError("signal_stub should reject negative length")
+
+        try:
+            schematic.signal_stubs((sig, wrong), at=None)
+        except TypeError as error:
+            assert "anchor" in str(error).lower() or "at=" in str(error)
+        else:
+            raise AssertionError("signal_stubs should require anchors when at= is absent")
+
+        assert schematic.to_json() == before
+
+
 def test_python_schematic_label_sugar_rejects_invalid_inputs_clearly():
     design = volt.Design("schematic-label-invalid")
     other = volt.Design("schematic-label-invalid-other")
