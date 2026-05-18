@@ -845,6 +845,10 @@ TEST_CASE("Schematic readability reports missing passive values and dense no-con
     CHECK(missing_value.entities() ==
           std::vector{volt::EntityRef::sheet(sheet), volt::EntityRef::component(resistor),
                       volt::EntityRef::symbol_instance(resistor_instance)});
+    static_cast<void>(schematic.add_symbol_field(
+        sheet, volt::SymbolField{resistor_instance, "Value", "10k", volt::Point{40.0, 14.0}}));
+    const auto visible_value_report = volt::validate_schematic_readability(schematic);
+    CHECK_FALSE(report_has_code(visible_value_report, "SCHEMATIC_PASSIVE_VALUE_FIELD_MISSING"));
 
     const auto &cluster = require_diagnostic(report, "SCHEMATIC_DENSE_NO_CONNECT_MARKERS");
     CHECK(cluster.severity() == volt::Severity::Warning);
@@ -861,10 +865,9 @@ TEST_CASE("Schematic readability reports overlapping text bounds") {
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
-    const auto first = schematic.add_net_label(
-        sheet, volt::NetLabel{net, volt::Point{40.0, 20.0}});
-    const auto second = schematic.add_net_label(
-        sheet, volt::NetLabel{net, volt::Point{42.0, 20.0}});
+    const auto first = schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{40.0, 20.0}});
+    const auto second =
+        schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{42.0, 20.0}});
 
     const auto report = volt::validate_schematic_readability(schematic);
 
