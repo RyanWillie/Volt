@@ -40,7 +40,7 @@ def build_board() -> Stm32UsbBuckBoard:
     components: dict[str, volt.Component] = {}
 
     external_supply = define_external_supply(design)
-    source_12v = design.instantiate(external_supply, ref="VIN_SRC")
+    source_12v = design.instantiate(external_supply, ref="VIN_SRC", properties={"value": "12 V input"})
     components["VIN_SRC"] = source_12v
     power.input_12v += source_12v["OUT"]
     power.ground += source_12v["GND"]
@@ -136,7 +136,7 @@ def build_board() -> Stm32UsbBuckBoard:
         ground=power.ground,
     )
 
-    mcu = design.instantiate(lib.STM32F405RGTx, ref="U1")
+    mcu = design.instantiate(lib.STM32F405RGTx, ref="U1", properties={"value": "STM32F405RGT6"})
     components["U1"] = mcu
     connect_mcu_power(mcu, power, vcap1=vcap1, vcap2=vcap2)
     mcu_usb_dp += mcu["PA12"]
@@ -207,15 +207,15 @@ def define_mcu_support(design: volt.Design) -> volt.ModuleDefinition:
     vcap1 = module.port("VCAP_1", kind="power", role="power_input")
     vcap2 = module.port("VCAP_2", kind="power", role="power_input")
 
-    c_vdd = module.instantiate(capacitor, ref="CVDD")
-    c_vcap1 = module.instantiate(capacitor, ref="CVCAP1")
-    c_vcap2 = module.instantiate(capacitor, ref="CVCAP2")
-    r_reset = module.instantiate(resistor, ref="RRESET")
-    r_boot = module.instantiate(resistor, ref="RBOOT")
-    sw_boot = module.instantiate(switch, ref="SWBOOT")
-    y1 = module.instantiate(crystal, ref="Y1")
-    c_hse_in = module.instantiate(capacitor, ref="CHSEIN")
-    c_hse_out = module.instantiate(capacitor, ref="CHSEOUT")
+    c_vdd = module.instantiate(capacitor, ref="CVDD", properties={"value": "100 nF"})
+    c_vcap1 = module.instantiate(capacitor, ref="CVCAP1", properties={"value": "2.2 uF"})
+    c_vcap2 = module.instantiate(capacitor, ref="CVCAP2", properties={"value": "2.2 uF"})
+    r_reset = module.instantiate(resistor, ref="RRESET", properties={"value": "10 kOhm"})
+    r_boot = module.instantiate(resistor, ref="RBOOT", properties={"value": "100 kOhm"})
+    sw_boot = module.instantiate(switch, ref="SWBOOT", properties={"value": "BOOT0"})
+    y1 = module.instantiate(crystal, ref="Y1", properties={"value": "8 MHz"})
+    c_hse_in = module.instantiate(capacitor, ref="CHSEIN", properties={"value": "18 pF"})
+    c_hse_out = module.instantiate(capacitor, ref="CHSEOUT", properties={"value": "18 pF"})
 
     module.connect(vdd, c_vdd[1], r_reset[1], sw_boot["A"])
     module.connect(

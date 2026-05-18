@@ -7,9 +7,6 @@ from volt.libraries import stm32_usb_buck as lib
 
 from .stm32_board import Stm32UsbBuckBoard
 
-# Use the generic two-terminal symbols so drawing.C/R can orient the passives.
-TWO_TERMINAL_CAPACITOR = "capacitor"
-TWO_TERMINAL_RESISTOR = "resistor"
 SHEET_OPTIONS = {
     "size": (594, 420),
     "orientation": "landscape",
@@ -21,10 +18,67 @@ SHEET_OPTIONS = {
     "grid": {"spacing": 5, "visible": False},
 }
 SHEET_FILE = "examples/stm32_usb_buck/schematic_output.py"
+DISPLAY_REFERENCES = {
+    "VIN_SRC": "J1",
+    "PWR/J": "J2",
+    "PWR/U5": "U2",
+    "PWR/U3V3": "U3",
+    "PWR/CIN": "C1",
+    "PWR/C5V": "C2",
+    "PWR/C3V3": "C3",
+    "PWR/CVDDA": "C4",
+    "U1": "U1",
+    "SUPPORT/CVDD": "C5",
+    "SUPPORT/CVCAP1": "C6",
+    "SUPPORT/CVCAP2": "C7",
+    "SUPPORT/RRESET": "R1",
+    "SUPPORT/RBOOT": "R2",
+    "SUPPORT/SWBOOT": "SW1",
+    "SUPPORT/Y1": "Y1",
+    "SUPPORT/CHSEIN": "C8",
+    "SUPPORT/CHSEOUT": "C9",
+    "LED_STATUS/R": "R3",
+    "LED_STATUS/D": "D1",
+    "USB/J1": "J3",
+    "USB/U1": "U4",
+    "J2": "J4",
+    "J3": "J5",
+}
+
+
+def _two_terminal_pins() -> tuple[volt.SchematicSymbolPinSpec, volt.SchematicSymbolPinSpec]:
+    return (
+        volt.SchematicSymbolSpec.pin("1", 1, (0, 0), "Left"),
+        volt.SchematicSymbolSpec.pin("2", 2, (20, 0), "Right"),
+    )
+
+
+TWO_TERMINAL_CAPACITOR = volt.SchematicSymbolSpec(
+    "volt.examples.stm32_usb_buck:PlainCapacitor",
+    pins=_two_terminal_pins(),
+    primitives=(
+        volt.SchematicSymbolSpec.line((0, 0), (8, 0)),
+        volt.SchematicSymbolSpec.line((8, -5), (8, 5)),
+        volt.SchematicSymbolSpec.line((12, -5), (12, 5)),
+        volt.SchematicSymbolSpec.line((12, 0), (20, 0)),
+    ),
+)
+TWO_TERMINAL_RESISTOR = volt.SchematicSymbolSpec(
+    "volt.examples.stm32_usb_buck:PlainResistor",
+    pins=_two_terminal_pins(),
+    primitives=(
+        volt.SchematicSymbolSpec.line((0, 0), (4, 0)),
+        volt.SchematicSymbolSpec.rectangle((4, -3), (16, 3)),
+        volt.SchematicSymbolSpec.line((16, 0), (20, 0)),
+    ),
+)
 
 
 def _display_reference(component: volt.Component) -> str:
-    return component.reference.rsplit("/", 1)[-1]
+    try:
+        return DISPLAY_REFERENCES[component.reference]
+    except KeyError as error:
+        raise ValueError(f"No schematic display reference for {component.reference!r}") from error
 
 
 def _external_supply_symbol() -> volt.SchematicSymbolSpec:
@@ -39,6 +93,8 @@ def _external_supply_symbol() -> volt.SchematicSymbolSpec:
             volt.SchematicSymbolSpec.line((34, 8), (44, 8)),
             volt.SchematicSymbolSpec.line((34, 24), (44, 24)),
             volt.SchematicSymbolSpec.text("VIN", (17, 17)),
+            volt.SchematicSymbolSpec.text("1 +12V", (4, 9)),
+            volt.SchematicSymbolSpec.text("2 GND", (4, 25)),
         ),
     )
 
@@ -63,6 +119,10 @@ def _indicator_led_symbol() -> volt.SchematicSymbolSpec:
 
 
 def _compact_connector_1x04_symbol() -> volt.SchematicSymbolSpec:
+    pin_labels = tuple(
+        volt.SchematicSymbolSpec.text(str(index), (12, (index - 1) * 7 + 1))
+        for index in range(1, 5)
+    )
     return volt.SchematicSymbolSpec(
         "volt.examples.stm32_usb_buck:CompactConnector1x04",
         pins=(
@@ -78,34 +138,62 @@ def _compact_connector_1x04_symbol() -> volt.SchematicSymbolSpec:
             volt.SchematicSymbolSpec.line((0, 7), (8, 7)),
             volt.SchematicSymbolSpec.line((0, 14), (8, 14)),
             volt.SchematicSymbolSpec.line((0, 21), (8, 21)),
+            *pin_labels,
         ),
     )
 
 
 def _compact_swd_symbol() -> volt.SchematicSymbolSpec:
-    pin_names = (
-        "VTref",
-        "SWDIO",
-        "GND",
-        "SWCLK",
-        "GND",
-        "SWO",
-        "NC",
-        "TDI",
-        "GNDDetect",
-        "nRESET",
+    pin_rows = (
+        ("VTref", "1 VTref"),
+        ("SWDIO", "2 SWDIO"),
+        ("GND", "3 GND"),
+        ("SWCLK", "4 SWCLK"),
+        ("GND", "5 GND"),
+        ("SWO", "6 SWO"),
+        ("NC", "7 NC"),
+        ("TDI", "8 BOOT0"),
+        ("GNDDetect", "9 GNDDET"),
+        ("nRESET", "10 NRST"),
     )
     pins = []
     primitives = [
-        volt.SchematicSymbolSpec.rectangle((8, -4), (30, 49)),
-        volt.SchematicSymbolSpec.text("SWD", (19, -9)),
+        volt.SchematicSymbolSpec.rectangle((8, -4), (58, 49)),
+        volt.SchematicSymbolSpec.text("SWD", (33, -9)),
     ]
-    for index, name in enumerate(pin_names, start=1):
+    for index, (name, label) in enumerate(pin_rows, start=1):
         y = (index - 1) * 5
         pins.append(volt.SchematicSymbolSpec.pin(name, index, (0, y), "Left"))
         primitives.append(volt.SchematicSymbolSpec.line((0, y), (8, y)))
+        primitives.append(volt.SchematicSymbolSpec.text(label, (10, y + 1)))
     return volt.SchematicSymbolSpec(
         "volt.examples.stm32_usb_buck:CompactSWD10",
+        pins=tuple(pins),
+        primitives=tuple(primitives),
+    )
+
+
+def _readable_usb_micro_b_symbol() -> volt.SchematicSymbolSpec:
+    pin_rows = (
+        ("VBUS", 1, "1 VBUS"),
+        ("D-", 2, "2 D-"),
+        ("D+", 3, "3 D+"),
+        ("ID", 4, "4 ID"),
+        ("GND", 5, "5 GND"),
+        ("Shield", 6, "6 SHLD"),
+    )
+    pins = []
+    primitives = [
+        volt.SchematicSymbolSpec.rectangle((10, -5), (48, 45)),
+        volt.SchematicSymbolSpec.text("USB", (29, -10)),
+    ]
+    for index, (name, number, label) in enumerate(pin_rows):
+        y = index * 8
+        pins.append(volt.SchematicSymbolSpec.pin(name, number, (0, y), "Left"))
+        primitives.append(volt.SchematicSymbolSpec.line((0, y), (10, y)))
+        primitives.append(volt.SchematicSymbolSpec.text(label, (12, y + 1)))
+    return volt.SchematicSymbolSpec(
+        "volt.examples.stm32_usb_buck:ReadableUSBMicroB",
         pins=tuple(pins),
         primitives=tuple(primitives),
     )
@@ -131,6 +219,10 @@ def _readable_usb_protection_symbol() -> volt.SchematicSymbolSpec:
             volt.SchematicSymbolSpec.line((27, -10), (27, 0)),
             volt.SchematicSymbolSpec.line((27, 30), (27, 38)),
             volt.SchematicSymbolSpec.text("ESD", (27, 16)),
+            volt.SchematicSymbolSpec.text("D-", (12, 9)),
+            volt.SchematicSymbolSpec.text("D+", (12, 21)),
+            volt.SchematicSymbolSpec.text("D-", (36, 9)),
+            volt.SchematicSymbolSpec.text("D+", (36, 21)),
         ),
     )
 
@@ -161,7 +253,7 @@ def _compact_stm32_symbol() -> volt.SchematicSymbolSpec:
     )
     primitives = [
         volt.SchematicSymbolSpec.rectangle((12, 8), (72, 104)),
-        volt.SchematicSymbolSpec.text("STM32F405", (42, 52)),
+        volt.SchematicSymbolSpec.text("STM32F405", (42, 18)),
     ]
     pins = []
     for name, number, at, orient in pin_layout:
@@ -169,8 +261,14 @@ def _compact_stm32_symbol() -> volt.SchematicSymbolSpec:
         pins.append(volt.SchematicSymbolSpec.pin(name, number, at, orient))
         if orient == "Left":
             primitives.append(volt.SchematicSymbolSpec.line((0, y), (12, y)))
+            primitives.append(
+                volt.SchematicSymbolSpec.text(f"{name.replace('_', '')} {number}", (14, y + 1))
+            )
         elif orient == "Right":
             primitives.append(volt.SchematicSymbolSpec.line((72, y), (84, y)))
+            primitives.append(
+                volt.SchematicSymbolSpec.text(f"{name.replace('_', '')} {number}", (43, y + 1))
+            )
         elif orient == "Up":
             primitives.append(volt.SchematicSymbolSpec.line((x, 0), (x, 8)))
         else:
@@ -288,10 +386,13 @@ def _author_power_region(
                 reference_label=_display_reference(pwr.component("CVDDA")),
             ).at(cvdda_anchor).down()
 
-        u5.label("AP1117-5.0", name="value", loc="bottom", ofst=10, orient="Right")
-        u3v3.label("AP1117-3.3", name="value", loc="bottom", ofst=16, orient="Right")
-        cin.label("4.7 uF", name="value", loc="bottom", ofst=16, orient="Right")
-        cvdda.label("100 nF", name="value", loc="left", ofst=10, orient="Right")
+        vin.label_value(loc="bottom", ofst=10, orient="Right")
+        u5.label_value(loc="bottom", ofst=10, orient="Right")
+        u3v3.label_value(loc="bottom", ofst=16, orient="Right")
+        c5v.label_value(loc="bottom", ofst=10, orient="Right")
+        cin.label_value(loc="bottom", ofst=16, orient="Right")
+        c3v3.label_value(loc="bottom", ofst=10, orient="Right")
+        cvdda.label_value(loc="left", ofst=10, orient="Right")
 
         input_supply = drawing.power("+12V", net=nets["+12V"], at=vin.OUT.up(28), orient="Up")
         drawing.connect(vin.OUT, input_supply, net=nets["+12V"], shape="-")
@@ -352,7 +453,7 @@ def _author_connectors_region(
             usb_j = drawing.place(
                 usb.component("J1"),
                 at=(0, 0),
-                symbol=lib.USB_B_MICRO.schematic_symbol,
+                symbol=_readable_usb_micro_b_symbol(),
                 reference_label=_display_reference(usb.component("J1")),
             )
             usb_esd = drawing.place(
@@ -370,7 +471,7 @@ def _author_connectors_region(
                 reference_label=_display_reference(board.components["J2"]),
             )
 
-        with drawing.frame((112, 170)):
+        with drawing.frame((128, 170)):
             gpio = drawing.place(
                 board.components["J3"],
                 at=(0, 0),
@@ -379,6 +480,9 @@ def _author_connectors_region(
             )
 
         usb_j.label("USB Micro-B", name="value", loc="bottom", ofst=12, orient="Right")
+        usb_esd.label("USBLC6-4SC6", name="value", loc="bottom", ofst=12, orient="Right")
+        swd.label("SWD 10-pin", name="value", loc="bottom", ofst=10, orient="Right")
+        gpio.label("GPIO 1x4", name="value", loc="bottom", ofst=10, orient="Right")
 
         drawing.connect(usb_j.VBUS, usb_esd.VBUS, net=nets["USB/VBUS"], shape="-|", k=18)
         drawing.connect(usb_j["D+"], usb_esd["I/O1"], net=nets["USB/USB_DP"], shape="-|", k=18)
@@ -395,10 +499,11 @@ def _author_connectors_region(
         )
 
         usb_gnd = nets["USB/GND"]
+        usb_ground_point = (82, 104)
         for anchor in (usb_j.GND, usb_j.Shield, usb_esd.GND):
-            drawing.connect(anchor, (76, 94), net=usb_gnd, shape="|-")
-        drawing.ground("GND", net=usb_gnd, at=(76, 94), orient="Down")
-        drawing.junction(usb_gnd, at=(76, 94))
+            drawing.connect(anchor, usb_ground_point, net=usb_gnd, shape="|-")
+        drawing.ground("GND", net=usb_gnd, at=usb_ground_point, orient="Down")
+        drawing.junction(usb_gnd, at=usb_ground_point)
 
         for anchor in (swd.VTref, gpio[1]):
             power = drawing.power("+3V3", net=nets["+3V3"], at=anchor.up(28), orient="Up")
@@ -513,9 +618,18 @@ def _author_mcu_region(
                 reference_label=_display_reference(led.component("D")),
             ).at(led_r.end.right(6)).right(1.2)
 
-        stm32.label("STM32F405RGT6", name="value", loc="bottom", ofst=8, orient="Right")
-        rreset.label("10 kOhm", name="value", loc="top", ofst=8, orient="Right")
-        crystal.label("8 MHz", name="value", loc="bottom", ofst=22, orient="Right")
+        stm32.label_value(loc="bottom", ofst=8, orient="Right")
+        cvdd.label_value(loc="bottom", ofst=8, orient="Right")
+        cvcap1.label_value(loc="bottom", ofst=8, orient="Right")
+        cvcap2.label_value(loc="bottom", ofst=8, orient="Right")
+        rreset.label_value(loc="bottom", ofst=10, orient="Right")
+        rboot.label_value(loc="bottom", ofst=10, orient="Right")
+        swboot.label_value(loc="bottom", ofst=10, orient="Right")
+        crystal.label_value(loc="bottom", ofst=22, orient="Right")
+        chsein.label_value(loc="bottom", ofst=8, orient="Right")
+        chseout.label_value(loc="bottom", ofst=8, orient="Right")
+        led_r.label_value(loc="bottom", ofst=10, orient="Right")
+        led_d.label_value(loc="bottom", ofst=8, orient="Right")
 
         mcu_3v3 = nets["+3V3"]
         mcu_power = drawing.power("+3V3", net=mcu_3v3, at=stm32.center.up(90), orient="Up")

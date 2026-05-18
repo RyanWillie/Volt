@@ -1161,6 +1161,97 @@ inline void validate_dense_region_port_tags(const Schematic &schematic, SheetId 
            label.find('/') != std::string::npos || label.find("::") != std::string::npos;
 }
 
+[[nodiscard]] inline std::string_view visible_symbol_reference_label(const Schematic &schematic,
+                                                                     SymbolInstanceId instance_id) {
+    const auto &instance = schematic.symbol_instance(instance_id);
+    if (instance.reference_label().has_value()) {
+        return instance.reference_label().value();
+    }
+    return schematic.circuit().component(instance.component()).reference().value();
+}
+
+[[nodiscard]] inline bool ascii_upper_alpha(char character) noexcept {
+    return character >= 'A' && character <= 'Z';
+}
+
+[[nodiscard]] inline bool ascii_digit(char character) noexcept {
+    return character >= '0' && character <= '9';
+}
+
+[[nodiscard]] inline bool
+visible_reference_label_looks_conventional(std::string_view label) noexcept {
+    auto prefix_length = std::size_t{0};
+    while (prefix_length < label.size() && ascii_upper_alpha(label[prefix_length])) {
+        ++prefix_length;
+    }
+    if (prefix_length == 0U || prefix_length > 4U || prefix_length == label.size()) {
+        return false;
+    }
+    for (std::size_t index = prefix_length; index < label.size(); ++index) {
+        if (!ascii_digit(label[index])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline void validate_visible_reference_labels(const Schematic &schematic, SheetId sheet_id,
+                                              const Sheet &sheet, DiagnosticReport &report) {
+    struct VisibleReference {
+        SymbolInstanceId instance;
+        ComponentId component;
+        std::string_view label;
+    };
+
+    auto references = std::vector<VisibleReference>{};
+    references.reserve(sheet.symbol_instances().size());
+    for (const auto instance_id : sheet.symbol_instances()) {
+        const auto &instance = schematic.symbol_instance(instance_id);
+        references.push_back(
+            VisibleReference{instance_id, instance.component(),
+                             visible_symbol_reference_label(schematic, instance_id)});
+        if (!visible_reference_label_looks_conventional(references.back().label)) {
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL"},
+                "Visible schematic reference label '" + std::string{references.back().label} +
+                    "' does not look like a conventional EDA reference designator",
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::symbol_instance(instance_id),
+                            EntityRef::component(instance.component())},
+            });
+        }
+    }
+
+    auto reported = std::vector<bool>(references.size(), false);
+    for (std::size_t first = 0; first < references.size(); ++first) {
+        if (reported[first]) {
+            continue;
+        }
+        auto duplicate_indices = std::vector<std::size_t>{first};
+        for (std::size_t second = first + 1U; second < references.size(); ++second) {
+            if (!reported[second] && references[second].label == references[first].label) {
+                duplicate_indices.push_back(second);
+            }
+        }
+        if (duplicate_indices.size() < 2U) {
+            continue;
+        }
+        auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id)};
+        for (const auto index : duplicate_indices) {
+            refs.push_back(EntityRef::symbol_instance(references[index].instance));
+            refs.push_back(EntityRef::component(references[index].component));
+            reported[index] = true;
+        }
+        report.add(Diagnostic{
+            Severity::Warning,
+            DiagnosticCode{"SCHEMATIC_DUPLICATE_REFERENCE_LABEL"},
+            "Schematic sheet has duplicate visible reference label '" +
+                std::string{references[first].label} + "'",
+            std::move(refs),
+        });
+    }
+}
+
 inline void validate_label_readability(const Schematic &schematic, SheetId sheet_id,
                                        const Sheet &sheet, DiagnosticReport &report) {
     for (const auto label_id : sheet.net_labels()) {
@@ -1410,6 +1501,7 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         const auto &sheet = schematic.sheet(sheet_id);
         detail::validate_readability_bounds(schematic, sheet_id, sheet, report);
         detail::validate_duplicate_junctions(schematic, sheet_id, sheet, report);
+        detail::validate_visible_reference_labels(schematic, sheet_id, sheet, report);
         detail::validate_label_readability(schematic, sheet_id, sheet, report);
         detail::validate_port_tag_scale(schematic, sheet_id, sheet, report);
         detail::validate_symbol_crowding(schematic, sheet_id, sheet, report);

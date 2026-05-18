@@ -1,6 +1,7 @@
 import importlib
 import inspect
 import json
+import re
 from collections import Counter
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -107,9 +108,9 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert {definition["name"] for definition in schematic["symbol_definitions"]} >= {
         "volt.benchmarks.stm32_usb_buck:STM32F405RGTx",
         "volt.benchmarks.stm32_usb_buck:AP1117_15",
-        "volt.benchmarks.stm32_usb_buck:USB_B_Micro",
-        "capacitor",
-        "resistor",
+        "volt.examples.stm32_usb_buck:ReadableUSBMicroB",
+        "volt.examples.stm32_usb_buck:PlainCapacitor",
+        "volt.examples.stm32_usb_buck:PlainResistor",
     }
     object_collections = (
         "symbol_instances",
@@ -127,13 +128,27 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         for item in schematic[collection]
         if "authored_region" in item
     } >= {"Power Circuitry", "STM32 Microcontroller", "Connectors and USB"}
-    reference_labels = {
+    reference_labels = [
         instance["reference_label"]
         for instance in schematic["symbol_instances"]
         if "reference_label" in instance
+    ]
+    assert len(reference_labels) == len(set(reference_labels))
+    assert all(re.fullmatch(r"(?:C|D|J|R|SW|U|Y)\d+", label) for label in reference_labels)
+    assert all("/" not in label and "_" not in label for label in reference_labels)
+    internal_reference_labels = {
+        "VIN_SRC",
+        "U3V3",
+        "CVDD",
+        "CVCAP1",
+        "CVCAP2",
+        "RRESET",
+        "RBOOT",
+        "SWBOOT",
+        "CHSEIN",
+        "CHSEOUT",
     }
-    assert {"J", "J1", "U1", "U5", "U3V3", "CVDD", "R", "D"} <= reference_labels
-    assert all("/" not in label for label in reference_labels)
+    assert internal_reference_labels.isdisjoint(reference_labels)
     power_port_labels = {
         port["label"] for port in schematic["power_ports"] if "label" in port
     }
@@ -145,7 +160,11 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "AP1117-3.3",
         "100 nF",
         "4.7 uF",
+        "2.2 uF",
         "10 kOhm",
+        "100 kOhm",
+        "18 pF",
+        "330 Ohm",
         "8 MHz",
         "STM32F405RGT6",
         "USB Micro-B",
@@ -179,6 +198,49 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     )
     assert label_counts
     assert max(label_counts.values()) <= 4
+
+    symbol_text_by_definition = {
+        definition["name"]: {
+            primitive["text"]
+            for primitive in definition["primitives"]
+            if primitive["type"] == "text"
+        }
+        for definition in schematic["symbol_definitions"]
+    }
+    assert {
+        "PA11 44",
+        "PA12 45",
+        "PA13 46",
+        "PA14 49",
+        "PB3 55",
+        "NRST 7",
+        "BOOT0 60",
+        "VCAP1 31",
+        "VCAP2 47",
+    } <= symbol_text_by_definition["volt.examples.stm32_usb_buck:STM32F405RGTxCompact"]
+    assert {
+        "1 VTref",
+        "2 SWDIO",
+        "4 SWCLK",
+        "6 SWO",
+        "8 BOOT0",
+        "10 NRST",
+    } <= symbol_text_by_definition["volt.examples.stm32_usb_buck:CompactSWD10"]
+    assert {
+        "1 VBUS",
+        "2 D-",
+        "3 D+",
+        "4 ID",
+        "5 GND",
+    } <= symbol_text_by_definition["volt.examples.stm32_usb_buck:ReadableUSBMicroB"]
+    assert {
+        "PA11 44",
+        "PA12 45",
+        "2 SWDIO",
+        "10 NRST",
+        "1 VBUS",
+        "3 D+",
+    } <= set(re.findall(r">([^<>]+)</text>", first_svg_text))
 
     net_pin_counts = {
         net["id"]: len(net["pins"]) for net in logical["nets"] if len(net["pins"]) > 1
