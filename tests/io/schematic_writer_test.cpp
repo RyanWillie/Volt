@@ -125,7 +125,8 @@ TEST_CASE("Schematic writer emits wire runs and net labels over canonical nets")
 TEST_CASE("Schematic writer emits optional net label display text") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+    const auto net =
+        circuit.add_net(volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
     auto schematic = make_schematic(circuit, component);
     [[maybe_unused]] const auto label = schematic.add_net_label(
         volt::SheetId{0},

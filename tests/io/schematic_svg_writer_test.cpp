@@ -304,7 +304,8 @@ TEST_CASE("Schematic SVG writer renders explicit net label display text") {
         volt::ComponentDefinition{"Divider", std::vector{first_pin, second_pin}});
     const auto component =
         circuit.instantiate_component(definition, volt::ReferenceDesignator{"DIV_A/R1"});
-    const auto net = circuit.add_net(volt::Net{volt::NetName{"DIV_A/SWDIO"}, volt::NetKind::Signal});
+    const auto net =
+        circuit.add_net(volt::Net{volt::NetName{"DIV_A/SWDIO"}, volt::NetKind::Signal});
     auto schematic = volt::Schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
     const auto symbol = schematic.add_symbol_definition(make_symbol());

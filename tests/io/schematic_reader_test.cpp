@@ -122,8 +122,8 @@ TEST_CASE("Schematic reader loads projection JSON over a logical circuit") {
 TEST_CASE("Schematic reader loads optional net label display text") {
     volt::Circuit circuit;
     [[maybe_unused]] const auto component = add_resistor(circuit);
-    [[maybe_unused]] const auto net = circuit.add_net(
-        volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+    [[maybe_unused]] const auto net =
+        circuit.add_net(volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
 
     auto fixture = schematic_json();
     fixture["net_labels"][0]["label"] = "SWDIO";
