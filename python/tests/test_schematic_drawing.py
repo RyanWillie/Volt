@@ -1185,6 +1185,150 @@ def test_python_schematic_drawing_move_from_accepts_sheet_points_and_anchors():
     assert drawing.here.point == (25.0, 10.0)
     assert drawing.direction == "Down"
 
+
+def test_python_schematic_drawing_stack_generates_directional_anchors_without_cursor_drift():
+    design = volt.Design("schematic-drawing-anchor-stack")
+    schematic = design.schematic("Main")
+    drawing = schematic.drawing(at=(10, 20), direction="Down", unit=12)
+    before = drawing.here.point, drawing.direction
+    logical_before = design.to_json()
+    projection_before = schematic.to_json()
+
+    row = drawing.stack(count=3, direction="Right", pitch=5)
+    column = drawing.stack(count=3, direction="Down", pitch=7, at=(2, 3))
+    implicit = drawing.stack(count=2)
+
+    with drawing.hold():
+        shifted = drawing.stack(count=2, direction="Left", pitch=4, at=row[1].up(1))
+        drawing.move_from(shifted[-1].down(6), direction="Left")
+        assert drawing.here.point == (11.0, 25.0)
+        assert drawing.direction == "Left"
+
+    assert [anchor.point for anchor in row] == [
+        (10.0, 20.0),
+        (15.0, 20.0),
+        (20.0, 20.0),
+    ]
+    assert [anchor.point for anchor in column] == [
+        (2.0, 3.0),
+        (2.0, 10.0),
+        (2.0, 17.0),
+    ]
+    assert [anchor.point for anchor in implicit] == [
+        (10.0, 20.0),
+        (10.0, 32.0),
+    ]
+    assert (drawing.here.point, drawing.direction) == before
+    assert schematic.to_json() == projection_before
+    assert design.to_json() == logical_before
+
+
+def test_python_schematic_drawing_stack_does_not_materialize_pending_elements():
+    design = volt.Design("schematic-drawing-stack-pure")
+    resistor_part = design.R("10k", ref="R1")
+    schematic = design.schematic("Main")
+    drawing = schematic.drawing(unit=10)
+
+    pending = drawing.R(resistor_part).right()
+    instances_before = json.loads(schematic.to_json())["symbol_instances"]
+    anchors = drawing.stack(count=2, direction="Down", pitch=5)
+
+    assert [anchor.point for anchor in anchors] == [(10.0, 0.0), (10.0, 5.0)]
+    assert json.loads(schematic.to_json())["symbol_instances"] == instances_before
+    assert pending.start.point == (0.0, 0.0)
+    assert json.loads(schematic.to_json())["symbol_instances"][0]["position"] == {
+        "x": 0.0,
+        "y": 0.0,
+    }
+
+
+def test_python_schematic_drawing_stack_anchors_compose_inside_frame_operations():
+    design = volt.Design("schematic-drawing-frame-stack")
+    vcc = design.net("VCC", kind="power")
+    gnd = design.net("GND", kind="ground")
+    sig = design.net("SIG")
+    probe = design.test_point(ref="TP1")
+    capacitor = design.C("100 nF", ref="C1")
+    sig += probe["TP"], capacitor[1]
+    gnd += capacitor[2]
+
+    schematic = design.schematic("Main")
+    drawing = schematic.drawing(at=(10, 20), direction="Left")
+    before = drawing.here.point, drawing.direction
+
+    with drawing.frame((100, 50), direction="Down"):
+        anchors = drawing.stack(count=6, direction="Down", pitch=10)
+        placed = drawing.place(probe, at=anchors[0])
+        cap = drawing.C(capacitor).at(anchors[1]).right()
+        stub = drawing.signal_stub(
+            sig,
+            at=anchors[2],
+            side="Right",
+            length=4,
+            label_gap=1,
+            label="SIG",
+        )
+        vcc_port = drawing.power("VCC", net=vcc, at=anchors[3])
+        gnd_port = drawing.ground(net=gnd, at=anchors[4])
+        drawing.connect(anchors[0].right(2), anchors[5].right(2), net=sig, shape="-")
+
+    projection = json.loads(schematic.to_json())
+
+    assert [anchor.point for anchor in anchors] == [
+        (100.0, 50.0),
+        (100.0, 60.0),
+        (100.0, 70.0),
+        (100.0, 80.0),
+        (100.0, 90.0),
+        (100.0, 100.0),
+    ]
+    assert placed.TP.point == (100.0, 50.0)
+    assert cap.start.point == (100.0, 60.0)
+    assert cap.end.point == (120.0, 60.0)
+    assert stub.start.point == (100.0, 70.0)
+    assert stub.end.point == (104.0, 70.0)
+    assert vcc_port.pin.point == (100.0, 80.0)
+    assert gnd_port.pin.point == (100.0, 90.0)
+    assert [_wire_points(projection, index) for index in range(2)] == [
+        [(100.0, 70.0), (104.0, 70.0)],
+        [(102.0, 50.0), (102.0, 100.0)],
+    ]
+    assert [label["position"] for label in projection["net_labels"]] == [
+        {"x": 105.0, "y": 70.0},
+    ]
+    assert [port["position"] for port in projection["power_ports"]] == [
+        {"x": 100.0, "y": 80.0},
+        {"x": 100.0, "y": 90.0},
+    ]
+    assert (drawing.here.point, drawing.direction) == before
+
+
+def test_python_schematic_drawing_stack_rejects_invalid_inputs_clearly():
+    design = volt.Design("schematic-drawing-stack-invalid")
+    schematic = design.schematic("Main")
+    drawing = schematic.drawing()
+    before = schematic.to_json()
+
+    invalid_cases = (
+        ({"count": 1.5}, TypeError, "integer"),
+        ({"count": True}, TypeError, "integer"),
+        ({"count": -1}, ValueError, "negative"),
+        ({"count": 1, "pitch": 0}, ValueError, "positive"),
+        ({"count": 1, "direction": "diagonal"}, ValueError, "Right, Down, Left, or Up"),
+    )
+
+    for kwargs, error_type, message in invalid_cases:
+        try:
+            drawing.stack(**kwargs)
+        except error_type as error:
+            assert message in str(error)
+        else:
+            raise AssertionError(f"stack should reject {kwargs!r}")
+
+    assert drawing.stack(count=0) == ()
+    assert schematic.to_json() == before
+
+
 def test_python_schematic_drawing_push_pop_and_hold_restore_cursor_state():
     design = volt.Design("schematic-drawing-stack")
     drawing = design.schematic("Main").drawing(at=(10, 20), direction="Left")

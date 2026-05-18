@@ -100,9 +100,11 @@ def author_schematic(
             drawing.connect(reset_pullup.end, reset_tp.TP, shape="-")
             drawing.connect(reset_tp.TP, header[1], shape="-|", k=24)
 
-            drawing.signal_stub(nets["NRST"], at=header[1], side="Right", length=18)
-            drawing.signal_stub(nets["SWDIO"], at=header[2], side="Right", length=18)
-            drawing.signal_stub(nets["SWCLK"], at=header[3], side="Right", length=18)
+            for anchor, net in zip(
+                drawing.stack(count=3, direction="Down", pitch=8, at=header[1]),
+                (nets["NRST"], nets["SWDIO"], nets["SWCLK"]),
+            ):
+                drawing.signal_stub(net, at=anchor, side="Right", length=18)
 
             unused_pad = drawing.place(parts["TP2"], at=header[3].down(34)).label_ref(
                 loc="bottom"

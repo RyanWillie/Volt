@@ -1923,6 +1923,29 @@ class SchematicDrawing:
             _authored_region=self._authored_region,
         )
 
+    def stack(
+        self,
+        *,
+        count: int,
+        direction: str | None = None,
+        pitch: float | None = None,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+    ) -> tuple[SchematicAnchor, ...]:
+        if isinstance(count, bool) or not isinstance(count, int):
+            raise TypeError("Schematic stack count must be an integer")
+        if count < 0:
+            raise ValueError("Schematic stack count must not be negative")
+        stack_direction = self._direction if direction is None else _orientation(direction)
+        stack_pitch = self._unit if pitch is None else _positive_coordinate(
+            pitch, "Schematic stack pitches"
+        )
+        base = self._here if at is None else self._anchor_at(at)
+        anchors = []
+        for index in range(count):
+            dx, dy = _schematic_direction_offset(stack_direction, stack_pitch * index)
+            anchors.append(base.offset(dx=dx, dy=dy))
+        return tuple(anchors)
+
     def junction(
         self,
         net: Net,
@@ -4562,6 +4585,16 @@ def _signal_stub_pitch_offset(side: str, distance: float) -> tuple[float, float]
     if side in ("Right", "Left"):
         return (0.0, distance)
     return (distance, 0.0)
+
+
+def _schematic_direction_offset(direction: str, distance: float) -> tuple[float, float]:
+    if direction == "Right":
+        return (distance, 0.0)
+    if direction == "Left":
+        return (-distance, 0.0)
+    if direction == "Down":
+        return (0.0, distance)
+    return (0.0, -distance)
 
 
 def _symbol_point(value: tuple[float, float]) -> dict:
