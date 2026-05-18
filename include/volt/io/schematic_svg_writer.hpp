@@ -43,6 +43,62 @@ inline constexpr double title_block_width = 82.0;
 inline constexpr double title_block_label_width = 22.0;
 inline constexpr double title_block_row_height = 6.0;
 
+/** Production schematic rendering scale: page chrome stays quiet, circuit marks stay primary. */
+struct SchematicSvgVisualScale {
+    /** Outer sheet border stroke width. */
+    double sheet_border_stroke_width = 0.45;
+    /** Inner drawing-frame stroke width. */
+    double drawing_frame_stroke_width = 0.35;
+    /** Title-block outline and rule stroke width. */
+    double title_block_stroke_width = 0.3;
+    /** Functional-region frame stroke width. */
+    double region_frame_stroke_width = 0.35;
+    /** Logical wire stroke width. */
+    double wire_stroke_width = 0.75;
+    /** Symbol primitive stroke width. */
+    double symbol_stroke_width = 0.7;
+    /** Sheet, power, and ground tag stroke width. */
+    double tag_port_stroke_width = 0.55;
+    /** No-connect marker stroke width. */
+    double no_connect_stroke_width = 0.65;
+    /** Junction dot radius. */
+    double junction_radius = 1.15;
+    /** Coordinate-zone label font size. */
+    double coordinate_zone_font_size = 3.0;
+    /** Title-block font size. */
+    double title_block_font_size = 2.5;
+    /** Functional-region title font size. */
+    double region_title_font_size = 3.2;
+    /** Local net label font size. */
+    double net_label_font_size = 2.5;
+    /** Sheet, power, and ground tag label font size. */
+    double tag_port_label_font_size = 2.45;
+    /** Symbol primitive and reference text font size. */
+    double symbol_text_font_size = 2.7;
+    /** Symbol field/value font size. */
+    double symbol_field_font_size = 2.5;
+    /** Debug pin anchor radius. */
+    double pin_anchor_radius = 1.2;
+    /** Debug pin label font size. */
+    double pin_label_font_size = 3.0;
+    /** Debug pin overlay stroke width. */
+    double pin_overlay_stroke_width = 0.7;
+};
+
+inline constexpr SchematicSvgVisualScale schematic_svg_visual_scale{};
+inline constexpr double power_port_stem_length = 4.2;
+inline constexpr double power_port_tip_offset = 7.6;
+inline constexpr double power_port_half_width = 3.0;
+inline constexpr double power_port_label_offset = 9.4;
+inline constexpr double ground_port_stem_length = 3.0;
+inline constexpr double ground_port_label_offset = 8.2;
+inline constexpr double sheet_port_half_height = 2.4;
+inline constexpr double sheet_port_min_body_length = 7.0;
+inline constexpr double sheet_port_tip_length = 3.2;
+inline constexpr double sheet_port_label_padding = 2.1;
+inline constexpr double sheet_port_text_width_factor = 0.56;
+inline constexpr double sheet_port_label_baseline = 0.9;
+
 /** Sheet-local rectangle used by SVG layout helpers. */
 struct SvgRect {
     /** Rectangle x origin. */
@@ -175,6 +231,24 @@ inline void write_upright_text_transform(std::ostream &out, SchematicOrientation
     out << ' ';
     write_svg_number(out, anchor.y());
     out << ")\"";
+}
+
+inline void write_css_stroke_width(std::ostream &out, double width) {
+    out << "stroke-width:";
+    write_svg_number(out, width);
+}
+
+inline void write_css_font(std::ostream &out, double size) {
+    out << "font:";
+    write_svg_number(out, size);
+    out << "px sans-serif";
+}
+
+[[nodiscard]] inline double sheet_port_body_length(std::string_view label) {
+    const auto label_width = static_cast<double>(label.size()) *
+                             schematic_svg_visual_scale.tag_port_label_font_size *
+                             sheet_port_text_width_factor;
+    return std::max(sheet_port_min_body_length, label_width + (sheet_port_label_padding * 2.0));
 }
 
 [[nodiscard]] inline SvgRect drawing_area(const SheetMetadata &metadata) {
@@ -312,7 +386,9 @@ inline void write_symbol_pin_svg(std::ostream &out, const SymbolPin &pin) {
     write_svg_number(out, pin.anchor().x());
     out << "\" cy=\"";
     write_svg_number(out, pin.anchor().y());
-    out << "\" r=\"1.5\"/>\n";
+    out << "\" r=\"";
+    write_svg_number(out, schematic_svg_visual_scale.pin_anchor_radius);
+    out << "\"/>\n";
     out << "      <text class=\"pin-label\" x=\"";
     write_svg_number(out, pin.anchor().x());
     out << "\" y=\"";
@@ -409,7 +485,9 @@ inline void write_junction_svg(std::ostream &out, const Schematic &schematic, Ju
     write_svg_number(out, junction.position().x());
     out << "\" cy=\"";
     write_svg_number(out, junction.position().y());
-    out << "\" r=\"1.8\"/>\n";
+    out << "\" r=\"";
+    write_svg_number(out, schematic_svg_visual_scale.junction_radius);
+    out << "\"/>\n";
 }
 
 inline void write_power_port_svg(std::ostream &out, const Schematic &schematic, PowerPortId id) {
@@ -426,16 +504,38 @@ inline void write_power_port_svg(std::ostream &out, const Schematic &schematic, 
     write_svg_number(out, orientation_degrees(port.orientation()));
     out << ")\">\n";
     if (port.kind() == PowerPortKind::Ground) {
-        out << "      <line class=\"power-port-line\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"4\"/>\n";
-        out << "      <line class=\"ground-bar\" x1=\"-5\" y1=\"4\" x2=\"5\" y2=\"4\"/>\n";
-        out << "      <line class=\"ground-bar\" x1=\"-3\" y1=\"6\" x2=\"3\" y2=\"6\"/>\n";
-        out << "      <line class=\"ground-bar\" x1=\"-1\" y1=\"8\" x2=\"1\" y2=\"8\"/>\n";
+        out << "      <line class=\"power-port-line\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"";
+        write_svg_number(out, ground_port_stem_length);
+        out << "\"/>\n";
+        out << "      <line class=\"ground-bar\" x1=\"-3.6\" y1=\"";
+        write_svg_number(out, ground_port_stem_length);
+        out << "\" x2=\"3.6\" y2=\"";
+        write_svg_number(out, ground_port_stem_length);
+        out << "\"/>\n";
+        out << "      <line class=\"ground-bar\" x1=\"-2.2\" y1=\"4.6\" x2=\"2.2\" y2=\"4.6\"/>\n";
+        out << "      <line class=\"ground-bar\" x1=\"-0.9\" y1=\"6\" x2=\"0.9\" y2=\"6\"/>\n";
     } else {
-        out << "      <line class=\"power-port-line\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"-7\"/>\n";
-        out << "      <path class=\"power-port-shape\" d=\"M -4 -7 L 0 -12 L 4 -7 Z\"/>\n";
+        out << "      <line class=\"power-port-line\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"-";
+        write_svg_number(out, power_port_stem_length);
+        out << "\"/>\n";
+        out << "      <path class=\"power-port-shape\" d=\"M -";
+        write_svg_number(out, power_port_half_width);
+        out << " -";
+        write_svg_number(out, power_port_stem_length);
+        out << " L 0 -";
+        write_svg_number(out, power_port_tip_offset);
+        out << " L ";
+        write_svg_number(out, power_port_half_width);
+        out << " -";
+        write_svg_number(out, power_port_stem_length);
+        out << " Z\"/>\n";
     }
-    out << "      <text class=\"power-port-label\" x=\"0\" y=\"-14\"";
-    write_upright_text_transform(out, port.orientation(), Point{0.0, -14.0});
+    const auto label_y =
+        port.kind() == PowerPortKind::Ground ? ground_port_label_offset : -power_port_label_offset;
+    out << "      <text class=\"power-port-label\" x=\"0\" y=\"";
+    write_svg_number(out, label_y);
+    out << "\"";
+    write_upright_text_transform(out, port.orientation(), Point{0.0, label_y});
     const auto port_label = port.label().value_or(net.name().value());
     out << ">" << svg_escape(port_label) << "</text>\n";
     out << "    </g>\n";
@@ -470,9 +570,31 @@ inline void write_sheet_port_svg(std::ostream &out, const Schematic &schematic, 
     out << ") rotate(";
     write_svg_number(out, orientation_degrees(port.orientation()));
     out << ")\">\n";
-    out << "      <path class=\"sheet-port-shape\" d=\"M 0 -4 L 14 -4 L 20 0 L 14 4 L 0 4 Z\"/>\n";
-    out << "      <text class=\"sheet-port-label\" x=\"10\" y=\"2\"";
-    write_upright_text_transform(out, port.orientation(), Point{10.0, 2.0});
+    const auto body_length = sheet_port_body_length(port.name());
+    const auto tip_x = body_length + sheet_port_tip_length;
+    out << "      <path class=\"sheet-port-shape\" d=\"M 0 -";
+    write_svg_number(out, sheet_port_half_height);
+    out << " L ";
+    write_svg_number(out, body_length);
+    out << " -";
+    write_svg_number(out, sheet_port_half_height);
+    out << " L ";
+    write_svg_number(out, tip_x);
+    out << " 0 L ";
+    write_svg_number(out, body_length);
+    out << ' ';
+    write_svg_number(out, sheet_port_half_height);
+    out << " L 0 ";
+    write_svg_number(out, sheet_port_half_height);
+    out << " Z\"/>\n";
+    const auto label_x = body_length * 0.5;
+    const auto label_anchor = Point{label_x, sheet_port_label_baseline};
+    out << "      <text class=\"sheet-port-label\" x=\"";
+    write_svg_number(out, label_x);
+    out << "\" y=\"";
+    write_svg_number(out, sheet_port_label_baseline);
+    out << "\"";
+    write_upright_text_transform(out, port.orientation(), label_anchor);
     out << ">" << svg_escape(port.name()) << "</text>\n";
     out << "    </g>\n";
 }
@@ -700,35 +822,63 @@ inline void write_regions_svg(std::ostream &out, SheetId sheet_id, const Sheet &
 }
 
 inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
+    const auto &scale = schematic_svg_visual_scale;
+
     out << "  <style>"
            ".document-background,.sheet{fill:#fff;stroke:none}"
-           ".sheet-border{fill:none;stroke:#111;stroke-width:0.6}"
-           ".drawing-frame{fill:none;stroke:#111;stroke-width:0.45}"
-           ".sheet-grid{stroke:none}"
+           ".sheet-border{fill:none;stroke:#111;";
+    write_css_stroke_width(out, scale.sheet_border_stroke_width);
+    out << "}.drawing-frame{fill:none;stroke:#111;";
+    write_css_stroke_width(out, scale.drawing_frame_stroke_width);
+    out << "}.sheet-grid{stroke:none}"
            ".sheet-grid-dot{fill:#d7d7d7;stroke:none}"
-           ".coordinate-zone-label{font:3.5px sans-serif;fill:#444;text-anchor:middle;"
-           "dominant-baseline:middle}"
+           ".coordinate-zone-label{";
+    write_css_font(out, scale.coordinate_zone_font_size);
+    out << ";fill:#444;text-anchor:middle;dominant-baseline:middle}"
            ".sheet-title{font-weight:600}"
-           ".title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.35}"
-           ".title-block-label{font:2.8px sans-serif;fill:#444;text-anchor:start}"
-           ".title-block-value{font:2.8px sans-serif;fill:#111;text-anchor:start}"
-           ".sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.45}"
-           ".sheet-region-frame.dashed{stroke-dasharray:3 2}"
-           ".sheet-region-title{font:4px sans-serif;fill:#57534e;text-anchor:start;"
-           "font-weight:600}"
-           ".wire-run{fill:none;stroke:#111;stroke-width:1}"
-           ".net-label{font:2.8px sans-serif;fill:#111;text-anchor:start}"
+           ".title-block-outline,.title-block-rule{fill:none;stroke:#111;";
+    write_css_stroke_width(out, scale.title_block_stroke_width);
+    out << "}.title-block-label{";
+    write_css_font(out, scale.title_block_font_size);
+    out << ";fill:#444;text-anchor:start}"
+           ".title-block-value{";
+    write_css_font(out, scale.title_block_font_size);
+    out << ";fill:#111;text-anchor:start}"
+           ".sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;";
+    write_css_stroke_width(out, scale.region_frame_stroke_width);
+    out << "}.sheet-region-frame.dashed{stroke-dasharray:3 2}"
+           ".sheet-region-title{";
+    write_css_font(out, scale.region_title_font_size);
+    out << ";fill:#57534e;text-anchor:start;font-weight:600}"
+           ".wire-run{fill:none;stroke:#111;";
+    write_css_stroke_width(out, scale.wire_stroke_width);
+    out << "}.net-label{";
+    write_css_font(out, scale.net_label_font_size);
+    out << ";fill:#111;text-anchor:start}"
            ".junction{fill:#111;stroke:none}"
-           ".power-port-line,.ground-bar,.no-connect-line{stroke:#111;stroke-width:1}"
-           ".power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:1}"
-           ".power-port-label,.sheet-port-label,.symbol-field{font:2.8px sans-serif;fill:#111;"
-           "text-anchor:middle}"
-           ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-"
-           "width:1}"
-           ".symbol-text,.reference{font:2.8px sans-serif;fill:#111;text-anchor:middle}";
+           ".power-port-line,.ground-bar{stroke:#111;";
+    write_css_stroke_width(out, scale.tag_port_stroke_width);
+    out << "}.no-connect-line{stroke:#111;";
+    write_css_stroke_width(out, scale.no_connect_stroke_width);
+    out << "}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;";
+    write_css_stroke_width(out, scale.tag_port_stroke_width);
+    out << "}.power-port-label,.sheet-port-label{";
+    write_css_font(out, scale.tag_port_label_font_size);
+    out << ";fill:#111;text-anchor:middle}"
+           ".symbol-field{";
+    write_css_font(out, scale.symbol_field_font_size);
+    out << ";fill:#111;text-anchor:middle}"
+           ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;";
+    write_css_stroke_width(out, scale.symbol_stroke_width);
+    out << "}.symbol-text,.reference{";
+    write_css_font(out, scale.symbol_text_font_size);
+    out << ";fill:#111;text-anchor:middle}";
     if (options.debug_overlays) {
-        out << ".pin-anchor{fill:#fff;stroke:#c2410c;stroke-width:0.8}"
-               ".pin-label{font:4px sans-serif;fill:#c2410c;text-anchor:middle}";
+        out << ".pin-anchor{fill:#fff;stroke:#c2410c;";
+        write_css_stroke_width(out, scale.pin_overlay_stroke_width);
+        out << "}.pin-label{";
+        write_css_font(out, scale.pin_label_font_size);
+        out << ";fill:#c2410c;text-anchor:middle}";
     }
     out << "</style>\n";
 }

@@ -94,6 +94,10 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     [[maybe_unused]] const auto sheet_port = schematic.add_sheet_port(
         volt::SheetId{0},
         volt::SheetPort{net, "VIN", volt::SheetPortKind::OffPage, volt::Point{5.0, 20.0}});
+    [[maybe_unused]] const auto left_sheet_port = schematic.add_sheet_port(
+        volt::SheetId{0},
+        volt::SheetPort{net, "VIN_LEFT", volt::SheetPortKind::OffPage, volt::Point{25.0, 26.0},
+                        volt::SchematicOrientation::Left});
     [[maybe_unused]] const auto field = schematic.add_symbol_field(
         volt::SheetId{0},
         volt::SymbolField{volt::SymbolInstanceId{0}, "value", "10k", volt::Point{40.0, 32.0}});
@@ -123,8 +127,14 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
           std::string::npos);
     CHECK(svg.find("<text class=\"title-block-value\" x=\"24\" y=\"10.2\">A</text>") !=
           std::string::npos);
-    CHECK(svg.find(".wire-run{fill:none;stroke:#111;stroke-width:1}") != std::string::npos);
-    CHECK(svg.find(".net-label{font:2.8px sans-serif;fill:#111;text-anchor:start}") !=
+    CHECK(svg.find(".sheet-border{fill:none;stroke:#111;stroke-width:0.45}") != std::string::npos);
+    CHECK(svg.find(".drawing-frame{fill:none;stroke:#111;stroke-width:0.35}") != std::string::npos);
+    CHECK(svg.find(".wire-run{fill:none;stroke:#111;stroke-width:0.75}") != std::string::npos);
+    CHECK(svg.find(".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;"
+                   "stroke:#111;stroke-width:0.7}") != std::string::npos);
+    CHECK(svg.find(".power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;"
+                   "stroke-width:0.55}") != std::string::npos);
+    CHECK(svg.find(".net-label{font:2.5px sans-serif;fill:#111;text-anchor:start}") !=
           std::string::npos);
     CHECK(svg.find("#0645ad") == std::string::npos);
     CHECK(svg.find("<polyline class=\"wire-run\" data-net=\"net:0\" points=\"10,20 30,20\"/>") !=
@@ -151,13 +161,27 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(svg.find("pin-label") == std::string::npos);
     CHECK(svg.find("<text class=\"reference\" x=\"0\" y=\"-12\">R&amp;1</text>") !=
           std::string::npos);
-    CHECK(
-        svg.find("<circle class=\"junction\" data-net=\"net:0\" cx=\"30\" cy=\"20\" r=\"1.8\"/>") !=
-        std::string::npos);
+    CHECK(svg.find(
+              "<circle class=\"junction\" data-net=\"net:0\" cx=\"30\" cy=\"20\" r=\"1.15\"/>") !=
+          std::string::npos);
     CHECK(svg.find("<g class=\"power-port power\" data-net=\"net:0\"") != std::string::npos);
+    CHECK(svg.find("<line class=\"power-port-line\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"-4.2\"/>") !=
+          std::string::npos);
+    CHECK(svg.find("<path class=\"power-port-shape\" d=\"M -3 -4.2 L 0 -7.6 L 3 -4.2 Z\"/>") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"power-port-label\" x=\"0\" y=\"-9.4\"") != std::string::npos);
     CHECK(svg.find("<g class=\"power-port ground\" data-net=\"net:1\"") != std::string::npos);
+    CHECK(svg.find("<line class=\"ground-bar\" x1=\"-3.6\" y1=\"3\" x2=\"3.6\" y2=\"3\"/>") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"power-port-label\" x=\"0\" y=\"8.2\"") != std::string::npos);
     CHECK(svg.find("<g class=\"no-connect-marker\" data-pin=\"pin:1\"") != std::string::npos);
     CHECK(svg.find("<g class=\"sheet-port off-page\" data-net=\"net:0\"") != std::string::npos);
+    CHECK(svg.find("<path class=\"sheet-port-shape\" d=\"M 0 -2.4 L 8.316 -2.4 L 11.516 "
+                   "0 L 8.316 2.4 L 0 2.4 Z\"/>") != std::string::npos);
+    CHECK(svg.find("<text class=\"sheet-port-label\" x=\"4.158\" y=\"0.9\">VIN</text>") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"sheet-port-label\" x=\"7.588\" y=\"0.9\" "
+                   "transform=\"rotate(-180 7.588 0.9)\">VIN_LEFT</text>") != std::string::npos);
     CHECK(svg.find(">VIN</text>") != std::string::npos);
     CHECK(svg.find("<text class=\"symbol-field\" data-symbol-instance=\"symbol_instance:0\" "
                    "data-field=\"value\" x=\"40\" y=\"32\"") != std::string::npos);
@@ -190,8 +214,10 @@ TEST_CASE("Schematic SVG writer renders debug pin overlays only when enabled") {
     const auto svg = volt::io::write_schematic_svg(schematic, options);
 
     CHECK(svg.find("<g class=\"layer layer-debug\">") != std::string::npos);
-    CHECK(svg.find(".pin-anchor{fill:#fff;stroke:#c2410c;stroke-width:0.8}") != std::string::npos);
-    CHECK(svg.find("<circle class=\"pin-anchor\" cx=\"0\" cy=\"0\" r=\"1.5\"/>") !=
+    CHECK(svg.find(".pin-anchor{fill:#fff;stroke:#c2410c;stroke-width:0.7}") != std::string::npos);
+    CHECK(svg.find(".pin-label{font:3px sans-serif;fill:#c2410c;text-anchor:middle}") !=
+          std::string::npos);
+    CHECK(svg.find("<circle class=\"pin-anchor\" cx=\"0\" cy=\"0\" r=\"1.2\"/>") !=
           std::string::npos);
     CHECK(svg.find("<text class=\"pin-label\" x=\"0\" y=\"4\">1&amp;</text>") != std::string::npos);
     CHECK(require_contains(svg, "<g class=\"layer layer-fields\">") <
