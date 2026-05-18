@@ -468,6 +468,7 @@ inline void write_wire_run_svg(std::ostream &out, const Schematic &schematic, Wi
 inline void write_net_label_svg(std::ostream &out, const Schematic &schematic, NetLabelId id) {
     const auto &label = schematic.net_label(id);
     const auto &net = schematic.circuit().net(label.net());
+    const auto &text = label.label().value_or(net.name().value());
 
     out << "    <text class=\"net-label\" data-net=\"" << svg_escape(svg_net_id(label.net()))
         << "\" x=\"";
@@ -480,7 +481,7 @@ inline void write_net_label_svg(std::ostream &out, const Schematic &schematic, N
     write_svg_number(out, label.position().x());
     out << ' ';
     write_svg_number(out, label.position().y());
-    out << ")\">" << svg_escape(net.name().value()) << "</text>\n";
+    out << ")\">" << svg_escape(text) << "</text>\n";
 }
 
 inline void write_junction_svg(std::ostream &out, const Schematic &schematic, JunctionId id) {

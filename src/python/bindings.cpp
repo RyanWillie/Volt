@@ -1558,7 +1558,8 @@ class PyCircuit {
 
     [[nodiscard]] std::size_t add_schematic_net_label(std::size_t sheet, std::size_t net, double x,
                                                       double y, const std::string &orientation,
-                                                      std::optional<std::size_t> authored_region) {
+                                                      std::optional<std::size_t> authored_region,
+                                                      std::optional<std::string> label) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
@@ -1567,7 +1568,7 @@ class PyCircuit {
             .add_net_label(sheet_id(sheet),
                            volt::NetLabel{net_id(net), volt::Point{x, y},
                                           schematic_orientation_from_string(orientation),
-                                          authored_region})
+                                          authored_region, std::move(label)})
             .index();
     }
 
@@ -1867,7 +1868,7 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("points"), py::arg("route_intent"), py::arg("authored_region") = std::nullopt)
         .def("add_schematic_net_label", &PyCircuit::add_schematic_net_label, py::arg("sheet"),
              py::arg("net"), py::arg("x"), py::arg("y"), py::arg("orientation"),
-             py::arg("authored_region") = std::nullopt)
+             py::arg("authored_region") = std::nullopt, py::arg("label") = std::nullopt)
         .def("add_schematic_junction", &PyCircuit::add_schematic_junction, py::arg("sheet"),
              py::arg("net"), py::arg("x"), py::arg("y"), py::arg("authored_region") = std::nullopt)
         .def("add_schematic_power_port", &PyCircuit::add_schematic_power_port, py::arg("sheet"),

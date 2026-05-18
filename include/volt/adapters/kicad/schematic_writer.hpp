@@ -270,7 +270,8 @@ inline void write_wire(std::ostream &out, const WireRun &wire, std::size_t index
 
 inline void write_label(std::ostream &out, const Schematic &schematic, const NetLabel &label,
                         std::size_t index) {
-    out << "  (label " << sexpr_string(schematic.circuit().net(label.net()).name().value()) << ' ';
+    const auto &net = schematic.circuit().net(label.net());
+    out << "  (label " << sexpr_string(label.label().value_or(net.name().value())) << ' ';
     write_at(out, label.position(), label.orientation());
     out << "\n";
     out << "    (effects (font (size 1.27 1.27)) (justify left bottom))\n";

@@ -1843,12 +1843,14 @@ class SchematicDrawing:
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
         orient: str = "Right",
+        label: str | None = None,
     ) -> SchematicNetLabel:
         self._flush_pending()
         return self._schematic.net_label(
             name_or_net,
             at=self._here if at is None else self._point_arg(at),
             orient=orient,
+            label=label,
             _authored_region=self._authored_region,
         )
 
@@ -1880,6 +1882,7 @@ class SchematicDrawing:
         length: float = 8,
         label_gap: float = 2,
         orient: str | None = None,
+        label: str | None = None,
     ) -> SchematicSignalStub:
         self._flush_pending()
         return self._schematic.signal_stub(
@@ -1889,6 +1892,7 @@ class SchematicDrawing:
             length=length,
             label_gap=label_gap,
             orient=orient,
+            label=label,
             _authored_region=self._authored_region,
         )
 
@@ -2634,6 +2638,7 @@ class Schematic:
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
+        label: str | None = None,
         _authored_region: int | None = None,
     ) -> SchematicNetLabel:
         if not isinstance(net, Net):
@@ -2651,7 +2656,13 @@ class Schematic:
         orientation = _orientation(orient)
 
         label = self._design._circuit.add_schematic_net_label(
-            self._sheet_index, net.index, x, y, orientation, _authored_region
+            self._sheet_index,
+            net.index,
+            x,
+            y,
+            orientation,
+            _authored_region,
+            _optional_display_label(label),
         )
         return SchematicNetLabel(self, label, orientation)
 
@@ -2661,13 +2672,14 @@ class Schematic:
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
+        label: str | None = None,
         _authored_region: int | None = None,
     ) -> SchematicNetLabel:
         try:
             net = _resolve_schematic_net_label(self._design, name_or_net)
         except ValueError as error:
             _raise_cross_design_with_context(error, self, "net label")
-        return self.label(net, at=at, orient=orient, _authored_region=_authored_region)
+        return self.label(net, at=at, orient=orient, label=label, _authored_region=_authored_region)
 
     def local_label(
         self,
@@ -2715,6 +2727,7 @@ class Schematic:
         length: float = 8,
         label_gap: float = 2,
         orient: str | None = None,
+        label: str | None = None,
         _authored_region: int | None = None,
     ) -> SchematicSignalStub:
         side_orientation = _orientation(side)
@@ -2752,6 +2765,7 @@ class Schematic:
             net,
             at=label_position,
             orient=label_orientation,
+            label=label,
             _authored_region=_authored_region,
         )
         return SchematicSignalStub(
@@ -3193,9 +3207,14 @@ class SchematicRegion:
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
+        label: str | None = None,
     ) -> SchematicNetLabel:
         return self._sheet.label(
-            net, at=self._local_point(at), orient=orient, _authored_region=self._index
+            net,
+            at=self._local_point(at),
+            orient=orient,
+            label=label,
+            _authored_region=self._index,
         )
 
     def net_label(
@@ -3204,11 +3223,13 @@ class SchematicRegion:
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
+        label: str | None = None,
     ) -> SchematicNetLabel:
         return self._sheet.net_label(
             name_or_net,
             at=self._local_point(at),
             orient=orient,
+            label=label,
             _authored_region=self._index,
         )
 
@@ -3239,6 +3260,7 @@ class SchematicRegion:
         length: float = 8,
         label_gap: float = 2,
         orient: str | None = None,
+        label: str | None = None,
     ) -> SchematicSignalStub:
         return self._sheet.signal_stub(
             name_or_net,
@@ -3247,6 +3269,7 @@ class SchematicRegion:
             length=length,
             label_gap=label_gap,
             orient=orient,
+            label=label,
             _authored_region=self._index,
         )
 
@@ -4128,6 +4151,16 @@ def _pin_anchor_label(anchor: SchematicPinAnchor) -> str:
 
 def _net_label(net: Net) -> str:
     return f"{net.name} (net:{net.index})"
+
+
+def _optional_display_label(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise TypeError("Schematic net label display text must be a string")
+    if not value:
+        raise ValueError("Schematic net label display text must not be empty")
+    return value
 
 
 def _missing_schematic_symbol_message(

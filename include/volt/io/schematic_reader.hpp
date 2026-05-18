@@ -538,7 +538,8 @@ class SchematicReader {
             const auto label = schematic_.add_net_label(
                 sheet, NetLabel{net, point(field(label_object, "position")),
                                 orientation(string_field(label_object, "orientation")),
-                                authored_region(sheet, label_object)});
+                                authored_region(sheet, label_object),
+                                optional_non_empty_string_field(label_object, "label")});
             net_label_ids_.emplace(id, label);
         }
     }

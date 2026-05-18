@@ -561,6 +561,9 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
         detail::write_point(out, label.position());
         out << ", \"orientation\": "
             << detail::json_string(detail::schematic_orientation_name(label.orientation()));
+        if (label.label()) {
+            out << ", \"label\": " << detail::json_string(*label.label());
+        }
         detail::write_authored_region(out,
                                       schematic.sheet(detail::sheet_for_net_label(schematic, id)),
                                       label.authored_region());

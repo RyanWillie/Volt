@@ -114,7 +114,7 @@ def test_python_schematic_label_sugar_uses_symbol_fields_and_net_labels():
 
 def test_python_schematic_local_signal_stub_sugar_emits_wire_and_label_only():
     design = volt.Design("schematic-local-signal-stub")
-    sig = design.net("SWDIO")
+    sig = design.net("SUPPORT/SWDIO")
     probe = design.test_point(ref="TP1")
     sig += probe["TP"]
 
@@ -123,7 +123,14 @@ def test_python_schematic_local_signal_stub_sugar_emits_wire_and_label_only():
 
     with schematic.drawing(at=(40, 40), unit=20) as drawing:
         placed = drawing.place(probe)
-        stub = drawing.signal_stub(sig, at=placed.TP, side="left", length=6, label_gap=1)
+        stub = drawing.signal_stub(
+            sig,
+            at=placed.TP,
+            side="left",
+            length=6,
+            label_gap=1,
+            label="SWDIO",
+        )
 
     projection = json.loads(schematic.to_json())
 
@@ -147,6 +154,7 @@ def test_python_schematic_local_signal_stub_sugar_emits_wire_and_label_only():
             "net": f"net:{sig.index}",
             "position": {"x": 33.0, "y": 40.0},
             "orientation": "Left",
+            "label": "SWDIO",
         }
     ]
 
@@ -154,6 +162,7 @@ def test_python_schematic_local_signal_stub_sugar_emits_wire_and_label_only():
     assert f'<polyline class="wire-run" data-net="net:{sig.index}" points="40,40 34,40"/>' in svg
     assert f'<text class="net-label" data-net="net:{sig.index}" x="33" y="40"' in svg
     assert ">SWDIO</text>" in svg
+    assert ">SUPPORT/SWDIO</text>" not in svg
     assert 'class="sheet-port off-page"' not in svg
 
 
