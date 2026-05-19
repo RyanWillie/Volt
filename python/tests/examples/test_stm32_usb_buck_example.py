@@ -405,6 +405,11 @@ def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():
 
     assert "_SchematicAuthor" not in source
     assert "fallback schematic pin coverage" not in source
+    assert "clock_block(" not in source
+    assert "reset_block(" not in source
+    assert "boot_block(" not in source
+    assert "power_block(" not in source
+    assert "usb_block(" not in source
     assert "region.drawing(" in source
     assert source.count("drawing.frame(") >= 3
     assert "drawing.stack(" in source
