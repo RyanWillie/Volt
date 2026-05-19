@@ -1105,6 +1105,8 @@ TEST_CASE("Schematic readability reports misaligned repeated same-net labels in 
     const auto second =
         schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{58.0, 55.0}});
     const auto third = schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{53.0, 63.0}});
+    static_cast<void>(
+        schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{160.0, 160.0}}));
 
     const auto report = volt::validate_schematic_readability(schematic);
 
@@ -1153,6 +1155,11 @@ TEST_CASE("Schematic readability reports floating-looking local stub clusters") 
         static_cast<void>(
             schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{56.0, y}}));
     }
+    static_cast<void>(schematic.add_wire_run(
+        sheet,
+        volt::WireRun{net, std::vector{volt::Point{160.0, 50.0}, volt::Point{166.0, 50.0}}}));
+    static_cast<void>(
+        schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{166.0, 50.0}}));
 
     const auto report = volt::validate_schematic_readability(schematic);
 

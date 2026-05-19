@@ -1616,24 +1616,44 @@ inline void validate_misaligned_local_labels(const Schematic &schematic, SheetId
         if (labels.size() < local_label_cluster_threshold) {
             continue;
         }
-        auto bounds = bounds_from_point(points.front());
-        for (const auto point : points) {
-            include_point(bounds, point);
+        auto reported = std::vector<bool>(labels.size(), false);
+        for (std::size_t seed = 0; seed < labels.size(); ++seed) {
+            if (reported[seed]) {
+                continue;
+            }
+            auto cluster = std::vector<std::size_t>{};
+            auto cluster_points = std::vector<Point>{};
+            auto bounds = bounds_from_point(points[seed]);
+            for (std::size_t candidate = 0; candidate < labels.size(); ++candidate) {
+                if (std::abs(points[candidate].x() - points[seed].x()) >
+                        local_label_cluster_max_span ||
+                    std::abs(points[candidate].y() - points[seed].y()) >
+                        local_label_cluster_max_span) {
+                    continue;
+                }
+                cluster.push_back(candidate);
+                cluster_points.push_back(points[candidate]);
+                include_point(bounds, points[candidate]);
+            }
+            if (cluster.size() < local_label_cluster_threshold ||
+                bounds_width(bounds) > local_label_cluster_max_span ||
+                bounds_height(bounds) > local_label_cluster_max_span ||
+                points_align_as_stack(cluster_points)) {
+                continue;
+            }
+            auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id), EntityRef::net(net_id)};
+            for (const auto label_index : cluster) {
+                refs.push_back(EntityRef::net_label(labels[label_index]));
+                reported[label_index] = true;
+            }
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_MISALIGNED_LOCAL_LABELS"},
+                "Repeated same-net labels in one local area are not aligned as an intentional "
+                "stack",
+                std::move(refs),
+            });
         }
-        if (bounds_width(bounds) > local_label_cluster_max_span ||
-            bounds_height(bounds) > local_label_cluster_max_span || points_align_as_stack(points)) {
-            continue;
-        }
-        auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id), EntityRef::net(net_id)};
-        for (const auto label_id : labels) {
-            refs.push_back(EntityRef::net_label(label_id));
-        }
-        report.add(Diagnostic{
-            Severity::Warning,
-            DiagnosticCode{"SCHEMATIC_MISALIGNED_LOCAL_LABELS"},
-            "Repeated same-net labels in one local area are not aligned as an intentional stack",
-            std::move(refs),
-        });
     }
 }
 
@@ -1784,24 +1804,40 @@ inline void validate_floating_stub_clusters(const Schematic &schematic, SheetId 
         if (stubs.size() < floating_stub_cluster_threshold) {
             continue;
         }
-        auto cluster_bounds = bounds_from_point(stubs.front().center);
-        for (const auto &stub : stubs) {
-            include_point(cluster_bounds, stub.center);
+        auto reported = std::vector<bool>(stubs.size(), false);
+        for (std::size_t seed = 0; seed < stubs.size(); ++seed) {
+            if (reported[seed]) {
+                continue;
+            }
+            auto cluster = std::vector<std::size_t>{};
+            auto cluster_bounds = bounds_from_point(stubs[seed].center);
+            for (std::size_t candidate = 0; candidate < stubs.size(); ++candidate) {
+                if (std::abs(stubs[candidate].center.x() - stubs[seed].center.x()) >
+                        floating_stub_cluster_max_span ||
+                    std::abs(stubs[candidate].center.y() - stubs[seed].center.y()) >
+                        floating_stub_cluster_max_span) {
+                    continue;
+                }
+                cluster.push_back(candidate);
+                include_point(cluster_bounds, stubs[candidate].center);
+            }
+            if (cluster.size() < floating_stub_cluster_threshold ||
+                bounds_width(cluster_bounds) > floating_stub_cluster_max_span ||
+                bounds_height(cluster_bounds) > floating_stub_cluster_max_span) {
+                continue;
+            }
+            auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id), EntityRef::net(net_id)};
+            for (const auto stub_index : cluster) {
+                refs.push_back(EntityRef::wire_run(stubs[stub_index].wire));
+                reported[stub_index] = true;
+            }
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_FLOATING_STUB_CLUSTER"},
+                "Local cluster of short tagged wire stubs can read as floating segments",
+                std::move(refs),
+            });
         }
-        if (bounds_width(cluster_bounds) > floating_stub_cluster_max_span ||
-            bounds_height(cluster_bounds) > floating_stub_cluster_max_span) {
-            continue;
-        }
-        auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id), EntityRef::net(net_id)};
-        for (const auto &stub : stubs) {
-            refs.push_back(EntityRef::wire_run(stub.wire));
-        }
-        report.add(Diagnostic{
-            Severity::Warning,
-            DiagnosticCode{"SCHEMATIC_FLOATING_STUB_CLUSTER"},
-            "Local cluster of short tagged wire stubs can read as floating segments",
-            std::move(refs),
-        });
     }
 }
 
