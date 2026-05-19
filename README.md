@@ -1,8 +1,20 @@
 <p align="center">
-  <img src="docs/assets/volt-logo-lockup.png" alt="Volt logo" width="420">
+  <img src="docs/assets/volt-logo.png" alt="Volt logo" width="160">
 </p>
 
-# Volt
+<h1 align="center">Volt</h1>
+
+<p align="center">
+  <strong>A modern C++ electronics design kernel for structured, validated circuit intent.</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/RyanWillie/Volt/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/RyanWillie/Volt/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="C++20" src="https://img.shields.io/badge/C%2B%2B-20-00599C">
+  <img alt="CMake" src="https://img.shields.io/badge/build-CMake-064F8C">
+  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
+  <img alt="Status: pre-release" src="https://img.shields.io/badge/status-pre--release-f5a623">
+</p>
 
 Volt is a modern C++ electronics design kernel for representing circuit intent as
 structured, validated data.
@@ -26,7 +38,7 @@ reported through diagnostics.
 ## Why Volt Exists
 
 Volt is being built for tools that need circuit data they can trust: programmatic
-authoring, validation, import/export pipelines, future Python bindings, and eventually
+authoring, validation, import/export pipelines, Python bindings, and eventually
 schematic and PCB views. The project is intentionally starting below UI, routing, and
 manufacturing export so the kernel can establish stable invariants first.
 
@@ -47,7 +59,7 @@ manufacturing export so the kernel can establish stable invariants first.
 - Layered CMake targets: `Volt::Core`, `Volt::Circuit`, `Volt::Authoring`, `Volt::IO`,
   and `Volt::Volt`
 
-## Build
+## Build And Test
 
 Volt uses CMake presets. From the repository root:
 
@@ -120,6 +132,11 @@ the canonical logical circuit file format, and
 
 For contributor workflow and milestones, see [CONTRIBUTING.md](CONTRIBUTING.md) and
 [ROADMAP.md](ROADMAP.md).
+
+## License
+
+Volt is licensed under the [Apache License 2.0](LICENSE). You may use Volt in open
+source or proprietary products, subject to the license terms.
 
 ## Status
 
