@@ -74,26 +74,48 @@ errors.
 
 ## Issue Workflow
 
-Volt uses Pebble (`pb`) for local issue tracking. Before starting non-trivial work:
+Volt uses Linear as the source of truth for planned work. Before starting non-trivial
+changes:
 
-```sh
-pb ready
-pb show <id>
-pb claim <id>
-pb update <id> --branch codex/<short-branch-name>
-git switch -c codex/<short-branch-name>
-```
+- Read the Linear issue and confirm the acceptance criteria.
+- Create a focused branch that includes the issue key, such as
+  `feat/vol-123-short-description` or `fix/vol-123-short-description`.
+- Keep the issue status current while work is in progress.
+- Include the verification commands and results in the pull request or Linear update.
 
-When finished:
+When finished, update Linear with what changed, what was verified, and any follow-up
+work that should stay visible.
 
-```sh
-pb update <id> --verification-status passed \
-  --verification-summary "Build passed; tests passed; Doxygen completed." \
-  --verification-command "cmake --build --preset dev && ctest --preset dev && cmake --build --preset dev --target docs"
-pb close <id> -r "Implemented and verified."
-```
+Do not use Pebble (`pb`) for active planning or refinement unless the task explicitly
+asks for historical local issue data.
 
 Keep changes surgical. Avoid unrelated refactors or cleanup in feature branches.
+
+## Licensing And Third-Party Code
+
+Volt is licensed under the Apache License 2.0. Unless explicitly stated otherwise,
+contributions intentionally submitted to Volt are accepted under the same license.
+
+Apache-2.0 is permissive: it allows open source and proprietary products to use,
+modify, and distribute Volt, subject to the license terms. It also includes an explicit
+patent grant from contributors.
+
+For third-party code and assets:
+
+- Do not copy code, generated assets, examples, or documentation from third-party
+  projects into Volt unless the source, license, and attribution requirements are
+  documented in the change.
+- It is fine to reference prior art, APIs, workflows, or visual inspiration in commit
+  messages and docs, but inspiration must not become copied implementation.
+- If a change intentionally depends on a third-party package, add it through the normal
+  build or dependency manifest and document why its license is compatible with
+  Apache-2.0.
+- If code is adapted from another project, preserve required notices and call that out in
+  the pull request.
+
+Some Volt documentation and examples describe SchemDraw-style authoring. SchemDraw is an
+inspiration for ergonomic drawing syntax, not a vendored dependency or owner of Volt's
+EDA semantics. Keep that boundary explicit in future changes.
 
 ## CMake Targets
 
