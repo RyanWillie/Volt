@@ -59,7 +59,7 @@ manufacturing export so the kernel can establish stable invariants first.
 - Layered CMake targets: `Volt::Core`, `Volt::Circuit`, `Volt::Authoring`, `Volt::IO`,
   and `Volt::Volt`
 
-## Quick Start
+## Build And Test
 
 Volt uses CMake presets. From the repository root:
 

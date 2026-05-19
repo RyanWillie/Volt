@@ -84,6 +84,9 @@ changes:
 - Keep the issue status current while work is in progress.
 - Include the verification commands and results in the pull request or Linear update.
 
+The `VOL-123` portion is the Linear issue key. If you do not have Linear access, ask the
+maintainer for the relevant issue context before starting planned work.
+
 When finished, update Linear with what changed, what was verified, and any follow-up
 work that should stay visible.
 
