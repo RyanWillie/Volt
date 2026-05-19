@@ -1726,6 +1726,22 @@ inline void validate_ambiguous_same_net_crossings(const Schematic &schematic, Sh
     return false;
 }
 
+[[nodiscard]] inline bool sheet_has_other_same_net_wire_at_point(const Schematic &schematic,
+                                                                 const Sheet &sheet, NetId net,
+                                                                 Point point,
+                                                                 WireRunId excluded_wire) {
+    for (const auto wire_id : sheet.wire_runs()) {
+        if (wire_id == excluded_wire) {
+            continue;
+        }
+        const auto &wire = schematic.wire_run(wire_id);
+        if (wire.net() == net && wire_covers_point(wire, point)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /** Short tagged wire run that may read as a floating local stub. */
 struct FloatingStubCandidate {
     /** Wire run that forms the short stub. */
@@ -1754,6 +1770,10 @@ inline void validate_floating_stub_clusters(const Schematic &schematic, SheetId 
             }
             if (sheet_has_symbol_pin_for_net_at_point(schematic, sheet, net_id, start) ||
                 sheet_has_symbol_pin_for_net_at_point(schematic, sheet, net_id, end)) {
+                continue;
+            }
+            if (sheet_has_other_same_net_wire_at_point(schematic, sheet, net_id, start, wire_id) ||
+                sheet_has_other_same_net_wire_at_point(schematic, sheet, net_id, end, wire_id)) {
                 continue;
             }
             stubs.push_back(FloatingStubCandidate{

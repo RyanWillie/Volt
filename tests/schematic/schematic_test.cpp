@@ -1165,6 +1165,28 @@ TEST_CASE("Schematic readability reports floating-looking local stub clusters") 
     }
 }
 
+TEST_CASE(
+    "Schematic readability does not report floating stub cluster when stubs attach to trunk") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "BOOT0");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    static_cast<void>(schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{50.0, 50.0}, volt::Point{50.0, 66.0}}}));
+    for (std::size_t index = 0; index < 3U; ++index) {
+        const auto y = 50.0 + (static_cast<double>(index) * 6.0);
+        static_cast<void>(schematic.add_wire_run(
+            sheet, volt::WireRun{net, std::vector{volt::Point{50.0, y}, volt::Point{56.0, y}}}));
+        static_cast<void>(
+            schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{56.0, y}}));
+    }
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK_FALSE(report_has_code(report, "SCHEMATIC_FLOATING_STUB_CLUSTER"));
+}
+
 TEST_CASE("Schematic readability reports crowded repeated tag stacks") {
     volt::Circuit circuit;
     const auto first_net = add_named_net(circuit, "GPIO_A");
