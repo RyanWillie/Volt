@@ -1,0 +1,84 @@
+{
+  "format": "volt.logical_circuit",
+  "version": 1,
+  "pin_definitions": [
+    { "id": "pin_def:0", "name": "GND", "number": "1", "role": "Ground", "connection_requirement": "Required", "terminal_kind": "Ground" },
+    { "id": "pin_def:1", "name": "TRIG", "number": "2", "role": "DigitalInput", "connection_requirement": "Required", "signal_domain": "Analog" },
+    { "id": "pin_def:2", "name": "OUT", "number": "3", "role": "DigitalOutput", "connection_requirement": "Required", "signal_domain": "Digital" },
+    { "id": "pin_def:3", "name": "RESET", "number": "4", "role": "DigitalInput", "connection_requirement": "Required", "signal_domain": "Digital" },
+    { "id": "pin_def:4", "name": "CTRL", "number": "5", "role": "DigitalInput", "connection_requirement": "Required", "signal_domain": "Analog" },
+    { "id": "pin_def:5", "name": "THRESH", "number": "6", "role": "DigitalInput", "connection_requirement": "Required", "signal_domain": "Analog" },
+    { "id": "pin_def:6", "name": "DISCH", "number": "7", "role": "DigitalOutput", "connection_requirement": "Required", "signal_domain": "Analog" },
+    { "id": "pin_def:7", "name": "VCC", "number": "8", "role": "PowerInput", "connection_requirement": "Required", "terminal_kind": "Power" },
+    { "id": "pin_def:8", "name": "1", "number": "1", "role": "Passive", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:9", "name": "2", "number": "2", "role": "Passive", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:10", "name": "1", "number": "1", "role": "Passive", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:11", "name": "2", "number": "2", "role": "Passive", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:12", "name": "A", "number": "2", "role": "Passive", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:13", "name": "K", "number": "1", "role": "Passive", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" }
+  ],
+  "component_definitions": [
+    { "id": "component_def:0", "name": "NE555", "source": { "namespace": "volt.examples.timer_555_led_blinker", "name": "ne555", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.examples.timer_555_led_blinker:NE555", "variant": "default" }], "pins": ["pin_def:0", "pin_def:1", "pin_def:2", "pin_def:3", "pin_def:4", "pin_def:5", "pin_def:6", "pin_def:7"], "properties": {} },
+    { "id": "component_def:1", "name": "Resistor", "source": { "namespace": "volt.passives", "name": "resistor_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.passives:resistor", "variant": "default" }], "pins": ["pin_def:8", "pin_def:9"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:2", "name": "Capacitor", "source": { "namespace": "volt.passives", "name": "capacitor_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.passives:capacitor", "variant": "default" }], "pins": ["pin_def:10", "pin_def:11"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:3", "name": "LED", "source": { "namespace": "volt.optos", "name": "led_2pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.optos:led", "variant": "default" }], "pins": ["pin_def:12", "pin_def:13"], "properties": {} }
+  ],
+  "components": [
+    { "id": "component:0", "definition": "component_def:0", "reference": "U1", "properties": {
+        "value": { "type": "string", "value": "NE555" }
+      } },
+    { "id": "component:1", "definition": "component_def:1", "reference": "R1", "properties": {
+        "value": { "type": "string", "value": "100 kOhm" }
+      } },
+    { "id": "component:2", "definition": "component_def:1", "reference": "R2", "properties": {
+        "value": { "type": "string", "value": "47 kOhm" }
+      } },
+    { "id": "component:3", "definition": "component_def:2", "reference": "C1", "properties": {
+        "value": { "type": "string", "value": "1 uF" }
+      } },
+    { "id": "component:4", "definition": "component_def:2", "reference": "C2", "properties": {
+        "value": { "type": "string", "value": "10 nF" }
+      } },
+    { "id": "component:5", "definition": "component_def:1", "reference": "R3", "properties": {
+        "value": { "type": "string", "value": "1 kOhm" }
+      } },
+    { "id": "component:6", "definition": "component_def:3", "reference": "D1", "properties": {} }
+  ],
+  "pins": [
+    { "id": "pin:0", "component": "component:0", "definition": "pin_def:0" },
+    { "id": "pin:1", "component": "component:0", "definition": "pin_def:1" },
+    { "id": "pin:2", "component": "component:0", "definition": "pin_def:2" },
+    { "id": "pin:3", "component": "component:0", "definition": "pin_def:3" },
+    { "id": "pin:4", "component": "component:0", "definition": "pin_def:4" },
+    { "id": "pin:5", "component": "component:0", "definition": "pin_def:5" },
+    { "id": "pin:6", "component": "component:0", "definition": "pin_def:6" },
+    { "id": "pin:7", "component": "component:0", "definition": "pin_def:7" },
+    { "id": "pin:8", "component": "component:1", "definition": "pin_def:8" },
+    { "id": "pin:9", "component": "component:1", "definition": "pin_def:9" },
+    { "id": "pin:10", "component": "component:2", "definition": "pin_def:8" },
+    { "id": "pin:11", "component": "component:2", "definition": "pin_def:9" },
+    { "id": "pin:12", "component": "component:3", "definition": "pin_def:10" },
+    { "id": "pin:13", "component": "component:3", "definition": "pin_def:11" },
+    { "id": "pin:14", "component": "component:4", "definition": "pin_def:10" },
+    { "id": "pin:15", "component": "component:4", "definition": "pin_def:11" },
+    { "id": "pin:16", "component": "component:5", "definition": "pin_def:8" },
+    { "id": "pin:17", "component": "component:5", "definition": "pin_def:9" },
+    { "id": "pin:18", "component": "component:6", "definition": "pin_def:12" },
+    { "id": "pin:19", "component": "component:6", "definition": "pin_def:13" }
+  ],
+  "nets": [
+    { "id": "net:0", "name": "+5V", "kind": "Power", "pins": ["pin:7", "pin:3", "pin:8"], "electrical_attributes": {
+        "voltage": { "type": "quantity", "dimension": "voltage", "value": 5 }
+      } },
+    { "id": "net:1", "name": "GND", "kind": "Ground", "pins": ["pin:0", "pin:13", "pin:15", "pin:19"] },
+    { "id": "net:2", "name": "DISCH", "kind": "Signal", "pins": ["pin:6", "pin:9", "pin:10"] },
+    { "id": "net:3", "name": "TIMING", "kind": "Signal", "pins": ["pin:1", "pin:5", "pin:11", "pin:12"] },
+    { "id": "net:4", "name": "CTRL", "kind": "Signal", "pins": ["pin:4", "pin:14"] },
+    { "id": "net:5", "name": "OUT", "kind": "Signal", "pins": ["pin:2", "pin:16"] },
+    { "id": "net:6", "name": "LED_A", "kind": "Signal", "pins": ["pin:17", "pin:18"] }
+  ]
+}
