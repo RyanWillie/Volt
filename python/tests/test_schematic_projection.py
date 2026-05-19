@@ -423,6 +423,20 @@ def test_python_schematic_net_connect_requires_at_least_two_anchors():
             raise AssertionError("connect(net, single_anchor) should raise ValueError")
 
 
+def test_python_schematic_net_connect_rejects_degenerate_multi_anchor_routes():
+    design = volt.Design("schematic-connect-degenerate")
+    bus = design.net("BUS")
+    schematic = design.schematic("Main")
+    with schematic.drawing() as drawing:
+        node = drawing.node((20, 20))
+        try:
+            drawing.connect(bus, node, node, node)
+        except ValueError as error:
+            assert "at least two distinct points" in str(error)
+        else:
+            raise AssertionError("connect() with only duplicate anchors should raise ValueError")
+
+
 def test_python_schematic_net_connect_rejects_pin_on_wrong_net():
     design = volt.Design("schematic-connect-net-mismatch")
     a_net = design.net("A")

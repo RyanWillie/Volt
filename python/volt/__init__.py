@@ -1895,6 +1895,7 @@ class SchematicDrawing:
         dx: float = 0,
         dy: float = 0,
     ) -> SchematicAnchor:
+        """Return a reusable sheet-local geometry anchor without adding schematic objects."""
         base = self._here if at is None else self._anchor_at(at)
         return base.offset(dx=dx, dy=dy)
 
@@ -1905,6 +1906,13 @@ class SchematicDrawing:
         shape: str | None = None,
         k: float | None = None,
     ) -> SchematicWire:
+        """Project a wire between anchors, or over an explicit net through multiple anchors.
+
+        ``connect(start, end, net=...)`` keeps the existing two-anchor behavior and can infer
+        the net from connected pin anchors. ``connect(net, *anchors)`` requires an existing
+        logical net first, validates every pin or port anchor against it, and projects one
+        schematic wire run through the supplied geometry.
+        """
         self._flush_pending()
         if args and isinstance(args[0], Net):
             if net is not None:
@@ -2848,6 +2856,13 @@ class Schematic:
         k: float | None = None,
         _authored_region: int | None = None,
     ) -> SchematicWire:
+        """Project a wire between anchors, or over an explicit net through multiple anchors.
+
+        ``connect(start, end, net=...)`` keeps the existing two-anchor behavior and can infer
+        the net from connected pin anchors. ``connect(net, *anchors)`` requires an existing
+        logical net first, validates every pin or port anchor against it, and projects one
+        schematic wire run through the supplied geometry.
+        """
         if args and isinstance(args[0], Net):
             if net is not None:
                 raise ValueError("Pass schematic connection net either first or as net=, not both")
