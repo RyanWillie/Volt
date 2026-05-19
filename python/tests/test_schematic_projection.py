@@ -369,6 +369,101 @@ def test_python_schematic_existing_net_connect_accepts_multiple_anchors_without_
     assert projection["junctions"][0]["position"] == {"x": 40.0, "y": 20.0}
 
 
+def test_python_schematic_between_rejects_identical_anchors():
+    design = volt.Design("schematic-between-identical")
+    r1 = design.R("1k", ref="R1")
+    schematic = design.schematic("Main")
+    with schematic.drawing() as drawing:
+        anchor = drawing.node((10, 20))
+        try:
+            drawing.two_terminal(r1).between(anchor, anchor)
+        except ValueError as error:
+            assert "distinct" in str(error)
+        else:
+            raise AssertionError("between() with identical anchors should raise ValueError")
+
+
+def test_python_schematic_between_rejects_diagonal_anchors():
+    design = volt.Design("schematic-between-diagonal")
+    r1 = design.R("1k", ref="R1")
+    schematic = design.schematic("Main")
+    with schematic.drawing() as drawing:
+        start = drawing.node((10, 20))
+        end = start.offset(dx=10, dy=10)
+        try:
+            drawing.two_terminal(r1).between(start, end)
+        except ValueError as error:
+            assert "aligned" in str(error)
+        else:
+            raise AssertionError("between() with diagonal anchors should raise ValueError")
+
+
+def test_python_schematic_net_connect_requires_at_least_two_anchors():
+    design = volt.Design("schematic-connect-too-few")
+    bus = design.net("BUS")
+    pad_def = design.define_component(
+        "Pad",
+        pins=[volt.PinSpec("PAD", 1)],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:pad",
+            pins=(volt.SchematicSymbolSpec.pin("PAD", 1, (0, 0), "Right"),),
+            primitives=(volt.SchematicSymbolSpec.circle((0, 0), 1.5),),
+        ),
+    )
+    pad = design.instantiate(pad_def, ref="TP1")
+    bus += pad["PAD"]
+    schematic = design.schematic("Main")
+    with schematic.drawing() as drawing:
+        tp = drawing.place(pad, at=(20, 20)).PAD
+        try:
+            drawing.connect(bus, tp)
+        except ValueError as error:
+            assert "two anchors" in str(error)
+        else:
+            raise AssertionError("connect(net, single_anchor) should raise ValueError")
+
+
+def test_python_schematic_net_connect_rejects_pin_on_wrong_net():
+    design = volt.Design("schematic-connect-net-mismatch")
+    a_net = design.net("A")
+    b_net = design.net("B")
+    pad_def = design.define_component(
+        "Pad",
+        pins=[volt.PinSpec("PAD", 1)],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:pad",
+            pins=(volt.SchematicSymbolSpec.pin("PAD", 1, (0, 0), "Right"),),
+            primitives=(volt.SchematicSymbolSpec.circle((0, 0), 1.5),),
+        ),
+    )
+    pad_a = design.instantiate(pad_def, ref="TP1")
+    pad_b = design.instantiate(pad_def, ref="TP2")
+    a_net += pad_a["PAD"]
+    b_net += pad_b["PAD"]
+    schematic = design.schematic("Main")
+    with schematic.drawing() as drawing:
+        tp_a = drawing.place(pad_a, at=(20, 20)).PAD
+        tp_b = drawing.place(pad_b, at=(60, 20)).PAD
+        try:
+            drawing.connect(a_net, tp_a, tp_b)
+        except ValueError as error:
+            message = str(error)
+            assert "TP2" in message
+            assert "net A" in message or "A (net:" in message
+        else:
+            raise AssertionError("connect() with pin on wrong net should raise ValueError")
+
+
+def test_python_schematic_node_with_offsets_returns_absolute_anchor():
+    design = volt.Design("schematic-node-offset")
+    schematic = design.schematic("Main")
+    with schematic.drawing(unit=10) as drawing:
+        base = drawing.node((30, 40))
+        shifted = drawing.node((30, 40), dx=5, dy=-3)
+    assert base.point == (30.0, 40.0)
+    assert shifted.point == (35.0, 37.0)
+
+
 def test_detached_schematic_symbol_pin_helpers_report_missing_component_context():
     design = volt.Design("schematic-detached-symbol")
     r1 = design.R("10k", ref="R1")
