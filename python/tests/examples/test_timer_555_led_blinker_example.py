@@ -1,4 +1,5 @@
 import importlib
+import inspect
 import json
 import re
 from pathlib import Path
@@ -101,7 +102,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert schematic["power_ports"] == []
     assert schematic["no_connect_markers"] == []
     assert len(schematic["symbol_instances"]) == 7
-    assert len(schematic["wire_runs"]) >= 14
+    assert len(schematic["wire_runs"]) >= 12
 
     field_values = {field["value"] for field in schematic["symbol_fields"]}
     assert {
@@ -167,3 +168,18 @@ def test_timer_555_led_blinker_schematic_is_readable_without_mutating_logical_de
     assert not readiness.has_errors
     assert len(readability) == 0
     assert not readability.has_errors
+
+
+def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
+    main = importlib.import_module("examples.timer_555_led_blinker.main")
+    source = inspect.getsource(main.build_schematic)
+
+    assert ".two_terminal(" in source
+    assert ".between(" in source
+    assert "drawing.node(" in source
+    assert "drawing.connect(nets[" in source
+    assert "drawing.junction(nets[" in source
+    assert "drawing.R(" not in source
+    assert "drawing.C(" not in source
+    assert "drawing.LED(" not in source
+    assert "drawing.ortho_lines(" not in source

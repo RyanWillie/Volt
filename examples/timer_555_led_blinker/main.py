@@ -142,84 +142,75 @@ def build_schematic(
             .label_value(loc="bottom", ofst=22, orient="Right")
         )
 
-        with drawing.hold():
-            timing_x = timer.DISCH.left(48)
-            drawing.move_from(timing_x.up(18))
-            ra = (
-                drawing.R(parts["RA"])
-                .down()
-                .label_ref(loc="left", orient="Right", ofst=14)
-                .label_value(loc="right", orient="Right", ofst=20)
-            )
-            rb = (
-                drawing.R(parts["RB"])
-                .at(timing_x)
-                .down()
-                .label_ref(loc="left", orient="Right", ofst=14)
-                .label_value(loc="right", orient="Right", ofst=20)
-            )
-            timing_cap = (
-                drawing.C(parts["CT"])
-                .at(rb.end)
-                .down()
-                .label_ref(loc="left", orient="Right", ofst=14)
-                .label_value(loc="right", orient="Right", ofst=20)
-            )
+        disch_node = drawing.node(timer.DISCH.left(48))
+        timing_node = drawing.node(timer.TRIG.left(48))
+        timing_vcc = drawing.node(disch_node.up(28))
+        timing_ground = drawing.node(timing_node.down(34))
+        timing_vcc_tag = drawing.node(timing_vcc.up(18))
+        timing_ground_tag = drawing.node(timing_ground.down(18))
+        control_node = drawing.node(timer.CTRL.right(40))
+        control_ground = drawing.node(control_node.down(38))
+        control_ground_tag = drawing.node(control_ground.down(18))
+        output_node = drawing.node(timer.OUT.right(34))
+        led_resistor_end = drawing.node(output_node.right(20))
+        led_anode = drawing.node(led_resistor_end.right(5))
+        led_cathode = drawing.node(led_anode.right(30))
+        timer_vcc = drawing.node(timer.VCC.up(24))
+        reset_vcc = drawing.node(timer.RESET.up(24))
+        timer_ground = drawing.node(timer.GND.down(24))
+        led_ground = drawing.node(led_cathode.down(18))
 
-        with drawing.hold():
-            control_cap = (
-                drawing.C(parts["CCTRL"])
-                .at(timer.CTRL.right(40))
-                .down()
-                .label_ref(loc="left", orient="Right", ofst=18)
-                .label_value(loc="left", ofst=26, orient="Right")
-            )
-
-        with drawing.hold():
-            led_resistor = (
-                drawing.R(parts["RLED"])
-                .at(timer.OUT.right(34))
-                .right()
-                .label_ref(loc="top", orient="Right", ofst=12)
-                .label_value(loc="top", orient="Right", ofst=28)
-            )
-            led = (
-                drawing.LED(parts["DLED"])
-                .at(led_resistor.end.right(5))
-                .right()
-                .reverse()
-                .label_ref(loc="top", orient="Right", ofst=20)
-            )
-
-        timer_vcc = timer.VCC.up(24)
-        reset_vcc = timer.RESET.up(24)
-        ra_vcc = ra.start.up(18)
-        timer_ground = timer.GND.down(24)
-        timing_ground = timing_cap.end.down(18)
-        control_ground = control_cap.end.down(18)
-        led_ground = led.end.down(18)
-
-        drawing.connect(timer.VCC, timer_vcc, net=nets["+5V"])
-        drawing.connect(timer.RESET, reset_vcc, net=nets["+5V"])
-        drawing.connect(ra.start, ra_vcc, net=nets["+5V"])
-        drawing.connect(timer.GND, timer_ground, net=nets["GND"])
-        drawing.connect(timing_cap.end, timing_ground, net=nets["GND"])
-        drawing.connect(control_cap.end, control_ground, net=nets["GND"])
-        drawing.connect(led.end, led_ground, net=nets["GND"])
-
-        drawing.ortho_lines(
-            (
-                (nets["DISCH"], timer.DISCH, rb.start),
-                (nets["DISCH"], ra.end, rb.start),
-                (nets["TIMING"], timer.THRESH, timing_cap.start),
-                (nets["TIMING"], timer.TRIG, timing_cap.start),
-                (nets["CTRL"], timer.CTRL, control_cap.start),
-                (nets["OUT"], timer.OUT, led_resistor.start),
-                (nets["LED_A"], led_resistor.end, led.start),
-            ),
-            shape="-|",
-            k=-18,
+        ra = (
+            drawing.two_terminal(parts["RA"])
+            .between(timing_vcc, disch_node)
+            .label_ref(loc="left", orient="Right", ofst=14)
+            .label_value(loc="right", orient="Right", ofst=20)
         )
+        rb = (
+            drawing.two_terminal(parts["RB"])
+            .between(disch_node, timing_node)
+            .label_ref(loc="left", orient="Right", ofst=14)
+            .label_value(loc="right", orient="Right", ofst=20)
+        )
+        timing_cap = (
+            drawing.two_terminal(parts["CT"])
+            .between(timing_node, timing_ground)
+            .label_ref(loc="left", orient="Right", ofst=14)
+            .label_value(loc="right", orient="Right", ofst=20)
+        )
+        control_cap = (
+            drawing.two_terminal(parts["CCTRL"])
+            .between(control_node, control_ground)
+            .label_ref(loc="left", orient="Right", ofst=18)
+            .label_value(loc="left", ofst=26, orient="Right")
+        )
+        led_resistor = (
+            drawing.two_terminal(parts["RLED"])
+            .between(output_node, led_resistor_end)
+            .label_ref(loc="top", orient="Right", ofst=12)
+            .label_value(loc="top", orient="Right", ofst=28)
+        )
+        led = (
+            drawing.two_terminal(parts["DLED"])
+            .between(led_cathode, led_anode)
+            .label_ref(loc="top", orient="Right", ofst=20)
+        )
+
+        drawing.connect(nets["+5V"], timer.VCC, timer_vcc)
+        drawing.connect(nets["+5V"], timer.RESET, reset_vcc)
+        drawing.connect(nets["+5V"], ra.start, timing_vcc_tag)
+        drawing.connect(nets["DISCH"], timer.DISCH, disch_node)
+        drawing.connect(nets["TIMING"], timer.THRESH, timer.TRIG)
+        drawing.connect(nets["TIMING"], timer.TRIG, timing_node)
+        drawing.connect(nets["CTRL"], timer.CTRL, control_node)
+        drawing.connect(nets["OUT"], timer.OUT, output_node)
+        drawing.connect(nets["LED_A"], led_resistor.end, led.end)
+        drawing.connect(nets["GND"], timer.GND, timer_ground)
+        drawing.connect(nets["GND"], timing_cap.end, timing_ground_tag)
+        drawing.connect(nets["GND"], control_cap.end, control_ground_tag)
+        drawing.connect(nets["GND"], led.start, led_ground)
+        drawing.junction(nets["DISCH"], at=disch_node)
+        drawing.junction(nets["TIMING"], at=timing_node)
         drawing.local_label(
             nets["TIMING"], at=timing_cap.start.left(18), side="Left", offset=10, orient="Right"
         )
@@ -227,15 +218,17 @@ def build_schematic(
             nets["OUT"], at=led_resistor.start.up(16), side="Up", offset=10, orient="Right"
         )
         drawing.local_label(nets["+5V"], at=timer_vcc.up(6), side="Up", offset=6, orient="Right")
-        drawing.local_label(nets["+5V"], at=ra_vcc.up(6), side="Up", offset=6, orient="Right")
+        drawing.local_label(
+            nets["+5V"], at=timing_vcc_tag.up(6), side="Up", offset=6, orient="Right"
+        )
         drawing.local_label(
             nets["GND"], at=timer_ground.down(6), side="Down", offset=8, orient="Right"
         )
         drawing.local_label(
-            nets["GND"], at=timing_ground.down(6), side="Down", offset=8, orient="Right"
+            nets["GND"], at=timing_ground_tag.down(6), side="Down", offset=8, orient="Right"
         )
         drawing.local_label(
-            nets["GND"], at=control_ground.down(6), side="Down", offset=8, orient="Right"
+            nets["GND"], at=control_ground_tag.down(6), side="Down", offset=8, orient="Right"
         )
         drawing.local_label(nets["GND"], at=led_ground.down(6), side="Down", offset=8, orient="Right")
 
