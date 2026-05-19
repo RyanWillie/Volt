@@ -43,7 +43,8 @@ ctest --preset dev
 cmake --build --preset dev --target docs
 ```
 
-CI runs formatting, build, tests, and docs on Ubuntu, macOS, and Windows.
+CI runs formatting, build, and tests on Ubuntu, macOS, and Windows. Documentation
+builds are verified on Ubuntu.
 
 ## Formatting
 
