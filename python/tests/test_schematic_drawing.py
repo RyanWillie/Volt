@@ -296,23 +296,23 @@ def test_python_schematic_ortho_lines_lower_to_existing_wire_runs_without_logica
 
 
 def test_python_schematic_generic_ic_symbol_builder_rejects_invalid_pin_layout():
-    duplicate_slot_pins = (
+    pins_with_duplicate_slot = (
         volt.SchematicSymbolSpec.ic_pin("A", 1, side="left", slot=1),
         volt.SchematicSymbolSpec.ic_pin("B", 2, side="left", slot=1),
     )
     try:
-        volt.SchematicSymbolSpec.ic("dup-slot", pins=duplicate_slot_pins)
+        volt.SchematicSymbolSpec.ic("dup-slot", pins=pins_with_duplicate_slot)
     except ValueError as error:
         assert "slot" in str(error).lower()
     else:
         raise AssertionError("ic builder should reject duplicate side slots")
 
-    duplicate_number_pins = (
+    pins_with_duplicate_number = (
         volt.SchematicSymbolSpec.ic_pin("A", 1, side="left"),
         volt.SchematicSymbolSpec.ic_pin("B", 1, side="right"),
     )
     try:
-        volt.SchematicSymbolSpec.ic("dup-number", pins=duplicate_number_pins)
+        volt.SchematicSymbolSpec.ic("dup-number", pins=pins_with_duplicate_number)
     except ValueError as error:
         assert "number" in str(error).lower()
     else:
