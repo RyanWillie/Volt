@@ -383,6 +383,46 @@ d.connect(regulator.GND, ground_port, net=gnd, shape="|-", k=10)</code></pre>
     </section>
 
     <section>
+      <aside>Use generic IC/block symbols when the readable shape matters more than a prebuilt library symbol.</aside>
+      <div class="stack">
+        <div class="callout">
+          <strong>The builder emits ordinary Volt symbol data.</strong> Side, slot, lead, and label choices are Python authoring vocabulary that lower to durable symbol pins and primitives.
+        </div>
+        <pre><code>timer_symbol = volt.SchematicSymbolSpec.ic(
+    "examples:NE555",
+    pins=(
+        volt.SchematicSymbolSpec.ic_pin("DISCH", 7, side="left", slot=1),
+        volt.SchematicSymbolSpec.ic_pin("TRIG", 2, side="left", slot=2),
+        volt.SchematicSymbolSpec.ic_pin("OUT", 3, side="right", slot=2),
+        volt.SchematicSymbolSpec.ic_pin("VCC", 8, side="top", slot=4),
+    ),
+    center_label="555",
+    bottom_label="timer",
+)
+
+with sheet.drawing(at=(80, 40), unit=20) as d:
+    timer = d.place(u1).label_ref(loc="top").label_value(loc="bottom")
+    d.signal_stub(timing, at=timer.TRIG, side="Left")</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <aside>Repeated connector and IC fanouts should still be explicit routes over existing nets.</aside>
+      <div class="stack">
+        <p><code>ortho_lines()</code> is a loop-saving helper for local fanouts. Each entry is either <code>(start, end)</code>, where Volt infers the already-shared net, or <code>(net, start, end)</code> for coordinate and port endpoints.</p>
+        <pre><code>d.ortho_lines(
+    (
+        (timer.OUT, led_resistor.start),
+        (timing, timer.THRESH, timing_cap.start),
+        (timing, timer.TRIG, timing_cap.start),
+    ),
+    shape="-|",
+    k=-18,
+)</code></pre>
+      </div>
+    </section>
+
+    <section>
       <aside>Common authoring failures and the fastest fixes.</aside>
       <div class="stack">
         <table>

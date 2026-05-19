@@ -112,6 +112,189 @@ def test_python_schematic_label_sugar_uses_symbol_fields_and_net_labels():
     assert ">SIG</text>" in svg
 
 
+def test_python_schematic_generic_ic_symbol_builder_places_stable_pin_anchors():
+    symbol = volt.SchematicSymbolSpec.ic(
+        "test:Timer",
+        pins=(
+            volt.SchematicSymbolSpec.ic_pin("DISCH", 7, side="left", slot=1),
+            volt.SchematicSymbolSpec.ic_pin("TRIG", 2, side="left", slot=2),
+            volt.SchematicSymbolSpec.ic_pin("THRESH", 6, side="left", slot=3),
+            volt.SchematicSymbolSpec.ic_pin("GND", 1, side="left", slot=4),
+            volt.SchematicSymbolSpec.ic_pin("OUT", 3, side="right", slot=2),
+            volt.SchematicSymbolSpec.ic_pin("CTRL", 5, side="right", slot=3),
+            volt.SchematicSymbolSpec.ic_pin("RESET", 4, side="top", slot=2),
+            volt.SchematicSymbolSpec.ic_pin("VCC", 8, side="top", slot=4),
+        ),
+        width=50,
+        height=50,
+        lead_length=10,
+        pin_pitch=10,
+        pin_label_offset=4,
+        center_label="555",
+        bottom_label="timer",
+    )
+
+    design = volt.Design("schematic-generic-ic")
+    timer_definition = design.define_component(
+        "Timer",
+        pins=[
+            volt.PinSpec("GND", 1, role="ground"),
+            volt.PinSpec("TRIG", 2, role="input"),
+            volt.PinSpec("OUT", 3, role="output"),
+            volt.PinSpec("RESET", 4, role="input"),
+            volt.PinSpec("CTRL", 5, role="input"),
+            volt.PinSpec("THRESH", 6, role="input"),
+            volt.PinSpec("DISCH", 7, role="output"),
+            volt.PinSpec("VCC", 8, role="power"),
+        ],
+        schematic_symbol=symbol,
+    )
+    u1 = design.instantiate(timer_definition, ref="U1", properties={"value": "NE555"})
+    vcc = design.net("+5V", kind="power")
+    trigger = design.net("TIMING")
+    output = design.net("OUT")
+    vcc += u1["VCC"], u1["RESET"]
+    trigger += u1["TRIG"], u1["THRESH"]
+    output += u1["OUT"]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(at=(40, 20), unit=10) as drawing:
+        timer = drawing.place(u1).label_ref(loc="top").label_value(loc="bottom")
+        drawing.power("+5V", at=timer.VCC, orient="Up")
+        drawing.signal_stub(trigger, at=timer.TRIG, side="Left", label="TIMING")
+        drawing.signal_stub(output, at=timer.OUT, side="Right")
+
+    projection = json.loads(schematic.to_json())
+
+    assert design.to_json() == logical_before
+    assert projection["symbol_definitions"] == [
+        {
+            "id": "symbol_def:0",
+            "name": "test:Timer",
+            "pins": [
+                {
+                    "name": "DISCH",
+                    "number": "7",
+                    "anchor": {"x": 0.0, "y": 10.0},
+                    "orientation": "Left",
+                },
+                {
+                    "name": "TRIG",
+                    "number": "2",
+                    "anchor": {"x": 0.0, "y": 20.0},
+                    "orientation": "Left",
+                },
+                {
+                    "name": "THRESH",
+                    "number": "6",
+                    "anchor": {"x": 0.0, "y": 30.0},
+                    "orientation": "Left",
+                },
+                {
+                    "name": "GND",
+                    "number": "1",
+                    "anchor": {"x": 0.0, "y": 40.0},
+                    "orientation": "Left",
+                },
+                {
+                    "name": "OUT",
+                    "number": "3",
+                    "anchor": {"x": 70.0, "y": 20.0},
+                    "orientation": "Right",
+                },
+                {
+                    "name": "CTRL",
+                    "number": "5",
+                    "anchor": {"x": 70.0, "y": 30.0},
+                    "orientation": "Right",
+                },
+                {
+                    "name": "RESET",
+                    "number": "4",
+                    "anchor": {"x": 30.0, "y": -10.0},
+                    "orientation": "Up",
+                },
+                {
+                    "name": "VCC",
+                    "number": "8",
+                    "anchor": {"x": 50.0, "y": -10.0},
+                    "orientation": "Up",
+                },
+            ],
+            "primitives": projection["symbol_definitions"][0]["primitives"],
+        }
+    ]
+    primitives = projection["symbol_definitions"][0]["primitives"]
+    assert primitives[0] == {
+        "type": "rectangle",
+        "first_corner": {"x": 10.0, "y": 0.0},
+        "second_corner": {"x": 60.0, "y": 50.0},
+    }
+    assert {
+        "type": "text",
+        "text": "555",
+        "anchor": {"x": 35.0, "y": 25.0},
+        "orientation": "Right",
+    } in primitives
+    assert {
+        "type": "text",
+        "text": "timer",
+        "anchor": {"x": 35.0, "y": 64.0},
+        "orientation": "Right",
+    } in primitives
+    assert timer.TRIG.point == (40.0, 40.0)
+    assert timer.OUT.point == (110.0, 40.0)
+    assert timer.VCC.point == (90.0, 10.0)
+    assert [field["value"] for field in projection["symbol_fields"]] == ["U1", "NE555"]
+    assert json.loads(schematic.to_json()) == projection
+
+
+def test_python_schematic_ortho_lines_lower_to_existing_wire_runs_without_logical_mutation():
+    design = volt.Design("schematic-ortho-lines")
+    a = design.net("A")
+    b = design.net("B")
+    c = design.net("C")
+    header = design.connector_1x03(ref="J1")
+    target = design.connector_1x03(ref="J2")
+    a += header[1], target[1]
+    b += header[2], target[2]
+    c += header[3]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=10) as drawing:
+        left = drawing.place(header, at=(10, 10))
+        right = drawing.place(target, at=(70, 10))
+        wires = drawing.ortho_lines(
+            (
+                (left[1], right[1]),
+                (left[2], right[2]),
+                (c, left[3], left[3].right(24)),
+            ),
+            shape="-|-",
+            k=18,
+        )
+
+    projection = json.loads(schematic.to_json())
+
+    assert design.to_json() == logical_before
+    assert tuple(wire.index for wire in wires) == (0, 1, 2)
+    assert [wire["net"] for wire in projection["wire_runs"]] == [
+        f"net:{a.index}",
+        f"net:{b.index}",
+        f"net:{c.index}",
+    ]
+    assert [_wire_points(projection, index) for index in range(3)] == [
+        [(10.0, 10.0), (28.0, 10.0), (70.0, 10.0)],
+        [(10.0, 18.0), (28.0, 18.0), (70.0, 18.0)],
+        [(10.0, 26.0), (28.0, 26.0), (34.0, 26.0)],
+    ]
+    assert {wire["route_intent"] for wire in projection["wire_runs"]} == {"Orthogonal"}
+
+
 def test_python_schematic_local_signal_stub_sugar_emits_wire_and_label_only():
     design = volt.Design("schematic-local-signal-stub")
     sig = design.net("SUPPORT/SWDIO")

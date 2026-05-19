@@ -100,6 +100,65 @@ def test_regulator_fragment_sugar_example_uses_local_stubs_shapes_and_no_connect
     assert "pin-label" not in svg
 
 
+def test_555_led_blinker_example_uses_generic_ic_and_ortho_lines():
+    blinker = _load_example("timer_555_led_blinker")
+    design, nets, parts = blinker.build_design()
+    logical_before = design.to_json()
+    original_ortho_lines = volt.SchematicDrawing.ortho_lines
+    ortho_line_calls = []
+
+    def recording_ortho_lines(self, *args, **kwargs):
+        ortho_line_calls.append((args, kwargs))
+        return original_ortho_lines(self, *args, **kwargs)
+
+    volt.SchematicDrawing.ortho_lines = recording_ortho_lines
+    try:
+        schematic = blinker.author_schematic(design, nets, parts)
+    finally:
+        volt.SchematicDrawing.ortho_lines = original_ortho_lines
+
+    projection = json.loads(schematic.to_json())
+    report = schematic.validate()
+
+    assert design.to_json() == logical_before
+    assert len(report) == 0
+    assert not report.has_errors
+    assert len(ortho_line_calls) == 1
+    assert len(ortho_line_calls[0][0][0]) >= 12
+    assert {wire["route_intent"] for wire in projection["wire_runs"]} == {"Orthogonal"}
+
+    timer_symbol = projection["symbol_definitions"][0]
+    assert timer_symbol["name"] == "examples.schematic_sugar:NE555"
+    assert [pin["name"] for pin in timer_symbol["pins"]] == [
+        "DISCH",
+        "TRIG",
+        "THRESH",
+        "GND",
+        "OUT",
+        "CTRL",
+        "RESET",
+        "VCC",
+    ]
+    assert any(
+        primitive["type"] == "text" and primitive["text"] == "555"
+        for primitive in timer_symbol["primitives"]
+    )
+    assert [field["value"] for field in projection["symbol_fields"][:2]] == ["U1", "NE555"]
+    nets_by_id = {f"net:{net.index}": name for name, net in nets.items()}
+    assert {label.get("label") or nets_by_id[label["net"]] for label in projection["net_labels"]} >= {
+        "TIMING",
+        "OUT",
+    }
+
+    logical, stable_projection, svg = _assert_stable_artifacts(blinker)
+    assert stable_projection == projection
+    assert logical["components"][0]["reference"] == "U1"
+    assert ">555</text>" in svg
+    assert ">timer</text>" in svg
+    assert ">TIMING</text>" in svg
+    assert ">OUT</text>" in svg
+
+
 def test_regulator_fragment_sugar_example_uses_local_frame_authoring():
     regulator_fragment = _load_example("regulator_fragment")
     design, nets, parts = regulator_fragment.build_design()

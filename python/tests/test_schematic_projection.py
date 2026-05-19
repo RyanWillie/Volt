@@ -311,6 +311,7 @@ def test_python_schematic_handles_are_publicly_exported():
     assert "SchematicNetLabel" in volt.__all__
     assert "SchematicNoConnect" in volt.__all__
     assert "SchematicSignalStub" in volt.__all__
+    assert "SchematicBlockPinSpec" in volt.__all__
     assert "SchematicSymbolSpec" in volt.__all__
     assert "SchematicSymbolField" in volt.__all__
     assert "SchematicTwoTerminalElement" in volt.__all__
