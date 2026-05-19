@@ -49,13 +49,21 @@ circuit document.
     { "name": "1", "number": "1", "anchor": { "x": 0, "y": 0 }, "orientation": "Left" }
   ],
   "primitives": [
-    { "type": "line", "start": { "x": 0, "y": 0 }, "end": { "x": 20, "y": 0 } }
+    {
+      "type": "line",
+      "start": { "x": 0, "y": 0 },
+      "end": { "x": 4, "y": 0 },
+      "role": "TerminalLeadStart"
+    }
   ]
 }
 ```
 
 Supported primitive types are `line`, `rectangle`, `circle`, `arc`, and `text`.
 Coordinates and numeric geometry values must be finite.
+Line primitives may optionally declare `role` as `TerminalLeadStart` or
+`TerminalLeadEnd` to mark terminal lead geometry that authoring tools can extend while
+preserving canonical non-lead body geometry.
 
 Valid orientations are `Right`, `Down`, `Left`, and `Up`.
 

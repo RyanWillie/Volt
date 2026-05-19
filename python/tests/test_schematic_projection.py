@@ -3,6 +3,20 @@ import json
 import volt
 
 
+def _symbol_definition(projection: dict, name: str) -> dict:
+    for symbol in projection["symbol_definitions"]:
+        if symbol["name"] == name:
+            return symbol
+    raise AssertionError(f"missing symbol definition {name!r}")
+
+
+def _rect_size(primitive: dict) -> tuple[float, float]:
+    assert primitive["type"] == "rectangle"
+    first = primitive["first_corner"]
+    second = primitive["second_corner"]
+    return (abs(second["x"] - first["x"]), abs(second["y"] - first["y"]))
+
+
 def test_python_schematic_placement_serializes_kernel_projection():
     design = volt.Design("schematic-placement")
     vcc = design.net("VCC", kind="power")
@@ -320,6 +334,146 @@ def test_python_schematic_two_terminal_between_anchors_is_generic_and_presentati
     ]
     assert projection["symbol_instances"][0]["symbol_definition"] == "symbol_def:1"
     assert projection["symbol_fields"][0]["value"] == "XL1"
+
+
+def test_python_schematic_two_terminal_horizontal_span_stretches_only_explicit_leads():
+    design = volt.Design("schematic-horizontal-lead-span")
+    left = design.net("LEFT")
+    right = design.net("RIGHT")
+    link_definition = design.define_component(
+        "BodyLink",
+        pins=[volt.PinSpec("LEFT", 1), volt.PinSpec("RIGHT", 2)],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:body-link",
+            pins=(
+                volt.SchematicSymbolSpec.pin("LEFT", 1, (0, 0), "Left"),
+                volt.SchematicSymbolSpec.pin("RIGHT", 2, (20, 0), "Right"),
+            ),
+            primitives=(
+                volt.SchematicSymbolSpec.terminal_lead((0, 0), (4, 0), terminal="start"),
+                volt.SchematicSymbolSpec.rectangle((4, -2), (16, 2)),
+                volt.SchematicSymbolSpec.terminal_lead((16, 0), (20, 0), terminal="end"),
+            ),
+        ),
+    )
+    short_link = design.instantiate(link_definition, ref="XL1")
+    long_link = design.instantiate(link_definition, ref="XL2")
+    left += short_link["LEFT"], long_link["LEFT"]
+    right += short_link["RIGHT"], long_link["RIGHT"]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+    with schematic.drawing() as drawing:
+        short_start = drawing.node((10, 20))
+        short_end = short_start.right(20)
+        long_start = drawing.node((10, 40))
+        long_end = long_start.right(40)
+        short = drawing.two_terminal(short_link).between(short_start, short_end)
+        long = drawing.two_terminal(long_link).between(long_start, long_end)
+
+    projection = json.loads(schematic.to_json())
+    base_symbol = _symbol_definition(projection, "test:body-link")
+    stretched_symbol = _symbol_definition(
+        projection, "test:body-link#two-terminal-span-40"
+    )
+
+    assert design.to_json() == logical_before
+    assert short.start.point == (10.0, 20.0)
+    assert short.end.point == (30.0, 20.0)
+    assert long.start.point == (10.0, 40.0)
+    assert long.end.point == (50.0, 40.0)
+    assert base_symbol["primitives"][0]["role"] == "TerminalLeadStart"
+    assert base_symbol["primitives"][2]["role"] == "TerminalLeadEnd"
+    assert _rect_size(base_symbol["primitives"][1]) == (12.0, 4.0)
+    assert _rect_size(stretched_symbol["primitives"][1]) == (12.0, 4.0)
+    assert stretched_symbol["primitives"][0] == volt.SchematicSymbolSpec.line(
+        (0, 0), (14, 0)
+    )
+    assert stretched_symbol["primitives"][2] == volt.SchematicSymbolSpec.line(
+        (26, 0), (40, 0)
+    )
+
+
+def test_python_schematic_two_terminal_requires_both_terminal_leads_for_span():
+    design = volt.Design("schematic-one-sided-lead-falls-back-to-scale")
+    left = design.net("LEFT")
+    right = design.net("RIGHT")
+    link_definition = design.define_component(
+        "OneSidedLink",
+        pins=[volt.PinSpec("LEFT", 1), volt.PinSpec("RIGHT", 2)],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:one-sided-link",
+            pins=(
+                volt.SchematicSymbolSpec.pin("LEFT", 1, (0, 0), "Left"),
+                volt.SchematicSymbolSpec.pin("RIGHT", 2, (20, 0), "Right"),
+            ),
+            primitives=(
+                volt.SchematicSymbolSpec.terminal_lead((0, 0), (4, 0), terminal="start"),
+                volt.SchematicSymbolSpec.rectangle((4, -2), (16, 2)),
+                volt.SchematicSymbolSpec.line((16, 0), (20, 0)),
+            ),
+        ),
+    )
+    link = design.instantiate(link_definition, ref="XL1")
+    left += link["LEFT"]
+    right += link["RIGHT"]
+
+    schematic = design.schematic("Main")
+    with schematic.drawing() as drawing:
+        start = drawing.node((10, 20))
+        drawing.two_terminal(link).between(start, start.right(40))
+
+    projection = json.loads(schematic.to_json())
+    scaled_symbol = _symbol_definition(
+        projection, "test:one-sided-link#two-terminal-scaled-40"
+    )
+
+    assert scaled_symbol["primitives"][2] == volt.SchematicSymbolSpec.line(
+        (32, 0), (40, 0)
+    )
+
+
+def test_python_schematic_two_terminal_vertical_span_preserves_default_body_geometry():
+    design = volt.Design("schematic-vertical-lead-span")
+    top = design.net("TOP")
+    bottom = design.net("BOTTOM")
+    r1 = design.R("10k", ref="R1")
+    r2 = design.R("10k", ref="R2")
+    top += r1[1], r2[1]
+    bottom += r1[2], r2[2]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+    with schematic.drawing() as drawing:
+        short_start = drawing.node((40, 10))
+        short_end = short_start.down(20)
+        long_start = drawing.node((80, 10))
+        long_end = long_start.down(50)
+        short = drawing.two_terminal(r1).between(short_start, short_end)
+        long = drawing.two_terminal(r2).between(long_start, long_end)
+
+    projection = json.loads(schematic.to_json())
+    base_symbol = _symbol_definition(projection, "volt.passives:resistor")
+    stretched_symbol = _symbol_definition(
+        projection, "volt.passives:resistor#two-terminal-span-50"
+    )
+
+    assert design.to_json() == logical_before
+    assert short.start.point == (40.0, 10.0)
+    assert short.end.point == (40.0, 30.0)
+    assert long.start.point == (80.0, 10.0)
+    assert long.end.point == (80.0, 60.0)
+    assert long.orientation == "Down"
+    assert base_symbol["primitives"][0]["role"] == "TerminalLeadStart"
+    assert base_symbol["primitives"][2]["role"] == "TerminalLeadEnd"
+    assert _rect_size(base_symbol["primitives"][1]) == (12.0, 6.0)
+    assert _rect_size(stretched_symbol["primitives"][1]) == (12.0, 6.0)
+    assert stretched_symbol["primitives"][0] == volt.SchematicSymbolSpec.line(
+        (0, 0), (19, 0)
+    )
+    assert stretched_symbol["primitives"][2] == volt.SchematicSymbolSpec.line(
+        (31, 0), (50, 0)
+    )
 
 
 def test_python_schematic_existing_net_connect_accepts_multiple_anchors_without_mutating_logic():

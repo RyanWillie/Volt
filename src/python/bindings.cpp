@@ -586,6 +586,19 @@ schematic_orientation_from_string(const std::string &value) {
     throw std::logic_error{"Unhandled schematic orientation"};
 }
 
+[[nodiscard]] volt::SymbolLineRole symbol_line_role_from_string(const std::string &value) {
+    if (value == "Normal") {
+        return volt::SymbolLineRole::Normal;
+    }
+    if (value == "TerminalLeadStart") {
+        return volt::SymbolLineRole::TerminalLeadStart;
+    }
+    if (value == "TerminalLeadEnd") {
+        return volt::SymbolLineRole::TerminalLeadEnd;
+    }
+    throw std::invalid_argument{"Unknown symbol line role"};
+}
+
 [[nodiscard]] int schematic_orientation_quarter_turns(volt::SchematicOrientation value) {
     switch (value) {
     case volt::SchematicOrientation::Right:
@@ -668,8 +681,10 @@ rotated_schematic_orientation(volt::SchematicOrientation local,
 [[nodiscard]] volt::SymbolPrimitive symbol_primitive_from_dict(const py::dict &dict) {
     const auto type = required_string_field(dict, "type", "Symbol primitive");
     if (type == "line") {
-        return volt::SymbolLine{point_from_dict(required_dict_field(dict, "start", "Symbol line")),
-                                point_from_dict(required_dict_field(dict, "end", "Symbol line"))};
+        return volt::SymbolLine{
+            point_from_dict(required_dict_field(dict, "start", "Symbol line")),
+            point_from_dict(required_dict_field(dict, "end", "Symbol line")),
+            symbol_line_role_from_string(optional_string_field(dict, "role", "Normal"))};
     }
     if (type == "rectangle") {
         return volt::SymbolRectangle{
