@@ -301,7 +301,7 @@ def test_ic_symbol_builder_rejects_invalid_pin_layout():
         volt.SchematicSymbolSpec.ic_pin("B", 2, side="left", slot=1),
     )
     try:
-        volt.SchematicSymbolSpec.ic("dup-slot", pins=pins_with_duplicate_slot)
+        volt.SchematicSymbolSpec.ic("test_duplicate_slot_ic", pins=pins_with_duplicate_slot)
     except ValueError as error:
         assert "slot" in str(error).lower()
     else:
@@ -312,7 +312,7 @@ def test_ic_symbol_builder_rejects_invalid_pin_layout():
         volt.SchematicSymbolSpec.ic_pin("B", 1, side="right"),
     )
     try:
-        volt.SchematicSymbolSpec.ic("dup-number", pins=pins_with_duplicate_number)
+        volt.SchematicSymbolSpec.ic("test_duplicate_number_ic", pins=pins_with_duplicate_number)
     except ValueError as error:
         assert "number" in str(error).lower()
     else:
@@ -338,13 +338,19 @@ def test_ortho_lines_rejects_malformed_entries():
         left = drawing.place(header, at=(10, 10))
         right = drawing.place(target, at=(40, 10))
 
-        for bad_entry in ("bad", (left[1], right[1], left[2], right[2])):
-            try:
-                drawing.ortho_lines((bad_entry,))
-            except TypeError as error:
-                assert "Ortho line entries" in str(error)
-            else:
-                raise AssertionError("malformed ortho line entries should be rejected")
+        try:
+            drawing.ortho_lines(("bad",))
+        except TypeError as error:
+            assert "Ortho line entries" in str(error)
+        else:
+            raise AssertionError("non-tuple ortho line entries should be rejected")
+
+        try:
+            drawing.ortho_lines(((left[1], right[1], left[2], right[2]),))
+        except TypeError as error:
+            assert "Ortho line entries" in str(error)
+        else:
+            raise AssertionError("4-tuple ortho line entries should be rejected")
 
         try:
             drawing.ortho_lines(((123, left[1], right[1]),))
