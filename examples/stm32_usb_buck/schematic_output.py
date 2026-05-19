@@ -489,10 +489,10 @@ def _author_connectors_region(
                 reference_label=_display_reference(board.components["J3"]),
             )
 
-        usb_j.label("USB Micro-B", name="value", loc="bottom", ofst=12, orient="Right")
-        usb_esd.label("USBLC6-4SC6", name="value", loc="bottom", ofst=12, orient="Right")
-        swd.label("SWD 10-pin", name="value", loc="bottom", ofst=10, orient="Right")
-        gpio.label("GPIO 1x4", name="value", loc="bottom", ofst=10, orient="Right")
+        usb_j.label_value(loc="bottom", ofst=12, orient="Right")
+        usb_esd.label_value(loc="bottom", ofst=12, orient="Right")
+        swd.label_value(loc="bottom", ofst=10, orient="Right")
+        gpio.label_value(loc="bottom", ofst=10, orient="Right")
 
         drawing.connect(usb_j.VBUS, usb_esd.VBUS, net=nets["USB/VBUS"], shape="-|", k=24)
         drawing.connect(usb_j["D+"], usb_esd["I/O1"], net=nets["USB/USB_DP"], shape="-|", k=24)

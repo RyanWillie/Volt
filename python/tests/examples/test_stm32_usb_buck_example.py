@@ -136,6 +136,11 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     component_references_by_id = {
         component["id"]: component["reference"] for component in logical["components"]
     }
+    component_values_by_reference = {
+        component["reference"]: component["properties"]["value"]["value"]
+        for component in logical["components"]
+        if "value" in component.get("properties", {})
+    }
     placed_component_references = {
         component_references_by_id[instance["component"]]
         for instance in schematic["symbol_instances"]
@@ -151,6 +156,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert len(reference_labels) == len(set(reference_labels))
     assert all(re.fullmatch(r"(?:C|D|J|R|SW|U|Y)\d+", label) for label in reference_labels)
     assert all("/" not in label and "_" not in label for label in reference_labels)
+    assert component_values_by_reference["USB/J1"] == "USB Micro-B"
+    assert component_values_by_reference["USB/U1"] == "USBLC6-4SC6"
+    assert component_values_by_reference["J2"] == "SWD 10-pin"
+    assert component_values_by_reference["J3"] == "GPIO 1x4"
     internal_reference_labels = {
         "VIN_SRC",
         "U3V3",
@@ -208,6 +217,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "drawing.signal_stub(" in schematic_source
     assert "drawing.no_connect(" in schematic_source
     assert "shape=" in schematic_source
+    assert 'name="value"' not in schematic_source
     label_counts = Counter(
         (label["sheet"], label["net"]) for label in schematic["net_labels"]
     )
