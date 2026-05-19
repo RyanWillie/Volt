@@ -80,6 +80,15 @@ std::size_t diagnostic_count(const volt::DiagnosticReport &report, const std::st
                       }));
 }
 
+bool report_has_code_and_entities(const volt::DiagnosticReport &report, const std::string &code,
+                                  const std::vector<volt::EntityRef> &entities) {
+    return std::any_of(report.diagnostics().begin(), report.diagnostics().end(),
+                       [&code, &entities](const volt::Diagnostic &diagnostic) {
+                           return diagnostic.code() == volt::DiagnosticCode{code} &&
+                                  diagnostic.entities() == entities;
+                       });
+}
+
 const volt::Diagnostic &require_diagnostic(const volt::DiagnosticReport &report,
                                            const std::string &code) {
     const auto it = std::find_if(report.diagnostics().begin(), report.diagnostics().end(),
@@ -1045,6 +1054,117 @@ TEST_CASE("Schematic readability reports labels crowding symbols") {
           entities.end());
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::symbol_instance(instance)) !=
           entities.end());
+}
+
+TEST_CASE("Schematic readability reports duplicate visible reference labels on a sheet") {
+    volt::Circuit circuit;
+    const auto first_component = add_resistor(circuit, "R1");
+    const auto second_component = add_resistor(circuit, "R2");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto first_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, first_component, volt::Point{50.0, 50.0}});
+    const auto second_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, second_component, volt::Point{100.0, 50.0},
+                                    volt::SchematicOrientation::Right, std::nullopt,
+                                    std::optional<std::string>{"R1"}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DUPLICATE_REFERENCE_LABEL");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::symbol_instance(first_instance),
+                                               volt::EntityRef::component(first_component),
+                                               volt::EntityRef::symbol_instance(second_instance),
+                                               volt::EntityRef::component(second_component)});
+}
+
+TEST_CASE("Schematic readability reports non-professional visible reference labels") {
+    struct Placement {
+        std::string reference;
+        volt::Point position;
+        bool warns;
+    };
+
+    const auto placements = std::vector<Placement>{
+        {"PWR/RRESET", volt::Point{30.0, 40.0}, true}, {"RRESET", volt::Point{70.0, 40.0}, true},
+        {"CVCAP1", volt::Point{110.0, 40.0}, true},    {"VIN_SRC", volt::Point{150.0, 40.0}, true},
+        {"U3V3", volt::Point{190.0, 40.0}, true},      {"R1", volt::Point{30.0, 90.0}, false},
+        {"C12", volt::Point{70.0, 90.0}, false},       {"U3", volt::Point{110.0, 90.0}, false},
+        {"J1", volt::Point{150.0, 90.0}, false},       {"SW1", volt::Point{190.0, 90.0}, false},
+        {"Y1", volt::Point{30.0, 140.0}, false},       {"D2", volt::Point{70.0, 140.0}, false},
+        {"FB1", volt::Point{110.0, 140.0}, false},     {"TP10", volt::Point{150.0, 140.0}, false},
+        {"CONN1", volt::Point{190.0, 140.0}, false},
+    };
+
+    volt::Circuit circuit;
+    auto components = std::vector<volt::ComponentId>{};
+    for (const auto &placement : placements) {
+        components.push_back(add_resistor(circuit, placement.reference));
+    }
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    auto instances = std::vector<volt::SymbolInstanceId>{};
+    for (std::size_t index = 0; index < placements.size(); ++index) {
+        instances.push_back(schematic.place_symbol(
+            sheet, volt::SymbolInstance{symbol, components[index], placements[index].position}));
+    }
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(diagnostic_count(report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL") == 5U);
+    for (std::size_t index = 0; index < placements.size(); ++index) {
+        const auto expected_entities = std::vector{
+            volt::EntityRef::sheet(sheet), volt::EntityRef::symbol_instance(instances[index]),
+            volt::EntityRef::component(components[index])};
+        CHECK(report_has_code_and_entities(report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL",
+                                           expected_entities) == placements[index].warns);
+    }
+}
+
+TEST_CASE(
+    "Schematic readability reports both unconventional and duplicate for a repeated bad label") {
+    // A label that is both unconventional (all-letter, no digit suffix) and shared by two
+    // instances must produce an UNCONVENTIONAL diagnostic for each instance AND a DUPLICATE
+    // diagnostic covering both.
+    volt::Circuit circuit;
+    const auto first_component = add_resistor(circuit, "RRESET");
+    const auto second_component = add_resistor(circuit, "R2");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto first_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, first_component, volt::Point{50.0, 50.0}});
+    const auto second_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, second_component, volt::Point{100.0, 50.0},
+                                    volt::SchematicOrientation::Right, std::nullopt,
+                                    std::optional<std::string>{"RRESET"}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(diagnostic_count(report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL") == 2U);
+    CHECK(diagnostic_count(report, "SCHEMATIC_DUPLICATE_REFERENCE_LABEL") == 1U);
+    CHECK(report_has_code_and_entities(report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL",
+                                       std::vector{volt::EntityRef::sheet(sheet),
+                                                   volt::EntityRef::symbol_instance(first_instance),
+                                                   volt::EntityRef::component(first_component)}));
+    CHECK(
+        report_has_code_and_entities(report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL",
+                                     std::vector{volt::EntityRef::sheet(sheet),
+                                                 volt::EntityRef::symbol_instance(second_instance),
+                                                 volt::EntityRef::component(second_component)}));
+    CHECK(report_has_code_and_entities(
+        report, "SCHEMATIC_DUPLICATE_REFERENCE_LABEL",
+        std::vector{volt::EntityRef::sheet(sheet), volt::EntityRef::symbol_instance(first_instance),
+                    volt::EntityRef::component(first_component),
+                    volt::EntityRef::symbol_instance(second_instance),
+                    volt::EntityRef::component(second_component)}));
 }
 
 TEST_CASE("Schematic readability accepts compact labels and spaced tag ports") {

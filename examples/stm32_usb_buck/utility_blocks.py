@@ -39,8 +39,8 @@ def define_led_indicator(design: volt.Design) -> volt.ModuleDefinition:
     supply = module.port("SUPPLY", kind="power", role="power_input")
     signal = module.port("SIGNAL", role="input")
     ground = module.port("GND", kind="ground", role="ground")
-    r1 = module.instantiate(resistor, ref="R")
-    d1 = module.instantiate(led, ref="D")
+    r1 = module.instantiate(resistor, ref="R", properties={"value": "330 Ohm"})
+    d1 = module.instantiate(led, ref="D", properties={"value": "Green LED"})
 
     module.connect(supply, r1[1])
     module.connect(signal, r1[2], d1["A"])
