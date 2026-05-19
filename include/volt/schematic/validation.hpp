@@ -1726,8 +1726,11 @@ inline void validate_ambiguous_same_net_crossings(const Schematic &schematic, Sh
     return false;
 }
 
+/** Short tagged wire run that may read as a floating local stub. */
 struct FloatingStubCandidate {
+    /** Wire run that forms the short stub. */
     WireRunId wire;
+    /** Sheet-space midpoint used to cluster nearby stubs deterministically. */
     Point center;
 };
 
