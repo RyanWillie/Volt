@@ -18,6 +18,8 @@ namespace volt {
 
 namespace detail {
 
+// These limits are intentionally heuristic: they catch page-level readability smells without
+// turning style preferences into mutation-time invariants.
 inline constexpr std::size_t repeated_label_warning_threshold = 4U;
 inline constexpr std::size_t fragmented_pin_label_threshold = 3U;
 inline constexpr std::size_t overlong_label_character_threshold = 24U;

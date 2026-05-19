@@ -133,6 +133,21 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         for instance in schematic["symbol_instances"]
         if "reference_label" in instance
     ]
+    component_references_by_id = {
+        component["id"]: component["reference"] for component in logical["components"]
+    }
+    placed_component_references = {
+        component_references_by_id[instance["component"]]
+        for instance in schematic["symbol_instances"]
+    }
+    assert placed_component_references == set(schematic_output.DISPLAY_REFERENCES)
+    assert {
+        instance["reference_label"]
+        for instance in schematic["symbol_instances"]
+    } == {
+        schematic_output.DISPLAY_REFERENCES[reference]
+        for reference in placed_component_references
+    }
     assert len(reference_labels) == len(set(reference_labels))
     assert all(re.fullmatch(r"(?:C|D|J|R|SW|U|Y)\d+", label) for label in reference_labels)
     assert all("/" not in label and "_" not in label for label in reference_labels)

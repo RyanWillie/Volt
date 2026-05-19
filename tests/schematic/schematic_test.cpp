@@ -1127,7 +1127,8 @@ TEST_CASE("Schematic readability reports non-professional visible reference labe
     }
 }
 
-TEST_CASE("Schematic readability reports both unconventional and duplicate for a repeated bad label") {
+TEST_CASE(
+    "Schematic readability reports both unconventional and duplicate for a repeated bad label") {
     // A label that is both unconventional (all-letter, no digit suffix) and shared by two
     // instances must produce an UNCONVENTIONAL diagnostic for each instance AND a DUPLICATE
     // diagnostic covering both.
@@ -1149,20 +1150,18 @@ TEST_CASE("Schematic readability reports both unconventional and duplicate for a
 
     CHECK(diagnostic_count(report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL") == 2U);
     CHECK(diagnostic_count(report, "SCHEMATIC_DUPLICATE_REFERENCE_LABEL") == 1U);
-    CHECK(report_has_code_and_entities(
-        report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL",
-        std::vector{volt::EntityRef::sheet(sheet),
-                    volt::EntityRef::symbol_instance(first_instance),
-                    volt::EntityRef::component(first_component)}));
-    CHECK(report_has_code_and_entities(
-        report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL",
-        std::vector{volt::EntityRef::sheet(sheet),
-                    volt::EntityRef::symbol_instance(second_instance),
-                    volt::EntityRef::component(second_component)}));
+    CHECK(report_has_code_and_entities(report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL",
+                                       std::vector{volt::EntityRef::sheet(sheet),
+                                                   volt::EntityRef::symbol_instance(first_instance),
+                                                   volt::EntityRef::component(first_component)}));
+    CHECK(
+        report_has_code_and_entities(report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL",
+                                     std::vector{volt::EntityRef::sheet(sheet),
+                                                 volt::EntityRef::symbol_instance(second_instance),
+                                                 volt::EntityRef::component(second_component)}));
     CHECK(report_has_code_and_entities(
         report, "SCHEMATIC_DUPLICATE_REFERENCE_LABEL",
-        std::vector{volt::EntityRef::sheet(sheet),
-                    volt::EntityRef::symbol_instance(first_instance),
+        std::vector{volt::EntityRef::sheet(sheet), volt::EntityRef::symbol_instance(first_instance),
                     volt::EntityRef::component(first_component),
                     volt::EntityRef::symbol_instance(second_instance),
                     volt::EntityRef::component(second_component)}));
