@@ -295,6 +295,65 @@ def test_python_schematic_ortho_lines_lower_to_existing_wire_runs_without_logica
     assert {wire["route_intent"] for wire in projection["wire_runs"]} == {"Orthogonal"}
 
 
+def test_python_schematic_generic_ic_symbol_builder_rejects_invalid_pin_layout():
+    duplicate_slot_pins = (
+        volt.SchematicSymbolSpec.ic_pin("A", 1, side="left", slot=1),
+        volt.SchematicSymbolSpec.ic_pin("B", 2, side="left", slot=1),
+    )
+    try:
+        volt.SchematicSymbolSpec.ic("dup-slot", pins=duplicate_slot_pins)
+    except ValueError as error:
+        assert "slot" in str(error).lower()
+    else:
+        raise AssertionError("ic builder should reject duplicate side slots")
+
+    duplicate_number_pins = (
+        volt.SchematicSymbolSpec.ic_pin("A", 1, side="left"),
+        volt.SchematicSymbolSpec.ic_pin("B", 1, side="right"),
+    )
+    try:
+        volt.SchematicSymbolSpec.ic("dup-number", pins=duplicate_number_pins)
+    except ValueError as error:
+        assert "number" in str(error).lower()
+    else:
+        raise AssertionError("ic builder should reject duplicate pin numbers")
+
+    try:
+        volt.SchematicSymbolSpec.ic_pin("BAD", 9, side="diagonal")
+    except ValueError as error:
+        assert "left, right, top, or bottom" in str(error)
+    else:
+        raise AssertionError("ic pin side should reject unsupported values")
+
+
+def test_python_schematic_ortho_lines_reject_malformed_entries():
+    design = volt.Design("schematic-ortho-lines-invalid")
+    net = design.net("N")
+    header = design.connector_1x02(ref="J1")
+    target = design.connector_1x02(ref="J2")
+    net += header[1], target[1]
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(unit=10) as drawing:
+        left = drawing.place(header, at=(10, 10))
+        right = drawing.place(target, at=(40, 10))
+
+        for bad_entry in ("bad", (left[1], right[1], left[2], right[2])):
+            try:
+                drawing.ortho_lines((bad_entry,))
+            except TypeError as error:
+                assert "Ortho line entries" in str(error)
+            else:
+                raise AssertionError("malformed ortho line entries should be rejected")
+
+        try:
+            drawing.ortho_lines(((123, left[1], right[1]),))
+        except TypeError as error:
+            assert "explicit nets must be Net handles" in str(error)
+        else:
+            raise AssertionError("explicit non-Net ortho line nets should be rejected")
+
+
 def test_python_schematic_local_signal_stub_sugar_emits_wire_and_label_only():
     design = volt.Design("schematic-local-signal-stub")
     sig = design.net("SUPPORT/SWDIO")
