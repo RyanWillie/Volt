@@ -1888,16 +1888,47 @@ class SchematicDrawing:
         )
         return PlacedSchematicElement(placed)
 
+    def node(
+        self,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        *,
+        dx: float = 0,
+        dy: float = 0,
+    ) -> SchematicAnchor:
+        """Return a reusable sheet-local geometry anchor without adding schematic objects."""
+        base = self._here if at is None else self._anchor_at(at)
+        return base.offset(dx=dx, dy=dy)
+
     def connect(
         self,
-        start: tuple[float, float] | SchematicAnchor | SchematicPort,
-        end: tuple[float, float] | SchematicAnchor | SchematicPort,
-        *,
+        *args,
         net: Net | None = None,
         shape: str | None = None,
         k: float | None = None,
     ) -> SchematicWire:
+        """Project a wire between anchors, or over an explicit net through multiple anchors.
+
+        ``connect(start, end, net=...)`` keeps the existing two-anchor behavior and can infer
+        the net from connected pin anchors. ``connect(net, *anchors)`` requires an existing
+        logical net first, validates every pin or port anchor against it, and projects one
+        schematic wire run through the supplied geometry.
+        """
         self._flush_pending()
+        if args and isinstance(args[0], Net):
+            if net is not None:
+                raise ValueError("Pass schematic connection net either first or as net=, not both")
+            return self._schematic.connect(
+                args[0],
+                *(self._point_arg(point) for point in args[1:]),
+                shape=shape,
+                k=k,
+                _authored_region=self._authored_region,
+            )
+        if len(args) != 2:
+            raise TypeError(
+                "Schematic drawing connect expects start/end anchors, or a net followed by anchors"
+            )
+        start, end = args
         return self._schematic.connect(
             self._point_arg(start),
             self._point_arg(end),
@@ -2337,6 +2368,38 @@ class SchematicTwoTerminalElement:
         self._commit_cursor()
         return self
 
+    def between(
+        self,
+        start: tuple[float, float] | SchematicAnchor | SchematicPort,
+        end: tuple[float, float] | SchematicAnchor | SchematicPort,
+        *,
+        anchor: str | int = "start",
+        drop: str | int = "end",
+    ) -> SchematicTwoTerminalElement:
+        self._require_unplaced("between")
+        start_anchor = self._drawing._anchor_at(start)
+        end_anchor = self._drawing._anchor_at(end)
+        dx = end_anchor.x - start_anchor.x
+        dy = end_anchor.y - start_anchor.y
+        if dx == 0 and dy == 0:
+            raise ValueError("Two-terminal between() anchors must be distinct")
+        if dx != 0 and dy != 0:
+            raise ValueError(
+                "Two-terminal between() anchors must be horizontally or vertically aligned"
+            )
+
+        self._at = start_anchor
+        self._anchor_ref = anchor
+        self._drop_ref = drop
+        if dx != 0:
+            self._orientation = "Right" if dx > 0 else "Left"
+            self._length = abs(dx)
+        else:
+            self._orientation = "Down" if dy > 0 else "Up"
+            self._length = abs(dy)
+        self._commit_cursor()
+        return self
+
     def length(self, value: float) -> SchematicTwoTerminalElement:
         self._require_unplaced("length")
         self._length = self._length_from_units(value)
@@ -2609,6 +2672,7 @@ class SchematicTwoTerminalElement:
                 "label_value",
                 "left",
                 "length",
+                "between",
                 "orientation",
                 "pin",
                 "pin_anchor",
@@ -2786,14 +2850,34 @@ class Schematic:
 
     def connect(
         self,
-        start: tuple[float, float] | SchematicAnchor | SchematicPort,
-        end: tuple[float, float] | SchematicAnchor | SchematicPort,
-        *,
+        *args,
         net: Net | None = None,
         shape: str | None = None,
         k: float | None = None,
         _authored_region: int | None = None,
     ) -> SchematicWire:
+        """Project a wire between anchors, or over an explicit net through multiple anchors.
+
+        ``connect(start, end, net=...)`` keeps the existing two-anchor behavior and can infer
+        the net from connected pin anchors. ``connect(net, *anchors)`` requires an existing
+        logical net first, validates every pin or port anchor against it, and projects one
+        schematic wire run through the supplied geometry.
+        """
+        if args and isinstance(args[0], Net):
+            if net is not None:
+                raise ValueError("Pass schematic connection net either first or as net=, not both")
+            return self._connect_existing_net(
+                args[0],
+                args[1:],
+                shape=shape,
+                k=k,
+                _authored_region=_authored_region,
+            )
+        if len(args) != 2:
+            raise TypeError(
+                "Schematic connect expects start/end anchors, or a net followed by anchors"
+            )
+        start, end = args
         resolved_net = _resolve_schematic_connection_net(
             self._design,
             start,
@@ -2805,6 +2889,55 @@ class Schematic:
         if shape is None:
             return builder.orthogonal()
         return builder.shape(shape, k=k)
+
+    def _connect_existing_net(
+        self,
+        net: Net,
+        anchors,
+        *,
+        shape: str | None,
+        k: float | None,
+        _authored_region: int | None = None,
+    ) -> SchematicWire:
+        if not isinstance(net, Net):
+            raise TypeError("Schematic connections expect a Net handle")
+        if net._design is not self._design:
+            raise ValueError(
+                _with_schematic_context(_cross_design_net_message(net), self, "schematic wire")
+            )
+        points = tuple(anchors)
+        if len(points) < 2:
+            raise ValueError("Schematic net connections need at least two anchors")
+        for point in points:
+            _resolve_schematic_signal_net(
+                self._design,
+                net,
+                point,
+                schematic=self,
+                action="schematic wire",
+            )
+        converted = tuple(
+            _schematic_point_for_authoring(
+                point,
+                design=self._design,
+                schematic=self,
+                action="schematic wire",
+            )
+            for point in points
+        )
+        if shape is None:
+            return self._add_wire(
+                net,
+                _multi_anchor_orthogonal_wire_points(converted),
+                route_intent="Orthogonal",
+                _authored_region=_authored_region,
+            )
+        return self._add_wire(
+            net,
+            _multi_anchor_shape_wire_points(converted, shape=shape, k=k),
+            route_intent="Direct" if shape == "-" else "Orthogonal",
+            _authored_region=_authored_region,
+        )
 
     def ortho_lines(
         self,
@@ -5577,6 +5710,35 @@ def _shape_wire_points(
     return _normalize_schematic_route_points(
         (start, (bend_x, sy), (bend_x, ey), end)
     )
+
+
+def _multi_anchor_orthogonal_wire_points(
+    points: Iterable[tuple[float, float]],
+) -> tuple[tuple[float, float], ...]:
+    anchors = tuple(points)
+    if len(anchors) < 2:
+        raise ValueError("Schematic wire route must contain at least two distinct points")
+    routed: list[tuple[float, float]] = []
+    for start, end in zip(anchors, anchors[1:]):
+        segment = _orthogonal_wire_points((start, end))
+        routed.extend(segment if not routed else segment[1:])
+    return _normalize_schematic_route_points(routed)
+
+
+def _multi_anchor_shape_wire_points(
+    points: Iterable[tuple[float, float]],
+    *,
+    shape: str,
+    k: float | None,
+) -> tuple[tuple[float, float], ...]:
+    anchors = tuple(points)
+    if len(anchors) < 2:
+        raise ValueError("Schematic wire route must contain at least two distinct points")
+    routed: list[tuple[float, float]] = []
+    for start, end in zip(anchors, anchors[1:]):
+        segment = _shape_wire_points(start, end, shape=shape, k=k)
+        routed.extend(segment if not routed else segment[1:])
+    return _normalize_schematic_route_points(routed)
 
 
 def _pin_refs_by_name(pin_refs, name: str):
