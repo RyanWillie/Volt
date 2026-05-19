@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from . import _volt
 from .design import Design
 from .diagnostics import Diagnostic, DiagnosticEntity, DiagnosticReport
 from .library import (
