@@ -424,6 +424,7 @@
     <polyline class="wire-run" data-net="net:21" points="348,308 348,322"/>
     <polyline class="wire-run" data-net="net:22" points="246,222 236,222"/>
     <polyline class="wire-run" data-net="net:23" points="392,298 390,298"/>
+    <polyline class="wire-run" data-net="net:23" points="390,298 380,298"/>
     <polyline class="wire-run" data-net="net:24" points="248,172 230,172"/>
     <polyline class="wire-run" data-net="net:25" points="248,188 230,188"/>
     <polyline class="wire-run" data-net="net:26" points="246,72 246,60"/>
@@ -622,6 +623,9 @@
     <text class="net-label" data-net="net:28" x="262" y="222" transform="rotate(0 262 222)">NRST</text>
     <text class="net-label" data-net="net:33" x="376" y="260" transform="rotate(0 376 260)">VCAP2</text>
     <text class="net-label" data-net="net:22" x="234" y="222" transform="rotate(0 234 222)">NRST</text>
+    <text class="net-label" data-net="net:23" x="378" y="298" transform="rotate(180 378 298)">BOOT0</text>
+    <text class="net-label" data-net="net:24" x="224" y="172" transform="rotate(180 224 172)">HSE IN</text>
+    <text class="net-label" data-net="net:25" x="224" y="188" transform="rotate(180 224 188)">HSE OUT</text>
     <text class="net-label" data-net="net:26" x="260" y="60" transform="rotate(0 260 60)">VCAP1</text>
     <text class="net-label" data-net="net:27" x="290" y="60" transform="rotate(0 290 60)">VCAP2</text>
     <text class="net-label" data-net="net:17" x="556" y="82" transform="rotate(0 556 82)">USB D+</text>

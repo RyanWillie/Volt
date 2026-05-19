@@ -723,9 +723,29 @@ def _author_mcu_region(
             orient="Right",
         )
         drawing.connect(swboot.C, rboot.start, net=support_boot, shape="-")
+        drawing.signal_stub(
+            support_boot,
+            at=rboot.start,
+            side="Left",
+            length=10,
+            label="BOOT0",
+            orient="Left",
+        )
 
         drawing.connect(crystal[1], chsein.start, net=support_hse_in, shape="-")
         drawing.connect(crystal[3], chseout.start, net=support_hse_out, shape="-")
+        drawing.net_label(
+            support_hse_in,
+            at=chsein.start.left(6),
+            label="HSE IN",
+            orient="Left",
+        )
+        drawing.net_label(
+            support_hse_out,
+            at=chseout.start.left(6),
+            label="HSE OUT",
+            orient="Left",
+        )
         for cap, net, label in (
             (cvcap1, nets["SUPPORT/VCAP_1"], "VCAP1"),
             (cvcap2, nets["SUPPORT/VCAP_2"], "VCAP2"),
