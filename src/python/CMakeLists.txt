@@ -11,21 +11,37 @@ FetchContent_MakeAvailable(pybind11)
 
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt)
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt/libraries)
-configure_file(
-    ${PROJECT_SOURCE_DIR}/python/volt/__init__.py
-    ${PROJECT_BINARY_DIR}/python/volt/__init__.py
-    COPYONLY
+set(
+    VOLT_PYTHON_PACKAGE_FILES
+    __init__.py
+    _presentation.py
+    _utils.py
+    design.py
+    diagnostics.py
+    library.py
+    logical.py
+    schematic.py
 )
-configure_file(
-    ${PROJECT_SOURCE_DIR}/python/volt/libraries/__init__.py
-    ${PROJECT_BINARY_DIR}/python/volt/libraries/__init__.py
-    COPYONLY
+foreach(package_file IN LISTS VOLT_PYTHON_PACKAGE_FILES)
+    configure_file(
+        ${PROJECT_SOURCE_DIR}/python/volt/${package_file}
+        ${PROJECT_BINARY_DIR}/python/volt/${package_file}
+        COPYONLY
+    )
+endforeach()
+
+set(
+    VOLT_PYTHON_LIBRARY_FILES
+    __init__.py
+    stm32_usb_buck.py
 )
-configure_file(
-    ${PROJECT_SOURCE_DIR}/python/volt/libraries/stm32_usb_buck.py
-    ${PROJECT_BINARY_DIR}/python/volt/libraries/stm32_usb_buck.py
-    COPYONLY
-)
+foreach(library_file IN LISTS VOLT_PYTHON_LIBRARY_FILES)
+    configure_file(
+        ${PROJECT_SOURCE_DIR}/python/volt/libraries/${library_file}
+        ${PROJECT_BINARY_DIR}/python/volt/libraries/${library_file}
+        COPYONLY
+    )
+endforeach()
 
 pybind11_add_module(_volt MODULE bindings.cpp)
 target_link_libraries(_volt PRIVATE Volt::Authoring Volt::IO)
