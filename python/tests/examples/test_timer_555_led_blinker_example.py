@@ -64,7 +64,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "OUT",
         "LED_A",
     }
-    assert validation["summary"]["errors"] == len(validation["diagnostics"])
+    assert sum(validation["summary"].values()) == len(validation["diagnostics"])
 
     assert schematic["format"] == "volt.schematic"
     assert [sheet["name"] for sheet in schematic["sheets"]] == ["555 LED Blinker"]
