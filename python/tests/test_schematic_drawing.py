@@ -295,7 +295,7 @@ def test_python_schematic_ortho_lines_lower_to_existing_wire_runs_without_logica
     assert {wire["route_intent"] for wire in projection["wire_runs"]} == {"Orthogonal"}
 
 
-def test_python_schematic_generic_ic_symbol_builder_rejects_invalid_pin_layout():
+def test_ic_symbol_builder_rejects_invalid_pin_layout():
     pins_with_duplicate_slot = (
         volt.SchematicSymbolSpec.ic_pin("A", 1, side="left", slot=1),
         volt.SchematicSymbolSpec.ic_pin("B", 2, side="left", slot=1),
@@ -326,7 +326,7 @@ def test_python_schematic_generic_ic_symbol_builder_rejects_invalid_pin_layout()
         raise AssertionError("ic pin side should reject unsupported values")
 
 
-def test_python_schematic_ortho_lines_reject_malformed_entries():
+def test_ortho_lines_rejects_malformed_entries():
     design = volt.Design("schematic-ortho-lines-invalid")
     net = design.net("N")
     header = design.connector_1x02(ref="J1")
