@@ -61,17 +61,15 @@
     <g class="layer layer-symbols">
     <g class="symbol-instance" data-component="component:0" data-symbol-definition="symbol_def:0" transform="translate(140 80) rotate(0)">
       <text class="reference" x="0" y="-12">U1</text>
-      <rect class="symbol-rectangle" x="10" y="0" width="50" height="50"/>
-      <text class="symbol-text" x="35" y="25" transform="rotate(0 35 25)">555</text>
-      <text class="symbol-text" x="35" y="63" transform="rotate(0 35 63)">timer</text>
+      <rect class="symbol-rectangle" x="10" y="0" width="50" height="40"/>
+      <text class="symbol-text" x="35" y="20" transform="rotate(0 35 20)">555</text>
+      <text class="symbol-text" x="35" y="53" transform="rotate(0 35 53)">timer</text>
       <line class="symbol-line" x1="0" y1="10" x2="10" y2="10"/>
       <text class="symbol-text" x="13" y="10" transform="rotate(0 13 10)">DISCH</text>
       <line class="symbol-line" x1="0" y1="20" x2="10" y2="20"/>
-      <text class="symbol-text" x="13" y="20" transform="rotate(0 13 20)">TRIG</text>
+      <text class="symbol-text" x="13" y="20" transform="rotate(0 13 20)">THRESH</text>
       <line class="symbol-line" x1="0" y1="30" x2="10" y2="30"/>
-      <text class="symbol-text" x="13" y="30" transform="rotate(0 13 30)">THRESH</text>
-      <line class="symbol-line" x1="0" y1="40" x2="10" y2="40"/>
-      <text class="symbol-text" x="13" y="40" transform="rotate(0 13 40)">GND</text>
+      <text class="symbol-text" x="13" y="30" transform="rotate(0 13 30)">TRIG</text>
       <line class="symbol-line" x1="70" y1="20" x2="60" y2="20"/>
       <text class="symbol-text" x="57" y="20" transform="rotate(0 57 20)">OUT</text>
       <line class="symbol-line" x1="70" y1="30" x2="60" y2="30"/>
@@ -80,6 +78,8 @@
       <text class="symbol-text" x="30" y="3" transform="rotate(0 30 3)">RESET</text>
       <line class="symbol-line" x1="50" y1="-10" x2="50" y2="0"/>
       <text class="symbol-text" x="50" y="3" transform="rotate(0 50 3)">VCC</text>
+      <line class="symbol-line" x1="40" y1="50" x2="40" y2="40"/>
+      <text class="symbol-text" x="40" y="37" transform="rotate(0 40 37)">GND</text>
     </g>
     <g class="symbol-instance" data-component="component:1" data-symbol-definition="symbol_def:1" transform="translate(92 72) rotate(90)">
       <text class="reference" x="0" y="-12" transform="rotate(-90 0 -12)">R1</text>
@@ -131,20 +131,20 @@
     </g>
     </g>
     <g class="layer layer-wires">
-    <polyline class="wire-run" data-net="net:0" points="190,70 172,70 172,46 190,46"/>
-    <polyline class="wire-run" data-net="net:0" points="170,70 152,70 152,46 170,46"/>
-    <polyline class="wire-run" data-net="net:0" points="92,72 74,72 74,54 92,54"/>
+    <polyline class="wire-run" data-net="net:0" points="190,70 190,46"/>
+    <polyline class="wire-run" data-net="net:0" points="170,70 170,46"/>
+    <polyline class="wire-run" data-net="net:0" points="92,72 92,54"/>
+    <polyline class="wire-run" data-net="net:1" points="180,130 180,154"/>
+    <polyline class="wire-run" data-net="net:1" points="92,130 92,148"/>
+    <polyline class="wire-run" data-net="net:1" points="250,130 250,148"/>
+    <polyline class="wire-run" data-net="net:1" points="289,100 289,118"/>
     <polyline class="wire-run" data-net="net:2" points="140,90 122,90 92,90"/>
     <polyline class="wire-run" data-net="net:2" points="92,92 74,92 74,90 92,90"/>
-    <polyline class="wire-run" data-net="net:3" points="140,110 122,110 92,110"/>
     <polyline class="wire-run" data-net="net:3" points="140,100 122,100 122,110 92,110"/>
+    <polyline class="wire-run" data-net="net:3" points="140,110 122,110 92,110"/>
     <polyline class="wire-run" data-net="net:4" points="210,110 192,110 250,110"/>
     <polyline class="wire-run" data-net="net:5" points="210,100 192,100 244,100"/>
     <polyline class="wire-run" data-net="net:6" points="264,100 246,100 269,100"/>
-    <polyline class="wire-run" data-net="net:1" points="140,120 122,120 122,144 140,144"/>
-    <polyline class="wire-run" data-net="net:1" points="92,130 74,130 74,148 92,148"/>
-    <polyline class="wire-run" data-net="net:1" points="250,130 232,130 232,148 250,148"/>
-    <polyline class="wire-run" data-net="net:1" points="289,100 271,100 271,118 289,118"/>
     </g>
     <g class="layer layer-junctions">
     </g>
@@ -155,14 +155,14 @@
     <text class="net-label" data-net="net:5" x="244" y="74" transform="rotate(0 244 74)">OUT</text>
     <text class="net-label" data-net="net:0" x="190" y="34" transform="rotate(0 190 34)">+5V</text>
     <text class="net-label" data-net="net:0" x="92" y="42" transform="rotate(0 92 42)">+5V</text>
-    <text class="net-label" data-net="net:1" x="140" y="158" transform="rotate(0 140 158)">GND</text>
+    <text class="net-label" data-net="net:1" x="180" y="168" transform="rotate(0 180 168)">GND</text>
     <text class="net-label" data-net="net:1" x="92" y="162" transform="rotate(0 92 162)">GND</text>
     <text class="net-label" data-net="net:1" x="250" y="162" transform="rotate(0 250 162)">GND</text>
     <text class="net-label" data-net="net:1" x="289" y="132" transform="rotate(0 289 132)">GND</text>
     </g>
     <g class="layer layer-fields">
     <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="reference" x="175" y="58" transform="rotate(0 175 58)">U1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="value" x="175" y="154" transform="rotate(0 175 154)">NE555</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="value" x="175" y="152" transform="rotate(0 175 152)">NE555</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="reference" x="78" y="82" transform="rotate(0 78 82)">R1</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="value" x="112" y="82" transform="rotate(0 112 82)">100 kOhm</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="reference" x="78" y="100" transform="rotate(0 78 100)">R2</text>

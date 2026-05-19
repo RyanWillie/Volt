@@ -88,13 +88,13 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     )
     assert [pin["name"] for pin in timer_symbol["pins"]] == [
         "DISCH",
-        "TRIG",
         "THRESH",
-        "GND",
+        "TRIG",
         "OUT",
         "CTRL",
         "RESET",
         "VCC",
+        "GND",
     ]
     assert {wire["route_intent"] for wire in schematic["wire_runs"]} == {"Orthogonal"}
     assert schematic["sheet_ports"] == []

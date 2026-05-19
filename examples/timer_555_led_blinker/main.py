@@ -53,13 +53,13 @@ def _timer_symbol() -> volt.SchematicSymbolSpec:
         "volt.examples.timer_555_led_blinker:NE555",
         pins=(
             volt.SchematicSymbolSpec.ic_pin("DISCH", 7, side="left", slot=1),
-            volt.SchematicSymbolSpec.ic_pin("TRIG", 2, side="left", slot=2),
-            volt.SchematicSymbolSpec.ic_pin("THRESH", 6, side="left", slot=3),
-            volt.SchematicSymbolSpec.ic_pin("GND", 1, side="left", slot=4),
+            volt.SchematicSymbolSpec.ic_pin("THRESH", 6, side="left", slot=2),
+            volt.SchematicSymbolSpec.ic_pin("TRIG", 2, side="left", slot=3),
             volt.SchematicSymbolSpec.ic_pin("OUT", 3, side="right", slot=2),
             volt.SchematicSymbolSpec.ic_pin("CTRL", 5, side="right", slot=3),
             volt.SchematicSymbolSpec.ic_pin("RESET", 4, side="top", slot=2),
             volt.SchematicSymbolSpec.ic_pin("VCC", 8, side="top", slot=4),
+            volt.SchematicSymbolSpec.ic_pin("GND", 1, side="bottom", slot=3),
         ),
         center_label="555",
         bottom_label="timer",
@@ -139,7 +139,7 @@ def build_schematic(
         timer = (
             drawing.place(parts["U1"])
             .label_ref(loc="top", ofst=12, orient="Right")
-            .label_value(loc="bottom", ofst=34, orient="Right")
+            .label_value(loc="bottom", ofst=22, orient="Right")
         )
 
         with drawing.hold():
@@ -199,11 +199,16 @@ def build_schematic(
         control_ground = control_cap.end.down(18)
         led_ground = led.end.down(18)
 
+        drawing.connect(timer.VCC, timer_vcc, net=nets["+5V"])
+        drawing.connect(timer.RESET, reset_vcc, net=nets["+5V"])
+        drawing.connect(ra.start, ra_vcc, net=nets["+5V"])
+        drawing.connect(timer.GND, timer_ground, net=nets["GND"])
+        drawing.connect(timing_cap.end, timing_ground, net=nets["GND"])
+        drawing.connect(control_cap.end, control_ground, net=nets["GND"])
+        drawing.connect(led.end, led_ground, net=nets["GND"])
+
         drawing.ortho_lines(
             (
-                (nets["+5V"], timer.VCC, timer_vcc),
-                (nets["+5V"], timer.RESET, reset_vcc),
-                (nets["+5V"], ra.start, ra_vcc),
                 (nets["DISCH"], timer.DISCH, rb.start),
                 (nets["DISCH"], ra.end, rb.start),
                 (nets["TIMING"], timer.THRESH, timing_cap.start),
@@ -211,10 +216,6 @@ def build_schematic(
                 (nets["CTRL"], timer.CTRL, control_cap.start),
                 (nets["OUT"], timer.OUT, led_resistor.start),
                 (nets["LED_A"], led_resistor.end, led.start),
-                (nets["GND"], timer.GND, timer_ground),
-                (nets["GND"], timing_cap.end, timing_ground),
-                (nets["GND"], control_cap.end, control_ground),
-                (nets["GND"], led.end, led_ground),
             ),
             shape="-|",
             k=-18,
