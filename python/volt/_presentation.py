@@ -83,14 +83,14 @@ def _presentation_symbol_spec(
         for primitive in symbol.primitives
     )
     return SchematicSymbolSpec(
-        _presentation_symbol_name(symbol.name, length, reverse, flip),
+        _presentation_symbol_name(symbol, length, reverse, flip),
         pins=pins,
         primitives=primitives,
     )
 
 
 def _presentation_symbol_name(
-    base_name: str, length: float, reverse: bool, flip: bool
+    symbol: SchematicSymbolSpec, length: float, reverse: bool, flip: bool
 ) -> str:
     length_token = f"{length:g}".replace("-", "m").replace(".", "p")
     flags = []
@@ -98,8 +98,13 @@ def _presentation_symbol_name(
         flags.append("reverse")
     if flip:
         flags.append("flip")
-    flag_token = "-".join(flags) if flags else "scaled"
-    return f"{base_name}#two-terminal-{flag_token}-{length_token}"
+    if flags:
+        flag_token = "-".join(flags)
+    elif _symbol_has_terminal_leads(symbol):
+        flag_token = "span"
+    else:
+        flag_token = "scaled"
+    return f"{symbol.name}#two-terminal-{flag_token}-{length_token}"
 
 
 def _presentation_primitive(
@@ -109,6 +114,9 @@ def _presentation_primitive(
     reverse: bool,
     flip: bool,
 ) -> dict:
+    if _symbol_has_terminal_leads(symbol):
+        return _lead_span_presentation_primitive(symbol, primitive, length, reverse, flip)
+
     primitive_type = primitive["type"]
     if primitive_type == "line":
         return SchematicSymbolSpec.line(
@@ -145,6 +153,119 @@ def _presentation_primitive(
     raise ValueError(f"Unknown schematic symbol primitive type: {primitive_type!r}")
 
 
+def _lead_span_presentation_primitive(
+    symbol: SchematicSymbolSpec,
+    primitive: dict,
+    length: float,
+    reverse: bool,
+    flip: bool,
+) -> dict:
+    primitive_type = primitive["type"]
+    if primitive_type == "line":
+        terminal_role = _terminal_lead_role(primitive)
+        if terminal_role is not None:
+            return _presentation_terminal_lead_line(
+                symbol, primitive, terminal_role, length, reverse, flip
+            )
+        return SchematicSymbolSpec.line(
+            _lead_span_point_dict(symbol, primitive["start"], length, reverse, flip),
+            _lead_span_point_dict(symbol, primitive["end"], length, reverse, flip),
+        )
+    if primitive_type == "rectangle":
+        return SchematicSymbolSpec.rectangle(
+            _lead_span_point_dict(symbol, primitive["first_corner"], length, reverse, flip),
+            _lead_span_point_dict(symbol, primitive["second_corner"], length, reverse, flip),
+        )
+    if primitive_type == "circle":
+        return SchematicSymbolSpec.circle(
+            _lead_span_point_dict(symbol, primitive["center"], length, reverse, flip),
+            primitive["radius"],
+        )
+    if primitive_type == "arc":
+        return SchematicSymbolSpec.arc(
+            _lead_span_point_dict(symbol, primitive["center"], length, reverse, flip),
+            primitive["radius"],
+            primitive["start_degrees"],
+            primitive["sweep_degrees"],
+        )
+    if primitive_type == "text":
+        return SchematicSymbolSpec.text(
+            primitive["text"],
+            _lead_span_point_dict(symbol, primitive["anchor"], length, reverse, flip),
+            _presentation_orientation(primitive["orientation"], reverse, flip),
+        )
+    raise ValueError(f"Unknown schematic symbol primitive type: {primitive_type!r}")
+
+
+def _symbol_has_terminal_leads(symbol: SchematicSymbolSpec) -> bool:
+    roles = {_terminal_lead_role(primitive) for primitive in symbol.primitives}
+    return "TerminalLeadStart" in roles and "TerminalLeadEnd" in roles
+
+
+def _terminal_lead_role(primitive: dict) -> str | None:
+    if primitive.get("type") != "line":
+        return None
+    role = primitive.get("role")
+    if role in ("TerminalLeadStart", "TerminalLeadEnd"):
+        return role
+    return None
+
+
+def _presentation_terminal_lead_line(
+    symbol: SchematicSymbolSpec,
+    primitive: dict,
+    terminal_role: str,
+    length: float,
+    reverse: bool,
+    flip: bool,
+) -> dict:
+    start_point = (primitive["start"]["x"], primitive["start"]["y"])
+    end_point = (primitive["end"]["x"], primitive["end"]["y"])
+    terminal_endpoint = _terminal_lead_endpoint(symbol, terminal_role, start_point, end_point)
+    if terminal_endpoint == "start":
+        return SchematicSymbolSpec.line(
+            _presentation_terminal_lead_point(terminal_role, length, reverse),
+            _lead_span_point(symbol, end_point, length, reverse, flip),
+        )
+    return SchematicSymbolSpec.line(
+        _lead_span_point(symbol, start_point, length, reverse, flip),
+        _presentation_terminal_lead_point(terminal_role, length, reverse),
+    )
+
+
+def _terminal_lead_endpoint(
+    symbol: SchematicSymbolSpec,
+    terminal_role: str,
+    start_point: tuple[float, float],
+    end_point: tuple[float, float],
+) -> str:
+    pins = tuple(symbol.pins)
+    terminal = pins[0].at if terminal_role == "TerminalLeadStart" else pins[-1].at
+    if _distance_squared(start_point, terminal) <= _distance_squared(end_point, terminal):
+        return "start"
+    return "end"
+
+
+def _presentation_terminal_lead_point(
+    terminal_role: str,
+    length: float,
+    reverse: bool,
+) -> tuple[float, float]:
+    if terminal_role == "TerminalLeadStart":
+        along = length if reverse else 0.0
+    else:
+        along = 0.0 if reverse else length
+    return (_coordinate(along), 0.0)
+
+
+def _distance_squared(
+    first: tuple[float, float], second: tuple[float, float]
+) -> float:
+    dx = first[0] - second[0]
+    dy = first[1] - second[1]
+    return (dx * dx) + (dy * dy)
+
+
 def _presentation_point_dict(
     symbol: SchematicSymbolSpec,
     point: dict,
@@ -157,6 +278,16 @@ def _presentation_point_dict(
     )
 
 
+def _lead_span_point_dict(
+    symbol: SchematicSymbolSpec,
+    point: dict,
+    length: float,
+    reverse: bool,
+    flip: bool,
+) -> tuple[float, float]:
+    return _lead_span_point(symbol, (point["x"], point["y"]), length, reverse, flip)
+
+
 def _presentation_point(
     symbol: SchematicSymbolSpec,
     point: tuple[float, float],
@@ -164,6 +295,35 @@ def _presentation_point(
     reverse: bool,
     flip: bool,
 ) -> tuple[float, float]:
+    along, across, base_length = _terminal_frame_point(symbol, point)
+    scaled_along = along * length / base_length
+    if reverse:
+        scaled_along = length - scaled_along
+    if flip:
+        across = -across
+    return (_coordinate(scaled_along), _coordinate(across))
+
+
+def _lead_span_point(
+    symbol: SchematicSymbolSpec,
+    point: tuple[float, float],
+    length: float,
+    reverse: bool,
+    flip: bool,
+) -> tuple[float, float]:
+    along, across, base_length = _terminal_frame_point(symbol, point)
+    shifted_along = along + ((length - base_length) / 2)
+    if reverse:
+        shifted_along = length - shifted_along
+    if flip:
+        across = -across
+    return (_coordinate(shifted_along), _coordinate(across))
+
+
+def _terminal_frame_point(
+    symbol: SchematicSymbolSpec,
+    point: tuple[float, float],
+) -> tuple[float, float, float]:
     pins = tuple(symbol.pins)
     start, base_length = _symbol_terminal_frame(symbol)
     end = pins[-1].at
@@ -173,14 +333,7 @@ def _presentation_point(
     vy = ux
     dx = point[0] - start[0]
     dy = point[1] - start[1]
-    along = dx * ux + dy * uy
-    across = dx * vx + dy * vy
-    scaled_along = along * length / base_length
-    if reverse:
-        scaled_along = length - scaled_along
-    if flip:
-        across = -across
-    return (_coordinate(scaled_along), _coordinate(across))
+    return (dx * ux + dy * uy, dx * vx + dy * vy, base_length)
 
 
 def _presentation_orientation(orientation: str, reverse: bool, flip: bool) -> str:

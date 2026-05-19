@@ -272,8 +272,29 @@ class SchematicSymbolSpec:
         )
 
     @staticmethod
-    def line(start: tuple[float, float], end: tuple[float, float]) -> dict:
-        return {"type": "line", "start": _symbol_point(start), "end": _symbol_point(end)}
+    def line(
+        start: tuple[float, float],
+        end: tuple[float, float],
+        *,
+        role: str | None = None,
+    ) -> dict:
+        primitive = {"type": "line", "start": _symbol_point(start), "end": _symbol_point(end)}
+        if role is not None:
+            primitive["role"] = _symbol_line_role(role)
+        return primitive
+
+    @staticmethod
+    def terminal_lead(
+        start: tuple[float, float],
+        end: tuple[float, float],
+        *,
+        terminal: str,
+    ) -> dict:
+        return SchematicSymbolSpec.line(
+            start,
+            end,
+            role=_terminal_lead_line_role(terminal),
+        )
 
     @staticmethod
     def rectangle(first_corner: tuple[float, float], second_corner: tuple[float, float]) -> dict:
@@ -424,6 +445,43 @@ def _symbol_point(value: tuple[float, float]) -> dict:
     if not isinstance(value, (tuple, list)) or len(value) != 2:
         raise TypeError("Schematic symbol points must be (x, y) pairs")
     return {"x": _coordinate(value[0]), "y": _coordinate(value[1])}
+
+
+def _symbol_line_role(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError("Schematic symbol line roles must be strings")
+    normalized = {
+        "normal": "Normal",
+        "terminalleadstart": "TerminalLeadStart",
+        "terminal_lead_start": "TerminalLeadStart",
+        "terminal-lead-start": "TerminalLeadStart",
+        "start": "TerminalLeadStart",
+        "terminalleadend": "TerminalLeadEnd",
+        "terminal_lead_end": "TerminalLeadEnd",
+        "terminal-lead-end": "TerminalLeadEnd",
+        "end": "TerminalLeadEnd",
+    }.get(value.casefold())
+    if normalized is None:
+        raise ValueError(
+            "Schematic symbol line roles must be Normal, TerminalLeadStart, or TerminalLeadEnd"
+        )
+    return normalized
+
+
+def _terminal_lead_line_role(terminal: str) -> str:
+    if not isinstance(terminal, str):
+        raise TypeError("Schematic terminal lead names must be strings")
+    normalized = {
+        "start": "TerminalLeadStart",
+        "1": "TerminalLeadStart",
+        "left": "TerminalLeadStart",
+        "end": "TerminalLeadEnd",
+        "2": "TerminalLeadEnd",
+        "right": "TerminalLeadEnd",
+    }.get(terminal.casefold())
+    if normalized is None:
+        raise ValueError("Schematic terminal leads must target start or end")
+    return normalized
 
 
 def _schematic_block_pin_side(value: str) -> str:
@@ -684,9 +742,9 @@ def _resistor_symbol_spec(name: str) -> SchematicSymbolSpec:
         name,
         pins=_two_terminal_pins("1", 1, "2", 2),
         primitives=(
-            SchematicSymbolSpec.line((0, 0), (4, 0)),
+            SchematicSymbolSpec.terminal_lead((0, 0), (4, 0), terminal="start"),
             SchematicSymbolSpec.rectangle((4, -3), (16, 3)),
-            SchematicSymbolSpec.line((16, 0), (20, 0)),
+            SchematicSymbolSpec.terminal_lead((16, 0), (20, 0), terminal="end"),
             SchematicSymbolSpec.text("R", (10, -8)),
         ),
     )
@@ -697,10 +755,10 @@ def _capacitor_symbol_spec(name: str) -> SchematicSymbolSpec:
         name,
         pins=_two_terminal_pins("1", 1, "2", 2),
         primitives=(
-            SchematicSymbolSpec.line((0, 0), (8, 0)),
+            SchematicSymbolSpec.terminal_lead((0, 0), (8, 0), terminal="start"),
             SchematicSymbolSpec.line((8, -5), (8, 5)),
             SchematicSymbolSpec.line((12, -5), (12, 5)),
-            SchematicSymbolSpec.line((12, 0), (20, 0)),
+            SchematicSymbolSpec.terminal_lead((12, 0), (20, 0), terminal="end"),
             SchematicSymbolSpec.text("C", (10, -10)),
         ),
     )
@@ -711,11 +769,11 @@ def _inductor_symbol_spec(name: str) -> SchematicSymbolSpec:
         name,
         pins=_two_terminal_pins("1", 1, "2", 2),
         primitives=(
-            SchematicSymbolSpec.line((0, 0), (4, 0)),
+            SchematicSymbolSpec.terminal_lead((0, 0), (4, 0), terminal="start"),
             SchematicSymbolSpec.arc((6, 0), 2, 180, -180),
             SchematicSymbolSpec.arc((10, 0), 2, 180, -180),
             SchematicSymbolSpec.arc((14, 0), 2, 180, -180),
-            SchematicSymbolSpec.line((16, 0), (20, 0)),
+            SchematicSymbolSpec.terminal_lead((16, 0), (20, 0), terminal="end"),
             SchematicSymbolSpec.text("L", (10, -8)),
         ),
     )
@@ -726,11 +784,11 @@ def _diode_symbol_spec(name: str) -> SchematicSymbolSpec:
         name,
         pins=_two_terminal_pins("K", 1, "A", 2),
         primitives=(
-            SchematicSymbolSpec.line((0, 0), (7, 0)),
+            SchematicSymbolSpec.terminal_lead((0, 0), (7, 0), terminal="start"),
             SchematicSymbolSpec.line((7, -5), (7, 5)),
             SchematicSymbolSpec.line((7, -5), (13, 0)),
             SchematicSymbolSpec.line((7, 5), (13, 0)),
-            SchematicSymbolSpec.line((13, 0), (20, 0)),
+            SchematicSymbolSpec.terminal_lead((13, 0), (20, 0), terminal="end"),
             SchematicSymbolSpec.text("D", (10, -11)),
         ),
     )
