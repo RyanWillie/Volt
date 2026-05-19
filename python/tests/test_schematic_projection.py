@@ -281,6 +281,94 @@ def test_python_schematic_drawing_annotation_helpers_stay_presentation_only():
     assert projection["no_connect_markers"][0]["pin"] == f"pin:{placed.NC.pin.index}"
     assert projection["no_connect_markers"][0]["reason"] == "test pad not populated"
 
+def test_python_schematic_two_terminal_between_anchors_is_generic_and_presentation_only():
+    design = volt.Design("schematic-between-anchors")
+    a_net = design.net("A")
+    b_net = design.net("B")
+    link_definition = design.define_component(
+        "GenericLink",
+        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:generic-link",
+            pins=(
+                volt.SchematicSymbolSpec.pin("A", 1, (0, 0), "Left"),
+                volt.SchematicSymbolSpec.pin("B", 2, (10, 0), "Right"),
+            ),
+            primitives=(volt.SchematicSymbolSpec.line((0, 0), (10, 0)),),
+        ),
+    )
+    link = design.instantiate(link_definition, ref="XL1")
+    a_net += link["A"]
+    b_net += link["B"]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+    with schematic.drawing(unit=10) as drawing:
+        start = drawing.node((20, 30))
+        end = start.down(30)
+        placed = drawing.two_terminal(link).between(start, end).label_ref(loc="right")
+
+    projection = json.loads(schematic.to_json())
+
+    assert design.to_json() == logical_before
+    assert placed.start.point == (20.0, 30.0)
+    assert placed.end.point == (20.0, 60.0)
+    assert placed.orientation == "Down"
+    assert [symbol["name"] for symbol in projection["symbol_definitions"]] == [
+        "test:generic-link",
+        "test:generic-link#two-terminal-scaled-30",
+    ]
+    assert projection["symbol_instances"][0]["symbol_definition"] == "symbol_def:1"
+    assert projection["symbol_fields"][0]["value"] == "XL1"
+
+
+def test_python_schematic_existing_net_connect_accepts_multiple_anchors_without_mutating_logic():
+    design = volt.Design("schematic-multi-anchor-connect")
+    bus = design.net("BUS")
+    pad_definition = design.define_component(
+        "Pad",
+        pins=[volt.PinSpec("PAD", 1)],
+        schematic_symbol=volt.SchematicSymbolSpec(
+            "test:pad",
+            pins=(volt.SchematicSymbolSpec.pin("PAD", 1, (0, 0), "Right"),),
+            primitives=(volt.SchematicSymbolSpec.circle((0, 0), 1.5),),
+        ),
+    )
+    first_pad = design.instantiate(pad_definition, ref="TP1")
+    second_pad = design.instantiate(pad_definition, ref="TP2")
+    bus += first_pad["PAD"], second_pad["PAD"]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+    with schematic.drawing(unit=10) as drawing:
+        first = drawing.place(first_pad, at=(20, 20)).PAD
+        second = drawing.place(second_pad, at=(60, 40)).PAD
+        node = drawing.node(first.right(20))
+        wire = drawing.connect(bus, first, node, second)
+        junction = drawing.junction(bus, at=node)
+
+    projection = json.loads(schematic.to_json())
+
+    assert design.to_json() == logical_before
+    assert wire.index == 0
+    assert junction.index == 0
+    assert projection["wire_runs"] == [
+        {
+            "id": "wire_run:0",
+            "sheet": "sheet:0",
+            "net": f"net:{bus.index}",
+            "points": [
+                {"x": 20.0, "y": 20.0},
+                {"x": 40.0, "y": 20.0},
+                {"x": 60.0, "y": 20.0},
+                {"x": 60.0, "y": 40.0},
+            ],
+            "route_intent": "Orthogonal",
+        }
+    ]
+    assert projection["junctions"][0]["position"] == {"x": 40.0, "y": 20.0}
+
+
 def test_detached_schematic_symbol_pin_helpers_report_missing_component_context():
     design = volt.Design("schematic-detached-symbol")
     r1 = design.R("10k", ref="R1")
