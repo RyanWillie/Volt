@@ -65,6 +65,20 @@ volt::SymbolDefinition make_resistor_symbol() {
     return symbol;
 }
 
+volt::SymbolDefinition make_four_pin_ic_symbol() {
+    auto symbol = volt::SymbolDefinition{"FourPinIC"};
+    symbol.add_pin(
+        volt::SymbolPin{"OSC_IN", "1", volt::Point{0.0, -10.0}, volt::SchematicOrientation::Left});
+    symbol.add_pin(
+        volt::SymbolPin{"NRST", "2", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left});
+    symbol.add_pin(
+        volt::SymbolPin{"BOOT0", "3", volt::Point{0.0, 10.0}, volt::SchematicOrientation::Left});
+    symbol.add_pin(
+        volt::SymbolPin{"VSS", "4", volt::Point{28.0, 10.0}, volt::SchematicOrientation::Right});
+    symbol.add_primitive(volt::SymbolRectangle{volt::Point{0.0, -16.0}, volt::Point{28.0, 16.0}});
+    return symbol;
+}
+
 bool report_has_code(const volt::DiagnosticReport &report, const std::string &code) {
     return std::any_of(report.diagnostics().begin(), report.diagnostics().end(),
                        [&code](const volt::Diagnostic &diagnostic) {
@@ -973,6 +987,184 @@ TEST_CASE("Schematic readability reports oversized power-port labels") {
                                                volt::EntityRef::net(net)});
 }
 
+TEST_CASE("Schematic readability reports symbol fields far from their owning symbol") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{50.0, 50.0}});
+    const auto field = schematic.add_symbol_field(
+        sheet, volt::SymbolField{instance, "Value", "10k", volt::Point{110.0, 90.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::symbol_field(field),
+                                               volt::EntityRef::symbol_instance(instance)});
+}
+
+TEST_CASE("Schematic readability reports text crossing wire geometry") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "VCC");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto label = schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{40.0, 40.0}});
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{42.0, 39.4}, volt::Point{58.0, 39.4}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_TEXT_TOUCHES_WIRE");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(label)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(wire)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability reports power labels crossing wire geometry") {
+    volt::Circuit circuit;
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto port = schematic.add_power_port(
+        sheet, volt::PowerPort{net, volt::PowerPortKind::Power, volt::Point{50.0, 50.0}});
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{38.0, 49.5}, volt::Point{43.0, 49.5}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_TEXT_TOUCHES_WIRE");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::power_port(port)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(wire)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability reports text touching symbol outlines") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = add_named_net(circuit, "BOOT0");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{70.0, 70.0}});
+    const auto label = schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{74.0, 70.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_TEXT_TOUCHES_SYMBOL");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(label)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::symbol_instance(instance)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability reports long local dogleg routes") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "OSC_IN");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net,
+                             std::vector{volt::Point{40.0, 40.0}, volt::Point{95.0, 40.0},
+                                         volt::Point{95.0, 52.0}, volt::Point{42.0, 52.0}},
+                             volt::RouteIntent::Orthogonal});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_LONG_LOCAL_DOGLEG");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::wire_run(wire),
+                                               volt::EntityRef::net(net)});
+}
+
+TEST_CASE("Schematic readability reports misaligned repeated same-net labels in a local cluster") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "BOOT0");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto first = schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{50.0, 50.0}});
+    const auto second =
+        schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{58.0, 55.0}});
+    const auto third = schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{53.0, 63.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_MISALIGNED_LOCAL_LABELS");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(first)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(second)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(third)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability reports ambiguous same-net wire crossings") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "RESET");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto horizontal = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{40.0, 50.0}, volt::Point{70.0, 50.0}}});
+    const auto vertical = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{55.0, 40.0}, volt::Point{55.0, 60.0}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_AMBIGUOUS_SAME_NET_CROSSING");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.entities() ==
+          std::vector{volt::EntityRef::sheet(sheet), volt::EntityRef::wire_run(horizontal),
+                      volt::EntityRef::wire_run(vertical), volt::EntityRef::net(net)});
+}
+
+TEST_CASE("Schematic readability reports floating-looking local stub clusters") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "BOOT0");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    auto wires = std::vector<volt::WireRunId>{};
+    for (std::size_t index = 0; index < 3U; ++index) {
+        const auto y = 50.0 + (static_cast<double>(index) * 6.0);
+        wires.push_back(schematic.add_wire_run(
+            sheet, volt::WireRun{net, std::vector{volt::Point{50.0, y}, volt::Point{56.0, y}}}));
+        static_cast<void>(
+            schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{56.0, y}}));
+    }
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_FLOATING_STUB_CLUSTER");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    const auto &entities = diagnostic.entities();
+    for (const auto wire : wires) {
+        CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(wire)) !=
+              entities.end());
+    }
+}
+
 TEST_CASE("Schematic readability reports crowded repeated tag stacks") {
     volt::Circuit circuit;
     const auto first_net = add_named_net(circuit, "GPIO_A");
@@ -1187,6 +1379,72 @@ TEST_CASE("Schematic readability accepts compact labels and spaced tag ports") {
     static_cast<void>(
         schematic.add_sheet_port(sheet, volt::SheetPort{enable, "EN", volt::SheetPortKind::OffPage,
                                                         volt::Point{30.0, 62.0}}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(report.empty());
+}
+
+TEST_CASE("Schematic readability accepts a clean local oscillator reset boot fixture") {
+    volt::Circuit circuit;
+    auto pin_definitions = std::vector<volt::PinDefId>{};
+    pin_definitions.push_back(circuit.add_pin_definition(
+        volt::PinDefinition{"OSC_IN", "1", volt::PinRole::DigitalInput}));
+    pin_definitions.push_back(
+        circuit.add_pin_definition(volt::PinDefinition{"NRST", "2", volt::PinRole::DigitalInput}));
+    pin_definitions.push_back(
+        circuit.add_pin_definition(volt::PinDefinition{"BOOT0", "3", volt::PinRole::DigitalInput}));
+    pin_definitions.push_back(
+        circuit.add_pin_definition(volt::PinDefinition{"VSS", "4", volt::PinRole::Ground}));
+    const auto mcu_definition =
+        circuit.add_component_definition(volt::ComponentDefinition{"MCU", pin_definitions});
+    const auto mcu = circuit.instantiate_component(mcu_definition, volt::ReferenceDesignator{"U1"});
+    const auto crystal = add_resistor(circuit, "Y1");
+    const auto reset_pullup = add_resistor(circuit, "R1");
+    const auto boot_resistor = add_resistor(circuit, "R2");
+    const auto osc = add_named_net(circuit, "OSC_IN");
+    const auto reset = add_named_net(circuit, "NRST");
+    const auto boot = add_named_net(circuit, "BOOT0");
+    const auto vcc = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto mcu_symbol = schematic.add_symbol_definition(make_four_pin_ic_symbol());
+    const auto passive_symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto mcu_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{mcu_symbol, mcu, volt::Point{90.0, 70.0}});
+    const auto crystal_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{passive_symbol, crystal, volt::Point{42.0, 60.0}});
+    const auto reset_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{passive_symbol, reset_pullup, volt::Point{42.0, 70.0}});
+    const auto boot_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{passive_symbol, boot_resistor, volt::Point{42.0, 82.0}});
+
+    static_cast<void>(schematic.add_wire_run(
+        sheet, volt::WireRun{osc, std::vector{volt::Point{62.0, 60.0}, volt::Point{90.0, 60.0}}}));
+    static_cast<void>(schematic.add_wire_run(
+        sheet,
+        volt::WireRun{reset, std::vector{volt::Point{62.0, 70.0}, volt::Point{90.0, 70.0}}}));
+    static_cast<void>(schematic.add_wire_run(
+        sheet, volt::WireRun{boot, std::vector{volt::Point{62.0, 82.0}, volt::Point{90.0, 80.0}}}));
+    static_cast<void>(schematic.add_net_label(sheet, volt::NetLabel{osc, volt::Point{66.0, 56.0}}));
+    static_cast<void>(
+        schematic.add_net_label(sheet, volt::NetLabel{reset, volt::Point{66.0, 66.0}}));
+    static_cast<void>(
+        schematic.add_net_label(sheet, volt::NetLabel{boot, volt::Point{66.0, 78.0}}));
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{vcc, volt::PowerPortKind::Power, volt::Point{26.0, 42.0}}));
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{gnd, volt::PowerPortKind::Ground, volt::Point{132.0, 98.0},
+                               volt::SchematicOrientation::Down}));
+    static_cast<void>(schematic.add_symbol_field(
+        sheet, volt::SymbolField{crystal_instance, "Value", "8MHz", volt::Point{52.0, 54.0}}));
+    static_cast<void>(schematic.add_symbol_field(
+        sheet, volt::SymbolField{reset_instance, "Value", "10k", volt::Point{52.0, 64.0}}));
+    static_cast<void>(schematic.add_symbol_field(
+        sheet, volt::SymbolField{boot_instance, "Value", "100k", volt::Point{52.0, 76.0}}));
+    static_cast<void>(mcu_instance);
 
     const auto report = volt::validate_schematic_readability(schematic);
 

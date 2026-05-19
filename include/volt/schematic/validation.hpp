@@ -36,6 +36,16 @@ inline constexpr double symbol_field_rendered_font_size = 2.5;
 inline constexpr double tag_stack_min_spacing = 6.0;
 inline constexpr double tag_stack_alignment_tolerance = 1.0;
 inline constexpr double label_symbol_clearance = 1.5;
+inline constexpr double symbol_field_owner_max_gap = 18.0;
+inline constexpr double local_dogleg_endpoint_max_distance = 24.0;
+inline constexpr double local_dogleg_min_length = 80.0;
+inline constexpr double local_dogleg_min_detour_ratio = 4.0;
+inline constexpr double local_label_cluster_max_span = 24.0;
+inline constexpr double local_label_alignment_tolerance = 1.0;
+inline constexpr std::size_t local_label_cluster_threshold = 3U;
+inline constexpr double floating_stub_max_length = 8.0;
+inline constexpr double floating_stub_cluster_max_span = 24.0;
+inline constexpr std::size_t floating_stub_cluster_threshold = 3U;
 inline constexpr double oversized_port_tag_rendered_length = 28.0;
 inline constexpr double power_port_stem_length = 4.2;
 inline constexpr double power_port_tip_offset = 7.6;
@@ -59,6 +69,14 @@ enum class ReadabilityObjectKind {
     NoConnectMarker,
     SheetPort,
     SymbolField,
+};
+
+/** Text-like schematic object kinds used to tune conservative collision checks. */
+enum class ReadabilityTextKind {
+    NetLabel,
+    SymbolField,
+    PowerPortLabel,
+    SheetPortLabel,
 };
 
 /** Conservative sheet-space bounds used by schematic readability diagnostics. */
@@ -89,12 +107,18 @@ struct ReadabilityObject {
 
 /** Text-like object geometry gathered for conservative collision checks. */
 struct ReadabilityTextObject {
+    /** Text object category. */
+    ReadabilityTextKind kind;
     /** Primary text entity referenced by diagnostics. */
     EntityRef entity;
     /** Related entities that explain the text object. */
     std::vector<EntityRef> context;
     /** Conservative sheet-space text bounds. */
     SchematicBounds bounds;
+    /** Authored anchor used to suppress intentional label-on-wire attachment points. */
+    Point anchor;
+    /** Net named or tagged by the text, if applicable. */
+    std::optional<NetId> net;
 };
 
 /** Rendered tag/port geometry used for stack and density checks. */
@@ -155,6 +179,72 @@ inline void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexc
            first.max_x + schematic_geometry_tolerance >= second.min_x &&
            first.min_y <= second.max_y + schematic_geometry_tolerance &&
            first.max_y + schematic_geometry_tolerance >= second.min_y;
+}
+
+[[nodiscard]] inline double bounds_width(SchematicBounds bounds) noexcept {
+    return bounds.max_x - bounds.min_x;
+}
+
+[[nodiscard]] inline double bounds_height(SchematicBounds bounds) noexcept {
+    return bounds.max_y - bounds.min_y;
+}
+
+[[nodiscard]] inline double bounds_gap(SchematicBounds first, SchematicBounds second) noexcept {
+    auto dx = 0.0;
+    if (first.max_x < second.min_x) {
+        dx = second.min_x - first.max_x;
+    } else if (second.max_x < first.min_x) {
+        dx = first.min_x - second.max_x;
+    }
+
+    auto dy = 0.0;
+    if (first.max_y < second.min_y) {
+        dy = second.min_y - first.max_y;
+    } else if (second.max_y < first.min_y) {
+        dy = first.min_y - second.max_y;
+    }
+
+    return std::sqrt((dx * dx) + (dy * dy));
+}
+
+[[nodiscard]] inline Point bounds_center(SchematicBounds bounds) {
+    return Point{(bounds.min_x + bounds.max_x) / 2.0, (bounds.min_y + bounds.max_y) / 2.0};
+}
+
+[[nodiscard]] inline double point_distance(Point first, Point second) noexcept {
+    const auto dx = first.x() - second.x();
+    const auto dy = first.y() - second.y();
+    return std::sqrt((dx * dx) + (dy * dy));
+}
+
+[[nodiscard]] inline bool point_inside_bounds(Point point, SchematicBounds bounds) noexcept {
+    return point.x() >= bounds.min_x - schematic_geometry_tolerance &&
+           point.x() <= bounds.max_x + schematic_geometry_tolerance &&
+           point.y() >= bounds.min_y - schematic_geometry_tolerance &&
+           point.y() <= bounds.max_y + schematic_geometry_tolerance;
+}
+
+[[nodiscard]] inline bool segment_intersects_bounds(SchematicSegment segment,
+                                                    SchematicBounds bounds) {
+    if (point_inside_bounds(segment.start(), bounds) ||
+        point_inside_bounds(segment.end(), bounds)) {
+        return true;
+    }
+
+    const auto top =
+        SchematicSegment{Point{bounds.min_x, bounds.min_y}, Point{bounds.max_x, bounds.min_y}};
+    const auto right =
+        SchematicSegment{Point{bounds.max_x, bounds.min_y}, Point{bounds.max_x, bounds.max_y}};
+    const auto bottom =
+        SchematicSegment{Point{bounds.max_x, bounds.max_y}, Point{bounds.min_x, bounds.max_y}};
+    const auto left =
+        SchematicSegment{Point{bounds.min_x, bounds.max_y}, Point{bounds.min_x, bounds.min_y}};
+    return classify_segment_relationship(segment, top) != SchematicSegmentRelationship::Disjoint ||
+           classify_segment_relationship(segment, right) !=
+               SchematicSegmentRelationship::Disjoint ||
+           classify_segment_relationship(segment, bottom) !=
+               SchematicSegmentRelationship::Disjoint ||
+           classify_segment_relationship(segment, left) != SchematicSegmentRelationship::Disjoint;
 }
 
 [[nodiscard]] inline SchematicBounds transform_rect_bounds(double min_x, double min_y, double max_x,
@@ -398,6 +488,20 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
                                                          instance.orientation()),
                                SchematicOrientation::Right, reference_label,
                                symbol_text_rendered_font_size, true));
+    return bounds;
+}
+
+[[nodiscard]] inline SchematicBounds symbol_instance_geometry_bounds(const Schematic &schematic,
+                                                                     SymbolInstanceId id) {
+    const auto &instance = schematic.symbol_instance(id);
+    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    auto bounds = bounds_from_point(instance.position());
+    for (const auto &pin : symbol.pins()) {
+        include_bounds(bounds, transform_symbol_point_bounds(pin.anchor(), instance));
+    }
+    for (const auto &primitive : symbol.primitives()) {
+        include_bounds(bounds, symbol_primitive_bounds(primitive, instance));
+    }
     return bounds;
 }
 
@@ -935,6 +1039,64 @@ readability_tags_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     return tags;
 }
 
+[[nodiscard]] inline std::vector<ReadabilityTextObject>
+readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
+    auto texts = std::vector<ReadabilityTextObject>{};
+    for (const auto label_id : sheet.net_labels()) {
+        const auto &label = schematic.net_label(label_id);
+        const auto &net = schematic.circuit().net(label.net());
+        texts.push_back(ReadabilityTextObject{
+            ReadabilityTextKind::NetLabel,
+            EntityRef::net_label(label_id),
+            std::vector{EntityRef::net(label.net())},
+            text_bounds(label.position(), label.orientation(),
+                        label.label().value_or(net.name().value()), net_label_rendered_font_size,
+                        false),
+            label.position(),
+            label.net(),
+        });
+    }
+    for (const auto field_id : sheet.symbol_fields()) {
+        const auto &field = schematic.symbol_field(field_id);
+        texts.push_back(ReadabilityTextObject{
+            ReadabilityTextKind::SymbolField,
+            EntityRef::symbol_field(field_id),
+            std::vector{EntityRef::symbol_instance(field.symbol_instance())},
+            text_bounds(field.position(), field.orientation(), field.value(),
+                        symbol_field_rendered_font_size, true),
+            field.position(),
+            std::nullopt,
+        });
+    }
+    for (const auto port_id : sheet.power_ports()) {
+        const auto &port = schematic.power_port(port_id);
+        const auto &net = schematic.circuit().net(port.net());
+        const auto label = port.label().value_or(net.name().value());
+        const auto bounds = power_port_label_bounds(port, label);
+        texts.push_back(ReadabilityTextObject{
+            ReadabilityTextKind::PowerPortLabel,
+            EntityRef::power_port(port_id),
+            std::vector{EntityRef::net(port.net())},
+            bounds,
+            bounds_center(bounds),
+            port.net(),
+        });
+    }
+    for (const auto port_id : sheet.sheet_ports()) {
+        const auto &port = schematic.sheet_port(port_id);
+        const auto bounds = sheet_port_label_bounds(port);
+        texts.push_back(ReadabilityTextObject{
+            ReadabilityTextKind::SheetPortLabel,
+            EntityRef::sheet_port(port_id),
+            std::vector{EntityRef::net(port.net())},
+            bounds,
+            bounds_center(bounds),
+            port.net(),
+        });
+    }
+    return texts;
+}
+
 inline void validate_readability_bounds(const Schematic &schematic, SheetId sheet_id,
                                         const Sheet &sheet, DiagnosticReport &report) {
     const auto area = drawing_area_bounds(sheet.metadata());
@@ -1306,6 +1468,320 @@ inline void validate_label_readability(const Schematic &schematic, SheetId sheet
     }
 }
 
+inline void validate_symbol_field_ownership_distance(const Schematic &schematic, SheetId sheet_id,
+                                                     const Sheet &sheet, DiagnosticReport &report) {
+    for (const auto field_id : sheet.symbol_fields()) {
+        const auto &field = schematic.symbol_field(field_id);
+        const auto field_bounds = text_bounds(field.position(), field.orientation(), field.value(),
+                                              symbol_field_rendered_font_size, true);
+        const auto owner_bounds = symbol_instance_bounds(schematic, field.symbol_instance());
+        if (bounds_gap(owner_bounds, field_bounds) <= symbol_field_owner_max_gap) {
+            continue;
+        }
+        report.add(Diagnostic{
+            Severity::Warning,
+            DiagnosticCode{"SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL"},
+            "Schematic symbol field is far from its owning symbol",
+            std::vector{EntityRef::sheet(sheet_id), EntityRef::symbol_field(field_id),
+                        EntityRef::symbol_instance(field.symbol_instance())},
+        });
+    }
+}
+
+[[nodiscard]] inline bool
+text_anchor_intentionally_attaches_to_wire(const ReadabilityTextObject &text, const WireRun &wire) {
+    return text.kind == ReadabilityTextKind::NetLabel && text.net.has_value() &&
+           text.net.value() == wire.net() && wire_covers_point(wire, text.anchor);
+}
+
+inline void validate_text_wire_collisions(const Schematic &schematic, SheetId sheet_id,
+                                          const Sheet &sheet, DiagnosticReport &report) {
+    const auto texts = readability_texts_for_sheet(schematic, sheet);
+    for (const auto &text : texts) {
+        for (const auto wire_id : sheet.wire_runs()) {
+            const auto &wire = schematic.wire_run(wire_id);
+            if (text_anchor_intentionally_attaches_to_wire(text, wire)) {
+                continue;
+            }
+            auto touches_wire = false;
+            for (std::size_t point_index = 1; point_index < wire.points().size(); ++point_index) {
+                const auto segment =
+                    SchematicSegment{wire.points()[point_index - 1U], wire.points()[point_index]};
+                if (segment_intersects_bounds(segment, text.bounds)) {
+                    touches_wire = true;
+                    break;
+                }
+            }
+            if (!touches_wire) {
+                continue;
+            }
+            auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id), text.entity,
+                                               EntityRef::wire_run(wire_id)};
+            refs.insert(refs.end(), text.context.begin(), text.context.end());
+            refs.push_back(EntityRef::net(wire.net()));
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_TEXT_TOUCHES_WIRE"},
+                "Schematic text touches or crosses a wire; move the label or reroute the wire",
+                std::move(refs),
+            });
+        }
+    }
+}
+
+inline void validate_text_symbol_collisions(const Schematic &schematic, SheetId sheet_id,
+                                            const Sheet &sheet, DiagnosticReport &report) {
+    const auto texts = readability_texts_for_sheet(schematic, sheet);
+    for (const auto &text : texts) {
+        for (const auto instance_id : sheet.symbol_instances()) {
+            if (!intersects_bounds(text.bounds,
+                                   symbol_instance_geometry_bounds(schematic, instance_id))) {
+                continue;
+            }
+            auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id), text.entity,
+                                               EntityRef::symbol_instance(instance_id)};
+            refs.insert(refs.end(), text.context.begin(), text.context.end());
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_TEXT_TOUCHES_SYMBOL"},
+                "Schematic text touches or crosses a symbol outline; add spacing around the text",
+                std::move(refs),
+            });
+        }
+    }
+}
+
+[[nodiscard]] inline double wire_run_length(const WireRun &wire) noexcept {
+    auto length = 0.0;
+    for (std::size_t point_index = 1; point_index < wire.points().size(); ++point_index) {
+        length += point_distance(wire.points()[point_index - 1U], wire.points()[point_index]);
+    }
+    return length;
+}
+
+inline void validate_long_local_doglegs(const Schematic &schematic, SheetId sheet_id,
+                                        const Sheet &sheet, DiagnosticReport &report) {
+    for (const auto wire_id : sheet.wire_runs()) {
+        const auto &wire = schematic.wire_run(wire_id);
+        if (wire.route_intent() != RouteIntent::Orthogonal || wire.points().size() < 4U) {
+            continue;
+        }
+        const auto endpoint_distance = point_distance(wire.points().front(), wire.points().back());
+        const auto path_length = wire_run_length(wire);
+        if (endpoint_distance > local_dogleg_endpoint_max_distance ||
+            path_length < local_dogleg_min_length ||
+            path_length < endpoint_distance * local_dogleg_min_detour_ratio) {
+            continue;
+        }
+        report.add(Diagnostic{
+            Severity::Warning,
+            DiagnosticCode{"SCHEMATIC_LONG_LOCAL_DOGLEG"},
+            "Local schematic route takes a long dogleg between nearby endpoints; use a short local "
+            "stub or label where clearer",
+            std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(wire_id),
+                        EntityRef::net(wire.net())},
+        });
+    }
+}
+
+[[nodiscard]] inline bool points_align_as_stack(const std::vector<Point> &points) noexcept {
+    auto min_x = points.front().x();
+    auto max_x = points.front().x();
+    auto min_y = points.front().y();
+    auto max_y = points.front().y();
+    for (const auto point : points) {
+        min_x = std::min(min_x, point.x());
+        max_x = std::max(max_x, point.x());
+        min_y = std::min(min_y, point.y());
+        max_y = std::max(max_y, point.y());
+    }
+    return (max_x - min_x) <= local_label_alignment_tolerance ||
+           (max_y - min_y) <= local_label_alignment_tolerance;
+}
+
+inline void validate_misaligned_local_labels(const Schematic &schematic, SheetId sheet_id,
+                                             const Sheet &sheet, DiagnosticReport &report) {
+    const auto &circuit = schematic.circuit();
+    for (std::size_t net_index = 0; net_index < circuit.net_count(); ++net_index) {
+        const auto net_id = NetId{net_index};
+        auto labels = std::vector<NetLabelId>{};
+        auto points = std::vector<Point>{};
+        for (const auto label_id : sheet.net_labels()) {
+            const auto &label = schematic.net_label(label_id);
+            if (label.net() == net_id) {
+                labels.push_back(label_id);
+                points.push_back(label.position());
+            }
+        }
+        if (labels.size() < local_label_cluster_threshold) {
+            continue;
+        }
+        auto bounds = bounds_from_point(points.front());
+        for (const auto point : points) {
+            include_point(bounds, point);
+        }
+        if (bounds_width(bounds) > local_label_cluster_max_span ||
+            bounds_height(bounds) > local_label_cluster_max_span || points_align_as_stack(points)) {
+            continue;
+        }
+        auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id), EntityRef::net(net_id)};
+        for (const auto label_id : labels) {
+            refs.push_back(EntityRef::net_label(label_id));
+        }
+        report.add(Diagnostic{
+            Severity::Warning,
+            DiagnosticCode{"SCHEMATIC_MISALIGNED_LOCAL_LABELS"},
+            "Repeated same-net labels in one local area are not aligned as an intentional stack",
+            std::move(refs),
+        });
+    }
+}
+
+inline void validate_ambiguous_same_net_crossings(const Schematic &schematic, SheetId sheet_id,
+                                                  const Sheet &sheet, DiagnosticReport &report) {
+    const auto &wires = sheet.wire_runs();
+    for (std::size_t first_index = 0; first_index < wires.size(); ++first_index) {
+        const auto first_id = wires[first_index];
+        const auto &first = schematic.wire_run(first_id);
+        for (std::size_t second_index = first_index + 1U; second_index < wires.size();
+             ++second_index) {
+            const auto second_id = wires[second_index];
+            const auto &second = schematic.wire_run(second_id);
+            if (first.net() != second.net()) {
+                continue;
+            }
+            for (std::size_t first_point = 1; first_point < first.points().size(); ++first_point) {
+                const auto first_segment =
+                    SchematicSegment{first.points()[first_point - 1U], first.points()[first_point]};
+                for (std::size_t second_point = 1; second_point < second.points().size();
+                     ++second_point) {
+                    const auto second_segment = SchematicSegment{second.points()[second_point - 1U],
+                                                                 second.points()[second_point]};
+                    if (classify_segment_relationship(first_segment, second_segment) !=
+                        SchematicSegmentRelationship::Crossing) {
+                        continue;
+                    }
+                    if (sheet_has_junction_on_segments(schematic, sheet, first_segment,
+                                                       second_segment, first.net())) {
+                        continue;
+                    }
+                    report.add(Diagnostic{
+                        Severity::Warning,
+                        DiagnosticCode{"SCHEMATIC_AMBIGUOUS_SAME_NET_CROSSING"},
+                        "Same-net schematic wires cross without a clear junction; make the local "
+                        "signal path explicit",
+                        std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(first_id),
+                                    EntityRef::wire_run(second_id), EntityRef::net(first.net())},
+                    });
+                }
+            }
+        }
+    }
+}
+
+[[nodiscard]] inline bool sheet_has_same_net_tag_at_point(const Schematic &schematic,
+                                                          const Sheet &sheet, NetId net,
+                                                          Point point) {
+    if (sheet_has_net_label_at_point(schematic, sheet, net, point)) {
+        return true;
+    }
+    for (const auto port_id : sheet.power_ports()) {
+        const auto &port = schematic.power_port(port_id);
+        if (port.net() == net && same_schematic_point(port.position(), point)) {
+            return true;
+        }
+    }
+    for (const auto port_id : sheet.sheet_ports()) {
+        const auto &port = schematic.sheet_port(port_id);
+        if (port.net() == net && same_schematic_point(port.position(), point)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] inline bool sheet_has_symbol_pin_for_net_at_point(const Schematic &schematic,
+                                                                const Sheet &sheet, NetId net,
+                                                                Point point) {
+    const auto &circuit = schematic.circuit();
+    for (const auto instance_id : sheet.symbol_instances()) {
+        const auto &instance = schematic.symbol_instance(instance_id);
+        const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+        for (const auto &symbol_pin : symbol.pins()) {
+            const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
+            if (!pin.has_value()) {
+                continue;
+            }
+            const auto pin_net = circuit.net_of(pin.value());
+            if (!pin_net.has_value() || pin_net.value() != net) {
+                continue;
+            }
+            const auto pin_point = transform_schematic_point(
+                symbol_pin.anchor(), instance.position(), instance.orientation());
+            if (same_schematic_point(pin_point, point)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+struct FloatingStubCandidate {
+    WireRunId wire;
+    Point center;
+};
+
+inline void validate_floating_stub_clusters(const Schematic &schematic, SheetId sheet_id,
+                                            const Sheet &sheet, DiagnosticReport &report) {
+    const auto &circuit = schematic.circuit();
+    for (std::size_t net_index = 0; net_index < circuit.net_count(); ++net_index) {
+        const auto net_id = NetId{net_index};
+        auto stubs = std::vector<FloatingStubCandidate>{};
+        for (const auto wire_id : sheet.wire_runs()) {
+            const auto &wire = schematic.wire_run(wire_id);
+            if (wire.net() != net_id || wire.points().size() != 2U ||
+                wire_run_length(wire) > floating_stub_max_length) {
+                continue;
+            }
+            const auto start = wire.points().front();
+            const auto end = wire.points().back();
+            if (!sheet_has_same_net_tag_at_point(schematic, sheet, net_id, start) &&
+                !sheet_has_same_net_tag_at_point(schematic, sheet, net_id, end)) {
+                continue;
+            }
+            if (sheet_has_symbol_pin_for_net_at_point(schematic, sheet, net_id, start) ||
+                sheet_has_symbol_pin_for_net_at_point(schematic, sheet, net_id, end)) {
+                continue;
+            }
+            stubs.push_back(FloatingStubCandidate{
+                wire_id,
+                Point{(start.x() + end.x()) / 2.0, (start.y() + end.y()) / 2.0},
+            });
+        }
+        if (stubs.size() < floating_stub_cluster_threshold) {
+            continue;
+        }
+        auto cluster_bounds = bounds_from_point(stubs.front().center);
+        for (const auto &stub : stubs) {
+            include_point(cluster_bounds, stub.center);
+        }
+        if (bounds_width(cluster_bounds) > floating_stub_cluster_max_span ||
+            bounds_height(cluster_bounds) > floating_stub_cluster_max_span) {
+            continue;
+        }
+        auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id), EntityRef::net(net_id)};
+        for (const auto &stub : stubs) {
+            refs.push_back(EntityRef::wire_run(stub.wire));
+        }
+        report.add(Diagnostic{
+            Severity::Warning,
+            DiagnosticCode{"SCHEMATIC_FLOATING_STUB_CLUSTER"},
+            "Local cluster of short tagged wire stubs can read as floating segments",
+            std::move(refs),
+        });
+    }
+}
+
 inline void validate_duplicate_junctions(const Schematic &schematic, SheetId sheet_id,
                                          const Sheet &sheet, DiagnosticReport &report) {
     const auto &junctions = sheet.junctions();
@@ -1430,24 +1906,7 @@ inline void validate_dense_no_connect_clusters(const Schematic &schematic, Sheet
 
 inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_id,
                                      const Sheet &sheet, DiagnosticReport &report) {
-    auto texts = std::vector<ReadabilityTextObject>{};
-    for (const auto label_id : sheet.net_labels()) {
-        const auto &label = schematic.net_label(label_id);
-        const auto &net = schematic.circuit().net(label.net());
-        texts.push_back(ReadabilityTextObject{
-            EntityRef::net_label(label_id), std::vector{EntityRef::net(label.net())},
-            text_bounds(label.position(), label.orientation(),
-                        label.label().value_or(net.name().value()), net_label_rendered_font_size,
-                        false)});
-    }
-    for (const auto field_id : sheet.symbol_fields()) {
-        const auto &field = schematic.symbol_field(field_id);
-        texts.push_back(
-            ReadabilityTextObject{EntityRef::symbol_field(field_id),
-                                  std::vector{EntityRef::symbol_instance(field.symbol_instance())},
-                                  text_bounds(field.position(), field.orientation(), field.value(),
-                                              symbol_field_rendered_font_size, true)});
-    }
+    const auto texts = readability_texts_for_sheet(schematic, sheet);
 
     for (std::size_t first = 0; first < texts.size(); ++first) {
         for (std::size_t second = first + 1U; second < texts.size(); ++second) {
@@ -1511,7 +1970,14 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         detail::validate_duplicate_junctions(schematic, sheet_id, sheet, report);
         detail::validate_visible_reference_labels(schematic, sheet_id, sheet, report);
         detail::validate_label_readability(schematic, sheet_id, sheet, report);
+        detail::validate_symbol_field_ownership_distance(schematic, sheet_id, sheet, report);
         detail::validate_port_tag_scale(schematic, sheet_id, sheet, report);
+        detail::validate_text_wire_collisions(schematic, sheet_id, sheet, report);
+        detail::validate_text_symbol_collisions(schematic, sheet_id, sheet, report);
+        detail::validate_long_local_doglegs(schematic, sheet_id, sheet, report);
+        detail::validate_misaligned_local_labels(schematic, sheet_id, sheet, report);
+        detail::validate_ambiguous_same_net_crossings(schematic, sheet_id, sheet, report);
+        detail::validate_floating_stub_clusters(schematic, sheet_id, sheet, report);
         detail::validate_symbol_crowding(schematic, sheet_id, sheet, report);
         detail::validate_crowded_tag_stacks(schematic, sheet_id, sheet, report);
         detail::validate_dense_region_port_tags(schematic, sheet_id, sheet, report);
