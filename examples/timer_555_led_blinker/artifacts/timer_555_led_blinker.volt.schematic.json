@@ -1,0 +1,71 @@
+{
+  "format": "volt.schematic",
+  "version": 1,
+  "symbol_definitions": [
+    { "id": "symbol_def:0", "name": "volt.examples.timer_555_led_blinker:NE555", "pins": [{ "name": "DISCH", "number": "7", "anchor": { "x": 0, "y": 10 }, "orientation": "Left" }, { "name": "TRIG", "number": "2", "anchor": { "x": 0, "y": 20 }, "orientation": "Left" }, { "name": "THRESH", "number": "6", "anchor": { "x": 0, "y": 30 }, "orientation": "Left" }, { "name": "GND", "number": "1", "anchor": { "x": 0, "y": 40 }, "orientation": "Left" }, { "name": "OUT", "number": "3", "anchor": { "x": 70, "y": 20 }, "orientation": "Right" }, { "name": "CTRL", "number": "5", "anchor": { "x": 70, "y": 30 }, "orientation": "Right" }, { "name": "RESET", "number": "4", "anchor": { "x": 30, "y": -10 }, "orientation": "Up" }, { "name": "VCC", "number": "8", "anchor": { "x": 50, "y": -10 }, "orientation": "Up" }], "primitives": [{ "type": "rectangle", "first_corner": { "x": 10, "y": 0 }, "second_corner": { "x": 60, "y": 50 } }, { "type": "text", "text": "555", "anchor": { "x": 35, "y": 25 }, "orientation": "Right" }, { "type": "text", "text": "timer", "anchor": { "x": 35, "y": 63 }, "orientation": "Right" }, { "type": "line", "start": { "x": 0, "y": 10 }, "end": { "x": 10, "y": 10 } }, { "type": "text", "text": "DISCH", "anchor": { "x": 13, "y": 10 }, "orientation": "Right" }, { "type": "line", "start": { "x": 0, "y": 20 }, "end": { "x": 10, "y": 20 } }, { "type": "text", "text": "TRIG", "anchor": { "x": 13, "y": 20 }, "orientation": "Right" }, { "type": "line", "start": { "x": 0, "y": 30 }, "end": { "x": 10, "y": 30 } }, { "type": "text", "text": "THRESH", "anchor": { "x": 13, "y": 30 }, "orientation": "Right" }, { "type": "line", "start": { "x": 0, "y": 40 }, "end": { "x": 10, "y": 40 } }, { "type": "text", "text": "GND", "anchor": { "x": 13, "y": 40 }, "orientation": "Right" }, { "type": "line", "start": { "x": 70, "y": 20 }, "end": { "x": 60, "y": 20 } }, { "type": "text", "text": "OUT", "anchor": { "x": 57, "y": 20 }, "orientation": "Right" }, { "type": "line", "start": { "x": 70, "y": 30 }, "end": { "x": 60, "y": 30 } }, { "type": "text", "text": "CTRL", "anchor": { "x": 57, "y": 30 }, "orientation": "Right" }, { "type": "line", "start": { "x": 30, "y": -10 }, "end": { "x": 30, "y": 0 } }, { "type": "text", "text": "RESET", "anchor": { "x": 30, "y": 3 }, "orientation": "Right" }, { "type": "line", "start": { "x": 50, "y": -10 }, "end": { "x": 50, "y": 0 } }, { "type": "text", "text": "VCC", "anchor": { "x": 50, "y": 3 }, "orientation": "Right" }] },
+    { "id": "symbol_def:1", "name": "volt.passives:resistor", "pins": [{ "name": "1", "number": "1", "anchor": { "x": 0, "y": 0 }, "orientation": "Left" }, { "name": "2", "number": "2", "anchor": { "x": 20, "y": 0 }, "orientation": "Right" }], "primitives": [{ "type": "line", "start": { "x": 0, "y": 0 }, "end": { "x": 4, "y": 0 } }, { "type": "rectangle", "first_corner": { "x": 4, "y": -3 }, "second_corner": { "x": 16, "y": 3 } }, { "type": "line", "start": { "x": 16, "y": 0 }, "end": { "x": 20, "y": 0 } }, { "type": "text", "text": "R", "anchor": { "x": 10, "y": -8 }, "orientation": "Right" }] },
+    { "id": "symbol_def:2", "name": "volt.passives:capacitor", "pins": [{ "name": "1", "number": "1", "anchor": { "x": 0, "y": 0 }, "orientation": "Left" }, { "name": "2", "number": "2", "anchor": { "x": 20, "y": 0 }, "orientation": "Right" }], "primitives": [{ "type": "line", "start": { "x": 0, "y": 0 }, "end": { "x": 8, "y": 0 } }, { "type": "line", "start": { "x": 8, "y": -5 }, "end": { "x": 8, "y": 5 } }, { "type": "line", "start": { "x": 12, "y": -5 }, "end": { "x": 12, "y": 5 } }, { "type": "line", "start": { "x": 12, "y": 0 }, "end": { "x": 20, "y": 0 } }, { "type": "text", "text": "C", "anchor": { "x": 10, "y": -10 }, "orientation": "Right" }] },
+    { "id": "symbol_def:3", "name": "volt.optos:led#two-terminal-reverse-20", "pins": [{ "name": "A", "number": "2", "anchor": { "x": 0, "y": 0 }, "orientation": "Left" }, { "name": "K", "number": "1", "anchor": { "x": 20, "y": 0 }, "orientation": "Right" }], "primitives": [{ "type": "line", "start": { "x": 20, "y": 0 }, "end": { "x": 13, "y": 0 } }, { "type": "line", "start": { "x": 13, "y": -5 }, "end": { "x": 13, "y": 5 } }, { "type": "line", "start": { "x": 13, "y": -5 }, "end": { "x": 7, "y": 0 } }, { "type": "line", "start": { "x": 13, "y": 5 }, "end": { "x": 7, "y": 0 } }, { "type": "line", "start": { "x": 7, "y": 0 }, "end": { "x": 0, "y": 0 } }, { "type": "text", "text": "D", "anchor": { "x": 10, "y": -11 }, "orientation": "Left" }, { "type": "line", "start": { "x": 7, "y": -6 }, "end": { "x": 3, "y": -10 } }, { "type": "line", "start": { "x": 5, "y": -4 }, "end": { "x": 1, "y": -8 } }] }
+  ],
+  "sheets": [
+    { "id": "sheet:0", "name": "555 LED Blinker", "metadata": { "title": "555 LED Blinker Reference Schematic", "orientation": "Landscape", "size": { "width": 340, "height": 240 }, "title_block": [{ "key": "Number", "value": "1" }, { "key": "Page Count", "value": "1" }, { "key": "Revision", "value": "A" }, { "key": "Date", "value": "2026-05-19" }, { "key": "Project", "value": "Volt 555 LED Blinker" }, { "key": "File", "value": "examples/timer_555_led_blinker/main.py" }], "frame": { "visible": true, "margins": { "left": 10, "top": 8, "right": 10, "bottom": 8 } }, "coordinate_zones": { "columns": 6, "rows": 4, "visible": true }, "grid": { "spacing": 5, "visible": false } }, "regions": [], "symbol_instances": ["symbol_instance:0", "symbol_instance:1", "symbol_instance:2", "symbol_instance:3", "symbol_instance:4", "symbol_instance:5", "symbol_instance:6"], "wire_runs": ["wire_run:0", "wire_run:1", "wire_run:2", "wire_run:3", "wire_run:4", "wire_run:5", "wire_run:6", "wire_run:7", "wire_run:8", "wire_run:9", "wire_run:10", "wire_run:11", "wire_run:12", "wire_run:13"], "net_labels": ["net_label:0", "net_label:1", "net_label:2", "net_label:3", "net_label:4", "net_label:5", "net_label:6", "net_label:7"], "junctions": [], "power_ports": [], "no_connect_markers": [], "sheet_ports": [], "symbol_fields": ["symbol_field:0", "symbol_field:1", "symbol_field:2", "symbol_field:3", "symbol_field:4", "symbol_field:5", "symbol_field:6", "symbol_field:7", "symbol_field:8", "symbol_field:9", "symbol_field:10", "symbol_field:11", "symbol_field:12"] }
+  ],
+  "symbol_instances": [
+    { "id": "symbol_instance:0", "sheet": "sheet:0", "symbol_definition": "symbol_def:0", "component": "component:0", "position": { "x": 140, "y": 80 }, "orientation": "Right" },
+    { "id": "symbol_instance:1", "sheet": "sheet:0", "symbol_definition": "symbol_def:1", "component": "component:1", "position": { "x": 92, "y": 72 }, "orientation": "Down" },
+    { "id": "symbol_instance:2", "sheet": "sheet:0", "symbol_definition": "symbol_def:1", "component": "component:2", "position": { "x": 92, "y": 90 }, "orientation": "Down" },
+    { "id": "symbol_instance:3", "sheet": "sheet:0", "symbol_definition": "symbol_def:2", "component": "component:3", "position": { "x": 92, "y": 110 }, "orientation": "Down" },
+    { "id": "symbol_instance:4", "sheet": "sheet:0", "symbol_definition": "symbol_def:2", "component": "component:4", "position": { "x": 250, "y": 110 }, "orientation": "Down" },
+    { "id": "symbol_instance:5", "sheet": "sheet:0", "symbol_definition": "symbol_def:1", "component": "component:5", "position": { "x": 244, "y": 100 }, "orientation": "Right" },
+    { "id": "symbol_instance:6", "sheet": "sheet:0", "symbol_definition": "symbol_def:3", "component": "component:6", "position": { "x": 269, "y": 100 }, "orientation": "Right" }
+  ],
+  "wire_runs": [
+    { "id": "wire_run:0", "sheet": "sheet:0", "net": "net:0", "points": [{ "x": 190, "y": 70 }, { "x": 172, "y": 70 }, { "x": 172, "y": 46 }, { "x": 190, "y": 46 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:1", "sheet": "sheet:0", "net": "net:0", "points": [{ "x": 170, "y": 70 }, { "x": 152, "y": 70 }, { "x": 152, "y": 46 }, { "x": 170, "y": 46 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:2", "sheet": "sheet:0", "net": "net:0", "points": [{ "x": 92, "y": 72 }, { "x": 74, "y": 72 }, { "x": 74, "y": 54 }, { "x": 92, "y": 54 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:3", "sheet": "sheet:0", "net": "net:2", "points": [{ "x": 140, "y": 90 }, { "x": 122, "y": 90 }, { "x": 92, "y": 90 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:4", "sheet": "sheet:0", "net": "net:2", "points": [{ "x": 92, "y": 92 }, { "x": 74, "y": 92 }, { "x": 74, "y": 90 }, { "x": 92, "y": 90 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:5", "sheet": "sheet:0", "net": "net:3", "points": [{ "x": 140, "y": 110 }, { "x": 122, "y": 110 }, { "x": 92, "y": 110 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:6", "sheet": "sheet:0", "net": "net:3", "points": [{ "x": 140, "y": 100 }, { "x": 122, "y": 100 }, { "x": 122, "y": 110 }, { "x": 92, "y": 110 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:7", "sheet": "sheet:0", "net": "net:4", "points": [{ "x": 210, "y": 110 }, { "x": 192, "y": 110 }, { "x": 250, "y": 110 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:8", "sheet": "sheet:0", "net": "net:5", "points": [{ "x": 210, "y": 100 }, { "x": 192, "y": 100 }, { "x": 244, "y": 100 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:9", "sheet": "sheet:0", "net": "net:6", "points": [{ "x": 264, "y": 100 }, { "x": 246, "y": 100 }, { "x": 269, "y": 100 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:10", "sheet": "sheet:0", "net": "net:1", "points": [{ "x": 140, "y": 120 }, { "x": 122, "y": 120 }, { "x": 122, "y": 144 }, { "x": 140, "y": 144 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:11", "sheet": "sheet:0", "net": "net:1", "points": [{ "x": 92, "y": 130 }, { "x": 74, "y": 130 }, { "x": 74, "y": 148 }, { "x": 92, "y": 148 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:12", "sheet": "sheet:0", "net": "net:1", "points": [{ "x": 250, "y": 130 }, { "x": 232, "y": 130 }, { "x": 232, "y": 148 }, { "x": 250, "y": 148 }], "route_intent": "Orthogonal" },
+    { "id": "wire_run:13", "sheet": "sheet:0", "net": "net:1", "points": [{ "x": 289, "y": 100 }, { "x": 271, "y": 100 }, { "x": 271, "y": 118 }, { "x": 289, "y": 118 }], "route_intent": "Orthogonal" }
+  ],
+  "net_labels": [
+    { "id": "net_label:0", "sheet": "sheet:0", "net": "net:3", "position": { "x": 64, "y": 110 }, "orientation": "Right" },
+    { "id": "net_label:1", "sheet": "sheet:0", "net": "net:5", "position": { "x": 244, "y": 74 }, "orientation": "Right" },
+    { "id": "net_label:2", "sheet": "sheet:0", "net": "net:0", "position": { "x": 190, "y": 34 }, "orientation": "Right" },
+    { "id": "net_label:3", "sheet": "sheet:0", "net": "net:0", "position": { "x": 92, "y": 42 }, "orientation": "Right" },
+    { "id": "net_label:4", "sheet": "sheet:0", "net": "net:1", "position": { "x": 140, "y": 158 }, "orientation": "Right" },
+    { "id": "net_label:5", "sheet": "sheet:0", "net": "net:1", "position": { "x": 92, "y": 162 }, "orientation": "Right" },
+    { "id": "net_label:6", "sheet": "sheet:0", "net": "net:1", "position": { "x": 250, "y": 162 }, "orientation": "Right" },
+    { "id": "net_label:7", "sheet": "sheet:0", "net": "net:1", "position": { "x": 289, "y": 132 }, "orientation": "Right" }
+  ],
+  "junctions": [
+  ],
+  "power_ports": [
+  ],
+  "no_connect_markers": [
+  ],
+  "sheet_ports": [
+  ],
+  "symbol_fields": [
+    { "id": "symbol_field:0", "sheet": "sheet:0", "symbol_instance": "symbol_instance:0", "name": "reference", "value": "U1", "position": { "x": 175, "y": 58 }, "orientation": "Right" },
+    { "id": "symbol_field:1", "sheet": "sheet:0", "symbol_instance": "symbol_instance:0", "name": "value", "value": "NE555", "position": { "x": 175, "y": 154 }, "orientation": "Right" },
+    { "id": "symbol_field:2", "sheet": "sheet:0", "symbol_instance": "symbol_instance:1", "name": "reference", "value": "R1", "position": { "x": 78, "y": 82 }, "orientation": "Right" },
+    { "id": "symbol_field:3", "sheet": "sheet:0", "symbol_instance": "symbol_instance:1", "name": "value", "value": "100 kOhm", "position": { "x": 112, "y": 82 }, "orientation": "Right" },
+    { "id": "symbol_field:4", "sheet": "sheet:0", "symbol_instance": "symbol_instance:2", "name": "reference", "value": "R2", "position": { "x": 78, "y": 100 }, "orientation": "Right" },
+    { "id": "symbol_field:5", "sheet": "sheet:0", "symbol_instance": "symbol_instance:2", "name": "value", "value": "47 kOhm", "position": { "x": 112, "y": 100 }, "orientation": "Right" },
+    { "id": "symbol_field:6", "sheet": "sheet:0", "symbol_instance": "symbol_instance:3", "name": "reference", "value": "C1", "position": { "x": 78, "y": 120 }, "orientation": "Right" },
+    { "id": "symbol_field:7", "sheet": "sheet:0", "symbol_instance": "symbol_instance:3", "name": "value", "value": "1 uF", "position": { "x": 112, "y": 120 }, "orientation": "Right" },
+    { "id": "symbol_field:8", "sheet": "sheet:0", "symbol_instance": "symbol_instance:4", "name": "reference", "value": "C2", "position": { "x": 232, "y": 120 }, "orientation": "Right" },
+    { "id": "symbol_field:9", "sheet": "sheet:0", "symbol_instance": "symbol_instance:4", "name": "value", "value": "10 nF", "position": { "x": 224, "y": 120 }, "orientation": "Right" },
+    { "id": "symbol_field:10", "sheet": "sheet:0", "symbol_instance": "symbol_instance:5", "name": "reference", "value": "R3", "position": { "x": 254, "y": 88 }, "orientation": "Right" },
+    { "id": "symbol_field:11", "sheet": "sheet:0", "symbol_instance": "symbol_instance:5", "name": "value", "value": "1 kOhm", "position": { "x": 254, "y": 72 }, "orientation": "Right" },
+    { "id": "symbol_field:12", "sheet": "sheet:0", "symbol_instance": "symbol_instance:6", "name": "reference", "value": "D1", "position": { "x": 279, "y": 80 }, "orientation": "Right" }
+  ]
+}
