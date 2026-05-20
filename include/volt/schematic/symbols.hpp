@@ -12,11 +12,19 @@
 
 namespace volt {
 
+/** Optional presentation role for a schematic symbol line primitive. */
+enum class SymbolLineRole {
+    Normal,
+    TerminalLeadStart,
+    TerminalLeadEnd,
+};
+
 /** A straight line in a structured schematic symbol definition. */
 class SymbolLine {
   public:
     /** Construct a symbol line from start and end points. */
-    SymbolLine(Point start, Point end) : start_{start}, end_{end} {}
+    SymbolLine(Point start, Point end, SymbolLineRole role = SymbolLineRole::Normal)
+        : start_{start}, end_{end}, role_{role} {}
 
     /** Return the start point. */
     [[nodiscard]] Point start() const noexcept { return start_; }
@@ -24,12 +32,16 @@ class SymbolLine {
     /** Return the end point. */
     [[nodiscard]] Point end() const noexcept { return end_; }
 
+    /** Return the schematic presentation role for this line. */
+    [[nodiscard]] SymbolLineRole role() const noexcept { return role_; }
+
     /** Return whether two symbol lines have the same geometry. */
     [[nodiscard]] friend bool operator==(SymbolLine lhs, SymbolLine rhs) noexcept = default;
 
   private:
     Point start_;
     Point end_;
+    SymbolLineRole role_;
 };
 
 /** A rectangle in a structured schematic symbol definition. */

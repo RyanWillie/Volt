@@ -66,6 +66,35 @@ TEST_CASE("Schematic JSON round-trips deterministically") {
     CHECK(circuit.net(net).pins().empty());
 }
 
+TEST_CASE("Schematic JSON round-trips terminal lead line roles") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+
+    auto schematic = volt::Schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    auto symbol = volt::SymbolDefinition{"LeadAware"};
+    symbol.add_pin(
+        volt::SymbolPin{"1", "1", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left});
+    symbol.add_pin(
+        volt::SymbolPin{"2", "2", volt::Point{20.0, 0.0}, volt::SchematicOrientation::Right});
+    symbol.add_primitive(volt::SymbolLine{volt::Point{0.0, 0.0}, volt::Point{4.0, 0.0},
+                                          volt::SymbolLineRole::TerminalLeadStart});
+    symbol.add_primitive(volt::SymbolRectangle{volt::Point{4.0, -3.0}, volt::Point{16.0, 3.0}});
+    symbol.add_primitive(volt::SymbolLine{volt::Point{16.0, 0.0}, volt::Point{20.0, 0.0},
+                                          volt::SymbolLineRole::TerminalLeadEnd});
+    const auto symbol_id = schematic.add_symbol_definition(std::move(symbol));
+    [[maybe_unused]] const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol_id, component, volt::Point{40.0, 20.0}});
+
+    const auto output = volt::io::write_schematic(schematic);
+    const auto output_json = nlohmann::json::parse(output);
+    const auto loaded = volt::io::read_schematic_text(output, circuit);
+
+    CHECK(output_json["symbol_definitions"][0]["primitives"][0]["role"] == "TerminalLeadStart");
+    CHECK(output_json["symbol_definitions"][0]["primitives"][2]["role"] == "TerminalLeadEnd");
+    CHECK(volt::io::write_schematic(loaded) == output);
+}
+
 TEST_CASE("Schematic document round-trips as a project artifact") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);

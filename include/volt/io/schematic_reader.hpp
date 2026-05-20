@@ -209,6 +209,16 @@ class SchematicReader {
         throw std::logic_error{"Invalid schematic orientation value"};
     }
 
+    [[nodiscard]] static SymbolLineRole symbol_line_role(const std::string &value) {
+        if (value.empty() || value == "Normal")
+            return SymbolLineRole::Normal;
+        if (value == "TerminalLeadStart")
+            return SymbolLineRole::TerminalLeadStart;
+        if (value == "TerminalLeadEnd")
+            return SymbolLineRole::TerminalLeadEnd;
+        throw std::logic_error{"Invalid symbol line role"};
+    }
+
     [[nodiscard]] static SheetOrientation sheet_orientation(const std::string &value) {
         if (value == "Portrait")
             return SheetOrientation::Portrait;
@@ -280,7 +290,8 @@ class SchematicReader {
         require(object.is_object(), "Symbol primitive must be an object");
         const auto type = string_field(object, "type");
         if (type == "line") {
-            return SymbolLine{point(field(object, "start")), point(field(object, "end"))};
+            return SymbolLine{point(field(object, "start")), point(field(object, "end")),
+                              symbol_line_role(optional_string_field(object, "role"))};
         }
         if (type == "rectangle") {
             return SymbolRectangle{point(field(object, "first_corner")),

@@ -81,6 +81,18 @@ namespace detail {
     throw std::logic_error{"Unhandled schematic orientation"};
 }
 
+[[nodiscard]] inline std::string symbol_line_role_name(SymbolLineRole role) {
+    switch (role) {
+    case SymbolLineRole::Normal:
+        return "Normal";
+    case SymbolLineRole::TerminalLeadStart:
+        return "TerminalLeadStart";
+    case SymbolLineRole::TerminalLeadEnd:
+        return "TerminalLeadEnd";
+    }
+    throw std::logic_error{"Unhandled symbol line role"};
+}
+
 [[nodiscard]] inline std::string sheet_orientation_name(SheetOrientation orientation) {
     switch (orientation) {
     case SheetOrientation::Portrait:
@@ -234,6 +246,9 @@ inline void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &pri
         write_point(out, line.start());
         out << ", \"end\": ";
         write_point(out, line.end());
+        if (line.role() != SymbolLineRole::Normal) {
+            out << ", \"role\": " << json_string(symbol_line_role_name(line.role()));
+        }
         out << " }";
         return;
     }

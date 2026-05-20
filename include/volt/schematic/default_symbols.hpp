@@ -28,9 +28,11 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
 [[nodiscard]] inline SymbolDefinition resistor_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "1", "1", "2", "2");
-    symbol.add_primitive(SymbolLine{Point{0.0, 0.0}, Point{4.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{0.0, 0.0}, Point{4.0, 0.0}, SymbolLineRole::TerminalLeadStart});
     symbol.add_primitive(SymbolRectangle{Point{4.0, -3.0}, Point{16.0, 3.0}});
-    symbol.add_primitive(SymbolLine{Point{16.0, 0.0}, Point{20.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{16.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     symbol.add_primitive(SymbolText{"R", Point{10.0, -8.0}});
     return symbol;
 }
@@ -38,10 +40,12 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
 [[nodiscard]] inline SymbolDefinition capacitor_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "1", "1", "2", "2");
-    symbol.add_primitive(SymbolLine{Point{0.0, 0.0}, Point{8.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{0.0, 0.0}, Point{8.0, 0.0}, SymbolLineRole::TerminalLeadStart});
     symbol.add_primitive(SymbolLine{Point{8.0, -5.0}, Point{8.0, 5.0}});
     symbol.add_primitive(SymbolLine{Point{12.0, -5.0}, Point{12.0, 5.0}});
-    symbol.add_primitive(SymbolLine{Point{12.0, 0.0}, Point{20.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{12.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     symbol.add_primitive(SymbolText{"C", Point{10.0, -10.0}});
     return symbol;
 }
@@ -49,10 +53,12 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
 [[nodiscard]] inline SymbolDefinition polarized_capacitor_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "+", "1", "-", "2");
-    symbol.add_primitive(SymbolLine{Point{0.0, 0.0}, Point{8.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{0.0, 0.0}, Point{8.0, 0.0}, SymbolLineRole::TerminalLeadStart});
     symbol.add_primitive(SymbolLine{Point{8.0, -5.0}, Point{8.0, 5.0}});
     symbol.add_primitive(SymbolLine{Point{12.0, -5.0}, Point{12.0, 5.0}});
-    symbol.add_primitive(SymbolLine{Point{12.0, 0.0}, Point{20.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{12.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     symbol.add_primitive(SymbolText{"+", Point{6.0, -8.0}});
     symbol.add_primitive(SymbolText{"C", Point{10.0, -13.0}});
     return symbol;
@@ -61,11 +67,13 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
 [[nodiscard]] inline SymbolDefinition inductor_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "1", "1", "2", "2");
-    symbol.add_primitive(SymbolLine{Point{0.0, 0.0}, Point{4.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{0.0, 0.0}, Point{4.0, 0.0}, SymbolLineRole::TerminalLeadStart});
     symbol.add_primitive(SymbolArc{Point{6.0, 0.0}, 2.0, 180.0, -180.0});
     symbol.add_primitive(SymbolArc{Point{10.0, 0.0}, 2.0, 180.0, -180.0});
     symbol.add_primitive(SymbolArc{Point{14.0, 0.0}, 2.0, 180.0, -180.0});
-    symbol.add_primitive(SymbolLine{Point{16.0, 0.0}, Point{20.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{16.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     symbol.add_primitive(SymbolText{"L", Point{10.0, -8.0}});
     return symbol;
 }
@@ -73,11 +81,13 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
 [[nodiscard]] inline SymbolDefinition diode_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "K", "1", "A", "2");
-    symbol.add_primitive(SymbolLine{Point{0.0, 0.0}, Point{7.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{0.0, 0.0}, Point{7.0, 0.0}, SymbolLineRole::TerminalLeadStart});
     symbol.add_primitive(SymbolLine{Point{7.0, -5.0}, Point{7.0, 5.0}});
     symbol.add_primitive(SymbolLine{Point{7.0, -5.0}, Point{13.0, 0.0}});
     symbol.add_primitive(SymbolLine{Point{7.0, 5.0}, Point{13.0, 0.0}});
-    symbol.add_primitive(SymbolLine{Point{13.0, 0.0}, Point{20.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{13.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     symbol.add_primitive(SymbolText{"D", Point{10.0, -11.0}});
     return symbol;
 }
@@ -92,8 +102,10 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
 [[nodiscard]] inline SymbolDefinition switch_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "A", "1", "B", "2");
-    symbol.add_primitive(SymbolLine{Point{0.0, 0.0}, Point{7.0, 0.0}});
-    symbol.add_primitive(SymbolLine{Point{13.0, 0.0}, Point{20.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{0.0, 0.0}, Point{7.0, 0.0}, SymbolLineRole::TerminalLeadStart});
+    symbol.add_primitive(
+        SymbolLine{Point{13.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     symbol.add_primitive(SymbolCircle{Point{8.0, 0.0}, 1.0});
     symbol.add_primitive(SymbolCircle{Point{12.0, 0.0}, 1.0});
     symbol.add_primitive(SymbolLine{Point{8.0, 0.0}, Point{14.0, -5.0}});
@@ -104,8 +116,10 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
 [[nodiscard]] inline SymbolDefinition crystal_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "1", "1", "2", "2");
-    symbol.add_primitive(SymbolLine{Point{0.0, 0.0}, Point{7.0, 0.0}});
-    symbol.add_primitive(SymbolLine{Point{13.0, 0.0}, Point{20.0, 0.0}});
+    symbol.add_primitive(
+        SymbolLine{Point{0.0, 0.0}, Point{7.0, 0.0}, SymbolLineRole::TerminalLeadStart});
+    symbol.add_primitive(
+        SymbolLine{Point{13.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     symbol.add_primitive(SymbolLine{Point{8.0, -6.0}, Point{8.0, 6.0}});
     symbol.add_primitive(SymbolLine{Point{12.0, -6.0}, Point{12.0, 6.0}});
     symbol.add_primitive(SymbolRectangle{Point{7.0, -4.0}, Point{13.0, 4.0}});
