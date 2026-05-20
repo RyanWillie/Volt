@@ -712,6 +712,8 @@ def _optional_symbol_text(value: str | None, label: str) -> str | None:
 
 
 def _default_two_terminal_symbol_spec(name: str) -> SchematicSymbolSpec | None:
+    # Production defaults keep identity in fields or explicitly authored text, not
+    # internal debug glyphs embedded in generic element geometry.
     if name in ("resistor", "volt.passives:resistor"):
         return _resistor_symbol_spec(name)
     if name in ("capacitor", "volt.passives:capacitor"):
@@ -745,7 +747,6 @@ def _resistor_symbol_spec(name: str) -> SchematicSymbolSpec:
             SchematicSymbolSpec.terminal_lead((0, 0), (4, 0), terminal="start"),
             SchematicSymbolSpec.rectangle((4, -3), (16, 3)),
             SchematicSymbolSpec.terminal_lead((16, 0), (20, 0), terminal="end"),
-            SchematicSymbolSpec.text("R", (10, -8)),
         ),
     )
 
@@ -759,7 +760,6 @@ def _capacitor_symbol_spec(name: str) -> SchematicSymbolSpec:
             SchematicSymbolSpec.line((8, -5), (8, 5)),
             SchematicSymbolSpec.line((12, -5), (12, 5)),
             SchematicSymbolSpec.terminal_lead((12, 0), (20, 0), terminal="end"),
-            SchematicSymbolSpec.text("C", (10, -10)),
         ),
     )
 
@@ -774,7 +774,6 @@ def _inductor_symbol_spec(name: str) -> SchematicSymbolSpec:
             SchematicSymbolSpec.arc((10, 0), 2, 180, -180),
             SchematicSymbolSpec.arc((14, 0), 2, 180, -180),
             SchematicSymbolSpec.terminal_lead((16, 0), (20, 0), terminal="end"),
-            SchematicSymbolSpec.text("L", (10, -8)),
         ),
     )
 
@@ -789,7 +788,6 @@ def _diode_symbol_spec(name: str) -> SchematicSymbolSpec:
             SchematicSymbolSpec.line((7, -5), (13, 0)),
             SchematicSymbolSpec.line((7, 5), (13, 0)),
             SchematicSymbolSpec.terminal_lead((13, 0), (20, 0), terminal="end"),
-            SchematicSymbolSpec.text("D", (10, -11)),
         ),
     )
 

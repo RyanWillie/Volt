@@ -144,6 +144,48 @@ def test_python_schematic_default_field_placement_keeps_rotated_labels_upright()
     assert svg_texts.count("C1") == 1
 
 
+def test_python_schematic_builtin_two_terminal_symbols_do_not_embed_identity_text():
+    design = volt.Design("schematic-clean-builtins")
+    components = (
+        design.R("10k", ref="R1"),
+        design.C("100nF", ref="C1"),
+        design.L("10uH", ref="L1"),
+        design.diode(ref="D1"),
+        design.LED(ref="D2"),
+    )
+
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(unit=20) as drawing:
+        for index, component in enumerate(components):
+            drawing.two_terminal(component).at((0, index * 20)).right().label_ref()
+
+    projection = json.loads(schematic.to_json())
+    built_in_definitions = {
+        definition["name"].split("#", maxsplit=1)[0]: definition
+        for definition in projection["symbol_definitions"]
+    }
+
+    assert set(built_in_definitions) == {
+        "volt.passives:resistor",
+        "volt.passives:capacitor",
+        "volt.passives:inductor",
+        "volt.discretes:diode",
+        "volt.optos:led",
+    }
+    for definition in built_in_definitions.values():
+        assert [
+            primitive
+            for primitive in definition["primitives"]
+            if primitive["type"] == "text"
+        ] == []
+
+    svg_texts = re.findall(r">([^<>]+)</text>", schematic.to_svg())
+    assert not {"R", "C", "L", "D"} & set(svg_texts)
+    for reference in ("R1", "C1", "L1", "D1", "D2"):
+        assert svg_texts.count(reference) == 1
+
+
 def test_python_schematic_generic_ic_symbol_builder_places_stable_pin_anchors():
     symbol = volt.SchematicSymbolSpec.ic(
         "test:Timer",
