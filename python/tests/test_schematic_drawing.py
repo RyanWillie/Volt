@@ -1478,7 +1478,40 @@ def test_python_schematic_terminal_marker_is_generic_and_net_bound():
     ]
 
 
-def test_python_schematic_explicit_wire_points_are_normalized_once():
+def test_python_schematic_terminal_marker_rejects_invalid_kind():
+    design = volt.Design("schematic-terminal-marker-kind")
+    sig = design.net("SIG")
+    probe = design.test_point(ref="TP1")
+    sig += probe["TP"]
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(unit=10) as drawing:
+        placed = drawing.place(probe)
+
+        try:
+            drawing.terminal(at=placed.TP, kind="invalid")
+        except ValueError as error:
+            assert "Power or Ground" in str(error)
+        else:
+            raise AssertionError("terminal marker must reject unknown kind strings")
+
+        try:
+            drawing.terminal(at=placed.TP, kind=42)
+        except TypeError as error:
+            assert "kind" in str(error).lower() or "string" in str(error).lower()
+        else:
+            raise AssertionError("terminal marker must reject non-string kind")
+
+        try:
+            drawing.terminal("", net=sig, at=(0, 0))
+        except ValueError as error:
+            assert "terminal marker" in str(error)
+            assert "empty" in str(error)
+        else:
+            raise AssertionError("terminal marker must reject empty name string")
+
+
+
     design = volt.Design("schematic-wire-normalization")
     vcc = design.net("VCC", kind="power")
     original = volt._schematic_point

@@ -3367,6 +3367,8 @@ def _terminal_marker_net_and_name(
         return marker_net, marker_net.name
     if name_or_net is not None and not isinstance(name_or_net, str):
         raise TypeError("Schematic terminal markers expect a name string, Net handle, or None")
+    if isinstance(name_or_net, str) and not name_or_net:
+        raise ValueError("Schematic terminal marker names must not be empty")
 
     marker_net = _resolve_schematic_port_net(
         design,
