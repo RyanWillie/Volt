@@ -816,6 +816,28 @@ TEST_CASE("Schematic readability reports title-block text overflow") {
                                 "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW"));
 }
 
+TEST_CASE("Schematic readability checks title-block text against the rendered block width") {
+    volt::Circuit circuit;
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{
+        "Main",
+        volt::SheetMetadata{
+            "Main",
+            volt::SheetSize{30.0, 40.0},
+            std::vector{volt::TitleBlockField{"Revision", "A"}},
+            volt::SheetOrientation::Landscape,
+            volt::SheetFrame{true, volt::SheetMargins{10.0, 10.0, 10.0, 10.0}},
+        },
+    });
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(report_has_code(report, "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW"));
+    CHECK(report_has_code_and_entities(report, "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
+                                       std::vector{volt::EntityRef::sheet(sheet)}));
+}
+
 TEST_CASE("Schematic readability uses label-dependent sheet-port bounds") {
     volt::Circuit circuit;
     const auto net = add_net(circuit);
@@ -1062,7 +1084,7 @@ TEST_CASE("Schematic readability reports power labels crossing wire geometry") {
     const auto port = schematic.add_power_port(
         sheet, volt::PowerPort{net, volt::PowerPortKind::Power, volt::Point{50.0, 50.0}});
     const auto wire = schematic.add_wire_run(
-        sheet, volt::WireRun{net, std::vector{volt::Point{38.0, 49.5}, volt::Point{43.0, 49.5}}});
+        sheet, volt::WireRun{net, std::vector{volt::Point{48.0, 40.6}, volt::Point{52.0, 40.6}}});
 
     const auto report = volt::validate_schematic_readability(schematic);
 

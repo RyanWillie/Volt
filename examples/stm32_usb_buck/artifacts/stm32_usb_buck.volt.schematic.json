@@ -50,7 +50,7 @@
     { "id": "symbol_instance:23", "sheet": "sheet:0", "symbol_definition": "symbol_def:4", "component": "component:20", "position": { "x": 526, "y": 244 }, "orientation": "Right", "authored_region": "Connectors and USB" }
   ],
   "wire_runs": [
-    { "id": "wire_run:0", "sheet": "sheet:0", "net": "net:0", "points": [{ "x": 70, "y": 52 }, { "x": 70, "y": 24 }], "route_intent": "Direct", "authored_region": "Power Circuitry" },
+    { "id": "wire_run:0", "sheet": "sheet:0", "net": "net:0", "points": [{ "x": 70, "y": 52 }, { "x": 70, "y": 32 }], "route_intent": "Direct", "authored_region": "Power Circuitry" },
     { "id": "wire_run:1", "sheet": "sheet:0", "net": "net:4", "points": [{ "x": 70, "y": 68 }, { "x": 70, "y": 108 }], "route_intent": "Direct", "authored_region": "Power Circuitry" },
     { "id": "wire_run:2", "sheet": "sheet:0", "net": "net:5", "points": [{ "x": 26, "y": 76 }, { "x": 76, "y": 76 }], "route_intent": "Direct", "authored_region": "Power Circuitry" },
     { "id": "wire_run:3", "sheet": "sheet:0", "net": "net:5", "points": [{ "x": 76, "y": 76 }, { "x": 94, "y": 76 }], "route_intent": "Direct", "authored_region": "Power Circuitry" },
@@ -170,7 +170,7 @@
     { "id": "junction:4", "sheet": "sheet:0", "net": "net:19", "position": { "x": 516, "y": 126 }, "authored_region": "Connectors and USB" }
   ],
   "power_ports": [
-    { "id": "power_port:0", "sheet": "sheet:0", "net": "net:0", "kind": "Power", "position": { "x": 70, "y": 24 }, "orientation": "Up", "authored_region": "Power Circuitry" },
+    { "id": "power_port:0", "sheet": "sheet:0", "net": "net:0", "kind": "Power", "position": { "x": 70, "y": 32 }, "orientation": "Up", "authored_region": "Power Circuitry" },
     { "id": "power_port:1", "sheet": "sheet:0", "net": "net:4", "kind": "Ground", "position": { "x": 70, "y": 108 }, "orientation": "Down", "authored_region": "Power Circuitry" },
     { "id": "power_port:2", "sheet": "sheet:0", "net": "net:6", "kind": "Power", "position": { "x": 156, "y": 46 }, "orientation": "Up", "label": "+5V", "authored_region": "Power Circuitry" },
     { "id": "power_port:3", "sheet": "sheet:0", "net": "net:6", "kind": "Power", "position": { "x": 76, "y": 170 }, "orientation": "Left", "label": "+5V", "authored_region": "Power Circuitry" },

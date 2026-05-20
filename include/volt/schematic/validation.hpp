@@ -517,8 +517,40 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
     return padded_bounds(bounds, 0.5);
 }
 
+[[nodiscard]] inline SchematicOrientation
+power_port_glyph_orientation(PowerPortKind kind, SchematicOrientation orientation) {
+    switch (kind) {
+    case PowerPortKind::Power:
+        switch (orientation) {
+        case SchematicOrientation::Right:
+            return SchematicOrientation::Down;
+        case SchematicOrientation::Down:
+            return SchematicOrientation::Left;
+        case SchematicOrientation::Left:
+            return SchematicOrientation::Up;
+        case SchematicOrientation::Up:
+            return SchematicOrientation::Right;
+        }
+        break;
+    case PowerPortKind::Ground:
+        switch (orientation) {
+        case SchematicOrientation::Right:
+            return SchematicOrientation::Up;
+        case SchematicOrientation::Down:
+            return SchematicOrientation::Right;
+        case SchematicOrientation::Left:
+            return SchematicOrientation::Down;
+        case SchematicOrientation::Up:
+            return SchematicOrientation::Left;
+        }
+        break;
+    }
+    throw std::logic_error{"Unhandled power port orientation"};
+}
+
 [[nodiscard]] inline Point transformed_port_anchor(const PowerPort &port, Point local_anchor) {
-    return transform_schematic_point(local_anchor, port.position(), port.orientation());
+    return transform_schematic_point(local_anchor, port.position(),
+                                     power_port_glyph_orientation(port.kind(), port.orientation()));
 }
 
 [[nodiscard]] inline SchematicBounds power_port_label_bounds(const PowerPort &port,
@@ -532,12 +564,12 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
 
 [[nodiscard]] inline SchematicBounds power_port_bounds(const PowerPort &port,
                                                        std::string_view label) {
+    const auto glyph_orientation = power_port_glyph_orientation(port.kind(), port.orientation());
     auto bounds =
         port.kind() == PowerPortKind::Ground
-            ? transform_rect_bounds(-3.6, 0.0, 3.6, 6.0, port.position(), port.orientation())
+            ? transform_rect_bounds(-3.6, 0.0, 3.6, 6.0, port.position(), glyph_orientation)
             : transform_rect_bounds(-power_port_half_width, -power_port_tip_offset,
-                                    power_port_half_width, 0.0, port.position(),
-                                    port.orientation());
+                                    power_port_half_width, 0.0, port.position(), glyph_orientation);
     include_bounds(bounds, power_port_label_bounds(port, label));
     return bounds;
 }
@@ -1148,7 +1180,8 @@ inline void validate_title_block_text_overflow(SheetId sheet_id, const Sheet &sh
     const auto &metadata = sheet.metadata();
     const auto title_bounds = title_block_bounds(metadata);
     const auto label_available_width =
-        std::max(0.0, title_block_label_width - title_block_label_x - 1.0);
+        std::max(0.0, std::min(title_block_label_width, bounds_width(title_bounds)) -
+                          title_block_label_x - 1.0);
     const auto value_available_width =
         std::max(0.0, bounds_width(title_bounds) - title_block_value_x - title_block_right_padding);
 

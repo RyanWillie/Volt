@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 594 420" width="594" height="420">
-  <style>.document-background,.sheet{fill:#fff;stroke:none}.sheet-border{fill:none;stroke:#111;stroke-width:0.45}.drawing-frame{fill:none;stroke:#111;stroke-width:0.35}.sheet-grid{stroke:none}.sheet-grid-dot{fill:#d7d7d7;stroke:none}.coordinate-zone-label{font:3px sans-serif;fill:#444;text-anchor:middle;dominant-baseline:middle}.sheet-title{font-weight:600}.title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.3}.title-block-label{font:2.5px sans-serif;fill:#444;text-anchor:start}.title-block-value{font:2.5px sans-serif;fill:#111;text-anchor:start}.sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.35}.sheet-region-frame.dashed{stroke-dasharray:3 2}.sheet-region-title{font:3.2px sans-serif;fill:#57534e;text-anchor:start;font-weight:600}.wire-run{fill:none;stroke:#111;stroke-width:0.75}.net-label{font:2.5px sans-serif;fill:#111;text-anchor:start}.junction{fill:#111;stroke:none}.power-port-line,.ground-bar{stroke:#111;stroke-width:0.55}.no-connect-line{stroke:#111;stroke-width:0.65}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:0.55}.power-port-label,.sheet-port-label{font:2.45px sans-serif;fill:#111;text-anchor:middle}.symbol-field{font:2.5px sans-serif;fill:#111;text-anchor:middle}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:0.7}.symbol-text{font:2.7px sans-serif;fill:#111;text-anchor:middle}</style>
+  <style>.document-background,.sheet{fill:#fff;stroke:none}.sheet-border{fill:none;stroke:#111;stroke-width:0.45}.drawing-frame{fill:none;stroke:#111;stroke-width:0.35}.sheet-grid{stroke:none}.sheet-grid-dot{fill:#d7d7d7;stroke:none}.coordinate-zone-label{font:3px sans-serif;fill:#444;text-anchor:middle;dominant-baseline:middle}.sheet-title{font-weight:600}.title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.3}.title-block-label{font:2.5px sans-serif;fill:#444;text-anchor:start}.title-block-value{font:2.5px sans-serif;fill:#111;text-anchor:start}.sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.35}.sheet-region-frame.dashed{stroke-dasharray:3 2}.sheet-region-title{font:3.2px sans-serif;fill:#57534e;text-anchor:start;font-weight:600}.wire-run{fill:none;stroke:#111;stroke-width:0.75;stroke-linecap:round;stroke-linejoin:round}.net-label{font:2.5px sans-serif;fill:#111;text-anchor:start}.junction{fill:#111;stroke:none}.power-port-line,.ground-bar{stroke:#111;stroke-width:0.55;stroke-linecap:round;stroke-linejoin:round}.no-connect-line{stroke:#111;stroke-width:0.65;stroke-linecap:round}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:0.55;stroke-linejoin:round}.power-port-label,.sheet-port-label{font:2.45px sans-serif;fill:#111;text-anchor:middle}.symbol-field{font:2.5px sans-serif;fill:#111;text-anchor:middle}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:0.7;stroke-linecap:round;stroke-linejoin:round}.symbol-text{font:2.7px sans-serif;fill:#111;text-anchor:middle}</style>
   <rect class="document-background" x="0" y="0" width="594" height="420"/>
   <g class="schematic-sheet" data-sheet="sheet:0" transform="translate(0 0)">
     <defs>
@@ -95,7 +95,7 @@
       <text class="title-block-label" x="2" y="34.2">Project</text>
       <text class="title-block-value" x="24" y="34.2">Volt STM32 USB Buck</text>
       <text class="title-block-label" x="2" y="40.2">File</text>
-      <text class="title-block-value" x="24" y="40.2">examples/stm32_usb_buck/schematic_output.py</text>
+      <text class="title-block-value" x="24" y="40.2" data-full-text="examples/stm32_usb_buck/schematic_output.py">examples/stm32_u...ematic_output.py</text>
     </g>
     <g class="layer layer-regions">
     <g class="sheet-region" data-region="Power Circuitry">
@@ -348,7 +348,7 @@
     </g>
     </g>
     <g class="layer layer-wires">
-    <polyline class="wire-run" data-net="net:0" points="70,52 70,24"/>
+    <polyline class="wire-run" data-net="net:0" points="70,52 70,32"/>
     <polyline class="wire-run" data-net="net:4" points="70,68 70,108"/>
     <polyline class="wire-run" data-net="net:5" points="26,76 76,76"/>
     <polyline class="wire-run" data-net="net:5" points="76,76 94,76"/>
@@ -439,137 +439,137 @@
     <circle class="junction" data-net="net:19" cx="516" cy="126" r="1.15"/>
     </g>
     <g class="layer layer-ports">
-    <g class="power-port power" data-net="net:0" transform="translate(70 24) rotate(270)">
+    <g class="power-port power" data-net="net:0" transform="translate(70 32)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
-      <text class="power-port-label" x="0" y="-9.4" transform="rotate(-270 0 -9.4)">+12V</text>
+      <text class="power-port-label" x="0" y="-9.4">+12V</text>
     </g>
-    <g class="power-port ground" data-net="net:4" transform="translate(70 108) rotate(90)">
+    <g class="power-port ground" data-net="net:4" transform="translate(70 108)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
     </g>
-    <g class="power-port power" data-net="net:6" transform="translate(156 46) rotate(270)">
+    <g class="power-port power" data-net="net:6" transform="translate(156 46)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
+      <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
+      <text class="power-port-label" x="0" y="-9.4">+5V</text>
+    </g>
+    <g class="power-port power" data-net="net:6" transform="translate(76 170) rotate(270)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4" transform="rotate(-270 0 -9.4)">+5V</text>
     </g>
-    <g class="power-port power" data-net="net:6" transform="translate(76 170) rotate(180)">
+    <g class="power-port power" data-net="net:7" transform="translate(156 140)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
-      <text class="power-port-label" x="0" y="-9.4" transform="rotate(-180 0 -9.4)">+5V</text>
+      <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port power" data-net="net:7" transform="translate(156 140) rotate(270)">
+    <g class="power-port power" data-net="net:8" transform="translate(122 212)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
-      <text class="power-port-label" x="0" y="-9.4" transform="rotate(-270 0 -9.4)">+3V3</text>
+      <text class="power-port-label" x="0" y="-9.4">VDDA</text>
     </g>
-    <g class="power-port power" data-net="net:8" transform="translate(122 212) rotate(270)">
+    <g class="power-port ground" data-net="net:9" transform="translate(84 132)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
+    </g>
+    <g class="power-port ground" data-net="net:9" transform="translate(150 214)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
+    </g>
+    <g class="power-port ground" data-net="net:9" transform="translate(122 270)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
+    </g>
+    <g class="power-port power" data-net="net:2" transform="translate(318 98)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
+      <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
+      <text class="power-port-label" x="0" y="-9.4">+3V3</text>
+    </g>
+    <g class="power-port power" data-net="net:3" transform="translate(256 244) rotate(270)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4" transform="rotate(-270 0 -9.4)">VDDA</text>
     </g>
-    <g class="power-port ground" data-net="net:9" transform="translate(84 132) rotate(90)">
+    <g class="power-port ground" data-net="net:4" transform="translate(318 304)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
     </g>
-    <g class="power-port ground" data-net="net:9" transform="translate(150 214) rotate(90)">
-      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
-      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
-      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
-      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
-    </g>
-    <g class="power-port ground" data-net="net:9" transform="translate(122 270) rotate(90)">
-      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
-      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
-      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
-      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
-    </g>
-    <g class="power-port power" data-net="net:2" transform="translate(318 98) rotate(270)">
+    <g class="power-port power" data-net="net:20" transform="translate(216 56)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
-      <text class="power-port-label" x="0" y="-9.4" transform="rotate(-270 0 -9.4)">+3V3</text>
+      <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port power" data-net="net:3" transform="translate(256 244) rotate(180)">
+    <g class="power-port ground" data-net="net:21" transform="translate(246 110)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
+    </g>
+    <g class="power-port ground" data-net="net:21" transform="translate(232 228)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
+    </g>
+    <g class="power-port power" data-net="net:38" transform="translate(318 30)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
-      <text class="power-port-label" x="0" y="-9.4" transform="rotate(-180 0 -9.4)">VDDA</text>
+      <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port ground" data-net="net:4" transform="translate(318 304) rotate(90)">
+    <g class="power-port ground" data-net="net:40" transform="translate(368 86)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
     </g>
-    <g class="power-port power" data-net="net:20" transform="translate(216 56) rotate(270)">
+    <g class="power-port ground" data-net="net:19" transform="translate(516 126)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
+    </g>
+    <g class="power-port power" data-net="net:2" transform="translate(440 150)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
-      <text class="power-port-label" x="0" y="-9.4" transform="rotate(-270 0 -9.4)">+3V3</text>
+      <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port ground" data-net="net:21" transform="translate(246 110) rotate(90)">
-      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
-      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
-      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
-      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
-    </g>
-    <g class="power-port ground" data-net="net:21" transform="translate(232 228) rotate(90)">
-      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
-      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
-      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
-      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
-    </g>
-    <g class="power-port power" data-net="net:38" transform="translate(318 30) rotate(270)">
+    <g class="power-port power" data-net="net:2" transform="translate(526 220)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
-      <text class="power-port-label" x="0" y="-9.4" transform="rotate(-270 0 -9.4)">+3V3</text>
+      <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port ground" data-net="net:40" transform="translate(368 86) rotate(90)">
+    <g class="power-port ground" data-net="net:4" transform="translate(476 244)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
     </g>
-    <g class="power-port ground" data-net="net:19" transform="translate(516 126) rotate(90)">
+    <g class="power-port ground" data-net="net:4" transform="translate(526 283)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
-    </g>
-    <g class="power-port power" data-net="net:2" transform="translate(440 150) rotate(270)">
-      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
-      <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
-      <text class="power-port-label" x="0" y="-9.4" transform="rotate(-270 0 -9.4)">+3V3</text>
-    </g>
-    <g class="power-port power" data-net="net:2" transform="translate(526 220) rotate(270)">
-      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
-      <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
-      <text class="power-port-label" x="0" y="-9.4" transform="rotate(-270 0 -9.4)">+3V3</text>
-    </g>
-    <g class="power-port ground" data-net="net:4" transform="translate(476 244) rotate(90)">
-      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
-      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
-      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
-      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
-    </g>
-    <g class="power-port ground" data-net="net:4" transform="translate(526 283) rotate(90)">
-      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
-      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
-      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
-      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
     </g>
     <g class="no-connect-marker" data-pin="pin:23" transform="translate(436 84) rotate(0)">
       <line class="no-connect-line" x1="-3" y1="-3" x2="3" y2="3"/>

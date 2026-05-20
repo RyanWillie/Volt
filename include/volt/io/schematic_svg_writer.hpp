@@ -240,9 +240,21 @@ inline void write_svg_number(std::ostream &out, double value) {
     throw std::logic_error{"Unhandled schematic orientation"};
 }
 
-inline void write_upright_text_transform(std::ostream &out, SchematicOrientation parent_orientation,
-                                         Point anchor) {
-    const auto degrees = -orientation_degrees(parent_orientation);
+[[nodiscard]] inline double power_port_glyph_degrees(PowerPortKind kind,
+                                                     SchematicOrientation orientation) {
+    const auto degrees = orientation_degrees(orientation);
+    switch (kind) {
+    case PowerPortKind::Power:
+        return std::fmod(degrees + 90.0, 360.0);
+    case PowerPortKind::Ground:
+        return std::fmod(degrees + 270.0, 360.0);
+    }
+    throw std::logic_error{"Unhandled power port kind"};
+}
+
+inline void write_upright_text_transform_degrees(std::ostream &out, double parent_degrees,
+                                                 Point anchor) {
+    const auto degrees = -parent_degrees;
     if (std::abs(degrees) < 1e-12) {
         return;
     }
@@ -254,6 +266,11 @@ inline void write_upright_text_transform(std::ostream &out, SchematicOrientation
     out << ' ';
     write_svg_number(out, anchor.y());
     out << ")\"";
+}
+
+inline void write_upright_text_transform(std::ostream &out, SchematicOrientation parent_orientation,
+                                         Point anchor) {
+    write_upright_text_transform_degrees(out, orientation_degrees(parent_orientation), anchor);
 }
 
 inline void write_css_stroke_width(std::ostream &out, double width) {
@@ -568,9 +585,14 @@ inline void write_power_port_svg(std::ostream &out, const Schematic &schematic, 
     write_svg_number(out, port.position().x());
     out << ' ';
     write_svg_number(out, port.position().y());
-    out << ") rotate(";
-    write_svg_number(out, orientation_degrees(port.orientation()));
-    out << ")\">\n";
+    out << ")";
+    const auto glyph_degrees = power_port_glyph_degrees(port.kind(), port.orientation());
+    if (std::abs(glyph_degrees) >= 1e-12) {
+        out << " rotate(";
+        write_svg_number(out, glyph_degrees);
+        out << ")";
+    }
+    out << "\">\n";
     if (port.kind() == PowerPortKind::Ground) {
         out << "      <line class=\"power-port-line\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"";
         write_svg_number(out, ground_port_stem_length);
@@ -603,7 +625,7 @@ inline void write_power_port_svg(std::ostream &out, const Schematic &schematic, 
     out << "      <text class=\"power-port-label\" x=\"0\" y=\"";
     write_svg_number(out, label_y);
     out << "\"";
-    write_upright_text_transform(out, port.orientation(), Point{0.0, label_y});
+    write_upright_text_transform_degrees(out, glyph_degrees, Point{0.0, label_y});
     const auto port_label = port.label().value_or(net.name().value());
     out << ">" << svg_escape(port_label) << "</text>\n";
     out << "    </g>\n";
@@ -827,7 +849,7 @@ inline void write_title_block_row_svg(std::ostream &out, const SvgRect &rect, st
                                       std::string_view key, std::string_view value) {
     const auto text_y = (static_cast<double>(row) * title_block_row_height) + 4.2;
     const auto label_available_width =
-        std::max(0.0, title_block_label_width - title_block_label_x - 1.0);
+        std::max(0.0, std::min(title_block_label_width, rect.width) - title_block_label_x - 1.0);
     const auto value_available_width =
         std::max(0.0, rect.width - title_block_value_x - title_block_right_padding);
     write_title_block_text_svg(out, "title-block-label", title_block_label_x, text_y, key,

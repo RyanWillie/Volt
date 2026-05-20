@@ -66,6 +66,25 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "LED_A",
     }
     assert sum(validation["summary"].values()) == len(validation["diagnostics"])
+    assert validation["summary"] == {"errors": 0, "infos": 0, "warnings": 1}
+    assert validation["reports"]["logical_design"]["summary"] == {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 0,
+    }
+    assert validation["reports"]["schematic_readiness"]["summary"] == {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 0,
+    }
+    assert validation["reports"]["schematic_readability"]["summary"] == {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 1,
+    }
+    assert {
+        (diagnostic["source"], diagnostic["code"]) for diagnostic in validation["diagnostics"]
+    } == {("schematic_readability", "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW")}
 
     assert schematic["format"] == "volt.schematic"
     assert [sheet["name"] for sheet in schematic["sheets"]] == ["555 LED Blinker"]
