@@ -188,9 +188,8 @@ TEST_CASE("Schematic reader rejects invalid text presentation metadata") {
 
     auto invalid_alignment = schematic_json();
     invalid_alignment["net_labels"][0]["horizontal_alignment"] = "Centerish";
-    CHECK_THROWS_MATCHES(
-        volt::io::read_schematic(invalid_alignment, circuit), std::logic_error,
-        Catch::Matchers::Message("Invalid text horizontal alignment"));
+    CHECK_THROWS_MATCHES(volt::io::read_schematic(invalid_alignment, circuit), std::logic_error,
+                         Catch::Matchers::Message("Invalid text horizontal alignment"));
 
     auto invalid_font_size = schematic_json();
     invalid_font_size["symbol_definitions"][0]["primitives"][4]["font_size"] = 0.0;

@@ -117,6 +117,7 @@ inline constexpr double sheet_port_half_height = 2.4;
 inline constexpr double sheet_port_min_body_length = 7.0;
 inline constexpr double sheet_port_tip_length = 3.2;
 inline constexpr double sheet_port_label_padding = 2.1;
+inline constexpr double debug_pin_label_offset = 4.0;
 /** Deterministic average sans-serif character width used instead of browser font metrics. */
 inline constexpr double sheet_port_text_width_factor = 0.56;
 inline constexpr double sheet_port_label_baseline = 0.9;
@@ -668,7 +669,7 @@ inline void write_symbol_pin_svg(std::ostream &out, const SymbolPin &pin) {
     out << "      <text class=\"pin-label\" x=\"";
     write_svg_number(out, pin.anchor().x());
     out << "\" y=\"";
-    write_svg_number(out, pin.anchor().y() + 4.0);
+    write_svg_number(out, pin.anchor().y() + debug_pin_label_offset);
     out << "\">" << svg_escape(pin.name()) << "</text>\n";
 }
 
@@ -961,6 +962,27 @@ inline void write_symbol_field_svg(std::ostream &out, const Schematic &schematic
     return bounds;
 }
 
+[[nodiscard]] inline SvgBounds symbol_debug_overlay_bounds(const Schematic &schematic,
+                                                           SymbolInstanceId id) {
+    const auto &instance = schematic.symbol_instance(id);
+    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    auto bounds = bounds_from_point(instance.position());
+    const auto pin_anchor_padding = schematic_svg_visual_scale.pin_anchor_radius +
+                                    (schematic_svg_visual_scale.pin_overlay_stroke_width / 2.0);
+    for (const auto &pin : symbol.pins()) {
+        const auto anchor =
+            transform_schematic_point(pin.anchor(), instance.position(), instance.orientation());
+        include_bounds(bounds, padded_bounds(bounds_from_point(anchor), pin_anchor_padding));
+        const auto label_anchor = transform_schematic_point(
+            Point{pin.anchor().x(), pin.anchor().y() + debug_pin_label_offset}, instance.position(),
+            instance.orientation());
+        include_bounds(bounds, text_bounds(label_anchor, instance.orientation(), pin.name(),
+                                           SchematicTextStyle{},
+                                           schematic_svg_visual_scale.pin_label_font_size));
+    }
+    return bounds;
+}
+
 [[nodiscard]] inline SvgBounds wire_run_bounds(const WireRun &wire) {
     auto bounds = bounds_from_point(wire.points().front());
     for (const auto point : wire.points()) {
@@ -1091,6 +1113,11 @@ sheet_content_bounds(const Schematic &schematic, SheetId sheet_id,
         const auto &field = schematic.symbol_field(field_id);
         include(text_bounds(field.position(), field.orientation(), field.value(), field.style(),
                             schematic_svg_visual_scale.symbol_field_font_size));
+    }
+    if (options.svg.debug_overlays) {
+        for (const auto instance : sheet.symbol_instances()) {
+            include(symbol_debug_overlay_bounds(schematic, instance));
+        }
     }
     return bounds;
 }

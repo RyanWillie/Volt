@@ -310,6 +310,29 @@ TEST_CASE("Schematic SVG writer exports a content-tight body without page chrome
     CHECK(page.find("class=\"coordinate-zones\"") != std::string::npos);
 }
 
+TEST_CASE("Schematic SVG body bounds include debug pin overlays") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    auto schematic = volt::Schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    auto symbol = volt::SymbolDefinition{"DebugEdge"};
+    symbol.add_pin(
+        volt::SymbolPin{"EDGE", "1", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left});
+    const auto symbol_id = schematic.add_symbol_definition(std::move(symbol));
+    [[maybe_unused]] const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol_id, component, volt::Point{10.0, 10.0}});
+    auto options = volt::io::SchematicSvgBodyOptions{};
+    options.margin = 0.0;
+    options.svg.debug_overlays = true;
+
+    const auto body = volt::io::write_schematic_body_svg(schematic, sheet, options);
+
+    CHECK(body.find("viewBox=\"6.64 8.45 6.72 6.3\"") != std::string::npos);
+    CHECK(body.find("<circle class=\"pin-anchor\" cx=\"0\" cy=\"0\" r=\"1.2\"/>") !=
+          std::string::npos);
+    CHECK(body.find("<text class=\"pin-label\" x=\"0\" y=\"4\">EDGE</text>") != std::string::npos);
+}
+
 TEST_CASE("Schematic SVG writer fits title-block values deterministically") {
     volt::Circuit circuit;
     auto schematic = volt::Schematic{circuit};
