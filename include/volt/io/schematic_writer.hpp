@@ -93,6 +93,32 @@ namespace detail {
     throw std::logic_error{"Unhandled symbol line role"};
 }
 
+[[nodiscard]] inline std::string text_horizontal_alignment_name(TextHorizontalAlignment alignment) {
+    switch (alignment) {
+    case TextHorizontalAlignment::Start:
+        return "Start";
+    case TextHorizontalAlignment::Middle:
+        return "Middle";
+    case TextHorizontalAlignment::End:
+        return "End";
+    }
+    throw std::logic_error{"Unhandled text horizontal alignment"};
+}
+
+[[nodiscard]] inline std::string text_vertical_alignment_name(TextVerticalAlignment alignment) {
+    switch (alignment) {
+    case TextVerticalAlignment::Top:
+        return "Top";
+    case TextVerticalAlignment::Middle:
+        return "Middle";
+    case TextVerticalAlignment::Bottom:
+        return "Bottom";
+    case TextVerticalAlignment::Baseline:
+        return "Baseline";
+    }
+    throw std::logic_error{"Unhandled text vertical alignment"};
+}
+
 [[nodiscard]] inline std::string sheet_orientation_name(SheetOrientation orientation) {
     switch (orientation) {
     case SheetOrientation::Portrait:
@@ -210,6 +236,22 @@ inline void write_authored_region(std::ostream &out, const Sheet &sheet,
     }
 }
 
+inline void write_text_style_fields(std::ostream &out, SchematicTextStyle style,
+                                    SchematicTextStyle defaults) {
+    if (style.horizontal_alignment() != defaults.horizontal_alignment()) {
+        out << ", \"horizontal_alignment\": "
+            << json_string(text_horizontal_alignment_name(style.horizontal_alignment()));
+    }
+    if (style.vertical_alignment() != defaults.vertical_alignment()) {
+        out << ", \"vertical_alignment\": "
+            << json_string(text_vertical_alignment_name(style.vertical_alignment()));
+    }
+    if (style.font_size() != defaults.font_size()) {
+        out << ", \"font_size\": ";
+        write_json_number(out, style.font_size().value());
+    }
+}
+
 inline void write_sheet_metadata(std::ostream &out, const SheetMetadata &metadata) {
     out << "{ \"title\": " << json_string(metadata.title())
         << ", \"orientation\": " << json_string(sheet_orientation_name(metadata.orientation()))
@@ -287,8 +329,9 @@ inline void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &pri
     const auto &text = std::get<SymbolText>(primitive);
     out << "{ \"type\": \"text\", \"text\": " << json_string(text.text()) << ", \"anchor\": ";
     write_point(out, text.anchor());
-    out << ", \"orientation\": " << json_string(schematic_orientation_name(text.orientation()))
-        << " }";
+    out << ", \"orientation\": " << json_string(schematic_orientation_name(text.orientation()));
+    write_text_style_fields(out, text.style(), SchematicTextStyle{});
+    out << " }";
 }
 
 [[nodiscard]] inline SheetId sheet_for_symbol_instance(const Schematic &schematic,
@@ -576,6 +619,8 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
         if (label.label()) {
             out << ", \"label\": " << detail::json_string(*label.label());
         }
+        detail::write_text_style_fields(
+            out, label.style(), volt::SchematicTextStyle{volt::TextHorizontalAlignment::Start});
         detail::write_authored_region(out,
                                       schematic.sheet(detail::sheet_for_net_label(schematic, id)),
                                       label.authored_region());
@@ -698,6 +743,7 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
         detail::write_point(out, field.position());
         out << ", \"orientation\": "
             << detail::json_string(detail::schematic_orientation_name(field.orientation()));
+        detail::write_text_style_fields(out, field.style(), volt::SchematicTextStyle{});
         detail::write_authored_region(
             out, schematic.sheet(detail::sheet_for_symbol_field(schematic, id)),
             field.authored_region());

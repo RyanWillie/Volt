@@ -545,9 +545,10 @@ class NetLabel {
     NetLabel(NetId net, Point position,
              SchematicOrientation orientation = SchematicOrientation::Right,
              std::optional<std::size_t> authored_region = std::nullopt,
-             std::optional<std::string> label = std::nullopt)
+             std::optional<std::string> label = std::nullopt,
+             SchematicTextStyle style = SchematicTextStyle{TextHorizontalAlignment::Start})
         : net_{net}, position_{position}, orientation_{orientation},
-          authored_region_{authored_region}, label_{std::move(label)} {
+          authored_region_{authored_region}, label_{std::move(label)}, style_{style} {
         if (label_ && label_->empty()) {
             throw std::invalid_argument{"Net label display text must not be empty"};
         }
@@ -570,12 +571,16 @@ class NetLabel {
     /** Return optional display text for the label. Falls back to the logical net name. */
     [[nodiscard]] const std::optional<std::string> &label() const noexcept { return label_; }
 
+    /** Return generic text presentation metadata. */
+    [[nodiscard]] SchematicTextStyle style() const noexcept { return style_; }
+
   private:
     NetId net_;
     Point position_;
     SchematicOrientation orientation_;
     std::optional<std::size_t> authored_region_;
     std::optional<std::string> label_;
+    SchematicTextStyle style_;
 };
 
 /** An explicit junction dot over an existing logical net. */
@@ -745,9 +750,11 @@ class SymbolField {
     /** Construct a symbol field for an existing symbol instance. */
     SymbolField(SymbolInstanceId symbol_instance, std::string name, std::string value,
                 Point position, SchematicOrientation orientation = SchematicOrientation::Right,
-                std::optional<std::size_t> authored_region = std::nullopt)
+                std::optional<std::size_t> authored_region = std::nullopt,
+                SchematicTextStyle style = SchematicTextStyle{})
         : symbol_instance_{symbol_instance}, name_{std::move(name)}, value_{std::move(value)},
-          position_{position}, orientation_{orientation}, authored_region_{authored_region} {
+          position_{position}, orientation_{orientation}, authored_region_{authored_region},
+          style_{style} {
         if (name_.empty()) {
             throw std::invalid_argument{"Symbol field name must not be empty"};
         }
@@ -776,6 +783,9 @@ class SymbolField {
         return authored_region_;
     }
 
+    /** Return generic text presentation metadata. */
+    [[nodiscard]] SchematicTextStyle style() const noexcept { return style_; }
+
   private:
     SymbolInstanceId symbol_instance_;
     std::string name_;
@@ -783,6 +793,7 @@ class SymbolField {
     Point position_;
     SchematicOrientation orientation_;
     std::optional<std::size_t> authored_region_;
+    SchematicTextStyle style_;
 };
 
 /** Kernel-owned schematic projection over a logical circuit. */

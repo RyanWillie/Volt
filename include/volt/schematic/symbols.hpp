@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -17,6 +18,60 @@ enum class SymbolLineRole {
     Normal,
     TerminalLeadStart,
     TerminalLeadEnd,
+};
+
+/** Horizontal alignment for kernel-owned schematic text. */
+enum class TextHorizontalAlignment {
+    Start,
+    Middle,
+    End,
+};
+
+/** Vertical alignment/baseline for kernel-owned schematic text. */
+enum class TextVerticalAlignment {
+    Top,
+    Middle,
+    Bottom,
+    Baseline,
+};
+
+/** Generic presentation metadata for schematic text. */
+class SchematicTextStyle {
+  public:
+    /** Construct schematic text style metadata. */
+    explicit SchematicTextStyle(
+        TextHorizontalAlignment horizontal_alignment = TextHorizontalAlignment::Middle,
+        TextVerticalAlignment vertical_alignment = TextVerticalAlignment::Baseline,
+        std::optional<double> font_size = std::nullopt)
+        : horizontal_alignment_{horizontal_alignment}, vertical_alignment_{vertical_alignment},
+          font_size_{font_size} {
+        if (font_size_.has_value() &&
+            (!std::isfinite(font_size_.value()) || font_size_.value() <= 0.0)) {
+            throw std::invalid_argument{"Schematic text font size must be finite and positive"};
+        }
+    }
+
+    /** Return horizontal text alignment. */
+    [[nodiscard]] TextHorizontalAlignment horizontal_alignment() const noexcept {
+        return horizontal_alignment_;
+    }
+
+    /** Return vertical text alignment/baseline. */
+    [[nodiscard]] TextVerticalAlignment vertical_alignment() const noexcept {
+        return vertical_alignment_;
+    }
+
+    /** Return optional rendered font size override. */
+    [[nodiscard]] const std::optional<double> &font_size() const noexcept { return font_size_; }
+
+    /** Return whether two schematic text styles are identical. */
+    [[nodiscard]] friend bool operator==(const SchematicTextStyle &lhs,
+                                         const SchematicTextStyle &rhs) noexcept = default;
+
+  private:
+    TextHorizontalAlignment horizontal_alignment_;
+    TextVerticalAlignment vertical_alignment_;
+    std::optional<double> font_size_;
 };
 
 /** A straight line in a structured schematic symbol definition. */
@@ -132,8 +187,9 @@ class SymbolText {
   public:
     /** Construct symbol text with content, anchor, and orientation. */
     SymbolText(std::string text, Point anchor,
-               SchematicOrientation orientation = SchematicOrientation::Right)
-        : text_{std::move(text)}, anchor_{anchor}, orientation_{orientation} {
+               SchematicOrientation orientation = SchematicOrientation::Right,
+               SchematicTextStyle style = SchematicTextStyle{})
+        : text_{std::move(text)}, anchor_{anchor}, orientation_{orientation}, style_{style} {
         if (text_.empty()) {
             throw std::invalid_argument{"Symbol text must not be empty"};
         }
@@ -148,6 +204,9 @@ class SymbolText {
     /** Return the text orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
 
+    /** Return generic text presentation metadata. */
+    [[nodiscard]] SchematicTextStyle style() const noexcept { return style_; }
+
     /** Return whether two symbol text primitives have the same content and geometry. */
     [[nodiscard]] friend bool operator==(const SymbolText &lhs,
                                          const SymbolText &rhs) noexcept = default;
@@ -156,6 +215,7 @@ class SymbolText {
     std::string text_;
     Point anchor_;
     SchematicOrientation orientation_;
+    SchematicTextStyle style_;
 };
 
 /** Canonical structured drawing primitive for schematic symbols. */

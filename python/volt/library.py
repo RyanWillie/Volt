@@ -374,13 +374,29 @@ class SchematicSymbolSpec:
         text: str,
         at: tuple[float, float],
         orientation: str = "Right",
+        *,
+        align: str = "middle",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> dict:
-        return {
+        primitive = {
             "type": "text",
             "text": text,
             "anchor": _symbol_point(at),
             "orientation": _orientation(orientation),
         }
+        horizontal = _text_horizontal_alignment(align)
+        vertical = _text_vertical_alignment(baseline)
+        if horizontal != "Middle":
+            primitive["horizontal_alignment"] = horizontal
+        if vertical != "Baseline":
+            primitive["vertical_alignment"] = vertical
+        if font_size is not None:
+            primitive["font_size"] = _positive_coordinate(
+                font_size,
+                "Schematic text font sizes",
+            )
+        return primitive
 
 
 @dataclass(frozen=True)
@@ -571,6 +587,43 @@ def _orientation(value: str) -> str:
     }.get(value.casefold())
     if normalized is None:
         raise ValueError("Schematic orientation must be Right, Down, Left, or Up")
+    return normalized
+
+
+def _text_horizontal_alignment(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError("Schematic text horizontal alignment must be a string")
+    normalized = {
+        "start": "Start",
+        "left": "Start",
+        "middle": "Middle",
+        "center": "Middle",
+        "centre": "Middle",
+        "end": "End",
+        "right": "End",
+    }.get(value.casefold())
+    if normalized is None:
+        raise ValueError("Schematic text horizontal alignment must be start, middle, or end")
+    return normalized
+
+
+def _text_vertical_alignment(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError("Schematic text vertical alignment must be a string")
+    normalized = {
+        "top": "Top",
+        "hanging": "Top",
+        "middle": "Middle",
+        "center": "Middle",
+        "centre": "Middle",
+        "bottom": "Bottom",
+        "baseline": "Baseline",
+        "alphabetic": "Baseline",
+    }.get(value.casefold())
+    if normalized is None:
+        raise ValueError(
+            "Schematic text vertical alignment must be top, middle, bottom, or baseline"
+        )
     return normalized
 
 

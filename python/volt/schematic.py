@@ -24,7 +24,12 @@ from ._utils import (
     _string_dict,
 )
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
-from .library import SchematicSymbolSpec, _default_two_terminal_symbol_spec
+from .library import (
+    SchematicSymbolSpec,
+    _default_two_terminal_symbol_spec,
+    _text_horizontal_alignment,
+    _text_vertical_alignment,
+)
 from .logical import Component, Net, Pin, ModuleInstancePort, _pin_refs_by_name
 
 
@@ -360,6 +365,9 @@ class PlacedSchematicElement:
         offset: float | None = None,
         ofst: float | None = None,
         orient: str | None = None,
+        align: str = "middle",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> PlacedSchematicElement:
         if not isinstance(text, str):
             raise TypeError("Schematic element labels must be strings")
@@ -381,6 +389,9 @@ class PlacedSchematicElement:
             at=at,
             orient="Right" if orient is None else orient,
             _authored_region=self.symbol._authored_region,
+            align=align,
+            baseline=baseline,
+            font_size=font_size,
         )
         return self
 
@@ -391,6 +402,9 @@ class PlacedSchematicElement:
         offset: float | None = None,
         ofst: float | None = None,
         orient: str | None = None,
+        align: str = "middle",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> PlacedSchematicElement:
         return self.label(
             self.component.reference,
@@ -399,6 +413,9 @@ class PlacedSchematicElement:
             offset=offset,
             ofst=ofst,
             orient=orient,
+            align=align,
+            baseline=baseline,
+            font_size=font_size,
         )
 
     def label_value(
@@ -408,6 +425,9 @@ class PlacedSchematicElement:
         offset: float | None = None,
         ofst: float | None = None,
         orient: str | None = None,
+        align: str = "middle",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> PlacedSchematicElement:
         value = _component_value_label(self.component)
         if value is None:
@@ -419,6 +439,9 @@ class PlacedSchematicElement:
             offset=offset,
             ofst=ofst,
             orient=orient,
+            align=align,
+            baseline=baseline,
+            font_size=font_size,
         )
 
     def _terminal_anchor(self, index: int, label: str) -> SchematicPinAnchor:
@@ -2156,6 +2179,9 @@ class Schematic:
         orient: str = "Right",
         label: str | None = None,
         _authored_region: int | None = None,
+        align: str = "start",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> SchematicNetLabel:
         if not isinstance(net, Net):
             raise TypeError("Schematic labels expect a Net handle")
@@ -2179,6 +2205,9 @@ class Schematic:
             orientation,
             _authored_region,
             _optional_display_label(label),
+            _text_horizontal_alignment(align),
+            _text_vertical_alignment(baseline),
+            _optional_text_font_size(font_size),
         )
         return SchematicNetLabel(self, label, orientation)
 
@@ -2190,12 +2219,24 @@ class Schematic:
         orient: str = "Right",
         label: str | None = None,
         _authored_region: int | None = None,
+        align: str = "start",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> SchematicNetLabel:
         try:
             net = _resolve_schematic_net_label(self._design, name_or_net)
         except ValueError as error:
             _raise_cross_design_with_context(error, self, "net label")
-        return self.label(net, at=at, orient=orient, label=label, _authored_region=_authored_region)
+        return self.label(
+            net,
+            at=at,
+            orient=orient,
+            label=label,
+            _authored_region=_authored_region,
+            align=align,
+            baseline=baseline,
+            font_size=font_size,
+        )
 
     def local_label(
         self,
@@ -2344,6 +2385,9 @@ class Schematic:
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
         _authored_region: int | None = None,
+        align: str = "middle",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> SchematicSymbolField:
         if not isinstance(symbol, SchematicSymbol):
             raise TypeError("Schematic symbol fields expect a placed symbol handle")
@@ -2358,7 +2402,17 @@ class Schematic:
         orientation = _orientation(orient)
 
         field = self._design._circuit.add_schematic_symbol_field(
-            self._sheet_index, symbol.index, name, value, x, y, orientation, _authored_region
+            self._sheet_index,
+            symbol.index,
+            name,
+            value,
+            x,
+            y,
+            orientation,
+            _authored_region,
+            _text_horizontal_alignment(align),
+            _text_vertical_alignment(baseline),
+            _optional_text_font_size(font_size),
         )
         return SchematicSymbolField(
             self,
@@ -3257,6 +3311,12 @@ def _title_block_value(value, label: str) -> str:
     if not result:
         raise ValueError(f"Schematic title-block {label} must not be empty")
     return result
+
+
+def _optional_text_font_size(value: float | None) -> float | None:
+    if value is None:
+        return None
+    return _positive_coordinate(value, "Schematic text font sizes")
 
 
 def _title_block_items(values) -> list[dict[str, str]]:

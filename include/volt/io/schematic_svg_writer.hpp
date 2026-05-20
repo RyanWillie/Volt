@@ -284,6 +284,42 @@ inline void write_css_font(std::ostream &out, double size) {
     out << "px sans-serif";
 }
 
+[[nodiscard]] inline std::string_view svg_text_anchor(TextHorizontalAlignment alignment) {
+    switch (alignment) {
+    case TextHorizontalAlignment::Start:
+        return "start";
+    case TextHorizontalAlignment::Middle:
+        return "middle";
+    case TextHorizontalAlignment::End:
+        return "end";
+    }
+    throw std::logic_error{"Unhandled text horizontal alignment"};
+}
+
+[[nodiscard]] inline std::string_view svg_dominant_baseline(TextVerticalAlignment alignment) {
+    switch (alignment) {
+    case TextVerticalAlignment::Top:
+        return "text-before-edge";
+    case TextVerticalAlignment::Middle:
+        return "middle";
+    case TextVerticalAlignment::Bottom:
+        return "text-after-edge";
+    case TextVerticalAlignment::Baseline:
+        return "alphabetic";
+    }
+    throw std::logic_error{"Unhandled text vertical alignment"};
+}
+
+inline void write_text_presentation_attributes(std::ostream &out, SchematicTextStyle style) {
+    out << " text-anchor=\"" << svg_text_anchor(style.horizontal_alignment())
+        << "\" dominant-baseline=\"" << svg_dominant_baseline(style.vertical_alignment()) << '"';
+    if (style.font_size().has_value()) {
+        out << " style=\"font-size:";
+        write_svg_number(out, style.font_size().value());
+        out << "px\"";
+    }
+}
+
 [[nodiscard]] inline double title_block_rendered_text_width(std::string_view text,
                                                             double font_size) noexcept {
     return font_size * title_block_text_width_factor * static_cast<double>(text.size());
@@ -461,7 +497,9 @@ inline void write_symbol_primitive_svg(std::ostream &out, const SymbolPrimitive 
     write_svg_number(out, text.anchor().x());
     out << "\" y=\"";
     write_svg_number(out, text.anchor().y());
-    out << "\" transform=\"rotate(";
+    out << '"';
+    write_text_presentation_attributes(out, text.style());
+    out << " transform=\"rotate(";
     write_svg_number(out, orientation_degrees(text.orientation()));
     out << ' ';
     write_svg_number(out, text.anchor().x());
@@ -553,7 +591,9 @@ inline void write_net_label_svg(std::ostream &out, const Schematic &schematic, N
     write_svg_number(out, label.position().x());
     out << "\" y=\"";
     write_svg_number(out, label.position().y());
-    out << "\" transform=\"rotate(";
+    out << '"';
+    write_text_presentation_attributes(out, label.style());
+    out << " transform=\"rotate(";
     write_svg_number(out, orientation_degrees(label.orientation()));
     out << ' ';
     write_svg_number(out, label.position().x());
@@ -699,7 +739,9 @@ inline void write_symbol_field_svg(std::ostream &out, const Schematic &schematic
     write_svg_number(out, field.position().x());
     out << "\" y=\"";
     write_svg_number(out, field.position().y());
-    out << "\" transform=\"rotate(";
+    out << '"';
+    write_text_presentation_attributes(out, field.style());
+    out << " transform=\"rotate(";
     write_svg_number(out, orientation_degrees(field.orientation()));
     out << ' ';
     write_svg_number(out, field.position().x());
@@ -964,7 +1006,7 @@ inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
     write_css_stroke_width(out, scale.wire_stroke_width);
     out << ";stroke-linecap:round;stroke-linejoin:round}.net-label{";
     write_css_font(out, scale.net_label_font_size);
-    out << ";fill:#111;text-anchor:start}"
+    out << ";fill:#111}"
            ".junction{fill:#111;stroke:none}"
            ".power-port-line,.ground-bar{stroke:#111;";
     write_css_stroke_width(out, scale.tag_port_stroke_width);
@@ -979,12 +1021,12 @@ inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
     out << ";fill:#111;text-anchor:middle}"
            ".symbol-field{";
     write_css_font(out, scale.symbol_field_font_size);
-    out << ";fill:#111;text-anchor:middle}"
+    out << ";fill:#111}"
            ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;";
     write_css_stroke_width(out, scale.symbol_stroke_width);
     out << ";stroke-linecap:round;stroke-linejoin:round}.symbol-text{";
     write_css_font(out, scale.symbol_text_font_size);
-    out << ";fill:#111;text-anchor:middle}";
+    out << ";fill:#111}";
     if (options.debug_overlays) {
         out << ".pin-anchor{fill:#fff;stroke:#c2410c;";
         write_css_stroke_width(out, scale.pin_overlay_stroke_width);

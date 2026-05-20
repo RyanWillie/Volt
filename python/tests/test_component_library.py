@@ -76,6 +76,38 @@ def test_library_component_schematic_symbol_default_is_definition_owned():
     assert projection["symbol_definitions"][0]["name"] == "volt.test:Sensor"
     assert projection["symbol_instances"][0]["symbol_definition"] == "symbol_def:0"
 
+
+def test_schematic_symbol_text_metadata_is_kernel_owned():
+    symbol = volt.SchematicSymbolSpec(
+        "volt.test:Styled",
+        pins=(volt.SchematicSymbolSpec.pin("1", 1, (0, 0), "Left"),),
+        primitives=(
+            volt.SchematicSymbolSpec.text(
+                "DATA",
+                (2, 3),
+                align="start",
+                baseline="middle",
+                font_size=3.25,
+            ),
+        ),
+    )
+    design = volt.Design("symbol-text-metadata")
+    component = design.define_component(
+        "Sensor",
+        pins=[volt.PinSpec("1", 1)],
+        schematic_symbol=symbol,
+    )
+    u1 = design.instantiate(component, ref="U1")
+    schematic = design.schematic("Main")
+    schematic.place(u1, at=(10, 20))
+
+    projection = json.loads(schematic.to_json())
+    primitive = projection["symbol_definitions"][0]["primitives"][0]
+
+    assert primitive["horizontal_alignment"] == "Start"
+    assert primitive["vertical_alignment"] == "Middle"
+    assert primitive["font_size"] == 3.25
+
 def test_module_instance_component_resolves_library_symbol_default():
     design = volt.Design("module-library-symbol")
     library = volt.Library("volt.test")

@@ -84,6 +84,40 @@ def test_python_schematic_writes_svg_projection():
         assert path.read_text(encoding="utf-8") == svg
 
 
+def test_python_schematic_net_labels_and_fields_preserve_text_metadata():
+    design = volt.Design("schematic-text-metadata")
+    vcc = design.net("VCC", kind="power")
+    r1 = design.R(resistance=330, ref="R1")
+
+    schematic = design.schematic("Main")
+    placed = schematic.place(r1, at=(40, 20), symbol="resistor")
+    schematic.label(
+        vcc,
+        at=(20, 16),
+        align="end",
+        baseline="bottom",
+        font_size=4.0,
+    )
+    volt.PlacedSchematicElement(placed).label(
+        "RA",
+        align="start",
+        baseline="top",
+        font_size=3.5,
+    )
+
+    projection = json.loads(schematic.to_json())
+
+    assert projection["net_labels"][0]["horizontal_alignment"] == "End"
+    assert projection["net_labels"][0]["vertical_alignment"] == "Bottom"
+    assert projection["net_labels"][0]["font_size"] == 4.0
+    assert projection["symbol_fields"][0]["horizontal_alignment"] == "Start"
+    assert projection["symbol_fields"][0]["vertical_alignment"] == "Top"
+    assert projection["symbol_fields"][0]["font_size"] == 3.5
+
+    reloaded = design.load_schematic_json(schematic.to_json())
+    assert json.loads(reloaded.to_json()) == projection
+
+
 def test_python_schematic_writes_one_svg_per_sheet():
     design = volt.Design("schematic-svg-pages")
 

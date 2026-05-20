@@ -146,8 +146,7 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
                    "stroke-linejoin:round}") != std::string::npos);
     CHECK(svg.find(".power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;"
                    "stroke-width:0.55;stroke-linejoin:round}") != std::string::npos);
-    CHECK(svg.find(".net-label{font:2.5px sans-serif;fill:#111;text-anchor:start}") !=
-          std::string::npos);
+    CHECK(svg.find(".net-label{font:2.5px sans-serif;fill:#111}") != std::string::npos);
     CHECK(svg.find("#0645ad") == std::string::npos);
     CHECK(svg.find("<polyline class=\"wire-run\" data-net=\"net:0\" points=\"10,20 30,20\"/>") !=
           std::string::npos);
@@ -168,6 +167,8 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(svg.find("<path class=\"symbol-arc\" d=\"M 35 0 A 5 5 0 0 1 25 0 A 5 5 0 0 1 35 0\"/>") !=
           std::string::npos);
     CHECK(svg.find("<text class=\"symbol-text\" x=\"10\" y=\"-8\"") != std::string::npos);
+    CHECK(svg.find("<text class=\"symbol-text\" x=\"10\" y=\"-8\" text-anchor=\"middle\" "
+                   "dominant-baseline=\"alphabetic\"") != std::string::npos);
     CHECK(svg.find(">R&lt;&amp;</text>") != std::string::npos);
     CHECK(svg.find("pin-anchor") == std::string::npos);
     CHECK(svg.find("pin-label") == std::string::npos);
@@ -219,6 +220,50 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(ports < labels);
     CHECK(labels < fields);
     CHECK(svg.find("layer-debug") == std::string::npos);
+}
+
+TEST_CASE("Schematic SVG writer applies model-owned text presentation metadata") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = add_net(circuit);
+    auto schematic = make_schematic(circuit, component);
+    auto symbol = volt::SymbolDefinition{"Styled"};
+    symbol.add_pin(
+        volt::SymbolPin{"1", "1", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left});
+    symbol.add_pin(
+        volt::SymbolPin{"2", "2", volt::Point{20.0, 0.0}, volt::SchematicOrientation::Right});
+    symbol.add_primitive(
+        volt::SymbolText{"IN", volt::Point{2.0, 0.0}, volt::SchematicOrientation::Right,
+                         volt::SchematicTextStyle{volt::TextHorizontalAlignment::Start,
+                                                  volt::TextVerticalAlignment::Middle, 3.25}});
+    const auto symbol_id = schematic.add_symbol_definition(std::move(symbol));
+    const auto instance = schematic.place_symbol(
+        volt::SheetId{0}, volt::SymbolInstance{symbol_id, component, volt::Point{80.0, 40.0}});
+    [[maybe_unused]] const auto label = schematic.add_net_label(
+        volt::SheetId{0},
+        volt::NetLabel{net, volt::Point{12.0, 16.0}, volt::SchematicOrientation::Right,
+                       std::nullopt, std::string{"SWDIO"},
+                       volt::SchematicTextStyle{volt::TextHorizontalAlignment::End,
+                                                volt::TextVerticalAlignment::Bottom, 4.0}});
+    [[maybe_unused]] const auto field = schematic.add_symbol_field(
+        volt::SheetId{0},
+        volt::SymbolField{instance, "value", "10k", volt::Point{80.0, 56.0},
+                          volt::SchematicOrientation::Right, std::nullopt,
+                          volt::SchematicTextStyle{volt::TextHorizontalAlignment::Start,
+                                                   volt::TextVerticalAlignment::Top, 3.5}});
+
+    const auto svg = volt::io::write_schematic_svg(schematic);
+
+    CHECK(svg.find(".symbol-text{font:2.7px sans-serif;fill:#111}") != std::string::npos);
+    CHECK(svg.find("<text class=\"symbol-text\" x=\"2\" y=\"0\" text-anchor=\"start\" "
+                   "dominant-baseline=\"middle\" style=\"font-size:3.25px\"") != std::string::npos);
+    CHECK(svg.find("<text class=\"net-label\" data-net=\"net:0\" x=\"12\" y=\"16\" "
+                   "text-anchor=\"end\" dominant-baseline=\"text-after-edge\" "
+                   "style=\"font-size:4px\"") != std::string::npos);
+    CHECK(svg.find("<text class=\"symbol-field\" data-symbol-instance=\"symbol_instance:1\" "
+                   "data-field=\"value\" x=\"80\" y=\"56\" text-anchor=\"start\" "
+                   "dominant-baseline=\"text-before-edge\" style=\"font-size:3.5px\"") !=
+          std::string::npos);
 }
 
 TEST_CASE("Schematic SVG writer fits title-block values deterministically") {

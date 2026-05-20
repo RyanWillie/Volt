@@ -89,6 +89,17 @@ class SchematicReader {
         return it->get<std::string>();
     }
 
+    static std::string optional_string_field(const nlohmann::json &object, const char *name,
+                                             std::string fallback) {
+        require(object.is_object(), "Expected object while reading schematic");
+        const auto it = object.find(name);
+        if (it == object.end()) {
+            return fallback;
+        }
+        require(it->is_string(), std::string{"Expected string field: "} + name);
+        return it->get<std::string>();
+    }
+
     static std::optional<std::string> optional_non_empty_string_field(const nlohmann::json &object,
                                                                       const char *name) {
         require(object.is_object(), "Expected object while reading schematic");
@@ -118,6 +129,20 @@ class SchematicReader {
         const auto number = value.get<double>();
         require(std::isfinite(number),
                 std::string{"Schematic numeric field must be finite: "} + name);
+        return number;
+    }
+
+    static std::optional<double> optional_positive_number_field(const nlohmann::json &object,
+                                                                const char *name) {
+        require(object.is_object(), "Expected object while reading schematic");
+        const auto it = object.find(name);
+        if (it == object.end()) {
+            return std::nullopt;
+        }
+        require(it->is_number(), std::string{"Expected number field: "} + name);
+        const auto number = it->get<double>();
+        require(std::isfinite(number) && number > 0.0,
+                std::string{"Expected positive finite number field: "} + name);
         return number;
     }
 
@@ -219,6 +244,45 @@ class SchematicReader {
         throw std::logic_error{"Invalid symbol line role"};
     }
 
+    [[nodiscard]] static TextHorizontalAlignment
+    text_horizontal_alignment(const std::string &value) {
+        if (value == "Start")
+            return TextHorizontalAlignment::Start;
+        if (value == "Middle")
+            return TextHorizontalAlignment::Middle;
+        if (value == "End")
+            return TextHorizontalAlignment::End;
+        throw std::logic_error{"Invalid text horizontal alignment"};
+    }
+
+    [[nodiscard]] static TextVerticalAlignment text_vertical_alignment(const std::string &value) {
+        if (value == "Top")
+            return TextVerticalAlignment::Top;
+        if (value == "Middle")
+            return TextVerticalAlignment::Middle;
+        if (value == "Bottom")
+            return TextVerticalAlignment::Bottom;
+        if (value == "Baseline")
+            return TextVerticalAlignment::Baseline;
+        throw std::logic_error{"Invalid text vertical alignment"};
+    }
+
+    [[nodiscard]] static SchematicTextStyle text_style(const nlohmann::json &object,
+                                                       SchematicTextStyle defaults) {
+        auto font_size = optional_positive_number_field(object, "font_size");
+        if (!font_size.has_value()) {
+            font_size = defaults.font_size();
+        }
+        return SchematicTextStyle{
+            text_horizontal_alignment(optional_string_field(
+                object, "horizontal_alignment",
+                text_horizontal_alignment_name(defaults.horizontal_alignment()))),
+            text_vertical_alignment(
+                optional_string_field(object, "vertical_alignment",
+                                      text_vertical_alignment_name(defaults.vertical_alignment()))),
+            font_size};
+    }
+
     [[nodiscard]] static SheetOrientation sheet_orientation(const std::string &value) {
         if (value == "Portrait")
             return SheetOrientation::Portrait;
@@ -307,7 +371,8 @@ class SchematicReader {
         }
         if (type == "text") {
             return SymbolText{string_field(object, "text"), point(field(object, "anchor")),
-                              orientation(string_field(object, "orientation"))};
+                              orientation(string_field(object, "orientation")),
+                              text_style(object, SchematicTextStyle{})};
         }
         throw std::logic_error{"Invalid symbol primitive type"};
     }
@@ -551,7 +616,9 @@ class SchematicReader {
                 sheet, NetLabel{net, point(field(label_object, "position")),
                                 orientation(string_field(label_object, "orientation")),
                                 authored_region(sheet, label_object),
-                                optional_non_empty_string_field(label_object, "label")});
+                                optional_non_empty_string_field(label_object, "label"),
+                                text_style(label_object,
+                                           SchematicTextStyle{TextHorizontalAlignment::Start})});
             net_label_ids_.emplace(id, label);
         }
     }
@@ -628,7 +695,8 @@ class SchematicReader {
                                    string_field(field_object, "value"),
                                    point(field(field_object, "position")),
                                    orientation(string_field(field_object, "orientation")),
-                                   authored_region(sheet, field_object)});
+                                   authored_region(sheet, field_object),
+                                   text_style(field_object, SchematicTextStyle{})});
             symbol_field_ids_.emplace(id, field_id);
         }
     }
