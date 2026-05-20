@@ -792,6 +792,30 @@ TEST_CASE("Schematic readability reports usable-area and title-block layout issu
                                           volt::EntityRef::net(net)});
 }
 
+TEST_CASE("Schematic readability reports title-block text overflow") {
+    volt::Circuit circuit;
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{
+        "Main",
+        volt::SheetMetadata{
+            "Main",
+            volt::SheetSize{100.0, 80.0},
+            std::vector{volt::TitleBlockField{"File", "examples/timer_555_led_blinker/main.py"}},
+            volt::SheetOrientation::Landscape,
+            volt::SheetFrame{true, volt::SheetMargins{10.0, 10.0, 10.0, 10.0}},
+        },
+    });
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet)});
+    CHECK_FALSE(report_has_code(volt::validate_schematic_readiness(schematic),
+                                "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW"));
+}
+
 TEST_CASE("Schematic readability uses label-dependent sheet-port bounds") {
     volt::Circuit circuit;
     const auto net = add_net(circuit);

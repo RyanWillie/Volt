@@ -139,11 +139,13 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
           std::string::npos);
     CHECK(svg.find(".sheet-border{fill:none;stroke:#111;stroke-width:0.45}") != std::string::npos);
     CHECK(svg.find(".drawing-frame{fill:none;stroke:#111;stroke-width:0.35}") != std::string::npos);
-    CHECK(svg.find(".wire-run{fill:none;stroke:#111;stroke-width:0.75}") != std::string::npos);
+    CHECK(svg.find(".wire-run{fill:none;stroke:#111;stroke-width:0.75;stroke-linecap:round;"
+                   "stroke-linejoin:round}") != std::string::npos);
     CHECK(svg.find(".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;"
-                   "stroke:#111;stroke-width:0.7}") != std::string::npos);
+                   "stroke:#111;stroke-width:0.7;stroke-linecap:round;"
+                   "stroke-linejoin:round}") != std::string::npos);
     CHECK(svg.find(".power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;"
-                   "stroke-width:0.55}") != std::string::npos);
+                   "stroke-width:0.55;stroke-linejoin:round}") != std::string::npos);
     CHECK(svg.find(".net-label{font:2.5px sans-serif;fill:#111;text-anchor:start}") !=
           std::string::npos);
     CHECK(svg.find("#0645ad") == std::string::npos);
@@ -217,6 +219,28 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(ports < labels);
     CHECK(labels < fields);
     CHECK(svg.find("layer-debug") == std::string::npos);
+}
+
+TEST_CASE("Schematic SVG writer fits title-block values deterministically") {
+    volt::Circuit circuit;
+    auto schematic = volt::Schematic{circuit};
+    static_cast<void>(schematic.add_sheet(volt::Sheet{
+        "Main",
+        volt::SheetMetadata{
+            "Main",
+            volt::SheetSize{100.0, 80.0},
+            std::vector{volt::TitleBlockField{"File", "examples/timer_555_led_blinker/main.py"}},
+            volt::SheetOrientation::Landscape,
+            volt::SheetFrame{true, volt::SheetMargins{10.0, 10.0, 10.0, 10.0}},
+        },
+    }));
+
+    const auto svg = volt::io::write_schematic_svg(schematic);
+
+    CHECK(svg.find("<text class=\"title-block-value\" x=\"24\" y=\"10.2\" "
+                   "data-full-text=\"examples/timer_555_led_blinker/main.py\" "
+                   "textLength=\"54\" lengthAdjust=\"spacingAndGlyphs\">"
+                   "examples/timer_555_led_blinker/main.py</text>") != std::string::npos);
 }
 
 TEST_CASE("Schematic SVG writer renders debug pin overlays only when enabled") {

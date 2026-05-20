@@ -164,6 +164,12 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert 'class="power-port ground"' in svg_text
     assert "pin-anchor" not in svg_text
     assert "pin-label" not in svg_text
+    assert (
+        '<text class="title-block-value" x="24" y="40.2" '
+        'data-full-text="examples/timer_555_led_blinker/main.py" '
+        'textLength="56" lengthAdjust="spacingAndGlyphs">'
+        "examples/timer_555_led_blinker/main.py</text>"
+    ) in svg_text
     assert {
         "555",
         "timer",
@@ -201,10 +207,11 @@ def test_timer_555_led_blinker_schematic_is_readable_without_mutating_logical_de
     schematic = main.build_schematic(design, nets, parts)
     readiness = schematic.validate()
     readability = schematic.validate_readability()
+    readability_codes = {diagnostic.code for diagnostic in readability}
 
     assert design.to_json() == logical_before
     assert not readiness.has_errors
-    assert len(readability) == 0
+    assert readability_codes == {"SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW"}
     assert not readability.has_errors
 
 

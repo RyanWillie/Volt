@@ -27,9 +27,15 @@ inline constexpr std::size_t dense_no_connect_marker_threshold = 6U;
 inline constexpr std::size_t dense_region_port_tag_threshold = 12U;
 inline constexpr double dense_no_connect_cluster_radius = 18.0;
 inline constexpr double title_block_width = 82.0;
+inline constexpr double title_block_label_width = 22.0;
 inline constexpr double title_block_row_height = 6.0;
+inline constexpr double title_block_label_x = 2.0;
+inline constexpr double title_block_value_x = title_block_label_width + 2.0;
+inline constexpr double title_block_right_padding = 2.0;
+inline constexpr double title_block_text_width_factor = 0.64;
 inline constexpr double rendered_text_width_factor = 0.56;
 inline constexpr double rendered_text_descent_factor = 0.25;
+inline constexpr double title_block_rendered_font_size = 2.5;
 inline constexpr double net_label_rendered_font_size = 2.5;
 inline constexpr double symbol_text_rendered_font_size = 2.7;
 inline constexpr double symbol_field_rendered_font_size = 2.5;
@@ -283,6 +289,11 @@ inline void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexc
 [[nodiscard]] inline double rendered_text_width(std::string_view text, double font_size) noexcept {
     return std::max(font_size * rendered_text_width_factor,
                     font_size * rendered_text_width_factor * static_cast<double>(text.size()));
+}
+
+[[nodiscard]] inline double title_block_rendered_text_width(std::string_view text,
+                                                            double font_size) noexcept {
+    return font_size * title_block_text_width_factor * static_cast<double>(text.size());
 }
 
 [[nodiscard]] inline SchematicBounds text_bounds(Point anchor, SchematicOrientation orientation,
@@ -1117,6 +1128,44 @@ inline void validate_readability_bounds(const Schematic &schematic, SheetId shee
                                            sheet_id, object.entity, object.context);
             }
         }
+    }
+}
+
+inline void add_title_block_overflow_diagnostic(DiagnosticReport &report, SheetId sheet_id,
+                                                std::string_view column,
+                                                std::string_view row_label) {
+    report.add(Diagnostic{
+        Severity::Warning,
+        DiagnosticCode{"SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW"},
+        "Schematic title-block " + std::string{column} + " text for '" + std::string{row_label} +
+            "' exceeds the rendered column width",
+        std::vector{EntityRef::sheet(sheet_id)},
+    });
+}
+
+inline void validate_title_block_text_overflow(SheetId sheet_id, const Sheet &sheet,
+                                               DiagnosticReport &report) {
+    const auto &metadata = sheet.metadata();
+    const auto title_bounds = title_block_bounds(metadata);
+    const auto label_available_width =
+        std::max(0.0, title_block_label_width - title_block_label_x - 1.0);
+    const auto value_available_width =
+        std::max(0.0, bounds_width(title_bounds) - title_block_value_x - title_block_right_padding);
+
+    const auto check_cell = [&](std::string_view column, std::string_view row_label,
+                                std::string_view text, double available_width) {
+        if (title_block_rendered_text_width(text, title_block_rendered_font_size) <=
+            available_width + schematic_geometry_tolerance) {
+            return;
+        }
+        add_title_block_overflow_diagnostic(report, sheet_id, column, row_label);
+    };
+
+    check_cell("label", "Title", "Title", label_available_width);
+    check_cell("value", "Title", metadata.title(), value_available_width);
+    for (const auto &field : metadata.title_block()) {
+        check_cell("label", field.key(), field.key(), label_available_width);
+        check_cell("value", field.key(), field.value(), value_available_width);
     }
 }
 
@@ -2045,6 +2094,7 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         const auto sheet_id = SheetId{sheet_index};
         const auto &sheet = schematic.sheet(sheet_id);
         detail::validate_readability_bounds(schematic, sheet_id, sheet, report);
+        detail::validate_title_block_text_overflow(sheet_id, sheet, report);
         detail::validate_duplicate_junctions(schematic, sheet_id, sheet, report);
         detail::validate_visible_reference_labels(schematic, sheet_id, sheet, report);
         detail::validate_label_readability(schematic, sheet_id, sheet, report);
