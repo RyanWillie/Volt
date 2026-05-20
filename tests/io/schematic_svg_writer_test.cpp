@@ -243,6 +243,30 @@ TEST_CASE("Schematic SVG writer fits title-block values deterministically") {
                    "examples/timer_555_led_blinker/main.py</text>") != std::string::npos);
 }
 
+TEST_CASE("Schematic SVG writer abbreviates severe title-block overflow deterministically") {
+    volt::Circuit circuit;
+    auto schematic = volt::Schematic{circuit};
+    static_cast<void>(schematic.add_sheet(volt::Sheet{
+        "Main",
+        volt::SheetMetadata{
+            "Main",
+            volt::SheetSize{100.0, 80.0},
+            std::vector{volt::TitleBlockField{"File",
+                                              "A_VERY_LONG_TITLE_BLOCK_VALUE_THAT_SHOULD_"
+                                              "ABBREVIATE"}},
+            volt::SheetOrientation::Landscape,
+            volt::SheetFrame{true, volt::SheetMargins{10.0, 10.0, 10.0, 10.0}},
+        },
+    }));
+
+    const auto svg = volt::io::write_schematic_svg(schematic);
+
+    CHECK(svg.find("<text class=\"title-block-value\" x=\"24\" y=\"10.2\" "
+                   "data-full-text=\"A_VERY_LONG_TITLE_BLOCK_VALUE_THAT_SHOULD_ABBREVIATE\">"
+                   "A_VERY_LONG_TIT...OULD_ABBREVIATE</text>") != std::string::npos);
+    CHECK(svg.find("textLength=\"54\"") == std::string::npos);
+}
+
 TEST_CASE("Schematic SVG writer renders debug pin overlays only when enabled") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
