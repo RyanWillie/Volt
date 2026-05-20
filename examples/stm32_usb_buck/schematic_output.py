@@ -415,7 +415,7 @@ def _author_power_region(
         c3v3.label_value(loc="bottom", ofst=10, orient="Right")
         cvdda.label_value(loc="bottom", ofst=10, orient="Right")
 
-        input_supply = drawing.power("+12V", net=nets["+12V"], at=vin.OUT.up(28), orient="Up")
+        input_supply = drawing.power("+12V", net=nets["+12V"], at=vin.OUT.up(20), orient="Up")
         drawing.connect(vin.OUT, input_supply, net=nets["+12V"], shape="-")
         input_ground = drawing.ground("GND", net=nets["GND"], at=vin.GND.down(40), orient="Down")
         drawing.connect(vin.GND, input_ground, net=nets["GND"], shape="-")

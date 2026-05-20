@@ -20,7 +20,7 @@ class ExampleArtifacts:
     validation_report: Path
 
 
-def validation_report_json(report: volt.DiagnosticReport) -> str:
+def _validation_report_payload(report: volt.DiagnosticReport) -> dict:
     counts = {"errors": 0, "warnings": 0, "infos": 0}
     diagnostics = []
     for diagnostic in report:
@@ -41,8 +41,28 @@ def validation_report_json(report: volt.DiagnosticReport) -> str:
                 ],
             }
         )
+    return {"summary": counts, "diagnostics": diagnostics}
+
+
+def validation_report_json(
+    reports: dict[str, volt.DiagnosticReport],
+) -> str:
+    report_payloads = {
+        name: _validation_report_payload(report) for name, report in reports.items()
+    }
+    counts = {"errors": 0, "warnings": 0, "infos": 0}
+    diagnostics = []
+    for name, payload in report_payloads.items():
+        for severity, count in payload["summary"].items():
+            counts[severity] += count
+        for diagnostic in payload["diagnostics"]:
+            diagnostics.append({"source": name, **diagnostic})
     return json.dumps(
-        {"summary": counts, "diagnostics": diagnostics},
+        {
+            "summary": counts,
+            "diagnostics": diagnostics,
+            "reports": report_payloads,
+        },
         indent=2,
         sort_keys=True,
     ) + "\n"
@@ -268,7 +288,16 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
         schematic_svg_pages_dir,
         prefix="timer_555_led_blinker",
     )
-    validation_report.write_text(validation_report_json(design.validate()), encoding="utf-8")
+    validation_report.write_text(
+        validation_report_json(
+            {
+                "logical_design": design.validate(),
+                "schematic_readiness": schematic.validate(),
+                "schematic_readability": schematic.validate_readability(),
+            }
+        ),
+        encoding="utf-8",
+    )
     return ExampleArtifacts(
         logical_json=logical_json,
         schematic_json=schematic_json,

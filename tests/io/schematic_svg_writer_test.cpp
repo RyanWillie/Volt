@@ -139,11 +139,13 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
           std::string::npos);
     CHECK(svg.find(".sheet-border{fill:none;stroke:#111;stroke-width:0.45}") != std::string::npos);
     CHECK(svg.find(".drawing-frame{fill:none;stroke:#111;stroke-width:0.35}") != std::string::npos);
-    CHECK(svg.find(".wire-run{fill:none;stroke:#111;stroke-width:0.75}") != std::string::npos);
+    CHECK(svg.find(".wire-run{fill:none;stroke:#111;stroke-width:0.75;stroke-linecap:round;"
+                   "stroke-linejoin:round}") != std::string::npos);
     CHECK(svg.find(".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;"
-                   "stroke:#111;stroke-width:0.7}") != std::string::npos);
+                   "stroke:#111;stroke-width:0.7;stroke-linecap:round;"
+                   "stroke-linejoin:round}") != std::string::npos);
     CHECK(svg.find(".power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;"
-                   "stroke-width:0.55}") != std::string::npos);
+                   "stroke-width:0.55;stroke-linejoin:round}") != std::string::npos);
     CHECK(svg.find(".net-label{font:2.5px sans-serif;fill:#111;text-anchor:start}") !=
           std::string::npos);
     CHECK(svg.find("#0645ad") == std::string::npos);
@@ -217,6 +219,115 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(ports < labels);
     CHECK(labels < fields);
     CHECK(svg.find("layer-debug") == std::string::npos);
+}
+
+TEST_CASE("Schematic SVG writer fits title-block values deterministically") {
+    volt::Circuit circuit;
+    auto schematic = volt::Schematic{circuit};
+    static_cast<void>(schematic.add_sheet(volt::Sheet{
+        "Main",
+        volt::SheetMetadata{
+            "Main",
+            volt::SheetSize{100.0, 80.0},
+            std::vector{volt::TitleBlockField{"File", "examples/timer_555_led_blinker/main.py"}},
+            volt::SheetOrientation::Landscape,
+            volt::SheetFrame{true, volt::SheetMargins{10.0, 10.0, 10.0, 10.0}},
+        },
+    }));
+
+    const auto svg = volt::io::write_schematic_svg(schematic);
+
+    CHECK(svg.find("<text class=\"title-block-value\" x=\"24\" y=\"10.2\" "
+                   "data-full-text=\"examples/timer_555_led_blinker/main.py\" "
+                   "textLength=\"54\" lengthAdjust=\"spacingAndGlyphs\">"
+                   "examples/timer_555_led_blinker/main.py</text>") != std::string::npos);
+}
+
+TEST_CASE("Schematic SVG writer abbreviates severe title-block overflow deterministically") {
+    volt::Circuit circuit;
+    auto schematic = volt::Schematic{circuit};
+    static_cast<void>(schematic.add_sheet(volt::Sheet{
+        "Main",
+        volt::SheetMetadata{
+            "Main",
+            volt::SheetSize{100.0, 80.0},
+            std::vector{volt::TitleBlockField{"File", "A_VERY_LONG_TITLE_BLOCK_VALUE_THAT_SHOULD_"
+                                                      "ABBREVIATE"}},
+            volt::SheetOrientation::Landscape,
+            volt::SheetFrame{true, volt::SheetMargins{10.0, 10.0, 10.0, 10.0}},
+        },
+    }));
+
+    const auto svg = volt::io::write_schematic_svg(schematic);
+
+    CHECK(svg.find("<text class=\"title-block-value\" x=\"24\" y=\"10.2\" "
+                   "data-full-text=\"A_VERY_LONG_TITLE_BLOCK_VALUE_THAT_SHOULD_ABBREVIATE\">"
+                   "A_VERY_LONG_TIT...OULD_ABBREVIATE</text>") != std::string::npos);
+    CHECK(svg.find("textLength=\"54\"") == std::string::npos);
+}
+
+TEST_CASE("Schematic SVG writer clamps title-block labels to the rendered block width") {
+    volt::Circuit circuit;
+    auto schematic = volt::Schematic{circuit};
+    static_cast<void>(schematic.add_sheet(volt::Sheet{
+        "Main",
+        volt::SheetMetadata{
+            "Main",
+            volt::SheetSize{30.0, 40.0},
+            std::vector{volt::TitleBlockField{"Revision", "A"}},
+            volt::SheetOrientation::Landscape,
+            volt::SheetFrame{true, volt::SheetMargins{10.0, 10.0, 10.0, 10.0}},
+        },
+    }));
+
+    const auto svg = volt::io::write_schematic_svg(schematic);
+
+    CHECK(svg.find("<g class=\"title-block\" transform=\"translate(10 18)\"") != std::string::npos);
+    CHECK(svg.find("<text class=\"title-block-label\" x=\"2\" y=\"10.2\" "
+                   "data-full-text=\"Revision\">R...</text>") != std::string::npos);
+}
+
+TEST_CASE("Schematic SVG writer keeps terminal marker glyphs in canonical orientation") {
+    volt::Circuit circuit;
+    const auto power = circuit.add_net(volt::Net{volt::NetName{"+5V"}, volt::NetKind::Power});
+    const auto ground = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    auto schematic = volt::Schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{power, volt::PowerPortKind::Power, volt::Point{20.0, 20.0},
+                               volt::SchematicOrientation::Up}));
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{ground, volt::PowerPortKind::Ground, volt::Point{40.0, 40.0},
+                               volt::SchematicOrientation::Down}));
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{power, volt::PowerPortKind::Power, volt::Point{60.0, 20.0},
+                               volt::SchematicOrientation::Left}));
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{ground, volt::PowerPortKind::Ground, volt::Point{80.0, 40.0},
+                               volt::SchematicOrientation::Right}));
+
+    const auto svg = volt::io::write_schematic_svg(schematic);
+
+    CHECK(svg.find("<g class=\"power-port power\" data-net=\"net:0\" "
+                   "transform=\"translate(20 20)\">") != std::string::npos);
+    CHECK(svg.find("<path class=\"power-port-shape\" d=\"M -3 -4.2 L 0 -7.6 L 3 -4.2 Z\"/>") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"power-port-label\" x=\"0\" y=\"-9.4\">+5V</text>") !=
+          std::string::npos);
+    CHECK(svg.find("<g class=\"power-port ground\" data-net=\"net:1\" "
+                   "transform=\"translate(40 40)\">") != std::string::npos);
+    CHECK(svg.find("<line class=\"ground-bar\" x1=\"-3.6\" y1=\"3\" x2=\"3.6\" y2=\"3\"/>") !=
+          std::string::npos);
+    CHECK(svg.find("<text class=\"power-port-label\" x=\"0\" y=\"8.2\">GND</text>") !=
+          std::string::npos);
+    CHECK(svg.find("<g class=\"power-port power\" data-net=\"net:0\" "
+                   "transform=\"translate(60 20) rotate(270)\">") != std::string::npos);
+    CHECK(svg.find("<text class=\"power-port-label\" x=\"0\" y=\"-9.4\" "
+                   "transform=\"rotate(-270 0 -9.4)\">+5V</text>") != std::string::npos);
+    CHECK(svg.find("<g class=\"power-port ground\" data-net=\"net:1\" "
+                   "transform=\"translate(80 40) rotate(270)\">") != std::string::npos);
+    CHECK(svg.find("<text class=\"power-port-label\" x=\"0\" y=\"8.2\" "
+                   "transform=\"rotate(-270 0 8.2)\">GND</text>") != std::string::npos);
 }
 
 TEST_CASE("Schematic SVG writer renders debug pin overlays only when enabled") {

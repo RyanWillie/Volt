@@ -66,6 +66,25 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "LED_A",
     }
     assert sum(validation["summary"].values()) == len(validation["diagnostics"])
+    assert validation["summary"] == {"errors": 0, "infos": 0, "warnings": 1}
+    assert validation["reports"]["logical_design"]["summary"] == {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 0,
+    }
+    assert validation["reports"]["schematic_readiness"]["summary"] == {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 0,
+    }
+    assert validation["reports"]["schematic_readability"]["summary"] == {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 1,
+    }
+    assert {
+        (diagnostic["source"], diagnostic["code"]) for diagnostic in validation["diagnostics"]
+    } == {("schematic_readability", "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW")}
 
     assert schematic["format"] == "volt.schematic"
     assert [sheet["name"] for sheet in schematic["sheets"]] == ["555 LED Blinker"]
@@ -164,6 +183,12 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert 'class="power-port ground"' in svg_text
     assert "pin-anchor" not in svg_text
     assert "pin-label" not in svg_text
+    assert (
+        '<text class="title-block-value" x="24" y="40.2" '
+        'data-full-text="examples/timer_555_led_blinker/main.py" '
+        'textLength="56" lengthAdjust="spacingAndGlyphs">'
+        "examples/timer_555_led_blinker/main.py</text>"
+    ) in svg_text
     assert {
         "555",
         "timer",
@@ -201,10 +226,11 @@ def test_timer_555_led_blinker_schematic_is_readable_without_mutating_logical_de
     schematic = main.build_schematic(design, nets, parts)
     readiness = schematic.validate()
     readability = schematic.validate_readability()
+    readability_codes = {diagnostic.code for diagnostic in readability}
 
     assert design.to_json() == logical_before
     assert not readiness.has_errors
-    assert len(readability) == 0
+    assert readability_codes == {"SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW"}
     assert not readability.has_errors
 
 

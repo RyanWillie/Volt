@@ -27,9 +27,15 @@ inline constexpr std::size_t dense_no_connect_marker_threshold = 6U;
 inline constexpr std::size_t dense_region_port_tag_threshold = 12U;
 inline constexpr double dense_no_connect_cluster_radius = 18.0;
 inline constexpr double title_block_width = 82.0;
+inline constexpr double title_block_label_width = 22.0;
 inline constexpr double title_block_row_height = 6.0;
+inline constexpr double title_block_label_x = 2.0;
+inline constexpr double title_block_value_x = title_block_label_width + 2.0;
+inline constexpr double title_block_right_padding = 2.0;
+inline constexpr double title_block_text_width_factor = 0.64;
 inline constexpr double rendered_text_width_factor = 0.56;
 inline constexpr double rendered_text_descent_factor = 0.25;
+inline constexpr double title_block_rendered_font_size = 2.5;
 inline constexpr double net_label_rendered_font_size = 2.5;
 inline constexpr double symbol_text_rendered_font_size = 2.7;
 inline constexpr double symbol_field_rendered_font_size = 2.5;
@@ -285,6 +291,11 @@ inline void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexc
                     font_size * rendered_text_width_factor * static_cast<double>(text.size()));
 }
 
+[[nodiscard]] inline double title_block_rendered_text_width(std::string_view text,
+                                                            double font_size) noexcept {
+    return font_size * title_block_text_width_factor * static_cast<double>(text.size());
+}
+
 [[nodiscard]] inline SchematicBounds text_bounds(Point anchor, SchematicOrientation orientation,
                                                  std::string_view text, double font_size,
                                                  bool centered) {
@@ -506,8 +517,40 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
     return padded_bounds(bounds, 0.5);
 }
 
+[[nodiscard]] inline SchematicOrientation
+power_port_glyph_orientation(PowerPortKind kind, SchematicOrientation orientation) {
+    switch (kind) {
+    case PowerPortKind::Power:
+        switch (orientation) {
+        case SchematicOrientation::Right:
+            return SchematicOrientation::Down;
+        case SchematicOrientation::Down:
+            return SchematicOrientation::Left;
+        case SchematicOrientation::Left:
+            return SchematicOrientation::Up;
+        case SchematicOrientation::Up:
+            return SchematicOrientation::Right;
+        }
+        break;
+    case PowerPortKind::Ground:
+        switch (orientation) {
+        case SchematicOrientation::Right:
+            return SchematicOrientation::Up;
+        case SchematicOrientation::Down:
+            return SchematicOrientation::Right;
+        case SchematicOrientation::Left:
+            return SchematicOrientation::Down;
+        case SchematicOrientation::Up:
+            return SchematicOrientation::Left;
+        }
+        break;
+    }
+    throw std::logic_error{"Unhandled power port orientation"};
+}
+
 [[nodiscard]] inline Point transformed_port_anchor(const PowerPort &port, Point local_anchor) {
-    return transform_schematic_point(local_anchor, port.position(), port.orientation());
+    return transform_schematic_point(local_anchor, port.position(),
+                                     power_port_glyph_orientation(port.kind(), port.orientation()));
 }
 
 [[nodiscard]] inline SchematicBounds power_port_label_bounds(const PowerPort &port,
@@ -521,12 +564,12 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
 
 [[nodiscard]] inline SchematicBounds power_port_bounds(const PowerPort &port,
                                                        std::string_view label) {
+    const auto glyph_orientation = power_port_glyph_orientation(port.kind(), port.orientation());
     auto bounds =
         port.kind() == PowerPortKind::Ground
-            ? transform_rect_bounds(-3.6, 0.0, 3.6, 6.0, port.position(), port.orientation())
+            ? transform_rect_bounds(-3.6, 0.0, 3.6, 6.0, port.position(), glyph_orientation)
             : transform_rect_bounds(-power_port_half_width, -power_port_tip_offset,
-                                    power_port_half_width, 0.0, port.position(),
-                                    port.orientation());
+                                    power_port_half_width, 0.0, port.position(), glyph_orientation);
     include_bounds(bounds, power_port_label_bounds(port, label));
     return bounds;
 }
@@ -1117,6 +1160,45 @@ inline void validate_readability_bounds(const Schematic &schematic, SheetId shee
                                            sheet_id, object.entity, object.context);
             }
         }
+    }
+}
+
+inline void add_title_block_overflow_diagnostic(DiagnosticReport &report, SheetId sheet_id,
+                                                std::string_view column,
+                                                std::string_view row_label) {
+    report.add(Diagnostic{
+        Severity::Warning,
+        DiagnosticCode{"SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW"},
+        "Schematic title-block " + std::string{column} + " text for '" + std::string{row_label} +
+            "' exceeds the rendered column width",
+        std::vector{EntityRef::sheet(sheet_id)},
+    });
+}
+
+inline void validate_title_block_text_overflow(SheetId sheet_id, const Sheet &sheet,
+                                               DiagnosticReport &report) {
+    const auto &metadata = sheet.metadata();
+    const auto title_bounds = title_block_bounds(metadata);
+    const auto label_available_width =
+        std::max(0.0, std::min(title_block_label_width, bounds_width(title_bounds)) -
+                          title_block_label_x - 1.0);
+    const auto value_available_width =
+        std::max(0.0, bounds_width(title_bounds) - title_block_value_x - title_block_right_padding);
+
+    const auto check_cell = [&](std::string_view column, std::string_view row_label,
+                                std::string_view text, double available_width) {
+        if (title_block_rendered_text_width(text, title_block_rendered_font_size) <=
+            available_width + schematic_geometry_tolerance) {
+            return;
+        }
+        add_title_block_overflow_diagnostic(report, sheet_id, column, row_label);
+    };
+
+    check_cell("label", "Title", "Title", label_available_width);
+    check_cell("value", "Title", metadata.title(), value_available_width);
+    for (const auto &field : metadata.title_block()) {
+        check_cell("label", field.key(), field.key(), label_available_width);
+        check_cell("value", field.key(), field.value(), value_available_width);
     }
 }
 
@@ -2045,6 +2127,7 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         const auto sheet_id = SheetId{sheet_index};
         const auto &sheet = schematic.sheet(sheet_id);
         detail::validate_readability_bounds(schematic, sheet_id, sheet, report);
+        detail::validate_title_block_text_overflow(sheet_id, sheet, report);
         detail::validate_duplicate_junctions(schematic, sheet_id, sheet, report);
         detail::validate_visible_reference_labels(schematic, sheet_id, sheet, report);
         detail::validate_label_readability(schematic, sheet_id, sheet, report);

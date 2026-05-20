@@ -42,6 +42,11 @@ inline constexpr double svg_pi = 3.14159265358979323846;
 inline constexpr double title_block_width = 82.0;
 inline constexpr double title_block_label_width = 22.0;
 inline constexpr double title_block_row_height = 6.0;
+inline constexpr double title_block_label_x = 2.0;
+inline constexpr double title_block_value_x = title_block_label_width + 2.0;
+inline constexpr double title_block_right_padding = 2.0;
+inline constexpr double title_block_text_width_factor = 0.64;
+inline constexpr double title_block_min_compression_scale = 0.82;
 
 /** Production schematic rendering scale: page chrome stays quiet, circuit marks stay primary.
  *
@@ -115,6 +120,18 @@ struct SvgRect {
     double width;
     /** Rectangle height. */
     double height;
+};
+
+/** Deterministic title-block text fit result. */
+struct SvgTitleBlockTextFit {
+    /** Text emitted visibly in the SVG. */
+    std::string text;
+    /** Whether the original value needed deterministic fitting. */
+    bool fitted;
+    /** Whether SVG textLength compression is used instead of abbreviation. */
+    bool compressed;
+    /** Width used for SVG textLength when compressed. */
+    double text_length;
 };
 
 [[nodiscard]] inline std::string svg_escape(std::string_view value) {
@@ -223,9 +240,21 @@ inline void write_svg_number(std::ostream &out, double value) {
     throw std::logic_error{"Unhandled schematic orientation"};
 }
 
-inline void write_upright_text_transform(std::ostream &out, SchematicOrientation parent_orientation,
-                                         Point anchor) {
-    const auto degrees = -orientation_degrees(parent_orientation);
+[[nodiscard]] inline double power_port_glyph_degrees(PowerPortKind kind,
+                                                     SchematicOrientation orientation) {
+    const auto degrees = orientation_degrees(orientation);
+    switch (kind) {
+    case PowerPortKind::Power:
+        return std::fmod(degrees + 90.0, 360.0);
+    case PowerPortKind::Ground:
+        return std::fmod(degrees + 270.0, 360.0);
+    }
+    throw std::logic_error{"Unhandled power port kind"};
+}
+
+inline void write_upright_text_transform_degrees(std::ostream &out, double parent_degrees,
+                                                 Point anchor) {
+    const auto degrees = -parent_degrees;
     if (std::abs(degrees) < 1e-12) {
         return;
     }
@@ -239,6 +268,11 @@ inline void write_upright_text_transform(std::ostream &out, SchematicOrientation
     out << ")\"";
 }
 
+inline void write_upright_text_transform(std::ostream &out, SchematicOrientation parent_orientation,
+                                         Point anchor) {
+    write_upright_text_transform_degrees(out, orientation_degrees(parent_orientation), anchor);
+}
+
 inline void write_css_stroke_width(std::ostream &out, double width) {
     out << "stroke-width:";
     write_svg_number(out, width);
@@ -248,6 +282,55 @@ inline void write_css_font(std::ostream &out, double size) {
     out << "font:";
     write_svg_number(out, size);
     out << "px sans-serif";
+}
+
+[[nodiscard]] inline double title_block_rendered_text_width(std::string_view text,
+                                                            double font_size) noexcept {
+    return font_size * title_block_text_width_factor * static_cast<double>(text.size());
+}
+
+[[nodiscard]] inline std::string
+abbreviate_middle_to_fit(std::string_view text, double available_width, double font_size) {
+    const auto character_width = font_size * title_block_text_width_factor;
+    if (available_width <= 0.0 || character_width <= 0.0) {
+        return {};
+    }
+
+    const auto character_limit =
+        static_cast<std::size_t>(std::floor(available_width / character_width));
+    if (text.size() <= character_limit) {
+        return std::string{text};
+    }
+    if (character_limit <= 3U) {
+        return std::string{text.substr(0U, character_limit)};
+    }
+
+    const auto retained = character_limit - 3U;
+    const auto prefix = (retained + 1U) / 2U;
+    const auto suffix = retained - prefix;
+    auto result = std::string{text.substr(0U, prefix)};
+    result += "...";
+    if (suffix != 0U) {
+        result += text.substr(text.size() - suffix);
+    }
+    return result;
+}
+
+[[nodiscard]] inline SvgTitleBlockTextFit fit_title_block_text(std::string_view text,
+                                                               double available_width) {
+    const auto font_size = schematic_svg_visual_scale.title_block_font_size;
+    const auto rendered_width = title_block_rendered_text_width(text, font_size);
+    if (rendered_width <= available_width + 1e-12) {
+        return SvgTitleBlockTextFit{std::string{text}, false, false, 0.0};
+    }
+
+    const auto scale = available_width <= 0.0 ? 0.0 : available_width / rendered_width;
+    if (scale >= title_block_min_compression_scale) {
+        return SvgTitleBlockTextFit{std::string{text}, true, true, available_width};
+    }
+
+    return SvgTitleBlockTextFit{abbreviate_middle_to_fit(text, available_width, font_size), true,
+                                false, 0.0};
 }
 
 [[nodiscard]] inline double sheet_port_body_length(std::string_view label) {
@@ -502,9 +585,14 @@ inline void write_power_port_svg(std::ostream &out, const Schematic &schematic, 
     write_svg_number(out, port.position().x());
     out << ' ';
     write_svg_number(out, port.position().y());
-    out << ") rotate(";
-    write_svg_number(out, orientation_degrees(port.orientation()));
-    out << ")\">\n";
+    out << ")";
+    const auto glyph_degrees = power_port_glyph_degrees(port.kind(), port.orientation());
+    if (std::abs(glyph_degrees) >= 1e-12) {
+        out << " rotate(";
+        write_svg_number(out, glyph_degrees);
+        out << ")";
+    }
+    out << "\">\n";
     if (port.kind() == PowerPortKind::Ground) {
         out << "      <line class=\"power-port-line\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"";
         write_svg_number(out, ground_port_stem_length);
@@ -537,7 +625,7 @@ inline void write_power_port_svg(std::ostream &out, const Schematic &schematic, 
     out << "      <text class=\"power-port-label\" x=\"0\" y=\"";
     write_svg_number(out, label_y);
     out << "\"";
-    write_upright_text_transform(out, port.orientation(), Point{0.0, label_y});
+    write_upright_text_transform_degrees(out, glyph_degrees, Point{0.0, label_y});
     const auto port_label = port.label().value_or(net.name().value());
     out << ">" << svg_escape(port_label) << "</text>\n";
     out << "    </g>\n";
@@ -737,21 +825,41 @@ inline void write_coordinate_zones_svg(std::ostream &out, const SheetMetadata &m
     out << "    </g>\n";
 }
 
-inline void write_title_block_row_svg(std::ostream &out, std::size_t row, std::string_view key,
-                                      std::string_view value) {
-    const auto text_y = (static_cast<double>(row) * title_block_row_height) + 4.2;
-    out << "      <text class=\"title-block-label\" x=\"2\" y=\"";
-    write_svg_number(out, text_y);
-    out << "\">" << svg_escape(key) << "</text>\n";
-    out << "      <text class=\"title-block-value";
-    if (row == 0U) {
-        out << " sheet-title";
-    }
-    out << "\" x=\"";
-    write_svg_number(out, title_block_label_width + 2.0);
+inline void write_title_block_text_svg(std::ostream &out, std::string_view css_class, double x,
+                                       double y, std::string_view text, double available_width) {
+    const auto fit = fit_title_block_text(text, available_width);
+
+    out << "      <text class=\"" << css_class << "\" x=\"";
+    write_svg_number(out, x);
     out << "\" y=\"";
-    write_svg_number(out, text_y);
-    out << "\">" << svg_escape(value) << "</text>\n";
+    write_svg_number(out, y);
+    out << "\"";
+    if (fit.fitted) {
+        out << " data-full-text=\"" << svg_escape(text) << "\"";
+    }
+    if (fit.compressed) {
+        out << " textLength=\"";
+        write_svg_number(out, fit.text_length);
+        out << "\" lengthAdjust=\"spacingAndGlyphs\"";
+    }
+    out << ">" << svg_escape(fit.text) << "</text>\n";
+}
+
+inline void write_title_block_row_svg(std::ostream &out, const SvgRect &rect, std::size_t row,
+                                      std::string_view key, std::string_view value) {
+    const auto text_y = (static_cast<double>(row) * title_block_row_height) + 4.2;
+    const auto label_available_width =
+        std::max(0.0, std::min(title_block_label_width, rect.width) - title_block_label_x - 1.0);
+    const auto value_available_width =
+        std::max(0.0, rect.width - title_block_value_x - title_block_right_padding);
+    write_title_block_text_svg(out, "title-block-label", title_block_label_x, text_y, key,
+                               label_available_width);
+    auto value_class = std::string{"title-block-value"};
+    if (row == 0U) {
+        value_class += " sheet-title";
+    }
+    write_title_block_text_svg(out, value_class, title_block_value_x, text_y, value,
+                               value_available_width);
 }
 
 inline void write_title_block_svg(std::ostream &out, SheetId sheet_id,
@@ -785,10 +893,10 @@ inline void write_title_block_svg(std::ostream &out, SheetId sheet_id,
         out << "\"/>\n";
     }
 
-    write_title_block_row_svg(out, 0U, "Title", metadata.title());
+    write_title_block_row_svg(out, rect, 0U, "Title", metadata.title());
     for (std::size_t index = 0; index < metadata.title_block().size(); ++index) {
         const auto &field = metadata.title_block()[index];
-        write_title_block_row_svg(out, index + 1U, field.key(), field.value());
+        write_title_block_row_svg(out, rect, index + 1U, field.key(), field.value());
     }
     out << "    </g>\n";
 }
@@ -854,17 +962,19 @@ inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
     out << ";fill:#57534e;text-anchor:start;font-weight:600}"
            ".wire-run{fill:none;stroke:#111;";
     write_css_stroke_width(out, scale.wire_stroke_width);
-    out << "}.net-label{";
+    out << ";stroke-linecap:round;stroke-linejoin:round}.net-label{";
     write_css_font(out, scale.net_label_font_size);
     out << ";fill:#111;text-anchor:start}"
            ".junction{fill:#111;stroke:none}"
            ".power-port-line,.ground-bar{stroke:#111;";
     write_css_stroke_width(out, scale.tag_port_stroke_width);
-    out << "}.no-connect-line{stroke:#111;";
+    out << ";stroke-linecap:round;stroke-linejoin:round}.no-connect-line{stroke:#111;";
     write_css_stroke_width(out, scale.no_connect_stroke_width);
-    out << "}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;";
+    out << ";stroke-linecap:round}"
+           ".power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;";
     write_css_stroke_width(out, scale.tag_port_stroke_width);
-    out << "}.power-port-label,.sheet-port-label{";
+    out << ";stroke-linejoin:round}";
+    out << ".power-port-label,.sheet-port-label{";
     write_css_font(out, scale.tag_port_label_font_size);
     out << ";fill:#111;text-anchor:middle}"
            ".symbol-field{";
@@ -872,7 +982,7 @@ inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
     out << ";fill:#111;text-anchor:middle}"
            ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;";
     write_css_stroke_width(out, scale.symbol_stroke_width);
-    out << "}.symbol-text{";
+    out << ";stroke-linecap:round;stroke-linejoin:round}.symbol-text{";
     write_css_font(out, scale.symbol_text_font_size);
     out << ";fill:#111;text-anchor:middle}";
     if (options.debug_overlays) {

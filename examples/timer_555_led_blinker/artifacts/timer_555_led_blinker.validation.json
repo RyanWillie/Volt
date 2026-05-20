@@ -1,8 +1,59 @@
 {
-  "diagnostics": [],
+  "diagnostics": [
+    {
+      "code": "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
+      "entities": [
+        {
+          "index": 0,
+          "kind": "sheet"
+        }
+      ],
+      "message": "Schematic title-block value text for 'File' exceeds the rendered column width",
+      "severity": "warning",
+      "source": "schematic_readability"
+    }
+  ],
+  "reports": {
+    "logical_design": {
+      "diagnostics": [],
+      "summary": {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 0
+      }
+    },
+    "schematic_readability": {
+      "diagnostics": [
+        {
+          "code": "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
+          "entities": [
+            {
+              "index": 0,
+              "kind": "sheet"
+            }
+          ],
+          "message": "Schematic title-block value text for 'File' exceeds the rendered column width",
+          "severity": "warning"
+        }
+      ],
+      "summary": {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 1
+      }
+    },
+    "schematic_readiness": {
+      "diagnostics": [],
+      "summary": {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 0
+      }
+    }
+  },
   "summary": {
     "errors": 0,
     "infos": 0,
-    "warnings": 0
+    "warnings": 1
   }
 }
