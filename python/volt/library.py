@@ -740,6 +740,7 @@ def _schematic_block_symbol_spec(
             SchematicSymbolSpec.text(
                 center_label,
                 (body_left + body_width / 2, body_top + body_height / 2),
+                baseline="middle",
             )
         )
     if bottom_label is not None:
@@ -752,6 +753,7 @@ def _schematic_block_symbol_spec(
                     + layouts["Down"].lead_length
                     + layouts["Down"].pin_label_offset,
                 ),
+                baseline="top",
             )
         )
 
@@ -780,6 +782,7 @@ def _schematic_block_symbol_spec(
                         body=body,
                         offset=layouts[pin.side].pin_label_offset,
                     ),
+                    **_schematic_block_pin_label_text_style(pin.side),
                 )
             )
         if pin_numbers:
@@ -791,6 +794,7 @@ def _schematic_block_symbol_spec(
                         body=body,
                         offset=layouts[pin.side].pin_number_offset,
                     ),
+                    **_schematic_block_pin_number_text_style(pin.side),
                 )
             )
 
@@ -966,12 +970,32 @@ def _schematic_block_pin_number_point(
 ) -> tuple[float, float]:
     x, y = body
     if side == "Left":
-        return (x - offset, y)
+        return (x - offset, y + offset)
     if side == "Right":
-        return (x + offset, y)
+        return (x + offset, y + offset)
     if side == "Up":
-        return (x, y - offset)
-    return (x, y + offset)
+        return (x + offset, y - offset)
+    return (x + offset, y + offset)
+
+
+def _schematic_block_pin_label_text_style(side: str) -> dict[str, str]:
+    if side == "Left":
+        return {"align": "start", "baseline": "middle"}
+    if side == "Right":
+        return {"align": "end", "baseline": "middle"}
+    if side == "Up":
+        return {"baseline": "top"}
+    return {"baseline": "bottom"}
+
+
+def _schematic_block_pin_number_text_style(side: str) -> dict[str, str]:
+    if side == "Left":
+        return {"align": "end", "baseline": "bottom"}
+    if side == "Right":
+        return {"align": "start", "baseline": "bottom"}
+    if side == "Up":
+        return {"align": "start", "baseline": "bottom"}
+    return {"align": "start", "baseline": "top"}
 
 
 def _optional_symbol_text(value: str | None, label: str) -> str | None:

@@ -311,12 +311,37 @@ def test_python_schematic_generic_ic_symbol_builder_places_stable_pin_anchors():
         "text": "555",
         "anchor": {"x": 35.0, "y": 25.0},
         "orientation": "Right",
+        "vertical_alignment": "Middle",
     } in primitives
     assert {
         "type": "text",
         "text": "timer",
         "anchor": {"x": 35.0, "y": 64.0},
         "orientation": "Right",
+        "vertical_alignment": "Top",
+    } in primitives
+    assert {
+        "type": "text",
+        "text": "TRIG",
+        "anchor": {"x": 14.0, "y": 20.0},
+        "orientation": "Right",
+        "horizontal_alignment": "Start",
+        "vertical_alignment": "Middle",
+    } in primitives
+    assert {
+        "type": "text",
+        "text": "OUT",
+        "anchor": {"x": 56.0, "y": 20.0},
+        "orientation": "Right",
+        "horizontal_alignment": "End",
+        "vertical_alignment": "Middle",
+    } in primitives
+    assert {
+        "type": "text",
+        "text": "RESET",
+        "anchor": {"x": 30.0, "y": 4.0},
+        "orientation": "Right",
+        "vertical_alignment": "Top",
     } in primitives
     assert timer.TRIG.point == (40.0, 40.0)
     assert timer.OUT.point == (110.0, 40.0)
@@ -453,30 +478,62 @@ def test_python_schematic_generic_block_builder_allows_per_side_layout_and_pin_n
         "text": "IN",
         "anchor": {"x": 19.0, "y": 6.0},
         "orientation": "Right",
+        "horizontal_alignment": "Start",
+        "vertical_alignment": "Middle",
     } in text_primitives
     assert {
         "type": "text",
         "text": "11",
-        "anchor": {"x": 10.0, "y": 6.0},
+        "anchor": {"x": 10.0, "y": 10.0},
         "orientation": "Right",
+        "horizontal_alignment": "End",
+        "vertical_alignment": "Bottom",
+    } in text_primitives
+    assert {
+        "type": "text",
+        "text": "OUT",
+        "anchor": {"x": 52.0, "y": 8.0},
+        "orientation": "Right",
+        "horizontal_alignment": "End",
+        "vertical_alignment": "Middle",
     } in text_primitives
     assert {
         "type": "text",
         "text": "21",
-        "anchor": {"x": 57.0, "y": 8.0},
+        "anchor": {"x": 57.0, "y": 11.0},
         "orientation": "Right",
+        "horizontal_alignment": "Start",
+        "vertical_alignment": "Bottom",
+    } in text_primitives
+    assert {
+        "type": "text",
+        "text": "VDD",
+        "anchor": {"x": 30.0, "y": 3.0},
+        "orientation": "Right",
+        "vertical_alignment": "Top",
     } in text_primitives
     assert {
         "type": "text",
         "text": "31",
-        "anchor": {"x": 30.0, "y": -6.0},
+        "anchor": {"x": 36.0, "y": -6.0},
         "orientation": "Right",
+        "horizontal_alignment": "Start",
+        "vertical_alignment": "Bottom",
+    } in text_primitives
+    assert {
+        "type": "text",
+        "text": "GND",
+        "anchor": {"x": 38.0, "y": 32.0},
+        "orientation": "Right",
+        "vertical_alignment": "Bottom",
     } in text_primitives
     assert {
         "type": "text",
         "text": "41",
-        "anchor": {"x": 38.0, "y": 41.0},
+        "anchor": {"x": 43.0, "y": 41.0},
         "orientation": "Right",
+        "horizontal_alignment": "Start",
+        "vertical_alignment": "Top",
     } in text_primitives
 
 
