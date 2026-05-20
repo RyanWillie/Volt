@@ -110,7 +110,7 @@ if(VOLT_BUILD_TESTS)
 
         add_test(
             NAME python.${test_name}
-            COMMAND ${Python3_EXECUTABLE} -m pytest -q ${test_file}
+            COMMAND ${Python3_EXECUTABLE} -m pytest -q -p no:cacheprovider ${test_file}
         )
         set_tests_properties(
             python.${test_name}

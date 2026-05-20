@@ -142,6 +142,10 @@ def check_python_pytest_harness() -> None:
         "Python tests must run pytest through CMake's selected interpreter",
     )
     require(
+        "-p no:cacheprovider" in python_cmake,
+        "CTest Python pytest entries must not share pytest cache state across parallel processes",
+    )
+    require(
         "PYTHONPATH=path_list_prepend:${PROJECT_BINARY_DIR}/python" in python_cmake,
         "Python pytest entries must import the built Python package from the build tree",
     )
