@@ -1418,6 +1418,66 @@ def test_python_schematic_power_and_ground_require_explicit_net_for_non_pin_anch
 
         assert schematic.to_json() == before
 
+
+def test_python_schematic_terminal_marker_is_generic_and_net_bound():
+    design = volt.Design("schematic-generic-terminal-marker")
+    sig = design.net("SIG")
+    other = design.net("OTHER")
+    probe = design.test_point(ref="TP1")
+    sig += probe["TP"]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=10) as drawing:
+        placed = drawing.place(probe)
+        inferred = drawing.terminal(at=placed.TP, kind="Ground")
+        explicit = drawing.terminal("LOCAL", net=sig, at=(20, 10), kind="Power", orient="Right")
+        before_invalid = schematic.to_json()
+
+        try:
+            drawing.terminal("FLOATING", at=(30, 10))
+        except ValueError as error:
+            assert "terminal marker" in str(error)
+            assert "non-pin anchor" in str(error)
+        else:
+            raise AssertionError("terminal markers on plain coordinates must require explicit net")
+
+        try:
+            drawing.terminal(sig, net=other, at=(40, 10))
+        except ValueError as error:
+            assert "either first or as net=" in str(error)
+        else:
+            raise AssertionError("terminal marker nets must not be passed twice")
+
+        assert schematic.to_json() == before_invalid
+
+    projection = json.loads(schematic.to_json())
+
+    assert design.to_json() == logical_before
+    assert inferred.net.index == sig.index
+    assert explicit.net.index == sig.index
+    assert projection["power_ports"] == [
+        {
+            "id": "power_port:0",
+            "sheet": "sheet:0",
+            "net": f"net:{sig.index}",
+            "kind": "Ground",
+            "position": {"x": 0.0, "y": 0.0},
+            "orientation": "Down",
+        },
+        {
+            "id": "power_port:1",
+            "sheet": "sheet:0",
+            "net": f"net:{sig.index}",
+            "kind": "Power",
+            "position": {"x": 20.0, "y": 10.0},
+            "orientation": "Right",
+            "label": "LOCAL",
+        },
+    ]
+
+
 def test_python_schematic_explicit_wire_points_are_normalized_once():
     design = volt.Design("schematic-wire-normalization")
     vcc = design.net("VCC", kind="power")

@@ -1617,6 +1617,24 @@ class PyCircuit {
     }
 
     [[nodiscard]] std::size_t
+    add_schematic_terminal_marker(std::size_t sheet, std::size_t net, const std::string &kind,
+                                  double x, double y, const std::string &orientation,
+                                  std::optional<std::size_t> authored_region,
+                                  std::optional<std::string> label) {
+        require_finite(x, "Schematic coordinates must be finite");
+        require_finite(y, "Schematic coordinates must be finite");
+
+        auto &projection = schematic_projection();
+        return projection
+            .add_terminal_marker(sheet_id(sheet),
+                                 volt::PowerPort{net_id(net), power_port_kind_from_string(kind),
+                                                 volt::Point{x, y},
+                                                 schematic_orientation_from_string(orientation),
+                                                 authored_region, std::move(label)})
+            .index();
+    }
+
+    [[nodiscard]] std::size_t
     add_schematic_no_connect_marker(std::size_t sheet, std::size_t pin, double x, double y,
                                     const std::string &orientation, const std::string &reason,
                                     std::optional<std::size_t> authored_region) {
@@ -1886,6 +1904,10 @@ PYBIND11_MODULE(_volt, module) {
         .def("add_schematic_power_port", &PyCircuit::add_schematic_power_port, py::arg("sheet"),
              py::arg("net"), py::arg("kind"), py::arg("x"), py::arg("y"), py::arg("orientation"),
              py::arg("authored_region") = std::nullopt, py::arg("label") = std::nullopt)
+        .def("add_schematic_terminal_marker", &PyCircuit::add_schematic_terminal_marker,
+             py::arg("sheet"), py::arg("net"), py::arg("kind"), py::arg("x"), py::arg("y"),
+             py::arg("orientation"), py::arg("authored_region") = std::nullopt,
+             py::arg("label") = std::nullopt)
         .def("add_schematic_no_connect_marker", &PyCircuit::add_schematic_no_connect_marker,
              py::arg("sheet"), py::arg("pin"), py::arg("x"), py::arg("y"), py::arg("orientation"),
              py::arg("reason") = "", py::arg("authored_region") = std::nullopt)

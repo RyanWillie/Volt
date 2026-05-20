@@ -153,7 +153,7 @@ def build_schematic(
         led_cathode = drawing.node(led_anode.right(30))
         timer_vcc = drawing.node(timer.VCC.up(24))
         reset_vcc = drawing.node(timer.RESET.up(24))
-        timer_ground = drawing.node(timer.GND.down(24))
+        timer_ground = drawing.node(timer.GND.down(34))
         led_ground = drawing.node(led_cathode.down(18))
 
         ra = (
@@ -213,20 +213,12 @@ def build_schematic(
         drawing.local_label(
             nets["OUT"], at=led_resistor.start.up(16), side="Up", offset=10, orient="Right"
         )
-        drawing.local_label(nets["+5V"], at=timer_vcc.up(6), side="Up", offset=6, orient="Right")
-        drawing.local_label(
-            nets["+5V"], at=timing_vcc_tag.up(6), side="Up", offset=6, orient="Right"
-        )
-        drawing.local_label(
-            nets["GND"], at=timer_ground.down(6), side="Down", offset=8, orient="Right"
-        )
-        drawing.local_label(
-            nets["GND"], at=timing_ground_tag.down(6), side="Down", offset=8, orient="Right"
-        )
-        drawing.local_label(
-            nets["GND"], at=control_ground_tag.down(6), side="Down", offset=8, orient="Right"
-        )
-        drawing.local_label(nets["GND"], at=led_ground.down(6), side="Down", offset=8, orient="Right")
+        drawing.power("+5V", net=nets["+5V"], at=timer_vcc, orient="Up")
+        drawing.power("+5V", net=nets["+5V"], at=timing_vcc_tag, orient="Up")
+        drawing.ground(net=nets["GND"], at=timer_ground, orient="Down")
+        drawing.ground(net=nets["GND"], at=timing_ground_tag, orient="Down")
+        drawing.ground(net=nets["GND"], at=control_ground_tag, orient="Down")
+        drawing.ground(net=nets["GND"], at=led_ground, orient="Down")
 
     return sheet
 
