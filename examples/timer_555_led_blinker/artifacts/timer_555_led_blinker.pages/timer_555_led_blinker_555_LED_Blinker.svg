@@ -118,15 +118,16 @@
     </g>
     </g>
     <g class="layer layer-wires">
-    <polyline class="wire-run" data-net="net:0" points="190,70 190,46"/>
     <polyline class="wire-run" data-net="net:0" points="170,70 170,46"/>
-    <polyline class="wire-run" data-net="net:0" points="92,62 92,44"/>
     <polyline class="wire-run" data-net="net:2" points="140,90 92,90"/>
-    <polyline class="wire-run" data-net="net:3" points="140,100 140,110"/>
-    <polyline class="wire-run" data-net="net:3" points="140,110 92,110"/>
     <polyline class="wire-run" data-net="net:4" points="210,110 250,110"/>
     <polyline class="wire-run" data-net="net:5" points="210,100 244,100"/>
     <polyline class="wire-run" data-net="net:6" points="264,100 269,100"/>
+    <polyline class="wire-run" data-net="net:3" points="140,100 140,110 92,110"/>
+    <polyline class="wire-run" data-net="net:3" points="92,110 74,110"/>
+    <polyline class="wire-run" data-net="net:5" points="244,100 244,84"/>
+    <polyline class="wire-run" data-net="net:0" points="190,70 190,46"/>
+    <polyline class="wire-run" data-net="net:0" points="92,62 92,44"/>
     <polyline class="wire-run" data-net="net:1" points="180,130 180,164"/>
     <polyline class="wire-run" data-net="net:1" points="92,144 92,162"/>
     <polyline class="wire-run" data-net="net:1" points="250,148 250,166"/>

@@ -65,6 +65,26 @@ class SchematicAnchor:
     def down(self, distance: float) -> SchematicAnchor:
         return self.offset(dy=_coordinate(distance))
 
+    def tox(self, anchor_or_x) -> SchematicAnchor:
+        """Return an anchor at this y coordinate and the target x coordinate."""
+        return SchematicAnchor(
+            (
+                _schematic_anchor_axis_target(anchor_or_x, self._design, "x"),
+                self.y,
+            ),
+            design=self._design,
+        )
+
+    def toy(self, anchor_or_y) -> SchematicAnchor:
+        """Return an anchor at this x coordinate and the target y coordinate."""
+        return SchematicAnchor(
+            (
+                self.x,
+                _schematic_anchor_axis_target(anchor_or_y, self._design, "y"),
+            ),
+            design=self._design,
+        )
+
     def __iter__(self):
         return iter(self._point)
 
@@ -475,6 +495,31 @@ class SchematicSignalStub:
 
     def __repr__(self) -> str:
         return f"SchematicSignalStub(net={self.net.name!r}, side={self.side!r})"
+
+
+class SchematicTerminalStub:
+    """Read-only handle to a short wire ending in a terminal marker projection."""
+
+    def __init__(
+        self,
+        schematic: Schematic,
+        *,
+        net: Net,
+        side: str,
+        wire: SchematicWire,
+        port: SchematicPort,
+        start: tuple[float, float],
+        end: tuple[float, float],
+    ):
+        self.net = net
+        self.side = side
+        self.wire = wire
+        self.port = port
+        self.start = SchematicAnchor(start, design=schematic._design)
+        self.end = SchematicAnchor(end, design=schematic._design)
+
+    def __repr__(self) -> str:
+        return f"SchematicTerminalStub(net={self.net.name!r}, side={self.side!r})"
 
 
 class SchematicSymbolField:
@@ -1048,6 +1093,30 @@ class SchematicDrawing:
             _authored_region=self._authored_region,
         )
 
+    def terminal_stub(
+        self,
+        name_or_net: str | Net | None = None,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        net: Net | None = None,
+        kind: str = "Power",
+        side: str | None = None,
+        length: float = 8,
+        orient: str | None = None,
+    ) -> SchematicTerminalStub:
+        """Draw a short wire from an anchor to a terminal marker on an existing net."""
+        self._flush_pending()
+        return self._schematic.terminal_stub(
+            name_or_net,
+            at=self._here if at is None else self._point_arg(at),
+            net=net,
+            kind=kind,
+            side=side,
+            length=length,
+            orient=orient,
+            _authored_region=self._authored_region,
+        )
+
     def power(
         self,
         name: str,
@@ -1078,6 +1147,28 @@ class SchematicDrawing:
             _authored_region=self._authored_region,
         )
 
+    def power_stub(
+        self,
+        name: str,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        net: Net | None = None,
+        side: str = "Up",
+        length: float = 8,
+        orient: str = "Up",
+    ) -> SchematicTerminalStub:
+        """Draw a short wire from an anchor to a power marker on an existing net."""
+        self._flush_pending()
+        return self._schematic.power_stub(
+            name,
+            at=self._here if at is None else self._point_arg(at),
+            net=net,
+            side=side,
+            length=length,
+            orient=orient,
+            _authored_region=self._authored_region,
+        )
+
     def ground(
         self,
         name: str | None = None,
@@ -1104,6 +1195,28 @@ class SchematicDrawing:
             name,
             at=self._here if at is None else self._point_arg(at),
             net=net,
+            orient=orient,
+            _authored_region=self._authored_region,
+        )
+
+    def ground_stub(
+        self,
+        name: str | None = None,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
+        net: Net | None = None,
+        side: str = "Down",
+        length: float = 8,
+        orient: str = "Down",
+    ) -> SchematicTerminalStub:
+        """Draw a short wire from an anchor to a ground marker on an existing net."""
+        self._flush_pending()
+        return self._schematic.ground_stub(
+            name,
+            at=self._here if at is None else self._point_arg(at),
+            net=net,
+            side=side,
+            length=length,
             orient=orient,
             _authored_region=self._authored_region,
         )
@@ -2393,6 +2506,64 @@ class Schematic:
             _authored_region=_authored_region,
         )
 
+    def terminal_stub(
+        self,
+        name_or_net: str | Net | None = None,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        kind: str = "Power",
+        side: str | None = None,
+        length: float = 8,
+        orient: str | None = None,
+        _authored_region: int | None = None,
+    ) -> SchematicTerminalStub:
+        """Project a short existing-net wire ending in a terminal marker."""
+        marker_kind = _terminal_marker_kind(kind)
+        side_orientation = _signal_stub_side(side, at)
+        marker_net, name = _terminal_marker_net_and_name(
+            self._design,
+            name_or_net,
+            at,
+            net,
+            schematic=self,
+            action="terminal stub",
+        )
+        start = _schematic_point_for_authoring(
+            at,
+            design=self._design,
+            schematic=self,
+            action="terminal stub",
+        )
+        end = _offset_schematic_point(
+            start,
+            side_orientation,
+            _positive_coordinate(length, "Terminal stub lengths"),
+        )
+        wire = self._add_wire(
+            marker_net,
+            (start, end),
+            route_intent="Direct",
+            _authored_region=_authored_region,
+        )
+        port = self._power_port(
+            name,
+            net=marker_net,
+            at=end,
+            orient=_terminal_marker_orientation(marker_kind, orient),
+            kind=marker_kind,
+            _authored_region=_authored_region,
+        )
+        return SchematicTerminalStub(
+            self,
+            net=marker_net,
+            side=side_orientation,
+            wire=wire,
+            port=port,
+            start=start,
+            end=end,
+        )
+
     def power(
         self,
         name: str,
@@ -2424,6 +2595,29 @@ class Schematic:
             _authored_region=_authored_region,
         )
 
+    def power_stub(
+        self,
+        name: str,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        side: str = "Up",
+        length: float = 8,
+        orient: str = "Up",
+        _authored_region: int | None = None,
+    ) -> SchematicTerminalStub:
+        """Project a short existing-net wire ending in a power marker."""
+        return self.terminal_stub(
+            name,
+            at=at,
+            net=net,
+            kind="Power",
+            side=side,
+            length=length,
+            orient=orient,
+            _authored_region=_authored_region,
+        )
+
     def ground(
         self,
         name: str | None = None,
@@ -2451,6 +2645,29 @@ class Schematic:
             at=at,
             net=net,
             kind="Ground",
+            orient=orient,
+            _authored_region=_authored_region,
+        )
+
+    def ground_stub(
+        self,
+        name: str | None = None,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        side: str = "Down",
+        length: float = 8,
+        orient: str = "Down",
+        _authored_region: int | None = None,
+    ) -> SchematicTerminalStub:
+        """Project a short existing-net wire ending in a ground marker."""
+        return self.terminal_stub(
+            name,
+            at=at,
+            net=net,
+            kind="Ground",
+            side=side,
+            length=length,
             orient=orient,
             _authored_region=_authored_region,
         )
@@ -2891,6 +3108,29 @@ class SchematicRegion:
             _authored_region=self._index,
         )
 
+    def terminal_stub(
+        self,
+        name_or_net: str | Net | None = None,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        kind: str = "Power",
+        side: str | None = None,
+        length: float = 8,
+        orient: str | None = None,
+    ) -> SchematicTerminalStub:
+        """Draw a short region-local wire to a terminal marker."""
+        return self._sheet.terminal_stub(
+            name_or_net,
+            at=self._local_point(at),
+            net=net,
+            kind=kind,
+            side=side,
+            length=length,
+            orient=orient,
+            _authored_region=self._index,
+        )
+
     def power(
         self,
         name: str,
@@ -2912,6 +3152,27 @@ class SchematicRegion:
             _authored_region=self._index,
         )
 
+    def power_stub(
+        self,
+        name: str,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        side: str = "Up",
+        length: float = 8,
+        orient: str = "Up",
+    ) -> SchematicTerminalStub:
+        """Draw a short region-local wire to a power marker."""
+        return self._sheet.power_stub(
+            name,
+            at=self._local_point(at),
+            net=net,
+            side=side,
+            length=length,
+            orient=orient,
+            _authored_region=self._index,
+        )
+
     def ground(
         self,
         name: str | None = None,
@@ -2929,6 +3190,27 @@ class SchematicRegion:
             name,
             at=self._local_point(at),
             net=net,
+            orient=orient,
+            _authored_region=self._index,
+        )
+
+    def ground_stub(
+        self,
+        name: str | None = None,
+        *,
+        at: tuple[float, float] | SchematicAnchor | SchematicPort,
+        net: Net | None = None,
+        side: str = "Down",
+        length: float = 8,
+        orient: str = "Down",
+    ) -> SchematicTerminalStub:
+        """Draw a short region-local wire to a ground marker."""
+        return self._sheet.ground_stub(
+            name,
+            at=self._local_point(at),
+            net=net,
+            side=side,
+            length=length,
             orient=orient,
             _authored_region=self._index,
         )
@@ -3952,6 +4234,22 @@ def _schematic_axis_target(
     point = _schematic_point_for_authoring(
         value, design=design, schematic=schematic, action=action
     )
+    return point[0] if axis == "x" else point[1]
+
+
+def _schematic_anchor_axis_target(value, design: Design | None, axis: str) -> float:
+    if isinstance(value, bool):
+        raise TypeError("Schematic coordinates must be numbers")
+    if isinstance(value, (int, float)):
+        return _coordinate(value)
+    if design is not None:
+        point = _schematic_point(value, design=design)
+    elif isinstance(value, SchematicPort):
+        point = value.pin.point
+    elif isinstance(value, SchematicAnchor):
+        point = value.point
+    else:
+        point = _schematic_point_tuple(value)
     return point[0] if axis == "x" else point[1]
 
 

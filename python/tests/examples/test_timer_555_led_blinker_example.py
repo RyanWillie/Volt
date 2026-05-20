@@ -139,7 +139,10 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     for definition_name, texts in symbol_texts_by_definition.items():
         if definition_name != "volt.examples.timer_555_led_blinker:NE555":
             assert texts == []
-    assert {wire["route_intent"] for wire in schematic["wire_runs"]} == {"Orthogonal"}
+    assert {wire["route_intent"] for wire in schematic["wire_runs"]} == {
+        "Direct",
+        "Orthogonal",
+    }
     assert schematic["sheet_ports"] == []
     assert schematic["no_connect_markers"] == []
     assert len(schematic["symbol_instances"]) == 7
@@ -240,11 +243,16 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
 
     assert ".two_terminal(" in source
     assert ".between(" in source
-    assert "drawing.node(" in source
+    assert ".tox(" in source
+    assert "drawing.ortho_lines(" in source
+    assert "drawing.signal_stub(" in source
+    assert "drawing.power_stub(" in source
+    assert "drawing.ground_stub(" in source
     assert "drawing.connect(nets[" in source
     assert "drawing.junction(nets[" in source
+    assert "drawing.node(" not in source
+    assert source.count("drawing.connect(nets[") == 1
     assert "drawing.R(" not in source
     assert "drawing.C(" not in source
     assert "drawing.LED(" not in source
-    assert "drawing.ortho_lines(" not in source
     assert "ofst=" not in source
