@@ -1305,6 +1305,73 @@ TEST_CASE("Schematic readability reports duplicate visible reference labels on a
                                                volt::EntityRef::component(second_component)});
 }
 
+TEST_CASE("Schematic readability reports duplicate legacy reference labels on a sheet") {
+    volt::Circuit circuit;
+    const auto first_component = add_resistor(circuit, "R1");
+    const auto second_component = add_resistor(circuit, "R2");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto first_instance = schematic.place_symbol(
+        sheet,
+        volt::SymbolInstance{symbol, first_component, volt::Point{50.0, 50.0},
+                             volt::SchematicOrientation::Right, std::nullopt, std::string{"R1"}});
+    const auto second_instance = schematic.place_symbol(
+        sheet,
+        volt::SymbolInstance{symbol, second_component, volt::Point{100.0, 50.0},
+                             volt::SchematicOrientation::Right, std::nullopt, std::string{"R1"}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DUPLICATE_REFERENCE_LABEL");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::symbol_instance(first_instance),
+                                               volt::EntityRef::component(first_component),
+                                               volt::EntityRef::symbol_instance(second_instance),
+                                               volt::EntityRef::component(second_component)});
+}
+
+TEST_CASE("Schematic readability reports non-professional legacy reference labels") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit, "R1");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{50.0, 50.0},
+                                    volt::SchematicOrientation::Right, std::nullopt,
+                                    std::string{"RRESET"}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(report_has_code_and_entities(report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL",
+                                       std::vector{volt::EntityRef::sheet(sheet),
+                                                   volt::EntityRef::symbol_instance(instance),
+                                                   volt::EntityRef::component(component)}));
+}
+
+TEST_CASE("Schematic readability prefers explicit reference fields over legacy instance labels") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit, "R1");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{50.0, 50.0},
+                                    volt::SchematicOrientation::Right, std::nullopt,
+                                    std::string{"RRESET"}});
+    static_cast<void>(schematic.add_symbol_field(
+        sheet, volt::SymbolField{instance, "reference", "R1", volt::Point{50.0, 38.0}}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(diagnostic_count(report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL") == 0U);
+}
+
 TEST_CASE("Schematic readability reports non-professional visible reference labels") {
     struct Placement {
         std::string reference;

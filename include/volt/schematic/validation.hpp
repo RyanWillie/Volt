@@ -470,6 +470,22 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
                        true);
 }
 
+[[nodiscard]] inline bool symbol_instance_has_reference_field(const Schematic &schematic,
+                                                              SymbolInstanceId instance_id) {
+    for (std::size_t index = 0; index < schematic.symbol_field_count(); ++index) {
+        const auto &field = schematic.symbol_field(SymbolFieldId{index});
+        if (field.symbol_instance() == instance_id && field.name() == "reference") {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] inline Point legacy_reference_field_position(const SymbolInstance &instance) {
+    return transform_schematic_point(Point{0.0, -12.0}, instance.position(),
+                                     instance.orientation());
+}
+
 [[nodiscard]] inline SchematicBounds symbol_instance_bounds(const Schematic &schematic,
                                                             SymbolInstanceId id) {
     const auto &instance = schematic.symbol_instance(id);
@@ -480,6 +496,13 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
     }
     for (const auto &primitive : symbol.primitives()) {
         include_bounds(bounds, symbol_primitive_bounds(primitive, instance));
+    }
+    if (instance.reference_label().has_value() &&
+        !symbol_instance_has_reference_field(schematic, id)) {
+        include_bounds(bounds,
+                       text_bounds(legacy_reference_field_position(instance),
+                                   SchematicOrientation::Right, instance.reference_label().value(),
+                                   symbol_field_rendered_font_size, true));
     }
     return bounds;
 }
@@ -1358,26 +1381,38 @@ inline void validate_visible_reference_labels(const Schematic &schematic, SheetI
     };
 
     auto references = std::vector<VisibleReference>{};
-    references.reserve(sheet.symbol_fields().size());
-    for (const auto field_id : sheet.symbol_fields()) {
-        const auto &field = schematic.symbol_field(field_id);
-        if (field.name() != "reference") {
-            continue;
-        }
-        const auto &instance = schematic.symbol_instance(field.symbol_instance());
-        references.push_back(
-            VisibleReference{field.symbol_instance(), instance.component(), field.value()});
+    references.reserve(sheet.symbol_fields().size() + sheet.symbol_instances().size());
+    const auto record_visible_reference = [&](SymbolInstanceId instance_id, ComponentId component,
+                                              std::string_view label) {
+        references.push_back(VisibleReference{instance_id, component, label});
         if (!visible_reference_label_looks_conventional(references.back().label)) {
             report.add(Diagnostic{
                 Severity::Warning,
                 DiagnosticCode{"SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL"},
                 "Visible schematic reference label '" + std::string{references.back().label} +
                     "' does not look like a conventional EDA reference designator",
-                std::vector{EntityRef::sheet(sheet_id),
-                            EntityRef::symbol_instance(field.symbol_instance()),
-                            EntityRef::component(instance.component())},
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::symbol_instance(instance_id),
+                            EntityRef::component(component)},
             });
         }
+    };
+
+    for (const auto field_id : sheet.symbol_fields()) {
+        const auto &field = schematic.symbol_field(field_id);
+        if (field.name() != "reference") {
+            continue;
+        }
+        const auto &instance = schematic.symbol_instance(field.symbol_instance());
+        record_visible_reference(field.symbol_instance(), instance.component(), field.value());
+    }
+    for (const auto instance_id : sheet.symbol_instances()) {
+        const auto &instance = schematic.symbol_instance(instance_id);
+        if (!instance.reference_label().has_value() ||
+            symbol_instance_has_reference_field(schematic, instance_id)) {
+            continue;
+        }
+        record_visible_reference(instance_id, instance.component(),
+                                 instance.reference_label().value());
     }
 
     auto reported = std::vector<bool>(references.size(), false);
