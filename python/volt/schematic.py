@@ -1014,6 +1014,30 @@ class SchematicDrawing:
         kind: str = "Power",
         orient: str | None = None,
     ) -> SchematicPort:
+        """Place a generic one-terminal marker (power/ground symbol) on an existing net.
+
+        Terminal markers are schematic presentation entities that visualize power, ground,
+        or other single-connection net endpoints. They do not create or modify logical nets.
+
+        Args:
+            name_or_net: Display label, Net handle, or None. If a Net is provided, its name
+                is used as the label. If None, the label is inferred from the net parameter
+                or anchor net.
+            at: Placement anchor. Pin or port anchors can infer the net if not explicitly
+                provided. Coordinate tuples require an explicit net parameter.
+            net: Explicit net binding. Cannot be combined with Net-typed name_or_net.
+            kind: Marker visual style, either "Power" or "Ground" (case-insensitive).
+            orient: Marker orientation ("Up", "Down", "Left", "Right"). Defaults to "Up"
+                for Power markers and "Down" for Ground markers if not specified.
+
+        Returns:
+            SchematicPort handle to the placed terminal marker.
+
+        Raises:
+            ValueError: If coordinate anchor provided without explicit net, or if both
+                name_or_net and net are Net handles, or if kind is invalid.
+            TypeError: If name_or_net is not a string, Net, or None.
+        """
         self._flush_pending()
         return self._schematic.terminal(
             name_or_net,
@@ -1032,6 +1056,19 @@ class SchematicDrawing:
         net: Net | None = None,
         orient: str = "Up",
     ) -> SchematicPort:
+        """Place a power marker symbol on an existing net.
+
+        Convenience wrapper for terminal(name, kind="Power", ...).
+
+        Args:
+            name: Display label for the power marker.
+            at: Placement anchor. Pin or port anchors can infer the net if not provided.
+            net: Explicit net binding. Required for coordinate anchors.
+            orient: Marker orientation. Defaults to "Up".
+
+        Returns:
+            SchematicPort handle to the placed power marker.
+        """
         self._flush_pending()
         return self._schematic.power(
             name,
@@ -1049,6 +1086,19 @@ class SchematicDrawing:
         net: Net | None = None,
         orient: str = "Down",
     ) -> SchematicPort:
+        """Place a ground marker symbol on an existing net.
+
+        Convenience wrapper for terminal(name, kind="Ground", ...).
+
+        Args:
+            name: Display label for the ground marker. If None, uses the net name.
+            at: Placement anchor. Pin or port anchors can infer the net if not provided.
+            net: Explicit net binding. Required for coordinate anchors.
+            orient: Marker orientation. Defaults to "Down".
+
+        Returns:
+            SchematicPort handle to the placed ground marker.
+        """
         self._flush_pending()
         return self._schematic.ground(
             name,
@@ -2301,6 +2351,30 @@ class Schematic:
         orient: str | None = None,
         _authored_region: int | None = None,
     ) -> SchematicPort:
+        """Place a generic one-terminal marker (power/ground symbol) on an existing net.
+
+        Terminal markers are schematic presentation entities that visualize power, ground,
+        or other single-connection net endpoints. They do not create or modify logical nets.
+
+        Args:
+            name_or_net: Display label, Net handle, or None. If a Net is provided, its name
+                is used as the label. If None, the label is inferred from the net parameter
+                or anchor net.
+            at: Placement anchor. Pin or port anchors can infer the net if not explicitly
+                provided. Coordinate tuples require an explicit net parameter.
+            net: Explicit net binding. Cannot be combined with Net-typed name_or_net.
+            kind: Marker visual style, either "Power" or "Ground" (case-insensitive).
+            orient: Marker orientation ("Up", "Down", "Left", "Right"). Defaults to "Up"
+                for Power markers and "Down" for Ground markers if not specified.
+
+        Returns:
+            SchematicPort handle to the placed terminal marker.
+
+        Raises:
+            ValueError: If coordinate anchor provided without explicit net, or if both
+                name_or_net and net are Net handles, or if kind is invalid.
+            TypeError: If name_or_net is not a string, Net, or None.
+        """
         marker_kind = _terminal_marker_kind(kind)
         marker_net, name = _terminal_marker_net_and_name(
             self._design,
@@ -2328,6 +2402,19 @@ class Schematic:
         orient: str = "Up",
         _authored_region: int | None = None,
     ) -> SchematicPort:
+        """Place a power marker symbol on an existing net.
+
+        Convenience wrapper for terminal(name, kind="Power", ...).
+
+        Args:
+            name: Display label for the power marker.
+            at: Placement anchor. Pin or port anchors can infer the net if not provided.
+            net: Explicit net binding. Required for coordinate anchors.
+            orient: Marker orientation. Defaults to "Up".
+
+        Returns:
+            SchematicPort handle to the placed power marker.
+        """
         return self.terminal(
             name,
             at=at,
@@ -2346,6 +2433,19 @@ class Schematic:
         orient: str = "Down",
         _authored_region: int | None = None,
     ) -> SchematicPort:
+        """Place a ground marker symbol on an existing net.
+
+        Convenience wrapper for terminal(name, kind="Ground", ...).
+
+        Args:
+            name: Display label for the ground marker. If None, uses the net name.
+            at: Placement anchor. Pin or port anchors can infer the net if not provided.
+            net: Explicit net binding. Required for coordinate anchors.
+            orient: Marker orientation. Defaults to "Down".
+
+        Returns:
+            SchematicPort handle to the placed ground marker.
+        """
         return self.terminal(
             name,
             at=at,
@@ -2777,6 +2877,11 @@ class SchematicRegion:
         kind: str = "Power",
         orient: str | None = None,
     ) -> SchematicPort:
+        """Place a generic one-terminal marker in this region.
+
+        See Schematic.terminal() for full documentation.
+        Coordinates are interpreted relative to this region's bounds.
+        """
         return self._sheet.terminal(
             name_or_net,
             at=self._local_point(at),
@@ -2794,6 +2899,11 @@ class SchematicRegion:
         net: Net | None = None,
         orient: str = "Up",
     ) -> SchematicPort:
+        """Place a power marker in this region.
+
+        See Schematic.power() for full documentation.
+        Coordinates are interpreted relative to this region's bounds.
+        """
         return self._sheet.power(
             name,
             at=self._local_point(at),
@@ -2810,6 +2920,11 @@ class SchematicRegion:
         net: Net | None = None,
         orient: str = "Down",
     ) -> SchematicPort:
+        """Place a ground marker in this region.
+
+        See Schematic.ground() for full documentation.
+        Coordinates are interpreted relative to this region's bounds.
+        """
         return self._sheet.ground(
             name,
             at=self._local_point(at),
