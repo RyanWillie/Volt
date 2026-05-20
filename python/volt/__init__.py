@@ -11,6 +11,7 @@ from .library import (
     PhysicalPartSpec,
     PinSpec,
     SchematicBlockPinSpec,
+    SchematicBlockSideLayoutSpec,
     SchematicSymbolPinSpec,
     SchematicSymbolSpec,
 )
@@ -89,6 +90,7 @@ __all__ = [
     "Schematic",
     "SchematicAnchor",
     "SchematicBlockPinSpec",
+    "SchematicBlockSideLayoutSpec",
     "SchematicDrawing",
     "SchematicJunction",
     "SchematicNetLabel",

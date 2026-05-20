@@ -1211,6 +1211,30 @@ TEST_CASE("Schematic readability reports visually dangling wire endpoints") {
     CHECK(circuit.net(net).pins() == pins_before);
 }
 
+TEST_CASE("Schematic readability reports exactly one warning per dangling endpoint") {
+    // Wire start lands on a connected symbol pin (anchored); only the far end is dangling.
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = add_named_net(circuit, "SIG");
+    connect_pin_by_number(circuit, net, component, "1");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    static_cast<void>(schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}}));
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{40.0, 20.0}, volt::Point{70.0, 20.0}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(diagnostic_count(report, "SCHEMATIC_DANGLING_WIRE_ENDPOINT") == 1);
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DANGLING_WIRE_ENDPOINT");
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::wire_run(wire),
+                                               volt::EntityRef::net(net)});
+}
+
 TEST_CASE("Schematic readability accepts wire endpoints with explicit visual anchors") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);

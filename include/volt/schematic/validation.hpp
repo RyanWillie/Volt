@@ -52,6 +52,10 @@ inline constexpr std::size_t local_label_cluster_threshold = 3U;
 inline constexpr double floating_stub_max_length = 8.0;
 inline constexpr double floating_stub_cluster_max_span = 24.0;
 inline constexpr std::size_t floating_stub_cluster_threshold = 3U;
+// Net labels are commonly placed 1-2 grid units off the wire endpoint to keep
+// the text clear of the wire tip. Allow up to 4 units along the same axis so
+// that a label placed just off a horizontal or vertical wire end is treated as
+// an intentional anchor rather than a stray dangling endpoint.
 inline constexpr double dangling_wire_label_anchor_max_gap = 4.0;
 inline constexpr double oversized_port_tag_rendered_length = 28.0;
 inline constexpr double power_port_stem_length = 4.2;
