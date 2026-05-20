@@ -1487,8 +1487,7 @@ class PyCircuit {
     [[nodiscard]] std::size_t place_schematic_symbol(std::size_t sheet, std::size_t component,
                                                      const std::string &symbol, double x, double y,
                                                      const std::string &orientation,
-                                                     std::optional<std::size_t> authored_region,
-                                                     std::optional<std::string> reference_label) {
+                                                     std::optional<std::size_t> authored_region) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
@@ -1502,10 +1501,9 @@ class PyCircuit {
         const auto symbol_definition = ensure_schematic_symbol(symbol);
         return projection
             .place_symbol(sheet_handle,
-                          volt::SymbolInstance{symbol_definition, component_handle,
-                                               volt::Point{x, y},
-                                               schematic_orientation_from_string(orientation),
-                                               authored_region, std::move(reference_label)})
+                          volt::SymbolInstance{
+                              symbol_definition, component_handle, volt::Point{x, y},
+                              schematic_orientation_from_string(orientation), authored_region})
             .index();
     }
 
@@ -1871,8 +1869,7 @@ PYBIND11_MODULE(_volt, module) {
         .def("register_schematic_symbol", &PyCircuit::register_schematic_symbol, py::arg("symbol"))
         .def("place_schematic_symbol", &PyCircuit::place_schematic_symbol, py::arg("sheet"),
              py::arg("component"), py::arg("symbol"), py::arg("x"), py::arg("y"),
-             py::arg("orientation"), py::arg("authored_region") = std::nullopt,
-             py::arg("reference_label") = std::nullopt)
+             py::arg("orientation"), py::arg("authored_region") = std::nullopt)
         .def("schematic_symbol_orientation", &PyCircuit::schematic_symbol_orientation,
              py::arg("instance"))
         .def("schematic_symbol_pin_anchor", &PyCircuit::schematic_symbol_pin_anchor,

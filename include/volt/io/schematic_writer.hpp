@@ -524,9 +524,6 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
         detail::write_point(out, instance.position());
         out << ", \"orientation\": "
             << detail::json_string(detail::schematic_orientation_name(instance.orientation()));
-        if (instance.reference_label().has_value()) {
-            out << ", \"reference_label\": " << detail::json_string(*instance.reference_label());
-        }
         detail::write_authored_region(
             out, schematic.sheet(detail::sheet_for_symbol_instance(schematic, id)),
             instance.authored_region());

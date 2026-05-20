@@ -105,6 +105,9 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
         volt::SheetId{0},
         volt::SheetPort{net, "VIN_DOWN", volt::SheetPortKind::OffPage, volt::Point{25.0, 38.0},
                         volt::SchematicOrientation::Down});
+    [[maybe_unused]] const auto reference_field = schematic.add_symbol_field(
+        volt::SheetId{0},
+        volt::SymbolField{volt::SymbolInstanceId{0}, "reference", "R&1", volt::Point{40.0, 8.0}});
     [[maybe_unused]] const auto field = schematic.add_symbol_field(
         volt::SheetId{0},
         volt::SymbolField{volt::SymbolInstanceId{0}, "value", "10k", volt::Point{40.0, 32.0}});
@@ -166,8 +169,7 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(svg.find(">R&lt;&amp;</text>") != std::string::npos);
     CHECK(svg.find("pin-anchor") == std::string::npos);
     CHECK(svg.find("pin-label") == std::string::npos);
-    CHECK(svg.find("<text class=\"reference\" x=\"0\" y=\"-12\">R&amp;1</text>") !=
-          std::string::npos);
+    CHECK(svg.find("<text class=\"reference\"") == std::string::npos);
     CHECK(svg.find(
               "<circle class=\"junction\" data-net=\"net:0\" cx=\"30\" cy=\"20\" r=\"1.15\"/>") !=
           std::string::npos);
@@ -194,6 +196,9 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(svg.find("<text class=\"sheet-port-label\" x=\"7.588\" y=\"0.9\" "
                    "transform=\"rotate(-90 7.588 0.9)\">VIN_DOWN</text>") != std::string::npos);
     CHECK(svg.find(">VIN</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"symbol-field\" data-symbol-instance=\"symbol_instance:0\" "
+                   "data-field=\"reference\" x=\"40\" y=\"8\"") != std::string::npos);
+    CHECK(svg.find(">R&amp;1</text>") != std::string::npos);
     CHECK(svg.find("<text class=\"symbol-field\" data-symbol-instance=\"symbol_instance:0\" "
                    "data-field=\"value\" x=\"40\" y=\"32\"") != std::string::npos);
     CHECK(svg.find(">10k</text>") != std::string::npos);
@@ -252,6 +257,8 @@ TEST_CASE("Schematic SVG writer preserves scoped names by default") {
 
     [[maybe_unused]] const auto instance = schematic.place_symbol(
         sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}});
+    [[maybe_unused]] const auto field = schematic.add_symbol_field(
+        sheet, volt::SymbolField{instance, "reference", "DIV_A/R1", volt::Point{40.0, 8.0}});
     [[maybe_unused]] const auto label =
         schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{12.0, 16.0}});
     [[maybe_unused]] const auto power = schematic.add_power_port(
@@ -279,9 +286,9 @@ TEST_CASE("Schematic SVG writer renders explicit presentation labels") {
     const auto symbol = schematic.add_symbol_definition(make_symbol());
 
     [[maybe_unused]] const auto instance = schematic.place_symbol(
-        sheet,
-        volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0},
-                             volt::SchematicOrientation::Right, std::nullopt, std::string{"R1"}});
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}});
+    [[maybe_unused]] const auto field = schematic.add_symbol_field(
+        sheet, volt::SymbolField{instance, "reference", "R1", volt::Point{40.0, 8.0}});
     [[maybe_unused]] const auto power = schematic.add_power_port(
         sheet, volt::PowerPort{net, volt::PowerPortKind::Power, volt::Point{20.0, 12.0},
                                volt::SchematicOrientation::Up, std::nullopt, std::string{"+VIN"}});
@@ -292,6 +299,18 @@ TEST_CASE("Schematic SVG writer renders explicit presentation labels") {
     CHECK(svg.find(">+VIN</text>") != std::string::npos);
     CHECK(svg.find(">DIV_A/R1</text>") == std::string::npos);
     CHECK(svg.find(">DIV_A/VIN</text>") == std::string::npos);
+}
+
+TEST_CASE("Schematic SVG writer does not derive reference fields from symbol instances") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto schematic = make_schematic(circuit, component);
+
+    const auto svg = volt::io::write_schematic_svg(schematic);
+
+    CHECK(svg.find("data-field=\"reference\"") == std::string::npos);
+    CHECK(svg.find(">R&amp;1</text>") == std::string::npos);
+    CHECK(svg.find("<text class=\"reference\"") == std::string::npos);
 }
 
 TEST_CASE("Schematic SVG writer renders explicit net label display text") {

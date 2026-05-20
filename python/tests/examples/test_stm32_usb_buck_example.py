@@ -128,11 +128,13 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         for item in schematic[collection]
         if "authored_region" in item
     } >= {"Power Circuitry", "STM32 Microcontroller", "Connectors and USB"}
-    reference_labels = [
-        instance["reference_label"]
-        for instance in schematic["symbol_instances"]
-        if "reference_label" in instance
+    reference_fields = [
+        field for field in schematic["symbol_fields"] if field["name"] == "reference"
     ]
+    reference_labels = [field["value"] for field in reference_fields]
+    symbol_instances_by_id = {
+        instance["id"]: instance for instance in schematic["symbol_instances"]
+    }
     component_references_by_id = {
         component["id"]: component["reference"] for component in logical["components"]
     }
@@ -147,12 +149,20 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     }
     assert placed_component_references == set(schematic_output.DISPLAY_REFERENCES)
     assert {
-        instance["reference_label"]
-        for instance in schematic["symbol_instances"]
+        field["value"]
+        for field in reference_fields
     } == {
         schematic_output.DISPLAY_REFERENCES[reference]
         for reference in placed_component_references
     }
+    assert {
+        schematic_output.DISPLAY_REFERENCES[
+            component_references_by_id[
+                symbol_instances_by_id[field["symbol_instance"]]["component"]
+            ]
+        ]
+        for field in reference_fields
+    } == set(reference_labels)
     assert len(reference_labels) == len(set(reference_labels))
     assert all(re.fullmatch(r"(?:C|D|J|R|SW|U|Y)\d+", label) for label in reference_labels)
     assert all("/" not in label and "_" not in label for label in reference_labels)

@@ -1,4 +1,5 @@
 import json
+import re
 
 import volt
 
@@ -89,8 +90,8 @@ def test_python_schematic_label_sugar_uses_symbol_fields_and_net_labels():
         "value",
     ]
     assert [field["value"] for field in fields] == ["R1", "10k", "100n", "1e-07 F"]
-    assert fields[0]["position"] == {"x": 10.0, "y": -10.0}
-    assert fields[1]["position"] == {"x": 10.0, "y": 10.0}
+    assert fields[0]["position"] == {"x": 10.0, "y": -14.0}
+    assert fields[1]["position"] == {"x": 10.0, "y": 22.0}
     assert fields[2]["position"] == {"x": 20.0, "y": 25.0}
     assert fields[3]["position"] == {"x": 26.0, "y": 10.0}
     assert projection["net_labels"] == [
@@ -110,6 +111,37 @@ def test_python_schematic_label_sugar_uses_symbol_fields_and_net_labels():
     assert ">10k</text>" in svg
     assert ">100n</text>" in svg
     assert ">SIG</text>" in svg
+
+
+def test_python_schematic_default_field_placement_keeps_rotated_labels_upright():
+    design = volt.Design("schematic-default-field-placement")
+    r1 = design.R("10k", ref="R1")
+    c1 = design.C(capacitance=100e-9, ref="C1")
+
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(unit=20) as drawing:
+        drawing.R(r1).right().label_ref().label_value()
+        drawing.C(c1).at((40, 0)).down().label_ref().label_value()
+
+    fields = json.loads(schematic.to_json())["symbol_fields"]
+
+    assert [(field["name"], field["value"], field["orientation"]) for field in fields] == [
+        ("reference", "R1", "Right"),
+        ("value", "10k", "Right"),
+        ("reference", "C1", "Right"),
+        ("value", "1e-07 F", "Right"),
+    ]
+    assert [field["position"] for field in fields] == [
+        {"x": 10.0, "y": -14.0},
+        {"x": 10.0, "y": 22.0},
+        {"x": 26.0, "y": 10.0},
+        {"x": 62.0, "y": 10.0},
+    ]
+
+    svg_texts = re.findall(r">([^<>]+)</text>", schematic.to_svg())
+    assert svg_texts.count("R1") == 1
+    assert svg_texts.count("C1") == 1
 
 
 def test_python_schematic_generic_ic_symbol_builder_places_stable_pin_anchors():

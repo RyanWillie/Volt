@@ -335,7 +335,7 @@ class PlacedSchematicElement:
         self,
         text: str,
         *,
-        loc: str = "top",
+        loc: str | None = None,
         name: str = "label",
         offset: float | None = None,
         ofst: float | None = None,
@@ -349,13 +349,17 @@ class PlacedSchematicElement:
             raise TypeError("Schematic element label field names must be strings")
         if not name:
             raise ValueError("Schematic element label field names must not be empty")
-        at = _element_label_point(self, loc, _label_offset(offset, ofst))
+        at = _element_label_point(
+            self,
+            _element_label_loc(self, name, loc),
+            _label_offset(offset, ofst, default=_element_label_offset(name)),
+        )
         self.symbol._schematic._add_symbol_field(
             self.symbol,
             name=name,
             value=text,
             at=at,
-            orient=self.orientation if orient is None else orient,
+            orient="Right" if orient is None else orient,
             _authored_region=self.symbol._authored_region,
         )
         return self
@@ -363,7 +367,7 @@ class PlacedSchematicElement:
     def label_ref(
         self,
         *,
-        loc: str = "top",
+        loc: str | None = None,
         offset: float | None = None,
         ofst: float | None = None,
         orient: str | None = None,
@@ -380,7 +384,7 @@ class PlacedSchematicElement:
     def label_value(
         self,
         *,
-        loc: str = "bottom",
+        loc: str | None = None,
         offset: float | None = None,
         ofst: float | None = None,
         orient: str | None = None,
@@ -1464,7 +1468,7 @@ class SchematicTwoTerminalElement:
         self,
         text: str,
         *,
-        loc: str = "top",
+        loc: str | None = None,
         name: str = "label",
         offset: float | None = None,
         ofst: float | None = None,
@@ -1477,7 +1481,7 @@ class SchematicTwoTerminalElement:
     def label_ref(
         self,
         *,
-        loc: str = "top",
+        loc: str | None = None,
         offset: float | None = None,
         ofst: float | None = None,
         orient: str | None = None,
@@ -1489,7 +1493,7 @@ class SchematicTwoTerminalElement:
     def label_value(
         self,
         *,
-        loc: str = "bottom",
+        loc: str | None = None,
         offset: float | None = None,
         ofst: float | None = None,
         orient: str | None = None,
@@ -1847,9 +1851,11 @@ class Schematic:
             y,
             orientation,
             _authored_region,
-            reference_label,
         )
-        return SchematicSymbol(self, instance, component, orientation, _authored_region)
+        placed = SchematicSymbol(self, instance, component, orientation, _authored_region)
+        if reference_label is not None:
+            PlacedSchematicElement(placed).label(reference_label, name="reference")
+        return placed
 
     def register_symbol(self, symbol: SchematicSymbolSpec) -> None:
         if not isinstance(symbol, SchematicSymbolSpec):
@@ -3592,11 +3598,26 @@ def _format_electrical_attribute(name: str, attribute: dict) -> str | None:
     return f"{number} {unit}" if unit else number
 
 
-def _label_offset(offset: float | None, ofst: float | None) -> float:
+def _label_offset(offset: float | None, ofst: float | None, *, default: float = 14) -> float:
     if offset is not None and ofst is not None:
         raise ValueError("Use either offset= or ofst= for schematic element labels")
-    value = 10 if offset is None and ofst is None else offset if ofst is None else ofst
+    value = default if offset is None and ofst is None else offset if ofst is None else ofst
     return _coordinate(value)
+
+
+def _element_label_offset(name: str) -> float:
+    return 22 if name.casefold() == "value" else 14
+
+
+def _element_label_loc(
+    element: PlacedSchematicElement, name: str, loc: str | None
+) -> str:
+    if loc is not None:
+        return loc
+    vertical = element.orientation in {"Up", "Down"}
+    if name.casefold() == "value":
+        return "right" if vertical else "bottom"
+    return "left" if vertical else "top"
 
 
 def _element_label_point(

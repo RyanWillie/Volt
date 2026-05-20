@@ -506,17 +506,18 @@ class SchematicReader {
     void read_symbol_instances() {
         auto seen = std::set<std::string>{};
         for (const auto &instance_object : array_field(document_, "symbol_instances")) {
+            require(instance_object.find("reference_label") == instance_object.end(),
+                    "Schematic symbol instance reference_label is no longer supported; use a "
+                    "symbol_fields entry named reference");
             const auto id = local_id(instance_object, "symbol_instance:", seen);
             const auto sheet = resolve(sheet_ids_, string_field(instance_object, "sheet"));
             const auto symbol =
                 resolve(symbol_def_ids_, string_field(instance_object, "symbol_definition"));
             const auto component = component_id(string_field(instance_object, "component"));
             const auto instance = schematic_.place_symbol(
-                sheet, SymbolInstance{
-                           symbol, component, point(field(instance_object, "position")),
-                           orientation(string_field(instance_object, "orientation")),
-                           authored_region(sheet, instance_object),
-                           optional_non_empty_string_field(instance_object, "reference_label")});
+                sheet, SymbolInstance{symbol, component, point(field(instance_object, "position")),
+                                      orientation(string_field(instance_object, "orientation")),
+                                      authored_region(sheet, instance_object)});
             symbol_instance_ids_.emplace(id, instance);
         }
     }

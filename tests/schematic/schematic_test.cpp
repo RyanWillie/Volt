@@ -1288,9 +1288,11 @@ TEST_CASE("Schematic readability reports duplicate visible reference labels on a
     const auto first_instance = schematic.place_symbol(
         sheet, volt::SymbolInstance{symbol, first_component, volt::Point{50.0, 50.0}});
     const auto second_instance = schematic.place_symbol(
-        sheet, volt::SymbolInstance{symbol, second_component, volt::Point{100.0, 50.0},
-                                    volt::SchematicOrientation::Right, std::nullopt,
-                                    std::optional<std::string>{"R1"}});
+        sheet, volt::SymbolInstance{symbol, second_component, volt::Point{100.0, 50.0}});
+    static_cast<void>(schematic.add_symbol_field(
+        sheet, volt::SymbolField{first_instance, "reference", "R1", volt::Point{50.0, 38.0}}));
+    static_cast<void>(schematic.add_symbol_field(
+        sheet, volt::SymbolField{second_instance, "reference", "R1", volt::Point{100.0, 38.0}}));
 
     const auto report = volt::validate_schematic_readability(schematic);
 
@@ -1301,6 +1303,21 @@ TEST_CASE("Schematic readability reports duplicate visible reference labels on a
                                                volt::EntityRef::component(first_component),
                                                volt::EntityRef::symbol_instance(second_instance),
                                                volt::EntityRef::component(second_component)});
+}
+
+TEST_CASE("Schematic readability ignores hidden logical component references") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit, "RRESET");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    static_cast<void>(schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{50.0, 50.0}}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(diagnostic_count(report, "SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL") == 0U);
 }
 
 TEST_CASE("Schematic readability reports non-professional visible reference labels") {
@@ -1334,6 +1351,10 @@ TEST_CASE("Schematic readability reports non-professional visible reference labe
     for (std::size_t index = 0; index < placements.size(); ++index) {
         instances.push_back(schematic.place_symbol(
             sheet, volt::SymbolInstance{symbol, components[index], placements[index].position}));
+        static_cast<void>(schematic.add_symbol_field(
+            sheet, volt::SymbolField{instances.back(), "reference", placements[index].reference,
+                                     volt::Point{placements[index].position.x(),
+                                                 placements[index].position.y() - 12.0}}));
     }
 
     const auto report = volt::validate_schematic_readability(schematic);
@@ -1363,9 +1384,12 @@ TEST_CASE(
     const auto first_instance = schematic.place_symbol(
         sheet, volt::SymbolInstance{symbol, first_component, volt::Point{50.0, 50.0}});
     const auto second_instance = schematic.place_symbol(
-        sheet, volt::SymbolInstance{symbol, second_component, volt::Point{100.0, 50.0},
-                                    volt::SchematicOrientation::Right, std::nullopt,
-                                    std::optional<std::string>{"RRESET"}});
+        sheet, volt::SymbolInstance{symbol, second_component, volt::Point{100.0, 50.0}});
+    static_cast<void>(schematic.add_symbol_field(
+        sheet, volt::SymbolField{first_instance, "reference", "RRESET", volt::Point{50.0, 38.0}}));
+    static_cast<void>(
+        schematic.add_symbol_field(sheet, volt::SymbolField{second_instance, "reference", "RRESET",
+                                                            volt::Point{100.0, 38.0}}));
 
     const auto report = volt::validate_schematic_readability(schematic);
 

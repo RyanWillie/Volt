@@ -12,7 +12,8 @@ def test_python_schematic_json_round_trips_as_design_document():
     r1 = design.R(resistance=330, ref="R1")
 
     schematic = design.schematic("Main")
-    schematic.place(r1, at=(40, 20), symbol="resistor")
+    with schematic.drawing() as drawing:
+        drawing.place(r1, at=(40, 20), symbol="resistor").label_ref()
     schematic.wire(vcc, [(20, 20), (40, 20)])
     schematic.label(vcc, at=(20, 16))
 
@@ -57,7 +58,8 @@ def test_python_schematic_writes_svg_projection():
     r1 = design.R(resistance=330, ref="R1")
 
     schematic = design.schematic("Main")
-    schematic.place(r1, at=(40, 20), symbol="resistor")
+    with schematic.drawing() as drawing:
+        drawing.place(r1, at=(40, 20), symbol="resistor").label_ref()
     schematic.wire(vcc, [(20, 20), (40, 20)])
     schematic.label(vcc, at=(20, 16))
 
@@ -70,7 +72,9 @@ def test_python_schematic_writes_svg_projection():
     assert '<polyline class="wire-run" data-net="net:0" points="20,20 40,20"/>' in svg
     assert '<text class="net-label" data-net="net:0" x="20" y="16"' in svg
     assert ">VCC</text>" in svg
-    assert '<text class="reference" x="0" y="-12">R1</text>' in svg
+    assert '<text class="reference"' not in svg
+    assert 'data-field="reference"' in svg
+    assert ">R1</text>" in svg
     assert "pin-anchor" not in svg
     assert "pin-label" not in svg
 

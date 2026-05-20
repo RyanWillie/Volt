@@ -701,8 +701,9 @@ def test_stm32_usb_buck_native_symbols_place_and_render():
     resistor = design.instantiate(stm32_usb_buck.RESISTOR, ref="R1")
 
     schematic = design.schematic("Main")
-    schematic.place(mcu, at=(60, 60))
-    schematic.place(resistor, at=(160, 60))
+    with schematic.drawing() as drawing:
+        drawing.place(mcu, at=(60, 60)).label_ref()
+        drawing.place(resistor, at=(160, 60)).label_ref()
 
     projection = json.loads(schematic.to_json())
 

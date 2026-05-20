@@ -78,7 +78,7 @@ struct SchematicSvgVisualScale {
     double net_label_font_size = 2.5;
     /** Sheet, power, and ground tag label font size. */
     double tag_port_label_font_size = 2.45;
-    /** Symbol primitive and reference text font size. */
+    /** Symbol primitive text font size. */
     double symbol_text_font_size = 2.7;
     /** Symbol field/value font size. */
     double symbol_field_font_size = 2.5;
@@ -406,7 +406,6 @@ inline void write_symbol_instance_svg(std::ostream &out, const Schematic &schema
                                       SymbolInstanceId id) {
     const auto &instance = schematic.symbol_instance(id);
     const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
-    const auto &component = schematic.circuit().component(instance.component());
 
     out << "    <g class=\"symbol-instance\" data-component=\""
         << svg_escape(svg_component_id(instance.component())) << "\" data-symbol-definition=\""
@@ -418,10 +417,6 @@ inline void write_symbol_instance_svg(std::ostream &out, const Schematic &schema
     out << ") rotate(";
     write_svg_number(out, orientation_degrees(instance.orientation()));
     out << ")\">\n";
-    out << "      <text class=\"reference\" x=\"0\" y=\"-12\"";
-    write_upright_text_transform(out, instance.orientation(), Point{0.0, -12.0});
-    const auto reference_label = instance.reference_label().value_or(component.reference().value());
-    out << ">" << svg_escape(reference_label) << "</text>\n";
     for (const auto &primitive : symbol.primitives()) {
         write_symbol_primitive_svg(out, primitive);
     }
@@ -877,7 +872,7 @@ inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
     out << ";fill:#111;text-anchor:middle}"
            ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;";
     write_css_stroke_width(out, scale.symbol_stroke_width);
-    out << "}.symbol-text,.reference{";
+    out << "}.symbol-text{";
     write_css_font(out, scale.symbol_text_font_size);
     out << ";fill:#111;text-anchor:middle}";
     if (options.debug_overlays) {
