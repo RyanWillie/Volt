@@ -1757,6 +1757,14 @@ class PyCircuit {
         return out.str();
     }
 
+    [[nodiscard]] std::string schematic_to_body_svg(std::size_t sheet, double margin) {
+        auto options = volt::io::SchematicSvgBodyOptions{};
+        options.margin = margin;
+        auto out = std::ostringstream{};
+        volt::io::write_schematic_body_svg(out, schematic_projection(), sheet_id(sheet), options);
+        return out.str();
+    }
+
     [[nodiscard]] py::list schematic_svg_pages() {
         auto result = py::list{};
         for (const auto &page : volt::io::write_schematic_svg_pages(schematic_projection())) {
@@ -1979,6 +1987,8 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("font_size") = std::nullopt)
         .def("schematic_to_json", &PyCircuit::schematic_to_json)
         .def("schematic_to_svg", &PyCircuit::schematic_to_svg)
+        .def("schematic_to_body_svg", &PyCircuit::schematic_to_body_svg, py::arg("sheet"),
+             py::arg("margin") = 4.0)
         .def("schematic_svg_pages", &PyCircuit::schematic_svg_pages)
         .def("load_schematic_json", &PyCircuit::load_schematic_json, py::arg("text"))
         .def("schematic_sheet_names", &PyCircuit::schematic_sheet_names)

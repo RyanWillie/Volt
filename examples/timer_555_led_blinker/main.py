@@ -16,6 +16,7 @@ class ExampleArtifacts:
     logical_json: Path
     schematic_json: Path
     schematic_svg: Path
+    schematic_body_svg: Path
     schematic_svg_pages: tuple[Path, ...]
     validation_report: Path
 
@@ -275,6 +276,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
     logical_json = output_path / "timer_555_led_blinker.volt.json"
     schematic_json = output_path / "timer_555_led_blinker.volt.schematic.json"
     schematic_svg = output_path / "timer_555_led_blinker.svg"
+    schematic_body_svg = output_path / "timer_555_led_blinker.body.svg"
     schematic_svg_pages_dir = output_path / "timer_555_led_blinker.pages"
     validation_report = output_path / "timer_555_led_blinker.validation.json"
 
@@ -285,6 +287,8 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
     design.write(logical_json)
     schematic.write_json(schematic_json)
     schematic.write_svg(schematic_svg)
+    # Content-tight body SVG is for docs/previews; full sheet/page SVGs remain document artifacts.
+    schematic.write_body_svg(schematic_body_svg)
     schematic_svg_pages = schematic.write_svg_pages(
         schematic_svg_pages_dir,
         prefix="timer_555_led_blinker",
@@ -303,6 +307,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
         logical_json=logical_json,
         schematic_json=schematic_json,
         schematic_svg=schematic_svg,
+        schematic_body_svg=schematic_body_svg,
         schematic_svg_pages=schematic_svg_pages,
         validation_report=validation_report,
     )

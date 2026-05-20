@@ -18,6 +18,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             "logical": artifacts.logical_json.read_text(encoding="utf-8"),
             "schematic": artifacts.schematic_json.read_text(encoding="utf-8"),
             "svg": artifacts.schematic_svg.read_text(encoding="utf-8"),
+            "body_svg": artifacts.schematic_body_svg.read_text(encoding="utf-8"),
             "validation": artifacts.validation_report.read_text(encoding="utf-8"),
             "pages": tuple(path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages),
         }
@@ -37,6 +38,10 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             == first_texts["schematic"]
         )
         assert second_artifacts.schematic_svg.read_text(encoding="utf-8") == first_texts["svg"]
+        assert (
+            second_artifacts.schematic_body_svg.read_text(encoding="utf-8")
+            == first_texts["body_svg"]
+        )
         assert (
             second_artifacts.validation_report.read_text(encoding="utf-8")
             == first_texts["validation"]
@@ -244,6 +249,11 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         assert visible_texts.count(reference) == 1
     assert visible_texts.count("R3") == 0
     assert 'viewBox="0 0 340 240"' in first_texts["pages"][0]
+    assert 'class="schematic-body"' in first_texts["body_svg"]
+    assert 'class="title-block"' not in first_texts["body_svg"]
+    assert 'class="coordinate-zones"' not in first_texts["body_svg"]
+    assert 'viewBox="0 0 340 240"' not in first_texts["body_svg"]
+    assert '<text class="symbol-text"' in first_texts["body_svg"]
 
 
 def test_timer_555_led_blinker_schematic_is_readable_without_mutating_logical_design():

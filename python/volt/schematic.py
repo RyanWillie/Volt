@@ -2809,6 +2809,13 @@ class Schematic:
     def to_svg(self) -> str:
         return self._design._circuit.schematic_to_svg()
 
+    def to_body_svg(self, *, margin: float = 4.0) -> str:
+        """Return a content-tight SVG for this sheet's schematic body."""
+        return self._design._circuit.schematic_to_body_svg(
+            self._sheet_index,
+            _nonnegative_coordinate(margin, "Schematic SVG body margins"),
+        )
+
     def to_svg_pages(self) -> tuple[dict[str, int | str], ...]:
         return tuple(
             {
@@ -2833,6 +2840,9 @@ class Schematic:
 
     def write_svg(self, path: str | Path) -> None:
         Path(path).write_text(self.to_svg(), encoding="utf-8")
+
+    def write_body_svg(self, path: str | Path, *, margin: float = 4.0) -> None:
+        Path(path).write_text(self.to_body_svg(margin=margin), encoding="utf-8")
 
     def write_svg_pages(
         self, directory: str | Path, *, prefix: str | None = None

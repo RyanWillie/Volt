@@ -266,6 +266,50 @@ TEST_CASE("Schematic SVG writer applies model-owned text presentation metadata")
           std::string::npos);
 }
 
+TEST_CASE("Schematic SVG writer exports a content-tight body without page chrome") {
+    volt::Circuit circuit;
+    const auto net = add_net(circuit);
+    auto schematic = volt::Schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{
+        "Main",
+        volt::SheetMetadata{"Main", volt::SheetSize{100.0, 80.0},
+                            std::vector{volt::TitleBlockField{"Revision", "A"}},
+                            volt::SheetOrientation::Landscape, volt::SheetFrame{},
+                            volt::SheetCoordinateZones{2, 2, true}, volt::SheetGrid{5.0, true}},
+    });
+    [[maybe_unused]] const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{20.0, 30.0}, volt::Point{50.0, 30.0}}});
+    [[maybe_unused]] const auto label =
+        schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{20.0, 24.0}});
+    [[maybe_unused]] const auto junction =
+        schematic.add_junction(sheet, volt::Junction{net, volt::Point{50.0, 30.0}});
+    auto options = volt::io::SchematicSvgBodyOptions{};
+    options.margin = 2.0;
+
+    const auto body = volt::io::write_schematic_body_svg(schematic, sheet, options);
+    const auto page = volt::io::write_schematic_sheet_svg(schematic, sheet);
+
+    CHECK(body.find("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"17.625 19.5 "
+                    "35.525 13.65\" width=\"35.525\" height=\"13.65\"") != std::string::npos);
+    CHECK(body.find("<rect class=\"document-background\"") == std::string::npos);
+    CHECK(body.find("class=\"sheet\"") == std::string::npos);
+    CHECK(body.find("class=\"sheet-border\"") == std::string::npos);
+    CHECK(body.find("class=\"drawing-frame\"") == std::string::npos);
+    CHECK(body.find("class=\"sheet-grid\"") == std::string::npos);
+    CHECK(body.find("class=\"coordinate-zones\"") == std::string::npos);
+    CHECK(body.find("class=\"title-block\"") == std::string::npos);
+    CHECK(body.find("<g class=\"schematic-body\" data-sheet=\"sheet:0\">") != std::string::npos);
+    CHECK(body.find("<polyline class=\"wire-run\" data-net=\"net:0\" points=\"20,30 50,30\"/>") !=
+          std::string::npos);
+    CHECK(body.find("<text class=\"net-label\" data-net=\"net:0\" x=\"20\" y=\"24\"") !=
+          std::string::npos);
+    CHECK(body.find("<circle class=\"junction\" data-net=\"net:0\" cx=\"50\" cy=\"30\"") !=
+          std::string::npos);
+    CHECK(page.find("viewBox=\"0 0 100 80\"") != std::string::npos);
+    CHECK(page.find("class=\"title-block\"") != std::string::npos);
+    CHECK(page.find("class=\"coordinate-zones\"") != std::string::npos);
+}
+
 TEST_CASE("Schematic SVG writer fits title-block values deterministically") {
     volt::Circuit circuit;
     auto schematic = volt::Schematic{circuit};
