@@ -97,6 +97,29 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "VCC",
         "GND",
     ]
+    symbol_texts_by_definition = {
+        definition["name"]: [
+            primitive["text"]
+            for primitive in definition["primitives"]
+            if primitive["type"] == "text"
+        ]
+        for definition in schematic["symbol_definitions"]
+    }
+    assert symbol_texts_by_definition["volt.examples.timer_555_led_blinker:NE555"] == [
+        "555",
+        "timer",
+        "DISCH",
+        "THRESH",
+        "TRIG",
+        "OUT",
+        "CTRL",
+        "RESET",
+        "VCC",
+        "GND",
+    ]
+    for definition_name, texts in symbol_texts_by_definition.items():
+        if definition_name != "volt.examples.timer_555_led_blinker:NE555":
+            assert texts == []
     assert {wire["route_intent"] for wire in schematic["wire_runs"]} == {"Orthogonal"}
     assert schematic["sheet_ports"] == []
     assert schematic["power_ports"] == []
@@ -153,6 +176,8 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "GND",
     } <= set(re.findall(r">([^<>]+)</text>", svg_text))
     visible_texts = re.findall(r">([^<>]+)</text>", svg_text)
+    symbol_texts = re.findall(r'<text class="symbol-text"[^>]*>([^<>]+)</text>', svg_text)
+    assert not {"R", "C", "D"} & set(symbol_texts)
     for reference in ("U1", "R1", "R2", "C1", "C2", "R3", "D1"):
         assert visible_texts.count(reference) == 1
     assert 'viewBox="0 0 340 240"' in first_texts["pages"][0]

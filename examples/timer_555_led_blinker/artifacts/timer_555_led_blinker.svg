@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 240" width="340" height="240">
-  <style>.document-background,.sheet{fill:#fff;stroke:none}.sheet-border{fill:none;stroke:#111;stroke-width:0.45}.drawing-frame{fill:none;stroke:#111;stroke-width:0.35}.sheet-grid{stroke:none}.sheet-grid-dot{fill:#d7d7d7;stroke:none}.coordinate-zone-label{font:3px sans-serif;fill:#444;text-anchor:middle;dominant-baseline:middle}.sheet-title{font-weight:600}.title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.3}.title-block-label{font:2.5px sans-serif;fill:#444;text-anchor:start}.title-block-value{font:2.5px sans-serif;fill:#111;text-anchor:start}.sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.35}.sheet-region-frame.dashed{stroke-dasharray:3 2}.sheet-region-title{font:3.2px sans-serif;fill:#57534e;text-anchor:start;font-weight:600}.wire-run{fill:none;stroke:#111;stroke-width:0.75}.net-label{font:2.5px sans-serif;fill:#111;text-anchor:start}.junction{fill:#111;stroke:none}.power-port-line,.ground-bar{stroke:#111;stroke-width:0.55}.no-connect-line{stroke:#111;stroke-width:0.65}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:0.55}.power-port-label,.sheet-port-label{font:2.45px sans-serif;fill:#111;text-anchor:middle}.symbol-field{font:2.5px sans-serif;fill:#111;text-anchor:middle}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:0.7}.symbol-text,.reference{font:2.7px sans-serif;fill:#111;text-anchor:middle}</style>
+  <style>.document-background,.sheet{fill:#fff;stroke:none}.sheet-border{fill:none;stroke:#111;stroke-width:0.45}.drawing-frame{fill:none;stroke:#111;stroke-width:0.35}.sheet-grid{stroke:none}.sheet-grid-dot{fill:#d7d7d7;stroke:none}.coordinate-zone-label{font:3px sans-serif;fill:#444;text-anchor:middle;dominant-baseline:middle}.sheet-title{font-weight:600}.title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.3}.title-block-label{font:2.5px sans-serif;fill:#444;text-anchor:start}.title-block-value{font:2.5px sans-serif;fill:#111;text-anchor:start}.sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.35}.sheet-region-frame.dashed{stroke-dasharray:3 2}.sheet-region-title{font:3.2px sans-serif;fill:#57534e;text-anchor:start;font-weight:600}.wire-run{fill:none;stroke:#111;stroke-width:0.75}.net-label{font:2.5px sans-serif;fill:#111;text-anchor:start}.junction{fill:#111;stroke:none}.power-port-line,.ground-bar{stroke:#111;stroke-width:0.55}.no-connect-line{stroke:#111;stroke-width:0.65}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:0.55}.power-port-label,.sheet-port-label{font:2.45px sans-serif;fill:#111;text-anchor:middle}.symbol-field{font:2.5px sans-serif;fill:#111;text-anchor:middle}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:0.7}.symbol-text{font:2.7px sans-serif;fill:#111;text-anchor:middle}</style>
   <rect class="document-background" x="0" y="0" width="340" height="240"/>
   <g class="schematic-sheet" data-sheet="sheet:0" transform="translate(0 0)">
     <defs>
@@ -60,7 +60,6 @@
     </g>
     <g class="layer layer-symbols">
     <g class="symbol-instance" data-component="component:0" data-symbol-definition="symbol_def:0" transform="translate(140 80) rotate(0)">
-      <text class="reference" x="0" y="-12">U1</text>
       <rect class="symbol-rectangle" x="10" y="0" width="50" height="40"/>
       <text class="symbol-text" x="35" y="20" transform="rotate(0 35 20)">555</text>
       <text class="symbol-text" x="35" y="53" transform="rotate(0 35 53)">timer</text>
@@ -82,52 +81,40 @@
       <text class="symbol-text" x="40" y="37" transform="rotate(0 40 37)">GND</text>
     </g>
     <g class="symbol-instance" data-component="component:1" data-symbol-definition="symbol_def:1" transform="translate(92 62) rotate(90)">
-      <text class="reference" x="0" y="-12" transform="rotate(-90 0 -12)">R1</text>
-      <line class="symbol-line" x1="0" y1="0" x2="5.6" y2="0"/>
-      <rect class="symbol-rectangle" x="5.6" y="-3" width="16.8" height="6"/>
-      <line class="symbol-line" x1="22.4" y1="0" x2="28" y2="0"/>
-      <text class="symbol-text" x="14" y="-8" transform="rotate(0 14 -8)">R</text>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <rect class="symbol-rectangle" x="8" y="-3" width="12" height="6"/>
+      <line class="symbol-line" x1="20" y1="0" x2="28" y2="0"/>
     </g>
     <g class="symbol-instance" data-component="component:2" data-symbol-definition="symbol_def:2" transform="translate(92 90) rotate(90)">
-      <text class="reference" x="0" y="-12" transform="rotate(-90 0 -12)">R2</text>
       <line class="symbol-line" x1="0" y1="0" x2="4" y2="0"/>
       <rect class="symbol-rectangle" x="4" y="-3" width="12" height="6"/>
       <line class="symbol-line" x1="16" y1="0" x2="20" y2="0"/>
-      <text class="symbol-text" x="10" y="-8" transform="rotate(0 10 -8)">R</text>
     </g>
     <g class="symbol-instance" data-component="component:3" data-symbol-definition="symbol_def:3" transform="translate(92 110) rotate(90)">
-      <text class="reference" x="0" y="-12" transform="rotate(-90 0 -12)">C1</text>
-      <line class="symbol-line" x1="0" y1="0" x2="13.6" y2="0"/>
-      <line class="symbol-line" x1="13.6" y1="-5" x2="13.6" y2="5"/>
-      <line class="symbol-line" x1="20.4" y1="-5" x2="20.4" y2="5"/>
-      <line class="symbol-line" x1="20.4" y1="0" x2="34" y2="0"/>
-      <text class="symbol-text" x="17" y="-10" transform="rotate(0 17 -10)">C</text>
+      <line class="symbol-line" x1="0" y1="0" x2="15" y2="0"/>
+      <line class="symbol-line" x1="15" y1="-5" x2="15" y2="5"/>
+      <line class="symbol-line" x1="19" y1="-5" x2="19" y2="5"/>
+      <line class="symbol-line" x1="19" y1="0" x2="34" y2="0"/>
     </g>
     <g class="symbol-instance" data-component="component:4" data-symbol-definition="symbol_def:4" transform="translate(250 110) rotate(90)">
-      <text class="reference" x="0" y="-12" transform="rotate(-90 0 -12)">C2</text>
-      <line class="symbol-line" x1="0" y1="0" x2="15.2" y2="0"/>
-      <line class="symbol-line" x1="15.2" y1="-5" x2="15.2" y2="5"/>
-      <line class="symbol-line" x1="22.8" y1="-5" x2="22.8" y2="5"/>
-      <line class="symbol-line" x1="22.8" y1="0" x2="38" y2="0"/>
-      <text class="symbol-text" x="19" y="-10" transform="rotate(0 19 -10)">C</text>
+      <line class="symbol-line" x1="0" y1="0" x2="17" y2="0"/>
+      <line class="symbol-line" x1="17" y1="-5" x2="17" y2="5"/>
+      <line class="symbol-line" x1="21" y1="-5" x2="21" y2="5"/>
+      <line class="symbol-line" x1="21" y1="0" x2="38" y2="0"/>
     </g>
     <g class="symbol-instance" data-component="component:5" data-symbol-definition="symbol_def:2" transform="translate(244 100) rotate(0)">
-      <text class="reference" x="0" y="-12">R3</text>
       <line class="symbol-line" x1="0" y1="0" x2="4" y2="0"/>
       <rect class="symbol-rectangle" x="4" y="-3" width="12" height="6"/>
       <line class="symbol-line" x1="16" y1="0" x2="20" y2="0"/>
-      <text class="symbol-text" x="10" y="-8" transform="rotate(0 10 -8)">R</text>
     </g>
     <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:5" transform="translate(299 100) rotate(180)">
-      <text class="reference" x="0" y="-12" transform="rotate(-180 0 -12)">D1</text>
-      <line class="symbol-line" x1="0" y1="0" x2="10.5" y2="0"/>
-      <line class="symbol-line" x1="10.5" y1="-5" x2="10.5" y2="5"/>
-      <line class="symbol-line" x1="10.5" y1="-5" x2="19.5" y2="0"/>
-      <line class="symbol-line" x1="10.5" y1="5" x2="19.5" y2="0"/>
-      <line class="symbol-line" x1="19.5" y1="0" x2="30" y2="0"/>
-      <text class="symbol-text" x="15" y="-11" transform="rotate(0 15 -11)">D</text>
-      <line class="symbol-line" x1="19.5" y1="-6" x2="25.5" y2="-10"/>
-      <line class="symbol-line" x1="22.5" y1="-4" x2="28.5" y2="-8"/>
+      <line class="symbol-line" x1="0" y1="0" x2="12" y2="0"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
+      <line class="symbol-line" x1="12" y1="-5" x2="18" y2="0"/>
+      <line class="symbol-line" x1="12" y1="5" x2="18" y2="0"/>
+      <line class="symbol-line" x1="18" y1="0" x2="30" y2="0"/>
+      <line class="symbol-line" x1="18" y1="-6" x2="22" y2="-10"/>
+      <line class="symbol-line" x1="20" y1="-4" x2="24" y2="-8"/>
     </g>
     </g>
     <g class="layer layer-wires">
@@ -162,19 +149,19 @@
     <text class="net-label" data-net="net:1" x="299" y="132" transform="rotate(0 299 132)">GND</text>
     </g>
     <g class="layer layer-fields">
-    <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="reference" x="175" y="58" transform="rotate(0 175 58)">U1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="reference" x="175" y="56" transform="rotate(0 175 56)">U1</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="value" x="175" y="152" transform="rotate(0 175 152)">NE555</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="reference" x="78" y="76" transform="rotate(0 78 76)">R1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="value" x="112" y="76" transform="rotate(0 112 76)">100 kOhm</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="value" x="114" y="76" transform="rotate(0 114 76)">100 kOhm</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="reference" x="78" y="100" transform="rotate(0 78 100)">R2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="value" x="112" y="100" transform="rotate(0 112 100)">47 kOhm</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="value" x="114" y="100" transform="rotate(0 114 100)">47 kOhm</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="reference" x="78" y="127" transform="rotate(0 78 127)">C1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="value" x="112" y="127" transform="rotate(0 112 127)">1 uF</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="reference" x="232" y="129" transform="rotate(0 232 129)">C2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="value" x="224" y="129" transform="rotate(0 224 129)">10 nF</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="reference" x="254" y="88" transform="rotate(0 254 88)">R3</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="value" x="254" y="72" transform="rotate(0 254 72)">1 kOhm</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="reference" x="284" y="80" transform="rotate(0 284 80)">D1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="value" x="114" y="127" transform="rotate(0 114 127)">1 uF</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="reference" x="236" y="129" transform="rotate(0 236 129)">C2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="value" x="272" y="129" transform="rotate(0 272 129)">10 nF</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="reference" x="254" y="86" transform="rotate(0 254 86)">R3</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="value" x="254" y="78" transform="rotate(0 254 78)">1 kOhm</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="reference" x="284" y="86" transform="rotate(0 284 86)">D1</text>
     </g>
   </g>
 </svg>

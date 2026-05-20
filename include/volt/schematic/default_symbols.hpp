@@ -11,6 +11,9 @@
 namespace volt {
 namespace default_symbol_detail {
 
+// Production defaults keep identity in fields or explicitly authored text, not internal
+// debug glyphs embedded in generic element geometry.
+
 inline void add_pin(SymbolDefinition &symbol, std::string name, std::string number, Point anchor,
                     SchematicOrientation orientation) {
     symbol.add_pin(SymbolPin{std::move(name), std::move(number), anchor, orientation});
@@ -33,7 +36,6 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
     symbol.add_primitive(SymbolRectangle{Point{4.0, -3.0}, Point{16.0, 3.0}});
     symbol.add_primitive(
         SymbolLine{Point{16.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
-    symbol.add_primitive(SymbolText{"R", Point{10.0, -8.0}});
     return symbol;
 }
 
@@ -46,7 +48,6 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
     symbol.add_primitive(SymbolLine{Point{12.0, -5.0}, Point{12.0, 5.0}});
     symbol.add_primitive(
         SymbolLine{Point{12.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
-    symbol.add_primitive(SymbolText{"C", Point{10.0, -10.0}});
     return symbol;
 }
 
@@ -60,7 +61,6 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
     symbol.add_primitive(
         SymbolLine{Point{12.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     symbol.add_primitive(SymbolText{"+", Point{6.0, -8.0}});
-    symbol.add_primitive(SymbolText{"C", Point{10.0, -13.0}});
     return symbol;
 }
 
@@ -74,7 +74,6 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
     symbol.add_primitive(SymbolArc{Point{14.0, 0.0}, 2.0, 180.0, -180.0});
     symbol.add_primitive(
         SymbolLine{Point{16.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
-    symbol.add_primitive(SymbolText{"L", Point{10.0, -8.0}});
     return symbol;
 }
 
@@ -88,7 +87,6 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
     symbol.add_primitive(SymbolLine{Point{7.0, 5.0}, Point{13.0, 0.0}});
     symbol.add_primitive(
         SymbolLine{Point{13.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
-    symbol.add_primitive(SymbolText{"D", Point{10.0, -11.0}});
     return symbol;
 }
 
