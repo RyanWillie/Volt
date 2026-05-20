@@ -1511,7 +1511,7 @@ def test_python_schematic_terminal_marker_rejects_invalid_kind():
             raise AssertionError("terminal marker must reject empty name string")
 
 
-
+def test_python_schematic_explicit_wire_points_are_normalized_once():
     design = volt.Design("schematic-wire-normalization")
     vcc = design.net("VCC", kind="power")
     original = volt._schematic_point

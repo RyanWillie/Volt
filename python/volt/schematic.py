@@ -2466,20 +2466,20 @@ class Schematic:
         _authored_region: int | None = None,
     ) -> SchematicPort:
         if not isinstance(name, str):
-            raise TypeError("Schematic power port names must be strings")
+            raise TypeError("Schematic terminal marker names must be strings")
         if not name:
-            raise ValueError("Schematic power port names must not be empty")
+            raise ValueError("Schematic terminal marker names must not be empty")
         if not isinstance(net, Net):
-            raise TypeError("Schematic power ports expect a Net handle")
+            raise TypeError("Schematic terminal markers expect a Net handle")
         if net._design is not self._design:
             raise ValueError(
-                _with_schematic_context(_cross_design_net_message(net), self, "power port")
+                _with_schematic_context(_cross_design_net_message(net), self, "terminal marker")
             )
         x, y = _schematic_point_for_authoring(
             at,
             design=self._design,
             schematic=self,
-            action="power port",
+            action="terminal marker",
         )
         orientation = _orientation(orient)
         port = self._design._circuit.add_schematic_terminal_marker(
