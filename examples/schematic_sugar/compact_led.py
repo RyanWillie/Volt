@@ -42,8 +42,8 @@ def author_schematic(
     sheet = design.schematic("Main")
 
     with sheet.drawing(at=(20, 20), unit=20) as drawing:
-        resistor = drawing.R(parts["R1"]).right().label_ref().label_value()
-        led = drawing.LED(parts["D1"]).right().reverse().label_ref()
+        resistor = drawing.two_terminal(parts["R1"]).right().label_ref().label_value()
+        led = drawing.two_terminal(parts["D1"]).right().reverse().label_ref()
 
         drawing.connect(resistor.end, led.start)
         drawing.power("+3V3", at=resistor.start)

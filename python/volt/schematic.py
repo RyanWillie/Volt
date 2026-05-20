@@ -885,66 +885,6 @@ class SchematicDrawing:
         self._pending = element
         return element
 
-    def R(
-        self,
-        component: Component,
-        *,
-        symbol: str | SchematicSymbolSpec | None = None,
-        variant: str = "default",
-        reference_label: str | None = None,
-    ) -> SchematicTwoTerminalElement:
-        return self.two_terminal(
-            component, symbol=symbol, variant=variant, reference_label=reference_label
-        )
-
-    def C(
-        self,
-        component: Component,
-        *,
-        symbol: str | SchematicSymbolSpec | None = None,
-        variant: str = "default",
-        reference_label: str | None = None,
-    ) -> SchematicTwoTerminalElement:
-        return self.two_terminal(
-            component, symbol=symbol, variant=variant, reference_label=reference_label
-        )
-
-    def L(
-        self,
-        component: Component,
-        *,
-        symbol: str | SchematicSymbolSpec | None = None,
-        variant: str = "default",
-        reference_label: str | None = None,
-    ) -> SchematicTwoTerminalElement:
-        return self.two_terminal(
-            component, symbol=symbol, variant=variant, reference_label=reference_label
-        )
-
-    def D(
-        self,
-        component: Component,
-        *,
-        symbol: str | SchematicSymbolSpec | None = None,
-        variant: str = "default",
-        reference_label: str | None = None,
-    ) -> SchematicTwoTerminalElement:
-        return self.two_terminal(
-            component, symbol=symbol, variant=variant, reference_label=reference_label
-        )
-
-    def LED(
-        self,
-        component: Component,
-        *,
-        symbol: str | SchematicSymbolSpec | None = None,
-        variant: str = "default",
-        reference_label: str | None = None,
-    ) -> SchematicTwoTerminalElement:
-        return self.two_terminal(
-            component, symbol=symbol, variant=variant, reference_label=reference_label
-        )
-
     def place(
         self,
         component: Component,

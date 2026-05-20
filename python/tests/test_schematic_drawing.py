@@ -16,8 +16,8 @@ def test_python_schematic_two_terminal_grammar_places_chain_and_preserves_logica
 
     drawing = schematic.drawing(unit=20)
     with drawing as d:
-        resistor = d.R(r1).right().label_value()
-        led = d.LED(d1).right()
+        resistor = d.two_terminal(r1).right().label_value()
+        led = d.two_terminal(d1).right()
         diode = d.two_terminal(d2).right()
 
     projection = json.loads(schematic.to_json())
@@ -75,8 +75,8 @@ def test_python_schematic_label_sugar_uses_symbol_fields_and_net_labels():
     logical_before = design.to_json()
 
     with schematic.drawing(unit=20) as drawing:
-        resistor = drawing.R(r1).right().label_ref().label_value()
-        capacitor = drawing.C(c1).down().label("100n", loc="bottom", ofst=5)
+        resistor = drawing.two_terminal(r1).right().label_ref().label_value()
+        capacitor = drawing.two_terminal(c1).down().label("100n", loc="bottom", ofst=5)
         capacitor.label_value(loc="right", ofst=6)
         drawing.net_label("SIG", at=resistor.end.right(8), orient="left")
 
@@ -121,8 +121,8 @@ def test_python_schematic_default_field_placement_keeps_rotated_labels_upright()
     schematic = design.schematic("Main")
 
     with schematic.drawing(unit=20) as drawing:
-        drawing.R(r1).right().label_ref().label_value()
-        drawing.C(c1).at((40, 0)).down().label_ref().label_value()
+        drawing.two_terminal(r1).right().label_ref().label_value()
+        drawing.two_terminal(c1).at((40, 0)).down().label_ref().label_value()
 
     fields = json.loads(schematic.to_json())["symbol_fields"]
 
@@ -325,6 +325,127 @@ def test_python_schematic_generic_ic_symbol_builder_places_stable_pin_anchors():
     assert json.loads(schematic.to_json()) == projection
 
 
+def test_python_schematic_generic_block_builder_allows_per_side_layout_and_pin_numbers():
+    symbol = volt.SchematicSymbolSpec.block(
+        "test:Peripheral",
+        pins=(
+            volt.SchematicSymbolSpec.block_pin("IN", 11, side="left", slot=1),
+            volt.SchematicSymbolSpec.block_pin("EN", 12, side="left", slot=2),
+            volt.SchematicSymbolSpec.block_pin("OUT", 21, side="right", slot=1),
+            volt.SchematicSymbolSpec.block_pin("VDD", 31, side="top", slot=1),
+            volt.SchematicSymbolSpec.block_pin("GND", 41, side="bottom", slot=1),
+        ),
+        width=40,
+        height=36,
+        lead_length=10,
+        pin_pitch=10,
+        pin_label_offset=3,
+        side_layouts=(
+            volt.SchematicSymbolSpec.side_layout(
+                "left",
+                pad=6,
+                pin_pitch=12,
+                lead_length=14,
+                pin_label_offset=5,
+                pin_number_offset=4,
+            ),
+            volt.SchematicSymbolSpec.side_layout(
+                "right",
+                pad=8,
+                lead_length=6,
+                pin_label_offset=2,
+                pin_number_offset=3,
+            ),
+            volt.SchematicSymbolSpec.side_layout(
+                "top",
+                pad=16,
+                lead_length=5,
+                pin_number_offset=6,
+            ),
+            volt.SchematicSymbolSpec.side_layout(
+                "bottom",
+                pad=24,
+                lead_length=7,
+                pin_label_offset=4,
+                pin_number_offset=5,
+            ),
+        ),
+        pin_numbers=True,
+        pin_number_offset=2,
+    )
+
+    assert [pin._to_dict() for pin in symbol.pins] == [
+        {
+            "name": "IN",
+            "number": "11",
+            "anchor": {"x": 0.0, "y": 6.0},
+            "orientation": "Left",
+        },
+        {
+            "name": "EN",
+            "number": "12",
+            "anchor": {"x": 0.0, "y": 18.0},
+            "orientation": "Left",
+        },
+        {
+            "name": "OUT",
+            "number": "21",
+            "anchor": {"x": 60.0, "y": 8.0},
+            "orientation": "Right",
+        },
+        {
+            "name": "VDD",
+            "number": "31",
+            "anchor": {"x": 30.0, "y": -5.0},
+            "orientation": "Up",
+        },
+        {
+            "name": "GND",
+            "number": "41",
+            "anchor": {"x": 38.0, "y": 43.0},
+            "orientation": "Down",
+        },
+    ]
+    assert symbol.primitives[0] == {
+        "type": "rectangle",
+        "first_corner": {"x": 14.0, "y": 0.0},
+        "second_corner": {"x": 54.0, "y": 36.0},
+    }
+    text_primitives = [
+        primitive for primitive in symbol.primitives if primitive["type"] == "text"
+    ]
+    assert {
+        "type": "text",
+        "text": "IN",
+        "anchor": {"x": 19.0, "y": 6.0},
+        "orientation": "Right",
+    } in text_primitives
+    assert {
+        "type": "text",
+        "text": "11",
+        "anchor": {"x": 10.0, "y": 6.0},
+        "orientation": "Right",
+    } in text_primitives
+    assert {
+        "type": "text",
+        "text": "21",
+        "anchor": {"x": 57.0, "y": 8.0},
+        "orientation": "Right",
+    } in text_primitives
+    assert {
+        "type": "text",
+        "text": "31",
+        "anchor": {"x": 30.0, "y": -6.0},
+        "orientation": "Right",
+    } in text_primitives
+    assert {
+        "type": "text",
+        "text": "41",
+        "anchor": {"x": 38.0, "y": 41.0},
+        "orientation": "Right",
+    } in text_primitives
+
+
 def test_python_schematic_ortho_lines_lower_to_existing_wire_runs_without_logical_mutation():
     design = volt.Design("schematic-ortho-lines")
     a = design.net("A")
@@ -398,6 +519,21 @@ def test_ic_symbol_builder_rejects_invalid_pin_layout():
         assert "left, right, top, or bottom" in str(error)
     else:
         raise AssertionError("ic pin side should reject unsupported values")
+
+    try:
+        volt.SchematicSymbolSpec.ic(
+            "test_duplicate_side_layout_ic",
+            pins=(volt.SchematicSymbolSpec.ic_pin("A", 1, side="left"),),
+            side_layouts=(
+                volt.SchematicSymbolSpec.side_layout("left", pad=6),
+                volt.SchematicSymbolSpec.side_layout("l", pad=8),
+            ),
+        )
+    except ValueError as error:
+        assert "side layout" in str(error).lower()
+        assert "duplicated" in str(error).lower()
+    else:
+        raise AssertionError("ic builder should reject duplicate side layout entries")
 
 
 def test_ortho_lines_rejects_malformed_entries():
@@ -707,7 +843,7 @@ def test_python_schematic_label_sugar_rejects_invalid_inputs_clearly():
     other_anchor = volt.SchematicAnchor((0, 0), design=other)
 
     with schematic.drawing(unit=20) as drawing:
-        resistor = drawing.R(r1).right()
+        resistor = drawing.two_terminal(r1).right()
         _ = resistor.start
         before = schematic.to_json()
 
@@ -781,14 +917,14 @@ def test_python_schematic_two_terminal_grammar_length_anchor_drop_and_hold():
     drawing = schematic.drawing(at=(10, 10), unit=20)
 
     with drawing as d:
-        capacitor = d.C(c1).at((10, 10)).anchor("center").right(1.5).drop("start")
+        capacitor = d.two_terminal(c1).at((10, 10)).anchor("center").right(1.5).drop("start")
         assert capacitor.start.point == (-5.0, 10.0)
         assert capacitor.center.point == (10.0, 10.0)
         assert capacitor.end.point == (25.0, 10.0)
         assert d.here.point == (-5.0, 10.0)
 
         with d.hold():
-            inductor = d.L(l1).right(2)
+            inductor = d.two_terminal(l1).right(2)
             assert inductor.start.point == (-5.0, 10.0)
             assert inductor.end.point == (35.0, 10.0)
             assert d.here.point == (35.0, 10.0)
@@ -812,8 +948,8 @@ def test_python_schematic_two_terminal_grammar_reverse_and_flip_presentations():
     logical_before = design.to_json()
 
     with schematic.drawing(unit=20) as drawing:
-        reversed_led = drawing.LED(d1).right().reverse()
-        flipped_diode = drawing.D(d2).right().flip()
+        reversed_led = drawing.two_terminal(d1).right().reverse()
+        flipped_diode = drawing.two_terminal(d2).right().flip()
 
     projection = json.loads(schematic.to_json())
     reversed_symbol = projection["symbol_definitions"][0]
@@ -844,7 +980,7 @@ def test_python_schematic_two_terminal_grammar_rejects_invalid_components_clearl
 
     with schematic.drawing() as drawing:
         try:
-            drawing.R(object()).right()
+            drawing.two_terminal(object()).right()
         except TypeError as error:
             assert str(error) == "Two-terminal placement expects a Component handle"
         else:
@@ -875,7 +1011,7 @@ def test_python_schematic_two_terminal_failed_materialization_restores_cursor():
 
     try:
         with drawing as d:
-            d.R(r1, symbol="missing-symbol").right()
+            d.two_terminal(r1, symbol="missing-symbol").right()
     except ValueError as error:
         assert str(error) == "Unknown schematic symbol"
     else:
@@ -887,7 +1023,7 @@ def test_python_schematic_two_terminal_failed_materialization_restores_cursor():
     assert drawing.direction == "Up"
 
     with drawing as d:
-        recovered = d.R(r1).right()
+        recovered = d.two_terminal(r1).right()
 
     assert recovered.start.point == (5.0, 6.0)
     assert recovered.end.point == (25.0, 6.0)
@@ -898,7 +1034,7 @@ def test_python_schematic_two_terminal_dir_has_no_placement_side_effects():
     schematic = design.schematic("Main")
 
     with schematic.drawing(unit=20) as drawing:
-        resistor = drawing.R(r1)
+        resistor = drawing.two_terminal(r1)
         listing = dir(resistor)
         assert "right" in listing
         assert json.loads(schematic.to_json())["symbol_instances"] == []
@@ -1058,8 +1194,8 @@ def test_python_schematic_drawing_connect_infers_shared_pin_net_and_readiness():
     logical_before = design.to_json()
 
     with schematic.drawing(unit=20) as drawing:
-        resistor = drawing.R(r1).right()
-        led = drawing.LED(d1).right().reverse()
+        resistor = drawing.two_terminal(r1).right()
+        led = drawing.two_terminal(d1).right().reverse()
 
         drawing.connect(resistor.end, led.start)
         drawing.power("+3V3", at=resistor.start)
@@ -1093,8 +1229,8 @@ def test_python_schematic_drawing_connect_rejects_different_pin_nets_without_wir
     logical_before = design.to_json()
 
     with schematic.drawing(unit=20) as drawing:
-        resistor = drawing.R(r1).right()
-        led = drawing.LED(d1).right().reverse()
+        resistor = drawing.two_terminal(r1).right()
+        led = drawing.two_terminal(d1).right().reverse()
         _ = (resistor.end, led.end)
         before = schematic.to_json()
 
@@ -1126,7 +1262,7 @@ def test_python_schematic_drawing_connect_requires_explicit_net_for_plain_coordi
     logical_before = design.to_json()
 
     with schematic.drawing(unit=20) as drawing:
-        resistor = drawing.R(r1).right()
+        resistor = drawing.two_terminal(r1).right()
         _ = resistor.start
         before = schematic.to_json()
 
@@ -1365,9 +1501,9 @@ def test_python_schematic_wire_shortcuts_draw_rectangular_loop_without_logical_m
     logical_before = design.to_json()
 
     with schematic.drawing(unit=20) as drawing:
-        resistor = drawing.R(r1).right()
+        resistor = drawing.two_terminal(r1).right()
         drawing.move_from(resistor.end.right(40).down(20), direction="Down")
-        led = drawing.LED(d1).down().reverse()
+        led = drawing.two_terminal(d1).down().reverse()
         vcc_port = drawing.power("VCC", net=vcc, at=resistor.start.left(20))
         gnd_port = drawing.ground(net=gnd, at=led.end.down(20))
 
@@ -1398,7 +1534,7 @@ def test_python_schematic_power_and_ground_require_explicit_net_for_non_pin_anch
     schematic = design.schematic("Main")
 
     with schematic.drawing(unit=20) as drawing:
-        resistor = drawing.R(r1).right()
+        resistor = drawing.two_terminal(r1).right()
         _ = resistor.start
         before = schematic.to_json()
 
@@ -1533,7 +1669,7 @@ def test_python_schematic_power_and_ground_stubs_are_presentation_only():
     logical_before = design.to_json()
 
     with schematic.drawing(unit=10) as drawing:
-        resistor = drawing.R(r1).right()
+        resistor = drawing.two_terminal(r1).right()
         power = drawing.power_stub("VCC", at=resistor.start, length=8)
         ground = drawing.ground_stub(at=resistor.end, length=6)
 
@@ -1795,7 +1931,7 @@ def test_python_schematic_drawing_stack_does_not_materialize_pending_elements():
     schematic = design.schematic("Main")
     drawing = schematic.drawing(unit=10)
 
-    pending = drawing.R(resistor_part).right()
+    pending = drawing.two_terminal(resistor_part).right()
     instances_before = json.loads(schematic.to_json())["symbol_instances"]
     anchors = drawing.stack(count=2, direction="Down", pitch=5)
 
@@ -1825,7 +1961,7 @@ def test_python_schematic_drawing_stack_anchors_compose_inside_frame_operations(
     with drawing.frame((100, 50), direction="Down"):
         anchors = drawing.stack(count=6, direction="Down", pitch=10)
         placed = drawing.place(probe, at=anchors[0])
-        cap = drawing.C(capacitor).at(anchors[1]).right()
+        cap = drawing.two_terminal(capacitor).at(anchors[1]).right()
         stub = drawing.signal_stub(
             sig,
             at=anchors[2],
@@ -2118,7 +2254,7 @@ def test_python_schematic_drawing_frame_offsets_point_accepting_operations():
     with schematic.drawing(direction="Left") as drawing:
         with drawing.frame((100, 50), direction="Down"):
             placed_probe = drawing.place(probe, at=(1, 2))
-            resistor = drawing.R(resistor_part).at((10, 0)).right()
+            resistor = drawing.two_terminal(resistor_part).at((10, 0)).right()
             drawing.connect((0, 0), (10, 0), net=sig, shape="-")
             drawing.wire(sig).at((0, 5)).to((10, 5)).direct()
             drawing.local_label(sig, at=(2, 8), side="Right", offset=3)

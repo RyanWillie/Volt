@@ -8,7 +8,7 @@ from pathlib import Path
 
 import volt
 
-SHEET_FILE = "examples/timer_555_led_blinker/main.py"
+SHEET_FILE = "timer_555_led_blinker/main.py"
 
 
 @dataclass(frozen=True)
@@ -72,17 +72,23 @@ def _timer_symbol() -> volt.SchematicSymbolSpec:
     return volt.SchematicSymbolSpec.ic(
         "volt.examples.timer_555_led_blinker:NE555",
         pins=(
-            volt.SchematicSymbolSpec.ic_pin("DISCH", 7, side="left", slot=1),
-            volt.SchematicSymbolSpec.ic_pin("THRESH", 6, side="left", slot=2),
-            volt.SchematicSymbolSpec.ic_pin("TRIG", 2, side="left", slot=3),
+            volt.SchematicSymbolSpec.ic_pin("DISCH", 7, side="left", slot=1, label="DIS"),
+            volt.SchematicSymbolSpec.ic_pin("THRESH", 6, side="left", slot=2, label="THR"),
+            volt.SchematicSymbolSpec.ic_pin("TRIG", 2, side="left", slot=3, label="TRG"),
             volt.SchematicSymbolSpec.ic_pin("OUT", 3, side="right", slot=2),
-            volt.SchematicSymbolSpec.ic_pin("CTRL", 5, side="right", slot=3),
-            volt.SchematicSymbolSpec.ic_pin("RESET", 4, side="top", slot=2),
-            volt.SchematicSymbolSpec.ic_pin("VCC", 8, side="top", slot=4),
+            volt.SchematicSymbolSpec.ic_pin("CTRL", 5, side="right", slot=3, label="CTL"),
+            volt.SchematicSymbolSpec.ic_pin("RESET", 4, side="top", slot=2, label="RST"),
+            volt.SchematicSymbolSpec.ic_pin("VCC", 8, side="top", slot=4, label="Vcc"),
             volt.SchematicSymbolSpec.ic_pin("GND", 1, side="bottom", slot=3),
         ),
+        side_layouts=(
+            volt.SchematicSymbolSpec.side_layout("left", pin_number_offset=2),
+            volt.SchematicSymbolSpec.side_layout("right", pin_number_offset=2),
+            volt.SchematicSymbolSpec.side_layout("top", pin_number_offset=2),
+            volt.SchematicSymbolSpec.side_layout("bottom", pin_number_offset=2),
+        ),
         center_label="555",
-        bottom_label="timer",
+        pin_numbers=True,
     )
 
 
@@ -156,16 +162,20 @@ def build_schematic(
     )
 
     with sheet.drawing(at=(140, 80), unit=20) as drawing:
-        timer = drawing.place(parts["U1"]).label_ref().label_value()
+        timer = (
+            drawing.place(parts["U1"])
+            .label_ref(loc="top", offset=4)
+            .label_value(loc="bottom", offset=14)
+        )
 
-        disch = timer.DISCH.left(48)
+        disch = timer.DISCH.left(42)
         timing = timer.TRIG.tox(disch)
         timing_vcc = disch.up(28)
         timing_ground = timing.down(34)
-        control = timer.CTRL.right(40)
-        output = timer.OUT.right(34)
-        led_resistor_end = output.right(20)
-        led_anode = led_resistor_end.right(5)
+        control = timer.CTRL.right(30)
+        output = timer.OUT.right(24)
+        led_resistor_end = output.right(22)
+        led_anode = led_resistor_end.right(6)
         led_cathode = led_anode.right(30)
 
         ra = (
@@ -195,18 +205,18 @@ def build_schematic(
         led_resistor = (
             drawing.two_terminal(parts["RLED"])
             .between(output, led_resistor_end)
-            .label_ref()
-            .label_value(loc="top")
+            .label_value(loc="top", offset=10)
         )
         led = (
             drawing.two_terminal(parts["DLED"])
             .between(led_cathode, led_anode)
-            .label_ref()
+            .label_ref(loc="top")
         )
 
+        vcc_stub = drawing.power_stub("+5V", at=timer.VCC, length=20)
+        drawing.ortho_lines(((nets["+5V"], timer.RESET, vcc_stub.end),), shape="|-")
         drawing.ortho_lines(
             (
-                (nets["+5V"], timer.RESET, timer.RESET.up(24)),
                 (nets["DISCH"], timer.DISCH, disch),
                 (nets["CTRL"], timer.CTRL, control),
                 (nets["OUT"], timer.OUT, output),
@@ -216,28 +226,26 @@ def build_schematic(
         drawing.connect(nets["TIMING"], timer.THRESH, timer.TRIG, timing)
         drawing.junction(nets["DISCH"], at=disch)
         drawing.junction(nets["TIMING"], at=timing)
-        drawing.signal_stub(
+        drawing.local_label(
             nets["TIMING"],
             at=timing_cap.start,
             side="Left",
-            length=18,
-            label_gap=10,
+            offset=18,
             orient="Right",
         )
-        drawing.signal_stub(
-            nets["OUT"],
-            at=led_resistor.start,
-            side="Up",
-            length=16,
-            label_gap=10,
-            orient="Right",
-        )
-        drawing.power_stub("+5V", at=timer.VCC, length=24)
         drawing.power_stub("+5V", at=ra.start, length=18)
-        drawing.ground_stub(at=timer.GND, length=34)
-        drawing.ground_stub(at=timing_cap.end, length=18)
-        drawing.ground_stub(at=control_cap.end, length=18)
-        drawing.ground_stub(at=led.start, length=18)
+        ground = drawing.ground_stub(at=timer.GND, length=34)
+        drawing.ortho_lines(
+            (
+                (nets["GND"], timing_cap.end, ground.port),
+                (nets["GND"], control_cap.end, ground.port),
+                (nets["GND"], led.start, ground.port),
+            ),
+            shape="|-",
+        )
+        drawing.junction(nets["GND"], at=timing_cap.end.toy(ground.port.pin))
+        drawing.junction(nets["GND"], at=control_cap.end.toy(ground.port.pin))
+        drawing.junction(nets["GND"], at=led.start.toy(ground.port.pin))
 
     return sheet
 

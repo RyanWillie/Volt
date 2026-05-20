@@ -52,6 +52,7 @@ inline constexpr std::size_t local_label_cluster_threshold = 3U;
 inline constexpr double floating_stub_max_length = 8.0;
 inline constexpr double floating_stub_cluster_max_span = 24.0;
 inline constexpr std::size_t floating_stub_cluster_threshold = 3U;
+inline constexpr double dangling_wire_label_anchor_max_gap = 4.0;
 inline constexpr double oversized_port_tag_rendered_length = 28.0;
 inline constexpr double power_port_stem_length = 4.2;
 inline constexpr double power_port_tip_offset = 7.6;
@@ -321,6 +322,30 @@ inline void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexc
     for (const auto label_id : sheet.net_labels()) {
         const auto &label = schematic.net_label(label_id);
         if (label.net() == net && same_schematic_point(label.position(), point)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+[[nodiscard]] inline bool label_anchors_wire_endpoint(Point endpoint, const NetLabel &label) {
+    if (same_schematic_point(endpoint, label.position())) {
+        return true;
+    }
+
+    const auto dx = std::abs(label.position().x() - endpoint.x());
+    const auto dy = std::abs(label.position().y() - endpoint.y());
+    return (nearly_equal(dx, 0.0) && dy <= dangling_wire_label_anchor_max_gap) ||
+           (nearly_equal(dy, 0.0) && dx <= dangling_wire_label_anchor_max_gap);
+}
+
+[[nodiscard]] inline bool sheet_has_net_label_anchor_for_endpoint(const Schematic &schematic,
+                                                                  const Sheet &sheet, NetId net,
+                                                                  Point point) {
+    for (const auto label_id : sheet.net_labels()) {
+        const auto &label = schematic.net_label(label_id);
+        if (label.net() == net && label_anchors_wire_endpoint(point, label)) {
             return true;
         }
     }
@@ -1819,6 +1844,85 @@ inline void validate_ambiguous_same_net_crossings(const Schematic &schematic, Sh
     return false;
 }
 
+[[nodiscard]] inline bool
+sheet_has_terminal_or_sheet_port_for_net_at_point(const Schematic &schematic, const Sheet &sheet,
+                                                  NetId net, Point point) {
+    for (const auto port_id : sheet.power_ports()) {
+        const auto &port = schematic.power_port(port_id);
+        if (port.net() == net && same_schematic_point(port.position(), point)) {
+            return true;
+        }
+    }
+    for (const auto port_id : sheet.sheet_ports()) {
+        const auto &port = schematic.sheet_port(port_id);
+        if (port.net() == net && same_schematic_point(port.position(), point)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] inline bool sheet_has_junction_for_net_at_point(const Schematic &schematic,
+                                                              const Sheet &sheet, NetId net,
+                                                              Point point) {
+    for (const auto junction_id : sheet.junctions()) {
+        const auto &junction = schematic.junction(junction_id);
+        if (junction.net() == net && same_schematic_point(junction.position(), point)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] inline bool wire_has_endpoint_at_point(const WireRun &wire, Point point) noexcept {
+    return same_schematic_point(wire.points().front(), point) ||
+           same_schematic_point(wire.points().back(), point);
+}
+
+[[nodiscard]] inline bool
+sheet_has_other_same_net_wire_endpoint_at_point(const Schematic &schematic, const Sheet &sheet,
+                                                NetId net, Point point, WireRunId excluded_wire) {
+    for (const auto wire_id : sheet.wire_runs()) {
+        if (wire_id == excluded_wire) {
+            continue;
+        }
+        const auto &wire = schematic.wire_run(wire_id);
+        if (wire.net() == net && wire_has_endpoint_at_point(wire, point)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] inline bool wire_endpoint_has_readable_anchor(const Schematic &schematic,
+                                                            const Sheet &sheet, NetId net,
+                                                            Point point, WireRunId wire_id) {
+    return sheet_has_symbol_pin_for_net_at_point(schematic, sheet, net, point) ||
+           sheet_has_terminal_or_sheet_port_for_net_at_point(schematic, sheet, net, point) ||
+           sheet_has_junction_for_net_at_point(schematic, sheet, net, point) ||
+           sheet_has_net_label_anchor_for_endpoint(schematic, sheet, net, point) ||
+           sheet_has_other_same_net_wire_endpoint_at_point(schematic, sheet, net, point, wire_id);
+}
+
+inline void validate_dangling_wire_endpoints(const Schematic &schematic, SheetId sheet_id,
+                                             const Sheet &sheet, DiagnosticReport &report) {
+    for (const auto wire_id : sheet.wire_runs()) {
+        const auto &wire = schematic.wire_run(wire_id);
+        for (const auto point : {wire.points().front(), wire.points().back()}) {
+            if (wire_endpoint_has_readable_anchor(schematic, sheet, wire.net(), point, wire_id)) {
+                continue;
+            }
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_DANGLING_WIRE_ENDPOINT"},
+                "Schematic wire endpoint does not land on an explicit visual connection anchor",
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(wire_id),
+                            EntityRef::net(wire.net())},
+            });
+        }
+    }
+}
+
 [[nodiscard]] inline bool sheet_has_other_same_net_wire_at_point(const Schematic &schematic,
                                                                  const Sheet &sheet, NetId net,
                                                                  Point point,
@@ -2138,6 +2242,7 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         detail::validate_long_local_doglegs(schematic, sheet_id, sheet, report);
         detail::validate_misaligned_local_labels(schematic, sheet_id, sheet, report);
         detail::validate_ambiguous_same_net_crossings(schematic, sheet_id, sheet, report);
+        detail::validate_dangling_wire_endpoints(schematic, sheet_id, sheet, report);
         detail::validate_floating_stub_clusters(schematic, sheet_id, sheet, report);
         detail::validate_symbol_crowding(schematic, sheet_id, sheet, report);
         detail::validate_crowded_tag_stacks(schematic, sheet_id, sheet, report);
