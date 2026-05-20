@@ -1478,6 +1478,97 @@ def test_python_schematic_terminal_marker_is_generic_and_net_bound():
     ]
 
 
+def test_python_schematic_terminal_stub_draws_existing_net_wire_and_marker_only():
+    design = volt.Design("schematic-generic-terminal-stub")
+    sig = design.net("SIG")
+    probe = design.test_point(ref="TP1")
+    sig += probe["TP"]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=10) as drawing:
+        placed = drawing.place(probe)
+        stub = drawing.terminal_stub("SIG_REF", at=placed.TP, kind="Power", length=12)
+
+    projection = json.loads(schematic.to_json())
+
+    assert design.to_json() == logical_before
+    assert stub.net.index == sig.index
+    assert stub.side == placed.TP.orientation
+    assert stub.start.point == (0.0, 0.0)
+    assert stub.end.point == (-12.0, 0.0)
+    assert stub.port.pin.point == (-12.0, 0.0)
+    assert projection["wire_runs"] == [
+        {
+            "id": "wire_run:0",
+            "sheet": "sheet:0",
+            "net": f"net:{sig.index}",
+            "points": [{"x": 0.0, "y": 0.0}, {"x": -12.0, "y": 0.0}],
+            "route_intent": "Direct",
+        }
+    ]
+    assert projection["power_ports"] == [
+        {
+            "id": "power_port:0",
+            "sheet": "sheet:0",
+            "net": f"net:{sig.index}",
+            "kind": "Power",
+            "position": {"x": -12.0, "y": 0.0},
+            "orientation": "Up",
+            "label": "SIG_REF",
+        }
+    ]
+
+
+def test_python_schematic_power_and_ground_stubs_are_presentation_only():
+    design = volt.Design("schematic-power-ground-stubs")
+    vcc = design.net("VCC", kind="power")
+    gnd = design.net("GND", kind="ground")
+    r1 = design.R("10k", ref="R1")
+    vcc += r1[1]
+    gnd += r1[2]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=10) as drawing:
+        resistor = drawing.R(r1).right()
+        power = drawing.power_stub("VCC", at=resistor.start, length=8)
+        ground = drawing.ground_stub(at=resistor.end, length=6)
+
+    projection = json.loads(schematic.to_json())
+
+    assert design.to_json() == logical_before
+    assert power.end.point == (0.0, -8.0)
+    assert ground.end.point == (10.0, 6.0)
+    assert [wire["points"] for wire in projection["wire_runs"]] == [
+        [{"x": 0.0, "y": 0.0}, {"x": 0.0, "y": -8.0}],
+        [{"x": 10.0, "y": 0.0}, {"x": 10.0, "y": 6.0}],
+    ]
+    assert [(port["kind"], port["orientation"]) for port in projection["power_ports"]] == [
+        ("Power", "Up"),
+        ("Ground", "Down"),
+    ]
+
+
+def test_python_schematic_anchor_axis_alignment_is_pure_authoring_geometry():
+    design = volt.Design("schematic-anchor-axis-alignment")
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+    projection_before = schematic.to_json()
+
+    with schematic.drawing(at=(10, 20), unit=10) as drawing:
+        base = drawing.node((10, 20))
+        target = drawing.node((40, 55))
+        assert base.tox(target).point == (40.0, 20.0)
+        assert base.toy(target).point == (10.0, 55.0)
+        assert base.tox(25).toy(35).point == (25.0, 35.0)
+
+    assert schematic.to_json() == projection_before
+    assert design.to_json() == logical_before
+
+
 def test_python_schematic_terminal_marker_rejects_invalid_kind():
     design = volt.Design("schematic-terminal-marker-kind")
     sig = design.net("SIG")
