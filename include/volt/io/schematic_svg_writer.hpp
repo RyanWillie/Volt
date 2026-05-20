@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <volt/core/ids.hpp>
-#include <volt/schematic/geometry.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
 
@@ -208,23 +207,6 @@ inline void write_svg_number(std::ostream &out, double value) {
         return "off-page";
     }
     throw std::logic_error{"Unhandled sheet port kind"};
-}
-
-[[nodiscard]] inline bool symbol_instance_has_reference_field(const Schematic &schematic,
-                                                              const Sheet &sheet,
-                                                              SymbolInstanceId instance_id) {
-    for (const auto field_id : sheet.symbol_fields()) {
-        const auto &field = schematic.symbol_field(field_id);
-        if (field.symbol_instance() == instance_id && field.name() == "reference") {
-            return true;
-        }
-    }
-    return false;
-}
-
-[[nodiscard]] inline Point legacy_reference_field_position(const SymbolInstance &instance) {
-    return transform_schematic_point(Point{0.0, -12.0}, instance.position(),
-                                     instance.orientation());
 }
 
 [[nodiscard]] inline double orientation_degrees(SchematicOrientation orientation) {
@@ -619,40 +601,23 @@ inline void write_sheet_port_svg(std::ostream &out, const Schematic &schematic, 
     out << "    </g>\n";
 }
 
-inline void write_symbol_field_text_svg(std::ostream &out, SymbolInstanceId instance,
-                                        std::string_view name, std::string_view value,
-                                        Point position, SchematicOrientation orientation) {
-    out << "    <text class=\"symbol-field\" data-symbol-instance=\""
-        << svg_escape(svg_symbol_instance_id(instance)) << "\" data-field=\"" << svg_escape(name)
-        << "\" x=\"";
-    write_svg_number(out, position.x());
-    out << "\" y=\"";
-    write_svg_number(out, position.y());
-    out << "\" transform=\"rotate(";
-    write_svg_number(out, orientation_degrees(orientation));
-    out << ' ';
-    write_svg_number(out, position.x());
-    out << ' ';
-    write_svg_number(out, position.y());
-    out << ")\">" << svg_escape(value) << "</text>\n";
-}
-
 inline void write_symbol_field_svg(std::ostream &out, const Schematic &schematic,
                                    SymbolFieldId id) {
     const auto &field = schematic.symbol_field(id);
-    write_symbol_field_text_svg(out, field.symbol_instance(), field.name(), field.value(),
-                                field.position(), field.orientation());
-}
 
-inline void write_legacy_reference_field_svg(std::ostream &out, const Schematic &schematic,
-                                             SymbolInstanceId id) {
-    const auto &instance = schematic.symbol_instance(id);
-    if (!instance.reference_label().has_value()) {
-        return;
-    }
-    write_symbol_field_text_svg(out, id, "reference", instance.reference_label().value(),
-                                legacy_reference_field_position(instance),
-                                SchematicOrientation::Right);
+    out << "    <text class=\"symbol-field\" data-symbol-instance=\""
+        << svg_escape(svg_symbol_instance_id(field.symbol_instance())) << "\" data-field=\""
+        << svg_escape(field.name()) << "\" x=\"";
+    write_svg_number(out, field.position().x());
+    out << "\" y=\"";
+    write_svg_number(out, field.position().y());
+    out << "\" transform=\"rotate(";
+    write_svg_number(out, orientation_degrees(field.orientation()));
+    out << ' ';
+    write_svg_number(out, field.position().x());
+    out << ' ';
+    write_svg_number(out, field.position().y());
+    out << ")\">" << svg_escape(field.value()) << "</text>\n";
 }
 
 [[nodiscard]] inline bool region_uses_dashed_frame(const SheetRegion &region) {
@@ -990,11 +955,6 @@ inline void write_sheet_svg(std::ostream &out, const Schematic &schematic, Sheet
     }
     out << "    </g>\n";
     out << "    <g class=\"layer layer-fields\">\n";
-    for (const auto instance : sheet.symbol_instances()) {
-        if (!symbol_instance_has_reference_field(schematic, sheet, instance)) {
-            write_legacy_reference_field_svg(out, schematic, instance);
-        }
-    }
     for (const auto field : sheet.symbol_fields()) {
         write_symbol_field_svg(out, schematic, field);
     }

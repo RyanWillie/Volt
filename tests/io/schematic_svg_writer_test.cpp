@@ -60,16 +60,6 @@ std::size_t require_contains(std::string_view text, std::string_view needle) {
     return position;
 }
 
-std::size_t count_occurrences(std::string_view text, std::string_view needle) {
-    auto count = std::size_t{0};
-    auto position = std::size_t{0};
-    while ((position = text.find(needle, position)) != std::string_view::npos) {
-        ++count;
-        position += needle.size();
-    }
-    return count;
-}
-
 volt::Schematic make_schematic_with_wires(const volt::Circuit &circuit, volt::ComponentId component,
                                           volt::NetId net) {
     auto schematic = make_schematic(circuit, component);
@@ -311,44 +301,16 @@ TEST_CASE("Schematic SVG writer renders explicit presentation labels") {
     CHECK(svg.find(">DIV_A/VIN</text>") == std::string::npos);
 }
 
-TEST_CASE("Schematic SVG writer preserves legacy instance reference labels") {
+TEST_CASE("Schematic SVG writer does not derive reference fields from symbol instances") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    auto schematic = volt::Schematic{circuit};
-    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
-    const auto symbol = schematic.add_symbol_definition(make_symbol());
-
-    static_cast<void>(schematic.place_symbol(
-        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0},
-                                    volt::SchematicOrientation::Right, std::nullopt,
-                                    std::string{"LEGACY/R&1"}}));
+    const auto schematic = make_schematic(circuit, component);
 
     const auto svg = volt::io::write_schematic_svg(schematic);
 
-    CHECK(svg.find("<text class=\"symbol-field\" data-symbol-instance=\"symbol_instance:0\" "
-                   "data-field=\"reference\" x=\"40\" y=\"8\"") != std::string::npos);
-    CHECK(svg.find(">LEGACY/R&amp;1</text>") != std::string::npos);
+    CHECK(svg.find("data-field=\"reference\"") == std::string::npos);
+    CHECK(svg.find(">R&amp;1</text>") == std::string::npos);
     CHECK(svg.find("<text class=\"reference\"") == std::string::npos);
-}
-
-TEST_CASE("Schematic SVG writer prefers explicit reference fields over legacy instance labels") {
-    volt::Circuit circuit;
-    const auto component = add_resistor(circuit);
-    auto schematic = volt::Schematic{circuit};
-    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
-    const auto symbol = schematic.add_symbol_definition(make_symbol());
-
-    const auto instance = schematic.place_symbol(
-        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0},
-                                    volt::SchematicOrientation::Right, std::nullopt,
-                                    std::string{"LEGACY"}});
-    static_cast<void>(schematic.add_symbol_field(
-        sheet, volt::SymbolField{instance, "reference", "R1", volt::Point{40.0, 8.0}}));
-
-    const auto svg = volt::io::write_schematic_svg(schematic);
-
-    CHECK(count_occurrences(svg, ">R1</text>") == 1U);
-    CHECK(svg.find(">LEGACY</text>") == std::string::npos);
 }
 
 TEST_CASE("Schematic SVG writer renders explicit net label display text") {

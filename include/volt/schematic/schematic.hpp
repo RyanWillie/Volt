@@ -465,15 +465,9 @@ class SymbolInstance {
     /** Construct a symbol instance over an existing logical component. */
     SymbolInstance(SymbolDefId symbol_definition, ComponentId component, Point position,
                    SchematicOrientation orientation = SchematicOrientation::Right,
-                   std::optional<std::size_t> authored_region = std::nullopt,
-                   std::optional<std::string> reference_label = std::nullopt)
+                   std::optional<std::size_t> authored_region = std::nullopt)
         : symbol_definition_{symbol_definition}, component_{component}, position_{position},
-          orientation_{orientation}, authored_region_{authored_region},
-          reference_label_{std::move(reference_label)} {
-        if (reference_label_.has_value() && reference_label_->empty()) {
-            throw std::invalid_argument{"Schematic symbol reference label must not be empty"};
-        }
-    }
+          orientation_{orientation}, authored_region_{authored_region} {}
 
     /** Return the reusable symbol definition used by this placement. */
     [[nodiscard]] SymbolDefId symbol_definition() const noexcept { return symbol_definition_; }
@@ -492,18 +486,12 @@ class SymbolInstance {
         return authored_region_;
     }
 
-    /** Return the optional presentation label used instead of the logical component reference. */
-    [[nodiscard]] const std::optional<std::string> &reference_label() const noexcept {
-        return reference_label_;
-    }
-
   private:
     SymbolDefId symbol_definition_;
     ComponentId component_;
     Point position_;
     SchematicOrientation orientation_;
     std::optional<std::size_t> authored_region_;
-    std::optional<std::string> reference_label_;
 };
 
 /** Authoring route intent retained on a drawn wire run. */

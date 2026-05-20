@@ -1851,7 +1851,6 @@ class Schematic:
             y,
             orientation,
             _authored_region,
-            None,
         )
         placed = SchematicSymbol(self, instance, component, orientation, _authored_region)
         if reference_label is not None:

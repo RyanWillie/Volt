@@ -134,6 +134,19 @@ TEST_CASE("Schematic reader loads optional net label display text") {
     CHECK(schematic.net_label(volt::NetLabelId{0}).label() == std::optional<std::string>{"SWDIO"});
 }
 
+TEST_CASE("Schematic reader rejects instance-owned reference labels") {
+    volt::Circuit circuit;
+    [[maybe_unused]] const auto component = add_resistor(circuit);
+    [[maybe_unused]] const auto net = add_net(circuit);
+    auto fixture = schematic_json();
+    fixture["symbol_instances"][0]["reference_label"] = "R1";
+
+    CHECK_THROWS_MATCHES(
+        volt::io::read_schematic(fixture, circuit), std::logic_error,
+        Catch::Matchers::Message("Schematic symbol instance reference_label is no longer "
+                                 "supported; use a symbol_fields entry named reference"));
+}
+
 TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
