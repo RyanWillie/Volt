@@ -1552,6 +1552,66 @@ def test_python_schematic_power_and_ground_stubs_are_presentation_only():
     ]
 
 
+def test_python_schematic_terminal_stub_rejects_invalid_inputs_without_projection():
+    design = volt.Design("schematic-terminal-stub-invalid")
+    sig = design.net("SIG")
+    wrong = design.net("WRONG")
+    other = volt.Design("schematic-terminal-stub-invalid-other")
+    other_net = other.net("OTHER")
+    probe = design.test_point(ref="TP1")
+    sig += probe["TP"]
+
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(unit=10) as drawing:
+        placed = drawing.place(probe)
+        before = schematic.to_json()
+
+        try:
+            drawing.terminal_stub("SIG", at=placed.TP, length=0)
+        except ValueError as error:
+            assert "positive" in str(error).lower() or "length" in str(error).lower()
+        else:
+            raise AssertionError("terminal_stub should reject zero length")
+
+        try:
+            drawing.terminal_stub("SIG", at=placed.TP, side="diagonal")
+        except ValueError as error:
+            assert "Right, Down, Left, or Up" in str(error)
+        else:
+            raise AssertionError("terminal_stub should reject invalid sides")
+
+        try:
+            drawing.terminal_stub("FLOATING", at=(20, 20))
+        except ValueError as error:
+            message = str(error)
+            assert "terminal stub" in message
+            assert "non-pin anchor" in message
+        else:
+            raise AssertionError("terminal_stub should require a net for plain coordinates")
+
+        try:
+            drawing.terminal_stub("WRONG", net=wrong, at=placed.TP)
+        except ValueError as error:
+            message = str(error)
+            assert "WRONG" in message
+            assert "SIG" in message
+            assert "terminal stub" in message
+        else:
+            raise AssertionError("terminal_stub should reject a mismatched pin net")
+
+        try:
+            drawing.terminal_stub(other_net, at=(30, 30))
+        except ValueError as error:
+            message = str(error)
+            assert "different design" in message
+            assert "terminal stub" in message
+        else:
+            raise AssertionError("terminal_stub should reject cross-design nets")
+
+        assert schematic.to_json() == before
+
+
 def test_python_schematic_anchor_axis_alignment_is_pure_authoring_geometry():
     design = volt.Design("schematic-anchor-axis-alignment")
     schematic = design.schematic("Main")
