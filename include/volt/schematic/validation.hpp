@@ -1923,6 +1923,34 @@ inline void validate_missing_passive_value_fields(const Schematic &schematic, Sh
     return (dx * dx) + (dy * dy);
 }
 
+inline void validate_terminal_marker_net_kind_mismatch(const Schematic &schematic, SheetId sheet_id,
+                                                       const Sheet &sheet,
+                                                       DiagnosticReport &report) {
+    const auto &circuit = schematic.circuit();
+    for (const auto port_id : sheet.power_ports()) {
+        const auto &port = schematic.power_port(port_id);
+        const auto &net = circuit.net(port.net());
+
+        if (port.kind() == PowerPortKind::Power && net.kind() == NetKind::Ground) {
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_POWER_MARKER_ON_GROUND_NET"},
+                "Power marker placed on ground net",
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::net(port.net()),
+                            EntityRef::power_port(port_id)},
+            });
+        } else if (port.kind() == PowerPortKind::Ground && net.kind() == NetKind::Power) {
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_GROUND_MARKER_ON_POWER_NET"},
+                "Ground marker placed on power net",
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::net(port.net()),
+                            EntityRef::power_port(port_id)},
+            });
+        }
+    }
+}
+
 inline void validate_dense_no_connect_clusters(const Schematic &schematic, SheetId sheet_id,
                                                const Sheet &sheet, DiagnosticReport &report) {
     const auto radius_squared = dense_no_connect_cluster_radius * dense_no_connect_cluster_radius;
@@ -2032,6 +2060,7 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         detail::validate_crowded_tag_stacks(schematic, sheet_id, sheet, report);
         detail::validate_dense_region_port_tags(schematic, sheet_id, sheet, report);
         detail::validate_missing_passive_value_fields(schematic, sheet_id, sheet, report);
+        detail::validate_terminal_marker_net_kind_mismatch(schematic, sheet_id, sheet, report);
         detail::validate_dense_no_connect_clusters(schematic, sheet_id, sheet, report);
         detail::validate_text_collisions(schematic, sheet_id, sheet, report);
     }

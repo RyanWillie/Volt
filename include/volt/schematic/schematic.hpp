@@ -602,16 +602,16 @@ class Junction {
     std::optional<std::size_t> authored_region_;
 };
 
-/** Power-port visual style. */
+/** One-terminal marker visual style. */
 enum class PowerPortKind {
     Power,
     Ground,
 };
 
-/** A schematic power or ground symbol over an existing logical net. */
+/** A schematic one-terminal marker over an existing logical net. */
 class PowerPort {
   public:
-    /** Construct a power or ground port over an existing logical net. */
+    /** Construct a one-terminal marker over an existing logical net. */
     PowerPort(NetId net, PowerPortKind kind, Point position,
               SchematicOrientation orientation = SchematicOrientation::Up,
               std::optional<std::size_t> authored_region = std::nullopt,
@@ -863,7 +863,7 @@ class Schematic {
         return id;
     }
 
-    /** Add a power or ground port over an existing logical net. */
+    /** Add a one-terminal marker over an existing logical net. */
     [[nodiscard]] PowerPortId add_power_port(SheetId sheet, PowerPort port) {
         require_sheet(sheet);
         static_cast<void>(circuit_.net(port.net()));
@@ -872,6 +872,11 @@ class Schematic {
         const auto id = power_ports_.insert(std::move(port));
         sheets_.get(sheet).add_power_port(id);
         return id;
+    }
+
+    /** Add a generic terminal marker over an existing logical net. */
+    [[nodiscard]] PowerPortId add_terminal_marker(SheetId sheet, PowerPort marker) {
+        return add_power_port(sheet, std::move(marker));
     }
 
     /** Add a no-connect marker for an existing concrete pin. */

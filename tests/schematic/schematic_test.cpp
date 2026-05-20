@@ -1504,6 +1504,59 @@ TEST_CASE("Schematic readability accepts a clean local oscillator reset boot fix
     CHECK(report.empty());
 }
 
+TEST_CASE("Schematic readability warns when power marker is placed on ground net") {
+    volt::Circuit circuit;
+    const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{gnd, volt::PowerPortKind::Power, volt::Point{50.0, 50.0},
+                               volt::SchematicOrientation::Up}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    REQUIRE_FALSE(report.empty());
+    CHECK(report.count() == 1);
+    CHECK(report.diagnostics().front().code() ==
+          volt::DiagnosticCode{"SCHEMATIC_POWER_MARKER_ON_GROUND_NET"});
+    CHECK(report.diagnostics().front().severity() == volt::Severity::Warning);
+}
+
+TEST_CASE("Schematic readability warns when ground marker is placed on power net") {
+    volt::Circuit circuit;
+    const auto vcc = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{vcc, volt::PowerPortKind::Ground, volt::Point{50.0, 50.0},
+                               volt::SchematicOrientation::Down}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    REQUIRE_FALSE(report.empty());
+    CHECK(report.count() == 1);
+    CHECK(report.diagnostics().front().code() ==
+          volt::DiagnosticCode{"SCHEMATIC_GROUND_MARKER_ON_POWER_NET"});
+    CHECK(report.diagnostics().front().severity() == volt::Severity::Warning);
+}
+
+TEST_CASE("Schematic readability accepts power marker on power net") {
+    volt::Circuit circuit;
+    const auto vcc = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{vcc, volt::PowerPortKind::Power, volt::Point{50.0, 50.0},
+                               volt::SchematicOrientation::Up}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(report.empty());
+}
+
 TEST_CASE("Schematic validation accepts no-connect markers on no-connect pin definitions") {
     volt::Circuit circuit;
     const auto pin_definition = circuit.add_pin_definition(volt::PinDefinition{

@@ -127,7 +127,7 @@
     <polyline class="wire-run" data-net="net:4" points="210,110 250,110"/>
     <polyline class="wire-run" data-net="net:5" points="210,100 244,100"/>
     <polyline class="wire-run" data-net="net:6" points="264,100 269,100"/>
-    <polyline class="wire-run" data-net="net:1" points="180,130 180,154"/>
+    <polyline class="wire-run" data-net="net:1" points="180,130 180,164"/>
     <polyline class="wire-run" data-net="net:1" points="92,144 92,162"/>
     <polyline class="wire-run" data-net="net:1" points="250,148 250,166"/>
     <polyline class="wire-run" data-net="net:1" points="299,100 299,118"/>
@@ -137,16 +137,48 @@
     <circle class="junction" data-net="net:3" cx="92" cy="110" r="1.15"/>
     </g>
     <g class="layer layer-ports">
+    <g class="power-port power" data-net="net:0" transform="translate(190 46) rotate(270)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
+      <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
+      <text class="power-port-label" x="0" y="-9.4" transform="rotate(-270 0 -9.4)">+5V</text>
+    </g>
+    <g class="power-port power" data-net="net:0" transform="translate(92 44) rotate(270)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
+      <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
+      <text class="power-port-label" x="0" y="-9.4" transform="rotate(-270 0 -9.4)">+5V</text>
+    </g>
+    <g class="power-port ground" data-net="net:1" transform="translate(180 164) rotate(90)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
+    </g>
+    <g class="power-port ground" data-net="net:1" transform="translate(92 162) rotate(90)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
+    </g>
+    <g class="power-port ground" data-net="net:1" transform="translate(250 166) rotate(90)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
+    </g>
+    <g class="power-port ground" data-net="net:1" transform="translate(299 118) rotate(90)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+      <text class="power-port-label" x="0" y="8.2" transform="rotate(-90 0 8.2)">GND</text>
+    </g>
     </g>
     <g class="layer layer-labels">
     <text class="net-label" data-net="net:3" x="64" y="110" transform="rotate(0 64 110)">TIMING</text>
     <text class="net-label" data-net="net:5" x="244" y="74" transform="rotate(0 244 74)">OUT</text>
-    <text class="net-label" data-net="net:0" x="190" y="34" transform="rotate(0 190 34)">+5V</text>
-    <text class="net-label" data-net="net:0" x="92" y="32" transform="rotate(0 92 32)">+5V</text>
-    <text class="net-label" data-net="net:1" x="180" y="168" transform="rotate(0 180 168)">GND</text>
-    <text class="net-label" data-net="net:1" x="92" y="176" transform="rotate(0 92 176)">GND</text>
-    <text class="net-label" data-net="net:1" x="250" y="180" transform="rotate(0 250 180)">GND</text>
-    <text class="net-label" data-net="net:1" x="299" y="132" transform="rotate(0 299 132)">GND</text>
     </g>
     <g class="layer layer-fields">
     <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="reference" x="175" y="56" transform="rotate(0 175 56)">U1</text>

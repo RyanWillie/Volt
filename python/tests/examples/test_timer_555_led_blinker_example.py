@@ -122,7 +122,6 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             assert texts == []
     assert {wire["route_intent"] for wire in schematic["wire_runs"]} == {"Orthogonal"}
     assert schematic["sheet_ports"] == []
-    assert schematic["power_ports"] == []
     assert schematic["no_connect_markers"] == []
     assert len(schematic["symbol_instances"]) == 7
     assert len(schematic["wire_runs"]) >= 12
@@ -147,11 +146,22 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert {
         label.get("label") or net_names_by_id[label["net"]]
         for label in schematic["net_labels"]
-    } >= {"TIMING", "OUT", "+5V", "GND"}
+    } >= {"TIMING", "OUT"}
+    assert not {
+        label.get("label") or net_names_by_id[label["net"]]
+        for label in schematic["net_labels"]
+    } & {"+5V", "GND"}
+    terminal_markers = [
+        (port["kind"], net_names_by_id[port["net"]]) for port in schematic["power_ports"]
+    ]
+    assert terminal_markers.count(("Power", "+5V")) == 2
+    assert terminal_markers.count(("Ground", "GND")) == 4
 
     svg_text = first_texts["svg"]
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in svg_text
     assert 'class="sheet-port off-page"' not in svg_text
+    assert 'class="power-port power"' in svg_text
+    assert 'class="power-port ground"' in svg_text
     assert "pin-anchor" not in svg_text
     assert "pin-label" not in svg_text
     assert {
