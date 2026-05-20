@@ -64,6 +64,85 @@ def test_python_schematic_two_terminal_grammar_places_chain_and_preserves_logica
     assert projection["symbol_fields"][0]["value"] == "330 ohm"
     assert design.to_json() == logical_before
 
+
+def test_python_schematic_two_terminal_endpoint_grammar_and_junction_dots():
+    design = volt.Design("schematic-two-terminal-endpoints")
+    sig = design.net("SIG")
+    ret = design.net("RET")
+    wire_net = design.net("WIRE")
+    r1 = design.R("10k", ref="R1")
+    c1 = design.C("1 uF", ref="C1")
+    r2 = design.R("22k", ref="R2")
+    r3 = design.R("47k", ref="R3")
+    r4 = design.R("100k", ref="R4")
+    sig += r1[1], r2[1], r3[1], r4[1]
+    ret += r1[2], c1[1], c1[2], r2[2], r3[2], r4[2]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=10) as drawing:
+        r_at_to = (
+            drawing.two_terminal(r1)
+            .at((10, 10))
+            .to((40, 10))
+            .label_value()
+            .idot()
+            .dot()
+        )
+        c_toy = drawing.two_terminal(c1).at(r_at_to.end).toy(50)
+        r_endpoints = drawing.two_terminal(r2).endpoints((10, 70), (40, 70))
+        r_tox = drawing.two_terminal(r3).at((60, 10)).tox(90)
+        r_to_vertical = drawing.two_terminal(r4).at((90, 20)).to((90, 50))
+        drawing.wire(wire_net).endpoints((0, 0), (10, 0)).idot().dot().direct()
+
+    projection = json.loads(schematic.to_json())
+
+    assert r_at_to.start.point == (10.0, 10.0)
+    assert r_at_to.end.point == (40.0, 10.0)
+    assert c_toy.start.point == (40.0, 10.0)
+    assert c_toy.end.point == (40.0, 50.0)
+    assert r_endpoints.start.point == (10.0, 70.0)
+    assert r_endpoints.end.point == (40.0, 70.0)
+    assert r_tox.start.point == (60.0, 10.0)
+    assert r_tox.end.point == (90.0, 10.0)
+    assert r_to_vertical.start.point == (90.0, 20.0)
+    assert r_to_vertical.end.point == (90.0, 50.0)
+    assert [instance["orientation"] for instance in projection["symbol_instances"]] == [
+        "Right",
+        "Down",
+        "Right",
+        "Right",
+        "Down",
+    ]
+    assert _wire_points(projection, 0) == [(0.0, 0.0), (10.0, 0.0)]
+    assert [
+        (junction["net"], junction["position"])
+        for junction in projection["junctions"]
+    ] == [
+        (f"net:{sig.index}", {"x": 10.0, "y": 10.0}),
+        (f"net:{ret.index}", {"x": 40.0, "y": 10.0}),
+        (f"net:{wire_net.index}", {"x": 0.0, "y": 0.0}),
+        (f"net:{wire_net.index}", {"x": 10.0, "y": 0.0}),
+    ]
+    assert design.to_json() == logical_before
+
+
+def test_python_schematic_endpoint_dots_require_existing_nets():
+    design = volt.Design("schematic-two-terminal-dot-net-safety")
+    r1 = design.R("10k", ref="R1")
+    schematic = design.schematic("Main")
+
+    with schematic.drawing(unit=10) as drawing:
+        placed = drawing.two_terminal(r1).right()
+        try:
+            placed.idot()
+        except ValueError as error:
+            assert "is not connected to any logical net" in str(error)
+        else:
+            raise AssertionError("two-terminal endpoint dots must not invent nets")
+
+
 def test_python_schematic_label_sugar_uses_symbol_fields_and_net_labels():
     design = volt.Design("schematic-label-sugar")
     sig = design.net("SIG")
