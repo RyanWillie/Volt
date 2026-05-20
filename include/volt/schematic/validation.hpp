@@ -481,13 +481,6 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
     for (const auto &primitive : symbol.primitives()) {
         include_bounds(bounds, symbol_primitive_bounds(primitive, instance));
     }
-    const auto &component = schematic.circuit().component(instance.component());
-    const auto reference_label = instance.reference_label().value_or(component.reference().value());
-    include_bounds(bounds,
-                   text_bounds(transform_schematic_point(Point{0.0, -12.0}, instance.position(),
-                                                         instance.orientation()),
-                               SchematicOrientation::Right, reference_label,
-                               symbol_text_rendered_font_size, true));
     return bounds;
 }
 
@@ -1325,15 +1318,6 @@ inline void validate_dense_region_port_tags(const Schematic &schematic, SheetId 
            label.find('/') != std::string::npos || label.find("::") != std::string::npos;
 }
 
-[[nodiscard]] inline std::string_view visible_symbol_reference_label(const Schematic &schematic,
-                                                                     SymbolInstanceId instance_id) {
-    const auto &instance = schematic.symbol_instance(instance_id);
-    if (instance.reference_label().has_value()) {
-        return instance.reference_label().value();
-    }
-    return schematic.circuit().component(instance.component()).reference().value();
-}
-
 [[nodiscard]] inline bool ascii_upper_alpha(char character) noexcept {
     return character >= 'A' && character <= 'Z';
 }
@@ -1374,19 +1358,23 @@ inline void validate_visible_reference_labels(const Schematic &schematic, SheetI
     };
 
     auto references = std::vector<VisibleReference>{};
-    references.reserve(sheet.symbol_instances().size());
-    for (const auto instance_id : sheet.symbol_instances()) {
-        const auto &instance = schematic.symbol_instance(instance_id);
+    references.reserve(sheet.symbol_fields().size());
+    for (const auto field_id : sheet.symbol_fields()) {
+        const auto &field = schematic.symbol_field(field_id);
+        if (field.name() != "reference") {
+            continue;
+        }
+        const auto &instance = schematic.symbol_instance(field.symbol_instance());
         references.push_back(
-            VisibleReference{instance_id, instance.component(),
-                             visible_symbol_reference_label(schematic, instance_id)});
+            VisibleReference{field.symbol_instance(), instance.component(), field.value()});
         if (!visible_reference_label_looks_conventional(references.back().label)) {
             report.add(Diagnostic{
                 Severity::Warning,
                 DiagnosticCode{"SCHEMATIC_UNCONVENTIONAL_REFERENCE_LABEL"},
                 "Visible schematic reference label '" + std::string{references.back().label} +
                     "' does not look like a conventional EDA reference designator",
-                std::vector{EntityRef::sheet(sheet_id), EntityRef::symbol_instance(instance_id),
+                std::vector{EntityRef::sheet(sheet_id),
+                            EntityRef::symbol_instance(field.symbol_instance()),
                             EntityRef::component(instance.component())},
             });
         }

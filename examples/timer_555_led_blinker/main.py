@@ -136,11 +136,7 @@ def build_schematic(
     )
 
     with sheet.drawing(at=(140, 80), unit=20) as drawing:
-        timer = (
-            drawing.place(parts["U1"])
-            .label_ref(loc="top", ofst=12, orient="Right")
-            .label_value(loc="bottom", ofst=22, orient="Right")
-        )
+        timer = drawing.place(parts["U1"]).label_ref().label_value()
 
         disch_node = drawing.node(timer.DISCH.left(48))
         timing_node = drawing.node(timer.TRIG.left(48))
@@ -163,37 +159,37 @@ def build_schematic(
         ra = (
             drawing.two_terminal(parts["RA"])
             .between(timing_vcc, disch_node)
-            .label_ref(loc="left", orient="Right", ofst=14)
-            .label_value(loc="right", orient="Right", ofst=20)
+            .label_ref()
+            .label_value()
         )
         rb = (
             drawing.two_terminal(parts["RB"])
             .between(disch_node, timing_node)
-            .label_ref(loc="left", orient="Right", ofst=14)
-            .label_value(loc="right", orient="Right", ofst=20)
+            .label_ref()
+            .label_value()
         )
         timing_cap = (
             drawing.two_terminal(parts["CT"])
             .between(timing_node, timing_ground)
-            .label_ref(loc="left", orient="Right", ofst=14)
-            .label_value(loc="right", orient="Right", ofst=20)
+            .label_ref()
+            .label_value()
         )
         control_cap = (
             drawing.two_terminal(parts["CCTRL"])
             .between(control_node, control_ground)
-            .label_ref(loc="left", orient="Right", ofst=18)
-            .label_value(loc="left", ofst=26, orient="Right")
+            .label_ref()
+            .label_value()
         )
         led_resistor = (
             drawing.two_terminal(parts["RLED"])
             .between(output_node, led_resistor_end)
-            .label_ref(loc="top", orient="Right", ofst=12)
-            .label_value(loc="top", orient="Right", ofst=28)
+            .label_ref()
+            .label_value(loc="top")
         )
         led = (
             drawing.two_terminal(parts["DLED"])
             .between(led_cathode, led_anode)
-            .label_ref(loc="top", orient="Right", ofst=20)
+            .label_ref()
         )
 
         drawing.connect(nets["+5V"], timer.VCC, timer_vcc)

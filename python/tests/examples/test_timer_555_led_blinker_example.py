@@ -152,6 +152,9 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "+5V",
         "GND",
     } <= set(re.findall(r">([^<>]+)</text>", svg_text))
+    visible_texts = re.findall(r">([^<>]+)</text>", svg_text)
+    for reference in ("U1", "R1", "R2", "C1", "C2", "R3", "D1"):
+        assert visible_texts.count(reference) == 1
     assert 'viewBox="0 0 340 240"' in first_texts["pages"][0]
 
 
@@ -183,3 +186,4 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
     assert "drawing.C(" not in source
     assert "drawing.LED(" not in source
     assert "drawing.ortho_lines(" not in source
+    assert "ofst=" not in source
