@@ -151,6 +151,21 @@ class SchematicBlockPinSpec:
 
 
 @dataclass(frozen=True)
+class SchematicBlockSideLayoutSpec:
+    """Per-side placement overrides for generic block and IC schematic symbols."""
+
+    side: str
+    pad: float | None = None
+    lead_length: float | None = None
+    pin_pitch: float | None = None
+    pin_label_offset: float | None = None
+    pin_number_offset: float | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "side", _schematic_block_pin_side(self.side))
+
+
+@dataclass(frozen=True)
 class SchematicSymbolSpec:
     """Reusable Volt-native schematic symbol data for Python-authored libraries."""
 
@@ -214,18 +229,40 @@ class SchematicSymbolSpec:
         )
 
     @staticmethod
+    def side_layout(
+        side: str,
+        *,
+        pad: float | None = None,
+        lead_length: float | None = None,
+        pin_pitch: float | None = None,
+        pin_label_offset: float | None = None,
+        pin_number_offset: float | None = None,
+    ) -> SchematicBlockSideLayoutSpec:
+        return SchematicBlockSideLayoutSpec(
+            side,
+            pad=pad,
+            lead_length=lead_length,
+            pin_pitch=pin_pitch,
+            pin_label_offset=pin_label_offset,
+            pin_number_offset=pin_number_offset,
+        )
+
+    @staticmethod
     def block(
         name: str,
         *,
         pins: Iterable[SchematicBlockPinSpec],
         width: float | None = None,
         height: float | None = None,
-        lead_length: float = 10,
-        pin_pitch: float = 10,
-        pin_label_offset: float = 3,
+        lead_length: float = 6,
+        pin_pitch: float = 8,
+        pin_label_offset: float = 2,
+        side_layouts: Iterable[SchematicBlockSideLayoutSpec] = (),
         center_label: str | None = None,
         bottom_label: str | None = None,
         pin_labels: bool = True,
+        pin_numbers: bool = False,
+        pin_number_offset: float = 2,
         variant: str = "default",
     ) -> SchematicSymbolSpec:
         return _schematic_block_symbol_spec(
@@ -236,9 +273,12 @@ class SchematicSymbolSpec:
             lead_length=lead_length,
             pin_pitch=pin_pitch,
             pin_label_offset=pin_label_offset,
+            side_layouts=side_layouts,
             center_label=center_label,
             bottom_label=bottom_label,
             pin_labels=pin_labels,
+            pin_numbers=pin_numbers,
+            pin_number_offset=pin_number_offset,
             variant=variant,
         )
 
@@ -249,12 +289,15 @@ class SchematicSymbolSpec:
         pins: Iterable[SchematicBlockPinSpec],
         width: float | None = None,
         height: float | None = None,
-        lead_length: float = 10,
-        pin_pitch: float = 10,
-        pin_label_offset: float = 3,
+        lead_length: float = 6,
+        pin_pitch: float = 8,
+        pin_label_offset: float = 2,
+        side_layouts: Iterable[SchematicBlockSideLayoutSpec] = (),
         center_label: str | None = None,
         bottom_label: str | None = None,
         pin_labels: bool = True,
+        pin_numbers: bool = False,
+        pin_number_offset: float = 2,
         variant: str = "default",
     ) -> SchematicSymbolSpec:
         return SchematicSymbolSpec.block(
@@ -265,9 +308,12 @@ class SchematicSymbolSpec:
             lead_length=lead_length,
             pin_pitch=pin_pitch,
             pin_label_offset=pin_label_offset,
+            side_layouts=side_layouts,
             center_label=center_label,
             bottom_label=bottom_label,
             pin_labels=pin_labels,
+            pin_numbers=pin_numbers,
+            pin_number_offset=pin_number_offset,
             variant=variant,
         )
 
@@ -440,6 +486,14 @@ def _schematic_symbol_for_variant(
     return None
 
 
+@dataclass(frozen=True)
+class _SchematicBlockSideLayout:
+    pad: float
+    lead_length: float
+    pin_pitch: float
+    pin_label_offset: float
+    pin_number_offset: float
+
 
 def _symbol_point(value: tuple[float, float]) -> dict:
     if not isinstance(value, (tuple, list)) or len(value) != 2:
@@ -529,9 +583,12 @@ def _schematic_block_symbol_spec(
     lead_length: float,
     pin_pitch: float,
     pin_label_offset: float,
+    side_layouts: Iterable[SchematicBlockSideLayoutSpec],
     center_label: str | None,
     bottom_label: str | None,
     pin_labels: bool,
+    pin_numbers: bool,
+    pin_number_offset: float,
     variant: str,
 ) -> SchematicSymbolSpec:
     if not isinstance(name, str):
@@ -543,6 +600,8 @@ def _schematic_block_symbol_spec(
         raise ValueError("Schematic block symbols need at least one pin")
     if not isinstance(pin_labels, bool):
         raise TypeError("Schematic block symbol pin_labels must be a boolean")
+    if not isinstance(pin_numbers, bool):
+        raise TypeError("Schematic block symbol pin_numbers must be a boolean")
 
     pitch = _positive_coordinate(pin_pitch, "Schematic block symbol pin pitches")
     lead = _nonnegative_coordinate(lead_length, "Schematic block symbol lead lengths")
@@ -550,36 +609,74 @@ def _schematic_block_symbol_spec(
         pin_label_offset,
         "Schematic block symbol pin label offsets",
     )
+    number_offset = _nonnegative_coordinate(
+        pin_number_offset,
+        "Schematic block symbol pin number offsets",
+    )
+    layouts = _schematic_block_side_layouts(
+        side_layouts,
+        pad=pitch,
+        lead_length=lead,
+        pin_pitch=pitch,
+        pin_label_offset=label_offset,
+        pin_number_offset=number_offset,
+    )
     slots = _schematic_block_pin_slots(block_pins)
-    horizontal_max = max(
-        (slot for pin, slot in slots if pin.side in ("Up", "Down")),
+    horizontal_extent = max(
+        (
+            _schematic_block_slot_offset(layouts[pin.side], slot)
+            + layouts[pin.side].pin_pitch
+            for pin, slot in slots
+            if pin.side in ("Up", "Down")
+        ),
         default=0,
     )
-    vertical_max = max(
-        (slot for pin, slot in slots if pin.side in ("Left", "Right")),
+    vertical_extent = max(
+        (
+            _schematic_block_slot_offset(layouts[pin.side], slot)
+            + layouts[pin.side].pin_pitch
+            for pin, slot in slots
+            if pin.side in ("Left", "Right")
+        ),
         default=0,
     )
     body_width = (
         _positive_coordinate(width, "Schematic block symbol widths")
         if width is not None
-        else max(horizontal_max + 1, 4) * pitch
+        else max(horizontal_extent, 4 * pitch)
     )
     body_height = (
         _positive_coordinate(height, "Schematic block symbol heights")
         if height is not None
-        else max(vertical_max + 1, 4) * pitch
+        else max(vertical_extent, 4 * pitch)
     )
-    if horizontal_max * pitch > body_width:
+    horizontal_max = max(
+        (
+            _schematic_block_slot_offset(layouts[pin.side], slot)
+            for pin, slot in slots
+            if pin.side in ("Up", "Down")
+        ),
+        default=0,
+    )
+    vertical_max = max(
+        (
+            _schematic_block_slot_offset(layouts[pin.side], slot)
+            for pin, slot in slots
+            if pin.side in ("Left", "Right")
+        ),
+        default=0,
+    )
+    if horizontal_max > body_width:
         raise ValueError("Schematic block symbol width is too small for top or bottom pin slots")
-    if vertical_max * pitch > body_height:
+    if vertical_max > body_height:
         raise ValueError("Schematic block symbol height is too small for left or right pin slots")
 
     center_label = _optional_symbol_text(center_label, "center label")
     bottom_label = _optional_symbol_text(bottom_label, "bottom label")
 
-    body_left = lead
+    body_left = layouts["Left"].lead_length
     body_top = 0.0
-    body_right = lead + body_width
+    body_right = body_left + body_width
     body_bottom = body_height
     symbol_pins = []
     primitives = [
@@ -596,7 +693,12 @@ def _schematic_block_symbol_spec(
         primitives.append(
             SchematicSymbolSpec.text(
                 bottom_label,
-                (body_left + body_width / 2, body_bottom + lead + label_offset),
+                (
+                    body_left + body_width / 2,
+                    body_bottom
+                    + layouts["Down"].lead_length
+                    + layouts["Down"].pin_label_offset,
+                ),
             )
         )
 
@@ -608,12 +710,11 @@ def _schematic_block_symbol_spec(
         anchor, body = _schematic_block_pin_points(
             pin.side,
             slot=slot,
-            pitch=pitch,
+            layout=layouts[pin.side],
             body_left=body_left,
             body_right=body_right,
             body_top=body_top,
             body_bottom=body_bottom,
-            lead=lead,
         )
         symbol_pins.append(SchematicSymbolSpec.pin(pin.name, pin.number, anchor, pin.side))
         primitives.append(SchematicSymbolSpec.line(anchor, body))
@@ -624,7 +725,18 @@ def _schematic_block_symbol_spec(
                     _schematic_block_pin_label_point(
                         pin.side,
                         body=body,
-                        offset=label_offset,
+                        offset=layouts[pin.side].pin_label_offset,
+                    ),
+                )
+            )
+        if pin_numbers:
+            primitives.append(
+                SchematicSymbolSpec.text(
+                    pin.number,
+                    _schematic_block_pin_number_point(
+                        pin.side,
+                        body=body,
+                        offset=layouts[pin.side].pin_number_offset,
                     ),
                 )
             )
@@ -664,25 +776,117 @@ def _schematic_block_pin_slots(
     return tuple(result)
 
 
+def _schematic_block_side_layouts(
+    entries: Iterable[SchematicBlockSideLayoutSpec],
+    *,
+    pad: float,
+    lead_length: float,
+    pin_pitch: float,
+    pin_label_offset: float,
+    pin_number_offset: float,
+) -> dict[str, _SchematicBlockSideLayout]:
+    result = {
+        side: _SchematicBlockSideLayout(
+            pad=pad,
+            lead_length=lead_length,
+            pin_pitch=pin_pitch,
+            pin_label_offset=pin_label_offset,
+            pin_number_offset=pin_number_offset,
+        )
+        for side in ("Left", "Right", "Up", "Down")
+    }
+    seen: set[str] = set()
+    for entry in entries:
+        layout = _schematic_block_side_layout_entry(entry)
+        if layout.side in seen:
+            raise ValueError(
+                f"Schematic block symbol side layout for {layout.side.lower()} is duplicated"
+            )
+        seen.add(layout.side)
+        result[layout.side] = _SchematicBlockSideLayout(
+            pad=(
+                _nonnegative_coordinate(layout.pad, "Schematic block symbol side layout pads")
+                if layout.pad is not None
+                else pad
+            ),
+            lead_length=(
+                _nonnegative_coordinate(
+                    layout.lead_length,
+                    "Schematic block symbol side layout lead lengths",
+                )
+                if layout.lead_length is not None
+                else lead_length
+            ),
+            pin_pitch=(
+                _positive_coordinate(
+                    layout.pin_pitch,
+                    "Schematic block symbol side layout pin pitches",
+                )
+                if layout.pin_pitch is not None
+                else pin_pitch
+            ),
+            pin_label_offset=(
+                _nonnegative_coordinate(
+                    layout.pin_label_offset,
+                    "Schematic block symbol side layout pin label offsets",
+                )
+                if layout.pin_label_offset is not None
+                else pin_label_offset
+            ),
+            pin_number_offset=(
+                _nonnegative_coordinate(
+                    layout.pin_number_offset,
+                    "Schematic block symbol side layout pin number offsets",
+                )
+                if layout.pin_number_offset is not None
+                else pin_number_offset
+            ),
+        )
+    return result
+
+
+def _schematic_block_side_layout_entry(value) -> SchematicBlockSideLayoutSpec:
+    if not isinstance(value, SchematicBlockSideLayoutSpec):
+        raise TypeError(
+            "Schematic block symbol side_layouts must be SchematicBlockSideLayoutSpec entries"
+        )
+    return value
+
+
+def _schematic_block_slot_offset(layout: _SchematicBlockSideLayout, slot: int) -> float:
+    return layout.pad + (slot - 1) * layout.pin_pitch
+
+
 def _schematic_block_pin_points(
     side: str,
     *,
     slot: int,
-    pitch: float,
+    layout: _SchematicBlockSideLayout,
     body_left: float,
     body_right: float,
     body_top: float,
     body_bottom: float,
-    lead: float,
 ) -> tuple[tuple[float, float], tuple[float, float]]:
-    offset = slot * pitch
+    offset = _schematic_block_slot_offset(layout, slot)
     if side == "Left":
-        return (body_left - lead, body_top + offset), (body_left, body_top + offset)
+        return (
+            (body_left - layout.lead_length, body_top + offset),
+            (body_left, body_top + offset),
+        )
     if side == "Right":
-        return (body_right + lead, body_top + offset), (body_right, body_top + offset)
+        return (
+            (body_right + layout.lead_length, body_top + offset),
+            (body_right, body_top + offset),
+        )
     if side == "Up":
-        return (body_left + offset, body_top - lead), (body_left + offset, body_top)
-    return (body_left + offset, body_bottom + lead), (body_left + offset, body_bottom)
+        return (
+            (body_left + offset, body_top - layout.lead_length),
+            (body_left + offset, body_top),
+        )
+    return (
+        (body_left + offset, body_bottom + layout.lead_length),
+        (body_left + offset, body_bottom),
+    )
 
 
 def _schematic_block_pin_label_point(
@@ -699,6 +903,22 @@ def _schematic_block_pin_label_point(
     if side == "Up":
         return (x, y + offset)
     return (x, y - offset)
+
+
+def _schematic_block_pin_number_point(
+    side: str,
+    *,
+    body: tuple[float, float],
+    offset: float,
+) -> tuple[float, float]:
+    x, y = body
+    if side == "Left":
+        return (x - offset, y)
+    if side == "Right":
+        return (x + offset, y)
+    if side == "Up":
+        return (x, y - offset)
+    return (x, y + offset)
 
 
 def _optional_symbol_text(value: str | None, label: str) -> str | None:

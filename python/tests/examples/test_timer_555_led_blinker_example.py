@@ -66,7 +66,8 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "LED_A",
     }
     assert sum(validation["summary"].values()) == len(validation["diagnostics"])
-    assert validation["summary"] == {"errors": 0, "infos": 0, "warnings": 1}
+    assert validation["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
+    assert validation["diagnostics"] == []
     assert validation["reports"]["logical_design"]["summary"] == {
         "errors": 0,
         "infos": 0,
@@ -80,11 +81,11 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert validation["reports"]["schematic_readability"]["summary"] == {
         "errors": 0,
         "infos": 0,
-        "warnings": 1,
+        "warnings": 0,
     }
     assert {
         (diagnostic["source"], diagnostic["code"]) for diagnostic in validation["diagnostics"]
-    } == {("schematic_readability", "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW")}
+    } == set()
 
     assert schematic["format"] == "volt.schematic"
     assert [sheet["name"] for sheet in schematic["sheets"]] == ["555 LED Blinker"]
@@ -96,7 +97,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         {"key": "Revision", "value": "A"},
         {"key": "Date", "value": "2026-05-19"},
         {"key": "Project", "value": "Volt 555 LED Blinker"},
-        {"key": "File", "value": "examples/timer_555_led_blinker/main.py"},
+        {"key": "File", "value": "timer_555_led_blinker/main.py"},
     ]
     assert {definition["name"] for definition in schematic["symbol_definitions"]} >= {
         "volt.examples.timer_555_led_blinker:NE555"
@@ -126,15 +127,22 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     }
     assert symbol_texts_by_definition["volt.examples.timer_555_led_blinker:NE555"] == [
         "555",
-        "timer",
-        "DISCH",
-        "THRESH",
-        "TRIG",
+        "DIS",
+        "7",
+        "THR",
+        "6",
+        "TRG",
+        "2",
         "OUT",
-        "CTRL",
-        "RESET",
-        "VCC",
+        "3",
+        "CTL",
+        "5",
+        "RST",
+        "4",
+        "Vcc",
+        "8",
         "GND",
+        "1",
     ]
     for definition_name, texts in symbol_texts_by_definition.items():
         if definition_name != "volt.examples.timer_555_led_blinker:NE555":
@@ -160,7 +168,6 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "1 uF",
         "C2",
         "10 nF",
-        "R3",
         "1 kOhm",
         "D1",
     } <= field_values
@@ -168,7 +175,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert {
         label.get("label") or net_names_by_id[label["net"]]
         for label in schematic["net_labels"]
-    } >= {"TIMING", "OUT"}
+    } == {"TIMING"}
     assert not {
         label.get("label") or net_names_by_id[label["net"]]
         for label in schematic["net_labels"]
@@ -177,7 +184,24 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         (port["kind"], net_names_by_id[port["net"]]) for port in schematic["power_ports"]
     ]
     assert terminal_markers.count(("Power", "+5V")) == 2
-    assert terminal_markers.count(("Ground", "GND")) == 4
+    assert terminal_markers.count(("Ground", "GND")) == 1
+    terminal_positions = [
+        (
+            port["kind"],
+            net_names_by_id[port["net"]],
+            port["position"]["x"],
+            port["position"]["y"],
+        )
+        for port in schematic["power_ports"]
+    ]
+    assert ("Power", "+5V", 178, 54) in terminal_positions
+    assert ("Ground", "GND", 170, 152) in terminal_positions
+    plus_5v_wire_points = [
+        [(point["x"], point["y"]) for point in wire["points"]]
+        for wire in schematic["wire_runs"]
+        if net_names_by_id[wire["net"]] == "+5V"
+    ]
+    assert [(162, 74), (162, 54), (178, 54)] in plus_5v_wire_points
 
     svg_text = first_texts["svg"]
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in svg_text
@@ -186,17 +210,18 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert 'class="power-port ground"' in svg_text
     assert "pin-anchor" not in svg_text
     assert "pin-label" not in svg_text
-    assert (
-        '<text class="title-block-value" x="24" y="40.2" '
-        'data-full-text="examples/timer_555_led_blinker/main.py" '
-        'textLength="56" lengthAdjust="spacingAndGlyphs">'
-        "examples/timer_555_led_blinker/main.py</text>"
-    ) in svg_text
+    assert "examples/timer_555_led_blinker/main.py" not in svg_text
+    assert ">timer_555_led_blinker/main.py</text>" in svg_text
     assert {
         "555",
-        "timer",
         "U1",
         "NE555",
+        "DIS",
+        "THR",
+        "TRG",
+        "CTL",
+        "RST",
+        "Vcc",
         "R1",
         "100 kOhm",
         "R2",
@@ -205,7 +230,6 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "1 uF",
         "C2",
         "10 nF",
-        "R3",
         "1 kOhm",
         "D1",
         "TIMING",
@@ -216,8 +240,9 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     visible_texts = re.findall(r">([^<>]+)</text>", svg_text)
     symbol_texts = re.findall(r'<text class="symbol-text"[^>]*>([^<>]+)</text>', svg_text)
     assert not {"R", "C", "D"} & set(symbol_texts)
-    for reference in ("U1", "R1", "R2", "C1", "C2", "R3", "D1"):
+    for reference in ("U1", "R1", "R2", "C1", "C2", "D1"):
         assert visible_texts.count(reference) == 1
+    assert visible_texts.count("R3") == 0
     assert 'viewBox="0 0 340 240"' in first_texts["pages"][0]
 
 
@@ -233,7 +258,7 @@ def test_timer_555_led_blinker_schematic_is_readable_without_mutating_logical_de
 
     assert design.to_json() == logical_before
     assert not readiness.has_errors
-    assert readability_codes == {"SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW"}
+    assert readability_codes == set()
     assert not readability.has_errors
 
 
@@ -245,7 +270,7 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
     assert ".between(" in source
     assert ".tox(" in source
     assert "drawing.ortho_lines(" in source
-    assert "drawing.signal_stub(" in source
+    assert "drawing.local_label(" in source
     assert "drawing.power_stub(" in source
     assert "drawing.ground_stub(" in source
     assert "drawing.connect(nets[" in source

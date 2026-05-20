@@ -386,22 +386,22 @@ def _author_power_region(
             )
 
         with drawing.frame((0, 0)):
-            cin = drawing.C(
+            cin = drawing.two_terminal(
                 pwr.component("CIN"),
                 symbol=TWO_TERMINAL_CAPACITOR,
                 reference_label=_display_reference(pwr.component("CIN")),
             ).at((58, 58)).down()
-            c5v = drawing.C(
+            c5v = drawing.two_terminal(
                 pwr.component("C5V"),
                 symbol=TWO_TERMINAL_CAPACITOR,
                 reference_label=_display_reference(pwr.component("C5V")),
             ).at((138, 58)).down()
-            c3v3 = drawing.C(
+            c3v3 = drawing.two_terminal(
                 pwr.component("C3V3"),
                 symbol=TWO_TERMINAL_CAPACITOR,
                 reference_label=_display_reference(pwr.component("C3V3")),
             ).at((138, 152)).down()
-            cvdda = drawing.C(
+            cvdda = drawing.two_terminal(
                 pwr.component("CVDDA"),
                 symbol=TWO_TERMINAL_CAPACITOR,
                 reference_label=_display_reference(pwr.component("CVDDA")),
@@ -565,31 +565,31 @@ def _author_mcu_region(
             cvdd_anchor, cvcap1_anchor, cvcap2_anchor = drawing.stack(
                 count=3, direction="Right", pitch=30
             )
-            cvdd = drawing.C(
+            cvdd = drawing.two_terminal(
                 support.component("CVDD"),
                 symbol=TWO_TERMINAL_CAPACITOR,
                 reference_label=_display_reference(support.component("CVDD")),
             ).at(cvdd_anchor).down()
-            cvcap1 = drawing.C(
+            cvcap1 = drawing.two_terminal(
                 support.component("CVCAP1"),
                 symbol=TWO_TERMINAL_CAPACITOR,
                 reference_label=_display_reference(support.component("CVCAP1")),
             ).at(cvcap1_anchor).down()
-            cvcap2 = drawing.C(
+            cvcap2 = drawing.two_terminal(
                 support.component("CVCAP2"),
                 symbol=TWO_TERMINAL_CAPACITOR,
                 reference_label=_display_reference(support.component("CVCAP2")),
             ).at(cvcap2_anchor).down()
 
         with drawing.frame((56, 176)):
-            rreset = drawing.R(
+            rreset = drawing.two_terminal(
                 support.component("RRESET"),
                 symbol=TWO_TERMINAL_RESISTOR,
                 reference_label=_display_reference(support.component("RRESET")),
             ).at((0, 0)).down(1.4)
 
         with drawing.frame((158, 270)):
-            rboot = drawing.R(
+            rboot = drawing.two_terminal(
                 support.component("RBOOT"),
                 symbol=TWO_TERMINAL_RESISTOR,
                 reference_label=_display_reference(support.component("RBOOT")),
@@ -609,24 +609,24 @@ def _author_mcu_region(
                 symbol=_vertical_hse_crystal_symbol(),
                 reference_label=_display_reference(support.component("Y1")),
             )
-            chsein = drawing.C(
+            chsein = drawing.two_terminal(
                 support.component("CHSEIN"),
                 symbol=TWO_TERMINAL_CAPACITOR,
                 reference_label=_display_reference(support.component("CHSEIN")),
             ).at(crystal[1].left(18)).down()
-            chseout = drawing.C(
+            chseout = drawing.two_terminal(
                 support.component("CHSEOUT"),
                 symbol=TWO_TERMINAL_CAPACITOR,
                 reference_label=_display_reference(support.component("CHSEOUT")),
             ).at(crystal[3].left(18)).down()
 
         with drawing.frame((128, 40)):
-            led_r = drawing.R(
+            led_r = drawing.two_terminal(
                 led.component("R"),
                 symbol=TWO_TERMINAL_RESISTOR,
                 reference_label=_display_reference(led.component("R")),
             ).at((0, 0)).right()
-            led_d = drawing.LED(
+            led_d = drawing.two_terminal(
                 led.component("D"),
                 symbol=_indicator_led_symbol(),
                 reference_label=_display_reference(led.component("D")),
@@ -696,8 +696,7 @@ def _author_mcu_region(
         support_vdd_port = drawing.power("+3V3", net=support_vdd, at=cvdd.start.up(16), orient="Up")
         drawing.connect(cvdd.start, support_vdd_port, net=support_vdd, shape="-")
         for anchor in (rreset.start, swboot.A):
-            rail = anchor.up(16)
-            drawing.connect(anchor, rail, net=support_vdd, shape="-")
+            drawing.power_stub("+3V3", at=anchor, net=support_vdd, side="Up", length=16, orient="Up")
 
         decoupling_ground = drawing.ground("GND", net=support_gnd, at=cvcap1.end.down(18), orient="Down")
         for cap in (cvdd, cvcap1, cvcap2):
@@ -709,10 +708,8 @@ def _author_mcu_region(
             drawing.connect(anchor, oscillator_ground, net=support_gnd, shape="|-")
         drawing.junction(support_gnd, at=oscillator_ground)
 
-        rboot_ground = rboot.end.down(14)
-        drawing.connect(rboot.end, rboot_ground, net=support_gnd, shape="-")
-        switch_ground = swboot.B.down(14)
-        drawing.connect(swboot.B, switch_ground, net=support_gnd, shape="-")
+        drawing.ground_stub("GND", at=rboot.end, net=support_gnd, side="Down", length=14, orient="Down")
+        drawing.ground_stub("GND", at=swboot.B, net=support_gnd, side="Down", length=14, orient="Down")
 
         drawing.signal_stub(
             support_reset,

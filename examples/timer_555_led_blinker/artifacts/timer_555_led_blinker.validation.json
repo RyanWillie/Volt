@@ -1,18 +1,5 @@
 {
-  "diagnostics": [
-    {
-      "code": "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
-      "entities": [
-        {
-          "index": 0,
-          "kind": "sheet"
-        }
-      ],
-      "message": "Schematic title-block value text for 'File' exceeds the rendered column width",
-      "severity": "warning",
-      "source": "schematic_readability"
-    }
-  ],
+  "diagnostics": [],
   "reports": {
     "logical_design": {
       "diagnostics": [],
@@ -23,23 +10,11 @@
       }
     },
     "schematic_readability": {
-      "diagnostics": [
-        {
-          "code": "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
-          "entities": [
-            {
-              "index": 0,
-              "kind": "sheet"
-            }
-          ],
-          "message": "Schematic title-block value text for 'File' exceeds the rendered column width",
-          "severity": "warning"
-        }
-      ],
+      "diagnostics": [],
       "summary": {
         "errors": 0,
         "infos": 0,
-        "warnings": 1
+        "warnings": 0
       }
     },
     "schematic_readiness": {
@@ -54,6 +29,6 @@
   "summary": {
     "errors": 0,
     "infos": 0,
-    "warnings": 1
+    "warnings": 0
   }
 }

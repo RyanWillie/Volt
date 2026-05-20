@@ -220,9 +220,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert ".drawing(" in schematic_source
     assert schematic_source.count("drawing.frame(") >= 3
     assert "drawing.stack(" in schematic_source
-    assert "drawing.C(" in schematic_source
-    assert "drawing.R(" in schematic_source
-    assert "drawing.LED(" in schematic_source
+    assert "drawing.two_terminal(" in schematic_source
+    assert "drawing.C(" not in schematic_source
+    assert "drawing.R(" not in schematic_source
+    assert "drawing.LED(" not in schematic_source
     assert "drawing.connect(" in schematic_source
     assert "drawing.signal_stub(" in schematic_source
     assert "drawing.no_connect(" in schematic_source
@@ -330,9 +331,12 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         diagnostic.code for diagnostic in schematic_report
     } <= {"SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED"}
     readability_report = main.build_schematic(main.build_board()).validate_readability()
-    # Local readability smells are covered by synthetic C++ fixtures; keep this example free of
-    # readability errors without coupling it to the current STM32 layout.
+    # This larger reference schematic still has known page-level readability warnings; make sure
+    # the generic local signal-stub primitive stays compatible with endpoint readability checks.
     assert not readability_report.has_errors
+    assert "SCHEMATIC_DANGLING_WIRE_ENDPOINT" not in {
+        diagnostic.code for diagnostic in readability_report
+    }
     board = main.build_board()
     logical_before_schematic = board.design.to_json()
     main.build_schematic(board)
@@ -433,9 +437,10 @@ def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():
     assert "region.drawing(" in source
     assert source.count("drawing.frame(") >= 3
     assert "drawing.stack(" in source
-    assert "drawing.C(" in source
-    assert "drawing.R(" in source
-    assert "drawing.LED(" in source
+    assert "drawing.two_terminal(" in source
+    assert "drawing.C(" not in source
+    assert "drawing.R(" not in source
+    assert "drawing.LED(" not in source
     assert "drawing.connect(" in source
     assert "drawing.net_label(" in source
     assert "drawing.signal_stub(" in source

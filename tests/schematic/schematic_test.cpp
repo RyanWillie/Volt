@@ -1187,6 +1187,126 @@ TEST_CASE("Schematic readability reports ambiguous same-net wire crossings") {
                       volt::EntityRef::wire_run(vertical), volt::EntityRef::net(net)});
 }
 
+TEST_CASE("Schematic readability reports visually dangling wire endpoints") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = add_named_net(circuit, "RESET");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    static_cast<void>(schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}}));
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{40.0, 20.0}, volt::Point{70.0, 20.0}}});
+
+    const auto pins_before = circuit.net(net).pins();
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DANGLING_WIRE_ENDPOINT");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::wire_run(wire),
+                                               volt::EntityRef::net(net)});
+    CHECK(circuit.net(net).pins() == pins_before);
+}
+
+TEST_CASE("Schematic readability reports exactly one warning per dangling endpoint") {
+    // Wire start lands on a connected symbol pin (anchored); only the far end is dangling.
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = add_named_net(circuit, "SIG");
+    connect_pin_by_number(circuit, net, component, "1");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    static_cast<void>(schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}}));
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{40.0, 20.0}, volt::Point{70.0, 20.0}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(diagnostic_count(report, "SCHEMATIC_DANGLING_WIRE_ENDPOINT") == 1);
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DANGLING_WIRE_ENDPOINT");
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::wire_run(wire),
+                                               volt::EntityRef::net(net)});
+}
+
+TEST_CASE("Schematic readability accepts wire endpoints with explicit visual anchors") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto pin_net = add_named_net(circuit, "PIN");
+    const auto terminal_net = add_named_net(circuit, "PWR");
+    const auto sheet_port_net = add_named_net(circuit, "OFFPAGE");
+    const auto junction_net = add_named_net(circuit, "NODE");
+    const auto endpoint_net = add_named_net(circuit, "CHAIN");
+    const auto label_net = add_named_net(circuit, "LABELED");
+    connect_pin_by_number(circuit, pin_net, component, "1");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    static_cast<void>(schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 20.0}}));
+
+    static_cast<void>(schematic.add_wire_run(
+        sheet,
+        volt::WireRun{pin_net, std::vector{volt::Point{40.0, 20.0}, volt::Point{50.0, 20.0}}}));
+    static_cast<void>(
+        schematic.add_junction(sheet, volt::Junction{pin_net, volt::Point{50.0, 20.0}}));
+
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{terminal_net, volt::PowerPortKind::Power, volt::Point{40.0, 40.0}}));
+    static_cast<void>(schematic.add_wire_run(
+        sheet, volt::WireRun{terminal_net,
+                             std::vector{volt::Point{40.0, 40.0}, volt::Point{50.0, 40.0}}}));
+    static_cast<void>(
+        schematic.add_junction(sheet, volt::Junction{terminal_net, volt::Point{50.0, 40.0}}));
+
+    static_cast<void>(schematic.add_sheet_port(sheet, volt::SheetPort{sheet_port_net, "OFFPAGE",
+                                                                      volt::SheetPortKind::OffPage,
+                                                                      volt::Point{40.0, 60.0}}));
+    static_cast<void>(schematic.add_wire_run(
+        sheet, volt::WireRun{sheet_port_net,
+                             std::vector{volt::Point{40.0, 60.0}, volt::Point{50.0, 60.0}}}));
+    static_cast<void>(
+        schematic.add_junction(sheet, volt::Junction{sheet_port_net, volt::Point{50.0, 60.0}}));
+
+    static_cast<void>(
+        schematic.add_junction(sheet, volt::Junction{junction_net, volt::Point{40.0, 80.0}}));
+    static_cast<void>(
+        schematic.add_junction(sheet, volt::Junction{junction_net, volt::Point{50.0, 80.0}}));
+    static_cast<void>(schematic.add_wire_run(
+        sheet, volt::WireRun{junction_net,
+                             std::vector{volt::Point{40.0, 80.0}, volt::Point{50.0, 80.0}}}));
+
+    static_cast<void>(schematic.add_wire_run(
+        sheet, volt::WireRun{endpoint_net,
+                             std::vector{volt::Point{40.0, 100.0}, volt::Point{50.0, 100.0}}}));
+    static_cast<void>(schematic.add_wire_run(
+        sheet, volt::WireRun{endpoint_net,
+                             std::vector{volt::Point{50.0, 100.0}, volt::Point{60.0, 100.0}}}));
+    static_cast<void>(
+        schematic.add_junction(sheet, volt::Junction{endpoint_net, volt::Point{40.0, 100.0}}));
+    static_cast<void>(
+        schematic.add_junction(sheet, volt::Junction{endpoint_net, volt::Point{60.0, 100.0}}));
+
+    static_cast<void>(
+        schematic.add_junction(sheet, volt::Junction{label_net, volt::Point{40.0, 120.0}}));
+    static_cast<void>(schematic.add_wire_run(
+        sheet,
+        volt::WireRun{label_net, std::vector{volt::Point{40.0, 120.0}, volt::Point{50.0, 120.0}}}));
+    static_cast<void>(
+        schematic.add_net_label(sheet, volt::NetLabel{label_net, volt::Point{52.0, 120.0}}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK_FALSE(report_has_code(report, "SCHEMATIC_DANGLING_WIRE_ENDPOINT"));
+}
+
 TEST_CASE("Schematic readability reports floating-looking local stub clusters") {
     volt::Circuit circuit;
     const auto net = add_named_net(circuit, "BOOT0");
@@ -1506,6 +1626,12 @@ TEST_CASE("Schematic readability accepts a clean local oscillator reset boot fix
     const auto boot = add_named_net(circuit, "BOOT0");
     const auto vcc = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
     const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    connect_pin_by_number(circuit, osc, mcu, "1");
+    connect_pin_by_number(circuit, reset, mcu, "2");
+    connect_pin_by_number(circuit, boot, mcu, "3");
+    connect_pin_by_number(circuit, osc, crystal, "2");
+    connect_pin_by_number(circuit, reset, reset_pullup, "2");
+    connect_pin_by_number(circuit, boot, boot_resistor, "2");
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});

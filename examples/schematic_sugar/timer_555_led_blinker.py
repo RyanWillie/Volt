@@ -101,10 +101,10 @@ def author_schematic(
 
         with drawing.hold():
             drawing.move_from(timer.DISCH.left(36).up(22))
-            ra = drawing.R(parts["RA"]).down().label_ref(loc="left").label_value(loc="right")
-            rb = drawing.R(parts["RB"]).at(timer.DISCH.left(36)).down().label_value(loc="left")
+            ra = drawing.two_terminal(parts["RA"]).down().label_ref(loc="left").label_value(loc="right")
+            rb = drawing.two_terminal(parts["RB"]).at(timer.DISCH.left(36)).down().label_value(loc="left")
             timing_cap = (
-                drawing.C(parts["CT"])
+                drawing.two_terminal(parts["CT"])
                 .at(rb.end)
                 .down()
                 .label_ref(loc="left")
@@ -113,7 +113,7 @@ def author_schematic(
 
         with drawing.hold():
             control_cap = (
-                drawing.C(parts["CCTRL"])
+                drawing.two_terminal(parts["CCTRL"])
                 .at(timer.CTRL.right(24))
                 .down()
                 .label_ref(loc="right")
@@ -122,10 +122,10 @@ def author_schematic(
 
         with drawing.hold():
             led_resistor = (
-                drawing.R(parts["RLED"]).at(timer.OUT.right(24)).right().label_value(loc="top")
+                drawing.two_terminal(parts["RLED"]).at(timer.OUT.right(24)).right().label_value(loc="top")
             )
             led = (
-                drawing.LED(parts["DLED"])
+                drawing.two_terminal(parts["DLED"])
                 .at(led_resistor.end.right(6))
                 .right()
                 .reverse()

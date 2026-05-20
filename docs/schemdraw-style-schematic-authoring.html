@@ -279,8 +279,8 @@ gnd += d1["K"]
 
 sheet = design.schematic("Main")
 with sheet.drawing(unit=20) as d:
-    r = d.R(r1).right().label_ref().label_value()
-    led = d.LED(d1).right().reverse().label_ref()
+    r = d.two_terminal(r1).right().label_ref().label_value()
+    led = d.two_terminal(d1).right().reverse().label_ref()
 
     d.connect(r.end, led.start)
     d.power("+3V3", at=r.start)
@@ -313,7 +313,7 @@ with sheet.drawing(unit=20) as d:
         <div class="two">
           <div class="card">
             <h3>Common passives</h3>
-            <p>Use <code>d.R(r1)</code>, <code>d.C(c1)</code>, <code>d.L(l1)</code>, <code>d.D(d1)</code>, and <code>d.LED(d1)</code> for exactly two-pin components with default symbols.</p>
+            <p>Use <code>d.two_terminal(component)</code> for exactly two-pin components with default symbols, regardless of whether the component is a resistor, capacitor, inductor, diode, LED, or another two-terminal element.</p>
           </div>
           <div class="card">
             <h3>Anchors</h3>
@@ -321,9 +321,9 @@ with sheet.drawing(unit=20) as d:
           </div>
         </div>
         <pre><code>with sheet.drawing(at=(20, 20), unit=20) as d:
-    c_in = d.C(cin).down().label_value()
+    c_in = d.two_terminal(cin).down().label_value()
     d.move_from(c_in.start.right(60))
-    c_out = d.C(cout).down().label_value()</code></pre>
+    c_out = d.two_terminal(cout).down().label_value()</code></pre>
       </div>
     </section>
 
