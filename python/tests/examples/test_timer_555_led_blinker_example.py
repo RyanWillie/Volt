@@ -194,14 +194,14 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         )
         for port in schematic["power_ports"]
     ]
-    assert ("Power", "+5V", 190, 50) in terminal_positions
-    assert ("Ground", "GND", 180, 164) in terminal_positions
+    assert ("Power", "+5V", 178, 54) in terminal_positions
+    assert ("Ground", "GND", 170, 152) in terminal_positions
     plus_5v_wire_points = [
         [(point["x"], point["y"]) for point in wire["points"]]
         for wire in schematic["wire_runs"]
         if net_names_by_id[wire["net"]] == "+5V"
     ]
-    assert [(170, 70), (170, 50), (190, 50)] in plus_5v_wire_points
+    assert [(162, 74), (162, 54), (178, 54)] in plus_5v_wire_points
 
     svg_text = first_texts["svg"]
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in svg_text

@@ -325,6 +325,40 @@ def test_python_schematic_generic_ic_symbol_builder_places_stable_pin_anchors():
     assert json.loads(schematic.to_json()) == projection
 
 
+def test_python_schematic_generic_ic_symbol_builder_defaults_are_compact():
+    symbol = volt.SchematicSymbolSpec.ic(
+        "test:CompactTimer",
+        pins=(
+            volt.SchematicSymbolSpec.ic_pin("DISCH", 7, side="left", slot=1),
+            volt.SchematicSymbolSpec.ic_pin("THRESH", 6, side="left", slot=2),
+            volt.SchematicSymbolSpec.ic_pin("TRIG", 2, side="left", slot=3),
+            volt.SchematicSymbolSpec.ic_pin("OUT", 3, side="right", slot=2),
+            volt.SchematicSymbolSpec.ic_pin("CTRL", 5, side="right", slot=3),
+            volt.SchematicSymbolSpec.ic_pin("RESET", 4, side="top", slot=2),
+            volt.SchematicSymbolSpec.ic_pin("VCC", 8, side="top", slot=4),
+            volt.SchematicSymbolSpec.ic_pin("GND", 1, side="bottom", slot=3),
+        ),
+        center_label="555",
+        pin_numbers=True,
+    )
+
+    assert [pin._to_dict() for pin in symbol.pins] == [
+        {"name": "DISCH", "number": "7", "anchor": {"x": 0.0, "y": 8.0}, "orientation": "Left"},
+        {"name": "THRESH", "number": "6", "anchor": {"x": 0.0, "y": 16.0}, "orientation": "Left"},
+        {"name": "TRIG", "number": "2", "anchor": {"x": 0.0, "y": 24.0}, "orientation": "Left"},
+        {"name": "OUT", "number": "3", "anchor": {"x": 52.0, "y": 16.0}, "orientation": "Right"},
+        {"name": "CTRL", "number": "5", "anchor": {"x": 52.0, "y": 24.0}, "orientation": "Right"},
+        {"name": "RESET", "number": "4", "anchor": {"x": 22.0, "y": -6.0}, "orientation": "Up"},
+        {"name": "VCC", "number": "8", "anchor": {"x": 38.0, "y": -6.0}, "orientation": "Up"},
+        {"name": "GND", "number": "1", "anchor": {"x": 30.0, "y": 38.0}, "orientation": "Down"},
+    ]
+    assert symbol.primitives[0] == {
+        "type": "rectangle",
+        "first_corner": {"x": 6.0, "y": 0.0},
+        "second_corner": {"x": 46.0, "y": 32.0},
+    }
+
+
 def test_python_schematic_generic_block_builder_allows_per_side_layout_and_pin_numbers():
     symbol = volt.SchematicSymbolSpec.block(
         "test:Peripheral",

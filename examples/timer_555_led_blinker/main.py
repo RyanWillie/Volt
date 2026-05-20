@@ -81,12 +81,6 @@ def _timer_symbol() -> volt.SchematicSymbolSpec:
             volt.SchematicSymbolSpec.ic_pin("VCC", 8, side="top", slot=4, label="Vcc"),
             volt.SchematicSymbolSpec.ic_pin("GND", 1, side="bottom", slot=3),
         ),
-        side_layouts=(
-            volt.SchematicSymbolSpec.side_layout("left", pin_number_offset=2),
-            volt.SchematicSymbolSpec.side_layout("right", pin_number_offset=2),
-            volt.SchematicSymbolSpec.side_layout("top", pin_number_offset=2),
-            volt.SchematicSymbolSpec.side_layout("bottom", pin_number_offset=2),
-        ),
         center_label="555",
         pin_numbers=True,
     )
