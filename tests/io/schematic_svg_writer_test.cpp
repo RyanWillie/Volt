@@ -333,6 +333,23 @@ TEST_CASE("Schematic SVG body bounds include debug pin overlays") {
     CHECK(body.find("<text class=\"pin-label\" x=\"0\" y=\"4\">EDGE</text>") != std::string::npos);
 }
 
+TEST_CASE("Schematic SVG body writes region title clip defs when regions are included") {
+    volt::Circuit circuit;
+    auto schematic = volt::Schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    [[maybe_unused]] const auto region = schematic.add_sheet_region(
+        sheet,
+        volt::SheetRegion{"power", "Power", volt::SheetRegionBounds{10.0, 12.0, 40.0, 20.0}});
+    auto options = volt::io::SchematicSvgBodyOptions{};
+    options.include_regions = true;
+
+    const auto body = volt::io::write_schematic_body_svg(schematic, sheet, options);
+
+    CHECK(body.find("<clipPath id=\"region-title-clip-sheet-0-0\">") != std::string::npos);
+    CHECK(body.find("clip-path=\"url(#region-title-clip-sheet-0-0)\">Power</text>") !=
+          std::string::npos);
+}
+
 TEST_CASE("Schematic SVG writer fits title-block values deterministically") {
     volt::Circuit circuit;
     auto schematic = volt::Schematic{circuit};

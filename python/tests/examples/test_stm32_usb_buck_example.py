@@ -23,6 +23,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         first_logical_text = artifacts.logical_json.read_text(encoding="utf-8")
         first_schematic_text = artifacts.schematic_json.read_text(encoding="utf-8")
         first_svg_text = artifacts.schematic_svg.read_text(encoding="utf-8")
+        first_body_svg_text = artifacts.schematic_body_svg.read_text(encoding="utf-8")
         first_page_texts = tuple(
             path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages
         )
@@ -40,6 +41,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         assert second_artifacts.logical_json.read_text(encoding="utf-8") == first_logical_text
         assert second_artifacts.schematic_json.read_text(encoding="utf-8") == first_schematic_text
         assert second_artifacts.schematic_svg.read_text(encoding="utf-8") == first_svg_text
+        assert (
+            second_artifacts.schematic_body_svg.read_text(encoding="utf-8")
+            == first_body_svg_text
+        )
         assert (
             tuple(path.read_text(encoding="utf-8") for path in second_artifacts.schematic_svg_pages)
             == first_page_texts
@@ -217,8 +222,17 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert ".region(" in schematic_source
     assert ".drawing(" in schematic_source
     assert "region.drawing(" in schematic_source
-    assert ".drawing(" in schematic_source
-    assert schematic_source.count("drawing.frame(") >= 3
+    authoring_source = "\n".join(
+        inspect.getsource(getattr(schematic_output, name))
+        for name in (
+            "_author_power_region",
+            "_author_mcu_region",
+            "_author_connectors_region",
+        )
+    )
+    assert "drawing.frame(" not in authoring_source
+    assert re.search(r"\bat=\(\s*\d", authoring_source) is None
+    assert "drawing.move_from(" in authoring_source
     assert "drawing.stack(" in schematic_source
     assert "drawing.two_terminal(" in schematic_source
     assert "drawing.C(" not in schematic_source
@@ -244,39 +258,54 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         for definition in schematic["symbol_definitions"]
     }
     assert {
-        "PA11 44",
-        "PA12 45",
-        "PA13 46",
-        "PA14 49",
-        "PB3 55",
-        "NRST 7",
-        "BOOT0 60",
-        "VCAP1 31",
-        "VCAP2 47",
+        "PA11",
+        "44",
+        "PA12",
+        "45",
+        "PA13",
+        "46",
+        "PA14",
+        "49",
+        "PB3",
+        "55",
+        "NRST",
+        "7",
+        "BOOT0",
+        "60",
+        "VCAP1",
+        "31",
+        "VCAP2",
+        "47",
     } <= symbol_text_by_definition["volt.examples.stm32_usb_buck:STM32F405RGTxCompact"]
     assert {
-        "1 VTref",
-        "2 SWDIO",
-        "4 SWCLK",
-        "6 SWO",
-        "8 BOOT0",
-        "10 NRST",
+        "1",
+        "VTref",
+        "2",
+        "SWDIO",
+        "4",
+        "SWCLK",
+        "6",
+        "SWO",
+        "8",
+        "BOOT0",
+        "10",
+        "NRST",
     } <= symbol_text_by_definition["volt.examples.stm32_usb_buck:CompactSWD10"]
     assert {
-        "1 VBUS",
-        "2 D-",
-        "3 D+",
-        "4 ID",
-        "5 GND",
+        "1",
+        "VBUS",
+        "2",
+        "D-",
+        "3",
+        "D+",
+        "4",
+        "ID",
+        "5",
+        "GND",
     } <= symbol_text_by_definition["volt.examples.stm32_usb_buck:ReadableUSBMicroB"]
-    assert {
-        "PA11 44",
-        "PA12 45",
-        "2 SWDIO",
-        "10 NRST",
-        "1 VBUS",
-        "3 D+",
-    } <= set(re.findall(r">([^<>]+)</text>", first_svg_text))
+    svg_labels = set(re.findall(r">([^<>]+)</text>", first_svg_text))
+    assert {"PA11", "44", "PA12", "45", "SWDIO", "10", "VBUS", "D+"} <= svg_labels
+    assert not ({"PA11 44", "PA12 45", "2 SWDIO", "10 NRST"} & svg_labels)
 
     net_pin_counts = {
         net["id"]: len(net["pins"]) for net in logical["nets"] if len(net["pins"]) > 1
@@ -370,6 +399,11 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert 'class="title-block"' in first_svg_text
     assert 'class="coordinate-zones"' in first_svg_text
     assert 'class="sheet-region-frame dashed"' in first_svg_text
+    assert 'class="schematic-body"' in first_body_svg_text
+    assert 'class="title-block"' not in first_body_svg_text
+    assert 'class="coordinate-zones"' not in first_body_svg_text
+    assert 'viewBox="0 0 594 420"' not in first_body_svg_text
+    assert '<text class="symbol-text"' in first_body_svg_text
     assert [path.name for path in artifacts.schematic_svg_pages] == ["stm32_usb_buck_STM32_USB_Buck.svg"]
     assert all('viewBox="0 0 594 420"' in text for text in first_page_texts)
     assert 'data-sheet="sheet:0"' in first_page_texts[0]
@@ -417,6 +451,7 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
             assert not (output_dir / "stm32_usb_buck.volt.json").exists()
             assert not (output_dir / "stm32_usb_buck.volt.schematic.json").exists()
             assert not (output_dir / "stm32_usb_buck.svg").exists()
+            assert not (output_dir / "stm32_usb_buck.body.svg").exists()
             assert not (output_dir / "stm32_usb_buck.pages").exists()
     finally:
         main.build_schematic = original
@@ -435,7 +470,17 @@ def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():
     assert "power_block(" not in source
     assert "usb_block(" not in source
     assert "region.drawing(" in source
-    assert source.count("drawing.frame(") >= 3
+    authoring_source = "\n".join(
+        inspect.getsource(getattr(schematic_output, name))
+        for name in (
+            "_author_power_region",
+            "_author_mcu_region",
+            "_author_connectors_region",
+        )
+    )
+    assert "drawing.frame(" not in authoring_source
+    assert re.search(r"\bat=\(\s*\d", authoring_source) is None
+    assert "drawing.move_from(" in authoring_source
     assert "drawing.stack(" in source
     assert "drawing.two_terminal(" in source
     assert "drawing.C(" not in source
