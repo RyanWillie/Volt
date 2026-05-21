@@ -24,7 +24,12 @@ from ._utils import (
     _string_dict,
 )
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
-from .library import SchematicSymbolSpec, _default_two_terminal_symbol_spec
+from .library import (
+    SchematicSymbolSpec,
+    _default_two_terminal_symbol_spec,
+    _text_horizontal_alignment,
+    _text_vertical_alignment,
+)
 from .logical import Component, Net, Pin, ModuleInstancePort, _pin_refs_by_name
 
 
@@ -360,6 +365,9 @@ class PlacedSchematicElement:
         offset: float | None = None,
         ofst: float | None = None,
         orient: str | None = None,
+        align: str = "middle",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> PlacedSchematicElement:
         if not isinstance(text, str):
             raise TypeError("Schematic element labels must be strings")
@@ -381,6 +389,9 @@ class PlacedSchematicElement:
             at=at,
             orient="Right" if orient is None else orient,
             _authored_region=self.symbol._authored_region,
+            align=align,
+            baseline=baseline,
+            font_size=font_size,
         )
         return self
 
@@ -391,6 +402,9 @@ class PlacedSchematicElement:
         offset: float | None = None,
         ofst: float | None = None,
         orient: str | None = None,
+        align: str = "middle",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> PlacedSchematicElement:
         return self.label(
             self.component.reference,
@@ -399,6 +413,9 @@ class PlacedSchematicElement:
             offset=offset,
             ofst=ofst,
             orient=orient,
+            align=align,
+            baseline=baseline,
+            font_size=font_size,
         )
 
     def label_value(
@@ -408,6 +425,9 @@ class PlacedSchematicElement:
         offset: float | None = None,
         ofst: float | None = None,
         orient: str | None = None,
+        align: str = "middle",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> PlacedSchematicElement:
         value = _component_value_label(self.component)
         if value is None:
@@ -419,7 +439,30 @@ class PlacedSchematicElement:
             offset=offset,
             ofst=ofst,
             orient=orient,
+            align=align,
+            baseline=baseline,
+            font_size=font_size,
         )
+
+    def dot(self, *, net: Net | None = None) -> PlacedSchematicElement:
+        _add_schematic_junction_dot(
+            self.symbol._schematic,
+            self.end,
+            net=net,
+            _authored_region=self.symbol._authored_region,
+            action="element endpoint dot",
+        )
+        return self
+
+    def idot(self, *, net: Net | None = None) -> PlacedSchematicElement:
+        _add_schematic_junction_dot(
+            self.symbol._schematic,
+            self.start,
+            net=net,
+            _authored_region=self.symbol._authored_region,
+            action="element endpoint dot",
+        )
+        return self
 
     def _terminal_anchor(self, index: int, label: str) -> SchematicPinAnchor:
         anchors = self.pin_anchors()
@@ -433,6 +476,7 @@ class PlacedSchematicElement:
         result = set(super().__dir__())
         names = [item["name"] for item in self.symbol._pin_refs()]
         result.update(name for name in names if name.isidentifier() and names.count(name) == 1)
+        result.update({"dot", "idot"})
         return sorted(result)
 
     def __repr__(self) -> str:
@@ -577,9 +621,17 @@ class SchematicWireBuilder:
         self._start_here = drawing.here if drawing is not None else None
         self._start_direction = drawing.direction if drawing is not None else None
         self._wire: SchematicWire | None = None
+        self._dot_start = False
+        self._dot_end = False
 
     def at(self, point) -> SchematicWireBuilder:
         return self.from_(point)
+
+    def endpoints(
+        self, start, end, *, shape: str | None = None, k: float | None = None
+    ) -> SchematicWireBuilder:
+        self.from_(start)
+        return self.to(end, shape=shape, k=k)
 
     def from_(self, point) -> SchematicWireBuilder:
         self._require_unmaterialized()
@@ -652,6 +704,16 @@ class SchematicWireBuilder:
 
     def down(self, length: float) -> SchematicWireBuilder:
         return self._relative(dx=0, dy=_coordinate(length))
+
+    def dot(self) -> SchematicWireBuilder:
+        self._require_unmaterialized()
+        self._dot_end = True
+        return self
+
+    def idot(self) -> SchematicWireBuilder:
+        self._require_unmaterialized()
+        self._dot_start = True
+        return self
 
     def direct(self) -> SchematicWire:
         """Persist the collected points without inserting an automatic bend."""
@@ -764,12 +826,31 @@ class SchematicWireBuilder:
                     route_intent=route_intent,
                     _authored_region=self._authored_region,
                 )
+                self._persist_endpoint_junctions(wire_points)
             except Exception:
                 self._clear_pending()
                 self._restore_drawing_state()
                 raise
         self._clear_pending()
         return self._wire
+
+    def _persist_endpoint_junctions(self, points: tuple[tuple[float, float], ...]) -> None:
+        if self._dot_start:
+            _add_schematic_junction_dot(
+                self._schematic,
+                points[0],
+                net=self._net,
+                _authored_region=self._authored_region,
+                action="wire endpoint dot",
+            )
+        if self._dot_end:
+            _add_schematic_junction_dot(
+                self._schematic,
+                points[-1],
+                net=self._net,
+                _authored_region=self._authored_region,
+                action="wire endpoint dot",
+            )
 
     def _update_drawing_cursor(self, point: tuple[float, float]) -> None:
         if self._drawing is not None:
@@ -1535,18 +1616,83 @@ class SchematicTwoTerminalElement:
         self._require_unplaced("between")
         start_anchor = self._drawing._anchor_at(start)
         end_anchor = self._drawing._anchor_at(end)
+        return self._configure_between(
+            start_anchor,
+            end_anchor,
+            method="between",
+            anchor=anchor,
+            drop=drop,
+        )
+
+    def endpoints(
+        self,
+        start: tuple[float, float] | SchematicAnchor | SchematicPort,
+        end: tuple[float, float] | SchematicAnchor | SchematicPort,
+        *,
+        anchor: str | int = "start",
+        drop: str | int = "end",
+    ) -> SchematicTwoTerminalElement:
+        return self.between(start, end, anchor=anchor, drop=drop)
+
+    def to(
+        self, end: tuple[float, float] | SchematicAnchor | SchematicPort
+    ) -> SchematicTwoTerminalElement:
+        self._require_unplaced("to")
+        return self._configure_between(
+            self._at,
+            self._drawing._anchor_at(end),
+            method="to",
+        )
+
+    def tox(self, anchor_or_x) -> SchematicTwoTerminalElement:
+        self._require_unplaced("tox")
+        target_x = _schematic_axis_target(
+            self._axis_target_arg(anchor_or_x, "x"),
+            self._drawing._schematic._design,
+            "x",
+            schematic=self._drawing._schematic,
+            action="two-terminal placement",
+        )
+        return self.to(
+            SchematicAnchor((target_x, self._at.y), design=self._component._design)
+        )
+
+    def toy(self, anchor_or_y) -> SchematicTwoTerminalElement:
+        self._require_unplaced("toy")
+        target_y = _schematic_axis_target(
+            self._axis_target_arg(anchor_or_y, "y"),
+            self._drawing._schematic._design,
+            "y",
+            schematic=self._drawing._schematic,
+            action="two-terminal placement",
+        )
+        return self.to(
+            SchematicAnchor((self._at.x, target_y), design=self._component._design)
+        )
+
+    def _configure_between(
+        self,
+        start_anchor: SchematicAnchor,
+        end_anchor: SchematicAnchor,
+        *,
+        method: str,
+        anchor: str | int | None = None,
+        drop: str | int | None = None,
+    ) -> SchematicTwoTerminalElement:
         dx = end_anchor.x - start_anchor.x
         dy = end_anchor.y - start_anchor.y
         if dx == 0 and dy == 0:
-            raise ValueError("Two-terminal between() anchors must be distinct")
+            raise ValueError(f"Two-terminal {method}() anchors must be distinct")
         if dx != 0 and dy != 0:
             raise ValueError(
-                "Two-terminal between() anchors must be horizontally or vertically aligned"
+                f"Two-terminal {method}() anchors must be horizontally or vertically aligned"
             )
 
         self._at = start_anchor
-        self._anchor_ref = anchor
-        self._drop_ref = drop
+        if anchor is not None:
+            self._anchor_ref = anchor
+        if drop is not None:
+            self._drop_ref = drop
         if dx != 0:
             self._orientation = "Right" if dx > 0 else "Left"
             self._length = abs(dx)
@@ -1624,6 +1770,12 @@ class SchematicTwoTerminalElement:
             loc=loc, offset=offset, ofst=ofst, orient=orient
         )
 
+    def dot(self, *, net: Net | None = None) -> PlacedSchematicElement:
+        return self._materialize().dot(net=net)
+
+    def idot(self, *, net: Net | None = None) -> PlacedSchematicElement:
+        return self._materialize().idot(net=net)
+
     def __getitem__(self, key: int | str) -> SchematicPinAnchor:
         return self._materialize()[key]
 
@@ -1657,6 +1809,12 @@ class SchematicTwoTerminalElement:
         if length <= 0:
             raise ValueError("Two-terminal element length must be positive")
         return length
+
+    def _axis_target_arg(self, target, axis: str):
+        if isinstance(target, (int, float)) and not isinstance(target, bool):
+            offset = self._drawing._coordinate_origin[0 if axis == "x" else 1]
+            return _coordinate(target) + offset
+        return target
 
     def _require_unplaced(self, method: str) -> None:
         if self._placed is not None:
@@ -1821,7 +1979,10 @@ class SchematicTwoTerminalElement:
                 "down",
                 "drop",
                 "end",
+                "endpoints",
                 "flip",
+                "dot",
+                "idot",
                 "index",
                 "label",
                 "label_ref",
@@ -1837,6 +1998,9 @@ class SchematicTwoTerminalElement:
                 "reverse",
                 "right",
                 "start",
+                "to",
+                "tox",
+                "toy",
                 "up",
             }
         )
@@ -2156,6 +2320,9 @@ class Schematic:
         orient: str = "Right",
         label: str | None = None,
         _authored_region: int | None = None,
+        align: str = "start",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> SchematicNetLabel:
         if not isinstance(net, Net):
             raise TypeError("Schematic labels expect a Net handle")
@@ -2179,6 +2346,9 @@ class Schematic:
             orientation,
             _authored_region,
             _optional_display_label(label),
+            _text_horizontal_alignment(align),
+            _text_vertical_alignment(baseline),
+            _optional_text_font_size(font_size),
         )
         return SchematicNetLabel(self, label, orientation)
 
@@ -2190,12 +2360,24 @@ class Schematic:
         orient: str = "Right",
         label: str | None = None,
         _authored_region: int | None = None,
+        align: str = "start",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> SchematicNetLabel:
         try:
             net = _resolve_schematic_net_label(self._design, name_or_net)
         except ValueError as error:
             _raise_cross_design_with_context(error, self, "net label")
-        return self.label(net, at=at, orient=orient, label=label, _authored_region=_authored_region)
+        return self.label(
+            net,
+            at=at,
+            orient=orient,
+            label=label,
+            _authored_region=_authored_region,
+            align=align,
+            baseline=baseline,
+            font_size=font_size,
+        )
 
     def local_label(
         self,
@@ -2344,6 +2526,9 @@ class Schematic:
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str = "Right",
         _authored_region: int | None = None,
+        align: str = "middle",
+        baseline: str = "baseline",
+        font_size: float | None = None,
     ) -> SchematicSymbolField:
         if not isinstance(symbol, SchematicSymbol):
             raise TypeError("Schematic symbol fields expect a placed symbol handle")
@@ -2358,7 +2543,17 @@ class Schematic:
         orientation = _orientation(orient)
 
         field = self._design._circuit.add_schematic_symbol_field(
-            self._sheet_index, symbol.index, name, value, x, y, orientation, _authored_region
+            self._sheet_index,
+            symbol.index,
+            name,
+            value,
+            x,
+            y,
+            orientation,
+            _authored_region,
+            _text_horizontal_alignment(align),
+            _text_vertical_alignment(baseline),
+            _optional_text_font_size(font_size),
         )
         return SchematicSymbolField(
             self,
@@ -2755,6 +2950,13 @@ class Schematic:
     def to_svg(self) -> str:
         return self._design._circuit.schematic_to_svg()
 
+    def to_body_svg(self, *, margin: float = 4.0) -> str:
+        """Return a content-tight SVG for this sheet's schematic body."""
+        return self._design._circuit.schematic_to_body_svg(
+            self._sheet_index,
+            _nonnegative_coordinate(margin, "Schematic SVG body margins"),
+        )
+
     def to_svg_pages(self) -> tuple[dict[str, int | str], ...]:
         return tuple(
             {
@@ -2779,6 +2981,9 @@ class Schematic:
 
     def write_svg(self, path: str | Path) -> None:
         Path(path).write_text(self.to_svg(), encoding="utf-8")
+
+    def write_body_svg(self, path: str | Path, *, margin: float = 4.0) -> None:
+        Path(path).write_text(self.to_body_svg(margin=margin), encoding="utf-8")
 
     def write_svg_pages(
         self, directory: str | Path, *, prefix: str | None = None
@@ -3259,6 +3464,12 @@ def _title_block_value(value, label: str) -> str:
     return result
 
 
+def _optional_text_font_size(value: float | None) -> float | None:
+    if value is None:
+        return None
+    return _positive_coordinate(value, "Schematic text font sizes")
+
+
 def _title_block_items(values) -> list[dict[str, str]]:
     if values is None:
         return []
@@ -3633,7 +3844,8 @@ def _resolve_schematic_port_net(
             if inferred is None:
                 raise ValueError(
                     f"Cannot infer logical net for {context} at {_pin_anchor_label(at)}; "
-                    "connect the pin in the logical model first or pass net="
+                    "the pin is not connected to any logical net; connect the pin "
+                    "in the logical model first or pass net="
                 )
             return inferred
         try:
@@ -3661,6 +3873,25 @@ def _resolve_schematic_port_net(
             f"Cannot infer logical net for {context} from a non-pin anchor; pass net="
         )
     return explicit
+
+
+def _add_schematic_junction_dot(
+    schematic: Schematic,
+    at: tuple[float, float] | SchematicAnchor | SchematicPort,
+    *,
+    net: Net | None,
+    _authored_region: int | None,
+    action: str,
+) -> SchematicJunction:
+    resolved = _resolve_schematic_port_net(
+        schematic._design,
+        at,
+        net,
+        schematic=schematic,
+        action=action,
+        type_message="Schematic junction dots expect a Net handle",
+    )
+    return schematic.junction(resolved, at=at, _authored_region=_authored_region)
 
 
 def _terminal_marker_kind(kind: str) -> str:

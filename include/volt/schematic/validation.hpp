@@ -303,12 +303,53 @@ inline void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexc
 
 [[nodiscard]] inline SchematicBounds text_bounds(Point anchor, SchematicOrientation orientation,
                                                  std::string_view text, double font_size,
-                                                 bool centered) {
+                                                 TextHorizontalAlignment horizontal_alignment,
+                                                 TextVerticalAlignment vertical_alignment) {
     const auto width = rendered_text_width(text, font_size);
-    const auto min_x = centered ? -width / 2.0 : 0.0;
-    const auto max_x = centered ? width / 2.0 : width;
-    return transform_rect_bounds(min_x, -font_size, max_x, font_size * rendered_text_descent_factor,
-                                 anchor, orientation);
+    auto min_x = 0.0;
+    auto max_x = width;
+    if (horizontal_alignment == TextHorizontalAlignment::Middle) {
+        min_x = -width / 2.0;
+        max_x = width / 2.0;
+    } else if (horizontal_alignment == TextHorizontalAlignment::End) {
+        min_x = -width;
+        max_x = 0.0;
+    }
+
+    const auto height = font_size * (1.0 + rendered_text_descent_factor);
+    auto min_y = -font_size;
+    auto max_y = font_size * rendered_text_descent_factor;
+    if (vertical_alignment == TextVerticalAlignment::Top) {
+        min_y = 0.0;
+        max_y = height;
+    } else if (vertical_alignment == TextVerticalAlignment::Middle) {
+        min_y = -height / 2.0;
+        max_y = height / 2.0;
+    } else if (vertical_alignment == TextVerticalAlignment::Bottom) {
+        min_y = -height;
+        max_y = 0.0;
+    }
+    return transform_rect_bounds(min_x, min_y, max_x, max_y, anchor, orientation);
+}
+
+[[nodiscard]] inline SchematicBounds text_bounds(Point anchor, SchematicOrientation orientation,
+                                                 std::string_view text, double font_size,
+                                                 bool centered) {
+    return text_bounds(anchor, orientation, text, font_size,
+                       centered ? TextHorizontalAlignment::Middle : TextHorizontalAlignment::Start,
+                       TextVerticalAlignment::Baseline);
+}
+
+[[nodiscard]] inline double text_style_font_size(SchematicTextStyle style,
+                                                 double default_font_size) noexcept {
+    return style.font_size().value_or(default_font_size);
+}
+
+[[nodiscard]] inline SchematicBounds text_bounds(Point anchor, SchematicOrientation orientation,
+                                                 std::string_view text, SchematicTextStyle style,
+                                                 double default_font_size) {
+    return text_bounds(anchor, orientation, text, text_style_font_size(style, default_font_size),
+                       style.horizontal_alignment(), style.vertical_alignment());
 }
 
 [[nodiscard]] inline bool wire_covers_point(const WireRun &wire, Point point) noexcept {
@@ -506,8 +547,8 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
     const auto &text = std::get<SymbolText>(primitive);
     const auto anchor =
         transform_schematic_point(text.anchor(), instance.position(), instance.orientation());
-    return text_bounds(anchor, instance.orientation(), text.text(), symbol_text_rendered_font_size,
-                       true);
+    return text_bounds(anchor, instance.orientation(), text.text(), text.style(),
+                       symbol_text_rendered_font_size);
 }
 
 [[nodiscard]] inline SchematicBounds symbol_instance_bounds(const Schematic &schematic,
@@ -1021,13 +1062,13 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     for (const auto label_id : sheet.net_labels()) {
         const auto &label = schematic.net_label(label_id);
         const auto &net = schematic.circuit().net(label.net());
-        objects.push_back(ReadabilityObject{ReadabilityObjectKind::NetLabel,
-                                            EntityRef::net_label(label_id),
-                                            std::vector{EntityRef::net(label.net())},
-                                            text_bounds(label.position(), label.orientation(),
-                                                        label.label().value_or(net.name().value()),
-                                                        net_label_rendered_font_size, false),
-                                            label.authored_region()});
+        objects.push_back(
+            ReadabilityObject{ReadabilityObjectKind::NetLabel, EntityRef::net_label(label_id),
+                              std::vector{EntityRef::net(label.net())},
+                              text_bounds(label.position(), label.orientation(),
+                                          label.label().value_or(net.name().value()), label.style(),
+                                          net_label_rendered_font_size),
+                              label.authored_region()});
     }
     for (const auto junction_id : sheet.junctions()) {
         const auto &junction = schematic.junction(junction_id);
@@ -1068,7 +1109,7 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
             ReadabilityObject{ReadabilityObjectKind::SymbolField, EntityRef::symbol_field(field_id),
                               std::vector{EntityRef::symbol_instance(field.symbol_instance())},
                               text_bounds(field.position(), field.orientation(), field.value(),
-                                          symbol_field_rendered_font_size, true),
+                                          field.style(), symbol_field_rendered_font_size),
                               field.authored_region()});
     }
     return objects;
@@ -1115,8 +1156,8 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
             EntityRef::net_label(label_id),
             std::vector{EntityRef::net(label.net())},
             text_bounds(label.position(), label.orientation(),
-                        label.label().value_or(net.name().value()), net_label_rendered_font_size,
-                        false),
+                        label.label().value_or(net.name().value()), label.style(),
+                        net_label_rendered_font_size),
             label.position(),
             label.net(),
         });
@@ -1127,8 +1168,8 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
             ReadabilityTextKind::SymbolField,
             EntityRef::symbol_field(field_id),
             std::vector{EntityRef::symbol_instance(field.symbol_instance())},
-            text_bounds(field.position(), field.orientation(), field.value(),
-                        symbol_field_rendered_font_size, true),
+            text_bounds(field.position(), field.orientation(), field.value(), field.style(),
+                        symbol_field_rendered_font_size),
             field.position(),
             std::nullopt,
         });
@@ -1575,7 +1616,7 @@ inline void validate_symbol_field_ownership_distance(const Schematic &schematic,
     for (const auto field_id : sheet.symbol_fields()) {
         const auto &field = schematic.symbol_field(field_id);
         const auto field_bounds = text_bounds(field.position(), field.orientation(), field.value(),
-                                              symbol_field_rendered_font_size, true);
+                                              field.style(), symbol_field_rendered_font_size);
         const auto owner_bounds = symbol_instance_bounds(schematic, field.symbol_instance());
         if (bounds_gap(owner_bounds, field_bounds) <= symbol_field_owner_max_gap) {
             continue;

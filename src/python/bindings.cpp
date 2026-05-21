@@ -413,6 +413,20 @@ selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimensi
     return py::cast<bool>(dict[field]);
 }
 
+[[nodiscard]] std::optional<double>
+optional_positive_number_field(const py::dict &dict, const char *field, const char *context) {
+    if (!dict.contains(field)) {
+        return std::nullopt;
+    }
+    const auto value = py::cast<double>(dict[field]);
+    const auto message = std::string{context} + " numbers must be finite";
+    require_finite(value, message.c_str());
+    if (value <= 0.0) {
+        throw std::invalid_argument{std::string{context} + " numbers must be positive"};
+    }
+    return value;
+}
+
 [[nodiscard]] std::size_t required_size_field(const py::dict &dict, const char *field,
                                               const char *context) {
     if (!dict.contains(field)) {
@@ -670,6 +684,61 @@ rotated_schematic_orientation(volt::SchematicOrientation local,
     throw std::invalid_argument{"Unknown schematic sheet port kind"};
 }
 
+[[nodiscard]] volt::TextHorizontalAlignment
+text_horizontal_alignment_from_string(const std::string &value) {
+    if (value == "Start") {
+        return volt::TextHorizontalAlignment::Start;
+    }
+    if (value == "Middle") {
+        return volt::TextHorizontalAlignment::Middle;
+    }
+    if (value == "End") {
+        return volt::TextHorizontalAlignment::End;
+    }
+    throw std::invalid_argument{"Unknown schematic text horizontal alignment"};
+}
+
+[[nodiscard]] volt::TextVerticalAlignment
+text_vertical_alignment_from_string(const std::string &value) {
+    if (value == "Top") {
+        return volt::TextVerticalAlignment::Top;
+    }
+    if (value == "Middle") {
+        return volt::TextVerticalAlignment::Middle;
+    }
+    if (value == "Bottom") {
+        return volt::TextVerticalAlignment::Bottom;
+    }
+    if (value == "Baseline") {
+        return volt::TextVerticalAlignment::Baseline;
+    }
+    throw std::invalid_argument{"Unknown schematic text vertical alignment"};
+}
+
+[[nodiscard]] volt::SchematicTextStyle text_style_from_dict(const py::dict &dict,
+                                                            volt::SchematicTextStyle defaults) {
+    auto font_size = optional_positive_number_field(dict, "font_size", "Schematic text");
+    if (!font_size.has_value()) {
+        font_size = defaults.font_size();
+    }
+    return volt::SchematicTextStyle{
+        text_horizontal_alignment_from_string(optional_string_field(
+            dict, "horizontal_alignment",
+            volt::io::detail::text_horizontal_alignment_name(defaults.horizontal_alignment()))),
+        text_vertical_alignment_from_string(optional_string_field(
+            dict, "vertical_alignment",
+            volt::io::detail::text_vertical_alignment_name(defaults.vertical_alignment()))),
+        font_size};
+}
+
+[[nodiscard]] volt::SchematicTextStyle
+text_style_from_strings(const std::string &horizontal_alignment,
+                        const std::string &vertical_alignment, std::optional<double> font_size) {
+    return volt::SchematicTextStyle{text_horizontal_alignment_from_string(horizontal_alignment),
+                                    text_vertical_alignment_from_string(vertical_alignment),
+                                    font_size};
+}
+
 [[nodiscard]] volt::SymbolPin symbol_pin_from_dict(const py::dict &dict) {
     return volt::SymbolPin{required_string_field(dict, "name", "Symbol pin"),
                            required_string_field(dict, "number", "Symbol pin"),
@@ -706,7 +775,8 @@ rotated_schematic_orientation(volt::SchematicOrientation local,
         return volt::SymbolText{required_string_field(dict, "text", "Symbol text"),
                                 point_from_dict(required_dict_field(dict, "anchor", "Symbol text")),
                                 schematic_orientation_from_string(
-                                    required_string_field(dict, "orientation", "Symbol text"))};
+                                    required_string_field(dict, "orientation", "Symbol text")),
+                                text_style_from_dict(dict, volt::SchematicTextStyle{})};
     }
 
     throw std::invalid_argument{"Unknown schematic symbol primitive"};
@@ -1572,7 +1642,10 @@ class PyCircuit {
     [[nodiscard]] std::size_t add_schematic_net_label(std::size_t sheet, std::size_t net, double x,
                                                       double y, const std::string &orientation,
                                                       std::optional<std::size_t> authored_region,
-                                                      std::optional<std::string> label) {
+                                                      std::optional<std::string> label,
+                                                      const std::string &horizontal_alignment,
+                                                      const std::string &vertical_alignment,
+                                                      std::optional<double> font_size) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
@@ -1581,7 +1654,9 @@ class PyCircuit {
             .add_net_label(sheet_id(sheet),
                            volt::NetLabel{net_id(net), volt::Point{x, y},
                                           schematic_orientation_from_string(orientation),
-                                          authored_region, std::move(label)})
+                                          authored_region, std::move(label),
+                                          text_style_from_strings(horizontal_alignment,
+                                                                  vertical_alignment, font_size)})
             .index();
     }
 
@@ -1651,11 +1726,11 @@ class PyCircuit {
             .index();
     }
 
-    [[nodiscard]] std::size_t
-    add_schematic_symbol_field(std::size_t sheet, std::size_t instance, const std::string &name,
-                               const std::string &value, double x, double y,
-                               const std::string &orientation,
-                               std::optional<std::size_t> authored_region) {
+    [[nodiscard]] std::size_t add_schematic_symbol_field(
+        std::size_t sheet, std::size_t instance, const std::string &name, const std::string &value,
+        double x, double y, const std::string &orientation,
+        std::optional<std::size_t> authored_region, const std::string &horizontal_alignment,
+        const std::string &vertical_alignment, std::optional<double> font_size) {
         require_finite(x, "Schematic coordinates must be finite");
         require_finite(y, "Schematic coordinates must be finite");
 
@@ -1663,8 +1738,10 @@ class PyCircuit {
         return projection
             .add_symbol_field(
                 sheet_id(sheet),
-                volt::SymbolField{volt::SymbolInstanceId{instance}, name, value, volt::Point{x, y},
-                                  schematic_orientation_from_string(orientation), authored_region})
+                volt::SymbolField{
+                    volt::SymbolInstanceId{instance}, name, value, volt::Point{x, y},
+                    schematic_orientation_from_string(orientation), authored_region,
+                    text_style_from_strings(horizontal_alignment, vertical_alignment, font_size)})
             .index();
     }
 
@@ -1677,6 +1754,14 @@ class PyCircuit {
     [[nodiscard]] std::string schematic_to_svg() {
         auto out = std::ostringstream{};
         volt::io::write_schematic_svg(out, schematic_projection());
+        return out.str();
+    }
+
+    [[nodiscard]] std::string schematic_to_body_svg(std::size_t sheet, double margin) {
+        auto options = volt::io::SchematicSvgBodyOptions{};
+        options.margin = margin;
+        auto out = std::ostringstream{};
+        volt::io::write_schematic_body_svg(out, schematic_projection(), sheet_id(sheet), options);
         return out.str();
     }
 
@@ -1880,7 +1965,9 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("points"), py::arg("route_intent"), py::arg("authored_region") = std::nullopt)
         .def("add_schematic_net_label", &PyCircuit::add_schematic_net_label, py::arg("sheet"),
              py::arg("net"), py::arg("x"), py::arg("y"), py::arg("orientation"),
-             py::arg("authored_region") = std::nullopt, py::arg("label") = std::nullopt)
+             py::arg("authored_region") = std::nullopt, py::arg("label") = std::nullopt,
+             py::arg("horizontal_alignment") = "Start", py::arg("vertical_alignment") = "Baseline",
+             py::arg("font_size") = std::nullopt)
         .def("add_schematic_junction", &PyCircuit::add_schematic_junction, py::arg("sheet"),
              py::arg("net"), py::arg("x"), py::arg("y"), py::arg("authored_region") = std::nullopt)
         .def("add_schematic_terminal_marker", &PyCircuit::add_schematic_terminal_marker,
@@ -1895,9 +1982,13 @@ PYBIND11_MODULE(_volt, module) {
              py::arg("orientation"), py::arg("authored_region") = std::nullopt)
         .def("add_schematic_symbol_field", &PyCircuit::add_schematic_symbol_field, py::arg("sheet"),
              py::arg("instance"), py::arg("name"), py::arg("value"), py::arg("x"), py::arg("y"),
-             py::arg("orientation"), py::arg("authored_region") = std::nullopt)
+             py::arg("orientation"), py::arg("authored_region") = std::nullopt,
+             py::arg("horizontal_alignment") = "Middle", py::arg("vertical_alignment") = "Baseline",
+             py::arg("font_size") = std::nullopt)
         .def("schematic_to_json", &PyCircuit::schematic_to_json)
         .def("schematic_to_svg", &PyCircuit::schematic_to_svg)
+        .def("schematic_to_body_svg", &PyCircuit::schematic_to_body_svg, py::arg("sheet"),
+             py::arg("margin") = 4.0)
         .def("schematic_svg_pages", &PyCircuit::schematic_svg_pages)
         .def("load_schematic_json", &PyCircuit::load_schematic_json, py::arg("text"))
         .def("schematic_sheet_names", &PyCircuit::schematic_sheet_names)

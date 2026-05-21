@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -21,6 +22,16 @@ namespace volt::io {
 struct SchematicSvgOptions {
     /** Include development overlays such as symbol pin anchors and labels. */
     bool debug_overlays = false;
+};
+
+/** Options that control content-tight schematic body SVG rendering. */
+struct SchematicSvgBodyOptions {
+    /** Shared SVG rendering options for schematic drawing content. */
+    SchematicSvgOptions svg;
+    /** Sheet-space margin added around the computed content bounds. */
+    double margin = 4.0;
+    /** Include authored sheet region frames in the body output and bounds. */
+    bool include_regions = false;
 };
 
 /** One production-oriented SVG page exported from a schematic sheet. */
@@ -106,6 +117,7 @@ inline constexpr double sheet_port_half_height = 2.4;
 inline constexpr double sheet_port_min_body_length = 7.0;
 inline constexpr double sheet_port_tip_length = 3.2;
 inline constexpr double sheet_port_label_padding = 2.1;
+inline constexpr double debug_pin_label_offset = 4.0;
 /** Deterministic average sans-serif character width used instead of browser font metrics. */
 inline constexpr double sheet_port_text_width_factor = 0.56;
 inline constexpr double sheet_port_label_baseline = 0.9;
@@ -120,6 +132,18 @@ struct SvgRect {
     double width;
     /** Rectangle height. */
     double height;
+};
+
+/** Sheet-local bounds used by content-tight SVG body export. */
+struct SvgBounds {
+    /** Minimum sheet-space x coordinate. */
+    double min_x;
+    /** Minimum sheet-space y coordinate. */
+    double min_y;
+    /** Maximum sheet-space x coordinate. */
+    double max_x;
+    /** Maximum sheet-space y coordinate. */
+    double max_y;
 };
 
 /** Deterministic title-block text fit result. */
@@ -284,9 +308,171 @@ inline void write_css_font(std::ostream &out, double size) {
     out << "px sans-serif";
 }
 
+[[nodiscard]] inline std::string_view svg_text_anchor(TextHorizontalAlignment alignment) {
+    switch (alignment) {
+    case TextHorizontalAlignment::Start:
+        return "start";
+    case TextHorizontalAlignment::Middle:
+        return "middle";
+    case TextHorizontalAlignment::End:
+        return "end";
+    }
+    throw std::logic_error{"Unhandled text horizontal alignment"};
+}
+
+[[nodiscard]] inline std::string_view svg_dominant_baseline(TextVerticalAlignment alignment) {
+    switch (alignment) {
+    case TextVerticalAlignment::Top:
+        return "text-before-edge";
+    case TextVerticalAlignment::Middle:
+        return "middle";
+    case TextVerticalAlignment::Bottom:
+        return "text-after-edge";
+    case TextVerticalAlignment::Baseline:
+        return "alphabetic";
+    }
+    throw std::logic_error{"Unhandled text vertical alignment"};
+}
+
+inline void write_text_presentation_attributes(std::ostream &out, SchematicTextStyle style) {
+    out << " text-anchor=\"" << svg_text_anchor(style.horizontal_alignment())
+        << "\" dominant-baseline=\"" << svg_dominant_baseline(style.vertical_alignment()) << '"';
+    if (style.font_size().has_value()) {
+        out << " style=\"font-size:";
+        write_svg_number(out, style.font_size().value());
+        out << "px\"";
+    }
+}
+
 [[nodiscard]] inline double title_block_rendered_text_width(std::string_view text,
                                                             double font_size) noexcept {
     return font_size * title_block_text_width_factor * static_cast<double>(text.size());
+}
+
+[[nodiscard]] inline SvgBounds bounds_from_point(Point point) noexcept {
+    return SvgBounds{point.x(), point.y(), point.x(), point.y()};
+}
+
+inline void include_point(SvgBounds &bounds, Point point) noexcept {
+    bounds.min_x = std::min(bounds.min_x, point.x());
+    bounds.min_y = std::min(bounds.min_y, point.y());
+    bounds.max_x = std::max(bounds.max_x, point.x());
+    bounds.max_y = std::max(bounds.max_y, point.y());
+}
+
+inline void include_bounds(SvgBounds &bounds, SvgBounds other) noexcept {
+    bounds.min_x = std::min(bounds.min_x, other.min_x);
+    bounds.min_y = std::min(bounds.min_y, other.min_y);
+    bounds.max_x = std::max(bounds.max_x, other.max_x);
+    bounds.max_y = std::max(bounds.max_y, other.max_y);
+}
+
+[[nodiscard]] inline SvgBounds padded_bounds(SvgBounds bounds, double padding) noexcept {
+    return SvgBounds{bounds.min_x - padding, bounds.min_y - padding, bounds.max_x + padding,
+                     bounds.max_y + padding};
+}
+
+[[nodiscard]] inline SvgBounds rect_bounds(double x, double y, double width,
+                                           double height) noexcept {
+    return SvgBounds{x, y, x + width, y + height};
+}
+
+[[nodiscard]] inline double bounds_width(SvgBounds bounds) noexcept {
+    return bounds.max_x - bounds.min_x;
+}
+
+[[nodiscard]] inline double bounds_height(SvgBounds bounds) noexcept {
+    return bounds.max_y - bounds.min_y;
+}
+
+[[nodiscard]] inline SvgBounds transform_rect_bounds(double min_x, double min_y, double max_x,
+                                                     double max_y, Point origin,
+                                                     SchematicOrientation orientation) {
+    auto result =
+        bounds_from_point(transform_schematic_point(Point{min_x, min_y}, origin, orientation));
+    include_point(result, transform_schematic_point(Point{max_x, min_y}, origin, orientation));
+    include_point(result, transform_schematic_point(Point{min_x, max_y}, origin, orientation));
+    include_point(result, transform_schematic_point(Point{max_x, max_y}, origin, orientation));
+    return result;
+}
+
+[[nodiscard]] inline double rendered_text_width(std::string_view text, double font_size) noexcept {
+    return std::max(font_size * sheet_port_text_width_factor,
+                    font_size * sheet_port_text_width_factor * static_cast<double>(text.size()));
+}
+
+[[nodiscard]] inline double rendered_text_height(double font_size) noexcept {
+    return font_size * 1.25;
+}
+
+[[nodiscard]] inline int orientation_quarter_turns(SchematicOrientation orientation) {
+    switch (orientation) {
+    case SchematicOrientation::Right:
+        return 0;
+    case SchematicOrientation::Down:
+        return 1;
+    case SchematicOrientation::Left:
+        return 2;
+    case SchematicOrientation::Up:
+        return 3;
+    }
+    throw std::logic_error{"Unhandled schematic orientation"};
+}
+
+[[nodiscard]] inline SchematicOrientation orientation_from_quarter_turns(int turns) {
+    switch ((turns % 4 + 4) % 4) {
+    case 0:
+        return SchematicOrientation::Right;
+    case 1:
+        return SchematicOrientation::Down;
+    case 2:
+        return SchematicOrientation::Left;
+    case 3:
+        return SchematicOrientation::Up;
+    }
+    throw std::logic_error{"Unhandled schematic orientation"};
+}
+
+[[nodiscard]] inline SchematicOrientation combine_orientations(SchematicOrientation parent,
+                                                               SchematicOrientation child) {
+    return orientation_from_quarter_turns(orientation_quarter_turns(parent) +
+                                          orientation_quarter_turns(child));
+}
+
+[[nodiscard]] inline double text_style_font_size(SchematicTextStyle style,
+                                                 double default_font_size) noexcept {
+    return style.font_size().value_or(default_font_size);
+}
+
+[[nodiscard]] inline SvgBounds text_bounds(Point anchor, SchematicOrientation orientation,
+                                           std::string_view text, SchematicTextStyle style,
+                                           double default_font_size) {
+    const auto font_size = text_style_font_size(style, default_font_size);
+    const auto width = rendered_text_width(text, font_size);
+    auto min_x = 0.0;
+    auto max_x = width;
+    if (style.horizontal_alignment() == TextHorizontalAlignment::Middle) {
+        min_x = -width / 2.0;
+        max_x = width / 2.0;
+    } else if (style.horizontal_alignment() == TextHorizontalAlignment::End) {
+        min_x = -width;
+        max_x = 0.0;
+    }
+
+    const auto height = rendered_text_height(font_size);
+    auto min_y = -font_size;
+    auto max_y = height - font_size;
+    if (style.vertical_alignment() == TextVerticalAlignment::Top) {
+        min_y = 0.0;
+        max_y = height;
+    } else if (style.vertical_alignment() == TextVerticalAlignment::Middle) {
+        min_y = -height / 2.0;
+        max_y = height / 2.0;
+    } else if (style.vertical_alignment() == TextVerticalAlignment::Bottom) {
+        min_y = -height;
+        max_y = 0.0;
+    }
+    return transform_rect_bounds(min_x, min_y, max_x, max_y, anchor, orientation);
 }
 
 [[nodiscard]] inline std::string
@@ -461,7 +647,9 @@ inline void write_symbol_primitive_svg(std::ostream &out, const SymbolPrimitive 
     write_svg_number(out, text.anchor().x());
     out << "\" y=\"";
     write_svg_number(out, text.anchor().y());
-    out << "\" transform=\"rotate(";
+    out << '"';
+    write_text_presentation_attributes(out, text.style());
+    out << " transform=\"rotate(";
     write_svg_number(out, orientation_degrees(text.orientation()));
     out << ' ';
     write_svg_number(out, text.anchor().x());
@@ -481,7 +669,7 @@ inline void write_symbol_pin_svg(std::ostream &out, const SymbolPin &pin) {
     out << "      <text class=\"pin-label\" x=\"";
     write_svg_number(out, pin.anchor().x());
     out << "\" y=\"";
-    write_svg_number(out, pin.anchor().y() + 4.0);
+    write_svg_number(out, pin.anchor().y() + debug_pin_label_offset);
     out << "\">" << svg_escape(pin.name()) << "</text>\n";
 }
 
@@ -553,7 +741,9 @@ inline void write_net_label_svg(std::ostream &out, const Schematic &schematic, N
     write_svg_number(out, label.position().x());
     out << "\" y=\"";
     write_svg_number(out, label.position().y());
-    out << "\" transform=\"rotate(";
+    out << '"';
+    write_text_presentation_attributes(out, label.style());
+    out << " transform=\"rotate(";
     write_svg_number(out, orientation_degrees(label.orientation()));
     out << ' ';
     write_svg_number(out, label.position().x());
@@ -699,13 +889,247 @@ inline void write_symbol_field_svg(std::ostream &out, const Schematic &schematic
     write_svg_number(out, field.position().x());
     out << "\" y=\"";
     write_svg_number(out, field.position().y());
-    out << "\" transform=\"rotate(";
+    out << '"';
+    write_text_presentation_attributes(out, field.style());
+    out << " transform=\"rotate(";
     write_svg_number(out, orientation_degrees(field.orientation()));
     out << ' ';
     write_svg_number(out, field.position().x());
     out << ' ';
     write_svg_number(out, field.position().y());
     out << ")\">" << svg_escape(field.value()) << "</text>\n";
+}
+
+[[nodiscard]] inline SvgBounds symbol_primitive_bounds(const SymbolPrimitive &primitive,
+                                                       const SymbolInstance &instance) {
+    const auto stroke_padding = schematic_svg_visual_scale.symbol_stroke_width / 2.0;
+    if (std::holds_alternative<SymbolLine>(primitive)) {
+        const auto &line = std::get<SymbolLine>(primitive);
+        auto bounds = bounds_from_point(
+            transform_schematic_point(line.start(), instance.position(), instance.orientation()));
+        include_point(bounds, transform_schematic_point(line.end(), instance.position(),
+                                                        instance.orientation()));
+        return padded_bounds(bounds, stroke_padding);
+    }
+    if (std::holds_alternative<SymbolRectangle>(primitive)) {
+        const auto &rectangle = std::get<SymbolRectangle>(primitive);
+        return padded_bounds(
+            transform_rect_bounds(
+                std::min(rectangle.first_corner().x(), rectangle.second_corner().x()),
+                std::min(rectangle.first_corner().y(), rectangle.second_corner().y()),
+                std::max(rectangle.first_corner().x(), rectangle.second_corner().x()),
+                std::max(rectangle.first_corner().y(), rectangle.second_corner().y()),
+                instance.position(), instance.orientation()),
+            stroke_padding);
+    }
+    if (std::holds_alternative<SymbolCircle>(primitive)) {
+        const auto &circle = std::get<SymbolCircle>(primitive);
+        return padded_bounds(transform_rect_bounds(circle.center().x() - circle.radius(),
+                                                   circle.center().y() - circle.radius(),
+                                                   circle.center().x() + circle.radius(),
+                                                   circle.center().y() + circle.radius(),
+                                                   instance.position(), instance.orientation()),
+                             stroke_padding);
+    }
+    if (std::holds_alternative<SymbolArc>(primitive)) {
+        const auto &arc = std::get<SymbolArc>(primitive);
+        return padded_bounds(
+            transform_rect_bounds(arc.center().x() - arc.radius(), arc.center().y() - arc.radius(),
+                                  arc.center().x() + arc.radius(), arc.center().y() + arc.radius(),
+                                  instance.position(), instance.orientation()),
+            stroke_padding);
+    }
+
+    const auto &text = std::get<SymbolText>(primitive);
+    const auto anchor =
+        transform_schematic_point(text.anchor(), instance.position(), instance.orientation());
+    return text_bounds(anchor, combine_orientations(instance.orientation(), text.orientation()),
+                       text.text(), text.style(), schematic_svg_visual_scale.symbol_text_font_size);
+}
+
+[[nodiscard]] inline SvgBounds symbol_instance_bounds(const Schematic &schematic,
+                                                      SymbolInstanceId id) {
+    const auto &instance = schematic.symbol_instance(id);
+    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    auto bounds = bounds_from_point(instance.position());
+    for (const auto &pin : symbol.pins()) {
+        include_point(bounds, transform_schematic_point(pin.anchor(), instance.position(),
+                                                        instance.orientation()));
+    }
+    for (const auto &primitive : symbol.primitives()) {
+        include_bounds(bounds, symbol_primitive_bounds(primitive, instance));
+    }
+    return bounds;
+}
+
+[[nodiscard]] inline SvgBounds symbol_debug_overlay_bounds(const Schematic &schematic,
+                                                           SymbolInstanceId id) {
+    const auto &instance = schematic.symbol_instance(id);
+    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    auto bounds = bounds_from_point(instance.position());
+    const auto pin_anchor_padding = schematic_svg_visual_scale.pin_anchor_radius +
+                                    (schematic_svg_visual_scale.pin_overlay_stroke_width / 2.0);
+    for (const auto &pin : symbol.pins()) {
+        const auto anchor =
+            transform_schematic_point(pin.anchor(), instance.position(), instance.orientation());
+        include_bounds(bounds, padded_bounds(bounds_from_point(anchor), pin_anchor_padding));
+        const auto label_anchor = transform_schematic_point(
+            Point{pin.anchor().x(), pin.anchor().y() + debug_pin_label_offset}, instance.position(),
+            instance.orientation());
+        include_bounds(bounds, text_bounds(label_anchor, instance.orientation(), pin.name(),
+                                           SchematicTextStyle{},
+                                           schematic_svg_visual_scale.pin_label_font_size));
+    }
+    return bounds;
+}
+
+[[nodiscard]] inline SvgBounds wire_run_bounds(const WireRun &wire) {
+    auto bounds = bounds_from_point(wire.points().front());
+    for (const auto point : wire.points()) {
+        include_point(bounds, point);
+    }
+    return padded_bounds(bounds, schematic_svg_visual_scale.wire_stroke_width / 2.0);
+}
+
+[[nodiscard]] inline SchematicOrientation
+power_port_bounds_orientation(PowerPortKind kind, SchematicOrientation orientation) {
+    switch (kind) {
+    case PowerPortKind::Power:
+        return orientation_from_quarter_turns(orientation_quarter_turns(orientation) + 1);
+    case PowerPortKind::Ground:
+        return orientation_from_quarter_turns(orientation_quarter_turns(orientation) - 1);
+    }
+    throw std::logic_error{"Unhandled power port kind"};
+}
+
+[[nodiscard]] inline Point transformed_power_port_anchor(const PowerPort &port,
+                                                         Point local_anchor) {
+    return transform_schematic_point(
+        local_anchor, port.position(),
+        power_port_bounds_orientation(port.kind(), port.orientation()));
+}
+
+[[nodiscard]] inline SvgBounds power_port_label_bounds(const PowerPort &port,
+                                                       std::string_view label) {
+    const auto label_y =
+        port.kind() == PowerPortKind::Ground ? ground_port_label_offset : -power_port_label_offset;
+    return text_bounds(transformed_power_port_anchor(port, Point{0.0, label_y}),
+                       SchematicOrientation::Right, label, SchematicTextStyle{},
+                       schematic_svg_visual_scale.tag_port_label_font_size);
+}
+
+[[nodiscard]] inline SvgBounds power_port_bounds(const PowerPort &port, std::string_view label) {
+    const auto glyph_orientation = power_port_bounds_orientation(port.kind(), port.orientation());
+    const auto stroke_padding = schematic_svg_visual_scale.tag_port_stroke_width / 2.0;
+    auto bounds =
+        port.kind() == PowerPortKind::Ground
+            ? transform_rect_bounds(-3.6, 0.0, 3.6, 6.0, port.position(), glyph_orientation)
+            : transform_rect_bounds(-power_port_half_width, -power_port_tip_offset,
+                                    power_port_half_width, 0.0, port.position(), glyph_orientation);
+    bounds = padded_bounds(bounds, stroke_padding);
+    include_bounds(bounds, power_port_label_bounds(port, label));
+    return bounds;
+}
+
+[[nodiscard]] inline SvgBounds no_connect_marker_bounds(const NoConnectMarker &marker) {
+    return transform_rect_bounds(-3.0 - (schematic_svg_visual_scale.no_connect_stroke_width / 2.0),
+                                 -3.0 - (schematic_svg_visual_scale.no_connect_stroke_width / 2.0),
+                                 3.0 + (schematic_svg_visual_scale.no_connect_stroke_width / 2.0),
+                                 3.0 + (schematic_svg_visual_scale.no_connect_stroke_width / 2.0),
+                                 marker.position(), marker.orientation());
+}
+
+[[nodiscard]] inline Point transformed_sheet_port_anchor(const SheetPort &port,
+                                                         Point local_anchor) {
+    return transform_schematic_point(local_anchor, port.position(), port.orientation());
+}
+
+[[nodiscard]] inline SvgBounds sheet_port_label_bounds(const SheetPort &port) {
+    const auto body_length = sheet_port_body_length(port.name());
+    return text_bounds(
+        transformed_sheet_port_anchor(port, Point{body_length * 0.5, sheet_port_label_baseline}),
+        SchematicOrientation::Right, port.name(), SchematicTextStyle{},
+        schematic_svg_visual_scale.tag_port_label_font_size);
+}
+
+[[nodiscard]] inline SvgBounds sheet_port_bounds(const SheetPort &port) {
+    const auto body_length = sheet_port_body_length(port.name());
+    auto bounds =
+        transform_rect_bounds(0.0, -sheet_port_half_height, body_length + sheet_port_tip_length,
+                              sheet_port_half_height, port.position(), port.orientation());
+    bounds = padded_bounds(bounds, schematic_svg_visual_scale.tag_port_stroke_width / 2.0);
+    include_bounds(bounds, sheet_port_label_bounds(port));
+    return bounds;
+}
+
+[[nodiscard]] inline std::optional<SvgBounds>
+sheet_content_bounds(const Schematic &schematic, SheetId sheet_id,
+                     SchematicSvgBodyOptions options) {
+    const auto &sheet = schematic.sheet(sheet_id);
+    auto bounds = std::optional<SvgBounds>{};
+    const auto include = [&bounds](SvgBounds next) {
+        if (bounds.has_value()) {
+            include_bounds(bounds.value(), next);
+        } else {
+            bounds = next;
+        }
+    };
+
+    if (options.include_regions) {
+        for (std::size_t index = 0; index < sheet.regions().size(); ++index) {
+            const auto region = sheet.region(index).bounds();
+            include(rect_bounds(region.x(), region.y(), region.width(), region.height()));
+        }
+    }
+    for (const auto instance : sheet.symbol_instances()) {
+        include(symbol_instance_bounds(schematic, instance));
+    }
+    for (const auto wire : sheet.wire_runs()) {
+        include(wire_run_bounds(schematic.wire_run(wire)));
+    }
+    for (const auto junction : sheet.junctions()) {
+        include(padded_bounds(bounds_from_point(schematic.junction(junction).position()),
+                              schematic_svg_visual_scale.junction_radius));
+    }
+    for (const auto port_id : sheet.power_ports()) {
+        const auto &port = schematic.power_port(port_id);
+        const auto &net = schematic.circuit().net(port.net());
+        include(power_port_bounds(port, port.label().value_or(net.name().value())));
+    }
+    for (const auto marker : sheet.no_connect_markers()) {
+        include(no_connect_marker_bounds(schematic.no_connect_marker(marker)));
+    }
+    for (const auto port : sheet.sheet_ports()) {
+        include(sheet_port_bounds(schematic.sheet_port(port)));
+    }
+    for (const auto label_id : sheet.net_labels()) {
+        const auto &label = schematic.net_label(label_id);
+        const auto &net = schematic.circuit().net(label.net());
+        include(text_bounds(label.position(), label.orientation(),
+                            label.label().value_or(net.name().value()), label.style(),
+                            schematic_svg_visual_scale.net_label_font_size));
+    }
+    for (const auto field_id : sheet.symbol_fields()) {
+        const auto &field = schematic.symbol_field(field_id);
+        include(text_bounds(field.position(), field.orientation(), field.value(), field.style(),
+                            schematic_svg_visual_scale.symbol_field_font_size));
+    }
+    if (options.svg.debug_overlays) {
+        for (const auto instance : sheet.symbol_instances()) {
+            include(symbol_debug_overlay_bounds(schematic, instance));
+        }
+    }
+    return bounds;
+}
+
+[[nodiscard]] inline SvgBounds expanded_body_bounds(const Schematic &schematic, SheetId sheet_id,
+                                                    SchematicSvgBodyOptions options) {
+    if (!std::isfinite(options.margin) || options.margin < 0.0) {
+        throw std::invalid_argument{"Schematic SVG body margin must be finite and non-negative"};
+    }
+    auto bounds =
+        sheet_content_bounds(schematic, sheet_id, options).value_or(SvgBounds{0.0, 0.0, 1.0, 1.0});
+    return padded_bounds(bounds, options.margin);
 }
 
 [[nodiscard]] inline bool region_uses_dashed_frame(const SheetRegion &region) {
@@ -964,7 +1388,7 @@ inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
     write_css_stroke_width(out, scale.wire_stroke_width);
     out << ";stroke-linecap:round;stroke-linejoin:round}.net-label{";
     write_css_font(out, scale.net_label_font_size);
-    out << ";fill:#111;text-anchor:start}"
+    out << ";fill:#111}"
            ".junction{fill:#111;stroke:none}"
            ".power-port-line,.ground-bar{stroke:#111;";
     write_css_stroke_width(out, scale.tag_port_stroke_width);
@@ -979,12 +1403,12 @@ inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
     out << ";fill:#111;text-anchor:middle}"
            ".symbol-field{";
     write_css_font(out, scale.symbol_field_font_size);
-    out << ";fill:#111;text-anchor:middle}"
+    out << ";fill:#111}"
            ".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;";
     write_css_stroke_width(out, scale.symbol_stroke_width);
     out << ";stroke-linecap:round;stroke-linejoin:round}.symbol-text{";
     write_css_font(out, scale.symbol_text_font_size);
-    out << ";fill:#111;text-anchor:middle}";
+    out << ";fill:#111}";
     if (options.debug_overlays) {
         out << ".pin-anchor{fill:#fff;stroke:#c2410c;";
         write_css_stroke_width(out, scale.pin_overlay_stroke_width);
@@ -1079,7 +1503,98 @@ inline void write_sheet_svg(std::ostream &out, const Schematic &schematic, Sheet
     out << "  </g>\n";
 }
 
+inline void write_body_content_layers_svg(std::ostream &out, const Schematic &schematic,
+                                          SheetId sheet_id, SchematicSvgBodyOptions options) {
+    const auto &sheet = schematic.sheet(sheet_id);
+
+    if (options.include_regions) {
+        out << "    <g class=\"layer layer-regions\">\n";
+        write_regions_svg(out, sheet_id, sheet);
+        out << "    </g>\n";
+    }
+    out << "    <g class=\"layer layer-symbols\">\n";
+    for (const auto instance : sheet.symbol_instances()) {
+        write_symbol_instance_svg(out, schematic, instance);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-wires\">\n";
+    for (const auto wire : sheet.wire_runs()) {
+        write_wire_run_svg(out, schematic, wire);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-junctions\">\n";
+    for (const auto junction : sheet.junctions()) {
+        write_junction_svg(out, schematic, junction);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-ports\">\n";
+    for (const auto port : sheet.power_ports()) {
+        write_power_port_svg(out, schematic, port);
+    }
+    for (const auto marker : sheet.no_connect_markers()) {
+        write_no_connect_marker_svg(out, schematic, marker);
+    }
+    for (const auto port : sheet.sheet_ports()) {
+        write_sheet_port_svg(out, schematic, port);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-labels\">\n";
+    for (const auto label : sheet.net_labels()) {
+        write_net_label_svg(out, schematic, label);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-fields\">\n";
+    for (const auto field : sheet.symbol_fields()) {
+        write_symbol_field_svg(out, schematic, field);
+    }
+    out << "    </g>\n";
+    if (options.svg.debug_overlays) {
+        out << "    <g class=\"layer layer-debug\">\n";
+        for (const auto instance : sheet.symbol_instances()) {
+            write_symbol_debug_overlay_svg(out, schematic, instance);
+        }
+        out << "    </g>\n";
+    }
+}
+
 } // namespace detail
+
+/** Write one content-tight SVG body for a single schematic sheet. */
+inline void write_schematic_body_svg(std::ostream &out, const Schematic &schematic,
+                                     SheetId sheet_id, SchematicSvgBodyOptions options = {}) {
+    const auto bounds = detail::expanded_body_bounds(schematic, sheet_id, options);
+    const auto width = detail::bounds_width(bounds);
+    const auto height = detail::bounds_height(bounds);
+
+    out << "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"";
+    detail::write_svg_number(out, bounds.min_x);
+    out << ' ';
+    detail::write_svg_number(out, bounds.min_y);
+    out << ' ';
+    detail::write_svg_number(out, width);
+    out << ' ';
+    detail::write_svg_number(out, height);
+    out << "\" width=\"";
+    detail::write_svg_number(out, width);
+    out << "\" height=\"";
+    detail::write_svg_number(out, height);
+    out << "\">\n";
+    detail::write_svg_style(out, options.svg);
+    out << "  <g class=\"schematic-body\" data-sheet=\""
+        << detail::svg_escape(detail::svg_sheet_id(sheet_id)) << "\">\n";
+    detail::write_body_content_layers_svg(out, schematic, sheet_id, options);
+    out << "  </g>\n";
+    out << "</svg>\n";
+}
+
+/** Return one content-tight SVG body for a single schematic sheet. */
+[[nodiscard]] inline std::string write_schematic_body_svg(const Schematic &schematic,
+                                                          SheetId sheet_id,
+                                                          SchematicSvgBodyOptions options = {}) {
+    auto out = std::ostringstream{};
+    write_schematic_body_svg(out, schematic, sheet_id, options);
+    return out.str();
+}
 
 /** Write a deterministic SVG rendering of a schematic projection. */
 inline void write_schematic_svg(std::ostream &out, const Schematic &schematic,

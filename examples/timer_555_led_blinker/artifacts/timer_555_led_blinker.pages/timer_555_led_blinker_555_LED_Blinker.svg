@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 240" width="340" height="240">
-  <style>.document-background,.sheet{fill:#fff;stroke:none}.sheet-border{fill:none;stroke:#111;stroke-width:0.45}.drawing-frame{fill:none;stroke:#111;stroke-width:0.35}.sheet-grid{stroke:none}.sheet-grid-dot{fill:#d7d7d7;stroke:none}.coordinate-zone-label{font:3px sans-serif;fill:#444;text-anchor:middle;dominant-baseline:middle}.sheet-title{font-weight:600}.title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.3}.title-block-label{font:2.5px sans-serif;fill:#444;text-anchor:start}.title-block-value{font:2.5px sans-serif;fill:#111;text-anchor:start}.sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.35}.sheet-region-frame.dashed{stroke-dasharray:3 2}.sheet-region-title{font:3.2px sans-serif;fill:#57534e;text-anchor:start;font-weight:600}.wire-run{fill:none;stroke:#111;stroke-width:0.75;stroke-linecap:round;stroke-linejoin:round}.net-label{font:2.5px sans-serif;fill:#111;text-anchor:start}.junction{fill:#111;stroke:none}.power-port-line,.ground-bar{stroke:#111;stroke-width:0.55;stroke-linecap:round;stroke-linejoin:round}.no-connect-line{stroke:#111;stroke-width:0.65;stroke-linecap:round}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:0.55;stroke-linejoin:round}.power-port-label,.sheet-port-label{font:2.45px sans-serif;fill:#111;text-anchor:middle}.symbol-field{font:2.5px sans-serif;fill:#111;text-anchor:middle}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:0.7;stroke-linecap:round;stroke-linejoin:round}.symbol-text{font:2.7px sans-serif;fill:#111;text-anchor:middle}</style>
+  <style>.document-background,.sheet{fill:#fff;stroke:none}.sheet-border{fill:none;stroke:#111;stroke-width:0.45}.drawing-frame{fill:none;stroke:#111;stroke-width:0.35}.sheet-grid{stroke:none}.sheet-grid-dot{fill:#d7d7d7;stroke:none}.coordinate-zone-label{font:3px sans-serif;fill:#444;text-anchor:middle;dominant-baseline:middle}.sheet-title{font-weight:600}.title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.3}.title-block-label{font:2.5px sans-serif;fill:#444;text-anchor:start}.title-block-value{font:2.5px sans-serif;fill:#111;text-anchor:start}.sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.35}.sheet-region-frame.dashed{stroke-dasharray:3 2}.sheet-region-title{font:3.2px sans-serif;fill:#57534e;text-anchor:start;font-weight:600}.wire-run{fill:none;stroke:#111;stroke-width:0.75;stroke-linecap:round;stroke-linejoin:round}.net-label{font:2.5px sans-serif;fill:#111}.junction{fill:#111;stroke:none}.power-port-line,.ground-bar{stroke:#111;stroke-width:0.55;stroke-linecap:round;stroke-linejoin:round}.no-connect-line{stroke:#111;stroke-width:0.65;stroke-linecap:round}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:0.55;stroke-linejoin:round}.power-port-label,.sheet-port-label{font:2.45px sans-serif;fill:#111;text-anchor:middle}.symbol-field{font:2.5px sans-serif;fill:#111}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:0.7;stroke-linecap:round;stroke-linejoin:round}.symbol-text{font:2.7px sans-serif;fill:#111}</style>
   <rect class="document-background" x="0" y="0" width="340" height="240"/>
   <g class="schematic-sheet" data-sheet="sheet:0" transform="translate(0 0)">
     <defs>
@@ -61,31 +61,31 @@
     <g class="layer layer-symbols">
     <g class="symbol-instance" data-component="component:0" data-symbol-definition="symbol_def:0" transform="translate(140 80) rotate(0)">
       <rect class="symbol-rectangle" x="6" y="0" width="40" height="32"/>
-      <text class="symbol-text" x="26" y="16" transform="rotate(0 26 16)">555</text>
+      <text class="symbol-text" x="26" y="16" text-anchor="middle" dominant-baseline="middle" transform="rotate(0 26 16)">555</text>
       <line class="symbol-line" x1="0" y1="8" x2="6" y2="8"/>
-      <text class="symbol-text" x="8" y="8" transform="rotate(0 8 8)">DIS</text>
-      <text class="symbol-text" x="4" y="8" transform="rotate(0 4 8)">7</text>
+      <text class="symbol-text" x="8" y="8" text-anchor="start" dominant-baseline="middle" transform="rotate(0 8 8)">DIS</text>
+      <text class="symbol-text" x="4" y="10" text-anchor="end" dominant-baseline="text-after-edge" transform="rotate(0 4 10)">7</text>
       <line class="symbol-line" x1="0" y1="16" x2="6" y2="16"/>
-      <text class="symbol-text" x="8" y="16" transform="rotate(0 8 16)">THR</text>
-      <text class="symbol-text" x="4" y="16" transform="rotate(0 4 16)">6</text>
+      <text class="symbol-text" x="8" y="16" text-anchor="start" dominant-baseline="middle" transform="rotate(0 8 16)">THR</text>
+      <text class="symbol-text" x="4" y="18" text-anchor="end" dominant-baseline="text-after-edge" transform="rotate(0 4 18)">6</text>
       <line class="symbol-line" x1="0" y1="24" x2="6" y2="24"/>
-      <text class="symbol-text" x="8" y="24" transform="rotate(0 8 24)">TRG</text>
-      <text class="symbol-text" x="4" y="24" transform="rotate(0 4 24)">2</text>
+      <text class="symbol-text" x="8" y="24" text-anchor="start" dominant-baseline="middle" transform="rotate(0 8 24)">TRG</text>
+      <text class="symbol-text" x="4" y="26" text-anchor="end" dominant-baseline="text-after-edge" transform="rotate(0 4 26)">2</text>
       <line class="symbol-line" x1="52" y1="16" x2="46" y2="16"/>
-      <text class="symbol-text" x="44" y="16" transform="rotate(0 44 16)">OUT</text>
-      <text class="symbol-text" x="48" y="16" transform="rotate(0 48 16)">3</text>
+      <text class="symbol-text" x="44" y="16" text-anchor="end" dominant-baseline="middle" transform="rotate(0 44 16)">OUT</text>
+      <text class="symbol-text" x="48" y="18" text-anchor="start" dominant-baseline="text-after-edge" transform="rotate(0 48 18)">3</text>
       <line class="symbol-line" x1="52" y1="24" x2="46" y2="24"/>
-      <text class="symbol-text" x="44" y="24" transform="rotate(0 44 24)">CTL</text>
-      <text class="symbol-text" x="48" y="24" transform="rotate(0 48 24)">5</text>
+      <text class="symbol-text" x="44" y="24" text-anchor="end" dominant-baseline="middle" transform="rotate(0 44 24)">CTL</text>
+      <text class="symbol-text" x="48" y="26" text-anchor="start" dominant-baseline="text-after-edge" transform="rotate(0 48 26)">5</text>
       <line class="symbol-line" x1="22" y1="-6" x2="22" y2="0"/>
-      <text class="symbol-text" x="22" y="2" transform="rotate(0 22 2)">RST</text>
-      <text class="symbol-text" x="22" y="-2" transform="rotate(0 22 -2)">4</text>
+      <text class="symbol-text" x="22" y="2" text-anchor="middle" dominant-baseline="text-before-edge" transform="rotate(0 22 2)">RST</text>
+      <text class="symbol-text" x="24" y="-2" text-anchor="start" dominant-baseline="text-after-edge" transform="rotate(0 24 -2)">4</text>
       <line class="symbol-line" x1="38" y1="-6" x2="38" y2="0"/>
-      <text class="symbol-text" x="38" y="2" transform="rotate(0 38 2)">Vcc</text>
-      <text class="symbol-text" x="38" y="-2" transform="rotate(0 38 -2)">8</text>
+      <text class="symbol-text" x="38" y="2" text-anchor="middle" dominant-baseline="text-before-edge" transform="rotate(0 38 2)">Vcc</text>
+      <text class="symbol-text" x="40" y="-2" text-anchor="start" dominant-baseline="text-after-edge" transform="rotate(0 40 -2)">8</text>
       <line class="symbol-line" x1="30" y1="38" x2="30" y2="32"/>
-      <text class="symbol-text" x="30" y="30" transform="rotate(0 30 30)">GND</text>
-      <text class="symbol-text" x="30" y="34" transform="rotate(0 30 34)">1</text>
+      <text class="symbol-text" x="30" y="30" text-anchor="middle" dominant-baseline="text-after-edge" transform="rotate(0 30 30)">GND</text>
+      <text class="symbol-text" x="32" y="34" text-anchor="start" dominant-baseline="text-before-edge" transform="rotate(0 32 34)">1</text>
     </g>
     <g class="symbol-instance" data-component="component:1" data-symbol-definition="symbol_def:1" transform="translate(98 60) rotate(90)">
       <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
@@ -98,54 +98,65 @@
       <line class="symbol-line" x1="14" y1="0" x2="16" y2="0"/>
     </g>
     <g class="symbol-instance" data-component="component:3" data-symbol-definition="symbol_def:3" transform="translate(98 104) rotate(90)">
-      <line class="symbol-line" x1="0" y1="0" x2="15" y2="0"/>
-      <line class="symbol-line" x1="15" y1="-5" x2="15" y2="5"/>
-      <line class="symbol-line" x1="19" y1="-5" x2="19" y2="5"/>
-      <line class="symbol-line" x1="19" y1="0" x2="34" y2="0"/>
+      <line class="symbol-line" x1="0" y1="0" x2="22" y2="0"/>
+      <line class="symbol-line" x1="22" y1="-5" x2="22" y2="5"/>
+      <line class="symbol-line" x1="26" y1="-5" x2="26" y2="5"/>
+      <line class="symbol-line" x1="26" y1="0" x2="48" y2="0"/>
     </g>
-    <g class="symbol-instance" data-component="component:4" data-symbol-definition="symbol_def:4" transform="translate(222 104) rotate(90)">
-      <line class="symbol-line" x1="0" y1="0" x2="17" y2="0"/>
-      <line class="symbol-line" x1="17" y1="-5" x2="17" y2="5"/>
-      <line class="symbol-line" x1="21" y1="-5" x2="21" y2="5"/>
-      <line class="symbol-line" x1="21" y1="0" x2="38" y2="0"/>
+    <g class="symbol-instance" data-component="component:4" data-symbol-definition="symbol_def:3" transform="translate(222 104) rotate(90)">
+      <line class="symbol-line" x1="0" y1="0" x2="22" y2="0"/>
+      <line class="symbol-line" x1="22" y1="-5" x2="22" y2="5"/>
+      <line class="symbol-line" x1="26" y1="-5" x2="26" y2="5"/>
+      <line class="symbol-line" x1="26" y1="0" x2="48" y2="0"/>
     </g>
-    <g class="symbol-instance" data-component="component:5" data-symbol-definition="symbol_def:5" transform="translate(216 96) rotate(0)">
-      <line class="symbol-line" x1="0" y1="0" x2="5" y2="0"/>
-      <rect class="symbol-rectangle" x="5" y="-3" width="12" height="6"/>
-      <line class="symbol-line" x1="17" y1="0" x2="22" y2="0"/>
+    <g class="symbol-instance" data-component="component:5" data-symbol-definition="symbol_def:4" transform="translate(216 96) rotate(0)">
+      <line class="symbol-line" x1="0" y1="0" x2="4" y2="0"/>
+      <rect class="symbol-rectangle" x="4" y="-3" width="12" height="6"/>
+      <line class="symbol-line" x1="16" y1="0" x2="20" y2="0"/>
     </g>
-    <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:6" transform="translate(274 96) rotate(180)">
-      <line class="symbol-line" x1="0" y1="0" x2="12" y2="0"/>
-      <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
-      <line class="symbol-line" x1="12" y1="-5" x2="18" y2="0"/>
-      <line class="symbol-line" x1="12" y1="5" x2="18" y2="0"/>
-      <line class="symbol-line" x1="18" y1="0" x2="30" y2="0"/>
-      <line class="symbol-line" x1="18" y1="-6" x2="22" y2="-10"/>
-      <line class="symbol-line" x1="20" y1="-4" x2="24" y2="-8"/>
+    <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:5" transform="translate(272 96) rotate(90)">
+      <line class="symbol-line" x1="56" y1="0" x2="31" y2="0"/>
+      <line class="symbol-line" x1="31" y1="-5" x2="31" y2="5"/>
+      <line class="symbol-line" x1="31" y1="-5" x2="25" y2="0"/>
+      <line class="symbol-line" x1="31" y1="5" x2="25" y2="0"/>
+      <line class="symbol-line" x1="25" y1="0" x2="0" y2="0"/>
+      <line class="symbol-line" x1="25" y1="-6" x2="21" y2="-10"/>
+      <line class="symbol-line" x1="23" y1="-4" x2="19" y2="-8"/>
     </g>
     </g>
     <g class="layer layer-wires">
+    <polyline class="wire-run" data-net="net:1" points="170,118 170,152"/>
     <polyline class="wire-run" data-net="net:0" points="178,74 178,54"/>
-    <polyline class="wire-run" data-net="net:0" points="162,74 162,54 178,54"/>
+    <polyline class="wire-run" data-net="net:0" points="162,74 178,74"/>
+    <polyline class="wire-run" data-net="net:0" points="98,60 98,42"/>
     <polyline class="wire-run" data-net="net:2" points="140,88 98,88"/>
+    <polyline class="wire-run" data-net="net:3" points="140,96 140,104"/>
+    <polyline class="wire-run" data-net="net:3" points="140,104 98,104"/>
     <polyline class="wire-run" data-net="net:4" points="192,104 222,104"/>
     <polyline class="wire-run" data-net="net:5" points="192,96 216,96"/>
-    <polyline class="wire-run" data-net="net:6" points="238,96 244,96"/>
-    <polyline class="wire-run" data-net="net:3" points="140,96 140,104 98,104"/>
-    <polyline class="wire-run" data-net="net:0" points="98,60 98,42"/>
-    <polyline class="wire-run" data-net="net:1" points="170,118 170,152"/>
-    <polyline class="wire-run" data-net="net:1" points="98,138 98,152 170,152"/>
-    <polyline class="wire-run" data-net="net:1" points="222,142 222,152 170,152"/>
-    <polyline class="wire-run" data-net="net:1" points="274,96 274,152 170,152"/>
+    <polyline class="wire-run" data-net="net:6" points="236,96 272,96"/>
+    <polyline class="wire-run" data-net="net:1" points="98,152 170,152"/>
+    <polyline class="wire-run" data-net="net:1" points="222,152 170,152"/>
+    <polyline class="wire-run" data-net="net:1" points="272,152 170,152"/>
     </g>
     <g class="layer layer-junctions">
     <circle class="junction" data-net="net:2" cx="98" cy="88" r="1.15"/>
     <circle class="junction" data-net="net:3" cx="98" cy="104" r="1.15"/>
     <circle class="junction" data-net="net:1" cx="98" cy="152" r="1.15"/>
     <circle class="junction" data-net="net:1" cx="222" cy="152" r="1.15"/>
-    <circle class="junction" data-net="net:1" cx="274" cy="152" r="1.15"/>
+    <circle class="junction" data-net="net:0" cx="178" cy="74" r="1.15"/>
+    <circle class="junction" data-net="net:2" cx="140" cy="88" r="1.15"/>
+    <circle class="junction" data-net="net:3" cx="140" cy="96" r="1.15"/>
+    <circle class="junction" data-net="net:3" cx="140" cy="104" r="1.15"/>
     </g>
     <g class="layer layer-ports">
+    <g class="power-port ground" data-net="net:1" transform="translate(170 152)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+      <text class="power-port-label" x="0" y="8.2">GND</text>
+    </g>
     <g class="power-port power" data-net="net:0" transform="translate(178 54)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
@@ -156,30 +167,23 @@
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4">+5V</text>
     </g>
-    <g class="power-port ground" data-net="net:1" transform="translate(170 152)">
-      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
-      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
-      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
-      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
-      <text class="power-port-label" x="0" y="8.2">GND</text>
-    </g>
     </g>
     <g class="layer layer-labels">
-    <text class="net-label" data-net="net:3" x="80" y="104" transform="rotate(0 80 104)">TIMING</text>
+    <text class="net-label" data-net="net:3" x="80" y="104" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 80 104)">TIMING</text>
     </g>
     <g class="layer layer-fields">
-    <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="reference" x="166" y="70" transform="rotate(0 166 70)">U1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="value" x="166" y="132" transform="rotate(0 166 132)">NE555</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="reference" x="84" y="74" transform="rotate(0 84 74)">R1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="value" x="120" y="74" transform="rotate(0 120 74)">100 kOhm</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="reference" x="84" y="96" transform="rotate(0 84 96)">R2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="value" x="120" y="96" transform="rotate(0 120 96)">47 kOhm</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="reference" x="84" y="121" transform="rotate(0 84 121)">C1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="value" x="120" y="121" transform="rotate(0 120 121)">1 uF</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="reference" x="208" y="123" transform="rotate(0 208 123)">C2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="value" x="244" y="123" transform="rotate(0 244 123)">10 nF</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="value" x="227" y="86" transform="rotate(0 227 86)">1 kOhm</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="reference" x="259" y="82" transform="rotate(0 259 82)">D1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="reference" x="166" y="70" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 166 70)">U1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="value" x="166" y="132" text-anchor="end" dominant-baseline="alphabetic" transform="rotate(0 166 132)">NE555</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="reference" x="84" y="74" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 84 74)">R1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="value" x="120" y="74" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 120 74)">100 kOhm</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="reference" x="84" y="96" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 84 96)">R2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="value" x="120" y="96" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 120 96)">47 kOhm</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="reference" x="84" y="128" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 84 128)">C1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="value" x="120" y="128" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 120 128)">1 uF</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="reference" x="208" y="128" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 208 128)">C2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="value" x="244" y="128" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 244 128)">10 nF</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="value" x="226" y="86" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 226 86)">1 kOhm</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="reference" x="286" y="124" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 286 124)">D1</text>
     </g>
   </g>
 </svg>

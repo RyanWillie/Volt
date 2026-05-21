@@ -18,6 +18,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             "logical": artifacts.logical_json.read_text(encoding="utf-8"),
             "schematic": artifacts.schematic_json.read_text(encoding="utf-8"),
             "svg": artifacts.schematic_svg.read_text(encoding="utf-8"),
+            "body_svg": artifacts.schematic_body_svg.read_text(encoding="utf-8"),
             "validation": artifacts.validation_report.read_text(encoding="utf-8"),
             "pages": tuple(path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages),
         }
@@ -37,6 +38,10 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             == first_texts["schematic"]
         )
         assert second_artifacts.schematic_svg.read_text(encoding="utf-8") == first_texts["svg"]
+        assert (
+            second_artifacts.schematic_body_svg.read_text(encoding="utf-8")
+            == first_texts["body_svg"]
+        )
         assert (
             second_artifacts.validation_report.read_text(encoding="utf-8")
             == first_texts["validation"]
@@ -149,7 +154,6 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             assert texts == []
     assert {wire["route_intent"] for wire in schematic["wire_runs"]} == {
         "Direct",
-        "Orthogonal",
     }
     assert schematic["sheet_ports"] == []
     assert schematic["no_connect_markers"] == []
@@ -201,7 +205,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         for wire in schematic["wire_runs"]
         if net_names_by_id[wire["net"]] == "+5V"
     ]
-    assert [(162, 74), (162, 54), (178, 54)] in plus_5v_wire_points
+    assert [(162, 74), (178, 74)] in plus_5v_wire_points
 
     svg_text = first_texts["svg"]
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in svg_text
@@ -244,6 +248,11 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         assert visible_texts.count(reference) == 1
     assert visible_texts.count("R3") == 0
     assert 'viewBox="0 0 340 240"' in first_texts["pages"][0]
+    assert 'class="schematic-body"' in first_texts["body_svg"]
+    assert 'class="title-block"' not in first_texts["body_svg"]
+    assert 'class="coordinate-zones"' not in first_texts["body_svg"]
+    assert 'viewBox="0 0 340 240"' not in first_texts["body_svg"]
+    assert '<text class="symbol-text"' in first_texts["body_svg"]
 
 
 def test_timer_555_led_blinker_schematic_is_readable_without_mutating_logical_design():
@@ -267,16 +276,21 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
     source = inspect.getsource(main.build_schematic)
 
     assert ".two_terminal(" in source
-    assert ".between(" in source
+    assert ".endpoints(" in source
+    assert ".to(" in source
+    assert ".toy(" in source
     assert ".tox(" in source
-    assert "drawing.ortho_lines(" in source
+    assert ".dot()" in source
+    assert ".idot()" in source
     assert "drawing.local_label(" in source
     assert "drawing.power_stub(" in source
     assert "drawing.ground_stub(" in source
-    assert "drawing.connect(nets[" in source
-    assert "drawing.junction(nets[" in source
+    assert "drawing.wire(nets[" in source
     assert "drawing.node(" not in source
-    assert source.count("drawing.connect(nets[") == 1
+    assert ".between(" not in source
+    assert "drawing.ortho_lines(" not in source
+    assert "drawing.connect(nets[" not in source
+    assert "drawing.junction(nets[" not in source
     assert "drawing.R(" not in source
     assert "drawing.C(" not in source
     assert "drawing.LED(" not in source

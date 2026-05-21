@@ -139,6 +139,52 @@ TEST_CASE("Schematic writer emits optional net label display text") {
     CHECK(output["net_labels"][0]["label"] == "SWDIO");
 }
 
+TEST_CASE("Schematic writer emits explicit text presentation metadata") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net =
+        circuit.add_net(volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+
+    auto schematic = make_schematic(circuit, component);
+    auto symbol = volt::SymbolDefinition{"TextStyle"};
+    symbol.add_pin(
+        volt::SymbolPin{"1", "1", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left});
+    symbol.add_pin(
+        volt::SymbolPin{"2", "2", volt::Point{20.0, 0.0}, volt::SchematicOrientation::Right});
+    symbol.add_primitive(
+        volt::SymbolText{"DATA", volt::Point{4.0, 0.0}, volt::SchematicOrientation::Right,
+                         volt::SchematicTextStyle{volt::TextHorizontalAlignment::Start,
+                                                  volt::TextVerticalAlignment::Middle, 3.25}});
+    const auto styled_symbol = schematic.add_symbol_definition(std::move(symbol));
+    const auto styled_instance = schematic.place_symbol(
+        volt::SheetId{0}, volt::SymbolInstance{styled_symbol, component, volt::Point{80.0, 40.0}});
+    [[maybe_unused]] const auto label = schematic.add_net_label(
+        volt::SheetId{0},
+        volt::NetLabel{net, volt::Point{12.0, 16.0}, volt::SchematicOrientation::Right,
+                       std::nullopt, std::string{"SWDIO"},
+                       volt::SchematicTextStyle{volt::TextHorizontalAlignment::End,
+                                                volt::TextVerticalAlignment::Bottom, 4.0}});
+    [[maybe_unused]] const auto field = schematic.add_symbol_field(
+        volt::SheetId{0},
+        volt::SymbolField{styled_instance, "value", "NE555", volt::Point{80.0, 56.0},
+                          volt::SchematicOrientation::Right, std::nullopt,
+                          volt::SchematicTextStyle{volt::TextHorizontalAlignment::Start,
+                                                   volt::TextVerticalAlignment::Top, 3.5}});
+
+    const auto output = nlohmann::json::parse(volt::io::write_schematic(schematic));
+
+    const auto &primitive = output["symbol_definitions"][1]["primitives"][0];
+    CHECK(primitive["horizontal_alignment"] == "Start");
+    CHECK(primitive["vertical_alignment"] == "Middle");
+    CHECK(primitive["font_size"] == 3.25);
+    CHECK(output["net_labels"][0]["horizontal_alignment"] == "End");
+    CHECK(output["net_labels"][0]["vertical_alignment"] == "Bottom");
+    CHECK(output["net_labels"][0]["font_size"] == 4.0);
+    CHECK(output["symbol_fields"][0]["horizontal_alignment"] == "Start");
+    CHECK(output["symbol_fields"][0]["vertical_alignment"] == "Top");
+    CHECK(output["symbol_fields"][0]["font_size"] == 3.5);
+}
+
 TEST_CASE("Schematic writer emits professional primitives and sheet metadata") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);

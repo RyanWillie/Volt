@@ -134,6 +134,70 @@ TEST_CASE("Schematic reader loads optional net label display text") {
     CHECK(schematic.net_label(volt::NetLabelId{0}).label() == std::optional<std::string>{"SWDIO"});
 }
 
+TEST_CASE("Schematic reader loads explicit text presentation metadata") {
+    volt::Circuit circuit;
+    [[maybe_unused]] const auto component = add_resistor(circuit);
+    [[maybe_unused]] const auto net =
+        circuit.add_net(volt::Net{volt::NetName{"SUPPORT/SWDIO"}, volt::NetKind::Signal});
+
+    auto fixture = schematic_json();
+    fixture["symbol_definitions"][0]["primitives"][4]["horizontal_alignment"] = "Start";
+    fixture["symbol_definitions"][0]["primitives"][4]["vertical_alignment"] = "Top";
+    fixture["symbol_definitions"][0]["primitives"][4]["font_size"] = 3.25;
+    fixture["net_labels"][0]["horizontal_alignment"] = "End";
+    fixture["net_labels"][0]["vertical_alignment"] = "Bottom";
+    fixture["net_labels"][0]["font_size"] = 4.0;
+    fixture["sheets"][0]["symbol_fields"] = nlohmann::json::array({"symbol_field:0"});
+    fixture["symbol_fields"] = nlohmann::json::array({{{"id", "symbol_field:0"},
+                                                       {"sheet", "sheet:0"},
+                                                       {"symbol_instance", "symbol_instance:0"},
+                                                       {"name", "value"},
+                                                       {"value", "10k"},
+                                                       {"position", {{"x", 40.0}, {"y", 32.0}}},
+                                                       {"orientation", "Right"},
+                                                       {"horizontal_alignment", "Start"},
+                                                       {"vertical_alignment", "Top"},
+                                                       {"font_size", 3.5}}});
+
+    const auto schematic = volt::io::read_schematic(fixture, circuit);
+
+    const auto &primitive = std::get<volt::SymbolText>(
+        schematic.symbol_definition(volt::SymbolDefId{0}).primitives()[4]);
+    CHECK(primitive.style().horizontal_alignment() == volt::TextHorizontalAlignment::Start);
+    CHECK(primitive.style().vertical_alignment() == volt::TextVerticalAlignment::Top);
+    REQUIRE(primitive.style().font_size().has_value());
+    CHECK(primitive.style().font_size().value() == 3.25);
+
+    const auto &label = schematic.net_label(volt::NetLabelId{0});
+    CHECK(label.style().horizontal_alignment() == volt::TextHorizontalAlignment::End);
+    CHECK(label.style().vertical_alignment() == volt::TextVerticalAlignment::Bottom);
+    REQUIRE(label.style().font_size().has_value());
+    CHECK(label.style().font_size().value() == 4.0);
+
+    const auto &field = schematic.symbol_field(volt::SymbolFieldId{0});
+    CHECK(field.style().horizontal_alignment() == volt::TextHorizontalAlignment::Start);
+    CHECK(field.style().vertical_alignment() == volt::TextVerticalAlignment::Top);
+    REQUIRE(field.style().font_size().has_value());
+    CHECK(field.style().font_size().value() == 3.5);
+}
+
+TEST_CASE("Schematic reader rejects invalid text presentation metadata") {
+    volt::Circuit circuit;
+    [[maybe_unused]] const auto component = add_resistor(circuit);
+    [[maybe_unused]] const auto net = add_net(circuit);
+
+    auto invalid_alignment = schematic_json();
+    invalid_alignment["net_labels"][0]["horizontal_alignment"] = "Centerish";
+    CHECK_THROWS_MATCHES(volt::io::read_schematic(invalid_alignment, circuit), std::logic_error,
+                         Catch::Matchers::Message("Invalid text horizontal alignment"));
+
+    auto invalid_font_size = schematic_json();
+    invalid_font_size["symbol_definitions"][0]["primitives"][4]["font_size"] = 0.0;
+    CHECK_THROWS_MATCHES(
+        volt::io::read_schematic(invalid_font_size, circuit), std::logic_error,
+        Catch::Matchers::Message("Expected positive finite number field: font_size"));
+}
+
 TEST_CASE("Schematic reader rejects instance-owned reference labels") {
     volt::Circuit circuit;
     [[maybe_unused]] const auto component = add_resistor(circuit);
