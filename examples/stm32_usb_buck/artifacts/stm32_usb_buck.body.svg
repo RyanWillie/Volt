@@ -256,9 +256,9 @@
     <polyline class="wire-run" data-net="net:19" points="526,102 526,134"/>
     <polyline class="wire-run" data-net="net:2" points="486,174 486,150"/>
     <polyline class="wire-run" data-net="net:2" points="540,282 540,258"/>
-    <polyline class="wire-run" data-net="net:4" points="486,188 464,188"/>
-    <polyline class="wire-run" data-net="net:4" points="486,202 464,202"/>
-    <polyline class="wire-run" data-net="net:4" points="486,230 464,230"/>
+    <polyline class="wire-run" data-net="net:4" points="486,188 452,188"/>
+    <polyline class="wire-run" data-net="net:4" points="486,202 452,202"/>
+    <polyline class="wire-run" data-net="net:4" points="486,230 452,230"/>
     <polyline class="wire-run" data-net="net:4" points="540,303 540,321"/>
     <polyline class="wire-run" data-net="net:34" points="486,181 474,181"/>
     <polyline class="wire-run" data-net="net:35" points="486,195 474,195"/>
@@ -417,27 +417,27 @@
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port ground" data-net="net:4" transform="translate(464 188)">
+    <g class="power-port ground" data-net="net:4" transform="translate(452 188)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
-    <text class="power-port-label" data-net="net:4" x="456" y="196.2">GND</text>
-    <g class="power-port ground" data-net="net:4" transform="translate(464 202)">
+    <text class="power-port-label" data-net="net:4" x="452" y="200.2">GND</text>
+    <g class="power-port ground" data-net="net:4" transform="translate(452 202)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
-    <text class="power-port-label" data-net="net:4" x="464" y="216.2">GND</text>
-    <g class="power-port ground" data-net="net:4" transform="translate(464 230)">
+    <text class="power-port-label" data-net="net:4" x="452" y="214.2">GND</text>
+    <g class="power-port ground" data-net="net:4" transform="translate(452 230)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
-    <text class="power-port-label" data-net="net:4" x="464" y="244.2">GND</text>
+    <text class="power-port-label" data-net="net:4" x="452" y="242.2">GND</text>
     <g class="power-port ground" data-net="net:4" transform="translate(540 321)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>

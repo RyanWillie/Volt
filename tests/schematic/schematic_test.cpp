@@ -1436,6 +1436,29 @@ TEST_CASE("Schematic readability reports terminal markers touching symbol bodies
           entities.end());
 }
 
+TEST_CASE("Schematic readability reports generic visual element collisions") {
+    volt::Circuit circuit;
+    const auto first_net = circuit.add_net(volt::Net{volt::NetName{"+3V3"}, volt::NetKind::Power});
+    const auto second_net = circuit.add_net(volt::Net{volt::NetName{"+5V"}, volt::NetKind::Power});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto first = schematic.add_power_port(
+        sheet, volt::PowerPort{first_net, volt::PowerPortKind::Power, volt::Point{50.0, 50.0}});
+    const auto second = schematic.add_power_port(
+        sheet, volt::PowerPort{second_net, volt::PowerPortKind::Power, volt::Point{50.0, 50.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_VISUAL_COLLISION");
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::power_port(first)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::power_port(second)) !=
+          entities.end());
+}
+
 TEST_CASE("Schematic readability reports different-net visual wire crossings") {
     volt::Circuit circuit;
     const auto first_net = add_named_net(circuit, "ROW");

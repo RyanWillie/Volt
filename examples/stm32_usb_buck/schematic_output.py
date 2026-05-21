@@ -518,7 +518,7 @@ def _author_connectors_region(
         for anchor in (swd.VTref, gpio[1]):
             drawing.power_stub("+3V3", at=anchor, net=nets["+3V3"], side="Up", length=24)
         for anchor in (swd[3], swd[5], swd[9]):
-            drawing.ground_stub("GND", at=anchor, net=nets["GND"], side="Left", length=22)
+            drawing.ground_stub("GND", at=anchor, net=nets["GND"], side="Left", length=34)
         drawing.ground_stub("GND", at=gpio[4], net=nets["GND"], side="Down", length=18)
         drawing.signal_tags(
             (
