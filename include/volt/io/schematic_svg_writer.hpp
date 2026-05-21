@@ -1586,9 +1586,10 @@ inline void write_schematic_body_svg(std::ostream &out, const Schematic &schemat
     detail::write_svg_number(out, height);
     out << "\">\n";
     detail::write_svg_style(out, options.svg);
-    if (options.include_regions) {
+    const auto &sheet = schematic.sheet(sheet_id);
+    if (options.include_regions && !sheet.regions().empty()) {
         out << "  <defs>\n";
-        detail::write_region_title_clip_defs_svg(out, sheet_id, schematic.sheet(sheet_id));
+        detail::write_region_title_clip_defs_svg(out, sheet_id, sheet);
         out << "  </defs>\n";
     }
     out << "  <g class=\"schematic-body\" data-sheet=\""

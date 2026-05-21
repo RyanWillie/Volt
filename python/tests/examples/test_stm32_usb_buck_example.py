@@ -222,7 +222,6 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert ".region(" in schematic_source
     assert ".drawing(" in schematic_source
     assert "region.drawing(" in schematic_source
-    assert ".drawing(" in schematic_source
     authoring_source = "\n".join(
         inspect.getsource(getattr(schematic_output, name))
         for name in (
@@ -306,7 +305,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     } <= symbol_text_by_definition["volt.examples.stm32_usb_buck:ReadableUSBMicroB"]
     svg_labels = set(re.findall(r">([^<>]+)</text>", first_svg_text))
     assert {"PA11", "44", "PA12", "45", "SWDIO", "10", "VBUS", "D+"} <= svg_labels
-    assert {"PA11 44", "PA12 45", "2 SWDIO", "10 NRST"} & svg_labels == set()
+    assert not ({"PA11 44", "PA12 45", "2 SWDIO", "10 NRST"} & svg_labels)
 
     net_pin_counts = {
         net["id"]: len(net["pins"]) for net in logical["nets"] if len(net["pins"]) > 1
