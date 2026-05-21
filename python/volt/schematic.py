@@ -1960,6 +1960,7 @@ class SchematicTwoTerminalElement:
                 symbol=symbol,
                 variant=self._variant,
                 reference_label=self._reference_label,
+                _authored_region=self._drawing._authored_region,
             )
             self._placed = PlacedSchematicElement(placed)
             if not self._cursor_committed:

@@ -387,10 +387,10 @@ def test_python_schematic_two_terminal_horizontal_span_stretches_only_explicit_l
     assert _rect_size(base_symbol["primitives"][1]) == (12.0, 4.0)
     assert _rect_size(stretched_symbol["primitives"][1]) == (12.0, 4.0)
     assert stretched_symbol["primitives"][0] == volt.SchematicSymbolSpec.line(
-        (0, 0), (14, 0)
+        (0, 0), (14, 0), role="TerminalLeadStart"
     )
     assert stretched_symbol["primitives"][2] == volt.SchematicSymbolSpec.line(
-        (26, 0), (40, 0)
+        (26, 0), (40, 0), role="TerminalLeadEnd"
     )
 
 
@@ -472,7 +472,7 @@ def test_python_schematic_two_terminal_vertical_span_preserves_default_body_geom
         if primitive["type"] == "rectangle"
     ]
     assert stretched_symbol["primitives"][0] == volt.SchematicSymbolSpec.line(
-        (0, 0), (20, 0)
+        (0, 0), (20, 0), role="TerminalLeadStart"
     )
     assert stretched_symbol["primitives"][1] == volt.SchematicSymbolSpec.line(
         (20, 0), (21.5, -3)
@@ -481,7 +481,7 @@ def test_python_schematic_two_terminal_vertical_span_preserves_default_body_geom
         (29, 3), (30, 0)
     )
     assert stretched_symbol["primitives"][-1] == volt.SchematicSymbolSpec.line(
-        (30, 0), (50, 0)
+        (30, 0), (50, 0), role="TerminalLeadEnd"
     )
 
 

@@ -374,6 +374,11 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "SCHEMATIC_DANGLING_WIRE_ENDPOINT" not in {
         diagnostic.code for diagnostic in readability_report
     }
+    assert {
+        "SCHEMATIC_SYMBOL_OVERLAP",
+        "SCHEMATIC_WIRE_CROSSES_SYMBOL",
+        "SCHEMATIC_TERMINAL_TOUCHES_UNRELATED_WIRE",
+    }.isdisjoint({diagnostic.code for diagnostic in readability_report})
     board = main.build_board()
     logical_before_schematic = board.design.to_json()
     main.build_schematic(board)

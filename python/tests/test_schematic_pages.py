@@ -84,6 +84,21 @@ def test_python_schematic_page_metadata_and_regions_are_kernel_owned():
     assert design.to_json() == logical_before
 
 
+def test_python_schematic_region_drawing_tags_two_terminal_symbols():
+    design = volt.Design("schematic-region-two-terminal")
+    resistor = design.R("10k", ref="R1")
+    sheet = design.schematic("Main")
+    region = sheet.region("Support", x=10, y=10, w=80, h=40)
+
+    with region.drawing(at=(5, 5)) as drawing:
+        placed = drawing.two_terminal(resistor).right()
+
+    projection = json.loads(sheet.to_json())
+
+    assert placed.start.point == (15.0, 15.0)
+    assert projection["symbol_instances"][0]["authored_region"] == "Support"
+
+
 def test_python_schematic_sheet_backwards_compatibility_keeps_default_page():
     design = volt.Design("schematic-backwards")
 

@@ -200,6 +200,16 @@ inline void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexc
            first.max_y > second.min_y + schematic_geometry_tolerance;
 }
 
+[[nodiscard]] inline double bounds_overlap_width(SchematicBounds first,
+                                                 SchematicBounds second) noexcept {
+    return std::min(first.max_x, second.max_x) - std::max(first.min_x, second.min_x);
+}
+
+[[nodiscard]] inline double bounds_overlap_height(SchematicBounds first,
+                                                  SchematicBounds second) noexcept {
+    return std::min(first.max_y, second.max_y) - std::max(first.min_y, second.min_y);
+}
+
 [[nodiscard]] inline double bounds_width(SchematicBounds bounds) noexcept {
     return bounds.max_x - bounds.min_x;
 }
@@ -614,6 +624,97 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
         include_bounds(bounds, symbol_primitive_bounds(primitive, instance));
     }
     return bounds;
+}
+
+[[nodiscard]] inline std::optional<SchematicBounds>
+symbol_instance_body_bounds(const Schematic &schematic, SymbolInstanceId id) {
+    const auto &instance = schematic.symbol_instance(id);
+    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto has_body_primitive = std::any_of(
+        symbol.primitives().begin(), symbol.primitives().end(), [](const auto &primitive) {
+            return std::holds_alternative<SymbolRectangle>(primitive) ||
+                   std::holds_alternative<SymbolCircle>(primitive) ||
+                   std::holds_alternative<SymbolArc>(primitive);
+        });
+    const auto has_line_body_primitive = std::any_of(
+        symbol.primitives().begin(), symbol.primitives().end(), [](const auto &primitive) {
+            return std::holds_alternative<SymbolLine>(primitive) &&
+                   std::get<SymbolLine>(primitive).role() == SymbolLineRole::Normal;
+        });
+    auto bounds = std::optional<SchematicBounds>{};
+    for (const auto &primitive : symbol.primitives()) {
+        if (std::holds_alternative<SymbolText>(primitive)) {
+            continue;
+        }
+        if (has_body_primitive && std::holds_alternative<SymbolLine>(primitive)) {
+            continue;
+        }
+        if (!has_body_primitive && has_line_body_primitive &&
+            std::holds_alternative<SymbolLine>(primitive) &&
+            std::get<SymbolLine>(primitive).role() != SymbolLineRole::Normal) {
+            continue;
+        }
+        const auto primitive_bounds = symbol_primitive_bounds(primitive, instance);
+        if (bounds.has_value()) {
+            include_bounds(bounds.value(), primitive_bounds);
+        } else {
+            bounds = primitive_bounds;
+        }
+    }
+    return bounds;
+}
+
+[[nodiscard]] inline bool symbol_instances_share_same_net_pin_point(const Schematic &schematic,
+                                                                    SymbolInstanceId first_id,
+                                                                    SymbolInstanceId second_id) {
+    const auto &circuit = schematic.circuit();
+    const auto &first = schematic.symbol_instance(first_id);
+    const auto &second = schematic.symbol_instance(second_id);
+    const auto &first_symbol = schematic.symbol_definition(first.symbol_definition());
+    const auto &second_symbol = schematic.symbol_definition(second.symbol_definition());
+    for (const auto &first_pin : first_symbol.pins()) {
+        const auto first_concrete_pin =
+            circuit.pin_by_number(first.component(), first_pin.number());
+        if (!first_concrete_pin.has_value()) {
+            continue;
+        }
+        const auto first_net = circuit.net_of(first_concrete_pin.value());
+        if (!first_net.has_value()) {
+            continue;
+        }
+        const auto first_point =
+            transform_schematic_point(first_pin.anchor(), first.position(), first.orientation());
+        for (const auto &second_pin : second_symbol.pins()) {
+            const auto second_concrete_pin =
+                circuit.pin_by_number(second.component(), second_pin.number());
+            if (!second_concrete_pin.has_value()) {
+                continue;
+            }
+            const auto second_net = circuit.net_of(second_concrete_pin.value());
+            if (!second_net.has_value() || second_net.value() != first_net.value()) {
+                continue;
+            }
+            const auto second_point = transform_schematic_point(
+                second_pin.anchor(), second.position(), second.orientation());
+            if (same_schematic_point(first_point, second_point)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] inline bool symbol_overlap_is_shared_pin_contact(const Schematic &schematic,
+                                                               SymbolInstanceId first_id,
+                                                               SchematicBounds first_bounds,
+                                                               SymbolInstanceId second_id,
+                                                               SchematicBounds second_bounds) {
+    constexpr auto contact_overlap_tolerance = 1.25;
+    if (!symbol_instances_share_same_net_pin_point(schematic, first_id, second_id)) {
+        return false;
+    }
+    return bounds_overlap_width(first_bounds, second_bounds) <= contact_overlap_tolerance ||
+           bounds_overlap_height(first_bounds, second_bounds) <= contact_overlap_tolerance;
 }
 
 [[nodiscard]] inline SchematicBounds wire_run_bounds(const WireRun &wire) {
@@ -1837,6 +1938,138 @@ inline void validate_text_symbol_collisions(const Schematic &schematic, SheetId 
     }
 }
 
+inline void validate_symbol_overlaps(const Schematic &schematic, SheetId sheet_id,
+                                     const Sheet &sheet, DiagnosticReport &report) {
+    for (std::size_t first = 0; first < sheet.symbol_instances().size(); ++first) {
+        const auto first_instance = sheet.symbol_instances()[first];
+        const auto first_bounds = symbol_instance_body_bounds(schematic, first_instance);
+        if (!first_bounds.has_value()) {
+            continue;
+        }
+        for (std::size_t second = first + 1U; second < sheet.symbol_instances().size(); ++second) {
+            const auto second_instance = sheet.symbol_instances()[second];
+            const auto second_bounds = symbol_instance_body_bounds(schematic, second_instance);
+            if (!second_bounds.has_value() ||
+                !overlaps_bounds_area(first_bounds.value(), second_bounds.value())) {
+                continue;
+            }
+            if (symbol_overlap_is_shared_pin_contact(schematic, first_instance,
+                                                     first_bounds.value(), second_instance,
+                                                     second_bounds.value())) {
+                continue;
+            }
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_SYMBOL_OVERLAP"},
+                "Schematic symbols overlap; separate the component placements",
+                std::vector{
+                    EntityRef::sheet(sheet_id), EntityRef::symbol_instance(first_instance),
+                    EntityRef::symbol_instance(second_instance),
+                    EntityRef::component(schematic.symbol_instance(first_instance).component()),
+                    EntityRef::component(schematic.symbol_instance(second_instance).component())},
+            });
+        }
+    }
+}
+
+[[nodiscard]] inline bool segment_visually_attaches_to_symbol_pin(const Schematic &schematic,
+                                                                  const WireRun &wire,
+                                                                  SchematicSegment segment,
+                                                                  SymbolInstanceId instance_id) {
+    const auto &instance = schematic.symbol_instance(instance_id);
+    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto &circuit = schematic.circuit();
+    for (const auto &symbol_pin : symbol.pins()) {
+        const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
+        if (!pin.has_value()) {
+            continue;
+        }
+        const auto pin_net = circuit.net_of(pin.value());
+        if (!pin_net.has_value() || pin_net.value() != wire.net()) {
+            continue;
+        }
+        const auto pin_point = transform_schematic_point(symbol_pin.anchor(), instance.position(),
+                                                         instance.orientation());
+        if (point_on_schematic_segment(pin_point, segment)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+inline void validate_wire_symbol_collisions(const Schematic &schematic, SheetId sheet_id,
+                                            const Sheet &sheet, DiagnosticReport &report) {
+    for (const auto wire_id : sheet.wire_runs()) {
+        const auto &wire = schematic.wire_run(wire_id);
+        for (const auto instance_id : sheet.symbol_instances()) {
+            const auto body_bounds = symbol_instance_body_bounds(schematic, instance_id);
+            if (!body_bounds.has_value()) {
+                continue;
+            }
+            auto crosses_symbol = false;
+            for (std::size_t point_index = 1; point_index < wire.points().size(); ++point_index) {
+                const auto segment =
+                    SchematicSegment{wire.points()[point_index - 1U], wire.points()[point_index]};
+                if (segment_intersects_bounds(segment, body_bounds.value()) &&
+                    !segment_visually_attaches_to_symbol_pin(schematic, wire, segment,
+                                                             instance_id)) {
+                    crosses_symbol = true;
+                    break;
+                }
+            }
+            if (!crosses_symbol) {
+                continue;
+            }
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_WIRE_CROSSES_SYMBOL"},
+                "Schematic wire crosses a symbol body; reroute the wire or move the symbol",
+                std::vector{
+                    EntityRef::sheet(sheet_id), EntityRef::wire_run(wire_id),
+                    EntityRef::symbol_instance(instance_id), EntityRef::net(wire.net()),
+                    EntityRef::component(schematic.symbol_instance(instance_id).component())},
+            });
+        }
+    }
+}
+
+inline void validate_terminal_wire_collisions(const Schematic &schematic, SheetId sheet_id,
+                                              const Sheet &sheet, DiagnosticReport &report) {
+    for (const auto port_id : sheet.power_ports()) {
+        const auto &port = schematic.power_port(port_id);
+        const auto &port_net = schematic.circuit().net(port.net());
+        const auto port_bounds =
+            power_port_bounds(port, port.label().value_or(port_net.name().value()));
+        for (const auto wire_id : sheet.wire_runs()) {
+            const auto &wire = schematic.wire_run(wire_id);
+            if (wire.net() == port.net()) {
+                continue;
+            }
+            auto touches_wire = false;
+            for (std::size_t point_index = 1; point_index < wire.points().size(); ++point_index) {
+                const auto segment =
+                    SchematicSegment{wire.points()[point_index - 1U], wire.points()[point_index]};
+                if (segment_intersects_bounds(segment, port_bounds)) {
+                    touches_wire = true;
+                    break;
+                }
+            }
+            if (!touches_wire) {
+                continue;
+            }
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_TERMINAL_TOUCHES_UNRELATED_WIRE"},
+                "Schematic terminal marker touches an unrelated wire; move the marker or reroute "
+                "the wire",
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::power_port(port_id),
+                            EntityRef::wire_run(wire_id), EntityRef::net(port.net()),
+                            EntityRef::net(wire.net())},
+            });
+        }
+    }
+}
+
 [[nodiscard]] inline double wire_run_length(const WireRun &wire) noexcept {
     auto length = 0.0;
     for (std::size_t point_index = 1; point_index < wire.points().size(); ++point_index) {
@@ -2428,6 +2661,9 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         detail::validate_port_tag_scale(schematic, sheet_id, sheet, report);
         detail::validate_text_wire_collisions(schematic, sheet_id, sheet, report);
         detail::validate_text_symbol_collisions(schematic, sheet_id, sheet, report);
+        detail::validate_symbol_overlaps(schematic, sheet_id, sheet, report);
+        detail::validate_wire_symbol_collisions(schematic, sheet_id, sheet, report);
+        detail::validate_terminal_wire_collisions(schematic, sheet_id, sheet, report);
         detail::validate_long_local_doglegs(schematic, sheet_id, sheet, report);
         detail::validate_misaligned_local_labels(schematic, sheet_id, sheet, report);
         detail::validate_ambiguous_same_net_crossings(schematic, sheet_id, sheet, report);

@@ -42,6 +42,20 @@ volt::ComponentId add_three_pin_component(volt::Circuit &circuit) {
     return circuit.instantiate_component(definition, volt::ReferenceDesignator{"U1"});
 }
 
+volt::ComponentId add_four_pin_component(volt::Circuit &circuit, const std::string &reference) {
+    const auto first_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
+    const auto second_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"B", "2", volt::PinRole::Passive});
+    const auto third_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"C", "3", volt::PinRole::Passive});
+    const auto fourth_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"D", "4", volt::PinRole::Passive});
+    const auto definition = circuit.add_component_definition(volt::ComponentDefinition{
+        "FourPin", std::vector{first_pin, second_pin, third_pin, fourth_pin}});
+    return circuit.instantiate_component(definition, volt::ReferenceDesignator{reference});
+}
+
 volt::NetId add_net(volt::Circuit &circuit) {
     return circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 }
@@ -1217,6 +1231,144 @@ TEST_CASE("Schematic readability reports text touching symbol outlines") {
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(label)) !=
           entities.end());
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::symbol_instance(instance)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability reports overlapping symbol bodies") {
+    volt::Circuit circuit;
+    const auto first_component = add_four_pin_component(circuit, "U1");
+    const auto second_component = add_four_pin_component(circuit, "U2");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_four_pin_ic_symbol());
+    const auto first_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, first_component, volt::Point{40.0, 40.0}});
+    const auto second_instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, second_component, volt::Point{48.0, 40.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_SYMBOL_OVERLAP");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(),
+                    volt::EntityRef::symbol_instance(first_instance)) != entities.end());
+    CHECK(std::find(entities.begin(), entities.end(),
+                    volt::EntityRef::symbol_instance(second_instance)) != entities.end());
+}
+
+TEST_CASE("Schematic readability accepts adjacent symbols sharing a same-net pin point") {
+    volt::Circuit circuit;
+    const auto first_component = add_resistor(circuit, "R1");
+    const auto second_component = add_resistor(circuit, "R2");
+    const auto net = add_named_net(circuit, "MID");
+    connect_pin_by_number(circuit, net, first_component, "2");
+    connect_pin_by_number(circuit, net, second_component, "1");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    static_cast<void>(schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, first_component, volt::Point{40.0, 40.0}}));
+    static_cast<void>(schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, second_component, volt::Point{60.0, 40.0}}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK_FALSE(report_has_code(report, "SCHEMATIC_SYMBOL_OVERLAP"));
+}
+
+TEST_CASE("Schematic readability reports wires crossing unrelated symbol bodies") {
+    volt::Circuit circuit;
+    const auto component = add_four_pin_component(circuit, "U1");
+    const auto net = add_named_net(circuit, "BUS");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_four_pin_ic_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 40.0}});
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{45.0, 20.0}, volt::Point{45.0, 60.0}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_WIRE_CROSSES_SYMBOL");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(wire)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::symbol_instance(instance)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability accepts wires that leave their own symbol pins") {
+    volt::Circuit circuit;
+    const auto component = add_four_pin_component(circuit, "U1");
+    const auto net = add_named_net(circuit, "NRST");
+    connect_pin_by_number(circuit, net, component, "2");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_four_pin_ic_symbol());
+    static_cast<void>(schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 40.0}}));
+    static_cast<void>(schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{40.0, 40.0}, volt::Point{28.0, 40.0}}}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK_FALSE(report_has_code(report, "SCHEMATIC_WIRE_CROSSES_SYMBOL"));
+}
+
+TEST_CASE("Schematic readability reports wire continuations routed through a symbol body") {
+    volt::Circuit circuit;
+    const auto component = add_four_pin_component(circuit, "U1");
+    const auto net = add_named_net(circuit, "NRST");
+    connect_pin_by_number(circuit, net, component, "2");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_four_pin_ic_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 40.0}});
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{40.0, 40.0}, volt::Point{28.0, 40.0},
+                                              volt::Point{28.0, 55.0}, volt::Point{45.0, 55.0}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_WIRE_CROSSES_SYMBOL");
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(wire)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::symbol_instance(instance)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability reports terminal markers touching unrelated wires") {
+    volt::Circuit circuit;
+    const auto power_net = circuit.add_net(volt::Net{volt::NetName{"VDDA"}, volt::NetKind::Power});
+    const auto ground_net = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto port = schematic.add_power_port(
+        sheet, volt::PowerPort{power_net, volt::PowerPortKind::Power, volt::Point{50.0, 50.0}});
+    const auto wire = schematic.add_wire_run(
+        sheet,
+        volt::WireRun{ground_net, std::vector{volt::Point{46.0, 48.0}, volt::Point{54.0, 48.0}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic =
+        require_diagnostic(report, "SCHEMATIC_TERMINAL_TOUCHES_UNRELATED_WIRE");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::power_port(port)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(wire)) !=
           entities.end());
 }
 

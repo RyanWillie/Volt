@@ -320,9 +320,9 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
     )
     mcu_region = sheet.region(
         "STM32 Microcontroller",
-        x=190,
+        x=184,
         y=18,
-        w=220,
+        w=238,
         h=338,
         title="STM32 MCU",
         style={"border": "dashed"},
@@ -332,7 +332,7 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
         x=424,
         y=18,
         w=152,
-        h=310,
+        h=326,
         style={"border": "dashed"},
     )
 
@@ -355,7 +355,7 @@ def _author_power_region(
             symbol=_external_supply_symbol(),
             reference_label=_display_reference(board.components["VIN_SRC"]),
         )
-        drawing.move_from(vin.GND.left(44).down(8))
+        drawing.move_from(vin.GND.left(44).down(20))
         pwr_j = drawing.place(
             pwr.component("J"),
             symbol=_compact_connector_1x04_symbol(),
@@ -394,7 +394,7 @@ def _author_power_region(
             pwr.component("CVDDA"),
             symbol=TWO_TERMINAL_CAPACITOR,
             reference_label=_display_reference(pwr.component("CVDDA")),
-        ).at(u3v3.GND.right(3).down(42)).down()
+        ).at(u3v3.GND.right(42).down(42)).down()
 
         vin.label_value(loc="bottom", ofst=10, orient="Right")
         u5.label_value(loc="bottom", ofst=10, orient="Right")
@@ -422,7 +422,7 @@ def _author_power_region(
         drawing.power_stub("+5V", at=u3v3.VI, net=pwr_5v, side="Left", length=18, orient="Left")
 
         drawing.connect(u3v3.VO, c3v3.start, net=pwr_3v3, shape="-")
-        drawing.power_stub("+3V3", at=c3v3.start, net=pwr_3v3, side="Up", length=30)
+        drawing.power_stub("+3V3", at=c3v3.start, net=pwr_3v3, side="Up", length=16)
         drawing.power_stub("VDDA", at=cvdda.start, net=pwr_vdda, side="Up", length=20)
 
         input_ground_bus = drawing.ground(
@@ -474,7 +474,7 @@ def _author_connectors_region(
             reference_label=_display_reference(board.components["J2"]),
         )
 
-        drawing.move_from(swd.nRESET.right(54).down(25))
+        drawing.move_from(swd.nRESET.right(54).down(45))
         gpio = drawing.place(
             board.components["J3"],
             symbol=_compact_connector_1x04_symbol(),
@@ -511,7 +511,7 @@ def _author_connectors_region(
         for anchor in (swd.VTref, gpio[1]):
             drawing.power_stub("+3V3", at=anchor, net=nets["+3V3"], side="Up", length=24)
         for anchor in (swd[3], swd[5], swd[9]):
-            drawing.ground_stub("GND", at=anchor, net=nets["GND"], side="Left", length=10)
+            drawing.ground_stub("GND", at=anchor, net=nets["GND"], side="Left", length=22)
         drawing.ground_stub("GND", at=gpio[4], net=nets["GND"], side="Down", length=18)
         drawing.signal_tags(
             (
@@ -543,7 +543,7 @@ def _author_mcu_region(
     support = board.modules["SUPPORT"]
     led = board.modules["LED_STATUS"]
     with region.drawing(unit=20) as drawing:
-        drawing.move(dx=82, dy=100)
+        drawing.move(dx=100, dy=100)
         stm32 = drawing.place(
             board.components["U1"],
             symbol=_compact_stm32_symbol(),
@@ -577,7 +577,7 @@ def _author_mcu_region(
             support.component("RRESET"),
             symbol=TWO_TERMINAL_RESISTOR,
             reference_label=_display_reference(support.component("RRESET")),
-        ).at(stm32.NRST.left(26).up(28)).down(1.4)
+        ).at(stm32.NRST.left(30).up(30)).down(1.1)
 
         drawing.move_from(stm32.BOOT0.left(20).down(42), direction="Right")
         swboot = drawing.place(
@@ -590,7 +590,7 @@ def _author_mcu_region(
             support.component("RBOOT"),
             symbol=TWO_TERMINAL_RESISTOR,
             reference_label=_display_reference(support.component("RBOOT")),
-        ).at(swboot.C.left(2)).down(1.1)
+        ).at(swboot.C.right(8)).down(1.1)
 
         drawing.move_from(stm32.PH0.left(70).up(2), direction="Right")
         crystal = drawing.place(
@@ -601,13 +601,11 @@ def _author_mcu_region(
         chsein = drawing.two_terminal(
             support.component("CHSEIN"),
             symbol=TWO_TERMINAL_CAPACITOR,
-            reference_label=_display_reference(support.component("CHSEIN")),
-        ).at(crystal[1].left(28)).down()
+        ).at(crystal[1].left(66)).down()
         chseout = drawing.two_terminal(
             support.component("CHSEOUT"),
             symbol=TWO_TERMINAL_CAPACITOR,
-            reference_label=_display_reference(support.component("CHSEOUT")),
-        ).at(crystal[3].left(18)).down()
+        ).at(crystal[3].left(54)).down()
 
         led_r = drawing.two_terminal(
             led.component("R"),
@@ -628,7 +626,19 @@ def _author_mcu_region(
         rboot.label_value(loc="bottom", ofst=10, orient="Right")
         swboot.label_value(loc="bottom", ofst=10, orient="Right")
         crystal.label_value(loc="bottom", ofst=22, orient="Right")
+        chsein.label(
+            _display_reference(support.component("CHSEIN")),
+            name="reference",
+            loc="top",
+            ofst=8,
+        )
         chsein.label_value(loc="bottom", ofst=8, orient="Right")
+        chseout.label(
+            _display_reference(support.component("CHSEOUT")),
+            name="reference",
+            loc="top",
+            ofst=8,
+        )
         chseout.label_value(loc="bottom", ofst=8, orient="Right")
         led_r.label_value(loc="bottom", ofst=10, orient="Right")
         led_d.label_value(loc="bottom", ofst=8, orient="Right")
@@ -686,8 +696,8 @@ def _author_mcu_region(
         support_hse_out = nets["SUPPORT/HSE_OUT"]
 
         drawing.power_stub("+3V3", at=cvdd.start, net=support_vdd, side="Up", length=16)
-        for anchor in (rreset.start, swboot.A):
-            drawing.power_stub("+3V3", at=anchor, net=support_vdd, side="Up", length=16, orient="Up")
+        drawing.power_stub("+3V3", at=rreset.start, net=support_vdd, side="Up", length=8, orient="Up")
+        drawing.power_stub("+3V3", at=swboot.A, net=support_vdd, side="Up", length=16, orient="Up")
 
         decoupling_ground = drawing.ground("GND", net=support_gnd, at=cvcap1.end.down(18), orient="Down")
         for cap in (cvdd, cvcap1, cvcap2):
@@ -706,7 +716,7 @@ def _author_mcu_region(
             support_reset,
             at=rreset.end,
             side="Left",
-            length=10,
+            length=6,
             label="NRST",
             orient="Right",
         )
@@ -714,10 +724,10 @@ def _author_mcu_region(
         drawing.signal_stub(
             support_boot,
             at=rboot.start,
-            side="Left",
+            side="Up",
             length=10,
             label="BOOT0",
-            orient="Left",
+            orient="Right",
         )
 
         drawing.connect(crystal[1], chsein.start, net=support_hse_in, shape="-")
