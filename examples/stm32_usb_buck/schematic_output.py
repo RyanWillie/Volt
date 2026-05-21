@@ -413,7 +413,14 @@ def _author_power_region(
         pwr_vdda = nets["PWR/VDDA"]
         pwr_gnd = nets["PWR/GND"]
 
-        drawing.connect(pwr_j[1], cin.start, net=pwr_in, shape="-")
+        drawing.signal_stub(
+            pwr_in,
+            at=pwr_j[1],
+            side="Right",
+            length=14,
+            label="+12V input",
+            orient="Right",
+        )
         drawing.connect(cin.start, u5.VI, net=pwr_in, shape="-")
         drawing.net_label(pwr_in, at=cin.start.up(20), label="+12V")
 
@@ -550,7 +557,7 @@ def _author_mcu_region(
             reference_label=_display_reference(board.components["U1"]),
         )
 
-        decoupling_start = stm32.VBAT.left(56).up(62)
+        decoupling_start = stm32.VBAT.left(66).up(62)
         cvdd_anchor, cvcap1_anchor, cvcap2_anchor = drawing.stack(
             count=3,
             direction="Right",
@@ -696,7 +703,14 @@ def _author_mcu_region(
         support_hse_out = nets["SUPPORT/HSE_OUT"]
 
         drawing.power_stub("+3V3", at=cvdd.start, net=support_vdd, side="Up", length=16)
-        drawing.power_stub("+3V3", at=rreset.start, net=support_vdd, side="Up", length=8, orient="Up")
+        drawing.power_stub(
+            "+3V3",
+            at=rreset.start,
+            net=support_vdd,
+            side="Left",
+            length=8,
+            orient="Left",
+        )
         drawing.power_stub("+3V3", at=swboot.A, net=support_vdd, side="Up", length=16, orient="Up")
 
         decoupling_ground = drawing.ground("GND", net=support_gnd, at=cvcap1.end.down(18), orient="Down")

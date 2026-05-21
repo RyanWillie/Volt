@@ -2218,6 +2218,51 @@ inline void validate_ambiguous_same_net_crossings(const Schematic &schematic, Sh
     }
 }
 
+inline void validate_different_net_wire_crossings(const Schematic &schematic, SheetId sheet_id,
+                                                  const Sheet &sheet, DiagnosticReport &report) {
+    const auto &wires = sheet.wire_runs();
+    for (std::size_t first_index = 0; first_index < wires.size(); ++first_index) {
+        const auto first_id = wires[first_index];
+        const auto &first = schematic.wire_run(first_id);
+        for (std::size_t second_index = first_index + 1U; second_index < wires.size();
+             ++second_index) {
+            const auto second_id = wires[second_index];
+            const auto &second = schematic.wire_run(second_id);
+            if (first.net() == second.net()) {
+                continue;
+            }
+            auto crossing_reported = false;
+            for (std::size_t first_point = 1; first_point < first.points().size(); ++first_point) {
+                if (crossing_reported) {
+                    break;
+                }
+                const auto first_segment =
+                    SchematicSegment{first.points()[first_point - 1U], first.points()[first_point]};
+                for (std::size_t second_point = 1; second_point < second.points().size();
+                     ++second_point) {
+                    const auto second_segment = SchematicSegment{second.points()[second_point - 1U],
+                                                                 second.points()[second_point]};
+                    if (classify_segment_relationship(first_segment, second_segment) !=
+                        SchematicSegmentRelationship::Crossing) {
+                        continue;
+                    }
+                    report.add(Diagnostic{
+                        Severity::Warning,
+                        DiagnosticCode{"SCHEMATIC_DIFFERENT_NET_WIRE_CROSSING"},
+                        "Different-net schematic wires cross visually; reroute one wire to keep "
+                        "the drawing readable",
+                        std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(first_id),
+                                    EntityRef::wire_run(second_id), EntityRef::net(first.net()),
+                                    EntityRef::net(second.net())},
+                    });
+                    crossing_reported = true;
+                    break;
+                }
+            }
+        }
+    }
+}
+
 [[nodiscard]] inline bool sheet_has_same_net_tag_at_point(const Schematic &schematic,
                                                           const Sheet &sheet, NetId net,
                                                           Point point) {
@@ -2667,6 +2712,7 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         detail::validate_long_local_doglegs(schematic, sheet_id, sheet, report);
         detail::validate_misaligned_local_labels(schematic, sheet_id, sheet, report);
         detail::validate_ambiguous_same_net_crossings(schematic, sheet_id, sheet, report);
+        detail::validate_different_net_wire_crossings(schematic, sheet_id, sheet, report);
         detail::validate_dangling_wire_endpoints(schematic, sheet_id, sheet, report);
         detail::validate_floating_stub_clusters(schematic, sheet_id, sheet, report);
         detail::validate_symbol_crowding(schematic, sheet_id, sheet, report);

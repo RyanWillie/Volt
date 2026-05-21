@@ -1372,6 +1372,35 @@ TEST_CASE("Schematic readability reports terminal markers touching unrelated wir
           entities.end());
 }
 
+TEST_CASE("Schematic readability reports different-net visual wire crossings") {
+    volt::Circuit circuit;
+    const auto first_net = add_named_net(circuit, "ROW");
+    const auto second_net = add_named_net(circuit, "COL");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto first_wire = schematic.add_wire_run(
+        sheet,
+        volt::WireRun{first_net, std::vector{volt::Point{40.0, 50.0}, volt::Point{80.0, 50.0}}});
+    const auto second_wire = schematic.add_wire_run(
+        sheet,
+        volt::WireRun{second_net, std::vector{volt::Point{60.0, 30.0}, volt::Point{60.0, 70.0}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DIFFERENT_NET_WIRE_CROSSING");
+    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(first_wire)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(second_wire)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net(first_net)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net(second_net)) !=
+          entities.end());
+}
+
 TEST_CASE("Schematic readability reports long local dogleg routes") {
     volt::Circuit circuit;
     const auto net = add_named_net(circuit, "OSC_IN");
