@@ -44,6 +44,11 @@ add_executable(
     adapters/kicad_boundary_test.cpp
     adapters/kicad_loss_report_test.cpp
     adapters/kicad_schematic_writer_test.cpp
+    schematic/schematic_geometry_test.cpp
+    schematic/schematic_readability_labeling_test.cpp
+    schematic/schematic_readability_routing_test.cpp
+    schematic/schematic_readability_test.cpp
+    schematic/schematic_readiness_test.cpp
     schematic/schematic_test.cpp
 )
 target_link_libraries(

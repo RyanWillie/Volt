@@ -7,8 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include <volt/schematic/readability_geometry.hpp>
 #include <volt/schematic/schematic.hpp>
-#include <volt/schematic/validation.hpp>
 
 namespace volt {
 
