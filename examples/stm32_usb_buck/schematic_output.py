@@ -358,20 +358,20 @@ def _author_power_region(
             symbol=_external_supply_symbol(),
             reference_label=_display_reference(board.components["VIN_SRC"]),
         )
-        drawing.move_from(vin.GND.left(36).down(32))
+        drawing.move_from(vin.GND.left(38).down(46))
         pwr_j = drawing.place(
             pwr.component("J"),
             symbol=_compact_connector_1x04_symbol(pin_labels=False),
             reference_label=_display_reference(pwr.component("J")),
         )
 
-        drawing.move_from(vin.OUT.right(24).down(14))
+        drawing.move_from(vin.OUT.right(32).down(14))
         u5 = drawing.place(
             pwr.component("U5"),
             symbol=lib.AP1117_15.schematic_symbol,
             reference_label=_display_reference(pwr.component("U5")),
         )
-        drawing.move_from(u5.GND.left(25).down(64))
+        drawing.move_from(u5.GND.left(25).down(72))
         u3v3 = drawing.place(
             pwr.component("U3V3"),
             symbol=lib.AP1117_15.schematic_symbol,
@@ -437,7 +437,7 @@ def _author_power_region(
         input_ground_bus = drawing.ground(
             "GND",
             net=pwr_gnd,
-            at=u5.GND.left(35).down(36),
+            at=u5.GND.left(35).down(50),
             orient="Down",
         )
         for anchor in (pwr_j[2], pwr_j[3], pwr_j[4], cin.end, u5.GND, c5v.end):
@@ -586,7 +586,7 @@ def _author_mcu_region(
             support.component("RRESET"),
             symbol=TWO_TERMINAL_RESISTOR,
             reference_label=_display_reference(support.component("RRESET")),
-        ).at(stm32.NRST.left(30).up(12)).down(1.1)
+        ).at(stm32.NRST.left(76).down(92)).down(1.1)
 
         drawing.move_from(stm32.BOOT0.left(20).down(66), direction="Right")
         swboot = drawing.place(

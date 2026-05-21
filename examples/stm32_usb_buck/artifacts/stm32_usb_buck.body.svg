@@ -7,44 +7,44 @@
       <line class="symbol-line" x1="34" y1="8" x2="44" y2="8"/>
       <line class="symbol-line" x1="34" y1="24" x2="44" y2="24"/>
     </g>
-    <g class="symbol-instance" data-component="component:1" data-symbol-definition="symbol_def:4" transform="translate(34 100) rotate(0)">
+    <g class="symbol-instance" data-component="component:1" data-symbol-definition="symbol_def:4" transform="translate(32 114) rotate(0)">
       <rect class="symbol-rectangle" x="8" y="0" width="20" height="26"/>
       <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
       <line class="symbol-line" x1="0" y1="7" x2="8" y2="7"/>
       <line class="symbol-line" x1="0" y1="14" x2="8" y2="14"/>
       <line class="symbol-line" x1="0" y1="21" x2="8" y2="21"/>
     </g>
-    <g class="symbol-instance" data-component="component:2" data-symbol-definition="symbol_def:5" transform="translate(94 66) rotate(0)">
+    <g class="symbol-instance" data-component="component:2" data-symbol-definition="symbol_def:5" transform="translate(102 66) rotate(0)">
       <rect class="symbol-rectangle" x="10" y="0" width="30" height="25"/>
       <line class="symbol-line" x1="0" y1="10" x2="10" y2="10"/>
       <line class="symbol-line" x1="40" y1="10" x2="50" y2="10"/>
       <line class="symbol-line" x1="25" y1="25" x2="25" y2="30"/>
     </g>
-    <g class="symbol-instance" data-component="component:3" data-symbol-definition="symbol_def:5" transform="translate(94 160) rotate(0)">
+    <g class="symbol-instance" data-component="component:3" data-symbol-definition="symbol_def:5" transform="translate(102 168) rotate(0)">
       <rect class="symbol-rectangle" x="10" y="0" width="30" height="25"/>
       <line class="symbol-line" x1="0" y1="10" x2="10" y2="10"/>
       <line class="symbol-line" x1="40" y1="10" x2="50" y2="10"/>
       <line class="symbol-line" x1="25" y1="25" x2="25" y2="30"/>
     </g>
-    <g class="symbol-instance" data-component="component:4" data-symbol-definition="symbol_def:6" transform="translate(76 76) rotate(90)">
+    <g class="symbol-instance" data-component="component:4" data-symbol-definition="symbol_def:6" transform="translate(84 76) rotate(90)">
       <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
       <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
       <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
       <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
     </g>
-    <g class="symbol-instance" data-component="component:5" data-symbol-definition="symbol_def:6" transform="translate(156 76) rotate(90)">
+    <g class="symbol-instance" data-component="component:5" data-symbol-definition="symbol_def:6" transform="translate(164 76) rotate(90)">
       <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
       <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
       <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
       <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
     </g>
-    <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:6" transform="translate(156 170) rotate(90)">
+    <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:6" transform="translate(164 178) rotate(90)">
       <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
       <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
       <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
       <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
     </g>
-    <g class="symbol-instance" data-component="component:7" data-symbol-definition="symbol_def:6" transform="translate(161 232) rotate(90)">
+    <g class="symbol-instance" data-component="component:7" data-symbol-definition="symbol_def:6" transform="translate(169 240) rotate(90)">
       <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
       <line class="symbol-line" x1="8" y1="-5" x2="8" y2="5"/>
       <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
@@ -92,7 +92,7 @@
       <line class="symbol-line" x1="12" y1="-5" x2="12" y2="5"/>
       <line class="symbol-line" x1="12" y1="0" x2="20" y2="0"/>
     </g>
-    <g class="symbol-instance" data-component="component:13" data-symbol-definition="symbol_def:8" transform="translate(254 210) rotate(90)">
+    <g class="symbol-instance" data-component="component:13" data-symbol-definition="symbol_def:8" transform="translate(208 314) rotate(90)">
       <line class="symbol-line" x1="0" y1="0" x2="4.4" y2="0"/>
       <rect class="symbol-rectangle" x="4.4" y="-3" width="13.2" height="6"/>
       <line class="symbol-line" x1="17.6" y1="0" x2="22" y2="0"/>
@@ -184,23 +184,23 @@
     <g class="layer layer-wires">
     <polyline class="wire-run" data-net="net:0" points="70,52 70,32"/>
     <polyline class="wire-run" data-net="net:4" points="70,68 70,108"/>
-    <polyline class="wire-run" data-net="net:5" points="34,100 34,90"/>
-    <polyline class="wire-run" data-net="net:5" points="76,76 94,76"/>
-    <polyline class="wire-run" data-net="net:6" points="144,76 156,76"/>
-    <polyline class="wire-run" data-net="net:6" points="156,76 156,46"/>
-    <polyline class="wire-run" data-net="net:6" points="94,170 76,170"/>
-    <polyline class="wire-run" data-net="net:7" points="144,170 156,170"/>
-    <polyline class="wire-run" data-net="net:7" points="156,170 156,154"/>
-    <polyline class="wire-run" data-net="net:8" points="161,232 161,212"/>
-    <polyline class="wire-run" data-net="net:9" points="34,107 34,132 84,132"/>
-    <polyline class="wire-run" data-net="net:9" points="34,114 34,132 84,132"/>
-    <polyline class="wire-run" data-net="net:9" points="34,121 34,132 84,132"/>
-    <polyline class="wire-run" data-net="net:9" points="76,96 76,132 84,132"/>
-    <polyline class="wire-run" data-net="net:9" points="119,96 119,132 84,132"/>
-    <polyline class="wire-run" data-net="net:9" points="156,96 156,132 84,132"/>
-    <polyline class="wire-run" data-net="net:9" points="119,190 119,214 150,214"/>
-    <polyline class="wire-run" data-net="net:9" points="156,190 156,214 150,214"/>
-    <polyline class="wire-run" data-net="net:9" points="161,252 161,270"/>
+    <polyline class="wire-run" data-net="net:5" points="32,114 32,104"/>
+    <polyline class="wire-run" data-net="net:5" points="84,76 102,76"/>
+    <polyline class="wire-run" data-net="net:6" points="152,76 164,76"/>
+    <polyline class="wire-run" data-net="net:6" points="164,76 164,46"/>
+    <polyline class="wire-run" data-net="net:6" points="102,178 84,178"/>
+    <polyline class="wire-run" data-net="net:7" points="152,178 164,178"/>
+    <polyline class="wire-run" data-net="net:7" points="164,178 164,162"/>
+    <polyline class="wire-run" data-net="net:8" points="169,240 169,220"/>
+    <polyline class="wire-run" data-net="net:9" points="32,121 32,146 92,146"/>
+    <polyline class="wire-run" data-net="net:9" points="32,128 32,146 92,146"/>
+    <polyline class="wire-run" data-net="net:9" points="32,135 32,146 92,146"/>
+    <polyline class="wire-run" data-net="net:9" points="84,96 84,146 92,146"/>
+    <polyline class="wire-run" data-net="net:9" points="127,96 127,146 92,146"/>
+    <polyline class="wire-run" data-net="net:9" points="164,96 164,146 92,146"/>
+    <polyline class="wire-run" data-net="net:9" points="127,198 127,222 158,222"/>
+    <polyline class="wire-run" data-net="net:9" points="164,198 164,222 158,222"/>
+    <polyline class="wire-run" data-net="net:9" points="169,260 169,278"/>
     <polyline class="wire-run" data-net="net:2" points="312,104 312,96 332,96"/>
     <polyline class="wire-run" data-net="net:2" points="324,104 324,96 332,96"/>
     <polyline class="wire-run" data-net="net:2" points="336,104 336,96 332,96"/>
@@ -223,7 +223,7 @@
     <polyline class="wire-run" data-net="net:28" points="284,222 276,222"/>
     <polyline class="wire-run" data-net="net:33" points="380,262 390,262"/>
     <polyline class="wire-run" data-net="net:20" points="218,72 218,56"/>
-    <polyline class="wire-run" data-net="net:20" points="254,210 254,204"/>
+    <polyline class="wire-run" data-net="net:20" points="208,314 208,308"/>
     <polyline class="wire-run" data-net="net:20" points="360,312 348,312"/>
     <polyline class="wire-run" data-net="net:21" points="218,92 218,110 248,110"/>
     <polyline class="wire-run" data-net="net:21" points="248,92 248,110"/>
@@ -234,7 +234,7 @@
     <polyline class="wire-run" data-net="net:21" points="206,208 206,228 244,228"/>
     <polyline class="wire-run" data-net="net:21" points="412,344 412,350"/>
     <polyline class="wire-run" data-net="net:21" points="360,332 360,338"/>
-    <polyline class="wire-run" data-net="net:22" points="254,232 264,232"/>
+    <polyline class="wire-run" data-net="net:22" points="208,336 218,336"/>
     <polyline class="wire-run" data-net="net:23" points="404,322 412,322"/>
     <polyline class="wire-run" data-net="net:23" points="412,322 412,312"/>
     <polyline class="wire-run" data-net="net:24" points="260,172 194,172"/>
@@ -268,7 +268,7 @@
     <polyline class="wire-run" data-net="net:29" points="540,289 518,289"/>
     </g>
     <g class="layer layer-junctions">
-    <circle class="junction" data-net="net:9" cx="84" cy="132" r="0.85"/>
+    <circle class="junction" data-net="net:9" cx="92" cy="146" r="0.85"/>
     <circle class="junction" data-net="net:4" cx="334" cy="304" r="0.85"/>
     <circle class="junction" data-net="net:21" cx="248" cy="110" r="0.85"/>
     <circle class="junction" data-net="net:21" cx="244" cy="228" r="0.85"/>
@@ -287,47 +287,47 @@
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
     <text class="power-port-label" data-net="net:4" x="70" y="120.2">GND</text>
-    <g class="power-port power" data-net="net:6" transform="translate(156 46)">
+    <g class="power-port power" data-net="net:6" transform="translate(164 46)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4">+5V</text>
     </g>
-    <g class="power-port power" data-net="net:6" transform="translate(76 170) rotate(270)">
+    <g class="power-port power" data-net="net:6" transform="translate(84 178) rotate(270)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
     </g>
-    <text class="power-port-label" data-net="net:6" x="62.6" y="170">+5V</text>
-    <g class="power-port power" data-net="net:7" transform="translate(156 154)">
+    <text class="power-port-label" data-net="net:6" x="70.6" y="178">+5V</text>
+    <g class="power-port power" data-net="net:7" transform="translate(164 162)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port power" data-net="net:8" transform="translate(161 212)">
+    <g class="power-port power" data-net="net:8" transform="translate(169 220)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4">VDDA</text>
     </g>
-    <g class="power-port ground" data-net="net:9" transform="translate(84 132)">
+    <g class="power-port ground" data-net="net:9" transform="translate(92 146)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
-    <text class="power-port-label" data-net="net:9" x="84" y="144.2">GND</text>
-    <g class="power-port ground" data-net="net:9" transform="translate(150 214)">
+    <text class="power-port-label" data-net="net:9" x="92" y="158.2">GND</text>
+    <g class="power-port ground" data-net="net:9" transform="translate(158 222)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
-    <text class="power-port-label" data-net="net:9" x="150" y="226.2">GND</text>
-    <g class="power-port ground" data-net="net:9" transform="translate(161 270)">
+    <text class="power-port-label" data-net="net:9" x="158" y="234.2">GND</text>
+    <g class="power-port ground" data-net="net:9" transform="translate(169 278)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
       <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
       <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
     </g>
-    <text class="power-port-label" data-net="net:9" x="161" y="282.2">GND</text>
+    <text class="power-port-label" data-net="net:9" x="161" y="286.2">GND</text>
     <g class="power-port power" data-net="net:2" transform="translate(332 96)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
@@ -350,11 +350,11 @@
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
       <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <g class="power-port power" data-net="net:20" transform="translate(254 204)">
+    <g class="power-port power" data-net="net:20" transform="translate(208 308)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
+      <text class="power-port-label" x="0" y="-9.4">+3V3</text>
     </g>
-    <text class="power-port-label" data-net="net:20" x="266" y="182.6">+3V3</text>
     <g class="power-port power" data-net="net:20" transform="translate(348 312)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
@@ -457,7 +457,7 @@
       <line class="no-connect-line" x1="-3" y1="-3" x2="3" y2="3"/>
       <line class="no-connect-line" x1="-3" y1="3" x2="3" y2="-3"/>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:5" transform="translate(34 90) rotate(270)">
+    <g class="sheet-port bidirectional" data-net="net:5" transform="translate(32 104) rotate(270)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 9.688 -2.4 L 12.888 0 L 9.688 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="4.844" y="0.9" transform="rotate(-270 4.844 0.9)">+12V</text>
     </g>
@@ -509,7 +509,7 @@
       <path class="sheet-port-shape" d="M 0 -2.4 L 11.06 -2.4 L 14.26 0 L 11.06 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="5.53" y="0.9">VCAP2</text>
     </g>
-    <g class="sheet-port bidirectional" data-net="net:22" transform="translate(264 232) rotate(0)">
+    <g class="sheet-port bidirectional" data-net="net:22" transform="translate(218 336) rotate(0)">
       <path class="sheet-port-shape" d="M 0 -2.4 L 9.688 -2.4 L 12.888 0 L 9.688 2.4 L 0 2.4 Z"/>
       <text class="sheet-port-label" x="4.844" y="0.9">NRST</text>
     </g>
@@ -559,7 +559,7 @@
     </g>
     </g>
     <g class="layer layer-labels">
-    <text class="net-label" data-net="net:5" x="76" y="56" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 76 56)">+12V</text>
+    <text class="net-label" data-net="net:5" x="84" y="56" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 84 56)">+12V</text>
     <text class="net-label" data-net="net:24" x="268" y="164" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 268 164)">HSE IN</text>
     <text class="net-label" data-net="net:25" x="268" y="200" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 268 200)">HSE OUT</text>
     </g>
@@ -569,13 +569,13 @@
       <text class="symbol-text" x="4" y="9" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 4 9)">1 +12V</text>
       <text class="symbol-text" x="4" y="25" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 4 25)">2 GND</text>
     </g>
-    <g class="symbol-text-instance" data-component="component:1" data-symbol-definition="symbol_def:4" transform="translate(34 100) rotate(0)">
+    <g class="symbol-text-instance" data-component="component:1" data-symbol-definition="symbol_def:4" transform="translate(32 114) rotate(0)">
       <text class="symbol-text" x="18" y="13" text-anchor="middle" dominant-baseline="middle" transform="rotate(0 18 13)">CONN</text>
     </g>
-    <g class="symbol-text-instance" data-component="component:2" data-symbol-definition="symbol_def:5" transform="translate(94 66) rotate(0)">
+    <g class="symbol-text-instance" data-component="component:2" data-symbol-definition="symbol_def:5" transform="translate(102 66) rotate(0)">
       <text class="symbol-text" x="25" y="14" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 25 14)">LDO</text>
     </g>
-    <g class="symbol-text-instance" data-component="component:3" data-symbol-definition="symbol_def:5" transform="translate(94 160) rotate(0)">
+    <g class="symbol-text-instance" data-component="component:3" data-symbol-definition="symbol_def:5" transform="translate(102 168) rotate(0)">
       <text class="symbol-text" x="25" y="14" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 25 14)">LDO</text>
     </g>
     <g class="symbol-text-instance" data-component="component:23" data-symbol-definition="symbol_def:7" transform="translate(284 118) rotate(0)">
@@ -689,25 +689,25 @@
     </g>
     <g class="layer layer-fields">
     <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="reference" x="74" y="42" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 74 42)">J1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="reference" x="38" y="94" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 38 94)">J2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="reference" x="119" y="62" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 119 62)">U2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="reference" x="119" y="156" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 119 156)">U3</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="reference" x="66" y="86" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 66 86)">C1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="reference" x="146" y="102" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 146 102)">C2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="reference" x="146" y="196" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 146 196)">C3</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="reference" x="36" y="108" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 36 108)">J2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="reference" x="127" y="62" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 127 62)">U2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="reference" x="127" y="164" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 127 164)">U3</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="reference" x="74" y="86" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 74 86)">C1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="reference" x="154" y="102" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 154 102)">C2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="reference" x="154" y="204" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 154 204)">C3</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="value" x="82" y="66" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 82 66)">12 V input</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="value" x="131" y="106" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 131 106)">AP1117-5.0</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="value" x="131" y="206" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 131 206)">AP1117-3.3</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="value" x="82" y="112" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 82 112)">4.7 uF</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="value" x="162" y="106" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 162 106)">4.7 uF</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="value" x="150" y="206" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 150 206)">4.7 uF</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:7" data-field="reference" x="151" y="242" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 151 242)">C4</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:7" data-field="value" x="167" y="262" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 167 262)">100 nF</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="value" x="139" y="106" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 139 106)">AP1117-5.0</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="value" x="139" y="214" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 139 214)">AP1117-3.3</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="value" x="90" y="112" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 90 112)">4.7 uF</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="value" x="170" y="106" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 170 106)">4.7 uF</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="value" x="158" y="214" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 158 214)">4.7 uF</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:7" data-field="reference" x="159" y="250" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 159 250)">C4</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:7" data-field="value" x="163" y="270" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 163 270)">100 nF</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:8" data-field="reference" x="332" y="100" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 332 100)">U1</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:9" data-field="reference" x="208" y="82" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 208 82)">C5</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:10" data-field="reference" x="238" y="82" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 238 82)">C6</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:11" data-field="reference" x="268" y="82" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 268 82)">C7</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:12" data-field="reference" x="248" y="221" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 248 221)">R1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:12" data-field="reference" x="198" y="325" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 198 325)">R1</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:13" data-field="reference" x="382" y="298" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 382 298)">SW1</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:14" data-field="reference" x="402" y="337" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 402 337)">R2</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:15" data-field="reference" x="246" y="158" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 246 158)">Y1</text>
@@ -716,10 +716,10 @@
     <text class="symbol-field" data-symbol-instance="symbol_instance:9" data-field="value" x="224" y="100" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 224 100)">100 nF</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:10" data-field="value" x="254" y="100" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 254 100)">2.2 uF</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:11" data-field="value" x="272" y="100" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 272 100)">2.2 uF</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:12" data-field="value" x="254" y="238" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 254 238)">10 kOhm</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:12" data-field="value" x="208" y="346" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 208 346)">10 kOhm</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:14" data-field="value" x="400" y="342" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 400 342)">100 kOhm</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:13" data-field="value" x="382" y="342" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 382 342)">BOOT0</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:15" data-field="value" x="238" y="220" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 238 220)">8 MHz</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:15" data-field="value" x="250" y="224" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 250 224)">8 MHz</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:16" data-field="reference" x="194" y="164" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 194 164)">C8</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:16" data-field="value" x="216" y="222" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 216 222)">18 pF</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:17" data-field="reference" x="206" y="180" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 206 180)">C9</text>
