@@ -75,15 +75,15 @@ struct SchematicSvgVisualScale {
     /** Functional-region frame stroke width. */
     double region_frame_stroke_width = 0.35;
     /** Logical wire stroke width. */
-    double wire_stroke_width = 0.75;
+    double wire_stroke_width = 0.6;
     /** Symbol primitive stroke width. */
-    double symbol_stroke_width = 0.7;
+    double symbol_stroke_width = 0.6;
     /** Sheet, power, and ground tag stroke width. */
-    double tag_port_stroke_width = 0.55;
+    double tag_port_stroke_width = 0.5;
     /** No-connect marker stroke width. */
-    double no_connect_stroke_width = 0.65;
+    double no_connect_stroke_width = 0.55;
     /** Junction dot radius. */
-    double junction_radius = 1.15;
+    double junction_radius = 0.85;
     /** Coordinate-zone label font size. */
     double coordinate_zone_font_size = 3.0;
     /** Title-block font size. */
@@ -91,11 +91,11 @@ struct SchematicSvgVisualScale {
     /** Functional-region title font size. */
     double region_title_font_size = 3.2;
     /** Local net label font size. */
-    double net_label_font_size = 2.5;
+    double net_label_font_size = 2.8;
     /** Sheet, power, and ground tag label font size. */
     double tag_port_label_font_size = 2.45;
     /** Symbol primitive text font size. */
-    double symbol_text_font_size = 2.7;
+    double symbol_text_font_size = 3.0;
     /** Symbol field/value font size. */
     double symbol_field_font_size = 2.5;
     /** Debug pin anchor radius. */

@@ -1464,6 +1464,25 @@ TEST_CASE("Schematic readability reports labels crowding symbols") {
           entities.end());
 }
 
+TEST_CASE("Schematic readability accepts terminal markers attached to connected symbol pins") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto ground = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+    connect_pin_by_number(circuit, ground, component, "1");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    static_cast<void>(schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{60.0, 60.0}}));
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{ground, volt::PowerPortKind::Ground, volt::Point{60.0, 60.0}}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK_FALSE(report_has_code(report, "SCHEMATIC_LABEL_CROWDS_SYMBOL"));
+}
+
 TEST_CASE("Schematic readability reports duplicate visible reference labels on a sheet") {
     volt::Circuit circuit;
     const auto first_component = add_resistor(circuit, "R1");

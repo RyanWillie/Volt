@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 594 420" width="594" height="420">
-  <style>.document-background,.sheet{fill:#fff;stroke:none}.sheet-border{fill:none;stroke:#111;stroke-width:0.45}.drawing-frame{fill:none;stroke:#111;stroke-width:0.35}.sheet-grid{stroke:none}.sheet-grid-dot{fill:#d7d7d7;stroke:none}.coordinate-zone-label{font:3px sans-serif;fill:#444;text-anchor:middle;dominant-baseline:middle}.sheet-title{font-weight:600}.title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.3}.title-block-label{font:2.5px sans-serif;fill:#444;text-anchor:start}.title-block-value{font:2.5px sans-serif;fill:#111;text-anchor:start}.sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.35}.sheet-region-frame.dashed{stroke-dasharray:3 2}.sheet-region-title{font:3.2px sans-serif;fill:#57534e;text-anchor:start;font-weight:600}.wire-run{fill:none;stroke:#111;stroke-width:0.75;stroke-linecap:round;stroke-linejoin:round}.net-label{font:2.5px sans-serif;fill:#111}.junction{fill:#111;stroke:none}.power-port-line,.ground-bar{stroke:#111;stroke-width:0.55;stroke-linecap:round;stroke-linejoin:round}.no-connect-line{stroke:#111;stroke-width:0.65;stroke-linecap:round}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:0.55;stroke-linejoin:round}.power-port-label,.sheet-port-label{font:2.45px sans-serif;fill:#111;text-anchor:middle}.symbol-field{font:2.5px sans-serif;fill:#111}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:0.7;stroke-linecap:round;stroke-linejoin:round}.symbol-text{font:2.7px sans-serif;fill:#111}</style>
+  <style>.document-background,.sheet{fill:#fff;stroke:none}.sheet-border{fill:none;stroke:#111;stroke-width:0.45}.drawing-frame{fill:none;stroke:#111;stroke-width:0.35}.sheet-grid{stroke:none}.sheet-grid-dot{fill:#d7d7d7;stroke:none}.coordinate-zone-label{font:3px sans-serif;fill:#444;text-anchor:middle;dominant-baseline:middle}.sheet-title{font-weight:600}.title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.3}.title-block-label{font:2.5px sans-serif;fill:#444;text-anchor:start}.title-block-value{font:2.5px sans-serif;fill:#111;text-anchor:start}.sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.35}.sheet-region-frame.dashed{stroke-dasharray:3 2}.sheet-region-title{font:3.2px sans-serif;fill:#57534e;text-anchor:start;font-weight:600}.wire-run{fill:none;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round}.net-label{font:2.8px sans-serif;fill:#111}.junction{fill:#111;stroke:none}.power-port-line,.ground-bar{stroke:#111;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:round}.no-connect-line{stroke:#111;stroke-width:0.55;stroke-linecap:round}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:0.5;stroke-linejoin:round}.power-port-label,.sheet-port-label{font:2.45px sans-serif;fill:#111;text-anchor:middle}.symbol-field{font:2.5px sans-serif;fill:#111}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round}.symbol-text{font:3px sans-serif;fill:#111}</style>
   <rect class="document-background" x="0" y="0" width="594" height="420"/>
   <g class="schematic-sheet" data-sheet="sheet:0" transform="translate(0 0)">
     <defs>
@@ -480,11 +480,11 @@
     <polyline class="wire-run" data-net="net:29" points="526,251 516,251"/>
     </g>
     <g class="layer layer-junctions">
-    <circle class="junction" data-net="net:9" cx="84" cy="132" r="1.15"/>
-    <circle class="junction" data-net="net:4" cx="322" cy="304" r="1.15"/>
-    <circle class="junction" data-net="net:21" cx="246" cy="110" r="1.15"/>
-    <circle class="junction" data-net="net:21" cx="232" cy="228" r="1.15"/>
-    <circle class="junction" data-net="net:19" cx="518" cy="134" r="1.15"/>
+    <circle class="junction" data-net="net:9" cx="84" cy="132" r="0.85"/>
+    <circle class="junction" data-net="net:4" cx="322" cy="304" r="0.85"/>
+    <circle class="junction" data-net="net:21" cx="246" cy="110" r="0.85"/>
+    <circle class="junction" data-net="net:21" cx="232" cy="228" r="0.85"/>
+    <circle class="junction" data-net="net:19" cx="518" cy="134" r="0.85"/>
     </g>
     <g class="layer layer-ports">
     <g class="power-port power" data-net="net:0" transform="translate(70 32)">
@@ -686,32 +686,32 @@
     <text class="net-label" data-net="net:29" x="514" y="251" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 514 251)">BOOT0</text>
     </g>
     <g class="layer layer-fields">
-    <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="reference" x="70" y="38" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 70 38)">J1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="reference" x="26" y="62" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 26 62)">J2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="reference" x="119" y="62" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 119 62)">U2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="reference" x="119" y="156" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 119 156)">U3</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="reference" x="62" y="86" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 62 86)">C1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="reference" x="142" y="86" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 142 86)">C2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="reference" x="142" y="180" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 142 180)">C3</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="reference" x="70" y="42" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 70 42)">J1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="reference" x="26" y="66" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 26 66)">J2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="reference" x="119" y="66" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 119 66)">U2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="reference" x="119" y="160" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 119 160)">U3</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="reference" x="66" y="86" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 66 86)">C1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="reference" x="146" y="86" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 146 86)">C2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="reference" x="146" y="180" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 146 180)">C3</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="value" x="70" y="78" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 70 78)">12 V input</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="value" x="119" y="106" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 119 106)">AP1117-5.0</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="value" x="119" y="206" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 119 206)">AP1117-3.3</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="value" x="76" y="112" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 76 112)">4.7 uF</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="value" x="156" y="106" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 156 106)">4.7 uF</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="value" x="156" y="200" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 156 200)">4.7 uF</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:7" data-field="reference" x="108" y="242" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 108 242)">C4</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:7" data-field="reference" x="112" y="242" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 112 242)">C4</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:7" data-field="value" x="122" y="262" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 122 262)">100 nF</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:8" data-field="reference" x="320" y="90" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 320 90)">U1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:9" data-field="reference" x="202" y="82" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 202 82)">C5</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:10" data-field="reference" x="232" y="82" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 232 82)">C6</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:11" data-field="reference" x="262" y="82" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 262 82)">C7</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:12" data-field="reference" x="232" y="208" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 232 208)">R1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:13" data-field="reference" x="370" y="274" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 370 274)">SW1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:14" data-field="reference" x="376" y="309" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 376 309)">R2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:15" data-field="reference" x="234" y="158" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 234 158)">Y1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:16" data-field="reference" x="206" y="182" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 206 182)">C8</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:17" data-field="reference" x="216" y="198" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 216 198)">C9</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:18" data-field="reference" x="328" y="44" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 328 44)">R3</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:8" data-field="reference" x="320" y="94" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 320 94)">U1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:9" data-field="reference" x="206" y="82" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 206 82)">C5</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:10" data-field="reference" x="236" y="82" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 236 82)">C6</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:11" data-field="reference" x="266" y="82" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 266 82)">C7</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:12" data-field="reference" x="236" y="208" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 236 208)">R1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:13" data-field="reference" x="370" y="278" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 370 278)">SW1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:14" data-field="reference" x="380" y="309" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 380 309)">R2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:15" data-field="reference" x="234" y="162" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 234 162)">Y1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:16" data-field="reference" x="210" y="182" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 210 182)">C8</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:17" data-field="reference" x="220" y="198" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 220 198)">C9</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:18" data-field="reference" x="328" y="48" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 328 48)">R3</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:8" data-field="value" x="320" y="306" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 320 306)">STM32F405RGT6</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:9" data-field="value" x="216" y="100" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 216 100)">100 nF</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:10" data-field="value" x="246" y="100" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 246 100)">2.2 uF</text>
@@ -723,12 +723,12 @@
     <text class="symbol-field" data-symbol-instance="symbol_instance:16" data-field="value" x="220" y="200" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 220 200)">18 pF</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:17" data-field="value" x="230" y="216" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 230 216)">18 pF</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:18" data-field="value" x="328" y="68" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 328 68)">330 Ohm</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:19" data-field="reference" x="356" y="44" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 356 44)">D1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:19" data-field="reference" x="356" y="48" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 356 48)">D1</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:19" data-field="value" x="356" y="66" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 356 66)">Green LED</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:20" data-field="reference" x="436" y="46" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 436 46)">J3</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:21" data-field="reference" x="517" y="38" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 517 38)">U4</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:22" data-field="reference" x="440" y="160" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 440 160)">J4</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:23" data-field="reference" x="526" y="230" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 526 230)">J5</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:20" data-field="reference" x="436" y="50" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 436 50)">J3</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:21" data-field="reference" x="517" y="42" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 517 42)">U4</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:22" data-field="reference" x="440" y="164" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 440 164)">J4</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:23" data-field="reference" x="526" y="234" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 526 234)">J5</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:20" data-field="value" x="436" y="112" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 436 112)">USB Micro-B</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:21" data-field="value" x="517" y="114" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 517 114)">USBLC6-4SC6</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:22" data-field="value" x="440" y="229" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 440 229)">SWD 10-pin</text>

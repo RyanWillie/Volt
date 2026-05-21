@@ -163,71 +163,68 @@ def build_schematic(
             .label_value(loc="bottom", offset=14, align="end")
         )
 
-        ground = drawing.ground_stub(at=timer.GND, length=34)
+        ground = drawing.ground("GND", at=timer.GND, orient="Down")
 
         ra = (
             drawing.two_terminal(parts["RA"])
-            .at(timer.DISCH.left(42).up(28))
-            .to(timer.DISCH.left(42))
-            .label_ref()
-            .label_value()
+            .at(timer.DISCH.up(drawing.unit))
+            .to(timer.DISCH)
+            .label_ref(loc="left", offset=8)
+            .label_value(loc="left", offset=24)
         )
         rb = (
             drawing.two_terminal(parts["RB"])
-            .at(ra.end)
-            .toy(timer.TRIG)
-            .label_ref()
-            .label_value()
+            .at(timer.DISCH)
+            .toy(timer.THRESH)
+            .label_ref(loc="left", offset=8)
+            .label_value(loc="left", offset=22)
             .idot()
             .dot()
         )
         timing_cap = (
             drawing.two_terminal(parts["CT"])
-            .at(rb.end)
-            .toy(ground.port.pin)
-            .label_ref()
-            .label_value()
+            .at(timer.TRIG)
+            .toy(ground.pin)
+            .label_ref(loc="left", offset=8)
+            .label_value(loc="left", offset=22)
+            .idot()
             .dot()
         )
         control_cap = (
             drawing.two_terminal(parts["CCTRL"])
-            .at(timer.CTRL.right(30))
-            .toy(ground.port.pin)
-            .label_ref()
-            .label_value(loc="bottom", offset=10)
+            .at(timer.CTRL)
+            .toy(ground.pin)
+            .label_ref(loc="right", offset=8)
+            .label_value(loc="bottom", offset=8)
             .dot()
         )
         led_resistor = (
             drawing.two_terminal(parts["RLED"])
-            .at(timer.OUT.right(24))
+            .at(timer.OUT)
             .right()
-            .label_value(loc="top", offset=10)
+            .label_value(loc="top", offset=8)
         )
         led = (
             drawing.two_terminal(parts["DLED"])
             .reverse()
-            .toy(ground.port.pin)
+            .toy(ground.pin)
             .label_ref(loc="right", offset=14)
         )
 
-        drawing.power_stub("+5V", at=timer.VCC, length=20)
+        drawing.power_stub("+5V", at=timer.VCC)
         drawing.connect(timer.RESET, timer.VCC, shape="-").dot()
-        drawing.power_stub("+5V", at=ra.start, length=18)
+        drawing.power_stub("+5V", at=ra.start)
 
-        drawing.connect(timer.DISCH, rb.start, shape="-").idot()
-        drawing.connect(timer.THRESH, timer.TRIG, shape="-").idot()
-        drawing.connect(timer.TRIG, rb.end, shape="-").idot()
-        drawing.connect(timer.CTRL, control_cap.start, shape="-")
-        drawing.connect(timer.OUT, led_resistor.start, shape="-")
-        drawing.wire(nets["GND"]).at(timing_cap.end).tox(ground.port.pin).direct()
-        drawing.wire(nets["GND"]).at(control_cap.end).tox(ground.port.pin).direct()
-        drawing.wire(nets["GND"]).at(led.end).tox(ground.port.pin).direct()
+        drawing.connect(timer.THRESH, timer.TRIG, shape="-")
+        drawing.wire(nets["GND"]).at(timing_cap.end).tox(ground.pin).direct()
+        drawing.wire(nets["GND"]).at(control_cap.end).tox(ground.pin).direct()
+        drawing.wire(nets["GND"]).at(led.end).tox(ground.pin).direct()
 
         drawing.local_label(
             nets["TIMING"],
             at=timing_cap.start,
             side="Left",
-            offset=18,
+            offset=34,
             orient="Right",
         )
 

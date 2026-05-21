@@ -95,7 +95,7 @@ def test_python_schematic_writes_content_tight_body_svg():
     body_svg = schematic.to_body_svg(margin=2)
 
     assert body_svg.startswith('<svg xmlns="http://www.w3.org/2000/svg"')
-    assert 'viewBox="17.625 19.5 34.75 12.875"' in body_svg
+    assert 'viewBox="17.7 19.2 34.6 13.1"' in body_svg
     assert 'class="schematic-body"' in body_svg
     assert 'class="schematic-sheet"' not in body_svg
     assert 'class="document-background"' not in body_svg

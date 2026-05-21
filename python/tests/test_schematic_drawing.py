@@ -295,6 +295,59 @@ def test_python_schematic_builtin_two_terminal_symbols_do_not_embed_identity_tex
             for primitive in definition["primitives"]
             if primitive["type"] == "text"
         ] == []
+    assert [
+        primitive for primitive in built_in_definitions["volt.passives:resistor"]["primitives"]
+        if primitive["type"] == "rectangle"
+    ] == []
+    assert built_in_definitions["volt.passives:resistor"]["primitives"] == [
+        {
+            "type": "line",
+            "start": {"x": 0.0, "y": 0.0},
+            "end": {"x": 5.0, "y": 0.0},
+            "role": "TerminalLeadStart",
+        },
+        {
+            "type": "line",
+            "start": {"x": 5.0, "y": 0.0},
+            "end": {"x": 6.5, "y": -3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 6.5, "y": -3.0},
+            "end": {"x": 8.0, "y": 3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 8.0, "y": 3.0},
+            "end": {"x": 9.5, "y": -3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 9.5, "y": -3.0},
+            "end": {"x": 11.0, "y": 3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 11.0, "y": 3.0},
+            "end": {"x": 12.5, "y": -3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 12.5, "y": -3.0},
+            "end": {"x": 14.0, "y": 3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 14.0, "y": 3.0},
+            "end": {"x": 15.0, "y": 0.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 15.0, "y": 0.0},
+            "end": {"x": 20.0, "y": 0.0},
+            "role": "TerminalLeadEnd",
+        },
+    ]
 
     svg_texts = re.findall(r">([^<>]+)</text>", schematic.to_svg())
     assert not {"R", "C", "L", "D"} & set(svg_texts)
@@ -484,19 +537,19 @@ def test_python_schematic_generic_ic_symbol_builder_defaults_are_compact():
     )
 
     assert [pin._to_dict() for pin in symbol.pins] == [
-        {"name": "DISCH", "number": "7", "anchor": {"x": 0.0, "y": 8.0}, "orientation": "Left"},
-        {"name": "THRESH", "number": "6", "anchor": {"x": 0.0, "y": 16.0}, "orientation": "Left"},
-        {"name": "TRIG", "number": "2", "anchor": {"x": 0.0, "y": 24.0}, "orientation": "Left"},
-        {"name": "OUT", "number": "3", "anchor": {"x": 52.0, "y": 16.0}, "orientation": "Right"},
-        {"name": "CTRL", "number": "5", "anchor": {"x": 52.0, "y": 24.0}, "orientation": "Right"},
-        {"name": "RESET", "number": "4", "anchor": {"x": 22.0, "y": -6.0}, "orientation": "Up"},
-        {"name": "VCC", "number": "8", "anchor": {"x": 38.0, "y": -6.0}, "orientation": "Up"},
-        {"name": "GND", "number": "1", "anchor": {"x": 30.0, "y": 38.0}, "orientation": "Down"},
+        {"name": "DISCH", "number": "7", "anchor": {"x": 0.0, "y": 10.0}, "orientation": "Left"},
+        {"name": "THRESH", "number": "6", "anchor": {"x": 0.0, "y": 20.0}, "orientation": "Left"},
+        {"name": "TRIG", "number": "2", "anchor": {"x": 0.0, "y": 30.0}, "orientation": "Left"},
+        {"name": "OUT", "number": "3", "anchor": {"x": 62.0, "y": 20.0}, "orientation": "Right"},
+        {"name": "CTRL", "number": "5", "anchor": {"x": 62.0, "y": 30.0}, "orientation": "Right"},
+        {"name": "RESET", "number": "4", "anchor": {"x": 26.0, "y": -6.0}, "orientation": "Up"},
+        {"name": "VCC", "number": "8", "anchor": {"x": 46.0, "y": -6.0}, "orientation": "Up"},
+        {"name": "GND", "number": "1", "anchor": {"x": 36.0, "y": 46.0}, "orientation": "Down"},
     ]
     assert symbol.primitives[0] == {
         "type": "rectangle",
         "first_corner": {"x": 6.0, "y": 0.0},
-        "second_corner": {"x": 46.0, "y": 32.0},
+        "second_corner": {"x": 56.0, "y": 40.0},
     }
 
 

@@ -139,14 +139,14 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
           std::string::npos);
     CHECK(svg.find(".sheet-border{fill:none;stroke:#111;stroke-width:0.45}") != std::string::npos);
     CHECK(svg.find(".drawing-frame{fill:none;stroke:#111;stroke-width:0.35}") != std::string::npos);
-    CHECK(svg.find(".wire-run{fill:none;stroke:#111;stroke-width:0.75;stroke-linecap:round;"
+    CHECK(svg.find(".wire-run{fill:none;stroke:#111;stroke-width:0.6;stroke-linecap:round;"
                    "stroke-linejoin:round}") != std::string::npos);
     CHECK(svg.find(".symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;"
-                   "stroke:#111;stroke-width:0.7;stroke-linecap:round;"
+                   "stroke:#111;stroke-width:0.6;stroke-linecap:round;"
                    "stroke-linejoin:round}") != std::string::npos);
     CHECK(svg.find(".power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;"
-                   "stroke-width:0.55;stroke-linejoin:round}") != std::string::npos);
-    CHECK(svg.find(".net-label{font:2.5px sans-serif;fill:#111}") != std::string::npos);
+                   "stroke-width:0.5;stroke-linejoin:round}") != std::string::npos);
+    CHECK(svg.find(".net-label{font:2.8px sans-serif;fill:#111}") != std::string::npos);
     CHECK(svg.find("#0645ad") == std::string::npos);
     CHECK(svg.find("<polyline class=\"wire-run\" data-net=\"net:0\" points=\"10,20 30,20\"/>") !=
           std::string::npos);
@@ -174,7 +174,7 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     CHECK(svg.find("pin-label") == std::string::npos);
     CHECK(svg.find("<text class=\"reference\"") == std::string::npos);
     CHECK(svg.find(
-              "<circle class=\"junction\" data-net=\"net:0\" cx=\"30\" cy=\"20\" r=\"1.15\"/>") !=
+              "<circle class=\"junction\" data-net=\"net:0\" cx=\"30\" cy=\"20\" r=\"0.85\"/>") !=
           std::string::npos);
     CHECK(svg.find("<g class=\"power-port power\" data-net=\"net:0\"") != std::string::npos);
     CHECK(svg.find("<line class=\"power-port-line\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"-4.2\"/>") !=
@@ -254,7 +254,7 @@ TEST_CASE("Schematic SVG writer applies model-owned text presentation metadata")
 
     const auto svg = volt::io::write_schematic_svg(schematic);
 
-    CHECK(svg.find(".symbol-text{font:2.7px sans-serif;fill:#111}") != std::string::npos);
+    CHECK(svg.find(".symbol-text{font:3px sans-serif;fill:#111}") != std::string::npos);
     CHECK(svg.find("<text class=\"symbol-text\" x=\"2\" y=\"0\" text-anchor=\"start\" "
                    "dominant-baseline=\"middle\" style=\"font-size:3.25px\"") != std::string::npos);
     CHECK(svg.find("<text class=\"net-label\" data-net=\"net:0\" x=\"12\" y=\"16\" "
@@ -289,8 +289,8 @@ TEST_CASE("Schematic SVG writer exports a content-tight body without page chrome
     const auto body = volt::io::write_schematic_body_svg(schematic, sheet, options);
     const auto page = volt::io::write_schematic_sheet_svg(schematic, sheet);
 
-    CHECK(body.find("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"17.625 19.5 "
-                    "35.525 13.65\" width=\"35.525\" height=\"13.65\"") != std::string::npos);
+    CHECK(body.find("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"17.7 19.2 "
+                    "35.15 13.65\" width=\"35.15\" height=\"13.65\"") != std::string::npos);
     CHECK(body.find("<rect class=\"document-background\"") == std::string::npos);
     CHECK(body.find("class=\"sheet\"") == std::string::npos);
     CHECK(body.find("class=\"sheet-border\"") == std::string::npos);

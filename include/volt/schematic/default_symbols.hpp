@@ -32,10 +32,16 @@ inline void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name,
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "1", "1", "2", "2");
     symbol.add_primitive(
-        SymbolLine{Point{0.0, 0.0}, Point{4.0, 0.0}, SymbolLineRole::TerminalLeadStart});
-    symbol.add_primitive(SymbolRectangle{Point{4.0, -3.0}, Point{16.0, 3.0}});
+        SymbolLine{Point{0.0, 0.0}, Point{5.0, 0.0}, SymbolLineRole::TerminalLeadStart});
+    symbol.add_primitive(SymbolLine{Point{5.0, 0.0}, Point{6.5, -3.0}});
+    symbol.add_primitive(SymbolLine{Point{6.5, -3.0}, Point{8.0, 3.0}});
+    symbol.add_primitive(SymbolLine{Point{8.0, 3.0}, Point{9.5, -3.0}});
+    symbol.add_primitive(SymbolLine{Point{9.5, -3.0}, Point{11.0, 3.0}});
+    symbol.add_primitive(SymbolLine{Point{11.0, 3.0}, Point{12.5, -3.0}});
+    symbol.add_primitive(SymbolLine{Point{12.5, -3.0}, Point{14.0, 3.0}});
+    symbol.add_primitive(SymbolLine{Point{14.0, 3.0}, Point{15.0, 0.0}});
     symbol.add_primitive(
-        SymbolLine{Point{16.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
+        SymbolLine{Point{15.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     return symbol;
 }
 

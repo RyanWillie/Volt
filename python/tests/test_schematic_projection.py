@@ -465,14 +465,23 @@ def test_python_schematic_two_terminal_vertical_span_preserves_default_body_geom
     assert long.end.point == (80.0, 60.0)
     assert long.orientation == "Down"
     assert base_symbol["primitives"][0]["role"] == "TerminalLeadStart"
-    assert base_symbol["primitives"][2]["role"] == "TerminalLeadEnd"
-    assert _rect_size(base_symbol["primitives"][1]) == (12.0, 6.0)
-    assert _rect_size(stretched_symbol["primitives"][1]) == (12.0, 6.0)
+    assert base_symbol["primitives"][-1]["role"] == "TerminalLeadEnd"
+    assert not [
+        primitive
+        for primitive in base_symbol["primitives"]
+        if primitive["type"] == "rectangle"
+    ]
     assert stretched_symbol["primitives"][0] == volt.SchematicSymbolSpec.line(
-        (0, 0), (19, 0)
+        (0, 0), (20, 0)
     )
-    assert stretched_symbol["primitives"][2] == volt.SchematicSymbolSpec.line(
-        (31, 0), (50, 0)
+    assert stretched_symbol["primitives"][1] == volt.SchematicSymbolSpec.line(
+        (20, 0), (21.5, -3)
+    )
+    assert stretched_symbol["primitives"][-2] == volt.SchematicSymbolSpec.line(
+        (29, 3), (30, 0)
+    )
+    assert stretched_symbol["primitives"][-1] == volt.SchematicSymbolSpec.line(
+        (30, 0), (50, 0)
     )
 
 

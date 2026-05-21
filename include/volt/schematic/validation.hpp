@@ -36,8 +36,8 @@ inline constexpr double title_block_text_width_factor = 0.64;
 inline constexpr double rendered_text_width_factor = 0.56;
 inline constexpr double rendered_text_descent_factor = 0.25;
 inline constexpr double title_block_rendered_font_size = 2.5;
-inline constexpr double net_label_rendered_font_size = 2.5;
-inline constexpr double symbol_text_rendered_font_size = 2.7;
+inline constexpr double net_label_rendered_font_size = 2.8;
+inline constexpr double symbol_text_rendered_font_size = 3.0;
 inline constexpr double symbol_field_rendered_font_size = 2.5;
 inline constexpr double tag_stack_min_spacing = 6.0;
 inline constexpr double tag_stack_alignment_tolerance = 1.0;
@@ -1339,6 +1339,37 @@ inline void validate_port_tag_scale(const Schematic &schematic, SheetId sheet_id
            kind == ReadabilityObjectKind::SheetPort;
 }
 
+[[nodiscard]] inline bool terminal_marker_attaches_to_symbol_pin(const Schematic &schematic,
+                                                                 const ReadabilityObject &symbol,
+                                                                 const ReadabilityObject &object) {
+    if (object.kind != ReadabilityObjectKind::PowerPort) {
+        return false;
+    }
+
+    const auto symbol_id = SymbolInstanceId{symbol.entity.index()};
+    const auto port_id = PowerPortId{object.entity.index()};
+    const auto &instance = schematic.symbol_instance(symbol_id);
+    const auto &definition = schematic.symbol_definition(instance.symbol_definition());
+    const auto &port = schematic.power_port(port_id);
+    const auto &circuit = schematic.circuit();
+    for (const auto &symbol_pin : definition.pins()) {
+        const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
+        if (!pin.has_value()) {
+            continue;
+        }
+        const auto pin_net = circuit.net_of(pin.value());
+        if (!pin_net.has_value() || pin_net.value() != port.net()) {
+            continue;
+        }
+        const auto pin_point = transform_schematic_point(symbol_pin.anchor(), instance.position(),
+                                                         instance.orientation());
+        if (same_schematic_point(pin_point, port.position())) {
+            return true;
+        }
+    }
+    return false;
+}
+
 inline void validate_symbol_crowding(const Schematic &schematic, SheetId sheet_id,
                                      const Sheet &sheet, DiagnosticReport &report) {
     const auto objects = readability_objects_for_sheet(schematic, sheet);
@@ -1351,6 +1382,9 @@ inline void validate_symbol_crowding(const Schematic &schematic, SheetId sheet_i
         for (const auto &object : objects) {
             if (!label_or_tag_crowds_symbols(object.kind) ||
                 !intersects_bounds(symbol_clearance, object.bounds)) {
+                continue;
+            }
+            if (terminal_marker_attaches_to_symbol_pin(schematic, symbol, object)) {
                 continue;
             }
             crowded.push_back(&object);
