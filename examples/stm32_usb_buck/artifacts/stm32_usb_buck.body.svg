@@ -224,7 +224,7 @@
     <polyline class="wire-run" data-net="net:33" points="380,262 390,262"/>
     <polyline class="wire-run" data-net="net:20" points="218,72 218,56"/>
     <polyline class="wire-run" data-net="net:20" points="254,192 234,192"/>
-    <polyline class="wire-run" data-net="net:20" points="360,288 360,272"/>
+    <polyline class="wire-run" data-net="net:20" points="360,288 360,280"/>
     <polyline class="wire-run" data-net="net:21" points="218,92 218,110 248,110"/>
     <polyline class="wire-run" data-net="net:21" points="248,92 248,110"/>
     <polyline class="wire-run" data-net="net:21" points="278,92 278,110 248,110"/>
@@ -355,11 +355,11 @@
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
     </g>
     <text class="power-port-label" data-net="net:20" x="208.6" y="176">+3V3</text>
-    <g class="power-port power" data-net="net:20" transform="translate(360 272)">
+    <g class="power-port power" data-net="net:20" transform="translate(360 280)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
       <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
     </g>
-    <text class="power-port-label" data-net="net:20" x="388" y="234.6">+3V3</text>
+    <text class="power-port-label" data-net="net:20" x="338" y="292.6">+3V3</text>
     <g class="power-port ground" data-net="net:21" transform="translate(248 110)">
       <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
       <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>

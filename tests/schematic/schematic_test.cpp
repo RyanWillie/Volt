@@ -1412,6 +1412,30 @@ TEST_CASE("Schematic readability reports terminal markers touching unrelated wir
           entities.end());
 }
 
+TEST_CASE("Schematic readability reports terminal markers touching symbol bodies") {
+    volt::Circuit circuit;
+    const auto component = add_four_pin_component(circuit, "U1");
+    const auto power_net = circuit.add_net(volt::Net{volt::NetName{"+3V3"}, volt::NetKind::Power});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_four_pin_ic_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 40.0}});
+    const auto port = schematic.add_power_port(
+        sheet, volt::PowerPort{power_net, volt::PowerPortKind::Power, volt::Point{62.0, 55.0}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_TERMINAL_TOUCHES_SYMBOL");
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::power_port(port)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::symbol_instance(instance)) !=
+          entities.end());
+}
+
 TEST_CASE("Schematic readability reports different-net visual wire crossings") {
     volt::Circuit circuit;
     const auto first_net = add_named_net(circuit, "ROW");

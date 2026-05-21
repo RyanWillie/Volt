@@ -2072,6 +2072,30 @@ inline void validate_terminal_wire_collisions(const Schematic &schematic, SheetI
     }
 }
 
+inline void validate_terminal_symbol_collisions(const Schematic &schematic, SheetId sheet_id,
+                                                const Sheet &sheet, DiagnosticReport &report) {
+    for (const auto port_id : sheet.power_ports()) {
+        const auto &port = schematic.power_port(port_id);
+        const auto port_bounds = power_port_glyph_bounds(port);
+        for (const auto instance_id : sheet.symbol_instances()) {
+            const auto body_bounds = symbol_instance_body_bounds(schematic, instance_id);
+            if (!body_bounds.has_value() || !intersects_bounds(port_bounds, body_bounds.value())) {
+                continue;
+            }
+            report.add(Diagnostic{
+                Severity::Error,
+                DiagnosticCode{"SCHEMATIC_TERMINAL_TOUCHES_SYMBOL"},
+                "Schematic terminal marker touches or crosses a symbol body; move the marker away "
+                "from the component body",
+                std::vector{
+                    EntityRef::sheet(sheet_id), EntityRef::power_port(port_id),
+                    EntityRef::symbol_instance(instance_id), EntityRef::net(port.net()),
+                    EntityRef::component(schematic.symbol_instance(instance_id).component())},
+            });
+        }
+    }
+}
+
 [[nodiscard]] inline double wire_run_length(const WireRun &wire) noexcept {
     auto length = 0.0;
     for (std::size_t point_index = 1; point_index < wire.points().size(); ++point_index) {
@@ -2711,6 +2735,7 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         detail::validate_symbol_overlaps(schematic, sheet_id, sheet, report);
         detail::validate_wire_symbol_collisions(schematic, sheet_id, sheet, report);
         detail::validate_terminal_wire_collisions(schematic, sheet_id, sheet, report);
+        detail::validate_terminal_symbol_collisions(schematic, sheet_id, sheet, report);
         detail::validate_long_local_doglegs(schematic, sheet_id, sheet, report);
         detail::validate_misaligned_local_labels(schematic, sheet_id, sheet, report);
         detail::validate_ambiguous_same_net_crossings(schematic, sheet_id, sheet, report);

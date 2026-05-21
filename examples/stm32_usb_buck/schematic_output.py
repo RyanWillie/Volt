@@ -711,7 +711,7 @@ def _author_mcu_region(
             length=20,
             orient="Left",
         )
-        drawing.power_stub("+3V3", at=swboot.A, net=support_vdd, side="Up", length=16, orient="Up")
+        drawing.power_stub("+3V3", at=swboot.A, net=support_vdd, side="Up", length=8, orient="Up")
 
         decoupling_ground = drawing.ground("GND", net=support_gnd, at=cvcap1.end.down(18), orient="Down")
         for cap in (cvdd, cvcap1, cvcap2):

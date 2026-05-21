@@ -380,6 +380,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "SCHEMATIC_TEXT_TOUCHES_SYMBOL",
         "SCHEMATIC_TEXT_TOUCHES_WIRE",
         "SCHEMATIC_WIRE_CROSSES_SYMBOL",
+        "SCHEMATIC_TERMINAL_TOUCHES_SYMBOL",
         "SCHEMATIC_TERMINAL_TOUCHES_UNRELATED_WIRE",
         "SCHEMATIC_DIFFERENT_NET_WIRE_CROSSING",
     }.isdisjoint({diagnostic.code for diagnostic in readability_report})
