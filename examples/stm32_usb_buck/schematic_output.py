@@ -158,9 +158,9 @@ def _compact_swd_symbol() -> volt.SchematicSymbolSpec:
             for name, number, label in pin_rows
         ),
         width=50,
-        height=49,
+        height=67,
         lead_length=8,
-        pin_pitch=5,
+        pin_pitch=7,
         pin_label_offset=3,
         side_layouts=(volt.SchematicSymbolSpec.side_layout("left", pad=0),),
         pin_numbers=True,
@@ -181,7 +181,7 @@ def _readable_usb_micro_b_symbol() -> volt.SchematicSymbolSpec:
     return volt.SchematicSymbolSpec.block(
         "volt.examples.stm32_usb_buck:ReadableUSBMicroB",
         pins=(
-            volt.SchematicSymbolSpec.block_pin(name, number, side="left", slot=number, label=label)
+            volt.SchematicSymbolSpec.block_pin(name, number, side="right", slot=number, label=label)
             for name, number, label in pin_rows
         ),
         width=38,
@@ -189,7 +189,7 @@ def _readable_usb_micro_b_symbol() -> volt.SchematicSymbolSpec:
         lead_length=10,
         pin_pitch=8,
         pin_label_offset=3,
-        side_layouts=(volt.SchematicSymbolSpec.side_layout("left", pad=0),),
+        side_layouts=(volt.SchematicSymbolSpec.side_layout("right", pad=0),),
         pin_numbers=True,
         pin_number_offset=1,
         center_label="USB",
@@ -454,7 +454,7 @@ def _author_connectors_region(
 ) -> None:
     usb = board.modules["USB"]
     with region.drawing(unit=20) as drawing:
-        drawing.move(dx=12, dy=42)
+        drawing.move(dx=0, dy=42)
         usb_j = drawing.place(
             usb.component("J1"),
             symbol=_readable_usb_micro_b_symbol(),
@@ -462,7 +462,7 @@ def _author_connectors_region(
         )
         usb_esd = drawing.place(
             usb.component("U1"),
-            at=usb_j.VBUS.right(54).down(2),
+            at=usb_j.VBUS.right(16).down(2),
             symbol=_readable_usb_protection_symbol(),
             reference_label=_display_reference(usb.component("U1")),
         )
@@ -474,7 +474,7 @@ def _author_connectors_region(
             reference_label=_display_reference(board.components["J2"]),
         )
 
-        drawing.move_from(swd.nRESET.right(86).down(25))
+        drawing.move_from(swd.nRESET.right(54).down(25))
         gpio = drawing.place(
             board.components["J3"],
             symbol=_compact_connector_1x04_symbol(),
@@ -486,16 +486,15 @@ def _author_connectors_region(
         swd.label_value(loc="bottom", ofst=10, orient="Right")
         gpio.label_value(loc="bottom", ofst=10, orient="Right")
 
-        drawing.connect(usb_j.VBUS, usb_esd.VBUS, net=nets["USB/VBUS"], shape="-|", k=24)
-        drawing.connect(usb_j["D+"], usb_esd["I/O1"], net=nets["USB/USB_DP"], shape="-|", k=24)
-        drawing.connect(usb_j["D-"], usb_esd["I/O2"], net=nets["USB/USB_DM"], shape="-|", k=24)
-        drawing.signal_stubs(
+        drawing.connect(usb_j.VBUS, usb_esd.VBUS, net=nets["USB/VBUS"], shape="-|")
+        drawing.connect(usb_j["D+"], usb_esd["I/O1"], net=nets["USB/USB_DP"], shape="-|")
+        drawing.connect(usb_j["D-"], usb_esd["I/O2"], net=nets["USB/USB_DM"], shape="-|")
+        drawing.signal_tags(
             (
                 (nets["USB/MCU_USB_DP"], usb_esd["I/O4"], "USB D+"),
                 (nets["USB/MCU_USB_DM"], usb_esd["I/O3"], "USB D-"),
             ),
-            length=10,
-            orient="Right",
+            length=8,
         )
 
         usb_gnd = nets["USB/GND"]
@@ -511,11 +510,10 @@ def _author_connectors_region(
 
         for anchor in (swd.VTref, gpio[1]):
             drawing.power_stub("+3V3", at=anchor, net=nets["+3V3"], side="Up", length=24)
-        debug_ground = drawing.ground("GND", net=nets["GND"], at=swd[9].right(36).down(30), orient="Down")
         for anchor in (swd[3], swd[5], swd[9]):
-            drawing.connect(anchor, debug_ground, net=nets["GND"], shape="-|")
+            drawing.ground_stub("GND", at=anchor, net=nets["GND"], side="Left", length=10)
         drawing.ground_stub("GND", at=gpio[4], net=nets["GND"], side="Down", length=18)
-        drawing.signal_stubs(
+        drawing.signal_tags(
             (
                 (nets["SWDIO"], swd.SWDIO, "SWDIO"),
                 (nets["SWCLK"], swd.SWCLK, "SWCLK"),
@@ -524,15 +522,13 @@ def _author_connectors_region(
                 (nets["BOOT0"], swd.TDI, "BOOT0"),
             ),
             length=12,
-            orient="Right",
         )
-        drawing.signal_stub(
+        drawing.signal_tag(
             nets["BOOT0"],
             at=gpio[2],
             side="Left",
             length=10,
             label="BOOT0",
-            orient="Right",
         )
         drawing.no_connect(usb_j.ID, reason="USB ID not used")
         drawing.no_connect(swd.NC, reason="reserved debug pin not populated")
@@ -654,7 +650,7 @@ def _author_mcu_region(
             drawing.connect(anchor, mcu_ground, net=nets["GND"], shape="|-")
         drawing.junction(nets["GND"], at=mcu_ground)
 
-        drawing.signal_stubs(
+        drawing.signal_tags(
             (
                 (nets["MCU_USB_DM"], stm32.PA11, "USB D-"),
                 (nets["MCU_USB_DP"], stm32.PA12, "USB D+"),
@@ -664,7 +660,6 @@ def _author_mcu_region(
                 (nets["BOOT0"], stm32.BOOT0, "BOOT0"),
             ),
             length=10,
-            orient="Right",
         )
         for net, anchor, label in (
             (nets["STATUS_LED"], stm32.PC13, "LED"),

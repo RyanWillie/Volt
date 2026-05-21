@@ -600,6 +600,10 @@ inline void write_symbol_arc_svg(std::ostream &out, const SymbolArc &arc) {
     out << "\"/>\n";
 }
 
+[[nodiscard]] inline bool is_symbol_text(const SymbolPrimitive &primitive) {
+    return std::holds_alternative<SymbolText>(primitive);
+}
+
 inline void write_symbol_primitive_svg(std::ostream &out, const SymbolPrimitive &primitive) {
     if (std::holds_alternative<SymbolLine>(primitive)) {
         const auto &line = std::get<SymbolLine>(primitive);
@@ -689,6 +693,39 @@ inline void write_symbol_instance_svg(std::ostream &out, const Schematic &schema
     write_svg_number(out, orientation_degrees(instance.orientation()));
     out << ")\">\n";
     for (const auto &primitive : symbol.primitives()) {
+        if (is_symbol_text(primitive)) {
+            continue;
+        }
+        write_symbol_primitive_svg(out, primitive);
+    }
+    out << "    </g>\n";
+}
+
+inline void write_symbol_text_instance_svg(std::ostream &out, const Schematic &schematic,
+                                           SymbolInstanceId id) {
+    const auto &instance = schematic.symbol_instance(id);
+    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto has_text =
+        std::any_of(symbol.primitives().begin(), symbol.primitives().end(),
+                    [](const auto &primitive) { return is_symbol_text(primitive); });
+    if (!has_text) {
+        return;
+    }
+
+    out << "    <g class=\"symbol-text-instance\" data-component=\""
+        << svg_escape(svg_component_id(instance.component())) << "\" data-symbol-definition=\""
+        << svg_escape(svg_symbol_def_id(instance.symbol_definition()))
+        << "\" transform=\"translate(";
+    write_svg_number(out, instance.position().x());
+    out << ' ';
+    write_svg_number(out, instance.position().y());
+    out << ") rotate(";
+    write_svg_number(out, orientation_degrees(instance.orientation()));
+    out << ")\">\n";
+    for (const auto &primitive : symbol.primitives()) {
+        if (!is_symbol_text(primitive)) {
+            continue;
+        }
         write_symbol_primitive_svg(out, primitive);
     }
     out << "    </g>\n";
@@ -1494,6 +1531,11 @@ inline void write_sheet_svg(std::ostream &out, const Schematic &schematic, Sheet
         write_net_label_svg(out, schematic, label);
     }
     out << "    </g>\n";
+    out << "    <g class=\"layer layer-symbol-text\">\n";
+    for (const auto instance : sheet.symbol_instances()) {
+        write_symbol_text_instance_svg(out, schematic, instance);
+    }
+    out << "    </g>\n";
     out << "    <g class=\"layer layer-fields\">\n";
     for (const auto field : sheet.symbol_fields()) {
         write_symbol_field_svg(out, schematic, field);
@@ -1547,6 +1589,11 @@ inline void write_body_content_layers_svg(std::ostream &out, const Schematic &sc
     out << "    <g class=\"layer layer-labels\">\n";
     for (const auto label : sheet.net_labels()) {
         write_net_label_svg(out, schematic, label);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-symbol-text\">\n";
+    for (const auto instance : sheet.symbol_instances()) {
+        write_symbol_text_instance_svg(out, schematic, instance);
     }
     out << "    </g>\n";
     out << "    <g class=\"layer layer-fields\">\n";

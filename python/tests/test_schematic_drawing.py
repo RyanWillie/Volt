@@ -884,6 +884,60 @@ def test_python_schematic_local_signal_stub_sugar_emits_wire_and_label_only():
     assert 'class="sheet-port off-page"' not in svg
 
 
+def test_python_schematic_signal_tag_sugar_emits_short_wire_and_port_tag():
+    design = volt.Design("schematic-signal-tag")
+    sig = design.net("USB/MCU_USB_DP")
+    probe = design.test_point(ref="TP1")
+    sig += probe["TP"]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(at=(40, 40), unit=20) as drawing:
+        placed = drawing.place(probe)
+        tag = drawing.signal_tag(
+            sig,
+            at=placed.TP,
+            side="right",
+            length=6,
+            label="USB D+",
+        )
+
+    projection = json.loads(schematic.to_json())
+
+    assert design.to_json() == logical_before
+    assert tag.start.point == (40.0, 40.0)
+    assert tag.end.point == (46.0, 40.0)
+    assert tag.port.pin.point == (46.0, 40.0)
+    assert projection["net_labels"] == []
+    assert projection["wire_runs"] == [
+        {
+            "id": "wire_run:0",
+            "sheet": "sheet:0",
+            "net": f"net:{sig.index}",
+            "points": [{"x": 40.0, "y": 40.0}, {"x": 46.0, "y": 40.0}],
+            "route_intent": "Direct",
+        }
+    ]
+    assert projection["sheet_ports"] == [
+        {
+            "id": "sheet_port:0",
+            "sheet": "sheet:0",
+            "net": f"net:{sig.index}",
+            "name": "USB D+",
+            "kind": "Bidirectional",
+            "position": {"x": 46.0, "y": 40.0},
+            "orientation": "Right",
+        }
+    ]
+
+    svg = schematic.to_svg()
+    assert f'<polyline class="wire-run" data-net="net:{sig.index}" points="40,40 46,40"/>' in svg
+    assert f'<g class="sheet-port bidirectional" data-net="net:{sig.index}"' in svg
+    assert ">USB D+</text>" in svg
+    assert ">USB/MCU_USB_DP</text>" not in svg
+
+
 def test_python_schematic_local_label_and_aligned_signal_stubs_are_side_aware():
     design = volt.Design("schematic-local-signal-stub-column")
     swdio = design.net("SWDIO")

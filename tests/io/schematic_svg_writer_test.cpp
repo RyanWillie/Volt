@@ -212,13 +212,15 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     const auto junctions = require_contains(svg, "<g class=\"layer layer-junctions\">");
     const auto ports = require_contains(svg, "<g class=\"layer layer-ports\">");
     const auto labels = require_contains(svg, "<g class=\"layer layer-labels\">");
+    const auto symbol_text = require_contains(svg, "<g class=\"layer layer-symbol-text\">");
     const auto fields = require_contains(svg, "<g class=\"layer layer-fields\">");
     CHECK(regions < symbols);
     CHECK(symbols < wires);
     CHECK(wires < junctions);
     CHECK(junctions < ports);
     CHECK(ports < labels);
-    CHECK(labels < fields);
+    CHECK(labels < symbol_text);
+    CHECK(symbol_text < fields);
     CHECK(svg.find("layer-debug") == std::string::npos);
 }
 
