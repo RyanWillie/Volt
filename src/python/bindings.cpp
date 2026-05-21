@@ -23,6 +23,7 @@
 #include <volt/io/schematic_svg_writer.hpp>
 #include <volt/io/schematic_writer.hpp>
 #include <volt/schematic/default_symbols.hpp>
+#include <volt/schematic/layout.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/schematic_document.hpp>
 #include <volt/schematic/symbols.hpp>
@@ -1746,18 +1747,21 @@ class PyCircuit {
     }
 
     [[nodiscard]] std::string schematic_to_json() {
+        volt::layout_schematic_text(schematic_projection());
         auto out = std::ostringstream{};
         volt::io::write_schematic(out, schematic_document_);
         return out.str();
     }
 
     [[nodiscard]] std::string schematic_to_svg() {
+        volt::layout_schematic_text(schematic_projection());
         auto out = std::ostringstream{};
         volt::io::write_schematic_svg(out, schematic_projection());
         return out.str();
     }
 
     [[nodiscard]] std::string schematic_to_body_svg(std::size_t sheet, double margin) {
+        volt::layout_schematic_text(schematic_projection());
         auto options = volt::io::SchematicSvgBodyOptions{};
         options.margin = margin;
         auto out = std::ostringstream{};
@@ -1766,6 +1770,7 @@ class PyCircuit {
     }
 
     [[nodiscard]] py::list schematic_svg_pages() {
+        volt::layout_schematic_text(schematic_projection());
         auto result = py::list{};
         for (const auto &page : volt::io::write_schematic_svg_pages(schematic_projection())) {
             auto item = py::dict{};
@@ -1800,6 +1805,7 @@ class PyCircuit {
     }
 
     [[nodiscard]] py::list validate_schematic_readability() {
+        volt::layout_schematic_text(schematic_projection());
         return diagnostics_to_list(volt::validate_schematic_readability(schematic_projection()));
     }
 

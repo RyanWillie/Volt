@@ -546,9 +546,11 @@ class NetLabel {
              SchematicOrientation orientation = SchematicOrientation::Right,
              std::optional<std::size_t> authored_region = std::nullopt,
              std::optional<std::string> label = std::nullopt,
-             SchematicTextStyle style = SchematicTextStyle{TextHorizontalAlignment::Start})
+             SchematicTextStyle style = SchematicTextStyle{TextHorizontalAlignment::Start},
+             std::optional<Point> text_position = std::nullopt)
         : net_{net}, position_{position}, orientation_{orientation},
-          authored_region_{authored_region}, label_{std::move(label)}, style_{style} {
+          authored_region_{authored_region}, label_{std::move(label)}, style_{style},
+          text_position_{text_position} {
         if (label_ && label_->empty()) {
             throw std::invalid_argument{"Net label display text must not be empty"};
         }
@@ -559,6 +561,19 @@ class NetLabel {
 
     /** Return the label anchor position. */
     [[nodiscard]] Point position() const noexcept { return position_; }
+
+    /** Return the rendered text position, falling back to the anchor position. */
+    [[nodiscard]] Point text_position() const noexcept {
+        return text_position_.value_or(position_);
+    }
+
+    /** Return the optional explicit rendered text position. */
+    [[nodiscard]] const std::optional<Point> &explicit_text_position() const noexcept {
+        return text_position_;
+    }
+
+    /** Move rendered label text without changing the anchor or logical net it names. */
+    void move_text_to(Point position) noexcept { text_position_ = position; }
 
     /** Return the label orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
@@ -581,6 +596,7 @@ class NetLabel {
     std::optional<std::size_t> authored_region_;
     std::optional<std::string> label_;
     SchematicTextStyle style_;
+    std::optional<Point> text_position_;
 };
 
 /** An explicit junction dot over an existing logical net. */
@@ -620,9 +636,11 @@ class PowerPort {
     PowerPort(NetId net, PowerPortKind kind, Point position,
               SchematicOrientation orientation = SchematicOrientation::Up,
               std::optional<std::size_t> authored_region = std::nullopt,
-              std::optional<std::string> label = std::nullopt)
+              std::optional<std::string> label = std::nullopt,
+              std::optional<Point> label_position = std::nullopt)
         : net_{net}, kind_{kind}, position_{position}, orientation_{orientation},
-          authored_region_{authored_region}, label_{std::move(label)} {
+          authored_region_{authored_region}, label_{std::move(label)},
+          label_position_{label_position} {
         if (label_.has_value() && label_->empty()) {
             throw std::invalid_argument{"Schematic power port label must not be empty"};
         }
@@ -648,6 +666,14 @@ class PowerPort {
     /** Return the optional presentation label used instead of the logical net name. */
     [[nodiscard]] const std::optional<std::string> &label() const noexcept { return label_; }
 
+    /** Return optional explicit rendered label position. */
+    [[nodiscard]] const std::optional<Point> &explicit_label_position() const noexcept {
+        return label_position_;
+    }
+
+    /** Move rendered marker label text without changing the marker anchor or logical net. */
+    void move_label_to(Point position) noexcept { label_position_ = position; }
+
   private:
     NetId net_;
     PowerPortKind kind_;
@@ -655,6 +681,7 @@ class PowerPort {
     SchematicOrientation orientation_;
     std::optional<std::size_t> authored_region_;
     std::optional<std::string> label_;
+    std::optional<Point> label_position_;
 };
 
 /** A schematic no-connect marker tied to an existing concrete pin. */
@@ -774,6 +801,9 @@ class SymbolField {
 
     /** Return the field anchor position. */
     [[nodiscard]] Point position() const noexcept { return position_; }
+
+    /** Move the rendered field anchor without changing the owning symbol or field value. */
+    void move_to(Point position) noexcept { position_ = position; }
 
     /** Return the field orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
@@ -1006,11 +1036,21 @@ class Schematic {
     /** Return a net label by ID. */
     [[nodiscard]] const NetLabel &net_label(NetLabelId id) const { return net_labels_.get(id); }
 
+    /** Move net label text without changing its presentation anchor. */
+    void move_net_label_text(NetLabelId id, Point position) {
+        net_labels_.get(id).move_text_to(position);
+    }
+
     /** Return an explicit junction by ID. */
     [[nodiscard]] const Junction &junction(JunctionId id) const { return junctions_.get(id); }
 
     /** Return a power or ground port by ID. */
     [[nodiscard]] const PowerPort &power_port(PowerPortId id) const { return power_ports_.get(id); }
+
+    /** Move power or ground marker label text without changing the marker anchor. */
+    void move_power_port_label(PowerPortId id, Point position) {
+        power_ports_.get(id).move_label_to(position);
+    }
 
     /** Return a no-connect marker by ID. */
     [[nodiscard]] const NoConnectMarker &no_connect_marker(NoConnectMarkerId id) const {
@@ -1023,6 +1063,11 @@ class Schematic {
     /** Return a placed symbol field by ID. */
     [[nodiscard]] const SymbolField &symbol_field(SymbolFieldId id) const {
         return symbol_fields_.get(id);
+    }
+
+    /** Move a symbol field presentation anchor. */
+    void move_symbol_field(SymbolFieldId id, Point position) {
+        symbol_fields_.get(id).move_to(position);
     }
 
     /** Return the logical circuit this schematic projection references. */

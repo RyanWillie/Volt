@@ -99,14 +99,19 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert all(region["style"] == {"border": "dashed"} for region in sheet["regions"])
     assert len(schematic["symbol_instances"]) >= 10
     assert len(schematic["wire_runs"]) >= 20
-    assert 12 <= len(schematic["net_labels"]) <= 40
+    assert 1 <= len(schematic["net_labels"]) <= 10
     assert 8 <= len(schematic["power_ports"]) <= 32
-    assert schematic["sheet_ports"] == []
+    assert len(schematic["sheet_ports"]) == 25
+    assert {
+        port["name"] for port in schematic["sheet_ports"]
+    } >= {"USB D+", "USB D-", "SWDIO", "SWCLK", "SWO", "BOOT0", "VCAP1", "VCAP2"}
+    assert {port["kind"] for port in schematic["sheet_ports"]} == {"Bidirectional"}
     assert len(schematic["no_connect_markers"]) <= 6
     assert {instance["component"] for instance in schematic["symbol_instances"]} <= component_ids
     assert {wire["net"] for wire in schematic["wire_runs"]} <= net_ids
     assert {label["net"] for label in schematic["net_labels"]} <= net_ids
     assert {port["net"] for port in schematic["power_ports"]} <= net_ids
+    assert {port["net"] for port in schematic["sheet_ports"]} <= net_ids
     assert {
         marker["pin"] for marker in schematic["no_connect_markers"]
     } <= {pin["id"] for pin in logical["pins"]}
@@ -239,7 +244,9 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "drawing.R(" not in schematic_source
     assert "drawing.LED(" not in schematic_source
     assert "drawing.connect(" in schematic_source
-    assert "drawing.signal_stub(" in schematic_source
+    assert "drawing.signal_tag(" in schematic_source
+    assert "drawing.signal_tags(" in schematic_source
+    assert "drawing.signal_stub(" not in authoring_source
     assert "drawing.no_connect(" in schematic_source
     assert "shape=" in schematic_source
     assert 'name="value"' not in schematic_source
@@ -313,6 +320,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     wire_or_port_net_ids = {
         *(wire["net"] for wire in schematic["wire_runs"]),
         *(port["net"] for port in schematic["power_ports"]),
+        *(port["net"] for port in schematic["sheet_ports"]),
     }
     labelled_only_multi_pin_nets = {
         label["net"]
@@ -366,6 +374,17 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "SCHEMATIC_DANGLING_WIRE_ENDPOINT" not in {
         diagnostic.code for diagnostic in readability_report
     }
+    assert {
+        "SCHEMATIC_SYMBOL_OVERLAP",
+        "SCHEMATIC_TEXT_COLLISION",
+        "SCHEMATIC_TEXT_TOUCHES_SYMBOL",
+        "SCHEMATIC_TEXT_TOUCHES_WIRE",
+        "SCHEMATIC_VISUAL_COLLISION",
+        "SCHEMATIC_WIRE_CROSSES_SYMBOL",
+        "SCHEMATIC_TERMINAL_TOUCHES_SYMBOL",
+        "SCHEMATIC_TERMINAL_TOUCHES_UNRELATED_WIRE",
+        "SCHEMATIC_DIFFERENT_NET_WIRE_CROSSING",
+    }.isdisjoint({diagnostic.code for diagnostic in readability_report})
     board = main.build_board()
     logical_before_schematic = board.design.to_json()
     main.build_schematic(board)
@@ -394,6 +413,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "VCAP_" not in first_svg_text
     assert 'class="power-port power"' in first_svg_text
     assert 'class="power-port ground"' in first_svg_text
+    assert 'class="sheet-port bidirectional"' in first_svg_text
     assert 'class="sheet-port off-page"' not in first_svg_text
     assert "data-net=\"net:" in first_svg_text
     assert 'class="title-block"' in first_svg_text
@@ -488,5 +508,6 @@ def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():
     assert "drawing.LED(" not in source
     assert "drawing.connect(" in source
     assert "drawing.net_label(" in source
-    assert "drawing.signal_stub(" in source
+    assert "drawing.signal_tag(" in source
+    assert "drawing.signal_stub(" not in authoring_source
     assert "drawing.no_connect(" in source

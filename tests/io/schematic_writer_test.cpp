@@ -131,12 +131,15 @@ TEST_CASE("Schematic writer emits optional net label display text") {
     [[maybe_unused]] const auto label = schematic.add_net_label(
         volt::SheetId{0},
         volt::NetLabel{net, volt::Point{12.0, 16.0}, volt::SchematicOrientation::Right,
-                       std::nullopt, std::string{"SWDIO"}});
+                       std::nullopt, std::string{"SWDIO"},
+                       volt::SchematicTextStyle{volt::TextHorizontalAlignment::Start},
+                       volt::Point{18.0, 14.0}});
 
     const auto output = nlohmann::json::parse(volt::io::write_schematic(schematic));
 
     CHECK(output["net_labels"][0]["net"] == "net:0");
     CHECK(output["net_labels"][0]["label"] == "SWDIO");
+    CHECK(output["net_labels"][0]["text_position"] == nlohmann::json({{"x", 18.0}, {"y", 14.0}}));
 }
 
 TEST_CASE("Schematic writer emits explicit text presentation metadata") {
@@ -208,7 +211,9 @@ TEST_CASE("Schematic writer emits professional primitives and sheet metadata") {
     [[maybe_unused]] const auto junction =
         schematic.add_junction(sheet, volt::Junction{vcc, volt::Point{30.0, 20.0}});
     [[maybe_unused]] const auto power = schematic.add_power_port(
-        sheet, volt::PowerPort{vcc, volt::PowerPortKind::Power, volt::Point{10.0, 16.0}});
+        sheet, volt::PowerPort{vcc, volt::PowerPortKind::Power, volt::Point{10.0, 16.0},
+                               volt::SchematicOrientation::Up, std::nullopt, std::nullopt,
+                               volt::Point{12.0, 8.0}});
     [[maybe_unused]] const auto ground = schematic.add_power_port(
         sheet, volt::PowerPort{gnd, volt::PowerPortKind::Ground, volt::Point{50.0, 24.0}});
     [[maybe_unused]] const auto marker = schematic.add_no_connect_marker(
@@ -239,6 +244,7 @@ TEST_CASE("Schematic writer emits professional primitives and sheet metadata") {
     CHECK(output["junctions"][0]["net"] == "net:0");
     CHECK(output["junctions"][0]["position"] == nlohmann::json({{"x", 30.0}, {"y", 20.0}}));
     CHECK(output["power_ports"][0]["kind"] == "Power");
+    CHECK(output["power_ports"][0]["label_position"] == nlohmann::json({{"x", 12.0}, {"y", 8.0}}));
     CHECK(output["power_ports"][1]["kind"] == "Ground");
     CHECK(output["no_connect_markers"][0]["pin"] == "pin:1");
     CHECK(output["no_connect_markers"][0]["reason"] == "not populated");

@@ -279,7 +279,7 @@ def test_python_schematic_drawing_annotation_helpers_stay_presentation_only():
         drawing.net_label(swdio, at=placed.SWDIO.left(10), orient="right")
         drawing.off_page("SWDIO", at=placed.SWDIO.left(20), orient="left")
         drawing.sheet_port("SWDIO_IN", net=swdio, at=placed.SWDIO.left(30), kind="Input")
-        drawing.no_connect(placed.NC, reason="test pad not populated")
+        drawing.no_connect(placed.NC, orient="left", offset=6, reason="test pad not populated")
 
     projection = json.loads(schematic.to_json())
     logical = json.loads(design.to_json())
@@ -293,6 +293,8 @@ def test_python_schematic_drawing_annotation_helpers_stay_presentation_only():
     assert projection["sheet_ports"][1]["name"] == "SWDIO_IN"
     assert projection["sheet_ports"][1]["kind"] == "Input"
     assert projection["no_connect_markers"][0]["pin"] == f"pin:{placed.NC.pin.index}"
+    assert projection["no_connect_markers"][0]["position"] == {"x": 54.0, "y": 40.0}
+    assert projection["no_connect_markers"][0]["orientation"] == "Left"
     assert projection["no_connect_markers"][0]["reason"] == "test pad not populated"
 
 def test_python_schematic_two_terminal_between_anchors_is_generic_and_presentation_only():
@@ -387,10 +389,10 @@ def test_python_schematic_two_terminal_horizontal_span_stretches_only_explicit_l
     assert _rect_size(base_symbol["primitives"][1]) == (12.0, 4.0)
     assert _rect_size(stretched_symbol["primitives"][1]) == (12.0, 4.0)
     assert stretched_symbol["primitives"][0] == volt.SchematicSymbolSpec.line(
-        (0, 0), (14, 0)
+        (0, 0), (14, 0), role="TerminalLeadStart"
     )
     assert stretched_symbol["primitives"][2] == volt.SchematicSymbolSpec.line(
-        (26, 0), (40, 0)
+        (26, 0), (40, 0), role="TerminalLeadEnd"
     )
 
 
@@ -465,14 +467,23 @@ def test_python_schematic_two_terminal_vertical_span_preserves_default_body_geom
     assert long.end.point == (80.0, 60.0)
     assert long.orientation == "Down"
     assert base_symbol["primitives"][0]["role"] == "TerminalLeadStart"
-    assert base_symbol["primitives"][2]["role"] == "TerminalLeadEnd"
-    assert _rect_size(base_symbol["primitives"][1]) == (12.0, 6.0)
-    assert _rect_size(stretched_symbol["primitives"][1]) == (12.0, 6.0)
+    assert base_symbol["primitives"][-1]["role"] == "TerminalLeadEnd"
+    assert not [
+        primitive
+        for primitive in base_symbol["primitives"]
+        if primitive["type"] == "rectangle"
+    ]
     assert stretched_symbol["primitives"][0] == volt.SchematicSymbolSpec.line(
-        (0, 0), (19, 0)
+        (0, 0), (20, 0), role="TerminalLeadStart"
     )
-    assert stretched_symbol["primitives"][2] == volt.SchematicSymbolSpec.line(
-        (31, 0), (50, 0)
+    assert stretched_symbol["primitives"][1] == volt.SchematicSymbolSpec.line(
+        (20, 0), (21.5, -3)
+    )
+    assert stretched_symbol["primitives"][-2] == volt.SchematicSymbolSpec.line(
+        (29, 3), (30, 0)
+    )
+    assert stretched_symbol["primitives"][-1] == volt.SchematicSymbolSpec.line(
+        (30, 0), (50, 0), role="TerminalLeadEnd"
     )
 
 

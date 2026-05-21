@@ -158,7 +158,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert schematic["sheet_ports"] == []
     assert schematic["no_connect_markers"] == []
     assert len(schematic["symbol_instances"]) == 7
-    assert len(schematic["wire_runs"]) >= 12
+    assert len(schematic["wire_runs"]) == 7
 
     field_values = {field["value"] for field in schematic["symbol_fields"]}
     assert {
@@ -198,14 +198,14 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         )
         for port in schematic["power_ports"]
     ]
-    assert ("Power", "+5V", 178, 54) in terminal_positions
-    assert ("Ground", "GND", 170, 152) in terminal_positions
+    assert ("Power", "+5V", 186, 66) in terminal_positions
+    assert ("Ground", "GND", 176, 126) in terminal_positions
     plus_5v_wire_points = [
         [(point["x"], point["y"]) for point in wire["points"]]
         for wire in schematic["wire_runs"]
         if net_names_by_id[wire["net"]] == "+5V"
     ]
-    assert [(162, 74), (178, 74)] in plus_5v_wire_points
+    assert [(166, 74), (186, 74)] in plus_5v_wire_points
 
     svg_text = first_texts["svg"]
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in svg_text
@@ -276,7 +276,7 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
     source = inspect.getsource(main.build_schematic)
 
     assert ".two_terminal(" in source
-    assert ".endpoints(" in source
+    assert "drawing.connect(" in source
     assert ".to(" in source
     assert ".toy(" in source
     assert ".tox(" in source
@@ -284,8 +284,9 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
     assert ".idot()" in source
     assert "drawing.local_label(" in source
     assert "drawing.power_stub(" in source
-    assert "drawing.ground_stub(" in source
+    assert "drawing.ground(" in source
     assert "drawing.wire(nets[" in source
+    assert ".endpoints(" not in source
     assert "drawing.node(" not in source
     assert ".between(" not in source
     assert "drawing.ortho_lines(" not in source
@@ -294,4 +295,6 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
     assert "drawing.R(" not in source
     assert "drawing.C(" not in source
     assert "drawing.LED(" not in source
+    assert ".at(led_resistor.end.right(" not in source
+    assert "drawing.connect(led_resistor.end, led.start" not in source
     assert "ofst=" not in source

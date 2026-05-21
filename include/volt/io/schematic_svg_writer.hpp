@@ -75,15 +75,15 @@ struct SchematicSvgVisualScale {
     /** Functional-region frame stroke width. */
     double region_frame_stroke_width = 0.35;
     /** Logical wire stroke width. */
-    double wire_stroke_width = 0.75;
+    double wire_stroke_width = 0.6;
     /** Symbol primitive stroke width. */
-    double symbol_stroke_width = 0.7;
+    double symbol_stroke_width = 0.6;
     /** Sheet, power, and ground tag stroke width. */
-    double tag_port_stroke_width = 0.55;
+    double tag_port_stroke_width = 0.5;
     /** No-connect marker stroke width. */
-    double no_connect_stroke_width = 0.65;
+    double no_connect_stroke_width = 0.55;
     /** Junction dot radius. */
-    double junction_radius = 1.15;
+    double junction_radius = 0.85;
     /** Coordinate-zone label font size. */
     double coordinate_zone_font_size = 3.0;
     /** Title-block font size. */
@@ -91,11 +91,11 @@ struct SchematicSvgVisualScale {
     /** Functional-region title font size. */
     double region_title_font_size = 3.2;
     /** Local net label font size. */
-    double net_label_font_size = 2.5;
+    double net_label_font_size = 2.8;
     /** Sheet, power, and ground tag label font size. */
     double tag_port_label_font_size = 2.45;
     /** Symbol primitive text font size. */
-    double symbol_text_font_size = 2.7;
+    double symbol_text_font_size = 3.0;
     /** Symbol field/value font size. */
     double symbol_field_font_size = 2.5;
     /** Debug pin anchor radius. */
@@ -600,6 +600,10 @@ inline void write_symbol_arc_svg(std::ostream &out, const SymbolArc &arc) {
     out << "\"/>\n";
 }
 
+[[nodiscard]] inline bool is_symbol_text(const SymbolPrimitive &primitive) {
+    return std::holds_alternative<SymbolText>(primitive);
+}
+
 inline void write_symbol_primitive_svg(std::ostream &out, const SymbolPrimitive &primitive) {
     if (std::holds_alternative<SymbolLine>(primitive)) {
         const auto &line = std::get<SymbolLine>(primitive);
@@ -689,6 +693,39 @@ inline void write_symbol_instance_svg(std::ostream &out, const Schematic &schema
     write_svg_number(out, orientation_degrees(instance.orientation()));
     out << ")\">\n";
     for (const auto &primitive : symbol.primitives()) {
+        if (is_symbol_text(primitive)) {
+            continue;
+        }
+        write_symbol_primitive_svg(out, primitive);
+    }
+    out << "    </g>\n";
+}
+
+inline void write_symbol_text_instance_svg(std::ostream &out, const Schematic &schematic,
+                                           SymbolInstanceId id) {
+    const auto &instance = schematic.symbol_instance(id);
+    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+    const auto has_text =
+        std::any_of(symbol.primitives().begin(), symbol.primitives().end(),
+                    [](const auto &primitive) { return is_symbol_text(primitive); });
+    if (!has_text) {
+        return;
+    }
+
+    out << "    <g class=\"symbol-text-instance\" data-component=\""
+        << svg_escape(svg_component_id(instance.component())) << "\" data-symbol-definition=\""
+        << svg_escape(svg_symbol_def_id(instance.symbol_definition()))
+        << "\" transform=\"translate(";
+    write_svg_number(out, instance.position().x());
+    out << ' ';
+    write_svg_number(out, instance.position().y());
+    out << ") rotate(";
+    write_svg_number(out, orientation_degrees(instance.orientation()));
+    out << ")\">\n";
+    for (const auto &primitive : symbol.primitives()) {
+        if (!is_symbol_text(primitive)) {
+            continue;
+        }
         write_symbol_primitive_svg(out, primitive);
     }
     out << "    </g>\n";
@@ -735,20 +772,21 @@ inline void write_net_label_svg(std::ostream &out, const Schematic &schematic, N
     const auto &label = schematic.net_label(id);
     const auto &net = schematic.circuit().net(label.net());
     const auto &text = label.label().value_or(net.name().value());
+    const auto text_position = label.text_position();
 
     out << "    <text class=\"net-label\" data-net=\"" << svg_escape(svg_net_id(label.net()))
         << "\" x=\"";
-    write_svg_number(out, label.position().x());
+    write_svg_number(out, text_position.x());
     out << "\" y=\"";
-    write_svg_number(out, label.position().y());
+    write_svg_number(out, text_position.y());
     out << '"';
     write_text_presentation_attributes(out, label.style());
     out << " transform=\"rotate(";
     write_svg_number(out, orientation_degrees(label.orientation()));
     out << ' ';
-    write_svg_number(out, label.position().x());
+    write_svg_number(out, text_position.x());
     out << ' ';
-    write_svg_number(out, label.position().y());
+    write_svg_number(out, text_position.y());
     out << ")\">" << svg_escape(text) << "</text>\n";
 }
 
@@ -810,15 +848,26 @@ inline void write_power_port_svg(std::ostream &out, const Schematic &schematic, 
         write_svg_number(out, power_port_stem_length);
         out << " Z\"/>\n";
     }
-    const auto label_y =
-        port.kind() == PowerPortKind::Ground ? ground_port_label_offset : -power_port_label_offset;
-    out << "      <text class=\"power-port-label\" x=\"0\" y=\"";
-    write_svg_number(out, label_y);
-    out << "\"";
-    write_upright_text_transform_degrees(out, glyph_degrees, Point{0.0, label_y});
     const auto port_label = port.label().value_or(net.name().value());
-    out << ">" << svg_escape(port_label) << "</text>\n";
+    if (!port.explicit_label_position()) {
+        const auto label_y = port.kind() == PowerPortKind::Ground ? ground_port_label_offset
+                                                                  : -power_port_label_offset;
+        out << "      <text class=\"power-port-label\" x=\"0\" y=\"";
+        write_svg_number(out, label_y);
+        out << "\"";
+        write_upright_text_transform_degrees(out, glyph_degrees, Point{0.0, label_y});
+        out << ">" << svg_escape(port_label) << "</text>\n";
+    }
     out << "    </g>\n";
+    if (port.explicit_label_position()) {
+        const auto label_position = *port.explicit_label_position();
+        out << "    <text class=\"power-port-label\" data-net=\""
+            << svg_escape(svg_net_id(port.net())) << "\" x=\"";
+        write_svg_number(out, label_position.x());
+        out << "\" y=\"";
+        write_svg_number(out, label_position.y());
+        out << "\">" << svg_escape(port_label) << "</text>\n";
+    }
 }
 
 inline void write_no_connect_marker_svg(std::ostream &out, const Schematic &schematic,
@@ -1013,7 +1062,8 @@ power_port_bounds_orientation(PowerPortKind kind, SchematicOrientation orientati
                                                        std::string_view label) {
     const auto label_y =
         port.kind() == PowerPortKind::Ground ? ground_port_label_offset : -power_port_label_offset;
-    return text_bounds(transformed_power_port_anchor(port, Point{0.0, label_y}),
+    return text_bounds(port.explicit_label_position().value_or(
+                           transformed_power_port_anchor(port, Point{0.0, label_y})),
                        SchematicOrientation::Right, label, SchematicTextStyle{},
                        schematic_svg_visual_scale.tag_port_label_font_size);
 }
@@ -1105,7 +1155,7 @@ sheet_content_bounds(const Schematic &schematic, SheetId sheet_id,
     for (const auto label_id : sheet.net_labels()) {
         const auto &label = schematic.net_label(label_id);
         const auto &net = schematic.circuit().net(label.net());
-        include(text_bounds(label.position(), label.orientation(),
+        include(text_bounds(label.text_position(), label.orientation(),
                             label.label().value_or(net.name().value()), label.style(),
                             schematic_svg_visual_scale.net_label_font_size));
     }
@@ -1494,6 +1544,11 @@ inline void write_sheet_svg(std::ostream &out, const Schematic &schematic, Sheet
         write_net_label_svg(out, schematic, label);
     }
     out << "    </g>\n";
+    out << "    <g class=\"layer layer-symbol-text\">\n";
+    for (const auto instance : sheet.symbol_instances()) {
+        write_symbol_text_instance_svg(out, schematic, instance);
+    }
+    out << "    </g>\n";
     out << "    <g class=\"layer layer-fields\">\n";
     for (const auto field : sheet.symbol_fields()) {
         write_symbol_field_svg(out, schematic, field);
@@ -1547,6 +1602,11 @@ inline void write_body_content_layers_svg(std::ostream &out, const Schematic &sc
     out << "    <g class=\"layer layer-labels\">\n";
     for (const auto label : sheet.net_labels()) {
         write_net_label_svg(out, schematic, label);
+    }
+    out << "    </g>\n";
+    out << "    <g class=\"layer layer-symbol-text\">\n";
+    for (const auto instance : sheet.symbol_instances()) {
+        write_symbol_text_instance_svg(out, schematic, instance);
     }
     out << "    </g>\n";
     out << "    <g class=\"layer layer-fields\">\n";

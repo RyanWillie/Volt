@@ -226,10 +226,12 @@ def _presentation_terminal_lead_line(
         return SchematicSymbolSpec.line(
             _presentation_terminal_lead_point(terminal_role, length, reverse),
             _lead_span_point(symbol, end_point, length, reverse, flip),
+            role=terminal_role,
         )
     return SchematicSymbolSpec.line(
         _lead_span_point(symbol, start_point, length, reverse, flip),
         _presentation_terminal_lead_point(terminal_role, length, reverse),
+        role=terminal_role,
     )
 
 

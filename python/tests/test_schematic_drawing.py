@@ -128,6 +128,43 @@ def test_python_schematic_two_terminal_endpoint_grammar_and_junction_dots():
     assert design.to_json() == logical_before
 
 
+def test_python_schematic_connect_returns_chainable_endpoint_dots():
+    design = volt.Design("schematic-connect-endpoint-dots")
+    sig = design.net("SIG")
+    r1 = design.R("10k", ref="R1")
+    r2 = design.R("22k", ref="R2")
+    sig += r1[2], r2[1]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=20) as drawing:
+        left = drawing.two_terminal(r1).right()
+        right = drawing.two_terminal(r2).at(left.end.right(20)).right()
+        wire = drawing.connect(left.end, right.start, shape="-").idot().dot()
+
+    projection = json.loads(schematic.to_json())
+
+    assert wire.index == 0
+    assert projection["wire_runs"] == [
+        {
+            "id": "wire_run:0",
+            "sheet": "sheet:0",
+            "net": f"net:{sig.index}",
+            "points": [{"x": 20.0, "y": 0.0}, {"x": 40.0, "y": 0.0}],
+            "route_intent": "Direct",
+        }
+    ]
+    assert [
+        (junction["net"], junction["position"])
+        for junction in projection["junctions"]
+    ] == [
+        (f"net:{sig.index}", {"x": 20.0, "y": 0.0}),
+        (f"net:{sig.index}", {"x": 40.0, "y": 0.0}),
+    ]
+    assert design.to_json() == logical_before
+
+
 def test_python_schematic_endpoint_dots_require_existing_nets():
     design = volt.Design("schematic-two-terminal-dot-net-safety")
     r1 = design.R("10k", ref="R1")
@@ -169,16 +206,17 @@ def test_python_schematic_label_sugar_uses_symbol_fields_and_net_labels():
         "value",
     ]
     assert [field["value"] for field in fields] == ["R1", "10k", "100n", "1e-07 F"]
-    assert fields[0]["position"] == {"x": 10.0, "y": -14.0}
-    assert fields[1]["position"] == {"x": 10.0, "y": 22.0}
+    assert fields[0]["position"] == {"x": 10.0, "y": -10.0}
+    assert fields[1]["position"] == {"x": 10.0, "y": 10.0}
     assert fields[2]["position"] == {"x": 20.0, "y": 25.0}
-    assert fields[3]["position"] == {"x": 26.0, "y": 10.0}
+    assert fields[3]["position"] == {"x": 32.0, "y": 10.0}
     assert projection["net_labels"] == [
         {
             "id": "net_label:0",
             "sheet": "sheet:0",
             "net": f"net:{sig.index}",
             "position": {"x": 28.0, "y": 0.0},
+            "text_position": {"x": 32.0, "y": 0.0},
             "orientation": "Left",
         }
     ]
@@ -212,10 +250,10 @@ def test_python_schematic_default_field_placement_keeps_rotated_labels_upright()
         ("value", "1e-07 F", "Right"),
     ]
     assert [field["position"] for field in fields] == [
-        {"x": 10.0, "y": -14.0},
-        {"x": 10.0, "y": 22.0},
-        {"x": 26.0, "y": 10.0},
-        {"x": 62.0, "y": 10.0},
+        {"x": 10.0, "y": -10.0},
+        {"x": 10.0, "y": 10.0},
+        {"x": 30.0, "y": 10.0},
+        {"x": 54.0, "y": 10.0},
     ]
 
     svg_texts = re.findall(r">([^<>]+)</text>", schematic.to_svg())
@@ -258,6 +296,59 @@ def test_python_schematic_builtin_two_terminal_symbols_do_not_embed_identity_tex
             for primitive in definition["primitives"]
             if primitive["type"] == "text"
         ] == []
+    assert [
+        primitive for primitive in built_in_definitions["volt.passives:resistor"]["primitives"]
+        if primitive["type"] == "rectangle"
+    ] == []
+    assert built_in_definitions["volt.passives:resistor"]["primitives"] == [
+        {
+            "type": "line",
+            "start": {"x": 0.0, "y": 0.0},
+            "end": {"x": 5.0, "y": 0.0},
+            "role": "TerminalLeadStart",
+        },
+        {
+            "type": "line",
+            "start": {"x": 5.0, "y": 0.0},
+            "end": {"x": 6.5, "y": -3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 6.5, "y": -3.0},
+            "end": {"x": 8.0, "y": 3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 8.0, "y": 3.0},
+            "end": {"x": 9.5, "y": -3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 9.5, "y": -3.0},
+            "end": {"x": 11.0, "y": 3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 11.0, "y": 3.0},
+            "end": {"x": 12.5, "y": -3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 12.5, "y": -3.0},
+            "end": {"x": 14.0, "y": 3.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 14.0, "y": 3.0},
+            "end": {"x": 15.0, "y": 0.0},
+        },
+        {
+            "type": "line",
+            "start": {"x": 15.0, "y": 0.0},
+            "end": {"x": 20.0, "y": 0.0},
+            "role": "TerminalLeadEnd",
+        },
+    ]
 
     svg_texts = re.findall(r">([^<>]+)</text>", schematic.to_svg())
     assert not {"R", "C", "L", "D"} & set(svg_texts)
@@ -447,19 +538,19 @@ def test_python_schematic_generic_ic_symbol_builder_defaults_are_compact():
     )
 
     assert [pin._to_dict() for pin in symbol.pins] == [
-        {"name": "DISCH", "number": "7", "anchor": {"x": 0.0, "y": 8.0}, "orientation": "Left"},
-        {"name": "THRESH", "number": "6", "anchor": {"x": 0.0, "y": 16.0}, "orientation": "Left"},
-        {"name": "TRIG", "number": "2", "anchor": {"x": 0.0, "y": 24.0}, "orientation": "Left"},
-        {"name": "OUT", "number": "3", "anchor": {"x": 52.0, "y": 16.0}, "orientation": "Right"},
-        {"name": "CTRL", "number": "5", "anchor": {"x": 52.0, "y": 24.0}, "orientation": "Right"},
-        {"name": "RESET", "number": "4", "anchor": {"x": 22.0, "y": -6.0}, "orientation": "Up"},
-        {"name": "VCC", "number": "8", "anchor": {"x": 38.0, "y": -6.0}, "orientation": "Up"},
-        {"name": "GND", "number": "1", "anchor": {"x": 30.0, "y": 38.0}, "orientation": "Down"},
+        {"name": "DISCH", "number": "7", "anchor": {"x": 0.0, "y": 10.0}, "orientation": "Left"},
+        {"name": "THRESH", "number": "6", "anchor": {"x": 0.0, "y": 20.0}, "orientation": "Left"},
+        {"name": "TRIG", "number": "2", "anchor": {"x": 0.0, "y": 30.0}, "orientation": "Left"},
+        {"name": "OUT", "number": "3", "anchor": {"x": 62.0, "y": 20.0}, "orientation": "Right"},
+        {"name": "CTRL", "number": "5", "anchor": {"x": 62.0, "y": 30.0}, "orientation": "Right"},
+        {"name": "RESET", "number": "4", "anchor": {"x": 26.0, "y": -6.0}, "orientation": "Up"},
+        {"name": "VCC", "number": "8", "anchor": {"x": 46.0, "y": -6.0}, "orientation": "Up"},
+        {"name": "GND", "number": "1", "anchor": {"x": 36.0, "y": 46.0}, "orientation": "Down"},
     ]
     assert symbol.primitives[0] == {
         "type": "rectangle",
         "first_corner": {"x": 6.0, "y": 0.0},
-        "second_corner": {"x": 46.0, "y": 32.0},
+        "second_corner": {"x": 56.0, "y": 40.0},
     }
 
 
@@ -781,6 +872,7 @@ def test_python_schematic_local_signal_stub_sugar_emits_wire_and_label_only():
             "sheet": "sheet:0",
             "net": f"net:{sig.index}",
             "position": {"x": 33.0, "y": 40.0},
+            "text_position": {"x": 33.0, "y": 36.0},
             "orientation": "Left",
             "label": "SWDIO",
         }
@@ -788,10 +880,64 @@ def test_python_schematic_local_signal_stub_sugar_emits_wire_and_label_only():
 
     svg = schematic.to_svg()
     assert f'<polyline class="wire-run" data-net="net:{sig.index}" points="40,40 34,40"/>' in svg
-    assert f'<text class="net-label" data-net="net:{sig.index}" x="33" y="40"' in svg
+    assert f'<text class="net-label" data-net="net:{sig.index}" x="33" y="36"' in svg
     assert ">SWDIO</text>" in svg
     assert ">SUPPORT/SWDIO</text>" not in svg
     assert 'class="sheet-port off-page"' not in svg
+
+
+def test_python_schematic_signal_tag_sugar_emits_short_wire_and_port_tag():
+    design = volt.Design("schematic-signal-tag")
+    sig = design.net("USB/MCU_USB_DP")
+    probe = design.test_point(ref="TP1")
+    sig += probe["TP"]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(at=(40, 40), unit=20) as drawing:
+        placed = drawing.place(probe)
+        tag = drawing.signal_tag(
+            sig,
+            at=placed.TP,
+            side="right",
+            length=6,
+            label="USB D+",
+        )
+
+    projection = json.loads(schematic.to_json())
+
+    assert design.to_json() == logical_before
+    assert tag.start.point == (40.0, 40.0)
+    assert tag.end.point == (46.0, 40.0)
+    assert tag.port.pin.point == (46.0, 40.0)
+    assert projection["net_labels"] == []
+    assert projection["wire_runs"] == [
+        {
+            "id": "wire_run:0",
+            "sheet": "sheet:0",
+            "net": f"net:{sig.index}",
+            "points": [{"x": 40.0, "y": 40.0}, {"x": 46.0, "y": 40.0}],
+            "route_intent": "Direct",
+        }
+    ]
+    assert projection["sheet_ports"] == [
+        {
+            "id": "sheet_port:0",
+            "sheet": "sheet:0",
+            "net": f"net:{sig.index}",
+            "name": "USB D+",
+            "kind": "Bidirectional",
+            "position": {"x": 46.0, "y": 40.0},
+            "orientation": "Right",
+        }
+    ]
+
+    svg = schematic.to_svg()
+    assert f'<polyline class="wire-run" data-net="net:{sig.index}" points="40,40 46,40"/>' in svg
+    assert f'<g class="sheet-port bidirectional" data-net="net:{sig.index}"' in svg
+    assert ">USB D+</text>" in svg
+    assert ">USB/MCU_USB_DP</text>" not in svg
 
 
 def test_python_schematic_local_label_and_aligned_signal_stubs_are_side_aware():
@@ -1771,6 +1917,7 @@ def test_python_schematic_terminal_marker_is_generic_and_net_bound():
             "kind": "Ground",
             "position": {"x": 0.0, "y": 0.0},
             "orientation": "Down",
+            "label_position": {"x": 0.0, "y": 12.2},
         },
         {
             "id": "power_port:1",
@@ -1780,6 +1927,7 @@ def test_python_schematic_terminal_marker_is_generic_and_net_bound():
             "position": {"x": 20.0, "y": 10.0},
             "orientation": "Right",
             "label": "LOCAL",
+            "label_position": {"x": 33.4, "y": 10.0},
         },
     ]
 
