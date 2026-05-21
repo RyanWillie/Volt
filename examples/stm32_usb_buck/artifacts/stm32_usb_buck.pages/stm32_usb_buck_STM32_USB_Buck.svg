@@ -99,15 +99,15 @@
     </g>
     <g class="layer layer-regions">
     <g class="sheet-region" data-region="Power Circuitry">
-      <rect class="sheet-region-frame dashed" data-region="Power Circuitry" x="18" y="18" width="158" height="350"/>
+      <rect class="sheet-region-frame dashed" data-region="Power Circuitry" x="18" y="18" width="158" height="270"/>
       <text class="sheet-region-title" x="21" y="24" clip-path="url(#region-title-clip-sheet-0-0)">Power Circuitry</text>
     </g>
     <g class="sheet-region" data-region="STM32 Microcontroller">
-      <rect class="sheet-region-frame dashed" data-region="STM32 Microcontroller" x="190" y="18" width="220" height="350"/>
+      <rect class="sheet-region-frame dashed" data-region="STM32 Microcontroller" x="190" y="18" width="220" height="338"/>
       <text class="sheet-region-title" x="193" y="24" clip-path="url(#region-title-clip-sheet-0-1)">STM32 MCU</text>
     </g>
     <g class="sheet-region" data-region="Connectors and USB">
-      <rect class="sheet-region-frame dashed" data-region="Connectors and USB" x="424" y="18" width="152" height="350"/>
+      <rect class="sheet-region-frame dashed" data-region="Connectors and USB" x="424" y="18" width="152" height="310"/>
       <text class="sheet-region-title" x="427" y="24" clip-path="url(#region-title-clip-sheet-0-2)">Connectors and USB</text>
     </g>
     </g>

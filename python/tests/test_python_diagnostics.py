@@ -174,6 +174,29 @@ def test_python_schematic_readability_reports_presentation_diagnostics():
     }
     assert any(diagnostic.severity == "error" for diagnostic in report)
 
+def test_python_schematic_readability_reports_authored_region_content_overlap():
+    design = volt.Design("region-content-overlap")
+    net = design.net("REGION_TEST")
+    schematic = design.schematic("Main", size=(100, 80), margins=(10, 10, 10, 10))
+    left = schematic.region("Left", x=10, y=10, w=40, h=30)
+    right = schematic.region("Right", x=30, y=10, w=40, h=30)
+
+    left.label(net, at=(18, 10), label="AAAAAA")
+    right.label(net, at=(0, 10), label="B")
+
+    report = schematic.validate_readability()
+    diagnostics = [
+        diagnostic
+        for diagnostic in report
+        if diagnostic.code == "SCHEMATIC_AUTHORED_REGION_CONTENT_OVERLAP"
+    ]
+
+    assert len(diagnostics) == 1
+    assert diagnostics[0].severity == "error"
+    assert "SCHEMATIC_AUTHORED_REGION_CONTENT_OVERLAP" not in {
+        diagnostic.code for diagnostic in schematic.validate()
+    }
+
 def test_diagnostics_are_inspectable():
     design = volt.Design("incomplete")
     design.R("10k", ref="R1")

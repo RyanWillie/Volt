@@ -192,6 +192,14 @@ inline void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexc
            first.max_y + schematic_geometry_tolerance >= second.min_y;
 }
 
+[[nodiscard]] inline bool overlaps_bounds_area(SchematicBounds first,
+                                               SchematicBounds second) noexcept {
+    return first.min_x < second.max_x - schematic_geometry_tolerance &&
+           first.max_x > second.min_x + schematic_geometry_tolerance &&
+           first.min_y < second.max_y - schematic_geometry_tolerance &&
+           first.max_y > second.min_y + schematic_geometry_tolerance;
+}
+
 [[nodiscard]] inline double bounds_width(SchematicBounds bounds) noexcept {
     return bounds.max_x - bounds.min_x;
 }
@@ -1262,6 +1270,74 @@ inline void validate_readability_bounds(const Schematic &schematic, SheetId shee
                                                region.name() + "' extends outside that region",
                                            sheet_id, object.entity, object.context);
             }
+        }
+    }
+}
+
+inline void add_region_content_object_refs(std::vector<EntityRef> &refs,
+                                           const std::vector<const ReadabilityObject *> &objects,
+                                           SchematicBounds comparison_bounds) {
+    auto added = false;
+    for (const auto *object : objects) {
+        if (!overlaps_bounds_area(object->bounds, comparison_bounds)) {
+            continue;
+        }
+        refs.push_back(object->entity);
+        refs.insert(refs.end(), object->context.begin(), object->context.end());
+        added = true;
+    }
+    if (!added && !objects.empty()) {
+        refs.push_back(objects.front()->entity);
+        refs.insert(refs.end(), objects.front()->context.begin(), objects.front()->context.end());
+    }
+}
+
+inline void validate_authored_region_content_overlaps(const Schematic &schematic, SheetId sheet_id,
+                                                      const Sheet &sheet,
+                                                      DiagnosticReport &report) {
+    const auto objects = readability_objects_for_sheet(schematic, sheet);
+    auto bounds_by_region = std::vector<std::optional<SchematicBounds>>(sheet.regions().size());
+    auto objects_by_region =
+        std::vector<std::vector<const ReadabilityObject *>>(sheet.regions().size());
+
+    for (const auto &object : objects) {
+        if (!object.authored_region.has_value()) {
+            continue;
+        }
+        const auto region_index = object.authored_region.value();
+        objects_by_region[region_index].push_back(&object);
+        if (bounds_by_region[region_index].has_value()) {
+            include_bounds(bounds_by_region[region_index].value(), object.bounds);
+        } else {
+            bounds_by_region[region_index] = object.bounds;
+        }
+    }
+
+    for (std::size_t first = 0; first < bounds_by_region.size(); ++first) {
+        if (!bounds_by_region[first].has_value()) {
+            continue;
+        }
+        for (std::size_t second = first + 1U; second < bounds_by_region.size(); ++second) {
+            if (!bounds_by_region[second].has_value() ||
+                !overlaps_bounds_area(bounds_by_region[first].value(),
+                                      bounds_by_region[second].value())) {
+                continue;
+            }
+
+            auto refs = std::vector<EntityRef>{EntityRef::sheet(sheet_id)};
+            add_region_content_object_refs(refs, objects_by_region[first],
+                                           bounds_by_region[second].value());
+            add_region_content_object_refs(refs, objects_by_region[second],
+                                           bounds_by_region[first].value());
+            report.add(Diagnostic{
+                Severity::Error,
+                DiagnosticCode{"SCHEMATIC_AUTHORED_REGION_CONTENT_OVERLAP"},
+                "Authored schematic regions '" + sheet.region(first).name() + "' and '" +
+                    sheet.region(second).name() +
+                    "' have overlapping occupied content bounds; move one region or tighten "
+                    "the placement",
+                std::move(refs),
+            });
         }
     }
 }
@@ -2343,6 +2419,7 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
         const auto sheet_id = SheetId{sheet_index};
         const auto &sheet = schematic.sheet(sheet_id);
         detail::validate_readability_bounds(schematic, sheet_id, sheet, report);
+        detail::validate_authored_region_content_overlaps(schematic, sheet_id, sheet, report);
         detail::validate_title_block_text_overflow(sheet_id, sheet, report);
         detail::validate_duplicate_junctions(schematic, sheet_id, sheet, report);
         detail::validate_visible_reference_labels(schematic, sheet_id, sheet, report);

@@ -315,7 +315,7 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
         x=18,
         y=18,
         w=158,
-        h=350,
+        h=270,
         style={"border": "dashed"},
     )
     mcu_region = sheet.region(
@@ -323,7 +323,7 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
         x=190,
         y=18,
         w=220,
-        h=350,
+        h=338,
         title="STM32 MCU",
         style={"border": "dashed"},
     )
@@ -332,7 +332,7 @@ def build_schematic(board: Stm32UsbBuckBoard) -> volt.Schematic:
         x=424,
         y=18,
         w=152,
-        h=350,
+        h=310,
         style={"border": "dashed"},
     )
 

@@ -909,6 +909,85 @@ TEST_CASE("Schematic readability reports objects outside their authored region")
                                                volt::EntityRef::net(net)});
 }
 
+TEST_CASE("Schematic readability reports overlapping authored region content bounds") {
+    volt::Circuit circuit;
+    const auto net = add_net(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto first_region = schematic.add_sheet_region(
+        sheet,
+        volt::SheetRegion{"logic", "Logic", volt::SheetRegionBounds{10.0, 10.0, 40.0, 40.0}});
+    const auto second_region = schematic.add_sheet_region(
+        sheet, volt::SheetRegion{"connectors", "Connectors",
+                                 volt::SheetRegionBounds{30.0, 10.0, 40.0, 40.0}});
+    const auto first_label = schematic.add_net_label(
+        sheet, volt::NetLabel{net, volt::Point{28.0, 20.0}, volt::SchematicOrientation::Right,
+                              first_region, "AAAAAA"});
+    const auto second_label = schematic.add_net_label(
+        sheet, volt::NetLabel{net, volt::Point{30.0, 20.0}, volt::SchematicOrientation::Right,
+                              second_region, "B"});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic =
+        require_diagnostic(report, "SCHEMATIC_AUTHORED_REGION_CONTENT_OVERLAP");
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    CHECK(diagnostic.entities() ==
+          std::vector{volt::EntityRef::sheet(sheet), volt::EntityRef::net_label(first_label),
+                      volt::EntityRef::net(net), volt::EntityRef::net_label(second_label),
+                      volt::EntityRef::net(net)});
+}
+
+TEST_CASE("Schematic readability accepts adjacent authored region content bounds") {
+    volt::Circuit circuit;
+    const auto net = add_net(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto first_region = schematic.add_sheet_region(
+        sheet,
+        volt::SheetRegion{"logic", "Logic", volt::SheetRegionBounds{10.0, 10.0, 20.0, 20.0}});
+    const auto second_region = schematic.add_sheet_region(
+        sheet, volt::SheetRegion{"connectors", "Connectors",
+                                 volt::SheetRegionBounds{40.0, 10.0, 20.0, 20.0}});
+    static_cast<void>(schematic.add_net_label(
+        sheet, volt::NetLabel{net, volt::Point{12.0, 20.0}, volt::SchematicOrientation::Right,
+                              first_region, "A"}));
+    static_cast<void>(schematic.add_net_label(
+        sheet, volt::NetLabel{net, volt::Point{42.0, 20.0}, volt::SchematicOrientation::Right,
+                              second_region, "B"}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK_FALSE(report_has_code(report, "SCHEMATIC_AUTHORED_REGION_CONTENT_OVERLAP"));
+}
+
+TEST_CASE("Schematic readability keeps region spills distinct from region content overlap") {
+    volt::Circuit circuit;
+    const auto net = add_net(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto first_region = schematic.add_sheet_region(
+        sheet,
+        volt::SheetRegion{"logic", "Logic", volt::SheetRegionBounds{10.0, 10.0, 20.0, 20.0}});
+    const auto second_region = schematic.add_sheet_region(
+        sheet, volt::SheetRegion{"connectors", "Connectors",
+                                 volt::SheetRegionBounds{70.0, 10.0, 20.0, 20.0}});
+    static_cast<void>(schematic.add_net_label(
+        sheet, volt::NetLabel{net, volt::Point{35.0, 20.0}, volt::SchematicOrientation::Right,
+                              first_region, "A"}));
+    static_cast<void>(schematic.add_net_label(
+        sheet, volt::NetLabel{net, volt::Point{72.0, 20.0}, volt::SchematicOrientation::Right,
+                              second_region, "B"}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(report_has_code(report, "SCHEMATIC_OBJECT_OUTSIDE_AUTHORED_REGION"));
+    CHECK_FALSE(report_has_code(report, "SCHEMATIC_AUTHORED_REGION_CONTENT_OVERLAP"));
+}
+
 TEST_CASE("Schematic readability reports duplicate junctions and hard-to-read labels") {
     volt::Circuit circuit;
     const auto scoped = add_named_net(circuit, "PWR/OUT_3V3");
