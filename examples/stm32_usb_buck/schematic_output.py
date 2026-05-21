@@ -358,7 +358,7 @@ def _author_power_region(
             symbol=_external_supply_symbol(),
             reference_label=_display_reference(board.components["VIN_SRC"]),
         )
-        drawing.move_from(vin.GND.left(44).down(20))
+        drawing.move_from(vin.GND.left(36).down(32))
         pwr_j = drawing.place(
             pwr.component("J"),
             symbol=_compact_connector_1x04_symbol(pin_labels=False),
@@ -416,13 +416,12 @@ def _author_power_region(
         pwr_vdda = nets["PWR/VDDA"]
         pwr_gnd = nets["PWR/GND"]
 
-        drawing.signal_stub(
+        drawing.signal_tag(
             pwr_in,
             at=pwr_j[1],
-            side="Right",
-            length=14,
-            label="+12V input",
-            orient="Right",
+            side="Up",
+            length=10,
+            label="+12V",
         )
         drawing.connect(cin.start, u5.VI, net=pwr_in, shape="-")
         drawing.net_label(pwr_in, at=cin.start.up(20), label="+12V")
@@ -587,7 +586,7 @@ def _author_mcu_region(
             support.component("RRESET"),
             symbol=TWO_TERMINAL_RESISTOR,
             reference_label=_display_reference(support.component("RRESET")),
-        ).at(stm32.NRST.left(30).up(30)).down(1.1)
+        ).at(stm32.NRST.left(30).up(12)).down(1.1)
 
         drawing.move_from(stm32.BOOT0.left(20).down(66), direction="Right")
         swboot = drawing.place(
@@ -681,22 +680,34 @@ def _author_mcu_region(
             ),
             length=10,
         )
-        for net, anchor, label in (
-            (nets["STATUS_LED"], stm32.PC13, "LED"),
-            (nets["HSE_IN"], stm32.PH0, "HSE IN"),
-            (nets["HSE_OUT"], stm32.PH1, "HSE OUT"),
-            (nets["VCAP_1"], stm32.VCAP_1, "VCAP1"),
+        for net, anchor, label, tag_length, tag_orient in (
+            (nets["STATUS_LED"], stm32.PC13, "LED", 16, None),
+            (nets["HSE_IN"], stm32.PH0, "HSE IN", 6, None),
+            (nets["HSE_OUT"], stm32.PH1, "HSE OUT", 6, None),
+            (nets["VCAP_1"], stm32.VCAP_1, "VCAP1", 16, None),
         ):
-            drawing.signal_stub(net, at=anchor, side="Left", length=16, label=label, orient="Right")
-        drawing.signal_stub(
+            drawing.signal_tag(
+                net,
+                at=anchor,
+                side="Left",
+                length=tag_length,
+                label=label,
+                orient=tag_orient,
+            )
+        drawing.signal_tag(
             nets["NRST"],
             at=stm32.NRST,
             side="Left",
             length=8,
             label="NRST",
-            orient="Right",
         )
-        drawing.signal_stub(nets["VCAP_2"], at=stm32.VCAP_2, side="Right", length=10, label="VCAP2")
+        drawing.signal_tag(
+            nets["VCAP_2"],
+            at=stm32.VCAP_2,
+            side="Right",
+            length=10,
+            label="VCAP2",
+        )
 
         support_vdd = nets["SUPPORT/VDD"]
         support_gnd = nets["SUPPORT/GND"]
@@ -706,7 +717,13 @@ def _author_mcu_region(
         support_hse_out = nets["SUPPORT/HSE_OUT"]
 
         drawing.power_stub("+3V3", at=cvdd.start, net=support_vdd, side="Up", length=16)
-        drawing.power_stub("+3V3", at=rreset.start, net=support_vdd, side="Right", length=10)
+        drawing.power_stub(
+            "+3V3",
+            at=rreset.start,
+            net=support_vdd,
+            side="Up",
+            length=6,
+        )
         drawing.power_stub("+3V3", at=swboot.A, net=support_vdd, side="Left", length=12, orient="Up")
 
         decoupling_ground = drawing.ground("GND", net=support_gnd, at=cvcap1.end.down(18), orient="Down")
@@ -722,22 +739,20 @@ def _author_mcu_region(
         drawing.ground_stub("GND", at=rboot.end, net=support_gnd, side="Down", length=6, orient="Down")
         drawing.ground_stub("GND", at=swboot.B, net=support_gnd, side="Down", length=6, orient="Down")
 
-        drawing.signal_stub(
+        drawing.signal_tag(
             support_reset,
             at=rreset.end,
             side="Right",
             length=10,
             label="NRST",
-            orient="Right",
         )
         drawing.connect(swboot.C, rboot.start, net=support_boot, shape="-")
-        drawing.signal_stub(
+        drawing.signal_tag(
             support_boot,
             at=rboot.start,
             side="Up",
             length=10,
             label="BOOT0",
-            orient="Right",
         )
 
         drawing.connect(crystal[1], chsein.start, net=support_hse_in, shape="-")
@@ -760,12 +775,11 @@ def _author_mcu_region(
         ):
             stub_anchor = cap.start.up(12)
             drawing.connect(cap.start, stub_anchor, net=net, shape="-")
-            drawing.signal_stub(
+            drawing.signal_tag(
                 net,
                 at=stub_anchor,
                 side="Right",
                 length=12,
-                orient="Right",
                 label=label,
             )
 

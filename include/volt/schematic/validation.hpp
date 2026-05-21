@@ -55,11 +55,6 @@ inline constexpr std::size_t local_label_cluster_threshold = 3U;
 inline constexpr double floating_stub_max_length = 8.0;
 inline constexpr double floating_stub_cluster_max_span = 24.0;
 inline constexpr std::size_t floating_stub_cluster_threshold = 3U;
-// Net labels are commonly placed 1-2 grid units off the wire endpoint to keep
-// the text clear of the wire tip. Allow up to 4 units along the same axis so
-// that a label placed just off a horizontal or vertical wire end is treated as
-// an intentional anchor rather than a stray dangling endpoint.
-inline constexpr double dangling_wire_label_anchor_max_gap = 4.0;
 inline constexpr double oversized_port_tag_rendered_length = 28.0;
 inline constexpr double power_port_stem_length = 4.2;
 inline constexpr double power_port_tip_offset = 7.6;
@@ -457,30 +452,6 @@ inline void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexc
     for (const auto label_id : sheet.net_labels()) {
         const auto &label = schematic.net_label(label_id);
         if (label.net() == net && same_schematic_point(label.position(), point)) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-[[nodiscard]] inline bool label_anchors_wire_endpoint(Point endpoint, const NetLabel &label) {
-    if (same_schematic_point(endpoint, label.position())) {
-        return true;
-    }
-
-    const auto dx = std::abs(label.position().x() - endpoint.x());
-    const auto dy = std::abs(label.position().y() - endpoint.y());
-    return (nearly_equal(dx, 0.0) && dy <= dangling_wire_label_anchor_max_gap) ||
-           (nearly_equal(dy, 0.0) && dx <= dangling_wire_label_anchor_max_gap);
-}
-
-[[nodiscard]] inline bool sheet_has_net_label_anchor_for_endpoint(const Schematic &schematic,
-                                                                  const Sheet &sheet, NetId net,
-                                                                  Point point) {
-    for (const auto label_id : sheet.net_labels()) {
-        const auto &label = schematic.net_label(label_id);
-        if (label.net() == net && label_anchors_wire_endpoint(point, label)) {
             return true;
         }
     }
@@ -2831,7 +2802,6 @@ sheet_has_other_same_net_wire_endpoint_at_point(const Schematic &schematic, cons
     return sheet_has_symbol_pin_for_net_at_point(schematic, sheet, net, point) ||
            sheet_has_terminal_or_sheet_port_for_net_at_point(schematic, sheet, net, point) ||
            sheet_has_junction_for_net_at_point(schematic, sheet, net, point) ||
-           sheet_has_net_label_anchor_for_endpoint(schematic, sheet, net, point) ||
            sheet_has_other_same_net_wire_endpoint_at_point(schematic, sheet, net, point, wire_id);
 }
 
@@ -2844,7 +2814,7 @@ inline void validate_dangling_wire_endpoints(const Schematic &schematic, SheetId
                 continue;
             }
             report.add(Diagnostic{
-                Severity::Warning,
+                Severity::Error,
                 DiagnosticCode{"SCHEMATIC_DANGLING_WIRE_ENDPOINT"},
                 "Schematic wire endpoint does not land on an explicit visual connection anchor",
                 std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(wire_id),

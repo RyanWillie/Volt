@@ -1650,14 +1650,14 @@ TEST_CASE("Schematic readability reports visually dangling wire endpoints") {
     const auto report = volt::validate_schematic_readability(schematic);
 
     const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DANGLING_WIRE_ENDPOINT");
-    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.severity() == volt::Severity::Error);
     CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
                                                volt::EntityRef::wire_run(wire),
                                                volt::EntityRef::net(net)});
     CHECK(circuit.net(net).pins() == pins_before);
 }
 
-TEST_CASE("Schematic readability reports exactly one warning per dangling endpoint") {
+TEST_CASE("Schematic readability reports exactly one diagnostic per dangling endpoint") {
     // Wire start lands on a connected symbol pin (anchored); only the far end is dangling.
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
@@ -1676,6 +1676,27 @@ TEST_CASE("Schematic readability reports exactly one warning per dangling endpoi
 
     CHECK(diagnostic_count(report, "SCHEMATIC_DANGLING_WIRE_ENDPOINT") == 1);
     const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DANGLING_WIRE_ENDPOINT");
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
+                                               volt::EntityRef::wire_run(wire),
+                                               volt::EntityRef::net(net)});
+}
+
+TEST_CASE("Schematic readability reports wire endpoints anchored only by net label text") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "VCAP1");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{40.0, 40.0}, volt::Point{56.0, 40.0}}});
+    static_cast<void>(schematic.add_junction(sheet, volt::Junction{net, volt::Point{40.0, 40.0}}));
+    static_cast<void>(schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{58.0, 40.0}}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DANGLING_WIRE_ENDPOINT");
+    CHECK(diagnostic.severity() == volt::Severity::Error);
     CHECK(diagnostic.entities() == std::vector{volt::EntityRef::sheet(sheet),
                                                volt::EntityRef::wire_run(wire),
                                                volt::EntityRef::net(net)});
@@ -1689,7 +1710,6 @@ TEST_CASE("Schematic readability accepts wire endpoints with explicit visual anc
     const auto sheet_port_net = add_named_net(circuit, "OFFPAGE");
     const auto junction_net = add_named_net(circuit, "NODE");
     const auto endpoint_net = add_named_net(circuit, "CHAIN");
-    const auto label_net = add_named_net(circuit, "LABELED");
     connect_pin_by_number(circuit, pin_net, component, "1");
 
     volt::Schematic schematic{circuit};
@@ -1739,14 +1759,6 @@ TEST_CASE("Schematic readability accepts wire endpoints with explicit visual anc
         schematic.add_junction(sheet, volt::Junction{endpoint_net, volt::Point{40.0, 100.0}}));
     static_cast<void>(
         schematic.add_junction(sheet, volt::Junction{endpoint_net, volt::Point{60.0, 100.0}}));
-
-    static_cast<void>(
-        schematic.add_junction(sheet, volt::Junction{label_net, volt::Point{40.0, 120.0}}));
-    static_cast<void>(schematic.add_wire_run(
-        sheet,
-        volt::WireRun{label_net, std::vector{volt::Point{40.0, 120.0}, volt::Point{50.0, 120.0}}}));
-    static_cast<void>(
-        schematic.add_net_label(sheet, volt::NetLabel{label_net, volt::Point{52.0, 120.0}}));
 
     const auto report = volt::validate_schematic_readability(schematic);
 

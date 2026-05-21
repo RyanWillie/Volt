@@ -99,12 +99,12 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert all(region["style"] == {"border": "dashed"} for region in sheet["regions"])
     assert len(schematic["symbol_instances"]) >= 10
     assert len(schematic["wire_runs"]) >= 20
-    assert 12 <= len(schematic["net_labels"]) <= 40
+    assert 1 <= len(schematic["net_labels"]) <= 10
     assert 8 <= len(schematic["power_ports"]) <= 32
-    assert len(schematic["sheet_ports"]) == 14
+    assert len(schematic["sheet_ports"]) == 25
     assert {
         port["name"] for port in schematic["sheet_ports"]
-    } >= {"USB D+", "USB D-", "SWDIO", "SWCLK", "SWO", "BOOT0"}
+    } >= {"USB D+", "USB D-", "SWDIO", "SWCLK", "SWO", "BOOT0", "VCAP1", "VCAP2"}
     assert {port["kind"] for port in schematic["sheet_ports"]} == {"Bidirectional"}
     assert len(schematic["no_connect_markers"]) <= 6
     assert {instance["component"] for instance in schematic["symbol_instances"]} <= component_ids
@@ -246,7 +246,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "drawing.connect(" in schematic_source
     assert "drawing.signal_tag(" in schematic_source
     assert "drawing.signal_tags(" in schematic_source
-    assert "drawing.signal_stub(" in schematic_source
+    assert "drawing.signal_stub(" not in authoring_source
     assert "drawing.no_connect(" in schematic_source
     assert "shape=" in schematic_source
     assert 'name="value"' not in schematic_source
@@ -508,5 +508,6 @@ def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():
     assert "drawing.LED(" not in source
     assert "drawing.connect(" in source
     assert "drawing.net_label(" in source
-    assert "drawing.signal_stub(" in source
+    assert "drawing.signal_tag(" in source
+    assert "drawing.signal_stub(" not in authoring_source
     assert "drawing.no_connect(" in source
