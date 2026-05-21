@@ -295,4 +295,6 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
     assert "drawing.R(" not in source
     assert "drawing.C(" not in source
     assert "drawing.LED(" not in source
+    assert ".at(led_resistor.end.right(" not in source
+    assert "drawing.connect(led_resistor.end, led.start" not in source
     assert "ofst=" not in source

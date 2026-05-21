@@ -114,7 +114,7 @@
       <rect class="symbol-rectangle" x="4" y="-3" width="12" height="6"/>
       <line class="symbol-line" x1="16" y1="0" x2="20" y2="0"/>
     </g>
-    <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:5" transform="translate(272 96) rotate(90)">
+    <g class="symbol-instance" data-component="component:6" data-symbol-definition="symbol_def:5" transform="translate(236 96) rotate(90)">
       <line class="symbol-line" x1="56" y1="0" x2="31" y2="0"/>
       <line class="symbol-line" x1="31" y1="-5" x2="31" y2="5"/>
       <line class="symbol-line" x1="31" y1="-5" x2="25" y2="0"/>
@@ -134,10 +134,9 @@
     <polyline class="wire-run" data-net="net:3" points="140,104 98,104"/>
     <polyline class="wire-run" data-net="net:4" points="192,104 222,104"/>
     <polyline class="wire-run" data-net="net:5" points="192,96 216,96"/>
-    <polyline class="wire-run" data-net="net:6" points="236,96 272,96"/>
     <polyline class="wire-run" data-net="net:1" points="98,152 170,152"/>
     <polyline class="wire-run" data-net="net:1" points="222,152 170,152"/>
-    <polyline class="wire-run" data-net="net:1" points="272,152 170,152"/>
+    <polyline class="wire-run" data-net="net:1" points="236,152 170,152"/>
     </g>
     <g class="layer layer-junctions">
     <circle class="junction" data-net="net:2" cx="98" cy="88" r="1.15"/>
@@ -174,16 +173,16 @@
     <g class="layer layer-fields">
     <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="reference" x="166" y="70" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 166 70)">U1</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="value" x="166" y="132" text-anchor="end" dominant-baseline="alphabetic" transform="rotate(0 166 132)">NE555</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="reference" x="84" y="74" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 84 74)">R1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="value" x="120" y="74" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 120 74)">100 kOhm</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="reference" x="84" y="96" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 84 96)">R2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="value" x="120" y="96" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 120 96)">47 kOhm</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="reference" x="84" y="128" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 84 128)">C1</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="value" x="120" y="128" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 120 128)">1 uF</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="reference" x="208" y="128" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 208 128)">C2</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="value" x="244" y="128" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 244 128)">10 nF</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="reference" x="88" y="74" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 88 74)">R1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="value" x="108" y="74" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 108 74)">100 kOhm</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="reference" x="88" y="96" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 88 96)">R2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="value" x="108" y="96" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 108 96)">47 kOhm</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="reference" x="88" y="128" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 88 128)">C1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:3" data-field="value" x="108" y="128" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 108 128)">1 uF</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="reference" x="212" y="128" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 212 128)">C2</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:4" data-field="value" x="222" y="162" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 222 162)">10 nF</text>
     <text class="symbol-field" data-symbol-instance="symbol_instance:5" data-field="value" x="226" y="86" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 226 86)">1 kOhm</text>
-    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="reference" x="286" y="124" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 286 124)">D1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:6" data-field="reference" x="250" y="124" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 250 124)">D1</text>
     </g>
   </g>
 </svg>

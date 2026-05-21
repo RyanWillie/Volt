@@ -4323,7 +4323,7 @@ def _label_offset(offset: float | None, ofst: float | None, *, default: float = 
 
 
 def _element_label_offset(name: str) -> float:
-    return 22 if name.casefold() == "value" else 14
+    return 10
 
 
 def _element_label_loc(

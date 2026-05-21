@@ -517,6 +517,27 @@ TEST_CASE("Schematic readiness reports connected symbol pins without visual net 
     CHECK(diagnostic.entities()[4] == volt::EntityRef::net(net));
 }
 
+TEST_CASE("Schematic readiness accepts coincident same-net symbol pins as visual coverage") {
+    volt::Circuit circuit;
+    const auto left = add_resistor(circuit, "R1");
+    const auto right = add_resistor(circuit, "R2");
+    const auto net = add_named_net(circuit, "LED_A");
+    connect_pin_by_number(circuit, net, left, "2");
+    connect_pin_by_number(circuit, net, right, "1");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
+    [[maybe_unused]] const auto left_instance =
+        schematic.place_symbol(sheet, volt::SymbolInstance{symbol, left, volt::Point{0.0, 0.0}});
+    [[maybe_unused]] const auto right_instance =
+        schematic.place_symbol(sheet, volt::SymbolInstance{symbol, right, volt::Point{20.0, 0.0}});
+
+    const auto report = volt::validate_schematic_readiness(schematic);
+
+    CHECK(report.empty());
+}
+
 TEST_CASE("Schematic readiness accepts wires and labels at connected symbol pin anchors") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);

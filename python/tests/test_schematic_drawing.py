@@ -206,8 +206,8 @@ def test_python_schematic_label_sugar_uses_symbol_fields_and_net_labels():
         "value",
     ]
     assert [field["value"] for field in fields] == ["R1", "10k", "100n", "1e-07 F"]
-    assert fields[0]["position"] == {"x": 10.0, "y": -14.0}
-    assert fields[1]["position"] == {"x": 10.0, "y": 22.0}
+    assert fields[0]["position"] == {"x": 10.0, "y": -10.0}
+    assert fields[1]["position"] == {"x": 10.0, "y": 10.0}
     assert fields[2]["position"] == {"x": 20.0, "y": 25.0}
     assert fields[3]["position"] == {"x": 26.0, "y": 10.0}
     assert projection["net_labels"] == [
@@ -249,10 +249,10 @@ def test_python_schematic_default_field_placement_keeps_rotated_labels_upright()
         ("value", "1e-07 F", "Right"),
     ]
     assert [field["position"] for field in fields] == [
-        {"x": 10.0, "y": -14.0},
-        {"x": 10.0, "y": 22.0},
-        {"x": 26.0, "y": 10.0},
-        {"x": 62.0, "y": 10.0},
+        {"x": 10.0, "y": -10.0},
+        {"x": 10.0, "y": 10.0},
+        {"x": 30.0, "y": 10.0},
+        {"x": 50.0, "y": 10.0},
     ]
 
     svg_texts = re.findall(r">([^<>]+)</text>", schematic.to_svg())

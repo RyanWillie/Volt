@@ -429,6 +429,35 @@ inline void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexc
     return false;
 }
 
+[[nodiscard]] inline bool sheet_has_coincident_same_net_symbol_pin(const Schematic &schematic,
+                                                                   const Sheet &sheet, NetId net,
+                                                                   PinId pin_id, Point point) {
+    const auto &circuit = schematic.circuit();
+
+    for (const auto other_instance_id : sheet.symbol_instances()) {
+        const auto &other_instance = schematic.symbol_instance(other_instance_id);
+        const auto &other_symbol = schematic.symbol_definition(other_instance.symbol_definition());
+        for (const auto &other_symbol_pin : other_symbol.pins()) {
+            const auto other_pin =
+                circuit.pin_by_number(other_instance.component(), other_symbol_pin.number());
+            if (!other_pin.has_value() || other_pin.value() == pin_id) {
+                continue;
+            }
+            const auto other_net = circuit.net_of(other_pin.value());
+            if (!other_net.has_value() || other_net.value() != net) {
+                continue;
+            }
+            const auto other_point = transform_schematic_point(
+                other_symbol_pin.anchor(), other_instance.position(), other_instance.orientation());
+            if (same_schematic_point(other_point, point)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 [[nodiscard]] inline bool schematic_readiness_exempts_pin(const Circuit &circuit, PinId pin_id,
                                                           PinDefId pin_def_id) {
     const auto &definition = circuit.pin_definition(pin_def_id);
@@ -747,6 +776,10 @@ inline void validate_component_placement_coverage(const Schematic &schematic, co
         const auto pin_point = transform_schematic_point(
             symbol_pin.value().anchor(), instance.position(), instance.orientation());
         if (sheet_visually_covers_net_at_pin(schematic, sheet, net.value(), pin_point)) {
+            continue;
+        }
+        if (sheet_has_coincident_same_net_symbol_pin(schematic, sheet, net.value(), pin_id,
+                                                     pin_point)) {
             continue;
         }
 

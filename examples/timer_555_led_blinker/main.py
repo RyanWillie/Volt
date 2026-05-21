@@ -194,7 +194,7 @@ def build_schematic(
             .at(timer.CTRL.right(30))
             .toy(ground.port.pin)
             .label_ref()
-            .label_value()
+            .label_value(loc="bottom", offset=10)
             .dot()
         )
         led_resistor = (
@@ -206,7 +206,6 @@ def build_schematic(
         led = (
             drawing.two_terminal(parts["DLED"])
             .reverse()
-            .at(led_resistor.end.right(36))
             .toy(ground.port.pin)
             .label_ref(loc="right", offset=14)
         )
@@ -220,7 +219,6 @@ def build_schematic(
         drawing.connect(timer.TRIG, rb.end, shape="-").idot()
         drawing.connect(timer.CTRL, control_cap.start, shape="-")
         drawing.connect(timer.OUT, led_resistor.start, shape="-")
-        drawing.connect(led_resistor.end, led.start, shape="-")
         drawing.wire(nets["GND"]).at(timing_cap.end).tox(ground.port.pin).direct()
         drawing.wire(nets["GND"]).at(control_cap.end).tox(ground.port.pin).direct()
         drawing.wire(nets["GND"]).at(led.end).tox(ground.port.pin).direct()
