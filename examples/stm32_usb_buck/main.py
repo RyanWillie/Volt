@@ -17,6 +17,7 @@ class BenchmarkArtifacts:
     logical_json: Path
     schematic_json: Path
     schematic_svg: Path
+    schematic_body_svg: Path
     schematic_svg_pages: tuple[Path, ...]
     validation_report: Path
 
@@ -73,6 +74,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
     logical_json = output_path / "stm32_usb_buck.volt.json"
     schematic_json = output_path / "stm32_usb_buck.volt.schematic.json"
     schematic_svg = output_path / "stm32_usb_buck.svg"
+    schematic_body_svg = output_path / "stm32_usb_buck.body.svg"
     schematic_svg_pages_dir = output_path / "stm32_usb_buck.pages"
     validation_report = output_path / "stm32_usb_buck.validation.json"
 
@@ -83,6 +85,8 @@ def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
     design.write(logical_json)
     schematic_json.write_text(schematic.to_json(), encoding="utf-8")
     schematic.write_svg(schematic_svg)
+    # Content-tight body SVG is for docs/previews; full sheet/page SVGs remain document artifacts.
+    schematic.write_body_svg(schematic_body_svg)
     schematic_svg_pages = schematic.write_svg_pages(
         schematic_svg_pages_dir,
         prefix="stm32_usb_buck",
@@ -92,6 +96,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
         logical_json=logical_json,
         schematic_json=schematic_json,
         schematic_svg=schematic_svg,
+        schematic_body_svg=schematic_body_svg,
         schematic_svg_pages=schematic_svg_pages,
         validation_report=validation_report,
     )

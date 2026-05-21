@@ -1141,6 +1141,23 @@ sheet_content_bounds(const Schematic &schematic, SheetId sheet_id,
     return false;
 }
 
+inline void write_region_title_clip_defs_svg(std::ostream &out, SheetId sheet_id,
+                                             const Sheet &sheet) {
+    const auto sheet_token = svg_sheet_token(sheet_id);
+    for (std::size_t index = 0; index < sheet.regions().size(); ++index) {
+        const auto bounds = sheet.region(index).bounds();
+        out << "      <clipPath id=\"region-title-clip-" << sheet_token << '-' << index << "\">\n";
+        out << "        <rect x=\"";
+        write_svg_number(out, bounds.x());
+        out << "\" y=\"";
+        write_svg_number(out, bounds.y());
+        out << "\" width=\"";
+        write_svg_number(out, bounds.width());
+        out << "\" height=\"10\"/>\n";
+        out << "      </clipPath>\n";
+    }
+}
+
 inline void write_sheet_defs_svg(std::ostream &out, SheetId sheet_id, const Sheet &sheet) {
     const auto &metadata = sheet.metadata();
     const auto area = drawing_area(metadata);
@@ -1156,18 +1173,7 @@ inline void write_sheet_defs_svg(std::ostream &out, SheetId sheet_id, const Shee
     out << "\"/>\n";
     out << "      </clipPath>\n";
 
-    for (std::size_t index = 0; index < sheet.regions().size(); ++index) {
-        const auto bounds = sheet.region(index).bounds();
-        out << "      <clipPath id=\"region-title-clip-" << sheet_token << '-' << index << "\">\n";
-        out << "        <rect x=\"";
-        write_svg_number(out, bounds.x());
-        out << "\" y=\"";
-        write_svg_number(out, bounds.y());
-        out << "\" width=\"";
-        write_svg_number(out, bounds.width());
-        out << "\" height=\"10\"/>\n";
-        out << "      </clipPath>\n";
-    }
+    write_region_title_clip_defs_svg(out, sheet_id, sheet);
 
     if (metadata.grid().has_value() && metadata.grid()->visible()) {
         out << "      <pattern id=\"grid-" << sheet_token << "\" x=\"";
@@ -1580,6 +1586,11 @@ inline void write_schematic_body_svg(std::ostream &out, const Schematic &schemat
     detail::write_svg_number(out, height);
     out << "\">\n";
     detail::write_svg_style(out, options.svg);
+    if (options.include_regions) {
+        out << "  <defs>\n";
+        detail::write_region_title_clip_defs_svg(out, sheet_id, schematic.sheet(sheet_id));
+        out << "  </defs>\n";
+    }
     out << "  <g class=\"schematic-body\" data-sheet=\""
         << detail::svg_escape(detail::svg_sheet_id(sheet_id)) << "\">\n";
     detail::write_body_content_layers_svg(out, schematic, sheet_id, options);
