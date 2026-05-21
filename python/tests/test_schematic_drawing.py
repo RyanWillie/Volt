@@ -209,13 +209,14 @@ def test_python_schematic_label_sugar_uses_symbol_fields_and_net_labels():
     assert fields[0]["position"] == {"x": 10.0, "y": -10.0}
     assert fields[1]["position"] == {"x": 10.0, "y": 10.0}
     assert fields[2]["position"] == {"x": 20.0, "y": 25.0}
-    assert fields[3]["position"] == {"x": 26.0, "y": 10.0}
+    assert fields[3]["position"] == {"x": 32.0, "y": 10.0}
     assert projection["net_labels"] == [
         {
             "id": "net_label:0",
             "sheet": "sheet:0",
             "net": f"net:{sig.index}",
             "position": {"x": 28.0, "y": 0.0},
+            "text_position": {"x": 32.0, "y": 0.0},
             "orientation": "Left",
         }
     ]
@@ -252,7 +253,7 @@ def test_python_schematic_default_field_placement_keeps_rotated_labels_upright()
         {"x": 10.0, "y": -10.0},
         {"x": 10.0, "y": 10.0},
         {"x": 30.0, "y": 10.0},
-        {"x": 50.0, "y": 10.0},
+        {"x": 54.0, "y": 10.0},
     ]
 
     svg_texts = re.findall(r">([^<>]+)</text>", schematic.to_svg())
@@ -871,6 +872,7 @@ def test_python_schematic_local_signal_stub_sugar_emits_wire_and_label_only():
             "sheet": "sheet:0",
             "net": f"net:{sig.index}",
             "position": {"x": 33.0, "y": 40.0},
+            "text_position": {"x": 33.0, "y": 36.0},
             "orientation": "Left",
             "label": "SWDIO",
         }
@@ -878,7 +880,7 @@ def test_python_schematic_local_signal_stub_sugar_emits_wire_and_label_only():
 
     svg = schematic.to_svg()
     assert f'<polyline class="wire-run" data-net="net:{sig.index}" points="40,40 34,40"/>' in svg
-    assert f'<text class="net-label" data-net="net:{sig.index}" x="33" y="40"' in svg
+    assert f'<text class="net-label" data-net="net:{sig.index}" x="33" y="36"' in svg
     assert ">SWDIO</text>" in svg
     assert ">SUPPORT/SWDIO</text>" not in svg
     assert 'class="sheet-port off-page"' not in svg
@@ -1915,6 +1917,7 @@ def test_python_schematic_terminal_marker_is_generic_and_net_bound():
             "kind": "Ground",
             "position": {"x": 0.0, "y": 0.0},
             "orientation": "Down",
+            "label_position": {"x": 0.0, "y": 12.2},
         },
         {
             "id": "power_port:1",
@@ -1924,6 +1927,7 @@ def test_python_schematic_terminal_marker_is_generic_and_net_bound():
             "position": {"x": 20.0, "y": 10.0},
             "orientation": "Right",
             "label": "LOCAL",
+            "label_position": {"x": 33.4, "y": 10.0},
         },
     ]
 

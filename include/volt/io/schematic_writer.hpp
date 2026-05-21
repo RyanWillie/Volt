@@ -614,6 +614,10 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << ", \"net\": " << detail::json_string(detail::net_id(label.net()))
             << ", \"position\": ";
         detail::write_point(out, label.position());
+        if (label.explicit_text_position()) {
+            out << ", \"text_position\": ";
+            detail::write_point(out, *label.explicit_text_position());
+        }
         out << ", \"orientation\": "
             << detail::json_string(detail::schematic_orientation_name(label.orientation()));
         if (label.label()) {
@@ -666,6 +670,10 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << detail::json_string(detail::schematic_orientation_name(port.orientation()));
         if (port.label().has_value()) {
             out << ", \"label\": " << detail::json_string(*port.label());
+        }
+        if (port.explicit_label_position()) {
+            out << ", \"label_position\": ";
+            detail::write_point(out, *port.explicit_label_position());
         }
         detail::write_authored_region(out,
                                       schematic.sheet(detail::sheet_for_power_port(schematic, id)),

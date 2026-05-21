@@ -765,19 +765,23 @@ power_port_glyph_orientation(PowerPortKind kind, SchematicOrientation orientatio
                                                              std::string_view label) {
     const auto label_y =
         port.kind() == PowerPortKind::Ground ? ground_port_label_offset : -power_port_label_offset;
-    return text_bounds(transformed_port_anchor(port, Point{0.0, label_y}),
-                       SchematicOrientation::Right, label, sheet_port_rendered_label_font_size,
-                       true);
+    return text_bounds(
+        port.explicit_label_position().value_or(transformed_port_anchor(port, Point{0.0, label_y})),
+        SchematicOrientation::Right, label, sheet_port_rendered_label_font_size, true);
+}
+
+[[nodiscard]] inline SchematicBounds power_port_glyph_bounds(const PowerPort &port) {
+    const auto glyph_orientation = power_port_glyph_orientation(port.kind(), port.orientation());
+    return port.kind() == PowerPortKind::Ground
+               ? transform_rect_bounds(-3.6, 0.0, 3.6, 6.0, port.position(), glyph_orientation)
+               : transform_rect_bounds(-power_port_half_width, -power_port_tip_offset,
+                                       power_port_half_width, 0.0, port.position(),
+                                       glyph_orientation);
 }
 
 [[nodiscard]] inline SchematicBounds power_port_bounds(const PowerPort &port,
                                                        std::string_view label) {
-    const auto glyph_orientation = power_port_glyph_orientation(port.kind(), port.orientation());
-    auto bounds =
-        port.kind() == PowerPortKind::Ground
-            ? transform_rect_bounds(-3.6, 0.0, 3.6, 6.0, port.position(), glyph_orientation)
-            : transform_rect_bounds(-power_port_half_width, -power_port_tip_offset,
-                                    power_port_half_width, 0.0, port.position(), glyph_orientation);
+    auto bounds = power_port_glyph_bounds(port);
     include_bounds(bounds, power_port_label_bounds(port, label));
     return bounds;
 }
@@ -1207,7 +1211,7 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
         objects.push_back(
             ReadabilityObject{ReadabilityObjectKind::NetLabel, EntityRef::net_label(label_id),
                               std::vector{EntityRef::net(label.net())},
-                              text_bounds(label.position(), label.orientation(),
+                              text_bounds(label.text_position(), label.orientation(),
                                           label.label().value_or(net.name().value()), label.style(),
                                           net_label_rendered_font_size),
                               label.authored_region()});
@@ -1297,7 +1301,7 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
             ReadabilityTextKind::NetLabel,
             EntityRef::net_label(label_id),
             std::vector{EntityRef::net(label.net())},
-            text_bounds(label.position(), label.orientation(),
+            text_bounds(label.text_position(), label.orientation(),
                         label.label().value_or(net.name().value()), label.style(),
                         net_label_rendered_font_size),
             label.position(),
@@ -1907,7 +1911,7 @@ inline void validate_text_wire_collisions(const Schematic &schematic, SheetId sh
             refs.insert(refs.end(), text.context.begin(), text.context.end());
             refs.push_back(EntityRef::net(wire.net()));
             report.add(Diagnostic{
-                Severity::Warning,
+                Severity::Error,
                 DiagnosticCode{"SCHEMATIC_TEXT_TOUCHES_WIRE"},
                 "Schematic text touches or crosses a wire; move the label or reroute the wire",
                 std::move(refs),
@@ -1929,7 +1933,7 @@ inline void validate_text_symbol_collisions(const Schematic &schematic, SheetId 
                                                EntityRef::symbol_instance(instance_id)};
             refs.insert(refs.end(), text.context.begin(), text.context.end());
             report.add(Diagnostic{
-                Severity::Warning,
+                Severity::Error,
                 DiagnosticCode{"SCHEMATIC_TEXT_TOUCHES_SYMBOL"},
                 "Schematic text touches or crosses a symbol outline; add spacing around the text",
                 std::move(refs),
@@ -1959,7 +1963,7 @@ inline void validate_symbol_overlaps(const Schematic &schematic, SheetId sheet_i
                 continue;
             }
             report.add(Diagnostic{
-                Severity::Warning,
+                Severity::Error,
                 DiagnosticCode{"SCHEMATIC_SYMBOL_OVERLAP"},
                 "Schematic symbols overlap; separate the component placements",
                 std::vector{
@@ -2021,7 +2025,7 @@ inline void validate_wire_symbol_collisions(const Schematic &schematic, SheetId 
                 continue;
             }
             report.add(Diagnostic{
-                Severity::Warning,
+                Severity::Error,
                 DiagnosticCode{"SCHEMATIC_WIRE_CROSSES_SYMBOL"},
                 "Schematic wire crosses a symbol body; reroute the wire or move the symbol",
                 std::vector{
@@ -2037,9 +2041,7 @@ inline void validate_terminal_wire_collisions(const Schematic &schematic, SheetI
                                               const Sheet &sheet, DiagnosticReport &report) {
     for (const auto port_id : sheet.power_ports()) {
         const auto &port = schematic.power_port(port_id);
-        const auto &port_net = schematic.circuit().net(port.net());
-        const auto port_bounds =
-            power_port_bounds(port, port.label().value_or(port_net.name().value()));
+        const auto port_bounds = power_port_glyph_bounds(port);
         for (const auto wire_id : sheet.wire_runs()) {
             const auto &wire = schematic.wire_run(wire_id);
             if (wire.net() == port.net()) {
@@ -2058,7 +2060,7 @@ inline void validate_terminal_wire_collisions(const Schematic &schematic, SheetI
                 continue;
             }
             report.add(Diagnostic{
-                Severity::Warning,
+                Severity::Error,
                 DiagnosticCode{"SCHEMATIC_TERMINAL_TOUCHES_UNRELATED_WIRE"},
                 "Schematic terminal marker touches an unrelated wire; move the marker or reroute "
                 "the wire",
@@ -2247,7 +2249,7 @@ inline void validate_different_net_wire_crossings(const Schematic &schematic, Sh
                         continue;
                     }
                     report.add(Diagnostic{
-                        Severity::Warning,
+                        Severity::Error,
                         DiagnosticCode{"SCHEMATIC_DIFFERENT_NET_WIRE_CROSSING"},
                         "Different-net schematic wires cross visually; reroute one wire to keep "
                         "the drawing readable",
@@ -2648,7 +2650,7 @@ inline void validate_text_collisions(const Schematic &schematic, SheetId sheet_i
             refs.insert(refs.end(), texts[first].context.begin(), texts[first].context.end());
             refs.insert(refs.end(), texts[second].context.begin(), texts[second].context.end());
             report.add(Diagnostic{
-                Severity::Warning,
+                Severity::Error,
                 DiagnosticCode{"SCHEMATIC_TEXT_COLLISION"},
                 "Conservative schematic text bounds overlap; review label placement",
                 std::move(refs),

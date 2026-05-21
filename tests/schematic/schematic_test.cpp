@@ -12,6 +12,7 @@
 #include <volt/circuit/definitions.hpp>
 #include <volt/circuit/instances.hpp>
 #include <volt/schematic/geometry.hpp>
+#include <volt/schematic/layout.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
 #include <volt/schematic/validation.hpp>
@@ -1100,12 +1101,51 @@ TEST_CASE("Schematic readability reports overlapping text bounds") {
     const auto report = volt::validate_schematic_readability(schematic);
 
     const auto &collision = require_diagnostic(report, "SCHEMATIC_TEXT_COLLISION");
-    CHECK(collision.severity() == volt::Severity::Warning);
+    CHECK(collision.severity() == volt::Severity::Error);
     const auto &entities = collision.entities();
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(first)) !=
           entities.end());
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(second)) !=
           entities.end());
+}
+
+TEST_CASE("Schematic text layout moves net labels away from wire keepouts") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "VCC");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto label = schematic.add_net_label(sheet, volt::NetLabel{net, volt::Point{40.0, 40.0}});
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{42.0, 39.4}, volt::Point{58.0, 39.4}}});
+    const auto wire_points_before = schematic.wire_run(wire).points();
+
+    volt::layout_schematic_text(schematic);
+
+    CHECK(schematic.wire_run(wire).points() == wire_points_before);
+    CHECK(schematic.net_label(label).position() == volt::Point{40.0, 40.0});
+    CHECK_FALSE(schematic.net_label(label).text_position() == volt::Point{40.0, 40.0});
+    CHECK_FALSE(report_has_code(volt::validate_schematic_readability(schematic),
+                                "SCHEMATIC_TEXT_TOUCHES_WIRE"));
+}
+
+TEST_CASE("Schematic text layout moves symbol fields away from their owning symbol body") {
+    volt::Circuit circuit;
+    const auto component = add_four_pin_component(circuit, "U1");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_four_pin_ic_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{50.0, 50.0}});
+    const auto field = schematic.add_symbol_field(
+        sheet, volt::SymbolField{instance, "value", "STM32F405", volt::Point{54.0, 50.0}});
+
+    volt::layout_schematic_text(schematic);
+
+    CHECK_FALSE(schematic.symbol_field(field).position() == volt::Point{54.0, 50.0});
+    CHECK_FALSE(report_has_code(volt::validate_schematic_readability(schematic),
+                                "SCHEMATIC_TEXT_TOUCHES_SYMBOL"));
 }
 
 TEST_CASE("Schematic readability reports oversized sheet and off-page tags") {
@@ -1181,7 +1221,7 @@ TEST_CASE("Schematic readability reports text crossing wire geometry") {
     const auto report = volt::validate_schematic_readability(schematic);
 
     const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_TEXT_TOUCHES_WIRE");
-    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.severity() == volt::Severity::Error);
     const auto &entities = diagnostic.entities();
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(label)) !=
           entities.end());
@@ -1203,7 +1243,7 @@ TEST_CASE("Schematic readability reports power labels crossing wire geometry") {
     const auto report = volt::validate_schematic_readability(schematic);
 
     const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_TEXT_TOUCHES_WIRE");
-    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.severity() == volt::Severity::Error);
     const auto &entities = diagnostic.entities();
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::power_port(port)) !=
           entities.end());
@@ -1226,7 +1266,7 @@ TEST_CASE("Schematic readability reports text touching symbol outlines") {
     const auto report = volt::validate_schematic_readability(schematic);
 
     const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_TEXT_TOUCHES_SYMBOL");
-    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.severity() == volt::Severity::Error);
     const auto &entities = diagnostic.entities();
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::net_label(label)) !=
           entities.end());
@@ -1250,7 +1290,7 @@ TEST_CASE("Schematic readability reports overlapping symbol bodies") {
     const auto report = volt::validate_schematic_readability(schematic);
 
     const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_SYMBOL_OVERLAP");
-    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.severity() == volt::Severity::Error);
     const auto &entities = diagnostic.entities();
     CHECK(std::find(entities.begin(), entities.end(),
                     volt::EntityRef::symbol_instance(first_instance)) != entities.end());
@@ -1295,7 +1335,7 @@ TEST_CASE("Schematic readability reports wires crossing unrelated symbol bodies"
     const auto report = volt::validate_schematic_readability(schematic);
 
     const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_WIRE_CROSSES_SYMBOL");
-    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.severity() == volt::Severity::Error);
     const auto &entities = diagnostic.entities();
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(wire)) !=
           entities.end());
@@ -1364,7 +1404,7 @@ TEST_CASE("Schematic readability reports terminal markers touching unrelated wir
 
     const auto &diagnostic =
         require_diagnostic(report, "SCHEMATIC_TERMINAL_TOUCHES_UNRELATED_WIRE");
-    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.severity() == volt::Severity::Error);
     const auto &entities = diagnostic.entities();
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::power_port(port)) !=
           entities.end());
@@ -1389,7 +1429,7 @@ TEST_CASE("Schematic readability reports different-net visual wire crossings") {
     const auto report = volt::validate_schematic_readability(schematic);
 
     const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_DIFFERENT_NET_WIRE_CROSSING");
-    CHECK(diagnostic.severity() == volt::Severity::Warning);
+    CHECK(diagnostic.severity() == volt::Severity::Error);
     const auto &entities = diagnostic.entities();
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(first_wire)) !=
           entities.end());

@@ -708,7 +708,7 @@ def _author_mcu_region(
             at=rreset.start,
             net=support_vdd,
             side="Left",
-            length=8,
+            length=20,
             orient="Left",
         )
         drawing.power_stub("+3V3", at=swboot.A, net=support_vdd, side="Up", length=16, orient="Up")

@@ -127,11 +127,13 @@ TEST_CASE("Schematic reader loads optional net label display text") {
 
     auto fixture = schematic_json();
     fixture["net_labels"][0]["label"] = "SWDIO";
+    fixture["net_labels"][0]["text_position"] = {{"x", 18.0}, {"y", 14.0}};
 
     const auto schematic = volt::io::read_schematic(fixture, circuit);
 
     REQUIRE(schematic.net_label_count() == 1);
     CHECK(schematic.net_label(volt::NetLabelId{0}).label() == std::optional<std::string>{"SWDIO"});
+    CHECK(schematic.net_label(volt::NetLabelId{0}).text_position() == volt::Point{18.0, 14.0});
 }
 
 TEST_CASE("Schematic reader loads explicit text presentation metadata") {

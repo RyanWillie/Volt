@@ -222,6 +222,16 @@ class SchematicReader {
         return Point{number_field(object, "x"), number_field(object, "y")};
     }
 
+    [[nodiscard]] static std::optional<Point> optional_point_field(const nlohmann::json &object,
+                                                                   const char *name) {
+        require(object.is_object(), "Expected object while reading schematic");
+        const auto it = object.find(name);
+        if (it == object.end()) {
+            return std::nullopt;
+        }
+        return point(*it);
+    }
+
     [[nodiscard]] static SchematicOrientation orientation(const std::string &value) {
         if (value == "Right")
             return SchematicOrientation::Right;
@@ -618,7 +628,8 @@ class SchematicReader {
                                 authored_region(sheet, label_object),
                                 optional_non_empty_string_field(label_object, "label"),
                                 text_style(label_object,
-                                           SchematicTextStyle{TextHorizontalAlignment::Start})});
+                                           SchematicTextStyle{TextHorizontalAlignment::Start}),
+                                optional_point_field(label_object, "text_position")});
             net_label_ids_.emplace(id, label);
         }
     }
@@ -647,7 +658,8 @@ class SchematicReader {
                                  point(field(port_object, "position")),
                                  orientation(string_field(port_object, "orientation")),
                                  authored_region(sheet, port_object),
-                                 optional_non_empty_string_field(port_object, "label")});
+                                 optional_non_empty_string_field(port_object, "label"),
+                                 optional_point_field(port_object, "label_position")});
             power_port_ids_.emplace(id, port);
         }
     }

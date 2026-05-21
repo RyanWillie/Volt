@@ -181,8 +181,8 @@ def test_python_schematic_readability_reports_authored_region_content_overlap():
     left = schematic.region("Left", x=10, y=10, w=40, h=30)
     right = schematic.region("Right", x=30, y=10, w=40, h=30)
 
-    left.label(net, at=(18, 10), label="AAAAAA")
-    right.label(net, at=(0, 10), label="B")
+    left.wire(net, [(18, 10), (48, 10)])
+    right.wire(net, [(0, 10), (30, 10)])
 
     report = schematic.validate_readability()
     diagnostics = [
