@@ -1481,12 +1481,14 @@ class SchematicDrawing:
         anchor: SchematicPinAnchor,
         *,
         orient: str = "Right",
+        offset: float = 0,
         reason: str | None = None,
     ) -> SchematicNoConnect:
         self._flush_pending()
         return self._schematic.no_connect(
             anchor,
             orient=orient,
+            offset=offset,
             reason=reason,
             _authored_region=self._authored_region,
         )
@@ -3074,6 +3076,7 @@ class Schematic:
         pin: SchematicPinAnchor,
         *,
         orient: str = "Right",
+        offset: float = 0,
         reason: str | None = None,
         _authored_region: int | None = None,
     ) -> SchematicNoConnect:
@@ -3088,11 +3091,16 @@ class Schematic:
             action="no-connect marker",
         )
         orientation = _orientation(orient)
+        marker_x, marker_y = _offset_schematic_point(
+            (pin.x, pin.y),
+            orientation,
+            _nonnegative_coordinate(offset, "No-connect marker offsets"),
+        )
         marker = self._design._circuit.add_schematic_no_connect_marker(
             self._sheet_index,
             pin.pin.index,
-            pin.x,
-            pin.y,
+            marker_x,
+            marker_y,
             orientation,
             reason or "",
             _authored_region,
@@ -3660,11 +3668,13 @@ class SchematicRegion:
         anchor: SchematicPinAnchor,
         *,
         orient: str = "Right",
+        offset: float = 0,
         reason: str | None = None,
     ) -> SchematicNoConnect:
         return self._sheet.no_connect(
             anchor,
             orient=orient,
+            offset=offset,
             reason=reason,
             _authored_region=self._index,
         )

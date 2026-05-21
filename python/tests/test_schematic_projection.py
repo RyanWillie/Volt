@@ -279,7 +279,7 @@ def test_python_schematic_drawing_annotation_helpers_stay_presentation_only():
         drawing.net_label(swdio, at=placed.SWDIO.left(10), orient="right")
         drawing.off_page("SWDIO", at=placed.SWDIO.left(20), orient="left")
         drawing.sheet_port("SWDIO_IN", net=swdio, at=placed.SWDIO.left(30), kind="Input")
-        drawing.no_connect(placed.NC, reason="test pad not populated")
+        drawing.no_connect(placed.NC, orient="left", offset=6, reason="test pad not populated")
 
     projection = json.loads(schematic.to_json())
     logical = json.loads(design.to_json())
@@ -293,6 +293,8 @@ def test_python_schematic_drawing_annotation_helpers_stay_presentation_only():
     assert projection["sheet_ports"][1]["name"] == "SWDIO_IN"
     assert projection["sheet_ports"][1]["kind"] == "Input"
     assert projection["no_connect_markers"][0]["pin"] == f"pin:{placed.NC.pin.index}"
+    assert projection["no_connect_markers"][0]["position"] == {"x": 54.0, "y": 40.0}
+    assert projection["no_connect_markers"][0]["orientation"] == "Left"
     assert projection["no_connect_markers"][0]["reason"] == "test pad not populated"
 
 def test_python_schematic_two_terminal_between_anchors_is_generic_and_presentation_only():

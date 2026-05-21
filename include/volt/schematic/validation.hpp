@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -42,6 +43,8 @@ inline constexpr double symbol_field_rendered_font_size = 2.5;
 inline constexpr double tag_stack_min_spacing = 6.0;
 inline constexpr double tag_stack_alignment_tolerance = 1.0;
 inline constexpr double label_symbol_clearance = 1.5;
+inline constexpr double unrelated_text_wire_clearance = 2.0;
+inline constexpr double no_connect_marker_clearance = 2.0;
 inline constexpr double symbol_field_owner_max_gap = 18.0;
 inline constexpr double local_dogleg_endpoint_max_distance = 24.0;
 inline constexpr double local_dogleg_min_length = 80.0;
@@ -86,6 +89,7 @@ enum class ReadabilityObjectKind {
 enum class ReadabilityTextKind {
     NetLabel,
     SymbolField,
+    SymbolText,
     PowerPortLabel,
     SheetPortLabel,
 };
@@ -141,6 +145,8 @@ struct ReadabilityTextObject {
     Point anchor;
     /** Net named or tagged by the text, if applicable. */
     std::optional<NetId> net;
+    /** Symbol instance that owns this text when it is rendered inside a symbol definition. */
+    std::optional<SymbolInstanceId> owning_symbol;
 };
 
 /** Shape-aware schematic element geometry gathered for generic visual collision checks. */
@@ -316,6 +322,41 @@ inline void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexc
     include_point(result, transform_schematic_point(Point{min_x, max_y}, origin, orientation));
     include_point(result, transform_schematic_point(Point{max_x, max_y}, origin, orientation));
     return result;
+}
+
+[[nodiscard]] inline int orientation_quarter_turns(SchematicOrientation orientation) noexcept {
+    switch (orientation) {
+    case SchematicOrientation::Right:
+        return 0;
+    case SchematicOrientation::Down:
+        return 1;
+    case SchematicOrientation::Left:
+        return 2;
+    case SchematicOrientation::Up:
+        return 3;
+    }
+    return 0;
+}
+
+[[nodiscard]] inline SchematicOrientation orientation_from_quarter_turns(int turns) {
+    const auto normalized = ((turns % 4) + 4) % 4;
+    switch (normalized) {
+    case 0:
+        return SchematicOrientation::Right;
+    case 1:
+        return SchematicOrientation::Down;
+    case 2:
+        return SchematicOrientation::Left;
+    case 3:
+        return SchematicOrientation::Up;
+    }
+    throw std::logic_error{"Unhandled schematic orientation"};
+}
+
+[[nodiscard]] inline SchematicOrientation combined_text_orientation(SchematicOrientation parent,
+                                                                    SchematicOrientation child) {
+    return orientation_from_quarter_turns(orientation_quarter_turns(parent) +
+                                          orientation_quarter_turns(child));
 }
 
 [[nodiscard]] inline SchematicBounds drawing_area_bounds(const SheetMetadata &metadata) noexcept {
@@ -625,8 +666,9 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
     const auto &text = std::get<SymbolText>(primitive);
     const auto anchor =
         transform_schematic_point(text.anchor(), instance.position(), instance.orientation());
-    return text_bounds(anchor, instance.orientation(), text.text(), text.style(),
-                       symbol_text_rendered_font_size);
+    return text_bounds(anchor,
+                       combined_text_orientation(instance.orientation(), text.orientation()),
+                       text.text(), text.style(), symbol_text_rendered_font_size);
 }
 
 [[nodiscard]] inline SchematicBounds symbol_instance_bounds(const Schematic &schematic,
@@ -825,6 +867,11 @@ power_port_glyph_orientation(PowerPortKind kind, SchematicOrientation orientatio
 
 [[nodiscard]] inline SchematicBounds no_connect_marker_bounds(const NoConnectMarker &marker) {
     return transform_rect_bounds(-4.0, -4.0, 4.0, 4.0, marker.position(), marker.orientation());
+}
+
+[[nodiscard]] inline SchematicBounds
+no_connect_marker_collision_bounds(const NoConnectMarker &marker) {
+    return padded_bounds(no_connect_marker_bounds(marker), no_connect_marker_clearance);
 }
 
 [[nodiscard]] inline double sheet_port_rendered_body_length(std::string_view label) {
@@ -1343,6 +1390,7 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
                         net_label_rendered_font_size),
             label.position(),
             label.net(),
+            std::nullopt,
         });
     }
     for (const auto field_id : sheet.symbol_fields()) {
@@ -1355,7 +1403,31 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
                         symbol_field_rendered_font_size),
             field.position(),
             std::nullopt,
+            std::nullopt,
         });
+    }
+    for (const auto instance_id : sheet.symbol_instances()) {
+        const auto &instance = schematic.symbol_instance(instance_id);
+        const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
+        for (const auto &primitive : symbol.primitives()) {
+            if (!std::holds_alternative<SymbolText>(primitive)) {
+                continue;
+            }
+            const auto &text = std::get<SymbolText>(primitive);
+            const auto anchor = transform_schematic_point(text.anchor(), instance.position(),
+                                                          instance.orientation());
+            texts.push_back(ReadabilityTextObject{
+                ReadabilityTextKind::SymbolText,
+                EntityRef::symbol_instance(instance_id),
+                std::vector{EntityRef::component(instance.component())},
+                text_bounds(anchor,
+                            combined_text_orientation(instance.orientation(), text.orientation()),
+                            text.text(), text.style(), symbol_text_rendered_font_size),
+                anchor,
+                std::nullopt,
+                instance_id,
+            });
+        }
     }
     for (const auto port_id : sheet.power_ports()) {
         const auto &port = schematic.power_port(port_id);
@@ -1369,6 +1441,7 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
             bounds,
             bounds_center(bounds),
             port.net(),
+            std::nullopt,
         });
     }
     for (const auto port_id : sheet.sheet_ports()) {
@@ -1381,6 +1454,7 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
             bounds,
             bounds_center(bounds),
             port.net(),
+            std::nullopt,
         });
     }
     return texts;
@@ -1474,7 +1548,7 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
             ReadabilityCollisionKind::NoConnectMarker,
             EntityRef::no_connect_marker(marker_id),
             std::vector{EntityRef::pin(marker.pin()), EntityRef::component(pin.component())},
-            no_connect_marker_bounds(marker),
+            no_connect_marker_collision_bounds(marker),
             std::nullopt,
             marker.position(),
             std::nullopt,
@@ -1670,18 +1744,11 @@ inline void validate_port_tag_scale(const Schematic &schematic, SheetId sheet_id
            kind == ReadabilityObjectKind::SheetPort;
 }
 
-[[nodiscard]] inline bool terminal_marker_attaches_to_symbol_pin(const Schematic &schematic,
-                                                                 const ReadabilityObject &symbol,
-                                                                 const ReadabilityObject &object) {
-    if (object.kind != ReadabilityObjectKind::PowerPort) {
-        return false;
-    }
-
-    const auto symbol_id = SymbolInstanceId{symbol.entity.index()};
-    const auto port_id = PowerPortId{object.entity.index()};
+[[nodiscard]] inline bool power_port_attaches_to_symbol_pin(const Schematic &schematic,
+                                                            const PowerPort &port,
+                                                            SymbolInstanceId symbol_id) {
     const auto &instance = schematic.symbol_instance(symbol_id);
     const auto &definition = schematic.symbol_definition(instance.symbol_definition());
-    const auto &port = schematic.power_port(port_id);
     const auto &circuit = schematic.circuit();
     for (const auto &symbol_pin : definition.pins()) {
         const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
@@ -1699,6 +1766,19 @@ inline void validate_port_tag_scale(const Schematic &schematic, SheetId sheet_id
         }
     }
     return false;
+}
+
+[[nodiscard]] inline bool terminal_marker_attaches_to_symbol_pin(const Schematic &schematic,
+                                                                 const ReadabilityObject &symbol,
+                                                                 const ReadabilityObject &object) {
+    if (object.kind != ReadabilityObjectKind::PowerPort) {
+        return false;
+    }
+
+    const auto port_id = PowerPortId{object.entity.index()};
+    const auto &port = schematic.power_port(port_id);
+    return power_port_attaches_to_symbol_pin(schematic, port,
+                                             SymbolInstanceId{symbol.entity.index()});
 }
 
 inline void validate_symbol_crowding(const Schematic &schematic, SheetId sheet_id,
@@ -2044,11 +2124,15 @@ inline void validate_text_wire_collisions(const Schematic &schematic, SheetId sh
             if (text_anchor_intentionally_attaches_to_wire(text, wire)) {
                 continue;
             }
+            const auto checked_bounds =
+                text.net.has_value() && text.net.value() != wire.net()
+                    ? padded_bounds(text.bounds, unrelated_text_wire_clearance)
+                    : text.bounds;
             auto touches_wire = false;
             for (std::size_t point_index = 1; point_index < wire.points().size(); ++point_index) {
                 const auto segment =
                     SchematicSegment{wire.points()[point_index - 1U], wire.points()[point_index]};
-                if (segment_intersects_bounds(segment, text.bounds)) {
+                if (segment_intersects_bounds(segment, checked_bounds)) {
                     touches_wire = true;
                     break;
                 }
@@ -2074,6 +2158,9 @@ inline void validate_text_symbol_collisions(const Schematic &schematic, SheetId 
                                             const Sheet &sheet, DiagnosticReport &report) {
     const auto texts = readability_texts_for_sheet(schematic, sheet);
     for (const auto &text : texts) {
+        if (text.kind == ReadabilityTextKind::SymbolText) {
+            continue;
+        }
         for (const auto instance_id : sheet.symbol_instances()) {
             if (!intersects_bounds(text.bounds,
                                    symbol_instance_geometry_bounds(schematic, instance_id))) {
@@ -2230,6 +2317,9 @@ inline void validate_terminal_symbol_collisions(const Schematic &schematic, Shee
         for (const auto instance_id : sheet.symbol_instances()) {
             const auto body_bounds = symbol_instance_body_bounds(schematic, instance_id);
             if (!body_bounds.has_value() || !intersects_bounds(port_bounds, body_bounds.value())) {
+                continue;
+            }
+            if (power_port_attaches_to_symbol_pin(schematic, port, instance_id)) {
                 continue;
             }
             report.add(Diagnostic{

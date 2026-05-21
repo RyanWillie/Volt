@@ -1251,6 +1251,59 @@ TEST_CASE("Schematic readability reports power labels crossing wire geometry") {
           entities.end());
 }
 
+TEST_CASE("Schematic readability reports symbol text crossing wire geometry") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto net = add_named_net(circuit, "TRACE");
+
+    auto text_symbol = volt::SymbolDefinition{"TextSymbol"};
+    text_symbol.add_primitive(volt::SymbolText{"PIN", volt::Point{50.0, 50.0}});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(text_symbol);
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{0.0, 0.0}});
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{48.0, 49.0}, volt::Point{58.0, 49.0}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_TEXT_TOUCHES_WIRE");
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::symbol_instance(instance)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(wire)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability reports labels crowding unrelated wire geometry") {
+    volt::Circuit circuit;
+    const auto label_net = circuit.add_net(volt::Net{volt::NetName{"+3V3"}, volt::NetKind::Power});
+    const auto wire_net = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto port = schematic.add_power_port(
+        sheet, volt::PowerPort{label_net, volt::PowerPortKind::Power, volt::Point{20.0, 20.0},
+                               volt::SchematicOrientation::Up, std::nullopt,
+                               std::optional<std::string>{"+3V3"}, volt::Point{50.0, 50.0}});
+    const auto wire = schematic.add_wire_run(
+        sheet,
+        volt::WireRun{wire_net, std::vector{volt::Point{49.0, 52.6}, volt::Point{62.0, 52.6}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_TEXT_TOUCHES_WIRE");
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::power_port(port)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(wire)) !=
+          entities.end());
+}
+
 TEST_CASE("Schematic readability reports text touching symbol outlines") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
@@ -1456,6 +1509,31 @@ TEST_CASE("Schematic readability reports generic visual element collisions") {
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::power_port(first)) !=
           entities.end());
     CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::power_port(second)) !=
+          entities.end());
+}
+
+TEST_CASE("Schematic readability reports no-connect markers crowding wire geometry") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto net = add_named_net(circuit, "BOOT0");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto marker = schematic.add_no_connect_marker(
+        sheet,
+        volt::NoConnectMarker{pin, volt::Point{50.0, 50.0}, volt::SchematicOrientation::Right});
+    const auto wire = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{45.0, 45.2}, volt::Point{55.0, 45.2}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_VISUAL_COLLISION");
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::no_connect_marker(marker)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::wire_run(wire)) !=
           entities.end());
 }
 
@@ -1828,6 +1906,34 @@ TEST_CASE("Schematic readability accepts terminal markers attached to connected 
     const auto report = volt::validate_schematic_readability(schematic);
 
     CHECK_FALSE(report_has_code(report, "SCHEMATIC_LABEL_CROWDS_SYMBOL"));
+}
+
+TEST_CASE("Schematic readability accepts terminal markers on connected symbol leads") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit);
+    const auto supply = circuit.add_net(volt::Net{volt::NetName{"+3V3"}, volt::NetKind::Power});
+    connect_pin_by_number(circuit, supply, component, "1");
+
+    auto switch_symbol = volt::SymbolDefinition{"SwitchLike"};
+    switch_symbol.add_pin(
+        volt::SymbolPin{"A", "1", volt::Point{0.0, 0.0}, volt::SchematicOrientation::Left});
+    switch_symbol.add_pin(
+        volt::SymbolPin{"B", "2", volt::Point{24.0, 8.0}, volt::SchematicOrientation::Right});
+    switch_symbol.add_primitive(volt::SymbolLine{volt::Point{0.0, 0.0}, volt::Point{12.0, 0.0}});
+    switch_symbol.add_primitive(volt::SymbolLine{volt::Point{12.0, 0.0}, volt::Point{24.0, 8.0}});
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    static_cast<void>(schematic.place_symbol(
+        sheet, volt::SymbolInstance{schematic.add_symbol_definition(switch_symbol), component,
+                                    volt::Point{60.0, 60.0}}));
+    static_cast<void>(schematic.add_power_port(
+        sheet, volt::PowerPort{supply, volt::PowerPortKind::Power, volt::Point{60.0, 60.0}}));
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK_FALSE(report_has_code(report, "SCHEMATIC_TERMINAL_TOUCHES_SYMBOL"));
+    CHECK_FALSE(report_has_code(report, "SCHEMATIC_VISUAL_COLLISION"));
 }
 
 TEST_CASE("Schematic readability reports duplicate visible reference labels on a sheet") {

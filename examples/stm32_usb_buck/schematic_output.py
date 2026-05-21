@@ -118,22 +118,25 @@ def _indicator_led_symbol() -> volt.SchematicSymbolSpec:
     )
 
 
-def _compact_connector_1x04_symbol() -> volt.SchematicSymbolSpec:
+def _compact_connector_1x04_symbol(
+    *, side: str = "left", pin_labels: bool = True
+) -> volt.SchematicSymbolSpec:
     return volt.SchematicSymbolSpec.block(
-        "volt.examples.stm32_usb_buck:CompactConnector1x04",
+        f"volt.examples.stm32_usb_buck:CompactConnector1x04:{side}:labels-{pin_labels}",
         pins=(
-            volt.SchematicSymbolSpec.block_pin("1", 1, side="left", slot=1),
-            volt.SchematicSymbolSpec.block_pin("2", 2, side="left", slot=2),
-            volt.SchematicSymbolSpec.block_pin("3", 3, side="left", slot=3),
-            volt.SchematicSymbolSpec.block_pin("4", 4, side="left", slot=4),
+            volt.SchematicSymbolSpec.block_pin("1", 1, side=side, slot=1),
+            volt.SchematicSymbolSpec.block_pin("2", 2, side=side, slot=2),
+            volt.SchematicSymbolSpec.block_pin("3", 3, side=side, slot=3),
+            volt.SchematicSymbolSpec.block_pin("4", 4, side=side, slot=4),
         ),
         width=20,
         height=26,
         lead_length=8,
         pin_pitch=7,
         pin_label_offset=3,
-        side_layouts=(volt.SchematicSymbolSpec.side_layout("left", pad=0),),
+        side_layouts=(volt.SchematicSymbolSpec.side_layout(side, pad=0),),
         center_label="CONN",
+        pin_labels=pin_labels,
         pin_numbers=False,
     )
 
@@ -358,7 +361,7 @@ def _author_power_region(
         drawing.move_from(vin.GND.left(44).down(20))
         pwr_j = drawing.place(
             pwr.component("J"),
-            symbol=_compact_connector_1x04_symbol(),
+            symbol=_compact_connector_1x04_symbol(pin_labels=False),
             reference_label=_display_reference(pwr.component("J")),
         )
 
@@ -518,7 +521,7 @@ def _author_connectors_region(
         for anchor in (swd.VTref, gpio[1]):
             drawing.power_stub("+3V3", at=anchor, net=nets["+3V3"], side="Up", length=24)
         for anchor in (swd[3], swd[5], swd[9]):
-            drawing.ground_stub("GND", at=anchor, net=nets["GND"], side="Left", length=34)
+            drawing.ground_stub("GND", at=anchor, net=nets["GND"], side="Left", length=52)
         drawing.ground_stub("GND", at=gpio[4], net=nets["GND"], side="Down", length=18)
         drawing.signal_tags(
             (
@@ -528,18 +531,18 @@ def _author_connectors_region(
                 (nets["NRST"], swd.nRESET, "NRST"),
                 (nets["BOOT0"], swd.TDI, "BOOT0"),
             ),
-            length=12,
+            length=20,
         )
         drawing.signal_tag(
             nets["BOOT0"],
             at=gpio[2],
             side="Left",
-            length=10,
+            length=22,
             label="BOOT0",
         )
         drawing.no_connect(usb_j.ID, reason="USB ID not used")
-        drawing.no_connect(swd.NC, reason="reserved debug pin not populated")
-        drawing.no_connect(gpio[3], reason="reserved GPIO header pin not populated")
+        drawing.no_connect(swd.NC, orient="Left", offset=8, reason="reserved debug pin not populated")
+        drawing.no_connect(gpio[3], orient="Left", offset=8, reason="reserved GPIO header pin not populated")
 
 
 def _author_mcu_region(
@@ -586,7 +589,7 @@ def _author_mcu_region(
             reference_label=_display_reference(support.component("RRESET")),
         ).at(stm32.NRST.left(30).up(30)).down(1.1)
 
-        drawing.move_from(stm32.BOOT0.left(20).down(42), direction="Right")
+        drawing.move_from(stm32.BOOT0.left(20).down(66), direction="Right")
         swboot = drawing.place(
             support.component("SWBOOT"),
             orient="Right",
@@ -703,15 +706,8 @@ def _author_mcu_region(
         support_hse_out = nets["SUPPORT/HSE_OUT"]
 
         drawing.power_stub("+3V3", at=cvdd.start, net=support_vdd, side="Up", length=16)
-        drawing.power_stub(
-            "+3V3",
-            at=rreset.start,
-            net=support_vdd,
-            side="Left",
-            length=20,
-            orient="Left",
-        )
-        drawing.power_stub("+3V3", at=swboot.A, net=support_vdd, side="Up", length=8, orient="Up")
+        drawing.power_stub("+3V3", at=rreset.start, net=support_vdd, side="Right", length=10)
+        drawing.power_stub("+3V3", at=swboot.A, net=support_vdd, side="Left", length=12, orient="Up")
 
         decoupling_ground = drawing.ground("GND", net=support_gnd, at=cvcap1.end.down(18), orient="Down")
         for cap in (cvdd, cvcap1, cvcap2):
@@ -723,14 +719,14 @@ def _author_mcu_region(
             drawing.connect(anchor, oscillator_ground, net=support_gnd, shape="|-")
         drawing.junction(support_gnd, at=oscillator_ground)
 
-        drawing.ground_stub("GND", at=rboot.end, net=support_gnd, side="Down", length=14, orient="Down")
-        drawing.ground_stub("GND", at=swboot.B, net=support_gnd, side="Down", length=14, orient="Down")
+        drawing.ground_stub("GND", at=rboot.end, net=support_gnd, side="Down", length=6, orient="Down")
+        drawing.ground_stub("GND", at=swboot.B, net=support_gnd, side="Down", length=6, orient="Down")
 
         drawing.signal_stub(
             support_reset,
             at=rreset.end,
-            side="Left",
-            length=6,
+            side="Right",
+            length=10,
             label="NRST",
             orient="Right",
         )
@@ -748,13 +744,13 @@ def _author_mcu_region(
         drawing.connect(crystal[3], chseout.start, net=support_hse_out, shape="-")
         drawing.net_label(
             support_hse_in,
-            at=crystal[1].right(6),
+            at=crystal[1].right(8).up(8),
             label="HSE IN",
             orient="Right",
         )
         drawing.net_label(
             support_hse_out,
-            at=crystal[3].right(6),
+            at=crystal[3].right(8).down(8),
             label="HSE OUT",
             orient="Right",
         )
