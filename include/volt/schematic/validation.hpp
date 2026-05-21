@@ -124,6 +124,10 @@ struct ReadabilityObject {
     SchematicBounds bounds;
     /** Sheet-local authored region index, if the object was placed through one. */
     std::optional<std::size_t> authored_region;
+    /** Typed symbol instance ID for traversal-only checks. */
+    std::optional<SymbolInstanceId> symbol_instance = std::nullopt;
+    /** Typed power port ID for traversal-only checks. */
+    std::optional<PowerPortId> power_port = std::nullopt;
 };
 
 /** Text-like object geometry gathered for conservative collision checks. */
@@ -162,6 +166,8 @@ struct ReadabilityCollisionObject {
     std::optional<NetId> net;
     /** Component represented by this visual element, if applicable. */
     std::optional<ComponentId> component;
+    /** Typed symbol instance ID for traversal-only checks. */
+    std::optional<SymbolInstanceId> symbol_instance = std::nullopt;
 };
 
 /** Rendered tag/port geometry used for stack and density checks. */
@@ -1248,10 +1254,11 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     auto objects = std::vector<ReadabilityObject>{};
     for (const auto instance_id : sheet.symbol_instances()) {
         const auto &instance = schematic.symbol_instance(instance_id);
-        objects.push_back(ReadabilityObject{
-            ReadabilityObjectKind::SymbolInstance, EntityRef::symbol_instance(instance_id),
-            std::vector{EntityRef::component(instance.component())},
-            symbol_instance_bounds(schematic, instance_id), instance.authored_region()});
+        objects.push_back(ReadabilityObject{ReadabilityObjectKind::SymbolInstance,
+                                            EntityRef::symbol_instance(instance_id),
+                                            std::vector{EntityRef::component(instance.component())},
+                                            symbol_instance_bounds(schematic, instance_id),
+                                            instance.authored_region(), instance_id});
     }
     for (const auto wire_id : sheet.wire_runs()) {
         const auto &wire = schematic.wire_run(wire_id);
@@ -1285,10 +1292,10 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
         const auto &port = schematic.power_port(port_id);
         const auto &net = schematic.circuit().net(port.net());
         const auto label = port.label().value_or(net.name().value());
-        objects.push_back(
-            ReadabilityObject{ReadabilityObjectKind::PowerPort, EntityRef::power_port(port_id),
-                              std::vector{EntityRef::net(port.net())},
-                              power_port_bounds(port, label), port.authored_region()});
+        objects.push_back(ReadabilityObject{
+            ReadabilityObjectKind::PowerPort, EntityRef::power_port(port_id),
+            std::vector{EntityRef::net(port.net())}, power_port_bounds(port, label),
+            port.authored_region(), std::nullopt, port_id});
     }
     for (const auto marker_id : sheet.no_connect_markers()) {
         const auto &marker = schematic.no_connect_marker(marker_id);
@@ -1450,6 +1457,7 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
             std::nullopt,
             std::nullopt,
             instance.component(),
+            instance_id,
         });
     }
 
@@ -1745,11 +1753,12 @@ inline void validate_port_tag_scale(const Schematic &schematic, SheetId sheet_id
     if (object.kind != ReadabilityObjectKind::PowerPort) {
         return false;
     }
+    if (!object.power_port.has_value() || !symbol.symbol_instance.has_value()) {
+        return false;
+    }
 
-    const auto port_id = PowerPortId{object.entity.index()};
-    const auto &port = schematic.power_port(port_id);
-    return power_port_attaches_to_symbol_pin(schematic, port,
-                                             SymbolInstanceId{symbol.entity.index()});
+    const auto &port = schematic.power_port(object.power_port.value());
+    return power_port_attaches_to_symbol_pin(schematic, port, symbol.symbol_instance.value());
 }
 
 inline void validate_symbol_crowding(const Schematic &schematic, SheetId sheet_id,
@@ -2408,12 +2417,11 @@ readability_collision_is_intentional_junction_contact(const ReadabilityCollision
     }
     if (symbol == nullptr || junction->kind != ReadabilityCollisionKind::Junction ||
         !junction->anchor.has_value() || !junction->net.has_value() ||
-        symbol->entity.kind() != EntityKind::SymbolInstance) {
+        !symbol->symbol_instance.has_value()) {
         return false;
     }
 
-    const auto instance_id = SymbolInstanceId{symbol->entity.index()};
-    const auto &instance = schematic.symbol_instance(instance_id);
+    const auto &instance = schematic.symbol_instance(symbol->symbol_instance.value());
     const auto &definition = schematic.symbol_definition(instance.symbol_definition());
     const auto &circuit = schematic.circuit();
     for (const auto &symbol_pin : definition.pins()) {

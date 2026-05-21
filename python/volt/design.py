@@ -16,7 +16,8 @@ from .library import (
     _schematic_symbol_refs,
 )
 from .logical import Component, ComponentDefinition, ModuleDefinition, ModuleInstance, Net
-from .schematic import Schematic, _schematic_sheet_metadata
+from ._schematic_metadata import _schematic_sheet_metadata
+from .schematic import Schematic
 
 
 class Design:
@@ -379,5 +380,4 @@ class Design:
         else:
             component = self._circuit.instantiate_ref(definition, ref, properties)
         return Component(self, component)
-
 

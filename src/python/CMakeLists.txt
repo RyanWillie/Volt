@@ -15,6 +15,8 @@ set(
     VOLT_PYTHON_PACKAGE_FILES
     __init__.py
     _presentation.py
+    _schematic_metadata.py
+    _schematic_routing.py
     _utils.py
     design.py
     diagnostics.py
