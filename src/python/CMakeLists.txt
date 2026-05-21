@@ -50,11 +50,21 @@ if(MINGW)
 endif()
 volt_apply_coverage(_volt)
 set_target_properties(_volt PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt)
+install(TARGETS _volt LIBRARY DESTINATION volt RUNTIME DESTINATION volt)
 
 if(WIN32)
     get_filename_component(VOLT_PYTHON_RUNTIME_DIR "${Python3_EXECUTABLE}" DIRECTORY)
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -c "import sys; print(sys.base_prefix)"
+        OUTPUT_VARIABLE VOLT_PYTHON_BASE_PREFIX
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY
+    )
     get_filename_component(VOLT_CXX_RUNTIME_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
-    set(VOLT_PYTHON_RUNTIME_SEARCH_DIRS "${VOLT_PYTHON_RUNTIME_DIR};${VOLT_CXX_RUNTIME_DIR}")
+    set(
+        VOLT_PYTHON_RUNTIME_SEARCH_DIRS
+        "${VOLT_PYTHON_RUNTIME_DIR};${VOLT_PYTHON_BASE_PREFIX};${VOLT_CXX_RUNTIME_DIR}"
+    )
 
     add_custom_command(
         TARGET _volt

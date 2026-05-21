@@ -1,0 +1,41 @@
+[build-system]
+requires = ["scikit-build-core>=0.11"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "volt-eda"
+version = "0.1.0"
+description = "A modern C++ electronics design kernel with Python authoring bindings."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Ryan Williamson" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Manufacturing",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
+
+[project.urls]
+Homepage = "https://github.com/RyanWillie/Volt"
+Repository = "https://github.com/RyanWillie/Volt"
+
+[tool.scikit-build]
+cmake.version = ">=3.25"
+cmake.build-type = "Release"
+wheel.packages = ["python/volt"]
+
+[tool.scikit-build.cmake.define]
+VOLT_BUILD_PYTHON = "ON"
+VOLT_BUILD_TESTS = "OFF"
+VOLT_BUILD_DOCS = "OFF"
+VOLT_BUILD_EXAMPLES = "OFF"
+VOLT_BUILD_BENCHMARKS = "OFF"
+CMAKE_POSITION_INDEPENDENT_CODE = "ON"
