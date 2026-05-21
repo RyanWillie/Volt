@@ -276,7 +276,7 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
     source = inspect.getsource(main.build_schematic)
 
     assert ".two_terminal(" in source
-    assert ".endpoints(" in source
+    assert "drawing.connect(" in source
     assert ".to(" in source
     assert ".toy(" in source
     assert ".tox(" in source
@@ -286,6 +286,7 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
     assert "drawing.power_stub(" in source
     assert "drawing.ground_stub(" in source
     assert "drawing.wire(nets[" in source
+    assert ".endpoints(" not in source
     assert "drawing.node(" not in source
     assert ".between(" not in source
     assert "drawing.ortho_lines(" not in source

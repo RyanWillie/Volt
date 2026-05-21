@@ -128,6 +128,43 @@ def test_python_schematic_two_terminal_endpoint_grammar_and_junction_dots():
     assert design.to_json() == logical_before
 
 
+def test_python_schematic_connect_returns_chainable_endpoint_dots():
+    design = volt.Design("schematic-connect-endpoint-dots")
+    sig = design.net("SIG")
+    r1 = design.R("10k", ref="R1")
+    r2 = design.R("22k", ref="R2")
+    sig += r1[2], r2[1]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    with schematic.drawing(unit=20) as drawing:
+        left = drawing.two_terminal(r1).right()
+        right = drawing.two_terminal(r2).at(left.end.right(20)).right()
+        wire = drawing.connect(left.end, right.start, shape="-").idot().dot()
+
+    projection = json.loads(schematic.to_json())
+
+    assert wire.index == 0
+    assert projection["wire_runs"] == [
+        {
+            "id": "wire_run:0",
+            "sheet": "sheet:0",
+            "net": f"net:{sig.index}",
+            "points": [{"x": 20.0, "y": 0.0}, {"x": 40.0, "y": 0.0}],
+            "route_intent": "Direct",
+        }
+    ]
+    assert [
+        (junction["net"], junction["position"])
+        for junction in projection["junctions"]
+    ] == [
+        (f"net:{sig.index}", {"x": 20.0, "y": 0.0}),
+        (f"net:{sig.index}", {"x": 40.0, "y": 0.0}),
+    ]
+    assert design.to_json() == logical_before
+
+
 def test_python_schematic_endpoint_dots_require_existing_nets():
     design = volt.Design("schematic-two-terminal-dot-net-safety")
     r1 = design.R("10k", ref="R1")

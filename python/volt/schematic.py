@@ -486,13 +486,50 @@ class PlacedSchematicElement:
 class SchematicWire:
     """Read-only handle to a schematic wire run projection."""
 
-    def __init__(self, schematic: Schematic, index: int):
+    def __init__(
+        self,
+        schematic: Schematic,
+        index: int,
+        *,
+        net: Net,
+        points: Iterable[tuple[float, float]],
+        authored_region: int | None = None,
+    ):
         self._schematic = schematic
         self._index = index
+        self._net = net
+        self._points = tuple(points)
+        self._authored_region = authored_region
+        self._dot_start = False
+        self._dot_end = False
 
     @property
     def index(self) -> int:
         return self._index
+
+    def dot(self) -> SchematicWire:
+        if not self._dot_end:
+            _add_schematic_junction_dot(
+                self._schematic,
+                self._points[-1],
+                net=self._net,
+                _authored_region=self._authored_region,
+                action="wire endpoint dot",
+            )
+            self._dot_end = True
+        return self
+
+    def idot(self) -> SchematicWire:
+        if not self._dot_start:
+            _add_schematic_junction_dot(
+                self._schematic,
+                self._points[0],
+                net=self._net,
+                _authored_region=self._authored_region,
+                action="wire endpoint dot",
+            )
+            self._dot_start = True
+        return self
 
     def __repr__(self) -> str:
         return f"SchematicWire(index={self._index})"
@@ -2310,7 +2347,13 @@ class Schematic:
         wire = self._design._circuit.add_schematic_wire(
             self._sheet_index, net.index, converted, route_intent, _authored_region
         )
-        return SchematicWire(self, wire)
+        return SchematicWire(
+            self,
+            wire,
+            net=net,
+            points=tuple(converted),
+            authored_region=_authored_region,
+        )
 
     def label(
         self,
