@@ -15,6 +15,7 @@ set(
     VOLT_PYTHON_PACKAGE_FILES
     __init__.py
     _presentation.py
+    _schematic_labels.py
     _schematic_metadata.py
     _schematic_routing.py
     _utils.py
@@ -45,7 +46,11 @@ foreach(library_file IN LISTS VOLT_PYTHON_LIBRARY_FILES)
     )
 endforeach()
 
-pybind11_add_module(_volt MODULE bindings.cpp)
+pybind11_add_module(
+    _volt MODULE
+    bindings.cpp
+    circuit_bindings.cpp
+)
 target_link_libraries(_volt PRIVATE Volt::Authoring Volt::IO)
 if(MINGW)
     target_compile_options(_volt PRIVATE -Wa,-mbig-obj)
