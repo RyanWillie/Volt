@@ -214,12 +214,13 @@ text_style_from_dict(const py::dict &dict, volt::SchematicTextStyle defaults) {
         font_size = defaults.font_size();
     }
     return volt::SchematicTextStyle{
-        text_horizontal_alignment_from_string(optional_string_field(
-            dict, "horizontal_alignment",
-            volt::io::detail::text_horizontal_alignment_name(defaults.horizontal_alignment()))),
+        text_horizontal_alignment_from_string(
+            optional_string_field(dict, "horizontal_alignment",
+                                  std::string{volt::io::text_horizontal_alignment_name(
+                                      defaults.horizontal_alignment())})),
         text_vertical_alignment_from_string(optional_string_field(
             dict, "vertical_alignment",
-            volt::io::detail::text_vertical_alignment_name(defaults.vertical_alignment()))),
+            std::string{volt::io::text_vertical_alignment_name(defaults.vertical_alignment())})),
         font_size};
 }
 
