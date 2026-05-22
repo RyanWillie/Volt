@@ -19,6 +19,8 @@ file(
     PRE_EXCLUDE_REGEXES
         "api-ms-.*"
         "ext-ms-.*"
+        "[Vv][Cc][Rr][Uu][Nn][Tt][Ii][Mm][Ee].*\\.dll"
+        "[Mm][Ss][Vv][Cc][Pp].*\\.dll"
     POST_EXCLUDE_REGEXES
         ".*[\\\\/]Windows[\\\\/]System32[\\\\/].*"
         ".*[\\\\/]Windows[\\\\/]SysWOW64[\\\\/].*"

@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags:
+      - 'v*'
 
 jobs:
   build-test-docs:
@@ -51,6 +53,21 @@ jobs:
 
       - name: Test
         run: ctest --preset dev
+
+      - name: Build Python wheel
+        if: startsWith(github.ref, 'refs/tags/')
+        run: python scripts/build-python-wheel.py
+
+      - name: Smoke-test Python wheel
+        if: startsWith(github.ref, 'refs/tags/')
+        run: python scripts/smoke-python-wheel.py
+
+      - name: Upload Python wheel artifact
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-wheel-${{ matrix.os }}
+          path: dist/*.whl
 
       - name: Build docs
         if: runner.os == 'Linux'

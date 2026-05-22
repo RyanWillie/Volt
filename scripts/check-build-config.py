@@ -163,6 +163,66 @@ def check_python_pytest_harness() -> None:
     )
 
 
+def check_python_package_build() -> None:
+    pyproject = read("pyproject.toml")
+    python_cmake = read("src/python/CMakeLists.txt")
+    runtime_copy_cmake = read("cmake/VoltCopyRuntimeDependencies.cmake")
+    ci_workflow = read(".github/workflows/ci.yml")
+    gitignore = read(".gitignore")
+    requirements = read("requirements-dev.txt")
+    build_script = read("scripts/build-python-wheel.py")
+    smoke_script = read("scripts/smoke-python-wheel.py")
+
+    require('name = "volt-eda"' in pyproject, "Python distribution name must be volt-eda")
+    require('requires-python = ">=3.10"' in pyproject, "Python package must declare Python 3.10+")
+    require(
+        'build-backend = "scikit_build_core.build"' in pyproject,
+        "Python package must use scikit-build-core",
+    )
+    require(
+        'wheel.packages = ["python/volt"]' in pyproject,
+        "Python wheel must include the public volt package from python/volt",
+    )
+    require(
+        'VOLT_BUILD_PYTHON = "ON"' in pyproject,
+        "Python wheel build must enable the C++ extension",
+    )
+    for option in ("VOLT_BUILD_TESTS", "VOLT_BUILD_DOCS", "VOLT_BUILD_EXAMPLES", "VOLT_BUILD_BENCHMARKS"):
+        require(
+            f'{option} = "OFF"' in pyproject,
+            f"Python wheel build must disable {option}",
+        )
+    require("install(TARGETS _volt" in python_cmake, "Python extension target must be installed")
+    require("LIBRARY DESTINATION volt" in python_cmake, "Python extension library must install into the volt package")
+    require("RUNTIME DESTINATION volt" in python_cmake, "Python extension runtime must install into the volt package")
+    require("sys.base_prefix" in python_cmake, "Windows wheel builds must search the base Python runtime")
+    require("Vv][Cc][Rr][Uu][Nn][Tt][Ii][Mm][Ee" in runtime_copy_cmake, "Windows wheels must not vendor MSVC runtime DLLs")
+    require("Mm][Ss][Vv][Cc][Pp" in runtime_copy_cmake, "Windows wheels must not vendor MSVC C++ runtime DLLs")
+    require(
+        'CMAKE_POSITION_INDEPENDENT_CODE = "ON"' in pyproject,
+        "Python wheel build must force position-independent code",
+    )
+    require("build>=1.2" in requirements, "Python dev dependencies must include the build frontend")
+    require("dist/" in gitignore, "Python wheel artifacts must be ignored")
+    require("Python3_EXECUTABLE" in build_script, "Python wheel build must use CMake's selected interpreter")
+    require("Python3_EXECUTABLE" in smoke_script, "Python wheel smoke test must use CMake's selected interpreter")
+    require("tags:" in ci_workflow, "CI must run on release tag pushes for Python wheels")
+    require("- 'v*'" in ci_workflow, "Python wheel tag trigger must be version-tag scoped")
+    require(
+        ci_workflow.count("if: startsWith(github.ref, 'refs/tags/')") >= 3,
+        "Python wheel build, smoke test, and artifact upload must only run for tag pushes",
+    )
+    require("python scripts/build-python-wheel.py" in ci_workflow, "CI must build the Python wheel")
+    require(
+        "python scripts/smoke-python-wheel.py" in ci_workflow,
+        "CI must smoke-install the built Python wheel",
+    )
+    require("actions/upload-artifact" in ci_workflow, "CI must retain the built Python wheel as an artifact")
+    require("dist/*.whl" in ci_workflow, "CI wheel artifact must include built wheels")
+    require("twine upload" not in ci_workflow, "CI must not publish to PyPI yet")
+    require("pypa/gh-action-pypi-publish" not in ci_workflow, "CI must not publish to PyPI yet")
+
+
 def main() -> int:
     checks = (
         check_test_presets,
@@ -171,6 +231,7 @@ def main() -> int:
         check_benchmarks,
         check_ci_tooling,
         check_python_pytest_harness,
+        check_python_package_build,
     )
     failures = []
     for check in checks:
