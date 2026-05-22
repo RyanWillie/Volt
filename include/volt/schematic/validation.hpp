@@ -672,6 +672,8 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
             marker.position(),
             std::nullopt,
             pin.component(),
+            std::nullopt,
+            marker.pin(),
         });
     }
 
@@ -1525,16 +1527,33 @@ readability_collision_is_intentional_wire_contact(const ReadabilityCollisionObje
 }
 
 [[nodiscard]] inline bool readability_collision_is_intentional_owning_symbol_contact(
-    const ReadabilityCollisionObject &first, const ReadabilityCollisionObject &second) {
+    const Schematic &schematic, const ReadabilityCollisionObject &first,
+    const ReadabilityCollisionObject &second) {
     const auto *symbol = first.kind == ReadabilityCollisionKind::SymbolBody ? &first : nullptr;
     const auto *object = first.kind == ReadabilityCollisionKind::SymbolBody ? &second : &first;
     if (symbol == nullptr && second.kind == ReadabilityCollisionKind::SymbolBody) {
         symbol = &second;
         object = &first;
     }
-    return symbol != nullptr && object->kind == ReadabilityCollisionKind::NoConnectMarker &&
-           symbol->component.has_value() && object->component.has_value() &&
-           symbol->component.value() == object->component.value();
+    if (symbol == nullptr || object->kind != ReadabilityCollisionKind::NoConnectMarker ||
+        !object->anchor.has_value() || !object->pin.has_value() ||
+        !symbol->symbol_instance.has_value()) {
+        return false;
+    }
+
+    const auto &instance = schematic.symbol_instance(symbol->symbol_instance.value());
+    const auto &definition = schematic.symbol_definition(instance.symbol_definition());
+    const auto &circuit = schematic.circuit();
+    for (const auto &symbol_pin : definition.pins()) {
+        const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
+        if (!pin.has_value() || pin.value() != object->pin.value()) {
+            continue;
+        }
+        const auto pin_point = transform_schematic_point(symbol_pin.anchor(), instance.position(),
+                                                         instance.orientation());
+        return same_schematic_point(pin_point, object->anchor.value());
+    }
+    return false;
 }
 
 [[nodiscard]] inline bool
@@ -1588,7 +1607,7 @@ readability_collision_is_intentional_contact(const Schematic &schematic,
                                              const ReadabilityCollisionObject &second) {
     return readability_collision_is_handled_by_specific_validator(first, second) ||
            readability_collision_is_intentional_wire_contact(first, second) ||
-           readability_collision_is_intentional_owning_symbol_contact(first, second) ||
+           readability_collision_is_intentional_owning_symbol_contact(schematic, first, second) ||
            readability_collision_is_intentional_junction_contact(first, second) ||
            readability_collision_is_intentional_junction_symbol_pin_contact(schematic, first,
                                                                             second);

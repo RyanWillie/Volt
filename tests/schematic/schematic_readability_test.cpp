@@ -696,6 +696,32 @@ TEST_CASE("Schematic readability reports terminal markers touching symbol bodies
           entities.end());
 }
 
+TEST_CASE("Schematic readability reports no-connect markers misplaced on owning symbol bodies") {
+    volt::Circuit circuit;
+    const auto component = add_four_pin_component(circuit, "U1");
+    const auto pin = circuit.pin_by_number(component, "1").value();
+    circuit.mark_intentional_no_connect_pin(pin);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto symbol = schematic.add_symbol_definition(make_four_pin_ic_symbol());
+    const auto instance = schematic.place_symbol(
+        sheet, volt::SymbolInstance{symbol, component, volt::Point{40.0, 40.0}});
+    const auto marker = schematic.add_no_connect_marker(
+        sheet,
+        volt::NoConnectMarker{pin, volt::Point{52.0, 40.0}, volt::SchematicOrientation::Right});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    const auto &diagnostic = require_diagnostic(report, "SCHEMATIC_VISUAL_COLLISION");
+    CHECK(diagnostic.severity() == volt::Severity::Error);
+    const auto &entities = diagnostic.entities();
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::no_connect_marker(marker)) !=
+          entities.end());
+    CHECK(std::find(entities.begin(), entities.end(), volt::EntityRef::symbol_instance(instance)) !=
+          entities.end());
+}
+
 TEST_CASE("Schematic readability reports generic visual element collisions") {
     volt::Circuit circuit;
     const auto first_net = circuit.add_net(volt::Net{volt::NetName{"+3V3"}, volt::NetKind::Power});
