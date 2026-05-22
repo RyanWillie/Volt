@@ -37,37 +37,41 @@ namespace volt::python {
 
 namespace {
 
-[[nodiscard]] volt::ComponentDefId component_def_id(std::size_t index) {
+[[nodiscard]] inline volt::ComponentDefId component_def_id(std::size_t index) {
     return volt::ComponentDefId{index};
 }
 
-[[nodiscard]] volt::ComponentId component_id(std::size_t index) { return volt::ComponentId{index}; }
+[[nodiscard]] inline volt::ComponentId component_id(std::size_t index) {
+    return volt::ComponentId{index};
+}
 
-[[nodiscard]] volt::PinId pin_id(std::size_t index) { return volt::PinId{index}; }
+[[nodiscard]] inline volt::PinId pin_id(std::size_t index) { return volt::PinId{index}; }
 
-[[nodiscard]] volt::NetId net_id(std::size_t index) { return volt::NetId{index}; }
+[[nodiscard]] inline volt::NetId net_id(std::size_t index) { return volt::NetId{index}; }
 
-[[nodiscard]] volt::SheetId sheet_id(std::size_t index) { return volt::SheetId{index}; }
+[[nodiscard]] inline volt::SheetId sheet_id(std::size_t index) { return volt::SheetId{index}; }
 
-[[nodiscard]] volt::ModuleDefId module_def_id(std::size_t index) {
+[[nodiscard]] inline volt::ModuleDefId module_def_id(std::size_t index) {
     return volt::ModuleDefId{index};
 }
 
-[[nodiscard]] volt::TemplateNetDefId template_net_def_id(std::size_t index) {
+[[nodiscard]] inline volt::TemplateNetDefId template_net_def_id(std::size_t index) {
     return volt::TemplateNetDefId{index};
 }
 
-[[nodiscard]] volt::PortDefId port_def_id(std::size_t index) { return volt::PortDefId{index}; }
+[[nodiscard]] inline volt::PortDefId port_def_id(std::size_t index) {
+    return volt::PortDefId{index};
+}
 
-[[nodiscard]] volt::ModuleComponentId module_component_id(std::size_t index) {
+[[nodiscard]] inline volt::ModuleComponentId module_component_id(std::size_t index) {
     return volt::ModuleComponentId{index};
 }
 
-[[nodiscard]] volt::ModuleInstanceId module_instance_id(std::size_t index) {
+[[nodiscard]] inline volt::ModuleInstanceId module_instance_id(std::size_t index) {
     return volt::ModuleInstanceId{index};
 }
 
-[[nodiscard]] volt::PinRole parse_pin_role(const std::string &value) {
+[[nodiscard]] inline volt::PinRole parse_pin_role(const std::string &value) {
     if (value == "passive" || value == "Passive") {
         return volt::PinRole::Passive;
     }
@@ -102,7 +106,8 @@ namespace {
     throw std::invalid_argument{"Unknown pin role"};
 }
 
-[[nodiscard]] volt::ConnectionRequirement parse_connection_requirement(const std::string &value) {
+[[nodiscard]] inline volt::ConnectionRequirement
+parse_connection_requirement(const std::string &value) {
     if (value == "required" || value == "Required") {
         return volt::ConnectionRequirement::Required;
     }
@@ -116,7 +121,7 @@ namespace {
     throw std::invalid_argument{"Unknown connection requirement"};
 }
 
-[[nodiscard]] volt::ElectricalTerminalKind parse_terminal_kind(const std::string &value) {
+[[nodiscard]] inline volt::ElectricalTerminalKind parse_terminal_kind(const std::string &value) {
     if (value == "unspecified" || value == "Unspecified") {
         return volt::ElectricalTerminalKind::Unspecified;
     }
@@ -139,7 +144,7 @@ namespace {
     throw std::invalid_argument{"Unknown electrical terminal kind"};
 }
 
-[[nodiscard]] volt::ElectricalDirection parse_direction(const std::string &value) {
+[[nodiscard]] inline volt::ElectricalDirection parse_direction(const std::string &value) {
     if (value == "unspecified" || value == "Unspecified") {
         return volt::ElectricalDirection::Unspecified;
     }
@@ -159,7 +164,7 @@ namespace {
     throw std::invalid_argument{"Unknown electrical direction"};
 }
 
-[[nodiscard]] volt::ElectricalSignalDomain parse_signal_domain(const std::string &value) {
+[[nodiscard]] inline volt::ElectricalSignalDomain parse_signal_domain(const std::string &value) {
     if (value == "unspecified" || value == "Unspecified") {
         return volt::ElectricalSignalDomain::Unspecified;
     }
@@ -176,7 +181,7 @@ namespace {
     throw std::invalid_argument{"Unknown electrical signal domain"};
 }
 
-[[nodiscard]] volt::ElectricalDriveKind parse_drive_kind(const std::string &value) {
+[[nodiscard]] inline volt::ElectricalDriveKind parse_drive_kind(const std::string &value) {
     if (value == "unspecified" || value == "Unspecified") {
         return volt::ElectricalDriveKind::Unspecified;
     }
@@ -199,7 +204,7 @@ namespace {
     throw std::invalid_argument{"Unknown electrical drive kind"};
 }
 
-[[nodiscard]] volt::ElectricalPolarity parse_polarity(const std::string &value) {
+[[nodiscard]] inline volt::ElectricalPolarity parse_polarity(const std::string &value) {
     if (value == "none" || value == "None") {
         return volt::ElectricalPolarity::None;
     }
@@ -213,7 +218,7 @@ namespace {
     throw std::invalid_argument{"Unknown electrical polarity"};
 }
 
-[[nodiscard]] volt::NetKind parse_net_kind(const std::string &value) {
+[[nodiscard]] inline volt::NetKind parse_net_kind(const std::string &value) {
     if (value == "signal" || value == "Signal") {
         return volt::NetKind::Signal;
     }
@@ -236,7 +241,7 @@ namespace {
     throw std::invalid_argument{"Unknown net kind"};
 }
 
-[[nodiscard]] volt::PortRole parse_port_role(const std::string &value) {
+[[nodiscard]] inline volt::PortRole parse_port_role(const std::string &value) {
     if (value == "passive" || value == "Passive") {
         return volt::PortRole::Passive;
     }
@@ -262,7 +267,7 @@ namespace {
     throw std::invalid_argument{"Unknown port role"};
 }
 
-[[nodiscard]] std::string net_kind_name(volt::NetKind kind) {
+[[nodiscard]] inline std::string net_kind_name(volt::NetKind kind) {
     switch (kind) {
     case volt::NetKind::Signal:
         return "Signal";
@@ -281,7 +286,7 @@ namespace {
     throw std::logic_error{"Unhandled net kind"};
 }
 
-[[nodiscard]] std::string port_role_name(volt::PortRole role) {
+[[nodiscard]] inline std::string port_role_name(volt::PortRole role) {
     switch (role) {
     case volt::PortRole::Passive:
         return "Passive";
@@ -302,7 +307,7 @@ namespace {
     throw std::logic_error{"Unhandled port role"};
 }
 
-[[nodiscard]] std::string severity_name(volt::Severity severity) {
+[[nodiscard]] inline std::string severity_name(volt::Severity severity) {
     switch (severity) {
     case volt::Severity::Info:
         return "info";
@@ -315,13 +320,13 @@ namespace {
     throw std::logic_error{"Unhandled diagnostic severity"};
 }
 
-void require_finite(double value, const char *message) {
+inline void require_finite(double value, const char *message) {
     if (!std::isfinite(value)) {
         throw std::invalid_argument{message};
     }
 }
 
-[[nodiscard]] volt::UnitDimension parse_dimension(const std::string &value) {
+[[nodiscard]] inline volt::UnitDimension parse_dimension(const std::string &value) {
     if (value == "resistance") {
         return volt::UnitDimension::Resistance;
     }
@@ -344,53 +349,53 @@ void require_finite(double value, const char *message) {
     throw std::invalid_argument{"Unknown electrical attribute dimension"};
 }
 
-[[nodiscard]] volt::ElectricalAttributeSpec component_quantity_spec(const std::string &name,
-                                                                    volt::UnitDimension dimension) {
+[[nodiscard]] inline volt::ElectricalAttributeSpec
+component_quantity_spec(const std::string &name, volt::UnitDimension dimension) {
     return volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{name},
                                          volt::ElectricalAttributeOwner::ComponentInstance,
                                          volt::ElectricalAttributeKind::DesignInput, dimension};
 }
 
-[[nodiscard]] volt::ElectricalAttributeSpec
+[[nodiscard]] inline volt::ElectricalAttributeSpec
 selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimension) {
     return volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{name},
                                          volt::ElectricalAttributeOwner::SelectedPart,
                                          volt::ElectricalAttributeKind::DesignInput, dimension};
 }
 
-[[nodiscard]] volt::ElectricalAttributeSpec net_quantity_spec(const std::string &name,
-                                                              volt::UnitDimension dimension) {
+[[nodiscard]] inline volt::ElectricalAttributeSpec
+net_quantity_spec(const std::string &name, volt::UnitDimension dimension) {
     return volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{name},
                                          volt::ElectricalAttributeOwner::Net,
                                          volt::ElectricalAttributeKind::DesignInput, dimension};
 }
 
-[[nodiscard]] std::string required_string_field(const py::dict &dict, const char *field,
-                                                const char *context) {
+[[nodiscard]] inline std::string required_string_field(const py::dict &dict, const char *field,
+                                                       const char *context) {
     if (!dict.contains(field)) {
         throw std::invalid_argument{std::string{context} + " must include " + field};
     }
     return py::cast<std::string>(dict[field]);
 }
 
-[[nodiscard]] std::string optional_string_field(const py::dict &dict, const char *field,
-                                                std::string default_value) {
+[[nodiscard]] inline std::string optional_string_field(const py::dict &dict, const char *field,
+                                                       std::string default_value) {
     if (!dict.contains(field)) {
         return default_value;
     }
     return py::cast<std::string>(dict[field]);
 }
 
-[[nodiscard]] py::dict required_dict_field(const py::dict &dict, const char *field,
-                                           const char *context) {
+[[nodiscard]] inline py::dict required_dict_field(const py::dict &dict, const char *field,
+                                                  const char *context) {
     if (!dict.contains(field)) {
         throw std::invalid_argument{std::string{context} + " must include " + field};
     }
     return py::cast<py::dict>(dict[field]);
 }
 
-[[nodiscard]] double required_number_field(const py::dict &dict, const char *field,
-                                           const char *context) {
+[[nodiscard]] inline double required_number_field(const py::dict &dict, const char *field,
+                                                  const char *context) {
     if (!dict.contains(field)) {
         throw std::invalid_argument{std::string{context} + " must include " + field};
     }
@@ -399,8 +404,8 @@ selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimensi
     return value;
 }
 
-[[nodiscard]] double required_finite_number_field(const py::dict &dict, const char *field,
-                                                  const char *context) {
+[[nodiscard]] inline double required_finite_number_field(const py::dict &dict, const char *field,
+                                                         const char *context) {
     if (!dict.contains(field)) {
         throw std::invalid_argument{std::string{context} + " must include " + field};
     }
@@ -410,15 +415,15 @@ selected_part_quantity_spec(const std::string &name, volt::UnitDimension dimensi
     return value;
 }
 
-[[nodiscard]] bool optional_bool_field(const py::dict &dict, const char *field,
-                                       bool default_value) {
+[[nodiscard]] inline bool optional_bool_field(const py::dict &dict, const char *field,
+                                              bool default_value) {
     if (!dict.contains(field)) {
         return default_value;
     }
     return py::cast<bool>(dict[field]);
 }
 
-[[nodiscard]] std::optional<double>
+[[nodiscard]] inline std::optional<double>
 optional_positive_number_field(const py::dict &dict, const char *field, const char *context) {
     if (!dict.contains(field)) {
         return std::nullopt;
@@ -432,8 +437,8 @@ optional_positive_number_field(const py::dict &dict, const char *field, const ch
     return value;
 }
 
-[[nodiscard]] std::size_t required_size_field(const py::dict &dict, const char *field,
-                                              const char *context) {
+[[nodiscard]] inline std::size_t required_size_field(const py::dict &dict, const char *field,
+                                                     const char *context) {
     if (!dict.contains(field)) {
         throw std::invalid_argument{std::string{context} + " must include " + field};
     }
@@ -444,12 +449,13 @@ optional_positive_number_field(const py::dict &dict, const char *field, const ch
     return value;
 }
 
-[[nodiscard]] volt::Point point_from_dict(const py::dict &dict) {
+[[nodiscard]] inline volt::Point point_from_dict(const py::dict &dict) {
     return volt::Point{required_number_field(dict, "x", "Symbol point"),
                        required_number_field(dict, "y", "Symbol point")};
 }
 
-[[nodiscard]] volt::SheetOrientation sheet_orientation_from_string(const std::string &value) {
+[[nodiscard]] inline volt::SheetOrientation
+sheet_orientation_from_string(const std::string &value) {
     if (value == "Portrait") {
         return volt::SheetOrientation::Portrait;
     }
@@ -459,12 +465,13 @@ optional_positive_number_field(const py::dict &dict, const char *field, const ch
     throw std::invalid_argument{"Unknown schematic sheet orientation"};
 }
 
-[[nodiscard]] volt::SheetSize sheet_size_from_dict(const py::dict &dict) {
+[[nodiscard]] inline volt::SheetSize sheet_size_from_dict(const py::dict &dict) {
     return volt::SheetSize{required_finite_number_field(dict, "width", "Sheet size"),
                            required_finite_number_field(dict, "height", "Sheet size")};
 }
 
-[[nodiscard]] std::vector<volt::TitleBlockField> title_block_from_list(const py::list &fields) {
+[[nodiscard]] inline std::vector<volt::TitleBlockField>
+title_block_from_list(const py::list &fields) {
     auto result = std::vector<volt::TitleBlockField>{};
     result.reserve(static_cast<std::size_t>(py::len(fields)));
     for (const auto item : fields) {
@@ -475,14 +482,14 @@ optional_positive_number_field(const py::dict &dict, const char *field, const ch
     return result;
 }
 
-[[nodiscard]] volt::SheetMargins sheet_margins_from_dict(const py::dict &dict) {
+[[nodiscard]] inline volt::SheetMargins sheet_margins_from_dict(const py::dict &dict) {
     return volt::SheetMargins{required_finite_number_field(dict, "left", "Sheet margins"),
                               required_finite_number_field(dict, "top", "Sheet margins"),
                               required_finite_number_field(dict, "right", "Sheet margins"),
                               required_finite_number_field(dict, "bottom", "Sheet margins")};
 }
 
-[[nodiscard]] volt::SheetFrame sheet_frame_from_dict(const py::dict &dict) {
+[[nodiscard]] inline volt::SheetFrame sheet_frame_from_dict(const py::dict &dict) {
     auto margins = volt::SheetMargins{};
     if (dict.contains("margins")) {
         margins = sheet_margins_from_dict(py::cast<py::dict>(dict["margins"]));
@@ -490,7 +497,7 @@ optional_positive_number_field(const py::dict &dict, const char *field, const ch
     return volt::SheetFrame{optional_bool_field(dict, "visible", true), margins};
 }
 
-[[nodiscard]] std::optional<volt::SheetCoordinateZones>
+[[nodiscard]] inline std::optional<volt::SheetCoordinateZones>
 sheet_coordinate_zones_from_object(const py::object &object) {
     if (object.is_none()) {
         return std::nullopt;
@@ -501,7 +508,8 @@ sheet_coordinate_zones_from_object(const py::object &object) {
                                       optional_bool_field(dict, "visible", true)};
 }
 
-[[nodiscard]] std::optional<volt::SheetGrid> sheet_grid_from_object(const py::object &object) {
+[[nodiscard]] inline std::optional<volt::SheetGrid>
+sheet_grid_from_object(const py::object &object) {
     if (object.is_none()) {
         return std::nullopt;
     }
@@ -510,8 +518,8 @@ sheet_coordinate_zones_from_object(const py::object &object) {
                            optional_bool_field(dict, "visible", true)};
 }
 
-[[nodiscard]] volt::SheetMetadata sheet_metadata_from_dict(const py::dict &dict,
-                                                           const std::string &fallback_title) {
+[[nodiscard]] inline volt::SheetMetadata
+sheet_metadata_from_dict(const py::dict &dict, const std::string &fallback_title) {
     if (py::len(dict) == 0) {
         return volt::SheetMetadata{fallback_title};
     }
@@ -547,7 +555,7 @@ sheet_coordinate_zones_from_object(const py::object &object) {
         grid};
 }
 
-[[nodiscard]] std::vector<volt::SheetRegionStyleField>
+[[nodiscard]] inline std::vector<volt::SheetRegionStyleField>
 region_style_from_dict(const py::dict &dict) {
     auto result = std::vector<volt::SheetRegionStyleField>{};
     result.reserve(static_cast<std::size_t>(py::len(dict)));
@@ -557,7 +565,7 @@ region_style_from_dict(const py::dict &dict) {
     return result;
 }
 
-[[nodiscard]] volt::SheetRegion sheet_region_from_dict(const py::dict &dict) {
+[[nodiscard]] inline volt::SheetRegion sheet_region_from_dict(const py::dict &dict) {
     const auto bounds = required_dict_field(dict, "bounds", "Sheet region");
     auto style = std::vector<volt::SheetRegionStyleField>{};
     if (dict.contains("style")) {
@@ -574,7 +582,7 @@ region_style_from_dict(const py::dict &dict) {
         std::move(style)};
 }
 
-[[nodiscard]] volt::SchematicOrientation
+[[nodiscard]] inline volt::SchematicOrientation
 schematic_orientation_from_string(const std::string &value) {
     if (value == "Right") {
         return volt::SchematicOrientation::Right;
@@ -591,7 +599,7 @@ schematic_orientation_from_string(const std::string &value) {
     throw std::invalid_argument{"Unknown schematic orientation"};
 }
 
-[[nodiscard]] std::string schematic_orientation_name(volt::SchematicOrientation value) {
+[[nodiscard]] inline std::string schematic_orientation_name(volt::SchematicOrientation value) {
     switch (value) {
     case volt::SchematicOrientation::Right:
         return "Right";
@@ -605,7 +613,7 @@ schematic_orientation_from_string(const std::string &value) {
     throw std::logic_error{"Unhandled schematic orientation"};
 }
 
-[[nodiscard]] volt::SymbolLineRole symbol_line_role_from_string(const std::string &value) {
+[[nodiscard]] inline volt::SymbolLineRole symbol_line_role_from_string(const std::string &value) {
     if (value == "Normal") {
         return volt::SymbolLineRole::Normal;
     }
@@ -618,7 +626,7 @@ schematic_orientation_from_string(const std::string &value) {
     throw std::invalid_argument{"Unknown symbol line role"};
 }
 
-[[nodiscard]] int schematic_orientation_quarter_turns(volt::SchematicOrientation value) {
+[[nodiscard]] inline int schematic_orientation_quarter_turns(volt::SchematicOrientation value) {
     switch (value) {
     case volt::SchematicOrientation::Right:
         return 0;
@@ -632,7 +640,8 @@ schematic_orientation_from_string(const std::string &value) {
     throw std::logic_error{"Unhandled schematic orientation"};
 }
 
-[[nodiscard]] volt::SchematicOrientation schematic_orientation_from_quarter_turns(int value) {
+[[nodiscard]] inline volt::SchematicOrientation
+schematic_orientation_from_quarter_turns(int value) {
     switch (value % 4) {
     case 0:
         return volt::SchematicOrientation::Right;
@@ -646,14 +655,14 @@ schematic_orientation_from_string(const std::string &value) {
     throw std::logic_error{"Unhandled schematic orientation turn count"};
 }
 
-[[nodiscard]] volt::SchematicOrientation
+[[nodiscard]] inline volt::SchematicOrientation
 rotated_schematic_orientation(volt::SchematicOrientation local,
                               volt::SchematicOrientation instance) {
     return schematic_orientation_from_quarter_turns(schematic_orientation_quarter_turns(local) +
                                                     schematic_orientation_quarter_turns(instance));
 }
 
-[[nodiscard]] volt::RouteIntent route_intent_from_string(const std::string &value) {
+[[nodiscard]] inline volt::RouteIntent route_intent_from_string(const std::string &value) {
     if (value == "Direct") {
         return volt::RouteIntent::Direct;
     }
@@ -663,7 +672,7 @@ rotated_schematic_orientation(volt::SchematicOrientation local,
     throw std::invalid_argument{"Unknown schematic route intent"};
 }
 
-[[nodiscard]] volt::PowerPortKind power_port_kind_from_string(const std::string &value) {
+[[nodiscard]] inline volt::PowerPortKind power_port_kind_from_string(const std::string &value) {
     if (value == "Power") {
         return volt::PowerPortKind::Power;
     }
@@ -673,7 +682,7 @@ rotated_schematic_orientation(volt::SchematicOrientation local,
     throw std::invalid_argument{"Unknown schematic power port kind"};
 }
 
-[[nodiscard]] volt::SheetPortKind sheet_port_kind_from_string(const std::string &value) {
+[[nodiscard]] inline volt::SheetPortKind sheet_port_kind_from_string(const std::string &value) {
     if (value == "Input") {
         return volt::SheetPortKind::Input;
     }
@@ -689,7 +698,7 @@ rotated_schematic_orientation(volt::SchematicOrientation local,
     throw std::invalid_argument{"Unknown schematic sheet port kind"};
 }
 
-[[nodiscard]] volt::TextHorizontalAlignment
+[[nodiscard]] inline volt::TextHorizontalAlignment
 text_horizontal_alignment_from_string(const std::string &value) {
     if (value == "Start") {
         return volt::TextHorizontalAlignment::Start;
@@ -703,7 +712,7 @@ text_horizontal_alignment_from_string(const std::string &value) {
     throw std::invalid_argument{"Unknown schematic text horizontal alignment"};
 }
 
-[[nodiscard]] volt::TextVerticalAlignment
+[[nodiscard]] inline volt::TextVerticalAlignment
 text_vertical_alignment_from_string(const std::string &value) {
     if (value == "Top") {
         return volt::TextVerticalAlignment::Top;
@@ -720,8 +729,8 @@ text_vertical_alignment_from_string(const std::string &value) {
     throw std::invalid_argument{"Unknown schematic text vertical alignment"};
 }
 
-[[nodiscard]] volt::SchematicTextStyle text_style_from_dict(const py::dict &dict,
-                                                            volt::SchematicTextStyle defaults) {
+[[nodiscard]] inline volt::SchematicTextStyle
+text_style_from_dict(const py::dict &dict, volt::SchematicTextStyle defaults) {
     auto font_size = optional_positive_number_field(dict, "font_size", "Schematic text");
     if (!font_size.has_value()) {
         font_size = defaults.font_size();
@@ -736,7 +745,7 @@ text_vertical_alignment_from_string(const std::string &value) {
         font_size};
 }
 
-[[nodiscard]] volt::SchematicTextStyle
+[[nodiscard]] inline volt::SchematicTextStyle
 text_style_from_strings(const std::string &horizontal_alignment,
                         const std::string &vertical_alignment, std::optional<double> font_size) {
     return volt::SchematicTextStyle{text_horizontal_alignment_from_string(horizontal_alignment),
@@ -744,7 +753,7 @@ text_style_from_strings(const std::string &horizontal_alignment,
                                     font_size};
 }
 
-[[nodiscard]] volt::SymbolPin symbol_pin_from_dict(const py::dict &dict) {
+[[nodiscard]] inline volt::SymbolPin symbol_pin_from_dict(const py::dict &dict) {
     return volt::SymbolPin{required_string_field(dict, "name", "Symbol pin"),
                            required_string_field(dict, "number", "Symbol pin"),
                            point_from_dict(required_dict_field(dict, "anchor", "Symbol pin")),
@@ -752,7 +761,7 @@ text_style_from_strings(const std::string &horizontal_alignment,
                                required_string_field(dict, "orientation", "Symbol pin"))};
 }
 
-[[nodiscard]] volt::SymbolPrimitive symbol_primitive_from_dict(const py::dict &dict) {
+[[nodiscard]] inline volt::SymbolPrimitive symbol_primitive_from_dict(const py::dict &dict) {
     const auto type = required_string_field(dict, "type", "Symbol primitive");
     if (type == "line") {
         return volt::SymbolLine{
@@ -787,7 +796,7 @@ text_style_from_strings(const std::string &horizontal_alignment,
     throw std::invalid_argument{"Unknown schematic symbol primitive"};
 }
 
-[[nodiscard]] volt::SymbolDefinition symbol_definition_from_dict(const py::dict &dict) {
+[[nodiscard]] inline volt::SymbolDefinition symbol_definition_from_dict(const py::dict &dict) {
     auto symbol = volt::SymbolDefinition{required_string_field(dict, "name", "Symbol definition")};
     if (!dict.contains("pins")) {
         throw std::invalid_argument{"Symbol definition must include pins"};
@@ -805,7 +814,7 @@ text_style_from_strings(const std::string &horizontal_alignment,
     return symbol;
 }
 
-[[nodiscard]] std::vector<volt::SchematicSymbolReference>
+[[nodiscard]] inline std::vector<volt::SchematicSymbolReference>
 schematic_symbol_references_from_list(const py::list &symbols) {
     auto result = std::vector<volt::SchematicSymbolReference>{};
     result.reserve(static_cast<std::size_t>(py::len(symbols)));
@@ -817,11 +826,12 @@ schematic_symbol_references_from_list(const py::list &symbols) {
     return result;
 }
 
-[[nodiscard]] std::optional<volt::SymbolDefinition> built_in_symbol(const std::string &name) {
+[[nodiscard]] inline std::optional<volt::SymbolDefinition>
+built_in_symbol(const std::string &name) {
     return volt::default_schematic_symbol(name);
 }
 
-[[nodiscard]] std::string entity_kind_name(volt::EntityKind kind) {
+[[nodiscard]] inline std::string entity_kind_name(volt::EntityKind kind) {
     switch (kind) {
     case volt::EntityKind::ComponentDef:
         return "component_definition";
@@ -864,7 +874,7 @@ schematic_symbol_references_from_list(const py::list &symbols) {
     throw std::logic_error{"Unhandled diagnostic entity kind"};
 }
 
-[[nodiscard]] volt::PropertyMap properties_from_dict(const py::dict &dict) {
+[[nodiscard]] inline volt::PropertyMap properties_from_dict(const py::dict &dict) {
     auto properties = volt::PropertyMap{};
 
     for (const auto item : dict) {
@@ -897,7 +907,7 @@ schematic_symbol_references_from_list(const py::list &symbols) {
     return properties;
 }
 
-[[nodiscard]] volt::authoring::PinSpec pin_spec_from_dict(const py::dict &dict) {
+[[nodiscard]] inline volt::authoring::PinSpec pin_spec_from_dict(const py::dict &dict) {
     if (!dict.contains("name")) {
         throw std::invalid_argument{"Pin specs must include a name"};
     }
@@ -978,7 +988,8 @@ schematic_symbol_references_from_list(const py::list &symbols) {
                                     voltage_range};
 }
 
-[[nodiscard]] std::vector<volt::authoring::PinSpec> pin_specs_from_list(const py::list &pins) {
+[[nodiscard]] inline std::vector<volt::authoring::PinSpec>
+pin_specs_from_list(const py::list &pins) {
     auto specs = std::vector<volt::authoring::PinSpec>{};
     specs.reserve(static_cast<std::size_t>(py::len(pins)));
     for (const auto item : pins) {
@@ -987,7 +998,7 @@ schematic_symbol_references_from_list(const py::list &symbols) {
     return specs;
 }
 
-[[nodiscard]] std::string string_from_pin_key(const py::handle &key) {
+[[nodiscard]] inline std::string string_from_pin_key(const py::handle &key) {
     if (py::isinstance<py::int_>(key) || py::isinstance<py::str>(key)) {
         return py::cast<std::string>(py::str(key));
     }
@@ -995,7 +1006,7 @@ schematic_symbol_references_from_list(const py::list &symbols) {
     throw std::invalid_argument{"Pin-pad mapping keys must be pin numbers or names"};
 }
 
-[[nodiscard]] py::dict diagnostic_to_dict(const volt::Diagnostic &diagnostic) {
+[[nodiscard]] inline py::dict diagnostic_to_dict(const volt::Diagnostic &diagnostic) {
     auto result = py::dict{};
     result["severity"] = severity_name(diagnostic.severity());
     result["code"] = diagnostic.code().value();
@@ -1013,7 +1024,7 @@ schematic_symbol_references_from_list(const py::list &symbols) {
     return result;
 }
 
-[[nodiscard]] py::list diagnostics_to_list(const volt::DiagnosticReport &report) {
+[[nodiscard]] inline py::list diagnostics_to_list(const volt::DiagnosticReport &report) {
     auto diagnostics = py::list{};
     for (const auto &diagnostic : report.diagnostics()) {
         diagnostics.append(diagnostic_to_dict(diagnostic));
