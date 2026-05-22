@@ -50,6 +50,7 @@ pybind11_add_module(
     _volt MODULE
     bindings.cpp
     circuit_bindings.cpp
+    py_circuit.cpp
 )
 target_link_libraries(_volt PRIVATE Volt::Authoring Volt::IO)
 if(MINGW)
