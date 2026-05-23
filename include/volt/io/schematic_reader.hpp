@@ -18,7 +18,8 @@
 
 #include <nlohmann/json.hpp>
 
-#include <volt/io/schematic_writer.hpp>
+#include <volt/io/schematic_schema.hpp>
+#include <volt/schematic/schematic_document.hpp>
 
 namespace volt::io {
 
@@ -233,47 +234,31 @@ class SchematicReader {
     }
 
     [[nodiscard]] static SchematicOrientation orientation(const std::string &value) {
-        if (value == "Right")
-            return SchematicOrientation::Right;
-        if (value == "Down")
-            return SchematicOrientation::Down;
-        if (value == "Left")
-            return SchematicOrientation::Left;
-        if (value == "Up")
-            return SchematicOrientation::Up;
+        if (const auto parsed = schematic_orientation_from_name(value)) {
+            return *parsed;
+        }
         throw std::logic_error{"Invalid schematic orientation value"};
     }
 
     [[nodiscard]] static SymbolLineRole symbol_line_role(const std::string &value) {
-        if (value.empty() || value == "Normal")
-            return SymbolLineRole::Normal;
-        if (value == "TerminalLeadStart")
-            return SymbolLineRole::TerminalLeadStart;
-        if (value == "TerminalLeadEnd")
-            return SymbolLineRole::TerminalLeadEnd;
+        if (const auto parsed = symbol_line_role_from_name(value)) {
+            return *parsed;
+        }
         throw std::logic_error{"Invalid symbol line role"};
     }
 
     [[nodiscard]] static TextHorizontalAlignment
     text_horizontal_alignment(const std::string &value) {
-        if (value == "Start")
-            return TextHorizontalAlignment::Start;
-        if (value == "Middle")
-            return TextHorizontalAlignment::Middle;
-        if (value == "End")
-            return TextHorizontalAlignment::End;
+        if (const auto parsed = text_horizontal_alignment_from_name(value)) {
+            return *parsed;
+        }
         throw std::logic_error{"Invalid text horizontal alignment"};
     }
 
     [[nodiscard]] static TextVerticalAlignment text_vertical_alignment(const std::string &value) {
-        if (value == "Top")
-            return TextVerticalAlignment::Top;
-        if (value == "Middle")
-            return TextVerticalAlignment::Middle;
-        if (value == "Bottom")
-            return TextVerticalAlignment::Bottom;
-        if (value == "Baseline")
-            return TextVerticalAlignment::Baseline;
+        if (const auto parsed = text_vertical_alignment_from_name(value)) {
+            return *parsed;
+        }
         throw std::logic_error{"Invalid text vertical alignment"};
     }
 
@@ -286,46 +271,38 @@ class SchematicReader {
         return SchematicTextStyle{
             text_horizontal_alignment(optional_string_field(
                 object, "horizontal_alignment",
-                text_horizontal_alignment_name(defaults.horizontal_alignment()))),
-            text_vertical_alignment(
-                optional_string_field(object, "vertical_alignment",
-                                      text_vertical_alignment_name(defaults.vertical_alignment()))),
+                std::string{text_horizontal_alignment_name(defaults.horizontal_alignment())})),
+            text_vertical_alignment(optional_string_field(
+                object, "vertical_alignment",
+                std::string{text_vertical_alignment_name(defaults.vertical_alignment())})),
             font_size};
     }
 
     [[nodiscard]] static SheetOrientation sheet_orientation(const std::string &value) {
-        if (value == "Portrait")
-            return SheetOrientation::Portrait;
-        if (value == "Landscape")
-            return SheetOrientation::Landscape;
+        if (const auto parsed = sheet_orientation_from_name(value)) {
+            return *parsed;
+        }
         throw std::logic_error{"Invalid schematic sheet orientation value"};
     }
 
     [[nodiscard]] static RouteIntent route_intent(const std::string &value) {
-        if (value == "Direct")
-            return RouteIntent::Direct;
-        if (value == "Orthogonal")
-            return RouteIntent::Orthogonal;
+        if (const auto parsed = route_intent_from_name(value)) {
+            return *parsed;
+        }
         throw std::logic_error{"Invalid schematic route intent value"};
     }
 
     [[nodiscard]] static PowerPortKind power_port_kind(const std::string &value) {
-        if (value == "Power")
-            return PowerPortKind::Power;
-        if (value == "Ground")
-            return PowerPortKind::Ground;
+        if (const auto parsed = power_port_kind_from_name(value)) {
+            return *parsed;
+        }
         throw std::logic_error{"Invalid schematic power port kind"};
     }
 
     [[nodiscard]] static SheetPortKind sheet_port_kind(const std::string &value) {
-        if (value == "Input")
-            return SheetPortKind::Input;
-        if (value == "Output")
-            return SheetPortKind::Output;
-        if (value == "Bidirectional")
-            return SheetPortKind::Bidirectional;
-        if (value == "OffPage")
-            return SheetPortKind::OffPage;
+        if (const auto parsed = sheet_port_kind_from_name(value)) {
+            return *parsed;
+        }
         throw std::logic_error{"Invalid schematic sheet port kind"};
     }
 

@@ -307,55 +307,27 @@ net_quantity_spec(const std::string &name, volt::UnitDimension dimension) {
 
 [[nodiscard]] inline volt::SheetOrientation
 sheet_orientation_from_string(const std::string &value) {
-    if (value == "Portrait") {
-        return volt::SheetOrientation::Portrait;
-    }
-    if (value == "Landscape") {
-        return volt::SheetOrientation::Landscape;
+    if (const auto parsed = volt::io::sheet_orientation_from_name(value)) {
+        return *parsed;
     }
     throw std::invalid_argument{"Unknown schematic sheet orientation"};
 }
 
 [[nodiscard]] inline volt::SchematicOrientation
 schematic_orientation_from_string(const std::string &value) {
-    if (value == "Right") {
-        return volt::SchematicOrientation::Right;
-    }
-    if (value == "Down") {
-        return volt::SchematicOrientation::Down;
-    }
-    if (value == "Left") {
-        return volt::SchematicOrientation::Left;
-    }
-    if (value == "Up") {
-        return volt::SchematicOrientation::Up;
+    if (const auto parsed = volt::io::schematic_orientation_from_name(value)) {
+        return *parsed;
     }
     throw std::invalid_argument{"Unknown schematic orientation"};
 }
 
 [[nodiscard]] inline std::string schematic_orientation_name(volt::SchematicOrientation value) {
-    switch (value) {
-    case volt::SchematicOrientation::Right:
-        return "Right";
-    case volt::SchematicOrientation::Down:
-        return "Down";
-    case volt::SchematicOrientation::Left:
-        return "Left";
-    case volt::SchematicOrientation::Up:
-        return "Up";
-    }
-    throw std::logic_error{"Unhandled schematic orientation"};
+    return std::string{volt::io::schematic_orientation_name(value)};
 }
 
 [[nodiscard]] inline volt::SymbolLineRole symbol_line_role_from_string(const std::string &value) {
-    if (value == "Normal") {
-        return volt::SymbolLineRole::Normal;
-    }
-    if (value == "TerminalLeadStart") {
-        return volt::SymbolLineRole::TerminalLeadStart;
-    }
-    if (value == "TerminalLeadEnd") {
-        return volt::SymbolLineRole::TerminalLeadEnd;
+    if (const auto parsed = volt::io::symbol_line_role_from_name(value)) {
+        return *parsed;
     }
     throw std::invalid_argument{"Unknown symbol line role"};
 }
@@ -397,68 +369,38 @@ rotated_schematic_orientation(volt::SchematicOrientation local,
 }
 
 [[nodiscard]] inline volt::RouteIntent route_intent_from_string(const std::string &value) {
-    if (value == "Direct") {
-        return volt::RouteIntent::Direct;
-    }
-    if (value == "Orthogonal") {
-        return volt::RouteIntent::Orthogonal;
+    if (const auto parsed = volt::io::route_intent_from_name(value)) {
+        return *parsed;
     }
     throw std::invalid_argument{"Unknown schematic route intent"};
 }
 
 [[nodiscard]] inline volt::PowerPortKind power_port_kind_from_string(const std::string &value) {
-    if (value == "Power") {
-        return volt::PowerPortKind::Power;
-    }
-    if (value == "Ground") {
-        return volt::PowerPortKind::Ground;
+    if (const auto parsed = volt::io::power_port_kind_from_name(value)) {
+        return *parsed;
     }
     throw std::invalid_argument{"Unknown schematic power port kind"};
 }
 
 [[nodiscard]] inline volt::SheetPortKind sheet_port_kind_from_string(const std::string &value) {
-    if (value == "Input") {
-        return volt::SheetPortKind::Input;
-    }
-    if (value == "Output") {
-        return volt::SheetPortKind::Output;
-    }
-    if (value == "Bidirectional") {
-        return volt::SheetPortKind::Bidirectional;
-    }
-    if (value == "OffPage") {
-        return volt::SheetPortKind::OffPage;
+    if (const auto parsed = volt::io::sheet_port_kind_from_name(value)) {
+        return *parsed;
     }
     throw std::invalid_argument{"Unknown schematic sheet port kind"};
 }
 
 [[nodiscard]] inline volt::TextHorizontalAlignment
 text_horizontal_alignment_from_string(const std::string &value) {
-    if (value == "Start") {
-        return volt::TextHorizontalAlignment::Start;
-    }
-    if (value == "Middle") {
-        return volt::TextHorizontalAlignment::Middle;
-    }
-    if (value == "End") {
-        return volt::TextHorizontalAlignment::End;
+    if (const auto parsed = volt::io::text_horizontal_alignment_from_name(value)) {
+        return *parsed;
     }
     throw std::invalid_argument{"Unknown schematic text horizontal alignment"};
 }
 
 [[nodiscard]] inline volt::TextVerticalAlignment
 text_vertical_alignment_from_string(const std::string &value) {
-    if (value == "Top") {
-        return volt::TextVerticalAlignment::Top;
-    }
-    if (value == "Middle") {
-        return volt::TextVerticalAlignment::Middle;
-    }
-    if (value == "Bottom") {
-        return volt::TextVerticalAlignment::Bottom;
-    }
-    if (value == "Baseline") {
-        return volt::TextVerticalAlignment::Baseline;
+    if (const auto parsed = volt::io::text_vertical_alignment_from_name(value)) {
+        return *parsed;
     }
     throw std::invalid_argument{"Unknown schematic text vertical alignment"};
 }

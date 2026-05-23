@@ -11,19 +11,12 @@
 #include <variant>
 
 #include <volt/io/logical_circuit_writer.hpp>
+#include <volt/io/schematic_schema.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/schematic_document.hpp>
 #include <volt/schematic/symbols.hpp>
 
 namespace volt::io {
-
-/** Return the canonical v1 schematic projection format name. */
-[[nodiscard]] inline constexpr std::string_view schematic_format_name() noexcept {
-    return "volt.schematic";
-}
-
-/** Return the canonical schematic projection format version written by this library. */
-[[nodiscard]] inline constexpr int schematic_format_version() noexcept { return 1; }
 
 namespace detail {
 
@@ -65,102 +58,6 @@ namespace detail {
 
 [[nodiscard]] inline std::string symbol_field_id(SymbolFieldId id) {
     return "symbol_field:" + std::to_string(id.index());
-}
-
-[[nodiscard]] inline std::string schematic_orientation_name(SchematicOrientation orientation) {
-    switch (orientation) {
-    case SchematicOrientation::Right:
-        return "Right";
-    case SchematicOrientation::Down:
-        return "Down";
-    case SchematicOrientation::Left:
-        return "Left";
-    case SchematicOrientation::Up:
-        return "Up";
-    }
-    throw std::logic_error{"Unhandled schematic orientation"};
-}
-
-[[nodiscard]] inline std::string symbol_line_role_name(SymbolLineRole role) {
-    switch (role) {
-    case SymbolLineRole::Normal:
-        return "Normal";
-    case SymbolLineRole::TerminalLeadStart:
-        return "TerminalLeadStart";
-    case SymbolLineRole::TerminalLeadEnd:
-        return "TerminalLeadEnd";
-    }
-    throw std::logic_error{"Unhandled symbol line role"};
-}
-
-[[nodiscard]] inline std::string text_horizontal_alignment_name(TextHorizontalAlignment alignment) {
-    switch (alignment) {
-    case TextHorizontalAlignment::Start:
-        return "Start";
-    case TextHorizontalAlignment::Middle:
-        return "Middle";
-    case TextHorizontalAlignment::End:
-        return "End";
-    }
-    throw std::logic_error{"Unhandled text horizontal alignment"};
-}
-
-[[nodiscard]] inline std::string text_vertical_alignment_name(TextVerticalAlignment alignment) {
-    switch (alignment) {
-    case TextVerticalAlignment::Top:
-        return "Top";
-    case TextVerticalAlignment::Middle:
-        return "Middle";
-    case TextVerticalAlignment::Bottom:
-        return "Bottom";
-    case TextVerticalAlignment::Baseline:
-        return "Baseline";
-    }
-    throw std::logic_error{"Unhandled text vertical alignment"};
-}
-
-[[nodiscard]] inline std::string sheet_orientation_name(SheetOrientation orientation) {
-    switch (orientation) {
-    case SheetOrientation::Portrait:
-        return "Portrait";
-    case SheetOrientation::Landscape:
-        return "Landscape";
-    }
-    throw std::logic_error{"Unhandled sheet orientation"};
-}
-
-[[nodiscard]] inline std::string route_intent_name(RouteIntent intent) {
-    switch (intent) {
-    case RouteIntent::Direct:
-        return "Direct";
-    case RouteIntent::Orthogonal:
-        return "Orthogonal";
-    }
-    throw std::logic_error{"Unhandled route intent"};
-}
-
-[[nodiscard]] inline std::string power_port_kind_name(PowerPortKind kind) {
-    switch (kind) {
-    case PowerPortKind::Power:
-        return "Power";
-    case PowerPortKind::Ground:
-        return "Ground";
-    }
-    throw std::logic_error{"Unhandled power port kind"};
-}
-
-[[nodiscard]] inline std::string sheet_port_kind_name(SheetPortKind kind) {
-    switch (kind) {
-    case SheetPortKind::Input:
-        return "Input";
-    case SheetPortKind::Output:
-        return "Output";
-    case SheetPortKind::Bidirectional:
-        return "Bidirectional";
-    case SheetPortKind::OffPage:
-        return "OffPage";
-    }
-    throw std::logic_error{"Unhandled sheet port kind"};
 }
 
 inline void write_point(std::ostream &out, Point point) {
@@ -448,8 +345,7 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
                 << ", \"number\": " << detail::json_string(pin.number()) << ", \"anchor\": ";
             detail::write_point(out, pin.anchor());
             out << ", \"orientation\": "
-                << detail::json_string(detail::schematic_orientation_name(pin.orientation()))
-                << " }";
+                << detail::json_string(schematic_orientation_name(pin.orientation())) << " }";
         }
         out << "], \"primitives\": [";
         for (std::size_t primitive_index = 0; primitive_index < symbol.primitives().size();
@@ -566,7 +462,7 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << ", \"position\": ";
         detail::write_point(out, instance.position());
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(instance.orientation()));
+            << detail::json_string(schematic_orientation_name(instance.orientation()));
         detail::write_authored_region(
             out, schematic.sheet(detail::sheet_for_symbol_instance(schematic, id)),
             instance.authored_region());
@@ -593,7 +489,7 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             detail::write_point(out, wire.points()[point_index]);
         }
         out << "], \"route_intent\": "
-            << detail::json_string(detail::route_intent_name(wire.route_intent()));
+            << detail::json_string(route_intent_name(wire.route_intent()));
         detail::write_authored_region(out,
                                       schematic.sheet(detail::sheet_for_wire_run(schematic, id)),
                                       wire.authored_region());
@@ -619,7 +515,7 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             detail::write_point(out, *label.explicit_text_position());
         }
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(label.orientation()));
+            << detail::json_string(schematic_orientation_name(label.orientation()));
         if (label.label()) {
             out << ", \"label\": " << detail::json_string(*label.label());
         }
@@ -663,11 +559,11 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
         out << "    { \"id\": " << detail::json_string(detail::power_port_id(id)) << ", \"sheet\": "
             << detail::json_string(detail::sheet_id(detail::sheet_for_power_port(schematic, id)))
             << ", \"net\": " << detail::json_string(detail::net_id(port.net()))
-            << ", \"kind\": " << detail::json_string(detail::power_port_kind_name(port.kind()))
+            << ", \"kind\": " << detail::json_string(power_port_kind_name(port.kind()))
             << ", \"position\": ";
         detail::write_point(out, port.position());
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(port.orientation()));
+            << detail::json_string(schematic_orientation_name(port.orientation()));
         if (port.label().has_value()) {
             out << ", \"label\": " << detail::json_string(*port.label());
         }
@@ -698,7 +594,7 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << ", \"position\": ";
         detail::write_point(out, marker.position());
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(marker.orientation()));
+            << detail::json_string(schematic_orientation_name(marker.orientation()));
         if (!marker.reason().empty()) {
             out << ", \"reason\": " << detail::json_string(marker.reason());
         }
@@ -721,11 +617,11 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << detail::json_string(detail::sheet_id(detail::sheet_for_sheet_port(schematic, id)))
             << ", \"net\": " << detail::json_string(detail::net_id(port.net()))
             << ", \"name\": " << detail::json_string(port.name())
-            << ", \"kind\": " << detail::json_string(detail::sheet_port_kind_name(port.kind()))
+            << ", \"kind\": " << detail::json_string(sheet_port_kind_name(port.kind()))
             << ", \"position\": ";
         detail::write_point(out, port.position());
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(port.orientation()));
+            << detail::json_string(schematic_orientation_name(port.orientation()));
         detail::write_authored_region(out,
                                       schematic.sheet(detail::sheet_for_sheet_port(schematic, id)),
                                       port.authored_region());
@@ -750,7 +646,7 @@ inline void write_schematic(std::ostream &out, const Schematic &schematic) {
             << ", \"value\": " << detail::json_string(field.value()) << ", \"position\": ";
         detail::write_point(out, field.position());
         out << ", \"orientation\": "
-            << detail::json_string(detail::schematic_orientation_name(field.orientation()));
+            << detail::json_string(schematic_orientation_name(field.orientation()));
         detail::write_text_style_fields(out, field.style(), volt::SchematicTextStyle{});
         detail::write_authored_region(
             out, schematic.sheet(detail::sheet_for_symbol_field(schematic, id)),
