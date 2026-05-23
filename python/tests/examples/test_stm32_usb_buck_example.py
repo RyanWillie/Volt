@@ -9,6 +9,16 @@ from tempfile import TemporaryDirectory
 import volt
 
 
+def _schematic_authoring_source(schematic_output):
+    return "\n".join(
+        inspect.getsource(getattr(schematic_output, name))
+        for name in (
+            "_author_power_region",
+            "_author_mcu_region",
+            "_author_connectors_region",
+        )
+    )
+
 
 def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     main = importlib.import_module("examples.stm32_usb_buck.main")
@@ -221,34 +231,28 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     ]
     assert len(junction_keys) == len(set(junction_keys))
     assert ".to_json(" not in inspect.getsource(schematic_output.build_schematic)
-    schematic_source = inspect.getsource(schematic_output)
+    composition_source = inspect.getsource(schematic_output)
+    authoring_source = _schematic_authoring_source(schematic_output)
+    schematic_source = composition_source + "\n" + authoring_source
     assert "class _SchematicAuthor" not in schematic_source
     assert "audit_no_fallback_pin_coverage" not in schematic_source
-    assert ".region(" in schematic_source
-    assert ".drawing(" in schematic_source
-    assert "region.drawing(" in schematic_source
-    authoring_source = "\n".join(
-        inspect.getsource(getattr(schematic_output, name))
-        for name in (
-            "_author_power_region",
-            "_author_mcu_region",
-            "_author_connectors_region",
-        )
-    )
+    assert ".region(" in composition_source
+    assert ".drawing(" in authoring_source
+    assert "region.drawing(" in authoring_source
     assert "drawing.frame(" not in authoring_source
     assert re.search(r"\bat=\(\s*\d", authoring_source) is None
     assert "drawing.move_from(" in authoring_source
-    assert "drawing.stack(" in schematic_source
-    assert "drawing.two_terminal(" in schematic_source
+    assert "drawing.stack(" in authoring_source
+    assert "drawing.two_terminal(" in authoring_source
     assert "drawing.C(" not in schematic_source
     assert "drawing.R(" not in schematic_source
     assert "drawing.LED(" not in schematic_source
-    assert "drawing.connect(" in schematic_source
-    assert "drawing.signal_tag(" in schematic_source
-    assert "drawing.signal_tags(" in schematic_source
+    assert "drawing.connect(" in authoring_source
+    assert "drawing.signal_tag(" in authoring_source
+    assert "drawing.signal_tags(" in authoring_source
     assert "drawing.signal_stub(" not in authoring_source
-    assert "drawing.no_connect(" in schematic_source
-    assert "shape=" in schematic_source
+    assert "drawing.no_connect(" in authoring_source
+    assert "shape=" in authoring_source
     assert 'name="value"' not in schematic_source
     label_counts = Counter(
         (label["sheet"], label["net"]) for label in schematic["net_labels"]
@@ -480,7 +484,9 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
 def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():
     schematic_output = importlib.import_module("examples.stm32_usb_buck.schematic_output")
 
-    source = inspect.getsource(schematic_output)
+    composition_source = inspect.getsource(schematic_output)
+    authoring_source = _schematic_authoring_source(schematic_output)
+    source = composition_source + "\n" + authoring_source
 
     assert "_SchematicAuthor" not in source
     assert "fallback schematic pin coverage" not in source
@@ -489,25 +495,18 @@ def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():
     assert "boot_block(" not in source
     assert "power_block(" not in source
     assert "usb_block(" not in source
-    assert "region.drawing(" in source
-    authoring_source = "\n".join(
-        inspect.getsource(getattr(schematic_output, name))
-        for name in (
-            "_author_power_region",
-            "_author_mcu_region",
-            "_author_connectors_region",
-        )
-    )
+    assert ".region(" in composition_source
+    assert "region.drawing(" in authoring_source
     assert "drawing.frame(" not in authoring_source
     assert re.search(r"\bat=\(\s*\d", authoring_source) is None
     assert "drawing.move_from(" in authoring_source
-    assert "drawing.stack(" in source
-    assert "drawing.two_terminal(" in source
+    assert "drawing.stack(" in authoring_source
+    assert "drawing.two_terminal(" in authoring_source
     assert "drawing.C(" not in source
     assert "drawing.R(" not in source
     assert "drawing.LED(" not in source
-    assert "drawing.connect(" in source
-    assert "drawing.net_label(" in source
-    assert "drawing.signal_tag(" in source
+    assert "drawing.connect(" in authoring_source
+    assert "drawing.net_label(" in authoring_source
+    assert "drawing.signal_tag(" in authoring_source
     assert "drawing.signal_stub(" not in authoring_source
-    assert "drawing.no_connect(" in source
+    assert "drawing.no_connect(" in authoring_source
