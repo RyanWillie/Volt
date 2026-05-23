@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include <volt/schematic/readability_geometry.hpp>
+#include <volt/schematic/presentation_geometry.hpp>
 #include <volt/schematic/schematic.hpp>
 
 namespace volt {
@@ -62,7 +62,7 @@ namespace detail {
                                                                  const Sheet &sheet,
                                                                  SchematicBounds bounds) {
     for (const auto instance_id : sheet.symbol_instances()) {
-        if (intersects_bounds(bounds, symbol_instance_geometry_bounds(schematic, instance_id))) {
+        if (intersects_bounds(bounds, symbol_instance_bounds(schematic, instance_id))) {
             return false;
         }
     }

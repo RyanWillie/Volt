@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <volt/core/ids.hpp>
+#include <volt/schematic/presentation_geometry.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
 
@@ -50,13 +51,14 @@ inline constexpr double svg_sheet_width = 297.0;
 inline constexpr double svg_sheet_height = 210.0;
 inline constexpr double svg_sheet_gap = 20.0;
 inline constexpr double svg_pi = 3.14159265358979323846;
-inline constexpr double title_block_width = 82.0;
-inline constexpr double title_block_label_width = 22.0;
-inline constexpr double title_block_row_height = 6.0;
-inline constexpr double title_block_label_x = 2.0;
-inline constexpr double title_block_value_x = title_block_label_width + 2.0;
-inline constexpr double title_block_right_padding = 2.0;
-inline constexpr double title_block_text_width_factor = 0.64;
+inline constexpr double title_block_width = ::volt::detail::title_block_width;
+inline constexpr double title_block_label_width = ::volt::detail::title_block_label_width;
+inline constexpr double title_block_row_height = ::volt::detail::title_block_row_height;
+inline constexpr double title_block_label_x = ::volt::detail::title_block_label_x;
+inline constexpr double title_block_value_x = ::volt::detail::title_block_value_x;
+inline constexpr double title_block_right_padding = ::volt::detail::title_block_right_padding;
+inline constexpr double title_block_text_width_factor =
+    ::volt::detail::title_block_text_width_factor;
 inline constexpr double title_block_min_compression_scale = 0.82;
 
 /** Production schematic rendering scale: page chrome stays quiet, circuit marks stay primary.
@@ -87,17 +89,17 @@ struct SchematicSvgVisualScale {
     /** Coordinate-zone label font size. */
     double coordinate_zone_font_size = 3.0;
     /** Title-block font size. */
-    double title_block_font_size = 2.5;
+    double title_block_font_size = ::volt::detail::title_block_rendered_font_size;
     /** Functional-region title font size. */
     double region_title_font_size = 3.2;
     /** Local net label font size. */
-    double net_label_font_size = 2.8;
+    double net_label_font_size = ::volt::detail::net_label_rendered_font_size;
     /** Sheet, power, and ground tag label font size. */
-    double tag_port_label_font_size = 2.45;
+    double tag_port_label_font_size = ::volt::detail::sheet_port_rendered_label_font_size;
     /** Symbol primitive text font size. */
-    double symbol_text_font_size = 3.0;
+    double symbol_text_font_size = ::volt::detail::symbol_text_rendered_font_size;
     /** Symbol field/value font size. */
-    double symbol_field_font_size = 2.5;
+    double symbol_field_font_size = ::volt::detail::symbol_field_rendered_font_size;
     /** Debug pin anchor radius. */
     double pin_anchor_radius = 1.2;
     /** Debug pin label font size. */
@@ -107,19 +109,21 @@ struct SchematicSvgVisualScale {
 };
 
 inline constexpr SchematicSvgVisualScale schematic_svg_visual_scale{};
-inline constexpr double power_port_stem_length = 4.2;
-inline constexpr double power_port_tip_offset = 7.6;
-inline constexpr double power_port_half_width = 3.0;
-inline constexpr double power_port_label_offset = 9.4;
-inline constexpr double ground_port_stem_length = 3.0;
-inline constexpr double ground_port_label_offset = 8.2;
-inline constexpr double sheet_port_half_height = 2.4;
-inline constexpr double sheet_port_min_body_length = 7.0;
-inline constexpr double sheet_port_tip_length = 3.2;
-inline constexpr double sheet_port_label_padding = 2.1;
+inline constexpr double power_port_stem_length = ::volt::detail::power_port_stem_length;
+inline constexpr double power_port_tip_offset = ::volt::detail::power_port_tip_offset;
+inline constexpr double power_port_half_width = ::volt::detail::power_port_half_width;
+inline constexpr double power_port_label_offset = ::volt::detail::power_port_label_offset;
+inline constexpr double ground_port_stem_length = ::volt::detail::ground_port_stem_length;
+inline constexpr double ground_port_label_offset = ::volt::detail::ground_port_label_offset;
+inline constexpr double sheet_port_half_height = ::volt::detail::sheet_port_rendered_half_height;
+inline constexpr double sheet_port_min_body_length =
+    ::volt::detail::sheet_port_rendered_min_body_length;
+inline constexpr double sheet_port_tip_length = ::volt::detail::sheet_port_rendered_tip_length;
+inline constexpr double sheet_port_label_padding =
+    ::volt::detail::sheet_port_rendered_label_padding;
 inline constexpr double debug_pin_label_offset = 4.0;
 /** Deterministic average sans-serif character width used instead of browser font metrics. */
-inline constexpr double sheet_port_text_width_factor = 0.56;
+inline constexpr double sheet_port_text_width_factor = ::volt::detail::rendered_text_width_factor;
 inline constexpr double sheet_port_label_baseline = 0.9;
 
 /** Sheet-local rectangle used by SVG layout helpers. */
@@ -135,16 +139,7 @@ struct SvgRect {
 };
 
 /** Sheet-local bounds used by content-tight SVG body export. */
-struct SvgBounds {
-    /** Minimum sheet-space x coordinate. */
-    double min_x;
-    /** Minimum sheet-space y coordinate. */
-    double min_y;
-    /** Maximum sheet-space x coordinate. */
-    double max_x;
-    /** Maximum sheet-space y coordinate. */
-    double max_y;
-};
+using SvgBounds = ::volt::detail::SchematicBounds;
 
 /** Deterministic title-block text fit result. */
 struct SvgTitleBlockTextFit {
@@ -344,136 +339,22 @@ inline void write_text_presentation_attributes(std::ostream &out, SchematicTextS
     }
 }
 
-[[nodiscard]] inline double title_block_rendered_text_width(std::string_view text,
-                                                            double font_size) noexcept {
-    return font_size * title_block_text_width_factor * static_cast<double>(text.size());
-}
-
-[[nodiscard]] inline SvgBounds bounds_from_point(Point point) noexcept {
-    return SvgBounds{point.x(), point.y(), point.x(), point.y()};
-}
-
-inline void include_point(SvgBounds &bounds, Point point) noexcept {
-    bounds.min_x = std::min(bounds.min_x, point.x());
-    bounds.min_y = std::min(bounds.min_y, point.y());
-    bounds.max_x = std::max(bounds.max_x, point.x());
-    bounds.max_y = std::max(bounds.max_y, point.y());
-}
-
-inline void include_bounds(SvgBounds &bounds, SvgBounds other) noexcept {
-    bounds.min_x = std::min(bounds.min_x, other.min_x);
-    bounds.min_y = std::min(bounds.min_y, other.min_y);
-    bounds.max_x = std::max(bounds.max_x, other.max_x);
-    bounds.max_y = std::max(bounds.max_y, other.max_y);
-}
-
-[[nodiscard]] inline SvgBounds padded_bounds(SvgBounds bounds, double padding) noexcept {
-    return SvgBounds{bounds.min_x - padding, bounds.min_y - padding, bounds.max_x + padding,
-                     bounds.max_y + padding};
-}
-
-[[nodiscard]] inline SvgBounds rect_bounds(double x, double y, double width,
-                                           double height) noexcept {
-    return SvgBounds{x, y, x + width, y + height};
-}
-
-[[nodiscard]] inline double bounds_width(SvgBounds bounds) noexcept {
-    return bounds.max_x - bounds.min_x;
-}
-
-[[nodiscard]] inline double bounds_height(SvgBounds bounds) noexcept {
-    return bounds.max_y - bounds.min_y;
-}
-
-[[nodiscard]] inline SvgBounds transform_rect_bounds(double min_x, double min_y, double max_x,
-                                                     double max_y, Point origin,
-                                                     SchematicOrientation orientation) {
-    auto result =
-        bounds_from_point(transform_schematic_point(Point{min_x, min_y}, origin, orientation));
-    include_point(result, transform_schematic_point(Point{max_x, min_y}, origin, orientation));
-    include_point(result, transform_schematic_point(Point{min_x, max_y}, origin, orientation));
-    include_point(result, transform_schematic_point(Point{max_x, max_y}, origin, orientation));
-    return result;
-}
-
-[[nodiscard]] inline double rendered_text_width(std::string_view text, double font_size) noexcept {
-    return std::max(font_size * sheet_port_text_width_factor,
-                    font_size * sheet_port_text_width_factor * static_cast<double>(text.size()));
-}
-
-[[nodiscard]] inline double rendered_text_height(double font_size) noexcept {
-    return font_size * 1.25;
-}
-
-[[nodiscard]] inline int orientation_quarter_turns(SchematicOrientation orientation) {
-    switch (orientation) {
-    case SchematicOrientation::Right:
-        return 0;
-    case SchematicOrientation::Down:
-        return 1;
-    case SchematicOrientation::Left:
-        return 2;
-    case SchematicOrientation::Up:
-        return 3;
-    }
-    throw std::logic_error{"Unhandled schematic orientation"};
-}
-
-[[nodiscard]] inline SchematicOrientation orientation_from_quarter_turns(int turns) {
-    switch ((turns % 4 + 4) % 4) {
-    case 0:
-        return SchematicOrientation::Right;
-    case 1:
-        return SchematicOrientation::Down;
-    case 2:
-        return SchematicOrientation::Left;
-    case 3:
-        return SchematicOrientation::Up;
-    }
-    throw std::logic_error{"Unhandled schematic orientation"};
-}
-
-[[nodiscard]] inline SchematicOrientation combine_orientations(SchematicOrientation parent,
-                                                               SchematicOrientation child) {
-    return orientation_from_quarter_turns(orientation_quarter_turns(parent) +
-                                          orientation_quarter_turns(child));
-}
-
-[[nodiscard]] inline double text_style_font_size(SchematicTextStyle style,
-                                                 double default_font_size) noexcept {
-    return style.font_size().value_or(default_font_size);
-}
-
-[[nodiscard]] inline SvgBounds text_bounds(Point anchor, SchematicOrientation orientation,
-                                           std::string_view text, SchematicTextStyle style,
-                                           double default_font_size) {
-    const auto font_size = text_style_font_size(style, default_font_size);
-    const auto width = rendered_text_width(text, font_size);
-    auto min_x = 0.0;
-    auto max_x = width;
-    if (style.horizontal_alignment() == TextHorizontalAlignment::Middle) {
-        min_x = -width / 2.0;
-        max_x = width / 2.0;
-    } else if (style.horizontal_alignment() == TextHorizontalAlignment::End) {
-        min_x = -width;
-        max_x = 0.0;
-    }
-
-    const auto height = rendered_text_height(font_size);
-    auto min_y = -font_size;
-    auto max_y = height - font_size;
-    if (style.vertical_alignment() == TextVerticalAlignment::Top) {
-        min_y = 0.0;
-        max_y = height;
-    } else if (style.vertical_alignment() == TextVerticalAlignment::Middle) {
-        min_y = -height / 2.0;
-        max_y = height / 2.0;
-    } else if (style.vertical_alignment() == TextVerticalAlignment::Bottom) {
-        min_y = -height;
-        max_y = 0.0;
-    }
-    return transform_rect_bounds(min_x, min_y, max_x, max_y, anchor, orientation);
-}
+using ::volt::detail::bounds_from_point;
+using ::volt::detail::bounds_height;
+using ::volt::detail::bounds_width;
+using ::volt::detail::combine_orientations;
+using ::volt::detail::include_bounds;
+using ::volt::detail::include_point;
+using ::volt::detail::orientation_from_quarter_turns;
+using ::volt::detail::orientation_quarter_turns;
+using ::volt::detail::padded_bounds;
+using ::volt::detail::rect_bounds;
+using ::volt::detail::rendered_text_width;
+using ::volt::detail::sheet_port_body_length;
+using ::volt::detail::text_bounds;
+using ::volt::detail::text_style_font_size;
+using ::volt::detail::title_block_rendered_text_width;
+using ::volt::detail::transform_rect_bounds;
 
 [[nodiscard]] inline std::string
 abbreviate_middle_to_fit(std::string_view text, double available_width, double font_size) {
@@ -517,13 +398,6 @@ abbreviate_middle_to_fit(std::string_view text, double available_width, double f
 
     return SvgTitleBlockTextFit{abbreviate_middle_to_fit(text, available_width, font_size), true,
                                 false, 0.0};
-}
-
-[[nodiscard]] inline double sheet_port_body_length(std::string_view label) {
-    const auto label_width = static_cast<double>(label.size()) *
-                             schematic_svg_visual_scale.tag_port_label_font_size *
-                             sheet_port_text_width_factor;
-    return std::max(sheet_port_min_body_length, label_width + (sheet_port_label_padding * 2.0));
 }
 
 [[nodiscard]] inline SvgRect drawing_area(const SheetMetadata &metadata) {
@@ -952,63 +826,16 @@ inline void write_symbol_field_svg(std::ostream &out, const Schematic &schematic
 [[nodiscard]] inline SvgBounds symbol_primitive_bounds(const SymbolPrimitive &primitive,
                                                        const SymbolInstance &instance) {
     const auto stroke_padding = schematic_svg_visual_scale.symbol_stroke_width / 2.0;
-    if (std::holds_alternative<SymbolLine>(primitive)) {
-        const auto &line = std::get<SymbolLine>(primitive);
-        auto bounds = bounds_from_point(
-            transform_schematic_point(line.start(), instance.position(), instance.orientation()));
-        include_point(bounds, transform_schematic_point(line.end(), instance.position(),
-                                                        instance.orientation()));
-        return padded_bounds(bounds, stroke_padding);
-    }
-    if (std::holds_alternative<SymbolRectangle>(primitive)) {
-        const auto &rectangle = std::get<SymbolRectangle>(primitive);
-        return padded_bounds(
-            transform_rect_bounds(
-                std::min(rectangle.first_corner().x(), rectangle.second_corner().x()),
-                std::min(rectangle.first_corner().y(), rectangle.second_corner().y()),
-                std::max(rectangle.first_corner().x(), rectangle.second_corner().x()),
-                std::max(rectangle.first_corner().y(), rectangle.second_corner().y()),
-                instance.position(), instance.orientation()),
-            stroke_padding);
-    }
-    if (std::holds_alternative<SymbolCircle>(primitive)) {
-        const auto &circle = std::get<SymbolCircle>(primitive);
-        return padded_bounds(transform_rect_bounds(circle.center().x() - circle.radius(),
-                                                   circle.center().y() - circle.radius(),
-                                                   circle.center().x() + circle.radius(),
-                                                   circle.center().y() + circle.radius(),
-                                                   instance.position(), instance.orientation()),
-                             stroke_padding);
-    }
-    if (std::holds_alternative<SymbolArc>(primitive)) {
-        const auto &arc = std::get<SymbolArc>(primitive);
-        return padded_bounds(
-            transform_rect_bounds(arc.center().x() - arc.radius(), arc.center().y() - arc.radius(),
-                                  arc.center().x() + arc.radius(), arc.center().y() + arc.radius(),
-                                  instance.position(), instance.orientation()),
-            stroke_padding);
-    }
-
-    const auto &text = std::get<SymbolText>(primitive);
-    const auto anchor =
-        transform_schematic_point(text.anchor(), instance.position(), instance.orientation());
-    return text_bounds(anchor, combine_orientations(instance.orientation(), text.orientation()),
-                       text.text(), text.style(), schematic_svg_visual_scale.symbol_text_font_size);
+    return ::volt::detail::symbol_primitive_bounds(
+        primitive, instance, stroke_padding, stroke_padding,
+        schematic_svg_visual_scale.symbol_text_font_size);
 }
 
 [[nodiscard]] inline SvgBounds symbol_instance_bounds(const Schematic &schematic,
                                                       SymbolInstanceId id) {
-    const auto &instance = schematic.symbol_instance(id);
-    const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
-    auto bounds = bounds_from_point(instance.position());
-    for (const auto &pin : symbol.pins()) {
-        include_point(bounds, transform_schematic_point(pin.anchor(), instance.position(),
-                                                        instance.orientation()));
-    }
-    for (const auto &primitive : symbol.primitives()) {
-        include_bounds(bounds, symbol_primitive_bounds(primitive, instance));
-    }
-    return bounds;
+    const auto stroke_padding = schematic_svg_visual_scale.symbol_stroke_width / 2.0;
+    return ::volt::detail::symbol_instance_bounds(schematic, id, stroke_padding, stroke_padding,
+                                                  schematic_svg_visual_scale.symbol_text_font_size);
 }
 
 [[nodiscard]] inline SvgBounds symbol_debug_overlay_bounds(const Schematic &schematic,
@@ -1033,11 +860,8 @@ inline void write_symbol_field_svg(std::ostream &out, const Schematic &schematic
 }
 
 [[nodiscard]] inline SvgBounds wire_run_bounds(const WireRun &wire) {
-    auto bounds = bounds_from_point(wire.points().front());
-    for (const auto point : wire.points()) {
-        include_point(bounds, point);
-    }
-    return padded_bounds(bounds, schematic_svg_visual_scale.wire_stroke_width / 2.0);
+    return ::volt::detail::wire_run_bounds(wire,
+                                           schematic_svg_visual_scale.wire_stroke_width / 2.0);
 }
 
 [[nodiscard]] inline SchematicOrientation
@@ -1060,33 +884,19 @@ power_port_bounds_orientation(PowerPortKind kind, SchematicOrientation orientati
 
 [[nodiscard]] inline SvgBounds power_port_label_bounds(const PowerPort &port,
                                                        std::string_view label) {
-    const auto label_y =
-        port.kind() == PowerPortKind::Ground ? ground_port_label_offset : -power_port_label_offset;
-    return text_bounds(port.explicit_label_position().value_or(
-                           transformed_power_port_anchor(port, Point{0.0, label_y})),
-                       SchematicOrientation::Right, label, SchematicTextStyle{},
-                       schematic_svg_visual_scale.tag_port_label_font_size);
+    return ::volt::detail::power_port_label_bounds(
+        port, label, schematic_svg_visual_scale.tag_port_label_font_size);
 }
 
 [[nodiscard]] inline SvgBounds power_port_bounds(const PowerPort &port, std::string_view label) {
-    const auto glyph_orientation = power_port_bounds_orientation(port.kind(), port.orientation());
     const auto stroke_padding = schematic_svg_visual_scale.tag_port_stroke_width / 2.0;
-    auto bounds =
-        port.kind() == PowerPortKind::Ground
-            ? transform_rect_bounds(-3.6, 0.0, 3.6, 6.0, port.position(), glyph_orientation)
-            : transform_rect_bounds(-power_port_half_width, -power_port_tip_offset,
-                                    power_port_half_width, 0.0, port.position(), glyph_orientation);
-    bounds = padded_bounds(bounds, stroke_padding);
-    include_bounds(bounds, power_port_label_bounds(port, label));
-    return bounds;
+    return ::volt::detail::power_port_bounds(port, label, stroke_padding,
+                                             schematic_svg_visual_scale.tag_port_label_font_size);
 }
 
 [[nodiscard]] inline SvgBounds no_connect_marker_bounds(const NoConnectMarker &marker) {
-    return transform_rect_bounds(-3.0 - (schematic_svg_visual_scale.no_connect_stroke_width / 2.0),
-                                 -3.0 - (schematic_svg_visual_scale.no_connect_stroke_width / 2.0),
-                                 3.0 + (schematic_svg_visual_scale.no_connect_stroke_width / 2.0),
-                                 3.0 + (schematic_svg_visual_scale.no_connect_stroke_width / 2.0),
-                                 marker.position(), marker.orientation());
+    return ::volt::detail::no_connect_marker_bounds(
+        marker, 3.0 + (schematic_svg_visual_scale.no_connect_stroke_width / 2.0));
 }
 
 [[nodiscard]] inline Point transformed_sheet_port_anchor(const SheetPort &port,
@@ -1095,21 +905,14 @@ power_port_bounds_orientation(PowerPortKind kind, SchematicOrientation orientati
 }
 
 [[nodiscard]] inline SvgBounds sheet_port_label_bounds(const SheetPort &port) {
-    const auto body_length = sheet_port_body_length(port.name());
-    return text_bounds(
-        transformed_sheet_port_anchor(port, Point{body_length * 0.5, sheet_port_label_baseline}),
-        SchematicOrientation::Right, port.name(), SchematicTextStyle{},
-        schematic_svg_visual_scale.tag_port_label_font_size);
+    return ::volt::detail::sheet_port_label_bounds(
+        port, schematic_svg_visual_scale.tag_port_label_font_size);
 }
 
 [[nodiscard]] inline SvgBounds sheet_port_bounds(const SheetPort &port) {
-    const auto body_length = sheet_port_body_length(port.name());
-    auto bounds =
-        transform_rect_bounds(0.0, -sheet_port_half_height, body_length + sheet_port_tip_length,
-                              sheet_port_half_height, port.position(), port.orientation());
-    bounds = padded_bounds(bounds, schematic_svg_visual_scale.tag_port_stroke_width / 2.0);
-    include_bounds(bounds, sheet_port_label_bounds(port));
-    return bounds;
+    return ::volt::detail::sheet_port_bounds(port,
+                                             schematic_svg_visual_scale.tag_port_stroke_width / 2.0,
+                                             schematic_svg_visual_scale.tag_port_label_font_size);
 }
 
 [[nodiscard]] inline std::optional<SvgBounds>
@@ -1132,10 +935,10 @@ sheet_content_bounds(const Schematic &schematic, SheetId sheet_id,
         }
     }
     for (const auto instance : sheet.symbol_instances()) {
-        include(symbol_instance_bounds(schematic, instance));
+        include(::volt::io::detail::symbol_instance_bounds(schematic, instance));
     }
     for (const auto wire : sheet.wire_runs()) {
-        include(wire_run_bounds(schematic.wire_run(wire)));
+        include(::volt::io::detail::wire_run_bounds(schematic.wire_run(wire)));
     }
     for (const auto junction : sheet.junctions()) {
         include(padded_bounds(bounds_from_point(schematic.junction(junction).position()),
@@ -1144,13 +947,14 @@ sheet_content_bounds(const Schematic &schematic, SheetId sheet_id,
     for (const auto port_id : sheet.power_ports()) {
         const auto &port = schematic.power_port(port_id);
         const auto &net = schematic.circuit().net(port.net());
-        include(power_port_bounds(port, port.label().value_or(net.name().value())));
+        include(
+            ::volt::io::detail::power_port_bounds(port, port.label().value_or(net.name().value())));
     }
     for (const auto marker : sheet.no_connect_markers()) {
-        include(no_connect_marker_bounds(schematic.no_connect_marker(marker)));
+        include(::volt::io::detail::no_connect_marker_bounds(schematic.no_connect_marker(marker)));
     }
     for (const auto port : sheet.sheet_ports()) {
-        include(sheet_port_bounds(schematic.sheet_port(port)));
+        include(::volt::io::detail::sheet_port_bounds(schematic.sheet_port(port)));
     }
     for (const auto label_id : sheet.net_labels()) {
         const auto &label = schematic.net_label(label_id);
@@ -1166,7 +970,7 @@ sheet_content_bounds(const Schematic &schematic, SheetId sheet_id,
     }
     if (options.svg.debug_overlays) {
         for (const auto instance : sheet.symbol_instances()) {
-            include(symbol_debug_overlay_bounds(schematic, instance));
+            include(::volt::io::detail::symbol_debug_overlay_bounds(schematic, instance));
         }
     }
     return bounds;
