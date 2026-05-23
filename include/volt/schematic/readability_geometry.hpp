@@ -167,6 +167,8 @@ struct ReadabilityCollisionObject {
     std::optional<ComponentId> component;
     /** Typed symbol instance ID for traversal-only checks. */
     std::optional<SymbolInstanceId> symbol_instance = std::nullopt;
+    /** Logical pin represented by this visual element, if applicable. */
+    std::optional<PinId> pin = std::nullopt;
 };
 
 /** Rendered tag/port geometry used for stack and density checks. */

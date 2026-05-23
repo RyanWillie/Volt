@@ -202,6 +202,10 @@ def check_python_package_build() -> None:
         'CMAKE_POSITION_INDEPENDENT_CODE = "ON"' in pyproject,
         "Python wheel build must force position-independent code",
     )
+    require(
+        'CMAKE_OSX_SYSROOT = "macosx"' in pyproject,
+        "macOS Python wheel builds must use the same SDK sysroot as CMake presets",
+    )
     require("build>=1.2" in requirements, "Python dev dependencies must include the build frontend")
     require("dist/" in gitignore, "Python wheel artifacts must be ignored")
     require("Python3_EXECUTABLE" in build_script, "Python wheel build must use CMake's selected interpreter")
