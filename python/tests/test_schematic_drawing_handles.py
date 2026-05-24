@@ -252,3 +252,36 @@ def test_python_schematic_drawing_connect_requires_explicit_net_for_plain_coordi
     assert design.to_json() == logical_before
     assert len(projection["wire_runs"]) == 1
     assert projection["wire_runs"][0]["net"] == f"net:{vcc.index}"
+
+
+def test_python_schematic_endpoint_mutations_reject_mismatched_label_net():
+    design = volt.Design("schematic-endpoint-label-net-validation")
+    sig = design.net("SIG")
+    wrong = design.net("WRONG")
+    r1 = design.R("10k", ref="R1")
+    sig += r1[1]
+
+    schematic = design.schematic("Main")
+    logical_before = design.to_json()
+
+    resistor = schematic.place(r1, at=(0, 0), symbol="resistor")
+    before = schematic.to_json()
+
+    try:
+        schematic.net_label(wrong, at=resistor.pin(1))
+    except ValueError as error:
+        message = str(error)
+        assert "the pin belongs to SIG" in message
+        assert "instead of WRONG" in message
+        assert "net label" in message
+    else:
+        raise AssertionError("net labels must reject mismatched pin endpoint nets")
+
+    assert schematic.to_json() == before
+    schematic.net_label(sig, at=resistor.pin(1))
+
+    projection = schematic_projection(schematic)
+
+    assert design.to_json() == logical_before
+    assert len(projection["net_labels"]) == 1
+    assert projection["net_labels"][0]["net"] == f"net:{sig.index}"
