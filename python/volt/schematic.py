@@ -2488,7 +2488,9 @@ class Schematic:
             raise ValueError(
                 _with_schematic_context(str(error), self, action)
             ) from error
-        resolved_net = _net_by_index(self._design, resolved_net_index)
+        resolved_net = (
+            net if net is not None else _net_by_index(self._design, resolved_net_index)
+        )
         return SchematicWire(
             self,
             wire,
@@ -3238,7 +3240,9 @@ class Schematic:
             )
         except ValueError as error:
             raise ValueError(_with_schematic_context(str(error), self, action)) from error
-        resolved_net = _net_by_index(self._design, resolved_net_index)
+        resolved_net = (
+            net if net is not None else _net_by_index(self._design, resolved_net_index)
+        )
         display_name = resolved_net.name if name is None or name == resolved_net.name else name
         return SchematicPort(
             self,
@@ -3331,7 +3335,9 @@ class Schematic:
             )
         except ValueError as error:
             raise ValueError(_with_schematic_context(str(error), self, "sheet port")) from error
-        resolved_net = _net_by_index(self._design, resolved_net_index)
+        resolved_net = (
+            net if net is not None else _net_by_index(self._design, resolved_net_index)
+        )
         return SchematicPort(
             self,
             port,
