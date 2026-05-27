@@ -11,6 +11,7 @@
 
 namespace volt::io::detail {
 
+/// @cond
 template <typename Id> struct LocalIdPrefix;
 
 template <> struct LocalIdPrefix<ComponentDefId> {
@@ -73,17 +74,21 @@ template <> struct LocalIdPrefix<SheetPortId> {
 template <> struct LocalIdPrefix<SymbolFieldId> {
     static constexpr auto value = std::string_view{"symbol_field:"};
 };
+/// @endcond
 
+/** Return the canonical serialized local-ID prefix for a Volt entity ID type. */
 template <typename Id> [[nodiscard]] constexpr std::string_view local_id_prefix() noexcept {
     return LocalIdPrefix<Id>::value;
 }
 
+/** Encode a Volt entity ID using the canonical local prefix plus its storage index. */
 template <typename Id> [[nodiscard]] inline std::string encode_local_id(Id id) {
     auto encoded = std::string{local_id_prefix<Id>()};
     encoded += std::to_string(id.index());
     return encoded;
 }
 
+/** Decode and validate the numeric index suffix from a prefixed local ID string. */
 [[nodiscard]] inline std::size_t decode_local_id_index(std::string_view id,
                                                        std::string_view prefix) {
     if (id.rfind(prefix, 0) != 0) {
@@ -107,6 +112,7 @@ template <typename Id> [[nodiscard]] inline std::string encode_local_id(Id id) {
     return index;
 }
 
+/** Decode a canonical typed local ID string into its Volt entity ID type. */
 template <typename Id> [[nodiscard]] inline Id decode_local_id(std::string_view id) {
     return Id{decode_local_id_index(id, local_id_prefix<Id>())};
 }
