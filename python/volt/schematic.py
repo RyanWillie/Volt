@@ -687,6 +687,7 @@ class SchematicWireBuilder:
         self._schematic = schematic
         self._net = net
         self._points: list[tuple[float, float]] = []
+        self._endpoint_payloads: list[tuple[float, float, int | None, int | None]] = []
         self._drawing = drawing
         self._authored_region = authored_region
         self._start_here = drawing.here if drawing is not None else None
@@ -706,7 +707,9 @@ class SchematicWireBuilder:
 
     def from_(self, point) -> SchematicWireBuilder:
         self._require_unmaterialized()
-        self._points = [self._point_for_authoring(point)]
+        converted, endpoint = self._point_and_endpoint_for_authoring(point)
+        self._points = [converted]
+        self._endpoint_payloads = [endpoint]
         self._update_drawing_cursor(self._points[-1])
         return self
 
@@ -714,14 +717,18 @@ class SchematicWireBuilder:
         """Append an explicit intermediate point that the route should preserve."""
         self._require_unmaterialized()
         self._require_started()
-        self._append_point(self._point_for_authoring(point))
+        converted, endpoint = self._point_and_endpoint_for_authoring(point)
+        self._append_point(converted)
+        self._endpoint_payloads.append(endpoint)
         return self
 
     def to(self, point, *, shape: str | None = None, k: float | None = None):
         """Append the next route point, normally the terminal endpoint."""
         self._require_unmaterialized()
         self._require_started()
-        self._append_point(self._point_for_authoring(point))
+        converted, endpoint = self._point_and_endpoint_for_authoring(point)
+        self._append_point(converted)
+        self._endpoint_payloads.append(endpoint)
         if shape is not None:
             return self.shape(shape, k=k)
         return self
@@ -869,6 +876,19 @@ class SchematicWireBuilder:
             action="schematic wire",
         )
 
+    def _point_and_endpoint_for_authoring(
+        self, point
+    ) -> tuple[tuple[float, float], tuple[float, float, int | None, int | None]]:
+        if self._drawing is not None:
+            point = self._drawing._point_arg(point)
+        endpoint = _schematic_endpoint_for_authoring(
+            point,
+            design=self._schematic._design,
+            schematic=self._schematic,
+            action="schematic wire",
+        )
+        return (endpoint[0], endpoint[1]), endpoint
+
     def _axis_target_arg(self, target, axis: str):
         if (
             self._drawing is not None
@@ -896,6 +916,7 @@ class SchematicWireBuilder:
                     wire_points,
                     route_intent=route_intent,
                     _authored_region=self._authored_region,
+                    _endpoint_payloads=self._endpoint_payloads,
                 )
                 self._persist_endpoint_junctions(wire_points)
             except Exception:
@@ -2324,17 +2345,35 @@ class Schematic:
                 "Schematic connect expects start/end anchors, or a net followed by anchors"
             )
         start, end = args
-        resolved_net = _resolve_schematic_connection_net(
-            self._design,
-            start,
-            end,
-            net,
-            schematic=self,
+        try:
+            explicit = _validate_explicit_schematic_net(
+                self._design, net, type_message="Schematic connections expect a Net handle"
+            )
+        except ValueError as error:
+            _raise_cross_design_with_context(error, self, "schematic wire")
+        endpoints = tuple(
+            _schematic_endpoint_for_authoring(
+                point,
+                design=self._design,
+                schematic=self,
+                action="schematic wire",
+            )
+            for point in (start, end)
         )
-        builder = self.wire(resolved_net, _authored_region=_authored_region).from_(start).to(end)
+        points = tuple((endpoint[0], endpoint[1]) for endpoint in endpoints)
         if shape is None:
-            return builder.orthogonal()
-        return builder.shape(shape, k=k)
+            route_points = _orthogonal_wire_points(points)
+            route_intent = "Orthogonal"
+        else:
+            route_points = _shape_wire_points(points[0], points[1], shape=shape, k=k)
+            route_intent = "Direct" if shape == "-" else "Orthogonal"
+        return self._add_wire_with_endpoint_payloads(
+            explicit,
+            route_points,
+            endpoints,
+            route_intent=route_intent,
+            _authored_region=_authored_region,
+        )
 
     def _connect_existing_net(
         self,
@@ -2354,16 +2393,8 @@ class Schematic:
         points = tuple(anchors)
         if len(points) < 2:
             raise ValueError("Schematic net connections need at least two anchors")
-        for point in points:
-            _resolve_schematic_signal_net(
-                self._design,
-                net,
-                point,
-                schematic=self,
-                action="schematic wire",
-            )
-        converted = tuple(
-            _schematic_point_for_authoring(
+        endpoints = tuple(
+            _schematic_endpoint_for_authoring(
                 point,
                 design=self._design,
                 schematic=self,
@@ -2371,16 +2402,19 @@ class Schematic:
             )
             for point in points
         )
+        converted = tuple((endpoint[0], endpoint[1]) for endpoint in endpoints)
         if shape is None:
-            return self._add_wire(
+            return self._add_wire_with_endpoint_payloads(
                 net,
                 _multi_anchor_orthogonal_wire_points(converted),
+                endpoints,
                 route_intent="Orthogonal",
                 _authored_region=_authored_region,
             )
-        return self._add_wire(
+        return self._add_wire_with_endpoint_payloads(
             net,
             _multi_anchor_shape_wire_points(converted, shape=shape, k=k),
+            endpoints,
             route_intent="Direct" if shape == "-" else "Orthogonal",
             _authored_region=_authored_region,
         )
@@ -2408,6 +2442,63 @@ class Schematic:
             )
         return tuple(wires)
 
+    def _add_wire_with_endpoint_payloads(
+        self,
+        net: Net | None,
+        points: Iterable[tuple[float, float]],
+        endpoint_payloads: Iterable[tuple[float, float, int | None, int | None]],
+        *,
+        route_intent: str,
+        _authored_region: int | None = None,
+        _points_already_converted: bool = False,
+        action: str = "schematic wire",
+    ) -> SchematicWire:
+        wire_points = tuple(points)
+        if len(wire_points) < 2:
+            raise ValueError("Schematic wires need at least two points")
+        if net is not None:
+            _require_schematic_net(
+                net,
+                self._design,
+                type_message="Schematic wires expect a Net handle",
+            )
+        if _points_already_converted:
+            converted = wire_points
+        else:
+            converted = tuple(
+                _schematic_point_for_authoring(
+                    point,
+                    design=self._design,
+                    schematic=self,
+                    action=action,
+                )
+                for point in wire_points
+            )
+
+        try:
+            wire, resolved_net_index = self._design._circuit.add_schematic_wire_for_endpoints(
+                self._sheet_index,
+                None if net is None else net.index,
+                converted,
+                list(endpoint_payloads),
+                route_intent,
+                _authored_region,
+            )
+        except ValueError as error:
+            raise ValueError(
+                _with_schematic_context(str(error), self, action)
+            ) from error
+        resolved_net = (
+            net if net is not None else _net_by_index(self._design, resolved_net_index)
+        )
+        return SchematicWire(
+            self,
+            wire,
+            net=resolved_net,
+            points=tuple(converted),
+            authored_region=_authored_region,
+        )
+
     def _add_wire(
         self,
         net: Net,
@@ -2415,31 +2506,34 @@ class Schematic:
         *,
         route_intent: str,
         _authored_region: int | None = None,
+        _endpoint_payloads: Iterable[tuple[float, float, int | None, int | None]] | None = None,
     ) -> SchematicWire:
         wire_points = tuple(points)
         if len(wire_points) < 2:
             raise ValueError("Schematic wires need at least two points")
 
-        converted = []
-        for point in wire_points:
-            converted.append(
-                _schematic_point_for_authoring(
+        if _endpoint_payloads is None:
+            endpoints = tuple(
+                _schematic_endpoint_for_authoring(
                     point,
                     design=self._design,
                     schematic=self,
                     action="schematic wire",
                 )
+                for point in wire_points
             )
+            converted = tuple((endpoint[0], endpoint[1]) for endpoint in endpoints)
+        else:
+            endpoints = tuple(_endpoint_payloads)
+            converted = wire_points
 
-        wire = self._design._circuit.add_schematic_wire(
-            self._sheet_index, net.index, converted, route_intent, _authored_region
-        )
-        return SchematicWire(
-            self,
-            wire,
-            net=net,
-            points=tuple(converted),
-            authored_region=_authored_region,
+        return self._add_wire_with_endpoint_payloads(
+            net,
+            converted,
+            endpoints,
+            route_intent=route_intent,
+            _authored_region=_authored_region,
+            _points_already_converted=True,
         )
 
     def label(
@@ -2460,26 +2554,53 @@ class Schematic:
             raise ValueError(
                 _with_schematic_context(_cross_design_net_message(net), self, "net label")
             )
-        x, y = _schematic_point_for_authoring(
+        endpoint = _schematic_endpoint_for_authoring(
             at,
             design=self._design,
             schematic=self,
             action="net label",
         )
+        return self._add_net_label_with_endpoint(
+            net,
+            endpoint,
+            orient=orient,
+            label=label,
+            _authored_region=_authored_region,
+            align=align,
+            baseline=baseline,
+            font_size=font_size,
+            action="net label",
+        )
+
+    def _add_net_label_with_endpoint(
+        self,
+        net: Net,
+        endpoint: tuple[float, float, int | None, int | None],
+        *,
+        orient: str,
+        label: str | None = None,
+        _authored_region: int | None = None,
+        align: str = "start",
+        baseline: str = "baseline",
+        font_size: float | None = None,
+        action: str,
+    ) -> SchematicNetLabel:
         orientation = _orientation(orient)
 
-        label = self._design._circuit.add_schematic_net_label(
-            self._sheet_index,
-            net.index,
-            x,
-            y,
-            orientation,
-            _authored_region,
-            _optional_display_label(label),
-            _text_horizontal_alignment(align),
-            _text_vertical_alignment(baseline),
-            _optional_text_font_size(font_size),
-        )
+        try:
+            label, _resolved_net_index = self._design._circuit.add_schematic_net_label_for_endpoint(
+                self._sheet_index,
+                net.index,
+                endpoint,
+                orientation,
+                _authored_region,
+                _optional_display_label(label),
+                _text_horizontal_alignment(align),
+                _text_vertical_alignment(baseline),
+                _optional_text_font_size(font_size),
+            )
+        except ValueError as error:
+            raise ValueError(_with_schematic_context(str(error), self, action)) from error
         return SchematicNetLabel(self, label, orientation)
 
     def net_label(
@@ -2521,29 +2642,28 @@ class Schematic:
     ) -> SchematicNetLabel:
         side_orientation = _orientation(side)
         label_orientation = side_orientation if orient is None else _orientation(orient)
-        net = _resolve_schematic_signal_net(
-            self._design,
-            name_or_net,
-            at,
-            schematic=self,
-            action="local net label",
-        )
-        anchor = _schematic_point_for_authoring(
+        try:
+            net = _resolve_schematic_net_label(self._design, name_or_net)
+        except ValueError as error:
+            _raise_cross_design_with_context(error, self, "local net label")
+        endpoint = _schematic_endpoint_for_authoring(
             at,
             design=self._design,
             schematic=self,
             action="local net label",
         )
+        anchor = (endpoint[0], endpoint[1])
         position = _offset_schematic_point(
             anchor,
             side_orientation,
             _nonnegative_coordinate(offset, "Local net label offsets"),
         )
-        return self.label(
+        return self._add_net_label_with_endpoint(
             net,
-            at=position,
+            _retarget_schematic_endpoint(endpoint, position),
             orient=label_orientation,
             _authored_region=_authored_region,
+            action="local net label",
         )
 
     def signal_stub(
@@ -2560,19 +2680,17 @@ class Schematic:
     ) -> SchematicSignalStub:
         side_orientation = _signal_stub_side(side, at)
         label_orientation = side_orientation if orient is None else _orientation(orient)
-        net = _resolve_schematic_signal_net(
-            self._design,
-            name_or_net,
-            at,
-            schematic=self,
-            action="signal stub",
-        )
-        start = _schematic_point_for_authoring(
+        try:
+            net = _resolve_schematic_net_label(self._design, name_or_net)
+        except ValueError as error:
+            _raise_cross_design_with_context(error, self, "signal stub")
+        endpoint = _schematic_endpoint_for_authoring(
             at,
             design=self._design,
             schematic=self,
             action="signal stub",
         )
+        start = (endpoint[0], endpoint[1])
         end = _offset_schematic_point(
             start,
             side_orientation,
@@ -2583,18 +2701,21 @@ class Schematic:
             side_orientation,
             _nonnegative_coordinate(label_gap, "Signal stub label gaps"),
         )
-        wire = self._add_wire(
+        wire = self._add_wire_with_endpoint_payloads(
             net,
             (start, end),
+            (endpoint, (end[0], end[1], None, None)),
             route_intent="Direct",
             _authored_region=_authored_region,
+            action="signal stub",
         )
-        label = self.label(
+        label = self._add_net_label_with_endpoint(
             net,
-            at=label_position,
+            _retarget_schematic_endpoint(endpoint, label_position),
             orient=label_orientation,
             label=label,
             _authored_region=_authored_region,
+            action="signal stub label",
         )
         return SchematicSignalStub(
             self,
@@ -2621,29 +2742,29 @@ class Schematic:
     ) -> SchematicSignalTag:
         side_orientation = _signal_stub_side(side, at)
         tag_orientation = side_orientation if orient is None else _orientation(orient)
-        net = _resolve_schematic_signal_net(
-            self._design,
-            name_or_net,
-            at,
-            schematic=self,
-            action="signal tag",
-        )
-        start = _schematic_point_for_authoring(
+        try:
+            net = _resolve_schematic_net_label(self._design, name_or_net)
+        except ValueError as error:
+            _raise_cross_design_with_context(error, self, "signal tag")
+        endpoint = _schematic_endpoint_for_authoring(
             at,
             design=self._design,
             schematic=self,
             action="signal tag",
         )
+        start = (endpoint[0], endpoint[1])
         end = _offset_schematic_point(
             start,
             side_orientation,
             _positive_coordinate(length, "Signal tag lengths"),
         )
-        wire = self._add_wire(
+        wire = self._add_wire_with_endpoint_payloads(
             net,
             (start, end),
+            (endpoint, (end[0], end[1], None, None)),
             route_intent="Direct",
             _authored_region=_authored_region,
+            action="signal tag",
         )
         port = self.sheet_port(
             label or net.name,
@@ -2804,15 +2925,20 @@ class Schematic:
             raise ValueError(
                 _with_schematic_context(_cross_design_net_message(net), self, "junction")
             )
-        x, y = _schematic_point_for_authoring(
+        endpoint = _schematic_endpoint_for_authoring(
             at,
             design=self._design,
             schematic=self,
             action="junction",
         )
-        junction = self._design._circuit.add_schematic_junction(
-            self._sheet_index, net.index, x, y, _authored_region
-        )
+        try:
+            junction, _resolved_net_index = (
+                self._design._circuit.add_schematic_junction_for_endpoint(
+                    self._sheet_index, net.index, endpoint, _authored_region
+                )
+            )
+        except ValueError as error:
+            raise ValueError(_with_schematic_context(str(error), self, "junction")) from error
         return SchematicJunction(self, junction)
 
     def terminal(
@@ -2850,14 +2976,32 @@ class Schematic:
             TypeError: If name_or_net is not a string, Net, or None.
         """
         marker_kind = _terminal_marker_kind(kind)
-        marker_net, name = _terminal_marker_net_and_name(
-            self._design,
-            name_or_net,
-            at,
-            net,
-            schematic=self,
-            action="terminal marker",
-        )
+        if isinstance(name_or_net, Net):
+            if net is not None:
+                raise ValueError("Pass terminal marker net either first or as net=, not both")
+            try:
+                marker_net = _validate_explicit_schematic_net(
+                    self._design,
+                    name_or_net,
+                    type_message="Schematic terminal markers expect a Net handle",
+                )
+            except ValueError as error:
+                _raise_cross_design_with_context(error, self, "terminal marker")
+            name = marker_net.name
+        else:
+            if name_or_net is not None and not isinstance(name_or_net, str):
+                raise TypeError("Schematic terminal markers expect a name string, Net handle, or None")
+            if isinstance(name_or_net, str) and not name_or_net:
+                raise ValueError("Schematic terminal marker names must not be empty")
+            try:
+                marker_net = _validate_explicit_schematic_net(
+                    self._design,
+                    net,
+                    type_message="Schematic terminal markers expect a Net handle",
+                )
+            except ValueError as error:
+                _raise_cross_design_with_context(error, self, "terminal marker")
+            name = name_or_net
         return self._power_port(
             name,
             net=marker_net,
@@ -2882,30 +3026,43 @@ class Schematic:
         """Project a short existing-net wire ending in a terminal marker."""
         marker_kind = _terminal_marker_kind(kind)
         side_orientation = _signal_stub_side(side, at)
-        marker_net, name = _terminal_marker_net_and_name(
-            self._design,
-            name_or_net,
-            at,
-            net,
-            schematic=self,
-            action="terminal stub",
-        )
-        start = _schematic_point_for_authoring(
+        if isinstance(name_or_net, Net):
+            if net is not None:
+                raise ValueError("Pass terminal marker net either first or as net=, not both")
+            try:
+                marker_net = _validate_explicit_schematic_net(
+                    self._design,
+                    name_or_net,
+                    type_message="Schematic terminal markers expect a Net handle",
+                )
+            except ValueError as error:
+                _raise_cross_design_with_context(error, self, "terminal stub")
+            name = marker_net.name
+        else:
+            if name_or_net is not None and not isinstance(name_or_net, str):
+                raise TypeError("Schematic terminal markers expect a name string, Net handle, or None")
+            if isinstance(name_or_net, str) and not name_or_net:
+                raise ValueError("Schematic terminal marker names must not be empty")
+            try:
+                marker_net = _validate_explicit_schematic_net(
+                    self._design,
+                    net,
+                    type_message="Schematic terminal markers expect a Net handle",
+                )
+            except ValueError as error:
+                _raise_cross_design_with_context(error, self, "terminal stub")
+            name = name_or_net
+        endpoint = _schematic_endpoint_for_authoring(
             at,
             design=self._design,
             schematic=self,
             action="terminal stub",
         )
+        start = (endpoint[0], endpoint[1])
         end = _offset_schematic_point(
             start,
             side_orientation,
             _positive_coordinate(length, "Terminal stub lengths"),
-        )
-        wire = self._add_wire(
-            marker_net,
-            (start, end),
-            route_intent="Direct",
-            _authored_region=_authored_region,
         )
         port = self._power_port(
             name,
@@ -2914,10 +3071,20 @@ class Schematic:
             orient=_terminal_marker_orientation(marker_kind, orient),
             kind=marker_kind,
             _authored_region=_authored_region,
+            _endpoint_payload=_retarget_schematic_endpoint(endpoint, end),
+            action="terminal stub",
+        )
+        wire = self._add_wire_with_endpoint_payloads(
+            port.net,
+            (start, end),
+            (endpoint, (end[0], end[1], None, None)),
+            route_intent="Direct",
+            _authored_region=_authored_region,
+            action="terminal stub",
         )
         return SchematicTerminalStub(
             self,
-            net=marker_net,
+            net=port.net,
             side=side_orientation,
             wire=wire,
             port=port,
@@ -3035,48 +3202,55 @@ class Schematic:
 
     def _power_port(
         self,
-        name: str,
+        name: str | None,
         *,
-        net: Net,
+        net: Net | None,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         orient: str,
         kind: str,
         _authored_region: int | None = None,
+        _endpoint_payload: tuple[float, float, int | None, int | None] | None = None,
+        action: str = "terminal marker",
     ) -> SchematicPort:
-        if not isinstance(name, str):
+        if name is not None and not isinstance(name, str):
             raise TypeError("Schematic terminal marker names must be strings")
-        if not name:
+        if name == "":
             raise ValueError("Schematic terminal marker names must not be empty")
-        if not isinstance(net, Net):
-            raise TypeError("Schematic terminal markers expect a Net handle")
-        if net._design is not self._design:
-            raise ValueError(
-                _with_schematic_context(_cross_design_net_message(net), self, "terminal marker")
+        if net is not None:
+            _require_schematic_net(
+                net,
+                self._design,
+                type_message="Schematic terminal markers expect a Net handle",
             )
-        x, y = _schematic_point_for_authoring(
-            at,
-            design=self._design,
-            schematic=self,
-            action="terminal marker",
+        endpoint = _endpoint_payload or _schematic_endpoint_for_authoring(
+            at, design=self._design, schematic=self, action=action
         )
         orientation = _orientation(orient)
-        port = self._design._circuit.add_schematic_terminal_marker(
-            self._sheet_index,
-            net.index,
-            kind,
-            x,
-            y,
-            orientation,
-            _authored_region,
-            None if name == net.name else name,
+        try:
+            port, resolved_net_index = (
+                self._design._circuit.add_schematic_terminal_marker_for_endpoint(
+                    self._sheet_index,
+                    None if net is None else net.index,
+                    kind,
+                    endpoint,
+                    orientation,
+                    _authored_region,
+                    name,
+                )
+            )
+        except ValueError as error:
+            raise ValueError(_with_schematic_context(str(error), self, action)) from error
+        resolved_net = (
+            net if net is not None else _net_by_index(self._design, resolved_net_index)
         )
+        display_name = resolved_net.name if name is None or name == resolved_net.name else name
         return SchematicPort(
             self,
             port,
-            net=net,
-            name=name,
+            net=resolved_net,
+            name=display_name,
             kind=kind,
-            at=(x, y),
+            at=(endpoint[0], endpoint[1]),
             orientation=orientation,
         )
 
@@ -3130,14 +3304,18 @@ class Schematic:
             raise TypeError("Schematic sheet port names must be strings")
         if not name:
             raise ValueError("Schematic sheet port names must not be empty")
-        net = _resolve_schematic_sheet_port_net(
-            self._design,
-            name,
-            at,
-            net,
-            schematic=self,
-        )
-        x, y = _schematic_point_for_authoring(
+        if net is None and not isinstance(at, (SchematicPinAnchor, SchematicPort)):
+            net = _net_by_name(self._design, name, context="Schematic sheet ports")
+        else:
+            try:
+                net = _validate_explicit_schematic_net(
+                    self._design,
+                    net,
+                    type_message="Schematic sheet ports expect a Net handle",
+                )
+            except ValueError as error:
+                _raise_cross_design_with_context(error, self, "sheet port")
+        endpoint = _schematic_endpoint_for_authoring(
             at,
             design=self._design,
             schematic=self,
@@ -3145,16 +3323,28 @@ class Schematic:
         )
         orientation = _orientation(orient)
         port_kind = _sheet_port_kind(kind)
-        port = self._design._circuit.add_schematic_sheet_port(
-            self._sheet_index, net.index, name, port_kind, x, y, orientation, _authored_region
+        try:
+            port, resolved_net_index = self._design._circuit.add_schematic_sheet_port_for_endpoint(
+                self._sheet_index,
+                None if net is None else net.index,
+                name,
+                port_kind,
+                endpoint,
+                orientation,
+                _authored_region,
+            )
+        except ValueError as error:
+            raise ValueError(_with_schematic_context(str(error), self, "sheet port")) from error
+        resolved_net = (
+            net if net is not None else _net_by_index(self._design, resolved_net_index)
         )
         return SchematicPort(
             self,
             port,
-            net=net,
+            net=resolved_net,
             name=name,
             kind=port_kind,
-            at=(x, y),
+            at=(endpoint[0], endpoint[1]),
             orientation=orientation,
         )
 
@@ -3780,6 +3970,28 @@ def _schematic_point_for_authoring(
         _raise_cross_design_with_context(error, schematic, action)
 
 
+def _schematic_endpoint_for_authoring(
+    value, *, design: Design, schematic: Schematic, action: str
+) -> tuple[float, float, int | None, int | None]:
+    point = _schematic_point_for_authoring(
+        value,
+        design=design,
+        schematic=schematic,
+        action=action,
+    )
+    pin_index = value.pin.index if isinstance(value, SchematicPinAnchor) else None
+    port_net_index = value.net.index if isinstance(value, SchematicPort) else None
+    return (point[0], point[1], pin_index, port_net_index)
+
+
+def _retarget_schematic_endpoint(
+    endpoint: tuple[float, float, int | None, int | None],
+    point: tuple[float, float],
+) -> tuple[float, float, int | None, int | None]:
+    x, y = _schematic_point_tuple(point)
+    return (x, y, endpoint[2], endpoint[3])
+
+
 def _require_schematic_net(
     net: Net,
     design: Design,
@@ -3821,13 +4033,6 @@ def _resolve_schematic_net_label(design: Design, value: str | Net) -> Net:
     if isinstance(value, str):
         return _net_by_name(design, value, context="Schematic net labels")
     raise TypeError("Schematic net labels expect a Net handle or existing net name")
-
-
-def _pin_anchor_net(anchor: SchematicPinAnchor) -> Net | None:
-    net_index = anchor.pin._design._circuit.net_of(anchor.pin.index)
-    if net_index is None:
-        return None
-    return _net_by_index(anchor.pin._design, net_index)
 
 
 def _pin_anchor_label(anchor: SchematicPinAnchor) -> str:
@@ -3876,85 +4081,6 @@ def _validate_explicit_schematic_net(
     return net
 
 
-def _require_pin_anchor_matches_net(anchor: SchematicPinAnchor, net: Net) -> None:
-    pin_net = _pin_anchor_net(anchor)
-    pin_label = _pin_anchor_label(anchor)
-    if pin_net is None:
-        raise ValueError(
-            f"Cannot draw {_net_label(net)} at {pin_label}: the pin is not connected "
-            "to any logical net"
-        )
-    if pin_net.index != net.index:
-        raise ValueError(
-            f"Cannot draw {_net_label(net)} at {pin_label}: the pin belongs to "
-            f"{_net_label(pin_net)}"
-        )
-
-
-def _require_port_matches_net(port: SchematicPort, net: Net) -> None:
-    if port.net._design is not net._design:
-        raise ValueError(_cross_design_anchor_message(port))
-    if port.net.index != net.index:
-        raise ValueError(
-            f"Cannot draw {_net_label(net)} through schematic port {port.name!r}: "
-            f"the port belongs to {_net_label(port.net)}"
-        )
-
-
-def _resolve_schematic_port_net(
-    design: Design,
-    at: tuple[float, float] | SchematicAnchor | SchematicPort,
-    net: Net | None,
-    *,
-    schematic: Schematic,
-    action: str,
-    type_message: str = "Schematic power ports expect a Net handle",
-) -> Net:
-    context = _schematic_authoring_context(schematic, action)
-    try:
-        explicit = _validate_explicit_schematic_net(design, net, type_message=type_message)
-    except ValueError as error:
-        _raise_cross_design_with_context(error, schematic, action)
-    if isinstance(at, SchematicPinAnchor):
-        _require_schematic_point_design_for_authoring(
-            at, design, schematic=schematic, action=action
-        )
-        if explicit is None:
-            inferred = _pin_anchor_net(at)
-            if inferred is None:
-                raise ValueError(
-                    f"Cannot infer logical net for {context} at {_pin_anchor_label(at)}; "
-                    "the pin is not connected to any logical net; connect the pin "
-                    "in the logical model first or pass net="
-                )
-            return inferred
-        try:
-            _require_pin_anchor_matches_net(at, explicit)
-        except ValueError as error:
-            raise ValueError(_with_schematic_context(str(error), schematic, action)) from error
-        return explicit
-    if isinstance(at, SchematicPort):
-        if explicit is None:
-            if at.net._design is not design:
-                raise ValueError(
-                    _with_schematic_context(_cross_design_anchor_message(at), schematic, action)
-                )
-            return at.net
-        try:
-            _require_port_matches_net(at, explicit)
-        except ValueError as error:
-            raise ValueError(_with_schematic_context(str(error), schematic, action)) from error
-    elif isinstance(at, SchematicAnchor):
-        _require_schematic_point_design_for_authoring(
-            at, design, schematic=schematic, action=action
-        )
-    if explicit is None:
-        raise ValueError(
-            f"Cannot infer logical net for {context} from a non-pin anchor; pass net="
-        )
-    return explicit
-
-
 def _add_schematic_junction_dot(
     schematic: Schematic,
     at: tuple[float, float] | SchematicAnchor | SchematicPort,
@@ -3963,15 +4089,32 @@ def _add_schematic_junction_dot(
     _authored_region: int | None,
     action: str,
 ) -> SchematicJunction:
-    resolved = _resolve_schematic_port_net(
-        schematic._design,
+    try:
+        explicit = _validate_explicit_schematic_net(
+            schematic._design,
+            net,
+            type_message="Schematic junction dots expect a Net handle",
+        )
+    except ValueError as error:
+        _raise_cross_design_with_context(error, schematic, action)
+    endpoint = _schematic_endpoint_for_authoring(
         at,
-        net,
+        design=schematic._design,
         schematic=schematic,
         action=action,
-        type_message="Schematic junction dots expect a Net handle",
     )
-    return schematic.junction(resolved, at=at, _authored_region=_authored_region)
+    try:
+        junction, _resolved_net_index = (
+            schematic._design._circuit.add_schematic_junction_for_endpoint(
+                schematic._sheet_index,
+                None if explicit is None else explicit.index,
+                endpoint,
+                _authored_region,
+            )
+        )
+    except ValueError as error:
+        raise ValueError(_with_schematic_context(str(error), schematic, action)) from error
+    return SchematicJunction(schematic, junction)
 
 
 def _terminal_marker_kind(kind: str) -> str:
@@ -3990,183 +4133,6 @@ def _terminal_marker_orientation(kind: str, orient: str | None) -> str:
     if orient is not None:
         return _orientation(orient)
     return "Down" if kind == "Ground" else "Up"
-
-
-def _terminal_marker_net_and_name(
-    design: Design,
-    name_or_net: str | Net | None,
-    at: tuple[float, float] | SchematicAnchor | SchematicPort,
-    net: Net | None,
-    *,
-    schematic: Schematic,
-    action: str,
-) -> tuple[Net, str]:
-    if isinstance(name_or_net, Net):
-        if net is not None:
-            raise ValueError("Pass terminal marker net either first or as net=, not both")
-        marker_net = _resolve_schematic_port_net(
-            design,
-            at,
-            name_or_net,
-            schematic=schematic,
-            action=action,
-            type_message="Schematic terminal markers expect a Net handle",
-        )
-        return marker_net, marker_net.name
-    if name_or_net is not None and not isinstance(name_or_net, str):
-        raise TypeError("Schematic terminal markers expect a name string, Net handle, or None")
-    if isinstance(name_or_net, str) and not name_or_net:
-        raise ValueError("Schematic terminal marker names must not be empty")
-
-    marker_net = _resolve_schematic_port_net(
-        design,
-        at,
-        net,
-        schematic=schematic,
-        action=action,
-        type_message="Schematic terminal markers expect a Net handle",
-    )
-    return marker_net, marker_net.name if name_or_net is None else name_or_net
-
-
-def _resolve_schematic_sheet_port_net(
-    design: Design,
-    name: str,
-    at: tuple[float, float] | SchematicAnchor | SchematicPort,
-    net: Net | None,
-    *,
-    schematic: Schematic,
-) -> Net:
-    if net is None and not isinstance(at, (SchematicPinAnchor, SchematicPort)):
-        return _net_by_name(design, name, context="Schematic sheet ports")
-    return _resolve_schematic_port_net(
-        design,
-        at,
-        net,
-        schematic=schematic,
-        action="sheet port",
-        type_message="Schematic sheet ports expect a Net handle",
-    )
-
-
-def _resolve_schematic_connection_net(
-    design: Design,
-    start: tuple[float, float] | SchematicAnchor | SchematicPort,
-    end: tuple[float, float] | SchematicAnchor | SchematicPort,
-    net: Net | None,
-    *,
-    schematic: Schematic,
-) -> Net:
-    context = _schematic_authoring_context(schematic, "schematic wire")
-    try:
-        explicit = _validate_explicit_schematic_net(
-            design, net, type_message="Schematic connections expect a Net handle"
-        )
-    except ValueError as error:
-        _raise_cross_design_with_context(error, schematic, "schematic wire")
-    pin_nets: list[tuple[SchematicPinAnchor, Net | None]] = []
-    for endpoint in (start, end):
-        if isinstance(endpoint, SchematicPinAnchor):
-            _require_schematic_point_design_for_authoring(
-                endpoint, design, schematic=schematic, action="schematic wire"
-            )
-            pin_nets.append((endpoint, _pin_anchor_net(endpoint)))
-        elif isinstance(endpoint, SchematicPort):
-            if explicit is None:
-                if endpoint.net._design is not design:
-                    raise ValueError(
-                        _with_schematic_context(
-                            _cross_design_anchor_message(endpoint),
-                            schematic,
-                            "schematic wire",
-                        )
-                    )
-            else:
-                try:
-                    _require_port_matches_net(endpoint, explicit)
-                except ValueError as error:
-                    raise ValueError(
-                        _with_schematic_context(str(error), schematic, "schematic wire")
-                    ) from error
-        elif isinstance(endpoint, SchematicAnchor):
-            _require_schematic_point_design_for_authoring(
-                endpoint, design, schematic=schematic, action="schematic wire"
-            )
-
-    if explicit is not None:
-        for anchor, _pin_net in pin_nets:
-            try:
-                _require_pin_anchor_matches_net(anchor, explicit)
-            except ValueError as error:
-                raise ValueError(
-                    _with_schematic_context(str(error), schematic, "schematic wire")
-                ) from error
-        return explicit
-
-    if len(pin_nets) != 2:
-        raise ValueError(
-            f"Cannot infer schematic wire net on {_schematic_sheet_phrase(schematic)} "
-            "unless both endpoints are placed pin anchors on the same logical net; "
-            "pass explicit net="
-        )
-
-    (first_anchor, first_net), (second_anchor, second_net) = pin_nets
-    if first_net is None:
-        raise ValueError(
-            f"Cannot infer schematic wire net on {_schematic_sheet_phrase(schematic)}: "
-            f"{_pin_anchor_label(first_anchor)} is not connected to any logical net"
-        )
-    if second_net is None:
-        raise ValueError(
-            f"Cannot infer schematic wire net on {_schematic_sheet_phrase(schematic)}: "
-            f"{_pin_anchor_label(second_anchor)} is not connected to any logical net"
-        )
-    if first_net.index != second_net.index:
-        raise ValueError(
-            f"Cannot infer schematic wire net on {_schematic_sheet_phrase(schematic)} "
-            "because endpoints belong to different logical nets: "
-            f"{_pin_anchor_label(first_anchor)} is on {_net_label(first_net)}, but "
-            f"{_pin_anchor_label(second_anchor)} is on {_net_label(second_net)}"
-        )
-    return first_net
-
-
-def _resolve_schematic_signal_net(
-    design: Design,
-    name_or_net: str | Net,
-    at: tuple[float, float] | SchematicAnchor | SchematicPort,
-    *,
-    schematic: Schematic,
-    action: str,
-) -> Net:
-    try:
-        net = _resolve_schematic_net_label(design, name_or_net)
-    except ValueError as error:
-        _raise_cross_design_with_context(error, schematic, action)
-    if isinstance(at, SchematicPinAnchor):
-        _require_schematic_point_design_for_authoring(
-            at,
-            design,
-            schematic=schematic,
-            action=action,
-        )
-        try:
-            _require_pin_anchor_matches_net(at, net)
-        except ValueError as error:
-            raise ValueError(_with_schematic_context(str(error), schematic, action)) from error
-    elif isinstance(at, SchematicPort):
-        try:
-            _require_port_matches_net(at, net)
-        except ValueError as error:
-            raise ValueError(_with_schematic_context(str(error), schematic, action)) from error
-    elif isinstance(at, SchematicAnchor):
-        _require_schematic_point_design_for_authoring(
-            at,
-            design,
-            schematic=schematic,
-            action=action,
-        )
-    return net
 
 
 def _offset_schematic_point(

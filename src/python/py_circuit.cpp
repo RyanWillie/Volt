@@ -4,6 +4,67 @@ namespace volt::python {
 
 PyCircuit::PyCircuit() : circuit_{}, schematic_document_{circuit_} {}
 
+namespace {
+
+[[nodiscard]] std::optional<std::size_t> optional_index_from_py(py::handle value,
+                                                                const char *message) {
+    if (value.is_none()) {
+        return std::nullopt;
+    }
+    try {
+        return py::cast<std::size_t>(value);
+    } catch (const py::cast_error &) {
+        throw py::type_error{message};
+    }
+}
+
+[[nodiscard]] volt::SchematicEndpoint schematic_endpoint_from_tuple(const py::tuple &endpoint) {
+    if (py::len(endpoint) != 4U) {
+        throw py::value_error{"Schematic endpoint payloads must contain x, y, pin, and port net"};
+    }
+
+    const auto x = py::cast<double>(endpoint[0]);
+    const auto y = py::cast<double>(endpoint[1]);
+    require_finite(x, "Schematic coordinates must be finite");
+    require_finite(y, "Schematic coordinates must be finite");
+
+    const auto pin = optional_index_from_py(endpoint[2], "Schematic endpoint pins must be indexes");
+    const auto port_net =
+        optional_index_from_py(endpoint[3], "Schematic endpoint port nets must be indexes");
+    if (pin.has_value() && port_net.has_value()) {
+        throw py::value_error{"Schematic endpoints cannot reference both a pin and a port net"};
+    }
+
+    const auto point = volt::Point{x, y};
+    if (pin.has_value()) {
+        return volt::SchematicEndpoint{point, pin_id(pin.value())};
+    }
+    if (port_net.has_value()) {
+        return volt::SchematicEndpoint::port(point, net_id(port_net.value()));
+    }
+    return volt::SchematicEndpoint{point};
+}
+
+[[nodiscard]] std::vector<volt::SchematicEndpoint>
+schematic_endpoints_from_list(const py::list &endpoints) {
+    auto result = std::vector<volt::SchematicEndpoint>{};
+    result.reserve(static_cast<std::size_t>(py::len(endpoints)));
+    for (const auto item : endpoints) {
+        result.push_back(schematic_endpoint_from_tuple(py::cast<py::tuple>(item)));
+    }
+    return result;
+}
+
+[[nodiscard]] py::tuple schematic_entity_result(std::size_t index, volt::NetId net) {
+    return py::make_tuple(index, net.index());
+}
+
+[[noreturn]] void raise_schematic_authoring_error(const std::invalid_argument &error) {
+    throw py::value_error{error.what()};
+}
+
+} // namespace
+
 std::size_t PyCircuit::define_resistor() {
     return volt::authoring::define_component(circuit_, volt::authoring::resistor()).index();
 }
@@ -614,6 +675,30 @@ std::size_t PyCircuit::add_schematic_wire(std::size_t sheet, std::size_t net,
         .index();
 }
 
+py::tuple PyCircuit::add_schematic_wire_for_endpoints(
+    std::size_t sheet, std::optional<std::size_t> net,
+    const std::vector<std::pair<double, double>> &points, const py::list &endpoints,
+    const std::string &route_intent, std::optional<std::size_t> authored_region) {
+    auto wire_points = std::vector<volt::Point>{};
+    wire_points.reserve(points.size());
+    for (const auto &[x, y] : points) {
+        require_finite(x, "Schematic coordinates must be finite");
+        require_finite(y, "Schematic coordinates must be finite");
+        wire_points.emplace_back(x, y);
+    }
+
+    auto &projection = schematic_projection();
+    try {
+        const auto id = projection.add_wire_run_for_endpoints(
+            sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
+            std::move(wire_points), schematic_endpoints_from_list(endpoints),
+            route_intent_from_string(route_intent), authored_region);
+        return schematic_entity_result(id.index(), projection.wire_run(id).net());
+    } catch (const std::invalid_argument &error) {
+        raise_schematic_authoring_error(error);
+    }
+}
+
 std::size_t PyCircuit::add_schematic_net_label(std::size_t sheet, std::size_t net, double x,
                                                double y, const std::string &orientation,
                                                std::optional<std::size_t> authored_region,
@@ -635,6 +720,24 @@ std::size_t PyCircuit::add_schematic_net_label(std::size_t sheet, std::size_t ne
         .index();
 }
 
+py::tuple PyCircuit::add_schematic_net_label_for_endpoint(
+    std::size_t sheet, std::optional<std::size_t> net, const py::tuple &endpoint,
+    const std::string &orientation, std::optional<std::size_t> authored_region,
+    std::optional<std::string> label, const std::string &horizontal_alignment,
+    const std::string &vertical_alignment, std::optional<double> font_size) {
+    auto &projection = schematic_projection();
+    try {
+        const auto id = projection.add_net_label_for_endpoint(
+            sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
+            schematic_endpoint_from_tuple(endpoint), schematic_orientation_from_string(orientation),
+            authored_region, std::move(label),
+            text_style_from_strings(horizontal_alignment, vertical_alignment, font_size));
+        return schematic_entity_result(id.index(), projection.net_label(id).net());
+    } catch (const std::invalid_argument &error) {
+        raise_schematic_authoring_error(error);
+    }
+}
+
 std::size_t PyCircuit::add_schematic_junction(std::size_t sheet, std::size_t net, double x,
                                               double y,
                                               std::optional<std::size_t> authored_region) {
@@ -646,6 +749,21 @@ std::size_t PyCircuit::add_schematic_junction(std::size_t sheet, std::size_t net
         .add_junction(sheet_id(sheet),
                       volt::Junction{net_id(net), volt::Point{x, y}, authored_region})
         .index();
+}
+
+py::tuple
+PyCircuit::add_schematic_junction_for_endpoint(std::size_t sheet, std::optional<std::size_t> net,
+                                               const py::tuple &endpoint,
+                                               std::optional<std::size_t> authored_region) {
+    auto &projection = schematic_projection();
+    try {
+        const auto id = projection.add_junction_for_endpoint(
+            sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
+            schematic_endpoint_from_tuple(endpoint), authored_region);
+        return schematic_entity_result(id.index(), projection.junction(id).net());
+    } catch (const std::invalid_argument &error) {
+        raise_schematic_authoring_error(error);
+    }
 }
 
 std::size_t PyCircuit::add_schematic_terminal_marker(std::size_t sheet, std::size_t net,
@@ -664,6 +782,22 @@ std::size_t PyCircuit::add_schematic_terminal_marker(std::size_t sheet, std::siz
                                              schematic_orientation_from_string(orientation),
                                              authored_region, std::move(label)})
         .index();
+}
+
+py::tuple PyCircuit::add_schematic_terminal_marker_for_endpoint(
+    std::size_t sheet, std::optional<std::size_t> net, const std::string &kind,
+    const py::tuple &endpoint, const std::string &orientation,
+    std::optional<std::size_t> authored_region, std::optional<std::string> label) {
+    auto &projection = schematic_projection();
+    try {
+        const auto id = projection.add_terminal_marker_for_endpoint(
+            sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
+            schematic_endpoint_from_tuple(endpoint), power_port_kind_from_string(kind),
+            schematic_orientation_from_string(orientation), authored_region, std::move(label));
+        return schematic_entity_result(id.index(), projection.power_port(id).net());
+    } catch (const std::invalid_argument &error) {
+        raise_schematic_authoring_error(error);
+    }
 }
 
 std::size_t PyCircuit::add_schematic_no_connect_marker(std::size_t sheet, std::size_t pin, double x,
@@ -696,6 +830,22 @@ std::size_t PyCircuit::add_schematic_sheet_port(std::size_t sheet, std::size_t n
             volt::SheetPort{net_id(net), name, sheet_port_kind_from_string(kind), volt::Point{x, y},
                             schematic_orientation_from_string(orientation), authored_region})
         .index();
+}
+
+py::tuple PyCircuit::add_schematic_sheet_port_for_endpoint(
+    std::size_t sheet, std::optional<std::size_t> net, const std::string &name,
+    const std::string &kind, const py::tuple &endpoint, const std::string &orientation,
+    std::optional<std::size_t> authored_region) {
+    auto &projection = schematic_projection();
+    try {
+        const auto id = projection.add_sheet_port_for_endpoint(
+            sheet_id(sheet), net.has_value() ? std::optional{net_id(net.value())} : std::nullopt,
+            schematic_endpoint_from_tuple(endpoint), name, sheet_port_kind_from_string(kind),
+            schematic_orientation_from_string(orientation), authored_region);
+        return schematic_entity_result(id.index(), projection.sheet_port(id).net());
+    } catch (const std::invalid_argument &error) {
+        raise_schematic_authoring_error(error);
+    }
 }
 
 std::size_t PyCircuit::add_schematic_symbol_field(

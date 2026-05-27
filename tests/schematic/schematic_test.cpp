@@ -88,6 +88,63 @@ TEST_CASE("Schematic stores wire runs and labels over canonical logical nets") {
     CHECK(schematic.net_label(label).orientation() == volt::SchematicOrientation::Right);
 }
 
+TEST_CASE("Schematic authoring mutations infer nets from logical pin endpoints") {
+    volt::Circuit circuit;
+    const auto first_component = add_resistor(circuit, "R1");
+    const auto second_component = add_resistor(circuit, "R2");
+    const auto net = add_named_net(circuit, "SIG");
+    const auto first_pin = circuit.pin_by_number(first_component, "2").value();
+    const auto second_pin = circuit.pin_by_number(second_component, "1").value();
+    circuit.connect(net, first_pin);
+    circuit.connect(net, second_pin);
+    const auto net_count = circuit.net_count();
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto wire = schematic.add_wire_run_for_endpoints(
+        sheet, std::nullopt, std::vector{volt::Point{20.0, 0.0}, volt::Point{40.0, 0.0}},
+        std::vector{volt::SchematicEndpoint{volt::Point{20.0, 0.0}, first_pin},
+                    volt::SchematicEndpoint{volt::Point{40.0, 0.0}, second_pin}},
+        volt::RouteIntent::Direct);
+
+    CHECK(schematic.wire_run(wire).net() == net);
+    CHECK(schematic.wire_run(wire).points() ==
+          std::vector{volt::Point{20.0, 0.0}, volt::Point{40.0, 0.0}});
+    CHECK(circuit.net_count() == net_count);
+}
+
+TEST_CASE("Schematic authoring mutations reject unconnected and mismatched endpoints") {
+    volt::Circuit circuit;
+    const auto component = add_resistor(circuit, "R1");
+    const auto first_net = add_named_net(circuit, "SIG");
+    const auto second_net = add_named_net(circuit, "ALT");
+    const auto connected_pin = circuit.pin_by_number(component, "1").value();
+    const auto unconnected_pin = circuit.pin_by_number(component, "2").value();
+    circuit.connect(first_net, connected_pin);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+
+    try {
+        static_cast<void>(schematic.add_net_label_for_endpoint(
+            sheet, std::nullopt, volt::SchematicEndpoint{volt::Point{0.0, 0.0}, unconnected_pin}));
+        FAIL("unconnected pin endpoints must not infer schematic nets");
+    } catch (const std::logic_error &error) {
+        CHECK(std::string{error.what()}.find("not connected to any logical net") !=
+              std::string::npos);
+    }
+
+    try {
+        static_cast<void>(schematic.add_net_label_for_endpoint(
+            sheet, second_net, volt::SchematicEndpoint{volt::Point{0.0, 0.0}, connected_pin}));
+        FAIL("mismatched endpoint net intent must be rejected");
+    } catch (const std::logic_error &error) {
+        const auto message = std::string{error.what()};
+        CHECK(message.find("belongs to SIG") != std::string::npos);
+        CHECK(message.find("instead of ALT") != std::string::npos);
+    }
+}
+
 TEST_CASE("Schematic stores professional primitives without changing logical connectivity") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);

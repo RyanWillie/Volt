@@ -101,23 +101,42 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("instance"))
         .def("add_schematic_wire", &PyCircuit::add_schematic_wire, py::arg("sheet"), py::arg("net"),
              py::arg("points"), py::arg("route_intent"), py::arg("authored_region") = std::nullopt)
+        .def("add_schematic_wire_for_endpoints", &PyCircuit::add_schematic_wire_for_endpoints,
+             py::arg("sheet"), py::arg("net"), py::arg("points"), py::arg("endpoints"),
+             py::arg("route_intent"), py::arg("authored_region") = std::nullopt)
         .def("add_schematic_net_label", &PyCircuit::add_schematic_net_label, py::arg("sheet"),
              py::arg("net"), py::arg("x"), py::arg("y"), py::arg("orientation"),
              py::arg("authored_region") = std::nullopt, py::arg("label") = std::nullopt,
              py::arg("horizontal_alignment") = "Start", py::arg("vertical_alignment") = "Baseline",
              py::arg("font_size") = std::nullopt)
+        .def("add_schematic_net_label_for_endpoint",
+             &PyCircuit::add_schematic_net_label_for_endpoint, py::arg("sheet"), py::arg("net"),
+             py::arg("endpoint"), py::arg("orientation"), py::arg("authored_region") = std::nullopt,
+             py::arg("label") = std::nullopt, py::arg("horizontal_alignment") = "Start",
+             py::arg("vertical_alignment") = "Baseline", py::arg("font_size") = std::nullopt)
         .def("add_schematic_junction", &PyCircuit::add_schematic_junction, py::arg("sheet"),
              py::arg("net"), py::arg("x"), py::arg("y"), py::arg("authored_region") = std::nullopt)
+        .def("add_schematic_junction_for_endpoint", &PyCircuit::add_schematic_junction_for_endpoint,
+             py::arg("sheet"), py::arg("net"), py::arg("endpoint"),
+             py::arg("authored_region") = std::nullopt)
         .def("add_schematic_terminal_marker", &PyCircuit::add_schematic_terminal_marker,
              py::arg("sheet"), py::arg("net"), py::arg("kind"), py::arg("x"), py::arg("y"),
              py::arg("orientation"), py::arg("authored_region") = std::nullopt,
              py::arg("label") = std::nullopt)
+        .def("add_schematic_terminal_marker_for_endpoint",
+             &PyCircuit::add_schematic_terminal_marker_for_endpoint, py::arg("sheet"),
+             py::arg("net"), py::arg("kind"), py::arg("endpoint"), py::arg("orientation"),
+             py::arg("authored_region") = std::nullopt, py::arg("label") = std::nullopt)
         .def("add_schematic_no_connect_marker", &PyCircuit::add_schematic_no_connect_marker,
              py::arg("sheet"), py::arg("pin"), py::arg("x"), py::arg("y"), py::arg("orientation"),
              py::arg("reason") = "", py::arg("authored_region") = std::nullopt)
         .def("add_schematic_sheet_port", &PyCircuit::add_schematic_sheet_port, py::arg("sheet"),
              py::arg("net"), py::arg("name"), py::arg("kind"), py::arg("x"), py::arg("y"),
              py::arg("orientation"), py::arg("authored_region") = std::nullopt)
+        .def("add_schematic_sheet_port_for_endpoint",
+             &PyCircuit::add_schematic_sheet_port_for_endpoint, py::arg("sheet"), py::arg("net"),
+             py::arg("name"), py::arg("kind"), py::arg("endpoint"), py::arg("orientation"),
+             py::arg("authored_region") = std::nullopt)
         .def("add_schematic_symbol_field", &PyCircuit::add_schematic_symbol_field, py::arg("sheet"),
              py::arg("instance"), py::arg("name"), py::arg("value"), py::arg("x"), py::arg("y"),
              py::arg("orientation"), py::arg("authored_region") = std::nullopt,

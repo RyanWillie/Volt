@@ -162,6 +162,12 @@ class PyCircuit {
                        const std::vector<std::pair<double, double>> &points,
                        const std::string &route_intent, std::optional<std::size_t> authored_region);
 
+    [[nodiscard]] py::tuple
+    add_schematic_wire_for_endpoints(std::size_t sheet, std::optional<std::size_t> net,
+                                     const std::vector<std::pair<double, double>> &points,
+                                     const py::list &endpoints, const std::string &route_intent,
+                                     std::optional<std::size_t> authored_region);
+
     [[nodiscard]] std::size_t add_schematic_net_label(std::size_t sheet, std::size_t net, double x,
                                                       double y, const std::string &orientation,
                                                       std::optional<std::size_t> authored_region,
@@ -170,15 +176,31 @@ class PyCircuit {
                                                       const std::string &vertical_alignment,
                                                       std::optional<double> font_size);
 
+    [[nodiscard]] py::tuple add_schematic_net_label_for_endpoint(
+        std::size_t sheet, std::optional<std::size_t> net, const py::tuple &endpoint,
+        const std::string &orientation, std::optional<std::size_t> authored_region,
+        std::optional<std::string> label, const std::string &horizontal_alignment,
+        const std::string &vertical_alignment, std::optional<double> font_size);
+
     [[nodiscard]] std::size_t add_schematic_junction(std::size_t sheet, std::size_t net, double x,
                                                      double y,
                                                      std::optional<std::size_t> authored_region);
+
+    [[nodiscard]] py::tuple
+    add_schematic_junction_for_endpoint(std::size_t sheet, std::optional<std::size_t> net,
+                                        const py::tuple &endpoint,
+                                        std::optional<std::size_t> authored_region);
 
     [[nodiscard]] std::size_t
     add_schematic_terminal_marker(std::size_t sheet, std::size_t net, const std::string &kind,
                                   double x, double y, const std::string &orientation,
                                   std::optional<std::size_t> authored_region,
                                   std::optional<std::string> label);
+
+    [[nodiscard]] py::tuple add_schematic_terminal_marker_for_endpoint(
+        std::size_t sheet, std::optional<std::size_t> net, const std::string &kind,
+        const py::tuple &endpoint, const std::string &orientation,
+        std::optional<std::size_t> authored_region, std::optional<std::string> label);
 
     [[nodiscard]] std::size_t
     add_schematic_no_connect_marker(std::size_t sheet, std::size_t pin, double x, double y,
@@ -190,6 +212,12 @@ class PyCircuit {
                                                        const std::string &kind, double x, double y,
                                                        const std::string &orientation,
                                                        std::optional<std::size_t> authored_region);
+
+    [[nodiscard]] py::tuple
+    add_schematic_sheet_port_for_endpoint(std::size_t sheet, std::optional<std::size_t> net,
+                                          const std::string &name, const std::string &kind,
+                                          const py::tuple &endpoint, const std::string &orientation,
+                                          std::optional<std::size_t> authored_region);
 
     [[nodiscard]] std::size_t add_schematic_symbol_field(
         std::size_t sheet, std::size_t instance, const std::string &name, const std::string &value,
