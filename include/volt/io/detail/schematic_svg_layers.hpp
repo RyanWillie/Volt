@@ -6,6 +6,8 @@
 #include <volt/io/detail/schematic_svg_page_chrome.hpp>
 #include <volt/schematic/schematic.hpp>
 
+// Implementation fragment for schematic_svg_writer.hpp. This header depends on
+// SVG helpers declared earlier there and is not intended for standalone include.
 namespace volt::io::detail {
 
 struct SchematicSvgLayerOptions {

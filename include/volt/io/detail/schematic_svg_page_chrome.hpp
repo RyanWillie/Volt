@@ -8,6 +8,8 @@
 
 #include <volt/schematic/schematic.hpp>
 
+// Implementation fragment for schematic_svg_writer.hpp. This header depends on
+// SVG helpers declared earlier there and is not intended for standalone include.
 namespace volt::io::detail {
 
 [[nodiscard]] inline bool region_uses_dashed_frame(const SheetRegion &region) {

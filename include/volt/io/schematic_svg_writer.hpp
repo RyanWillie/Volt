@@ -1053,6 +1053,7 @@ inline void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
 } // namespace detail
 } // namespace volt::io
 
+// Include the layer implementation after the helpers above are declared.
 #include <volt/io/detail/schematic_svg_layers.hpp>
 
 namespace volt::io {
@@ -1106,10 +1107,11 @@ inline void write_schematic_body_svg(std::ostream &out, const Schematic &schemat
     }
     out << "  <g class=\"schematic-body\" data-sheet=\""
         << detail::svg_escape(detail::svg_sheet_id(sheet_id)) << "\">\n";
-    detail::write_schematic_object_layers_svg(
-        out, schematic, sheet_id,
-        detail::SchematicSvgLayerOptions{.include_regions = options.include_regions,
-                                         .debug_overlays = options.svg.debug_overlays});
+    const auto layer_options = detail::SchematicSvgLayerOptions{
+        .include_regions = options.include_regions,
+        .debug_overlays = options.svg.debug_overlays,
+    };
+    detail::write_schematic_object_layers_svg(out, schematic, sheet_id, layer_options);
     out << "  </g>\n";
     out << "</svg>\n";
 }
