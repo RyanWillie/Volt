@@ -19,6 +19,8 @@ enum class SchematicWireNetRelationship {
  * - Different-net endpoint touches, overlaps, and crossings with an explicit junction are
  *   structurally invalid at schematic mutation boundaries because they visually join logical nets.
  * - Different-net crossings without a junction are structurally representable and diagnostic-only.
+ *   This preserves the ability to draw crossing wires without logical connectivity while still
+ *   letting readability validation flag ambiguous crossings.
  * - Same-net crossings without a junction are structurally representable and diagnostic-only.
  * - Same-net endpoint touches, overlaps, and crossings with a junction are valid visual joins.
  *
