@@ -10,8 +10,11 @@
 // SVG helpers declared earlier there and is not intended for standalone include.
 namespace volt::io::detail {
 
+/** Options controlling which schematic projection layers are emitted into an SVG group. */
 struct SchematicSvgLayerOptions {
+    /** Whether authored regions are included with the object layers. */
     bool include_regions = true;
+    /** Whether debug-only visual overlays are included. */
     bool debug_overlays = false;
 };
 
