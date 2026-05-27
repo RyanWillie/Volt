@@ -14,6 +14,7 @@
 #include <volt/core/ids.hpp>
 #include <volt/schematic/geometry.hpp>
 #include <volt/schematic/symbols.hpp>
+#include <volt/schematic/wire_topology.hpp>
 
 namespace volt {
 
@@ -1297,27 +1298,15 @@ class Schematic {
             if (existing.net() == wire.net()) {
                 continue;
             }
-            for (std::size_t wire_index = 1; wire_index < wire.points().size(); ++wire_index) {
-                for (std::size_t existing_index = 1; existing_index < existing.points().size();
-                     ++existing_index) {
-                    const auto relationship = classify_segment_relationship(
-                        SchematicSegment{wire.points()[wire_index - 1U], wire.points()[wire_index]},
-                        SchematicSegment{existing.points()[existing_index - 1U],
-                                         existing.points()[existing_index]});
-                    const auto junction =
-                        has_junction_on_segments(
-                            sheet,
-                            SchematicSegment{wire.points()[wire_index - 1U],
-                                             wire.points()[wire_index]},
-                            SchematicSegment{existing.points()[existing_index - 1U],
-                                             existing.points()[existing_index]})
-                            ? SchematicJunction::Present
-                            : SchematicJunction::Absent;
-                    if (different_net_segments_collide(relationship, junction)) {
-                        throw std::logic_error{
-                            "Schematic wire run collides with a different logical net"};
-                    }
-                }
+            const auto topology = classify_wire_pair_topology(
+                wire.points(), existing.points(), SchematicWireNetRelationship::DifferentNet,
+                [this, sheet](SchematicSegment first, SchematicSegment second) {
+                    return has_junction_on_segments(sheet, first, second)
+                               ? SchematicJunction::Present
+                               : SchematicJunction::Absent;
+                });
+            if (topology.has_visual_contact()) {
+                throw std::logic_error{"Schematic wire run collides with a different logical net"};
             }
         }
     }

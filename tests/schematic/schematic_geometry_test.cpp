@@ -78,6 +78,7 @@ TEST_CASE("Schematic allows same-net joins but rejects different-net wire collis
         schematic.add_wire_run(
             sheet, volt::WireRun{gnd, std::vector{volt::Point{0.0, 0.0}, volt::Point{5.0, 0.0}}}),
         std::logic_error);
+    CHECK(schematic.wire_run_count() == 4U);
 }
 
 TEST_CASE("Schematic geometry rejects non-finite coordinates") {
