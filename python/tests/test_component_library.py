@@ -10,6 +10,18 @@ from helpers import (
 )
 
 
+def test_library_public_symbol_classes_stay_on_public_import_surface():
+    import volt.library as library
+
+    assert volt.SchematicSymbolSpec is library.SchematicSymbolSpec
+    assert volt.SchematicBlockPinSpec is library.SchematicBlockPinSpec
+    assert volt.SchematicSymbolSpec.__module__ == "volt.library"
+    assert isinstance(
+        library._default_two_terminal_symbol_spec("resistor"),
+        library.SchematicSymbolSpec,
+    )
+
+
 def test_library_component_instantiates_kernel_owned_definition_once():
     design = volt.Design("library")
     library = volt.Library("volt.test")
