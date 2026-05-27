@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterable
 
+from ._schematic_authoring import _ScopedSchematicAuthoring
 from ._schematic_labels import _component_value_label
 from ._presentation import (
     _needs_generated_two_terminal_symbol,
@@ -992,6 +993,14 @@ class SchematicDrawing:
             raise ValueError("Schematic drawing unit must be positive")
         self._stack: list[tuple[SchematicAnchor, str]] = []
         self._pending: SchematicTwoTerminalElement | SchematicWireBuilder | None = None
+        self._authoring = _ScopedSchematicAuthoring(
+            schematic,
+            local_point=self._point_arg,
+            authored_region=authored_region,
+            ortho_line_entry_parts=_schematic_ortho_line_entry_parts,
+            signal_stub_entry_parts=_signal_stub_entry_parts,
+            signal_stub_entry_has_anchor=_signal_stub_entry_has_anchor,
+        )
 
     @property
     def here(self) -> SchematicAnchor:
@@ -1069,14 +1078,13 @@ class SchematicDrawing:
         reference_label: str | None = None,
     ) -> PlacedSchematicElement:
         self._flush_pending()
-        placed = self._schematic.place(
+        placed = self._authoring.place(
             component,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             orient=self._direction if orient is None else orient,
             symbol=symbol,
             variant=variant,
             reference_label=reference_label,
-            _authored_region=self._authored_region,
         )
         return PlacedSchematicElement(placed)
 
@@ -1106,28 +1114,17 @@ class SchematicDrawing:
         schematic wire run through the supplied geometry.
         """
         self._flush_pending()
-        if args and isinstance(args[0], Net):
-            if net is not None:
-                raise ValueError("Pass schematic connection net either first or as net=, not both")
-            return self._schematic.connect(
-                args[0],
-                *(self._point_arg(point) for point in args[1:]),
-                shape=shape,
-                k=k,
-                _authored_region=self._authored_region,
-            )
         if len(args) != 2:
-            raise TypeError(
-                "Schematic drawing connect expects start/end anchors, or a net followed by anchors"
-            )
-        start, end = args
-        return self._schematic.connect(
-            self._point_arg(start),
-            self._point_arg(end),
+            if not args or not isinstance(args[0], Net):
+                raise TypeError(
+                    "Schematic drawing connect expects start/end anchors, "
+                    "or a net followed by anchors"
+                )
+        return self._authoring.connect(
+            *args,
             net=net,
             shape=shape,
             k=k,
-            _authored_region=self._authored_region,
         )
 
     def ortho_lines(
@@ -1138,20 +1135,15 @@ class SchematicDrawing:
         k: float | None = None,
     ) -> tuple[SchematicWire, ...]:
         self._flush_pending()
-        localized = []
-        for entry in entries:
-            net, start, end = _schematic_ortho_line_entry_parts(entry)
-            localized.append((net, self._point_arg(start), self._point_arg(end)))
-        return self._schematic.ortho_lines(
-            localized,
+        return self._authoring.ortho_lines(
+            entries,
             shape=shape,
             k=k,
-            _authored_region=self._authored_region,
         )
 
     def wire(self, net: Net) -> SchematicWireBuilder:
         self._flush_pending()
-        builder = self._schematic.wire(net, _authored_region=self._authored_region)
+        builder = self._authoring.wire(net)
         builder._drawing = self
         builder._start_here = self._here
         builder._start_direction = self._direction
@@ -1197,13 +1189,12 @@ class SchematicDrawing:
             TypeError: If name_or_net is not a string, Net, or None.
         """
         self._flush_pending()
-        return self._schematic.terminal(
+        return self._authoring.terminal(
             name_or_net,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             net=net,
             kind=kind,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     def terminal_stub(
@@ -1219,15 +1210,14 @@ class SchematicDrawing:
     ) -> SchematicTerminalStub:
         """Draw a short wire from an anchor to a terminal marker on an existing net."""
         self._flush_pending()
-        return self._schematic.terminal_stub(
+        return self._authoring.terminal_stub(
             name_or_net,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             net=net,
             kind=kind,
             side=side,
             length=length,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     def power(
@@ -1252,12 +1242,11 @@ class SchematicDrawing:
             SchematicPort handle to the placed power marker.
         """
         self._flush_pending()
-        return self._schematic.power(
+        return self._authoring.power(
             name,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             net=net,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     def power_stub(
@@ -1272,14 +1261,13 @@ class SchematicDrawing:
     ) -> SchematicTerminalStub:
         """Draw a short wire from an anchor to a power marker on an existing net."""
         self._flush_pending()
-        return self._schematic.power_stub(
+        return self._authoring.power_stub(
             name,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             net=net,
             side=side,
             length=length,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     def ground(
@@ -1304,12 +1292,11 @@ class SchematicDrawing:
             SchematicPort handle to the placed ground marker.
         """
         self._flush_pending()
-        return self._schematic.ground(
+        return self._authoring.ground(
             name,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             net=net,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     def ground_stub(
@@ -1324,14 +1311,13 @@ class SchematicDrawing:
     ) -> SchematicTerminalStub:
         """Draw a short wire from an anchor to a ground marker on an existing net."""
         self._flush_pending()
-        return self._schematic.ground_stub(
+        return self._authoring.ground_stub(
             name,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             net=net,
             side=side,
             length=length,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     def net_label(
@@ -1343,12 +1329,11 @@ class SchematicDrawing:
         label: str | None = None,
     ) -> SchematicNetLabel:
         self._flush_pending()
-        return self._schematic.net_label(
+        return self._authoring.net_label(
             name_or_net,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             orient=orient,
             label=label,
-            _authored_region=self._authored_region,
         )
 
     def local_label(
@@ -1361,13 +1346,12 @@ class SchematicDrawing:
         orient: str | None = None,
     ) -> SchematicNetLabel:
         self._flush_pending()
-        return self._schematic.local_label(
+        return self._authoring.local_label(
             name_or_net,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             side=side,
             offset=offset,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     def signal_stub(
@@ -1382,15 +1366,14 @@ class SchematicDrawing:
         label: str | None = None,
     ) -> SchematicSignalStub:
         self._flush_pending()
-        return self._schematic.signal_stub(
+        return self._authoring.signal_stub(
             name_or_net,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             side=side,
             length=length,
             label_gap=label_gap,
             orient=orient,
             label=label,
-            _authored_region=self._authored_region,
         )
 
     def signal_tag(
@@ -1405,15 +1388,14 @@ class SchematicDrawing:
         orient: str | None = None,
     ) -> SchematicSignalTag:
         self._flush_pending()
-        return self._schematic.signal_tag(
+        return self._authoring.signal_tag(
             name_or_net,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             side=side,
             length=length,
             label=label,
             kind=kind,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     def signal_tags(
@@ -1428,19 +1410,15 @@ class SchematicDrawing:
         orient: str | None = None,
     ) -> tuple[SchematicSignalTag, ...]:
         self._flush_pending()
-        entries = self._signal_stub_items_arg(tuple(items))
-        base_at = self._point_arg(at) if at is not None else None
-        if base_at is None and any(not _signal_stub_entry_has_anchor(item) for item in entries):
-            base_at = self._here
-        return self._schematic.signal_tags(
-            entries,
-            at=base_at,
+        return self._authoring.signal_tags(
+            items,
+            at=at,
+            default_at=self._here,
             side=side,
             pitch=pitch,
             length=length,
             kind=kind,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     def signal_stubs(
@@ -1455,19 +1433,15 @@ class SchematicDrawing:
         orient: str | None = None,
     ) -> tuple[SchematicSignalStub, ...]:
         self._flush_pending()
-        entries = self._signal_stub_items_arg(tuple(items))
-        base_at = self._point_arg(at) if at is not None else None
-        if base_at is None and any(not _signal_stub_entry_has_anchor(item) for item in entries):
-            base_at = self._here
-        return self._schematic.signal_stubs(
-            entries,
-            at=base_at,
+        return self._authoring.signal_stubs(
+            items,
+            at=at,
+            default_at=self._here,
             side=side,
             pitch=pitch,
             length=length,
             label_gap=label_gap,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     def stack(
@@ -1500,10 +1474,9 @@ class SchematicDrawing:
         at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
     ) -> SchematicJunction:
         self._flush_pending()
-        return self._schematic.junction(
+        return self._authoring.junction(
             net,
-            at=self._here if at is None else self._point_arg(at),
-            _authored_region=self._authored_region,
+            at=self._here if at is None else at,
         )
 
     def no_connect(
@@ -1515,12 +1488,11 @@ class SchematicDrawing:
         reason: str | None = None,
     ) -> SchematicNoConnect:
         self._flush_pending()
-        return self._schematic.no_connect(
+        return self._authoring.no_connect(
             anchor,
             orient=orient,
             offset=offset,
             reason=reason,
-            _authored_region=self._authored_region,
         )
 
     def sheet_port(
@@ -1533,13 +1505,12 @@ class SchematicDrawing:
         orient: str = "Right",
     ) -> SchematicPort:
         self._flush_pending()
-        return self._schematic.sheet_port(
+        return self._authoring.sheet_port(
             name,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             net=net,
             kind=kind,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     def off_page(
@@ -1551,12 +1522,11 @@ class SchematicDrawing:
         orient: str = "Right",
     ) -> SchematicPort:
         self._flush_pending()
-        return self._schematic.off_page(
+        return self._authoring.off_page(
             name,
-            at=self._here if at is None else self._point_arg(at),
+            at=self._here if at is None else at,
             net=net,
             orient=orient,
-            _authored_region=self._authored_region,
         )
 
     @contextmanager
@@ -1638,18 +1608,6 @@ class SchematicDrawing:
                 point[1] + self._coordinate_origin[1],
             )
         return value
-
-    def _signal_stub_items_arg(self, items):
-        entries = []
-        for item in items:
-            name_or_net, anchor, label = _signal_stub_entry_parts(item)
-            if anchor is None:
-                entries.append((name_or_net, label) if label is not None else name_or_net)
-            elif label is None:
-                entries.append((name_or_net, self._point_arg(anchor)))
-            else:
-                entries.append((name_or_net, self._point_arg(anchor), label))
-        return tuple(entries)
 
     def _flush_pending(self) -> None:
         pending = self._pending
@@ -3461,6 +3419,14 @@ class SchematicRegion:
         self.title = title
         self.bounds = bounds
         self.style = dict(style)
+        self._authoring = _ScopedSchematicAuthoring(
+            sheet,
+            local_point=self._local_point,
+            authored_region=index,
+            ortho_line_entry_parts=_schematic_ortho_line_entry_parts,
+            signal_stub_entry_parts=_signal_stub_entry_parts,
+            signal_stub_entry_has_anchor=_signal_stub_entry_has_anchor,
+        )
 
     @property
     def index(self) -> int:
@@ -3496,14 +3462,13 @@ class SchematicRegion:
         variant: str = "default",
         reference_label: str | None = None,
     ) -> SchematicSymbol:
-        return self._sheet.place(
+        return self._authoring.place(
             component,
-            at=self._local_point(at),
+            at=at,
             orient=orient,
             symbol=symbol,
             variant=variant,
             reference_label=reference_label,
-            _authored_region=self._index,
         )
 
     def wire(
@@ -3511,11 +3476,7 @@ class SchematicRegion:
         net: Net,
         points: Iterable[tuple[float, float] | SchematicAnchor | SchematicPort],
     ) -> SchematicWire:
-        return self._sheet.wire(
-            net,
-            tuple(self._local_point(point) for point in points),
-            _authored_region=self._index,
-        )
+        return self._authoring.wire(net, points)
 
     def ortho_lines(
         self,
@@ -3524,15 +3485,10 @@ class SchematicRegion:
         shape: str | None = None,
         k: float | None = None,
     ) -> tuple[SchematicWire, ...]:
-        localized = []
-        for entry in entries:
-            net, start, end = _schematic_ortho_line_entry_parts(entry)
-            localized.append((net, self._local_point(start), self._local_point(end)))
-        return self._sheet.ortho_lines(
-            localized,
+        return self._authoring.ortho_lines(
+            entries,
             shape=shape,
             k=k,
-            _authored_region=self._index,
         )
 
     def label(
@@ -3543,12 +3499,11 @@ class SchematicRegion:
         orient: str = "Right",
         label: str | None = None,
     ) -> SchematicNetLabel:
-        return self._sheet.label(
+        return self._authoring.label(
             net,
-            at=self._local_point(at),
+            at=at,
             orient=orient,
             label=label,
-            _authored_region=self._index,
         )
 
     def net_label(
@@ -3559,12 +3514,11 @@ class SchematicRegion:
         orient: str = "Right",
         label: str | None = None,
     ) -> SchematicNetLabel:
-        return self._sheet.net_label(
+        return self._authoring.net_label(
             name_or_net,
-            at=self._local_point(at),
+            at=at,
             orient=orient,
             label=label,
-            _authored_region=self._index,
         )
 
     def local_label(
@@ -3576,13 +3530,12 @@ class SchematicRegion:
         offset: float = 2,
         orient: str | None = None,
     ) -> SchematicNetLabel:
-        return self._sheet.local_label(
+        return self._authoring.local_label(
             name_or_net,
-            at=self._local_point(at),
+            at=at,
             side=side,
             offset=offset,
             orient=orient,
-            _authored_region=self._index,
         )
 
     def signal_stub(
@@ -3596,15 +3549,14 @@ class SchematicRegion:
         orient: str | None = None,
         label: str | None = None,
     ) -> SchematicSignalStub:
-        return self._sheet.signal_stub(
+        return self._authoring.signal_stub(
             name_or_net,
-            at=self._local_point(at),
+            at=at,
             side=side,
             length=length,
             label_gap=label_gap,
             orient=orient,
             label=label,
-            _authored_region=self._index,
         )
 
     def signal_tag(
@@ -3618,15 +3570,14 @@ class SchematicRegion:
         kind: str = "Bidirectional",
         orient: str | None = None,
     ) -> SchematicSignalTag:
-        return self._sheet.signal_tag(
+        return self._authoring.signal_tag(
             name_or_net,
-            at=self._local_point(at),
+            at=at,
             side=side,
             length=length,
             label=label,
             kind=kind,
             orient=orient,
-            _authored_region=self._index,
         )
 
     def signal_tags(
@@ -3640,17 +3591,14 @@ class SchematicRegion:
         kind: str = "Bidirectional",
         orient: str | None = None,
     ) -> tuple[SchematicSignalTag, ...]:
-        base_at = None if at is None else self._local_point(at)
-        localized = (self._local_signal_stub_item(item) for item in items)
-        return self._sheet.signal_tags(
-            localized,
-            at=base_at,
+        return self._authoring.signal_tags(
+            items,
+            at=at,
             side=side,
             pitch=pitch,
             length=length,
             kind=kind,
             orient=orient,
-            _authored_region=self._index,
         )
 
     def signal_stubs(
@@ -3664,29 +3612,15 @@ class SchematicRegion:
         label_gap: float = 2,
         orient: str | None = None,
     ) -> tuple[SchematicSignalStub, ...]:
-        base_at = None if at is None else self._local_point(at)
-        localized = (self._local_signal_stub_item(item) for item in items)
-        return self._sheet.signal_stubs(
-            localized,
-            at=base_at,
+        return self._authoring.signal_stubs(
+            items,
+            at=at,
             side=side,
             pitch=pitch,
             length=length,
             label_gap=label_gap,
             orient=orient,
-            _authored_region=self._index,
         )
-
-    def _local_signal_stub_item(self, item):
-        name_or_net, anchor, label = _signal_stub_entry_parts(item)
-        if anchor is None:
-            if label is None:
-                return item
-            return name_or_net, None, label
-        localized = self._local_point(anchor)
-        if label is None:
-            return name_or_net, localized
-        return name_or_net, localized, label
 
     def junction(
         self,
@@ -3694,9 +3628,7 @@ class SchematicRegion:
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
     ) -> SchematicJunction:
-        return self._sheet.junction(
-            net, at=self._local_point(at), _authored_region=self._index
-        )
+        return self._authoring.junction(net, at=at)
 
     def terminal(
         self,
@@ -3712,13 +3644,12 @@ class SchematicRegion:
         See Schematic.terminal() for full documentation.
         Coordinates are interpreted relative to this region's bounds.
         """
-        return self._sheet.terminal(
+        return self._authoring.terminal(
             name_or_net,
-            at=self._local_point(at),
+            at=at,
             net=net,
             kind=kind,
             orient=orient,
-            _authored_region=self._index,
         )
 
     def terminal_stub(
@@ -3733,15 +3664,14 @@ class SchematicRegion:
         orient: str | None = None,
     ) -> SchematicTerminalStub:
         """Draw a short region-local wire to a terminal marker."""
-        return self._sheet.terminal_stub(
+        return self._authoring.terminal_stub(
             name_or_net,
-            at=self._local_point(at),
+            at=at,
             net=net,
             kind=kind,
             side=side,
             length=length,
             orient=orient,
-            _authored_region=self._index,
         )
 
     def power(
@@ -3757,12 +3687,11 @@ class SchematicRegion:
         See Schematic.power() for full documentation.
         Coordinates are interpreted relative to this region's bounds.
         """
-        return self._sheet.power(
+        return self._authoring.power(
             name,
-            at=self._local_point(at),
+            at=at,
             net=net,
             orient=orient,
-            _authored_region=self._index,
         )
 
     def power_stub(
@@ -3776,14 +3705,13 @@ class SchematicRegion:
         orient: str = "Up",
     ) -> SchematicTerminalStub:
         """Draw a short region-local wire to a power marker."""
-        return self._sheet.power_stub(
+        return self._authoring.power_stub(
             name,
-            at=self._local_point(at),
+            at=at,
             net=net,
             side=side,
             length=length,
             orient=orient,
-            _authored_region=self._index,
         )
 
     def ground(
@@ -3799,12 +3727,11 @@ class SchematicRegion:
         See Schematic.ground() for full documentation.
         Coordinates are interpreted relative to this region's bounds.
         """
-        return self._sheet.ground(
+        return self._authoring.ground(
             name,
-            at=self._local_point(at),
+            at=at,
             net=net,
             orient=orient,
-            _authored_region=self._index,
         )
 
     def ground_stub(
@@ -3818,14 +3745,13 @@ class SchematicRegion:
         orient: str = "Down",
     ) -> SchematicTerminalStub:
         """Draw a short region-local wire to a ground marker."""
-        return self._sheet.ground_stub(
+        return self._authoring.ground_stub(
             name,
-            at=self._local_point(at),
+            at=at,
             net=net,
             side=side,
             length=length,
             orient=orient,
-            _authored_region=self._index,
         )
 
     def sheet_port(
@@ -3837,13 +3763,12 @@ class SchematicRegion:
         kind: str = "Bidirectional",
         orient: str = "Right",
     ) -> SchematicPort:
-        return self._sheet.sheet_port(
+        return self._authoring.sheet_port(
             name,
-            at=self._local_point(at),
+            at=at,
             net=net,
             kind=kind,
             orient=orient,
-            _authored_region=self._index,
         )
 
     def off_page(
@@ -3854,12 +3779,11 @@ class SchematicRegion:
         net: Net | None = None,
         orient: str = "Right",
     ) -> SchematicPort:
-        return self._sheet.off_page(
+        return self._authoring.off_page(
             name,
-            at=self._local_point(at),
+            at=at,
             net=net,
             orient=orient,
-            _authored_region=self._index,
         )
 
     def no_connect(
@@ -3870,12 +3794,11 @@ class SchematicRegion:
         offset: float = 0,
         reason: str | None = None,
     ) -> SchematicNoConnect:
-        return self._sheet.no_connect(
+        return self._authoring.no_connect(
             anchor,
             orient=orient,
             offset=offset,
             reason=reason,
-            _authored_region=self._index,
         )
 
     def _local_point(
