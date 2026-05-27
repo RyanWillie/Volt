@@ -84,6 +84,49 @@ def test_python_schematic_page_metadata_and_regions_are_kernel_owned():
     assert design.to_json() == logical_before
 
 
+def test_python_schematic_region_scopes_forwarded_authoring_helpers():
+    design = volt.Design("schematic-region-authoring-scope")
+    sig = design.net("SIG")
+    aux = design.net("AUX")
+    vcc = design.net("VCC", kind="power")
+    header = design.connector_1x02(ref="J1")
+    sig += header[1]
+
+    sheet = design.schematic("Main")
+    region = sheet.region("IO", x=100, y=50, w=80, h=60)
+    logical_before = design.to_json()
+
+    placed = region.place(header, at=(10, 10))
+    region.signal_stub(sig, at=placed.pin(1), side="right", length=5, label_gap=1)
+    region.power("VCC", net=vcc, at=(30, 30))
+    region.sheet_port("SIG_IN", net=sig, at=placed.pin(1).right(20), kind="Input")
+    region.junction(aux, at=(40, 40))
+    region.no_connect(placed.pin(2), orient="left", offset=2, reason="spare")
+
+    projection = json.loads(sheet.to_json())
+
+    assert design.to_json() == logical_before
+    assert projection["symbol_instances"][0]["position"] == {"x": 110.0, "y": 60.0}
+    assert projection["wire_runs"][0]["points"] == [
+        {"x": 110.0, "y": 60.0},
+        {"x": 115.0, "y": 60.0},
+    ]
+    assert projection["power_ports"][0]["position"] == {"x": 130.0, "y": 80.0}
+    assert projection["sheet_ports"][0]["position"] == {"x": 130.0, "y": 60.0}
+    assert projection["junctions"][0]["position"] == {"x": 140.0, "y": 90.0}
+    assert projection["no_connect_markers"][0]["reason"] == "spare"
+    for collection in (
+        "symbol_instances",
+        "wire_runs",
+        "net_labels",
+        "power_ports",
+        "sheet_ports",
+        "junctions",
+        "no_connect_markers",
+    ):
+        assert projection[collection][0]["authored_region"] == "IO"
+
+
 def test_python_schematic_region_drawing_tags_two_terminal_symbols():
     design = volt.Design("schematic-region-two-terminal")
     resistor = design.R("10k", ref="R1")
