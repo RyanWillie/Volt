@@ -14,6 +14,7 @@ file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt/libraries)
 set(
     VOLT_PYTHON_PACKAGE_FILES
     __init__.py
+    _library_symbol_builders.py
     _presentation.py
     _schematic_authoring.py
     _schematic_labels.py
