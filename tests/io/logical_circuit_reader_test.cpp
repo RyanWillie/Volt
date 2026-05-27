@@ -330,6 +330,10 @@ TEST_CASE("Logical circuit reader rejects wrong typed local IDs") {
     fixture["pins"][0]["id"] = "component:99";
 
     CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+
+    fixture["pins"][0]["id"] = "pin:not-a-number";
+    CHECK_THROWS_MATCHES(volt::io::read_logical_circuit(fixture), std::logic_error,
+                         Catch::Matchers::Message("Local ID index must be numeric"));
 }
 
 TEST_CASE("Logical circuit reader reports unsupported versions deterministically") {

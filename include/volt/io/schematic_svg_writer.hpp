@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <volt/core/ids.hpp>
+#include <volt/io/detail/typed_id.hpp>
 #include <volt/schematic/presentation_geometry.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
@@ -193,32 +194,22 @@ inline void write_svg_number(std::ostream &out, double value) {
     out << formatted.str();
 }
 
-[[nodiscard]] inline std::string svg_component_id(ComponentId id) {
-    return "component:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string svg_component_id(ComponentId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string svg_net_id(NetId id) {
-    return "net:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string svg_net_id(NetId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string svg_pin_id(PinId id) {
-    return "pin:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string svg_pin_id(PinId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string svg_sheet_id(SheetId id) {
-    return "sheet:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string svg_sheet_id(SheetId id) { return encode_local_id(id); }
 
 [[nodiscard]] inline std::string svg_sheet_token(SheetId id) {
     return "sheet-" + std::to_string(id.index());
 }
 
-[[nodiscard]] inline std::string svg_symbol_def_id(SymbolDefId id) {
-    return "symbol_def:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string svg_symbol_def_id(SymbolDefId id) { return encode_local_id(id); }
 
 [[nodiscard]] inline std::string svg_symbol_instance_id(SymbolInstanceId id) {
-    return "symbol_instance:" + std::to_string(id.index());
+    return encode_local_id(id);
 }
 
 [[nodiscard]] inline std::string power_port_class(PowerPortKind kind) {

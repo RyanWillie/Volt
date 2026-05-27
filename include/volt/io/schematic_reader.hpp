@@ -18,6 +18,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/io/detail/typed_id.hpp>
 #include <volt/io/schematic_schema.hpp>
 #include <volt/schematic/schematic_document.hpp>
 
@@ -187,26 +188,10 @@ class SchematicReader {
                 "Unsupported schematic format version: " + std::to_string(actual));
     }
 
-    static std::size_t local_index(std::string_view id, std::string_view prefix) {
-        require(id.rfind(prefix, 0) == 0, "Local ID has the wrong typed prefix");
-        const auto suffix = id.substr(prefix.size());
-        require(!suffix.empty(), "Local ID must contain an index");
-        auto index = std::size_t{0};
-        for (const auto character : suffix) {
-            require(std::isdigit(static_cast<unsigned char>(character)) != 0,
-                    "Local ID index must be numeric");
-            const auto digit = static_cast<std::size_t>(character - '0');
-            require(index <= (std::numeric_limits<std::size_t>::max() - digit) / std::size_t{10},
-                    "Local ID index is too large");
-            index = (index * std::size_t{10}) + digit;
-        }
-        return index;
-    }
-
-    static std::string local_id(const nlohmann::json &object, const std::string &prefix,
-                                std::set<std::string> &seen) {
+    template <typename Id>
+    static std::string local_id(const nlohmann::json &object, std::set<std::string> &seen) {
         const auto id = string_field(object, "id");
-        static_cast<void>(local_index(id, prefix));
+        static_cast<void>(decode_local_id<Id>(id));
         require(seen.insert(id).second, "Duplicate local ID");
         return id;
     }
@@ -216,6 +201,17 @@ class SchematicReader {
         const auto it = ids.find(id);
         require(it != ids.end(), "Reference points to a missing local ID");
         return it->second;
+    }
+
+    template <typename Id>
+    [[nodiscard]] static std::vector<Id> resolve_all(const std::map<std::string, Id> &ids,
+                                                     const std::vector<std::string> &local_ids) {
+        auto resolved = std::vector<Id>{};
+        resolved.reserve(local_ids.size());
+        for (const auto &id : local_ids) {
+            resolved.push_back(resolve(ids, id));
+        }
+        return resolved;
     }
 
     [[nodiscard]] static Point point(const nlohmann::json &object) {
@@ -307,21 +303,21 @@ class SchematicReader {
     }
 
     [[nodiscard]] ComponentId component_id(const std::string &id) const {
-        const auto component = ComponentId{local_index(id, "component:")};
+        const auto component = decode_local_id<ComponentId>(id);
         require(component.index() < circuit_.component_count(),
                 "Component reference points to a missing logical component: " + id);
         return component;
     }
 
     [[nodiscard]] NetId net_id(const std::string &id) const {
-        const auto net = NetId{local_index(id, "net:")};
+        const auto net = decode_local_id<NetId>(id);
         require(net.index() < circuit_.net_count(),
                 "Net reference points to a missing logical net: " + id);
         return net;
     }
 
     [[nodiscard]] PinId pin_id(const std::string &id) const {
-        const auto pin = PinId{local_index(id, "pin:")};
+        const auto pin = decode_local_id<PinId>(id);
         require(pin.index() < circuit_.pin_count(),
                 "Pin reference points to a missing logical pin: " + id);
         return pin;
@@ -492,7 +488,7 @@ class SchematicReader {
     void read_symbol_definitions() {
         auto seen = std::set<std::string>{};
         for (const auto &symbol_object : array_field(document_, "symbol_definitions")) {
-            const auto id = local_id(symbol_object, "symbol_def:", seen);
+            const auto id = local_id<SymbolDefId>(symbol_object, seen);
             auto symbol = SymbolDefinition{string_field(symbol_object, "name")};
             for (const auto &pin_object : array_field(symbol_object, "pins")) {
                 symbol.add_pin(SymbolPin{string_field(pin_object, "name"),
@@ -510,7 +506,7 @@ class SchematicReader {
     void read_sheets() {
         auto seen = std::set<std::string>{};
         for (const auto &sheet_object : array_field(document_, "sheets")) {
-            const auto id = local_id(sheet_object, "sheet:", seen);
+            const auto id = local_id<SheetId>(sheet_object, seen);
             const auto name = string_field(sheet_object, "name");
             const auto sheet =
                 schematic_.add_sheet(Sheet{name, sheet_metadata(sheet_object, name)});
@@ -561,7 +557,7 @@ class SchematicReader {
             require(instance_object.find("reference_label") == instance_object.end(),
                     "Schematic symbol instance reference_label is no longer supported; use a "
                     "symbol_fields entry named reference");
-            const auto id = local_id(instance_object, "symbol_instance:", seen);
+            const auto id = local_id<SymbolInstanceId>(instance_object, seen);
             const auto sheet = resolve(sheet_ids_, string_field(instance_object, "sheet"));
             const auto symbol =
                 resolve(symbol_def_ids_, string_field(instance_object, "symbol_definition"));
@@ -577,7 +573,7 @@ class SchematicReader {
     void read_wire_runs() {
         auto seen = std::set<std::string>{};
         for (const auto &wire_object : optional_array_field(document_, "wire_runs")) {
-            const auto id = local_id(wire_object, "wire_run:", seen);
+            const auto id = local_id<WireRunId>(wire_object, seen);
             const auto sheet = resolve(sheet_ids_, string_field(wire_object, "sheet"));
             const auto net = net_id(string_field(wire_object, "net"));
             auto intent = RouteIntent::Direct;
@@ -596,7 +592,7 @@ class SchematicReader {
     void read_net_labels() {
         auto seen = std::set<std::string>{};
         for (const auto &label_object : optional_array_field(document_, "net_labels")) {
-            const auto id = local_id(label_object, "net_label:", seen);
+            const auto id = local_id<NetLabelId>(label_object, seen);
             const auto sheet = resolve(sheet_ids_, string_field(label_object, "sheet"));
             const auto net = net_id(string_field(label_object, "net"));
             const auto label = schematic_.add_net_label(
@@ -614,7 +610,7 @@ class SchematicReader {
     void read_junctions() {
         auto seen = std::set<std::string>{};
         for (const auto &junction_object : optional_array_field(document_, "junctions")) {
-            const auto id = local_id(junction_object, "junction:", seen);
+            const auto id = local_id<JunctionId>(junction_object, seen);
             const auto sheet = resolve(sheet_ids_, string_field(junction_object, "sheet"));
             const auto net = net_id(string_field(junction_object, "net"));
             const auto junction = schematic_.add_junction(
@@ -627,7 +623,7 @@ class SchematicReader {
     void read_power_ports() {
         auto seen = std::set<std::string>{};
         for (const auto &port_object : optional_array_field(document_, "power_ports")) {
-            const auto id = local_id(port_object, "power_port:", seen);
+            const auto id = local_id<PowerPortId>(port_object, seen);
             const auto sheet = resolve(sheet_ids_, string_field(port_object, "sheet"));
             const auto net = net_id(string_field(port_object, "net"));
             const auto port = schematic_.add_power_port(
@@ -644,7 +640,7 @@ class SchematicReader {
     void read_no_connect_markers() {
         auto seen = std::set<std::string>{};
         for (const auto &marker_object : optional_array_field(document_, "no_connect_markers")) {
-            const auto id = local_id(marker_object, "no_connect_marker:", seen);
+            const auto id = local_id<NoConnectMarkerId>(marker_object, seen);
             const auto sheet = resolve(sheet_ids_, string_field(marker_object, "sheet"));
             const auto pin = pin_id(string_field(marker_object, "pin"));
             const auto marker = schematic_.add_no_connect_marker(
@@ -659,7 +655,7 @@ class SchematicReader {
     void read_sheet_ports() {
         auto seen = std::set<std::string>{};
         for (const auto &port_object : optional_array_field(document_, "sheet_ports")) {
-            const auto id = local_id(port_object, "sheet_port:", seen);
+            const auto id = local_id<SheetPortId>(port_object, seen);
             const auto sheet = resolve(sheet_ids_, string_field(port_object, "sheet"));
             const auto net = net_id(string_field(port_object, "net"));
             const auto port = schematic_.add_sheet_port(
@@ -675,7 +671,7 @@ class SchematicReader {
     void read_symbol_fields() {
         auto seen = std::set<std::string>{};
         for (const auto &field_object : optional_array_field(document_, "symbol_fields")) {
-            const auto id = local_id(field_object, "symbol_field:", seen);
+            const auto id = local_id<SymbolFieldId>(field_object, seen);
             const auto sheet = resolve(sheet_ids_, string_field(field_object, "sheet"));
             const auto instance =
                 resolve(symbol_instance_ids_, string_field(field_object, "symbol_instance"));
@@ -690,100 +686,81 @@ class SchematicReader {
         }
     }
 
-    void require_sheet_instance_lists_match() const {
-        for (const auto &[sheet, expected_ids] : expected_sheet_instances_) {
-            auto expected = std::vector<SymbolInstanceId>{};
-            expected.reserve(expected_ids.size());
-            for (const auto &id : expected_ids) {
-                expected.push_back(resolve(symbol_instance_ids_, id));
-            }
-            require(schematic_.sheet(sheet).symbol_instances() == expected,
-                    "Sheet symbol instance list does not match placed instances");
+    template <typename Id, typename SheetIds>
+    void require_sheet_local_id_lists_match(
+        const std::vector<std::pair<SheetId, std::vector<std::string>>> &expected_by_sheet,
+        const std::map<std::string, Id> &ids, SheetIds sheet_ids, const char *message) const {
+        for (const auto &[sheet, expected_ids] : expected_by_sheet) {
+            require(sheet_ids(schematic_.sheet(sheet)) == resolve_all(ids, expected_ids), message);
         }
+    }
+
+    void require_sheet_instance_lists_match() const {
+        require_sheet_local_id_lists_match(
+            expected_sheet_instances_, symbol_instance_ids_,
+            [](const Sheet &sheet) -> const std::vector<SymbolInstanceId> & {
+                return sheet.symbol_instances();
+            },
+            "Sheet symbol instance list does not match placed instances");
     }
 
     void require_sheet_wire_run_lists_match() const {
-        for (const auto &[sheet, expected_ids] : expected_sheet_wire_runs_) {
-            auto expected = std::vector<WireRunId>{};
-            expected.reserve(expected_ids.size());
-            for (const auto &id : expected_ids) {
-                expected.push_back(resolve(wire_run_ids_, id));
-            }
-            require(schematic_.sheet(sheet).wire_runs() == expected,
-                    "Sheet wire run list does not match placed wires");
-        }
+        require_sheet_local_id_lists_match(
+            expected_sheet_wire_runs_, wire_run_ids_,
+            [](const Sheet &sheet) -> const std::vector<WireRunId> & { return sheet.wire_runs(); },
+            "Sheet wire run list does not match placed wires");
     }
 
     void require_sheet_net_label_lists_match() const {
-        for (const auto &[sheet, expected_ids] : expected_sheet_net_labels_) {
-            auto expected = std::vector<NetLabelId>{};
-            expected.reserve(expected_ids.size());
-            for (const auto &id : expected_ids) {
-                expected.push_back(resolve(net_label_ids_, id));
-            }
-            require(schematic_.sheet(sheet).net_labels() == expected,
-                    "Sheet net label list does not match placed labels");
-        }
+        require_sheet_local_id_lists_match(
+            expected_sheet_net_labels_, net_label_ids_,
+            [](const Sheet &sheet) -> const std::vector<NetLabelId> & {
+                return sheet.net_labels();
+            },
+            "Sheet net label list does not match placed labels");
     }
 
     void require_sheet_junction_lists_match() const {
-        for (const auto &[sheet, expected_ids] : expected_sheet_junctions_) {
-            auto expected = std::vector<JunctionId>{};
-            expected.reserve(expected_ids.size());
-            for (const auto &id : expected_ids) {
-                expected.push_back(resolve(junction_ids_, id));
-            }
-            require(schematic_.sheet(sheet).junctions() == expected,
-                    "Sheet junction list does not match placed junctions");
-        }
+        require_sheet_local_id_lists_match(
+            expected_sheet_junctions_, junction_ids_,
+            [](const Sheet &sheet) -> const std::vector<JunctionId> & { return sheet.junctions(); },
+            "Sheet junction list does not match placed junctions");
     }
 
     void require_sheet_power_port_lists_match() const {
-        for (const auto &[sheet, expected_ids] : expected_sheet_power_ports_) {
-            auto expected = std::vector<PowerPortId>{};
-            expected.reserve(expected_ids.size());
-            for (const auto &id : expected_ids) {
-                expected.push_back(resolve(power_port_ids_, id));
-            }
-            require(schematic_.sheet(sheet).power_ports() == expected,
-                    "Sheet power port list does not match placed ports");
-        }
+        require_sheet_local_id_lists_match(
+            expected_sheet_power_ports_, power_port_ids_,
+            [](const Sheet &sheet) -> const std::vector<PowerPortId> & {
+                return sheet.power_ports();
+            },
+            "Sheet power port list does not match placed ports");
     }
 
     void require_sheet_no_connect_marker_lists_match() const {
-        for (const auto &[sheet, expected_ids] : expected_sheet_no_connect_markers_) {
-            auto expected = std::vector<NoConnectMarkerId>{};
-            expected.reserve(expected_ids.size());
-            for (const auto &id : expected_ids) {
-                expected.push_back(resolve(no_connect_marker_ids_, id));
-            }
-            require(schematic_.sheet(sheet).no_connect_markers() == expected,
-                    "Sheet no-connect marker list does not match placed markers");
-        }
+        require_sheet_local_id_lists_match(
+            expected_sheet_no_connect_markers_, no_connect_marker_ids_,
+            [](const Sheet &sheet) -> const std::vector<NoConnectMarkerId> & {
+                return sheet.no_connect_markers();
+            },
+            "Sheet no-connect marker list does not match placed markers");
     }
 
     void require_sheet_port_lists_match() const {
-        for (const auto &[sheet, expected_ids] : expected_sheet_ports_) {
-            auto expected = std::vector<SheetPortId>{};
-            expected.reserve(expected_ids.size());
-            for (const auto &id : expected_ids) {
-                expected.push_back(resolve(sheet_port_ids_, id));
-            }
-            require(schematic_.sheet(sheet).sheet_ports() == expected,
-                    "Sheet port list does not match placed ports");
-        }
+        require_sheet_local_id_lists_match(
+            expected_sheet_ports_, sheet_port_ids_,
+            [](const Sheet &sheet) -> const std::vector<SheetPortId> & {
+                return sheet.sheet_ports();
+            },
+            "Sheet port list does not match placed ports");
     }
 
     void require_sheet_symbol_field_lists_match() const {
-        for (const auto &[sheet, expected_ids] : expected_sheet_symbol_fields_) {
-            auto expected = std::vector<SymbolFieldId>{};
-            expected.reserve(expected_ids.size());
-            for (const auto &id : expected_ids) {
-                expected.push_back(resolve(symbol_field_ids_, id));
-            }
-            require(schematic_.sheet(sheet).symbol_fields() == expected,
-                    "Sheet symbol field list does not match placed fields");
-        }
+        require_sheet_local_id_lists_match(
+            expected_sheet_symbol_fields_, symbol_field_ids_,
+            [](const Sheet &sheet) -> const std::vector<SymbolFieldId> & {
+                return sheet.symbol_fields();
+            },
+            "Sheet symbol field list does not match placed fields");
     }
 
     const nlohmann::json &document_;

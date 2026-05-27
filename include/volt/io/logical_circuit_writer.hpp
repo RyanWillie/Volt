@@ -11,6 +11,7 @@
 #include <string_view>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/io/detail/typed_id.hpp>
 
 namespace volt::io {
 
@@ -363,40 +364,30 @@ inline void write_electrical_attributes(std::ostream &out, const ElectricalAttri
     out << '}';
 }
 
-[[nodiscard]] inline std::string pin_def_id(PinDefId id) {
-    return "pin_def:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string pin_def_id(PinDefId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string component_def_id(ComponentDefId id) {
-    return "component_def:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string component_def_id(ComponentDefId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string component_id(ComponentId id) {
-    return "component:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string component_id(ComponentId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string pin_id(PinId id) { return "pin:" + std::to_string(id.index()); }
+[[nodiscard]] inline std::string pin_id(PinId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string net_id(NetId id) { return "net:" + std::to_string(id.index()); }
+[[nodiscard]] inline std::string net_id(NetId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string module_def_id(ModuleDefId id) {
-    return "module_def:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string module_def_id(ModuleDefId id) { return encode_local_id(id); }
 
 [[nodiscard]] inline std::string template_net_def_id(TemplateNetDefId id) {
-    return "template_net:" + std::to_string(id.index());
+    return encode_local_id(id);
 }
 
 [[nodiscard]] inline std::string module_component_id(ModuleComponentId id) {
-    return "module_component:" + std::to_string(id.index());
+    return encode_local_id(id);
 }
 
-[[nodiscard]] inline std::string port_def_id(PortDefId id) {
-    return "port:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string port_def_id(PortDefId id) { return encode_local_id(id); }
 
 [[nodiscard]] inline std::string module_instance_id(ModuleInstanceId id) {
-    return "module:" + std::to_string(id.index());
+    return encode_local_id(id);
 }
 
 inline void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
