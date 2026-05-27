@@ -10,6 +10,7 @@
 #include <string_view>
 #include <variant>
 
+#include <volt/io/detail/typed_id.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 #include <volt/io/schematic_schema.hpp>
 #include <volt/schematic/schematic.hpp>
