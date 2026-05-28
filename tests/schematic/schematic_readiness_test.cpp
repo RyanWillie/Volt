@@ -270,6 +270,23 @@ TEST_CASE("Schematic validation reports same-net crossings without explicit junc
           volt::DiagnosticCode{"SCHEMATIC_WIRE_CROSSING_WITHOUT_JUNCTION"});
 }
 
+TEST_CASE("Schematic validation reports one same-net crossing diagnostic per wire pair") {
+    volt::Circuit circuit;
+    const auto net = add_net(circuit);
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    [[maybe_unused]] const auto routed = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{0.0, 0.0}, volt::Point{20.0, 0.0},
+                                              volt::Point{20.0, 20.0}, volt::Point{0.0, 20.0}}});
+    [[maybe_unused]] const auto crossing = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{10.0, -10.0}, volt::Point{10.0, 30.0}}});
+
+    const auto report = volt::validate_schematic_readiness(schematic);
+
+    CHECK(diagnostic_count(report, "SCHEMATIC_WIRE_CROSSING_WITHOUT_JUNCTION") == 1U);
+}
+
 TEST_CASE("Schematic validation reports no-connect markers without kernel-owned intent") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);

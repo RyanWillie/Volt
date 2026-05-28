@@ -14,6 +14,7 @@
 #include <volt/core/diagnostics.hpp>
 #include <volt/schematic/readability_geometry.hpp>
 #include <volt/schematic/schematic.hpp>
+#include <volt/schematic/wire_topology.hpp>
 
 namespace volt {
 
@@ -289,30 +290,25 @@ inline void validate_same_net_crossings(const Schematic &schematic, SheetId shee
             if (first.net() != second.net()) {
                 continue;
             }
-            for (std::size_t first_point = 1; first_point < first.points().size(); ++first_point) {
-                const auto first_segment =
-                    SchematicSegment{first.points()[first_point - 1U], first.points()[first_point]};
-                for (std::size_t second_point = 1; second_point < second.points().size();
-                     ++second_point) {
-                    const auto second_segment = SchematicSegment{second.points()[second_point - 1U],
-                                                                 second.points()[second_point]};
-                    if (classify_segment_relationship(first_segment, second_segment) !=
-                        SchematicSegmentRelationship::Crossing) {
-                        continue;
-                    }
-                    if (sheet_has_junction_on_segments(schematic, sheet, first_segment,
-                                                       second_segment, first.net())) {
-                        continue;
-                    }
-                    report.add(Diagnostic{
-                        Severity::Warning,
-                        DiagnosticCode{"SCHEMATIC_WIRE_CROSSING_WITHOUT_JUNCTION"},
-                        "Same-net schematic wires cross without an explicit junction",
-                        std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(first_id),
-                                    EntityRef::wire_run(second_id), EntityRef::net(first.net())},
-                    });
-                }
+            const auto topology = classify_wire_pair_topology(
+                first.points(), second.points(), SchematicWireNetRelationship::SameNet,
+                [&schematic, &sheet, net = first.net()](SchematicSegment first_segment,
+                                                        SchematicSegment second_segment) {
+                    return sheet_has_junction_on_segments(schematic, sheet, first_segment,
+                                                          second_segment, net)
+                               ? SchematicJunction::Present
+                               : SchematicJunction::Absent;
+                });
+            if (!topology.has_crossing_without_junction()) {
+                continue;
             }
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_WIRE_CROSSING_WITHOUT_JUNCTION"},
+                "Same-net schematic wires cross without an explicit junction",
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(first_id),
+                            EntityRef::wire_run(second_id), EntityRef::net(first.net())},
+            });
         }
     }
 }

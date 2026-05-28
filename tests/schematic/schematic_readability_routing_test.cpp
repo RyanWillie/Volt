@@ -67,6 +67,23 @@ TEST_CASE("Schematic readability reports ambiguous same-net wire crossings") {
                       volt::EntityRef::wire_run(vertical), volt::EntityRef::net(net)});
 }
 
+TEST_CASE("Schematic readability reports one ambiguous same-net crossing per wire pair") {
+    volt::Circuit circuit;
+    const auto net = add_named_net(circuit, "RESET");
+
+    volt::Schematic schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    [[maybe_unused]] const auto routed = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{40.0, 40.0}, volt::Point{80.0, 40.0},
+                                              volt::Point{80.0, 60.0}, volt::Point{40.0, 60.0}}});
+    [[maybe_unused]] const auto crossing = schematic.add_wire_run(
+        sheet, volt::WireRun{net, std::vector{volt::Point{60.0, 30.0}, volt::Point{60.0, 70.0}}});
+
+    const auto report = volt::validate_schematic_readability(schematic);
+
+    CHECK(diagnostic_count(report, "SCHEMATIC_AMBIGUOUS_SAME_NET_CROSSING") == 1U);
+}
+
 TEST_CASE("Schematic readability reports visually dangling wire endpoints") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);

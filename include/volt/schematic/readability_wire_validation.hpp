@@ -1,6 +1,7 @@
 #pragma once
 
 #include <volt/schematic/readability_validation_common.hpp>
+#include <volt/schematic/wire_topology.hpp>
 
 namespace volt {
 
@@ -125,31 +126,26 @@ inline void validate_ambiguous_same_net_crossings(const Schematic &schematic, Sh
             if (first.net() != second.net()) {
                 continue;
             }
-            for (std::size_t first_point = 1; first_point < first.points().size(); ++first_point) {
-                const auto first_segment =
-                    SchematicSegment{first.points()[first_point - 1U], first.points()[first_point]};
-                for (std::size_t second_point = 1; second_point < second.points().size();
-                     ++second_point) {
-                    const auto second_segment = SchematicSegment{second.points()[second_point - 1U],
-                                                                 second.points()[second_point]};
-                    if (classify_segment_relationship(first_segment, second_segment) !=
-                        SchematicSegmentRelationship::Crossing) {
-                        continue;
-                    }
-                    if (sheet_has_junction_on_segments(schematic, sheet, first_segment,
-                                                       second_segment, first.net())) {
-                        continue;
-                    }
-                    report.add(Diagnostic{
-                        Severity::Warning,
-                        DiagnosticCode{"SCHEMATIC_AMBIGUOUS_SAME_NET_CROSSING"},
-                        "Same-net schematic wires cross without a clear junction; make the local "
-                        "signal path explicit",
-                        std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(first_id),
-                                    EntityRef::wire_run(second_id), EntityRef::net(first.net())},
-                    });
-                }
+            const auto topology = classify_wire_pair_topology(
+                first.points(), second.points(), SchematicWireNetRelationship::SameNet,
+                [&schematic, &sheet, net = first.net()](SchematicSegment first_segment,
+                                                        SchematicSegment second_segment) {
+                    return sheet_has_junction_on_segments(schematic, sheet, first_segment,
+                                                          second_segment, net)
+                               ? SchematicJunction::Present
+                               : SchematicJunction::Absent;
+                });
+            if (!topology.has_crossing_without_junction()) {
+                continue;
             }
+            report.add(Diagnostic{
+                Severity::Warning,
+                DiagnosticCode{"SCHEMATIC_AMBIGUOUS_SAME_NET_CROSSING"},
+                "Same-net schematic wires cross without a clear junction; make the local "
+                "signal path explicit",
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(first_id),
+                            EntityRef::wire_run(second_id), EntityRef::net(first.net())},
+            });
         }
     }
 }
@@ -167,34 +163,29 @@ inline void validate_different_net_wire_crossings(const Schematic &schematic, Sh
             if (first.net() == second.net()) {
                 continue;
             }
-            auto crossing_reported = false;
-            for (std::size_t first_point = 1; first_point < first.points().size(); ++first_point) {
-                if (crossing_reported) {
-                    break;
-                }
-                const auto first_segment =
-                    SchematicSegment{first.points()[first_point - 1U], first.points()[first_point]};
-                for (std::size_t second_point = 1; second_point < second.points().size();
-                     ++second_point) {
-                    const auto second_segment = SchematicSegment{second.points()[second_point - 1U],
-                                                                 second.points()[second_point]};
-                    if (classify_segment_relationship(first_segment, second_segment) !=
-                        SchematicSegmentRelationship::Crossing) {
-                        continue;
-                    }
-                    report.add(Diagnostic{
-                        Severity::Error,
-                        DiagnosticCode{"SCHEMATIC_DIFFERENT_NET_WIRE_CROSSING"},
-                        "Different-net schematic wires cross visually; reroute one wire to keep "
-                        "the drawing readable",
-                        std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(first_id),
-                                    EntityRef::wire_run(second_id), EntityRef::net(first.net()),
-                                    EntityRef::net(second.net())},
-                    });
-                    crossing_reported = true;
-                    break;
-                }
+            const auto topology = classify_wire_pair_topology(
+                first.points(), second.points(), SchematicWireNetRelationship::DifferentNet,
+                [&schematic, &sheet, first_net = first.net(), second_net = second.net()](
+                    SchematicSegment first_segment, SchematicSegment second_segment) {
+                    return (sheet_has_junction_on_segments(schematic, sheet, first_segment,
+                                                           second_segment, first_net) ||
+                            sheet_has_junction_on_segments(schematic, sheet, first_segment,
+                                                           second_segment, second_net))
+                               ? SchematicJunction::Present
+                               : SchematicJunction::Absent;
+                });
+            if (!topology.has_crossing_without_junction()) {
+                continue;
             }
+            report.add(Diagnostic{
+                Severity::Error,
+                DiagnosticCode{"SCHEMATIC_DIFFERENT_NET_WIRE_CROSSING"},
+                "Different-net schematic wires cross visually; reroute one wire to keep "
+                "the drawing readable",
+                std::vector{EntityRef::sheet(sheet_id), EntityRef::wire_run(first_id),
+                            EntityRef::wire_run(second_id), EntityRef::net(first.net()),
+                            EntityRef::net(second.net())},
+            });
         }
     }
 }
