@@ -104,10 +104,10 @@ class LogicalCircuitReader {
         return &*it;
     }
 
-    static std::string local_id(const nlohmann::json &object, const std::string &prefix,
-                                std::set<std::string> &seen) {
+    template <typename Id>
+    static std::string local_id(const nlohmann::json &object, std::set<std::string> &seen) {
         const auto id = string_field(object, "id");
-        require(id.rfind(prefix, 0) == 0, "Local ID has the wrong typed prefix");
+        static_cast<void>(decode_local_id<Id>(id));
         require(seen.insert(id).second, "Duplicate local ID");
         return id;
     }
@@ -460,7 +460,7 @@ class LogicalCircuitReader {
     void read_pin_definitions() {
         auto seen = std::set<std::string>{};
         for (const auto &pin : array_field(document_, "pin_definitions")) {
-            const auto id = local_id(pin, "pin_def:", seen);
+            const auto id = local_id<PinDefId>(pin, seen);
             const auto pin_definition_id = circuit_.add_pin_definition(PinDefinition{
                 string_field(pin, "name"), string_field(pin, "number"),
                 pin_role(string_field(pin, "role")),
@@ -480,7 +480,7 @@ class LogicalCircuitReader {
     void read_component_definitions() {
         auto seen = std::set<std::string>{};
         for (const auto &definition : array_field(document_, "component_definitions")) {
-            const auto id = local_id(definition, "component_def:", seen);
+            const auto id = local_id<ComponentDefId>(definition, seen);
             auto pins = std::vector<PinDefId>{};
             for (const auto &pin : array_field(definition, "pins")) {
                 require(pin.is_string(), "Component definition pin reference must be a string");
@@ -497,7 +497,7 @@ class LogicalCircuitReader {
     void read_components() {
         auto seen = std::set<std::string>{};
         for (const auto &component : array_field(document_, "components")) {
-            const auto id = local_id(component, "component:", seen);
+            const auto id = local_id<ComponentId>(component, seen);
             const auto definition =
                 resolve(component_def_ids_, string_field(component, "definition"));
             const auto component_id = circuit_.add_component(ComponentInstance{
@@ -515,7 +515,7 @@ class LogicalCircuitReader {
     void read_pins() {
         auto seen = std::set<std::string>{};
         for (const auto &pin : array_field(document_, "pins")) {
-            const auto id = local_id(pin, "pin:", seen);
+            const auto id = local_id<PinId>(pin, seen);
             const auto component = resolve(component_ids_, string_field(pin, "component"));
             const auto definition = resolve(pin_def_ids_, string_field(pin, "definition"));
             const auto &definition_pins =
@@ -530,7 +530,7 @@ class LogicalCircuitReader {
     void read_nets() {
         auto seen = std::set<std::string>{};
         for (const auto &net_object : array_field(document_, "nets")) {
-            const auto id = local_id(net_object, "net:", seen);
+            const auto id = local_id<NetId>(net_object, seen);
             auto net = Net{NetName{string_field(net_object, "name")},
                            net_kind(string_field(net_object, "kind"))};
             for (const auto &pin : array_field(net_object, "pins")) {
@@ -582,13 +582,13 @@ class LogicalCircuitReader {
         auto seen_module_components = std::set<std::string>{};
         auto seen_ports = std::set<std::string>{};
         for (const auto &module_object : *modules) {
-            const auto id = local_id(module_object, "module_def:", seen);
+            const auto id = local_id<ModuleDefId>(module_object, seen);
             const auto module = circuit_.add_module_definition(
                 ModuleDefinition{ModuleName{string_field(module_object, "name")}});
             module_def_ids_.emplace(id, module);
 
             for (const auto &net_object : array_field(module_object, "local_nets")) {
-                const auto net_id = local_id(net_object, "template_net:", seen_template_nets);
+                const auto net_id = local_id<TemplateNetDefId>(net_object, seen_template_nets);
                 const auto template_net = circuit_.add_template_net(
                     module, TemplateNetDefinition{NetName{string_field(net_object, "name")},
                                                   net_kind(string_field(net_object, "kind"))});
@@ -598,7 +598,7 @@ class LogicalCircuitReader {
             if (const auto components = optional_array_field(module_object, "components")) {
                 for (const auto &component_object : *components) {
                     const auto component_id =
-                        local_id(component_object, "module_component:", seen_module_components);
+                        local_id<ModuleComponentId>(component_object, seen_module_components);
                     const auto component = circuit_.add_module_component(
                         module,
                         ModuleComponentTemplate{
@@ -621,7 +621,7 @@ class LogicalCircuitReader {
             }
 
             for (const auto &port_object : array_field(module_object, "ports")) {
-                const auto port_id = local_id(port_object, "port:", seen_ports);
+                const auto port_id = local_id<PortDefId>(port_object, seen_ports);
                 const auto internal_net =
                     resolve(template_net_ids_, string_field(port_object, "internal_net"));
                 const auto required_it = port_object.find("required");
@@ -648,7 +648,7 @@ class LogicalCircuitReader {
 
         auto seen = std::set<std::string>{};
         for (const auto &instance_object : *modules) {
-            const auto id = local_id(instance_object, "module:", seen);
+            const auto id = local_id<ModuleInstanceId>(instance_object, seen);
             const auto definition =
                 resolve(module_def_ids_, string_field(instance_object, "definition"));
             auto origins = std::vector<std::pair<TemplateNetDefId, NetId>>{};
