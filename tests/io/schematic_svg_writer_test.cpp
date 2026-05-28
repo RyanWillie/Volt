@@ -7,6 +7,10 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/definitions.hpp>
+#include <volt/io/detail/schematic_svg_common.hpp>
+#include <volt/io/detail/schematic_svg_elements.hpp>
+#include <volt/io/detail/schematic_svg_layers.hpp>
+#include <volt/io/detail/schematic_svg_page_chrome.hpp>
 #include <volt/io/schematic_svg_writer.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
