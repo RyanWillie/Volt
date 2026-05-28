@@ -1,0 +1,1083 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt simulation feature guide</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f4ef;
+      --ink: #17211d;
+      --muted: #626f69;
+      --line: #d8d1c4;
+      --panel: #fffdf8;
+      --green: #23684f;
+      --blue: #2e5f88;
+      --amber: #93651f;
+      --red: #963c35;
+      --code: #eee7d9;
+      --soft-green: #e7f0e9;
+      --soft-blue: #e7eef5;
+      --soft-amber: #f3e6cc;
+      --soft-red: #f2dfdc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 46px 0 76px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.76fr);
+      gap: 38px;
+      align-items: end;
+      padding-bottom: 34px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 900px;
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(40px, 7vw, 82px);
+      line-height: 0.94;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(27px, 3vw, 40px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 18px;
+      line-height: 1.22;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    code {
+      border-radius: 4px;
+      background: var(--code);
+      padding: 1px 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95em;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--code);
+      padding: 16px;
+      color: #24302b;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.48;
+      white-space: pre;
+    }
+
+    ul, ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    li + li { margin-top: 7px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    th, td {
+      padding: 12px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    td { color: var(--muted); }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 14px;
+      border-top: 2px solid var(--green);
+      padding-top: 10px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dek {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    section {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 42px;
+      padding: 38px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    aside {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stack { display: grid; gap: 18px; }
+
+    .callout {
+      border-left: 6px solid var(--green);
+      background: var(--soft-green);
+      padding: 17px 19px;
+      color: #173629;
+    }
+
+    .note {
+      border-left-color: var(--blue);
+      background: var(--soft-blue);
+      color: #1b3348;
+    }
+
+    .warning {
+      border-left-color: var(--amber);
+      background: var(--soft-amber);
+      color: #3f3018;
+    }
+
+    .danger {
+      border-left-color: var(--red);
+      background: var(--soft-red);
+      color: #48201c;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      min-height: 154px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 17px;
+    }
+
+    .card h3 { margin-bottom: 8px; }
+    .card p, .card li { color: var(--muted); }
+
+    .decision {
+      display: grid;
+      grid-template-columns: 128px minmax(0, 1fr);
+      gap: 18px;
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .badge {
+      display: inline-block;
+      width: max-content;
+      padding: 5px 8px;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .core { background: var(--green); }
+    .adapter { background: var(--blue); }
+    .later { background: var(--amber); }
+    .avoid { background: var(--red); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .flow div {
+      min-height: 116px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 14px;
+    }
+
+    .flow strong {
+      display: block;
+      margin-bottom: 7px;
+    }
+
+    .flow span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pillrow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      padding: 6px 10px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      main { width: min(100% - 24px, 720px); padding-top: 30px; }
+      header, section { grid-template-columns: 1fr; gap: 18px; }
+      h1 { font-size: clamp(38px, 13vw, 62px); }
+      .grid, .two, .flow { grid-template-columns: 1fr; }
+      .decision { grid-template-columns: 1fr; gap: 8px; }
+      aside { max-width: 680px; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      main { width: auto; padding: 20px; }
+      .card, table, pre { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <div class="eyebrow">Feature guide / May 28, 2026</div>
+      <h1>Simulation should become Volt's executable circuit contract.</h1>
+    </div>
+    <p class="dek">
+      The feature is not a Python-only update loop and not a SPICE wrapper bolted onto
+      schematics. It is a kernel-owned analysis layer that lowers the logical circuit
+      into solver-ready models, lets Python orchestrate scenarios, and turns circuit
+      behavior into assertions a design can carry over time.
+    </p>
+  </header>
+
+  <section>
+    <aside>Read this first</aside>
+    <div class="stack">
+      <div class="callout">
+        <strong>Recommended stance:</strong> Volt simulation should start from the
+        canonical logical circuit, consume selected parts and typed electrical semantics,
+        produce a backend-neutral simulation graph, and expose Python-native scenarios,
+        probes, assertions, and reports. SPICE should be an adapter/backend. PCB geometry
+        should later enrich the graph with parasitics.
+      </div>
+      <div class="two">
+        <div class="card">
+          <h3>What this enables</h3>
+          <p>
+            Users can ask whether a circuit behaves within intent, not merely whether
+            pins are connected: LED current, rail sag, regulator load, reset timing,
+            filter response, load steps, PWM behavior, and module contracts.
+          </p>
+        </div>
+        <div class="card">
+          <h3>The architectural correction</h3>
+          <p>
+            Components can be behavior-rich, but nets do not belong to component code.
+            Models contribute equations, sources, or discrete state. The solver computes
+            the mutually consistent board state.
+          </p>
+        </div>
+      </div>
+      <pre>Volt Circuit
+  -> simulation readiness diagnostics
+  -> backend-neutral SimulationGraph
+      -> SPICE export / ngspice or Xyce runner
+      -> Python scenario and behavioral runtime
+      -> future internal MNA solver
+  -> SimulationResult
+      -> probes, plots, assertions, regression tests, reports</pre>
+    </div>
+  </section>
+
+  <section>
+    <aside>Product idea</aside>
+    <div class="stack">
+      <h2>Make circuits testable.</h2>
+      <p>
+        The user-facing promise should be simple: define your circuit in Volt, then run
+        executable checks against the electrical behavior you care about. A user should
+        be able to swap an LED, change a resistor, replace a regulator, or add a
+        subcircuit and know which behavioral contracts still hold.
+      </p>
+      <div class="grid">
+        <div class="card">
+          <h3>Explore</h3>
+          <p>
+            Inspect voltages, currents, power, device states, and thresholds after an
+            operating-point solve or during a transient scenario.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Assert</h3>
+          <p>
+            Encode intent as checks: rail limits, LED current bounds, GPIO current
+            limits, regulator dissipation, startup timing, and filter behavior.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Regress</h3>
+          <p>
+            Run simulation cases in CI so circuit edits, component substitutions, and
+            module reuse do not silently break known-good behavior.
+          </p>
+        </div>
+      </div>
+      <pre>def test_status_led_contract():
+    case = design.simulation.case("status_led_on")
+    case.drive(mcu.pin("PA5"), "high")
+
+    result = case.dc_operating_point()
+
+    result.assert_between("3V3.voltage", "3.20V", "3.40V")
+    result.assert_between("D_STATUS.current", "2mA", "8mA")
+    result.assert_less("U_REG.power", "500mW")</pre>
+      <p>
+        This is intentionally closer to software testing than traditional schematic
+        probing. The circuit still uses real solvers, but the workflow is shaped around
+        repeatable design intent.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <aside>Mental model</aside>
+    <div class="stack">
+      <h2>AFSIM-like scenarios over solver-owned physics.</h2>
+      <p>
+        The scenario layer can feel like an entity simulation: devices wake up, GPIOs
+        change state, switches close, loads appear, and probes observe the result. The
+        difference is that electrical state is a shared physical solve, not a value each
+        component updates independently.
+      </p>
+      <div class="flow">
+        <div>
+          <strong>1. Scenario</strong>
+          <span>Events change model state: button press, GPIO high, PWM duty, load step.</span>
+        </div>
+        <div>
+          <strong>2. Models</strong>
+          <span>Components contribute sources, equations, impedances, or discrete drive modes.</span>
+        </div>
+        <div>
+          <strong>3. Solver</strong>
+          <span>The backend solves the whole circuit state for this time or frequency point.</span>
+        </div>
+        <div>
+          <strong>4. State</strong>
+          <span>Volt records node voltages, branch currents, component power, and model states.</span>
+        </div>
+        <div>
+          <strong>5. Checks</strong>
+          <span>Python probes, assertions, logs, and plots inspect the solved snapshot.</span>
+        </div>
+      </div>
+      <div class="warning">
+        <strong>Important:</strong> an LED turn-on scenario is usually DC operating-point
+        or transient analysis, not AC. AC analysis is small-signal frequency response
+        around an operating point. Volt should make that distinction visible in the API.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>Feature set</aside>
+    <div class="stack">
+      <h2>First-class capabilities.</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>User value</th>
+            <th>Kernel ownership</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Simulation readiness validation</td>
+            <td>Explains why a circuit cannot be simulated before the user hits solver failure.</td>
+            <td>Diagnostics over topology, reference nodes, sources, missing models, unsupported devices, and ambiguous pin semantics.</td>
+          </tr>
+          <tr>
+            <td>Model attachments</td>
+            <td>Components and selected parts carry simulation meaning instead of relying on ad hoc script glue.</td>
+            <td>Kernel-owned model references, parameters, fidelity level, source provenance, and supported analyses.</td>
+          </tr>
+          <tr>
+            <td>Simulation graph lowering</td>
+            <td>One canonical graph can feed SPICE, Python runtime, future internal solvers, and debug reports.</td>
+            <td>A typed graph of nodes, terminals, elements, model instances, probes, stimuli, and diagnostics.</td>
+          </tr>
+          <tr>
+            <td>Analyses</td>
+            <td>Users can ask steady-state, sweep, time-domain, and frequency-domain questions with the right semantics.</td>
+            <td>Analysis specs for operating point, DC sweep, transient, AC small-signal, and later noise/sensitivity.</td>
+          </tr>
+          <tr>
+            <td>Scenarios</td>
+            <td>AFSIM-style workflows: boot, button press, load step, PWM, sleep/wake, fault injection.</td>
+            <td>Serialized event schedules, stimuli, behavioral model state, and deterministic run settings.</td>
+          </tr>
+          <tr>
+            <td>Probes and assertions</td>
+            <td>Simulation becomes useful for tests, not just plots.</td>
+            <td>Kernel-recognized probe targets and result checks over nets, pins, components, branches, and modules.</td>
+          </tr>
+          <tr>
+            <td>Result artifacts</td>
+            <td>CI and review can compare what changed electrically.</td>
+            <td>Stable result metadata, traces, summaries, pass/fail reports, and backend provenance.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <aside>Analyses</aside>
+    <div class="stack">
+      <h2>Use the standard analysis vocabulary, but wrap it in Volt intent.</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Operating point</h3>
+          <p>
+            One solved steady-state snapshot. This should be the first practical target:
+            rail voltages, LED current, input current, regulator power, GPIO current.
+          </p>
+        </div>
+        <div class="card">
+          <h3>DC sweep</h3>
+          <p>
+            Vary one or more sources or parameters and check ranges: VIN tolerance,
+            load current, resistor choice, threshold margins, component substitutions.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Transient</h3>
+          <p>
+            Time-domain behavior: startup, RC timing, PWM, load steps, button press,
+            capacitor charge, ringing, and rail dip.
+          </p>
+        </div>
+        <div class="card">
+          <h3>AC small-signal</h3>
+          <p>
+            Frequency response around a solved operating point: filters, gain, phase,
+            impedance, and loop-shape style questions.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Later analyses</h3>
+          <p>
+            Noise, sensitivity, pole-zero, Monte Carlo, corners, and statistical part
+            variation should wait until model contracts and result artifacts are stable.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Not an analysis</h3>
+          <p>
+            "Update every component once" is not a valid analog solve. It can be useful
+            for digital/event behavior, but not for arbitrary electrical networks.
+          </p>
+        </div>
+      </div>
+      <p>
+        Existing simulators validate this vocabulary. KiCad exposes AC sweep, DC
+        transfer, operating point, and transient modes through ngspice, and lets users
+        probe net voltages and pin currents. Ngspice itself supports DC, AC small-signal,
+        transient, noise, sensitivity, and related analyses.
+      </p>
+      <p class="small">
+        References:
+        <a href="https://www.kicad.org/discover/spice/">KiCad SPICE overview</a>,
+        <a href="https://nmg.gitlab.io/ngspice-manual/introduction/supportedanalyses.html">ngspice supported analyses</a>.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <aside>Architecture</aside>
+    <div class="stack">
+      <h2>Kernel-first simulation architecture.</h2>
+      <p>
+        Simulation should be a sibling analysis layer to schematic and future PCB
+        projections. It consumes circuit meaning; it does not create connectivity.
+        Runtime results are analysis output; they are not design fields.
+      </p>
+      <div class="decision">
+        <span class="badge core">Core</span>
+        <div>
+          <strong>Simulation contracts</strong>
+          <p>
+            Define model identity, supported analyses, terminals, parameter schema,
+            required typed attributes, fidelity level, assumptions, and provenance.
+            Contracts are kernel-owned so Python, JSON, validation, and adapters see the
+            same simulation meaning.
+          </p>
+        </div>
+      </div>
+      <div class="decision">
+        <span class="badge core">Core</span>
+        <div>
+          <strong>Simulation graph</strong>
+          <p>
+            Lower the canonical circuit into nodes, terminals, element instances,
+            sources, probes, assertions, and model references. This graph is backend
+            neutral and should be printable as a debug artifact before any solver runs.
+          </p>
+        </div>
+      </div>
+      <div class="decision">
+        <span class="badge adapter">Adapter</span>
+        <div>
+          <strong>SPICE export and runner</strong>
+          <p>
+            Export supported graph subsets into SPICE netlists and optionally run
+            ngspice or Xyce. Unsupported devices produce explicit diagnostics. SPICE is
+            an adapter, not Volt's canonical model.
+          </p>
+        </div>
+      </div>
+      <div class="decision">
+        <span class="badge adapter">Adapter</span>
+        <div>
+          <strong>Python scenario runtime</strong>
+          <p>
+            Python schedules events, changes behavioral model state, defines stimuli,
+            requests analyses, and inspects result snapshots. Python does not own the
+            electrical state and should not silently create simulation semantics that the
+            kernel cannot serialize.
+          </p>
+        </div>
+      </div>
+      <div class="decision">
+        <span class="badge later">Later</span>
+        <div>
+          <strong>Internal solver</strong>
+          <p>
+            A small modified-nodal-analysis solver may become worthwhile after contracts,
+            graph lowering, and SPICE export prove the model. Start with linear DC and
+            simple transient, not full SPICE replacement.
+          </p>
+        </div>
+      </div>
+      <div class="decision">
+        <span class="badge later">Later</span>
+        <div>
+          <strong>PCB-aware enrichment</strong>
+          <p>
+            Once PCB geometry exists, extract trace resistance, via resistance, plane
+            impedance, capacitance, inductance, or transmission-line approximations into
+            additional graph elements. Logical simulation comes first.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>Kernel vocabulary</aside>
+    <div class="stack">
+      <h2>Minimal primitives that fit Volt.</h2>
+      <p>
+        These names are illustrative, but the shape matters. The kernel should own
+        durable design-time facts and analysis requests, while runtime values remain
+        result data.
+      </p>
+      <pre>SimulationModelDefinition
+  id
+  name
+  kind: primitive | subcircuit | spice_subckt | behavior | ideal_source
+  supported_analyses: operating_point | dc_sweep | transient | ac
+  terminal_schema
+  parameter_schema
+  required_attributes
+  fidelity: ideal | approximate | vendor | measured
+  limitations
+
+SimulationModelAttachment
+  target: ComponentDefId | ComponentId | SelectedPhysicalPartId
+  model: SimulationModelId
+  terminal_bindings: PinDefId -> model_terminal
+  parameters: typed values
+
+SimulationCase
+  circuit_ref
+  analysis_spec
+  stimuli
+  initial_conditions
+  probes
+  assertions
+  run_settings
+
+SimulationGraph
+  nodes: NetId -> SimulationNodeId
+  elements: component-backed or synthetic solver elements
+  sources: voltage/current/digital/pulse/pwm/load
+  diagnostics: missing model, unsupported analysis, ambiguous source
+
+SimulationResult
+  backend
+  analysis
+  solved_points
+  traces
+  operating_points
+  assertion_report
+  diagnostics</pre>
+      <div class="callout note">
+        <strong>Design-time vs runtime:</strong> resistance, voltage rating, selected
+        part model, and scenario stimuli are design or case inputs. Node voltage, branch
+        current, diode state, and component power are result values unless a user saves
+        them as explicit assertions or reports.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>Models</aside>
+    <div class="stack">
+      <h2>Model fidelity should be explicit.</h2>
+      <p>
+        Volt should not pretend all simulated components are equally trustworthy. Every
+        model attachment should state its supported analyses, approximation level, and
+        limitations. This gives users a practical path from simple educational circuits
+        to vendor-model-backed design checks.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Model level</th>
+            <th>Examples</th>
+            <th>What Volt should report</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Ideal</td>
+            <td>Ideal voltage source, ideal switch, ideal resistor, fixed LED drop.</td>
+            <td>Fast and useful, but result report should mark idealized assumptions.</td>
+          </tr>
+          <tr>
+            <td>Approximate</td>
+            <td>GPIO output resistance, simple diode equation, LDO output impedance, battery internal resistance.</td>
+            <td>Good for board-level design intent checks, not signoff.</td>
+          </tr>
+          <tr>
+            <td>Vendor/SPICE</td>
+            <td>Manufacturer diode, op amp, regulator, MOSFET, or subcircuit model.</td>
+            <td>Best external-model path, with adapter compatibility and license/provenance notes.</td>
+          </tr>
+          <tr>
+            <td>Behavioral</td>
+            <td>MCU pin logic, PWM, load state machine, sensor stimulus, fault injection.</td>
+            <td>Must expose solver contributions, thresholds, timing, and deterministic scheduling.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        KiCad's SPICE integration highlights the model-availability problem: KiCad
+        integrates ngspice, but third-party models usually come from manufacturers.
+        Volt should make missing and approximate models first-class diagnostics instead
+        of burying them in backend logs.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <aside>Python surface</aside>
+    <div class="stack">
+      <h2>Python should orchestrate, inspect, and declare contributions.</h2>
+      <p>
+        The Python API can feel expressive and scenario-driven while still preserving the
+        kernel boundary. The key is that Python asks the solver to run with changed
+        model state; it does not imperatively assign final net voltages.
+      </p>
+      <pre>case = design.simulation.case("led_load_step")
+
+case.drive(mcu.pin("PA5"), state="low")
+case.at("5ms").drive(mcu.pin("PA5"), state="high")
+case.probe("3V3.voltage")
+case.probe(component("D_STATUS").current)
+case.assert_between("3V3.voltage", "3.20V", "3.40V")
+case.assert_less("PA5.current", "12mA")
+
+result = case.transient(stop="20ms", step_hint="10us")
+result.plot("3V3.voltage", "D_STATUS.current")</pre>
+      <div class="two">
+        <div class="card">
+          <h3>Good Python behavior</h3>
+          <ul>
+            <li>Drive GPIO high, low, high-Z, PWM, or open-drain.</li>
+            <li>Enable a load, close a switch, inject a pulse.</li>
+            <li>Read a solved snapshot and update internal model state.</li>
+            <li>Attach assertions and probes to named design objects.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Bad Python behavior</h3>
+          <ul>
+            <li>Set arbitrary net voltages after the solve.</li>
+            <li>Invent hidden connectivity or hidden simulation-only nets.</li>
+            <li>Depend on schematic labels as simulation identity.</li>
+            <li>Hide model assumptions outside serialized kernel data.</li>
+          </ul>
+        </div>
+      </div>
+      <p>
+        PySpice shows that Python-driven circuit simulation is practical, but Volt's
+        advantage should be stronger: Python code operates over kernel-owned components,
+        pins, nets, parts, and module contracts, not a separate script-only circuit.
+      </p>
+      <p class="small">
+        Reference:
+        <a href="https://pyspice.fabrice-salvaire.fr/releases/v1.4/index.html">PySpice documentation</a>.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <aside>Netlist and PCB</aside>
+    <div class="stack">
+      <h2>Start from the logical netlist; later enrich from PCB.</h2>
+      <p>
+        The first simulation system should operate over the logical circuit: components,
+        pins, nets, selected parts, typed attributes, constraints, models, sources, and
+        probes. That is enough for classic SPICE-style simulation and most board-level
+        intent checks.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Simulation role</th>
+            <th>When to build</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Logical circuit</td>
+            <td>Canonical connectivity, component instances, pins, nets, selected parts, typed values.</td>
+            <td>First. This is the primary simulation source.</td>
+          </tr>
+          <tr>
+            <td>Schematic</td>
+            <td>Probe placement, visualization, result overlays, and human navigation.</td>
+            <td>After graph/results exist. It should not define simulation connectivity.</td>
+          </tr>
+          <tr>
+            <td>PCB</td>
+            <td>Parasitic extraction: trace resistance, via resistance, capacitance, inductance, plane effects.</td>
+            <td>After PCB model exists and has enough geometry to extract useful approximations.</td>
+          </tr>
+        </tbody>
+      </table>
+      <pre>Logical simulation:
+  Net 3V3 is one node.
+  LED current and regulator load are solved from component models.
+
+PCB-aware simulation:
+  3V3 becomes regulator pad -> trace segment -> via -> MCU pad.
+  Small R/L/C elements are inserted to model physical implementation.</pre>
+    </div>
+  </section>
+
+  <section>
+    <aside>External ecosystem</aside>
+    <div class="stack">
+      <h2>Existing tools prove the pieces, but not the Volt shape.</h2>
+      <p>
+        The proposed direction is possible because the pieces already exist in adjacent
+        ecosystems. The opportunity is to combine them with Volt's kernel-owned circuit
+        model and Python-native design workflow.
+      </p>
+      <div class="grid">
+        <div class="card">
+          <h3>SPICE and KiCad</h3>
+          <p>
+            Proven electrical solving, standard analyses, vendor models, and schematic
+            probes. The lesson: use SPICE compatibility early, but do not let SPICE text
+            become Volt's canonical model.
+          </p>
+        </div>
+        <div class="card">
+          <h3>PySpice</h3>
+          <p>
+            Proves Python can control ngspice/Xyce-style workflows. The gap: Python
+            circuits are not usually tied to a first-class EDA kernel with schematic and
+            future PCB projections.
+          </p>
+        </div>
+        <div class="card">
+          <h3>SystemC AMS</h3>
+          <p>
+            Proves system-level mixed-signal modeling and virtual prototyping. The
+            lesson: scenario and behavioral layers need explicit scheduling semantics.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Modelica and Simscape</h3>
+          <p>
+            Prove declarative, multi-domain component modeling. The lesson: model
+            contracts and equations matter more than imperative per-component updates.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Renode and co-sim</h3>
+          <p>
+            Proves virtual platforms can coordinate high-level scenarios with lower
+            level simulators. The lesson: adapter boundaries are normal and valuable.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Volt's opening</h3>
+          <p>
+            Use the logical circuit as the source, keep semantics typed, and make probes
+            and assertions feel native rather than a simulator side quest.
+          </p>
+        </div>
+      </div>
+      <p class="small">
+        References:
+        <a href="https://systemc.org/overview/systemc-ams/">SystemC AMS overview</a>,
+        <a href="https://doc.modelica.org/Modelica%204.0.0/Resources/helpDymola/Modelica_Electrical.html">Modelica Electrical</a>,
+        <a href="https://www.mathworks.com/help/sps/index.html?category=electronics-and-mechatronics">Simscape Electrical</a>,
+        <a href="https://renode.readthedocs.io/en/latest/advanced/co-simulating-with-an-hdl-simulator.html">Renode HDL co-simulation</a>.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <aside>Readiness checks</aside>
+    <div class="stack">
+      <h2>Fail before solver failure.</h2>
+      <p>
+        The first great user experience is not a perfect solver. It is a readiness
+        report that says exactly what must be modeled before an analysis is meaningful.
+      </p>
+      <div class="two">
+        <div class="card">
+          <h3>Required diagnostics</h3>
+          <ul>
+            <li>No reference node or ambiguous ground.</li>
+            <li>Power rail has no modeled source.</li>
+            <li>Component has no model for requested analysis.</li>
+            <li>Model terminals are not bound to component pins.</li>
+            <li>Required typed attributes are missing.</li>
+            <li>Unsupported idealization or backend feature.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Useful warnings</h3>
+          <ul>
+            <li>Ideal supply hides rail sag.</li>
+            <li>Approximate component model used.</li>
+            <li>Selected part lacks vendor model.</li>
+            <li>Open pins affect analysis result.</li>
+            <li>Simulation ignores PCB parasitics.</li>
+            <li>Backend convergence settings changed.</li>
+          </ul>
+        </div>
+      </div>
+      <p>
+        These checks should reuse and extend existing ERC work. <code>VOL-71</code>,
+        <code>VOL-72</code>, <code>VOL-73</code>, and <code>VOL-74</code> are the right
+        backbone: kernel-owned simulation contracts, ERC prerequisites, graph lowering,
+        and a SPICE adapter only after the graph exists.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <aside>Practical rollout</aside>
+    <div class="stack">
+      <h2>Build the feature in vertical slices.</h2>
+      <ol>
+        <li>
+          <strong>Simulation contracts and readiness:</strong> add kernel-owned model
+          definitions, attachments, analysis specs, probes, and diagnostics. No solver
+          yet. Verify with JSON round trips and readiness fixtures.
+        </li>
+        <li>
+          <strong>Simulation graph lowering:</strong> lower simple logical circuits into
+          a printable graph. Support resistors, capacitors, inductors, ideal sources,
+          ground/reference, probes, and unsupported-model diagnostics.
+        </li>
+        <li>
+          <strong>SPICE export subset:</strong> export the graph to a small SPICE subset
+          with golden tests. Keep this as an adapter with explicit loss reports.
+        </li>
+        <li>
+          <strong>Operating-point runner:</strong> optionally invoke ngspice/Xyce for
+          simple fixtures and return normalized <code>SimulationResult</code> objects.
+        </li>
+        <li>
+          <strong>Python probes and assertions:</strong> let Python users write
+          <code>design.simulation.case(...)</code>, run supported analyses, and assert over results.
+        </li>
+        <li>
+          <strong>Behavioral scenarios:</strong> add event scheduling, GPIO drive modes,
+          PWM, switch/load control, and stateful behavioral models that contribute solver
+          inputs rather than owning net voltages.
+        </li>
+        <li>
+          <strong>Module contracts:</strong> let reusable subcircuits carry simulation
+          cases: input ranges, guaranteed outputs, load limits, startup timing, and
+          selected-part compatibility expectations.
+        </li>
+        <li>
+          <strong>PCB enrichment:</strong> after PCB foundation, extract simple
+          parasitics and compare logical-only vs PCB-aware behavior.
+        </li>
+      </ol>
+      <div class="warning">
+        <strong>Do not start by writing a full analog solver.</strong> Start by making
+        Volt able to say what should be simulated, why a circuit is not ready, and how to
+        lower supported meaning into a backend-neutral graph.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>What to defer</aside>
+    <div class="stack">
+      <h2>Keep the first class feature focused.</h2>
+      <div class="decision">
+        <span class="badge avoid">Avoid</span>
+        <div>
+          <strong>Python-only simulation semantics</strong>
+          <p>
+            A callback that secretly defines electrical meaning outside the kernel will
+            break serialization, validation, review, and backend interoperability.
+          </p>
+        </div>
+      </div>
+      <div class="decision">
+        <span class="badge avoid">Avoid</span>
+        <div>
+          <strong>SPICE as the internal schema</strong>
+          <p>
+            SPICE compatibility is valuable, but Volt should not encode its canonical
+            model as text netlist quirks, backend-specific syntax, or vendor model
+            escape hatches.
+          </p>
+        </div>
+      </div>
+      <div class="decision">
+        <span class="badge avoid">Avoid</span>
+        <div>
+          <strong>Signoff claims</strong>
+          <p>
+            Early simulation should support design exploration and regression tests, not
+            guarantee manufacturing correctness. Reports must state model fidelity and
+            ignored effects.
+          </p>
+        </div>
+      </div>
+      <div class="decision">
+        <span class="badge avoid">Avoid</span>
+        <div>
+          <strong>PCB effects before PCB data exists</strong>
+          <p>
+            Let logical simulation stand on its own. Add board-aware parasitics only when
+            footprint placement, pads, routes, vias, and planes exist in the kernel.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>Decision</aside>
+    <div class="stack">
+      <h2>The feature should feel native to Volt.</h2>
+      <p>
+        Volt's simulation should be presented as an executable extension of the circuit
+        model: the same components, pins, nets, selected parts, modules, and typed
+        attributes that define the design also define what can be analyzed. That is what
+        makes the feature first class.
+      </p>
+      <div class="callout">
+        <strong>Planning recommendation:</strong> keep PCB foundation as the next main
+        product track, but promote simulation contracts into a parallel design track now.
+        The immediate simulation milestone should be <code>VOL-71</code> plus <code>VOL-72</code>: model
+        contracts and readiness diagnostics. The first implementation milestone should
+        be <code>VOL-73</code>: lower a small, typed logical circuit into a simulation graph.
+      </div>
+      <p>
+        Once that graph exists, Volt can support both standard SPICE workflows and the
+        more powerful Python-native promise: "here is my current circuit, check anything
+        I care about, and tell me if this change broke the behavior I expected."
+      </p>
+      <div class="pillrow">
+        <span class="pill">Kernel-owned contracts</span>
+        <span class="pill">Solver-owned state</span>
+        <span class="pill">Python scenarios</span>
+        <span class="pill">SPICE adapters</span>
+        <span class="pill">Regression assertions</span>
+        <span class="pill">PCB parasitics later</span>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>
