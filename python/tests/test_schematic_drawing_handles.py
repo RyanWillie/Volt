@@ -1,3 +1,4 @@
+import importlib
 import json
 import re
 
@@ -5,6 +6,33 @@ import volt
 
 from helpers import _wire_points
 from schematic_drawing_test_helpers import schematic_projection
+
+
+def test_python_schematic_handle_classes_are_reexported_from_private_module():
+    handles = importlib.import_module("volt._schematic_handles")
+    schematic = importlib.import_module("volt.schematic")
+
+    schematic_exports = (
+        "PlacedSchematicElement",
+        "SchematicAnchor",
+        "SchematicJunction",
+        "SchematicNetLabel",
+        "SchematicNoConnect",
+        "SchematicPinAnchor",
+        "SchematicPort",
+        "SchematicSignalStub",
+        "SchematicSignalTag",
+        "SchematicSymbol",
+        "SchematicSymbolField",
+        "SchematicTerminalStub",
+        "SchematicWire",
+    )
+    top_level_exports = tuple(name for name in schematic_exports if hasattr(volt, name))
+
+    for name in schematic_exports:
+        assert getattr(schematic, name) is getattr(handles, name)
+    for name in top_level_exports:
+        assert getattr(volt, name) is getattr(handles, name)
 
 
 def test_python_schematic_drawing_handle_resolves_pin_names_as_attributes_and_items():
