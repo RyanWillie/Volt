@@ -10,6 +10,7 @@
 #include <string_view>
 #include <variant>
 
+#include <volt/io/detail/typed_id.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 #include <volt/io/schematic_schema.hpp>
 #include <volt/schematic/schematic.hpp>
@@ -20,45 +21,29 @@ namespace volt::io {
 
 namespace detail {
 
-[[nodiscard]] inline std::string symbol_def_id(SymbolDefId id) {
-    return "symbol_def:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string symbol_def_id(SymbolDefId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string sheet_id(SheetId id) {
-    return "sheet:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string sheet_id(SheetId id) { return encode_local_id(id); }
 
 [[nodiscard]] inline std::string symbol_instance_id(SymbolInstanceId id) {
-    return "symbol_instance:" + std::to_string(id.index());
+    return encode_local_id(id);
 }
 
-[[nodiscard]] inline std::string wire_run_id(WireRunId id) {
-    return "wire_run:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string wire_run_id(WireRunId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string net_label_id(NetLabelId id) {
-    return "net_label:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string net_label_id(NetLabelId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string junction_id(JunctionId id) {
-    return "junction:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string junction_id(JunctionId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string power_port_id(PowerPortId id) {
-    return "power_port:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string power_port_id(PowerPortId id) { return encode_local_id(id); }
 
 [[nodiscard]] inline std::string no_connect_marker_id(NoConnectMarkerId id) {
-    return "no_connect_marker:" + std::to_string(id.index());
+    return encode_local_id(id);
 }
 
-[[nodiscard]] inline std::string sheet_port_id(SheetPortId id) {
-    return "sheet_port:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string sheet_port_id(SheetPortId id) { return encode_local_id(id); }
 
-[[nodiscard]] inline std::string symbol_field_id(SymbolFieldId id) {
-    return "symbol_field:" + std::to_string(id.index());
-}
+[[nodiscard]] inline std::string symbol_field_id(SymbolFieldId id) { return encode_local_id(id); }
 
 inline void write_point(std::ostream &out, Point point) {
     out << "{ \"x\": ";
