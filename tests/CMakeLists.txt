@@ -42,6 +42,7 @@ add_executable(
     io/schematic_schema_test.cpp
     io/schematic_svg_writer_test.cpp
     io/schematic_writer_test.cpp
+    pcb/board_test.cpp
     pcb/footprints_test.cpp
     adapters/kicad_boundary_test.cpp
     adapters/kicad_loss_report_test.cpp

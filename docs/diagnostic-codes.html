@@ -365,25 +365,55 @@
               <td><code>PCB_FOOTPRINT_UNRESOLVED</code></td>
               <td class="severity-error">Error</td>
               <td>A selected physical part references footprint geometry that is not present in the footprint library.</td>
-              <td>None yet; message includes the library-qualified footprint reference.</td>
+              <td>Footprint resolver: none. Board validation: <code>component</code>.</td>
+            </tr>
+            <tr>
+              <td><code>PCB_BOARD_OUTLINE_MISSING</code></td>
+              <td class="severity-error">Error</td>
+              <td>A board has no manufacturable outline yet.</td>
+              <td>None; the board is the validation subject.</td>
+            </tr>
+            <tr>
+              <td><code>PCB_COMPONENT_NOT_PLACED</code></td>
+              <td class="severity-error">Error</td>
+              <td>A logical component has no placement in the board projection.</td>
+              <td><code>component</code></td>
+            </tr>
+            <tr>
+              <td><code>PCB_COMPONENT_MISSING_SELECTED_PART</code></td>
+              <td class="severity-error">Error</td>
+              <td>A component needs selected physical part data before its board pads can resolve.</td>
+              <td><code>component</code></td>
             </tr>
             <tr>
               <td><code>PCB_PAD_MAPPING_UNKNOWN_PAD</code></td>
               <td class="severity-error">Error</td>
               <td>A selected physical part maps a logical pin to a pad label that does not exist in the resolved footprint.</td>
-              <td>None yet; message includes the <code>pin_definition</code> ID and pad label.</td>
+              <td>Footprint resolver: none. Board validation: <code>component</code>.</td>
             </tr>
             <tr>
               <td><code>PCB_PAD_MAPPING_NON_ELECTRICAL</code></td>
               <td class="severity-error">Error</td>
               <td>A selected physical part maps a logical pin to a non-electrical mechanical footprint pad.</td>
-              <td>None yet; message includes the <code>pin_definition</code> ID and pad label.</td>
+              <td>Footprint resolver: none. Board validation: <code>component</code>.</td>
             </tr>
             <tr>
               <td><code>PCB_PAD_MAPPING_MISSING_PIN</code></td>
               <td class="severity-error">Error</td>
               <td>An electrical footprint pad has no selected-part pin mapping.</td>
-              <td>None yet; message includes the missing footprint pad label.</td>
+              <td>Footprint resolver: none. Board validation: <code>component</code>.</td>
+            </tr>
+            <tr>
+              <td><code>PCB_PIN_PAD_MISMATCH</code></td>
+              <td class="severity-error">Error</td>
+              <td>A placed pad does not resolve to a concrete pin instance on the placed component.</td>
+              <td><code>component</code></td>
+            </tr>
+            <tr>
+              <td><code>PCB_PLACEMENT_OUTSIDE_OUTLINE</code></td>
+              <td class="severity-error">Error</td>
+              <td>A placed footprint pad is outside the board outline.</td>
+              <td><code>component</code></td>
             </tr>
           </tbody>
         </table>
