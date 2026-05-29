@@ -279,7 +279,7 @@
       <div class="stack">
         <div class="callout green">
           <h2>The board API should not select footprints.</h2>
-          <p>A logical component or selected physical part should already carry the package, footprint reference, and pin-pad mapping. If that data is absent or cannot be resolved to footprint geometry, PCB placement should fail or validation should report it. The board API consumes physical-part data; it does not patch it in.</p>
+          <p>A logical component or selected physical part should already carry the package, footprint reference, and pin-pad mapping. If that data is absent or cannot be resolved to footprint geometry, board validation and pad resolution should report it. The board API consumes physical-part data; it does not patch it in.</p>
         </div>
         <pre><code>Component definition / part library
   -> selected physical part
@@ -392,7 +392,7 @@ report = board.validate()
 board.preview_svg("main-board.svg")</code></pre>
         <div class="callout amber">
           <h3>Important</h3>
-          <p>This API assumes <code>U1</code>, <code>C1</code>, <code>R1</code>, and <code>J1</code> already have selected physical parts with resolvable footprints. If they do not, placement should fail with a direct diagnostic.</p>
+          <p>This API assumes <code>U1</code>, <code>C1</code>, <code>R1</code>, and <code>J1</code> already have selected physical parts with resolvable footprints. If they do not, placement can still store the existing logical component, but pad resolution and board validation must emit direct diagnostics before preview, routing, or export treats the placement as electrically meaningful.</p>
         </div>
       </div>
     </section>
@@ -435,10 +435,28 @@ board.preview_svg("main-board.svg")</code></pre>
               <td>Logical connectivity or selected part identity.</td>
             </tr>
             <tr>
+              <td>Board features</td>
+              <td>PCB kernel</td>
+              <td>Mechanical geometry such as holes, slots, cutouts, fiducials, text, and keepouts.</td>
+              <td>Electrical meaning unless represented as logical components or future copper tied to existing nets.</td>
+            </tr>
+            <tr>
               <td>Pad resolution</td>
               <td>Derived PCB view</td>
               <td>Placement pad to logical pin/net mapping, status, diagnostics.</td>
               <td>New connectivity.</td>
+            </tr>
+            <tr>
+              <td>Future copper</td>
+              <td>PCB kernel</td>
+              <td>Tracks, vias, zones, and pours that reference existing <code>NetId</code> values.</td>
+              <td>Net creation, net merging, net splitting, or net naming.</td>
+            </tr>
+            <tr>
+              <td>Python/CAD-like authoring</td>
+              <td>Python bindings over kernel APIs</td>
+              <td>Builder syntax, named anchors, relative placement helpers, and preview commands.</td>
+              <td>Python-only PCB state, connectivity semantics, or serialization formats.</td>
             </tr>
           </tbody>
         </table>
@@ -475,7 +493,7 @@ board.preview_svg("main-board.svg")</code></pre>
           </div>
           <div class="panel tight">
             <h3><code>ComponentPlacement</code></h3>
-            <p>References an existing <code>ComponentId</code>, stores resolved footprint identity, position, rotation, side, and lock/status metadata.</p>
+            <p>References an existing <code>ComponentId</code>, stores position, rotation, side, and lock/status metadata. The resolved footprint comes from the selected physical part and footprint resolver, not from placement authoring.</p>
           </div>
           <div class="panel tight">
             <h3><code>PadResolution</code></h3>
@@ -487,16 +505,181 @@ board.preview_svg("main-board.svg")</code></pre>
   outline
   board_features
   placements
-  resolved_footprints
+  footprint_definition_cache
   later: tracks, vias, zones, rule_classes
 
 ComponentPlacement
   component_id
-  footprint_ref / footprint_definition_id
   position
   rotation
   side
   locked</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <aside>ID and value contract</aside>
+      <div class="stack">
+        <div class="callout">
+          <h2>Use Volt entity IDs for stored objects and plain values for derived views.</h2>
+          <p>The first PCB kernel should follow the existing <code>EntityId</code> and <code>EntityTable</code> pattern. Stored board objects get stable typed IDs in insertion order; derived resolution records remain values regenerated from the board, circuit, selected physical parts, and footprint library.</p>
+        </div>
+        <div class="table">
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>ID shape</th>
+                <th>Stores</th>
+                <th>First invariants</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>Board</code></td>
+                <td>Owning value; add <code>BoardId</code> only when multiple board projections are stored in one project document.</td>
+                <td>Reference to the logical <code>Circuit</code>, board name, units, <code>LayerStack</code>, optional <code>BoardOutline</code>, feature and placement tables.</td>
+                <td>References exactly one logical circuit context. Replacement/load must target the same circuit or explicitly rebuild against a supplied circuit.</td>
+              </tr>
+              <tr>
+                <td><code>BoardLayer</code></td>
+                <td><code>BoardLayerId</code></td>
+                <td>Name, role, side/order, material/thickness metadata, enabled state.</td>
+                <td>Layer names are unique in a board; copper order is deterministic; physical thickness values are finite and non-negative.</td>
+              </tr>
+              <tr>
+                <td><code>LayerStack</code></td>
+                <td>Value owned by <code>Board</code></td>
+                <td>Ordered <code>BoardLayerId</code> list plus board thickness defaults.</td>
+                <td>References only layers owned by the board; copper layers keep top-to-bottom order.</td>
+              </tr>
+              <tr>
+                <td><code>BoardOutline</code></td>
+                <td>Value owned by <code>Board</code></td>
+                <td>Closed outer boundary with lines/arcs or normalized polygons in board coordinates.</td>
+                <td>Coordinates are finite; boundary is closed; empty or missing outline is a validation diagnostic, not a malformed value.</td>
+              </tr>
+              <tr>
+                <td><code>BoardFeature</code></td>
+                <td><code>BoardFeatureId</code></td>
+                <td>Kind, geometry, layer scope, optional label, mechanical role, and viewer metadata.</td>
+                <td>Geometry is finite and positive where dimensions exist; referenced layers belong to the board.</td>
+              </tr>
+              <tr>
+                <td><code>FootprintDefinition</code></td>
+                <td><code>FootprintDefId</code></td>
+                <td>Resolver-owned geometry snapshot for a <code>FootprintRef</code>: local units, pads, drills, courtyard, silkscreen/fab graphics, optional body metadata.</td>
+                <td>Resolved footprint keys are unique; pad labels are unique inside one footprint definition. This cache does not choose which footprint a component uses.</td>
+              </tr>
+              <tr>
+                <td><code>FootprintPad</code></td>
+                <td><code>FootprintPadId</code></td>
+                <td>Stable label, shape, local transform, size, layer set, drill/plating, pad role.</td>
+                <td>Pad geometry is finite; copper pads reference copper-capable layers; NPTH/mechanical pads may be intentionally non-electrical.</td>
+              </tr>
+              <tr>
+                <td><code>ComponentPlacement</code></td>
+                <td><code>ComponentPlacementId</code></td>
+                <td>Existing <code>ComponentId</code>, position, rotation, side, optional lock/status metadata, authored anchor metadata.</td>
+                <td>Component ID must belong to the board's circuit; first implementation allows at most one placement per component per board.</td>
+              </tr>
+              <tr>
+                <td><code>PadResolution</code></td>
+                <td>Derived value</td>
+                <td>Placement ID, footprint pad ID or pad label, resolved <code>PinId</code>, resolved <code>NetId</code>, status, diagnostics.</td>
+                <td>Never persisted as canonical truth. It is regenerated for validation, preview, selectors, and future routing.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>First C++ surface</aside>
+      <div class="stack">
+        <div class="callout green">
+          <h2>Expose one placement-only board model before adding routing.</h2>
+          <p>The first C++ surface should live under a PCB module, mirror the schematic projection pattern, and keep all logical references checked by the kernel. Board mutation APIs store normalized board data only; resolution and validation APIs produce diagnostics from board plus circuit context.</p>
+        </div>
+        <pre><code>namespace volt {
+
+class Board {
+  public:
+    explicit Board(const Circuit &amp;circuit, BoardName name = BoardName{"Main"});
+
+    [[nodiscard]] BoardLayerId add_layer(BoardLayer layer);
+    void set_layer_stack(LayerStack stack);
+    void set_outline(BoardOutline outline);
+
+    [[nodiscard]] BoardFeatureId add_feature(BoardFeature feature);
+    [[nodiscard]] FootprintDefId cache_footprint_definition(FootprintDefinition footprint);
+    [[nodiscard]] ComponentPlacementId place_component(ComponentPlacement placement);
+
+    [[nodiscard]] const Circuit &amp;circuit() const noexcept;
+    [[nodiscard]] const LayerStack &amp;layer_stack() const noexcept;
+    [[nodiscard]] const std::optional&lt;BoardOutline&gt; &amp;outline() const noexcept;
+    [[nodiscard]] const ComponentPlacement &amp;placement(ComponentPlacementId id) const;
+
+    [[nodiscard]] std::vector&lt;PadResolution&gt;
+    resolve_pads(const FootprintLibrary &amp;footprints) const;
+};
+
+class BoardDocument {
+  public:
+    explicit BoardDocument(const Circuit &amp;circuit);
+    explicit BoardDocument(Board board);
+
+    [[nodiscard]] const Board &amp;board() const noexcept;
+    void replace_with(Board replacement);
+};
+
+[[nodiscard]] DiagnosticReport
+validate_board(const Board &amp;board, const FootprintLibrary &amp;footprints);
+
+void write_pcb(std::ostream &amp;out, const Board &amp;board);
+[[nodiscard]] Board read_pcb(std::istream &amp;input, const Circuit &amp;circuit);
+
+} // namespace volt</code></pre>
+        <p><code>cache_footprint_definition</code> is for the resolver and JSON reader, not Python authoring. A placement stores <code>ComponentId</code> plus transform; the selected physical part remains the source of footprint identity.</p>
+        <div class="two">
+          <div class="panel tight">
+            <h3>Mutation API rejects</h3>
+            <p>Missing component IDs, duplicate placements for the same component, unknown board layers, invalid geometry, duplicate footprint keys, duplicate pad labels, and loaded JSON with dangling typed IDs.</p>
+          </div>
+          <div class="panel tight">
+            <h3>Validation API reports</h3>
+            <p>Missing outline, missing selected physical part, unresolved footprint reference, incomplete pin-pad mapping, unplaced logical components, placements outside outline, collisions, and future unrouted nets or rule violations.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Python authoring</aside>
+      <div class="stack">
+        <div class="callout">
+          <h2>Python should be syntax over the same C++ data.</h2>
+          <p>The minimal Python shape should create and mutate the kernel-owned <code>Board</code>. Builder objects may calculate geometry and relative positions, but they must commit through C++ mutation APIs and serialize through the same PCB JSON writer.</p>
+        </div>
+        <pre><code>circuit = volt.Circuit()
+
+# Logical circuit and selected physical parts are authored first.
+r1 = circuit.instantiate_auto(resistor, "R")
+circuit.select_physical_part(r1, "Yageo", "RC0603FR-0710KL", "0603",
+                             footprint=("builtin", "R_0603"),
+                             pins={"1": "1", "2": "2"})
+
+board = circuit.board("Main")
+board.layers.two_layer(thickness="1.6mm")
+board.outline.rectangle("50mm", "35mm").fillet("2mm")
+board.feature.mounting_hole("M1", at=("4mm", "4mm"), drill="3.2mm")
+
+board.place(r1).at(("20mm", "12mm")).rotate(90).on_top()
+
+report = board.validate()
+svg = board.preview_svg()</code></pre>
+        <p>Conveniences such as <code>near()</code>, <code>right_of()</code>, <code>on_edge()</code>, and named anchors can arrive with placement ergonomics, but the first required binding is the exact lower-level path: create board, set layer stack, set outline, add board features, place existing components, validate, serialize, and preview.</p>
       </div>
     </section>
 
@@ -535,7 +718,7 @@ ComponentPlacement
           <div class="tight">
             <h3>Footprint readiness in the part/library layer</h3>
             <p>Make selected physical parts resolve to normalized footprint definitions. Add a tiny built-in footprint set for simple examples: 0603 resistor, 0603 LED, pin header, small IC/package.</p>
-            <p><strong>Outcome:</strong> board placement can error cleanly when physical data is missing.</p>
+            <p><strong>Outcome:</strong> board validation can diagnose missing physical data without inventing board-owned footprint choices.</p>
           </div>
         </div>
         <div class="step">
@@ -575,27 +758,118 @@ ComponentPlacement
 
     <section>
       <aside>Validation policy</aside>
-      <div class="two">
-        <div class="callout red">
-          <h2>Reject at mutation</h2>
-          <ul>
-            <li>Placing an unknown component.</li>
-            <li>Referencing an unknown footprint definition.</li>
-            <li>Creating a pad with invalid geometry or layer set.</li>
-            <li>Creating an outline that is not closed.</li>
-            <li>Creating copper on an unknown layer or net.</li>
-          </ul>
+      <div class="stack">
+        <div class="two">
+          <div class="callout red">
+            <h2>Reject at mutation</h2>
+            <ul>
+              <li>Placing an unknown component.</li>
+              <li>Placing the same component twice on one board in the first implementation.</li>
+              <li>Restoring a placement that references an unknown footprint definition ID.</li>
+              <li>Creating a pad with invalid geometry or layer set.</li>
+              <li>Creating an outline that is not closed.</li>
+              <li>Creating copper on an unknown layer or net.</li>
+              <li>Loading PCB JSON with duplicate IDs, dangling references, or schema fields that cannot be mapped to kernel types.</li>
+            </ul>
+          </div>
+          <div class="callout amber">
+            <h2>Diagnose as board design</h2>
+            <ul>
+              <li>Board has no outline yet.</li>
+              <li>Component has no selected physical part.</li>
+              <li>Selected part footprint cannot be resolved.</li>
+              <li>Component is unplaced.</li>
+              <li>Pad mapping misses a required logical pin.</li>
+              <li>Footprint is outside the board outline.</li>
+              <li>Net is unrouted or copper violates rules.</li>
+            </ul>
+          </div>
         </div>
-        <div class="callout amber">
-          <h2>Diagnose as board design</h2>
-          <ul>
-            <li>Component has no selected physical part.</li>
-            <li>Selected part footprint cannot be resolved.</li>
-            <li>Component is unplaced.</li>
-            <li>Pad mapping misses a required logical pin.</li>
-            <li>Footprint is outside the board outline.</li>
-            <li>Net is unrouted or copper violates rules.</li>
-          </ul>
+        <pre><code>First board diagnostic codes
+  PCB_BOARD_OUTLINE_MISSING
+  PCB_COMPONENT_NOT_PLACED
+  PCB_COMPONENT_MISSING_SELECTED_PART
+  PCB_FOOTPRINT_UNRESOLVED
+  PCB_PAD_MAPPING_MISSING_PIN
+  PCB_PAD_MAPPING_UNKNOWN_PAD
+  PCB_PLACEMENT_OUTSIDE_OUTLINE
+  PCB_PLACEMENT_COLLISION</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <aside>Persistence contract</aside>
+      <div class="stack">
+        <div class="callout green">
+          <h2>Save canonical PCB data; export derived viewer data.</h2>
+          <p>The persistent PCB JSON should contain only kernel-owned board state and stable references to existing logical circuit IDs. Preview and product-viewer exports can include pad resolutions and diagnostics as a derived bundle, but load should recompute them from canonical board data.</p>
+        </div>
+        <pre><code>{
+  "format": "volt.pcb",
+  "version": 1,
+  "board": {
+    "name": "Main",
+    "units": "mm",
+    "layers": [
+      {"id": "board_layer:0", "name": "F.Cu", "role": "copper", "side": "top"},
+      {"id": "board_layer:1", "name": "B.Cu", "role": "copper", "side": "bottom"}
+    ],
+    "layer_stack": ["board_layer:0", "board_layer:1"],
+    "outline": {
+      "kind": "rounded_rect",
+      "origin": [0.0, 0.0],
+      "size": [50.0, 35.0],
+      "radius": 2.0
+    },
+    "features": [
+      {"id": "board_feature:0", "kind": "mounting_hole", "at": [4.0, 4.0], "drill": 3.2}
+    ],
+    "placements": [
+      {
+        "id": "component_placement:0",
+        "component": "component:0",
+        "position": [20.0, 12.0],
+        "rotation_deg": 90.0,
+        "side": "top"
+      }
+    ]
+  }
+}</code></pre>
+        <pre><code>Canonical field order
+  format, version, board
+  board: name, units, layers, layer_stack, outline, features, placements, footprint_cache
+
+ID prefixes
+  board_layer:N
+  board_feature:N
+  footprint_def:N
+  footprint_pad:N
+  component_placement:N
+
+Enum spellings
+  side: top | bottom
+  layer role: copper | mask | paste | silkscreen | fab | edge_cut | drill | mechanical | courtyard | keepout
+  pad role: electrical | mechanical | fiducial | thermal
+
+Diagnostics
+  emitted as DiagnosticReport and optional viewer bundle;
+  not loaded as canonical PCB state</code></pre>
+        <div class="grid">
+          <div class="panel tight">
+            <span class="label green">Save/load</span>
+            <h3>Canonical and deterministic</h3>
+            <p>Object order follows entity-table order. Numeric values are normalized to explicit units. IDs use the same local-ID style as logical and schematic JSON.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">Preview</span>
+            <h3>Derived resolution bundle</h3>
+            <p>SVG and viewer JSON may include resolved pads, ratsnest hints, bounds, and diagnostics, each keyed back to placement, pad, pin, and net references.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">Reload</span>
+            <h3>No cached truth</h3>
+            <p>Load validates structure, rebuilds board tables, then recomputes pad resolution. Stored derived data is ignored or treated as a preview cache, never as authority.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -611,7 +885,7 @@ ComponentPlacement
           <div class="panel tight">
             <span class="label green">Identity</span>
             <h3>Stable selectable entities</h3>
-            <p>Boards, placements, pads, features, tracks, vias, zones, and diagnostics need stable IDs so a viewer can select, highlight, inspect, and report against the same kernel-owned objects.</p>
+            <p>Boards, placements, pads, features, tracks, vias, zones, and diagnostics need stable typed references so a viewer can select, highlight, inspect, and report against the same kernel-owned objects.</p>
           </div>
           <div class="panel tight">
             <span class="label green">Geometry</span>
@@ -620,8 +894,8 @@ ComponentPlacement
           </div>
           <div class="panel tight">
             <span class="label green">Inspection</span>
-            <h3>Entity references everywhere</h3>
-            <p>A clicked component should map to a placement and logical component. A clicked pad should map to placement, pad, pin, and net. A diagnostic should identify the board entities it concerns.</p>
+            <h3>Selectable refs, diagnostic refs</h3>
+            <p>A clicked component maps to <code>ComponentPlacementId</code> and <code>ComponentId</code>. A clicked pad maps through a derived key such as <code>(ComponentPlacementId, FootprintPadId)</code> to pin and net. <code>EntityRef</code> remains a diagnostic reporting type, not traversal state.</p>
           </div>
         </div>
         <pre><code>PCB JSON
@@ -639,6 +913,54 @@ ComponentPlacement
       <div class="callout">
         <h2>Make the first implementation placement-only.</h2>
         <p>The first PCB slice should prove board geometry, footprint resolution, component placement, pad-to-net mapping, validation, persistence, and preview. Tracks, vias, zones, DRC, KiCad PCB export, Gerbers, and autorouting should follow only after the placement model is stable.</p>
+      </div>
+    </section>
+
+    <section>
+      <aside>Deferred follow-ups</aside>
+      <div class="stack">
+        <div class="callout amber">
+          <h2>Keep copper, manufacturing, and full 3D editing out of the first slice.</h2>
+          <p>VOL-66 should only settle the architecture. The next implementation tickets can build the placement foundation, while routing and manufacturing remain separate backlog work until placement, persistence, and preview are stable.</p>
+        </div>
+        <div class="table">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticket lane</th>
+                <th>Should cover</th>
+                <th>Still out of scope</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>VOL-67 footprint geometry and selected-part resolution</td>
+                <td>Footprint primitives, tiny built-in footprint library, selected physical part to footprint lookup, pin-pad mapping checks.</td>
+                <td>Board placement, routing, external catalog import.</td>
+              </tr>
+              <tr>
+                <td>VOL-68 placement-only board model</td>
+                <td><code>Board</code>, layers, outline, board features, placements, pad resolution, board validation.</td>
+                <td>Tracks, vias, zones, DRC, manufacturing output.</td>
+              </tr>
+              <tr>
+                <td>VOL-69 deterministic PCB persistence</td>
+                <td>Canonical PCB JSON writer/reader, stable local IDs, round-trip tests, viewer-ready derived bundle shape.</td>
+                <td>KiCad PCB export, Gerbers, Excellon, STEP.</td>
+              </tr>
+              <tr>
+                <td>VOL-70 placement preview</td>
+                <td>SVG or product-viewer-friendly preview for outline, features, footprints, pads, references, diagnostics, optional ratsnest hints.</td>
+                <td>Interactive full 3D product editing, autorouting, manufacturing signoff.</td>
+              </tr>
+              <tr>
+                <td>Future copper/routing tickets</td>
+                <td>Tracks, vias, zones, rule classes, basic DRC, KiCad PCB export, Gerbers, autorouting experiments, 3D package/body editing.</td>
+                <td>Any work that would weaken the placement-only acceptance for VOL-68 through VOL-70.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>
