@@ -112,6 +112,12 @@ class FootprintLayerSet {
                         FootprintLayer::FrontSolderMask, FootprintLayer::BackSolderMask}};
     }
 
+    /** Return a mask-only layer set for non-plated mechanical holes. */
+    [[nodiscard]] static FootprintLayerSet mechanical_hole() {
+        return FootprintLayerSet{
+            std::vector{FootprintLayer::FrontSolderMask, FootprintLayer::BackSolderMask}};
+    }
+
     /** Return all layers in deterministic order. */
     [[nodiscard]] const std::vector<FootprintLayer> &layers() const noexcept { return layers_; }
 
@@ -121,16 +127,35 @@ class FootprintLayerSet {
     }
 
     /** Return whether this set is a front-side surface-mount stack. */
-    [[nodiscard]] bool is_front_smd() const noexcept { return *this == front_smd(); }
+    [[nodiscard]] bool is_front_smd() const noexcept {
+        return layers_.size() == 3 && layers_[0] == FootprintLayer::FrontCopper &&
+               layers_[1] == FootprintLayer::FrontSolderMask &&
+               layers_[2] == FootprintLayer::FrontPaste;
+    }
 
     /** Return whether this set is a back-side surface-mount stack. */
-    [[nodiscard]] bool is_back_smd() const noexcept { return *this == back_smd(); }
+    [[nodiscard]] bool is_back_smd() const noexcept {
+        return layers_.size() == 3 && layers_[0] == FootprintLayer::BackCopper &&
+               layers_[1] == FootprintLayer::BackSolderMask &&
+               layers_[2] == FootprintLayer::BackPaste;
+    }
 
     /** Return whether this set is a valid surface-mount stack on either board side. */
     [[nodiscard]] bool is_surface_mount() const noexcept { return is_front_smd() || is_back_smd(); }
 
     /** Return whether this set is a through-hole stack. */
-    [[nodiscard]] bool is_through_hole() const noexcept { return *this == through_hole(); }
+    [[nodiscard]] bool is_through_hole() const noexcept {
+        return layers_.size() == 4 && layers_[0] == FootprintLayer::FrontCopper &&
+               layers_[1] == FootprintLayer::BackCopper &&
+               layers_[2] == FootprintLayer::FrontSolderMask &&
+               layers_[3] == FootprintLayer::BackSolderMask;
+    }
+
+    /** Return whether this set is valid for a non-plated mechanical through-hole pad. */
+    [[nodiscard]] bool is_mechanical_hole() const noexcept {
+        return layers_.size() == 2 && layers_[0] == FootprintLayer::FrontSolderMask &&
+               layers_[1] == FootprintLayer::BackSolderMask;
+    }
 
     /** Return whether two layer sets contain the same layers. */
     [[nodiscard]] friend bool operator==(const FootprintLayerSet &lhs,
@@ -278,7 +303,19 @@ class FootprintPad {
         if (kind_ == FootprintPadKind::ThroughHole && !drill_.has_value()) {
             throw std::invalid_argument{"Through-hole footprint pads must include drill data"};
         }
-        if (kind_ == FootprintPadKind::ThroughHole && !layers_.is_through_hole()) {
+        if (kind_ == FootprintPadKind::ThroughHole &&
+            drill_->plating() == FootprintPadPlating::NonPlated && !mechanical_role_.has_value()) {
+            throw std::invalid_argument{
+                "Non-plated through-hole footprint pads must declare a mechanical role"};
+        }
+        if (kind_ == FootprintPadKind::ThroughHole &&
+            drill_->plating() == FootprintPadPlating::NonPlated && !layers_.is_mechanical_hole()) {
+            throw std::invalid_argument{
+                "Non-plated mechanical through-hole footprint pads must use mechanical-hole "
+                "layers"};
+        }
+        if (kind_ == FootprintPadKind::ThroughHole &&
+            drill_->plating() == FootprintPadPlating::Plated && !layers_.is_through_hole()) {
             throw std::invalid_argument{"Through-hole footprint pads must use through-hole layers"};
         }
     }
@@ -439,6 +476,14 @@ namespace detail {
     return Diagnostic{Severity::Error, std::move(code), std::move(message)};
 }
 
+[[nodiscard]] inline std::string footprint_ref_label(const FootprintRef &ref) {
+    return ref.library() + ":" + ref.name();
+}
+
+[[nodiscard]] inline std::string pin_def_label(PinDefId pin) {
+    return "pin_def:" + std::to_string(pin.index());
+}
+
 [[nodiscard]] inline FootprintPad
 front_smd_pad(std::string label, double x_mm, double y_mm, double width_mm, double height_mm,
               FootprintPadShape shape = FootprintPadShape::RoundedRectangle) {
@@ -518,7 +563,8 @@ front_smd_pad(std::string label, double x_mm, double y_mm, double width_mm, doub
     if (definition == nullptr) {
         diagnostics.add(
             detail::footprint_diagnostic(DiagnosticCode{"PCB_FOOTPRINT_UNRESOLVED"},
-                                         "Selected physical part footprint cannot be resolved"));
+                                         "Selected physical part footprint cannot be resolved: " +
+                                             detail::footprint_ref_label(part.footprint())));
         return FootprintResolution{std::nullopt, {}, std::move(diagnostics)};
     }
 
@@ -530,21 +576,22 @@ front_smd_pad(std::string label, double x_mm, double y_mm, double width_mm, doub
         if (!pad_id.has_value()) {
             diagnostics.add(detail::footprint_diagnostic(
                 DiagnosticCode{"PCB_PAD_MAPPING_UNKNOWN_PAD"},
-                "Selected physical part maps a pin to a footprint pad that does not exist"));
+                "Selected physical part maps " + detail::pin_def_label(mapping.pin()) +
+                    " to unknown footprint pad '" + mapping.pad() + "'"));
             continue;
         }
 
         if (!definition->pad(pad_id.value()).requires_pin_mapping()) {
             diagnostics.add(detail::footprint_diagnostic(
                 DiagnosticCode{"PCB_PAD_MAPPING_NON_ELECTRICAL"},
-                "Selected physical part maps a logical pin to a non-electrical footprint pad"));
+                "Selected physical part maps " + detail::pin_def_label(mapping.pin()) +
+                    " to non-electrical footprint pad '" + mapping.pad() + "'"));
             continue;
         }
 
         bindings.emplace_back(pad_id.value(), mapping.pin());
     }
 
-    auto missing_required_pad_mapping = false;
     for (std::size_t index = 0; index < definition->pad_count(); ++index) {
         const auto pad_id = FootprintPadId{index};
         if (!definition->pad(pad_id).requires_pin_mapping()) {
@@ -555,15 +602,12 @@ front_smd_pad(std::string label, double x_mm, double y_mm, double width_mm, doub
             bindings.begin(), bindings.end(),
             [pad_id](const FootprintPadBinding &binding) { return binding.pad() == pad_id; });
         if (!bound) {
-            missing_required_pad_mapping = true;
+            diagnostics.add(detail::footprint_diagnostic(
+                DiagnosticCode{"PCB_PAD_MAPPING_MISSING_PIN"},
+                "Footprint electrical pad '" + definition->pad(pad_id).label() +
+                    "' has no selected-part pin mapping"));
             break;
         }
-    }
-
-    if (missing_required_pad_mapping) {
-        diagnostics.add(detail::footprint_diagnostic(
-            DiagnosticCode{"PCB_PAD_MAPPING_MISSING_PIN"},
-            "Footprint contains an electrical pad with no selected-part pin mapping"));
     }
 
     std::sort(bindings.begin(), bindings.end(),

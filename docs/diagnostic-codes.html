@@ -361,6 +361,30 @@
               <td>A component is missing the selected physical part required for PCB readiness.</td>
               <td><code>component</code>, <code>component_definition</code></td>
             </tr>
+            <tr>
+              <td><code>PCB_FOOTPRINT_UNRESOLVED</code></td>
+              <td class="severity-error">Error</td>
+              <td>A selected physical part references footprint geometry that is not present in the footprint library.</td>
+              <td>None yet; message includes the library-qualified footprint reference.</td>
+            </tr>
+            <tr>
+              <td><code>PCB_PAD_MAPPING_UNKNOWN_PAD</code></td>
+              <td class="severity-error">Error</td>
+              <td>A selected physical part maps a logical pin to a pad label that does not exist in the resolved footprint.</td>
+              <td>None yet; message includes the <code>pin_definition</code> ID and pad label.</td>
+            </tr>
+            <tr>
+              <td><code>PCB_PAD_MAPPING_NON_ELECTRICAL</code></td>
+              <td class="severity-error">Error</td>
+              <td>A selected physical part maps a logical pin to a non-electrical mechanical footprint pad.</td>
+              <td>None yet; message includes the <code>pin_definition</code> ID and pad label.</td>
+            </tr>
+            <tr>
+              <td><code>PCB_PAD_MAPPING_MISSING_PIN</code></td>
+              <td class="severity-error">Error</td>
+              <td>An electrical footprint pad has no selected-part pin mapping.</td>
+              <td>None yet; message includes the missing footprint pad label.</td>
+            </tr>
           </tbody>
         </table>
       </div>
