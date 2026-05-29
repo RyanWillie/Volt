@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt PCB Development Plan - 2026-05-29</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fb;
+      --ink: #172026;
+      --muted: #5d6871;
+      --line: #cbd5de;
+      --panel: #ffffff;
+      --blue: #1c5d99;
+      --green: #1f6f55;
+      --amber: #986612;
+      --red: #9b332c;
+      --soft-blue: #e9f2fb;
+      --soft-green: #e8f4ee;
+      --soft-amber: #fff2d7;
+      --soft-red: #f9e5e2;
+      --code: #edf1f5;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 44px 0 72px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 34px;
+      align-items: end;
+      padding-bottom: 30px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    section {
+      display: grid;
+      grid-template-columns: 245px minmax(0, 1fr);
+      gap: 38px;
+      padding: 34px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 900px;
+      font-size: clamp(38px, 6vw, 72px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: clamp(25px, 3vw, 38px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 17px;
+      line-height: 1.25;
+    }
+
+    aside {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    code,
+    pre {
+      background: var(--code);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.92em;
+    }
+
+    code {
+      padding: 0.12em 0.34em;
+      border-radius: 5px;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      line-height: 1.42;
+    }
+
+    ul, ol {
+      margin: 0;
+      padding-left: 1.15rem;
+    }
+
+    li + li { margin-top: 0.48rem; }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 12px;
+      border-top: 2px solid var(--blue);
+      padding-top: 9px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .meta {
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .meta strong { color: var(--ink); }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .tight {
+      display: grid;
+      gap: 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .panel,
+    .callout,
+    .step,
+    .decision {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .callout {
+      border-left: 6px solid var(--blue);
+      background: var(--soft-blue);
+    }
+
+    .callout.green {
+      border-left-color: var(--green);
+      background: var(--soft-green);
+    }
+
+    .callout.amber {
+      border-left-color: var(--amber);
+      background: var(--soft-amber);
+    }
+
+    .callout.red {
+      border-left-color: var(--red);
+      background: var(--soft-red);
+    }
+
+    .label {
+      display: inline-block;
+      width: fit-content;
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .label.green { background: var(--green); }
+    .label.amber { background: var(--amber); }
+    .label.red { background: var(--red); }
+
+    .step {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .num {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--blue);
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .table {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      min-width: 820px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef3f8;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    @media (max-width: 860px) {
+      header,
+      section,
+      .grid,
+      .two {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <span class="eyebrow">Planning guide - 29 May 2026</span>
+        <h1>PCB should be CAD-like to author, but kernel-owned and netlist-safe underneath.</h1>
+      </div>
+      <div class="meta">
+        <p><strong>Scope:</strong> first PCB foundation, API shape, data model, staged development.</p>
+        <p><strong>Position:</strong> footprints belong to the part/footprint library, not the board authoring API.</p>
+        <p><strong>Outcome:</strong> a board projection that places selected physical parts and resolves pads to existing nets.</p>
+      </div>
+    </header>
+
+    <section>
+      <aside>Core correction</aside>
+      <div class="stack">
+        <div class="callout green">
+          <h2>The board API should not select footprints.</h2>
+          <p>A logical component or selected physical part should already carry the package, footprint reference, and pin-pad mapping. If that data is absent or cannot be resolved to footprint geometry, PCB placement should fail or validation should report it. The board API consumes physical-part data; it does not patch it in.</p>
+        </div>
+        <pre><code>Component definition / part library
+  -> selected physical part
+  -> footprint reference
+  -> pin-pad mapping
+  -> resolved footprint geometry
+  -> board placement
+  -> pad-to-net resolution</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <aside>Intended outcome</aside>
+      <div class="grid">
+        <div class="panel tight">
+          <span class="label green">Author</span>
+          <h3>CAD-like board shape</h3>
+          <p>Define outlines, holes, slots, cutouts, fiducials, keepouts, and mechanical features with local coordinate frames and relative construction helpers.</p>
+        </div>
+        <div class="panel tight">
+          <span class="label green">Place</span>
+          <h3>Schematic-like layout</h3>
+          <p>Place existing logical components using absolute coordinates when needed and relative placement helpers for ergonomic layout.</p>
+        </div>
+        <div class="panel tight">
+          <span class="label green">Verify</span>
+          <h3>Pad-to-net truth</h3>
+          <p>Resolve every footprint pad back to logical pins and existing nets, then diagnose missing footprints, missing placements, invalid mappings, and unresolved pads.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Guiding principles</aside>
+      <div class="stack">
+        <div class="callout green">
+          <h2>General primitives first.</h2>
+          <p>The PCB layer should be built from a small vocabulary of reusable physical primitives: board, layer, outline, footprint, pad, placement, feature, copper, via, zone, rule, and diagnostic. Avoid circuit-specific kernel APIs such as USB-board helpers, regulator-placement APIs, or resistor-specific board objects. Those can exist as Python conveniences later, but they must lower into the same generic primitives.</p>
+        </div>
+        <div class="grid">
+          <div class="panel tight">
+            <span class="label green">1</span>
+            <h3>PCB implements existing connectivity.</h3>
+            <p>Only the logical circuit creates nets. PCB pads, tracks, vias, zones, and ratsnest views reference existing <code>NetId</code> values; they never create, merge, split, or rename nets.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">2</span>
+            <h3>Footprint choice belongs to parts.</h3>
+            <p>The board API places components. It does not select footprints. Footprint identity, package, and pin-pad mapping come from selected physical parts and part/footprint libraries.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">3</span>
+            <h3>Authoring sugar lowers to stored primitives.</h3>
+            <p>CAD-like builders and relative placement helpers are authoring conveniences. The kernel stores normalized geometry, placements, layers, features, and references.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">4</span>
+            <h3>Mechanical and electrical intent stay distinct.</h3>
+            <p>Mounting holes, slots, fiducials, and cutouts are board features unless they carry electrical intent. Test points, connectors, chassis lugs, and tied mounting holes should be logical components when they participate in the circuit.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">5</span>
+            <h3>Derived truth is not duplicated.</h3>
+            <p>Pad-to-net resolution, ratsnest lines, unrouted-net lists, and clearance findings should be derived from canonical board and circuit data, not stored as competing sources of truth.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">6</span>
+            <h3>Invalid state is rejected; bad layout is diagnosed.</h3>
+            <p>Dangling IDs, invalid layers, impossible pad geometry, and malformed outlines fail at mutation boundaries. Unplaced components, unresolved footprints, unrouted nets, overlaps, and rule violations are diagnostics.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">7</span>
+            <h3>Persist Volt data before adapter data.</h3>
+            <p>Deterministic Volt PCB JSON is the source of truth. KiCad PCB, Gerber, Excellon, STEP, and other formats should be import/export adapters over the kernel model.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">8</span>
+            <h3>Progressive disclosure.</h3>
+            <p>Simple boards should need only an outline and placements. Advanced users can add explicit stackups, keepouts, rule classes, copper, zones, manufacturing details, and PCB-aware simulation later.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">9</span>
+            <h3>Units and coordinate frames are explicit.</h3>
+            <p>Store physical lengths, angles, transforms, sides, and layer references explicitly. Relative positioning APIs may compute values, but stored PCB data should be deterministic and inspectable.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>API feel</aside>
+      <div class="stack">
+        <div class="callout">
+          <h2>Use CAD patterns for geometry and Volt patterns for electronics.</h2>
+          <p>Board construction can feel like Build123D or CadQuery: scoped builders, local frames, anchors, offsets, and shape operations. Component placement should feel closer to the schematic API: relative positioning, alignment, regions, and named anchors. Both lower into deterministic kernel data.</p>
+        </div>
+        <pre><code>board = design.board("Main", size=("50mm", "35mm"))
+board.layers.two_layer(thickness="1.6mm")
+
+with board.outline() as outline:
+    outline.rectangle("50mm", "35mm").fillet("2mm")
+    outline.mounting_hole("M1", at=outline.nw.offset("4mm", "-4mm"), drill="3.2mm")
+
+u1 = board.place(U1).at(board.center)
+c1 = board.place(C1).near(u1.pad("VDD"), distance="2mm").align_y(u1)
+r1 = board.place(R1).right_of(D1, gap="2mm")
+j1 = board.place(J1).on_edge("left").align_y(board.center)
+
+report = board.validate()
+board.preview_svg("main-board.svg")</code></pre>
+        <div class="callout amber">
+          <h3>Important</h3>
+          <p>This API assumes <code>U1</code>, <code>C1</code>, <code>R1</code>, and <code>J1</code> already have selected physical parts with resolvable footprints. If they do not, placement should fail with a direct diagnostic.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Ownership model</aside>
+      <div class="table">
+        <table>
+          <thead>
+            <tr>
+              <th>Concept</th>
+              <th>Owner</th>
+              <th>Stores</th>
+              <th>Does not store</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Logical component</td>
+              <td>Circuit kernel</td>
+              <td>Reference, definition, concrete pins, pin-to-net membership.</td>
+              <td>Board coordinates, footprint geometry, copper.</td>
+            </tr>
+            <tr>
+              <td>Selected physical part</td>
+              <td>Circuit/part library</td>
+              <td>Manufacturer part, package, footprint reference, pin-pad mapping, ratings.</td>
+              <td>Board placement or routed geometry.</td>
+            </tr>
+            <tr>
+              <td>Footprint definition</td>
+              <td>Footprint library / PCB kernel data</td>
+              <td>Pads, holes, courtyard, silkscreen/fab graphics, local footprint coordinates.</td>
+              <td>Which board component instance is using it.</td>
+            </tr>
+            <tr>
+              <td>Board projection</td>
+              <td>PCB kernel</td>
+              <td>Layer stack, outline, board features, component placements, later copper.</td>
+              <td>Logical connectivity or selected part identity.</td>
+            </tr>
+            <tr>
+              <td>Pad resolution</td>
+              <td>Derived PCB view</td>
+              <td>Placement pad to logical pin/net mapping, status, diagnostics.</td>
+              <td>New connectivity.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <aside>Core data structures</aside>
+      <div class="stack">
+        <div class="two">
+          <div class="panel tight">
+            <h3><code>Board</code></h3>
+            <p>Project-owned PCB projection over one logical circuit. Stores metadata, units, layer stack, outline, features, placements, and later copper/rules.</p>
+          </div>
+          <div class="panel tight">
+            <h3><code>LayerStack</code> / <code>BoardLayer</code></h3>
+            <p>Named layers with roles: copper, solder mask, paste, silkscreen, fabrication, edge cuts, drill, mechanical, courtyard, keepout.</p>
+          </div>
+          <div class="panel tight">
+            <h3><code>BoardOutline</code></h3>
+            <p>Closed 2D boundary made from lines/arcs or normalized polygons. Defines the manufacturable board shape.</p>
+          </div>
+          <div class="panel tight">
+            <h3><code>BoardFeature</code></h3>
+            <p>Physical-only features: mounting holes, slots, cutouts, fiducials, tooling holes, text, mechanical keepouts.</p>
+          </div>
+          <div class="panel tight">
+            <h3><code>FootprintDefinition</code></h3>
+            <p>Normalized footprint geometry resolved from a library reference. Contains pads, holes, graphics, courtyard, and body/fab outlines.</p>
+          </div>
+          <div class="panel tight">
+            <h3><code>FootprintPad</code></h3>
+            <p>Stable pad identity, user label, kind, shape, local position, size, layers, drill, plating, and optional thermal/mechanical role.</p>
+          </div>
+          <div class="panel tight">
+            <h3><code>ComponentPlacement</code></h3>
+            <p>References an existing <code>ComponentId</code>, stores resolved footprint identity, position, rotation, side, and lock/status metadata.</p>
+          </div>
+          <div class="panel tight">
+            <h3><code>PadResolution</code></h3>
+            <p>Derived table linking placement pad to selected-part pin-pad mapping, concrete <code>PinId</code>, and existing <code>NetId</code>.</p>
+          </div>
+        </div>
+        <pre><code>Board
+  layer_stack
+  outline
+  board_features
+  placements
+  resolved_footprints
+  later: tracks, vias, zones, rule_classes
+
+ComponentPlacement
+  component_id
+  footprint_ref / footprint_definition_id
+  position
+  rotation
+  side
+  locked</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <aside>How data links</aside>
+      <div class="stack">
+        <pre><code>Logical ComponentId
+  -> Component.selected_physical_part
+  -> PhysicalPart.footprint_ref
+  -> FootprintLibrary.resolve(footprint_ref)
+  -> FootprintDefinition.pads
+  -> PhysicalPart.pin_pad_mappings
+  -> concrete PinId
+  -> existing NetId
+  -> PCB PadResolution</code></pre>
+        <div class="callout green">
+          <h2>The resolver is the center of PCB correctness.</h2>
+          <p>Placement only says where a selected part sits. Pad resolution proves what each physical pad means electrically. A pad is either tied to an existing net, intentionally non-electrical, intentionally unconnected, or invalid.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Development stages</aside>
+      <div class="stack">
+        <div class="step">
+          <div class="num">1</div>
+          <div class="tight">
+            <h3>PCB architecture and API agreement</h3>
+            <p>Define ownership, value types, mutation boundaries, and the first API surface. Update Linear scope if older tickets imply board-level footprint selection.</p>
+            <p><strong>Outcome:</strong> agreed model and acceptance criteria before implementation.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <div class="tight">
+            <h3>Footprint readiness in the part/library layer</h3>
+            <p>Make selected physical parts resolve to normalized footprint definitions. Add a tiny built-in footprint set for simple examples: 0603 resistor, 0603 LED, pin header, small IC/package.</p>
+            <p><strong>Outcome:</strong> board placement can error cleanly when physical data is missing.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <div class="tight">
+            <h3>Board geometry and CAD-like authoring</h3>
+            <p>Add board outline, coordinate frames, layer stack, and physical board features. Python authoring can use context builders and relative anchors, but stores normalized kernel geometry.</p>
+            <p><strong>Outcome:</strong> a board can exist before any components are placed.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">4</div>
+          <div class="tight">
+            <h3>Component placement and pad resolution</h3>
+            <p>Place existing logical components with selected physical parts. Resolve pads to pins and nets. Reject dangling IDs and missing footprint data; diagnose design completeness issues.</p>
+            <p><strong>Outcome:</strong> placement-only PCB model with truthful pad-to-net mapping.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">5</div>
+          <div class="tight">
+            <h3>Persistence, validation, and preview</h3>
+            <p>Add deterministic PCB JSON, round-trip tests, PCB readiness diagnostics, and an SVG placement preview showing outline, features, footprints, pads, references, and optionally ratsnest lines.</p>
+            <p><strong>Outcome:</strong> reviewable board artifacts.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">6</div>
+          <div class="tight">
+            <h3>Copper primitives after placement</h3>
+            <p>Add tracks, vias, and later zones that reference existing <code>NetId</code> values. Start with manual routing and simple DRC, not autorouting.</p>
+            <p><strong>Outcome:</strong> a manually routable board model.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Validation policy</aside>
+      <div class="two">
+        <div class="callout red">
+          <h2>Reject at mutation</h2>
+          <ul>
+            <li>Placing an unknown component.</li>
+            <li>Referencing an unknown footprint definition.</li>
+            <li>Creating a pad with invalid geometry or layer set.</li>
+            <li>Creating an outline that is not closed.</li>
+            <li>Creating copper on an unknown layer or net.</li>
+          </ul>
+        </div>
+        <div class="callout amber">
+          <h2>Diagnose as board design</h2>
+          <ul>
+            <li>Component has no selected physical part.</li>
+            <li>Selected part footprint cannot be resolved.</li>
+            <li>Component is unplaced.</li>
+            <li>Pad mapping misses a required logical pin.</li>
+            <li>Footprint is outside the board outline.</li>
+            <li>Net is unrouted or copper violates rules.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Product viewer fit</aside>
+      <div class="stack">
+        <div class="callout green">
+          <h2>Deterministic PCB JSON should be product-viewer ready.</h2>
+          <p>The first PCB JSON format should be useful beyond save/load. It should be a stable semantic board representation that a future 2D or 3D product viewer can consume directly, while keeping Python/code and the kernel model as the source of truth.</p>
+        </div>
+        <div class="grid">
+          <div class="panel tight">
+            <span class="label green">Identity</span>
+            <h3>Stable selectable entities</h3>
+            <p>Boards, placements, pads, features, tracks, vias, zones, and diagnostics need stable IDs so a viewer can select, highlight, inspect, and report against the same kernel-owned objects.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">Geometry</span>
+            <h3>3D-friendly primitives</h3>
+            <p>Store outlines, thickness, layers, holes, pad geometry, package body outlines, component height, and optional 3D model references in a form that can generate meshes without reverse-engineering renderer output.</p>
+          </div>
+          <div class="panel tight">
+            <span class="label green">Inspection</span>
+            <h3>Entity references everywhere</h3>
+            <p>A clicked component should map to a placement and logical component. A clicked pad should map to placement, pad, pin, and net. A diagnostic should identify the board entities it concerns.</p>
+          </div>
+        </div>
+        <pre><code>PCB JSON
+  -> deterministic save/load
+  -> 2D placement preview
+  -> future 3D board viewer
+  -> selectable entities and diagnostics
+  -> agent-readable edit intent
+  -> regenerated kernel model and JSON</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <aside>Immediate decision</aside>
+      <div class="callout">
+        <h2>Make the first implementation placement-only.</h2>
+        <p>The first PCB slice should prove board geometry, footprint resolution, component placement, pad-to-net mapping, validation, persistence, and preview. Tracks, vias, zones, DRC, KiCad PCB export, Gerbers, and autorouting should follow only after the placement model is stable.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
