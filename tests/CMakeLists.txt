@@ -42,6 +42,7 @@ add_executable(
     io/schematic_schema_test.cpp
     io/schematic_svg_writer_test.cpp
     io/schematic_writer_test.cpp
+    pcb/footprints_test.cpp
     adapters/kicad_boundary_test.cpp
     adapters/kicad_loss_report_test.cpp
     adapters/kicad_schematic_writer_test.cpp
@@ -54,7 +55,13 @@ add_executable(
 )
 target_link_libraries(
     volt_core_tests
-    PRIVATE Volt::Authoring Volt::IO Volt::Schematic Volt::KiCadAdapter Catch2::Catch2WithMain
+    PRIVATE
+        Volt::Authoring
+        Volt::IO
+        Volt::PCB
+        Volt::Schematic
+        Volt::KiCadAdapter
+        Catch2::Catch2WithMain
 )
 target_compile_features(volt_core_tests PRIVATE cxx_std_20)
 target_include_directories(volt_core_tests PRIVATE ${PROJECT_SOURCE_DIR}/examples)
