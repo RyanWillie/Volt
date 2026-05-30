@@ -23,6 +23,7 @@
 #include <volt/io/schematic_schema.hpp>
 #include <volt/io/schematic_svg_writer.hpp>
 #include <volt/io/schematic_writer.hpp>
+#include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints.hpp>
 #include <volt/schematic/default_symbols.hpp>
 #include <volt/schematic/geometry.hpp>

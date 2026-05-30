@@ -51,7 +51,11 @@ struct PowerPortIdTag;
 struct NoConnectMarkerIdTag;
 struct SheetPortIdTag;
 struct SymbolFieldIdTag;
+struct BoardLayerIdTag;
+struct BoardFeatureIdTag;
+struct FootprintDefIdTag;
 struct FootprintPadIdTag;
+struct ComponentPlacementIdTag;
 
 } // namespace detail
 
@@ -97,7 +101,15 @@ using NoConnectMarkerId = EntityId<detail::NoConnectMarkerIdTag>;
 using SheetPortId = EntityId<detail::SheetPortIdTag>;
 /** ID for a placed symbol field projection owned by a symbol instance. */
 using SymbolFieldId = EntityId<detail::SymbolFieldIdTag>;
+/** ID for a PCB board layer owned by a board projection. */
+using BoardLayerId = EntityId<detail::BoardLayerIdTag>;
+/** ID for a physical board feature owned by a board projection. */
+using BoardFeatureId = EntityId<detail::BoardFeatureIdTag>;
+/** ID for a cached PCB footprint definition owned by a board projection. */
+using FootprintDefId = EntityId<detail::FootprintDefIdTag>;
 /** ID for a pad inside a PCB footprint definition. */
 using FootprintPadId = EntityId<detail::FootprintPadIdTag>;
+/** ID for a component placement owned by a board projection. */
+using ComponentPlacementId = EntityId<detail::ComponentPlacementIdTag>;
 
 } // namespace volt
