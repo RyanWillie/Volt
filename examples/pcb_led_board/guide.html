@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt First Board LED PCB Example</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17202a;
+      --muted: #5d6978;
+      --line: #d6dde5;
+      --paper: #ffffff;
+      --wash: #f5f8fb;
+      --accent: #0b6bcb;
+      --ok: #0b7f5a;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: var(--wash);
+      color: var(--ink);
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 40px 28px 52px;
+      background: var(--paper);
+      min-height: 100vh;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 30px 0 10px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95em;
+      color: var(--ink);
+      background: #eef3f8;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      border: 1px solid var(--line);
+    }
+    th,
+    td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    th {
+      width: 28%;
+      color: var(--ink);
+      background: #eef5fb;
+      font-weight: 650;
+    }
+    tr:last-child th,
+    tr:last-child td {
+      border-bottom: 0;
+    }
+    .lede {
+      max-width: 760px;
+      font-size: 17px;
+      color: #334155;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfdff;
+      min-height: 118px;
+    }
+    .step strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent);
+    }
+    .step span {
+      color: var(--muted);
+    }
+    .callout {
+      border-left: 4px solid var(--ok);
+      background: #eefaf6;
+      padding: 12px 14px;
+      margin-top: 18px;
+      color: #24483b;
+    }
+    @media (max-width: 760px) {
+      main {
+        padding: 28px 18px 40px;
+      }
+      h1 {
+        font-size: 28px;
+      }
+      .flow {
+        grid-template-columns: 1fr;
+      }
+      th,
+      td {
+        display: block;
+        width: 100%;
+      }
+      th {
+        border-bottom: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>First Board LED PCB Example</h1>
+    <p class="lede">
+      This example is the smallest end-to-end Volt PCB authoring flow: a two-pin power
+      header drives an LED through a resistor, then public Python APIs produce logical,
+      schematic, validation, PCB JSON, and placement-only PCB SVG artifacts.
+    </p>
+
+    <h2>Authoring Flow</h2>
+    <div class="flow" aria-label="PCB authoring flow">
+      <div class="step">
+        <strong>1. Logical circuit</strong>
+        <span>Create <code>+3V3</code>, <code>LED_A</code>, and <code>GND</code>, then connect <code>J1</code>, <code>R1</code>, and <code>D1</code>.</span>
+      </div>
+      <div class="step">
+        <strong>2. Selected parts</strong>
+        <span>Select real physical parts with footprint refs and pin-to-pad mappings on each component.</span>
+      </div>
+      <div class="step">
+        <strong>3. Projections</strong>
+        <span>Add the schematic and placement-only PCB as projections over existing logical connectivity.</span>
+      </div>
+      <div class="step">
+        <strong>4. Artifacts</strong>
+        <span>Validate and write deterministic JSON plus SVG previews from the kernel-owned model.</span>
+      </div>
+    </div>
+
+    <h2>Files Written</h2>
+    <table>
+      <tr>
+        <th><code>pcb_led_board.volt.json</code></th>
+        <td>Logical circuit JSON with component definitions, nets, selected parts, and pin mappings.</td>
+      </tr>
+      <tr>
+        <th><code>pcb_led_board.volt.schematic.json</code></th>
+        <td>Schematic projection JSON; it visualizes existing nets but does not define connectivity.</td>
+      </tr>
+      <tr>
+        <th><code>pcb_led_board.svg</code></th>
+        <td>Full schematic SVG preview with sheet metadata and title block.</td>
+      </tr>
+      <tr>
+        <th><code>pcb_led_board.volt.pcb.json</code></th>
+        <td>Placement-only board JSON with outline, layer stack, mounting holes, placements, and pad resolution cache.</td>
+      </tr>
+      <tr>
+        <th><code>pcb_led_board.pcb.svg</code></th>
+        <td>Deterministic board preview showing the board outline, placed footprints, and net overlays.</td>
+      </tr>
+      <tr>
+        <th><code>pcb_led_board.validation.json</code></th>
+        <td>Combined logical, schematic, PCB readiness, and board validation report.</td>
+      </tr>
+    </table>
+
+    <div class="callout">
+      The board projection remains a physical implementation of the logical circuit. It places selected physical parts and cached footprint definitions; it does not create, merge, split, or otherwise mutate nets.
+    </div>
+  </main>
+</body>
+</html>
