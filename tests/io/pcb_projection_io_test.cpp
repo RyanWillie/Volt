@@ -110,6 +110,8 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["layers"][0]["name"] == "F.Cu");
     CHECK(document["board"]["layers"][0]["role"] == "copper");
     CHECK(document["board"]["layers"][0]["side"] == "top");
+    CHECK(document["board"]["layers"][0]["thickness_mm"] == 0.0);
+    CHECK(document["board"]["layers"][0]["enabled"] == true);
     CHECK(document["board"]["layer_stack"]["board_thickness_mm"] == 1.6);
     CHECK(document["board"]["layer_stack"]["layers"] ==
           nlohmann::json::array({"board_layer:0", "board_layer:1"}));
@@ -124,7 +126,14 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["footprint_definitions"][0]["id"] == "footprint_def:0");
     CHECK(document["board"]["footprint_definitions"][0]["ref"]["library"] == "passives");
     CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["id"] == "footprint_pad:0");
+    CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["kind"] == "surface_mount");
     CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["shape"] == "rounded_rectangle");
+    CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["position"] ==
+          nlohmann::json::array({-0.75, 0.0}));
+    CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["size"] ==
+          nlohmann::json::array({0.80, 0.95}));
+    CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["drill"] == nullptr);
+    CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["mechanical_role"] == nullptr);
 
     REQUIRE(document["board"]["placements"].size() == 1);
     CHECK(document["board"]["placements"][0]["id"] == "component_placement:0");
@@ -132,15 +141,24 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["placements"][0]["footprint"] == "footprint_def:0");
     CHECK(document["board"]["placements"][0]["position"] == nlohmann::json::array({25.0, 15.0}));
     CHECK(document["board"]["placements"][0]["rotation_deg"] == 90.0);
+    CHECK(document["board"]["placements"][0]["side"] == "top");
     CHECK(document["board"]["placements"][0]["locked"] == true);
 
     REQUIRE(document["viewer"]["pad_resolutions"].size() == 2);
     CHECK(document["viewer"]["pad_resolutions"][0]["id"] == "pcb_pad:0:0");
     CHECK(document["viewer"]["pad_resolutions"][0]["placement"] == "component_placement:0");
+    CHECK(document["viewer"]["pad_resolutions"][0]["component"] == "component:0");
+    CHECK(document["viewer"]["pad_resolutions"][0]["footprint"] == "footprint_def:0");
     CHECK(document["viewer"]["pad_resolutions"][0]["pad"] == "footprint_pad:0");
+    CHECK(document["viewer"]["pad_resolutions"][0]["label"] == "1");
+    CHECK(document["viewer"]["pad_resolutions"][0]["position"] ==
+          nlohmann::json::array({25.0, 14.25}));
     CHECK(document["viewer"]["pad_resolutions"][0]["pin"] == "pin:0");
     CHECK(document["viewer"]["pad_resolutions"][0]["net"] == "net:0");
     CHECK(document["viewer"]["pad_resolutions"][0]["status"] == "connected");
+    CHECK(document["viewer"]["pad_resolutions"][0]["geometry"]["shape"] == "rounded_rectangle");
+    CHECK(document["viewer"]["pad_resolutions"][0]["geometry"]["layers"] ==
+          nlohmann::json::array({"front_copper", "front_solder_mask", "front_paste"}));
     CHECK(document["viewer"]["diagnostics"] == nlohmann::json::array());
 }
 
@@ -182,7 +200,10 @@ TEST_CASE("PCB projection writer includes highlightable diagnostic references") 
         nlohmann::json::parse(volt::io::write_pcb_board(board, volt::builtin_footprint_library()));
 
     REQUIRE_FALSE(document["viewer"]["diagnostics"].empty());
+    CHECK(document["viewer"]["diagnostics"][0]["severity"] == "error");
     CHECK(document["viewer"]["diagnostics"][0]["code"] == "PCB_PLACEMENT_OUTSIDE_OUTLINE");
+    CHECK(document["viewer"]["diagnostics"][0]["message"] ==
+          "Placement pad '1' is outside the board outline");
     CHECK(document["viewer"]["diagnostics"][0]["entities"] ==
           nlohmann::json::array({"component:0", "component_placement:0"}));
 }

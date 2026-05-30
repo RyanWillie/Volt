@@ -3,19 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Volt PCB JSON Format</title>
+  <title>Volt PCB Projection Data Contract</title>
   <style>
     :root {
       color-scheme: light;
-      --bg: #f6f8fa;
+      --bg: #f5f7f9;
       --ink: #172026;
-      --muted: #5f6b76;
-      --line: #cbd5df;
-      --panel: #ffffff;
-      --blue: #1c5d99;
-      --green: #20725b;
-      --amber: #9a6818;
+      --muted: #5d6874;
+      --line: #c9d3dc;
+      --paper: #ffffff;
       --code: #edf2f6;
+      --blue: #1f5f99;
+      --green: #1f6f5c;
+      --amber: #946414;
+      --red: #9f2d20;
     }
 
     * { box-sizing: border-box; }
@@ -29,39 +30,39 @@
     }
 
     main {
-      width: min(1100px, calc(100% - 32px));
+      width: min(1120px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 42px 0 64px;
+      padding: 40px 0 64px;
     }
 
     header {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 280px;
+      grid-template-columns: minmax(0, 1fr) 300px;
       gap: 28px;
       align-items: end;
       border-bottom: 2px solid var(--ink);
-      padding-bottom: 28px;
+      padding-bottom: 26px;
     }
 
     section {
       display: grid;
-      grid-template-columns: 220px minmax(0, 1fr);
-      gap: 32px;
-      padding: 30px 0;
+      grid-template-columns: 210px minmax(0, 1fr);
+      gap: 30px;
+      padding: 28px 0;
       border-bottom: 1px solid var(--line);
     }
 
     h1, h2, h3, p { margin: 0; }
 
     h1 {
-      max-width: 780px;
-      font-size: clamp(36px, 6vw, 64px);
+      max-width: 820px;
+      font-size: clamp(34px, 6vw, 62px);
       line-height: 1;
       letter-spacing: 0;
     }
 
     h2 {
-      font-size: clamp(24px, 3vw, 34px);
+      font-size: clamp(23px, 3vw, 32px);
       line-height: 1.1;
       letter-spacing: 0;
     }
@@ -102,7 +103,33 @@
       padding-left: 1.15rem;
     }
 
-    li + li { margin-top: 0.42rem; }
+    li + li { margin-top: 0.35rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      display: table;
+    }
+
+    th,
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #e7edf2;
+      font-weight: 800;
+    }
+
+    tr:last-child td { border-bottom: 0; }
 
     .meta {
       display: grid;
@@ -113,7 +140,7 @@
 
     .stack {
       display: grid;
-      gap: 18px;
+      gap: 17px;
     }
 
     .grid {
@@ -124,10 +151,10 @@
 
     .panel,
     .callout {
-      background: var(--panel);
+      background: var(--paper);
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 16px;
+      padding: 15px;
     }
 
     .callout {
@@ -136,29 +163,36 @@
 
     .callout.green { border-left-color: var(--green); }
     .callout.amber { border-left-color: var(--amber); }
+    .callout.red { border-left-color: var(--red); }
 
     .label {
       display: inline-block;
       width: fit-content;
-      margin-bottom: 8px;
+      margin-bottom: 7px;
       padding: 3px 8px;
       border-radius: 999px;
       color: #fff;
       background: var(--blue);
       font-size: 12px;
       font-weight: 800;
-      letter-spacing: 0.03em;
+      letter-spacing: 0;
       text-transform: uppercase;
     }
 
     .label.green { background: var(--green); }
     .label.amber { background: var(--amber); }
+    .label.red { background: var(--red); }
 
-    @media (max-width: 820px) {
+    @media (max-width: 840px) {
       header,
       section,
       .grid {
         grid-template-columns: 1fr;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
       }
     }
   </style>
@@ -168,44 +202,45 @@
     <header>
       <div class="stack">
         <p class="label">Format v1</p>
-        <h1>Volt PCB JSON is canonical board state plus a disposable viewer cache.</h1>
+        <h1>Volt PCB projection data is stable board state plus recomputable viewer affordances.</h1>
       </div>
       <div class="meta">
         <p><strong>Format:</strong> <code>volt.pcb</code></p>
         <p><strong>Version:</strong> <code>1</code></p>
+        <p><strong>Units:</strong> millimeters for all board and footprint geometry</p>
         <p><strong>Scope:</strong> placement-ready PCB projection over one logical circuit</p>
       </div>
     </header>
 
     <section>
-      <aside>Ownership</aside>
+      <aside>Boundary</aside>
       <div class="stack">
         <div class="callout green">
-          <h2>The board projects existing logical connectivity.</h2>
-          <p>PCB JSON stores board geometry, layer metadata, physical features, cached footprint geometry, and component placements. It references components, pins, and nets from the bound logical circuit; it never creates or mutates logical connectivity.</p>
+          <h2>The kernel owns PCB meaning. JSON and SVG are projections.</h2>
+          <p>The PCB JSON document stores enough board geometry, semantic IDs, layer metadata, footprint geometry, placements, and logical references for a downstream application to render and inspect a board without reading the SVG preview. The SVG is a deterministic preview with matching selectors where practical.</p>
         </div>
         <div class="grid">
           <div class="panel">
             <span class="label green">Canonical</span>
-            <h3>Loaded into the kernel</h3>
-            <p>Board name, units, layers, layer stack, outline, features, footprint definitions, and placements are rebuilt as <code>volt::Board</code> state.</p>
+            <h3>Persisted board projection</h3>
+            <p><code>board</code> data is loaded into <code>volt::Board</code>: name, units, layers, stack, outline, features, footprint definitions, and placements.</p>
           </div>
           <div class="panel">
             <span class="label">Derived</span>
-            <h3>Checked, then recomputed</h3>
-            <p>Viewer pad resolutions and diagnostics are validated on read, but are not trusted as source data. The returned board recomputes them from selected parts and cached footprints.</p>
+            <h3>Viewer cache</h3>
+            <p><code>viewer.pad_resolutions</code> and <code>viewer.diagnostics</code> are validated when present, then recomputed from kernel-owned board and circuit state.</p>
           </div>
           <div class="panel">
-            <span class="label amber">Out of scope</span>
-            <h3>No manufacturing truth</h3>
-            <p>Gerbers, autorouting, KiCad PCB import/export, simulation, and full 3D editing are later adapters or layers.</p>
+            <span class="label amber">Consumer-owned</span>
+            <h3>Application behavior</h3>
+            <p>Clicks, selection state, editor workflows, prompts, and 2D or 3D viewer behavior belong to the consuming application.</p>
           </div>
         </div>
       </div>
     </section>
 
     <section>
-      <aside>Document shape</aside>
+      <aside>Document Shape</aside>
       <div class="stack">
         <pre><code>{
   "format": "volt.pcb",
@@ -214,49 +249,156 @@
     "id": "board:0",
     "name": "Control",
     "units": "mm",
-    "layers": [
-      {"id": "board_layer:0", "name": "F.Cu", "role": "copper", "side": "top", "thickness_mm": 0.0, "enabled": true}
-    ],
-    "layer_stack": {"board_thickness_mm": 1.6, "layers": ["board_layer:0"]},
-    "outline": {"kind": "polygon", "vertices": [[0.0, 0.0], [50.0, 0.0], [50.0, 30.0], [0.0, 30.0]]},
-    "features": [
-      {"id": "board_feature:0", "kind": "mounting_hole", "label": "MH1", "position": [3.0, 3.0], "diameter_mm": 3.2}
-    ],
-    "footprint_definitions": [
-      {
-        "id": "footprint_def:0",
-        "ref": {"library": "passives", "name": "R_0603_1608Metric"},
-        "pads": [
-          {"id": "footprint_pad:0", "label": "1", "kind": "surface_mount", "shape": "rounded_rectangle", "position": [-0.75, 0.0], "size": [0.8, 0.95], "layers": ["front_copper", "front_solder_mask", "front_paste"], "drill": null, "mechanical_role": null}
-        ]
-      }
-    ],
-    "placements": [
-      {"id": "component_placement:0", "component": "component:0", "footprint": "footprint_def:0", "position": [25.0, 15.0], "rotation_deg": 90.0, "side": "top", "locked": true}
-    ]
+    "layers": [],
+    "layer_stack": null,
+    "outline": null,
+    "features": [],
+    "footprint_definitions": [],
+    "placements": []
   },
   "viewer": {
     "pad_resolutions": [],
     "diagnostics": []
   }
 }</code></pre>
-        <p>Field order is deterministic. Entity arrays use insertion order, and local IDs use stable prefixes such as <code>board_layer:</code>, <code>board_feature:</code>, <code>footprint_def:</code>, <code>footprint_pad:</code>, and <code>component_placement:</code>.</p>
+        <p>Field order is deterministic. Entity arrays use insertion order. Local IDs are stable within a document and use typed prefixes such as <code>board_layer:</code>, <code>board_feature:</code>, <code>footprint_def:</code>, <code>footprint_pad:</code>, <code>component_placement:</code>, and <code>pcb_pad:</code>.</p>
       </div>
     </section>
 
     <section>
-      <aside>Reader checks</aside>
+      <aside>Canonical Board</aside>
+      <div class="stack">
+        <table>
+          <thead>
+            <tr><th>Path</th><th>Meaning</th><th>Viewer use</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>board.id</code></td><td>Stable board entity ID. v1 stores one board as <code>board:0</code>.</td><td>Root selection and SVG <code>data-board</code>.</td></tr>
+            <tr><td><code>board.name</code></td><td>Human-facing board name.</td><td>Titles and inspection panels.</td></tr>
+            <tr><td><code>board.units</code></td><td>Geometry units. v1 supports <code>mm</code>.</td><td>Scene scale and ruler labels.</td></tr>
+            <tr><td><code>board.layers[]</code></td><td>Layer ID, name, role, side, thickness, and enabled state.</td><td>Layer lists, filtering, coloring, and stack views.</td></tr>
+            <tr><td><code>board.layer_stack</code></td><td>Optional ordered layer IDs plus total board thickness in millimeters.</td><td>2D ordering and 3D board thickness hints.</td></tr>
+            <tr><td><code>board.outline</code></td><td>Optional polygon outline in board coordinates.</td><td>Board shape, bounds, and hit regions.</td></tr>
+            <tr><td><code>board.features[]</code></td><td>Board-owned physical features such as mounting holes with stable IDs, labels, positions, and diameter.</td><td>Mechanical overlays and selectable board features.</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <h2>Layers and features do not define connectivity.</h2>
+          <p>They describe board projection geometry and metadata. Logical pins and nets remain owned by the logical circuit and are only referenced by ID.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Footprints</aside>
+      <div class="stack">
+        <table>
+          <thead>
+            <tr><th>Path</th><th>Canonical fields</th><th>Why a viewer needs it</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>board.footprint_definitions[].id</code></td><td><code>footprint_def:&lt;n&gt;</code></td><td>Stable target for placements and SVG <code>data-footprint-def</code>.</td></tr>
+            <tr><td><code>board.footprint_definitions[].ref</code></td><td>Library and footprint name.</td><td>Human-readable package identity.</td></tr>
+            <tr><td><code>pads[].id</code></td><td><code>footprint_pad:&lt;n&gt;</code>, local to the footprint definition.</td><td>Stable selector for pad geometry and pad projections.</td></tr>
+            <tr><td><code>pads[].label</code></td><td>Physical pad label from the footprint.</td><td>Inspection and pin-pad mapping display.</td></tr>
+            <tr><td><code>pads[].position</code></td><td>Footprint-local pad center in millimeters.</td><td>Independent rendering before placement transform.</td></tr>
+            <tr><td><code>pads[].size</code></td><td>Width and height in millimeters.</td><td>Pad body rendering.</td></tr>
+            <tr><td><code>pads[].kind</code>, <code>shape</code>, <code>layers</code>, <code>drill</code>, <code>mechanical_role</code></td><td>Pad technology and geometry metadata.</td><td>Shape, layer membership, through-hole rendering, and non-electrical annotation.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <aside>Placements</aside>
+      <div class="stack">
+        <table>
+          <thead>
+            <tr><th>Path</th><th>Meaning</th><th>Transform rule</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>placements[].id</code></td><td>Stable placement entity ID.</td><td>SVG <code>data-placement</code> and diagnostic entity refs.</td></tr>
+            <tr><td><code>placements[].component</code></td><td>Existing logical component ID.</td><td>Inspection link to reference designator and selected physical part.</td></tr>
+            <tr><td><code>placements[].footprint</code></td><td>Resolved <code>footprint_def</code> ID or <code>null</code> if unavailable.</td><td>Joins a placement to renderable footprint geometry.</td></tr>
+            <tr><td><code>placements[].position</code></td><td>Board-space placement origin in millimeters.</td><td>Translate footprint-local geometry.</td></tr>
+            <tr><td><code>placements[].rotation_deg</code></td><td>Board rotation in degrees.</td><td>Rotate footprint-local points around the placement origin.</td></tr>
+            <tr><td><code>placements[].side</code></td><td><code>top</code> or <code>bottom</code>.</td><td>Bottom-side placements mirror local X before rotation.</td></tr>
+            <tr><td><code>placements[].locked</code></td><td>Placement is locked against automatic movement.</td><td>Viewer affordance and authoring hint; not a UI protocol.</td></tr>
+          </tbody>
+        </table>
+        <pre><code>board_point = placement.position
+            + rotate(placement.rotation_deg, mirror_if_bottom(footprint_local_point))</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <aside>Viewer Cache</aside>
+      <div class="stack">
+        <table>
+          <thead>
+            <tr><th>Path</th><th>Derived meaning</th><th>Stability rule</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>viewer.pad_resolutions[].id</code></td><td>Stable pad projection ID: <code>pcb_pad:&lt;placement-index&gt;:&lt;pad-index&gt;</code>.</td><td>Matches SVG <code>data-pad-projection</code>.</td></tr>
+            <tr><td><code>placement</code>, <code>component</code>, <code>footprint</code>, <code>pad</code></td><td>Entity refs tying the projection to canonical board and circuit data.</td><td>Reader validates these against recomputed pad resolutions.</td></tr>
+            <tr><td><code>label</code></td><td>Footprint pad label copied for display.</td><td>Must match the referenced footprint pad.</td></tr>
+            <tr><td><code>position</code></td><td>Resolved board-space pad center.</td><td>Derived from placement transform and footprint pad position.</td></tr>
+            <tr><td><code>pin</code>, <code>net</code></td><td>Concrete logical pin and current logical net, or <code>null</code>.</td><td>References existing circuit IDs only; no netlist mutation.</td></tr>
+            <tr><td><code>status</code></td><td><code>connected</code>, <code>unconnected</code>, <code>non_electrical</code>, or <code>invalid</code>.</td><td>Recomputed from selected physical part mappings.</td></tr>
+            <tr><td><code>geometry</code></td><td>Pad geometry copy for quick preview checks.</td><td>Validated against the referenced footprint pad and discarded on load.</td></tr>
+            <tr><td><code>viewer.diagnostics[]</code></td><td>Severity, code, message, and entity refs from board validation.</td><td>Refs are for highlighting and reporting, not traversal handles.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <aside>SVG Preview</aside>
       <div class="stack">
         <div class="callout">
+          <h2>SVG selectors mirror JSON identity where practical.</h2>
+          <p>The preview is deterministic output for inspection and snapshot testing. It is not the canonical board format, but downstream viewers can use its data attributes to correlate visible shapes with JSON entities.</p>
+        </div>
+        <table>
+          <thead>
+            <tr><th>SVG element</th><th>Stable attributes</th><th>JSON correspondence</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>svg.pcb-placement-preview</code></td><td><code>data-board</code>, <code>data-board-name</code>, <code>data-units</code></td><td><code>board.id</code>, <code>board.name</code>, <code>board.units</code></td></tr>
+            <tr><td><code>.board-outline</code></td><td><code>data-board</code></td><td><code>board.id</code></td></tr>
+            <tr><td><code>.board-feature</code>, <code>.board-feature-label</code></td><td><code>data-board-feature</code></td><td><code>board.features[].id</code></td></tr>
+            <tr><td><code>.component-placement</code></td><td><code>data-placement</code>, <code>data-component</code>, <code>data-footprint-def</code>, <code>data-footprint</code></td><td><code>placements[].id</code>, <code>placements[].component</code>, <code>placements[].footprint</code>, footprint ref token</td></tr>
+            <tr><td><code>.footprint-pad</code></td><td><code>data-pad-projection</code>, <code>data-pad</code>, <code>data-pin</code>, <code>data-net</code></td><td><code>viewer.pad_resolutions[]</code>, <code>footprint_pad</code>, logical pin, logical net</td></tr>
+            <tr><td><code>.pad-overlay</code>, <code>.pad-net-label</code></td><td><code>data-pad-projection</code>, <code>data-net</code></td><td>Derived pad projection and logical net.</td></tr>
+            <tr><td><code>.diagnostic-label</code>, <code>.diagnostic-marker</code></td><td><code>data-diagnostic-code</code>, <code>data-entities</code></td><td><code>viewer.diagnostics[].code</code> and entity refs.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <aside>Load Checks</aside>
+      <div class="stack">
+        <div class="callout red">
           <h2>Malformed structure fails at the load boundary.</h2>
-          <p>The reader rejects duplicate or non-sequential local IDs, dangling layer-stack entries, placements that reference missing components, footprint references that do not match selected physical parts, and viewer pad resolutions with dangling placement, pad, pin, or net references.</p>
+          <p>The reader rejects duplicate or non-sequential IDs, dangling layer-stack entries, placements that reference missing components, footprint references that do not match selected physical parts, stale pad projection caches, dangling pin or net refs, and malformed diagnostic entity refs.</p>
         </div>
         <ul>
-          <li>Component references are checked against the bound <code>Circuit</code>.</li>
-          <li>Footprint references are checked against cached footprint definitions and selected-part footprint refs.</li>
-          <li>Pad projection refs are checked against footprint pads and recomputed selected-part pin-pad mappings.</li>
-          <li>Net refs are checked against the logical circuit and must match the resolved pin's current net.</li>
-          <li>Diagnostics serialize reporting refs for highlighting, including PCB placement refs, without making <code>EntityRef</code> a traversal handle.</li>
+          <li>Structural integrity is enforced by the reader and kernel mutation APIs.</li>
+          <li>Bad design intent, such as missing placement data or off-board pads, is reported through diagnostics.</li>
+          <li>Viewer cache values must match recomputed kernel-owned state; the cache is never trusted as a source of truth.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <aside>Non-goals</aside>
+      <div class="stack">
+        <ul>
+          <li>No product UI, 3D renderer, click payload, editor workflow, or agent feedback protocol is defined here.</li>
+          <li>No <code>source</code> section, source-code location mapping, or viewer-to-agent source trace is part of v1.</li>
+          <li>No direct UI mutation of kernel state is authorized by this data.</li>
+          <li>No routing, autorouting, DRC, Gerber, KiCad PCB import/export, or manufacturing output contract is implied.</li>
         </ul>
       </div>
     </section>
