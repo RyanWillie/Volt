@@ -451,7 +451,7 @@ inline void write_viewer(std::ostream &out, const Board &board,
                 ? find_footprint_definition(definitions, selected_part->footprint())
                 : std::nullopt;
         if (!footprint_id.has_value()) {
-            continue;
+            throw std::logic_error{"Resolved PCB pad references missing footprint definition"};
         }
         write_pad_resolution(out, board, definitions, resolution,
                              definitions[footprint_id->index()]);
@@ -483,6 +483,7 @@ inline void write_pcb_board(std::ostream &out, const Board &board,
     out << "  \"format\": " << detail::json_string(pcb_format_name()) << ",\n";
     out << "  \"version\": " << pcb_format_version() << ",\n";
     out << "  \"board\": {\n";
+    // v1 stores one board per document; this stable ID anchors viewer references.
     out << "    \"id\": \"board:0\",\n";
     out << "    \"name\": " << detail::json_string(board.name().value()) << ",\n";
     out << "    \"units\": " << detail::json_string(detail::board_units_name(board.units()))

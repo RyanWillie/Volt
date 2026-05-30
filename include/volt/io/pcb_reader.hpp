@@ -38,6 +38,7 @@ class PcbBoardReader {
         require_format(document_);
         require_version(document_);
         const auto &board_json = object_field(document_, "board");
+        // v1 stores one board per document; this stable ID anchors viewer references.
         require(string_field(board_json, "id") == "board:0", "PCB board id must be board:0");
 
         static_cast<void>(board_units_from_name(string_field(board_json, "units")));
@@ -190,24 +191,33 @@ class PcbBoardReader {
         return FootprintLayerSet{std::move(layers)};
     }
 
-    [[nodiscard]] static std::optional<FootprintDrill> drill(const nlohmann::json &object) {
-        const auto *value = optional_field(object, "drill");
-        if (value == nullptr || value->is_null()) {
+    [[nodiscard]] static std::optional<FootprintDrill> drill_value(const nlohmann::json &value) {
+        if (value.is_null()) {
             return std::nullopt;
         }
-        require(value->is_object(), "PCB footprint drill must be an object");
-        return FootprintDrill{number_field(*value, "diameter_mm"),
-                              footprint_pad_plating_from_name(string_field(*value, "plating"))};
+        require(value.is_object(), "PCB footprint drill must be an object");
+        return FootprintDrill{number_field(value, "diameter_mm"),
+                              footprint_pad_plating_from_name(string_field(value, "plating"))};
+    }
+
+    [[nodiscard]] static std::optional<FootprintDrill> drill(const nlohmann::json &object) {
+        const auto *value = optional_field(object, "drill");
+        return value == nullptr ? std::nullopt : drill_value(*value);
+    }
+
+    [[nodiscard]] static std::optional<FootprintPadMechanicalRole>
+    mechanical_role_value(const nlohmann::json &value) {
+        if (value.is_null()) {
+            return std::nullopt;
+        }
+        require(value.is_string(), "PCB footprint mechanical role must be a string");
+        return footprint_pad_mechanical_role_from_name(value.get<std::string>());
     }
 
     [[nodiscard]] static std::optional<FootprintPadMechanicalRole>
     mechanical_role(const nlohmann::json &object) {
         const auto *value = optional_field(object, "mechanical_role");
-        if (value == nullptr || value->is_null()) {
-            return std::nullopt;
-        }
-        require(value->is_string(), "PCB footprint mechanical role must be a string");
-        return footprint_pad_mechanical_role_from_name(value->get<std::string>());
+        return value == nullptr ? std::nullopt : mechanical_role_value(*value);
     }
 
     [[nodiscard]] static FootprintPad footprint_pad(const nlohmann::json &object,
@@ -482,11 +492,9 @@ class PcbBoardReader {
                 "PCB viewer pad resolution geometry does not match footprint pad");
         require(footprint_layers(field(geometry, "layers")) == pad.layers(),
                 "PCB viewer pad resolution geometry does not match footprint pad");
-        static_cast<void>(field(geometry, "drill"));
-        require(drill(geometry) == pad.drill(),
+        require(drill_value(field(geometry, "drill")) == pad.drill(),
                 "PCB viewer pad resolution geometry does not match footprint pad");
-        static_cast<void>(field(geometry, "mechanical_role"));
-        require(mechanical_role(geometry) == pad.mechanical_role(),
+        require(mechanical_role_value(field(geometry, "mechanical_role")) == pad.mechanical_role(),
                 "PCB viewer pad resolution geometry does not match footprint pad");
     }
 
@@ -498,11 +506,35 @@ class PcbBoardReader {
             static_cast<void>(DiagnosticCode{string_field(diagnostic, "code")});
             static_cast<void>(string_field(diagnostic, "message"));
             const auto &entities = array_field(diagnostic, "entities");
+            auto footprint_definitions = std::vector<FootprintDefId>{};
+            auto footprint_pads = std::vector<FootprintPadId>{};
             for (const auto &entity : entities) {
                 require(entity.is_string(), "PCB viewer diagnostic entity must be a string");
-                validate_viewer_diagnostic_ref(board, entity.get<std::string>());
+                const auto ref = entity.get<std::string>();
+                validate_viewer_diagnostic_ref(board, ref);
+                if (const auto id = decode_if_prefixed<FootprintDefId>(ref)) {
+                    footprint_definitions.push_back(*id);
+                }
+                if (const auto id = decode_if_prefixed<FootprintPadId>(ref)) {
+                    footprint_pads.push_back(*id);
+                }
+            }
+            for (const auto pad : footprint_pads) {
+                if (!footprint_definitions.empty() &&
+                    !footprint_pad_exists(board, footprint_definitions, pad)) {
+                    throw std::logic_error{
+                        "PCB viewer diagnostic references missing footprint pad"};
+                }
             }
         }
+    }
+
+    [[nodiscard]] static bool footprint_pad_exists(const Board &board,
+                                                   const std::vector<FootprintDefId> &definitions,
+                                                   FootprintPadId pad) {
+        return std::any_of(definitions.begin(), definitions.end(), [&board, pad](auto definition) {
+            return pad.index() < board.footprint_definition(definition).pad_count();
+        });
     }
 
     static void validate_diagnostic_severity(const std::string &severity) {
@@ -636,7 +668,7 @@ class PcbBoardReader {
 }
 
 /** Read a PCB board projection from a stream, validating references against the circuit. */
-[[nodiscard]] inline Board read_pcb_board(std::istream &input, const Circuit &circuit) {
+[[nodiscard]] inline Board read_pcb_board(const Circuit &circuit, std::istream &input) {
     const auto text =
         std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     return read_pcb_board_text(circuit, text);

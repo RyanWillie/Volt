@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_exception.hpp>
 
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -149,9 +150,12 @@ TEST_CASE("PCB projection reader round-trips board metadata, placements, and pad
                                                 volt::builtin_footprint_library());
 
     const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
+    auto input = std::istringstream{text};
+    const auto stream_restored = volt::io::read_pcb_board(fixture.circuit, input);
     const auto rewritten = volt::io::write_pcb_board(restored, volt::builtin_footprint_library());
 
     CHECK(rewritten == text);
+    CHECK(volt::io::write_pcb_board(stream_restored, volt::builtin_footprint_library()) == text);
     CHECK(restored.name() == volt::BoardName{"Control"});
     REQUIRE(restored.layer_stack().has_value());
     CHECK(restored.layer_stack()->board_thickness_mm() == 1.6);
@@ -288,6 +292,28 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
         CHECK_THROWS_MATCHES(
             volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic references missing component"));
+    }
+
+    SECTION("footprint pad diagnostic refs are checked against paired footprint definitions") {
+        auto document = make_board_json(fixture);
+        auto extra_definition = document["board"]["footprint_definitions"][0];
+        extra_definition["id"] = "footprint_def:1";
+        extra_definition["ref"]["name"] = "R_0603_1608Metric_Derived";
+        auto extra_pad = extra_definition["pads"][1];
+        extra_pad["id"] = "footprint_pad:2";
+        extra_pad["label"] = "3";
+        extra_pad["position"] = nlohmann::json::array({1.5, 0.0});
+        extra_definition["pads"].push_back(extra_pad);
+        document["board"]["footprint_definitions"].push_back(extra_definition);
+        document["viewer"]["diagnostics"] = nlohmann::json::array(
+            {{{"severity", "error"},
+              {"code", "PCB_FIXTURE"},
+              {"message", "fixture"},
+              {"entities", nlohmann::json::array({"footprint_def:0", "footprint_pad:2"})}}});
+
+        CHECK_THROWS_MATCHES(
+            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            Catch::Matchers::Message("PCB viewer diagnostic references missing footprint pad"));
     }
 
     SECTION("malformed diagnostic refs") {
