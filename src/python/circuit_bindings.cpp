@@ -153,6 +153,27 @@ void bind_circuit(pybind11::module_ &module) {
         .def("validate_schematic", &PyCircuit::validate_schematic)
         .def("validate_schematic_readability", &PyCircuit::validate_schematic_readability)
         .def("validate_for_pcb", &PyCircuit::validate_for_pcb)
+        .def("board", &PyCircuit::board, py::arg("name") = "Main")
+        .def("board_add_layer", &PyCircuit::board_add_layer, py::arg("name"), py::arg("role"),
+             py::arg("side"), py::arg("thickness_mm") = 0.0, py::arg("enabled") = true)
+        .def("board_set_layer_stack", &PyCircuit::board_set_layer_stack, py::arg("layers"),
+             py::arg("board_thickness_mm"))
+        .def("board_set_rectangular_outline", &PyCircuit::board_set_rectangular_outline,
+             py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"))
+        .def("board_set_polygon_outline", &PyCircuit::board_set_polygon_outline,
+             py::arg("vertices"))
+        .def("board_add_mounting_hole", &PyCircuit::board_add_mounting_hole, py::arg("label"),
+             py::arg("x"), py::arg("y"), py::arg("diameter_mm"))
+        .def("board_cache_footprint_definition", &PyCircuit::board_cache_footprint_definition,
+             py::arg("definition"))
+        .def("board_place_component", &PyCircuit::board_place_component, py::arg("component"),
+             py::arg("x"), py::arg("y"), py::arg("rotation_degrees") = 0.0, py::arg("side") = "top",
+             py::arg("locked") = false)
+        .def("board_resolve_pads", &PyCircuit::board_resolve_pads)
+        .def("board_validate", &PyCircuit::board_validate)
+        .def("board_to_json", &PyCircuit::board_to_json)
+        .def("board_to_svg", &PyCircuit::board_to_svg, py::arg("pad_net_overlays") = true,
+             py::arg("diagnostic_overlays") = true)
         .def("to_json", &PyCircuit::to_json);
 }
 

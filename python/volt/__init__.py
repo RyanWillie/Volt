@@ -37,6 +37,7 @@ from .logical import (
     PortInfo,
     TemplateNetInfo,
 )
+from .pcb import Board, FootprintDefinition, FootprintDrill, FootprintPad, PadResolution
 from .schematic import (
     PlacedSchematicElement,
     Schematic,
@@ -61,6 +62,7 @@ from .schematic import (
 __all__ = [
     "Component",
     "ComponentDefinition",
+    "Board",
     "Design",
     "Diagnostic",
     "DiagnosticEntity",
@@ -83,8 +85,12 @@ __all__ = [
     "Pin",
     "PinGroup",
     "PinSpec",
+    "FootprintDefinition",
+    "FootprintDrill",
+    "FootprintPad",
     "PhysicalPartSpec",
     "PlacedSchematicElement",
+    "PadResolution",
     "PortBindingInfo",
     "PortInfo",
     "Schematic",

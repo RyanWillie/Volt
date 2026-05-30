@@ -2,6 +2,8 @@
 
 #include "binding_conversions.hpp"
 
+#include <volt/pcb/board.hpp>
+
 namespace volt::python {
 
 class PyCircuit {
@@ -247,6 +249,35 @@ class PyCircuit {
 
     [[nodiscard]] std::string to_json() const;
 
+    [[nodiscard]] py::dict board(const std::string &name);
+
+    [[nodiscard]] std::size_t board_add_layer(const std::string &name, const std::string &role,
+                                              const std::string &side, double thickness_mm,
+                                              bool enabled);
+
+    void board_set_layer_stack(const std::vector<std::size_t> &layers, double board_thickness_mm);
+
+    void board_set_rectangular_outline(double x, double y, double width, double height);
+
+    void board_set_polygon_outline(const std::vector<std::pair<double, double>> &vertices);
+
+    [[nodiscard]] std::size_t board_add_mounting_hole(const std::string &label, double x, double y,
+                                                      double diameter_mm);
+
+    [[nodiscard]] std::size_t board_cache_footprint_definition(const py::dict &definition);
+
+    [[nodiscard]] std::size_t board_place_component(std::size_t component, double x, double y,
+                                                    double rotation_degrees,
+                                                    const std::string &side, bool locked);
+
+    [[nodiscard]] py::list board_resolve_pads() const;
+
+    [[nodiscard]] py::list board_validate() const;
+
+    [[nodiscard]] std::string board_to_json() const;
+
+    [[nodiscard]] std::string board_to_svg(bool pad_net_overlays, bool diagnostic_overlays) const;
+
   private:
     [[nodiscard]] std::vector<volt::PinId> pins_by_name(volt::ComponentId component,
                                                         const std::string &name) const;
@@ -258,8 +289,15 @@ class PyCircuit {
 
     [[nodiscard]] volt::SymbolDefId ensure_schematic_symbol(const std::string &name);
 
+    [[nodiscard]] volt::Board &board_projection(const std::string &name);
+
+    [[nodiscard]] volt::Board &board_projection();
+
+    [[nodiscard]] const volt::Board &board_projection() const;
+
     volt::Circuit circuit_;
     volt::SchematicDocument schematic_document_;
+    std::optional<volt::Board> board_projection_;
 };
 
 } // namespace volt::python
