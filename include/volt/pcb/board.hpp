@@ -507,7 +507,12 @@ class PadResolution {
     PadResolutionStatus status_;
 };
 
+class Board;
+
 namespace detail {
+
+[[nodiscard]] inline FootprintLibrary
+board_resolution_footprints(const Board &board, const FootprintLibrary &footprints);
 
 [[nodiscard]] inline BoardPoint transform_footprint_point(const ComponentPlacement &placement,
                                                           FootprintPoint point) {
@@ -726,6 +731,7 @@ class Board {
     [[nodiscard]] std::vector<PadResolution>
     resolve_pads(const FootprintLibrary &footprints) const {
         auto resolutions = std::vector<PadResolution>{};
+        const auto resolution_footprints = detail::board_resolution_footprints(*this, footprints);
         for (std::size_t index = 0; index < placements_.size(); ++index) {
             const auto placement_id = ComponentPlacementId{index};
             const auto &component_placement = placement(placement_id);
@@ -735,7 +741,8 @@ class Board {
                 continue;
             }
 
-            const auto footprint_resolution = resolve_footprint(selected_part.value(), footprints);
+            const auto footprint_resolution =
+                resolve_footprint(selected_part.value(), resolution_footprints);
             const auto *definition = footprint_resolution.definition();
             if (definition == nullptr) {
                 continue;
@@ -824,6 +831,20 @@ class Board {
 
 namespace detail {
 
+[[nodiscard]] inline FootprintLibrary
+board_resolution_footprints(const Board &board, const FootprintLibrary &footprints) {
+    auto library = FootprintLibrary{};
+    for (std::size_t index = 0; index < board.footprint_definition_count(); ++index) {
+        library.add(board.footprint_definition(FootprintDefId{index}));
+    }
+    for (const auto &definition : footprints.definitions()) {
+        if (library.find(definition.ref()) == nullptr) {
+            library.add(definition);
+        }
+    }
+    return library;
+}
+
 [[nodiscard]] inline Diagnostic board_diagnostic(DiagnosticCode code, std::string message,
                                                  std::vector<EntityRef> entities = {}) {
     return Diagnostic{Severity::Error, std::move(code), std::move(message), std::move(entities)};
@@ -849,6 +870,7 @@ namespace detail {
 [[nodiscard]] inline DiagnosticReport validate_board(const Board &board,
                                                      const FootprintLibrary &footprints) {
     auto report = DiagnosticReport{};
+    const auto resolution_footprints = detail::board_resolution_footprints(board, footprints);
 
     if (!board.outline().has_value()) {
         report.add(detail::board_diagnostic(DiagnosticCode{"PCB_BOARD_OUTLINE_MISSING"},
@@ -878,7 +900,8 @@ namespace detail {
             continue;
         }
 
-        const auto footprint_resolution = resolve_footprint(selected_part.value(), footprints);
+        const auto footprint_resolution =
+            resolve_footprint(selected_part.value(), resolution_footprints);
         for (const auto &diagnostic : footprint_resolution.diagnostics().diagnostics()) {
             report.add(Diagnostic{diagnostic.severity(), diagnostic.code(), diagnostic.message(),
                                   std::vector{EntityRef::component(placement.component()),

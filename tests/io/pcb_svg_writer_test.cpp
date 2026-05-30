@@ -127,6 +127,22 @@ TEST_CASE("PCB SVG writer omits diagnostic layout when overlays are disabled") {
     CHECK(svg.find("viewBox=\"0 0 58 38\"") != std::string::npos);
 }
 
+TEST_CASE("PCB SVG writer expands bounds to include off-board placements") {
+    const auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
+    [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{70.0, 15.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto svg = volt::io::write_pcb_placement_svg(
+        board, volt::builtin_footprint_library(),
+        volt::io::PcbPlacementSvgOptions{.pad_net_overlays = true, .diagnostic_overlays = false});
+
+    CHECK(svg.find("viewBox=\"0 0 79.65 38\"") != std::string::npos);
+    CHECK(svg.find("data-placement=\"component_placement:0\"") != std::string::npos);
+}
+
 TEST_CASE("PCB SVG writer uses board-cached footprint definitions") {
     const auto fixture = make_resistor_circuit();
     auto board = make_preview_board(fixture);
