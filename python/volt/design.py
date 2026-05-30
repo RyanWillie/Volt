@@ -340,6 +340,11 @@ class Design:
             self._schematic_sheets[name] = self._circuit.schematic_sheet(name, metadata)
         return Schematic(self, self._schematic_sheets[name], name)
 
+    def board(self, name: str = "Main"):
+        from .pcb import Board
+
+        return Board(self, name)
+
     def load_schematic_json(self, text: str) -> Schematic:
         if not isinstance(text, str):
             raise TypeError("Schematic JSON must be a string")
@@ -380,4 +385,3 @@ class Design:
         else:
             component = self._circuit.instantiate_ref(definition, ref, properties)
         return Component(self, component)
-

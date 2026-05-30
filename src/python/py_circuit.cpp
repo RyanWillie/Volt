@@ -1,5 +1,10 @@
 #include "py_circuit.hpp"
 
+#include "binding_pcb_conversions.hpp"
+
+#include <volt/io/pcb_svg_writer.hpp>
+#include <volt/io/pcb_writer.hpp>
+
 namespace volt::python {
 
 PyCircuit::PyCircuit() : circuit_{}, schematic_document_{circuit_} {}
@@ -940,6 +945,106 @@ std::string PyCircuit::to_json() const {
     return out.str();
 }
 
+py::dict PyCircuit::board(const std::string &name) {
+    const auto &projection = board_projection(name);
+    auto result = py::dict{};
+    result["name"] = projection.name().value();
+    result["units"] = "mm";
+    return result;
+}
+
+std::size_t PyCircuit::board_add_layer(const std::string &name, const std::string &role,
+                                       const std::string &side, double thickness_mm, bool enabled) {
+    return board_projection()
+        .add_layer(volt::BoardLayer{name, parse_board_layer_role(role),
+                                    parse_board_layer_side(side), thickness_mm, enabled})
+        .index();
+}
+
+void PyCircuit::board_set_layer_stack(const std::vector<std::size_t> &layers,
+                                      double board_thickness_mm) {
+    auto layer_ids = std::vector<volt::BoardLayerId>{};
+    layer_ids.reserve(layers.size());
+    for (const auto layer : layers) {
+        layer_ids.emplace_back(layer);
+    }
+    board_projection().set_layer_stack(volt::LayerStack{std::move(layer_ids), board_thickness_mm});
+}
+
+void PyCircuit::board_set_rectangular_outline(double x, double y, double width, double height) {
+    board_projection().set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{x, y}, volt::BoardSize{width, height}));
+}
+
+void PyCircuit::board_set_polygon_outline(const std::vector<std::pair<double, double>> &vertices) {
+    auto points = std::vector<volt::BoardPoint>{};
+    points.reserve(vertices.size());
+    for (const auto &[x, y] : vertices) {
+        points.emplace_back(x, y);
+    }
+    board_projection().set_outline(volt::BoardOutline{std::move(points)});
+}
+
+std::size_t PyCircuit::board_add_mounting_hole(const std::string &label, double x, double y,
+                                               double diameter_mm) {
+    return board_projection()
+        .add_feature(volt::BoardFeature::mounting_hole(label, volt::BoardPoint{x, y}, diameter_mm))
+        .index();
+}
+
+std::size_t PyCircuit::board_cache_footprint_definition(const py::dict &definition) {
+    return board_projection()
+        .cache_footprint_definition(footprint_definition_from_dict(definition))
+        .index();
+}
+
+std::size_t PyCircuit::board_place_component(std::size_t component, double x, double y,
+                                             double rotation_degrees, const std::string &side,
+                                             bool locked) {
+    return board_projection()
+        .place_component(volt::ComponentPlacement{component_id(component), volt::BoardPoint{x, y},
+                                                  volt::BoardRotation::degrees(rotation_degrees),
+                                                  parse_board_side(side), locked})
+        .index();
+}
+
+py::list PyCircuit::board_resolve_pads() const {
+    auto result = py::list{};
+    for (const auto &resolution :
+         board_projection().resolve_pads(volt::builtin_footprint_library())) {
+        auto item = py::dict{};
+        item["placement"] = resolution.placement().index();
+        item["component"] = resolution.component().index();
+        item["pad"] = resolution.pad().index();
+        item["pad_label"] = resolution.pad_label();
+        item["position"] =
+            py::make_tuple(resolution.position().x_mm(), resolution.position().y_mm());
+        item["pin"] =
+            resolution.pin().has_value() ? py::cast(resolution.pin()->index()) : py::none{};
+        item["net"] =
+            resolution.net().has_value() ? py::cast(resolution.net()->index()) : py::none{};
+        item["status"] = pad_resolution_status_name(resolution.status());
+        result.append(std::move(item));
+    }
+    return result;
+}
+
+py::list PyCircuit::board_validate() const {
+    return diagnostics_to_list(
+        validate_board(board_projection(), volt::builtin_footprint_library()));
+}
+
+std::string PyCircuit::board_to_json() const {
+    return volt::io::write_pcb_board(board_projection(), volt::builtin_footprint_library());
+}
+
+std::string PyCircuit::board_to_svg(bool pad_net_overlays, bool diagnostic_overlays) const {
+    return volt::io::write_pcb_placement_svg(
+        board_projection(), volt::builtin_footprint_library(),
+        volt::io::PcbPlacementSvgOptions{.pad_net_overlays = pad_net_overlays,
+                                         .diagnostic_overlays = diagnostic_overlays});
+}
+
 std::vector<volt::PinId> PyCircuit::pins_by_name(volt::ComponentId component,
                                                  const std::string &name) const {
     auto result = std::vector<volt::PinId>{};
@@ -979,6 +1084,31 @@ volt::SymbolDefId PyCircuit::ensure_schematic_symbol(const std::string &name) {
         throw std::invalid_argument{"Unknown schematic symbol"};
     }
     return projection.add_symbol_definition(std::move(symbol.value()));
+}
+
+volt::Board &PyCircuit::board_projection(const std::string &name) {
+    if (!board_projection_.has_value()) {
+        board_projection_.emplace(circuit_, volt::BoardName{name});
+        return board_projection_.value();
+    }
+    if (board_projection_->name().value() != name) {
+        throw std::invalid_argument{"Board projection already exists with a different name"};
+    }
+    return board_projection_.value();
+}
+
+volt::Board &PyCircuit::board_projection() {
+    if (!board_projection_.has_value()) {
+        throw std::logic_error{"Board projection has not been created"};
+    }
+    return board_projection_.value();
+}
+
+const volt::Board &PyCircuit::board_projection() const {
+    if (!board_projection_.has_value()) {
+        throw std::logic_error{"Board projection has not been created"};
+    }
+    return board_projection_.value();
 }
 
 } // namespace volt::python
