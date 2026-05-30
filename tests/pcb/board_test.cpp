@@ -105,6 +105,24 @@ TEST_CASE("Board stores metadata, layers, outline, features, and placements") {
     CHECK(board.placement(placement).locked());
 }
 
+TEST_CASE("Board outline accepts an explicit closing vertex") {
+    auto outline = volt::BoardOutline{std::vector{
+        volt::BoardPoint{0.0, 0.0},
+        volt::BoardPoint{10.0, 0.0},
+        volt::BoardPoint{10.0, 5.0},
+        volt::BoardPoint{0.0, 5.0},
+        volt::BoardPoint{0.0, 0.0},
+    }};
+
+    CHECK(outline.vertices() == std::vector{
+                                    volt::BoardPoint{0.0, 0.0},
+                                    volt::BoardPoint{10.0, 0.0},
+                                    volt::BoardPoint{10.0, 5.0},
+                                    volt::BoardPoint{0.0, 5.0},
+                                });
+    CHECK(outline.contains(volt::BoardPoint{5.0, 2.5}));
+}
+
 TEST_CASE("Board rejects structurally invalid board and placement mutations") {
     auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit};

@@ -229,6 +229,7 @@ class BoardOutline {
   public:
     /** Construct a closed outline from polygon vertices. */
     explicit BoardOutline(std::vector<BoardPoint> vertices) : vertices_{std::move(vertices)} {
+        drop_duplicate_closing_vertex();
         if (vertices_.size() < 3) {
             throw std::invalid_argument{"Board outline must contain at least three vertices"};
         }
@@ -282,6 +283,12 @@ class BoardOutline {
 
   private:
     static constexpr double kGeometryEpsilon = 1.0e-9;
+
+    void drop_duplicate_closing_vertex() {
+        if (vertices_.size() > 1 && vertices_.front() == vertices_.back()) {
+            vertices_.pop_back();
+        }
+    }
 
     [[nodiscard]] static double signed_area_twice(const std::vector<BoardPoint> &vertices) {
         double area = 0.0;
