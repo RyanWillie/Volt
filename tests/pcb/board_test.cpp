@@ -189,6 +189,26 @@ TEST_CASE("Board resolves placed pads to logical pins and existing nets") {
     CHECK(resolutions[1].net() == fixture.second_net);
 }
 
+TEST_CASE("Board pad resolution and validation use cached footprint definitions") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
+    [[maybe_unused]] const auto footprint =
+        board.cache_footprint_definition(volt::passive_0603_footprint());
+    [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{10.0, 8.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto empty_library = volt::FootprintLibrary{};
+    const auto resolutions = board.resolve_pads(empty_library);
+    const auto report = volt::validate_board(board, empty_library);
+
+    REQUIRE(resolutions.size() == 2);
+    CHECK(resolutions[0].net() == fixture.first_net);
+    CHECK(resolutions[1].net() == fixture.second_net);
+    CHECK(find_diagnostic(report, "PCB_FOOTPRINT_UNRESOLVED") == nullptr);
+}
+
 TEST_CASE("Board validation reports design issues without owning connectivity") {
     auto fixture = make_resistor_circuit(false);
     auto board = volt::Board{fixture.circuit};

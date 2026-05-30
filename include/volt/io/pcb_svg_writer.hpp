@@ -264,6 +264,56 @@ find_pad_resolution(const std::vector<PadResolution> &resolutions, ComponentPlac
                         bounds.max_y + 0.5};
 }
 
+inline void include_board_point(PcbSvgBounds &bounds, BoardPoint point) {
+    bounds.min_x = std::min(bounds.min_x, point.x_mm());
+    bounds.min_y = std::min(bounds.min_y, point.y_mm());
+    bounds.max_x = std::max(bounds.max_x, point.x_mm());
+    bounds.max_y = std::max(bounds.max_y, point.y_mm());
+}
+
+inline void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &placement,
+                                     const FootprintDefinition &definition) {
+    const auto local_bounds = footprint_local_bounds(definition);
+    include_board_point(bounds,
+                        volt::detail::transform_footprint_point(
+                            placement, FootprintPoint{local_bounds.min_x, local_bounds.min_y}));
+    include_board_point(bounds,
+                        volt::detail::transform_footprint_point(
+                            placement, FootprintPoint{local_bounds.max_x, local_bounds.min_y}));
+    include_board_point(bounds,
+                        volt::detail::transform_footprint_point(
+                            placement, FootprintPoint{local_bounds.max_x, local_bounds.max_y}));
+    include_board_point(bounds,
+                        volt::detail::transform_footprint_point(
+                            placement, FootprintPoint{local_bounds.min_x, local_bounds.max_y}));
+}
+
+[[nodiscard]] inline PcbSvgBounds bounds_from_board(const Board &board,
+                                                    const FootprintLibrary &footprints) {
+    auto bounds = bounds_from_outline(board);
+    for (std::size_t index = 0; index < board.feature_count(); ++index) {
+        const auto &feature = board.feature(BoardFeatureId{index});
+        const auto radius = feature.diameter_mm() / 2.0;
+        include_board_point(
+            bounds, BoardPoint{feature.position().x_mm() - radius, feature.position().y_mm()});
+        include_board_point(
+            bounds, BoardPoint{feature.position().x_mm() + radius, feature.position().y_mm()});
+        include_board_point(
+            bounds, BoardPoint{feature.position().x_mm(), feature.position().y_mm() - radius});
+        include_board_point(
+            bounds, BoardPoint{feature.position().x_mm(), feature.position().y_mm() + radius});
+    }
+    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+        const auto &placement = board.placement(ComponentPlacementId{index});
+        include_board_point(bounds, placement.position());
+        const auto *definition = resolve_definition_for_placement(board, placement, footprints);
+        if (definition != nullptr) {
+            include_footprint_bounds(bounds, placement, *definition);
+        }
+    }
+    return bounds;
+}
+
 [[nodiscard]] inline std::string pad_shape_class(FootprintPadShape shape) {
     switch (shape) {
     case FootprintPadShape::Rectangle:
@@ -559,7 +609,7 @@ inline void write_pcb_placement_svg(std::ostream &out, const Board &board,
                                     PcbPlacementSvgOptions options = {}) {
     const auto preview_footprints = detail::preview_footprint_library(board, footprints);
     const auto diagnostics = validate_board(board, preview_footprints);
-    const auto bounds = detail::bounds_from_outline(board);
+    const auto bounds = detail::bounds_from_board(board, preview_footprints);
     const auto width = detail::preview_width(bounds);
     const auto height = detail::preview_height(bounds, diagnostics, options);
     const auto translate_x = detail::pcb_svg_margin_mm - bounds.min_x;
