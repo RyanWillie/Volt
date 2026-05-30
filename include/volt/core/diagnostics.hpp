@@ -67,6 +67,11 @@ enum class EntityKind {
     NoConnectMarker,
     SheetPort,
     SymbolField,
+    BoardLayer,
+    BoardFeature,
+    FootprintDef,
+    FootprintPad,
+    ComponentPlacement,
 };
 
 /**
@@ -165,6 +170,31 @@ class EntityRef {
     /** Create a reference to a schematic symbol field. */
     [[nodiscard]] static EntityRef symbol_field(SymbolFieldId id) noexcept {
         return EntityRef{EntityKind::SymbolField, id.index()};
+    }
+
+    /** Create a reference to a PCB board layer. */
+    [[nodiscard]] static EntityRef board_layer(BoardLayerId id) noexcept {
+        return EntityRef{EntityKind::BoardLayer, id.index()};
+    }
+
+    /** Create a reference to a PCB board feature. */
+    [[nodiscard]] static EntityRef board_feature(BoardFeatureId id) noexcept {
+        return EntityRef{EntityKind::BoardFeature, id.index()};
+    }
+
+    /** Create a reference to a cached PCB footprint definition. */
+    [[nodiscard]] static EntityRef footprint_def(FootprintDefId id) noexcept {
+        return EntityRef{EntityKind::FootprintDef, id.index()};
+    }
+
+    /** Create a reference to a PCB footprint pad. */
+    [[nodiscard]] static EntityRef footprint_pad(FootprintPadId id) noexcept {
+        return EntityRef{EntityKind::FootprintPad, id.index()};
+    }
+
+    /** Create a reference to a PCB component placement. */
+    [[nodiscard]] static EntityRef component_placement(ComponentPlacementId id) noexcept {
+        return EntityRef{EntityKind::ComponentPlacement, id.index()};
     }
 
     /** Return the kind of entity referenced. */

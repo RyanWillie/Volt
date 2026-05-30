@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt PCB JSON Format</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8fa;
+      --ink: #172026;
+      --muted: #5f6b76;
+      --line: #cbd5df;
+      --panel: #ffffff;
+      --blue: #1c5d99;
+      --green: #20725b;
+      --amber: #9a6818;
+      --code: #edf2f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 42px 0 64px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 28px;
+      align-items: end;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 28px;
+    }
+
+    section {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 32px;
+      padding: 30px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 780px;
+      font-size: clamp(36px, 6vw, 64px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    aside {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    code,
+    pre {
+      background: var(--code);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.92em;
+    }
+
+    code {
+      padding: 0.12em 0.34em;
+      border-radius: 5px;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      line-height: 1.42;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 1.15rem;
+    }
+
+    li + li { margin-top: 0.42rem; }
+
+    .meta {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .panel,
+    .callout {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .callout {
+      border-left: 6px solid var(--blue);
+    }
+
+    .callout.green { border-left-color: var(--green); }
+    .callout.amber { border-left-color: var(--amber); }
+
+    .label {
+      display: inline-block;
+      width: fit-content;
+      margin-bottom: 8px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .label.green { background: var(--green); }
+    .label.amber { background: var(--amber); }
+
+    @media (max-width: 820px) {
+      header,
+      section,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="stack">
+        <p class="label">Format v1</p>
+        <h1>Volt PCB JSON is canonical board state plus a disposable viewer cache.</h1>
+      </div>
+      <div class="meta">
+        <p><strong>Format:</strong> <code>volt.pcb</code></p>
+        <p><strong>Version:</strong> <code>1</code></p>
+        <p><strong>Scope:</strong> placement-ready PCB projection over one logical circuit</p>
+      </div>
+    </header>
+
+    <section>
+      <aside>Ownership</aside>
+      <div class="stack">
+        <div class="callout green">
+          <h2>The board projects existing logical connectivity.</h2>
+          <p>PCB JSON stores board geometry, layer metadata, physical features, cached footprint geometry, and component placements. It references components, pins, and nets from the bound logical circuit; it never creates or mutates logical connectivity.</p>
+        </div>
+        <div class="grid">
+          <div class="panel">
+            <span class="label green">Canonical</span>
+            <h3>Loaded into the kernel</h3>
+            <p>Board name, units, layers, layer stack, outline, features, footprint definitions, and placements are rebuilt as <code>volt::Board</code> state.</p>
+          </div>
+          <div class="panel">
+            <span class="label">Derived</span>
+            <h3>Checked, then recomputed</h3>
+            <p>Viewer pad resolutions and diagnostics are validated on read, but are not trusted as source data. The returned board recomputes them from selected parts and cached footprints.</p>
+          </div>
+          <div class="panel">
+            <span class="label amber">Out of scope</span>
+            <h3>No manufacturing truth</h3>
+            <p>Gerbers, autorouting, KiCad PCB import/export, simulation, and full 3D editing are later adapters or layers.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Document shape</aside>
+      <div class="stack">
+        <pre><code>{
+  "format": "volt.pcb",
+  "version": 1,
+  "board": {
+    "id": "board:0",
+    "name": "Control",
+    "units": "mm",
+    "layers": [
+      {"id": "board_layer:0", "name": "F.Cu", "role": "copper", "side": "top", "thickness_mm": 0.0, "enabled": true}
+    ],
+    "layer_stack": {"board_thickness_mm": 1.6, "layers": ["board_layer:0"]},
+    "outline": {"kind": "polygon", "vertices": [[0.0, 0.0], [50.0, 0.0], [50.0, 30.0], [0.0, 30.0]]},
+    "features": [
+      {"id": "board_feature:0", "kind": "mounting_hole", "label": "MH1", "position": [3.0, 3.0], "diameter_mm": 3.2}
+    ],
+    "footprint_definitions": [
+      {
+        "id": "footprint_def:0",
+        "ref": {"library": "passives", "name": "R_0603_1608Metric"},
+        "pads": [
+          {"id": "footprint_pad:0", "label": "1", "kind": "surface_mount", "shape": "rounded_rectangle", "position": [-0.75, 0.0], "size": [0.8, 0.95], "layers": ["front_copper", "front_solder_mask", "front_paste"], "drill": null, "mechanical_role": null}
+        ]
+      }
+    ],
+    "placements": [
+      {"id": "component_placement:0", "component": "component:0", "footprint": "footprint_def:0", "position": [25.0, 15.0], "rotation_deg": 90.0, "side": "top", "locked": true}
+    ]
+  },
+  "viewer": {
+    "pad_resolutions": [],
+    "diagnostics": []
+  }
+}</code></pre>
+        <p>Field order is deterministic. Entity arrays use insertion order, and local IDs use stable prefixes such as <code>board_layer:</code>, <code>board_feature:</code>, <code>footprint_def:</code>, <code>footprint_pad:</code>, and <code>component_placement:</code>.</p>
+      </div>
+    </section>
+
+    <section>
+      <aside>Reader checks</aside>
+      <div class="stack">
+        <div class="callout">
+          <h2>Malformed structure fails at the load boundary.</h2>
+          <p>The reader rejects duplicate or non-sequential local IDs, dangling layer-stack entries, placements that reference missing components, footprint references that do not match selected physical parts, and viewer pad resolutions with dangling placement, pad, pin, or net references.</p>
+        </div>
+        <ul>
+          <li>Component references are checked against the bound <code>Circuit</code>.</li>
+          <li>Footprint references are checked against cached footprint definitions and selected-part footprint refs.</li>
+          <li>Pad projection refs are checked against footprint pads and recomputed selected-part pin-pad mappings.</li>
+          <li>Net refs are checked against the logical circuit and must match the resolved pin's current net.</li>
+          <li>Diagnostics serialize reporting refs for highlighting, including PCB placement refs, without making <code>EntityRef</code> a traversal handle.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

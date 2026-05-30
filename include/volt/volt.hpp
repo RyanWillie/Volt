@@ -19,6 +19,9 @@
 #include <volt/core/version.hpp>
 #include <volt/io/logical_circuit_reader.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
+#include <volt/io/pcb_reader.hpp>
+#include <volt/io/pcb_schema.hpp>
+#include <volt/io/pcb_writer.hpp>
 #include <volt/io/schematic_reader.hpp>
 #include <volt/io/schematic_schema.hpp>
 #include <volt/io/schematic_svg_writer.hpp>

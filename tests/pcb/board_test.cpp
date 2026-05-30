@@ -218,7 +218,7 @@ TEST_CASE("Board validation checks transformed pad bodies against the outline") 
     auto board = volt::Board{fixture.circuit};
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{5.0, 5.0}));
-    [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
+    const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{1.1, 2.5}, volt::BoardRotation::degrees(0.0)});
 
     const auto report = volt::validate_board(board, volt::builtin_footprint_library());
@@ -226,8 +226,9 @@ TEST_CASE("Board validation checks transformed pad bodies against the outline") 
     const auto *outside_outline = find_diagnostic(report, "PCB_PLACEMENT_OUTSIDE_OUTLINE");
     REQUIRE(outside_outline != nullptr);
     CHECK(outside_outline->severity() == volt::Severity::Error);
-    REQUIRE(outside_outline->entities().size() == 1);
+    REQUIRE(outside_outline->entities().size() == 2);
     CHECK(outside_outline->entities()[0] == volt::EntityRef::component(fixture.component));
+    CHECK(outside_outline->entities()[1] == volt::EntityRef::component_placement(placement));
 }
 
 TEST_CASE("Board validation detects pad edges crossing a concave outline") {
@@ -265,7 +266,7 @@ TEST_CASE("Board validation detects pad edges crossing a concave outline") {
         volt::BoardPoint{2.0, 6.0},
         volt::BoardPoint{0.0, 6.0},
     }});
-    [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
+    const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{3.0, 1.9}, volt::BoardRotation::degrees(0.0)});
 
     const auto report = volt::validate_board(board, library);
@@ -273,8 +274,9 @@ TEST_CASE("Board validation detects pad edges crossing a concave outline") {
     const auto *outside_outline = find_diagnostic(report, "PCB_PLACEMENT_OUTSIDE_OUTLINE");
     REQUIRE(outside_outline != nullptr);
     CHECK(outside_outline->severity() == volt::Severity::Error);
-    REQUIRE(outside_outline->entities().size() == 1);
+    REQUIRE(outside_outline->entities().size() == 2);
     CHECK(outside_outline->entities()[0] == volt::EntityRef::component(fixture.component));
+    CHECK(outside_outline->entities()[1] == volt::EntityRef::component_placement(placement));
 }
 
 TEST_CASE("Board validation diagnoses footprint resolution and pad geometry issues") {
@@ -290,15 +292,16 @@ TEST_CASE("Board validation diagnoses footprint resolution and pad geometry issu
     auto board = volt::Board{fixture.circuit};
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{5.0, 5.0}));
-    [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
+    const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
 
     auto report = volt::validate_board(board, volt::builtin_footprint_library());
     const auto *unresolved_footprint = find_diagnostic(report, "PCB_FOOTPRINT_UNRESOLVED");
     REQUIRE(unresolved_footprint != nullptr);
     CHECK(unresolved_footprint->severity() == volt::Severity::Error);
-    REQUIRE(unresolved_footprint->entities().size() == 1);
+    REQUIRE(unresolved_footprint->entities().size() == 2);
     CHECK(unresolved_footprint->entities()[0] == volt::EntityRef::component(fixture.component));
+    CHECK(unresolved_footprint->entities()[1] == volt::EntityRef::component_placement(placement));
 
     fixture.circuit.select_physical_part(
         fixture.component, volt::PhysicalPart{
@@ -313,18 +316,21 @@ TEST_CASE("Board validation diagnoses footprint resolution and pad geometry issu
     const auto *unknown_pad = find_diagnostic(report, "PCB_PAD_MAPPING_UNKNOWN_PAD");
     REQUIRE(unknown_pad != nullptr);
     CHECK(unknown_pad->severity() == volt::Severity::Error);
-    REQUIRE(unknown_pad->entities().size() == 1);
+    REQUIRE(unknown_pad->entities().size() == 2);
     CHECK(unknown_pad->entities()[0] == volt::EntityRef::component(fixture.component));
+    CHECK(unknown_pad->entities()[1] == volt::EntityRef::component_placement(placement));
 
     const auto *missing_pad_mapping = find_diagnostic(report, "PCB_PAD_MAPPING_MISSING_PIN");
     REQUIRE(missing_pad_mapping != nullptr);
     CHECK(missing_pad_mapping->severity() == volt::Severity::Error);
-    REQUIRE(missing_pad_mapping->entities().size() == 1);
+    REQUIRE(missing_pad_mapping->entities().size() == 2);
     CHECK(missing_pad_mapping->entities()[0] == volt::EntityRef::component(fixture.component));
+    CHECK(missing_pad_mapping->entities()[1] == volt::EntityRef::component_placement(placement));
 
     const auto *outside_outline = find_diagnostic(report, "PCB_PLACEMENT_OUTSIDE_OUTLINE");
     REQUIRE(outside_outline != nullptr);
     CHECK(outside_outline->severity() == volt::Severity::Error);
-    REQUIRE(outside_outline->entities().size() == 1);
+    REQUIRE(outside_outline->entities().size() == 2);
     CHECK(outside_outline->entities()[0] == volt::EntityRef::component(fixture.component));
+    CHECK(outside_outline->entities()[1] == volt::EntityRef::component_placement(placement));
 }

@@ -44,6 +44,16 @@ namespace {
         return "sheet_port";
     case volt::EntityKind::SymbolField:
         return "symbol_field";
+    case volt::EntityKind::BoardLayer:
+        return "board_layer";
+    case volt::EntityKind::BoardFeature:
+        return "board_feature";
+    case volt::EntityKind::FootprintDef:
+        return "footprint_def";
+    case volt::EntityKind::FootprintPad:
+        return "footprint_pad";
+    case volt::EntityKind::ComponentPlacement:
+        return "component_placement";
     }
 
     throw std::logic_error{"Unhandled diagnostic entity kind"};
