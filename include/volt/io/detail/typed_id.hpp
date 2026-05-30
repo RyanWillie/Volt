@@ -74,6 +74,21 @@ template <> struct LocalIdPrefix<SheetPortId> {
 template <> struct LocalIdPrefix<SymbolFieldId> {
     static constexpr auto value = std::string_view{"symbol_field:"};
 };
+template <> struct LocalIdPrefix<BoardLayerId> {
+    static constexpr auto value = std::string_view{"board_layer:"};
+};
+template <> struct LocalIdPrefix<BoardFeatureId> {
+    static constexpr auto value = std::string_view{"board_feature:"};
+};
+template <> struct LocalIdPrefix<FootprintDefId> {
+    static constexpr auto value = std::string_view{"footprint_def:"};
+};
+template <> struct LocalIdPrefix<FootprintPadId> {
+    static constexpr auto value = std::string_view{"footprint_pad:"};
+};
+template <> struct LocalIdPrefix<ComponentPlacementId> {
+    static constexpr auto value = std::string_view{"component_placement:"};
+};
 /// @endcond
 
 /** Return the canonical serialized local-ID prefix for a Volt entity ID type. */

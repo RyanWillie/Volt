@@ -835,6 +835,14 @@ namespace detail {
                             std::vector{EntityRef::component(component)});
 }
 
+[[nodiscard]] inline Diagnostic board_placement_diagnostic(DiagnosticCode code, std::string message,
+                                                           ComponentId component,
+                                                           ComponentPlacementId placement) {
+    return board_diagnostic(
+        std::move(code), std::move(message),
+        std::vector{EntityRef::component(component), EntityRef::component_placement(placement)});
+}
+
 } // namespace detail
 
 /** Validate placement-only board design issues against circuit and footprint context. */
@@ -873,7 +881,8 @@ namespace detail {
         const auto footprint_resolution = resolve_footprint(selected_part.value(), footprints);
         for (const auto &diagnostic : footprint_resolution.diagnostics().diagnostics()) {
             report.add(Diagnostic{diagnostic.severity(), diagnostic.code(), diagnostic.message(),
-                                  std::vector{EntityRef::component(placement.component())}});
+                                  std::vector{EntityRef::component(placement.component()),
+                                              EntityRef::component_placement(placement_id)}});
         }
 
         const auto *definition = footprint_resolution.definition();
@@ -902,10 +911,10 @@ namespace detail {
             const auto &pad = definition->pad(FootprintPadId{pad_index});
             const auto pad_corners = detail::transformed_pad_body_corners(placement, pad);
             if (detail::pad_body_exits_outline(board.outline().value(), pad_corners)) {
-                report.add(detail::board_component_diagnostic(
+                report.add(detail::board_placement_diagnostic(
                     DiagnosticCode{"PCB_PLACEMENT_OUTSIDE_OUTLINE"},
                     "Placement pad '" + pad.label() + "' is outside the board outline",
-                    placement.component()));
+                    placement.component(), placement_id));
             }
         }
     }

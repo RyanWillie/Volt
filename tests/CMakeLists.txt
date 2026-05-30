@@ -37,6 +37,7 @@ add_executable(
     io/logical_circuit_reader_test.cpp
     io/logical_circuit_round_trip_test.cpp
     io/logical_circuit_writer_test.cpp
+    io/pcb_projection_io_test.cpp
     io/schematic_reader_test.cpp
     io/schematic_round_trip_test.cpp
     io/schematic_schema_test.cpp
