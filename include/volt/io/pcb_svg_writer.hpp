@@ -107,9 +107,10 @@ inline void write_pcb_svg_number(std::ostream &out, double value) {
 }
 
 [[nodiscard]] inline double preview_height(const PcbSvgBounds &bounds,
-                                           const DiagnosticReport &diagnostics) {
+                                           const DiagnosticReport &diagnostics,
+                                           PcbPlacementSvgOptions options) {
     auto height = (bounds.max_y - bounds.min_y) + (pcb_svg_margin_mm * 2.0);
-    if (!diagnostics.diagnostics().empty()) {
+    if (options.diagnostic_overlays && !diagnostics.diagnostics().empty()) {
         height += 3.0 * static_cast<double>(diagnostics.diagnostics().size());
     }
     return height;
@@ -560,7 +561,7 @@ inline void write_pcb_placement_svg(std::ostream &out, const Board &board,
     const auto diagnostics = validate_board(board, preview_footprints);
     const auto bounds = detail::bounds_from_outline(board);
     const auto width = detail::preview_width(bounds);
-    const auto height = detail::preview_height(bounds, diagnostics);
+    const auto height = detail::preview_height(bounds, diagnostics, options);
     const auto translate_x = detail::pcb_svg_margin_mm - bounds.min_x;
     const auto translate_y = detail::pcb_svg_margin_mm - bounds.min_y;
     const auto resolutions = board.resolve_pads(preview_footprints);

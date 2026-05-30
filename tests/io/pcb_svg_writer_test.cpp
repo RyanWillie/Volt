@@ -115,6 +115,18 @@ TEST_CASE("PCB SVG writer surfaces board diagnostics without mutating projection
     CHECK(svg.find("class=\"diagnostic-label error\"") != std::string::npos);
 }
 
+TEST_CASE("PCB SVG writer omits diagnostic layout when overlays are disabled") {
+    auto fixture = make_resistor_circuit(false);
+    auto board = make_preview_board(fixture);
+
+    const auto svg = volt::io::write_pcb_placement_svg(
+        board, volt::builtin_footprint_library(),
+        volt::io::PcbPlacementSvgOptions{.pad_net_overlays = true, .diagnostic_overlays = false});
+
+    CHECK(svg.find("data-diagnostic-code=") == std::string::npos);
+    CHECK(svg.find("viewBox=\"0 0 58 38\"") != std::string::npos);
+}
+
 TEST_CASE("PCB SVG writer uses board-cached footprint definitions") {
     const auto fixture = make_resistor_circuit();
     auto board = make_preview_board(fixture);
