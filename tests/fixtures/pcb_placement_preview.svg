@@ -26,13 +26,13 @@
         <text class="reference-designator" data-component="component:0" x="0" y="-1.975" text-anchor="middle">R1</text>
       </g>
     </g>
+    <g class="layer layer-ratsnest">
+    </g>
     <g class="layer layer-pad-overlays">
       <circle class="pad-overlay connected" data-pad-projection="pcb_pad:0:0" data-net="net:0" cx="25" cy="14.25" r="0.35"/>
       <text class="pad-net-label connected" data-pad-projection="pcb_pad:0:0" data-net="net:0" x="25.7" y="13.8">LEFT</text>
       <circle class="pad-overlay connected" data-pad-projection="pcb_pad:0:1" data-net="net:1" cx="25" cy="15.75" r="0.35"/>
       <text class="pad-net-label connected" data-pad-projection="pcb_pad:0:1" data-net="net:1" x="25.7" y="15.3">RIGHT</text>
-    </g>
-    <g class="layer layer-ratsnest">
     </g>
     <g class="layer layer-diagnostics">
     </g>
