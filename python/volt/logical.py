@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 
-from ._footprint import FootprintInput, footprint_ref
+from ._footprint import Footprint, FootprintInput, footprint_ref
 from ._utils import _number
 from .library import LibraryComponent, PinPadValue
 
@@ -478,6 +478,9 @@ class Component:
     ) -> Component:
         if not isinstance(pin_pads, dict):
             raise TypeError("pin_pads must be a dict")
+        object_footprint = footprint if isinstance(footprint, Footprint) else None
+        if object_footprint is not None:
+            self._design._check_object_footprint(object_footprint)
         footprint_library, footprint_name = footprint_ref(footprint)
 
         selected_part_ratings = []
@@ -498,6 +501,10 @@ class Component:
         )
         for name, dimension, value in selected_part_ratings:
             self._design._circuit.set_selected_part_quantity(self._index, name, dimension, value)
+        if object_footprint is not None:
+            self._design._register_component_object_footprint(self._index, object_footprint)
+        else:
+            self._design._clear_component_object_footprint(self._index)
         return self
 
     def __repr__(self) -> str:

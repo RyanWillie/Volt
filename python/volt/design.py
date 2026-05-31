@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Iterable
 
 from . import _volt
+from ._footprint import Footprint, FootprintRef
 from ._utils import _number
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
 from .library import (
@@ -31,6 +32,10 @@ class Design:
         self._circuit = _volt.Circuit()
         self._definitions: dict[str, int] = {}
         self._library_definitions: dict[tuple[str, str, str], ComponentDefinition] = {}
+        self._object_footprints: dict[FootprintRef, Footprint] = {}
+        self._component_object_footprints: dict[int, FootprintRef] = {}
+        self._board_cached_footprints: dict[FootprintRef, tuple[int, Footprint]] = {}
+        self._board_placed_components: list[int] = []
         self._schematic_symbols: dict[str, SchematicSymbolSpec] = {}
         self._schematic_sheets: dict[str, int] = {}
 
@@ -259,6 +264,46 @@ class Design:
     def _register_schematic_symbol(self, symbol: SchematicSymbolSpec) -> None:
         self._circuit.register_schematic_symbol(symbol._to_dict())
         self._schematic_symbols[symbol.name] = symbol
+
+    def _check_object_footprint(self, footprint: Footprint) -> None:
+        existing = self._object_footprints.get(footprint.ref)
+        if existing is not None and existing._to_dict() != footprint._to_dict():
+            library, name = footprint.ref
+            raise ValueError(
+                f"Footprint {library}:{name} conflicts with already registered geometry"
+            )
+
+    def _register_component_object_footprint(self, component: int, footprint: Footprint) -> None:
+        self._check_object_footprint(footprint)
+        self._object_footprints[footprint.ref] = footprint
+        self._component_object_footprints[component] = footprint.ref
+
+    def _clear_component_object_footprint(self, component: int) -> None:
+        self._component_object_footprints.pop(component, None)
+
+    def _object_footprint_for_component(self, component: int) -> Footprint | None:
+        ref = self._component_object_footprints.get(component)
+        if ref is None:
+            return None
+        return self._object_footprints[ref]
+
+    def _record_board_placement(self, component: int) -> None:
+        self._board_placed_components.append(component)
+
+    def _ensure_board_footprint_cached(self, footprint: Footprint) -> int:
+        cached = self._board_cached_footprints.get(footprint.ref)
+        if cached is not None:
+            footprint_id, cached_footprint = cached
+            if cached_footprint._to_dict() != footprint._to_dict():
+                library, name = footprint.ref
+                raise RuntimeError(
+                    f"Board footprint definition {library}:{name} conflicts with cached geometry"
+                )
+            return footprint_id
+
+        footprint_id = self._circuit.board_cache_footprint_definition(footprint._to_dict())
+        self._board_cached_footprints[footprint.ref] = (footprint_id, footprint)
+        return footprint_id
 
     def LED(self, *, ref: str | None = None) -> Component:
         return self._instantiate("led", self._circuit.define_led, "D", ref, {})

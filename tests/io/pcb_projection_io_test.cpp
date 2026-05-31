@@ -550,10 +550,12 @@ TEST_CASE("PCB projection reader rejects invalid footprint library data") {
         auto document = make_board_json(fixture);
         auto duplicate = document["board"]["footprint_definitions"][0];
         duplicate["id"] = "footprint_def:1";
+        duplicate["pads"][0]["size"] = nlohmann::json::array({0.90, 0.95});
         document["board"]["footprint_definitions"].push_back(duplicate);
 
         CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
-                             Catch::Matchers::Message("Board footprint definition already exists"));
+                             Catch::Matchers::Message(
+                                 "Board footprint definition conflicts with existing definition"));
     }
 
     SECTION("duplicate footprint pad labels") {

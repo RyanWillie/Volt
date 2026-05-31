@@ -230,7 +230,7 @@ class Board:
     def cache_footprint(self, footprint: Footprint) -> int:
         if not isinstance(footprint, Footprint):
             raise TypeError("cache_footprint expects a Footprint")
-        return self._design._circuit.board_cache_footprint_definition(footprint._to_dict())
+        return self._design._ensure_board_footprint_cached(footprint)
 
     def place(
         self,
@@ -248,9 +248,12 @@ class Board:
         else:
             component_index = _component_index(component)
         x, y = _point(at, "Board placement position")
-        return self._design._circuit.board_place_component(
+        self._sync_component_object_footprint(component_index)
+        placement = self._design._circuit.board_place_component(
             component_index, x, y, float(rotation), side, locked
         )
+        self._design._record_board_placement(component_index)
+        return placement
 
     def add_track(
         self,
@@ -360,6 +363,7 @@ class Board:
         )
 
     def resolve_pads(self) -> tuple[PadResolution, ...]:
+        self._sync_object_footprints()
         return tuple(
             PadResolution(
                 placement=item["placement"],
@@ -375,15 +379,27 @@ class Board:
         )
 
     def validate(self) -> DiagnosticReport:
+        self._sync_object_footprints()
         return DiagnosticReport(
             _diagnostic_from_dict(item) for item in self._design._circuit.board_validate()
         )
 
     def to_json(self) -> str:
+        self._sync_object_footprints()
         return self._design._circuit.board_to_json()
 
     def to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True) -> str:
+        self._sync_object_footprints()
         return self._design._circuit.board_to_svg(pad_net_overlays, diagnostic_overlays)
+
+    def _sync_component_object_footprint(self, component: int) -> None:
+        footprint = self._design._object_footprint_for_component(component)
+        if footprint is not None:
+            self._design._ensure_board_footprint_cached(footprint)
+
+    def _sync_object_footprints(self) -> None:
+        for component in self._design._board_placed_components:
+            self._sync_component_object_footprint(component)
 
     def write_json(self, path: str | Path) -> None:
         Path(path).write_text(self.to_json(), encoding="utf-8")
