@@ -169,6 +169,11 @@ void bind_circuit(pybind11::module_ &module) {
         .def("board_place_component", &PyCircuit::board_place_component, py::arg("component"),
              py::arg("x"), py::arg("y"), py::arg("rotation_degrees") = 0.0, py::arg("side") = "top",
              py::arg("locked") = false)
+        .def("board_add_track", &PyCircuit::board_add_track, py::arg("net"), py::arg("layer"),
+             py::arg("points"), py::arg("width_mm"))
+        .def("board_add_via", &PyCircuit::board_add_via, py::arg("net"), py::arg("x"), py::arg("y"),
+             py::arg("start_layer"), py::arg("end_layer"), py::arg("drill_diameter_mm"),
+             py::arg("annular_diameter_mm"))
         .def("board_resolve_pads", &PyCircuit::board_resolve_pads)
         .def("board_validate", &PyCircuit::board_validate)
         .def("board_to_json", &PyCircuit::board_to_json)

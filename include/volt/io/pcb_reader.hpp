@@ -49,6 +49,8 @@ class PcbBoardReader {
         read_features(board, board_json);
         read_footprint_definitions(board, board_json);
         read_placements(board, board_json);
+        read_tracks(board, board_json);
+        read_vias(board, board_json);
         validate_viewer_cache(board);
         return board;
     }
@@ -363,6 +365,75 @@ class PcbBoardReader {
         }
     }
 
+    void read_tracks(Board &board, const nlohmann::json &board_json) const {
+        const auto *tracks = optional_field(board_json, "tracks");
+        if (tracks == nullptr) {
+            return;
+        }
+        require(tracks->is_array(), "Expected array field: tracks");
+        for (std::size_t index = 0; index < tracks->size(); ++index) {
+            const auto &track_json = (*tracks)[index];
+            require(track_json.is_object(), "PCB track must be an object");
+            const auto expected = BoardTrackId{index};
+            require_sequential_id(track_json, "id", expected, "PCB track IDs must be sequential");
+
+            const auto net = typed_id<NetId>(track_json, "net");
+            if (net.index() >= circuit_.net_count()) {
+                throw std::logic_error{"PCB track references missing net"};
+            }
+            const auto layer = typed_id<BoardLayerId>(track_json, "layer");
+            if (layer.index() >= board.layer_count()) {
+                throw std::logic_error{"PCB track references missing board layer"};
+            }
+
+            const auto &points_json = array_field(track_json, "points");
+            auto points = std::vector<BoardPoint>{};
+            points.reserve(points_json.size());
+            for (const auto &point_json : points_json) {
+                points.push_back(board_point(point_json));
+            }
+
+            const auto id = board.add_track(
+                BoardTrack{net, layer, std::move(points), number_field(track_json, "width_mm")});
+            require(id == expected, "PCB track IDs must be sequential");
+        }
+    }
+
+    void read_vias(Board &board, const nlohmann::json &board_json) const {
+        const auto *vias = optional_field(board_json, "vias");
+        if (vias == nullptr) {
+            return;
+        }
+        require(vias->is_array(), "Expected array field: vias");
+        for (std::size_t index = 0; index < vias->size(); ++index) {
+            const auto &via_json = (*vias)[index];
+            require(via_json.is_object(), "PCB via must be an object");
+            const auto expected = BoardViaId{index};
+            require_sequential_id(via_json, "id", expected, "PCB via IDs must be sequential");
+
+            const auto net = typed_id<NetId>(via_json, "net");
+            if (net.index() >= circuit_.net_count()) {
+                throw std::logic_error{"PCB via references missing net"};
+            }
+            const auto start_layer = typed_id<BoardLayerId>(via_json, "start_layer");
+            const auto end_layer = typed_id<BoardLayerId>(via_json, "end_layer");
+            if (start_layer.index() >= board.layer_count() ||
+                end_layer.index() >= board.layer_count()) {
+                throw std::logic_error{"PCB via references missing board layer"};
+            }
+
+            const auto id = board.add_via(BoardVia{
+                net,
+                board_point(field(via_json, "position")),
+                start_layer,
+                end_layer,
+                number_field(via_json, "drill_diameter_mm"),
+                number_field(via_json, "annular_diameter_mm"),
+            });
+            require(id == expected, "PCB via IDs must be sequential");
+        }
+    }
+
     void validate_placement_footprint(const Board &board, ComponentId component,
                                       const nlohmann::json &placement_json) const {
         const auto footprint = nullable_string_field(placement_json, "footprint");
@@ -604,6 +675,18 @@ class PcbBoardReader {
         if (const auto id = decode_if_prefixed<BoardFeatureId>(ref)) {
             if (id->index() >= board.feature_count()) {
                 throw std::logic_error{"PCB viewer diagnostic references missing board feature"};
+            }
+            return;
+        }
+        if (const auto id = decode_if_prefixed<BoardTrackId>(ref)) {
+            if (id->index() >= board.track_count()) {
+                throw std::logic_error{"PCB viewer diagnostic references missing track"};
+            }
+            return;
+        }
+        if (const auto id = decode_if_prefixed<BoardViaId>(ref)) {
+            if (id->index() >= board.via_count()) {
+                throw std::logic_error{"PCB viewer diagnostic references missing via"};
             }
             return;
         }

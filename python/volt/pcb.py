@@ -1,4 +1,4 @@
-"""Placement-only PCB authoring facade over kernel-owned board projections."""
+"""PCB authoring facade over kernel-owned board projections."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Iterable
 
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
-from .logical import Component
+from .logical import Component, Net
 
 
 Point = tuple[float, float]
@@ -28,6 +28,12 @@ def _layer_index(value: int) -> int:
 def _component_index(value: int) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise TypeError("Board component IDs must be integers")
+    return value
+
+
+def _net_index(value: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError("Board net IDs must be integers")
     return value
 
 
@@ -142,7 +148,7 @@ class PadResolution:
 
 
 class Board:
-    """Python handle to one kernel-owned placement-only PCB projection."""
+    """Python handle to one kernel-owned PCB projection."""
 
     def __init__(self, design, name: str = "Main"):
         if not isinstance(name, str):
@@ -208,6 +214,54 @@ class Board:
         x, y = _point(at, "Board placement position")
         return self._design._circuit.board_place_component(
             component_index, x, y, float(rotation), side, locked
+        )
+
+    def add_track(
+        self,
+        net: Net | int,
+        *,
+        layer: int,
+        points: Iterable[Point],
+        width: float,
+    ) -> int:
+        if isinstance(net, Net):
+            if net._design is not self._design:
+                raise ValueError("Net belongs to a different design")
+            net_index = net.index
+        else:
+            net_index = _net_index(net)
+        return self._design._circuit.board_add_track(
+            net_index,
+            _layer_index(layer),
+            [_point(point, "Board track point") for point in points],
+            float(width),
+        )
+
+    def add_via(
+        self,
+        net: Net | int,
+        *,
+        at: Point,
+        start_layer: int,
+        end_layer: int,
+        drill: float = 0.30,
+        annular: float = 0.70,
+    ) -> int:
+        if isinstance(net, Net):
+            if net._design is not self._design:
+                raise ValueError("Net belongs to a different design")
+            net_index = net.index
+        else:
+            net_index = _net_index(net)
+        x, y = _point(at, "Board via position")
+        return self._design._circuit.board_add_via(
+            net_index,
+            x,
+            y,
+            _layer_index(start_layer),
+            _layer_index(end_layer),
+            float(drill),
+            float(annular),
         )
 
     def resolve_pads(self) -> tuple[PadResolution, ...]:

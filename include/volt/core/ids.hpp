@@ -53,6 +53,8 @@ struct SheetPortIdTag;
 struct SymbolFieldIdTag;
 struct BoardLayerIdTag;
 struct BoardFeatureIdTag;
+struct BoardTrackIdTag;
+struct BoardViaIdTag;
 struct FootprintDefIdTag;
 struct FootprintPadIdTag;
 struct ComponentPlacementIdTag;
@@ -105,6 +107,10 @@ using SymbolFieldId = EntityId<detail::SymbolFieldIdTag>;
 using BoardLayerId = EntityId<detail::BoardLayerIdTag>;
 /** ID for a physical board feature owned by a board projection. */
 using BoardFeatureId = EntityId<detail::BoardFeatureIdTag>;
+/** ID for a routed PCB track owned by a board projection. */
+using BoardTrackId = EntityId<detail::BoardTrackIdTag>;
+/** ID for a routed PCB via owned by a board projection. */
+using BoardViaId = EntityId<detail::BoardViaIdTag>;
 /** ID for a cached PCB footprint definition owned by a board projection. */
 using FootprintDefId = EntityId<detail::FootprintDefIdTag>;
 /** ID for a pad inside a PCB footprint definition. */

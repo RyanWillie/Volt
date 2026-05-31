@@ -270,6 +270,14 @@ class PyCircuit {
                                                     double rotation_degrees,
                                                     const std::string &side, bool locked);
 
+    [[nodiscard]] std::size_t board_add_track(std::size_t net, std::size_t layer,
+                                              const std::vector<std::pair<double, double>> &points,
+                                              double width_mm);
+
+    [[nodiscard]] std::size_t board_add_via(std::size_t net, double x, double y,
+                                            std::size_t start_layer, std::size_t end_layer,
+                                            double drill_diameter_mm, double annular_diameter_mm);
+
     [[nodiscard]] py::list board_resolve_pads() const;
 
     [[nodiscard]] py::list board_validate() const;

@@ -54,6 +54,7 @@ def _passive_0603(ref):
 
 def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     design, r1, d1 = _small_resistor_led_design()
+    led_a = next(net for net in design.nets() if net.name == "LED_A")
     board = design.board("Control")
 
     front = board.add_layer("F.Cu", role="copper", side="top")
@@ -65,6 +66,15 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
     board.place(r1, at=(18.0, 15.0), rotation=0.0, side="top", locked=True)
     board.place(d1, at=(28.0, 15.0), rotation=180.0, side="top")
+    track = board.add_track(led_a, layer=front, points=((18.75, 15.0), (27.25, 15.0)), width=0.25)
+    via = board.add_via(
+        led_a,
+        at=(23.0, 15.0),
+        start_layer=front,
+        end_layer=back,
+        drill=0.30,
+        annular=0.70,
+    )
 
     first_json = board.to_json()
     assert board.to_json() == first_json
@@ -79,6 +89,14 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
         "component:0",
         "component:1",
     ]
+    assert track == 0
+    assert via == 0
+    assert document["board"]["tracks"][0]["net"] == "net:1"
+    assert document["board"]["tracks"][0]["layer"] == "board_layer:0"
+    assert document["board"]["tracks"][0]["points"] == [[18.75, 15.0], [27.25, 15.0]]
+    assert document["board"]["vias"][0]["net"] == "net:1"
+    assert document["board"]["vias"][0]["start_layer"] == "board_layer:0"
+    assert document["board"]["vias"][0]["end_layer"] == "board_layer:1"
     assert len(document["board"]["footprint_definitions"]) == 2
     assert len(document["viewer"]["pad_resolutions"]) == 4
     assert document["viewer"]["diagnostics"] == []
@@ -88,6 +106,8 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     assert 'data-board-name="Control"' in svg
     assert 'data-placement="component_placement:0"' in svg
     assert 'data-net="net:0"' in svg
+    assert 'data-track="board_track:0"' in svg
+    assert 'data-via="board_via:0"' in svg
 
     json_path = tmp_path / "board.voltpcb.json"
     svg_path = tmp_path / "board.svg"
@@ -150,3 +170,9 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
     with pytest.raises(RuntimeError, match="Component already has a board placement"):
         board.place(r1, at=(1.0, 1.0))
         board.place(r1, at=(2.0, 2.0))
+    with pytest.raises(IndexError, match="Volt entity id is out of range"):
+        board.add_track(99, layer=front, points=((1.0, 1.0), (2.0, 1.0)), width=0.25)
+    with pytest.raises(ValueError, match="Board track width must be positive"):
+        board.add_track(design.net("ROUTE"), layer=front, points=((1.0, 1.0), (2.0, 1.0)), width=0)
+    with pytest.raises(ValueError, match="Board via layer span must reference distinct layers"):
+        board.add_via(design.net("VIA"), at=(1.0, 1.0), start_layer=front, end_layer=front)

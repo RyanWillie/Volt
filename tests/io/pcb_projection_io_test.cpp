@@ -221,6 +221,52 @@ TEST_CASE("PCB projection reader round-trips board metadata, placements, and pad
     CHECK(restored.placement(volt::ComponentPlacementId{0}).component() == fixture.component);
 }
 
+TEST_CASE("PCB projection writer and reader round-trip copper tracks and vias") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_viewer_ready_board(fixture);
+
+    [[maybe_unused]] const auto track = board.add_track(volt::BoardTrack{
+        fixture.first_net,
+        volt::BoardLayerId{0},
+        std::vector{
+            volt::BoardPoint{5.0, 5.0},
+            volt::BoardPoint{12.0, 5.0},
+            volt::BoardPoint{12.0, 8.0},
+        },
+        0.25,
+    });
+    [[maybe_unused]] const auto via =
+        board.add_via(volt::BoardVia{fixture.first_net, volt::BoardPoint{12.0, 8.0},
+                                     volt::BoardLayerId{0}, volt::BoardLayerId{1}, 0.30, 0.70});
+
+    const auto text = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
+    const auto document = nlohmann::json::parse(text);
+
+    REQUIRE(document["board"]["tracks"].size() == 1);
+    CHECK(document["board"]["tracks"][0]["id"] == "board_track:0");
+    CHECK(document["board"]["tracks"][0]["net"] == "net:0");
+    CHECK(document["board"]["tracks"][0]["layer"] == "board_layer:0");
+    CHECK(document["board"]["tracks"][0]["points"] ==
+          nlohmann::json::array({nlohmann::json::array({5.0, 5.0}),
+                                 nlohmann::json::array({12.0, 5.0}),
+                                 nlohmann::json::array({12.0, 8.0})}));
+    CHECK(document["board"]["tracks"][0]["width_mm"] == 0.25);
+
+    REQUIRE(document["board"]["vias"].size() == 1);
+    CHECK(document["board"]["vias"][0]["id"] == "board_via:0");
+    CHECK(document["board"]["vias"][0]["net"] == "net:0");
+    CHECK(document["board"]["vias"][0]["position"] == nlohmann::json::array({12.0, 8.0}));
+    CHECK(document["board"]["vias"][0]["start_layer"] == "board_layer:0");
+    CHECK(document["board"]["vias"][0]["end_layer"] == "board_layer:1");
+    CHECK(document["board"]["vias"][0]["drill_diameter_mm"] == 0.30);
+    CHECK(document["board"]["vias"][0]["annular_diameter_mm"] == 0.70);
+
+    const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
+    CHECK(volt::io::write_pcb_board(restored, volt::builtin_footprint_library()) == text);
+    CHECK(restored.track(volt::BoardTrackId{0}).points()[2] == volt::BoardPoint{12.0, 8.0});
+    CHECK(restored.via(volt::BoardViaId{0}).end_layer() == volt::BoardLayerId{1});
+}
+
 TEST_CASE("PCB projection writer includes highlightable diagnostic references") {
     const auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
@@ -289,6 +335,35 @@ TEST_CASE("PCB projection reader rejects dangling references") {
         CHECK_THROWS_MATCHES(
             volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
             Catch::Matchers::Message("PCB viewer pad resolution references missing net"));
+    }
+
+    SECTION("track net references") {
+        auto document = make_board_json(fixture);
+        document["board"]["tracks"] = nlohmann::json::array(
+            {{{"id", "board_track:0"},
+              {"net", "net:99"},
+              {"layer", "board_layer:0"},
+              {"points", nlohmann::json::array({nlohmann::json::array({1.0, 1.0}),
+                                                nlohmann::json::array({2.0, 1.0})})},
+              {"width_mm", 0.25}}});
+
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+                             Catch::Matchers::Message("PCB track references missing net"));
+    }
+
+    SECTION("via layer references") {
+        auto document = make_board_json(fixture);
+        document["board"]["vias"] =
+            nlohmann::json::array({{{"id", "board_via:0"},
+                                    {"net", "net:0"},
+                                    {"position", nlohmann::json::array({2.0, 1.0})},
+                                    {"start_layer", "board_layer:0"},
+                                    {"end_layer", "board_layer:99"},
+                                    {"drill_diameter_mm", 0.30},
+                                    {"annular_diameter_mm", 0.70}}});
+
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+                             Catch::Matchers::Message("PCB via references missing board layer"));
     }
 }
 
