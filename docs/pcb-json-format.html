@@ -332,6 +332,30 @@
     </section>
 
     <section>
+      <aside>Renderer Use</aside>
+      <div class="stack">
+        <div class="callout green">
+          <h2>A renderer should consume JSON directly.</h2>
+          <p>The SVG preview is optional debug output. A 2D or first 3D renderer should use the JSON board outline, thickness, features, footprint pad geometry, placement transforms, and pad projection identity as its input model.</p>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Renderer primitive</th><th>JSON inputs</th><th>Contract</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Board body</td><td><code>board.outline.vertices</code>, <code>board.layer_stack.board_thickness_mm</code>, <code>board.units</code></td><td>Extrude the outline by board thickness in millimeters. The renderer chooses camera and z-origin conventions.</td></tr>
+            <tr><td>Layer controls</td><td><code>board.layers[]</code>, <code>board.layer_stack.layers[]</code></td><td>Use layer IDs, names, roles, sides, enabled state, and stack order for visibility and inspection.</td></tr>
+            <tr><td>Mechanical features</td><td><code>board.features[]</code></td><td>Render mounting holes and future board features from stable feature IDs and board-space geometry.</td></tr>
+            <tr><td>Footprint pad bodies</td><td><code>board.footprint_definitions[].pads[]</code></td><td>Render pad shape, size, drill, and layer membership in footprint-local coordinates.</td></tr>
+            <tr><td>Placed pads</td><td><code>board.placements[]</code> plus referenced <code>footprint_def</code></td><td>Apply placement side, rotation, and translation to every footprint-local pad. Bottom-side placements mirror local X before rotation.</td></tr>
+            <tr><td>Selection identity</td><td><code>viewer.pad_resolutions[]</code>, <code>viewer.diagnostics[]</code></td><td>Use derived pad projection IDs, pin refs, net refs, and diagnostic entity refs for overlays and inspection panels.</td></tr>
+          </tbody>
+        </table>
+        <p>Routed copper, vias, zones, rich package bodies, component heights, and external 3D model references are intentionally absent from v1. They should be added as kernel-owned PCB projection data when those concepts exist in Volt.</p>
+      </div>
+    </section>
+
+    <section>
       <aside>Viewer Cache</aside>
       <div class="stack">
         <table>

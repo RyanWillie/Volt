@@ -162,6 +162,41 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["viewer"]["diagnostics"] == nlohmann::json::array());
 }
 
+TEST_CASE("PCB projection JSON contains renderer-ready geometry without SVG") {
+    const auto fixture = make_resistor_circuit();
+    const auto document = make_board_json(fixture);
+
+    REQUIRE(document["board"]["outline"]["vertices"].size() == 4);
+    CHECK(document["board"]["layer_stack"]["board_thickness_mm"] == 1.6);
+
+    const auto &placement = document["board"]["placements"][0];
+    const auto &footprint = document["board"]["footprint_definitions"][0];
+    const auto &pad = footprint["pads"][0];
+    const auto &pad_projection = document["viewer"]["pad_resolutions"][0];
+
+    CHECK(placement["footprint"] == footprint["id"]);
+    CHECK(pad_projection["placement"] == placement["id"]);
+    CHECK(pad_projection["footprint"] == footprint["id"]);
+    CHECK(pad_projection["pad"] == pad["id"]);
+
+    CHECK(pad["shape"] == "rounded_rectangle");
+    CHECK(pad["position"] == nlohmann::json::array({-0.75, 0.0}));
+    CHECK(pad["size"] == nlohmann::json::array({0.80, 0.95}));
+    CHECK(pad["layers"] ==
+          nlohmann::json::array({"front_copper", "front_solder_mask", "front_paste"}));
+
+    const auto placement_x = placement["position"][0].get<double>();
+    const auto placement_y = placement["position"][1].get<double>();
+    const auto pad_x = pad["position"][0].get<double>();
+    const auto pad_y = pad["position"][1].get<double>();
+    CHECK(placement["rotation_deg"] == 90.0);
+    CHECK(placement["side"] == "top");
+    CHECK(pad_projection["position"] ==
+          nlohmann::json::array({placement_x - pad_y, placement_y + pad_x}));
+    CHECK(pad_projection["pin"] == "pin:0");
+    CHECK(pad_projection["net"] == "net:0");
+}
+
 TEST_CASE("PCB projection reader round-trips board metadata, placements, and pad geometry") {
     const auto fixture = make_resistor_circuit();
     const auto text = volt::io::write_pcb_board(make_viewer_ready_board(fixture),
