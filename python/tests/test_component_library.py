@@ -664,6 +664,102 @@ def test_component_selected_part_serializes():
         "value": 0.1,
     }
 
+
+def _resistor_0603_footprint():
+    return volt.Footprint(
+        library="Resistor_SMD",
+        name="R_0603_1608Metric",
+        pads=(
+            volt.FootprintPad.surface_mount("1", at=(-0.75, 0.0), size=(0.80, 0.95)),
+            volt.FootprintPad.surface_mount("2", at=(0.75, 0.0), size=(0.80, 0.95)),
+        ),
+    )
+
+
+def test_component_select_part_accepts_public_footprint_object():
+    design = volt.Design("selected-part-footprint-object")
+    r1 = design.R(ref="R1")
+    footprint = _resistor_0603_footprint()
+
+    r1.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603FR-07330RL",
+        package="0603",
+        footprint=footprint,
+        pin_pads={1: "1", 2: "2"},
+    )
+
+    circuit = json.loads(design.to_json())
+    part = circuit["components"][0]["selected_physical_part"]
+
+    assert part["footprint"] == {
+        "library": "Resistor_SMD",
+        "name": "R_0603_1608Metric",
+    }
+    assert "pads" not in part["footprint"]
+
+
+def test_footprint_rejects_empty_public_identity():
+    try:
+        volt.Footprint(library="", name="R_0603_1608Metric", pads=())
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("empty footprint library should be rejected")
+
+    try:
+        volt.Footprint(library="Resistor_SMD", name="", pads=())
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("empty footprint name should be rejected")
+
+
+def test_physical_part_specs_accept_and_reuse_public_footprint_object():
+    footprint = _resistor_0603_footprint()
+    library = volt.Library("volt.test")
+    resistor = library.component(
+        "Resistor",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        physical_part=volt.PhysicalPartSpec(
+            manufacturer="Yageo",
+            part_number="RC0603FR-07330RL",
+            package="0603",
+            footprint=footprint,
+            pin_pads={1: "1", 2: "2"},
+        ),
+    )
+    jumper = library.component(
+        "Jumper",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        physical_part=volt.PhysicalPartSpec.same_numbered(
+            manufacturer="Keystone",
+            part_number="5015",
+            package="0603",
+            footprint=footprint,
+        ),
+    )
+    design = volt.Design("library-footprint-object")
+
+    design.instantiate(resistor, ref="R1")
+    design.instantiate(jumper, ref="JP1")
+    circuit = json.loads(design.to_json())
+
+    assert resistor.physical_part.footprint is footprint
+    assert jumper.physical_part.footprint is footprint
+    assert [
+        component["selected_physical_part"]["footprint"]
+        for component in circuit["components"]
+    ] == [
+        {"library": "Resistor_SMD", "name": "R_0603_1608Metric"},
+        {"library": "Resistor_SMD", "name": "R_0603_1608Metric"},
+    ]
+    assert all(
+        "pads" not in component["selected_physical_part"]["footprint"]
+        for component in circuit["components"]
+    )
+
+
 def test_custom_component_selected_part_accepts_named_pin_mappings():
     design = volt.Design("selected-custom")
     opamp = design.define_component(

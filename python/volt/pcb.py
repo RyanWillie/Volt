@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+from ._footprint import Footprint
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
 from .logical import Component, Net
 
@@ -122,19 +123,7 @@ class FootprintPad:
         }
 
 
-@dataclass(frozen=True)
-class FootprintDefinition:
-    """Library-qualified footprint definition cached on a board projection."""
-
-    ref: tuple[str, str]
-    pads: tuple[FootprintPad, ...]
-
-    def __init__(self, ref: tuple[str, str], *, pads: Iterable[FootprintPad]):
-        object.__setattr__(self, "ref", ref)
-        object.__setattr__(self, "pads", tuple(pads))
-
-    def _to_dict(self) -> dict:
-        return {"ref": self.ref, "pads": [pad._to_dict() for pad in self.pads]}
+FootprintDefinition = Footprint
 
 
 @dataclass(frozen=True)
@@ -238,9 +227,9 @@ class Board:
         x, y = _point(at, "Board feature position")
         return self._design._circuit.board_add_mounting_hole(label, x, y, float(diameter))
 
-    def cache_footprint(self, footprint: FootprintDefinition) -> int:
-        if not isinstance(footprint, FootprintDefinition):
-            raise TypeError("cache_footprint expects a FootprintDefinition")
+    def cache_footprint(self, footprint: Footprint) -> int:
+        if not isinstance(footprint, Footprint):
+            raise TypeError("cache_footprint expects a Footprint")
         return self._design._circuit.board_cache_footprint_definition(footprint._to_dict())
 
     def place(
