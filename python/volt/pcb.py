@@ -25,6 +25,12 @@ def _layer_index(value: int) -> int:
     return value
 
 
+def _component_index(value: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError("Board component IDs must be integers")
+    return value
+
+
 @dataclass(frozen=True)
 class FootprintDrill:
     """Drill metadata for a through-hole footprint pad."""
@@ -198,7 +204,7 @@ class Board:
                 raise ValueError("Component belongs to a different design")
             component_index = component.index
         else:
-            component_index = component
+            component_index = _component_index(component)
         x, y = _point(at, "Board placement position")
         return self._design._circuit.board_place_component(
             component_index, x, y, float(rotation), side, locked
