@@ -256,6 +256,34 @@ TEST_CASE("PCB SVG writer exposes placement entity references for board diagnost
     CHECK(svg.find("class=\"diagnostic-marker error\"") != std::string::npos);
 }
 
+TEST_CASE("PCB SVG writer exposes copper entity references for DRC diagnostics") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Copper DRC"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.15, 0.25, 0.30, 0.70, 0.0});
+    [[maybe_unused]] const auto track = board.add_track(volt::BoardTrack{
+        fixture.first_net,
+        front,
+        std::vector{volt::BoardPoint{5.0, 5.0}, volt::BoardPoint{12.0, 5.0}},
+        0.10,
+    });
+    [[maybe_unused]] const auto via = board.add_via(
+        volt::BoardVia{fixture.first_net, volt::BoardPoint{12.0, 8.0}, front, back, 0.20, 0.50});
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(svg.find("data-diagnostic-code=\"PCB_TRACK_WIDTH_BELOW_MINIMUM\"") != std::string::npos);
+    CHECK(svg.find("data-track=\"board_track:0\"") != std::string::npos);
+    CHECK(svg.find("data-diagnostic-code=\"PCB_VIA_DRILL_BELOW_MINIMUM\"") != std::string::npos);
+    CHECK(svg.find("data-via=\"board_via:0\"") != std::string::npos);
+}
+
 TEST_CASE("PCB SVG writer omits diagnostic layout when overlays are disabled") {
     auto fixture = make_resistor_circuit(false);
     auto board = make_preview_board(fixture);

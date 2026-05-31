@@ -275,6 +275,21 @@ inline void write_outline(std::ostream &out, const Board &board) {
     out << "]},\n";
 }
 
+inline void write_rules(std::ostream &out, const Board &board) {
+    const auto &rules = board.design_rules();
+    out << "    \"rules\": {\"copper_clearance_mm\": ";
+    write_number(out, rules.copper_clearance_mm());
+    out << ", \"minimum_track_width_mm\": ";
+    write_number(out, rules.minimum_track_width_mm());
+    out << ", \"minimum_via_drill_diameter_mm\": ";
+    write_number(out, rules.minimum_via_drill_diameter_mm());
+    out << ", \"minimum_via_annular_diameter_mm\": ";
+    write_number(out, rules.minimum_via_annular_diameter_mm());
+    out << ", \"board_outline_clearance_mm\": ";
+    write_number(out, rules.board_outline_clearance_mm());
+    out << "},\n";
+}
+
 inline void write_features(std::ostream &out, const Board &board) {
     out << "    \"features\": [\n";
     for (std::size_t index = 0; index < board.feature_count(); ++index) {
@@ -553,6 +568,7 @@ inline void write_pcb_board(std::ostream &out, const Board &board,
     out << "    \"name\": " << detail::json_string(board.name().value()) << ",\n";
     out << "    \"units\": " << detail::json_string(detail::board_units_name(board.units()))
         << ",\n";
+    detail::write_rules(out, board);
     detail::write_layers(out, board);
     detail::write_layer_stack(out, board);
     detail::write_outline(out, board);

@@ -66,7 +66,12 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
     board.place(r1, at=(18.0, 15.0), rotation=0.0, side="top", locked=True)
     board.place(d1, at=(28.0, 15.0), rotation=180.0, side="top")
-    track = board.add_track(led_a, layer=front, points=((18.75, 15.0), (27.25, 15.0)), width=0.25)
+    track = board.add_track(
+        led_a,
+        layer=front,
+        points=((18.75, 15.0), (23.0, 10.0), (28.75, 15.0)),
+        width=0.25,
+    )
     via = board.add_via(
         led_a,
         at=(23.0, 15.0),
@@ -93,7 +98,12 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     assert via == 0
     assert document["board"]["tracks"][0]["net"] == "net:1"
     assert document["board"]["tracks"][0]["layer"] == "board_layer:0"
-    assert document["board"]["tracks"][0]["points"] == [[18.75, 15.0], [27.25, 15.0]]
+    assert document["board"]["rules"]["minimum_track_width_mm"] == 0.15
+    assert document["board"]["tracks"][0]["points"] == [
+        [18.75, 15.0],
+        [23.0, 10.0],
+        [28.75, 15.0],
+    ]
     assert document["board"]["vias"][0]["net"] == "net:1"
     assert document["board"]["vias"][0]["start_layer"] == "board_layer:0"
     assert document["board"]["vias"][0]["end_layer"] == "board_layer:1"
@@ -115,6 +125,59 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     board.write_svg(svg_path)
     assert json_path.read_text(encoding="utf-8") == first_json
     assert svg_path.read_text(encoding="utf-8") == svg
+
+
+def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():
+    design, r1, _d1 = _small_resistor_led_design()
+    vcc = next(net for net in design.nets() if net.name == "VCC")
+    board = design.board()
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    board.place(r1, at=(10.0, 10.0))
+    board.set_design_rules(
+        copper_clearance=0.20,
+        min_track_width=0.25,
+        min_via_drill=0.30,
+        min_via_annular=0.70,
+        board_outline_clearance=0.10,
+    )
+    board.add_track(vcc, layer=front, points=((2.0, 2.0), (8.0, 2.0)), width=0.10)
+    board.add_via(
+        vcc,
+        at=(12.0, 10.0),
+        start_layer=front,
+        end_layer=back,
+        drill=0.20,
+        annular=0.50,
+    )
+
+    document = json.loads(board.to_json())
+    assert document["board"]["rules"] == {
+        "board_outline_clearance_mm": 0.10,
+        "copper_clearance_mm": 0.20,
+        "minimum_track_width_mm": 0.25,
+        "minimum_via_annular_diameter_mm": 0.70,
+        "minimum_via_drill_diameter_mm": 0.30,
+    }
+
+    report = board.validate()
+    codes = {diagnostic.code for diagnostic in report}
+    assert "PCB_TRACK_WIDTH_BELOW_MINIMUM" in codes
+    assert "PCB_VIA_DRILL_BELOW_MINIMUM" in codes
+    assert "PCB_VIA_ANNULAR_BELOW_MINIMUM" in codes
+    assert any(
+        entity.kind == "board_track"
+        for diagnostic in report
+        for entity in diagnostic.entities
+    )
+    assert any(
+        entity.kind == "board_via"
+        for diagnostic in report
+        for entity in diagnostic.entities
+    )
 
 
 def test_python_board_authoring_exposes_pad_resolution_and_validation_diagnostics():

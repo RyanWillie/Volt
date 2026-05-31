@@ -3,6 +3,9 @@
     .board-background{fill:#f8faf8}
     .board-outline{fill:#d7ead0;stroke:#1f5f3a;stroke-width:0.28}
     .board-feature{fill:none;stroke:#6b7280;stroke-width:0.24}
+    .pcb-track{fill:none;stroke:#b45309;stroke-linecap:round;stroke-linejoin:round}
+    .pcb-via-annular{fill:#b45309;stroke:#7c2d12;stroke-width:0.08}
+    .pcb-via-drill{fill:#f8faf8;stroke:#7c2d12;stroke-width:0.06}
     .board-feature-label,.reference-designator,.pad-net-label,.diagnostic-label{font:1.8px sans-serif;fill:#172026}
     .footprint-body{fill:#fff8db;stroke:#8a6a16;stroke-width:0.18}
     .footprint-pad{fill:#d99822;stroke:#5a3a08;stroke-width:0.14}
@@ -19,6 +22,11 @@
       <text class="board-feature-label" data-board-feature="board_feature:0" x="3" y="6.35" text-anchor="middle">MH1</text>
       <circle class="board-feature mounting-hole" data-board-feature="board_feature:1" cx="29" cy="15" r="1.35"/>
       <text class="board-feature-label" data-board-feature="board_feature:1" x="29" y="18.35" text-anchor="middle">MH2</text>
+    </g>
+    <g class="layer layer-copper">
+      <polyline id="pcb-track-0" class="pcb-track" data-track="board_track:0" data-layer="board_layer:0" data-net="net:0" points="5,7.73 14.25,7" stroke-width="0.25"/>
+      <polyline id="pcb-track-1" class="pcb-track" data-track="board_track:1" data-layer="board_layer:0" data-net="net:1" points="15.75,7 20,3 24.75,7" stroke-width="0.25"/>
+      <polyline id="pcb-track-2" class="pcb-track" data-track="board_track:2" data-layer="board_layer:0" data-net="net:2" points="5,10.27 23.25,7" stroke-width="0.25"/>
     </g>
     <g class="layer layer-footprints">
       <g class="component-placement top locked" data-placement="component_placement:0" data-component="component:0" data-footprint-def="footprint_def:0" data-footprint="connectors:PinHeader_1x02_P2.54mm_Vertical" transform="translate(5 9) rotate(0)">

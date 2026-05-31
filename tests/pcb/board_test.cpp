@@ -191,6 +191,19 @@ TEST_CASE("Board stores kernel-owned copper tracks and vias over existing nets a
     CHECK(board.via(via).annular_diameter_mm() == 0.70);
 }
 
+TEST_CASE("Board stores kernel-owned design rules") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
+
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.18, 0.30, 0.70, 0.10});
+
+    CHECK(board.design_rules().copper_clearance_mm() == 0.20);
+    CHECK(board.design_rules().minimum_track_width_mm() == 0.18);
+    CHECK(board.design_rules().minimum_via_drill_diameter_mm() == 0.30);
+    CHECK(board.design_rules().minimum_via_annular_diameter_mm() == 0.70);
+    CHECK(board.design_rules().board_outline_clearance_mm() == 0.10);
+}
+
 TEST_CASE("Board outline accepts an explicit closing vertex") {
     auto outline = volt::BoardOutline{std::vector{
         volt::BoardPoint{0.0, 0.0},
@@ -449,6 +462,162 @@ TEST_CASE("Board validation checks transformed pad bodies against the outline") 
     REQUIRE(outside_outline->entities().size() == 2);
     CHECK(outside_outline->entities()[0] == volt::EntityRef::component(fixture.component));
     CHECK(outside_outline->entities()[1] == volt::EntityRef::component_placement(placement));
+}
+
+TEST_CASE("Board validation reports first PCB DRC rule violations") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.25, 0.30, 0.70, 0.10});
+
+    const auto narrow_track = board.add_track(volt::BoardTrack{
+        fixture.first_net,
+        front,
+        std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}},
+        0.10,
+    });
+    const auto close_track = board.add_track(volt::BoardTrack{
+        fixture.second_net,
+        front,
+        std::vector{volt::BoardPoint{1.0, 1.35}, volt::BoardPoint{8.0, 1.35}},
+        0.25,
+    });
+    const auto small_via = board.add_via(
+        volt::BoardVia{fixture.first_net, volt::BoardPoint{10.0, 10.0}, front, back, 0.20, 0.50});
+    const auto outside_track = board.add_track(volt::BoardTrack{
+        fixture.first_net,
+        front,
+        std::vector{volt::BoardPoint{19.95, 5.0}, volt::BoardPoint{21.0, 5.0}},
+        0.25,
+    });
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *track_width = find_diagnostic(report, "PCB_TRACK_WIDTH_BELOW_MINIMUM");
+    REQUIRE(track_width != nullptr);
+    CHECK(track_width->severity() == volt::Severity::Error);
+    CHECK(track_width->entities() == std::vector{volt::EntityRef::board_track(narrow_track),
+                                                 volt::EntityRef::net(fixture.first_net),
+                                                 volt::EntityRef::board_layer(front)});
+
+    const auto *via_drill = find_diagnostic(report, "PCB_VIA_DRILL_BELOW_MINIMUM");
+    REQUIRE(via_drill != nullptr);
+    CHECK(via_drill->entities() == std::vector{volt::EntityRef::board_via(small_via),
+                                               volt::EntityRef::net(fixture.first_net)});
+
+    const auto *via_annular = find_diagnostic(report, "PCB_VIA_ANNULAR_BELOW_MINIMUM");
+    REQUIRE(via_annular != nullptr);
+    CHECK(via_annular->entities() == std::vector{volt::EntityRef::board_via(small_via),
+                                                 volt::EntityRef::net(fixture.first_net)});
+
+    const auto *clearance = find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION");
+    REQUIRE(clearance != nullptr);
+    CHECK(clearance->entities() == std::vector{volt::EntityRef::board_track(narrow_track),
+                                               volt::EntityRef::board_track(close_track),
+                                               volt::EntityRef::net(fixture.first_net),
+                                               volt::EntityRef::net(fixture.second_net),
+                                               volt::EntityRef::board_layer(front)});
+
+    const auto *outside_outline = find_diagnostic(report, "PCB_COPPER_OUTSIDE_OUTLINE");
+    REQUIRE(outside_outline != nullptr);
+    CHECK(outside_outline->entities() == std::vector{volt::EntityRef::board_track(outside_track),
+                                                     volt::EntityRef::net(fixture.first_net),
+                                                     volt::EntityRef::board_layer(front)});
+}
+
+TEST_CASE("Board validation maps bottom-side surface-mount pads to bottom copper") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.20});
+    const auto placement = board.place_component(
+        volt::ComponentPlacement{fixture.component, volt::BoardPoint{10.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Bottom});
+    const auto bottom_track = board.add_track(volt::BoardTrack{
+        fixture.second_net,
+        back,
+        std::vector{volt::BoardPoint{10.75, 10.5}, volt::BoardPoint{12.0, 10.5}},
+        0.25,
+    });
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *clearance = find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION");
+    REQUIRE(clearance != nullptr);
+    CHECK(clearance->entities() ==
+          std::vector{volt::EntityRef::board_track(bottom_track),
+                      volt::EntityRef::component_placement(placement),
+                      volt::EntityRef::footprint_pad(volt::FootprintPadId{0}),
+                      volt::EntityRef::net(fixture.second_net),
+                      volt::EntityRef::net(fixture.first_net), volt::EntityRef::board_layer(back)});
+}
+
+TEST_CASE("Board validation reports unrouted placed logical nets after routing begins") {
+    auto fixture = make_multi_component_net(2);
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    const auto first_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    const auto second_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[1], volt::BoardPoint{20.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    [[maybe_unused]] const auto partial_route = board.add_track(volt::BoardTrack{
+        fixture.shared_net,
+        front,
+        std::vector{volt::BoardPoint{10.75, 10.0}, volt::BoardPoint{14.0, 10.0}},
+        0.25,
+    });
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *unrouted = find_diagnostic(report, "PCB_NET_UNROUTED");
+    REQUIRE(unrouted != nullptr);
+    CHECK(unrouted->severity() == volt::Severity::Warning);
+    CHECK(unrouted->entities() ==
+          std::vector{volt::EntityRef::net(fixture.shared_net),
+                      volt::EntityRef::component_placement(first_placement),
+                      volt::EntityRef::footprint_pad(volt::FootprintPadId{1}),
+                      volt::EntityRef::component_placement(second_placement),
+                      volt::EntityRef::footprint_pad(volt::FootprintPadId{0})});
+}
+
+TEST_CASE("Board validation reports unrouted placed logical nets before routing begins") {
+    auto fixture = make_multi_component_net(2);
+    auto board = volt::Board{fixture.circuit};
+    [[maybe_unused]] const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    const auto first_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    const auto second_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[1], volt::BoardPoint{20.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *unrouted = find_diagnostic(report, "PCB_NET_UNROUTED");
+    REQUIRE(unrouted != nullptr);
+    CHECK(unrouted->severity() == volt::Severity::Warning);
+    CHECK(unrouted->entities() ==
+          std::vector{volt::EntityRef::net(fixture.shared_net),
+                      volt::EntityRef::component_placement(first_placement),
+                      volt::EntityRef::footprint_pad(volt::FootprintPadId{1}),
+                      volt::EntityRef::component_placement(second_placement),
+                      volt::EntityRef::footprint_pad(volt::FootprintPadId{0})});
 }
 
 TEST_CASE("Board validation detects pad edges crossing a concave outline") {

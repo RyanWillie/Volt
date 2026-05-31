@@ -729,6 +729,48 @@ inline void write_diagnostics(std::ostream &out, const Board &board,
             out << "\">" << pcb_svg_escape(diagnostic.code().value()) << "</text>\n";
 
             for (const auto entity : diagnostic.entities()) {
+                if (entity.kind() == EntityKind::BoardTrack) {
+                    const auto track_id = BoardTrackId{entity.index()};
+                    if (track_id.index() >= board.track_count()) {
+                        continue;
+                    }
+                    const auto &track = board.track(track_id);
+                    out << "      <polyline class=\"diagnostic-marker " << severity
+                        << "\" data-diagnostic-code=\"" << pcb_svg_escape(diagnostic.code().value())
+                        << "\" data-entities=\"" << pcb_svg_escape(entities) << "\" data-track=\""
+                        << encode_local_id(track_id) << "\" points=\"";
+                    for (std::size_t point_index = 0; point_index < track.points().size();
+                         ++point_index) {
+                        if (point_index != 0U) {
+                            out << ' ';
+                        }
+                        write_pcb_svg_number(out, track.points()[point_index].x_mm());
+                        out << ',';
+                        write_pcb_svg_number(out, track.points()[point_index].y_mm());
+                    }
+                    out << "\" stroke-width=\"";
+                    write_pcb_svg_number(out, track.width_mm() + 0.6);
+                    out << "\"/>\n";
+                    continue;
+                }
+                if (entity.kind() == EntityKind::BoardVia) {
+                    const auto via_id = BoardViaId{entity.index()};
+                    if (via_id.index() >= board.via_count()) {
+                        continue;
+                    }
+                    const auto &via = board.via(via_id);
+                    out << "      <circle class=\"diagnostic-marker " << severity
+                        << "\" data-diagnostic-code=\"" << pcb_svg_escape(diagnostic.code().value())
+                        << "\" data-entities=\"" << pcb_svg_escape(entities) << "\" data-via=\""
+                        << encode_local_id(via_id) << "\" cx=\"";
+                    write_pcb_svg_number(out, via.position().x_mm());
+                    out << "\" cy=\"";
+                    write_pcb_svg_number(out, via.position().y_mm());
+                    out << "\" r=\"";
+                    write_pcb_svg_number(out, (via.annular_diameter_mm() / 2.0) + 0.6);
+                    out << "\"/>\n";
+                    continue;
+                }
                 if (entity.kind() != EntityKind::Component &&
                     entity.kind() != EntityKind::ComponentPlacement) {
                     continue;

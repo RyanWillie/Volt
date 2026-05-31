@@ -43,6 +43,7 @@ class PcbBoardReader {
 
         static_cast<void>(board_units_from_name(string_field(board_json, "units")));
         auto board = Board{circuit_, BoardName{string_field(board_json, "name")}};
+        read_rules(board, board_json);
         read_layers(board, board_json);
         read_layer_stack(board, board_json);
         read_outline(board, board_json);
@@ -298,6 +299,21 @@ class PcbBoardReader {
             vertices.push_back(board_point(vertex));
         }
         board.set_outline(BoardOutline{std::move(vertices)});
+    }
+
+    void read_rules(Board &board, const nlohmann::json &board_json) const {
+        const auto *rules = optional_field(board_json, "rules");
+        if (rules == nullptr) {
+            return;
+        }
+        require(rules->is_object(), "PCB board rules must be an object");
+        board.set_design_rules(BoardDesignRules{
+            number_field(*rules, "copper_clearance_mm"),
+            number_field(*rules, "minimum_track_width_mm"),
+            number_field(*rules, "minimum_via_drill_diameter_mm"),
+            number_field(*rules, "minimum_via_annular_diameter_mm"),
+            number_field(*rules, "board_outline_clearance_mm"),
+        });
     }
 
     void read_features(Board &board, const nlohmann::json &board_json) const {

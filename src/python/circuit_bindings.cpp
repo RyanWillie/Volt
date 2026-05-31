@@ -154,6 +154,11 @@ void bind_circuit(pybind11::module_ &module) {
         .def("validate_schematic_readability", &PyCircuit::validate_schematic_readability)
         .def("validate_for_pcb", &PyCircuit::validate_for_pcb)
         .def("board", &PyCircuit::board, py::arg("name") = "Main")
+        .def("board_design_rules", &PyCircuit::board_design_rules)
+        .def("board_set_design_rules", &PyCircuit::board_set_design_rules,
+             py::arg("copper_clearance_mm"), py::arg("minimum_track_width_mm"),
+             py::arg("minimum_via_drill_diameter_mm"), py::arg("minimum_via_annular_diameter_mm"),
+             py::arg("board_outline_clearance_mm"))
         .def("board_add_layer", &PyCircuit::board_add_layer, py::arg("name"), py::arg("role"),
              py::arg("side"), py::arg("thickness_mm") = 0.0, py::arg("enabled") = true)
         .def("board_set_layer_stack", &PyCircuit::board_set_layer_stack, py::arg("layers"),
