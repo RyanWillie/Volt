@@ -288,6 +288,10 @@ class FootprintPad {
         return !mechanical_role_.has_value();
     }
 
+    /** Return whether two pads describe the same geometry. */
+    [[nodiscard]] friend bool operator==(const FootprintPad &lhs,
+                                         const FootprintPad &rhs) = default;
+
   private:
     FootprintPad(std::string label, FootprintPadKind kind, FootprintPadShape shape,
                  FootprintPoint position, FootprintSize size, FootprintLayerSet layers,
@@ -378,6 +382,10 @@ class FootprintDefinition {
         }
         return std::nullopt;
     }
+
+    /** Return whether two footprint definitions describe the same geometry. */
+    [[nodiscard]] friend bool operator==(const FootprintDefinition &lhs,
+                                         const FootprintDefinition &rhs) = default;
 
   private:
     FootprintRef ref_;

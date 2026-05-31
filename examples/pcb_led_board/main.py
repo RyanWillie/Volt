@@ -102,13 +102,13 @@ def _header_1x02() -> volt.FootprintDefinition:
                 "1",
                 at=(0.0, -1.27),
                 size=(1.70, 1.70),
-                drill=volt.FootprintDrill(0.90),
+                drill=volt.FootprintDrill(1.00),
             ),
             volt.FootprintPad.through_hole(
                 "2",
                 at=(0.0, 1.27),
                 size=(1.70, 1.70),
-                drill=volt.FootprintDrill(0.90),
+                drill=volt.FootprintDrill(1.00),
             ),
         ),
     )
