@@ -636,6 +636,32 @@ TEST_CASE("Board validation reports first PCB DRC rule violations") {
                                                      volt::EntityRef::board_layer(front)});
 }
 
+TEST_CASE("Board validation reports netless zones outside the board outline") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{10.0, 10.0}));
+
+    const auto zone = board.add_zone(volt::BoardZone{
+        std::vector{
+            volt::BoardPoint{8.0, 8.0},
+            volt::BoardPoint{12.0, 8.0},
+            volt::BoardPoint{12.0, 12.0},
+            volt::BoardPoint{8.0, 12.0},
+        },
+        std::vector{front},
+    });
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *outside_outline = find_diagnostic(report, "PCB_COPPER_OUTSIDE_OUTLINE");
+    REQUIRE(outside_outline != nullptr);
+    CHECK(outside_outline->entities() ==
+          std::vector{volt::EntityRef::board_zone(zone), volt::EntityRef::board_layer(front)});
+}
+
 TEST_CASE("Board validation reports obvious keepout violations") {
     auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit};

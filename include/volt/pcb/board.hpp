@@ -2053,6 +2053,19 @@ collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
     return shapes;
 }
 
+[[nodiscard]] inline bool polygon_satisfies_outline(const std::vector<BoardPoint> &polygon,
+                                                    const BoardOutline &outline,
+                                                    double clearance_mm) {
+    for (std::size_t index = 0; index < polygon.size(); ++index) {
+        const auto next = (index + 1U) % polygon.size();
+        if (!outline.contains(polygon[index]) ||
+            !outline.contains(segment_midpoint(polygon[index], polygon[next]))) {
+            return false;
+        }
+    }
+    return polygon_outline_boundary_distance(outline, polygon) + board_drc_epsilon >= clearance_mm;
+}
+
 [[nodiscard]] inline bool shape_satisfies_outline(const BoardCopperShape &shape,
                                                   const BoardOutline &outline,
                                                   double clearance_mm) {
@@ -2069,15 +2082,7 @@ collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
                    shape.radius_mm + clearance_mm;
     }
 
-    for (std::size_t index = 0; index < shape.points.size(); ++index) {
-        const auto next = (index + 1U) % shape.points.size();
-        if (!outline.contains(shape.points[index]) ||
-            !outline.contains(segment_midpoint(shape.points[index], shape.points[next]))) {
-            return false;
-        }
-    }
-    return polygon_outline_boundary_distance(outline, shape.points) + board_drc_epsilon >=
-           clearance_mm;
+    return polygon_satisfies_outline(shape.points, outline, clearance_mm);
 }
 
 [[nodiscard]] inline std::vector<EntityRef> copper_shape_entities(const BoardCopperShape &shape,
@@ -2145,6 +2150,27 @@ inline void validate_outline_clearance(const Board &board,
         report.add(board_diagnostic(DiagnosticCode{"PCB_COPPER_OUTSIDE_OUTLINE"},
                                     "Copper does not satisfy the board outline clearance",
                                     copper_shape_entities(shape, shape.net, layer.value())));
+    }
+}
+
+inline void validate_netless_zone_outline_clearance(const Board &board, DiagnosticReport &report) {
+    if (!board.outline().has_value()) {
+        return;
+    }
+
+    const auto &outline = board.outline().value();
+    const auto outline_clearance = board.design_rules().board_outline_clearance_mm();
+    for (std::size_t zone_index = 0; zone_index < board.zone_count(); ++zone_index) {
+        const auto zone_id = BoardZoneId{zone_index};
+        const auto &zone = board.zone(zone_id);
+        if (zone.net().has_value() ||
+            polygon_satisfies_outline(zone.outline(), outline, outline_clearance)) {
+            continue;
+        }
+        report.add(board_diagnostic(DiagnosticCode{"PCB_COPPER_OUTSIDE_OUTLINE"},
+                                    "Copper does not satisfy the board outline clearance",
+                                    std::vector{EntityRef::board_zone(zone_id),
+                                                EntityRef::board_layer(zone.layers().front())}));
     }
 }
 
@@ -2406,6 +2432,7 @@ inline void validate_board_drc(const Board &board, const FootprintLibrary &footp
     validate_via_rules(board, report);
     const auto shapes = collect_copper_shapes(board, footprints, pad_resolutions);
     validate_outline_clearance(board, shapes, report);
+    validate_netless_zone_outline_clearance(board, report);
     validate_copper_clearance(board, shapes, report);
     validate_keepout_copper_shapes(board, shapes, report);
     validate_keepout_zones(board, report);
