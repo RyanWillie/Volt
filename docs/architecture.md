@@ -335,7 +335,9 @@ board placement remain outside the current circuit-kernel scope.
 
 Selected physical parts are assigned to component instances through `Circuit`. The
 component stores the selected value, but the mutation boundary validates that the
-`PhysicalPart` pin/pad mappings exactly match the component's logical pin definitions.
+`PhysicalPart` pin/pad mappings cover the component's logical pin definitions and do not
+reuse a physical pad label. A logical pin may map to more than one physical pad when the
+selected package exposes tied pads.
 This keeps invalid selected-part state out of the owning circuit database.
 
 ## Circuit Definitions

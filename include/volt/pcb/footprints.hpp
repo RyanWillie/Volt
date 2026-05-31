@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -499,59 +500,288 @@ front_smd_pad(std::string label, double x_mm, double y_mm, double width_mm, doub
                                       FootprintDrill{1.00, FootprintPadPlating::Plated});
 }
 
+[[nodiscard]] inline FootprintPad plated_round_pad(std::string label, double x_mm, double y_mm,
+                                                   double diameter_mm, double drill_mm) {
+    return FootprintPad::through_hole(
+        std::move(label), FootprintPadShape::Circle, FootprintPoint{x_mm, y_mm},
+        FootprintSize{diameter_mm, diameter_mm}, FootprintLayerSet::through_hole(),
+        FootprintDrill{drill_mm, FootprintPadPlating::Plated});
+}
+
+[[nodiscard]] inline FootprintPad mechanical_hole_pad(std::string label, double x_mm, double y_mm,
+                                                      double diameter_mm, double drill_mm,
+                                                      FootprintPadMechanicalRole role) {
+    return FootprintPad::through_hole(
+        std::move(label), FootprintPadShape::Circle, FootprintPoint{x_mm, y_mm},
+        FootprintSize{diameter_mm, diameter_mm}, FootprintLayerSet::mechanical_hole(),
+        FootprintDrill{drill_mm, FootprintPadPlating::NonPlated}, role);
+}
+
+[[nodiscard]] inline FootprintDefinition two_terminal_smd_footprint(FootprintRef ref,
+                                                                    double pad_span_mm,
+                                                                    double pad_width_mm,
+                                                                    double pad_height_mm) {
+    const auto half_span = pad_span_mm / 2.0;
+    return FootprintDefinition{
+        std::move(ref),
+        std::vector{front_smd_pad("1", -half_span, 0.0, pad_width_mm, pad_height_mm),
+                    front_smd_pad("2", half_span, 0.0, pad_width_mm, pad_height_mm)}};
+}
+
+[[nodiscard]] inline FootprintDefinition
+single_row_header_footprint(FootprintRef ref, std::size_t pin_count, double pitch_mm) {
+    auto pads = std::vector<FootprintPad>{};
+    pads.reserve(pin_count);
+    const auto first_y = -static_cast<double>(pin_count - 1U) * pitch_mm / 2.0;
+    for (std::size_t index = 0; index < pin_count; ++index) {
+        pads.push_back(plated_header_pad(std::to_string(index + 1U), 0.0,
+                                         first_y + static_cast<double>(index) * pitch_mm));
+    }
+    return FootprintDefinition{std::move(ref), std::move(pads)};
+}
+
+[[nodiscard]] inline FootprintDefinition dual_row_header_footprint(FootprintRef ref,
+                                                                   std::size_t pins_per_row,
+                                                                   double row_spacing_mm,
+                                                                   double pitch_mm) {
+    auto pads = std::vector<FootprintPad>{};
+    pads.reserve(pins_per_row * 2U);
+    const auto first_y = -static_cast<double>(pins_per_row - 1U) * pitch_mm / 2.0;
+    const auto left_x = -row_spacing_mm / 2.0;
+    const auto right_x = row_spacing_mm / 2.0;
+    for (std::size_t row = 0; row < pins_per_row; ++row) {
+        const auto y = first_y + static_cast<double>(row) * pitch_mm;
+        pads.push_back(plated_header_pad(std::to_string((row * 2U) + 1U), left_x, y));
+        pads.push_back(plated_header_pad(std::to_string((row * 2U) + 2U), right_x, y));
+    }
+    return FootprintDefinition{std::move(ref), std::move(pads)};
+}
+
+[[nodiscard]] inline FootprintDefinition
+two_side_smd_package(FootprintRef ref, std::size_t pin_count, double row_center_x_mm,
+                     double pitch_mm, double pad_width_mm, double pad_height_mm) {
+    if (pin_count == 0U || pin_count % 2U != 0U) {
+        throw std::invalid_argument{"Two-side SMD package footprints need an even pin count"};
+    }
+
+    auto pads = std::vector<FootprintPad>{};
+    pads.reserve(pin_count);
+    const auto pins_per_side = pin_count / 2U;
+    const auto first_y = static_cast<double>(pins_per_side - 1U) * pitch_mm / 2.0;
+    for (std::size_t index = 0; index < pins_per_side; ++index) {
+        pads.push_back(front_smd_pad(std::to_string(index + 1U), -row_center_x_mm,
+                                     first_y - static_cast<double>(index) * pitch_mm, pad_width_mm,
+                                     pad_height_mm));
+    }
+    for (std::size_t index = 0; index < pins_per_side; ++index) {
+        pads.push_back(front_smd_pad(std::to_string(pins_per_side + index + 1U), row_center_x_mm,
+                                     -first_y + static_cast<double>(index) * pitch_mm, pad_width_mm,
+                                     pad_height_mm));
+    }
+    return FootprintDefinition{std::move(ref), std::move(pads)};
+}
+
+[[nodiscard]] inline FootprintDefinition qfp_footprint(FootprintRef ref, std::size_t pin_count,
+                                                       double side_center_mm, double pitch_mm,
+                                                       double pad_length_mm, double pad_width_mm) {
+    if (pin_count == 0U || pin_count % 4U != 0U) {
+        throw std::invalid_argument{"QFP footprints need a pin count divisible by four"};
+    }
+
+    auto pads = std::vector<FootprintPad>{};
+    pads.reserve(pin_count);
+    const auto pins_per_side = pin_count / 4U;
+    const auto first = static_cast<double>(pins_per_side - 1U) * pitch_mm / 2.0;
+    for (std::size_t index = 0; index < pins_per_side; ++index) {
+        pads.push_back(front_smd_pad(std::to_string(index + 1U), -side_center_mm,
+                                     first - static_cast<double>(index) * pitch_mm, pad_length_mm,
+                                     pad_width_mm));
+    }
+    for (std::size_t index = 0; index < pins_per_side; ++index) {
+        pads.push_back(front_smd_pad(std::to_string(pins_per_side + index + 1U),
+                                     -first + static_cast<double>(index) * pitch_mm,
+                                     -side_center_mm, pad_width_mm, pad_length_mm));
+    }
+    for (std::size_t index = 0; index < pins_per_side; ++index) {
+        pads.push_back(front_smd_pad(std::to_string((pins_per_side * 2U) + index + 1U),
+                                     side_center_mm, -first + static_cast<double>(index) * pitch_mm,
+                                     pad_length_mm, pad_width_mm));
+    }
+    for (std::size_t index = 0; index < pins_per_side; ++index) {
+        pads.push_back(front_smd_pad(std::to_string((pins_per_side * 3U) + index + 1U),
+                                     first - static_cast<double>(index) * pitch_mm, side_center_mm,
+                                     pad_width_mm, pad_length_mm));
+    }
+    return FootprintDefinition{std::move(ref), std::move(pads)};
+}
+
 } // namespace detail
 
-/** Return a simple 0603 passive footprint fixture. */
+/** Return a simple 0603 resistor footprint fixture. */
 [[nodiscard]] inline FootprintDefinition passive_0603_footprint() {
-    return FootprintDefinition{FootprintRef{"passives", "R_0603_1608Metric"},
-                               std::vector{detail::front_smd_pad("1", -0.75, 0.0, 0.80, 0.95),
-                                           detail::front_smd_pad("2", 0.75, 0.0, 0.80, 0.95)}};
+    return detail::two_terminal_smd_footprint(FootprintRef{"passives", "R_0603_1608Metric"}, 1.50,
+                                              0.80, 0.95);
+}
+
+/** Return a simple 0402 resistor footprint fixture. */
+[[nodiscard]] inline FootprintDefinition resistor_0402_footprint() {
+    return detail::two_terminal_smd_footprint(FootprintRef{"passives", "R_0402_1005Metric"}, 1.00,
+                                              0.55, 0.60);
+}
+
+/** Return a simple 0805 resistor footprint fixture. */
+[[nodiscard]] inline FootprintDefinition resistor_0805_footprint() {
+    return detail::two_terminal_smd_footprint(FootprintRef{"passives", "R_0805_2012Metric"}, 2.00,
+                                              1.05, 1.20);
+}
+
+/** Return a simple 0603 capacitor footprint fixture. */
+[[nodiscard]] inline FootprintDefinition capacitor_0603_footprint() {
+    return detail::two_terminal_smd_footprint(FootprintRef{"passives", "C_0603_1608Metric"}, 1.50,
+                                              0.80, 0.95);
+}
+
+/** Return a simple 0603 inductor/ferrite footprint fixture. */
+[[nodiscard]] inline FootprintDefinition inductor_0603_footprint() {
+    return detail::two_terminal_smd_footprint(FootprintRef{"passives", "L_0603_1608Metric"}, 1.50,
+                                              0.80, 0.95);
 }
 
 /** Return a simple 0603 LED footprint fixture. */
 [[nodiscard]] inline FootprintDefinition led_0603_footprint() {
-    return FootprintDefinition{FootprintRef{"leds", "LED_0603_1608Metric"},
-                               std::vector{detail::front_smd_pad("1", -0.75, 0.0, 0.80, 0.95),
-                                           detail::front_smd_pad("2", 0.75, 0.0, 0.80, 0.95)}};
+    return detail::two_terminal_smd_footprint(FootprintRef{"leds", "LED_0603_1608Metric"}, 1.50,
+                                              0.80, 0.95);
 }
 
 /** Return a simple 0603 diode footprint fixture. */
 [[nodiscard]] inline FootprintDefinition diode_0603_footprint() {
-    return FootprintDefinition{FootprintRef{"diodes", "D_0603_1608Metric"},
-                               std::vector{detail::front_smd_pad("1", -0.75, 0.0, 0.80, 0.95),
-                                           detail::front_smd_pad("2", 0.75, 0.0, 0.80, 0.95)}};
+    return detail::two_terminal_smd_footprint(FootprintRef{"diodes", "D_0603_1608Metric"}, 1.50,
+                                              0.80, 0.95);
+}
+
+/** Return a simple SOD-123 diode footprint fixture. */
+[[nodiscard]] inline FootprintDefinition diode_sod_123_footprint() {
+    return detail::two_terminal_smd_footprint(FootprintRef{"diodes", "D_SOD-123"}, 3.70, 1.20,
+                                              1.35);
 }
 
 /** Return a simple 1x02 2.54 mm through-hole header footprint fixture. */
 [[nodiscard]] inline FootprintDefinition header_1x02_footprint() {
-    return FootprintDefinition{FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
-                               std::vector{detail::plated_header_pad("1", 0.0, -1.27),
-                                           detail::plated_header_pad("2", 0.0, 1.27)}};
+    return detail::single_row_header_footprint(
+        FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"}, 2U, 2.54);
+}
+
+/** Return a simple 1x04 2.54 mm through-hole header footprint fixture. */
+[[nodiscard]] inline FootprintDefinition header_1x04_footprint() {
+    return detail::single_row_header_footprint(
+        FootprintRef{"connectors", "PinHeader_1x04_P2.54mm_Vertical"}, 4U, 2.54);
+}
+
+/** Return a compact 2x05 1.27 mm through-hole programming header footprint fixture. */
+[[nodiscard]] inline FootprintDefinition header_2x05_127_footprint() {
+    return detail::dual_row_header_footprint(
+        FootprintRef{"connectors", "PinHeader_2x05_P1.27mm_Vertical"}, 5U, 1.27, 1.27);
+}
+
+/** Return a simple two-pin 5.08 mm power terminal block footprint fixture. */
+[[nodiscard]] inline FootprintDefinition terminal_block_1x02_footprint() {
+    return FootprintDefinition{FootprintRef{"connectors", "TerminalBlock_1x02_P5.08mm"},
+                               std::vector{detail::plated_round_pad("1", 0.0, -2.54, 2.20, 1.30),
+                                           detail::plated_round_pad("2", 0.0, 2.54, 2.20, 1.30)}};
+}
+
+/** Return a practical micro USB-B receptacle footprint fixture with mechanical holes. */
+[[nodiscard]] inline FootprintDefinition micro_usb_b_footprint() {
+    return FootprintDefinition{
+        FootprintRef{"connectors", "USB_Micro-B_Receptacle"},
+        std::vector{
+            detail::front_smd_pad("1", -1.30, -1.70, 0.40, 1.35, FootprintPadShape::Rectangle),
+            detail::front_smd_pad("2", -0.65, -1.70, 0.40, 1.35, FootprintPadShape::Rectangle),
+            detail::front_smd_pad("3", 0.00, -1.70, 0.40, 1.35, FootprintPadShape::Rectangle),
+            detail::front_smd_pad("4", 0.65, -1.70, 0.40, 1.35, FootprintPadShape::Rectangle),
+            detail::front_smd_pad("5", 1.30, -1.70, 0.40, 1.35, FootprintPadShape::Rectangle),
+            detail::front_smd_pad("6", 0.00, 1.70, 3.20, 1.10, FootprintPadShape::Rectangle),
+            detail::mechanical_hole_pad("M1", -2.15, 0.35, 1.00, 0.70,
+                                        FootprintPadMechanicalRole::MechanicalSupport),
+            detail::mechanical_hole_pad("M2", 2.15, 0.35, 1.00, 0.70,
+                                        FootprintPadMechanicalRole::MechanicalSupport),
+        }};
+}
+
+/** Return a simple SOT-23 footprint fixture. */
+[[nodiscard]] inline FootprintDefinition sot_23_footprint() {
+    return FootprintDefinition{FootprintRef{"Package_TO_SOT_SMD", "SOT-23"},
+                               std::vector{
+                                   detail::front_smd_pad("1", -1.00, 0.95, 0.65, 0.95),
+                                   detail::front_smd_pad("2", -1.00, -0.95, 0.65, 0.95),
+                                   detail::front_smd_pad("3", 1.00, 0.0, 0.65, 0.95),
+                               }};
+}
+
+/** Return a simple SOT-23-6 footprint fixture. */
+[[nodiscard]] inline FootprintDefinition sot_23_6_footprint() {
+    return detail::two_side_smd_package(FootprintRef{"Package_TO_SOT_SMD", "SOT-23-6"}, 6U, 1.25,
+                                        0.95, 0.60, 0.80);
+}
+
+/** Return a simplified SOT-223-3 footprint fixture for first power-regulator boards. */
+[[nodiscard]] inline FootprintDefinition sot_223_3_footprint() {
+    return FootprintDefinition{FootprintRef{"Package_TO_SOT_SMD", "SOT-223-3_TabPin2"},
+                               std::vector{
+                                   detail::front_smd_pad("1", -2.30, -1.50, 1.05, 1.80),
+                                   detail::front_smd_pad("2", 0.00, -1.50, 1.05, 1.80),
+                                   detail::front_smd_pad("3", 2.30, -1.50, 1.05, 1.80),
+                                   detail::front_smd_pad("4", 0.00, 2.05, 3.80, 2.20),
+                               }};
 }
 
 /** Return a small IC-style SOIC-8 footprint fixture for first placement tests. */
 [[nodiscard]] inline FootprintDefinition soic_8_footprint() {
-    return FootprintDefinition{FootprintRef{"ics", "SOIC-8_3.9x4.9mm_P1.27mm"},
-                               std::vector{
-                                   detail::front_smd_pad("1", -2.70, 1.905, 0.60, 1.55),
-                                   detail::front_smd_pad("2", -2.70, 0.635, 0.60, 1.55),
-                                   detail::front_smd_pad("3", -2.70, -0.635, 0.60, 1.55),
-                                   detail::front_smd_pad("4", -2.70, -1.905, 0.60, 1.55),
-                                   detail::front_smd_pad("5", 2.70, -1.905, 0.60, 1.55),
-                                   detail::front_smd_pad("6", 2.70, -0.635, 0.60, 1.55),
-                                   detail::front_smd_pad("7", 2.70, 0.635, 0.60, 1.55),
-                                   detail::front_smd_pad("8", 2.70, 1.905, 0.60, 1.55),
-                               }};
+    return detail::two_side_smd_package(FootprintRef{"ics", "SOIC-8_3.9x4.9mm_P1.27mm"}, 8U, 2.70,
+                                        1.27, 0.60, 1.55);
 }
 
-/** Return the tiny built-in footprint library needed by first PCB tests. */
+/** Return a Package_SO alias for SOIC-8 selected-part references. */
+[[nodiscard]] inline FootprintDefinition package_so_soic_8_footprint() {
+    return detail::two_side_smd_package(FootprintRef{"Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"}, 8U,
+                                        2.70, 1.27, 0.60, 1.55);
+}
+
+/** Return a simple TSSOP-14 footprint fixture. */
+[[nodiscard]] inline FootprintDefinition tssop_14_footprint() {
+    return detail::two_side_smd_package(FootprintRef{"Package_SO", "TSSOP-14_4.4x5mm_P0.65mm"}, 14U,
+                                        3.05, 0.65, 0.45, 1.10);
+}
+
+/** Return the LQFP-64 MCU footprint used by the STM32 benchmark library. */
+[[nodiscard]] inline FootprintDefinition lqfp_64_footprint() {
+    return detail::qfp_footprint(FootprintRef{"Package_QFP", "LQFP-64_10x10mm_P0.5mm"}, 64U, 5.80,
+                                 0.50, 1.35, 0.30);
+}
+
+/** Return the built-in footprint library used by first real-board examples and tests. */
 [[nodiscard]] inline FootprintLibrary builtin_footprint_library() {
     auto library = FootprintLibrary{};
+    library.add(resistor_0402_footprint());
     library.add(passive_0603_footprint());
+    library.add(resistor_0805_footprint());
+    library.add(capacitor_0603_footprint());
+    library.add(inductor_0603_footprint());
     library.add(led_0603_footprint());
     library.add(diode_0603_footprint());
+    library.add(diode_sod_123_footprint());
     library.add(header_1x02_footprint());
+    library.add(header_1x04_footprint());
+    library.add(header_2x05_127_footprint());
+    library.add(terminal_block_1x02_footprint());
+    library.add(micro_usb_b_footprint());
+    library.add(sot_23_footprint());
+    library.add(sot_23_6_footprint());
+    library.add(sot_223_3_footprint());
     library.add(soic_8_footprint());
+    library.add(package_so_soic_8_footprint());
+    library.add(tssop_14_footprint());
+    library.add(lqfp_64_footprint());
     return library;
 }
 

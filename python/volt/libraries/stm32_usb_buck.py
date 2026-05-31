@@ -294,6 +294,12 @@ USB_B_MICRO = LIB.component(
         _ground("Shield", 6),
     ],
     properties={"category": "connector"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="Molex",
+        part_number="105017-0001",
+        package="Micro-USB-B receptacle",
+        footprint=("connectors", "USB_Micro-B_Receptacle"),
+    ),
     prefix="J",
     schematic_symbol=_connector_symbol(
         "USB_B_Micro",
@@ -320,6 +326,12 @@ USBLC6_4SC6 = LIB.component(
         _bidirectional("I/O4", 6),
     ],
     properties={"category": "protection"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="STMicroelectronics",
+        part_number="USBLC6-4SC6",
+        package="SOT-23-6",
+        footprint=("Package_TO_SOT_SMD", "SOT-23-6"),
+    ),
     prefix="U",
     schematic_symbol=_usb_protection_symbol("USBLC6-4SC6"),
 )
@@ -332,6 +344,13 @@ AP1117_15 = LIB.component(
         _power_input("VI", 3),
     ],
     properties={"category": "regulator"},
+    physical_part=PhysicalPartSpec(
+        manufacturer="Diodes Incorporated",
+        part_number="AP1117E15G-13",
+        package="SOT-223-3",
+        footprint=("Package_TO_SOT_SMD", "SOT-223-3_TabPin2"),
+        pin_pads={1: "1", 2: ("2", "4"), 3: "3"},
+    ),
     prefix="U",
     schematic_symbol=_three_pin_regulator_symbol("AP1117_15"),
 )
@@ -354,6 +373,12 @@ FERRITE_BEAD = LIB.component(
     "Ferrite_Bead",
     pins=[_passive("1", 1), _passive("2", 2)],
     properties={"category": "emi"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="Murata",
+        part_number="BLM18AG601SN1D",
+        package="0603",
+        footprint=("passives", "L_0603_1608Metric"),
+    ),
     prefix="FB",
 )
 
@@ -388,6 +413,12 @@ JTAG_SWD_10 = LIB.component(
         _digital_input("nRESET", 10),
     ],
     properties={"category": "connector"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="Samtec",
+        part_number="FTSH-105-01-L-DV-K",
+        package="2x05 1.27mm",
+        footprint=("connectors", "PinHeader_2x05_P1.27mm_Vertical"),
+    ),
     prefix="J",
     schematic_symbol=_connector_symbol(
         "Conn_ARM_JTAG_SWD_10",
@@ -416,6 +447,12 @@ CONNECTOR_1X04 = LIB.component(
         _bidirectional("4", 4),
     ],
     properties={"category": "connector"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="Sullins",
+        part_number="PEC04SAAN",
+        package="1x04 2.54mm",
+        footprint=("connectors", "PinHeader_1x04_P2.54mm_Vertical"),
+    ),
     prefix="J",
     schematic_symbol=_connector_symbol(
         "Conn_01x04",
@@ -440,6 +477,12 @@ DIODE = LIB.component(
     "Diode",
     pins=[_passive("A", 1), _passive("K", 2)],
     properties={"category": "diode"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="Diodes Incorporated",
+        part_number="1N4148W-7-F",
+        package="SOD-123",
+        footprint=("diodes", "D_SOD-123"),
+    ),
     prefix="D",
     schematic_symbol=_two_pin_symbol("Diode", "D"),
 )
@@ -449,6 +492,12 @@ ZENER_DIODE = LIB.component(
     pins=[_passive("A", 1), _passive("K", 2)],
     properties={"category": "diode"},
     source_name="D_Zener_Small",
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="Diodes Incorporated",
+        part_number="BZT52C3V3-7-F",
+        package="SOD-123",
+        footprint=("diodes", "D_SOD-123"),
+    ),
     prefix="D",
 )
 
@@ -456,6 +505,13 @@ RESISTOR = LIB.component(
     "Resistor",
     pins=[_passive("1", 1), _passive("2", 2)],
     properties={"category": "passive"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="Yageo",
+        part_number="RC0603FR-0710KL",
+        package="0603",
+        footprint=("passives", "R_0603_1608Metric"),
+        power_rating=0.1,
+    ),
     prefix="R",
     schematic_symbol=_two_pin_symbol("Resistor", "R"),
 )
@@ -464,6 +520,13 @@ CAPACITOR = LIB.component(
     "Capacitor",
     pins=[_passive("1", 1), _passive("2", 2)],
     properties={"category": "passive"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="Murata",
+        part_number="GRM188R71C104KA01D",
+        package="0603",
+        footprint=("passives", "C_0603_1608Metric"),
+        voltage_rating=16,
+    ),
     prefix="C",
     schematic_symbol=_vertical_two_pin_symbol("Capacitor", "C"),
 )
@@ -472,6 +535,12 @@ INDUCTOR = LIB.component(
     "Inductor",
     pins=[_passive("1", 1), _passive("2", 2)],
     properties={"category": "passive"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="Murata",
+        part_number="LQG18HN10NJ00D",
+        package="0603",
+        footprint=("passives", "L_0603_1608Metric"),
+    ),
     prefix="L",
 )
 

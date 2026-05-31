@@ -287,8 +287,9 @@ u1.select_part(
 `select_part()` lowers into the kernel's `PhysicalPart` selection for that component. The
 manufacturer identity, package, footprint, pin-pad mapping, properties, and selected-part
 ratings serialize through logical JSON as `selected_physical_part`. The kernel rejects
-structurally invalid mappings, including missing logical pins, unknown pins, duplicate
-logical pins, and duplicate physical pads.
+structurally invalid mappings, including missing logical pins, unknown pins, and duplicate
+physical pads. A logical pin may map to more than one physical pad when the selected package
+exposes tied lands, such as a tabbed regulator package.
 
 Selected-part manufacturer information is not only BOM metadata. It is the selected
 physical implementation record that owns package, footprint, logical-pin-to-pad mapping,

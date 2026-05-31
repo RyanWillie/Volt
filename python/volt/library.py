@@ -18,6 +18,8 @@ from ._library_symbol_builders import (
 )
 from ._utils import _coordinate, _number, _positive_coordinate
 
+PinPadValue = str | tuple[str, ...] | list[str]
+
 
 @dataclass(frozen=True)
 class PinSpec:
@@ -65,7 +67,7 @@ class PhysicalPartSpec:
     part_number: str
     package: str
     footprint: tuple[str, str]
-    pin_pads: dict[int | str, str] | None = None
+    pin_pads: dict[int | str, PinPadValue] | None = None
     properties: dict | None = None
     voltage_rating: float | None = None
     power_rating: float | None = None
@@ -94,9 +96,9 @@ class PhysicalPartSpec:
             same_numbered_pads=True,
         )
 
-    def pin_pads_for(self, component: LibraryComponent) -> dict[int | str, str]:
+    def pin_pads_for(self, component: LibraryComponent) -> dict[int | str, PinPadValue]:
         if self.same_numbered_pads:
-            result: dict[int | str, str] = {}
+            result: dict[int | str, PinPadValue] = {}
             for pin in component.pins:
                 number = pin.number
                 key: int | str

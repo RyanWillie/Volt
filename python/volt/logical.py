@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Iterable, Iterator
 
 from ._utils import _number
-from .library import LibraryComponent
+from .library import LibraryComponent, PinPadValue
 
 
 @dataclass(frozen=True)
@@ -470,7 +470,7 @@ class Component:
         part_number: str,
         package: str,
         footprint: tuple[str, str],
-        pin_pads: dict[int | str, str],
+        pin_pads: dict[int | str, PinPadValue],
         properties: dict | None = None,
         voltage_rating: float | None = None,
         power_rating: float | None = None,

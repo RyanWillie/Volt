@@ -112,16 +112,27 @@ TEST_CASE("PhysicalPart rejects empty and ambiguous pin-pad mappings") {
                                        volt::FootprintRef{"passives", "R_0603_1608Metric"},
                                        std::vector{
                                            volt::PinPadMapping{volt::PinDefId{0}, "1"},
-                                           volt::PinPadMapping{volt::PinDefId{0}, "2"},
-                                       }),
-                    std::invalid_argument);
-
-    CHECK_THROWS_AS(volt::PhysicalPart(volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                       volt::PackageRef{"0603"},
-                                       volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                       std::vector{
-                                           volt::PinPadMapping{volt::PinDefId{0}, "1"},
                                            volt::PinPadMapping{volt::PinDefId{1}, "1"},
                                        }),
                     std::invalid_argument);
+}
+
+TEST_CASE("PhysicalPart allows one logical pin to own multiple physical pads") {
+    const auto physical_part = volt::PhysicalPart{
+        volt::ManufacturerPart{"Diodes Incorporated", "AP1117E15G-13"},
+        volt::PackageRef{"SOT-223-3"},
+        volt::FootprintRef{"Package_TO_SOT_SMD", "SOT-223-3_TabPin2"},
+        std::vector{
+            volt::PinPadMapping{volt::PinDefId{0}, "1"},
+            volt::PinPadMapping{volt::PinDefId{1}, "2"},
+            volt::PinPadMapping{volt::PinDefId{1}, "4"},
+            volt::PinPadMapping{volt::PinDefId{2}, "3"},
+        },
+    };
+
+    REQUIRE(physical_part.pin_pad_mappings().size() == 4);
+    CHECK(physical_part.pin_pad_mappings()[1].pin() == volt::PinDefId{1});
+    CHECK(physical_part.pin_pad_mappings()[1].pad() == "2");
+    CHECK(physical_part.pin_pad_mappings()[2].pin() == volt::PinDefId{1});
+    CHECK(physical_part.pin_pad_mappings()[2].pad() == "4");
 }
