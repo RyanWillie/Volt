@@ -186,6 +186,47 @@ TEST_CASE("PCB SVG writer renders stable ratsnest selectors for placed multi-pad
     CHECK(svg.find("x1=\"10.75\" y1=\"10\" x2=\"19.25\" y2=\"10\"") != std::string::npos);
 }
 
+TEST_CASE("PCB SVG writer renders stable selectors for copper tracks and vias") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Copper"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto track = board.add_track(volt::BoardTrack{
+        fixture.first_net,
+        front,
+        std::vector{
+            volt::BoardPoint{5.0, 5.0},
+            volt::BoardPoint{12.0, 5.0},
+            volt::BoardPoint{12.0, 8.0},
+        },
+        0.25,
+    });
+    [[maybe_unused]] const auto via = board.add_via(
+        volt::BoardVia{fixture.first_net, volt::BoardPoint{12.0, 8.0}, front, back, 0.30, 0.70});
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(svg.find("<polyline id=\"pcb-track-0\" class=\"pcb-track\"") != std::string::npos);
+    CHECK(svg.find("data-track=\"board_track:0\"") != std::string::npos);
+    CHECK(svg.find("data-layer=\"board_layer:0\"") != std::string::npos);
+    CHECK(svg.find("data-net=\"net:0\"") != std::string::npos);
+    CHECK(svg.find("points=\"5,5 12,5 12,8\"") != std::string::npos);
+    CHECK(svg.find("stroke-width=\"0.25\"") != std::string::npos);
+    CHECK(svg.find("<g id=\"pcb-via-0\" class=\"pcb-via\" data-via=\"board_via:0\"") !=
+          std::string::npos);
+    CHECK(svg.find("data-start-layer=\"board_layer:0\"") != std::string::npos);
+    CHECK(svg.find("data-end-layer=\"board_layer:1\"") != std::string::npos);
+    CHECK(svg.find("<circle class=\"pcb-via-annular\" cx=\"12\" cy=\"8\" r=\"0.35\"") !=
+          std::string::npos);
+    CHECK(svg.find("<circle class=\"pcb-via-drill\" cx=\"12\" cy=\"8\" r=\"0.15\"") !=
+          std::string::npos);
+}
+
 TEST_CASE("PCB SVG writer surfaces board diagnostics without mutating projection state") {
     auto fixture = make_resistor_circuit(false);
     auto board = make_preview_board(fixture);

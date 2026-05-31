@@ -1032,6 +1032,31 @@ std::size_t PyCircuit::board_place_component(std::size_t component, double x, do
         .index();
 }
 
+std::size_t PyCircuit::board_add_track(std::size_t net, std::size_t layer,
+                                       const std::vector<std::pair<double, double>> &points,
+                                       double width_mm) {
+    auto board_points = std::vector<volt::BoardPoint>{};
+    board_points.reserve(points.size());
+    for (const auto &[x, y] : points) {
+        board_points.emplace_back(x, y);
+    }
+
+    return board_projection()
+        .add_track(volt::BoardTrack{net_id(net), volt::BoardLayerId{layer}, std::move(board_points),
+                                    width_mm})
+        .index();
+}
+
+std::size_t PyCircuit::board_add_via(std::size_t net, double x, double y, std::size_t start_layer,
+                                     std::size_t end_layer, double drill_diameter_mm,
+                                     double annular_diameter_mm) {
+    return board_projection()
+        .add_via(volt::BoardVia{net_id(net), volt::BoardPoint{x, y},
+                                volt::BoardLayerId{start_layer}, volt::BoardLayerId{end_layer},
+                                drill_diameter_mm, annular_diameter_mm})
+        .index();
+}
+
 py::list PyCircuit::board_resolve_pads() const {
     auto result = py::list{};
     for (const auto &resolution :

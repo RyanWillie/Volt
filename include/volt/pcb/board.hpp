@@ -422,6 +422,97 @@ class BoardFeature {
     double diameter_mm_;
 };
 
+/** Routed copper track that physically implements an existing logical net. */
+class BoardTrack {
+  public:
+    /** Construct a routed track on one board copper layer. */
+    BoardTrack(NetId net, BoardLayerId layer, std::vector<BoardPoint> points, double width_mm)
+        : net_{net}, layer_{layer}, points_{std::move(points)}, width_mm_{width_mm} {
+        if (points_.size() < 2U) {
+            throw std::invalid_argument{"Board track must contain at least two points"};
+        }
+        if (!std::isfinite(width_mm_)) {
+            throw std::invalid_argument{"Board track width must be finite"};
+        }
+        if (width_mm_ <= 0.0) {
+            throw std::invalid_argument{"Board track width must be positive"};
+        }
+        for (std::size_t index = 1; index < points_.size(); ++index) {
+            if (points_[index - 1U] == points_[index]) {
+                throw std::invalid_argument{"Board track points must not repeat adjacent vertices"};
+            }
+        }
+    }
+
+    /** Return the existing logical net this track implements. */
+    [[nodiscard]] NetId net() const noexcept { return net_; }
+
+    /** Return the board-owned copper layer this track is on. */
+    [[nodiscard]] BoardLayerId layer() const noexcept { return layer_; }
+
+    /** Return ordered board-space track points. */
+    [[nodiscard]] const std::vector<BoardPoint> &points() const noexcept { return points_; }
+
+    /** Return the track width in millimeters. */
+    [[nodiscard]] double width_mm() const noexcept { return width_mm_; }
+
+  private:
+    NetId net_;
+    BoardLayerId layer_;
+    std::vector<BoardPoint> points_;
+    double width_mm_;
+};
+
+/** Routed copper via that physically implements an existing logical net across layers. */
+class BoardVia {
+  public:
+    /** Construct a routed via between two distinct board copper layers. */
+    BoardVia(NetId net, BoardPoint position, BoardLayerId start_layer, BoardLayerId end_layer,
+             double drill_diameter_mm, double annular_diameter_mm)
+        : net_{net}, position_{position}, start_layer_{start_layer}, end_layer_{end_layer},
+          drill_diameter_mm_{drill_diameter_mm}, annular_diameter_mm_{annular_diameter_mm} {
+        if (start_layer_ == end_layer_) {
+            throw std::invalid_argument{"Board via layer span must reference distinct layers"};
+        }
+        if (!std::isfinite(drill_diameter_mm_) || !std::isfinite(annular_diameter_mm_)) {
+            throw std::invalid_argument{"Board via diameters must be finite"};
+        }
+        if (drill_diameter_mm_ <= 0.0 || annular_diameter_mm_ <= 0.0) {
+            throw std::invalid_argument{"Board via diameters must be positive"};
+        }
+        if (annular_diameter_mm_ <= drill_diameter_mm_) {
+            throw std::invalid_argument{
+                "Board via annular diameter must be greater than drill diameter"};
+        }
+    }
+
+    /** Return the existing logical net this via implements. */
+    [[nodiscard]] NetId net() const noexcept { return net_; }
+
+    /** Return the via center in board coordinates. */
+    [[nodiscard]] BoardPoint position() const noexcept { return position_; }
+
+    /** Return the first board-owned copper layer in the via span. */
+    [[nodiscard]] BoardLayerId start_layer() const noexcept { return start_layer_; }
+
+    /** Return the second board-owned copper layer in the via span. */
+    [[nodiscard]] BoardLayerId end_layer() const noexcept { return end_layer_; }
+
+    /** Return drill diameter in millimeters. */
+    [[nodiscard]] double drill_diameter_mm() const noexcept { return drill_diameter_mm_; }
+
+    /** Return outer annular copper diameter in millimeters. */
+    [[nodiscard]] double annular_diameter_mm() const noexcept { return annular_diameter_mm_; }
+
+  private:
+    NetId net_;
+    BoardPoint position_;
+    BoardLayerId start_layer_;
+    BoardLayerId end_layer_;
+    double drill_diameter_mm_;
+    double annular_diameter_mm_;
+};
+
 /** Stored placement of an existing logical component on a board. */
 class ComponentPlacement {
   public:
@@ -798,7 +889,7 @@ transformed_pad_body_corners(const ComponentPlacement &placement, const Footprin
 
 } // namespace detail
 
-/** Placement-only PCB projection over a logical circuit. */
+/** PCB board projection over a logical circuit. */
 class Board {
   public:
     /** Construct a board projection over one logical circuit. */
@@ -858,6 +949,21 @@ class Board {
         return placements_.insert(std::move(placement));
     }
 
+    /** Add a routed copper track over an existing logical net and board copper layer. */
+    [[nodiscard]] BoardTrackId add_track(BoardTrack track) {
+        require_net(track.net());
+        require_copper_layer(track.layer());
+        return tracks_.insert(std::move(track));
+    }
+
+    /** Add a routed copper via over an existing logical net and board copper layer span. */
+    [[nodiscard]] BoardViaId add_via(BoardVia via) {
+        require_net(via.net());
+        require_copper_layer(via.start_layer());
+        require_copper_layer(via.end_layer());
+        return vias_.insert(std::move(via));
+    }
+
     /** Return a board layer by board-local ID. */
     [[nodiscard]] const BoardLayer &layer(BoardLayerId id) const { return layers_.get(id); }
 
@@ -908,6 +1014,18 @@ class Board {
 
     /** Return the number of component placements. */
     [[nodiscard]] std::size_t placement_count() const noexcept { return placements_.size(); }
+
+    /** Return a routed copper track by board-local ID. */
+    [[nodiscard]] const BoardTrack &track(BoardTrackId id) const { return tracks_.get(id); }
+
+    /** Return the number of routed copper tracks. */
+    [[nodiscard]] std::size_t track_count() const noexcept { return tracks_.size(); }
+
+    /** Return a routed copper via by board-local ID. */
+    [[nodiscard]] const BoardVia &via(BoardViaId id) const { return vias_.get(id); }
+
+    /** Return the number of routed copper vias. */
+    [[nodiscard]] std::size_t via_count() const noexcept { return vias_.size(); }
 
     /** Return the placement ID for a component, if present. */
     [[nodiscard]] std::optional<ComponentPlacementId>
@@ -960,6 +1078,15 @@ class Board {
     void require_layer(BoardLayerId layer) const {
         if (!layers_.contains(layer)) {
             throw std::out_of_range{"Board layer ID does not belong to this board"};
+        }
+    }
+
+    void require_net(NetId net) const { static_cast<void>(circuit().net(net)); }
+
+    void require_copper_layer(BoardLayerId layer_id) const {
+        require_layer(layer_id);
+        if (layer(layer_id).role() != BoardLayerRole::Copper) {
+            throw std::logic_error{"Board copper primitives require copper layers"};
         }
     }
 
@@ -1028,6 +1155,8 @@ class Board {
     EntityTable<BoardFeature, BoardFeatureId> features_;
     EntityTable<FootprintDefinition, FootprintDefId> footprint_definitions_;
     EntityTable<ComponentPlacement, ComponentPlacementId> placements_;
+    EntityTable<BoardTrack, BoardTrackId> tracks_;
+    EntityTable<BoardVia, BoardViaId> vias_;
 };
 
 namespace detail {

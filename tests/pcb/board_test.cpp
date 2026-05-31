@@ -149,6 +149,48 @@ TEST_CASE("Board stores metadata, layers, outline, features, and placements") {
     CHECK(board.placement(placement).locked());
 }
 
+TEST_CASE("Board stores kernel-owned copper tracks and vias over existing nets and layers") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
+
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+
+    const auto track = board.add_track(volt::BoardTrack{
+        fixture.first_net,
+        front,
+        std::vector{
+            volt::BoardPoint{5.0, 5.0},
+            volt::BoardPoint{12.0, 5.0},
+            volt::BoardPoint{12.0, 8.0},
+        },
+        0.25,
+    });
+    const auto via = board.add_via(
+        volt::BoardVia{fixture.first_net, volt::BoardPoint{12.0, 8.0}, front, back, 0.30, 0.70});
+
+    REQUIRE(board.track_count() == 1);
+    CHECK(track == volt::BoardTrackId{0});
+    CHECK(board.track(track).net() == fixture.first_net);
+    CHECK(board.track(track).layer() == front);
+    CHECK(board.track(track).points() == std::vector{volt::BoardPoint{5.0, 5.0},
+                                                     volt::BoardPoint{12.0, 5.0},
+                                                     volt::BoardPoint{12.0, 8.0}});
+    CHECK(board.track(track).width_mm() == 0.25);
+
+    REQUIRE(board.via_count() == 1);
+    CHECK(via == volt::BoardViaId{0});
+    CHECK(board.via(via).net() == fixture.first_net);
+    CHECK(board.via(via).position() == volt::BoardPoint{12.0, 8.0});
+    CHECK(board.via(via).start_layer() == front);
+    CHECK(board.via(via).end_layer() == back);
+    CHECK(board.via(via).drill_diameter_mm() == 0.30);
+    CHECK(board.via(via).annular_diameter_mm() == 0.70);
+}
+
 TEST_CASE("Board outline accepts an explicit closing vertex") {
     auto outline = volt::BoardOutline{std::vector{
         volt::BoardPoint{0.0, 0.0},
@@ -210,6 +252,52 @@ TEST_CASE("Board rejects structurally invalid board and placement mutations") {
     CHECK_THROWS_AS(board.cache_footprint_definition(volt::passive_0603_footprint()),
                     std::logic_error);
     CHECK_THROWS_AS(board.footprint_definition(volt::FootprintDefId{99}), std::out_of_range);
+}
+
+TEST_CASE("Board rejects structurally invalid copper mutations") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    const auto mask = board.add_layer(
+        volt::BoardLayer{"F.Mask", volt::BoardLayerRole::SolderMask, volt::BoardLayerSide::Top});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+
+    CHECK_THROWS_AS(
+        volt::BoardTrack(fixture.first_net, front, std::vector{volt::BoardPoint{1.0, 1.0}}, 0.25),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        volt::BoardTrack(fixture.first_net, front,
+                         std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{1.0, 1.0}}, 0.25),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        volt::BoardTrack(fixture.first_net, front,
+                         std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{2.0, 1.0}}, 0.0),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        volt::BoardVia(fixture.first_net, volt::BoardPoint{1.0, 1.0}, front, front, 0.30, 0.70),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        volt::BoardVia(fixture.first_net, volt::BoardPoint{1.0, 1.0}, front, back, 0.70, 0.30),
+        std::invalid_argument);
+
+    CHECK_THROWS_AS(board.add_track(volt::BoardTrack{
+                        volt::NetId{99}, front,
+                        std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{2.0, 1.0}}, 0.25}),
+                    std::out_of_range);
+    CHECK_THROWS_AS(board.add_track(volt::BoardTrack{
+                        fixture.first_net, volt::BoardLayerId{99},
+                        std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{2.0, 1.0}}, 0.25}),
+                    std::out_of_range);
+    CHECK_THROWS_AS(board.add_track(volt::BoardTrack{
+                        fixture.first_net, mask,
+                        std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{2.0, 1.0}}, 0.25}),
+                    std::logic_error);
+    CHECK_THROWS_AS(board.add_via(volt::BoardVia{fixture.first_net, volt::BoardPoint{2.0, 2.0},
+                                                 front, mask, 0.30, 0.70}),
+                    std::logic_error);
 }
 
 TEST_CASE("Board resolves placed pads to logical pins and existing nets") {

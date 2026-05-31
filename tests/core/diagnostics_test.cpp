@@ -42,6 +42,17 @@ TEST_CASE("EntityRef preserves logical entity kind and index") {
     CHECK(net.index() == 5);
 }
 
+TEST_CASE("EntityRef preserves PCB copper primitive references") {
+    const auto track = volt::EntityRef::board_track(volt::BoardTrackId{6});
+    const auto via = volt::EntityRef::board_via(volt::BoardViaId{7});
+
+    CHECK(track.kind() == volt::EntityKind::BoardTrack);
+    CHECK(track.index() == 6);
+
+    CHECK(via.kind() == volt::EntityKind::BoardVia);
+    CHECK(via.index() == 7);
+}
+
 TEST_CASE("Diagnostic stores severity code message and related entities") {
     const auto diagnostic = volt::Diagnostic{
         volt::Severity::Warning,

@@ -48,6 +48,10 @@ namespace {
         return "board_layer";
     case volt::EntityKind::BoardFeature:
         return "board_feature";
+    case volt::EntityKind::BoardTrack:
+        return "board_track";
+    case volt::EntityKind::BoardVia:
+        return "board_via";
     case volt::EntityKind::FootprintDef:
         return "footprint_def";
     case volt::EntityKind::FootprintPad:

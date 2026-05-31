@@ -73,6 +73,10 @@ namespace detail {
         return encode_local_id(BoardLayerId{entity.index()});
     case EntityKind::BoardFeature:
         return encode_local_id(BoardFeatureId{entity.index()});
+    case EntityKind::BoardTrack:
+        return encode_local_id(BoardTrackId{entity.index()});
+    case EntityKind::BoardVia:
+        return encode_local_id(BoardViaId{entity.index()});
     case EntityKind::FootprintDef:
         return encode_local_id(FootprintDefId{entity.index()});
     case EntityKind::FootprintPad:
@@ -330,7 +334,8 @@ inline void write_footprint_definitions(std::ostream &out,
 }
 
 inline void write_placements(std::ostream &out, const Board &board,
-                             const std::vector<FootprintDefinition> &definitions) {
+                             const std::vector<FootprintDefinition> &definitions,
+                             bool trailing_comma = false) {
     out << "    \"placements\": [\n";
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto id = ComponentPlacementId{index};
@@ -360,7 +365,67 @@ inline void write_placements(std::ostream &out, const Board &board,
         }
         out << '\n';
     }
-    out << "    ]\n";
+    out << "    ]";
+    if (trailing_comma) {
+        out << ',';
+    }
+    out << '\n';
+}
+
+inline void write_tracks(std::ostream &out, const Board &board, bool trailing_comma = false) {
+    out << "    \"tracks\": [\n";
+    for (std::size_t index = 0; index < board.track_count(); ++index) {
+        const auto id = BoardTrackId{index};
+        const auto &track = board.track(id);
+        out << "      {\"id\": " << json_string(encode_local_id(id))
+            << ", \"net\": " << json_string(encode_local_id(track.net()))
+            << ", \"layer\": " << json_string(encode_local_id(track.layer())) << ", \"points\": [";
+        for (std::size_t point_index = 0; point_index < track.points().size(); ++point_index) {
+            if (point_index != 0U) {
+                out << ", ";
+            }
+            write_board_point(out, track.points()[point_index]);
+        }
+        out << "], \"width_mm\": ";
+        write_number(out, track.width_mm());
+        out << '}';
+        if (index + 1U != board.track_count()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "    ]";
+    if (trailing_comma) {
+        out << ',';
+    }
+    out << '\n';
+}
+
+inline void write_vias(std::ostream &out, const Board &board, bool trailing_comma = false) {
+    out << "    \"vias\": [\n";
+    for (std::size_t index = 0; index < board.via_count(); ++index) {
+        const auto id = BoardViaId{index};
+        const auto &via = board.via(id);
+        out << "      {\"id\": " << json_string(encode_local_id(id))
+            << ", \"net\": " << json_string(encode_local_id(via.net())) << ", \"position\": ";
+        write_board_point(out, via.position());
+        out << ", \"start_layer\": " << json_string(encode_local_id(via.start_layer()))
+            << ", \"end_layer\": " << json_string(encode_local_id(via.end_layer()))
+            << ", \"drill_diameter_mm\": ";
+        write_number(out, via.drill_diameter_mm());
+        out << ", \"annular_diameter_mm\": ";
+        write_number(out, via.annular_diameter_mm());
+        out << '}';
+        if (index + 1U != board.via_count()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "    ]";
+    if (trailing_comma) {
+        out << ',';
+    }
+    out << '\n';
 }
 
 inline void write_pad_resolution(std::ostream &out, const Board &board,
@@ -493,7 +558,14 @@ inline void write_pcb_board(std::ostream &out, const Board &board,
     detail::write_outline(out, board);
     detail::write_features(out, board);
     detail::write_footprint_definitions(out, definitions);
-    detail::write_placements(out, board, definitions);
+    detail::write_placements(out, board, definitions,
+                             board.track_count() != 0U || board.via_count() != 0U);
+    if (board.track_count() != 0U) {
+        detail::write_tracks(out, board, board.via_count() != 0U);
+    }
+    if (board.via_count() != 0U) {
+        detail::write_vias(out, board);
+    }
     out << "  },\n";
     detail::write_viewer(out, board, definitions);
     out << "}\n";

@@ -158,6 +158,10 @@ inline void write_pcb_svg_number(std::ostream &out, double value) {
         return encode_local_id(BoardLayerId{entity.index()});
     case EntityKind::BoardFeature:
         return encode_local_id(BoardFeatureId{entity.index()});
+    case EntityKind::BoardTrack:
+        return encode_local_id(BoardTrackId{entity.index()});
+    case EntityKind::BoardVia:
+        return encode_local_id(BoardViaId{entity.index()});
     case EntityKind::FootprintDef:
         return encode_local_id(FootprintDefId{entity.index()});
     case EntityKind::FootprintPad:
@@ -341,6 +345,28 @@ inline void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacem
         include_board_point(
             bounds, BoardPoint{feature.position().x_mm(), feature.position().y_mm() + radius});
     }
+    for (std::size_t index = 0; index < board.track_count(); ++index) {
+        const auto &track = board.track(BoardTrackId{index});
+        const auto half_width = track.width_mm() / 2.0;
+        for (const auto point : track.points()) {
+            include_board_point(bounds, BoardPoint{point.x_mm() - half_width, point.y_mm()});
+            include_board_point(bounds, BoardPoint{point.x_mm() + half_width, point.y_mm()});
+            include_board_point(bounds, BoardPoint{point.x_mm(), point.y_mm() - half_width});
+            include_board_point(bounds, BoardPoint{point.x_mm(), point.y_mm() + half_width});
+        }
+    }
+    for (std::size_t index = 0; index < board.via_count(); ++index) {
+        const auto &via = board.via(BoardViaId{index});
+        const auto radius = via.annular_diameter_mm() / 2.0;
+        include_board_point(bounds,
+                            BoardPoint{via.position().x_mm() - radius, via.position().y_mm()});
+        include_board_point(bounds,
+                            BoardPoint{via.position().x_mm() + radius, via.position().y_mm()});
+        include_board_point(bounds,
+                            BoardPoint{via.position().x_mm(), via.position().y_mm() - radius});
+        include_board_point(bounds,
+                            BoardPoint{via.position().x_mm(), via.position().y_mm() + radius});
+    }
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto &placement = board.placement(ComponentPlacementId{index});
         include_board_point(bounds, placement.position());
@@ -366,11 +392,17 @@ inline void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacem
     throw std::logic_error{"Unhandled PCB footprint pad shape"};
 }
 
-inline void write_style(std::ostream &out) {
+inline void write_style(std::ostream &out, bool include_copper) {
     out << "  <style>\n";
     out << "    .board-background{fill:#f8faf8}\n";
     out << "    .board-outline{fill:#d7ead0;stroke:#1f5f3a;stroke-width:0.28}\n";
     out << "    .board-feature{fill:none;stroke:#6b7280;stroke-width:0.24}\n";
+    if (include_copper) {
+        out << "    "
+               ".pcb-track{fill:none;stroke:#b45309;stroke-linecap:round;stroke-linejoin:round}\n";
+        out << "    .pcb-via-annular{fill:#b45309;stroke:#7c2d12;stroke-width:0.08}\n";
+        out << "    .pcb-via-drill{fill:#f8faf8;stroke:#7c2d12;stroke-width:0.06}\n";
+    }
     out << "    "
            ".board-feature-label,.reference-designator,.pad-net-label,.diagnostic-label{font:1.8px "
            "sans-serif;fill:#172026}\n";
@@ -429,6 +461,57 @@ inline void write_pcb_svg_features(std::ostream &out, const Board &board) {
                                  feature.position().y_mm() + (feature.diameter_mm() / 2.0) + 2.0);
             out << "\" text-anchor=\"middle\">" << pcb_svg_escape(feature.label()) << "</text>\n";
         }
+    }
+    out << "    </g>\n";
+}
+
+inline void write_copper(std::ostream &out, const Board &board) {
+    if (board.track_count() == 0U && board.via_count() == 0U) {
+        return;
+    }
+
+    out << "    <g class=\"layer layer-copper\">\n";
+    for (std::size_t index = 0; index < board.track_count(); ++index) {
+        const auto id = BoardTrackId{index};
+        const auto &track = board.track(id);
+        out << "      <polyline id=\"pcb-track-" << index << "\" class=\"pcb-track\" data-track=\""
+            << encode_local_id(id) << "\" data-layer=\"" << encode_local_id(track.layer())
+            << "\" data-net=\"" << encode_local_id(track.net()) << "\" points=\"";
+        for (std::size_t point_index = 0; point_index < track.points().size(); ++point_index) {
+            if (point_index != 0U) {
+                out << ' ';
+            }
+            write_pcb_svg_number(out, track.points()[point_index].x_mm());
+            out << ',';
+            write_pcb_svg_number(out, track.points()[point_index].y_mm());
+        }
+        out << "\" stroke-width=\"";
+        write_pcb_svg_number(out, track.width_mm());
+        out << "\"/>\n";
+    }
+
+    for (std::size_t index = 0; index < board.via_count(); ++index) {
+        const auto id = BoardViaId{index};
+        const auto &via = board.via(id);
+        out << "      <g id=\"pcb-via-" << index << "\" class=\"pcb-via\" data-via=\""
+            << encode_local_id(id) << "\" data-net=\"" << encode_local_id(via.net())
+            << "\" data-start-layer=\"" << encode_local_id(via.start_layer())
+            << "\" data-end-layer=\"" << encode_local_id(via.end_layer()) << "\">\n";
+        out << "        <circle class=\"pcb-via-annular\" cx=\"";
+        write_pcb_svg_number(out, via.position().x_mm());
+        out << "\" cy=\"";
+        write_pcb_svg_number(out, via.position().y_mm());
+        out << "\" r=\"";
+        write_pcb_svg_number(out, via.annular_diameter_mm() / 2.0);
+        out << "\"/>\n";
+        out << "        <circle class=\"pcb-via-drill\" cx=\"";
+        write_pcb_svg_number(out, via.position().x_mm());
+        out << "\" cy=\"";
+        write_pcb_svg_number(out, via.position().y_mm());
+        out << "\" r=\"";
+        write_pcb_svg_number(out, via.drill_diameter_mm() / 2.0);
+        out << "\"/>\n";
+        out << "      </g>\n";
     }
     out << "    </g>\n";
 }
@@ -690,6 +773,7 @@ inline void write_pcb_placement_svg(std::ostream &out, const Board &board,
     const auto translate_y = detail::pcb_svg_margin_mm - bounds.min_y;
     const auto resolutions = board.resolve_pads(preview_footprints);
     const auto ratsnest_edges = derive_ratsnest_edges(resolutions);
+    const auto has_copper = board.track_count() != 0U || board.via_count() != 0U;
 
     out << "<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"pcb-placement-preview\" viewBox=\"0 "
            "0 ";
@@ -703,7 +787,7 @@ inline void write_pcb_placement_svg(std::ostream &out, const Board &board,
     out << "mm\" data-board=\"board:0\" data-board-name=\""
         << detail::pcb_svg_escape(board.name().value()) << "\" data-units=\""
         << detail::board_units_name(board.units()) << "\">\n";
-    detail::write_style(out);
+    detail::write_style(out, has_copper);
     out << "  <rect class=\"board-background\" x=\"0\" y=\"0\" width=\"";
     detail::write_pcb_svg_number(out, width);
     out << "\" height=\"";
@@ -716,6 +800,7 @@ inline void write_pcb_placement_svg(std::ostream &out, const Board &board,
     out << ")\">\n";
     detail::write_pcb_svg_outline(out, board);
     detail::write_pcb_svg_features(out, board);
+    detail::write_copper(out, board);
     detail::write_placements(out, board, preview_footprints, resolutions);
     detail::write_ratsnest(out, ratsnest_edges);
     detail::write_pad_overlays(out, board, resolutions, options);
