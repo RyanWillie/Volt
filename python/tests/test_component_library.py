@@ -699,23 +699,20 @@ def test_component_select_part_accepts_public_footprint_object():
     assert "pads" not in part["footprint"]
 
 
-def test_component_select_part_rejects_invalid_public_footprint_identity():
-    design = volt.Design("bad-footprint-object")
-    r1 = design.R(ref="R1")
-    footprint = volt.Footprint(library="", name="R_0603_1608Metric", pads=())
-
+def test_footprint_rejects_empty_public_identity():
     try:
-        r1.select_part(
-            manufacturer="Yageo",
-            part_number="RC0603FR-07330RL",
-            package="0603",
-            footprint=footprint,
-            pin_pads={1: "1", 2: "2"},
-        )
+        volt.Footprint(library="", name="R_0603_1608Metric", pads=())
     except ValueError:
         pass
     else:
         raise AssertionError("empty footprint library should be rejected")
+
+    try:
+        volt.Footprint(library="Resistor_SMD", name="", pads=())
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("empty footprint name should be rejected")
 
 
 def test_physical_part_specs_accept_and_reuse_public_footprint_object():

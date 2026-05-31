@@ -32,6 +32,10 @@ class Footprint:
 
         if not isinstance(library, str) or not isinstance(name, str):
             raise TypeError("Footprint library and name must be strings")
+        if not library:
+            raise ValueError("Footprint library must not be empty")
+        if not name:
+            raise ValueError("Footprint name must not be empty")
 
         object.__setattr__(self, "ref", (library, name))
         object.__setattr__(self, "pads", tuple(pads))
@@ -65,4 +69,8 @@ def _tuple_footprint_ref(ref: tuple[object, ...]) -> FootprintRef:
     library, name = ref
     if not isinstance(library, str) or not isinstance(name, str):
         raise TypeError("Footprint library and name must be strings")
+    if not library:
+        raise ValueError("Footprint library must not be empty")
+    if not name:
+        raise ValueError("Footprint name must not be empty")
     return library, name
