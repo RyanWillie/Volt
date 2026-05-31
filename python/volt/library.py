@@ -16,6 +16,7 @@ from ._library_symbol_builders import (
     _text_horizontal_alignment,
     _text_vertical_alignment,
 )
+from ._footprint import FootprintInput
 from ._utils import _coordinate, _number, _positive_coordinate
 
 PinPadValue = str | tuple[str, ...] | list[str]
@@ -66,7 +67,7 @@ class PhysicalPartSpec:
     manufacturer: str
     part_number: str
     package: str
-    footprint: tuple[str, str]
+    footprint: FootprintInput
     pin_pads: dict[int | str, PinPadValue] | None = None
     properties: dict | None = None
     voltage_rating: float | None = None
@@ -80,7 +81,7 @@ class PhysicalPartSpec:
         manufacturer: str,
         part_number: str,
         package: str,
-        footprint: tuple[str, str],
+        footprint: FootprintInput,
         properties: dict | None = None,
         voltage_rating: float | None = None,
         power_rating: float | None = None,

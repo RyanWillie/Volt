@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 
+from ._footprint import FootprintInput, footprint_ref
 from ._utils import _number
 from .library import LibraryComponent, PinPadValue
 
@@ -469,7 +470,7 @@ class Component:
         manufacturer: str,
         part_number: str,
         package: str,
-        footprint: tuple[str, str],
+        footprint: FootprintInput,
         pin_pads: dict[int | str, PinPadValue],
         properties: dict | None = None,
         voltage_rating: float | None = None,
@@ -477,8 +478,7 @@ class Component:
     ) -> Component:
         if not isinstance(pin_pads, dict):
             raise TypeError("pin_pads must be a dict")
-        if not isinstance(footprint, tuple) or len(footprint) != 2:
-            raise TypeError("footprint must be a (library, name) tuple")
+        footprint_library, footprint_name = footprint_ref(footprint)
 
         selected_part_ratings = []
         if voltage_rating is not None:
@@ -491,8 +491,8 @@ class Component:
             manufacturer,
             part_number,
             package,
-            footprint[0],
-            footprint[1],
+            footprint_library,
+            footprint_name,
             pin_pads,
             properties or {},
         )

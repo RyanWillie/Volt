@@ -37,7 +37,7 @@ from .logical import (
     PortInfo,
     TemplateNetInfo,
 )
-from .pcb import Board, FootprintDefinition, FootprintDrill, FootprintPad, PadResolution
+from .pcb import Board, Footprint, FootprintDefinition, FootprintDrill, FootprintPad, PadResolution
 from .schematic import (
     PlacedSchematicElement,
     Schematic,
@@ -85,6 +85,7 @@ __all__ = [
     "Pin",
     "PinGroup",
     "PinSpec",
+    "Footprint",
     "FootprintDefinition",
     "FootprintDrill",
     "FootprintPad",
