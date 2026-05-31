@@ -1,0 +1,58 @@
+{
+  "format": "volt.schematic",
+  "version": 1,
+  "symbol_definitions": [
+    { "id": "symbol_def:0", "name": "volt.examples.routed_regulator_led_board:InputPowerHeader", "pins": [{ "name": "VIN", "number": "1", "anchor": { "x": 0, "y": 0 }, "orientation": "Left" }, { "name": "GND", "number": "2", "anchor": { "x": 0, "y": 20 }, "orientation": "Left" }], "primitives": [{ "type": "rectangle", "first_corner": { "x": 8, "y": -6 }, "second_corner": { "x": 30, "y": 26 } }, { "type": "line", "start": { "x": 0, "y": 0 }, "end": { "x": 8, "y": 0 } }, { "type": "line", "start": { "x": 0, "y": 20 }, "end": { "x": 8, "y": 20 } }, { "type": "text", "text": "PWR", "anchor": { "x": 19, "y": -12 }, "orientation": "Right" }] },
+    { "id": "symbol_def:1", "name": "volt.power:regulator_3pin", "pins": [{ "name": "IN", "number": "3", "anchor": { "x": 0, "y": 10 }, "orientation": "Left" }, { "name": "OUT", "number": "2", "anchor": { "x": 50, "y": 10 }, "orientation": "Right" }, { "name": "GND", "number": "1", "anchor": { "x": 25, "y": 30 }, "orientation": "Down" }], "primitives": [{ "type": "rectangle", "first_corner": { "x": 10, "y": 0 }, "second_corner": { "x": 40, "y": 25 } }, { "type": "line", "start": { "x": 0, "y": 10 }, "end": { "x": 10, "y": 10 } }, { "type": "line", "start": { "x": 40, "y": 10 }, "end": { "x": 50, "y": 10 } }, { "type": "line", "start": { "x": 25, "y": 25 }, "end": { "x": 25, "y": 30 } }, { "type": "text", "text": "REG", "anchor": { "x": 25, "y": 14 }, "orientation": "Right" }] },
+    { "id": "symbol_def:2", "name": "volt.passives:capacitor", "pins": [{ "name": "1", "number": "1", "anchor": { "x": 0, "y": 0 }, "orientation": "Left" }, { "name": "2", "number": "2", "anchor": { "x": 20, "y": 0 }, "orientation": "Right" }], "primitives": [{ "type": "line", "start": { "x": 0, "y": 0 }, "end": { "x": 8, "y": 0 }, "role": "TerminalLeadStart" }, { "type": "line", "start": { "x": 8, "y": -5 }, "end": { "x": 8, "y": 5 } }, { "type": "line", "start": { "x": 12, "y": -5 }, "end": { "x": 12, "y": 5 } }, { "type": "line", "start": { "x": 12, "y": 0 }, "end": { "x": 20, "y": 0 }, "role": "TerminalLeadEnd" }] },
+    { "id": "symbol_def:3", "name": "volt.passives:resistor", "pins": [{ "name": "1", "number": "1", "anchor": { "x": 0, "y": 0 }, "orientation": "Left" }, { "name": "2", "number": "2", "anchor": { "x": 20, "y": 0 }, "orientation": "Right" }], "primitives": [{ "type": "line", "start": { "x": 0, "y": 0 }, "end": { "x": 5, "y": 0 }, "role": "TerminalLeadStart" }, { "type": "line", "start": { "x": 5, "y": 0 }, "end": { "x": 6.5, "y": -3 } }, { "type": "line", "start": { "x": 6.5, "y": -3 }, "end": { "x": 8, "y": 3 } }, { "type": "line", "start": { "x": 8, "y": 3 }, "end": { "x": 9.5, "y": -3 } }, { "type": "line", "start": { "x": 9.5, "y": -3 }, "end": { "x": 11, "y": 3 } }, { "type": "line", "start": { "x": 11, "y": 3 }, "end": { "x": 12.5, "y": -3 } }, { "type": "line", "start": { "x": 12.5, "y": -3 }, "end": { "x": 14, "y": 3 } }, { "type": "line", "start": { "x": 14, "y": 3 }, "end": { "x": 15, "y": 0 } }, { "type": "line", "start": { "x": 15, "y": 0 }, "end": { "x": 20, "y": 0 }, "role": "TerminalLeadEnd" }] },
+    { "id": "symbol_def:4", "name": "volt.optos:led#two-terminal-reverse-20", "pins": [{ "name": "A", "number": "2", "anchor": { "x": 0, "y": 0 }, "orientation": "Left" }, { "name": "K", "number": "1", "anchor": { "x": 20, "y": 0 }, "orientation": "Right" }], "primitives": [{ "type": "line", "start": { "x": 20, "y": 0 }, "end": { "x": 13, "y": 0 }, "role": "TerminalLeadStart" }, { "type": "line", "start": { "x": 13, "y": -5 }, "end": { "x": 13, "y": 5 } }, { "type": "line", "start": { "x": 13, "y": -5 }, "end": { "x": 7, "y": 0 } }, { "type": "line", "start": { "x": 13, "y": 5 }, "end": { "x": 7, "y": 0 } }, { "type": "line", "start": { "x": 7, "y": 0 }, "end": { "x": 0, "y": 0 }, "role": "TerminalLeadEnd" }, { "type": "line", "start": { "x": 7, "y": -6 }, "end": { "x": 3, "y": -10 } }, { "type": "line", "start": { "x": 5, "y": -4 }, "end": { "x": 1, "y": -8 } }] }
+  ],
+  "sheets": [
+    { "id": "sheet:0", "name": "Regulator LED Board", "metadata": { "title": "Regulator LED Board", "orientation": "Landscape", "size": { "width": 340, "height": 220 }, "title_block": [{ "key": "Number", "value": "1" }, { "key": "Page Count", "value": "1" }, { "key": "Revision", "value": "A" }, { "key": "Date", "value": "2026-05-31" }, { "key": "Project", "value": "Volt PCB" }, { "key": "File", "value": "routed_regulator_led_board/main.py" }], "frame": { "visible": true, "margins": { "left": 8, "top": 8, "right": 8, "bottom": 8 } }, "coordinate_zones": { "columns": 4, "rows": 3, "visible": true }, "grid": { "spacing": 5, "visible": false } }, "regions": [], "symbol_instances": ["symbol_instance:0", "symbol_instance:1", "symbol_instance:2", "symbol_instance:3", "symbol_instance:4", "symbol_instance:5"], "wire_runs": ["wire_run:0", "wire_run:1", "wire_run:2", "wire_run:3", "wire_run:4", "wire_run:5", "wire_run:6", "wire_run:7", "wire_run:8", "wire_run:9"], "net_labels": [], "junctions": ["junction:0", "junction:1"], "power_ports": ["power_port:0"], "no_connect_markers": [], "sheet_ports": [], "symbol_fields": ["symbol_field:0", "symbol_field:1", "symbol_field:2", "symbol_field:3", "symbol_field:4", "symbol_field:5", "symbol_field:6", "symbol_field:7", "symbol_field:8"] }
+  ],
+  "symbol_instances": [
+    { "id": "symbol_instance:0", "sheet": "sheet:0", "symbol_definition": "symbol_def:0", "component": "component:0", "position": { "x": 40, "y": 80 }, "orientation": "Right" },
+    { "id": "symbol_instance:1", "sheet": "sheet:0", "symbol_definition": "symbol_def:1", "component": "component:1", "position": { "x": 125, "y": 65 }, "orientation": "Right" },
+    { "id": "symbol_instance:2", "sheet": "sheet:0", "symbol_definition": "symbol_def:2", "component": "component:2", "position": { "x": 85, "y": 80 }, "orientation": "Down" },
+    { "id": "symbol_instance:3", "sheet": "sheet:0", "symbol_definition": "symbol_def:2", "component": "component:3", "position": { "x": 210, "y": 75 }, "orientation": "Down" },
+    { "id": "symbol_instance:4", "sheet": "sheet:0", "symbol_definition": "symbol_def:3", "component": "component:4", "position": { "x": 240, "y": 75 }, "orientation": "Right" },
+    { "id": "symbol_instance:5", "sheet": "sheet:0", "symbol_definition": "symbol_def:4", "component": "component:5", "position": { "x": 280, "y": 75 }, "orientation": "Right" }
+  ],
+  "wire_runs": [
+    { "id": "wire_run:0", "sheet": "sheet:0", "net": "net:0", "points": [{ "x": 40, "y": 80 }, { "x": 85, "y": 80 }], "route_intent": "Direct" },
+    { "id": "wire_run:1", "sheet": "sheet:0", "net": "net:0", "points": [{ "x": 85, "y": 80 }, { "x": 125, "y": 75 }], "route_intent": "Direct" },
+    { "id": "wire_run:2", "sheet": "sheet:0", "net": "net:1", "points": [{ "x": 175, "y": 75 }, { "x": 210, "y": 75 }], "route_intent": "Direct" },
+    { "id": "wire_run:3", "sheet": "sheet:0", "net": "net:1", "points": [{ "x": 210, "y": 75 }, { "x": 240, "y": 75 }], "route_intent": "Direct" },
+    { "id": "wire_run:4", "sheet": "sheet:0", "net": "net:2", "points": [{ "x": 260, "y": 75 }, { "x": 280, "y": 75 }], "route_intent": "Direct" },
+    { "id": "wire_run:5", "sheet": "sheet:0", "net": "net:3", "points": [{ "x": 150, "y": 95 }, { "x": 150, "y": 123 }], "route_intent": "Direct" },
+    { "id": "wire_run:6", "sheet": "sheet:0", "net": "net:3", "points": [{ "x": 40, "y": 100 }, { "x": 150, "y": 123 }], "route_intent": "Direct" },
+    { "id": "wire_run:7", "sheet": "sheet:0", "net": "net:3", "points": [{ "x": 85, "y": 100 }, { "x": 150, "y": 123 }], "route_intent": "Direct" },
+    { "id": "wire_run:8", "sheet": "sheet:0", "net": "net:3", "points": [{ "x": 210, "y": 95 }, { "x": 150, "y": 123 }], "route_intent": "Direct" },
+    { "id": "wire_run:9", "sheet": "sheet:0", "net": "net:3", "points": [{ "x": 300, "y": 75 }, { "x": 150, "y": 123 }], "route_intent": "Direct" }
+  ],
+  "net_labels": [
+  ],
+  "junctions": [
+    { "id": "junction:0", "sheet": "sheet:0", "net": "net:0", "position": { "x": 85, "y": 80 } },
+    { "id": "junction:1", "sheet": "sheet:0", "net": "net:1", "position": { "x": 210, "y": 75 } }
+  ],
+  "power_ports": [
+    { "id": "power_port:0", "sheet": "sheet:0", "net": "net:3", "kind": "Ground", "position": { "x": 150, "y": 123 }, "orientation": "Down", "label_position": { "x": 150, "y": 135.19999999999999 } }
+  ],
+  "no_connect_markers": [
+  ],
+  "sheet_ports": [
+  ],
+  "symbol_fields": [
+    { "id": "symbol_field:0", "sheet": "sheet:0", "symbol_instance": "symbol_instance:0", "name": "reference", "value": "J1", "position": { "x": 30, "y": 90 }, "orientation": "Right" },
+    { "id": "symbol_field:1", "sheet": "sheet:0", "symbol_instance": "symbol_instance:1", "name": "reference", "value": "U1", "position": { "x": 150, "y": 61 }, "orientation": "Right" },
+    { "id": "symbol_field:2", "sheet": "sheet:0", "symbol_instance": "symbol_instance:2", "name": "reference", "value": "C1", "position": { "x": 77, "y": 90 }, "orientation": "Right" },
+    { "id": "symbol_field:3", "sheet": "sheet:0", "symbol_instance": "symbol_instance:2", "name": "value", "value": "1 uF", "position": { "x": 75, "y": 102 }, "orientation": "Right" },
+    { "id": "symbol_field:4", "sheet": "sheet:0", "symbol_instance": "symbol_instance:3", "name": "reference", "value": "C2", "position": { "x": 218, "y": 85 }, "orientation": "Right" },
+    { "id": "symbol_field:5", "sheet": "sheet:0", "symbol_instance": "symbol_instance:3", "name": "value", "value": "1 uF", "position": { "x": 232, "y": 85 }, "orientation": "Right" },
+    { "id": "symbol_field:6", "sheet": "sheet:0", "symbol_instance": "symbol_instance:4", "name": "reference", "value": "R1", "position": { "x": 250, "y": 67 }, "orientation": "Right" },
+    { "id": "symbol_field:7", "sheet": "sheet:0", "symbol_instance": "symbol_instance:4", "name": "value", "value": "330 ohm", "position": { "x": 250, "y": 83 }, "orientation": "Right" },
+    { "id": "symbol_field:8", "sheet": "sheet:0", "symbol_instance": "symbol_instance:5", "name": "reference", "value": "D1", "position": { "x": 290, "y": 61 }, "orientation": "Right" }
+  ]
+}
