@@ -23,6 +23,28 @@ namespace {
     }
 }
 
+[[nodiscard]] std::vector<std::string> pad_labels_from_value(py::handle value) {
+    if (py::isinstance<py::str>(value)) {
+        return std::vector{py::cast<std::string>(value)};
+    }
+
+    if (py::isinstance<py::sequence>(value)) {
+        const auto sequence = py::reinterpret_borrow<py::sequence>(value);
+        if (py::len(sequence) == 0U) {
+            throw std::invalid_argument{"Pin-pad mapping pad lists must not be empty"};
+        }
+
+        auto labels = std::vector<std::string>{};
+        labels.reserve(static_cast<std::size_t>(py::len(sequence)));
+        for (const auto item : sequence) {
+            labels.push_back(py::cast<std::string>(item));
+        }
+        return labels;
+    }
+
+    throw py::type_error{"Pin-pad mapping values must be pad labels or sequences of pad labels"};
+}
+
 [[nodiscard]] volt::SchematicEndpoint schematic_endpoint_from_tuple(const py::tuple &endpoint) {
     if (py::len(endpoint) != 4U) {
         throw py::value_error{"Schematic endpoint payloads must contain x, y, pin, and port net"};
@@ -180,7 +202,6 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
 
     for (const auto item : pin_pads) {
         const auto key = string_from_pin_key(item.first);
-        const auto pad = py::cast<std::string>(item.second);
         auto pin = std::optional<volt::PinId>{};
         if (py::isinstance<py::int_>(item.first)) {
             pin = circuit_.pin_by_number(component_handle, key);
@@ -196,7 +217,10 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
         if (!pin.has_value()) {
             throw std::out_of_range{"Component has no pin with that name or number"};
         }
-        mappings.emplace_back(circuit_.pin(pin.value()).definition(), pad);
+        const auto pin_definition = circuit_.pin(pin.value()).definition();
+        for (const auto &pad : pad_labels_from_value(item.second)) {
+            mappings.emplace_back(pin_definition, pad);
+        }
     }
 
     circuit_.select_physical_part(

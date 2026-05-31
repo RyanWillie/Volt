@@ -731,6 +731,7 @@ two_side_smd_package(FootprintRef ref, std::size_t pin_count, double row_center_
                                    detail::front_smd_pad("1", -2.30, -1.50, 1.05, 1.80),
                                    detail::front_smd_pad("2", 0.00, -1.50, 1.05, 1.80),
                                    detail::front_smd_pad("3", 2.30, -1.50, 1.05, 1.80),
+                                   detail::front_smd_pad("4", 0.00, 2.05, 3.80, 2.20),
                                }};
 }
 

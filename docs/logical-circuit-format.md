@@ -249,8 +249,9 @@ Components are concrete design occurrences:
 
 `selected_physical_part` is optional. A selected part maps logical `pin_def` IDs to
 physical footprint pad labels. The mapping must exactly match the component definition's
-pins: no missing logical pins, no foreign logical pins, no duplicate logical pins, and no
-duplicate pad labels.
+pins: no missing logical pins, no foreign logical pins, and no duplicate pad labels. A
+logical pin may appear more than once when multiple physical package pads are tied to that
+same logical pin.
 
 ## Concrete Pins
 

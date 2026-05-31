@@ -166,6 +166,7 @@ TEST_CASE("Built-in footprint library provides first board fixtures") {
     CHECK(library.find(volt::FootprintRef{"connectors", "USB_Micro-B_Receptacle"}) != nullptr);
     CHECK(library.find(volt::FootprintRef{"Package_TO_SOT_SMD", "SOT-23"}) != nullptr);
     CHECK(library.find(volt::FootprintRef{"Package_TO_SOT_SMD", "SOT-23-6"}) != nullptr);
+    CHECK(library.find(volt::FootprintRef{"Package_TO_SOT_SMD", "SOT-223-3_TabPin2"}) != nullptr);
     CHECK(library.find(volt::FootprintRef{"ics", "SOIC-8_3.9x4.9mm_P1.27mm"}) != nullptr);
     CHECK(library.find(volt::FootprintRef{"Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"}) != nullptr);
     CHECK(library.find(volt::FootprintRef{"Package_SO", "TSSOP-14_4.4x5mm_P0.65mm"}) != nullptr);
@@ -196,6 +197,12 @@ TEST_CASE("Built-in footprint library keeps unique references and stable pad lab
     expect_pad_labels(*usb, {"1", "2", "3", "4", "5", "6", "M1", "M2"});
     CHECK_FALSE(usb->pad(volt::FootprintPadId{6}).requires_pin_mapping());
     CHECK_FALSE(usb->pad(volt::FootprintPadId{7}).requires_pin_mapping());
+
+    const auto *regulator =
+        library.find(volt::FootprintRef{"Package_TO_SOT_SMD", "SOT-223-3_TabPin2"});
+    REQUIRE(regulator != nullptr);
+    expect_pad_labels(*regulator, {"1", "2", "3", "4"});
+    CHECK(regulator->pad(volt::FootprintPadId{3}).position() == volt::FootprintPoint{0.00, 2.05});
 
     const auto *mcu = library.find(volt::FootprintRef{"Package_QFP", "LQFP-64_10x10mm_P0.5mm"});
     REQUIRE(mcu != nullptr);
@@ -282,6 +289,29 @@ TEST_CASE("Footprint resolver binds expanded built-in library families") {
         REQUIRE(resolution.pad_bindings().size() == 6);
         CHECK(resolution.pad_bindings()[5].pad() == volt::FootprintPadId{5});
         CHECK(resolution.pad_bindings()[5].pin() == volt::PinDefId{5});
+    }
+
+    SECTION("SOT-223 regulator with tab tied to pin 2") {
+        const auto regulator = volt::PhysicalPart{
+            volt::ManufacturerPart{"Diodes Incorporated", "AP1117E15G-13"},
+            volt::PackageRef{"SOT-223-3"},
+            volt::FootprintRef{"Package_TO_SOT_SMD", "SOT-223-3_TabPin2"},
+            std::vector{
+                volt::PinPadMapping{volt::PinDefId{0}, "1"},
+                volt::PinPadMapping{volt::PinDefId{1}, "2"},
+                volt::PinPadMapping{volt::PinDefId{1}, "4"},
+                volt::PinPadMapping{volt::PinDefId{2}, "3"},
+            },
+        };
+        const auto resolution = volt::resolve_footprint(regulator, library);
+
+        REQUIRE(resolution.ok());
+        REQUIRE(resolution.definition() != nullptr);
+        REQUIRE(resolution.pad_bindings().size() == 4);
+        CHECK(resolution.pad_bindings()[1].pad() == volt::FootprintPadId{1});
+        CHECK(resolution.pad_bindings()[1].pin() == volt::PinDefId{1});
+        CHECK(resolution.pad_bindings()[3].pad() == volt::FootprintPadId{3});
+        CHECK(resolution.pad_bindings()[3].pin() == volt::PinDefId{1});
     }
 
     SECTION("STM32 benchmark MCU package") {

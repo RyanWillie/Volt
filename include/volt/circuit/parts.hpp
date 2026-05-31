@@ -142,14 +142,6 @@ class PhysicalPart {
 
         for (auto current = pin_pad_mappings_.begin(); current != pin_pad_mappings_.end();
              ++current) {
-            const auto duplicate_pin = std::any_of(std::next(current), pin_pad_mappings_.end(),
-                                                   [current](const PinPadMapping &mapping) {
-                                                       return mapping.pin() == current->pin();
-                                                   });
-            if (duplicate_pin) {
-                throw std::invalid_argument{"Physical part contains duplicate logical pin mapping"};
-            }
-
             const auto duplicate_pad = std::any_of(std::next(current), pin_pad_mappings_.end(),
                                                    [current](const PinPadMapping &mapping) {
                                                        return mapping.pad() == current->pad();

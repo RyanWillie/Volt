@@ -172,8 +172,8 @@
         <tr>
           <td>IC packages</td>
           <td><code>Package_SO</code>, <code>Package_QFP</code>, <code>Package_TO_SOT_SMD</code></td>
-          <td><code>SOIC-8_3.9x4.9mm_P1.27mm</code>, <code>LQFP-64_10x10mm_P0.5mm</code></td>
-          <td>KiCad-like package-library names are allowed when Volt selected-part data already uses them.</td>
+          <td><code>SOIC-8_3.9x4.9mm_P1.27mm</code>, <code>SOT-223-3_TabPin2</code>, <code>LQFP-64_10x10mm_P0.5mm</code></td>
+          <td>KiCad-like package-library names are allowed when Volt selected-part data already uses them. Tied tab pads remain explicit pads.</td>
         </tr>
       </tbody>
     </table>
@@ -184,6 +184,7 @@
       <li>Pad coordinates are footprint-local centers. Placement transforms convert them to board space.</li>
       <li>Pad IDs are implicit and stable by definition order: <code>footprint_pad:0</code>, <code>footprint_pad:1</code>, and so on.</li>
       <li>Pad labels are the selected-part mapping keys. They must be unique inside one footprint.</li>
+      <li>A selected logical pin may map to multiple unique electrical pad labels when the physical package exposes tied lands, such as a regulator tab.</li>
       <li>SMD pads use <code>front_smd</code> or <code>back_smd</code> layer sets. Through-hole electrical pads use <code>through_hole</code>.</li>
       <li>Non-plated holes use <code>mechanical_hole</code> layers and must declare a mechanical role such as <code>mounting</code> or <code>mechanical_support</code>.</li>
       <li>Mechanical pads do not require selected-part pin mappings. Mapping a logical pin to one is diagnosed as invalid design intent.</li>
@@ -192,9 +193,10 @@
     <h2>Current Built-In Coverage</h2>
     <p>
       The built-in library covers first-board examples: common 0402/0603/0805 passives, 0603 LEDs
-      and diodes, SOD-123 diodes, SOT-23 and SOT-23-6 packages, SOIC and TSSOP packages, 1x02 and
-      1x04 headers, 2x05 programming headers, a simple terminal block, a micro USB-B receptacle,
-      and the <code>LQFP-64_10x10mm_P0.5mm</code> MCU package used by the STM32 benchmark library.
+      and diodes, SOD-123 diodes, SOT-23, SOT-23-6, and SOT-223 tabbed packages, SOIC and TSSOP
+      packages, 1x02 and 1x04 headers, 2x05 programming headers, a simple terminal block, a micro
+      USB-B receptacle, and the <code>LQFP-64_10x10mm_P0.5mm</code> MCU package used by the STM32
+      benchmark library.
     </p>
 
     <h2>Growth Path</h2>

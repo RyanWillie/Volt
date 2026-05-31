@@ -389,6 +389,79 @@ def test_stm32_usb_buck_library_exposes_native_components():
     }
     assert stm32_part["pin_pad_mappings"][44] == {"pin": "pin_def:44", "pad": "45"}
 
+    selected_parts = {
+        component["reference"]: component["selected_physical_part"]
+        for component in circuit["components"]
+    }
+    assert selected_parts["J1"]["footprint"] == {
+        "library": "connectors",
+        "name": "USB_Micro-B_Receptacle",
+    }
+    assert selected_parts["U2"]["footprint"] == {
+        "library": "Package_TO_SOT_SMD",
+        "name": "SOT-23-6",
+    }
+    assert selected_parts["U3"]["footprint"] == {
+        "library": "Package_TO_SOT_SMD",
+        "name": "SOT-223-3_TabPin2",
+    }
+    assert selected_parts["U3"]["pin_pad_mappings"] == [
+        {"pin": "pin_def:76", "pad": "1"},
+        {"pin": "pin_def:77", "pad": "2"},
+        {"pin": "pin_def:77", "pad": "4"},
+        {"pin": "pin_def:78", "pad": "3"},
+    ]
+
+
+def test_stm32_usb_buck_library_selected_parts_resolve_builtin_footprints():
+    design = volt.Design("stm32-library-pcb")
+    components = {
+        "J1": design.instantiate(stm32_usb_buck.USB_B_MICRO, ref="J1"),
+        "U2": design.instantiate(stm32_usb_buck.USBLC6_4SC6, ref="U2"),
+        "U3": design.instantiate(stm32_usb_buck.AP1117_15, ref="U3"),
+        "R1": design.instantiate(stm32_usb_buck.RESISTOR, ref="R1"),
+        "C1": design.instantiate(stm32_usb_buck.CAPACITOR, ref="C1"),
+        "L1": design.instantiate(stm32_usb_buck.INDUCTOR, ref="L1"),
+        "D1": design.instantiate(stm32_usb_buck.DIODE, ref="D1"),
+    }
+    board = design.board("First-board library parts")
+
+    for index, component in enumerate(components.values()):
+        board.place(component, at=(index * 8.0, 0.0))
+
+    resolutions = board.resolve_pads()
+    assert all(resolution.status != "invalid" for resolution in resolutions)
+    by_reference = {
+        reference: [
+            resolution
+            for resolution in resolutions
+            if resolution.component == component.index
+        ]
+        for reference, component in components.items()
+    }
+
+    assert [resolution.pad_label for resolution in by_reference["J1"]] == [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "M1",
+        "M2",
+    ]
+    assert [resolution.status for resolution in by_reference["J1"][-2:]] == [
+        "non_electrical",
+        "non_electrical",
+    ]
+    assert [resolution.pad_label for resolution in by_reference["U3"]] == ["1", "2", "3", "4"]
+    assert by_reference["U3"][3].pad == 3
+    assert by_reference["U3"][1].pin == by_reference["U3"][3].pin
+    assert [resolution.pad_label for resolution in by_reference["R1"]] == ["1", "2"]
+    assert [resolution.pad_label for resolution in by_reference["C1"]] == ["1", "2"]
+    assert [resolution.pad_label for resolution in by_reference["L1"]] == ["1", "2"]
+    assert [resolution.pad_label for resolution in by_reference["D1"]] == ["1", "2"]
+
 def test_repeated_pin_labels_require_explicit_single_pin_addressing():
     design = volt.Design("repeated-pins")
     package = design.define_component(
@@ -674,12 +747,12 @@ def test_selected_part_mapping_errors_are_rejected():
             part_number="RC0603FR-07330RL",
             package="0603",
             footprint=("Resistor_SMD", "R_0603_1608Metric"),
-            pin_pads={1: "1", "1": "2"},
+            pin_pads={1: ("1", "1"), 2: "2"},
         )
     except ValueError:
         pass
     else:
-        raise AssertionError("duplicate logical pin mapping should be rejected")
+        raise AssertionError("duplicate pad labels in a tied-pad mapping should be rejected")
 
     try:
         r1.select_part(
@@ -693,6 +766,26 @@ def test_selected_part_mapping_errors_are_rejected():
         pass
     else:
         raise AssertionError("unknown pin mapping should be rejected")
+
+
+def test_selected_part_mapping_accepts_tied_physical_pads():
+    design = volt.Design("tied-pads")
+    regulator = design.instantiate(stm32_usb_buck.AP1117_15, ref="U1")
+
+    circuit = json.loads(design.to_json())
+    part = circuit["components"][0]["selected_physical_part"]
+
+    assert part["footprint"] == {
+        "library": "Package_TO_SOT_SMD",
+        "name": "SOT-223-3_TabPin2",
+    }
+    assert part["pin_pad_mappings"] == [
+        {"pin": "pin_def:0", "pad": "1"},
+        {"pin": "pin_def:1", "pad": "2"},
+        {"pin": "pin_def:1", "pad": "4"},
+        {"pin": "pin_def:2", "pad": "3"},
+    ]
+    assert regulator["VO"].index == 1
 
 def test_invalid_selected_part_rating_does_not_select_part():
     design = volt.Design("bad-rating")
