@@ -374,6 +374,117 @@ class BoardOutline {
     std::vector<BoardPoint> vertices_;
 };
 
+/** Closed polygon used by generic board primitives. */
+class BoardPolygon {
+  public:
+    /** Construct a non-degenerate polygon from boundary vertices. */
+    explicit BoardPolygon(std::vector<BoardPoint> vertices) : vertices_{std::move(vertices)} {
+        drop_duplicate_closing_vertex();
+        if (vertices_.size() < 3) {
+            throw std::invalid_argument{"Board polygon must contain at least three vertices"};
+        }
+        if (std::abs(signed_area_twice(vertices_)) <= kGeometryEpsilon) {
+            throw std::invalid_argument{"Board polygon area must be positive"};
+        }
+        if (has_self_intersection(vertices_)) {
+            throw std::invalid_argument{"Board polygon must not self-intersect"};
+        }
+    }
+
+    /** Return polygon vertices in deterministic boundary order. */
+    [[nodiscard]] const std::vector<BoardPoint> &vertices() const noexcept { return vertices_; }
+
+  private:
+    static constexpr double kGeometryEpsilon = 1.0e-9;
+
+    void drop_duplicate_closing_vertex() {
+        if (vertices_.size() > 1 && vertices_.front() == vertices_.back()) {
+            vertices_.pop_back();
+        }
+    }
+
+    [[nodiscard]] static double signed_area_twice(const std::vector<BoardPoint> &vertices) {
+        double area = 0.0;
+        std::size_t previous = vertices.size() - 1U;
+        for (std::size_t current = 0; current < vertices.size(); ++current) {
+            area += vertices[previous].x_mm() * vertices[current].y_mm();
+            area -= vertices[current].x_mm() * vertices[previous].y_mm();
+            previous = current;
+        }
+        return area;
+    }
+
+    [[nodiscard]] static bool point_on_segment(BoardPoint point, BoardPoint a,
+                                               BoardPoint b) noexcept {
+        const auto cross = ((point.y_mm() - a.y_mm()) * (b.x_mm() - a.x_mm())) -
+                           ((point.x_mm() - a.x_mm()) * (b.y_mm() - a.y_mm()));
+        if (std::abs(cross) > kGeometryEpsilon) {
+            return false;
+        }
+
+        const auto dot = ((point.x_mm() - a.x_mm()) * (b.x_mm() - a.x_mm())) +
+                         ((point.y_mm() - a.y_mm()) * (b.y_mm() - a.y_mm()));
+        if (dot < -kGeometryEpsilon) {
+            return false;
+        }
+
+        const auto length_squared = ((b.x_mm() - a.x_mm()) * (b.x_mm() - a.x_mm())) +
+                                    ((b.y_mm() - a.y_mm()) * (b.y_mm() - a.y_mm()));
+        return dot <= length_squared + kGeometryEpsilon;
+    }
+
+    [[nodiscard]] static double orientation(BoardPoint a, BoardPoint b, BoardPoint c) noexcept {
+        return ((b.x_mm() - a.x_mm()) * (c.y_mm() - a.y_mm())) -
+               ((b.y_mm() - a.y_mm()) * (c.x_mm() - a.x_mm()));
+    }
+
+    [[nodiscard]] static bool segments_intersect(BoardPoint a, BoardPoint b, BoardPoint c,
+                                                 BoardPoint d) noexcept {
+        const auto ab_c = orientation(a, b, c);
+        const auto ab_d = orientation(a, b, d);
+        const auto cd_a = orientation(c, d, a);
+        const auto cd_b = orientation(c, d, b);
+
+        if (std::abs(ab_c) <= kGeometryEpsilon && point_on_segment(c, a, b)) {
+            return true;
+        }
+        if (std::abs(ab_d) <= kGeometryEpsilon && point_on_segment(d, a, b)) {
+            return true;
+        }
+        if (std::abs(cd_a) <= kGeometryEpsilon && point_on_segment(a, c, d)) {
+            return true;
+        }
+        if (std::abs(cd_b) <= kGeometryEpsilon && point_on_segment(b, c, d)) {
+            return true;
+        }
+
+        return ((ab_c > 0.0) != (ab_d > 0.0)) && ((cd_a > 0.0) != (cd_b > 0.0));
+    }
+
+    [[nodiscard]] static bool has_self_intersection(const std::vector<BoardPoint> &vertices) {
+        for (std::size_t first = 0; first < vertices.size(); ++first) {
+            const auto first_next = (first + 1U) % vertices.size();
+            for (std::size_t second = first + 1U; second < vertices.size(); ++second) {
+                const auto second_next = (second + 1U) % vertices.size();
+                const auto adjacent = first == second || first_next == second ||
+                                      second_next == first || (first == 0U && second_next == 0U);
+                if (adjacent) {
+                    continue;
+                }
+
+                if (segments_intersect(vertices[first], vertices[first_next], vertices[second],
+                                       vertices[second_next])) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    std::vector<BoardPoint> vertices_;
+};
+
 /** Physical board feature kind for placement-only PCB models. */
 enum class BoardFeatureKind {
     MountingHole,
@@ -422,6 +533,171 @@ class BoardFeature {
     std::string label_;
     BoardPoint position_;
     double diameter_mm_;
+};
+
+/** Fill intent for a stored copper zone. */
+enum class BoardZoneFill {
+    Solid,
+};
+
+/** Kernel-owned copper area intent on one or more board copper layers. */
+class BoardZone {
+  public:
+    /** Construct a copper zone with a polygon outline and optional existing logical net. */
+    BoardZone(std::vector<BoardPoint> outline, std::vector<BoardLayerId> layers,
+              std::optional<NetId> net = std::nullopt, BoardZoneFill fill = BoardZoneFill::Solid,
+              int priority = 0)
+        : outline_{std::move(outline)}, layers_{std::move(layers)}, net_{net}, fill_{fill},
+          priority_{priority} {
+        validate_layers();
+    }
+
+    /** Return the polygon outline. */
+    [[nodiscard]] const std::vector<BoardPoint> &outline() const noexcept {
+        return outline_.vertices();
+    }
+
+    /** Return board layers on which this zone exists. */
+    [[nodiscard]] const std::vector<BoardLayerId> &layers() const noexcept { return layers_; }
+
+    /** Return the existing logical net this zone is tied to, if any. */
+    [[nodiscard]] std::optional<NetId> net() const noexcept { return net_; }
+
+    /** Return zone fill intent. */
+    [[nodiscard]] BoardZoneFill fill() const noexcept { return fill_; }
+
+    /** Return deterministic priority/order metadata. */
+    [[nodiscard]] int priority() const noexcept { return priority_; }
+
+  private:
+    void validate_layers() const {
+        if (layers_.empty()) {
+            throw std::invalid_argument{"Board zone layers must not be empty"};
+        }
+        auto sorted = layers_;
+        std::sort(sorted.begin(), sorted.end(),
+                  [](BoardLayerId lhs, BoardLayerId rhs) { return lhs.index() < rhs.index(); });
+        const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
+        if (duplicate != sorted.end()) {
+            throw std::invalid_argument{"Board zone layers must not contain duplicates"};
+        }
+    }
+
+    BoardPolygon outline_;
+    std::vector<BoardLayerId> layers_;
+    std::optional<NetId> net_;
+    BoardZoneFill fill_;
+    int priority_;
+};
+
+/** Object kinds restricted by a board keepout. */
+enum class BoardKeepoutRestriction {
+    Copper,
+    Via,
+    Placement,
+    All,
+};
+
+/** Kernel-owned board keepout constraint over a polygonal scope. */
+class BoardKeepout {
+  public:
+    /** Construct a keepout over board layers and restricted object kinds. */
+    BoardKeepout(std::vector<BoardPoint> outline, std::vector<BoardLayerId> layers,
+                 std::vector<BoardKeepoutRestriction> restrictions)
+        : outline_{std::move(outline)}, layers_{std::move(layers)},
+          restrictions_{std::move(restrictions)} {
+        validate_layers();
+        validate_restrictions();
+    }
+
+    /** Return keepout polygon vertices. */
+    [[nodiscard]] const std::vector<BoardPoint> &outline() const noexcept {
+        return outline_.vertices();
+    }
+
+    /** Return board layers this keepout applies to. */
+    [[nodiscard]] const std::vector<BoardLayerId> &layers() const noexcept { return layers_; }
+
+    /** Return restricted object kinds. */
+    [[nodiscard]] const std::vector<BoardKeepoutRestriction> &restrictions() const noexcept {
+        return restrictions_;
+    }
+
+  private:
+    void validate_layers() const {
+        if (layers_.empty()) {
+            throw std::invalid_argument{"Board keepout layers must not be empty"};
+        }
+        auto sorted = layers_;
+        std::sort(sorted.begin(), sorted.end(),
+                  [](BoardLayerId lhs, BoardLayerId rhs) { return lhs.index() < rhs.index(); });
+        const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
+        if (duplicate != sorted.end()) {
+            throw std::invalid_argument{"Board keepout layers must not contain duplicates"};
+        }
+    }
+
+    void validate_restrictions() const {
+        if (restrictions_.empty()) {
+            throw std::invalid_argument{"Board keepout restrictions must not be empty"};
+        }
+        auto sorted = restrictions_;
+        std::sort(sorted.begin(), sorted.end());
+        const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
+        if (duplicate != sorted.end()) {
+            throw std::invalid_argument{"Board keepout restrictions must not contain duplicates"};
+        }
+    }
+
+    BoardPolygon outline_;
+    std::vector<BoardLayerId> layers_;
+    std::vector<BoardKeepoutRestriction> restrictions_;
+};
+
+/** Kernel-owned board text/annotation primitive. */
+class BoardText {
+  public:
+    /** Construct board text on an existing board layer. */
+    BoardText(std::string text, BoardPoint position, BoardRotation rotation, BoardLayerId layer,
+              double size_mm, bool locked = false)
+        : text_{std::move(text)}, position_{position}, rotation_{rotation}, layer_{layer},
+          size_mm_{size_mm}, locked_{locked} {
+        if (text_.empty()) {
+            throw std::invalid_argument{"Board text must not be empty"};
+        }
+        if (!std::isfinite(size_mm_)) {
+            throw std::invalid_argument{"Board text size must be finite"};
+        }
+        if (size_mm_ <= 0.0) {
+            throw std::invalid_argument{"Board text size must be positive"};
+        }
+    }
+
+    /** Return text content. */
+    [[nodiscard]] const std::string &text() const noexcept { return text_; }
+
+    /** Return text anchor position. */
+    [[nodiscard]] BoardPoint position() const noexcept { return position_; }
+
+    /** Return text rotation. */
+    [[nodiscard]] BoardRotation rotation() const noexcept { return rotation_; }
+
+    /** Return board layer. */
+    [[nodiscard]] BoardLayerId layer() const noexcept { return layer_; }
+
+    /** Return text size in millimeters. */
+    [[nodiscard]] double size_mm() const noexcept { return size_mm_; }
+
+    /** Return whether the text is locked against movement. */
+    [[nodiscard]] bool locked() const noexcept { return locked_; }
+
+  private:
+    std::string text_;
+    BoardPoint position_;
+    BoardRotation rotation_;
+    BoardLayerId layer_;
+    double size_mm_;
+    bool locked_;
 };
 
 /** Routed copper track that physically implements an existing logical net. */
@@ -1032,6 +1308,34 @@ class Board {
         return vias_.insert(std::move(via));
     }
 
+    /** Add a copper zone over existing board copper layers and optional existing net. */
+    [[nodiscard]] BoardZoneId add_zone(BoardZone zone) {
+        if (zone.net().has_value()) {
+            require_net(zone.net().value());
+        }
+        for (const auto layer_id : zone.layers()) {
+            require_layer(layer_id);
+            if (layer(layer_id).role() != BoardLayerRole::Copper) {
+                throw std::logic_error{"Board copper zones require copper layers"};
+            }
+        }
+        return zones_.insert(std::move(zone));
+    }
+
+    /** Add a board keepout over existing board layers. */
+    [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout) {
+        for (const auto layer : keepout.layers()) {
+            require_layer(layer);
+        }
+        return keepouts_.insert(std::move(keepout));
+    }
+
+    /** Add board text on an existing board layer. */
+    [[nodiscard]] BoardTextId add_text(BoardText text) {
+        require_layer(text.layer());
+        return texts_.insert(std::move(text));
+    }
+
     /** Return a board layer by board-local ID. */
     [[nodiscard]] const BoardLayer &layer(BoardLayerId id) const { return layers_.get(id); }
 
@@ -1097,6 +1401,24 @@ class Board {
 
     /** Return the number of routed copper vias. */
     [[nodiscard]] std::size_t via_count() const noexcept { return vias_.size(); }
+
+    /** Return a copper zone by board-local ID. */
+    [[nodiscard]] const BoardZone &zone(BoardZoneId id) const { return zones_.get(id); }
+
+    /** Return the number of copper zones. */
+    [[nodiscard]] std::size_t zone_count() const noexcept { return zones_.size(); }
+
+    /** Return a keepout by board-local ID. */
+    [[nodiscard]] const BoardKeepout &keepout(BoardKeepoutId id) const { return keepouts_.get(id); }
+
+    /** Return the number of keepouts. */
+    [[nodiscard]] std::size_t keepout_count() const noexcept { return keepouts_.size(); }
+
+    /** Return board text by board-local ID. */
+    [[nodiscard]] const BoardText &text(BoardTextId id) const { return texts_.get(id); }
+
+    /** Return the number of board text primitives. */
+    [[nodiscard]] std::size_t text_count() const noexcept { return texts_.size(); }
 
     /** Return the placement ID for a component, if present. */
     [[nodiscard]] std::optional<ComponentPlacementId>
@@ -1229,6 +1551,9 @@ class Board {
     EntityTable<ComponentPlacement, ComponentPlacementId> placements_;
     EntityTable<BoardTrack, BoardTrackId> tracks_;
     EntityTable<BoardVia, BoardViaId> vias_;
+    EntityTable<BoardZone, BoardZoneId> zones_;
+    EntityTable<BoardKeepout, BoardKeepoutId> keepouts_;
+    EntityTable<BoardText, BoardTextId> texts_;
 };
 
 namespace detail {
@@ -1641,6 +1966,25 @@ inline void append_via_shapes(const Board &board, std::vector<BoardCopperShape> 
     }
 }
 
+inline void append_zone_shapes(const Board &board, std::vector<BoardCopperShape> &shapes) {
+    for (std::size_t zone_index = 0; zone_index < board.zone_count(); ++zone_index) {
+        const auto zone_id = BoardZoneId{zone_index};
+        const auto &zone = board.zone(zone_id);
+        if (!zone.net().has_value()) {
+            continue;
+        }
+        shapes.push_back(BoardCopperShape{
+            BoardCopperShapeKind::Polygon,
+            zone.net().value(),
+            zone.layers(),
+            std::vector{EntityRef::board_zone(zone_id)},
+            zone.outline(),
+            0.0,
+            std::nullopt,
+        });
+    }
+}
+
 inline void append_pad_shapes(const Board &board, const FootprintLibrary &footprints,
                               const std::vector<PadResolution> &resolutions,
                               std::vector<BoardCopperShape> &shapes) {
@@ -1704,6 +2048,7 @@ collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
     auto shapes = std::vector<BoardCopperShape>{};
     append_track_shapes(board, shapes);
     append_via_shapes(board, shapes);
+    append_zone_shapes(board, shapes);
     append_pad_shapes(board, footprints, resolutions, shapes);
     return shapes;
 }
@@ -1836,6 +2181,152 @@ inline void validate_copper_clearance(const Board &board,
     }
 }
 
+[[nodiscard]] inline bool keepout_restricts(const BoardKeepout &keepout,
+                                            BoardKeepoutRestriction restriction) {
+    return std::find(keepout.restrictions().begin(), keepout.restrictions().end(),
+                     BoardKeepoutRestriction::All) != keepout.restrictions().end() ||
+           std::find(keepout.restrictions().begin(), keepout.restrictions().end(), restriction) !=
+               keepout.restrictions().end();
+}
+
+[[nodiscard]] inline bool shape_has_entity_kind(const BoardCopperShape &shape, EntityKind kind) {
+    return std::any_of(shape.primary_entities.begin(), shape.primary_entities.end(),
+                       [kind](EntityRef entity) { return entity.kind() == kind; });
+}
+
+[[nodiscard]] inline std::optional<BoardLayerId>
+first_common_keepout_layer(const BoardKeepout &keepout, const std::vector<BoardLayerId> &layers) {
+    for (const auto keepout_layer : keepout.layers()) {
+        if (std::find(layers.begin(), layers.end(), keepout_layer) != layers.end()) {
+            return keepout_layer;
+        }
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] inline bool shape_violates_keepout(const BoardCopperShape &shape,
+                                                 const BoardKeepout &keepout) {
+    if (shape.kind == BoardCopperShapeKind::Disc) {
+        return point_polygon_distance(shape.points[0], keepout.outline()) <=
+               shape.radius_mm + board_drc_epsilon;
+    }
+    if (shape.kind == BoardCopperShapeKind::Segment) {
+        return segment_polygon_distance(shape.points[0], shape.points[1], keepout.outline()) <=
+               shape.radius_mm + board_drc_epsilon;
+    }
+    return polygon_polygon_distance(shape.points, keepout.outline()) <= board_drc_epsilon;
+}
+
+[[nodiscard]] inline std::vector<EntityRef>
+keepout_copper_entities(BoardKeepoutId keepout, const BoardCopperShape &shape, BoardLayerId layer) {
+    auto entities = std::vector{EntityRef::board_keepout(keepout)};
+    entities.insert(entities.end(), shape.primary_entities.begin(), shape.primary_entities.end());
+    entities.push_back(EntityRef::net(shape.net));
+    entities.push_back(EntityRef::board_layer(layer));
+    return entities;
+}
+
+inline void validate_keepout_copper_shapes(const Board &board,
+                                           const std::vector<BoardCopperShape> &shapes,
+                                           DiagnosticReport &report) {
+    for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
+        const auto keepout_id = BoardKeepoutId{keepout_index};
+        const auto &keepout = board.keepout(keepout_id);
+        if (!keepout_restricts(keepout, BoardKeepoutRestriction::Copper)) {
+            continue;
+        }
+        for (const auto &shape : shapes) {
+            if (shape_has_entity_kind(shape, EntityKind::BoardVia) ||
+                shape_has_entity_kind(shape, EntityKind::BoardZone)) {
+                continue;
+            }
+            const auto layer = first_common_keepout_layer(keepout, shape.layers);
+            if (!layer.has_value() || !shape_violates_keepout(shape, keepout)) {
+                continue;
+            }
+            report.add(board_diagnostic(DiagnosticCode{"PCB_KEEPOUT_COPPER_VIOLATION"},
+                                        "Copper violates a board keepout",
+                                        keepout_copper_entities(keepout_id, shape, layer.value())));
+        }
+    }
+}
+
+inline void validate_keepout_zones(const Board &board, DiagnosticReport &report) {
+    for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
+        const auto keepout_id = BoardKeepoutId{keepout_index};
+        const auto &keepout = board.keepout(keepout_id);
+        if (!keepout_restricts(keepout, BoardKeepoutRestriction::Copper)) {
+            continue;
+        }
+        for (std::size_t zone_index = 0; zone_index < board.zone_count(); ++zone_index) {
+            const auto zone_id = BoardZoneId{zone_index};
+            const auto &zone = board.zone(zone_id);
+            const auto layer = first_common_keepout_layer(keepout, zone.layers());
+            if (!layer.has_value() ||
+                polygon_polygon_distance(zone.outline(), keepout.outline()) > board_drc_epsilon) {
+                continue;
+            }
+            auto entities =
+                std::vector{EntityRef::board_keepout(keepout_id), EntityRef::board_zone(zone_id)};
+            if (zone.net().has_value()) {
+                entities.push_back(EntityRef::net(zone.net().value()));
+            }
+            entities.push_back(EntityRef::board_layer(layer.value()));
+            report.add(board_diagnostic(DiagnosticCode{"PCB_KEEPOUT_COPPER_VIOLATION"},
+                                        "Copper zone violates a board keepout",
+                                        std::move(entities)));
+        }
+    }
+}
+
+inline void validate_keepout_vias(const Board &board, DiagnosticReport &report) {
+    for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
+        const auto keepout_id = BoardKeepoutId{keepout_index};
+        const auto &keepout = board.keepout(keepout_id);
+        if (!keepout_restricts(keepout, BoardKeepoutRestriction::Via)) {
+            continue;
+        }
+        for (std::size_t via_index = 0; via_index < board.via_count(); ++via_index) {
+            const auto via_id = BoardViaId{via_index};
+            const auto &via = board.via(via_id);
+            const auto layers = via_copper_layers(board, via);
+            const auto layer = first_common_keepout_layer(keepout, layers);
+            if (!layer.has_value() || point_polygon_distance(via.position(), keepout.outline()) >
+                                          (via.annular_diameter_mm() / 2.0) + board_drc_epsilon) {
+                continue;
+            }
+            report.add(board_diagnostic(
+                DiagnosticCode{"PCB_KEEPOUT_VIA_VIOLATION"}, "Via violates a board keepout",
+                std::vector{EntityRef::board_keepout(keepout_id), EntityRef::board_via(via_id),
+                            EntityRef::net(via.net()), EntityRef::board_layer(layer.value())}));
+        }
+    }
+}
+
+inline void validate_keepout_placements(const Board &board, DiagnosticReport &report) {
+    for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
+        const auto keepout_id = BoardKeepoutId{keepout_index};
+        const auto &keepout = board.keepout(keepout_id);
+        if (!keepout_restricts(keepout, BoardKeepoutRestriction::Placement)) {
+            continue;
+        }
+        for (std::size_t placement_index = 0; placement_index < board.placement_count();
+             ++placement_index) {
+            const auto placement_id = ComponentPlacementId{placement_index};
+            const auto &placement = board.placement(placement_id);
+            if (point_polygon_distance(placement.position(), keepout.outline()) >
+                board_drc_epsilon) {
+                continue;
+            }
+            report.add(board_diagnostic(DiagnosticCode{"PCB_KEEPOUT_PLACEMENT_VIOLATION"},
+                                        "Component placement violates a board keepout",
+                                        std::vector{EntityRef::board_keepout(keepout_id),
+                                                    EntityRef::component_placement(placement_id),
+                                                    EntityRef::component(placement.component())}));
+        }
+    }
+}
+
 [[nodiscard]] inline std::size_t connectivity_root(std::vector<std::size_t> &parents,
                                                    std::size_t index) {
     while (parents[index] != index) {
@@ -1916,6 +2407,10 @@ inline void validate_board_drc(const Board &board, const FootprintLibrary &footp
     const auto shapes = collect_copper_shapes(board, footprints, pad_resolutions);
     validate_outline_clearance(board, shapes, report);
     validate_copper_clearance(board, shapes, report);
+    validate_keepout_copper_shapes(board, shapes, report);
+    validate_keepout_zones(board, report);
+    validate_keepout_vias(board, report);
+    validate_keepout_placements(board, report);
     validate_unrouted_nets(pad_resolutions, shapes, report);
 }
 

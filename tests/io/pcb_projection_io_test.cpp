@@ -272,6 +272,76 @@ TEST_CASE("PCB projection writer and reader round-trip copper tracks and vias") 
     CHECK(restored.via(volt::BoardViaId{0}).end_layer() == volt::BoardLayerId{1});
 }
 
+TEST_CASE("PCB projection writer and reader round-trip zones, keepouts, and board text") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_viewer_ready_board(fixture);
+
+    [[maybe_unused]] const auto zone = board.add_zone(volt::BoardZone{
+        std::vector{
+            volt::BoardPoint{2.0, 2.0},
+            volt::BoardPoint{12.0, 2.0},
+            volt::BoardPoint{12.0, 8.0},
+            volt::BoardPoint{2.0, 8.0},
+        },
+        std::vector{volt::BoardLayerId{0}},
+        fixture.first_net,
+        volt::BoardZoneFill::Solid,
+        5,
+    });
+    [[maybe_unused]] const auto keepout = board.add_keepout(volt::BoardKeepout{
+        std::vector{
+            volt::BoardPoint{15.0, 2.0},
+            volt::BoardPoint{18.0, 2.0},
+            volt::BoardPoint{18.0, 6.0},
+            volt::BoardPoint{15.0, 6.0},
+        },
+        std::vector{volt::BoardLayerId{0}, volt::BoardLayerId{1}},
+        std::vector{volt::BoardKeepoutRestriction::Copper,
+                    volt::BoardKeepoutRestriction::Placement},
+    });
+    [[maybe_unused]] const auto text = board.add_text(
+        volt::BoardText{"REV A", volt::BoardPoint{5.0, 24.0}, volt::BoardRotation::degrees(90.0),
+                        volt::BoardLayerId{0}, 1.2, true});
+
+    const auto text_json = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
+    const auto document = nlohmann::json::parse(text_json);
+
+    REQUIRE(document["board"]["zones"].size() == 1);
+    CHECK(document["board"]["zones"][0]["id"] == "board_zone:0");
+    CHECK(document["board"]["zones"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
+    CHECK(document["board"]["zones"][0]["net"] == "net:0");
+    CHECK(document["board"]["zones"][0]["fill"] == "solid");
+    CHECK(document["board"]["zones"][0]["priority"] == 5);
+    CHECK(document["board"]["zones"][0]["outline"] ==
+          nlohmann::json::array(
+              {nlohmann::json::array({2.0, 2.0}), nlohmann::json::array({12.0, 2.0}),
+               nlohmann::json::array({12.0, 8.0}), nlohmann::json::array({2.0, 8.0})}));
+
+    REQUIRE(document["board"]["keepouts"].size() == 1);
+    CHECK(document["board"]["keepouts"][0]["id"] == "board_keepout:0");
+    CHECK(document["board"]["keepouts"][0]["layers"] ==
+          nlohmann::json::array({"board_layer:0", "board_layer:1"}));
+    CHECK(document["board"]["keepouts"][0]["restrictions"] ==
+          nlohmann::json::array({"copper", "placement"}));
+
+    REQUIRE(document["board"]["texts"].size() == 1);
+    CHECK(document["board"]["texts"][0]["id"] == "board_text:0");
+    CHECK(document["board"]["texts"][0]["text"] == "REV A");
+    CHECK(document["board"]["texts"][0]["position"] == nlohmann::json::array({5.0, 24.0}));
+    CHECK(document["board"]["texts"][0]["rotation_deg"] == 90.0);
+    CHECK(document["board"]["texts"][0]["layer"] == "board_layer:0");
+    CHECK(document["board"]["texts"][0]["size_mm"] == 1.2);
+    CHECK(document["board"]["texts"][0]["locked"] == true);
+
+    const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text_json);
+    CHECK(volt::io::write_pcb_board(restored, volt::builtin_footprint_library()) == text_json);
+    CHECK(restored.zone(volt::BoardZoneId{0}).priority() == 5);
+    CHECK(restored.keepout(volt::BoardKeepoutId{0}).restrictions() ==
+          std::vector{volt::BoardKeepoutRestriction::Copper,
+                      volt::BoardKeepoutRestriction::Placement});
+    CHECK(restored.text(volt::BoardTextId{0}).text() == "REV A");
+}
+
 TEST_CASE("PCB projection writer and reader round-trip board design rules") {
     const auto fixture = make_resistor_circuit();
     auto board = make_viewer_ready_board(fixture);
@@ -413,6 +483,54 @@ TEST_CASE("PCB projection reader rejects dangling references") {
 
         CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
                              Catch::Matchers::Message("PCB via references missing board layer"));
+    }
+
+    SECTION("zone net references") {
+        auto document = make_board_json(fixture);
+        document["board"]["zones"] = nlohmann::json::array(
+            {{{"id", "board_zone:0"},
+              {"outline",
+               nlohmann::json::array(
+                   {nlohmann::json::array({1.0, 1.0}), nlohmann::json::array({3.0, 1.0}),
+                    nlohmann::json::array({3.0, 3.0}), nlohmann::json::array({1.0, 3.0})})},
+              {"layers", nlohmann::json::array({"board_layer:0"})},
+              {"net", "net:99"},
+              {"fill", "solid"},
+              {"priority", 0}}});
+
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+                             Catch::Matchers::Message("PCB zone references missing net"));
+    }
+
+    SECTION("keepout layer references") {
+        auto document = make_board_json(fixture);
+        document["board"]["keepouts"] = nlohmann::json::array(
+            {{{"id", "board_keepout:0"},
+              {"outline",
+               nlohmann::json::array(
+                   {nlohmann::json::array({1.0, 1.0}), nlohmann::json::array({3.0, 1.0}),
+                    nlohmann::json::array({3.0, 3.0}), nlohmann::json::array({1.0, 3.0})})},
+              {"layers", nlohmann::json::array({"board_layer:99"})},
+              {"restrictions", nlohmann::json::array({"copper"})}}});
+
+        CHECK_THROWS_MATCHES(
+            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            Catch::Matchers::Message("PCB keepout references missing board layer"));
+    }
+
+    SECTION("text layer references") {
+        auto document = make_board_json(fixture);
+        document["board"]["texts"] =
+            nlohmann::json::array({{{"id", "board_text:0"},
+                                    {"text", "REV A"},
+                                    {"position", nlohmann::json::array({1.0, 1.0})},
+                                    {"rotation_deg", 0.0},
+                                    {"layer", "board_layer:99"},
+                                    {"size_mm", 1.0},
+                                    {"locked", false}}});
+
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+                             Catch::Matchers::Message("PCB text references missing board layer"));
     }
 
     SECTION("invalid design rules") {

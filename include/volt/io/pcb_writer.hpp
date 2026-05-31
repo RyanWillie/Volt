@@ -77,6 +77,12 @@ namespace detail {
         return encode_local_id(BoardTrackId{entity.index()});
     case EntityKind::BoardVia:
         return encode_local_id(BoardViaId{entity.index()});
+    case EntityKind::BoardZone:
+        return encode_local_id(BoardZoneId{entity.index()});
+    case EntityKind::BoardKeepout:
+        return encode_local_id(BoardKeepoutId{entity.index()});
+    case EntityKind::BoardText:
+        return encode_local_id(BoardTextId{entity.index()});
     case EntityKind::FootprintDef:
         return encode_local_id(FootprintDefId{entity.index()});
     case EntityKind::FootprintPad:
@@ -142,6 +148,28 @@ inline void write_board_point(std::ostream &out, BoardPoint point) {
     write_number(out, point.x_mm());
     out << ", ";
     write_number(out, point.y_mm());
+    out << ']';
+}
+
+inline void write_board_points(std::ostream &out, const std::vector<BoardPoint> &points) {
+    out << '[';
+    for (std::size_t index = 0; index < points.size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        write_board_point(out, points[index]);
+    }
+    out << ']';
+}
+
+inline void write_board_layers(std::ostream &out, const std::vector<BoardLayerId> &layers) {
+    out << '[';
+    for (std::size_t index = 0; index < layers.size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        out << json_string(encode_local_id(layers[index]));
+    }
     out << ']';
 }
 
@@ -443,6 +471,92 @@ inline void write_vias(std::ostream &out, const Board &board, bool trailing_comm
     out << '\n';
 }
 
+inline void write_board_zones(std::ostream &out, const Board &board, bool trailing_comma = false) {
+    out << "    \"zones\": [\n";
+    for (std::size_t index = 0; index < board.zone_count(); ++index) {
+        const auto id = BoardZoneId{index};
+        const auto &zone = board.zone(id);
+        out << "      {\"id\": " << json_string(encode_local_id(id)) << ", \"outline\": ";
+        write_board_points(out, zone.outline());
+        out << ", \"layers\": ";
+        write_board_layers(out, zone.layers());
+        out << ", \"net\": ";
+        if (zone.net().has_value()) {
+            out << json_string(encode_local_id(zone.net().value()));
+        } else {
+            out << "null";
+        }
+        out << ", \"fill\": " << json_string(board_zone_fill_name(zone.fill()))
+            << ", \"priority\": " << zone.priority() << '}';
+        if (index + 1U != board.zone_count()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "    ]";
+    if (trailing_comma) {
+        out << ',';
+    }
+    out << '\n';
+}
+
+inline void write_board_keepouts(std::ostream &out, const Board &board,
+                                 bool trailing_comma = false) {
+    out << "    \"keepouts\": [\n";
+    for (std::size_t index = 0; index < board.keepout_count(); ++index) {
+        const auto id = BoardKeepoutId{index};
+        const auto &keepout = board.keepout(id);
+        out << "      {\"id\": " << json_string(encode_local_id(id)) << ", \"outline\": ";
+        write_board_points(out, keepout.outline());
+        out << ", \"layers\": ";
+        write_board_layers(out, keepout.layers());
+        out << ", \"restrictions\": [";
+        for (std::size_t restriction_index = 0; restriction_index < keepout.restrictions().size();
+             ++restriction_index) {
+            if (restriction_index != 0U) {
+                out << ", ";
+            }
+            out << json_string(
+                board_keepout_restriction_name(keepout.restrictions()[restriction_index]));
+        }
+        out << "]}";
+        if (index + 1U != board.keepout_count()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "    ]";
+    if (trailing_comma) {
+        out << ',';
+    }
+    out << '\n';
+}
+
+inline void write_board_texts(std::ostream &out, const Board &board, bool trailing_comma = false) {
+    out << "    \"texts\": [\n";
+    for (std::size_t index = 0; index < board.text_count(); ++index) {
+        const auto id = BoardTextId{index};
+        const auto &text = board.text(id);
+        out << "      {\"id\": " << json_string(encode_local_id(id))
+            << ", \"text\": " << json_string(text.text()) << ", \"position\": ";
+        write_board_point(out, text.position());
+        out << ", \"rotation_deg\": ";
+        write_number(out, text.rotation().degrees());
+        out << ", \"layer\": " << json_string(encode_local_id(text.layer())) << ", \"size_mm\": ";
+        write_number(out, text.size_mm());
+        out << ", \"locked\": " << (text.locked() ? "true" : "false") << '}';
+        if (index + 1U != board.text_count()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "    ]";
+    if (trailing_comma) {
+        out << ',';
+    }
+    out << '\n';
+}
+
 inline void write_pad_resolution(std::ostream &out, const Board &board,
                                  const std::vector<FootprintDefinition> &definitions,
                                  const PadResolution &resolution,
@@ -575,12 +689,28 @@ inline void write_pcb_board(std::ostream &out, const Board &board,
     detail::write_features(out, board);
     detail::write_footprint_definitions(out, definitions);
     detail::write_placements(out, board, definitions,
-                             board.track_count() != 0U || board.via_count() != 0U);
+                             board.track_count() != 0U || board.via_count() != 0U ||
+                                 board.zone_count() != 0U || board.keepout_count() != 0U ||
+                                 board.text_count() != 0U);
     if (board.track_count() != 0U) {
-        detail::write_tracks(out, board, board.via_count() != 0U);
+        detail::write_tracks(out, board,
+                             board.via_count() != 0U || board.zone_count() != 0U ||
+                                 board.keepout_count() != 0U || board.text_count() != 0U);
     }
     if (board.via_count() != 0U) {
-        detail::write_vias(out, board);
+        detail::write_vias(out, board,
+                           board.zone_count() != 0U || board.keepout_count() != 0U ||
+                               board.text_count() != 0U);
+    }
+    if (board.zone_count() != 0U) {
+        detail::write_board_zones(out, board,
+                                  board.keepout_count() != 0U || board.text_count() != 0U);
+    }
+    if (board.keepout_count() != 0U) {
+        detail::write_board_keepouts(out, board, board.text_count() != 0U);
+    }
+    if (board.text_count() != 0U) {
+        detail::write_board_texts(out, board);
     }
     out << "  },\n";
     detail::write_viewer(out, board, definitions);

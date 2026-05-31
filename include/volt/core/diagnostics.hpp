@@ -71,6 +71,9 @@ enum class EntityKind {
     BoardFeature,
     BoardTrack,
     BoardVia,
+    BoardZone,
+    BoardKeepout,
+    BoardText,
     FootprintDef,
     FootprintPad,
     ComponentPlacement,
@@ -192,6 +195,21 @@ class EntityRef {
     /** Create a reference to a PCB via. */
     [[nodiscard]] static EntityRef board_via(BoardViaId id) noexcept {
         return EntityRef{EntityKind::BoardVia, id.index()};
+    }
+
+    /** Create a reference to a PCB zone. */
+    [[nodiscard]] static EntityRef board_zone(BoardZoneId id) noexcept {
+        return EntityRef{EntityKind::BoardZone, id.index()};
+    }
+
+    /** Create a reference to a PCB keepout. */
+    [[nodiscard]] static EntityRef board_keepout(BoardKeepoutId id) noexcept {
+        return EntityRef{EntityKind::BoardKeepout, id.index()};
+    }
+
+    /** Create a reference to PCB board text. */
+    [[nodiscard]] static EntityRef board_text(BoardTextId id) noexcept {
+        return EntityRef{EntityKind::BoardText, id.index()};
     }
 
     /** Create a reference to a cached PCB footprint definition. */

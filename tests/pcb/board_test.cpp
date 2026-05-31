@@ -191,6 +191,66 @@ TEST_CASE("Board stores kernel-owned copper tracks and vias over existing nets a
     CHECK(board.via(via).annular_diameter_mm() == 0.70);
 }
 
+TEST_CASE("Board stores kernel-owned zones, keepouts, and board text") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
+
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto silk = board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+
+    const auto zone = board.add_zone(volt::BoardZone{
+        std::vector{
+            volt::BoardPoint{1.0, 1.0},
+            volt::BoardPoint{8.0, 1.0},
+            volt::BoardPoint{8.0, 6.0},
+            volt::BoardPoint{1.0, 6.0},
+        },
+        std::vector{front},
+        fixture.first_net,
+        volt::BoardZoneFill::Solid,
+        10,
+    });
+    const auto keepout = board.add_keepout(volt::BoardKeepout{
+        std::vector{
+            volt::BoardPoint{10.0, 1.0},
+            volt::BoardPoint{14.0, 1.0},
+            volt::BoardPoint{14.0, 4.0},
+            volt::BoardPoint{10.0, 4.0},
+        },
+        std::vector{front},
+        std::vector{volt::BoardKeepoutRestriction::Copper, volt::BoardKeepoutRestriction::Via},
+    });
+    const auto text = board.add_text(volt::BoardText{
+        "REV A", volt::BoardPoint{3.0, 9.0}, volt::BoardRotation::degrees(0.0), silk, 1.2, true});
+
+    REQUIRE(board.zone_count() == 1);
+    CHECK(zone == volt::BoardZoneId{0});
+    CHECK(board.zone(zone).outline() ==
+          std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0},
+                      volt::BoardPoint{8.0, 6.0}, volt::BoardPoint{1.0, 6.0}});
+    CHECK(board.zone(zone).layers() == std::vector{front});
+    CHECK(board.zone(zone).net() == fixture.first_net);
+    CHECK(board.zone(zone).fill() == volt::BoardZoneFill::Solid);
+    CHECK(board.zone(zone).priority() == 10);
+
+    REQUIRE(board.keepout_count() == 1);
+    CHECK(keepout == volt::BoardKeepoutId{0});
+    CHECK(board.keepout(keepout).layers() == std::vector{front});
+    CHECK(board.keepout(keepout).restrictions() ==
+          std::vector{volt::BoardKeepoutRestriction::Copper, volt::BoardKeepoutRestriction::Via});
+
+    REQUIRE(board.text_count() == 1);
+    CHECK(text == volt::BoardTextId{0});
+    CHECK(board.text(text).text() == "REV A");
+    CHECK(board.text(text).position() == volt::BoardPoint{3.0, 9.0});
+    CHECK(board.text(text).rotation() == volt::BoardRotation::degrees(0.0));
+    CHECK(board.text(text).layer() == silk);
+    CHECK(board.text(text).size_mm() == 1.2);
+    CHECK(board.text(text).locked());
+}
+
 TEST_CASE("Board stores kernel-owned design rules") {
     auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
@@ -311,6 +371,51 @@ TEST_CASE("Board rejects structurally invalid copper mutations") {
     CHECK_THROWS_AS(board.add_via(volt::BoardVia{fixture.first_net, volt::BoardPoint{2.0, 2.0},
                                                  front, mask, 0.30, 0.70}),
                     std::logic_error);
+}
+
+TEST_CASE("Board rejects structurally invalid zone, keepout, and text mutations") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto silk = board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+
+    const auto valid_outline = std::vector{
+        volt::BoardPoint{1.0, 1.0},
+        volt::BoardPoint{4.0, 1.0},
+        volt::BoardPoint{4.0, 4.0},
+        volt::BoardPoint{1.0, 4.0},
+    };
+
+    CHECK_THROWS_AS(
+        volt::BoardZone(std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{2.0, 1.0}},
+                        std::vector{front}, fixture.first_net),
+        std::invalid_argument);
+    CHECK_THROWS_AS(volt::BoardZone(valid_outline, {}, fixture.first_net), std::invalid_argument);
+    CHECK_THROWS_AS(volt::BoardKeepout(valid_outline, std::vector{front}, {}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardText{"", volt::BoardPoint{1.0, 1.0},
+                                     volt::BoardRotation::degrees(0.0), silk, 1.0}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardText{"REV A", volt::BoardPoint{1.0, 1.0},
+                                     volt::BoardRotation::degrees(0.0), silk, 0.0}),
+                    std::invalid_argument);
+
+    CHECK_THROWS_AS(
+        board.add_zone(volt::BoardZone(valid_outline, std::vector{front}, volt::NetId{99})),
+        std::out_of_range);
+    CHECK_THROWS_AS(
+        board.add_zone(volt::BoardZone(valid_outline, std::vector{silk}, fixture.first_net)),
+        std::logic_error);
+    CHECK_THROWS_AS(
+        board.add_keepout(volt::BoardKeepout{valid_outline, std::vector{volt::BoardLayerId{99}},
+                                             std::vector{volt::BoardKeepoutRestriction::Copper}}),
+        std::out_of_range);
+    CHECK_THROWS_AS(board.add_text(volt::BoardText{"REV A", volt::BoardPoint{1.0, 1.0},
+                                                   volt::BoardRotation::degrees(0.0),
+                                                   volt::BoardLayerId{99}, 1.0}),
+                    std::out_of_range);
 }
 
 TEST_CASE("Board resolves placed pads to logical pins and existing nets") {
@@ -529,6 +634,53 @@ TEST_CASE("Board validation reports first PCB DRC rule violations") {
     CHECK(outside_outline->entities() == std::vector{volt::EntityRef::board_track(outside_track),
                                                      volt::EntityRef::net(fixture.first_net),
                                                      volt::EntityRef::board_layer(front)});
+}
+
+TEST_CASE("Board validation reports obvious keepout violations") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    const auto keepout = board.add_keepout(volt::BoardKeepout{
+        std::vector{
+            volt::BoardPoint{4.0, 4.0},
+            volt::BoardPoint{8.0, 4.0},
+            volt::BoardPoint{8.0, 8.0},
+            volt::BoardPoint{4.0, 8.0},
+        },
+        std::vector{front},
+        std::vector{volt::BoardKeepoutRestriction::All},
+    });
+    const auto track = board.add_track(volt::BoardTrack{
+        fixture.first_net,
+        front,
+        std::vector{volt::BoardPoint{2.0, 6.0}, volt::BoardPoint{10.0, 6.0}},
+        0.25,
+    });
+    const auto via = board.add_via(
+        volt::BoardVia{fixture.first_net, volt::BoardPoint{6.0, 6.0}, front, back, 0.30, 0.70});
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *copper_keepout = find_diagnostic(report, "PCB_KEEPOUT_COPPER_VIOLATION");
+    REQUIRE(copper_keepout != nullptr);
+    CHECK(copper_keepout->severity() == volt::Severity::Error);
+    CHECK(copper_keepout->entities() == std::vector{volt::EntityRef::board_keepout(keepout),
+                                                    volt::EntityRef::board_track(track),
+                                                    volt::EntityRef::net(fixture.first_net),
+                                                    volt::EntityRef::board_layer(front)});
+
+    const auto *via_keepout = find_diagnostic(report, "PCB_KEEPOUT_VIA_VIOLATION");
+    REQUIRE(via_keepout != nullptr);
+    CHECK(via_keepout->entities() == std::vector{volt::EntityRef::board_keepout(keepout),
+                                                 volt::EntityRef::board_via(via),
+                                                 volt::EntityRef::net(fixture.first_net),
+                                                 volt::EntityRef::board_layer(front)});
 }
 
 TEST_CASE("Board validation maps bottom-side surface-mount pads to bottom copper") {

@@ -37,6 +37,10 @@ def _net_index(value: int) -> int:
     return value
 
 
+def _layer_indices(values: Iterable[int]) -> list[int]:
+    return [_layer_index(value) for value in values]
+
+
 @dataclass(frozen=True)
 class FootprintDrill:
     """Drill metadata for a through-hole footprint pad."""
@@ -305,6 +309,65 @@ class Board:
             _layer_index(end_layer),
             float(drill),
             float(annular),
+        )
+
+    def add_zone(
+        self,
+        *,
+        outline: Iterable[Point],
+        layers: Iterable[int],
+        net: Net | int | None = None,
+        fill: str = "solid",
+        priority: int = 0,
+    ) -> int:
+        if isinstance(net, Net):
+            if net._design is not self._design:
+                raise ValueError("Net belongs to a different design")
+            net_index = net.index
+        elif net is None:
+            net_index = None
+        else:
+            net_index = _net_index(net)
+        return self._design._circuit.board_add_zone(
+            net_index,
+            _layer_indices(layers),
+            [_point(point, "Board zone outline point") for point in outline],
+            fill,
+            int(priority),
+        )
+
+    def add_keepout(
+        self,
+        *,
+        outline: Iterable[Point],
+        layers: Iterable[int],
+        restrictions: Iterable[str],
+    ) -> int:
+        return self._design._circuit.board_add_keepout(
+            _layer_indices(layers),
+            [_point(point, "Board keepout outline point") for point in outline],
+            list(restrictions),
+        )
+
+    def add_text(
+        self,
+        text: str,
+        *,
+        at: Point,
+        layer: int,
+        rotation: float = 0.0,
+        size: float = 1.0,
+        locked: bool = False,
+    ) -> int:
+        x, y = _point(at, "Board text position")
+        return self._design._circuit.board_add_text(
+            text,
+            x,
+            y,
+            _layer_index(layer),
+            float(rotation),
+            float(size),
+            locked,
         )
 
     def resolve_pads(self) -> tuple[PadResolution, ...]:
