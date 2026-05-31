@@ -55,6 +55,9 @@
       <text class="pad-net-label connected" data-pad-projection="pcb_pad:2:1" data-net="net:2" x="23.95" y="6.55">GND</text>
     </g>
     <g class="layer layer-ratsnest">
+      <line id="ratsnest-edge-net-0-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:0:0" data-net="net:0" data-from-pad="pcb_pad:0:0" data-to-pad="pcb_pad:1:0" x1="5" y1="7.73" x2="14.25" y2="7"/>
+      <line id="ratsnest-edge-net-1-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:1:0" data-net="net:1" data-from-pad="pcb_pad:1:1" data-to-pad="pcb_pad:2:0" x1="15.75" y1="7" x2="24.75" y2="7"/>
+      <line id="ratsnest-edge-net-2-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:0" data-net="net:2" data-from-pad="pcb_pad:0:1" data-to-pad="pcb_pad:2:1" x1="5" y1="10.27" x2="23.25" y2="7"/>
     </g>
     <g class="layer layer-diagnostics">
     </g>

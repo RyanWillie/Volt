@@ -23,6 +23,10 @@ namespace detail {
     return "pcb_pad:" + std::to_string(placement.index()) + ":" + std::to_string(pad.index());
 }
 
+[[nodiscard]] inline std::string pcb_ratsnest_edge_id(NetId net, std::size_t edge) {
+    return "ratsnest:" + std::to_string(net.index()) + ":" + std::to_string(edge);
+}
+
 [[nodiscard]] inline std::string board_units_name(BoardUnits units) {
     switch (units) {
     case BoardUnits::Millimeters:
