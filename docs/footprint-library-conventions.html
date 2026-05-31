@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt Footprint Library Conventions</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172026;
+      --muted: #5b6770;
+      --line: #d8dee4;
+      --panel: #f7f9fb;
+      --accent: #0f766e;
+      --code: #eef6f4;
+    }
+    body {
+      margin: 0;
+      font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #ffffff;
+    }
+    main {
+      width: min(100% - 40px, 1080px);
+      margin: 0 auto;
+      padding: 42px 0 64px;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 22px;
+      margin-bottom: 26px;
+    }
+    h1 {
+      font-size: clamp(32px, 5vw, 56px);
+      line-height: 1.02;
+      margin: 0 0 12px;
+      letter-spacing: 0;
+    }
+    h2 {
+      font-size: 24px;
+      margin: 34px 0 12px;
+      letter-spacing: 0;
+    }
+    h3 {
+      font-size: 18px;
+      margin: 0 0 8px;
+      letter-spacing: 0;
+    }
+    p {
+      max-width: 78ch;
+      margin: 0 0 12px;
+    }
+    .lede {
+      color: var(--muted);
+      font-size: 19px;
+      max-width: 74ch;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+    section.rule {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px 11px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--panel);
+    }
+    code {
+      background: var(--code);
+      border: 1px solid #cfe3df;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-size: 0.94em;
+    }
+    ul {
+      padding-left: 22px;
+      max-width: 84ch;
+    }
+    li {
+      margin: 7px 0;
+    }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #f1fbf9;
+      padding: 13px 16px;
+      margin: 20px 0;
+      max-width: 84ch;
+    }
+    @media (max-width: 760px) {
+      main { width: min(100% - 24px, 1080px); padding-top: 28px; }
+      .grid { grid-template-columns: 1fr; }
+      table { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Footprint Library Conventions</h1>
+      <p class="lede">
+        Volt footprint libraries are normalized geometry data consumed by PCB projection.
+        They do not select parts, merge nets, or patch circuit intent.
+      </p>
+    </header>
+
+    <section class="callout">
+      <strong>Boundary:</strong> selected physical parts own <code>FootprintRef</code> and
+      logical pin-to-pad mappings. A board projection places existing components and resolves
+      those selected-part references against a <code>FootprintLibrary</code>.
+    </section>
+
+    <div class="grid">
+      <section class="rule">
+        <h3>Structural Data</h3>
+        <p>
+          A footprint definition is a library-qualified name plus ordered pads. Empty names,
+          duplicate footprint references, duplicate pad labels, non-finite coordinates, non-positive
+          sizes, invalid layer sets, and malformed through-hole drill data are rejected at the
+          kernel or load boundary.
+        </p>
+      </section>
+      <section class="rule">
+        <h3>Design Diagnostics</h3>
+        <p>
+          Missing selected parts, unresolved footprint references, missing electrical pad mappings,
+          and accidental mappings to mechanical pads are design-quality problems reported through
+          diagnostics and validation.
+        </p>
+      </section>
+    </div>
+
+    <h2>Naming</h2>
+    <table>
+      <thead>
+        <tr><th>Family</th><th>Library</th><th>Name examples</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Passives</td>
+          <td><code>passives</code></td>
+          <td><code>R_0603_1608Metric</code>, <code>C_0603_1608Metric</code>, <code>L_0603_1608Metric</code></td>
+          <td>Volt-owned compact names for generic resistor, capacitor, inductor, bead, and fuse land patterns.</td>
+        </tr>
+        <tr>
+          <td>LEDs and diodes</td>
+          <td><code>leds</code>, <code>diodes</code></td>
+          <td><code>LED_0603_1608Metric</code>, <code>D_SOD-123</code></td>
+          <td>Pad labels follow the physical package labels used by the selected part.</td>
+        </tr>
+        <tr>
+          <td>Connectors</td>
+          <td><code>connectors</code></td>
+          <td><code>PinHeader_1x04_P2.54mm_Vertical</code>, <code>USB_Micro-B_Receptacle</code></td>
+          <td>Electrical pads use connector pin numbers; mechanical support holes use mechanical labels.</td>
+        </tr>
+        <tr>
+          <td>IC packages</td>
+          <td><code>Package_SO</code>, <code>Package_QFP</code>, <code>Package_TO_SOT_SMD</code></td>
+          <td><code>SOIC-8_3.9x4.9mm_P1.27mm</code>, <code>LQFP-64_10x10mm_P0.5mm</code></td>
+          <td>KiCad-like package-library names are allowed when Volt selected-part data already uses them.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Geometry</h2>
+    <ul>
+      <li>All footprint coordinates, pad sizes, and drill diameters are millimeters.</li>
+      <li>Pad coordinates are footprint-local centers. Placement transforms convert them to board space.</li>
+      <li>Pad IDs are implicit and stable by definition order: <code>footprint_pad:0</code>, <code>footprint_pad:1</code>, and so on.</li>
+      <li>Pad labels are the selected-part mapping keys. They must be unique inside one footprint.</li>
+      <li>SMD pads use <code>front_smd</code> or <code>back_smd</code> layer sets. Through-hole electrical pads use <code>through_hole</code>.</li>
+      <li>Non-plated holes use <code>mechanical_hole</code> layers and must declare a mechanical role such as <code>mounting</code> or <code>mechanical_support</code>.</li>
+      <li>Mechanical pads do not require selected-part pin mappings. Mapping a logical pin to one is diagnosed as invalid design intent.</li>
+    </ul>
+
+    <h2>Current Built-In Coverage</h2>
+    <p>
+      The built-in library covers first-board examples: common 0402/0603/0805 passives, 0603 LEDs
+      and diodes, SOD-123 diodes, SOT-23 and SOT-23-6 packages, SOIC and TSSOP packages, 1x02 and
+      1x04 headers, 2x05 programming headers, a simple terminal block, a micro USB-B receptacle,
+      and the <code>LQFP-64_10x10mm_P0.5mm</code> MCU package used by the STM32 benchmark library.
+    </p>
+
+    <h2>Growth Path</h2>
+    <p>
+      Future footprint growth should lower into the same Volt-owned <code>FootprintDefinition</code>
+      values before board use. A safe data-driven path is a small checked-in footprint-definition
+      format that validates into the kernel types. A safe KiCad path is a narrow adapter that imports
+      only supported pad geometry, layer sets, drill data, and mechanical roles, records unsupported
+      constructs as loss diagnostics, and never treats a KiCad footprint string as a selected physical
+      part by itself.
+    </p>
+  </main>
+</body>
+</html>

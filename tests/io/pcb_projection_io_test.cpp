@@ -292,6 +292,39 @@ TEST_CASE("PCB projection reader rejects dangling references") {
     }
 }
 
+TEST_CASE("PCB projection reader rejects invalid footprint library data") {
+    const auto fixture = make_resistor_circuit();
+
+    SECTION("duplicate footprint references") {
+        auto document = make_board_json(fixture);
+        auto duplicate = document["board"]["footprint_definitions"][0];
+        duplicate["id"] = "footprint_def:1";
+        document["board"]["footprint_definitions"].push_back(duplicate);
+
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+                             Catch::Matchers::Message("Board footprint definition already exists"));
+    }
+
+    SECTION("duplicate footprint pad labels") {
+        auto document = make_board_json(fixture);
+        document["board"]["footprint_definitions"][0]["pads"][1]["label"] = "1";
+
+        CHECK_THROWS_MATCHES(
+            volt::io::read_pcb_board(fixture.circuit, document), std::invalid_argument,
+            Catch::Matchers::Message("Footprint definition contains duplicate pad labels"));
+    }
+
+    SECTION("non-positive footprint pad geometry") {
+        auto document = make_board_json(fixture);
+        document["board"]["footprint_definitions"][0]["pads"][0]["size"] =
+            nlohmann::json::array({0.0, 0.95});
+
+        CHECK_THROWS_MATCHES(
+            volt::io::read_pcb_board(fixture.circuit, document), std::invalid_argument,
+            Catch::Matchers::Message("Footprint size dimensions must be positive"));
+    }
+}
+
 TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
     const auto fixture = make_resistor_circuit();
 
