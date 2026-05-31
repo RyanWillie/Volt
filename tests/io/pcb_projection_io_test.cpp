@@ -104,6 +104,11 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["id"] == "board:0");
     CHECK(document["board"]["name"] == "Control");
     CHECK(document["board"]["units"] == "mm");
+    CHECK(document["board"]["rules"]["copper_clearance_mm"] == 0.15);
+    CHECK(document["board"]["rules"]["minimum_track_width_mm"] == 0.15);
+    CHECK(document["board"]["rules"]["minimum_via_drill_diameter_mm"] == 0.20);
+    CHECK(document["board"]["rules"]["minimum_via_annular_diameter_mm"] == 0.45);
+    CHECK(document["board"]["rules"]["board_outline_clearance_mm"] == 0.0);
 
     REQUIRE(document["board"]["layers"].size() == 2);
     CHECK(document["board"]["layers"][0]["id"] == "board_layer:0");
@@ -267,6 +272,50 @@ TEST_CASE("PCB projection writer and reader round-trip copper tracks and vias") 
     CHECK(restored.via(volt::BoardViaId{0}).end_layer() == volt::BoardLayerId{1});
 }
 
+TEST_CASE("PCB projection writer and reader round-trip board design rules") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_viewer_ready_board(fixture);
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.25, 0.30, 0.70, 0.10});
+    [[maybe_unused]] const auto track = board.add_track(volt::BoardTrack{
+        fixture.first_net,
+        volt::BoardLayerId{0},
+        std::vector{volt::BoardPoint{5.0, 5.0}, volt::BoardPoint{12.0, 5.0}},
+        0.10,
+    });
+
+    const auto text = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
+    const auto document = nlohmann::json::parse(text);
+
+    CHECK(document["board"]["rules"]["copper_clearance_mm"] == 0.20);
+    CHECK(document["board"]["rules"]["minimum_track_width_mm"] == 0.25);
+    CHECK(document["board"]["rules"]["minimum_via_drill_diameter_mm"] == 0.30);
+    CHECK(document["board"]["rules"]["minimum_via_annular_diameter_mm"] == 0.70);
+    CHECK(document["board"]["rules"]["board_outline_clearance_mm"] == 0.10);
+    REQUIRE_FALSE(document["viewer"]["diagnostics"].empty());
+    CHECK(document["viewer"]["diagnostics"][0]["code"] == "PCB_TRACK_WIDTH_BELOW_MINIMUM");
+    CHECK(document["viewer"]["diagnostics"][0]["entities"] ==
+          nlohmann::json::array({"board_track:0", "net:0", "board_layer:0"}));
+
+    const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
+    CHECK(restored.design_rules().copper_clearance_mm() == 0.20);
+    CHECK(restored.design_rules().minimum_track_width_mm() == 0.25);
+    CHECK(volt::io::write_pcb_board(restored, volt::builtin_footprint_library()) == text);
+}
+
+TEST_CASE("PCB projection reader defaults missing legacy board design rules") {
+    const auto fixture = make_resistor_circuit();
+    auto document = make_board_json(fixture);
+    document["board"].erase("rules");
+
+    const auto restored = volt::io::read_pcb_board(fixture.circuit, document);
+
+    CHECK(restored.design_rules().copper_clearance_mm() == 0.15);
+    CHECK(restored.design_rules().minimum_track_width_mm() == 0.15);
+    CHECK(restored.design_rules().minimum_via_drill_diameter_mm() == 0.20);
+    CHECK(restored.design_rules().minimum_via_annular_diameter_mm() == 0.45);
+    CHECK(restored.design_rules().board_outline_clearance_mm() == 0.0);
+}
+
 TEST_CASE("PCB projection writer includes highlightable diagnostic references") {
     const auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
@@ -364,6 +413,15 @@ TEST_CASE("PCB projection reader rejects dangling references") {
 
         CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
                              Catch::Matchers::Message("PCB via references missing board layer"));
+    }
+
+    SECTION("invalid design rules") {
+        auto document = make_board_json(fixture);
+        document["board"]["rules"]["copper_clearance_mm"] = -0.1;
+
+        CHECK_THROWS_MATCHES(
+            volt::io::read_pcb_board(fixture.circuit, document), std::invalid_argument,
+            Catch::Matchers::Message("Board design rule clearances must not be negative"));
     }
 }
 

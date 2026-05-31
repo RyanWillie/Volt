@@ -251,6 +251,13 @@ class PyCircuit {
 
     [[nodiscard]] py::dict board(const std::string &name);
 
+    [[nodiscard]] py::dict board_design_rules() const;
+
+    void board_set_design_rules(double copper_clearance_mm, double minimum_track_width_mm,
+                                double minimum_via_drill_diameter_mm,
+                                double minimum_via_annular_diameter_mm,
+                                double board_outline_clearance_mm);
+
     [[nodiscard]] std::size_t board_add_layer(const std::string &name, const std::string &role,
                                               const std::string &side, double thickness_mm,
                                               bool enabled);

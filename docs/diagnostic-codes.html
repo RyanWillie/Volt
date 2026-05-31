@@ -421,6 +421,42 @@
               <td>A placed footprint pad is outside the board outline.</td>
               <td><code>component</code></td>
             </tr>
+            <tr>
+              <td><code>PCB_TRACK_WIDTH_BELOW_MINIMUM</code></td>
+              <td class="severity-error">Error</td>
+              <td>A routed copper track is narrower than the board-owned minimum track width rule.</td>
+              <td><code>board_track</code>, <code>net</code>, <code>board_layer</code></td>
+            </tr>
+            <tr>
+              <td><code>PCB_VIA_DRILL_BELOW_MINIMUM</code></td>
+              <td class="severity-error">Error</td>
+              <td>A routed via drill diameter is smaller than the board-owned minimum via drill rule.</td>
+              <td><code>board_via</code>, <code>net</code></td>
+            </tr>
+            <tr>
+              <td><code>PCB_VIA_ANNULAR_BELOW_MINIMUM</code></td>
+              <td class="severity-error">Error</td>
+              <td>A routed via outer annular copper diameter is smaller than the board-owned minimum via annular diameter rule.</td>
+              <td><code>board_via</code>, <code>net</code></td>
+            </tr>
+            <tr>
+              <td><code>PCB_COPPER_OUTSIDE_OUTLINE</code></td>
+              <td class="severity-error">Error</td>
+              <td>A pad, track, or via does not satisfy the board outline containment and clearance rule.</td>
+              <td>Primary copper entity, then <code>net</code> and <code>board_layer</code>.</td>
+            </tr>
+            <tr>
+              <td><code>PCB_COPPER_CLEARANCE_VIOLATION</code></td>
+              <td class="severity-error">Error</td>
+              <td>Copper belonging to different logical nets is closer than the board-owned clearance rule.</td>
+              <td>Both copper entities, both <code>net</code> references, and the shared <code>board_layer</code>.</td>
+            </tr>
+            <tr>
+              <td><code>PCB_NET_UNROUTED</code></td>
+              <td class="severity-warning">Warning</td>
+              <td>A routed board still has placed pads on the same logical net that are not physically connected by copper.</td>
+              <td><code>net</code>, then the two <code>component_placement</code>/<code>footprint_pad</code> endpoints.</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -451,7 +487,11 @@
 
 validate_for_pcb(circuit)
   validate_circuit(circuit)
-  validate physical part selection</code></pre>
+  validate physical part selection
+
+validate_board(board, footprints)
+  validate placement and footprint readiness
+  validate board-owned PCB design rules and DRC</code></pre>
         <p>
           Use <code>validate_circuit(circuit)</code> for the default complete logical
           validation suite. The named entry points expose stable intent-level groups for

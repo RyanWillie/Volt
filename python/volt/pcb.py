@@ -158,6 +158,49 @@ class Board:
         self.name = info["name"]
         self.units = info["units"]
 
+    def design_rules(self) -> dict[str, float]:
+        return dict(self._design._circuit.board_design_rules())
+
+    def set_design_rules(
+        self,
+        *,
+        copper_clearance: float | None = None,
+        min_track_width: float | None = None,
+        min_via_drill: float | None = None,
+        min_via_annular: float | None = None,
+        board_outline_clearance: float | None = None,
+    ) -> Board:
+        rules = self.design_rules()
+        copper_clearance_value = (
+            rules["copper_clearance_mm"] if copper_clearance is None else copper_clearance
+        )
+        min_track_width_value = (
+            rules["minimum_track_width_mm"] if min_track_width is None else min_track_width
+        )
+        min_via_drill_value = (
+            rules["minimum_via_drill_diameter_mm"]
+            if min_via_drill is None
+            else min_via_drill
+        )
+        min_via_annular_value = (
+            rules["minimum_via_annular_diameter_mm"]
+            if min_via_annular is None
+            else min_via_annular
+        )
+        board_outline_clearance_value = (
+            rules["board_outline_clearance_mm"]
+            if board_outline_clearance is None
+            else board_outline_clearance
+        )
+        self._design._circuit.board_set_design_rules(
+            float(copper_clearance_value),
+            float(min_track_width_value),
+            float(min_via_drill_value),
+            float(min_via_annular_value),
+            float(board_outline_clearance_value),
+        )
+        return self
+
     def add_layer(
         self,
         name: str,

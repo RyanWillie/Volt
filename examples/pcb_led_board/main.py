@@ -210,6 +210,7 @@ def author_schematic(
 
 def build_board(
     design: volt.Design,
+    nets: dict[str, volt.Net],
     parts: dict[str, volt.Component],
 ) -> volt.Board:
     board = design.board("First Board LED")
@@ -227,13 +228,21 @@ def build_board(
     board.place(parts["J1"], at=(5.0, 9.0), rotation=0.0, side="top", locked=True)
     board.place(parts["R1"], at=(15.0, 7.0), rotation=0.0, side="top")
     board.place(parts["D1"], at=(24.0, 7.0), rotation=180.0, side="top")
+    board.add_track(nets["+3V3"], layer=front, points=[(5.0, 7.73), (14.25, 7.0)], width=0.25)
+    board.add_track(
+        nets["LED_A"],
+        layer=front,
+        points=[(15.75, 7.0), (20.0, 3.0), (24.75, 7.0)],
+        width=0.25,
+    )
+    board.add_track(nets["GND"], layer=front, points=[(5.0, 10.27), (23.25, 7.0)], width=0.25)
     return board
 
 
 def build_example() -> tuple[volt.Design, volt.Schematic, volt.Board]:
     design, nets, parts = build_design()
     schematic = author_schematic(design, nets, parts)
-    board = build_board(design, parts)
+    board = build_board(design, nets, parts)
     return design, schematic, board
 
 

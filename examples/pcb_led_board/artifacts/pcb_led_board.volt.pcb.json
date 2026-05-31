@@ -5,6 +5,7 @@
     "id": "board:0",
     "name": "First Board LED",
     "units": "mm",
+    "rules": {"copper_clearance_mm": 0.14999999999999999, "minimum_track_width_mm": 0.14999999999999999, "minimum_via_drill_diameter_mm": 0.20000000000000001, "minimum_via_annular_diameter_mm": 0.45000000000000001, "board_outline_clearance_mm": 0},
     "layers": [
       {"id": "board_layer:0", "name": "F.Cu", "role": "copper", "side": "top", "thickness_mm": 0, "enabled": true},
       {"id": "board_layer:1", "name": "B.Cu", "role": "copper", "side": "bottom", "thickness_mm": 0, "enabled": true}
@@ -105,6 +106,11 @@
       {"id": "component_placement:0", "component": "component:0", "footprint": "footprint_def:0", "position": [5, 9], "rotation_deg": 0, "side": "top", "locked": true},
       {"id": "component_placement:1", "component": "component:1", "footprint": "footprint_def:1", "position": [15, 7], "rotation_deg": 0, "side": "top", "locked": false},
       {"id": "component_placement:2", "component": "component:2", "footprint": "footprint_def:2", "position": [24, 7], "rotation_deg": 180, "side": "top", "locked": false}
+    ],
+    "tracks": [
+      {"id": "board_track:0", "net": "net:0", "layer": "board_layer:0", "points": [[5, 7.7300000000000004], [14.25, 7]], "width_mm": 0.25},
+      {"id": "board_track:1", "net": "net:1", "layer": "board_layer:0", "points": [[15.75, 7], [20, 3], [24.75, 7]], "width_mm": 0.25},
+      {"id": "board_track:2", "net": "net:2", "layer": "board_layer:0", "points": [[5, 10.27], [23.25, 7]], "width_mm": 0.25}
     ]
   },
   "viewer": {

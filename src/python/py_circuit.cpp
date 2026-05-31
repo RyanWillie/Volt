@@ -977,6 +977,30 @@ py::dict PyCircuit::board(const std::string &name) {
     return result;
 }
 
+py::dict PyCircuit::board_design_rules() const {
+    const auto &rules = board_projection().design_rules();
+    auto result = py::dict{};
+    result["copper_clearance_mm"] = rules.copper_clearance_mm();
+    result["minimum_track_width_mm"] = rules.minimum_track_width_mm();
+    result["minimum_via_drill_diameter_mm"] = rules.minimum_via_drill_diameter_mm();
+    result["minimum_via_annular_diameter_mm"] = rules.minimum_via_annular_diameter_mm();
+    result["board_outline_clearance_mm"] = rules.board_outline_clearance_mm();
+    return result;
+}
+
+void PyCircuit::board_set_design_rules(double copper_clearance_mm, double minimum_track_width_mm,
+                                       double minimum_via_drill_diameter_mm,
+                                       double minimum_via_annular_diameter_mm,
+                                       double board_outline_clearance_mm) {
+    board_projection().set_design_rules(volt::BoardDesignRules{
+        copper_clearance_mm,
+        minimum_track_width_mm,
+        minimum_via_drill_diameter_mm,
+        minimum_via_annular_diameter_mm,
+        board_outline_clearance_mm,
+    });
+}
+
 std::size_t PyCircuit::board_add_layer(const std::string &name, const std::string &role,
                                        const std::string &side, double thickness_mm, bool enabled) {
     return board_projection()
