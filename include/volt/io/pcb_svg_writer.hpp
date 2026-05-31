@@ -224,6 +224,44 @@ resolve_definition_for_placement(const Board &board, const ComponentPlacement &p
     return footprints.find(selected_part->footprint());
 }
 
+[[nodiscard]] inline bool contains_footprint_ref(const std::vector<FootprintRef> &refs,
+                                                 const FootprintRef &ref) {
+    return std::find(refs.begin(), refs.end(), ref) != refs.end();
+}
+
+[[nodiscard]] inline std::optional<FootprintDefId> projection_footprint_definition_id_for_placement(
+    const Board &board, ComponentPlacementId placement_id, const FootprintLibrary &footprints) {
+    const auto &placement = board.placement(placement_id);
+    const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+    if (!selected_part.has_value()) {
+        return std::nullopt;
+    }
+
+    auto refs = std::vector<FootprintRef>{};
+    refs.reserve(board.footprint_definition_count() + placement_id.index() + 1U);
+    for (std::size_t index = 0; index < board.footprint_definition_count(); ++index) {
+        refs.push_back(board.footprint_definition(FootprintDefId{index}).ref());
+    }
+
+    for (std::size_t index = 0; index <= placement_id.index(); ++index) {
+        const auto &candidate_placement = board.placement(ComponentPlacementId{index});
+        const auto &candidate_part =
+            board.circuit().selected_physical_part(candidate_placement.component());
+        if (!candidate_part.has_value() ||
+            contains_footprint_ref(refs, candidate_part->footprint()) ||
+            footprints.find(candidate_part->footprint()) == nullptr) {
+            continue;
+        }
+        refs.push_back(candidate_part->footprint());
+    }
+
+    const auto match = std::find(refs.begin(), refs.end(), selected_part->footprint());
+    if (match == refs.end()) {
+        return std::nullopt;
+    }
+    return FootprintDefId{static_cast<std::size_t>(std::distance(refs.begin(), match))};
+}
+
 [[nodiscard]] inline const PadResolution *
 find_pad_resolution(const std::vector<PadResolution> &resolutions, ComponentPlacementId placement,
                     FootprintPadId pad) {
@@ -481,8 +519,14 @@ inline void write_placements(std::ostream &out, const Board &board,
             out << " locked";
         }
         out << "\" data-placement=\"" << encode_local_id(placement_id) << "\" data-component=\""
-            << encode_local_id(placement.component()) << "\" data-footprint=\""
-            << pcb_svg_escape(footprint_ref_token(definition->ref()))
+            << encode_local_id(placement.component()) << '"';
+        const auto footprint_definition_id =
+            projection_footprint_definition_id_for_placement(board, placement_id, footprints);
+        if (footprint_definition_id.has_value()) {
+            out << " data-footprint-def=\"" << encode_local_id(footprint_definition_id.value())
+                << '"';
+        }
+        out << " data-footprint=\"" << pcb_svg_escape(footprint_ref_token(definition->ref()))
             << "\" transform=\"translate(";
         write_pcb_svg_number(out, placement.position().x_mm());
         out << ' ';

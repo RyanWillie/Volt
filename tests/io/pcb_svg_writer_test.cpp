@@ -101,6 +101,26 @@ TEST_CASE("PCB SVG writer renders a deterministic placement preview") {
     CHECK(first == read_fixture("pcb_placement_preview.svg"));
 }
 
+TEST_CASE("PCB SVG writer exposes stable selectors matching PCB JSON entities") {
+    const auto fixture = make_resistor_circuit();
+    const auto board = make_preview_board(fixture);
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(svg.find("class=\"pcb-placement-preview\"") != std::string::npos);
+    CHECK(svg.find("data-board=\"board:0\"") != std::string::npos);
+    CHECK(svg.find("data-units=\"mm\"") != std::string::npos);
+    CHECK(svg.find("class=\"board-outline\" data-board=\"board:0\"") != std::string::npos);
+    CHECK(svg.find("data-board-feature=\"board_feature:0\"") != std::string::npos);
+    CHECK(svg.find("data-placement=\"component_placement:0\"") != std::string::npos);
+    CHECK(svg.find("data-component=\"component:0\"") != std::string::npos);
+    CHECK(svg.find("data-footprint-def=\"footprint_def:0\"") != std::string::npos);
+    CHECK(svg.find("data-pad-projection=\"pcb_pad:0:0\"") != std::string::npos);
+    CHECK(svg.find("data-pad=\"footprint_pad:0\"") != std::string::npos);
+    CHECK(svg.find("data-pin=\"pin:0\"") != std::string::npos);
+    CHECK(svg.find("data-net=\"net:0\"") != std::string::npos);
+}
+
 TEST_CASE("PCB SVG writer surfaces board diagnostics without mutating projection state") {
     auto fixture = make_resistor_circuit(false);
     auto board = make_preview_board(fixture);
@@ -113,6 +133,21 @@ TEST_CASE("PCB SVG writer surfaces board diagnostics without mutating projection
           std::string::npos);
     CHECK(svg.find("data-entities=\"component:0\"") != std::string::npos);
     CHECK(svg.find("class=\"diagnostic-label error\"") != std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer exposes placement entity references for board diagnostics") {
+    const auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{5.0, 5.0}));
+    [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(svg.find("data-diagnostic-code=\"PCB_PLACEMENT_OUTSIDE_OUTLINE\"") != std::string::npos);
+    CHECK(svg.find("data-entities=\"component:0 component_placement:0\"") != std::string::npos);
+    CHECK(svg.find("class=\"diagnostic-marker error\"") != std::string::npos);
 }
 
 TEST_CASE("PCB SVG writer omits diagnostic layout when overlays are disabled") {

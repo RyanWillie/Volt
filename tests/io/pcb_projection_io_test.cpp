@@ -110,6 +110,8 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["layers"][0]["name"] == "F.Cu");
     CHECK(document["board"]["layers"][0]["role"] == "copper");
     CHECK(document["board"]["layers"][0]["side"] == "top");
+    CHECK(document["board"]["layers"][0]["thickness_mm"] == 0.0);
+    CHECK(document["board"]["layers"][0]["enabled"] == true);
     CHECK(document["board"]["layer_stack"]["board_thickness_mm"] == 1.6);
     CHECK(document["board"]["layer_stack"]["layers"] ==
           nlohmann::json::array({"board_layer:0", "board_layer:1"}));
@@ -124,7 +126,14 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["footprint_definitions"][0]["id"] == "footprint_def:0");
     CHECK(document["board"]["footprint_definitions"][0]["ref"]["library"] == "passives");
     CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["id"] == "footprint_pad:0");
+    CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["kind"] == "surface_mount");
     CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["shape"] == "rounded_rectangle");
+    CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["position"] ==
+          nlohmann::json::array({-0.75, 0.0}));
+    CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["size"] ==
+          nlohmann::json::array({0.80, 0.95}));
+    CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["drill"] == nullptr);
+    CHECK(document["board"]["footprint_definitions"][0]["pads"][0]["mechanical_role"] == nullptr);
 
     REQUIRE(document["board"]["placements"].size() == 1);
     CHECK(document["board"]["placements"][0]["id"] == "component_placement:0");
@@ -132,16 +141,60 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["placements"][0]["footprint"] == "footprint_def:0");
     CHECK(document["board"]["placements"][0]["position"] == nlohmann::json::array({25.0, 15.0}));
     CHECK(document["board"]["placements"][0]["rotation_deg"] == 90.0);
+    CHECK(document["board"]["placements"][0]["side"] == "top");
     CHECK(document["board"]["placements"][0]["locked"] == true);
 
     REQUIRE(document["viewer"]["pad_resolutions"].size() == 2);
     CHECK(document["viewer"]["pad_resolutions"][0]["id"] == "pcb_pad:0:0");
     CHECK(document["viewer"]["pad_resolutions"][0]["placement"] == "component_placement:0");
+    CHECK(document["viewer"]["pad_resolutions"][0]["component"] == "component:0");
+    CHECK(document["viewer"]["pad_resolutions"][0]["footprint"] == "footprint_def:0");
     CHECK(document["viewer"]["pad_resolutions"][0]["pad"] == "footprint_pad:0");
+    CHECK(document["viewer"]["pad_resolutions"][0]["label"] == "1");
+    CHECK(document["viewer"]["pad_resolutions"][0]["position"] ==
+          nlohmann::json::array({25.0, 14.25}));
     CHECK(document["viewer"]["pad_resolutions"][0]["pin"] == "pin:0");
     CHECK(document["viewer"]["pad_resolutions"][0]["net"] == "net:0");
     CHECK(document["viewer"]["pad_resolutions"][0]["status"] == "connected");
+    CHECK(document["viewer"]["pad_resolutions"][0]["geometry"]["shape"] == "rounded_rectangle");
+    CHECK(document["viewer"]["pad_resolutions"][0]["geometry"]["layers"] ==
+          nlohmann::json::array({"front_copper", "front_solder_mask", "front_paste"}));
     CHECK(document["viewer"]["diagnostics"] == nlohmann::json::array());
+}
+
+TEST_CASE("PCB projection JSON contains renderer-ready geometry without SVG") {
+    const auto fixture = make_resistor_circuit();
+    const auto document = make_board_json(fixture);
+
+    REQUIRE(document["board"]["outline"]["vertices"].size() == 4);
+    CHECK(document["board"]["layer_stack"]["board_thickness_mm"] == 1.6);
+
+    const auto &placement = document["board"]["placements"][0];
+    const auto &footprint = document["board"]["footprint_definitions"][0];
+    const auto &pad = footprint["pads"][0];
+    const auto &pad_projection = document["viewer"]["pad_resolutions"][0];
+
+    CHECK(placement["footprint"] == footprint["id"]);
+    CHECK(pad_projection["placement"] == placement["id"]);
+    CHECK(pad_projection["footprint"] == footprint["id"]);
+    CHECK(pad_projection["pad"] == pad["id"]);
+
+    CHECK(pad["shape"] == "rounded_rectangle");
+    CHECK(pad["position"] == nlohmann::json::array({-0.75, 0.0}));
+    CHECK(pad["size"] == nlohmann::json::array({0.80, 0.95}));
+    CHECK(pad["layers"] ==
+          nlohmann::json::array({"front_copper", "front_solder_mask", "front_paste"}));
+
+    const auto placement_x = placement["position"][0].get<double>();
+    const auto placement_y = placement["position"][1].get<double>();
+    const auto pad_x = pad["position"][0].get<double>();
+    const auto pad_y = pad["position"][1].get<double>();
+    CHECK(placement["rotation_deg"] == 90.0);
+    CHECK(placement["side"] == "top");
+    CHECK(pad_projection["position"] ==
+          nlohmann::json::array({placement_x - pad_y, placement_y + pad_x}));
+    CHECK(pad_projection["pin"] == "pin:0");
+    CHECK(pad_projection["net"] == "net:0");
 }
 
 TEST_CASE("PCB projection reader round-trips board metadata, placements, and pad geometry") {
@@ -182,7 +235,10 @@ TEST_CASE("PCB projection writer includes highlightable diagnostic references") 
         nlohmann::json::parse(volt::io::write_pcb_board(board, volt::builtin_footprint_library()));
 
     REQUIRE_FALSE(document["viewer"]["diagnostics"].empty());
+    CHECK(document["viewer"]["diagnostics"][0]["severity"] == "error");
     CHECK(document["viewer"]["diagnostics"][0]["code"] == "PCB_PLACEMENT_OUTSIDE_OUTLINE");
+    CHECK(document["viewer"]["diagnostics"][0]["message"] ==
+          "Placement pad '1' is outside the board outline");
     CHECK(document["viewer"]["diagnostics"][0]["entities"] ==
           nlohmann::json::array({"component:0", "component_placement:0"}));
 }
