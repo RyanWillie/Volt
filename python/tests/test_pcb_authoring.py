@@ -145,6 +145,8 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
         board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     with pytest.raises(IndexError, match="Volt entity id is out of range"):
         board.place(99, at=(1.0, 1.0))
+    with pytest.raises(TypeError, match="Board component IDs must be integers"):
+        board.place(True, at=(1.0, 1.0))
     with pytest.raises(RuntimeError, match="Component already has a board placement"):
         board.place(r1, at=(1.0, 1.0))
         board.place(r1, at=(2.0, 2.0))
