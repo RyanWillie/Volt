@@ -597,6 +597,36 @@ inline void write_pad_overlays(std::ostream &out, const Board &board,
     out << "    </g>\n";
 }
 
+inline void write_ratsnest(std::ostream &out, const std::vector<RatsnestEdge> &edges) {
+    out << "    <g class=\"layer layer-ratsnest\">\n";
+    auto current_net = std::optional<NetId>{};
+    std::size_t net_edge_index = 0;
+    for (const auto &edge : edges) {
+        if (!current_net.has_value() || current_net.value() != edge.net()) {
+            current_net = edge.net();
+            net_edge_index = 0;
+        }
+
+        out << "      <line id=\"ratsnest-edge-net-" << edge.net().index() << '-' << net_edge_index
+            << "\" class=\"ratsnest ratsnest-edge\" data-ratsnest-edge=\""
+            << pcb_ratsnest_edge_id(edge.net(), net_edge_index) << "\" data-net=\""
+            << encode_local_id(edge.net()) << "\" data-from-pad=\""
+            << pcb_pad_projection_id(edge.from().placement(), edge.from().pad())
+            << "\" data-to-pad=\"" << pcb_pad_projection_id(edge.to().placement(), edge.to().pad())
+            << "\" x1=\"";
+        write_pcb_svg_number(out, edge.from().position().x_mm());
+        out << "\" y1=\"";
+        write_pcb_svg_number(out, edge.from().position().y_mm());
+        out << "\" x2=\"";
+        write_pcb_svg_number(out, edge.to().position().x_mm());
+        out << "\" y2=\"";
+        write_pcb_svg_number(out, edge.to().position().y_mm());
+        out << "\"/>\n";
+        ++net_edge_index;
+    }
+    out << "    </g>\n";
+}
+
 inline void write_diagnostics(std::ostream &out, const Board &board,
                               const DiagnosticReport &diagnostics, const PcbSvgBounds &bounds,
                               PcbPlacementSvgOptions options) {
@@ -659,6 +689,7 @@ inline void write_pcb_placement_svg(std::ostream &out, const Board &board,
     const auto translate_x = detail::pcb_svg_margin_mm - bounds.min_x;
     const auto translate_y = detail::pcb_svg_margin_mm - bounds.min_y;
     const auto resolutions = board.resolve_pads(preview_footprints);
+    const auto ratsnest_edges = derive_ratsnest_edges(resolutions);
 
     out << "<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"pcb-placement-preview\" viewBox=\"0 "
            "0 ";
@@ -686,9 +717,8 @@ inline void write_pcb_placement_svg(std::ostream &out, const Board &board,
     detail::write_pcb_svg_outline(out, board);
     detail::write_pcb_svg_features(out, board);
     detail::write_placements(out, board, preview_footprints, resolutions);
+    detail::write_ratsnest(out, ratsnest_edges);
     detail::write_pad_overlays(out, board, resolutions, options);
-    out << "    <g class=\"layer layer-ratsnest\">\n";
-    out << "    </g>\n";
     detail::write_diagnostics(out, board, diagnostics, bounds, options);
     out << "  </g>\n";
     out << "</svg>\n";

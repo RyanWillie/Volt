@@ -507,12 +507,207 @@ class PadResolution {
     PadResolutionStatus status_;
 };
 
+/** Stable endpoint of a derived ratsnest edge. */
+class RatsnestEndpoint {
+  public:
+    /** Construct an endpoint over one resolved board pad. */
+    RatsnestEndpoint(ComponentPlacementId placement, ComponentId component, FootprintPadId pad,
+                     BoardPoint position)
+        : placement_{placement}, component_{component}, pad_{pad}, position_{position} {}
+
+    /** Return the placement containing this pad. */
+    [[nodiscard]] ComponentPlacementId placement() const noexcept { return placement_; }
+
+    /** Return the logical component containing this pad. */
+    [[nodiscard]] ComponentId component() const noexcept { return component_; }
+
+    /** Return the footprint-local pad ID. */
+    [[nodiscard]] FootprintPadId pad() const noexcept { return pad_; }
+
+    /** Return the board-space pad center. */
+    [[nodiscard]] BoardPoint position() const noexcept { return position_; }
+
+  private:
+    ComponentPlacementId placement_;
+    ComponentId component_;
+    FootprintPadId pad_;
+    BoardPoint position_;
+};
+
+/** Derived unrouted connection preview between two placed pads on one logical net. */
+class RatsnestEdge {
+  public:
+    /** Construct a derived ratsnest edge. */
+    RatsnestEdge(NetId net, RatsnestEndpoint from, RatsnestEndpoint to)
+        : net_{net}, from_{from}, to_{to} {}
+
+    /** Return the logical net this preview edge belongs to. */
+    [[nodiscard]] NetId net() const noexcept { return net_; }
+
+    /** Return the stable lower endpoint for this edge. */
+    [[nodiscard]] const RatsnestEndpoint &from() const noexcept { return from_; }
+
+    /** Return the stable upper endpoint for this edge. */
+    [[nodiscard]] const RatsnestEndpoint &to() const noexcept { return to_; }
+
+  private:
+    NetId net_;
+    RatsnestEndpoint from_;
+    RatsnestEndpoint to_;
+};
+
 class Board;
 
 namespace detail {
 
 [[nodiscard]] inline FootprintLibrary
 board_resolution_footprints(const Board &board, const FootprintLibrary &footprints);
+
+[[nodiscard]] inline bool ratsnest_endpoint_less(const RatsnestEndpoint &lhs,
+                                                 const RatsnestEndpoint &rhs) noexcept {
+    if (lhs.placement().index() != rhs.placement().index()) {
+        return lhs.placement().index() < rhs.placement().index();
+    }
+    return lhs.pad().index() < rhs.pad().index();
+}
+
+[[nodiscard]] inline double ratsnest_distance_squared(const RatsnestEndpoint &lhs,
+                                                      const RatsnestEndpoint &rhs) noexcept {
+    const auto dx = lhs.position().x_mm() - rhs.position().x_mm();
+    const auto dy = lhs.position().y_mm() - rhs.position().y_mm();
+    return (dx * dx) + (dy * dy);
+}
+
+[[nodiscard]] inline RatsnestEdge make_ratsnest_edge(NetId net, RatsnestEndpoint lhs,
+                                                     RatsnestEndpoint rhs) {
+    if (ratsnest_endpoint_less(rhs, lhs)) {
+        return RatsnestEdge{net, rhs, lhs};
+    }
+    return RatsnestEdge{net, lhs, rhs};
+}
+
+[[nodiscard]] inline std::size_t ratsnest_root(std::vector<std::size_t> &parents,
+                                               std::size_t index) {
+    while (parents[index] != index) {
+        parents[index] = parents[parents[index]];
+        index = parents[index];
+    }
+    return index;
+}
+
+[[nodiscard]] inline bool same_ratsnest_endpoint(const RatsnestEndpoint &lhs,
+                                                 const RatsnestEndpoint &rhs) noexcept {
+    return lhs.placement() == rhs.placement() && lhs.pad() == rhs.pad();
+}
+
+} // namespace detail
+
+/** Derive deterministic unrouted ratsnest edges from resolved placed pads. */
+[[nodiscard]] inline std::vector<RatsnestEdge>
+derive_ratsnest_edges(const std::vector<PadResolution> &resolutions) {
+    struct EndpointWithNet {
+        NetId net;
+        RatsnestEndpoint endpoint;
+    };
+
+    auto endpoints = std::vector<EndpointWithNet>{};
+    endpoints.reserve(resolutions.size());
+    for (const auto &resolution : resolutions) {
+        if (resolution.status() != PadResolutionStatus::Connected ||
+            !resolution.net().has_value()) {
+            continue;
+        }
+        endpoints.push_back(EndpointWithNet{
+            resolution.net().value(),
+            RatsnestEndpoint{resolution.placement(), resolution.component(), resolution.pad(),
+                             resolution.position()},
+        });
+    }
+
+    std::sort(endpoints.begin(), endpoints.end(),
+              [](const EndpointWithNet &lhs, const EndpointWithNet &rhs) {
+                  if (lhs.net.index() != rhs.net.index()) {
+                      return lhs.net.index() < rhs.net.index();
+                  }
+                  return detail::ratsnest_endpoint_less(lhs.endpoint, rhs.endpoint);
+              });
+
+    auto edges = std::vector<RatsnestEdge>{};
+    std::size_t group_begin = 0;
+    while (group_begin < endpoints.size()) {
+        std::size_t group_end = group_begin + 1U;
+        while (group_end < endpoints.size() &&
+               endpoints[group_end].net == endpoints[group_begin].net) {
+            ++group_end;
+        }
+
+        const auto group_size = group_end - group_begin;
+        if (group_size >= 2U) {
+            const auto edges_before_group = edges.size();
+            struct CandidateEdge {
+                std::size_t from;
+                std::size_t to;
+                double distance_squared;
+            };
+
+            auto candidates = std::vector<CandidateEdge>{};
+            candidates.reserve((group_size * (group_size - 1U)) / 2U);
+            for (std::size_t from = 0; from < group_size; ++from) {
+                for (std::size_t to = from + 1U; to < group_size; ++to) {
+                    candidates.push_back(CandidateEdge{
+                        from,
+                        to,
+                        detail::ratsnest_distance_squared(endpoints[group_begin + from].endpoint,
+                                                          endpoints[group_begin + to].endpoint),
+                    });
+                }
+            }
+
+            std::sort(candidates.begin(), candidates.end(),
+                      [&](const CandidateEdge &lhs, const CandidateEdge &rhs) {
+                          if (lhs.distance_squared != rhs.distance_squared) {
+                              return lhs.distance_squared < rhs.distance_squared;
+                          }
+                          const auto &lhs_from = endpoints[group_begin + lhs.from].endpoint;
+                          const auto &rhs_from = endpoints[group_begin + rhs.from].endpoint;
+                          if (!detail::same_ratsnest_endpoint(lhs_from, rhs_from)) {
+                              return detail::ratsnest_endpoint_less(lhs_from, rhs_from);
+                          }
+                          return detail::ratsnest_endpoint_less(
+                              endpoints[group_begin + lhs.to].endpoint,
+                              endpoints[group_begin + rhs.to].endpoint);
+                      });
+
+            auto parents = std::vector<std::size_t>{};
+            parents.reserve(group_size);
+            for (std::size_t index = 0; index < group_size; ++index) {
+                parents.push_back(index);
+            }
+
+            for (const auto candidate : candidates) {
+                const auto from_root = detail::ratsnest_root(parents, candidate.from);
+                const auto to_root = detail::ratsnest_root(parents, candidate.to);
+                if (from_root == to_root) {
+                    continue;
+                }
+
+                parents[to_root] = from_root;
+                edges.push_back(detail::make_ratsnest_edge(
+                    endpoints[group_begin].net, endpoints[group_begin + candidate.from].endpoint,
+                    endpoints[group_begin + candidate.to].endpoint));
+                if (edges.size() - edges_before_group >= group_size - 1U) {
+                    break;
+                }
+            }
+        }
+
+        group_begin = group_end;
+    }
+
+    return edges;
+}
+
+namespace detail {
 
 [[nodiscard]] inline BoardPoint transform_footprint_point(const ComponentPlacement &placement,
                                                           FootprintPoint point) {
@@ -755,6 +950,12 @@ class Board {
         return resolutions;
     }
 
+    /** Derive deterministic unrouted ratsnest edges for all placed multi-pad nets. */
+    [[nodiscard]] std::vector<RatsnestEdge>
+    ratsnest_edges(const FootprintLibrary &footprints) const {
+        return derive_ratsnest_edges(resolve_pads(footprints));
+    }
+
   private:
     void require_layer(BoardLayerId layer) const {
         if (!layers_.contains(layer)) {
@@ -850,6 +1051,11 @@ board_resolution_footprints(const Board &board, const FootprintLibrary &footprin
     return Diagnostic{Severity::Error, std::move(code), std::move(message), std::move(entities)};
 }
 
+[[nodiscard]] inline Diagnostic board_warning(DiagnosticCode code, std::string message,
+                                              std::vector<EntityRef> entities = {}) {
+    return Diagnostic{Severity::Warning, std::move(code), std::move(message), std::move(entities)};
+}
+
 [[nodiscard]] inline Diagnostic board_component_diagnostic(DiagnosticCode code, std::string message,
                                                            ComponentId component) {
     return board_diagnostic(std::move(code), std::move(message),
@@ -871,6 +1077,7 @@ board_resolution_footprints(const Board &board, const FootprintLibrary &footprin
                                                      const FootprintLibrary &footprints) {
     auto report = DiagnosticReport{};
     const auto resolution_footprints = detail::board_resolution_footprints(board, footprints);
+    const auto pad_resolutions = board.resolve_pads(resolution_footprints);
 
     if (!board.outline().has_value()) {
         report.add(detail::board_diagnostic(DiagnosticCode{"PCB_BOARD_OUTLINE_MISSING"},
@@ -940,6 +1147,30 @@ board_resolution_footprints(const Board &board, const FootprintLibrary &footprin
                     placement.component(), placement_id));
             }
         }
+    }
+
+    for (std::size_t index = 0; index < board.circuit().net_count(); ++index) {
+        const auto net_id = NetId{index};
+        const auto &net = board.circuit().net(net_id);
+        if (net.pins().size() < 2U) {
+            continue;
+        }
+
+        const auto placed_pad_count =
+            std::count_if(pad_resolutions.begin(), pad_resolutions.end(),
+                          [net_id](const PadResolution &resolution) {
+                              return resolution.status() == PadResolutionStatus::Connected &&
+                                     resolution.net().has_value() &&
+                                     resolution.net().value() == net_id;
+                          });
+        if (placed_pad_count != 0) {
+            continue;
+        }
+
+        report.add(
+            detail::board_warning(DiagnosticCode{"PCB_NET_WITHOUT_PLACED_PADS"},
+                                  "Net has logical connectivity but no placed pads on the board",
+                                  std::vector{EntityRef::net(net_id)}));
     }
 
     return report;

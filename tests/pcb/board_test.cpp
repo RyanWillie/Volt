@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstddef>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -21,6 +22,14 @@ struct ResistorCircuit {
     volt::PinId second_pin;
     volt::NetId first_net;
     volt::NetId second_net;
+};
+
+struct MultiComponentNetCircuit {
+    volt::Circuit circuit;
+    std::vector<volt::ComponentId> components;
+    volt::PinDefId first_pin_definition;
+    volt::PinDefId second_pin_definition;
+    volt::NetId shared_net;
 };
 
 [[nodiscard]] ResistorCircuit make_resistor_circuit(bool select_physical_part = true) {
@@ -61,6 +70,41 @@ struct ResistorCircuit {
                            second_pin,
                            first_net,
                            second_net};
+}
+
+[[nodiscard]] MultiComponentNetCircuit make_multi_component_net(std::size_t component_count) {
+    auto circuit = volt::Circuit{};
+    const auto first_pin_definition =
+        circuit.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
+    const auto second_pin_definition =
+        circuit.add_pin_definition(volt::PinDefinition{"B", "2", volt::PinRole::Passive});
+    const auto component_definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
+    const auto shared_net =
+        circuit.add_net(volt::Net{volt::NetName{"SHARED"}, volt::NetKind::Signal});
+
+    auto components = std::vector<volt::ComponentId>{};
+    components.reserve(component_count);
+    for (std::size_t index = 0; index < component_count; ++index) {
+        const auto component = circuit.instantiate_component(
+            component_definition, volt::ReferenceDesignator{"R" + std::to_string(index + 1U)});
+        circuit.select_physical_part(
+            component, volt::PhysicalPart{
+                           volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                           volt::PackageRef{"0603"},
+                           volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                           std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                       volt::PinPadMapping{second_pin_definition, "2"}},
+                       });
+        const auto connected_pin_definition =
+            index == 0U ? second_pin_definition : first_pin_definition;
+        circuit.connect(shared_net,
+                        circuit.pin_by_definition(component, connected_pin_definition).value());
+        components.push_back(component);
+    }
+
+    return MultiComponentNetCircuit{std::move(circuit), std::move(components), first_pin_definition,
+                                    second_pin_definition, shared_net};
 }
 
 [[nodiscard]] const volt::Diagnostic *find_diagnostic(const volt::DiagnosticReport &report,
@@ -189,6 +233,59 @@ TEST_CASE("Board resolves placed pads to logical pins and existing nets") {
     CHECK(resolutions[1].net() == fixture.second_net);
 }
 
+TEST_CASE("Board derives a ratsnest edge for a simple two-component net") {
+    auto fixture = make_multi_component_net(2);
+    auto board = volt::Board{fixture.circuit};
+    const auto first_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    const auto second_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[1], volt::BoardPoint{20.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto edges = board.ratsnest_edges(volt::builtin_footprint_library());
+
+    REQUIRE(edges.size() == 1);
+    CHECK(edges[0].net() == fixture.shared_net);
+    CHECK(edges[0].from().placement() == first_placement);
+    CHECK(edges[0].from().component() == fixture.components[0]);
+    CHECK(edges[0].from().pad() == volt::FootprintPadId{1});
+    CHECK(edges[0].from().position() == volt::BoardPoint{10.75, 10.0});
+    CHECK(edges[0].to().placement() == second_placement);
+    CHECK(edges[0].to().component() == fixture.components[1]);
+    CHECK(edges[0].to().pad() == volt::FootprintPadId{0});
+    CHECK(edges[0].to().position() == volt::BoardPoint{19.25, 10.0});
+}
+
+TEST_CASE("Board derives deterministic nearest ratsnest edges for a multi-pad net") {
+    auto fixture = make_multi_component_net(3);
+    auto board = volt::Board{fixture.circuit};
+    const auto first_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    const auto second_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[1], volt::BoardPoint{20.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    const auto third_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[2], volt::BoardPoint{15.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto first = board.ratsnest_edges(volt::builtin_footprint_library());
+    const auto second = board.ratsnest_edges(volt::builtin_footprint_library());
+
+    REQUIRE(first.size() == 2);
+    REQUIRE(second.size() == first.size());
+    CHECK(first[0].net() == fixture.shared_net);
+    CHECK(first[0].from().placement() == first_placement);
+    CHECK(first[0].from().pad() == volt::FootprintPadId{1});
+    CHECK(first[0].to().placement() == third_placement);
+    CHECK(first[0].to().pad() == volt::FootprintPadId{0});
+    CHECK(first[1].net() == fixture.shared_net);
+    CHECK(first[1].from().placement() == second_placement);
+    CHECK(first[1].from().pad() == volt::FootprintPadId{0});
+    CHECK(first[1].to().placement() == third_placement);
+    CHECK(first[1].to().pad() == volt::FootprintPadId{0});
+    CHECK(second[0].from().placement() == first[0].from().placement());
+    CHECK(second[0].to().placement() == first[0].to().placement());
+    CHECK(second[1].from().placement() == first[1].from().placement());
+    CHECK(second[1].to().placement() == first[1].to().placement());
+}
+
 TEST_CASE("Board pad resolution and validation use cached footprint definitions") {
     auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit};
@@ -231,6 +328,21 @@ TEST_CASE("Board validation reports design issues without owning connectivity") 
     CHECK(missing_part->severity() == volt::Severity::Error);
     REQUIRE(missing_part->entities().size() == 1);
     CHECK(missing_part->entities()[0] == volt::EntityRef::component(fixture.component));
+}
+
+TEST_CASE("Board validation reports logical nets with no placed pads as board diagnostics") {
+    auto fixture = make_multi_component_net(2);
+    auto board = volt::Board{fixture.circuit};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *unimplemented_net = find_diagnostic(report, "PCB_NET_WITHOUT_PLACED_PADS");
+    REQUIRE(unimplemented_net != nullptr);
+    CHECK(unimplemented_net->severity() == volt::Severity::Warning);
+    REQUIRE(unimplemented_net->entities().size() == 1);
+    CHECK(unimplemented_net->entities()[0] == volt::EntityRef::net(fixture.shared_net));
 }
 
 TEST_CASE("Board validation checks transformed pad bodies against the outline") {

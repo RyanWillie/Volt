@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstddef>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -21,6 +22,14 @@ struct ResistorCircuit {
     volt::PinId second_pin;
     volt::NetId first_net;
     volt::NetId second_net;
+};
+
+struct MultiComponentNetCircuit {
+    volt::Circuit circuit;
+    std::vector<volt::ComponentId> components;
+    volt::PinDefId first_pin_definition;
+    volt::PinDefId second_pin_definition;
+    volt::NetId shared_net;
 };
 
 [[nodiscard]] ResistorCircuit make_resistor_circuit(bool select_physical_part = true) {
@@ -61,6 +70,41 @@ struct ResistorCircuit {
                            second_pin,
                            first_net,
                            second_net};
+}
+
+[[nodiscard]] MultiComponentNetCircuit make_multi_component_net(std::size_t component_count) {
+    auto circuit = volt::Circuit{};
+    const auto first_pin_definition =
+        circuit.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
+    const auto second_pin_definition =
+        circuit.add_pin_definition(volt::PinDefinition{"B", "2", volt::PinRole::Passive});
+    const auto component_definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
+    const auto shared_net =
+        circuit.add_net(volt::Net{volt::NetName{"SHARED"}, volt::NetKind::Signal});
+
+    auto components = std::vector<volt::ComponentId>{};
+    components.reserve(component_count);
+    for (std::size_t index = 0; index < component_count; ++index) {
+        const auto component = circuit.instantiate_component(
+            component_definition, volt::ReferenceDesignator{"R" + std::to_string(index + 1U)});
+        circuit.select_physical_part(
+            component, volt::PhysicalPart{
+                           volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                           volt::PackageRef{"0603"},
+                           volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                           std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                       volt::PinPadMapping{second_pin_definition, "2"}},
+                       });
+        const auto connected_pin_definition =
+            index == 0U ? second_pin_definition : first_pin_definition;
+        circuit.connect(shared_net,
+                        circuit.pin_by_definition(component, connected_pin_definition).value());
+        components.push_back(component);
+    }
+
+    return MultiComponentNetCircuit{std::move(circuit), std::move(components), first_pin_definition,
+                                    second_pin_definition, shared_net};
 }
 
 [[nodiscard]] volt::Board make_preview_board(const ResistorCircuit &fixture) {
@@ -119,6 +163,27 @@ TEST_CASE("PCB SVG writer exposes stable selectors matching PCB JSON entities") 
     CHECK(svg.find("data-pad=\"footprint_pad:0\"") != std::string::npos);
     CHECK(svg.find("data-pin=\"pin:0\"") != std::string::npos);
     CHECK(svg.find("data-net=\"net:0\"") != std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer renders stable ratsnest selectors for placed multi-pad nets") {
+    auto fixture = make_multi_component_net(2);
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Ratsnest"}};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto first_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    [[maybe_unused]] const auto second_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[1], volt::BoardPoint{20.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(svg.find("<line id=\"ratsnest-edge-net-0-0\" class=\"ratsnest ratsnest-edge\"") !=
+          std::string::npos);
+    CHECK(svg.find("data-ratsnest-edge=\"ratsnest:0:0\"") != std::string::npos);
+    CHECK(svg.find("data-net=\"net:0\"") != std::string::npos);
+    CHECK(svg.find("data-from-pad=\"pcb_pad:0:1\"") != std::string::npos);
+    CHECK(svg.find("data-to-pad=\"pcb_pad:1:0\"") != std::string::npos);
+    CHECK(svg.find("x1=\"10.75\" y1=\"10\" x2=\"19.25\" y2=\"10\"") != std::string::npos);
 }
 
 TEST_CASE("PCB SVG writer surfaces board diagnostics without mutating projection state") {
