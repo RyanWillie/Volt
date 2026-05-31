@@ -72,6 +72,30 @@ namespace {
     throw std::invalid_argument{"Unknown board side"};
 }
 
+[[nodiscard]] inline volt::BoardZoneFill parse_board_zone_fill(const std::string &value) {
+    if (value == "solid" || value == "Solid") {
+        return volt::BoardZoneFill::Solid;
+    }
+    throw std::invalid_argument{"Unknown board zone fill"};
+}
+
+[[nodiscard]] inline volt::BoardKeepoutRestriction
+parse_board_keepout_restriction(const std::string &value) {
+    if (value == "copper" || value == "Copper") {
+        return volt::BoardKeepoutRestriction::Copper;
+    }
+    if (value == "via" || value == "Via") {
+        return volt::BoardKeepoutRestriction::Via;
+    }
+    if (value == "placement" || value == "Placement") {
+        return volt::BoardKeepoutRestriction::Placement;
+    }
+    if (value == "all" || value == "All") {
+        return volt::BoardKeepoutRestriction::All;
+    }
+    throw std::invalid_argument{"Unknown board keepout restriction"};
+}
+
 [[nodiscard]] inline volt::FootprintPadShape parse_footprint_pad_shape(const std::string &value) {
     if (value == "rectangle" || value == "Rectangle") {
         return volt::FootprintPadShape::Rectangle;

@@ -86,6 +86,15 @@ template <> struct LocalIdPrefix<BoardTrackId> {
 template <> struct LocalIdPrefix<BoardViaId> {
     static constexpr auto value = std::string_view{"board_via:"};
 };
+template <> struct LocalIdPrefix<BoardZoneId> {
+    static constexpr auto value = std::string_view{"board_zone:"};
+};
+template <> struct LocalIdPrefix<BoardKeepoutId> {
+    static constexpr auto value = std::string_view{"board_keepout:"};
+};
+template <> struct LocalIdPrefix<BoardTextId> {
+    static constexpr auto value = std::string_view{"board_text:"};
+};
 template <> struct LocalIdPrefix<FootprintDefId> {
     static constexpr auto value = std::string_view{"footprint_def:"};
 };

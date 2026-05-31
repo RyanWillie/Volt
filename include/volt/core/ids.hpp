@@ -55,6 +55,9 @@ struct BoardLayerIdTag;
 struct BoardFeatureIdTag;
 struct BoardTrackIdTag;
 struct BoardViaIdTag;
+struct BoardZoneIdTag;
+struct BoardKeepoutIdTag;
+struct BoardTextIdTag;
 struct FootprintDefIdTag;
 struct FootprintPadIdTag;
 struct ComponentPlacementIdTag;
@@ -111,6 +114,12 @@ using BoardFeatureId = EntityId<detail::BoardFeatureIdTag>;
 using BoardTrackId = EntityId<detail::BoardTrackIdTag>;
 /** ID for a routed PCB via owned by a board projection. */
 using BoardViaId = EntityId<detail::BoardViaIdTag>;
+/** ID for a PCB copper zone owned by a board projection. */
+using BoardZoneId = EntityId<detail::BoardZoneIdTag>;
+/** ID for a PCB keepout owned by a board projection. */
+using BoardKeepoutId = EntityId<detail::BoardKeepoutIdTag>;
+/** ID for PCB board text owned by a board projection. */
+using BoardTextId = EntityId<detail::BoardTextIdTag>;
 /** ID for a cached PCB footprint definition owned by a board projection. */
 using FootprintDefId = EntityId<detail::FootprintDefIdTag>;
 /** ID for a pad inside a PCB footprint definition. */

@@ -179,6 +179,13 @@ void bind_circuit(pybind11::module_ &module) {
         .def("board_add_via", &PyCircuit::board_add_via, py::arg("net"), py::arg("x"), py::arg("y"),
              py::arg("start_layer"), py::arg("end_layer"), py::arg("drill_diameter_mm"),
              py::arg("annular_diameter_mm"))
+        .def("board_add_zone", &PyCircuit::board_add_zone, py::arg("net"), py::arg("layers"),
+             py::arg("outline"), py::arg("fill"), py::arg("priority"))
+        .def("board_add_keepout", &PyCircuit::board_add_keepout, py::arg("layers"),
+             py::arg("outline"), py::arg("restrictions"))
+        .def("board_add_text", &PyCircuit::board_add_text, py::arg("text"), py::arg("x"),
+             py::arg("y"), py::arg("layer"), py::arg("rotation_degrees"), py::arg("size_mm"),
+             py::arg("locked"))
         .def("board_resolve_pads", &PyCircuit::board_resolve_pads)
         .def("board_validate", &PyCircuit::board_validate)
         .def("board_to_json", &PyCircuit::board_to_json)

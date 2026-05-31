@@ -127,6 +127,46 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     assert svg_path.read_text(encoding="utf-8") == svg
 
 
+def test_python_board_authoring_writes_zones_keepouts_and_text():
+    design, r1, _d1 = _small_resistor_led_design()
+    led_a = next(net for net in design.nets() if net.name == "LED_A")
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
+    board.place(r1, at=(10.0, 10.0))
+
+    zone = board.add_zone(
+        outline=((2.0, 2.0), (10.0, 2.0), (10.0, 7.0), (2.0, 7.0)),
+        layers=(front,),
+        net=led_a,
+        priority=4,
+    )
+    keepout = board.add_keepout(
+        outline=((12.0, 2.0), (16.0, 2.0), (16.0, 6.0), (12.0, 6.0)),
+        layers=(front,),
+        restrictions=("copper", "via"),
+    )
+    text = board.add_text("REV A", at=(5.0, 15.0), layer=silk, rotation=90.0, size=1.2, locked=True)
+
+    document = json.loads(board.to_json())
+    assert zone == 0
+    assert keepout == 0
+    assert text == 0
+    assert document["board"]["zones"][0]["net"] == "net:1"
+    assert document["board"]["zones"][0]["layers"] == ["board_layer:0"]
+    assert document["board"]["zones"][0]["priority"] == 4
+    assert document["board"]["keepouts"][0]["restrictions"] == ["copper", "via"]
+    assert document["board"]["texts"][0]["text"] == "REV A"
+    assert document["board"]["texts"][0]["layer"] == "board_layer:1"
+    assert document["board"]["texts"][0]["locked"] is True
+
+    svg = board.to_svg()
+    assert 'data-zone="board_zone:0"' in svg
+    assert 'data-keepout="board_keepout:0"' in svg
+    assert 'data-text="board_text:0"' in svg
+
+
 def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():
     design, r1, _d1 = _small_resistor_led_design()
     vcc = next(net for net in design.nets() if net.name == "VCC")
@@ -239,3 +279,24 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
         board.add_track(design.net("ROUTE"), layer=front, points=((1.0, 1.0), (2.0, 1.0)), width=0)
     with pytest.raises(ValueError, match="Board via layer span must reference distinct layers"):
         board.add_via(design.net("VIA"), at=(1.0, 1.0), start_layer=front, end_layer=front)
+    with pytest.raises(IndexError, match="Volt entity id is out of range"):
+        board.add_zone(
+            outline=((1.0, 1.0), (3.0, 1.0), (3.0, 3.0), (1.0, 3.0)),
+            layers=(front,),
+            net=99,
+        )
+    with pytest.raises(RuntimeError, match="Board copper zones require copper layers"):
+        silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
+        board.add_zone(
+            outline=((1.0, 1.0), (3.0, 1.0), (3.0, 3.0), (1.0, 3.0)),
+            layers=(silk,),
+            net=design.net("ZONE"),
+        )
+    with pytest.raises(ValueError, match="Board keepout restrictions must not be empty"):
+        board.add_keepout(
+            outline=((1.0, 1.0), (3.0, 1.0), (3.0, 3.0), (1.0, 3.0)),
+            layers=(front,),
+            restrictions=(),
+        )
+    with pytest.raises(ValueError, match="Board text size must be positive"):
+        board.add_text("REV A", at=(1.0, 1.0), layer=front, size=0.0)

@@ -1081,6 +1081,70 @@ std::size_t PyCircuit::board_add_via(std::size_t net, double x, double y, std::s
         .index();
 }
 
+std::size_t PyCircuit::board_add_zone(std::optional<std::size_t> net,
+                                      const std::vector<std::size_t> &layers,
+                                      const std::vector<std::pair<double, double>> &outline,
+                                      const std::string &fill, int priority) {
+    auto board_layers = std::vector<volt::BoardLayerId>{};
+    board_layers.reserve(layers.size());
+    for (const auto layer : layers) {
+        board_layers.emplace_back(layer);
+    }
+
+    auto points = std::vector<volt::BoardPoint>{};
+    points.reserve(outline.size());
+    for (const auto &[x, y] : outline) {
+        points.emplace_back(x, y);
+    }
+
+    auto board_net = std::optional<volt::NetId>{};
+    if (net.has_value()) {
+        board_net = net_id(net.value());
+    }
+
+    return board_projection()
+        .add_zone(volt::BoardZone{std::move(points), std::move(board_layers), board_net,
+                                  parse_board_zone_fill(fill), priority})
+        .index();
+}
+
+std::size_t PyCircuit::board_add_keepout(const std::vector<std::size_t> &layers,
+                                         const std::vector<std::pair<double, double>> &outline,
+                                         const std::vector<std::string> &restrictions) {
+    auto board_layers = std::vector<volt::BoardLayerId>{};
+    board_layers.reserve(layers.size());
+    for (const auto layer : layers) {
+        board_layers.emplace_back(layer);
+    }
+
+    auto points = std::vector<volt::BoardPoint>{};
+    points.reserve(outline.size());
+    for (const auto &[x, y] : outline) {
+        points.emplace_back(x, y);
+    }
+
+    auto keepout_restrictions = std::vector<volt::BoardKeepoutRestriction>{};
+    keepout_restrictions.reserve(restrictions.size());
+    for (const auto &restriction : restrictions) {
+        keepout_restrictions.push_back(parse_board_keepout_restriction(restriction));
+    }
+
+    return board_projection()
+        .add_keepout(volt::BoardKeepout{std::move(points), std::move(board_layers),
+                                        std::move(keepout_restrictions)})
+        .index();
+}
+
+std::size_t PyCircuit::board_add_text(const std::string &text, double x, double y,
+                                      std::size_t layer, double rotation_degrees, double size_mm,
+                                      bool locked) {
+    return board_projection()
+        .add_text(volt::BoardText{text, volt::BoardPoint{x, y},
+                                  volt::BoardRotation::degrees(rotation_degrees),
+                                  volt::BoardLayerId{layer}, size_mm, locked})
+        .index();
+}
+
 py::list PyCircuit::board_resolve_pads() const {
     auto result = py::list{};
     for (const auto &resolution :

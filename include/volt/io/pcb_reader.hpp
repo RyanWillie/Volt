@@ -52,6 +52,9 @@ class PcbBoardReader {
         read_placements(board, board_json);
         read_tracks(board, board_json);
         read_vias(board, board_json);
+        read_zones(board, board_json);
+        read_keepouts(board, board_json);
+        read_texts(board, board_json);
         validate_viewer_cache(board);
         return board;
     }
@@ -121,6 +124,12 @@ class PcbBoardReader {
         return result;
     }
 
+    static int int_field(const nlohmann::json &object, const char *name) {
+        const auto &value = field(object, name);
+        require(value.is_number_integer(), std::string{"Expected integer field: "} + name);
+        return value.get<int>();
+    }
+
     template <typename Id> static Id typed_id(const nlohmann::json &object, const char *name) {
         return decode_local_id<Id>(string_field(object, name));
     }
@@ -159,6 +168,16 @@ class PcbBoardReader {
         const auto y = value[1].get<double>();
         require(std::isfinite(x) && std::isfinite(y), "PCB point values must be finite");
         return BoardPoint{x, y};
+    }
+
+    [[nodiscard]] static std::vector<BoardPoint> board_points(const nlohmann::json &value) {
+        require(value.is_array(), "PCB point list must be an array");
+        auto points = std::vector<BoardPoint>{};
+        points.reserve(value.size());
+        for (const auto &point : value) {
+            points.push_back(board_point(point));
+        }
+        return points;
     }
 
     [[nodiscard]] static FootprintPoint footprint_point(const nlohmann::json &value) {
@@ -450,6 +469,116 @@ class PcbBoardReader {
         }
     }
 
+    [[nodiscard]] std::vector<BoardLayerId>
+    read_board_layers(const Board &board, const nlohmann::json &object, const char *name,
+                      const std::string &missing_message) const {
+        const auto &layers_json = array_field(object, name);
+        auto layers = std::vector<BoardLayerId>{};
+        layers.reserve(layers_json.size());
+        for (const auto &layer_json : layers_json) {
+            require(layer_json.is_string(), "PCB board primitive layer must be a string");
+            const auto layer = decode_local_id<BoardLayerId>(layer_json.get<std::string>());
+            if (layer.index() >= board.layer_count()) {
+                throw std::logic_error{missing_message};
+            }
+            layers.push_back(layer);
+        }
+        return layers;
+    }
+
+    void read_zones(Board &board, const nlohmann::json &board_json) const {
+        const auto *zones = optional_field(board_json, "zones");
+        if (zones == nullptr) {
+            return;
+        }
+        require(zones->is_array(), "Expected array field: zones");
+        for (std::size_t index = 0; index < zones->size(); ++index) {
+            const auto &zone_json = (*zones)[index];
+            require(zone_json.is_object(), "PCB zone must be an object");
+            const auto expected = BoardZoneId{index};
+            require_sequential_id(zone_json, "id", expected, "PCB zone IDs must be sequential");
+
+            const auto net_value = nullable_string_field(zone_json, "net");
+            auto net = std::optional<NetId>{};
+            if (net_value.has_value()) {
+                net = decode_local_id<NetId>(net_value.value());
+                if (net->index() >= circuit_.net_count()) {
+                    throw std::logic_error{"PCB zone references missing net"};
+                }
+            }
+
+            const auto id = board.add_zone(BoardZone{
+                board_points(field(zone_json, "outline")),
+                read_board_layers(board, zone_json, "layers",
+                                  "PCB zone references missing board layer"),
+                net,
+                board_zone_fill_from_name(string_field(zone_json, "fill")),
+                int_field(zone_json, "priority"),
+            });
+            require(id == expected, "PCB zone IDs must be sequential");
+        }
+    }
+
+    void read_keepouts(Board &board, const nlohmann::json &board_json) const {
+        const auto *keepouts = optional_field(board_json, "keepouts");
+        if (keepouts == nullptr) {
+            return;
+        }
+        require(keepouts->is_array(), "Expected array field: keepouts");
+        for (std::size_t index = 0; index < keepouts->size(); ++index) {
+            const auto &keepout_json = (*keepouts)[index];
+            require(keepout_json.is_object(), "PCB keepout must be an object");
+            const auto expected = BoardKeepoutId{index};
+            require_sequential_id(keepout_json, "id", expected,
+                                  "PCB keepout IDs must be sequential");
+
+            const auto &restrictions_json = array_field(keepout_json, "restrictions");
+            auto restrictions = std::vector<BoardKeepoutRestriction>{};
+            restrictions.reserve(restrictions_json.size());
+            for (const auto &restriction_json : restrictions_json) {
+                require(restriction_json.is_string(), "PCB keepout restriction must be a string");
+                restrictions.push_back(
+                    board_keepout_restriction_from_name(restriction_json.get<std::string>()));
+            }
+
+            const auto id = board.add_keepout(BoardKeepout{
+                board_points(field(keepout_json, "outline")),
+                read_board_layers(board, keepout_json, "layers",
+                                  "PCB keepout references missing board layer"),
+                std::move(restrictions),
+            });
+            require(id == expected, "PCB keepout IDs must be sequential");
+        }
+    }
+
+    void read_texts(Board &board, const nlohmann::json &board_json) const {
+        const auto *texts = optional_field(board_json, "texts");
+        if (texts == nullptr) {
+            return;
+        }
+        require(texts->is_array(), "Expected array field: texts");
+        for (std::size_t index = 0; index < texts->size(); ++index) {
+            const auto &text_json = (*texts)[index];
+            require(text_json.is_object(), "PCB text must be an object");
+            const auto expected = BoardTextId{index};
+            require_sequential_id(text_json, "id", expected, "PCB text IDs must be sequential");
+            const auto layer = typed_id<BoardLayerId>(text_json, "layer");
+            if (layer.index() >= board.layer_count()) {
+                throw std::logic_error{"PCB text references missing board layer"};
+            }
+
+            const auto id = board.add_text(BoardText{
+                string_field(text_json, "text"),
+                board_point(field(text_json, "position")),
+                BoardRotation::degrees(number_field(text_json, "rotation_deg")),
+                layer,
+                number_field(text_json, "size_mm"),
+                bool_field(text_json, "locked"),
+            });
+            require(id == expected, "PCB text IDs must be sequential");
+        }
+    }
+
     void validate_placement_footprint(const Board &board, ComponentId component,
                                       const nlohmann::json &placement_json) const {
         const auto footprint = nullable_string_field(placement_json, "footprint");
@@ -703,6 +832,24 @@ class PcbBoardReader {
         if (const auto id = decode_if_prefixed<BoardViaId>(ref)) {
             if (id->index() >= board.via_count()) {
                 throw std::logic_error{"PCB viewer diagnostic references missing via"};
+            }
+            return;
+        }
+        if (const auto id = decode_if_prefixed<BoardZoneId>(ref)) {
+            if (id->index() >= board.zone_count()) {
+                throw std::logic_error{"PCB viewer diagnostic references missing zone"};
+            }
+            return;
+        }
+        if (const auto id = decode_if_prefixed<BoardKeepoutId>(ref)) {
+            if (id->index() >= board.keepout_count()) {
+                throw std::logic_error{"PCB viewer diagnostic references missing keepout"};
+            }
+            return;
+        }
+        if (const auto id = decode_if_prefixed<BoardTextId>(ref)) {
+            if (id->index() >= board.text_count()) {
+                throw std::logic_error{"PCB viewer diagnostic references missing text"};
             }
             return;
         }

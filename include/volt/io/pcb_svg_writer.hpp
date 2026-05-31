@@ -162,6 +162,12 @@ inline void write_pcb_svg_number(std::ostream &out, double value) {
         return encode_local_id(BoardTrackId{entity.index()});
     case EntityKind::BoardVia:
         return encode_local_id(BoardViaId{entity.index()});
+    case EntityKind::BoardZone:
+        return encode_local_id(BoardZoneId{entity.index()});
+    case EntityKind::BoardKeepout:
+        return encode_local_id(BoardKeepoutId{entity.index()});
+    case EntityKind::BoardText:
+        return encode_local_id(BoardTextId{entity.index()});
     case EntityKind::FootprintDef:
         return encode_local_id(FootprintDefId{entity.index()});
     case EntityKind::FootprintPad:
@@ -367,6 +373,20 @@ inline void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacem
         include_board_point(bounds,
                             BoardPoint{via.position().x_mm(), via.position().y_mm() + radius});
     }
+    for (std::size_t index = 0; index < board.zone_count(); ++index) {
+        for (const auto point : board.zone(BoardZoneId{index}).outline()) {
+            include_board_point(bounds, point);
+        }
+    }
+    for (std::size_t index = 0; index < board.keepout_count(); ++index) {
+        for (const auto point : board.keepout(BoardKeepoutId{index}).outline()) {
+            include_board_point(bounds, point);
+        }
+    }
+    for (std::size_t index = 0; index < board.text_count(); ++index) {
+        const auto &text = board.text(BoardTextId{index});
+        include_board_point(bounds, text.position());
+    }
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto &placement = board.placement(ComponentPlacementId{index});
         include_board_point(bounds, placement.position());
@@ -392,7 +412,8 @@ inline void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacem
     throw std::logic_error{"Unhandled PCB footprint pad shape"};
 }
 
-inline void write_style(std::ostream &out, bool include_copper) {
+inline void write_style(std::ostream &out, bool include_copper, bool include_zones,
+                        bool include_keepouts, bool include_texts) {
     out << "  <style>\n";
     out << "    .board-background{fill:#f8faf8}\n";
     out << "    .board-outline{fill:#d7ead0;stroke:#1f5f3a;stroke-width:0.28}\n";
@@ -402,6 +423,18 @@ inline void write_style(std::ostream &out, bool include_copper) {
                ".pcb-track{fill:none;stroke:#b45309;stroke-linecap:round;stroke-linejoin:round}\n";
         out << "    .pcb-via-annular{fill:#b45309;stroke:#7c2d12;stroke-width:0.08}\n";
         out << "    .pcb-via-drill{fill:#f8faf8;stroke:#7c2d12;stroke-width:0.06}\n";
+    }
+    if (include_zones) {
+        out << "    .pcb-zone{fill:#b45309;fill-opacity:0.22;stroke:#92400e;stroke-width:0.12}\n";
+    }
+    if (include_keepouts) {
+        out << "    "
+               ".pcb-keepout{fill:#b42318;fill-opacity:0.12;stroke:#b42318;stroke-width:0.18;"
+               "stroke-dasharray:0.8 0.45}\n";
+    }
+    if (include_texts) {
+        out << "    .board-text{font-family:sans-serif;fill:#172026;text-anchor:middle;"
+               "dominant-baseline:middle}\n";
     }
     out << "    "
            ".board-feature-label,.reference-designator,.pad-net-label,.diagnostic-label{font:1.8px "
@@ -461,6 +494,115 @@ inline void write_pcb_svg_features(std::ostream &out, const Board &board) {
                                  feature.position().y_mm() + (feature.diameter_mm() / 2.0) + 2.0);
             out << "\" text-anchor=\"middle\">" << pcb_svg_escape(feature.label()) << "</text>\n";
         }
+    }
+    out << "    </g>\n";
+}
+
+inline void write_pcb_point_list(std::ostream &out, const std::vector<BoardPoint> &points) {
+    for (std::size_t point_index = 0; point_index < points.size(); ++point_index) {
+        if (point_index != 0U) {
+            out << ' ';
+        }
+        write_pcb_svg_number(out, points[point_index].x_mm());
+        out << ',';
+        write_pcb_svg_number(out, points[point_index].y_mm());
+    }
+}
+
+[[nodiscard]] inline std::string board_layer_list_attr(const std::vector<BoardLayerId> &layers) {
+    auto result = std::string{};
+    for (std::size_t index = 0; index < layers.size(); ++index) {
+        if (index != 0U) {
+            result += " ";
+        }
+        result += encode_local_id(layers[index]);
+    }
+    return result;
+}
+
+[[nodiscard]] inline std::string
+keepout_restriction_list_attr(const std::vector<BoardKeepoutRestriction> &restrictions) {
+    auto result = std::string{};
+    for (std::size_t index = 0; index < restrictions.size(); ++index) {
+        if (index != 0U) {
+            result += " ";
+        }
+        result += board_keepout_restriction_name(restrictions[index]);
+    }
+    return result;
+}
+
+inline void write_zones(std::ostream &out, const Board &board) {
+    if (board.zone_count() == 0U) {
+        return;
+    }
+
+    out << "    <g class=\"layer layer-zones\">\n";
+    for (std::size_t index = 0; index < board.zone_count(); ++index) {
+        const auto id = BoardZoneId{index};
+        const auto &zone = board.zone(id);
+        out << "      <polygon id=\"pcb-zone-" << index << "\" class=\"pcb-zone fill-"
+            << board_zone_fill_name(zone.fill()) << "\" data-zone=\"" << encode_local_id(id)
+            << "\" data-layer=\"" << encode_local_id(zone.layers().front()) << "\" data-layers=\""
+            << pcb_svg_escape(board_layer_list_attr(zone.layers())) << "\"";
+        if (zone.net().has_value()) {
+            out << " data-net=\"" << encode_local_id(zone.net().value()) << "\"";
+        }
+        out << " data-priority=\"" << zone.priority() << "\" points=\"";
+        write_pcb_point_list(out, zone.outline());
+        out << "\"/>\n";
+    }
+    out << "    </g>\n";
+}
+
+inline void write_keepouts(std::ostream &out, const Board &board) {
+    if (board.keepout_count() == 0U) {
+        return;
+    }
+
+    out << "    <g class=\"layer layer-keepouts\">\n";
+    for (std::size_t index = 0; index < board.keepout_count(); ++index) {
+        const auto id = BoardKeepoutId{index};
+        const auto &keepout = board.keepout(id);
+        const auto restrictions = keepout_restriction_list_attr(keepout.restrictions());
+        out << "      <polygon id=\"pcb-keepout-" << index << "\" class=\"pcb-keepout "
+            << pcb_svg_escape(restrictions) << "\" data-keepout=\"" << encode_local_id(id)
+            << "\" data-layer=\"" << encode_local_id(keepout.layers().front())
+            << "\" data-layers=\"" << pcb_svg_escape(board_layer_list_attr(keepout.layers()))
+            << "\" data-restrictions=\"" << pcb_svg_escape(restrictions) << "\" points=\"";
+        write_pcb_point_list(out, keepout.outline());
+        out << "\"/>\n";
+    }
+    out << "    </g>\n";
+}
+
+inline void write_texts(std::ostream &out, const Board &board) {
+    if (board.text_count() == 0U) {
+        return;
+    }
+
+    out << "    <g class=\"layer layer-board-text\">\n";
+    for (std::size_t index = 0; index < board.text_count(); ++index) {
+        const auto id = BoardTextId{index};
+        const auto &text = board.text(id);
+        out << "      <text id=\"pcb-text-" << index << "\" class=\"board-text";
+        if (text.locked()) {
+            out << " locked";
+        }
+        out << "\" data-text=\"" << encode_local_id(id) << "\" data-layer=\""
+            << encode_local_id(text.layer()) << "\" x=\"";
+        write_pcb_svg_number(out, text.position().x_mm());
+        out << "\" y=\"";
+        write_pcb_svg_number(out, text.position().y_mm());
+        out << "\" font-size=\"";
+        write_pcb_svg_number(out, text.size_mm());
+        out << "\" transform=\"rotate(";
+        write_pcb_svg_number(out, text.rotation().degrees());
+        out << ' ';
+        write_pcb_svg_number(out, text.position().x_mm());
+        out << ' ';
+        write_pcb_svg_number(out, text.position().y_mm());
+        out << ")\">" << pcb_svg_escape(text.text()) << "</text>\n";
     }
     out << "    </g>\n";
 }
@@ -771,6 +913,34 @@ inline void write_diagnostics(std::ostream &out, const Board &board,
                     out << "\"/>\n";
                     continue;
                 }
+                if (entity.kind() == EntityKind::BoardKeepout) {
+                    const auto keepout_id = BoardKeepoutId{entity.index()};
+                    if (keepout_id.index() >= board.keepout_count()) {
+                        continue;
+                    }
+                    const auto &keepout = board.keepout(keepout_id);
+                    out << "      <polygon class=\"diagnostic-marker " << severity
+                        << "\" data-diagnostic-code=\"" << pcb_svg_escape(diagnostic.code().value())
+                        << "\" data-entities=\"" << pcb_svg_escape(entities) << "\" data-keepout=\""
+                        << encode_local_id(keepout_id) << "\" points=\"";
+                    write_pcb_point_list(out, keepout.outline());
+                    out << "\"/>\n";
+                    continue;
+                }
+                if (entity.kind() == EntityKind::BoardZone) {
+                    const auto zone_id = BoardZoneId{entity.index()};
+                    if (zone_id.index() >= board.zone_count()) {
+                        continue;
+                    }
+                    const auto &zone = board.zone(zone_id);
+                    out << "      <polygon class=\"diagnostic-marker " << severity
+                        << "\" data-diagnostic-code=\"" << pcb_svg_escape(diagnostic.code().value())
+                        << "\" data-entities=\"" << pcb_svg_escape(entities) << "\" data-zone=\""
+                        << encode_local_id(zone_id) << "\" points=\"";
+                    write_pcb_point_list(out, zone.outline());
+                    out << "\"/>\n";
+                    continue;
+                }
                 if (entity.kind() != EntityKind::Component &&
                     entity.kind() != EntityKind::ComponentPlacement) {
                     continue;
@@ -816,6 +986,9 @@ inline void write_pcb_placement_svg(std::ostream &out, const Board &board,
     const auto resolutions = board.resolve_pads(preview_footprints);
     const auto ratsnest_edges = derive_ratsnest_edges(resolutions);
     const auto has_copper = board.track_count() != 0U || board.via_count() != 0U;
+    const auto has_zones = board.zone_count() != 0U;
+    const auto has_keepouts = board.keepout_count() != 0U;
+    const auto has_texts = board.text_count() != 0U;
 
     out << "<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"pcb-placement-preview\" viewBox=\"0 "
            "0 ";
@@ -829,7 +1002,7 @@ inline void write_pcb_placement_svg(std::ostream &out, const Board &board,
     out << "mm\" data-board=\"board:0\" data-board-name=\""
         << detail::pcb_svg_escape(board.name().value()) << "\" data-units=\""
         << detail::board_units_name(board.units()) << "\">\n";
-    detail::write_style(out, has_copper);
+    detail::write_style(out, has_copper, has_zones, has_keepouts, has_texts);
     out << "  <rect class=\"board-background\" x=\"0\" y=\"0\" width=\"";
     detail::write_pcb_svg_number(out, width);
     out << "\" height=\"";
@@ -842,7 +1015,10 @@ inline void write_pcb_placement_svg(std::ostream &out, const Board &board,
     out << ")\">\n";
     detail::write_pcb_svg_outline(out, board);
     detail::write_pcb_svg_features(out, board);
+    detail::write_zones(out, board);
     detail::write_copper(out, board);
+    detail::write_keepouts(out, board);
+    detail::write_texts(out, board);
     detail::write_placements(out, board, preview_footprints, resolutions);
     detail::write_ratsnest(out, ratsnest_edges);
     detail::write_pad_overlays(out, board, resolutions, options);

@@ -285,6 +285,20 @@ class PyCircuit {
                                             std::size_t start_layer, std::size_t end_layer,
                                             double drill_diameter_mm, double annular_diameter_mm);
 
+    [[nodiscard]] std::size_t board_add_zone(std::optional<std::size_t> net,
+                                             const std::vector<std::size_t> &layers,
+                                             const std::vector<std::pair<double, double>> &outline,
+                                             const std::string &fill, int priority);
+
+    [[nodiscard]] std::size_t
+    board_add_keepout(const std::vector<std::size_t> &layers,
+                      const std::vector<std::pair<double, double>> &outline,
+                      const std::vector<std::string> &restrictions);
+
+    [[nodiscard]] std::size_t board_add_text(const std::string &text, double x, double y,
+                                             std::size_t layer, double rotation_degrees,
+                                             double size_mm, bool locked);
+
     [[nodiscard]] py::list board_resolve_pads() const;
 
     [[nodiscard]] py::list board_validate() const;

@@ -202,6 +202,53 @@ namespace detail {
     throw std::logic_error{"Invalid PCB board feature kind"};
 }
 
+[[nodiscard]] inline std::string board_zone_fill_name(BoardZoneFill fill) {
+    switch (fill) {
+    case BoardZoneFill::Solid:
+        return "solid";
+    }
+    throw std::logic_error{"Unhandled PCB board zone fill"};
+}
+
+[[nodiscard]] inline BoardZoneFill board_zone_fill_from_name(const std::string &value) {
+    if (value == "solid") {
+        return BoardZoneFill::Solid;
+    }
+    throw std::logic_error{"Invalid PCB board zone fill"};
+}
+
+[[nodiscard]] inline std::string
+board_keepout_restriction_name(BoardKeepoutRestriction restriction) {
+    switch (restriction) {
+    case BoardKeepoutRestriction::Copper:
+        return "copper";
+    case BoardKeepoutRestriction::Via:
+        return "via";
+    case BoardKeepoutRestriction::Placement:
+        return "placement";
+    case BoardKeepoutRestriction::All:
+        return "all";
+    }
+    throw std::logic_error{"Unhandled PCB board keepout restriction"};
+}
+
+[[nodiscard]] inline BoardKeepoutRestriction
+board_keepout_restriction_from_name(const std::string &value) {
+    if (value == "copper") {
+        return BoardKeepoutRestriction::Copper;
+    }
+    if (value == "via") {
+        return BoardKeepoutRestriction::Via;
+    }
+    if (value == "placement") {
+        return BoardKeepoutRestriction::Placement;
+    }
+    if (value == "all") {
+        return BoardKeepoutRestriction::All;
+    }
+    throw std::logic_error{"Invalid PCB board keepout restriction"};
+}
+
 [[nodiscard]] inline std::string footprint_layer_name(FootprintLayer layer) {
     switch (layer) {
     case FootprintLayer::FrontCopper:

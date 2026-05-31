@@ -227,6 +227,56 @@ TEST_CASE("PCB SVG writer renders stable selectors for copper tracks and vias") 
           std::string::npos);
 }
 
+TEST_CASE("PCB SVG writer renders stable selectors for zones, keepouts, and board text") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Annotations"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto silk = board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto zone = board.add_zone(volt::BoardZone{
+        std::vector{
+            volt::BoardPoint{2.0, 2.0},
+            volt::BoardPoint{10.0, 2.0},
+            volt::BoardPoint{10.0, 7.0},
+            volt::BoardPoint{2.0, 7.0},
+        },
+        std::vector{front},
+        fixture.first_net,
+    });
+    [[maybe_unused]] const auto keepout = board.add_keepout(volt::BoardKeepout{
+        std::vector{
+            volt::BoardPoint{12.0, 2.0},
+            volt::BoardPoint{16.0, 2.0},
+            volt::BoardPoint{16.0, 6.0},
+            volt::BoardPoint{12.0, 6.0},
+        },
+        std::vector{front},
+        std::vector{volt::BoardKeepoutRestriction::Copper},
+    });
+    [[maybe_unused]] const auto text = board.add_text(volt::BoardText{
+        "REV A", volt::BoardPoint{5.0, 15.0}, volt::BoardRotation::degrees(90.0), silk, 1.2, true});
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(svg.find("<polygon id=\"pcb-zone-0\" class=\"pcb-zone fill-solid\"") !=
+          std::string::npos);
+    CHECK(svg.find("data-zone=\"board_zone:0\"") != std::string::npos);
+    CHECK(svg.find("data-layer=\"board_layer:0\"") != std::string::npos);
+    CHECK(svg.find("data-net=\"net:0\"") != std::string::npos);
+    CHECK(svg.find("points=\"2,2 10,2 10,7 2,7\"") != std::string::npos);
+    CHECK(svg.find("<polygon id=\"pcb-keepout-0\" class=\"pcb-keepout copper\"") !=
+          std::string::npos);
+    CHECK(svg.find("data-keepout=\"board_keepout:0\"") != std::string::npos);
+    CHECK(svg.find("data-restrictions=\"copper\"") != std::string::npos);
+    CHECK(svg.find("<text id=\"pcb-text-0\" class=\"board-text locked\"") != std::string::npos);
+    CHECK(svg.find("data-text=\"board_text:0\"") != std::string::npos);
+    CHECK(svg.find("transform=\"rotate(90 5 15)\"") != std::string::npos);
+    CHECK(svg.find(">REV A</text>") != std::string::npos);
+}
+
 TEST_CASE("PCB SVG writer surfaces board diagnostics without mutating projection state") {
     auto fixture = make_resistor_circuit(false);
     auto board = make_preview_board(fixture);
@@ -282,6 +332,37 @@ TEST_CASE("PCB SVG writer exposes copper entity references for DRC diagnostics")
     CHECK(svg.find("data-track=\"board_track:0\"") != std::string::npos);
     CHECK(svg.find("data-diagnostic-code=\"PCB_VIA_DRILL_BELOW_MINIMUM\"") != std::string::npos);
     CHECK(svg.find("data-via=\"board_via:0\"") != std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer exposes keepout entity references for DRC diagnostics") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Keepout DRC"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto keepout = board.add_keepout(volt::BoardKeepout{
+        std::vector{
+            volt::BoardPoint{4.0, 4.0},
+            volt::BoardPoint{8.0, 4.0},
+            volt::BoardPoint{8.0, 8.0},
+            volt::BoardPoint{4.0, 8.0},
+        },
+        std::vector{front},
+        std::vector{volt::BoardKeepoutRestriction::Copper},
+    });
+    [[maybe_unused]] const auto track = board.add_track(volt::BoardTrack{
+        fixture.first_net,
+        front,
+        std::vector{volt::BoardPoint{2.0, 6.0}, volt::BoardPoint{10.0, 6.0}},
+        0.25,
+    });
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(svg.find("data-diagnostic-code=\"PCB_KEEPOUT_COPPER_VIOLATION\"") != std::string::npos);
+    CHECK(svg.find("data-keepout=\"board_keepout:0\"") != std::string::npos);
+    CHECK(svg.find("data-track=\"board_track:0\"") != std::string::npos);
 }
 
 TEST_CASE("PCB SVG writer omits diagnostic layout when overlays are disabled") {
