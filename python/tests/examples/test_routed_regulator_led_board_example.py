@@ -94,6 +94,15 @@ def test_routed_regulator_led_board_example_writes_stable_board_artifacts():
         "R_0603_1608Metric",
         "LED_0603_1608Metric",
     }
+    regulator_part = next(
+        component["selected_physical_part"]["manufacturer_part"]
+        for component in logical["components"]
+        if component["reference"] == "U1"
+    )
+    assert regulator_part == {
+        "manufacturer": "STMicroelectronics",
+        "part_number": "LD1117S33TR",
+    }
 
     assert schematic["format"] == "volt.schematic"
     assert [sheet["name"] for sheet in schematic["sheets"]] == ["Regulator LED Board"]
@@ -123,16 +132,21 @@ def test_routed_regulator_led_board_example_writes_stable_board_artifacts():
     }
     assert len(pcb["board"]["placements"]) == 6
     assert len(pcb["board"]["footprint_definitions"]) == 5
-    assert len(pcb["board"]["tracks"]) >= 8
-    assert len(pcb["board"]["vias"]) >= 1
+    assert len(pcb["board"]["tracks"]) == 16
+    assert len(pcb["board"]["vias"]) == 3
+    assert len(pcb["board"]["texts"]) == 1
     assert len(pcb["viewer"]["pad_resolutions"]) == 14
     assert pcb["viewer"]["diagnostics"] == []
 
     assert validation["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
-    assert validation["reports"]["pcb_board"]["summary"] == {
-        "errors": 0,
-        "infos": 0,
-        "warnings": 0,
+    assert {
+        name: report["summary"] for name, report in validation["reports"].items()
+    } == {
+        "logical_design": {"errors": 0, "infos": 0, "warnings": 0},
+        "pcb_board": {"errors": 0, "infos": 0, "warnings": 0},
+        "pcb_readiness": {"errors": 0, "infos": 0, "warnings": 0},
+        "schematic_readability": {"errors": 0, "infos": 0, "warnings": 0},
+        "schematic_readiness": {"errors": 0, "infos": 0, "warnings": 0},
     }
     assert validation["diagnostics"] == []
     assert 'data-board-name="Routed Regulator LED Board"' in first_texts["pcb_svg"]

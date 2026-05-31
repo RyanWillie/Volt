@@ -34,16 +34,17 @@
       <polyline id="pcb-track-2" class="pcb-track" data-track="board_track:2" data-layer="board_layer:1" data-net="net:0" points="15.25,7 36,23" stroke-width="0.3"/>
       <polyline id="pcb-track-3" class="pcb-track" data-track="board_track:3" data-layer="board_layer:0" data-net="net:0" points="36,23 33,23" stroke-width="0.3"/>
       <polyline id="pcb-track-4" class="pcb-track" data-track="board_track:4" data-layer="board_layer:0" data-net="net:1" points="30,23 42.25,10" stroke-width="0.3"/>
-      <polyline id="pcb-track-5" class="pcb-track" data-track="board_track:5" data-layer="board_layer:0" data-net="net:1" points="30,19 42.25,10" stroke-width="0.3"/>
-      <polyline id="pcb-track-6" class="pcb-track" data-track="board_track:6" data-layer="board_layer:0" data-net="net:1" points="30,23 42.25,31" stroke-width="0.3"/>
-      <polyline id="pcb-track-7" class="pcb-track" data-track="board_track:7" data-layer="board_layer:0" data-net="net:2" points="43.75,31 55.25,31" stroke-width="0.25"/>
-      <polyline id="pcb-track-8" class="pcb-track" data-track="board_track:8" data-layer="board_layer:0" data-net="net:3" points="7,22.27 20,37" stroke-width="0.35"/>
-      <polyline id="pcb-track-9" class="pcb-track" data-track="board_track:9" data-layer="board_layer:0" data-net="net:3" points="27,23 20,37" stroke-width="0.35"/>
-      <polyline id="pcb-track-10" class="pcb-track" data-track="board_track:10" data-layer="board_layer:0" data-net="net:3" points="16.75,10 20,37" stroke-width="0.35"/>
-      <polyline id="pcb-track-11" class="pcb-track" data-track="board_track:11" data-layer="board_layer:0" data-net="net:3" points="43.75,10 62,10 62,37 50,37" stroke-width="0.35"/>
-      <polyline id="pcb-track-12" class="pcb-track" data-track="board_track:12" data-layer="board_layer:0" data-net="net:3" points="56.75,31 50,37" stroke-width="0.35"/>
-      <polyline id="pcb-track-13" class="pcb-track" data-track="board_track:13" data-layer="board_layer:0" data-net="net:3" points="50,37 20,37" stroke-width="0.35"/>
-      <polyline id="pcb-track-14" class="pcb-track" data-track="board_track:14" data-layer="board_layer:1" data-net="net:3" points="20,37 50,37" stroke-width="0.35"/>
+      <polyline id="pcb-track-5" class="pcb-track" data-track="board_track:5" data-layer="board_layer:0" data-net="net:1" points="30,23 30,19" stroke-width="0.45"/>
+      <polyline id="pcb-track-6" class="pcb-track" data-track="board_track:6" data-layer="board_layer:0" data-net="net:1" points="30,19 42.25,10" stroke-width="0.3"/>
+      <polyline id="pcb-track-7" class="pcb-track" data-track="board_track:7" data-layer="board_layer:0" data-net="net:1" points="30,23 42.25,31" stroke-width="0.3"/>
+      <polyline id="pcb-track-8" class="pcb-track" data-track="board_track:8" data-layer="board_layer:0" data-net="net:2" points="43.75,31 55.25,31" stroke-width="0.25"/>
+      <polyline id="pcb-track-9" class="pcb-track" data-track="board_track:9" data-layer="board_layer:0" data-net="net:3" points="7,22.27 20,37" stroke-width="0.35"/>
+      <polyline id="pcb-track-10" class="pcb-track" data-track="board_track:10" data-layer="board_layer:0" data-net="net:3" points="27,23 20,37" stroke-width="0.35"/>
+      <polyline id="pcb-track-11" class="pcb-track" data-track="board_track:11" data-layer="board_layer:0" data-net="net:3" points="16.75,10 20,37" stroke-width="0.35"/>
+      <polyline id="pcb-track-12" class="pcb-track" data-track="board_track:12" data-layer="board_layer:0" data-net="net:3" points="43.75,10 62,10 62,37 50,37" stroke-width="0.35"/>
+      <polyline id="pcb-track-13" class="pcb-track" data-track="board_track:13" data-layer="board_layer:0" data-net="net:3" points="56.75,31 50,37" stroke-width="0.35"/>
+      <polyline id="pcb-track-14" class="pcb-track" data-track="board_track:14" data-layer="board_layer:0" data-net="net:3" points="50,37 20,37" stroke-width="0.35"/>
+      <polyline id="pcb-track-15" class="pcb-track" data-track="board_track:15" data-layer="board_layer:1" data-net="net:3" points="20,37 50,37" stroke-width="0.35"/>
       <g id="pcb-via-0" class="pcb-via" data-via="board_via:0" data-net="net:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
         <circle class="pcb-via-annular" cx="15.25" cy="7" r="0.35"/>
         <circle class="pcb-via-drill" cx="15.25" cy="7" r="0.15"/>

@@ -26,6 +26,47 @@ def test_led_circuit_validates():
     assert '"name": "VCC"' in json_text
     assert '"reference": "R1"' in json_text
 
+
+def test_power_input_header_1x02_uses_labeled_source_pins():
+    design = volt.Design("power-input-header")
+
+    vin = design.net("VIN", kind="power")
+    gnd = design.net("GND", kind="ground")
+    j1 = design.power_input_header_1x02(ref="J1")
+    r1 = design.R("1k", ref="R1")
+
+    vin += j1["VIN"], r1[1]
+    gnd += j1["GND"], r1[2]
+
+    report = design.validate()
+    assert len(report) == 0
+
+    circuit = json.loads(design.to_json())
+    definition = next(
+        item
+        for item in circuit["component_definitions"]
+        if item["name"] == "PowerInputHeader_1x02"
+    )
+    pin_definitions = {
+        pin["id"]: pin for pin in circuit["pin_definitions"] if pin["id"] in definition["pins"]
+    }
+    header_pins = {pin["name"]: pin for pin in pin_definitions.values()}
+
+    assert definition["source"] == {
+        "namespace": "volt.connectors",
+        "name": "power_input_header_1x02",
+        "version": "1.0.0",
+    }
+    assert definition["schematic_symbols"] == [
+        {"name": "volt.connectors:PowerInputHeader_1x02", "variant": "default"}
+    ]
+    assert header_pins["VIN"]["role"] == "PowerOutput"
+    assert header_pins["VIN"]["terminal_kind"] == "Power"
+    assert header_pins["VIN"]["direction"] == "Output"
+    assert header_pins["GND"]["role"] == "Ground"
+    assert header_pins["GND"]["terminal_kind"] == "Ground"
+
+
 def test_natural_electrical_values_serialize_as_kernel_attributes():
     design = volt.Design("typed")
 

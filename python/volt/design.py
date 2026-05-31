@@ -21,6 +21,22 @@ from ._schematic_metadata import _schematic_sheet_metadata
 from .schematic import Schematic
 
 
+def _power_input_header_1x02_symbol() -> SchematicSymbolSpec:
+    return SchematicSymbolSpec(
+        "volt.connectors:PowerInputHeader_1x02",
+        pins=(
+            SchematicSymbolSpec.pin("VIN", 1, (0, 0), "Left"),
+            SchematicSymbolSpec.pin("GND", 2, (0, 20), "Left"),
+        ),
+        primitives=(
+            SchematicSymbolSpec.rectangle((8, -6), (30, 26)),
+            SchematicSymbolSpec.line((0, 0), (8, 0)),
+            SchematicSymbolSpec.line((0, 20), (8, 20)),
+            SchematicSymbolSpec.text("PWR", (19, -12)),
+        ),
+    )
+
+
 class Design:
     """Root Python handle for one kernel-owned logical circuit."""
 
@@ -329,6 +345,26 @@ class Design:
         return self._instantiate(
             "connector_1x02", self._circuit.define_connector_1x02, "J", ref, {}
         )
+
+    def power_input_header_1x02(self, *, ref: str | None = None) -> Component:
+        key = ("volt.connectors", "power_input_header_1x02", "1.0.0")
+        if key not in self._library_definitions:
+            self._library_definitions[key] = self.define_component(
+                "PowerInputHeader_1x02",
+                pins=(
+                    PinSpec(
+                        "VIN",
+                        1,
+                        role="power_output",
+                        terminal="power",
+                        direction="output",
+                    ),
+                    PinSpec("GND", 2, role="ground", terminal="ground"),
+                ),
+                source=key,
+                schematic_symbol=_power_input_header_1x02_symbol(),
+            )
+        return self.instantiate(self._library_definitions[key], ref=ref, prefix="J")
 
     def connector_1x03(self, *, ref: str | None = None) -> Component:
         return self._instantiate(

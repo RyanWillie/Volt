@@ -145,33 +145,8 @@ FOOTPRINTS = {
 }
 
 
-def _input_header_symbol() -> volt.SchematicSymbolSpec:
-    return volt.SchematicSymbolSpec(
-        "volt.examples.routed_regulator_led_board:InputPowerHeader",
-        pins=(
-            volt.SchematicSymbolSpec.pin("VIN", 1, (0, 0), "Left"),
-            volt.SchematicSymbolSpec.pin("GND", 2, (0, 20), "Left"),
-        ),
-        primitives=(
-            volt.SchematicSymbolSpec.rectangle((8, -6), (30, 26)),
-            volt.SchematicSymbolSpec.line((0, 0), (8, 0)),
-            volt.SchematicSymbolSpec.line((0, 20), (8, 20)),
-            volt.SchematicSymbolSpec.text("PWR", (19, -12)),
-        ),
-    )
-
-
 def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Component]]:
     design = volt.Design("routed-regulator-led-board")
-    input_header = design.define_component(
-        "InputPowerHeader",
-        pins=[
-            volt.PinSpec("VIN", 1, role="power_output", terminal="power", direction="output"),
-            volt.PinSpec("GND", 2, role="ground", terminal="ground", direction="passive"),
-        ],
-        source=("volt.examples.routed_regulator_led_board", "input_power_header", "1.0.0"),
-        schematic_symbol=_input_header_symbol(),
-    )
     nets = {
         "VIN": design.net("VIN", kind="power", voltage=5.0),
         "+3V3": design.net("+3V3", kind="power", voltage=3.3),
@@ -179,7 +154,7 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
         "GND": design.net("GND", kind="ground"),
     }
     parts = {
-        "J1": design.instantiate(input_header, ref="J1"),
+        "J1": design.power_input_header_1x02(ref="J1"),
         "U1": design.regulator(ref="U1"),
         "CIN": design.C("1 uF", ref="C1"),
         "COUT": design.C("1 uF", ref="C2"),
@@ -206,8 +181,8 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
         pin_pads={1: "1", 2: "2"},
     )
     parts["U1"].select_part(
-        manufacturer="Diodes Inc.",
-        part_number="AP2112K-3.3",
+        manufacturer="STMicroelectronics",
+        part_number="LD1117S33TR",
         package="SOT-223",
         footprint=FOOTPRINTS["regulator"],
         pin_pads={"GND": "1", "OUT": ("2", "4"), "IN": "3"},
@@ -350,6 +325,7 @@ def build_board(
     board.add_track(nets["VIN"], layer=front, points=((36.0, 23.0), (33.0, 23.0)), width=0.30)
 
     board.add_track(nets["+3V3"], layer=front, points=((30.0, 23.0), (42.25, 10.0)), width=0.30)
+    board.add_track(nets["+3V3"], layer=front, points=((30.0, 23.0), (30.0, 19.0)), width=0.45)
     board.add_track(nets["+3V3"], layer=front, points=((30.0, 19.0), (42.25, 10.0)), width=0.30)
     board.add_track(nets["+3V3"], layer=front, points=((30.0, 23.0), (42.25, 31.0)), width=0.30)
 

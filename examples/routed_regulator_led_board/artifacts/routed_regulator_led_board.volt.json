@@ -3,7 +3,7 @@
   "version": 1,
   "pin_definitions": [
     { "id": "pin_def:0", "name": "VIN", "number": "1", "role": "PowerOutput", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Output" },
-    { "id": "pin_def:1", "name": "GND", "number": "2", "role": "Ground", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:1", "name": "GND", "number": "2", "role": "Ground", "connection_requirement": "Required", "terminal_kind": "Ground" },
     { "id": "pin_def:2", "name": "GND", "number": "1", "role": "Ground", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
     { "id": "pin_def:3", "name": "OUT", "number": "2", "role": "PowerOutput", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Output" },
     { "id": "pin_def:4", "name": "IN", "number": "3", "role": "PowerInput", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
@@ -15,7 +15,7 @@
     { "id": "pin_def:10", "name": "K", "number": "1", "role": "Passive", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" }
   ],
   "component_definitions": [
-    { "id": "component_def:0", "name": "InputPowerHeader", "source": { "namespace": "volt.examples.routed_regulator_led_board", "name": "input_power_header", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.examples.routed_regulator_led_board:InputPowerHeader", "variant": "default" }], "pins": ["pin_def:0", "pin_def:1"], "properties": {} },
+    { "id": "component_def:0", "name": "PowerInputHeader_1x02", "source": { "namespace": "volt.connectors", "name": "power_input_header_1x02", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.connectors:PowerInputHeader_1x02", "variant": "default" }], "pins": ["pin_def:0", "pin_def:1"], "properties": {} },
     { "id": "component_def:1", "name": "Regulator", "source": { "namespace": "volt.power", "name": "regulator_3pin", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.power:regulator_3pin", "variant": "default" }], "pins": ["pin_def:2", "pin_def:3", "pin_def:4"], "properties": {
         "category": { "type": "string", "value": "regulator" }
       } },
@@ -39,7 +39,7 @@
       "properties": {}
     } },
     { "id": "component:1", "definition": "component_def:1", "reference": "U1", "properties": {}, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Diodes Inc.", "part_number": "AP2112K-3.3" },
+      "manufacturer_part": { "manufacturer": "STMicroelectronics", "part_number": "LD1117S33TR" },
       "package": "SOT-223",
       "footprint": { "library": "volt.examples.routed_regulator_led_board", "name": "SOT-223-3_TabPin2" },
       "pin_pad_mappings": [
