@@ -40,12 +40,14 @@ class Design:
         self._schematic_sheets: dict[str, int] = {}
 
     def net(self, name: str, *, kind: str = "signal", voltage: float | None = None) -> Net:
+        """Create or return a logical net by name, optionally annotating its voltage."""
         net = Net(self, self._circuit.add_net(name, kind), name)
         if voltage is not None:
             self._circuit.set_net_quantity(net.index, "voltage", "voltage", _number(voltage))
         return net
 
     def nets(self) -> tuple[Net, ...]:
+        """Return handles for every logical net in this design."""
         return tuple(Net(self, item["index"], item["name"]) for item in self._circuit.net_refs())
 
     def R(
@@ -56,6 +58,7 @@ class Design:
         tolerance: float | None = None,
         ref: str | None = None,
     ) -> Component:
+        """Instantiate a generic resistor component."""
         properties = {}
         if value is not None:
             properties["value"] = value
@@ -78,6 +81,7 @@ class Design:
         voltage_rating: float | None = None,
         ref: str | None = None,
     ) -> Component:
+        """Instantiate a generic non-polarized capacitor component."""
         properties = {}
         if value is not None:
             properties["value"] = value
@@ -104,6 +108,7 @@ class Design:
         voltage_rating: float | None = None,
         ref: str | None = None,
     ) -> Component:
+        """Instantiate a generic polarized capacitor component."""
         properties = {}
         if value is not None:
             properties["value"] = value
@@ -133,6 +138,7 @@ class Design:
         inductance: float | None = None,
         ref: str | None = None,
     ) -> Component:
+        """Instantiate a generic inductor component."""
         properties = {}
         if value is not None:
             properties["value"] = value
@@ -154,6 +160,7 @@ class Design:
         source: tuple[str, str, str] | None = None,
         schematic_symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
     ) -> ComponentDefinition:
+        """Define a reusable component type with pins, properties, and optional symbols."""
         schematic_symbols = _normalize_schematic_symbols(schematic_symbol)
         for symbol in schematic_symbols:
             self._register_schematic_symbol(symbol)
@@ -186,6 +193,7 @@ class Design:
         return ComponentDefinition(self, definition, name)
 
     def define_module(self, name: str) -> ModuleDefinition:
+        """Define a reusable module template inside this design."""
         module = self._circuit.define_module(name)
         return ModuleDefinition(self, module, name)
 
@@ -197,6 +205,7 @@ class Design:
         prefix: str | None = None,
         properties: dict | None = None,
     ) -> Component | ModuleInstance:
+        """Instantiate a component definition, module definition, or library component."""
         if isinstance(definition, LibraryComponent):
             component_definition = self._define_library_component(definition)
             component = self.instantiate(
@@ -306,41 +315,51 @@ class Design:
         return footprint_id
 
     def LED(self, *, ref: str | None = None) -> Component:
+        """Instantiate a generic LED component."""
         return self._instantiate("led", self._circuit.define_led, "D", ref, {})
 
     def diode(self, *, ref: str | None = None) -> Component:
+        """Instantiate a generic diode component."""
         return self._instantiate("diode", self._circuit.define_diode, "D", ref, {})
 
     def switch(self, *, ref: str | None = None) -> Component:
+        """Instantiate a generic SPST switch component."""
         return self._instantiate("switch_spst", self._circuit.define_switch_spst, "SW", ref, {})
 
     def crystal(self, *, ref: str | None = None) -> Component:
+        """Instantiate a generic two-pin crystal component."""
         return self._instantiate("crystal_2pin", self._circuit.define_crystal_2pin, "Y", ref, {})
 
     def test_point(self, *, ref: str | None = None) -> Component:
+        """Instantiate a generic test point component."""
         return self._instantiate("test_point", self._circuit.define_test_point, "TP", ref, {})
 
     def connector_1x01(self, *, ref: str | None = None) -> Component:
+        """Instantiate a generic one-pin connector component."""
         return self._instantiate(
             "connector_1x01", self._circuit.define_connector_1x01, "J", ref, {}
         )
 
     def connector_1x02(self, *, ref: str | None = None) -> Component:
+        """Instantiate a generic two-pin connector component."""
         return self._instantiate(
             "connector_1x02", self._circuit.define_connector_1x02, "J", ref, {}
         )
 
     def connector_1x03(self, *, ref: str | None = None) -> Component:
+        """Instantiate a generic three-pin connector component."""
         return self._instantiate(
             "connector_1x03", self._circuit.define_connector_1x03, "J", ref, {}
         )
 
     def regulator(self, *, ref: str | None = None) -> Component:
+        """Instantiate a generic three-pin regulator component."""
         return self._instantiate(
             "regulator_3pin", self._circuit.define_regulator_3pin, "U", ref, {}
         )
 
     def op_amp(self, *, ref: str | None = None) -> Component:
+        """Instantiate a generic five-pin operational amplifier component."""
         return self._instantiate("op_amp_5pin", self._circuit.define_op_amp_5pin, "U", ref, {})
 
     def schematic(
@@ -361,6 +380,7 @@ class Design:
         coordinate_zones: tuple[int, int] | dict | None = None,
         grid: float | dict | None = None,
     ) -> Schematic:
+        """Create or return a schematic sheet authoring handle by sheet name."""
         if not isinstance(name, str):
             raise TypeError("Schematic name must be a string")
         if not name:
@@ -386,11 +406,13 @@ class Design:
         return Schematic(self, self._schematic_sheets[name], name)
 
     def board(self, name: str = "Main"):
+        """Create or return a PCB board projection authoring handle."""
         from .pcb import Board
 
         return Board(self, name)
 
     def load_schematic_json(self, text: str) -> Schematic:
+        """Load schematic projection JSON into this design and return the first sheet."""
         if not isinstance(text, str):
             raise TypeError("Schematic JSON must be a string")
 
@@ -402,20 +424,25 @@ class Design:
         return self.schematic(sheet_names[0])
 
     def load_schematic(self, path: str | Path) -> Schematic:
+        """Load schematic projection JSON from a file and return the first sheet."""
         return self.load_schematic_json(Path(path).read_text(encoding="utf-8"))
 
     def validate(self) -> DiagnosticReport:
+        """Run logical design validation and return the diagnostic report."""
         return DiagnosticReport(_diagnostic_from_dict(item) for item in self._circuit.validate())
 
     def validate_for_pcb(self) -> DiagnosticReport:
+        """Run PCB-readiness validation and return the diagnostic report."""
         return DiagnosticReport(
             _diagnostic_from_dict(item) for item in self._circuit.validate_for_pcb()
         )
 
     def to_json(self) -> str:
+        """Serialize the logical design to Volt JSON."""
         return self._circuit.to_json()
 
     def write(self, path: str | Path) -> None:
+        """Write the logical design JSON to a file."""
         Path(path).write_text(self.to_json(), encoding="utf-8")
 
     def _definition(self, key: str, factory) -> int:

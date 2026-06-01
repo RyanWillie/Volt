@@ -46,6 +46,8 @@ def test_api_generator_emits_mintlify_reference_pages(tmp_path):
     assert '"api/python/index"' in navigation_text
     assert '"api/python/design"' in navigation_text
     assert '"api/python/pcb"' in navigation_text
+    for page in output.glob("*.mdx"):
+        assert "No docstring yet." not in page.read_text(encoding="utf-8")
 
 
 def test_api_generator_check_mode_detects_stale_output(tmp_path):

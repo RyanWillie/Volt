@@ -14,27 +14,27 @@ Source: `python/volt/_schematic_handles.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
-| `component: Component` | No docstring yet. |
-| `orientation: str` | No docstring yet. |
-| `start: SchematicPinAnchor` | No docstring yet. |
-| `end: SchematicPinAnchor` | No docstring yet. |
-| `center: SchematicAnchor` | No docstring yet. |
+| `index: int` | Return the kernel index for the wrapped schematic symbol. |
+| `component: Component` | Return the logical component represented by this element. |
+| `orientation: str` | Return this element's placed orientation. |
+| `start: SchematicPinAnchor` | Return the first terminal anchor for this placed element. |
+| `end: SchematicPinAnchor` | Return the last terminal anchor for this placed element. |
+| `center: SchematicAnchor` | Return the center point of this element's placed pin anchors. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `__getitem__(self, key: int \| str) -> SchematicPinAnchor` | No docstring yet. |
-| `pin_anchor(self, number: int \| str) -> tuple[float, float]` | No docstring yet. |
-| `pin(self, key: int \| str) -> SchematicPinAnchor` | No docstring yet. |
-| `pins(self, name: str) -> tuple[SchematicPinAnchor, ...]` | No docstring yet. |
-| `pin_anchors(self) -> tuple[SchematicPinAnchor, ...]` | No docstring yet. |
-| `label(self, text: str, *, loc: str \| None = None, name: str = 'label', offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None, align: str = 'middle', baseline: str = 'baseline', font_size: float \| None = None) -> PlacedSchematicElement` | No docstring yet. |
-| `label_ref(self, *, loc: str \| None = None, offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None, align: str = 'middle', baseline: str = 'baseline', font_size: float \| None = None) -> PlacedSchematicElement` | No docstring yet. |
-| `label_value(self, *, loc: str \| None = None, offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None, align: str = 'middle', baseline: str = 'baseline', font_size: float \| None = None) -> PlacedSchematicElement` | No docstring yet. |
-| `dot(self, *, net: Net \| None = None) -> PlacedSchematicElement` | No docstring yet. |
-| `idot(self, *, net: Net \| None = None) -> PlacedSchematicElement` | No docstring yet. |
+| `__getitem__(self, key: int \| str) -> SchematicPinAnchor` | Return a placed element pin anchor by pin name or number. |
+| `pin_anchor(self, number: int \| str) -> tuple[float, float]` | Return the sheet coordinate for one placed element pin number. |
+| `pin(self, key: int \| str) -> SchematicPinAnchor` | Return a placed element pin anchor by pin name or number. |
+| `pins(self, name: str) -> tuple[SchematicPinAnchor, ...]` | Return every placed element pin anchor with the given pin name. |
+| `pin_anchors(self) -> tuple[SchematicPinAnchor, ...]` | Return all placed element pin anchors. |
+| `label(self, text: str, *, loc: str \| None = None, name: str = 'label', offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None, align: str = 'middle', baseline: str = 'baseline', font_size: float \| None = None) -> PlacedSchematicElement` | Add a text field near this placed schematic element. |
+| `label_ref(self, *, loc: str \| None = None, offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None, align: str = 'middle', baseline: str = 'baseline', font_size: float \| None = None) -> PlacedSchematicElement` | Add a reference-designator label near this placed element. |
+| `label_value(self, *, loc: str \| None = None, offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None, align: str = 'middle', baseline: str = 'baseline', font_size: float \| None = None) -> PlacedSchematicElement` | Add a value label near this placed element. |
+| `dot(self, *, net: Net \| None = None) -> PlacedSchematicElement` | Add a junction dot at this element's end terminal. |
+| `idot(self, *, net: Net \| None = None) -> PlacedSchematicElement` | Add a junction dot at this element's start terminal. |
 
 ## `volt.Schematic`
 
@@ -46,46 +46,46 @@ Source: `python/volt/schematic.py`
 
 | Property | Summary |
 | --- | --- |
-| `sheet_index: int` | No docstring yet. |
+| `sheet_index: int` | Return the kernel index for this schematic sheet. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `drawing(self, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort = (0, 0), direction: str = 'Right', unit: float = 20) -> SchematicDrawing` | No docstring yet. |
-| `region(self, name: str, *, x: float, y: float, w: float, h: float, title: str \| None = None, style: dict[str, str] \| None = None) -> SchematicRegion` | No docstring yet. |
-| `place(self, component: Component, *, at: tuple[float, float], orient: str = 'Right', symbol: str \| SchematicSymbolSpec \| None = None, variant: str = 'default', _authored_region: int \| None = None, reference_label: str \| None = None) -> SchematicSymbol` | No docstring yet. |
-| `register_symbol(self, symbol: SchematicSymbolSpec) -> None` | No docstring yet. |
-| `wire(self, net: Net, points: Iterable[tuple[float, float] \| SchematicAnchor \| SchematicPort] \| None = None, *, _authored_region: int \| None = None) -> SchematicWire \| SchematicWireBuilder` | No docstring yet. |
+| `drawing(self, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort = (0, 0), direction: str = 'Right', unit: float = 20) -> SchematicDrawing` | Create a SchemDraw-style cursor for fluent sheet authoring. |
+| `region(self, name: str, *, x: float, y: float, w: float, h: float, title: str \| None = None, style: dict[str, str] \| None = None) -> SchematicRegion` | Create a named presentation region on this schematic sheet. |
+| `place(self, component: Component, *, at: tuple[float, float], orient: str = 'Right', symbol: str \| SchematicSymbolSpec \| None = None, variant: str = 'default', _authored_region: int \| None = None, reference_label: str \| None = None) -> SchematicSymbol` | Place a component symbol on this schematic sheet. |
+| `register_symbol(self, symbol: SchematicSymbolSpec) -> None` | Register a schematic symbol definition with this design. |
+| `wire(self, net: Net, points: Iterable[tuple[float, float] \| SchematicAnchor \| SchematicPort] \| None = None, *, _authored_region: int \| None = None) -> SchematicWire \| SchematicWireBuilder` | Create a wire on a logical net or return a fluent wire builder. |
 | `connect(self, *args, net: Net \| None = None, shape: str \| None = None, k: float \| None = None, _authored_region: int \| None = None) -> SchematicWire` | Project a wire between anchors, or over an explicit net through multiple anchors. |
-| `ortho_lines(self, entries, *, shape: str \| None = None, k: float \| None = None, _authored_region: int \| None = None) -> tuple[SchematicWire, ...]` | No docstring yet. |
-| `label(self, net: Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, orient: str = 'Right', label: str \| None = None, _authored_region: int \| None = None, align: str = 'start', baseline: str = 'baseline', font_size: float \| None = None) -> SchematicNetLabel` | No docstring yet. |
-| `net_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, orient: str = 'Right', label: str \| None = None, _authored_region: int \| None = None, align: str = 'start', baseline: str = 'baseline', font_size: float \| None = None) -> SchematicNetLabel` | No docstring yet. |
-| `local_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str = 'Right', offset: float = 2, orient: str \| None = None, _authored_region: int \| None = None) -> SchematicNetLabel` | No docstring yet. |
-| `signal_stub(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str \| None = None, length: float = 8, label_gap: float = 2, orient: str \| None = None, label: str \| None = None, _authored_region: int \| None = None) -> SchematicSignalStub` | No docstring yet. |
-| `signal_tag(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str \| None = None, length: float = 8, label: str \| None = None, kind: str = 'Bidirectional', orient: str \| None = None, _authored_region: int \| None = None) -> SchematicSignalTag` | No docstring yet. |
-| `signal_tags(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, kind: str = 'Bidirectional', orient: str \| None = None, _authored_region: int \| None = None) -> tuple[SchematicSignalTag, ...]` | No docstring yet. |
-| `signal_stubs(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, label_gap: float = 2, orient: str \| None = None, _authored_region: int \| None = None) -> tuple[SchematicSignalStub, ...]` | No docstring yet. |
-| `junction(self, net: Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, _authored_region: int \| None = None) -> SchematicJunction` | No docstring yet. |
+| `ortho_lines(self, entries, *, shape: str \| None = None, k: float \| None = None, _authored_region: int \| None = None) -> tuple[SchematicWire, ...]` | Create multiple orthogonal wire runs from entry tuples. |
+| `label(self, net: Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, orient: str = 'Right', label: str \| None = None, _authored_region: int \| None = None, align: str = 'start', baseline: str = 'baseline', font_size: float \| None = None) -> SchematicNetLabel` | Place a net label bound to an existing logical net. |
+| `net_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, orient: str = 'Right', label: str \| None = None, _authored_region: int \| None = None, align: str = 'start', baseline: str = 'baseline', font_size: float \| None = None) -> SchematicNetLabel` | Place a net label by net handle or design net name. |
+| `local_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str = 'Right', offset: float = 2, orient: str \| None = None, _authored_region: int \| None = None) -> SchematicNetLabel` | Place a short-offset local net label near an anchor. |
+| `signal_stub(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str \| None = None, length: float = 8, label_gap: float = 2, orient: str \| None = None, label: str \| None = None, _authored_region: int \| None = None) -> SchematicSignalStub` | Draw a short signal stub ending in a local net label. |
+| `signal_tag(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str \| None = None, length: float = 8, label: str \| None = None, kind: str = 'Bidirectional', orient: str \| None = None, _authored_region: int \| None = None) -> SchematicSignalTag` | Draw a short signal stub ending in a sheet-port style tag. |
+| `signal_tags(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, kind: str = 'Bidirectional', orient: str \| None = None, _authored_region: int \| None = None) -> tuple[SchematicSignalTag, ...]` | Place a pitched stack of signal tags. |
+| `signal_stubs(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, label_gap: float = 2, orient: str \| None = None, _authored_region: int \| None = None) -> tuple[SchematicSignalStub, ...]` | Place a pitched stack of signal stubs. |
+| `junction(self, net: Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, _authored_region: int \| None = None) -> SchematicJunction` | Place an explicit junction marker on a logical net. |
 | `terminal(self, name_or_net: str \| Net \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, kind: str = 'Power', orient: str \| None = None, _authored_region: int \| None = None) -> SchematicPort` | Place a generic one-terminal marker (power/ground symbol) on an existing net. |
 | `terminal_stub(self, name_or_net: str \| Net \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, kind: str = 'Power', side: str \| None = None, length: float = 8, orient: str \| None = None, _authored_region: int \| None = None) -> SchematicTerminalStub` | Project a short existing-net wire ending in a terminal marker. |
 | `power(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, orient: str = 'Up', _authored_region: int \| None = None) -> SchematicPort` | Place a power marker symbol on an existing net. |
 | `power_stub(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, side: str = 'Up', length: float = 8, orient: str = 'Up', _authored_region: int \| None = None) -> SchematicTerminalStub` | Project a short existing-net wire ending in a power marker. |
 | `ground(self, name: str \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, orient: str = 'Down', _authored_region: int \| None = None) -> SchematicPort` | Place a ground marker symbol on an existing net. |
 | `ground_stub(self, name: str \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, side: str = 'Down', length: float = 8, orient: str = 'Down', _authored_region: int \| None = None) -> SchematicTerminalStub` | Project a short existing-net wire ending in a ground marker. |
-| `no_connect(self, pin: SchematicPinAnchor, *, orient: str = 'Right', offset: float = 0, reason: str \| None = None, _authored_region: int \| None = None) -> SchematicNoConnect` | No docstring yet. |
-| `sheet_port(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, kind: str = 'Bidirectional', orient: str = 'Right', _authored_region: int \| None = None) -> SchematicPort` | No docstring yet. |
-| `off_page(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, orient: str = 'Right', _authored_region: int \| None = None) -> SchematicPort` | No docstring yet. |
-| `to_json(self) -> str` | No docstring yet. |
-| `to_svg(self) -> str` | No docstring yet. |
+| `no_connect(self, pin: SchematicPinAnchor, *, orient: str = 'Right', offset: float = 0, reason: str \| None = None, _authored_region: int \| None = None) -> SchematicNoConnect` | Place a no-connect marker on a placed pin anchor. |
+| `sheet_port(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, kind: str = 'Bidirectional', orient: str = 'Right', _authored_region: int \| None = None) -> SchematicPort` | Place a sheet port on an existing or name-resolved logical net. |
+| `off_page(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, orient: str = 'Right', _authored_region: int \| None = None) -> SchematicPort` | Place an off-page connector on an existing or name-resolved logical net. |
+| `to_json(self) -> str` | Serialize schematic projection data to Volt JSON. |
+| `to_svg(self) -> str` | Render all schematic sheets as SVG. |
 | `to_body_svg(self, *, margin: float = 4.0) -> str` | Return a content-tight SVG for this sheet's schematic body. |
-| `to_svg_pages(self) -> tuple[dict[str, int \| str], ...]` | No docstring yet. |
-| `validate(self) -> DiagnosticReport` | No docstring yet. |
-| `validate_readability(self) -> DiagnosticReport` | No docstring yet. |
-| `write_svg(self, path: str \| Path) -> None` | No docstring yet. |
-| `write_body_svg(self, path: str \| Path, *, margin: float = 4.0) -> None` | No docstring yet. |
-| `write_svg_pages(self, directory: str \| Path, *, prefix: str \| None = None) -> tuple[Path, ...]` | No docstring yet. |
-| `write_json(self, path: str \| Path) -> None` | No docstring yet. |
+| `to_svg_pages(self) -> tuple[dict[str, int \| str], ...]` | Render schematic sheets as individual SVG page records. |
+| `validate(self) -> DiagnosticReport` | Run schematic validation and return the diagnostic report. |
+| `validate_readability(self) -> DiagnosticReport` | Run schematic readability validation and return the diagnostic report. |
+| `write_svg(self, path: str \| Path) -> None` | Write the rendered schematic SVG to a file. |
+| `write_body_svg(self, path: str \| Path, *, margin: float = 4.0) -> None` | Write a content-tight SVG for this sheet's body to a file. |
+| `write_svg_pages(self, directory: str \| Path, *, prefix: str \| None = None) -> tuple[Path, ...]` | Write each rendered schematic SVG page to a directory. |
+| `write_json(self, path: str \| Path) -> None` | Write schematic projection JSON to a file. |
 
 ## `volt.SchematicAnchor`
 
@@ -97,22 +97,22 @@ Source: `python/volt/_schematic_handles.py`
 
 | Property | Summary |
 | --- | --- |
-| `x: float` | No docstring yet. |
-| `y: float` | No docstring yet. |
-| `point: tuple[float, float]` | No docstring yet. |
+| `x: float` | Return the sheet x coordinate. |
+| `y: float` | Return the sheet y coordinate. |
+| `point: tuple[float, float]` | Return this anchor as an ``(x, y)`` tuple. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `offset(self, dx: float = 0, dy: float = 0) -> SchematicAnchor` | No docstring yet. |
-| `left(self, distance: float) -> SchematicAnchor` | No docstring yet. |
-| `right(self, distance: float) -> SchematicAnchor` | No docstring yet. |
-| `up(self, distance: float) -> SchematicAnchor` | No docstring yet. |
-| `down(self, distance: float) -> SchematicAnchor` | No docstring yet. |
+| `offset(self, dx: float = 0, dy: float = 0) -> SchematicAnchor` | Return a new anchor offset from this point. |
+| `left(self, distance: float) -> SchematicAnchor` | Return a new anchor moved left by a distance. |
+| `right(self, distance: float) -> SchematicAnchor` | Return a new anchor moved right by a distance. |
+| `up(self, distance: float) -> SchematicAnchor` | Return a new anchor moved up by a distance. |
+| `down(self, distance: float) -> SchematicAnchor` | Return a new anchor moved down by a distance. |
 | `tox(self, anchor_or_x) -> SchematicAnchor` | Return an anchor at this y coordinate and the target x coordinate. |
 | `toy(self, anchor_or_y) -> SchematicAnchor` | Return an anchor at this x coordinate and the target y coordinate. |
-| `__iter__(self)` | No docstring yet. |
+| `__iter__(self)` | Iterate over the ``(x, y)`` coordinate values. |
 
 ## `volt.SchematicDrawing`
 
@@ -124,44 +124,44 @@ Source: `python/volt/schematic.py`
 
 | Property | Summary |
 | --- | --- |
-| `here: SchematicAnchor` | No docstring yet. |
-| `direction: str` | No docstring yet. |
-| `unit: float` | No docstring yet. |
+| `here: SchematicAnchor` | Return the drawing cursor's current anchor. |
+| `direction: str` | Return the drawing cursor's current orientation. |
+| `unit: float` | Return the drawing unit used by relative placement helpers. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `move(self, *, dx: float = 0, dy: float = 0) -> SchematicDrawing` | No docstring yet. |
-| `move_from(self, anchor: tuple[float, float] \| SchematicAnchor \| SchematicPort, *, dx: float = 0, dy: float = 0, direction: str \| None = None) -> SchematicDrawing` | No docstring yet. |
-| `push(self) -> SchematicDrawing` | No docstring yet. |
-| `pop(self) -> SchematicDrawing` | No docstring yet. |
-| `two_terminal(self, component: Component, *, symbol: str \| SchematicSymbolSpec \| None = None, variant: str = 'default', reference_label: str \| None = None) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `place(self, component: Component, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, orient: str \| None = None, symbol: str \| SchematicSymbolSpec \| None = None, variant: str = 'default', reference_label: str \| None = None) -> PlacedSchematicElement` | No docstring yet. |
+| `move(self, *, dx: float = 0, dy: float = 0) -> SchematicDrawing` | Move the drawing cursor by a relative offset. |
+| `move_from(self, anchor: tuple[float, float] \| SchematicAnchor \| SchematicPort, *, dx: float = 0, dy: float = 0, direction: str \| None = None) -> SchematicDrawing` | Move the drawing cursor to an anchor plus an optional relative offset. |
+| `push(self) -> SchematicDrawing` | Push the current cursor anchor and direction onto the drawing stack. |
+| `pop(self) -> SchematicDrawing` | Restore the most recently pushed cursor anchor and direction. |
+| `two_terminal(self, component: Component, *, symbol: str \| SchematicSymbolSpec \| None = None, variant: str = 'default', reference_label: str \| None = None) -> SchematicTwoTerminalElement` | Start fluent placement for a two-terminal component. |
+| `place(self, component: Component, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, orient: str \| None = None, symbol: str \| SchematicSymbolSpec \| None = None, variant: str = 'default', reference_label: str \| None = None) -> PlacedSchematicElement` | Place a component symbol at the drawing cursor or an explicit anchor. |
 | `node(self, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, *, dx: float = 0, dy: float = 0) -> SchematicAnchor` | Return a reusable sheet-local geometry anchor without adding schematic objects. |
 | `connect(self, *args, net: Net \| None = None, shape: str \| None = None, k: float \| None = None) -> SchematicWire` | Project a wire between anchors, or over an explicit net through multiple anchors. |
-| `ortho_lines(self, entries, *, shape: str \| None = None, k: float \| None = None) -> tuple[SchematicWire, ...]` | No docstring yet. |
-| `wire(self, net: Net) -> SchematicWireBuilder` | No docstring yet. |
-| `line(self, net: Net) -> SchematicWireBuilder` | No docstring yet. |
+| `ortho_lines(self, entries, *, shape: str \| None = None, k: float \| None = None) -> tuple[SchematicWire, ...]` | Create multiple orthogonal wire runs from entry tuples. |
+| `wire(self, net: Net) -> SchematicWireBuilder` | Start a fluent wire builder on a logical net from the current cursor. |
+| `line(self, net: Net) -> SchematicWireBuilder` | Alias for ``wire()`` when authoring direct line segments. |
 | `terminal(self, name_or_net: str \| Net \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, net: Net \| None = None, kind: str = 'Power', orient: str \| None = None) -> SchematicPort` | Place a generic one-terminal marker (power/ground symbol) on an existing net. |
 | `terminal_stub(self, name_or_net: str \| Net \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, net: Net \| None = None, kind: str = 'Power', side: str \| None = None, length: float = 8, orient: str \| None = None) -> SchematicTerminalStub` | Draw a short wire from an anchor to a terminal marker on an existing net. |
 | `power(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, net: Net \| None = None, orient: str = 'Up') -> SchematicPort` | Place a power marker symbol on an existing net. |
 | `power_stub(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, net: Net \| None = None, side: str = 'Up', length: float = 8, orient: str = 'Up') -> SchematicTerminalStub` | Draw a short wire from an anchor to a power marker on an existing net. |
 | `ground(self, name: str \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, net: Net \| None = None, orient: str = 'Down') -> SchematicPort` | Place a ground marker symbol on an existing net. |
 | `ground_stub(self, name: str \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, net: Net \| None = None, side: str = 'Down', length: float = 8, orient: str = 'Down') -> SchematicTerminalStub` | Draw a short wire from an anchor to a ground marker on an existing net. |
-| `net_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, orient: str = 'Right', label: str \| None = None) -> SchematicNetLabel` | No docstring yet. |
-| `local_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str = 'Right', offset: float = 2, orient: str \| None = None) -> SchematicNetLabel` | No docstring yet. |
-| `signal_stub(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, length: float = 8, label_gap: float = 2, orient: str \| None = None, label: str \| None = None) -> SchematicSignalStub` | No docstring yet. |
-| `signal_tag(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, length: float = 8, label: str \| None = None, kind: str = 'Bidirectional', orient: str \| None = None) -> SchematicSignalTag` | No docstring yet. |
-| `signal_tags(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, kind: str = 'Bidirectional', orient: str \| None = None) -> tuple[SchematicSignalTag, ...]` | No docstring yet. |
-| `signal_stubs(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, label_gap: float = 2, orient: str \| None = None) -> tuple[SchematicSignalStub, ...]` | No docstring yet. |
-| `stack(self, *, count: int, direction: str \| None = None, pitch: float \| None = None, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None) -> tuple[SchematicAnchor, ...]` | No docstring yet. |
-| `junction(self, net: Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None) -> SchematicJunction` | No docstring yet. |
-| `no_connect(self, anchor: SchematicPinAnchor, *, orient: str = 'Right', offset: float = 0, reason: str \| None = None) -> SchematicNoConnect` | No docstring yet. |
-| `sheet_port(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, net: Net \| None = None, kind: str = 'Bidirectional', orient: str = 'Right') -> SchematicPort` | No docstring yet. |
-| `off_page(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, net: Net \| None = None, orient: str = 'Right') -> SchematicPort` | No docstring yet. |
-| `hold(self)` | No docstring yet. |
-| `frame(self, at: tuple[float, float] \| SchematicAnchor \| SchematicPort = (0, 0), *, direction: str \| None = None)` | No docstring yet. |
+| `net_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, orient: str = 'Right', label: str \| None = None) -> SchematicNetLabel` | Place a net label at the drawing cursor or an explicit anchor. |
+| `local_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str = 'Right', offset: float = 2, orient: str \| None = None) -> SchematicNetLabel` | Place a short-offset local net label near an anchor. |
+| `signal_stub(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, length: float = 8, label_gap: float = 2, orient: str \| None = None, label: str \| None = None) -> SchematicSignalStub` | Draw a short signal stub ending in a local net label. |
+| `signal_tag(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, length: float = 8, label: str \| None = None, kind: str = 'Bidirectional', orient: str \| None = None) -> SchematicSignalTag` | Draw a short signal stub ending in a sheet-port style tag. |
+| `signal_tags(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, kind: str = 'Bidirectional', orient: str \| None = None) -> tuple[SchematicSignalTag, ...]` | Place a pitched stack of signal tags. |
+| `signal_stubs(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, label_gap: float = 2, orient: str \| None = None) -> tuple[SchematicSignalStub, ...]` | Place a pitched stack of signal stubs. |
+| `stack(self, *, count: int, direction: str \| None = None, pitch: float \| None = None, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None) -> tuple[SchematicAnchor, ...]` | Return evenly spaced anchors from the current cursor or an explicit anchor. |
+| `junction(self, net: Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None) -> SchematicJunction` | Place an explicit junction marker on a logical net. |
+| `no_connect(self, anchor: SchematicPinAnchor, *, orient: str = 'Right', offset: float = 0, reason: str \| None = None) -> SchematicNoConnect` | Place a no-connect marker on a placed pin anchor. |
+| `sheet_port(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, net: Net \| None = None, kind: str = 'Bidirectional', orient: str = 'Right') -> SchematicPort` | Place a sheet port on an existing or name-resolved logical net. |
+| `off_page(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, net: Net \| None = None, orient: str = 'Right') -> SchematicPort` | Place an off-page connector on an existing or name-resolved logical net. |
+| `hold(self)` | Temporarily author from the current cursor, then restore cursor state. |
+| `frame(self, at: tuple[float, float] \| SchematicAnchor \| SchematicPort = (0, 0), *, direction: str \| None = None)` | Temporarily author in a local coordinate frame. |
 
 ## `volt.SchematicJunction`
 
@@ -173,7 +173,7 @@ Source: `python/volt/_schematic_handles.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this schematic junction. |
 
 ## `volt.SchematicNetLabel`
 
@@ -185,7 +185,7 @@ Source: `python/volt/_schematic_handles.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this schematic net label. |
 
 ## `volt.SchematicNoConnect`
 
@@ -197,7 +197,7 @@ Source: `python/volt/_schematic_handles.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this no-connect marker. |
 
 ## `volt.SchematicPinAnchor`
 
@@ -215,7 +215,7 @@ Source: `python/volt/_schematic_handles.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this schematic port projection. |
 
 ## `volt.SchematicRegion`
 
@@ -227,34 +227,34 @@ Source: `python/volt/schematic.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
-| `origin: tuple[float, float]` | No docstring yet. |
+| `index: int` | Return the kernel index for this schematic region. |
+| `origin: tuple[float, float]` | Return the sheet-space origin for this region. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `drawing(self, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort = (0, 0), direction: str = 'Right', unit: float = 20) -> SchematicDrawing` | No docstring yet. |
-| `place(self, component: Component, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, orient: str = 'Right', symbol: str \| SchematicSymbolSpec \| None = None, variant: str = 'default', reference_label: str \| None = None) -> SchematicSymbol` | No docstring yet. |
-| `wire(self, net: Net, points: Iterable[tuple[float, float] \| SchematicAnchor \| SchematicPort]) -> SchematicWire` | No docstring yet. |
-| `ortho_lines(self, entries, *, shape: str \| None = None, k: float \| None = None) -> tuple[SchematicWire, ...]` | No docstring yet. |
-| `label(self, net: Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, orient: str = 'Right', label: str \| None = None) -> SchematicNetLabel` | No docstring yet. |
-| `net_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, orient: str = 'Right', label: str \| None = None) -> SchematicNetLabel` | No docstring yet. |
-| `local_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str = 'Right', offset: float = 2, orient: str \| None = None) -> SchematicNetLabel` | No docstring yet. |
-| `signal_stub(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str \| None = None, length: float = 8, label_gap: float = 2, orient: str \| None = None, label: str \| None = None) -> SchematicSignalStub` | No docstring yet. |
-| `signal_tag(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str \| None = None, length: float = 8, label: str \| None = None, kind: str = 'Bidirectional', orient: str \| None = None) -> SchematicSignalTag` | No docstring yet. |
-| `signal_tags(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, kind: str = 'Bidirectional', orient: str \| None = None) -> tuple[SchematicSignalTag, ...]` | No docstring yet. |
-| `signal_stubs(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, label_gap: float = 2, orient: str \| None = None) -> tuple[SchematicSignalStub, ...]` | No docstring yet. |
-| `junction(self, net: Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort) -> SchematicJunction` | No docstring yet. |
+| `drawing(self, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort = (0, 0), direction: str = 'Right', unit: float = 20) -> SchematicDrawing` | Create a SchemDraw-style cursor in this region's local coordinates. |
+| `place(self, component: Component, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, orient: str = 'Right', symbol: str \| SchematicSymbolSpec \| None = None, variant: str = 'default', reference_label: str \| None = None) -> SchematicSymbol` | Place a component symbol using region-local coordinates. |
+| `wire(self, net: Net, points: Iterable[tuple[float, float] \| SchematicAnchor \| SchematicPort]) -> SchematicWire` | Create a wire in this region using region-local coordinates. |
+| `ortho_lines(self, entries, *, shape: str \| None = None, k: float \| None = None) -> tuple[SchematicWire, ...]` | Create multiple orthogonal wire runs in this region. |
+| `label(self, net: Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, orient: str = 'Right', label: str \| None = None) -> SchematicNetLabel` | Place a net label in this region. |
+| `net_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, orient: str = 'Right', label: str \| None = None) -> SchematicNetLabel` | Place a net label by net handle or design net name in this region. |
+| `local_label(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str = 'Right', offset: float = 2, orient: str \| None = None) -> SchematicNetLabel` | Place a short-offset local net label in this region. |
+| `signal_stub(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str \| None = None, length: float = 8, label_gap: float = 2, orient: str \| None = None, label: str \| None = None) -> SchematicSignalStub` | Draw a signal stub ending in a local net label in this region. |
+| `signal_tag(self, name_or_net: str \| Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, side: str \| None = None, length: float = 8, label: str \| None = None, kind: str = 'Bidirectional', orient: str \| None = None) -> SchematicSignalTag` | Draw a signal stub ending in a sheet-port style tag in this region. |
+| `signal_tags(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, kind: str = 'Bidirectional', orient: str \| None = None) -> tuple[SchematicSignalTag, ...]` | Place a pitched stack of signal tags in this region. |
+| `signal_stubs(self, items, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort \| None = None, side: str \| None = None, pitch: float = 8, length: float = 8, label_gap: float = 2, orient: str \| None = None) -> tuple[SchematicSignalStub, ...]` | Place a pitched stack of signal stubs in this region. |
+| `junction(self, net: Net, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort) -> SchematicJunction` | Place an explicit junction marker in this region. |
 | `terminal(self, name_or_net: str \| Net \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, kind: str = 'Power', orient: str \| None = None) -> SchematicPort` | Place a generic one-terminal marker in this region. |
 | `terminal_stub(self, name_or_net: str \| Net \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, kind: str = 'Power', side: str \| None = None, length: float = 8, orient: str \| None = None) -> SchematicTerminalStub` | Draw a short region-local wire to a terminal marker. |
 | `power(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, orient: str = 'Up') -> SchematicPort` | Place a power marker in this region. |
 | `power_stub(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, side: str = 'Up', length: float = 8, orient: str = 'Up') -> SchematicTerminalStub` | Draw a short region-local wire to a power marker. |
 | `ground(self, name: str \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, orient: str = 'Down') -> SchematicPort` | Place a ground marker in this region. |
 | `ground_stub(self, name: str \| None = None, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, side: str = 'Down', length: float = 8, orient: str = 'Down') -> SchematicTerminalStub` | Draw a short region-local wire to a ground marker. |
-| `sheet_port(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, kind: str = 'Bidirectional', orient: str = 'Right') -> SchematicPort` | No docstring yet. |
-| `off_page(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, orient: str = 'Right') -> SchematicPort` | No docstring yet. |
-| `no_connect(self, anchor: SchematicPinAnchor, *, orient: str = 'Right', offset: float = 0, reason: str \| None = None) -> SchematicNoConnect` | No docstring yet. |
+| `sheet_port(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, kind: str = 'Bidirectional', orient: str = 'Right') -> SchematicPort` | Place a sheet port in this region. |
+| `off_page(self, name: str, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, net: Net \| None = None, orient: str = 'Right') -> SchematicPort` | Place an off-page connector in this region. |
+| `no_connect(self, anchor: SchematicPinAnchor, *, orient: str = 'Right', offset: float = 0, reason: str \| None = None) -> SchematicNoConnect` | Place a no-connect marker in this region. |
 
 ## `volt.SchematicSignalStub`
 
@@ -278,7 +278,7 @@ Source: `python/volt/_schematic_handles.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this schematic symbol field. |
 
 ## `volt.SchematicSymbol`
 
@@ -290,18 +290,18 @@ Source: `python/volt/_schematic_handles.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
-| `component: Component` | No docstring yet. |
-| `orientation: str` | No docstring yet. |
+| `index: int` | Return the kernel index for this placed schematic symbol. |
+| `component: Component` | Return the logical component represented by this placed symbol. |
+| `orientation: str` | Return the placed symbol orientation. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `pin_anchor(self, number: int \| str) -> tuple[float, float]` | No docstring yet. |
-| `pin(self, key: int \| str) -> SchematicPinAnchor` | No docstring yet. |
-| `pins(self, name: str) -> tuple[SchematicPinAnchor, ...]` | No docstring yet. |
-| `pin_anchors(self) -> tuple[SchematicPinAnchor, ...]` | No docstring yet. |
+| `pin_anchor(self, number: int \| str) -> tuple[float, float]` | Return the sheet coordinate for a symbol pin number. |
+| `pin(self, key: int \| str) -> SchematicPinAnchor` | Return a placed symbol pin anchor by pin name or number. |
+| `pins(self, name: str) -> tuple[SchematicPinAnchor, ...]` | Return every placed symbol pin anchor with the given pin name. |
+| `pin_anchors(self) -> tuple[SchematicPinAnchor, ...]` | Return all placed symbol pin anchors. |
 
 ## `volt.SchematicTerminalStub`
 
@@ -319,42 +319,42 @@ Source: `python/volt/schematic.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
-| `component: Component` | No docstring yet. |
-| `orientation: str` | No docstring yet. |
-| `start: SchematicPinAnchor` | No docstring yet. |
-| `end: SchematicPinAnchor` | No docstring yet. |
-| `center: SchematicAnchor` | No docstring yet. |
+| `index: int` | Return the kernel index after materializing this placement. |
+| `component: Component` | Return the component being placed. |
+| `orientation: str` | Return the placed symbol orientation after materialization. |
+| `start: SchematicPinAnchor` | Return the start pin anchor after materialization. |
+| `end: SchematicPinAnchor` | Return the end pin anchor after materialization. |
+| `center: SchematicAnchor` | Return the placed element center after materialization. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `at(self, point: tuple[float, float] \| SchematicAnchor \| SchematicPort) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `anchor(self, ref: str \| int) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `drop(self, ref: str \| int) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `between(self, start: tuple[float, float] \| SchematicAnchor \| SchematicPort, end: tuple[float, float] \| SchematicAnchor \| SchematicPort, *, anchor: str \| int = 'start', drop: str \| int = 'end') -> SchematicTwoTerminalElement` | No docstring yet. |
-| `endpoints(self, start: tuple[float, float] \| SchematicAnchor \| SchematicPort, end: tuple[float, float] \| SchematicAnchor \| SchematicPort, *, anchor: str \| int = 'start', drop: str \| int = 'end') -> SchematicTwoTerminalElement` | No docstring yet. |
-| `to(self, end: tuple[float, float] \| SchematicAnchor \| SchematicPort) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `tox(self, anchor_or_x) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `toy(self, anchor_or_y) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `length(self, value: float) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `right(self, length: float \| None = None) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `left(self, length: float \| None = None) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `up(self, length: float \| None = None) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `down(self, length: float \| None = None) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `reverse(self) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `flip(self) -> SchematicTwoTerminalElement` | No docstring yet. |
-| `label(self, text: str, *, loc: str \| None = None, name: str = 'label', offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None) -> PlacedSchematicElement` | No docstring yet. |
-| `label_ref(self, *, loc: str \| None = None, offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None) -> PlacedSchematicElement` | No docstring yet. |
-| `label_value(self, *, loc: str \| None = None, offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None) -> PlacedSchematicElement` | No docstring yet. |
-| `dot(self, *, net: Net \| None = None) -> PlacedSchematicElement` | No docstring yet. |
-| `idot(self, *, net: Net \| None = None) -> PlacedSchematicElement` | No docstring yet. |
-| `__getitem__(self, key: int \| str) -> SchematicPinAnchor` | No docstring yet. |
-| `pin_anchor(self, number: int \| str) -> tuple[float, float]` | No docstring yet. |
-| `pin(self, key: int \| str) -> SchematicPinAnchor` | No docstring yet. |
-| `pins(self, name: str) -> tuple[SchematicPinAnchor, ...]` | No docstring yet. |
-| `pin_anchors(self) -> tuple[SchematicPinAnchor, ...]` | No docstring yet. |
+| `at(self, point: tuple[float, float] \| SchematicAnchor \| SchematicPort) -> SchematicTwoTerminalElement` | Set the anchor point for the two-terminal placement. |
+| `anchor(self, ref: str \| int) -> SchematicTwoTerminalElement` | Choose which local terminal or named anchor is fixed to ``at``. |
+| `drop(self, ref: str \| int) -> SchematicTwoTerminalElement` | Choose which local terminal or named anchor drives the cursor endpoint. |
+| `between(self, start: tuple[float, float] \| SchematicAnchor \| SchematicPort, end: tuple[float, float] \| SchematicAnchor \| SchematicPort, *, anchor: str \| int = 'start', drop: str \| int = 'end') -> SchematicTwoTerminalElement` | Place the element between two aligned anchors. |
+| `endpoints(self, start: tuple[float, float] \| SchematicAnchor \| SchematicPort, end: tuple[float, float] \| SchematicAnchor \| SchematicPort, *, anchor: str \| int = 'start', drop: str \| int = 'end') -> SchematicTwoTerminalElement` | Alias for ``between()``. |
+| `to(self, end: tuple[float, float] \| SchematicAnchor \| SchematicPort) -> SchematicTwoTerminalElement` | Place the element from its current anchor to an aligned endpoint. |
+| `tox(self, anchor_or_x) -> SchematicTwoTerminalElement` | Place the element horizontally to a target x coordinate. |
+| `toy(self, anchor_or_y) -> SchematicTwoTerminalElement` | Place the element vertically to a target y coordinate. |
+| `length(self, value: float) -> SchematicTwoTerminalElement` | Set the element length in drawing units. |
+| `right(self, length: float \| None = None) -> SchematicTwoTerminalElement` | Orient the element to the right, optionally with a length in drawing units. |
+| `left(self, length: float \| None = None) -> SchematicTwoTerminalElement` | Orient the element to the left, optionally with a length in drawing units. |
+| `up(self, length: float \| None = None) -> SchematicTwoTerminalElement` | Orient the element upward, optionally with a length in drawing units. |
+| `down(self, length: float \| None = None) -> SchematicTwoTerminalElement` | Orient the element downward, optionally with a length in drawing units. |
+| `reverse(self) -> SchematicTwoTerminalElement` | Swap the generated two-terminal symbol's start and end pins. |
+| `flip(self) -> SchematicTwoTerminalElement` | Flip the generated two-terminal symbol across its placement axis. |
+| `label(self, text: str, *, loc: str \| None = None, name: str = 'label', offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None) -> PlacedSchematicElement` | Materialize the element and add a text field near it. |
+| `label_ref(self, *, loc: str \| None = None, offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None) -> PlacedSchematicElement` | Materialize the element and add its reference-designator label. |
+| `label_value(self, *, loc: str \| None = None, offset: float \| None = None, ofst: float \| None = None, orient: str \| None = None) -> PlacedSchematicElement` | Materialize the element and add its value label. |
+| `dot(self, *, net: Net \| None = None) -> PlacedSchematicElement` | Materialize the element and add a junction dot at its end terminal. |
+| `idot(self, *, net: Net \| None = None) -> PlacedSchematicElement` | Materialize the element and add a junction dot at its start terminal. |
+| `__getitem__(self, key: int \| str) -> SchematicPinAnchor` | Materialize the element and return a pin anchor by name or number. |
+| `pin_anchor(self, number: int \| str) -> tuple[float, float]` | Materialize the element and return a pin coordinate by number. |
+| `pin(self, key: int \| str) -> SchematicPinAnchor` | Materialize the element and return a pin anchor by name or number. |
+| `pins(self, name: str) -> tuple[SchematicPinAnchor, ...]` | Materialize the element and return all pin anchors with the given name. |
+| `pin_anchors(self) -> tuple[SchematicPinAnchor, ...]` | Materialize the element and return all pin anchors. |
 
 ## `volt.SchematicWire`
 
@@ -366,14 +366,14 @@ Source: `python/volt/_schematic_handles.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this schematic wire. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `dot(self) -> SchematicWire` | No docstring yet. |
-| `idot(self) -> SchematicWire` | No docstring yet. |
+| `dot(self) -> SchematicWire` | Add a junction dot at this wire's final point. |
+| `idot(self) -> SchematicWire` | Add a junction dot at this wire's first point. |
 
 ## `volt.SchematicWireBuilder`
 
@@ -385,19 +385,19 @@ Source: `python/volt/schematic.py`
 
 | Method | Summary |
 | --- | --- |
-| `at(self, point) -> SchematicWireBuilder` | No docstring yet. |
-| `endpoints(self, start, end, *, shape: str \| None = None, k: float \| None = None) -> SchematicWireBuilder` | No docstring yet. |
-| `from_(self, point) -> SchematicWireBuilder` | No docstring yet. |
+| `at(self, point) -> SchematicWireBuilder` | Start this wire at an explicit anchor or point. |
+| `endpoints(self, start, end, *, shape: str \| None = None, k: float \| None = None) -> SchematicWireBuilder` | Set both endpoints for this wire builder. |
+| `from_(self, point) -> SchematicWireBuilder` | Start this wire at an explicit anchor or point. |
 | `via(self, point) -> SchematicWireBuilder` | Append an explicit intermediate point that the route should preserve. |
 | `to(self, point, *, shape: str \| None = None, k: float \| None = None)` | Append the next route point, normally the terminal endpoint. |
 | `tox(self, anchor_or_x) -> SchematicWireBuilder` | Append a horizontal segment ending at the target x coordinate. |
 | `toy(self, anchor_or_y) -> SchematicWireBuilder` | Append a vertical segment ending at the target y coordinate. |
-| `right(self, length: float) -> SchematicWireBuilder` | No docstring yet. |
-| `left(self, length: float) -> SchematicWireBuilder` | No docstring yet. |
-| `up(self, length: float) -> SchematicWireBuilder` | No docstring yet. |
-| `down(self, length: float) -> SchematicWireBuilder` | No docstring yet. |
-| `dot(self) -> SchematicWireBuilder` | No docstring yet. |
-| `idot(self) -> SchematicWireBuilder` | No docstring yet. |
+| `right(self, length: float) -> SchematicWireBuilder` | Append a segment to the right by a distance. |
+| `left(self, length: float) -> SchematicWireBuilder` | Append a segment to the left by a distance. |
+| `up(self, length: float) -> SchematicWireBuilder` | Append a segment upward by a distance. |
+| `down(self, length: float) -> SchematicWireBuilder` | Append a segment downward by a distance. |
+| `dot(self) -> SchematicWireBuilder` | Request a junction dot at the final wire endpoint. |
+| `idot(self) -> SchematicWireBuilder` | Request a junction dot at the initial wire endpoint. |
 | `direct(self) -> SchematicWire` | Persist the collected points without inserting an automatic bend. |
 | `orthogonal(self) -> SchematicWire` | Persist the run, inserting one bend only for a two-point diagonal route. |
 | `shape(self, shape: str, *, k: float \| None = None) -> SchematicWire` | Persist a SchemDraw-style point-to-point wire shape. |

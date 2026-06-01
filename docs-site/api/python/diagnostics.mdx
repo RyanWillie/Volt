@@ -42,12 +42,12 @@ Source: `python/volt/diagnostics.py`
 
 | Property | Summary |
 | --- | --- |
-| `has_errors: bool` | No docstring yet. |
+| `has_errors: bool` | Return whether this report contains at least one error diagnostic. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `__iter__(self) -> Iterator[Diagnostic]` | No docstring yet. |
-| `__len__(self) -> int` | No docstring yet. |
-| `__getitem__(self, index: int) -> Diagnostic` | No docstring yet. |
+| `__iter__(self) -> Iterator[Diagnostic]` | Iterate over diagnostics in report order. |
+| `__len__(self) -> int` | Return the number of diagnostics in this report. |
+| `__getitem__(self, index: int) -> Diagnostic` | Return one diagnostic by positional index. |

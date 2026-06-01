@@ -22,32 +22,40 @@ class SchematicAnchor:
 
     @property
     def x(self) -> float:
+        """Return the sheet x coordinate."""
         return self._point[0]
 
     @property
     def y(self) -> float:
+        """Return the sheet y coordinate."""
         return self._point[1]
 
     @property
     def point(self) -> tuple[float, float]:
+        """Return this anchor as an ``(x, y)`` tuple."""
         return self._point
 
     def offset(self, dx: float = 0, dy: float = 0) -> SchematicAnchor:
+        """Return a new anchor offset from this point."""
         return SchematicAnchor(
             (self.x + _coordinate(dx), self.y + _coordinate(dy)),
             design=self._design,
         )
 
     def left(self, distance: float) -> SchematicAnchor:
+        """Return a new anchor moved left by a distance."""
         return self.offset(dx=-_coordinate(distance))
 
     def right(self, distance: float) -> SchematicAnchor:
+        """Return a new anchor moved right by a distance."""
         return self.offset(dx=_coordinate(distance))
 
     def up(self, distance: float) -> SchematicAnchor:
+        """Return a new anchor moved up by a distance."""
         return self.offset(dy=-_coordinate(distance))
 
     def down(self, distance: float) -> SchematicAnchor:
+        """Return a new anchor moved down by a distance."""
         return self.offset(dy=_coordinate(distance))
 
     def tox(self, anchor_or_x) -> SchematicAnchor:
@@ -71,6 +79,7 @@ class SchematicAnchor:
         )
 
     def __iter__(self):
+        """Iterate over the ``(x, y)`` coordinate values."""
         return iter(self._point)
 
     def __repr__(self) -> str:
@@ -126,6 +135,7 @@ class SchematicPort:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this schematic port projection."""
         return self._index
 
     def __repr__(self) -> str:
@@ -144,6 +154,7 @@ class SchematicJunction:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this schematic junction."""
         return self._index
 
     def __repr__(self) -> str:
@@ -160,6 +171,7 @@ class SchematicNoConnect:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this no-connect marker."""
         return self._index
 
     def __repr__(self) -> str:
@@ -185,21 +197,25 @@ class SchematicSymbol:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this placed schematic symbol."""
         return self._index
 
     @property
     def component(self) -> Component:
+        """Return the logical component represented by this placed symbol."""
         if self._component is None:
             raise ValueError("Placed symbol component is not available")
         return self._component
 
     @property
     def orientation(self) -> str:
+        """Return the placed symbol orientation."""
         if self._orientation is None:
             return self._schematic._design._circuit.schematic_symbol_orientation(self._index)
         return self._orientation
 
     def pin_anchor(self, number: int | str) -> tuple[float, float]:
+        """Return the sheet coordinate for a symbol pin number."""
         if not isinstance(number, (int, str)):
             raise TypeError("pin_anchor expects a pin number")
         return self._schematic._design._circuit.schematic_symbol_pin_anchor(
@@ -207,6 +223,7 @@ class SchematicSymbol:
         )
 
     def pin(self, key: int | str) -> SchematicPinAnchor:
+        """Return a placed symbol pin anchor by pin name or number."""
         try:
             pin_ref = _resolve_schematic_symbol_pin_ref(self._pin_refs(), key)
         except ValueError as error:
@@ -216,6 +233,7 @@ class SchematicSymbol:
         return self._pin_anchor_for_ref(pin_ref)
 
     def pins(self, name: str) -> tuple[SchematicPinAnchor, ...]:
+        """Return every placed symbol pin anchor with the given pin name."""
         if not isinstance(name, str):
             raise TypeError("Schematic symbol pin groups are addressed by str name")
         matches = tuple(item for item in self._pin_refs() if item["name"] == name)
@@ -224,6 +242,7 @@ class SchematicSymbol:
         return tuple(self._pin_anchor_for_ref(item) for item in matches)
 
     def pin_anchors(self) -> tuple[SchematicPinAnchor, ...]:
+        """Return all placed symbol pin anchors."""
         return tuple(self._pin_anchor_for_ref(item) for item in self._pin_refs())
 
     def _pin_refs(self):
@@ -271,26 +290,32 @@ class PlacedSchematicElement:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for the wrapped schematic symbol."""
         return self.symbol.index
 
     @property
     def component(self) -> Component:
+        """Return the logical component represented by this element."""
         return self.symbol.component
 
     @property
     def orientation(self) -> str:
+        """Return this element's placed orientation."""
         return self.symbol.orientation
 
     @property
     def start(self) -> SchematicPinAnchor:
+        """Return the first terminal anchor for this placed element."""
         return self._terminal_anchor(0, "start")
 
     @property
     def end(self) -> SchematicPinAnchor:
+        """Return the last terminal anchor for this placed element."""
         return self._terminal_anchor(-1, "end")
 
     @property
     def center(self) -> SchematicAnchor:
+        """Return the center point of this element's placed pin anchors."""
         anchors = self.pin_anchors()
         if not anchors:
             raise ValueError("Placed schematic element center requires at least one pin anchor")
@@ -302,6 +327,7 @@ class PlacedSchematicElement:
         )
 
     def __getitem__(self, key: int | str) -> SchematicPinAnchor:
+        """Return a placed element pin anchor by pin name or number."""
         return self.pin(key)
 
     def __getattr__(self, name: str) -> SchematicPinAnchor:
@@ -325,15 +351,19 @@ class PlacedSchematicElement:
         return self.symbol._pin_anchor_for_ref(matches[0])
 
     def pin_anchor(self, number: int | str) -> tuple[float, float]:
+        """Return the sheet coordinate for one placed element pin number."""
         return self.symbol.pin_anchor(number)
 
     def pin(self, key: int | str) -> SchematicPinAnchor:
+        """Return a placed element pin anchor by pin name or number."""
         return self.symbol.pin(key)
 
     def pins(self, name: str) -> tuple[SchematicPinAnchor, ...]:
+        """Return every placed element pin anchor with the given pin name."""
         return self.symbol.pins(name)
 
     def pin_anchors(self) -> tuple[SchematicPinAnchor, ...]:
+        """Return all placed element pin anchors."""
         return self.symbol.pin_anchors()
 
     def label(
@@ -349,6 +379,7 @@ class PlacedSchematicElement:
         baseline: str = "baseline",
         font_size: float | None = None,
     ) -> PlacedSchematicElement:
+        """Add a text field near this placed schematic element."""
         if not isinstance(text, str):
             raise TypeError("Schematic element labels must be strings")
         if not text:
@@ -386,6 +417,7 @@ class PlacedSchematicElement:
         baseline: str = "baseline",
         font_size: float | None = None,
     ) -> PlacedSchematicElement:
+        """Add a reference-designator label near this placed element."""
         return self.label(
             self.component.reference,
             loc=loc,
@@ -409,6 +441,7 @@ class PlacedSchematicElement:
         baseline: str = "baseline",
         font_size: float | None = None,
     ) -> PlacedSchematicElement:
+        """Add a value label near this placed element."""
         value = _component_value_label(self.component)
         if value is None:
             raise ValueError("Component has no value or electrical property to label")
@@ -425,6 +458,7 @@ class PlacedSchematicElement:
         )
 
     def dot(self, *, net: Net | None = None) -> PlacedSchematicElement:
+        """Add a junction dot at this element's end terminal."""
         from .schematic import _add_schematic_junction_dot
 
         _add_schematic_junction_dot(
@@ -437,6 +471,7 @@ class PlacedSchematicElement:
         return self
 
     def idot(self, *, net: Net | None = None) -> PlacedSchematicElement:
+        """Add a junction dot at this element's start terminal."""
         from .schematic import _add_schematic_junction_dot
 
         _add_schematic_junction_dot(
@@ -489,9 +524,11 @@ class SchematicWire:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this schematic wire."""
         return self._index
 
     def dot(self) -> SchematicWire:
+        """Add a junction dot at this wire's final point."""
         if not self._dot_end:
             from .schematic import _add_schematic_junction_dot
 
@@ -506,6 +543,7 @@ class SchematicWire:
         return self
 
     def idot(self) -> SchematicWire:
+        """Add a junction dot at this wire's first point."""
         if not self._dot_start:
             from .schematic import _add_schematic_junction_dot
 
@@ -533,6 +571,7 @@ class SchematicNetLabel:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this schematic net label."""
         return self._index
 
     def __repr__(self) -> str:
@@ -640,6 +679,7 @@ class SchematicSymbolField:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this schematic symbol field."""
         return self._index
 
     def __repr__(self) -> str:

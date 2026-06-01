@@ -14,30 +14,30 @@ Source: `python/volt/design.py`
 
 | Method | Summary |
 | --- | --- |
-| `net(self, name: str, *, kind: str = 'signal', voltage: float \| None = None) -> Net` | No docstring yet. |
-| `nets(self) -> tuple[Net, ...]` | No docstring yet. |
-| `R(self, value: str \| None = None, *, resistance: float \| None = None, tolerance: float \| None = None, ref: str \| None = None) -> Component` | No docstring yet. |
-| `C(self, value: str \| None = None, *, capacitance: float \| None = None, voltage_rating: float \| None = None, ref: str \| None = None) -> Component` | No docstring yet. |
-| `CP(self, value: str \| None = None, *, capacitance: float \| None = None, voltage_rating: float \| None = None, ref: str \| None = None) -> Component` | No docstring yet. |
-| `L(self, value: str \| None = None, *, inductance: float \| None = None, ref: str \| None = None) -> Component` | No docstring yet. |
-| `define_component(self, name: str, *, pins: Iterable[PinSpec], properties: dict \| None = None, source: tuple[str, str, str] \| None = None, schematic_symbol: SchematicSymbolSpec \| Iterable[SchematicSymbolSpec] \| None = None) -> ComponentDefinition` | No docstring yet. |
-| `define_module(self, name: str) -> ModuleDefinition` | No docstring yet. |
-| `instantiate(self, definition: ComponentDefinition \| ModuleDefinition \| LibraryComponent, *, ref: str \| None = None, prefix: str \| None = None, properties: dict \| None = None) -> Component \| ModuleInstance` | No docstring yet. |
-| `LED(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
-| `diode(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
-| `switch(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
-| `crystal(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
-| `test_point(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
-| `connector_1x01(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
-| `connector_1x02(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
-| `connector_1x03(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
-| `regulator(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
-| `op_amp(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
-| `schematic(self, name: str, *, size: str \| tuple[float, float] \| dict \| None = None, orientation: str \| None = None, title: str \| None = None, number: str \| int \| None = None, page_count: str \| int \| None = None, revision: str \| None = None, date: str \| None = None, project: str \| None = None, file: str \| None = None, title_block: dict[str, str] \| Iterable[tuple[str, str] \| dict] \| None = None, margins: float \| tuple[float, float, float, float] \| dict \| None = None, coordinate_zones: tuple[int, int] \| dict \| None = None, grid: float \| dict \| None = None) -> Schematic` | No docstring yet. |
-| `board(self, name: str = 'Main')` | No docstring yet. |
-| `load_schematic_json(self, text: str) -> Schematic` | No docstring yet. |
-| `load_schematic(self, path: str \| Path) -> Schematic` | No docstring yet. |
-| `validate(self) -> DiagnosticReport` | No docstring yet. |
-| `validate_for_pcb(self) -> DiagnosticReport` | No docstring yet. |
-| `to_json(self) -> str` | No docstring yet. |
-| `write(self, path: str \| Path) -> None` | No docstring yet. |
+| `net(self, name: str, *, kind: str = 'signal', voltage: float \| None = None) -> Net` | Create or return a logical net by name, optionally annotating its voltage. |
+| `nets(self) -> tuple[Net, ...]` | Return handles for every logical net in this design. |
+| `R(self, value: str \| None = None, *, resistance: float \| None = None, tolerance: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic resistor component. |
+| `C(self, value: str \| None = None, *, capacitance: float \| None = None, voltage_rating: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic non-polarized capacitor component. |
+| `CP(self, value: str \| None = None, *, capacitance: float \| None = None, voltage_rating: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic polarized capacitor component. |
+| `L(self, value: str \| None = None, *, inductance: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic inductor component. |
+| `define_component(self, name: str, *, pins: Iterable[PinSpec], properties: dict \| None = None, source: tuple[str, str, str] \| None = None, schematic_symbol: SchematicSymbolSpec \| Iterable[SchematicSymbolSpec] \| None = None) -> ComponentDefinition` | Define a reusable component type with pins, properties, and optional symbols. |
+| `define_module(self, name: str) -> ModuleDefinition` | Define a reusable module template inside this design. |
+| `instantiate(self, definition: ComponentDefinition \| ModuleDefinition \| LibraryComponent, *, ref: str \| None = None, prefix: str \| None = None, properties: dict \| None = None) -> Component \| ModuleInstance` | Instantiate a component definition, module definition, or library component. |
+| `LED(self, *, ref: str \| None = None) -> Component` | Instantiate a generic LED component. |
+| `diode(self, *, ref: str \| None = None) -> Component` | Instantiate a generic diode component. |
+| `switch(self, *, ref: str \| None = None) -> Component` | Instantiate a generic SPST switch component. |
+| `crystal(self, *, ref: str \| None = None) -> Component` | Instantiate a generic two-pin crystal component. |
+| `test_point(self, *, ref: str \| None = None) -> Component` | Instantiate a generic test point component. |
+| `connector_1x01(self, *, ref: str \| None = None) -> Component` | Instantiate a generic one-pin connector component. |
+| `connector_1x02(self, *, ref: str \| None = None) -> Component` | Instantiate a generic two-pin connector component. |
+| `connector_1x03(self, *, ref: str \| None = None) -> Component` | Instantiate a generic three-pin connector component. |
+| `regulator(self, *, ref: str \| None = None) -> Component` | Instantiate a generic three-pin regulator component. |
+| `op_amp(self, *, ref: str \| None = None) -> Component` | Instantiate a generic five-pin operational amplifier component. |
+| `schematic(self, name: str, *, size: str \| tuple[float, float] \| dict \| None = None, orientation: str \| None = None, title: str \| None = None, number: str \| int \| None = None, page_count: str \| int \| None = None, revision: str \| None = None, date: str \| None = None, project: str \| None = None, file: str \| None = None, title_block: dict[str, str] \| Iterable[tuple[str, str] \| dict] \| None = None, margins: float \| tuple[float, float, float, float] \| dict \| None = None, coordinate_zones: tuple[int, int] \| dict \| None = None, grid: float \| dict \| None = None) -> Schematic` | Create or return a schematic sheet authoring handle by sheet name. |
+| `board(self, name: str = 'Main')` | Create or return a PCB board projection authoring handle. |
+| `load_schematic_json(self, text: str) -> Schematic` | Load schematic projection JSON into this design and return the first sheet. |
+| `load_schematic(self, path: str \| Path) -> Schematic` | Load schematic projection JSON from a file and return the first sheet. |
+| `validate(self) -> DiagnosticReport` | Run logical design validation and return the diagnostic report. |
+| `validate_for_pcb(self) -> DiagnosticReport` | Run PCB-readiness validation and return the diagnostic report. |
+| `to_json(self) -> str` | Serialize the logical design to Volt JSON. |
+| `write(self, path: str \| Path) -> None` | Write the logical design JSON to a file. |
