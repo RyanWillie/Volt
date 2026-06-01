@@ -42,24 +42,13 @@ class SchematicTextStyle {
     explicit SchematicTextStyle(
         TextHorizontalAlignment horizontal_alignment = TextHorizontalAlignment::Middle,
         TextVerticalAlignment vertical_alignment = TextVerticalAlignment::Baseline,
-        std::optional<double> font_size = std::nullopt)
-        : horizontal_alignment_{horizontal_alignment}, vertical_alignment_{vertical_alignment},
-          font_size_{font_size} {
-        if (font_size_.has_value() &&
-            (!std::isfinite(font_size_.value()) || font_size_.value() <= 0.0)) {
-            throw std::invalid_argument{"Schematic text font size must be finite and positive"};
-        }
-    }
+        std::optional<double> font_size = std::nullopt);
 
     /** Return horizontal text alignment. */
-    [[nodiscard]] TextHorizontalAlignment horizontal_alignment() const noexcept {
-        return horizontal_alignment_;
-    }
+    [[nodiscard]] TextHorizontalAlignment horizontal_alignment() const noexcept;
 
     /** Return vertical text alignment/baseline. */
-    [[nodiscard]] TextVerticalAlignment vertical_alignment() const noexcept {
-        return vertical_alignment_;
-    }
+    [[nodiscard]] TextVerticalAlignment vertical_alignment() const noexcept;
 
     /** Return optional rendered font size override. */
     [[nodiscard]] const std::optional<double> &font_size() const noexcept { return font_size_; }
@@ -125,11 +114,7 @@ class SymbolRectangle {
 class SymbolCircle {
   public:
     /** Construct a symbol circle from center point and positive radius. */
-    SymbolCircle(Point center, double radius) : center_{center}, radius_{radius} {
-        if (!std::isfinite(radius_) || radius_ <= 0.0) {
-            throw std::invalid_argument{"Symbol circle radius must be finite and positive"};
-        }
-    }
+    SymbolCircle(Point center, double radius);
 
     /** Return the circle center. */
     [[nodiscard]] Point center() const noexcept { return center_; }
@@ -149,16 +134,7 @@ class SymbolCircle {
 class SymbolArc {
   public:
     /** Construct a symbol arc from center, radius, start angle, and sweep angle. */
-    SymbolArc(Point center, double radius, double start_degrees, double sweep_degrees)
-        : center_{center}, radius_{radius}, start_degrees_{start_degrees},
-          sweep_degrees_{sweep_degrees} {
-        if (!std::isfinite(radius_) || radius_ <= 0.0) {
-            throw std::invalid_argument{"Symbol arc radius must be finite and positive"};
-        }
-        if (!std::isfinite(start_degrees_) || !std::isfinite(sweep_degrees_)) {
-            throw std::invalid_argument{"Symbol arc angles must be finite"};
-        }
-    }
+    SymbolArc(Point center, double radius, double start_degrees, double sweep_degrees);
 
     /** Return the arc center. */
     [[nodiscard]] Point center() const noexcept { return center_; }
@@ -188,12 +164,7 @@ class SymbolText {
     /** Construct symbol text with content, anchor, and orientation. */
     SymbolText(std::string text, Point anchor,
                SchematicOrientation orientation = SchematicOrientation::Right,
-               SchematicTextStyle style = SchematicTextStyle{})
-        : text_{std::move(text)}, anchor_{anchor}, orientation_{orientation}, style_{style} {
-        if (text_.empty()) {
-            throw std::invalid_argument{"Symbol text must not be empty"};
-        }
-    }
+               SchematicTextStyle style = SchematicTextStyle{});
 
     /** Return the displayed text. */
     [[nodiscard]] const std::string &text() const noexcept { return text_; }
@@ -226,16 +197,7 @@ using SymbolPrimitive =
 class SymbolPin {
   public:
     /** Construct a symbol pin with display name, pin number, anchor, and orientation. */
-    SymbolPin(std::string name, std::string number, Point anchor, SchematicOrientation orientation)
-        : name_{std::move(name)}, number_{std::move(number)}, anchor_{anchor},
-          orientation_{orientation} {
-        if (name_.empty()) {
-            throw std::invalid_argument{"Symbol pin name must not be empty"};
-        }
-        if (number_.empty()) {
-            throw std::invalid_argument{"Symbol pin number must not be empty"};
-        }
-    }
+    SymbolPin(std::string name, std::string number, Point anchor, SchematicOrientation orientation);
 
     /** Return the displayed pin name. */
     [[nodiscard]] const std::string &name() const noexcept { return name_; }
@@ -264,26 +226,13 @@ class SymbolPin {
 class SymbolDefinition {
   public:
     /** Construct a named symbol definition. */
-    explicit SymbolDefinition(std::string name) : name_{std::move(name)} {
-        if (name_.empty()) {
-            throw std::invalid_argument{"Symbol definition name must not be empty"};
-        }
-    }
+    explicit SymbolDefinition(std::string name);
 
     /** Add a visual pin anchor to the symbol definition. */
-    void add_pin(SymbolPin pin) {
-        const auto duplicate = std::any_of(pins_.begin(), pins_.end(), [&pin](const auto &other) {
-            return other.number() == pin.number();
-        });
-        if (duplicate) {
-            throw std::logic_error{"Symbol pin number already exists"};
-        }
-
-        pins_.push_back(std::move(pin));
-    }
+    void add_pin(SymbolPin pin);
 
     /** Add a structured drawing primitive to the symbol definition. */
-    void add_primitive(SymbolPrimitive primitive) { primitives_.push_back(std::move(primitive)); }
+    void add_primitive(SymbolPrimitive primitive);
 
     /** Return the symbol definition name. */
     [[nodiscard]] const std::string &name() const noexcept { return name_; }
@@ -292,9 +241,7 @@ class SymbolDefinition {
     [[nodiscard]] const std::vector<SymbolPin> &pins() const noexcept { return pins_; }
 
     /** Return structured drawing primitives in insertion order. */
-    [[nodiscard]] const std::vector<SymbolPrimitive> &primitives() const noexcept {
-        return primitives_;
-    }
+    [[nodiscard]] const std::vector<SymbolPrimitive> &primitives() const noexcept;
 
     /** Return whether two symbol definitions have the same name and geometry. */
     [[nodiscard]] friend bool operator==(const SymbolDefinition &lhs,

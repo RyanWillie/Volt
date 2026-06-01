@@ -35,44 +35,28 @@ struct SchematicWireSegmentTopology {
     SchematicWireNetRelationship net_relationship = SchematicWireNetRelationship::SameNet;
 
     /** Return whether the parent wire runs present one logical net. */
-    [[nodiscard]] bool same_net() const noexcept {
-        return net_relationship == SchematicWireNetRelationship::SameNet;
-    }
+    [[nodiscard]] bool same_net() const noexcept;
 
     /** Return whether the parent wire runs present different logical nets. */
-    [[nodiscard]] bool different_net() const noexcept {
-        return net_relationship == SchematicWireNetRelationship::DifferentNet;
-    }
+    [[nodiscard]] bool different_net() const noexcept;
 
     /** Return whether the segments cross away from endpoints. */
-    [[nodiscard]] bool crossing() const noexcept {
-        return relationship == SchematicSegmentRelationship::Crossing;
-    }
+    [[nodiscard]] bool crossing() const noexcept;
 
     /** Return whether the segments cross without an explicit junction marker. */
-    [[nodiscard]] bool crossing_without_junction() const noexcept {
-        return crossing() && junction == SchematicJunction::Absent;
-    }
+    [[nodiscard]] bool crossing_without_junction() const noexcept;
 
     /** Return whether the segments cross with an explicit junction marker. */
-    [[nodiscard]] bool crossing_with_junction() const noexcept {
-        return crossing() && junction == SchematicJunction::Present;
-    }
+    [[nodiscard]] bool crossing_with_junction() const noexcept;
 
     /** Return whether the segments touch at an endpoint. */
-    [[nodiscard]] bool endpoint_touch() const noexcept {
-        return relationship == SchematicSegmentRelationship::EndpointTouch;
-    }
+    [[nodiscard]] bool endpoint_touch() const noexcept;
 
     /** Return whether the segments overlap collinearly. */
-    [[nodiscard]] bool overlap() const noexcept {
-        return relationship == SchematicSegmentRelationship::Overlap;
-    }
+    [[nodiscard]] bool overlap() const noexcept;
 
     /** Return whether the drawn segments visually contact each other. */
-    [[nodiscard]] bool visual_contact() const noexcept {
-        return endpoint_touch() || overlap() || crossing_with_junction();
-    }
+    [[nodiscard]] bool visual_contact() const noexcept;
 };
 
 /** Topology facts accumulated across every segment pair in two wire runs. */
@@ -89,33 +73,19 @@ struct SchematicWirePairTopology {
     bool overlap = false;
 
     /** Include facts from one segment pair. */
-    void include(SchematicWireSegmentTopology segment) noexcept {
-        crossing_without_junction =
-            crossing_without_junction || segment.crossing_without_junction();
-        crossing_with_junction = crossing_with_junction || segment.crossing_with_junction();
-        endpoint_touch = endpoint_touch || segment.endpoint_touch();
-        overlap = overlap || segment.overlap();
-    }
+    void include(SchematicWireSegmentTopology segment) noexcept;
 
     /** Return whether the parent wire runs present one logical net. */
-    [[nodiscard]] bool same_net() const noexcept {
-        return net_relationship == SchematicWireNetRelationship::SameNet;
-    }
+    [[nodiscard]] bool same_net() const noexcept;
 
     /** Return whether the parent wire runs present different logical nets. */
-    [[nodiscard]] bool different_net() const noexcept {
-        return net_relationship == SchematicWireNetRelationship::DifferentNet;
-    }
+    [[nodiscard]] bool different_net() const noexcept;
 
     /** Return whether any segment pair crosses without a junction marker. */
-    [[nodiscard]] bool has_crossing_without_junction() const noexcept {
-        return crossing_without_junction;
-    }
+    [[nodiscard]] bool has_crossing_without_junction() const noexcept;
 
     /** Return whether any segment pair crosses with a junction marker. */
-    [[nodiscard]] bool has_crossing_with_junction() const noexcept {
-        return crossing_with_junction;
-    }
+    [[nodiscard]] bool has_crossing_with_junction() const noexcept;
 
     /** Return whether any segment pair touches at an endpoint. */
     [[nodiscard]] bool has_endpoint_touch() const noexcept { return endpoint_touch; }
@@ -124,29 +94,17 @@ struct SchematicWirePairTopology {
     [[nodiscard]] bool has_overlap() const noexcept { return overlap; }
 
     /** Return whether any segment pair visually contacts another. */
-    [[nodiscard]] bool has_visual_contact() const noexcept {
-        return has_endpoint_touch() || has_overlap() || has_crossing_with_junction();
-    }
+    [[nodiscard]] bool has_visual_contact() const noexcept;
 };
 
 /** Convert a same-net comparison into the shared topology relationship enum. */
-[[nodiscard]] inline SchematicWireNetRelationship
-schematic_wire_net_relationship(bool same_net) noexcept {
-    return same_net ? SchematicWireNetRelationship::SameNet
-                    : SchematicWireNetRelationship::DifferentNet;
-}
+[[nodiscard]] SchematicWireNetRelationship schematic_wire_net_relationship(bool same_net) noexcept;
 
 /** Classify one schematic wire segment pair into topology facts. */
-[[nodiscard]] inline SchematicWireSegmentTopology
+[[nodiscard]] SchematicWireSegmentTopology
 classify_wire_segment_topology(SchematicSegment first, SchematicSegment second,
                                SchematicWireNetRelationship net_relationship,
-                               SchematicJunction junction) noexcept {
-    return SchematicWireSegmentTopology{
-        classify_segment_relationship(first, second),
-        junction,
-        net_relationship,
-    };
-}
+                               SchematicJunction junction) noexcept;
 
 /** Classify every segment pair in two schematic wire point sequences. */
 template <typename FirstPoints, typename SecondPoints, typename JunctionForSegments>

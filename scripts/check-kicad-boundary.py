@@ -2,6 +2,7 @@
 """Check that KiCad adapter dependencies point toward Volt, never back into core."""
 
 from pathlib import Path
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,7 +27,10 @@ def check_adapter_target() -> None:
         "add_subdirectory(src/adapters/kicad)" in top_level,
         "top-level CMake must add the KiCad adapter target explicitly",
     )
-    require("add_library(volt_kicad_adapter" in adapter_cmake, "KiCad adapter target must exist")
+    require(
+        re.search(r"add_library\s*\(\s*volt_kicad_adapter\b", adapter_cmake) is not None,
+        "KiCad adapter target must exist",
+    )
     require("add_library(Volt::KiCadAdapter" in adapter_cmake, "KiCad adapter alias must exist")
     require("Volt::Circuit" in adapter_cmake, "KiCad adapter must depend on Volt::Circuit")
     require("Volt::Schematic" in adapter_cmake, "KiCad adapter must depend on Volt::Schematic")
@@ -70,4 +74,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

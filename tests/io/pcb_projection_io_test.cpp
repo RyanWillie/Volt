@@ -377,7 +377,7 @@ TEST_CASE("PCB projection reader defaults missing legacy board design rules") {
     auto document = make_board_json(fixture);
     document["board"].erase("rules");
 
-    const auto restored = volt::io::read_pcb_board(fixture.circuit, document);
+    const auto restored = volt::io::read_pcb_board_text(fixture.circuit, document.dump());
 
     CHECK(restored.design_rules().copper_clearance_mm() == 0.15);
     CHECK(restored.design_rules().minimum_track_width_mm() == 0.15);
@@ -416,7 +416,7 @@ TEST_CASE("PCB projection reader rejects dangling references") {
         document["board"]["placements"][0]["component"] = "component:99";
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB placement references missing component"));
     }
 
@@ -425,7 +425,7 @@ TEST_CASE("PCB projection reader rejects dangling references") {
         document["board"]["layer_stack"]["layers"][1] = "board_layer:99";
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB layer stack references missing board layer"));
     }
 
@@ -434,7 +434,7 @@ TEST_CASE("PCB projection reader rejects dangling references") {
         document["board"]["placements"][0]["footprint"] = "footprint_def:99";
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB placement references missing footprint definition"));
     }
 
@@ -443,7 +443,7 @@ TEST_CASE("PCB projection reader rejects dangling references") {
         document["viewer"]["pad_resolutions"][0]["pad"] = "footprint_pad:99";
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB viewer pad resolution references missing footprint pad"));
     }
 
@@ -452,7 +452,7 @@ TEST_CASE("PCB projection reader rejects dangling references") {
         document["viewer"]["pad_resolutions"][0]["net"] = "net:99";
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB viewer pad resolution references missing net"));
     }
 
@@ -466,7 +466,8 @@ TEST_CASE("PCB projection reader rejects dangling references") {
                                                 nlohmann::json::array({2.0, 1.0})})},
               {"width_mm", 0.25}}});
 
-        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::logic_error,
                              Catch::Matchers::Message("PCB track references missing net"));
     }
 
@@ -481,7 +482,8 @@ TEST_CASE("PCB projection reader rejects dangling references") {
                                     {"drill_diameter_mm", 0.30},
                                     {"annular_diameter_mm", 0.70}}});
 
-        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::logic_error,
                              Catch::Matchers::Message("PCB via references missing board layer"));
     }
 
@@ -498,7 +500,8 @@ TEST_CASE("PCB projection reader rejects dangling references") {
               {"fill", "solid"},
               {"priority", 0}}});
 
-        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::logic_error,
                              Catch::Matchers::Message("PCB zone references missing net"));
     }
 
@@ -514,7 +517,7 @@ TEST_CASE("PCB projection reader rejects dangling references") {
               {"restrictions", nlohmann::json::array({"copper"})}}});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB keepout references missing board layer"));
     }
 
@@ -529,7 +532,8 @@ TEST_CASE("PCB projection reader rejects dangling references") {
                                     {"size_mm", 1.0},
                                     {"locked", false}}});
 
-        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::logic_error,
                              Catch::Matchers::Message("PCB text references missing board layer"));
     }
 
@@ -538,7 +542,7 @@ TEST_CASE("PCB projection reader rejects dangling references") {
         document["board"]["rules"]["copper_clearance_mm"] = -0.1;
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::invalid_argument,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::invalid_argument,
             Catch::Matchers::Message("Board design rule clearances must not be negative"));
     }
 }
@@ -553,7 +557,8 @@ TEST_CASE("PCB projection reader rejects invalid footprint library data") {
         duplicate["pads"][0]["size"] = nlohmann::json::array({0.90, 0.95});
         document["board"]["footprint_definitions"].push_back(duplicate);
 
-        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::logic_error,
                              Catch::Matchers::Message(
                                  "Board footprint definition conflicts with existing definition"));
     }
@@ -563,7 +568,7 @@ TEST_CASE("PCB projection reader rejects invalid footprint library data") {
         document["board"]["footprint_definitions"][0]["pads"][1]["label"] = "1";
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::invalid_argument,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::invalid_argument,
             Catch::Matchers::Message("Footprint definition contains duplicate pad labels"));
     }
 
@@ -573,7 +578,7 @@ TEST_CASE("PCB projection reader rejects invalid footprint library data") {
             nlohmann::json::array({0.0, 0.95});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::invalid_argument,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::invalid_argument,
             Catch::Matchers::Message("Footprint size dimensions must be positive"));
     }
 }
@@ -586,7 +591,7 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
         document["viewer"]["pad_resolutions"].erase(1);
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB viewer pad resolutions must match resolved pads"));
     }
 
@@ -594,7 +599,8 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
         auto document = make_board_json(fixture);
         document["viewer"]["pad_resolutions"][1] = document["viewer"]["pad_resolutions"][0];
 
-        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::logic_error,
                              Catch::Matchers::Message(
                                  "PCB viewer pad resolution order does not match resolved pads"));
     }
@@ -603,7 +609,8 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
         auto document = make_board_json(fixture);
         document["viewer"]["pad_resolutions"][0]["label"] = "stale";
 
-        CHECK_THROWS_MATCHES(volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::logic_error,
                              Catch::Matchers::Message(
                                  "PCB viewer pad resolution label does not match footprint pad"));
     }
@@ -614,7 +621,7 @@ TEST_CASE("PCB projection reader rejects stale viewer pad caches") {
             nlohmann::json::array({99.0, 99.0});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message(
                 "PCB viewer pad resolution geometry does not match footprint pad"));
     }
@@ -632,7 +639,7 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
                                     {"entities", nlohmann::json::array({"component:99"})}}});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic references missing component"));
     }
 
@@ -654,7 +661,7 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
               {"entities", nlohmann::json::array({"footprint_def:0", "footprint_pad:2"})}}});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic references missing footprint pad"));
     }
 
@@ -667,7 +674,7 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
                                     {"entities", nlohmann::json::array({"not-an-entity"})}}});
 
         CHECK_THROWS_MATCHES(
-            volt::io::read_pcb_board(fixture.circuit, document), std::logic_error,
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic has unsupported entity reference"));
     }
 }

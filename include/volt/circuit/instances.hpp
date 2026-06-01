@@ -18,11 +18,7 @@ class Circuit;
 class ReferenceDesignator {
   public:
     /** Construct a non-empty reference designator. */
-    explicit ReferenceDesignator(std::string value) : value_{std::move(value)} {
-        if (value_.empty()) {
-            throw std::invalid_argument{"Reference designator must not be empty"};
-        }
-    }
+    explicit ReferenceDesignator(std::string value);
 
     /** Return the stored reference designator string. */
     [[nodiscard]] const std::string &value() const noexcept { return value_; }
@@ -42,9 +38,7 @@ class ComponentInstance {
   public:
     /** Construct an instance from a reusable component definition, reference, and properties. */
     ComponentInstance(ComponentDefId definition, ReferenceDesignator reference,
-                      PropertyMap properties = {})
-        : definition_{definition}, reference_{std::move(reference)},
-          properties_{std::move(properties)} {}
+                      PropertyMap properties = {});
 
     /** Return the reusable component definition used by this instance. */
     [[nodiscard]] ComponentDefId definition() const noexcept { return definition_; }
@@ -56,39 +50,23 @@ class ComponentInstance {
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
     /** Return typed electrical attributes for this component instance. */
-    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept {
-        return electrical_attributes_;
-    }
+    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept;
 
     /** Return the selected physical implementation for this component, if assigned. */
-    [[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part() const noexcept {
-        return selected_physical_part_;
-    }
+    [[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part() const noexcept;
 
   private:
     friend class Circuit;
 
-    void set_property(PropertyKey key, PropertyValue value) {
-        properties_.set(std::move(key), std::move(value));
-    }
+    void set_property(PropertyKey key, PropertyValue value);
 
     void set_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                  ElectricalAttributeValue value) {
-        electrical_attributes_.set(spec, std::move(value));
-    }
+                                  ElectricalAttributeValue value);
 
-    void select_physical_part(PhysicalPart physical_part) {
-        selected_physical_part_ = std::move(physical_part);
-    }
+    void select_physical_part(PhysicalPart physical_part);
 
     void set_selected_part_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                                ElectricalAttributeValue value) {
-        if (!selected_physical_part_.has_value()) {
-            throw std::logic_error{"Component has no selected physical part"};
-        }
-
-        selected_physical_part_->set_electrical_attribute(spec, std::move(value));
-    }
+                                                ElectricalAttributeValue value);
 
     ComponentDefId definition_;
     ReferenceDesignator reference_;
@@ -101,8 +79,7 @@ class ComponentInstance {
 class PinInstance {
   public:
     /** Construct a pin instance from its owning component and reusable pin definition. */
-    PinInstance(ComponentId component, PinDefId definition)
-        : component_{component}, definition_{definition} {}
+    PinInstance(ComponentId component, PinDefId definition);
 
     /** Return the component instance that owns this pin. */
     [[nodiscard]] ComponentId component() const noexcept { return component_; }

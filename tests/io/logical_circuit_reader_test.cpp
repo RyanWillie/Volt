@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_exception.hpp>
 
+#include <nlohmann/json.hpp>
+
 #include <fstream>
 #include <iterator>
 #include <string>
@@ -30,7 +32,7 @@ TEST_CASE("Logical circuit reader preserves component definition source metadata
     fixture["component_definitions"][1]["source"] = {
         {"namespace", "volt.passives"}, {"name", "resistor_2pin"}, {"version", "1.0.0"}};
 
-    const auto circuit = volt::io::read_logical_circuit(fixture);
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
 
     CHECK(output["component_definitions"][1]["source"] ==
@@ -52,7 +54,7 @@ TEST_CASE("Logical circuit reader preserves typed electrical attributes") {
         {"voltage_rating", {{"type", "quantity"}, {"dimension", "voltage"}, {"value", 75.0}}},
     };
 
-    const auto circuit = volt::io::read_logical_circuit(fixture);
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
     const auto &component = circuit.component(volt::ComponentId{1});
     const auto &selected_part = circuit.selected_physical_part(volt::ComponentId{1}).value();
 
@@ -74,7 +76,7 @@ TEST_CASE("Logical circuit reader preserves net typed electrical attributes") {
         {"voltage", {{"type", "quantity"}, {"dimension", "voltage"}, {"value", 3.3}}},
     };
 
-    const auto circuit = volt::io::read_logical_circuit(fixture);
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
 
     CHECK(circuit.net(volt::NetId{0})
               .electrical_attributes()
@@ -89,7 +91,7 @@ TEST_CASE("Logical circuit reader preserves design intent") {
         {"no_connect_pins", nlohmann::json::array({"pin:5"})},
     };
 
-    const auto circuit = volt::io::read_logical_circuit(fixture);
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
 
     CHECK(circuit.is_intentional_stub_net(volt::NetId{0}));
     CHECK(circuit.is_intentional_no_connect_pin(volt::PinId{5}));
@@ -104,7 +106,7 @@ TEST_CASE("Logical circuit reader rejects malformed design intent references") {
         {"no_connect_pins", nlohmann::json::array()},
     };
 
-    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 }
 
 TEST_CASE("Logical circuit reader preserves pin electrical semantics") {
@@ -120,7 +122,7 @@ TEST_CASE("Logical circuit reader preserves pin electrical semantics") {
          {{"type", "range"}, {"dimension", "voltage"}, {"minimum", 0.0}, {"maximum", 5.5}}},
     };
 
-    const auto circuit = volt::io::read_logical_circuit(fixture);
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
     const auto &definition = circuit.pin_definition(volt::PinDefId{0});
 
     CHECK(definition.terminal_kind() == volt::ElectricalTerminalKind::Signal);
@@ -205,7 +207,7 @@ TEST_CASE("Logical circuit reader preserves hierarchy module scaffold") {
           {"port_bindings",
            nlohmann::json::array({{{"port", "port:0"}, {"parent_net", "net:0"}}})}}});
 
-    const auto circuit = volt::io::read_logical_circuit(fixture);
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
 
     CHECK(circuit.module_definition_count() == 1);
     CHECK(circuit.template_net_definition_count() == 2);
@@ -229,7 +231,7 @@ TEST_CASE("Logical circuit reader infers missing module component origins for v1
     auto fixture = nlohmann::json::parse(read_fixture("hierarchy_module.volt.json"));
     fixture["module_instances"][0].erase("component_origins");
 
-    const auto circuit = volt::io::read_logical_circuit(fixture);
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
 
     CHECK(circuit.module_instance_count() == 1);
     CHECK(circuit.module_component_count() == 1);
@@ -242,7 +244,7 @@ TEST_CASE("Logical circuit reader rejects mismatched module component origin con
     fixture["nets"][0]["pins"] = nlohmann::json::array();
     fixture["nets"][1]["pins"] = nlohmann::json::array({"pin:0", "pin:1"});
 
-    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 }
 
 TEST_CASE("Logical circuit reader defaults missing typed electrical attributes to empty maps") {
@@ -273,7 +275,7 @@ TEST_CASE("Logical circuit reader rejects malformed hierarchy references") {
                                             {"role", "PowerInput"},
                                             {"required", true}}})}}});
 
-    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 }
 
 TEST_CASE("Logical circuit reader rejects hierarchy self-bindings") {
@@ -301,38 +303,38 @@ TEST_CASE("Logical circuit reader rejects hierarchy self-bindings") {
           {"port_bindings",
            nlohmann::json::array({{{"port", "port:0"}, {"parent_net", "net:3"}}})}}});
 
-    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 }
 
 TEST_CASE("Logical circuit reader rejects duplicate net pin references") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["nets"][0]["pins"].push_back("pin:0");
 
-    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 }
 
 TEST_CASE("Logical circuit reader rejects invalid pin electrical enum values") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["pin_definitions"][0]["terminal_kind"] = "ThresholdInput";
 
-    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 }
 
 TEST_CASE("Logical circuit reader rejects dangling references") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["component_definitions"][0]["pins"][0] = "pin_def:999";
 
-    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 }
 
 TEST_CASE("Logical circuit reader rejects wrong typed local IDs") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["pins"][0]["id"] = "component:99";
 
-    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 
     fixture["pins"][0]["id"] = "pin:not-a-number";
-    CHECK_THROWS_MATCHES(volt::io::read_logical_circuit(fixture), std::logic_error,
+    CHECK_THROWS_MATCHES(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error,
                          Catch::Matchers::Message("Local ID index must be numeric"));
 }
 
@@ -340,7 +342,7 @@ TEST_CASE("Logical circuit reader reports unsupported versions deterministically
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["version"] = 2;
 
-    CHECK_THROWS_MATCHES(volt::io::read_logical_circuit(fixture), std::logic_error,
+    CHECK_THROWS_MATCHES(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error,
                          Catch::Matchers::Message("Unsupported logical circuit format version: 2"));
 }
 
@@ -349,7 +351,7 @@ TEST_CASE("Logical circuit reader reports large unsupported versions determinist
     fixture["version"] = 2147483648LL;
 
     CHECK_THROWS_MATCHES(
-        volt::io::read_logical_circuit(fixture), std::logic_error,
+        volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error,
         Catch::Matchers::Message("Unsupported logical circuit format version: 2147483648"));
 }
 
@@ -358,7 +360,7 @@ TEST_CASE("Logical circuit reader reports unsupported formats deterministically"
     fixture["format"] = "volt.other";
 
     CHECK_THROWS_MATCHES(
-        volt::io::read_logical_circuit(fixture), std::logic_error,
+        volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error,
         Catch::Matchers::Message("Unsupported logical circuit format: volt.other"));
 }
 
@@ -367,5 +369,5 @@ TEST_CASE(
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["components"][0]["selected_physical_part"]["pin_pad_mappings"][0]["pin"] = "pin_def:2";
 
-    CHECK_THROWS_AS(volt::io::read_logical_circuit(fixture), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 }

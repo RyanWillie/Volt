@@ -92,18 +92,7 @@ class PinDefinition {
                   ElectricalDirection direction = ElectricalDirection::Unspecified,
                   ElectricalSignalDomain signal_domain = ElectricalSignalDomain::Unspecified,
                   ElectricalDriveKind drive_kind = ElectricalDriveKind::Unspecified,
-                  ElectricalPolarity polarity = ElectricalPolarity::None)
-        : name_{std::move(name)}, number_{std::move(number)}, role_{role},
-          connection_requirement_{connection_requirement}, terminal_kind_{terminal_kind},
-          direction_{direction}, signal_domain_{signal_domain}, drive_kind_{drive_kind},
-          polarity_{polarity} {
-        if (name_.empty()) {
-            throw std::invalid_argument{"Pin definition name must not be empty"};
-        }
-        if (number_.empty()) {
-            throw std::invalid_argument{"Pin definition number must not be empty"};
-        }
-    }
+                  ElectricalPolarity polarity = ElectricalPolarity::None);
 
     /** Return the human-readable pin name, such as VDD or A. */
     [[nodiscard]] const std::string &name() const noexcept { return name_; }
@@ -115,9 +104,7 @@ class PinDefinition {
     [[nodiscard]] PinRole role() const noexcept { return role_; }
 
     /** Return whether this pin is expected, allowed, or forbidden to connect. */
-    [[nodiscard]] ConnectionRequirement connection_requirement() const noexcept {
-        return connection_requirement_;
-    }
+    [[nodiscard]] ConnectionRequirement connection_requirement() const noexcept;
 
     /** Return the pin's broad terminal behavior. */
     [[nodiscard]] ElectricalTerminalKind terminal_kind() const noexcept { return terminal_kind_; }
@@ -135,17 +122,13 @@ class PinDefinition {
     [[nodiscard]] ElectricalPolarity polarity() const noexcept { return polarity_; }
 
     /** Return typed electrical attributes attached to this pin definition. */
-    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept {
-        return electrical_attributes_;
-    }
+    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept;
 
   private:
     friend class Circuit;
 
     void set_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                  ElectricalAttributeValue value) {
-        electrical_attributes_.set(spec, std::move(value));
-    }
+                                  ElectricalAttributeValue value);
 
     std::string name_;
     std::string number_;
@@ -163,19 +146,7 @@ class PinDefinition {
 class DefinitionSource {
   public:
     /** Construct source provenance from non-empty namespace, name, and version fields. */
-    DefinitionSource(std::string namespace_name, std::string name, std::string version)
-        : namespace_{std::move(namespace_name)}, name_{std::move(name)},
-          version_{std::move(version)} {
-        if (namespace_.empty()) {
-            throw std::invalid_argument{"Definition source namespace must not be empty"};
-        }
-        if (name_.empty()) {
-            throw std::invalid_argument{"Definition source name must not be empty"};
-        }
-        if (version_.empty()) {
-            throw std::invalid_argument{"Definition source version must not be empty"};
-        }
-    }
+    DefinitionSource(std::string namespace_name, std::string name, std::string version);
 
     /** Return the source library namespace. */
     [[nodiscard]] const std::string &namespace_name() const noexcept { return namespace_; }
@@ -203,15 +174,7 @@ class DefinitionSource {
 class SchematicSymbolReference {
   public:
     /** Construct a schematic symbol reference with a variant label. */
-    explicit SchematicSymbolReference(std::string name, std::string variant = "default")
-        : name_{std::move(name)}, variant_{std::move(variant)} {
-        if (name_.empty()) {
-            throw std::invalid_argument{"Schematic symbol name must not be empty"};
-        }
-        if (variant_.empty()) {
-            throw std::invalid_argument{"Schematic symbol variant must not be empty"};
-        }
-    }
+    explicit SchematicSymbolReference(std::string name, std::string variant = "default");
 
     /** Return the schematic symbol definition name. */
     [[nodiscard]] const std::string &name() const noexcept { return name_; }
@@ -234,17 +197,7 @@ class ComponentDefinition {
     /** Construct a component definition with a name, ordered pin definitions, and properties. */
     ComponentDefinition(std::string name, std::vector<PinDefId> pins, PropertyMap properties = {},
                         std::optional<DefinitionSource> source = std::nullopt,
-                        std::vector<SchematicSymbolReference> schematic_symbols = {})
-        : name_{std::move(name)}, pins_{std::move(pins)}, properties_{std::move(properties)},
-          source_{std::move(source)}, schematic_symbols_{std::move(schematic_symbols)} {
-        if (name_.empty()) {
-            throw std::invalid_argument{"Component definition name must not be empty"};
-        }
-        if (pins_.empty()) {
-            throw std::invalid_argument{"Component definition must contain at least one pin"};
-        }
-        require_unique_schematic_symbol_variants();
-    }
+                        std::vector<SchematicSymbolReference> schematic_symbols = {});
 
     /** Return the reusable component name, such as Resistor or LED. */
     [[nodiscard]] const std::string &name() const noexcept { return name_; }
@@ -259,24 +212,10 @@ class ComponentDefinition {
     [[nodiscard]] const std::optional<DefinitionSource> &source() const noexcept { return source_; }
 
     /** Return schematic symbol choices available for this component definition. */
-    [[nodiscard]] const std::vector<SchematicSymbolReference> &schematic_symbols() const noexcept {
-        return schematic_symbols_;
-    }
+    [[nodiscard]] const std::vector<SchematicSymbolReference> &schematic_symbols() const noexcept;
 
   private:
-    void require_unique_schematic_symbol_variants() const {
-        for (std::size_t index = 0; index < schematic_symbols_.size(); ++index) {
-            const auto duplicate =
-                std::any_of(schematic_symbols_.begin() + static_cast<std::ptrdiff_t>(index + 1U),
-                            schematic_symbols_.end(), [this, index](const auto &candidate) {
-                                return candidate.variant() == schematic_symbols_[index].variant();
-                            });
-            if (duplicate) {
-                throw std::invalid_argument{
-                    "Component definition schematic symbol variants must be unique"};
-            }
-        }
-    }
+    void require_unique_schematic_symbol_variants() const;
 
     std::string name_;
     std::vector<PinDefId> pins_;
