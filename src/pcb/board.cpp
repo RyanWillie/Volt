@@ -10,7 +10,9 @@
 
 namespace volt {
 
-Board::Board(const Circuit &circuit, BoardName name) : circuit_{&circuit}, name_{std::move(name)} {}
+Board::Board(const Circuit &circuit, BoardName name)
+    : Board{CircuitView{circuit}, std::move(name)} {}
+Board::Board(CircuitView circuit, BoardName name) : circuit_{circuit}, name_{std::move(name)} {}
 [[nodiscard]] BoardLayerId Board::add_layer(BoardLayer layer) {
     if (layer_by_name(layer.name()).has_value()) {
         throw std::logic_error{"Board layer name already exists"};

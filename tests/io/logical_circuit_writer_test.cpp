@@ -9,6 +9,9 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/circuit/design_intent_mutations.hpp>
+#include <volt/circuit/electrical_mutations.hpp>
+#include <volt/circuit/hierarchy_mutations.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 
@@ -37,8 +40,8 @@ TEST_CASE("Logical circuit writer escapes JSON control characters") {
         circuit.add_component_definition(volt::ComponentDefinition{"Escaped", std::vector{pin}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    circuit.set_component_property(component, volt::PropertyKey{"note"},
-                                   volt::PropertyValue{"line\nbreak\x01"});
+    volt::CircuitElectrical{circuit}.set_component_property(component, volt::PropertyKey{"note"},
+                                                            volt::PropertyValue{"line\nbreak\x01"});
 
     const auto output = volt::io::write_logical_circuit(circuit);
 
@@ -54,14 +57,15 @@ TEST_CASE("Logical circuit writer preserves double precision and rejects non-fin
         circuit.add_component_definition(volt::ComponentDefinition{"Precise", std::vector{pin}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    circuit.set_component_property(component, volt::PropertyKey{"ratio"},
-                                   volt::PropertyValue{0.12345678901234567});
-    circuit.set_component_property(component, volt::PropertyKey{"invalid"},
-                                   volt::PropertyValue{std::numeric_limits<double>::infinity()});
+    volt::CircuitElectrical{circuit}.set_component_property(
+        component, volt::PropertyKey{"ratio"}, volt::PropertyValue{0.12345678901234567});
+    volt::CircuitElectrical{circuit}.set_component_property(
+        component, volt::PropertyKey{"invalid"},
+        volt::PropertyValue{std::numeric_limits<double>::infinity()});
 
     CHECK_THROWS_AS(volt::io::write_logical_circuit(circuit), std::logic_error);
-    circuit.set_component_property(component, volt::PropertyKey{"invalid"},
-                                   volt::PropertyValue{1.0});
+    volt::CircuitElectrical{circuit}.set_component_property(component, volt::PropertyKey{"invalid"},
+                                                            volt::PropertyValue{1.0});
 
     CHECK(volt::io::write_logical_circuit(circuit).find("0.12345678901234566") !=
           std::string::npos);
@@ -77,31 +81,32 @@ TEST_CASE("Logical circuit writer emits typed electrical attributes") {
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
-    circuit.select_physical_part(component, volt::PhysicalPart{
-                                                volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                                volt::PackageRef{"0603"},
-                                                volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                                std::vector{
-                                                    volt::PinPadMapping{first_pin, "1"},
-                                                    volt::PinPadMapping{second_pin, "2"},
-                                                },
-                                            });
+    volt::CircuitElectrical{circuit}.select_physical_part(
+        component, volt::PhysicalPart{
+                       volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                       volt::PackageRef{"0603"},
+                       volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                       std::vector{
+                           volt::PinPadMapping{first_pin, "1"},
+                           volt::PinPadMapping{second_pin, "2"},
+                       },
+                   });
 
-    circuit.set_component_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_component_electrical_attribute(
         component,
         volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{"resistance"},
                                       volt::ElectricalAttributeOwner::ComponentInstance,
                                       volt::ElectricalAttributeKind::DesignInput,
                                       volt::UnitDimension::Resistance},
         volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}});
-    circuit.set_component_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_component_electrical_attribute(
         component,
         volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{"tolerance"},
                                       volt::ElectricalAttributeOwner::ComponentInstance,
                                       volt::ElectricalAttributeKind::DesignInput,
                                       volt::UnitDimension::Ratio},
         volt::ElectricalAttributeValue{volt::Tolerance::percent(0.01)});
-    circuit.set_selected_part_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_selected_part_electrical_attribute(
         component,
         volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{"voltage_rating"},
                                       volt::ElectricalAttributeOwner::SelectedPart,
@@ -131,7 +136,7 @@ TEST_CASE("Logical circuit writer emits net typed electrical attributes") {
     volt::Circuit circuit;
     const auto net = circuit.add_net(volt::Net{volt::NetName{"3V3"}, volt::NetKind::Power});
 
-    circuit.set_net_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_net_electrical_attribute(
         net,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
@@ -154,11 +159,11 @@ TEST_CASE("Logical circuit writer emits design intent") {
         circuit.add_component_definition(volt::ComponentDefinition{"MCU", std::vector{pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    const auto pin = circuit.pin_by_name(component, "BOOT0").value();
+    const auto pin = circuit.view().pin_by_name(component, "BOOT0").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"BOOT0"}, volt::NetKind::Signal});
 
-    circuit.mark_intentional_stub_net(net);
-    circuit.mark_intentional_no_connect_pin(pin);
+    volt::CircuitDesignIntent{circuit}.mark_intentional_stub_net(net);
+    volt::CircuitDesignIntent{circuit}.mark_intentional_no_connect_pin(pin);
 
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
 
@@ -181,7 +186,7 @@ TEST_CASE("Logical circuit writer emits pin electrical semantics") {
         volt::ElectricalPolarity::ActiveLow,
     });
 
-    circuit.set_pin_definition_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_pin_definition_electrical_attribute(
         pin,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage_range"}, volt::ElectricalAttributeOwner::PinSpec,
@@ -213,22 +218,25 @@ TEST_CASE("Logical circuit writer emits hierarchy module scaffold") {
         circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
     const auto resistor =
         circuit.add_component_definition(volt::ComponentDefinition{"Resistor", {left, right}});
-    const auto module =
-        circuit.add_module_definition(volt::ModuleDefinition{volt::ModuleName{"BuckConverter"}});
-    const auto vin = circuit.add_template_net(
+    const auto module = volt::CircuitHierarchy{circuit}.add_module_definition(
+        volt::ModuleDefinition{volt::ModuleName{"BuckConverter"}});
+    const auto vin = volt::CircuitHierarchy{circuit}.add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    const auto fb = circuit.add_template_net(
+    const auto fb = volt::CircuitHierarchy{circuit}.add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"FB"}, volt::NetKind::Signal});
-    const auto template_component = circuit.add_module_component(
+    const auto template_component = volt::CircuitHierarchy{circuit}.add_module_component(
         module, volt::ModuleComponentTemplate{resistor, volt::ReferenceDesignator{"R1"}});
-    CHECK(circuit.connect_module_pin(module, vin, template_component, left));
-    CHECK(circuit.connect_module_pin(module, fb, template_component, right));
-    const auto port = circuit.add_port_definition(
+    CHECK(
+        volt::CircuitHierarchy{circuit}.connect_module_pin(module, vin, template_component, left));
+    CHECK(
+        volt::CircuitHierarchy{circuit}.connect_module_pin(module, fb, template_component, right));
+    const auto port = volt::CircuitHierarchy{circuit}.add_port_definition(
         module, volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
+    const auto instance = volt::CircuitHierarchy{circuit}.instantiate_root_module(
+        module, volt::ModuleInstanceName{"BUCK_A"});
     const auto parent_net = circuit.add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
-    [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);
+    [[maybe_unused]] const auto binding =
+        volt::CircuitHierarchy{circuit}.bind_port(instance, port, parent_net);
 
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
     const auto &module_json = output["module_definitions"][0];

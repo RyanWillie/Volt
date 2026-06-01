@@ -8,6 +8,8 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
+#include <volt/circuit/electrical_mutations.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints.hpp>
 
@@ -42,8 +44,10 @@ struct MultiComponentNetCircuit {
         volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
-    const auto first_pin = circuit.pin_by_definition(component, first_pin_definition).value();
-    const auto second_pin = circuit.pin_by_definition(component, second_pin_definition).value();
+    const auto first_pin =
+        circuit.view().pin_by_definition(component, first_pin_definition).value();
+    const auto second_pin =
+        circuit.view().pin_by_definition(component, second_pin_definition).value();
     const auto first_net = circuit.add_net(volt::Net{volt::NetName{"LEFT"}, volt::NetKind::Signal});
     const auto second_net =
         circuit.add_net(volt::Net{volt::NetName{"RIGHT"}, volt::NetKind::Signal});
@@ -52,7 +56,7 @@ struct MultiComponentNetCircuit {
     circuit.connect(second_net, second_pin);
 
     if (select_physical_part) {
-        circuit.select_physical_part(
+        volt::CircuitElectrical{circuit}.select_physical_part(
             component, volt::PhysicalPart{
                            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                            volt::PackageRef{"0603"},
@@ -88,7 +92,7 @@ struct MultiComponentNetCircuit {
     for (std::size_t index = 0; index < component_count; ++index) {
         const auto component = circuit.instantiate_component(
             component_definition, volt::ReferenceDesignator{"R" + std::to_string(index + 1U)});
-        circuit.select_physical_part(
+        volt::CircuitElectrical{circuit}.select_physical_part(
             component, volt::PhysicalPart{
                            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                            volt::PackageRef{"0603"},
@@ -98,8 +102,9 @@ struct MultiComponentNetCircuit {
                        });
         const auto connected_pin_definition =
             index == 0U ? second_pin_definition : first_pin_definition;
-        circuit.connect(shared_net,
-                        circuit.pin_by_definition(component, connected_pin_definition).value());
+        circuit.connect(
+            shared_net,
+            circuit.view().pin_by_definition(component, connected_pin_definition).value());
         components.push_back(component);
     }
 
@@ -823,7 +828,7 @@ TEST_CASE("Board validation reports unrouted placed logical nets before routing 
 
 TEST_CASE("Board validation detects pad edges crossing a concave outline") {
     auto fixture = make_resistor_circuit(false);
-    fixture.circuit.select_physical_part(
+    volt::CircuitElectrical{fixture.circuit}.select_physical_part(
         fixture.component, volt::PhysicalPart{
                                volt::ManufacturerPart{"Volt", "wide-pad-fixture"},
                                volt::PackageRef{"fixture"},
@@ -871,7 +876,7 @@ TEST_CASE("Board validation detects pad edges crossing a concave outline") {
 
 TEST_CASE("Board validation diagnoses footprint resolution and pad geometry issues") {
     auto fixture = make_resistor_circuit(false);
-    fixture.circuit.select_physical_part(
+    volt::CircuitElectrical{fixture.circuit}.select_physical_part(
         fixture.component, volt::PhysicalPart{
                                volt::ManufacturerPart{"Acme", "NOPE"},
                                volt::PackageRef{"custom"},
@@ -893,7 +898,7 @@ TEST_CASE("Board validation diagnoses footprint resolution and pad geometry issu
     CHECK(unresolved_footprint->entities()[0] == volt::EntityRef::component(fixture.component));
     CHECK(unresolved_footprint->entities()[1] == volt::EntityRef::component_placement(placement));
 
-    fixture.circuit.select_physical_part(
+    volt::CircuitElectrical{fixture.circuit}.select_physical_part(
         fixture.component, volt::PhysicalPart{
                                volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                                volt::PackageRef{"0603"},

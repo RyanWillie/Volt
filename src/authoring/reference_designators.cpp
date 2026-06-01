@@ -7,8 +7,7 @@
 
 namespace volt::authoring {
 
-[[nodiscard]] ReferenceDesignator allocate_reference(const Circuit &circuit,
-                                                     std::string_view prefix) {
+[[nodiscard]] ReferenceDesignator allocate_reference(CircuitView circuit, std::string_view prefix) {
     if (prefix.empty()) {
         throw std::invalid_argument{"Reference designator prefix must not be empty"};
     }
@@ -28,7 +27,7 @@ namespace volt::authoring {
 
 [[nodiscard]] ComponentId instantiate(Circuit &circuit, ComponentDefId definition,
                                       std::string_view prefix, PropertyMap properties) {
-    return instantiate(circuit, definition, allocate_reference(circuit, prefix),
+    return instantiate(circuit, definition, allocate_reference(CircuitView{circuit}, prefix),
                        std::move(properties));
 }
 

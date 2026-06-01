@@ -15,6 +15,10 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/circuit/circuit_view.hpp>
+#include <volt/circuit/design_intent_mutations.hpp>
+#include <volt/circuit/electrical_mutations.hpp>
+#include <volt/circuit/hierarchy_mutations.hpp>
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 
@@ -473,10 +477,11 @@ void LogicalCircuitReader::read_component_electrical_attributes(const nlohmann::
         const auto spec =
             ElectricalAttributeSpec{ElectricalAttributeName{name}, owner,
                                     ElectricalAttributeKind::DesignInput, attribute.dimension()};
+        auto electrical = CircuitElectrical{circuit_};
         if (owner == ElectricalAttributeOwner::ComponentInstance) {
-            circuit_.set_component_electrical_attribute(component, spec, attribute);
+            electrical.set_component_electrical_attribute(component, spec, attribute);
         } else if (owner == ElectricalAttributeOwner::SelectedPart) {
-            circuit_.set_selected_part_electrical_attribute(component, spec, attribute);
+            electrical.set_selected_part_electrical_attribute(component, spec, attribute);
         } else {
             throw std::logic_error{"Unsupported electrical attribute owner while reading"};
         }
@@ -488,9 +493,10 @@ void LogicalCircuitReader::read_net_electrical_attributes(const nlohmann::json &
         return;
     }
     require(it->is_object(), "Electrical attributes must be an object");
+    auto electrical = CircuitElectrical{circuit_};
     for (const auto &[name, value] : it->items()) {
         const auto attribute = electrical_attribute_value(value);
-        circuit_.set_net_electrical_attribute(
+        electrical.set_net_electrical_attribute(
             net,
             ElectricalAttributeSpec{ElectricalAttributeName{name}, ElectricalAttributeOwner::Net,
                                     ElectricalAttributeKind::DesignInput, attribute.dimension()},
@@ -504,9 +510,10 @@ void LogicalCircuitReader::read_pin_definition_electrical_attributes(const nlohm
         return;
     }
     require(it->is_object(), "Electrical attributes must be an object");
+    auto electrical = CircuitElectrical{circuit_};
     for (const auto &[name, value] : it->items()) {
         const auto attribute = electrical_attribute_value(value);
-        circuit_.set_pin_definition_electrical_attribute(
+        electrical.set_pin_definition_electrical_attribute(
             pin_definition,
             ElectricalAttributeSpec{ElectricalAttributeName{name},
                                     ElectricalAttributeOwner::PinSpec,
@@ -595,8 +602,9 @@ void LogicalCircuitReader::read_pins() {
         const auto id = local_id<PinId>(pin, seen);
         const auto component = resolve(component_ids_, string_field(pin, "component"));
         const auto definition = resolve(pin_def_ids_, string_field(pin, "definition"));
+        const auto view = CircuitView{circuit_};
         const auto &definition_pins =
-            circuit_.component_definition(circuit_.component(component).definition()).pins();
+            view.component_definition(view.component(component).definition()).pins();
         require(std::find(definition_pins.begin(), definition_pins.end(), definition) !=
                     definition_pins.end(),
                 "Concrete pin definition is not part of its component definition");
@@ -625,6 +633,7 @@ void LogicalCircuitReader::read_design_intent() {
         return;
     }
     require(it->is_object(), "Design intent must be an object");
+    auto intent = CircuitDesignIntent{circuit_};
 
     auto seen_stub_nets = std::set<std::string>{};
     for (const auto &net : array_field(*it, "stub_nets")) {
@@ -632,7 +641,7 @@ void LogicalCircuitReader::read_design_intent() {
         const auto id = net.get<std::string>();
         require(seen_stub_nets.insert(id).second, "Duplicate stub-net design intent");
         [[maybe_unused]] const auto changed =
-            circuit_.mark_intentional_stub_net(resolve(net_ids_, id));
+            intent.mark_intentional_stub_net(resolve(net_ids_, id));
     }
 
     auto seen_no_connect_pins = std::set<std::string>{};
@@ -641,7 +650,7 @@ void LogicalCircuitReader::read_design_intent() {
         const auto id = pin.get<std::string>();
         require(seen_no_connect_pins.insert(id).second, "Duplicate no-connect pin design intent");
         [[maybe_unused]] const auto changed =
-            circuit_.mark_intentional_no_connect_pin(resolve(pin_ids_, id));
+            intent.mark_intentional_no_connect_pin(resolve(pin_ids_, id));
     }
 }
 void LogicalCircuitReader::read_module_definitions() {
@@ -654,15 +663,16 @@ void LogicalCircuitReader::read_module_definitions() {
     auto seen_template_nets = std::set<std::string>{};
     auto seen_module_components = std::set<std::string>{};
     auto seen_ports = std::set<std::string>{};
+    auto hierarchy = CircuitHierarchy{circuit_};
     for (const auto &module_object : *modules) {
         const auto id = local_id<ModuleDefId>(module_object, seen);
-        const auto module = circuit_.add_module_definition(
+        const auto module = hierarchy.add_module_definition(
             ModuleDefinition{ModuleName{string_field(module_object, "name")}});
         module_def_ids_.emplace(id, module);
 
         for (const auto &net_object : array_field(module_object, "local_nets")) {
             const auto net_id = local_id<TemplateNetDefId>(net_object, seen_template_nets);
-            const auto template_net = circuit_.add_template_net(
+            const auto template_net = hierarchy.add_template_net(
                 module, TemplateNetDefinition{NetName{string_field(net_object, "name")},
                                               net_kind(string_field(net_object, "kind"))});
             template_net_ids_.emplace(net_id, template_net);
@@ -672,7 +682,7 @@ void LogicalCircuitReader::read_module_definitions() {
             for (const auto &component_object : *components) {
                 const auto component_id =
                     local_id<ModuleComponentId>(component_object, seen_module_components);
-                const auto component = circuit_.add_module_component(
+                const auto component = hierarchy.add_module_component(
                     module,
                     ModuleComponentTemplate{
                         resolve(component_def_ids_, string_field(component_object, "definition")),
@@ -684,7 +694,7 @@ void LogicalCircuitReader::read_module_definitions() {
 
         if (const auto connections = optional_array_field(module_object, "connections")) {
             for (const auto &connection_object : *connections) {
-                [[maybe_unused]] const auto changed = circuit_.connect_module_pin(
+                [[maybe_unused]] const auto changed = hierarchy.connect_module_pin(
                     module, resolve(template_net_ids_, string_field(connection_object, "net")),
                     resolve(module_component_ids_, string_field(connection_object, "component")),
                     resolve(pin_def_ids_, string_field(connection_object, "pin")));
@@ -701,7 +711,7 @@ void LogicalCircuitReader::read_module_definitions() {
                 require(required_it->is_boolean(), "Expected boolean field: required");
                 required = required_it->get<bool>();
             }
-            const auto port = circuit_.add_port_definition(
+            const auto port = hierarchy.add_port_definition(
                 module,
                 PortDefinition{PortName{string_field(port_object, "name")}, internal_net,
                                port_role(optional_string_field(port_object, "role", "Passive")),
@@ -717,6 +727,7 @@ void LogicalCircuitReader::read_module_instances() {
     }
 
     auto seen = std::set<std::string>{};
+    auto hierarchy = CircuitHierarchy{circuit_};
     for (const auto &instance_object : *modules) {
         const auto id = local_id<ModuleInstanceId>(instance_object, seen);
         const auto definition =
@@ -739,7 +750,7 @@ void LogicalCircuitReader::read_module_instances() {
             component_origins = infer_component_origins(
                 definition, ModuleInstanceName{string_field(instance_object, "name")});
         }
-        const auto instance = circuit_.restore_root_module_instance(
+        const auto instance = hierarchy.restore_root_module_instance(
             definition, ModuleInstanceName{string_field(instance_object, "name")}, origins,
             component_origins);
         module_instance_ids_.emplace(id, instance);
@@ -747,7 +758,7 @@ void LogicalCircuitReader::read_module_instances() {
         for (const auto &binding_object : array_field(instance_object, "port_bindings")) {
             const auto port = resolve(port_def_ids_, string_field(binding_object, "port"));
             const auto parent_net = resolve(net_ids_, string_field(binding_object, "parent_net"));
-            [[maybe_unused]] const auto binding = circuit_.bind_port(instance, port, parent_net);
+            [[maybe_unused]] const auto binding = hierarchy.bind_port(instance, port, parent_net);
         }
     }
 }
@@ -755,11 +766,12 @@ void LogicalCircuitReader::read_module_instances() {
 LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
                                               const ModuleInstanceName &name) const {
     auto component_origins = std::vector<std::pair<ModuleComponentId, ComponentId>>{};
-    for (const auto component : circuit_.module_definition(definition).components()) {
-        const auto &template_component = circuit_.module_component_template(component);
+    const auto view = CircuitView{circuit_};
+    for (const auto component : view.module_definition(definition).components()) {
+        const auto &template_component = view.module_component_template(component);
         const auto concrete_reference =
             ReferenceDesignator{name.value() + "/" + template_component.reference().value()};
-        const auto concrete_component = circuit_.component_by_reference(concrete_reference);
+        const auto concrete_component = view.component_by_reference(concrete_reference);
         require(concrete_component.has_value(),
                 "Missing module instance concrete component for inferred component origin");
         component_origins.emplace_back(component, concrete_component.value());
@@ -783,9 +795,10 @@ LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
         std::move(mappings), properties(field(object, "properties"))};
 }
 void LogicalCircuitReader::read_selected_physical_parts() {
+    auto electrical = CircuitElectrical{circuit_};
     for (const auto &[component_id, part] : selected_parts_) {
         const auto component = resolve(component_ids_, component_id);
-        circuit_.select_physical_part(component, physical_part(part));
+        electrical.select_physical_part(component, physical_part(part));
         read_component_electrical_attributes(part, component,
                                              ElectricalAttributeOwner::SelectedPart);
     }

@@ -28,7 +28,7 @@ namespace volt::io::detail {
 class SchematicReader {
   public:
     /** Construct a reader over a parsed JSON document and its logical circuit context. */
-    SchematicReader(const nlohmann::json &document, const Circuit &circuit)
+    SchematicReader(const nlohmann::json &document, CircuitView circuit)
         : document_{document}, circuit_{circuit}, schematic_{circuit} {}
 
     /** Load and structurally validate the document into a schematic projection. */
@@ -198,7 +198,7 @@ class SchematicReader {
     void require_sheet_symbol_field_lists_match() const;
 
     const nlohmann::json &document_;
-    const Circuit &circuit_;
+    CircuitView circuit_;
     Schematic schematic_;
     std::map<std::string, SymbolDefId> symbol_def_ids_;
     std::map<std::string, SheetId> sheet_ids_;
@@ -856,7 +856,7 @@ void SchematicReader::require_sheet_symbol_field_lists_match() const {
 namespace {
 
 [[nodiscard]] volt::Schematic read_schematic_projection_document(const nlohmann::json &document,
-                                                                 const volt::Circuit &circuit) {
+                                                                 volt::CircuitView circuit) {
     return volt::io::detail::SchematicReader{document, circuit}.read();
 }
 
@@ -864,21 +864,20 @@ namespace {
 
 namespace volt::io {
 
-[[nodiscard]] Schematic read_schematic_text(std::string_view text, const Circuit &circuit) {
+[[nodiscard]] Schematic read_schematic_text(std::string_view text, CircuitView circuit) {
     return read_schematic_projection_document(nlohmann::json::parse(text.begin(), text.end()),
                                               circuit);
 }
-[[nodiscard]] Schematic read_schematic(std::istream &input, const Circuit &circuit) {
+[[nodiscard]] Schematic read_schematic(std::istream &input, CircuitView circuit) {
     auto buffer = std::ostringstream{};
     buffer << input.rdbuf();
     return read_schematic_text(buffer.str(), circuit);
 }
 [[nodiscard]] SchematicDocument read_schematic_document_text(std::string_view text,
-                                                             const Circuit &circuit) {
+                                                             CircuitView circuit) {
     return SchematicDocument{read_schematic_text(text, circuit)};
 }
-[[nodiscard]] SchematicDocument read_schematic_document(std::istream &input,
-                                                        const Circuit &circuit) {
+[[nodiscard]] SchematicDocument read_schematic_document(std::istream &input, CircuitView circuit) {
     return SchematicDocument{read_schematic(input, circuit)};
 }
 

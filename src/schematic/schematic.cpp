@@ -242,9 +242,10 @@ void SymbolField::move_to(Point position) noexcept { position_ = position; }
 [[nodiscard]] const std::optional<std::size_t> &SymbolField::authored_region() const noexcept {
     return authored_region_;
 }
-Schematic::Schematic(const Circuit &circuit) : circuit_{circuit} {}
+Schematic::Schematic(const Circuit &circuit) : Schematic{CircuitView{circuit}} {}
+Schematic::Schematic(CircuitView circuit) : circuit_{circuit} {}
 void Schematic::replace_with(Schematic replacement) {
-    if (&replacement.circuit() != &circuit_) {
+    if (!replacement.circuit().references_same_circuit(circuit_)) {
         throw std::logic_error{"Schematic replacement must reference the same logical circuit"};
     }
 

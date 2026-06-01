@@ -79,7 +79,7 @@ namespace volt::detail {
 
     return false;
 }
-[[nodiscard]] bool schematic_readiness_exempts_pin(const Circuit &circuit, PinId pin_id,
+[[nodiscard]] bool schematic_readiness_exempts_pin(CircuitView circuit, PinId pin_id,
                                                    PinDefId pin_def_id) {
     const auto &definition = circuit.pin_definition(pin_def_id);
     return definition.role() == PinRole::NoConnect ||
@@ -110,7 +110,7 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
 
     return result;
 }
-[[nodiscard]] bool component_is_schematic_relevant(const Circuit &circuit, ComponentId component) {
+[[nodiscard]] bool component_is_schematic_relevant(CircuitView circuit, ComponentId component) {
     const auto &component_instance = circuit.component(component);
     const auto &definition = circuit.component_definition(component_instance.definition());
     const auto category = PropertyKey{"category"};

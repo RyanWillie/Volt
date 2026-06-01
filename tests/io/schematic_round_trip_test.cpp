@@ -6,7 +6,9 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/circuit/definitions.hpp>
+#include <volt/circuit/design_intent_mutations.hpp>
 #include <volt/io/schematic_reader.hpp>
 #include <volt/io/schematic_writer.hpp>
 #include <volt/schematic/schematic.hpp>
@@ -52,8 +54,8 @@ TEST_CASE("Schematic JSON round-trips deterministically") {
         schematic.add_junction(sheet, volt::Junction{net, volt::Point{40.0, 20.0}});
     [[maybe_unused]] const auto port = schematic.add_power_port(
         sheet, volt::PowerPort{net, volt::PowerPortKind::Power, volt::Point{20.0, 12.0}});
-    const auto no_connect_pin = circuit.pin_by_number(component, "2").value();
-    circuit.mark_intentional_no_connect_pin(no_connect_pin);
+    const auto no_connect_pin = circuit.view().pin_by_number(component, "2").value();
+    volt::CircuitDesignIntent{circuit}.mark_intentional_no_connect_pin(no_connect_pin);
     [[maybe_unused]] const auto marker = schematic.add_no_connect_marker(
         sheet, volt::NoConnectMarker{no_connect_pin, volt::Point{64.0, 20.0}});
     [[maybe_unused]] const auto sheet_port = schematic.add_sheet_port(
@@ -65,7 +67,7 @@ TEST_CASE("Schematic JSON round-trips deterministically") {
     const auto loaded = volt::io::read_schematic_text(output, circuit);
 
     CHECK(volt::io::write_schematic(loaded) == output);
-    CHECK(circuit.net(net).pins().empty());
+    CHECK(circuit.view().net(net).pins().empty());
 }
 
 TEST_CASE("Schematic JSON round-trips terminal lead line roles") {
@@ -119,7 +121,7 @@ TEST_CASE("Schematic document round-trips as a project artifact") {
     const auto output = volt::io::write_schematic(document);
     const auto loaded = volt::io::read_schematic_document_text(output, circuit);
 
-    CHECK(&document.circuit() == &circuit);
-    CHECK(&loaded.circuit() == &circuit);
+    CHECK(document.circuit().references_same_circuit(circuit.view()));
+    CHECK(loaded.circuit().references_same_circuit(circuit.view()));
     CHECK(volt::io::write_schematic(loaded) == output);
 }

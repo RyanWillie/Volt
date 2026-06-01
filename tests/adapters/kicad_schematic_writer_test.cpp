@@ -8,6 +8,7 @@
 #include <volt/adapters/kicad/schematic_writer.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/definitions.hpp>
+#include <volt/circuit/electrical_mutations.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
 
@@ -40,10 +41,10 @@ volt::ComponentId add_resistor(volt::Circuit &circuit) {
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     const auto component =
         circuit.instantiate_component(definition, volt::ReferenceDesignator{"R1"});
-    circuit.set_component_property(component, volt::PropertyKey{"Value"},
-                                   volt::PropertyValue{"10k"});
-    circuit.set_component_property(component, volt::PropertyKey{"tolerance"},
-                                   volt::PropertyValue{"1%"});
+    volt::CircuitElectrical{circuit}.set_component_property(component, volt::PropertyKey{"Value"},
+                                                            volt::PropertyValue{"10k"});
+    volt::CircuitElectrical{circuit}.set_component_property(
+        component, volt::PropertyKey{"tolerance"}, volt::PropertyValue{"1%"});
     return component;
 }
 

@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/entity_table.hpp>
 #include <volt/pcb/board_copper.hpp>
@@ -24,6 +24,9 @@ class Board {
     /** Construct a board projection over one logical circuit. */
     explicit Board(const Circuit &circuit, BoardName name = BoardName{"Main"});
 
+    /** Construct a board projection over one logical circuit view. */
+    explicit Board(CircuitView circuit, BoardName name = BoardName{"Main"});
+
     /** Return the board name. */
     [[nodiscard]] const BoardName &name() const noexcept { return name_; }
 
@@ -31,7 +34,7 @@ class Board {
     [[nodiscard]] BoardUnits units() const noexcept { return units_; }
 
     /** Return the logical circuit this board projects. */
-    [[nodiscard]] const Circuit &circuit() const noexcept { return *circuit_; }
+    [[nodiscard]] CircuitView circuit() const noexcept { return circuit_; }
 
     /** Add a board layer, rejecting duplicate board-local layer names. */
     [[nodiscard]] BoardLayerId add_layer(BoardLayer layer);
@@ -162,7 +165,7 @@ class Board {
                                 const std::vector<FootprintPadBinding> &bindings,
                                 std::vector<PadResolution> &resolutions) const;
 
-    const Circuit *circuit_;
+    CircuitView circuit_;
     BoardName name_;
     BoardUnits units_{BoardUnits::Millimeters};
     EntityTable<BoardLayer, BoardLayerId> layers_;

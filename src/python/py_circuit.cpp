@@ -2,6 +2,10 @@
 
 #include "binding_pcb_conversions.hpp"
 
+#include <volt/circuit/circuit_view.hpp>
+#include <volt/circuit/design_intent_mutations.hpp>
+#include <volt/circuit/electrical_mutations.hpp>
+#include <volt/circuit/hierarchy_mutations.hpp>
 #include <volt/io/pcb_svg_writer.hpp>
 #include <volt/io/pcb_writer.hpp>
 
@@ -179,10 +183,11 @@ std::size_t PyCircuit::add_net(const std::string &name, const std::string &kind)
 }
 
 py::list PyCircuit::net_refs() const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = py::list{};
-    for (std::size_t index = 0; index < circuit_.net_count(); ++index) {
+    for (std::size_t index = 0; index < view.net_count(); ++index) {
         const auto id = volt::NetId{index};
-        const auto &net = circuit_.net(id);
+        const auto &net = view.net(id);
         auto item = py::dict{};
         item["index"] = id.index();
         item["name"] = net.name().value();
@@ -197,6 +202,7 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
                                      const std::string &footprint_name, const py::dict &pin_pads,
                                      const py::dict &properties) {
     const auto component_handle = component_id(component);
+    const auto view = volt::CircuitView{circuit_};
     auto mappings = std::vector<volt::PinPadMapping>{};
     mappings.reserve(static_cast<std::size_t>(py::len(pin_pads)));
 
@@ -204,7 +210,7 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
         const auto key = string_from_pin_key(item.first);
         auto pin = std::optional<volt::PinId>{};
         if (py::isinstance<py::int_>(item.first)) {
-            pin = circuit_.pin_by_number(component_handle, key);
+            pin = view.pin_by_number(component_handle, key);
         } else {
             const auto matches = pins_by_name(component_handle, key);
             if (matches.size() > 1) {
@@ -217,13 +223,14 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
         if (!pin.has_value()) {
             throw std::out_of_range{"Component has no pin with that name or number"};
         }
-        const auto pin_definition = circuit_.pin(pin.value()).definition();
+        const auto pin_definition = view.pin(pin.value()).definition();
         for (const auto &pad : pad_labels_from_value(item.second)) {
             mappings.emplace_back(pin_definition, pad);
         }
     }
 
-    circuit_.select_physical_part(
+    auto electrical = volt::CircuitElectrical{circuit_};
+    electrical.select_physical_part(
         component_handle,
         volt::PhysicalPart{volt::ManufacturerPart{manufacturer, part_number},
                            volt::PackageRef{package},
@@ -235,14 +242,16 @@ void PyCircuit::set_component_quantity(std::size_t component, const std::string 
                                        const std::string &dimension_name, double value) {
     require_finite(value, "Electrical attribute quantities must be finite");
     const auto dimension = parse_dimension(dimension_name);
-    circuit_.set_component_electrical_attribute(
+    auto electrical = volt::CircuitElectrical{circuit_};
+    electrical.set_component_electrical_attribute(
         component_id(component), component_quantity_spec(name, dimension),
         volt::ElectricalAttributeValue{volt::Quantity{dimension, value}});
 }
 
 void PyCircuit::set_component_percent_tolerance(std::size_t component, double value) {
     require_finite(value, "Tolerance values must be finite");
-    circuit_.set_component_electrical_attribute(
+    auto electrical = volt::CircuitElectrical{circuit_};
+    electrical.set_component_electrical_attribute(
         component_id(component), component_quantity_spec("tolerance", volt::UnitDimension::Ratio),
         volt::ElectricalAttributeValue{volt::Tolerance::percent(value)});
 }
@@ -251,21 +260,24 @@ void PyCircuit::set_net_quantity(std::size_t net, const std::string &name,
                                  const std::string &dimension_name, double value) {
     require_finite(value, "Electrical attribute quantities must be finite");
     const auto dimension = parse_dimension(dimension_name);
-    circuit_.set_net_electrical_attribute(
+    auto electrical = volt::CircuitElectrical{circuit_};
+    electrical.set_net_electrical_attribute(
         net_id(net), net_quantity_spec(name, dimension),
         volt::ElectricalAttributeValue{volt::Quantity{dimension, value}});
 }
 
 void PyCircuit::select_generic_physical_part(std::size_t component) {
     const auto component_handle = component_id(component);
+    const auto view = volt::CircuitView{circuit_};
     const auto &definition =
-        circuit_.component_definition(circuit_.component(component_handle).definition());
+        view.component_definition(view.component(component_handle).definition());
     auto mappings = std::vector<volt::PinPadMapping>{};
     mappings.reserve(definition.pins().size());
     for (std::size_t index = 0; index < definition.pins().size(); ++index) {
         mappings.emplace_back(definition.pins()[index], std::to_string(index + 1));
     }
-    circuit_.select_physical_part(
+    auto electrical = volt::CircuitElectrical{circuit_};
+    electrical.select_physical_part(
         component_handle,
         volt::PhysicalPart{volt::ManufacturerPart{"Volt", "generic"},
                            volt::PackageRef{"unspecified"},
@@ -276,7 +288,8 @@ void PyCircuit::set_selected_part_quantity(std::size_t component, const std::str
                                            const std::string &dimension_name, double value) {
     require_finite(value, "Electrical attribute quantities must be finite");
     const auto dimension = parse_dimension(dimension_name);
-    circuit_.set_selected_part_electrical_attribute(
+    auto electrical = volt::CircuitElectrical{circuit_};
+    electrical.set_selected_part_electrical_attribute(
         component_id(component), selected_part_quantity_spec(name, dimension),
         volt::ElectricalAttributeValue{volt::Quantity{dimension, value}});
 }
@@ -309,7 +322,8 @@ std::size_t PyCircuit::pin_by_name(std::size_t component, const std::string &nam
 }
 
 std::size_t PyCircuit::pin_by_number(std::size_t component, const std::string &number) const {
-    const auto pin = circuit_.pin_by_number(component_id(component), number);
+    const auto view = volt::CircuitView{circuit_};
+    const auto pin = view.pin_by_number(component_id(component), number);
     if (!pin.has_value()) {
         throw std::out_of_range{"Component has no pin with that number"};
     }
@@ -318,17 +332,20 @@ std::size_t PyCircuit::pin_by_number(std::size_t component, const std::string &n
 }
 
 std::size_t PyCircuit::pin_component(std::size_t pin) const {
-    return circuit_.pin(pin_id(pin)).component().index();
+    const auto view = volt::CircuitView{circuit_};
+    return view.pin(pin_id(pin)).component().index();
 }
 
 std::string PyCircuit::component_reference(std::size_t component) const {
-    return circuit_.component(component_id(component)).reference().value();
+    const auto view = volt::CircuitView{circuit_};
+    return view.component(component_id(component)).reference().value();
 }
 
 py::list PyCircuit::pin_refs(std::size_t component) const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = py::list{};
-    for (const auto pin : circuit_.pins_for(component_id(component))) {
-        const auto &definition = circuit_.pin_definition(circuit_.pin(pin).definition());
+    for (const auto pin : view.pins_for(component_id(component))) {
+        const auto &definition = view.pin_definition(view.pin(pin).definition());
         auto item = py::dict{};
         item["index"] = pin.index();
         item["name"] = definition.name();
@@ -341,8 +358,9 @@ py::list PyCircuit::pin_refs(std::size_t component) const {
 std::optional<std::string> PyCircuit::component_schematic_symbol(std::size_t component,
                                                                  const std::string &variant) const {
     const auto component_handle = component_id(component);
+    const auto view = volt::CircuitView{circuit_};
     const auto &definition =
-        circuit_.component_definition(circuit_.component(component_handle).definition());
+        view.component_definition(view.component(component_handle).definition());
     for (const auto &symbol : definition.schematic_symbols()) {
         if (symbol.variant() == variant) {
             return symbol.name();
@@ -356,7 +374,8 @@ void PyCircuit::connect(std::size_t net, std::size_t pin) {
 }
 
 std::optional<std::size_t> PyCircuit::net_of(std::size_t pin) const {
-    const auto net = circuit_.net_of(pin_id(pin));
+    const auto view = volt::CircuitView{circuit_};
+    const auto net = view.net_of(pin_id(pin));
     if (!net.has_value()) {
         return std::nullopt;
     }
@@ -364,28 +383,33 @@ std::optional<std::size_t> PyCircuit::net_of(std::size_t pin) const {
 }
 
 py::list PyCircuit::net_pins(std::size_t net) const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = py::list{};
-    for (const auto pin : circuit_.net(net_id(net)).pins()) {
+    for (const auto pin : view.net(net_id(net)).pins()) {
         result.append(pin.index());
     }
     return result;
 }
 
 void PyCircuit::mark_intentional_stub_net(std::size_t net) {
-    static_cast<void>(circuit_.mark_intentional_stub_net(net_id(net)));
+    auto intent = volt::CircuitDesignIntent{circuit_};
+    static_cast<void>(intent.mark_intentional_stub_net(net_id(net)));
 }
 
 void PyCircuit::mark_intentional_no_connect_pin(std::size_t pin) {
-    static_cast<void>(circuit_.mark_intentional_no_connect_pin(pin_id(pin)));
+    auto intent = volt::CircuitDesignIntent{circuit_};
+    static_cast<void>(intent.mark_intentional_no_connect_pin(pin_id(pin)));
 }
 
 std::size_t PyCircuit::define_module(const std::string &name) {
-    return circuit_.add_module_definition(volt::ModuleDefinition{volt::ModuleName{name}}).index();
+    auto hierarchy = volt::CircuitHierarchy{circuit_};
+    return hierarchy.add_module_definition(volt::ModuleDefinition{volt::ModuleName{name}}).index();
 }
 
 std::size_t PyCircuit::add_template_net(std::size_t module, const std::string &name,
                                         const std::string &kind) {
-    return circuit_
+    auto hierarchy = volt::CircuitHierarchy{circuit_};
+    return hierarchy
         .add_template_net(module_def_id(module),
                           volt::TemplateNetDefinition{volt::NetName{name}, parse_net_kind(kind)})
         .index();
@@ -393,7 +417,8 @@ std::size_t PyCircuit::add_template_net(std::size_t module, const std::string &n
 
 std::size_t PyCircuit::add_port(std::size_t module, const std::string &name,
                                 std::size_t internal_net, const std::string &role, bool required) {
-    return circuit_
+    auto hierarchy = volt::CircuitHierarchy{circuit_};
+    return hierarchy
         .add_port_definition(module_def_id(module),
                              volt::PortDefinition{volt::PortName{name},
                                                   template_net_def_id(internal_net),
@@ -404,7 +429,8 @@ std::size_t PyCircuit::add_port(std::size_t module, const std::string &name,
 std::size_t PyCircuit::add_module_component(std::size_t module, std::size_t definition,
                                             const std::string &reference,
                                             const py::dict &properties) {
-    return circuit_
+    auto hierarchy = volt::CircuitHierarchy{circuit_};
+    return hierarchy
         .add_module_component(module_def_id(module),
                               volt::ModuleComponentTemplate{component_def_id(definition),
                                                             volt::ReferenceDesignator{reference},
@@ -428,10 +454,11 @@ std::size_t PyCircuit::module_component_pin_by_name(std::size_t component,
 std::size_t PyCircuit::module_component_pin_by_number(std::size_t component,
                                                       const std::string &number) const {
     const auto component_handle = module_component_id(component);
-    const auto &component_template = circuit_.module_component_template(component_handle);
-    const auto &definition = circuit_.component_definition(component_template.definition());
+    const auto view = volt::CircuitView{circuit_};
+    const auto &component_template = view.module_component_template(component_handle);
+    const auto &definition = view.component_definition(component_template.definition());
     for (const auto pin : definition.pins()) {
-        if (circuit_.pin_definition(pin).number() == number) {
+        if (view.pin_definition(pin).number() == number) {
             return pin.index();
         }
     }
@@ -442,10 +469,11 @@ std::size_t PyCircuit::module_component_pin_by_number(std::size_t component,
 py::list PyCircuit::module_component_pin_refs(std::size_t component) const {
     auto result = py::list{};
     const auto component_handle = module_component_id(component);
-    const auto &component_template = circuit_.module_component_template(component_handle);
-    const auto &definition = circuit_.component_definition(component_template.definition());
+    const auto view = volt::CircuitView{circuit_};
+    const auto &component_template = view.module_component_template(component_handle);
+    const auto &definition = view.component_definition(component_template.definition());
     for (const auto pin : definition.pins()) {
-        const auto &pin_definition = circuit_.pin_definition(pin);
+        const auto &pin_definition = view.pin_definition(pin);
         auto item = py::dict{};
         item["index"] = pin.index();
         item["name"] = pin_definition.name();
@@ -457,19 +485,22 @@ py::list PyCircuit::module_component_pin_refs(std::size_t component) const {
 
 void PyCircuit::connect_module_pin(std::size_t module, std::size_t net, std::size_t component,
                                    std::size_t pin) {
-    circuit_.connect_module_pin(module_def_id(module), template_net_def_id(net),
-                                module_component_id(component), volt::PinDefId{pin});
+    auto hierarchy = volt::CircuitHierarchy{circuit_};
+    hierarchy.connect_module_pin(module_def_id(module), template_net_def_id(net),
+                                 module_component_id(component), volt::PinDefId{pin});
 }
 
 std::size_t PyCircuit::instantiate_root_module(std::size_t definition, const std::string &name) {
-    return circuit_
+    auto hierarchy = volt::CircuitHierarchy{circuit_};
+    return hierarchy
         .instantiate_root_module(module_def_id(definition), volt::ModuleInstanceName{name})
         .index();
 }
 
 std::size_t PyCircuit::concrete_component_for(std::size_t instance, std::size_t component) const {
-    const auto concrete = circuit_.concrete_component_for(module_instance_id(instance),
-                                                          module_component_id(component));
+    const auto view = volt::CircuitView{circuit_};
+    const auto concrete =
+        view.concrete_component_for(module_instance_id(instance), module_component_id(component));
     if (!concrete.has_value()) {
         throw std::out_of_range{"Module instance has no concrete component for template"};
     }
@@ -477,15 +508,17 @@ std::size_t PyCircuit::concrete_component_for(std::size_t instance, std::size_t 
 }
 
 void PyCircuit::bind_port(std::size_t instance, std::size_t port, std::size_t parent_net) {
+    auto hierarchy = volt::CircuitHierarchy{circuit_};
     [[maybe_unused]] const auto binding =
-        circuit_.bind_port(module_instance_id(instance), port_def_id(port), net_id(parent_net));
+        hierarchy.bind_port(module_instance_id(instance), port_def_id(port), net_id(parent_net));
 }
 
 py::list PyCircuit::template_nets(std::size_t module) const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = py::list{};
-    const auto &definition = circuit_.module_definition(module_def_id(module));
+    const auto &definition = view.module_definition(module_def_id(module));
     for (const auto net_id : definition.template_nets()) {
-        const auto &net = circuit_.template_net_definition(net_id);
+        const auto &net = view.template_net_definition(net_id);
         auto item = py::dict{};
         item["index"] = net_id.index();
         item["name"] = net.name().value();
@@ -496,10 +529,11 @@ py::list PyCircuit::template_nets(std::size_t module) const {
 }
 
 py::list PyCircuit::module_ports(std::size_t module) const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = py::list{};
-    const auto &definition = circuit_.module_definition(module_def_id(module));
+    const auto &definition = view.module_definition(module_def_id(module));
     for (const auto port_id : definition.ports()) {
-        const auto &port = circuit_.port_definition(port_id);
+        const auto &port = view.port_definition(port_id);
         auto item = py::dict{};
         item["index"] = port_id.index();
         item["name"] = port.name().value();
@@ -512,10 +546,11 @@ py::list PyCircuit::module_ports(std::size_t module) const {
 }
 
 py::list PyCircuit::module_components(std::size_t module) const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = py::list{};
-    const auto &definition = circuit_.module_definition(module_def_id(module));
+    const auto &definition = view.module_definition(module_def_id(module));
     for (const auto component_id : definition.components()) {
-        const auto &component = circuit_.module_component_template(component_id);
+        const auto &component = view.module_component_template(component_id);
         auto item = py::dict{};
         item["index"] = component_id.index();
         item["definition"] = component.definition().index();
@@ -526,8 +561,9 @@ py::list PyCircuit::module_components(std::size_t module) const {
 }
 
 py::list PyCircuit::module_connections(std::size_t module) const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = py::list{};
-    for (const auto &connection : circuit_.module_pin_connections(module_def_id(module))) {
+    for (const auto &connection : view.module_pin_connections(module_def_id(module))) {
         auto item = py::dict{};
         item["net"] = connection.net().index();
         item["component"] = connection.component().index();
@@ -538,9 +574,10 @@ py::list PyCircuit::module_connections(std::size_t module) const {
 }
 
 py::list PyCircuit::module_net_origins(std::size_t instance) const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = py::list{};
     for (const auto &[template_net, concrete_net] :
-         circuit_.module_net_origins(module_instance_id(instance))) {
+         view.module_net_origins(module_instance_id(instance))) {
         auto item = py::dict{};
         item["template_net"] = template_net.index();
         item["net"] = concrete_net.index();
@@ -550,9 +587,10 @@ py::list PyCircuit::module_net_origins(std::size_t instance) const {
 }
 
 py::list PyCircuit::module_component_origins(std::size_t instance) const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = py::list{};
     for (const auto &[module_component, concrete_component] :
-         circuit_.module_component_origins(module_instance_id(instance))) {
+         view.module_component_origins(module_instance_id(instance))) {
         auto item = py::dict{};
         item["module_component"] = module_component.index();
         item["component"] = concrete_component.index();
@@ -562,9 +600,10 @@ py::list PyCircuit::module_component_origins(std::size_t instance) const {
 }
 
 py::list PyCircuit::port_bindings(std::size_t instance) const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = py::list{};
-    for (const auto binding_id : circuit_.port_bindings_for(module_instance_id(instance))) {
-        const auto &binding = circuit_.port_binding(binding_id);
+    for (const auto binding_id : view.port_bindings_for(module_instance_id(instance))) {
+        const auto &binding = view.port_binding(binding_id);
         auto item = py::dict{};
         item["port"] = binding.port().index();
         item["internal_net"] = binding.internal_net().index();
@@ -630,7 +669,7 @@ std::size_t PyCircuit::place_schematic_symbol(std::size_t sheet, std::size_t com
     static_cast<void>(projection.sheet(sheet_handle));
 
     const auto component_handle = component_id(component);
-    static_cast<void>(circuit_.component(component_handle));
+    static_cast<void>(volt::CircuitView{circuit_}.component(component_handle));
 
     const auto symbol_definition = ensure_schematic_symbol(symbol);
     return projection
@@ -933,7 +972,8 @@ py::list PyCircuit::schematic_svg_pages() {
 }
 
 void PyCircuit::load_schematic_json(const std::string &text) {
-    schematic_document_.replace_schematic(volt::io::read_schematic_text(text, circuit_));
+    schematic_document_.replace_schematic(
+        volt::io::read_schematic_text(text, volt::CircuitView{circuit_}));
 }
 
 std::vector<std::string> PyCircuit::schematic_sheet_names() const {
@@ -947,7 +987,7 @@ std::vector<std::string> PyCircuit::schematic_sheet_names() const {
 }
 
 py::list PyCircuit::validate() const {
-    return diagnostics_to_list(volt::validate_circuit(circuit_));
+    return diagnostics_to_list(volt::validate_circuit(volt::CircuitView{circuit_}));
 }
 
 py::list PyCircuit::validate_schematic() {
@@ -960,12 +1000,12 @@ py::list PyCircuit::validate_schematic_readability() {
 }
 
 py::list PyCircuit::validate_for_pcb() const {
-    return diagnostics_to_list(volt::validate_for_pcb(circuit_));
+    return diagnostics_to_list(volt::validate_for_pcb(volt::CircuitView{circuit_}));
 }
 
 std::string PyCircuit::to_json() const {
     auto out = std::ostringstream{};
-    volt::io::write_logical_circuit(out, circuit_);
+    volt::io::write_logical_circuit(out, volt::CircuitView{circuit_});
     return out.str();
 }
 
@@ -1184,10 +1224,11 @@ std::string PyCircuit::board_to_svg(bool pad_net_overlays, bool diagnostic_overl
 
 std::vector<volt::PinId> PyCircuit::pins_by_name(volt::ComponentId component,
                                                  const std::string &name) const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = std::vector<volt::PinId>{};
-    for (const auto pin : circuit_.pins_for(component)) {
-        const auto definition = circuit_.pin(pin).definition();
-        if (circuit_.pin_definition(definition).name() == name) {
+    for (const auto pin : view.pins_for(component)) {
+        const auto definition = view.pin(pin).definition();
+        if (view.pin_definition(definition).name() == name) {
             result.push_back(pin);
         }
     }
@@ -1197,11 +1238,12 @@ std::vector<volt::PinId> PyCircuit::pins_by_name(volt::ComponentId component,
 std::vector<volt::PinDefId>
 PyCircuit::module_component_pins_by_name(volt::ModuleComponentId component,
                                          const std::string &name) const {
+    const auto view = volt::CircuitView{circuit_};
     auto result = std::vector<volt::PinDefId>{};
-    const auto &component_template = circuit_.module_component_template(component);
-    const auto &definition = circuit_.component_definition(component_template.definition());
+    const auto &component_template = view.module_component_template(component);
+    const auto &definition = view.component_definition(component_template.definition());
     for (const auto pin : definition.pins()) {
-        if (circuit_.pin_definition(pin).name() == name) {
+        if (view.pin_definition(pin).name() == name) {
             result.push_back(pin);
         }
     }
@@ -1225,7 +1267,7 @@ volt::SymbolDefId PyCircuit::ensure_schematic_symbol(const std::string &name) {
 
 volt::Board &PyCircuit::board_projection(const std::string &name) {
     if (!board_projection_.has_value()) {
-        board_projection_.emplace(circuit_, volt::BoardName{name});
+        board_projection_.emplace(volt::CircuitView{circuit_}, volt::BoardName{name});
         return board_projection_.value();
     }
     if (board_projection_->name().value() != name) {

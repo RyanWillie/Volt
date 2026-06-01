@@ -190,7 +190,7 @@ void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_i
         });
     }
 }
-[[nodiscard]] bool component_definition_is_passive(const Circuit &circuit,
+[[nodiscard]] bool component_definition_is_passive(CircuitView circuit,
                                                    ComponentDefId definition_id) {
     const auto &definition = circuit.component_definition(definition_id);
     if (definition.pins().empty()) {

@@ -1,5 +1,7 @@
 #include <volt/authoring/component_library.hpp>
 
+#include <volt/circuit/electrical_mutations.hpp>
+
 namespace volt::authoring {
 
 [[nodiscard]] PinSpec passive_pin(std::string name, std::string number) {
@@ -51,13 +53,14 @@ namespace volt::authoring {
 [[nodiscard]] ComponentDefId define_component(Circuit &circuit, const ComponentSpec &spec) {
     auto pin_definitions = std::vector<PinDefId>{};
     pin_definitions.reserve(spec.pins.size());
+    auto electrical = CircuitElectrical{circuit};
 
     for (const auto &pin : spec.pins) {
         const auto pin_definition = circuit.add_pin_definition(
             PinDefinition{pin.name, pin.number, pin.role, pin.requirement, pin.terminal_kind,
                           pin.direction, pin.signal_domain, pin.drive_kind, pin.polarity});
         if (pin.voltage_range.has_value()) {
-            circuit.set_pin_definition_electrical_attribute(
+            electrical.set_pin_definition_electrical_attribute(
                 pin_definition,
                 ElectricalAttributeSpec{
                     ElectricalAttributeName{"voltage_range"}, ElectricalAttributeOwner::PinSpec,

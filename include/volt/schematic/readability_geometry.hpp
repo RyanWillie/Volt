@@ -160,7 +160,7 @@ struct ReadabilityTagObject {
                                                             const Sheet &sheet, NetId net,
                                                             PinId pin_id, Point point);
 
-[[nodiscard]] bool schematic_readiness_exempts_pin(const Circuit &circuit, PinId pin_id,
+[[nodiscard]] bool schematic_readiness_exempts_pin(CircuitView circuit, PinId pin_id,
                                                    PinDefId pin_def_id);
 
 [[nodiscard]] std::optional<SymbolPin> symbol_pin_by_number(const SymbolDefinition &symbol,
@@ -169,7 +169,7 @@ struct ReadabilityTagObject {
 [[nodiscard]] std::vector<SymbolInstanceId>
 symbol_instances_for_component(const Schematic &schematic, ComponentId component);
 
-[[nodiscard]] bool component_is_schematic_relevant(const Circuit &circuit, ComponentId component);
+[[nodiscard]] bool component_is_schematic_relevant(CircuitView circuit, ComponentId component);
 
 [[nodiscard]] bool sheet_has_junction_on_segments(const Schematic &schematic, const Sheet &sheet,
                                                   SchematicSegment first, SchematicSegment second,

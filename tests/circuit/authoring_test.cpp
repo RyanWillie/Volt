@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/circuit/definitions.hpp>
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
@@ -27,11 +28,11 @@ TEST_CASE("Circuit finds components by reference designator") {
     const auto component = circuit.add_component(
         volt::ComponentInstance{component_def, volt::ReferenceDesignator{"R1"}});
 
-    const auto found = circuit.component_by_reference(volt::ReferenceDesignator{"R1"});
+    const auto found = circuit.view().component_by_reference(volt::ReferenceDesignator{"R1"});
 
     REQUIRE(found.has_value());
     CHECK(found.value() == component);
-    CHECK_FALSE(circuit.component_by_reference(volt::ReferenceDesignator{"R2"}).has_value());
+    CHECK_FALSE(circuit.view().component_by_reference(volt::ReferenceDesignator{"R2"}).has_value());
 }
 
 TEST_CASE("Circuit rejects duplicate component reference designators") {
@@ -55,11 +56,11 @@ TEST_CASE("Circuit finds nets by name and rejects duplicate net names") {
 
     const auto net = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
 
-    const auto found = circuit.net_by_name(volt::NetName{"GND"});
+    const auto found = circuit.view().net_by_name(volt::NetName{"GND"});
 
     REQUIRE(found.has_value());
     CHECK(found.value() == net);
-    CHECK_FALSE(circuit.net_by_name(volt::NetName{"LED_A"}).has_value());
+    CHECK_FALSE(circuit.view().net_by_name(volt::NetName{"LED_A"}).has_value());
     CHECK_THROWS_AS(circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground}),
                     std::logic_error);
 }
@@ -74,19 +75,19 @@ TEST_CASE("Circuit instantiates component pins from the component definition") {
         volt::ComponentDefinition{"LED", std::vector{anode, cathode}});
 
     const auto component = circuit.instantiate_component(led, volt::ReferenceDesignator{"D1"});
-    const auto pins = circuit.pins_for(component);
+    const auto pins = circuit.view().pins_for(component);
 
     CHECK(component == volt::ComponentId{0});
-    CHECK(circuit.component(component).definition() == led);
-    CHECK(circuit.component(component).reference() == volt::ReferenceDesignator{"D1"});
-    CHECK(circuit.component_count() == 1);
+    CHECK(circuit.view().component(component).definition() == led);
+    CHECK(circuit.view().component(component).reference() == volt::ReferenceDesignator{"D1"});
+    CHECK(circuit.view().component_count() == 1);
     REQUIRE(pins.size() == 2);
     CHECK(pins[0] == volt::PinId{0});
     CHECK(pins[1] == volt::PinId{1});
-    CHECK(circuit.pin(pins[0]).component() == component);
-    CHECK(circuit.pin(pins[0]).definition() == anode);
-    CHECK(circuit.pin(pins[1]).component() == component);
-    CHECK(circuit.pin(pins[1]).definition() == cathode);
+    CHECK(circuit.view().pin(pins[0]).component() == component);
+    CHECK(circuit.view().pin(pins[0]).definition() == anode);
+    CHECK(circuit.view().pin(pins[1]).component() == component);
+    CHECK(circuit.view().pin(pins[1]).definition() == cathode);
 }
 
 TEST_CASE("Circuit instantiates components with instance properties") {
@@ -100,7 +101,7 @@ TEST_CASE("Circuit instantiates components with instance properties") {
         resistor, volt::ReferenceDesignator{"R1"},
         volt::PropertyMap{{volt::PropertyKey{"value"}, volt::PropertyValue{"330 ohm"}}});
 
-    CHECK(circuit.component(component).properties().get(volt::PropertyKey{"value"}) ==
+    CHECK(circuit.view().component(component).properties().get(volt::PropertyKey{"value"}) ==
           volt::PropertyValue{"330 ohm"});
 }
 
@@ -113,17 +114,17 @@ TEST_CASE("Circuit finds component pins by definition name and number") {
     const auto led = circuit.add_component_definition(
         volt::ComponentDefinition{"LED", std::vector{anode, cathode}});
     const auto component = circuit.instantiate_component(led, volt::ReferenceDesignator{"D1"});
-    const auto pins = circuit.pins_for(component);
+    const auto pins = circuit.view().pins_for(component);
 
-    const auto by_name = circuit.pin_by_name(component, "A");
-    const auto by_number = circuit.pin_by_number(component, "2");
+    const auto by_name = circuit.view().pin_by_name(component, "A");
+    const auto by_number = circuit.view().pin_by_number(component, "2");
 
     REQUIRE(by_name.has_value());
     REQUIRE(by_number.has_value());
     CHECK(by_name.value() == pins[0]);
     CHECK(by_number.value() == pins[1]);
-    CHECK_FALSE(circuit.pin_by_name(component, "MISSING").has_value());
-    CHECK_FALSE(circuit.pin_by_number(component, "99").has_value());
+    CHECK_FALSE(circuit.view().pin_by_name(component, "MISSING").has_value());
+    CHECK_FALSE(circuit.view().pin_by_number(component, "99").has_value());
 }
 
 TEST_CASE("Circuit rejects authoring lookups for missing component IDs") {
@@ -132,7 +133,7 @@ TEST_CASE("Circuit rejects authoring lookups for missing component IDs") {
     CHECK_THROWS_AS(circuit.instantiate_component(volt::ComponentDefId{5},
                                                   volt::ReferenceDesignator{"U_MISSING"}),
                     std::out_of_range);
-    CHECK_THROWS_AS(circuit.pins_for(volt::ComponentId{5}), std::out_of_range);
-    CHECK_THROWS_AS(circuit.pin_by_name(volt::ComponentId{5}, "A"), std::out_of_range);
-    CHECK_THROWS_AS(circuit.pin_by_number(volt::ComponentId{5}, "1"), std::out_of_range);
+    CHECK_THROWS_AS(circuit.view().pins_for(volt::ComponentId{5}), std::out_of_range);
+    CHECK_THROWS_AS(circuit.view().pin_by_name(volt::ComponentId{5}, "A"), std::out_of_range);
+    CHECK_THROWS_AS(circuit.view().pin_by_number(volt::ComponentId{5}, "1"), std::out_of_range);
 }

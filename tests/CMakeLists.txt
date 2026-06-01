@@ -85,6 +85,12 @@ add_test(
 set_tests_properties(kicad_adapter_boundary PROPERTIES LABELS cpp)
 
 add_test(
+    NAME circuit_architecture_boundary
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-circuit-architecture-boundary.py
+)
+set_tests_properties(circuit_architecture_boundary PROPERTIES LABELS cpp)
+
+add_test(
     NAME docs_site
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-docs-site.py
 )

@@ -18,6 +18,11 @@
 
 namespace volt {
 
+class CircuitDesignIntent;
+class CircuitElectrical;
+class CircuitHierarchy;
+class CircuitView;
+
 /** Owning database for the canonical logical circuit model. */
 class Circuit {
   public:
@@ -35,6 +40,32 @@ class Circuit {
 
     /** Store a canonical net and return its stable ID. */
     [[nodiscard]] NetId add_net(Net net);
+
+    /**
+     * Instantiate a component definition and create concrete pins for each ordered pin
+     * definition.
+     */
+    [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition,
+                                                    ReferenceDesignator reference,
+                                                    PropertyMap properties = {});
+
+    /** Connect an existing pin to an existing net; returns true when the circuit changed. */
+    bool connect(NetId net, PinId pin);
+
+    /** Disconnect an existing pin from its current net; returns true when the circuit changed. */
+    bool disconnect(PinId pin);
+
+    /** Return a read-only view over this circuit. */
+    [[nodiscard]] CircuitView view() const noexcept;
+
+    /** Convert to a read-only view when calling read-only APIs. */
+    [[nodiscard]] operator CircuitView() const noexcept;
+
+  private:
+    friend class CircuitDesignIntent;
+    friend class CircuitElectrical;
+    friend class CircuitHierarchy;
+    friend class CircuitView;
 
     /** Store a reusable logical module definition and return its stable ID. */
     [[nodiscard]] ModuleDefId add_module_definition(ModuleDefinition definition);
@@ -66,20 +97,6 @@ class Circuit {
         ModuleDefId definition, ModuleInstanceName name,
         const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
         const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins = {});
-
-    /**
-     * Instantiate a component definition and create concrete pins for each ordered pin
-     * definition.
-     */
-    [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition,
-                                                    ReferenceDesignator reference,
-                                                    PropertyMap properties = {});
-
-    /** Connect an existing pin to an existing net; returns true when the circuit changed. */
-    bool connect(NetId net, PinId pin);
-
-    /** Disconnect an existing pin from its current net; returns true when the circuit changed. */
-    bool disconnect(PinId pin);
 
     /** Set or replace a metadata property on an existing component instance. */
     void set_component_property(ComponentId component, PropertyKey key, PropertyValue value);
@@ -285,7 +302,6 @@ class Circuit {
     /** Return the number of explicit module port bindings. */
     [[nodiscard]] std::size_t port_binding_count() const noexcept { return port_bindings_.size(); }
 
-  private:
     void require_pin_definition(PinDefId pin_definition) const;
 
     void require_component_definition(ComponentDefId component_definition) const;

@@ -6,7 +6,9 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/circuit/definitions.hpp>
+#include <volt/circuit/design_intent_mutations.hpp>
 #include <volt/io/detail/schematic_svg_common.hpp>
 #include <volt/io/detail/schematic_svg_elements.hpp>
 #include <volt/io/detail/schematic_svg_layers.hpp>
@@ -82,8 +84,8 @@ TEST_CASE("Schematic SVG writer renders placed symbols deterministically") {
     const auto component = add_resistor(circuit);
     const auto net = add_net(circuit);
     const auto ground = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
-    const auto no_connect_pin = circuit.pin_by_number(component, "2").value();
-    circuit.mark_intentional_no_connect_pin(no_connect_pin);
+    const auto no_connect_pin = circuit.view().pin_by_number(component, "2").value();
+    volt::CircuitDesignIntent{circuit}.mark_intentional_no_connect_pin(no_connect_pin);
     auto schematic = make_schematic_with_wires(circuit, component, net);
     [[maybe_unused]] const auto junction =
         schematic.add_junction(volt::SheetId{0}, volt::Junction{net, volt::Point{30.0, 20.0}});

@@ -27,7 +27,7 @@ namespace volt::io::detail {
 class PcbBoardReader {
   public:
     /** Construct a reader over a parsed JSON document and its logical circuit context. */
-    PcbBoardReader(const Circuit &circuit, const nlohmann::json &document)
+    PcbBoardReader(CircuitView circuit, const nlohmann::json &document)
         : circuit_{circuit}, document_{document} {}
 
     /** Load and structurally validate the document into a board projection. */
@@ -156,7 +156,7 @@ class PcbBoardReader {
 
     [[nodiscard]] static std::optional<NetId> optional_net(const std::optional<std::string> &id);
 
-    const Circuit &circuit_;
+    CircuitView circuit_;
     const nlohmann::json &document_;
 };
 
@@ -959,7 +959,7 @@ PcbBoardReader::optional_net(const std::optional<std::string> &id) {
 
 namespace {
 
-[[nodiscard]] volt::Board read_pcb_board_document(const volt::Circuit &circuit,
+[[nodiscard]] volt::Board read_pcb_board_document(volt::CircuitView circuit,
                                                   const nlohmann::json &document) {
     return volt::io::detail::PcbBoardReader{circuit, document}.read();
 }
@@ -968,11 +968,11 @@ namespace {
 
 namespace volt::io {
 
-[[nodiscard]] Board read_pcb_board_text(const Circuit &circuit, std::string_view text) {
+[[nodiscard]] Board read_pcb_board_text(CircuitView circuit, std::string_view text) {
     const auto document = nlohmann::json::parse(text.begin(), text.end());
     return read_pcb_board_document(circuit, document);
 }
-[[nodiscard]] Board read_pcb_board(const Circuit &circuit, std::istream &input) {
+[[nodiscard]] Board read_pcb_board(CircuitView circuit, std::istream &input) {
     const auto text =
         std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     return read_pcb_board_text(circuit, text);

@@ -6,7 +6,7 @@
 #include <string_view>
 #include <vector>
 
-#include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/core/entity_table.hpp>
 #include <volt/schematic/geometry.hpp>
 #include <volt/schematic/schematic_items.hpp>
@@ -22,6 +22,9 @@ class Schematic {
   public:
     /** Construct a schematic projection for one logical circuit context. */
     explicit Schematic(const Circuit &circuit);
+
+    /** Construct a schematic projection for one logical circuit view context. */
+    explicit Schematic(CircuitView circuit);
 
     /** Replace projection contents with another schematic over the same logical circuit. */
     void replace_with(Schematic replacement);
@@ -162,7 +165,7 @@ class Schematic {
     void move_symbol_field(SymbolFieldId id, Point position);
 
     /** Return the logical circuit this schematic projection references. */
-    [[nodiscard]] const Circuit &circuit() const noexcept { return circuit_; }
+    [[nodiscard]] CircuitView circuit() const noexcept { return circuit_; }
 
     /** Return the number of stored symbol definitions. */
     [[nodiscard]] std::size_t symbol_definition_count() const noexcept;
@@ -238,7 +241,7 @@ class Schematic {
     resolve_wire_endpoint_net(std::optional<NetId> net,
                               const std::vector<SchematicEndpoint> &endpoints) const;
 
-    const Circuit &circuit_;
+    CircuitView circuit_;
     EntityTable<SymbolDefinition, SymbolDefId> symbol_definitions_;
     EntityTable<Sheet, SheetId> sheets_;
     EntityTable<SymbolInstance, SymbolInstanceId> symbol_instances_;

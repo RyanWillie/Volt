@@ -8,8 +8,8 @@ int main() {
     const auto circuit = volt::examples::build_led_circuit();
     const auto report = volt::validate_circuit(circuit);
 
-    std::cout << "LED circuit: " << circuit.component_count() << " components, "
-              << circuit.pin_count() << " pins, " << circuit.net_count() << " nets, "
+    std::cout << "LED circuit: " << circuit.view().component_count() << " components, "
+              << circuit.view().pin_count() << " pins, " << circuit.view().net_count() << " nets, "
               << report.count() << " diagnostics\n";
 
     for (const auto &diagnostic : report.diagnostics()) {

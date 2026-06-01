@@ -12,11 +12,14 @@ class SchematicDocument {
     /** Construct an empty schematic document for a logical circuit. */
     explicit SchematicDocument(const Circuit &circuit);
 
+    /** Construct an empty schematic document for a logical circuit view. */
+    explicit SchematicDocument(CircuitView circuit);
+
     /** Construct a schematic document from loaded projection data. */
     explicit SchematicDocument(Schematic schematic);
 
     /** Return the logical circuit this schematic document visualizes. */
-    [[nodiscard]] const Circuit &circuit() const noexcept { return schematic_.circuit(); }
+    [[nodiscard]] CircuitView circuit() const noexcept { return schematic_.circuit(); }
 
     /** Return the mutable kernel-owned schematic projection. */
     [[nodiscard]] Schematic &schematic() noexcept { return schematic_; }

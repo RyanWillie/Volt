@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Circuit Kernel Architecture Refactor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #16202a;
+      --muted: #5b6670;
+      --paper: #f7f3eb;
+      --panel: #ffffff;
+      --line: #d8d0c2;
+      --accent: #176b87;
+      --accent-2: #a4452f;
+      --ok: #3b7d4f;
+      --warn: #9d6b1f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.45;
+    }
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 64px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+      border-bottom: 3px solid var(--ink);
+      padding-bottom: 24px;
+      margin-bottom: 28px;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 {
+      max-width: 780px;
+      font-size: clamp(34px, 5vw, 64px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+    h2 {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+    h3 {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    .deck {
+      max-width: 700px;
+      color: var(--muted);
+      font-size: 18px;
+      margin-top: 16px;
+    }
+    .stamp {
+      border: 2px solid var(--ink);
+      padding: 12px 14px;
+      background: var(--panel);
+      min-width: 220px;
+      font-size: 14px;
+    }
+    .stamp b { display: block; font-size: 18px; }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 20px;
+      margin-top: 16px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .thirds {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    ul, ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+    li + li { margin-top: 6px; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.94em;
+      background: #f0ebe1;
+      padding: 1px 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      border-top: 1px solid var(--line);
+      padding: 9px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      border-top: 0;
+    }
+    .tag {
+      display: inline-block;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .danger { color: var(--accent-2); }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    @media (max-width: 820px) {
+      header, .grid, .thirds { grid-template-columns: 1fr; }
+      .stamp { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Circuit Kernel Architecture Refactor</h1>
+      <p class="deck">One deliberate C++ kernel refactor: separate reads from writes, keep invalid kernel state impossible, and preserve the Python authoring API while allowing internal bindings to move.</p>
+    </div>
+    <div class="stamp">
+      <b>2026-06-01</b>
+      <span>Scope: Volt C++ kernel architecture</span><br>
+      <span>Status: implementation plan</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Decision</h2>
+    <div class="grid">
+      <div>
+        <span class="tag ok">Keep</span>
+        <ul>
+          <li><code>Circuit</code> owns entity tables and structural invariants.</li>
+          <li>Structural invalidity throws at mutation boundaries.</li>
+          <li>Design-quality issues stay in diagnostics.</li>
+          <li>Python user-facing behavior stays compatible.</li>
+          <li>Serialization and golden fixtures stay deterministic.</li>
+        </ul>
+      </div>
+      <div>
+        <span class="tag danger">Change</span>
+        <ul>
+          <li>C++ call sites use <code>CircuitView</code> for reads.</li>
+          <li>Hierarchy, electrical, and design-intent writes move into cohesive kernel-owned modules.</li>
+          <li>Validation consumes <code>CircuitView</code> through deterministic rule suites.</li>
+          <li>Projection and adapter contracts become named, checked boundaries.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Module Layout</h2>
+    <div class="thirds">
+      <div>
+        <h3><code>Circuit</code></h3>
+        <p>Owns storage, entity creation, component instantiation, net membership, and private structural checks.</p>
+      </div>
+      <div>
+        <h3><code>CircuitView</code></h3>
+        <p>Read-only facade over one circuit. Readers and validators consume this instead of the mutable type.</p>
+      </div>
+      <div>
+        <h3>Mutation Modules</h3>
+        <p><code>CircuitHierarchy</code>, <code>CircuitElectrical</code>, and <code>CircuitDesignIntent</code> provide cohesive write APIs over kernel-owned state.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Invariant Boundary</h2>
+    <p><code>Circuit</code> remains the only object with direct table ownership. Extracted mutation modules are thin kernel-owned facades that call privileged <code>Circuit</code> mutation hooks. They must not own alternate EDA meaning, cache connectivity, or mutate entity internals without the same checks that existed before this refactor.</p>
+  </section>
+
+  <section>
+    <h2>Method Map</h2>
+    <table>
+      <thead>
+        <tr><th>Current surface</th><th>New home</th><th>Reason</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>add_pin_definition</code>, <code>add_component_definition</code>, <code>add_component</code>, <code>add_pin</code>, <code>add_net</code>, <code>instantiate_component</code>, <code>connect</code>, <code>disconnect</code></td><td><code>Circuit</code></td><td>Core entity and connectivity mutation with structural invariants.</td></tr>
+        <tr><td><code>add_module_definition</code>, <code>add_template_net</code>, <code>add_port_definition</code>, <code>add_module_component</code>, <code>connect_module_pin</code>, <code>instantiate_root_module</code>, <code>bind_port</code>, <code>restore_root_module_instance</code></td><td><code>CircuitHierarchy</code></td><td>Hierarchy is cohesive, but still kernel-owned.</td></tr>
+        <tr><td><code>set_component_property</code>, <code>set_*_electrical_attribute</code>, <code>select_physical_part</code></td><td><code>CircuitElectrical</code></td><td>Electrical and selected-part writes share owner/dimension checks.</td></tr>
+        <tr><td><code>mark_intentional_stub_net</code>, <code>mark_intentional_no_connect_pin</code></td><td><code>CircuitDesignIntent</code></td><td>Design intent is stored in the kernel and consumed by diagnostics.</td></tr>
+        <tr><td><code>net_of</code>, <code>*_by_name</code>, <code>*_for</code>, <code>module_*_origins</code>, <code>selected_physical_part</code>, entity accessors, counts</td><td><code>CircuitView</code></td><td>Readers should not require mutable kernel access.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Reader Migration</h2>
+    <ol>
+      <li>Validation accepts <code>CircuitView</code> and uses deterministic rule suites.</li>
+      <li>Logical writer reads from <code>CircuitView</code>; reader keeps mutating a <code>Circuit</code> through mutation modules.</li>
+      <li>Schematic and PCB projections store or expose <code>CircuitView</code> for logical reads while retaining their own projection state.</li>
+      <li>KiCad and future adapters consume projection objects and the view they expose; adapters never become owners of logical connectivity.</li>
+      <li>Authoring and Python binding internals may change, but Python syntax and test behavior remain stable.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Validation Rules</h2>
+    <p>Validation stays simple: named rule functions append to <code>DiagnosticReport</code>. Rule suites are deterministic arrays of functions for connectivity, electrical rules, default circuit validation, and PCB readiness. No dynamic plugin registry is introduced in this refactor.</p>
+  </section>
+
+  <section>
+    <h2>Projection And Adapter Contract</h2>
+    <ul>
+      <li>Projection layers may reference logical components, pins, nets, ports, and module instances.</li>
+      <li>Projection layers own presentation, layout, board geometry, placement, routing, and readability/DRC diagnostics.</li>
+      <li>Projection layers never create, merge, split, or reconnect logical nets.</li>
+      <li>Adapters translate Volt-owned models to or from external formats and must remain outside core dependency direction.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Verification</h2>
+    <div class="grid">
+      <div>
+        <span class="tag">Local gates</span>
+        <ul>
+          <li><code>python3 scripts/check-format.py</code></li>
+          <li><code>cmake --preset dev</code></li>
+          <li><code>cmake --build --preset dev --clean-first</code></li>
+          <li><code>ctest --preset dev</code></li>
+          <li><code>cmake --workflow --preset clang-tidy</code></li>
+        </ul>
+      </div>
+      <div>
+        <span class="tag warn">Regression gates</span>
+        <ul>
+          <li><code>cmake --workflow --preset coverage</code></li>
+          <li>Golden fixtures unchanged.</li>
+          <li>KiCad boundary check remains green.</li>
+          <li>Python API tests and examples remain green without public syntax changes.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -60,7 +60,7 @@ TEST_CASE("Schematic stores sheets and symbol instances over logical components"
     CHECK(schematic.symbol_instance(instance).symbol_definition() == symbol);
     CHECK(schematic.symbol_instance(instance).position() == volt::Point{40.0, 20.0});
     CHECK(schematic.sheet(sheet).symbol_instances() == std::vector{instance});
-    CHECK(circuit.net_count() == 0);
+    CHECK(circuit.view().net_count() == 0);
 }
 
 TEST_CASE("Schematic stores wire runs and labels over canonical logical nets") {
@@ -93,11 +93,11 @@ TEST_CASE("Schematic authoring mutations infer nets from logical pin endpoints")
     const auto first_component = add_resistor(circuit, "R1");
     const auto second_component = add_resistor(circuit, "R2");
     const auto net = add_named_net(circuit, "SIG");
-    const auto first_pin = circuit.pin_by_number(first_component, "2").value();
-    const auto second_pin = circuit.pin_by_number(second_component, "1").value();
+    const auto first_pin = circuit.view().pin_by_number(first_component, "2").value();
+    const auto second_pin = circuit.view().pin_by_number(second_component, "1").value();
     circuit.connect(net, first_pin);
     circuit.connect(net, second_pin);
-    const auto net_count = circuit.net_count();
+    const auto net_count = circuit.view().net_count();
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -110,7 +110,7 @@ TEST_CASE("Schematic authoring mutations infer nets from logical pin endpoints")
     CHECK(schematic.wire_run(wire).net() == net);
     CHECK(schematic.wire_run(wire).points() ==
           std::vector{volt::Point{20.0, 0.0}, volt::Point{40.0, 0.0}});
-    CHECK(circuit.net_count() == net_count);
+    CHECK(circuit.view().net_count() == net_count);
 }
 
 TEST_CASE("Schematic authoring mutations reject unconnected and mismatched endpoints") {
@@ -118,8 +118,8 @@ TEST_CASE("Schematic authoring mutations reject unconnected and mismatched endpo
     const auto component = add_resistor(circuit, "R1");
     const auto first_net = add_named_net(circuit, "SIG");
     const auto second_net = add_named_net(circuit, "ALT");
-    const auto connected_pin = circuit.pin_by_number(component, "1").value();
-    const auto unconnected_pin = circuit.pin_by_number(component, "2").value();
+    const auto connected_pin = circuit.view().pin_by_number(component, "1").value();
+    const auto unconnected_pin = circuit.view().pin_by_number(component, "2").value();
     circuit.connect(first_net, connected_pin);
 
     volt::Schematic schematic{circuit};
@@ -150,8 +150,8 @@ TEST_CASE("Schematic stores professional primitives without changing logical con
     const auto component = add_resistor(circuit);
     const auto vcc = add_net(circuit);
     const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
-    const auto no_connect_pin = circuit.pin_by_number(component, "2").value();
-    circuit.mark_intentional_no_connect_pin(no_connect_pin);
+    const auto no_connect_pin = circuit.view().pin_by_number(component, "2").value();
+    volt::CircuitDesignIntent{circuit}.mark_intentional_no_connect_pin(no_connect_pin);
 
     auto metadata = volt::SheetMetadata{
         "Power sheet",
@@ -214,9 +214,9 @@ TEST_CASE("Schematic stores professional primitives without changing logical con
     CHECK(schematic.symbol_field(field).symbol_instance() == instance);
     CHECK(schematic.symbol_field(field).name() == "value");
     CHECK(schematic.symbol_field(field).value() == "10k");
-    CHECK(circuit.net(vcc).pins().empty());
-    CHECK(circuit.net(gnd).pins().empty());
-    CHECK_FALSE(circuit.net_of(no_connect_pin).has_value());
+    CHECK(circuit.view().net(vcc).pins().empty());
+    CHECK(circuit.view().net(gnd).pins().empty());
+    CHECK_FALSE(circuit.view().net_of(no_connect_pin).has_value());
 }
 
 TEST_CASE("Schematic rejects empty presentation names") {
@@ -308,7 +308,7 @@ TEST_CASE("Schematic rejects professional primitives with missing references") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
     const auto net = add_net(circuit);
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = circuit.view().pin_by_number(component, "1").value();
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});

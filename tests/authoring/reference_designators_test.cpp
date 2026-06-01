@@ -5,6 +5,7 @@
 #include <volt/authoring/component_library.hpp>
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/circuit/instances.hpp>
 #include <volt/core/properties.hpp>
 
@@ -47,8 +48,8 @@ TEST_CASE("Authoring instantiate helper preserves explicit references") {
     const auto r10 =
         volt::authoring::instantiate(circuit, resistor, volt::ReferenceDesignator{"R10"});
 
-    CHECK(circuit.component(r10).reference() == volt::ReferenceDesignator{"R10"});
-    CHECK(circuit.pins_for(r10).size() == 2);
+    CHECK(circuit.view().component(r10).reference() == volt::ReferenceDesignator{"R10"});
+    CHECK(circuit.view().pins_for(r10).size() == 2);
     CHECK_THROWS_AS(
         volt::authoring::instantiate(circuit, resistor, volt::ReferenceDesignator{"R10"}),
         std::logic_error);
@@ -63,9 +64,10 @@ TEST_CASE("Authoring instantiate helper allocates deterministic unique reference
         circuit, resistor, "R",
         volt::PropertyMap{{volt::PropertyKey{"value"}, volt::PropertyValue{"10k"}}});
 
-    CHECK(circuit.component(r1).reference() == volt::ReferenceDesignator{"R1"});
-    CHECK(circuit.component(r2).reference() == volt::ReferenceDesignator{"R2"});
-    CHECK(circuit.component(r2).properties().get(volt::PropertyKey{"value"}).as_string() == "10k");
-    CHECK(circuit.pins_for(r1).size() == 2);
-    CHECK(circuit.pins_for(r2).size() == 2);
+    CHECK(circuit.view().component(r1).reference() == volt::ReferenceDesignator{"R1"});
+    CHECK(circuit.view().component(r2).reference() == volt::ReferenceDesignator{"R2"});
+    CHECK(circuit.view().component(r2).properties().get(volt::PropertyKey{"value"}).as_string() ==
+          "10k");
+    CHECK(circuit.view().pins_for(r1).size() == 2);
+    CHECK(circuit.view().pins_for(r2).size() == 2);
 }

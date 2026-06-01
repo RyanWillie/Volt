@@ -8,6 +8,8 @@
 #include <nlohmann/json.hpp>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
+#include <volt/circuit/electrical_mutations.hpp>
 #include <volt/io/pcb_reader.hpp>
 #include <volt/io/pcb_writer.hpp>
 #include <volt/pcb/board.hpp>
@@ -36,22 +38,24 @@ struct ResistorCircuit {
         volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
-    const auto first_pin = circuit.pin_by_definition(component, first_pin_definition).value();
-    const auto second_pin = circuit.pin_by_definition(component, second_pin_definition).value();
+    const auto first_pin =
+        circuit.view().pin_by_definition(component, first_pin_definition).value();
+    const auto second_pin =
+        circuit.view().pin_by_definition(component, second_pin_definition).value();
     const auto first_net = circuit.add_net(volt::Net{volt::NetName{"LEFT"}, volt::NetKind::Signal});
     const auto second_net =
         circuit.add_net(volt::Net{volt::NetName{"RIGHT"}, volt::NetKind::Signal});
 
     circuit.connect(first_net, first_pin);
     circuit.connect(second_net, second_pin);
-    circuit.select_physical_part(component,
-                                 volt::PhysicalPart{
-                                     volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
-                                     volt::PackageRef{"0603"},
-                                     volt::FootprintRef{"passives", "R_0603_1608Metric"},
-                                     std::vector{volt::PinPadMapping{first_pin_definition, "1"},
-                                                 volt::PinPadMapping{second_pin_definition, "2"}},
-                                 });
+    volt::CircuitElectrical{circuit}.select_physical_part(
+        component, volt::PhysicalPart{
+                       volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                       volt::PackageRef{"0603"},
+                       volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                       std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                   volt::PinPadMapping{second_pin_definition, "2"}},
+                   });
 
     return ResistorCircuit{std::move(circuit),
                            component,

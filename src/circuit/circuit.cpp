@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/circuit_view.hpp>
+
 namespace volt {
 
 [[nodiscard]] PinDefId Circuit::add_pin_definition(PinDefinition definition) {
@@ -331,6 +333,8 @@ bool Circuit::disconnect(PinId pin) {
 
     return nets_.get(existing_net.value()).disconnect(pin);
 }
+[[nodiscard]] CircuitView Circuit::view() const noexcept { return CircuitView{*this}; }
+[[nodiscard]] Circuit::operator CircuitView() const noexcept { return view(); }
 void Circuit::set_component_property(ComponentId component, PropertyKey key, PropertyValue value) {
     require_component(component);
     components_.get(component).set_property(std::move(key), std::move(value));

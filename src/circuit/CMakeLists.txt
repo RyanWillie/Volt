@@ -2,7 +2,10 @@ add_library(
     volt_circuit
     circuit.cpp
     definitions.cpp
+    design_intent_mutations.cpp
+    electrical_mutations.cpp
     hierarchy.cpp
+    hierarchy_mutations.cpp
     instances.cpp
     nets.cpp
     parts.cpp

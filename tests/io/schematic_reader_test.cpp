@@ -10,7 +10,9 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/circuit/definitions.hpp>
+#include <volt/circuit/design_intent_mutations.hpp>
 #include <volt/io/schematic_reader.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
@@ -219,8 +221,8 @@ TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
     const auto component = add_resistor(circuit);
     const auto vcc = add_net(circuit);
     const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
-    const auto no_connect_pin = circuit.pin_by_number(component, "2").value();
-    circuit.mark_intentional_no_connect_pin(no_connect_pin);
+    const auto no_connect_pin = circuit.view().pin_by_number(component, "2").value();
+    volt::CircuitDesignIntent{circuit}.mark_intentional_no_connect_pin(no_connect_pin);
 
     auto fixture = schematic_json();
     fixture["sheets"][0]["metadata"] = {
@@ -287,8 +289,8 @@ TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
     CHECK(schematic.no_connect_marker(volt::NoConnectMarkerId{0}).reason() == "not populated");
     CHECK(schematic.sheet_port(volt::SheetPortId{0}).name() == "VIN");
     CHECK(schematic.symbol_field(volt::SymbolFieldId{0}).value() == "10k");
-    CHECK(circuit.net(vcc).pins().empty());
-    CHECK(circuit.net(gnd).pins().empty());
+    CHECK(circuit.view().net(vcc).pins().empty());
+    CHECK(circuit.view().net(gnd).pins().empty());
 }
 
 TEST_CASE("Schematic reader loads drawing page metadata and named regions") {

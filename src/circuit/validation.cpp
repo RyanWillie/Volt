@@ -1,5 +1,7 @@
 #include <volt/circuit/validation.hpp>
 
+#include <array>
+
 namespace volt::detail {
 
 [[nodiscard]] bool is_no_connect_pin(const PinDefinition &definition) {
@@ -23,7 +25,7 @@ namespace volt::detail {
            (definition.direction() == ElectricalDirection::Output ||
             definition.direction() == ElectricalDirection::Bidirectional);
 }
-NetContinuityView::NetContinuityView(const Circuit &circuit) {
+NetContinuityView::NetContinuityView(CircuitView circuit) {
     parent_.reserve(circuit.net_count());
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
         parent_.push_back(index);
@@ -34,7 +36,7 @@ NetContinuityView::NetContinuityView(const Circuit &circuit) {
         join(binding.internal_net(), binding.parent_net());
     }
 }
-[[nodiscard]] std::vector<PinId> NetContinuityView::pins_for_group(const Circuit &circuit,
+[[nodiscard]] std::vector<PinId> NetContinuityView::pins_for_group(CircuitView circuit,
                                                                    NetId net) const {
     auto pins = std::vector<PinId>{};
     const auto group = find(net.index());
@@ -60,7 +62,7 @@ void NetContinuityView::join(NetId first, NetId second) {
         parent_.at(second_root) = first_root;
     }
 }
-void validate_pin_connection_requirements(const Circuit &circuit, DiagnosticReport &report) {
+void validate_pin_connection_requirements(CircuitView circuit, DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.pin_count(); ++index) {
         const auto pin_id = PinId{index};
         const auto &pin = circuit.pin(pin_id);
@@ -134,7 +136,7 @@ void validate_net_shape(NetId net_id, const Net &net, const std::vector<PinId> &
         });
     }
 }
-void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, const Net &net,
+void validate_power_and_ground_semantics(CircuitView circuit, NetId net_id, const Net &net,
                                          const std::vector<PinId> &group_pins,
                                          DiagnosticReport &report) {
     auto power_input_pins = std::vector<PinId>{};
@@ -183,7 +185,7 @@ void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, c
         });
     }
 }
-void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id, const Net &net,
+void validate_selected_part_voltage_ratings(CircuitView circuit, NetId net_id, const Net &net,
                                             const std::vector<PinId> &group_pins,
                                             DiagnosticReport &report) {
     const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
@@ -220,7 +222,7 @@ void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id
         }
     }
 }
-void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net &net,
+void validate_pin_voltage_ranges(CircuitView circuit, NetId net_id, const Net &net,
                                  const std::vector<PinId> &group_pins, DiagnosticReport &report) {
     const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
     const auto voltage_range_attribute_name = ElectricalAttributeName{"voltage_range"};
@@ -272,7 +274,7 @@ void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net
         }
     }
 }
-void validate_output_driver_conflicts(const Circuit &circuit, NetId net_id,
+void validate_output_driver_conflicts(CircuitView circuit, NetId net_id,
                                       const std::vector<PinId> &group_pins,
                                       DiagnosticReport &report) {
     auto output_pins = std::vector<PinId>{};
@@ -298,7 +300,7 @@ void validate_output_driver_conflicts(const Circuit &circuit, NetId net_id,
         });
     }
 }
-void validate_net_shapes(const Circuit &circuit, const NetContinuityView &continuity,
+void validate_net_shapes(CircuitView circuit, const NetContinuityView &continuity,
                          DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
         const auto net_id = NetId{index};
@@ -310,7 +312,7 @@ void validate_net_shapes(const Circuit &circuit, const NetContinuityView &contin
         validate_net_shape(net_id, net, continuity.pins_for_group(circuit, net_id), report);
     }
 }
-void validate_net_electrical_rules(const Circuit &circuit, const NetContinuityView &continuity,
+void validate_net_electrical_rules(CircuitView circuit, const NetContinuityView &continuity,
                                    DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
         const auto net_id = NetId{index};
@@ -323,7 +325,7 @@ void validate_net_electrical_rules(const Circuit &circuit, const NetContinuityVi
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
     }
 }
-void validate_net_semantics(const Circuit &circuit, const NetContinuityView &continuity,
+void validate_net_semantics(CircuitView circuit, const NetContinuityView &continuity,
                             DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
         const auto net_id = NetId{index};
@@ -339,7 +341,7 @@ void validate_net_semantics(const Circuit &circuit, const NetContinuityView &con
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
     }
 }
-void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &report) {
+void validate_required_module_ports(CircuitView circuit, DiagnosticReport &report) {
     for (std::size_t instance_index = 0; instance_index < circuit.module_instance_count();
          ++instance_index) {
         const auto instance_id = ModuleInstanceId{instance_index};
@@ -360,7 +362,7 @@ void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &re
         }
     }
 }
-void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &report) {
+void validate_physical_part_selection(CircuitView circuit, DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.component_count(); ++index) {
         const auto component_id = ComponentId{index};
         const auto &component = circuit.component(component_id);
@@ -375,45 +377,87 @@ void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &
         }
     }
 }
+namespace {
+
+using CircuitValidationRule = void (*)(CircuitView, const NetContinuityView &, DiagnosticReport &);
+
+void validate_pin_connection_requirements_rule(CircuitView circuit,
+                                               const NetContinuityView &continuity,
+                                               DiagnosticReport &report) {
+    static_cast<void>(continuity);
+    validate_pin_connection_requirements(circuit, report);
+}
+void validate_required_module_ports_rule(CircuitView circuit, const NetContinuityView &continuity,
+                                         DiagnosticReport &report) {
+    static_cast<void>(continuity);
+    validate_required_module_ports(circuit, report);
+}
+void validate_net_shapes_rule(CircuitView circuit, const NetContinuityView &continuity,
+                              DiagnosticReport &report) {
+    validate_net_shapes(circuit, continuity, report);
+}
+void validate_net_electrical_rules_rule(CircuitView circuit, const NetContinuityView &continuity,
+                                        DiagnosticReport &report) {
+    validate_net_electrical_rules(circuit, continuity, report);
+}
+void validate_net_semantics_rule(CircuitView circuit, const NetContinuityView &continuity,
+                                 DiagnosticReport &report) {
+    validate_net_semantics(circuit, continuity, report);
+}
+void validate_physical_part_selection_rule(CircuitView circuit, const NetContinuityView &continuity,
+                                           DiagnosticReport &report) {
+    static_cast<void>(continuity);
+    validate_physical_part_selection(circuit, report);
+}
+
+constexpr auto connectivity_rules = std::array{
+    validate_pin_connection_requirements_rule,
+    validate_required_module_ports_rule,
+    validate_net_shapes_rule,
+};
+constexpr auto electrical_rules = std::array{
+    validate_net_electrical_rules_rule,
+};
+constexpr auto default_rules = std::array{
+    validate_pin_connection_requirements_rule,
+    validate_required_module_ports_rule,
+    validate_net_semantics_rule,
+};
+constexpr auto pcb_readiness_rules = std::array{
+    validate_pin_connection_requirements_rule,
+    validate_required_module_ports_rule,
+    validate_net_semantics_rule,
+    validate_physical_part_selection_rule,
+};
+
+template <std::size_t RuleCount>
+[[nodiscard]] DiagnosticReport
+run_rule_suite(CircuitView circuit, const std::array<CircuitValidationRule, RuleCount> &rules) {
+    auto report = DiagnosticReport{};
+    const auto continuity = NetContinuityView{circuit};
+    for (const auto rule : rules) {
+        rule(circuit, continuity, report);
+    }
+    return report;
+}
+
+} // namespace
 
 } // namespace volt::detail
 
 namespace volt {
 
-[[nodiscard]] DiagnosticReport validate_connectivity(const Circuit &circuit) {
-    auto report = DiagnosticReport{};
-    const auto continuity = detail::NetContinuityView{circuit};
-
-    detail::validate_pin_connection_requirements(circuit, report);
-    detail::validate_required_module_ports(circuit, report);
-    detail::validate_net_shapes(circuit, continuity, report);
-
-    return report;
+[[nodiscard]] DiagnosticReport validate_connectivity(CircuitView circuit) {
+    return detail::run_rule_suite(circuit, detail::connectivity_rules);
 }
-[[nodiscard]] DiagnosticReport validate_electrical_rules(const Circuit &circuit) {
-    auto report = DiagnosticReport{};
-    const auto continuity = detail::NetContinuityView{circuit};
-
-    detail::validate_net_electrical_rules(circuit, continuity, report);
-
-    return report;
+[[nodiscard]] DiagnosticReport validate_electrical_rules(CircuitView circuit) {
+    return detail::run_rule_suite(circuit, detail::electrical_rules);
 }
-[[nodiscard]] DiagnosticReport validate_circuit(const Circuit &circuit) {
-    auto report = DiagnosticReport{};
-    const auto continuity = detail::NetContinuityView{circuit};
-
-    detail::validate_pin_connection_requirements(circuit, report);
-    detail::validate_required_module_ports(circuit, report);
-    detail::validate_net_semantics(circuit, continuity, report);
-
-    return report;
+[[nodiscard]] DiagnosticReport validate_circuit(CircuitView circuit) {
+    return detail::run_rule_suite(circuit, detail::default_rules);
 }
-[[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit) {
-    auto report = validate_circuit(circuit);
-
-    detail::validate_physical_part_selection(circuit, report);
-
-    return report;
+[[nodiscard]] DiagnosticReport validate_for_pcb(CircuitView circuit) {
+    return detail::run_rule_suite(circuit, detail::pcb_readiness_rules);
 }
 
 } // namespace volt

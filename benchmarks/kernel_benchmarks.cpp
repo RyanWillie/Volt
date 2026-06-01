@@ -11,6 +11,7 @@
 #include <volt/authoring/connection_helpers.hpp>
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/circuit/validation.hpp>
 #include <volt/io/logical_circuit_reader.hpp>
@@ -75,8 +76,8 @@ volt::Circuit build_resistor_chain(std::size_t component_count) {
         const auto component = components[index];
         const auto first_net = volt::NetId{index};
         const auto second_net = volt::NetId{index + 1};
-        const auto first_pin = circuit.pin_by_number(component, "1").value();
-        const auto second_pin = circuit.pin_by_number(component, "2").value();
+        const auto first_pin = circuit.view().pin_by_number(component, "1").value();
+        const auto second_pin = circuit.view().pin_by_number(component, "2").value();
         volt::authoring::connect(circuit, first_net, {first_pin});
         volt::authoring::connect(circuit, second_net, {second_pin});
     }
@@ -86,9 +87,9 @@ volt::Circuit build_resistor_chain(std::size_t component_count) {
 
 void require_valid_round_trip(const volt::Circuit &circuit, std::string_view json) {
     const auto restored = volt::io::read_logical_circuit_text(json);
-    if (restored.component_count() != circuit.component_count() ||
-        restored.pin_count() != circuit.pin_count() ||
-        restored.net_count() != circuit.net_count()) {
+    if (restored.view().component_count() != circuit.view().component_count() ||
+        restored.view().pin_count() != circuit.view().pin_count() ||
+        restored.view().net_count() != circuit.view().net_count()) {
         throw std::runtime_error{"Logical circuit round-trip changed entity counts"};
     }
 }

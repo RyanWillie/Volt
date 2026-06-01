@@ -245,8 +245,8 @@ TEST_CASE("Schematic readability reports duplicate junctions and hard-to-read la
 TEST_CASE("Schematic readability reports missing passive values and dense no-connect clusters") {
     volt::Circuit circuit;
     const auto resistor = add_resistor(circuit);
-    circuit.set_component_property(resistor, volt::PropertyKey{"value"},
-                                   volt::PropertyValue{"10k"});
+    volt::CircuitElectrical{circuit}.set_component_property(resistor, volt::PropertyKey{"value"},
+                                                            volt::PropertyValue{"10k"});
 
     auto pin_definitions = std::vector<volt::PinDefId>{};
     for (auto index = 1; index <= 6; ++index) {
@@ -270,9 +270,9 @@ TEST_CASE("Schematic readability reports missing passive values and dense no-con
     auto markers = std::vector<volt::NoConnectMarkerId>{};
     for (auto index = 1; index <= 6; ++index) {
         markers.push_back(schematic.add_no_connect_marker(
-            sheet,
-            volt::NoConnectMarker{circuit.pin_by_number(connector, std::to_string(index)).value(),
-                                  volt::Point{80.0 + static_cast<double>(index), 40.0}}));
+            sheet, volt::NoConnectMarker{
+                       circuit.view().pin_by_number(connector, std::to_string(index)).value(),
+                       volt::Point{80.0 + static_cast<double>(index), 40.0}}));
     }
 
     const auto report = volt::validate_schematic_readability(schematic);
@@ -699,8 +699,8 @@ TEST_CASE("Schematic readability reports terminal markers touching symbol bodies
 TEST_CASE("Schematic readability reports no-connect markers misplaced on owning symbol bodies") {
     volt::Circuit circuit;
     const auto component = add_four_pin_component(circuit, "U1");
-    const auto pin = circuit.pin_by_number(component, "1").value();
-    circuit.mark_intentional_no_connect_pin(pin);
+    const auto pin = circuit.view().pin_by_number(component, "1").value();
+    volt::CircuitDesignIntent{circuit}.mark_intentional_no_connect_pin(pin);
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -748,7 +748,7 @@ TEST_CASE("Schematic readability reports generic visual element collisions") {
 TEST_CASE("Schematic readability reports no-connect markers crowding wire geometry") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = circuit.view().pin_by_number(component, "1").value();
     const auto net = add_named_net(circuit, "BOOT0");
 
     volt::Schematic schematic{circuit};

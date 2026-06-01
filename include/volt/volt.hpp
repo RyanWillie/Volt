@@ -4,8 +4,12 @@
 #include <volt/authoring/connection_helpers.hpp>
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/circuit/definitions.hpp>
+#include <volt/circuit/design_intent_mutations.hpp>
+#include <volt/circuit/electrical_mutations.hpp>
 #include <volt/circuit/hierarchy.hpp>
+#include <volt/circuit/hierarchy_mutations.hpp>
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/circuit/parts.hpp>

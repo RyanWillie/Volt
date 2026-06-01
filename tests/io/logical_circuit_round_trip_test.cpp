@@ -40,8 +40,8 @@ TEST_CASE("Golden diagnostic fixture round-trips and preserves connectivity") {
     const auto circuit = volt::io::read_logical_circuit_text(fixture);
     const auto report = volt::validate_circuit(circuit);
 
-    REQUIRE(circuit.net_count() == 1);
-    CHECK(circuit.net(volt::NetId{0}).pins().size() == 1);
+    REQUIRE(circuit.view().net_count() == 1);
+    CHECK(circuit.view().net(volt::NetId{0}).pins().size() == 1);
     CHECK_FALSE(report.empty());
     check_fixture_round_trips("single_pin_net.volt.json");
 }

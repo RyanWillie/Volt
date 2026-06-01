@@ -10,7 +10,7 @@
 #include <string>
 #include <string_view>
 
-#include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/io/detail/typed_id.hpp>
 
 namespace volt::io {
@@ -91,9 +91,9 @@ void write_pin_definition_semantics(std::ostream &out, const PinDefinition &pin)
 } // namespace detail
 
 /** Write a deterministic JSON representation of the logical circuit to an output stream. */
-void write_logical_circuit(std::ostream &out, const Circuit &circuit);
+void write_logical_circuit(std::ostream &out, CircuitView circuit);
 
 /** Return a deterministic JSON representation of the logical circuit. */
-[[nodiscard]] std::string write_logical_circuit(const Circuit &circuit);
+[[nodiscard]] std::string write_logical_circuit(CircuitView circuit);
 
 } // namespace volt::io

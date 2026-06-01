@@ -5,6 +5,7 @@
 
 #include <volt/authoring/connection_helpers.hpp>
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/circuit/definitions.hpp>
 #include <volt/circuit/nets.hpp>
 
@@ -25,17 +26,17 @@ TEST_CASE("Authoring connect helper connects multiple pins to one net") {
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"J1"});
     const auto second =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"J2"});
-    const auto first_pin = circuit.pin_by_number(first, "1").value();
-    const auto second_pin = circuit.pin_by_number(second, "1").value();
+    const auto first_pin = circuit.view().pin_by_number(first, "1").value();
+    const auto second_pin = circuit.view().pin_by_number(second, "1").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"BUS"}, volt::NetKind::Signal});
 
     volt::authoring::connect(circuit, net, {first_pin, second_pin});
 
-    REQUIRE(circuit.net(net).pins().size() == 2);
-    CHECK(circuit.net(net).pins()[0] == first_pin);
-    CHECK(circuit.net(net).pins()[1] == second_pin);
-    CHECK(circuit.net_of(first_pin) == net);
-    CHECK(circuit.net_of(second_pin) == net);
+    REQUIRE(circuit.view().net(net).pins().size() == 2);
+    CHECK(circuit.view().net(net).pins()[0] == first_pin);
+    CHECK(circuit.view().net(net).pins()[1] == second_pin);
+    CHECK(circuit.view().net_of(first_pin) == net);
+    CHECK(circuit.view().net_of(second_pin) == net);
 }
 
 TEST_CASE("Authoring connect helper accepts deterministic pin vectors") {
@@ -46,14 +47,14 @@ TEST_CASE("Authoring connect helper accepts deterministic pin vectors") {
     const auto second =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"J2"});
     const auto pins = std::vector{
-        circuit.pin_by_number(first, "1").value(),
-        circuit.pin_by_number(second, "1").value(),
+        circuit.view().pin_by_number(first, "1").value(),
+        circuit.view().pin_by_number(second, "1").value(),
     };
     const auto net = circuit.add_net(volt::Net{volt::NetName{"BUS"}, volt::NetKind::Signal});
 
     volt::authoring::connect(circuit, net, pins);
 
-    CHECK(circuit.net(net).pins() == pins);
+    CHECK(circuit.view().net(net).pins() == pins);
 }
 
 TEST_CASE("Authoring connect helper preserves Circuit structural checks") {
@@ -61,7 +62,7 @@ TEST_CASE("Authoring connect helper preserves Circuit structural checks") {
     const auto component_definition = add_one_pin_component(circuit);
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"J1"});
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = circuit.view().pin_by_number(component, "1").value();
     const auto first_net =
         circuit.add_net(volt::Net{volt::NetName{"FIRST"}, volt::NetKind::Signal});
     const auto second_net =
@@ -70,5 +71,5 @@ TEST_CASE("Authoring connect helper preserves Circuit structural checks") {
     volt::authoring::connect(circuit, first_net, {pin});
 
     CHECK_THROWS_AS(volt::authoring::connect(circuit, second_net, {pin}), std::logic_error);
-    CHECK(circuit.net_of(pin) == first_net);
+    CHECK(circuit.view().net_of(pin) == first_net);
 }

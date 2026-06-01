@@ -5,7 +5,11 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/circuit_view.hpp>
 #include <volt/circuit/definitions.hpp>
+#include <volt/circuit/design_intent_mutations.hpp>
+#include <volt/circuit/electrical_mutations.hpp>
+#include <volt/circuit/hierarchy_mutations.hpp>
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/circuit/validation.hpp>
@@ -41,7 +45,7 @@ TEST_CASE("Circuit validation reports required pins that are not connected") {
         volt::ComponentDefinition{"Regulator", std::vector{pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    const auto pin = circuit.pin_by_name(component, "VDD").value();
+    const auto pin = circuit.view().pin_by_name(component, "VDD").value();
 
     const auto report = volt::validate_circuit(circuit);
 
@@ -78,7 +82,7 @@ TEST_CASE("Circuit validation reports must-not-connect pins that are connected")
         volt::ComponentDefinition{"Package", std::vector{pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    const auto pin = circuit.pin_by_name(component, "NC").value();
+    const auto pin = circuit.view().pin_by_name(component, "NC").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"ACCIDENTAL"}, volt::NetKind::Signal});
 
     circuit.connect(net, pin);
@@ -104,7 +108,7 @@ TEST_CASE("Circuit validation reports empty and single-pin nets") {
         volt::ComponentDefinition{"TestPoint", std::vector{pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"TP1"});
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = circuit.view().pin_by_number(component, "1").value();
     const auto empty_net =
         circuit.add_net(volt::Net{volt::NetName{"EMPTY"}, volt::NetKind::Signal});
     const auto single_pin_net =
@@ -131,18 +135,18 @@ TEST_CASE("Circuit validation accepts intentional stub nets") {
         circuit.add_component_definition(volt::ComponentDefinition{"MCU", std::vector{pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    const auto pin = circuit.pin_by_name(component, "SWDIO").value();
+    const auto pin = circuit.view().pin_by_name(component, "SWDIO").value();
     const auto empty_stub =
         circuit.add_net(volt::Net{volt::NetName{"BOOT_TRACE"}, volt::NetKind::Signal});
     const auto single_pin_stub =
         circuit.add_net(volt::Net{volt::NetName{"SWDIO"}, volt::NetKind::Signal});
 
     circuit.connect(single_pin_stub, pin);
-    circuit.mark_intentional_stub_net(empty_stub);
-    circuit.mark_intentional_stub_net(single_pin_stub);
+    volt::CircuitDesignIntent{circuit}.mark_intentional_stub_net(empty_stub);
+    volt::CircuitDesignIntent{circuit}.mark_intentional_stub_net(single_pin_stub);
 
-    CHECK(circuit.is_intentional_stub_net(empty_stub));
-    CHECK(circuit.is_intentional_stub_net(single_pin_stub));
+    CHECK(circuit.view().is_intentional_stub_net(empty_stub));
+    CHECK(circuit.view().is_intentional_stub_net(single_pin_stub));
     CHECK(volt::validate_connectivity(circuit).empty());
 }
 
@@ -154,11 +158,11 @@ TEST_CASE("Circuit validation accepts intentional no-connect pins") {
         circuit.add_component_definition(volt::ComponentDefinition{"MCU", std::vector{pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    const auto pin = circuit.pin_by_name(component, "PB2").value();
+    const auto pin = circuit.view().pin_by_name(component, "PB2").value();
 
-    circuit.mark_intentional_no_connect_pin(pin);
+    volt::CircuitDesignIntent{circuit}.mark_intentional_no_connect_pin(pin);
 
-    CHECK(circuit.is_intentional_no_connect_pin(pin));
+    CHECK(circuit.view().is_intentional_no_connect_pin(pin));
     CHECK(volt::validate_connectivity(circuit).empty());
 }
 
@@ -170,11 +174,11 @@ TEST_CASE("Circuit validation reports connected intentional no-connect pins") {
         circuit.add_component_definition(volt::ComponentDefinition{"MCU", std::vector{pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    const auto pin = circuit.pin_by_name(component, "PB2").value();
+    const auto pin = circuit.view().pin_by_name(component, "PB2").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"PB2"}, volt::NetKind::Signal});
 
     circuit.connect(net, pin);
-    circuit.mark_intentional_no_connect_pin(pin);
+    volt::CircuitDesignIntent{circuit}.mark_intentional_no_connect_pin(pin);
 
     const auto report = volt::validate_connectivity(circuit);
 
@@ -201,26 +205,29 @@ TEST_CASE("Circuit validation treats bound module port nets as connected for net
     const auto parent_component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Source", std::vector{output_pin}});
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
-        volt::ModuleName{"LoadBlock"},
-    });
-    const auto template_net = circuit.add_template_net(
+    const auto module =
+        volt::CircuitHierarchy{circuit}.add_module_definition(volt::ModuleDefinition{
+            volt::ModuleName{"LoadBlock"},
+        });
+    const auto template_net = volt::CircuitHierarchy{circuit}.add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VIN"}, volt::NetKind::Power});
-    const auto port = circuit.add_port_definition(
+    const auto port = volt::CircuitHierarchy{circuit}.add_port_definition(
         module,
         volt::PortDefinition{volt::PortName{"VIN"}, template_net, volt::PortRole::PowerInput});
-    const auto module_component = circuit.add_module_component(
+    const auto module_component = volt::CircuitHierarchy{circuit}.add_module_component(
         module,
         volt::ModuleComponentTemplate{module_component_def, volt::ReferenceDesignator{"U1"}});
-    CHECK(circuit.connect_module_pin(module, template_net, module_component, input_pin));
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"LOAD_A"});
+    CHECK(volt::CircuitHierarchy{circuit}.connect_module_pin(module, template_net, module_component,
+                                                             input_pin));
+    const auto instance = volt::CircuitHierarchy{circuit}.instantiate_root_module(
+        module, volt::ModuleInstanceName{"LOAD_A"});
     const auto parent_component =
         circuit.instantiate_component(parent_component_def, volt::ReferenceDesignator{"U2"});
     const auto parent_net = circuit.add_net(volt::Net{volt::NetName{"VIN"}, volt::NetKind::Power});
 
-    circuit.connect(parent_net, circuit.pin_by_name(parent_component, "OUT").value());
-    [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);
+    circuit.connect(parent_net, circuit.view().pin_by_name(parent_component, "OUT").value());
+    [[maybe_unused]] const auto binding =
+        volt::CircuitHierarchy{circuit}.bind_port(instance, port, parent_net);
 
     const auto report = volt::validate_connectivity(circuit);
 
@@ -240,25 +247,28 @@ TEST_CASE("Circuit validation treats bound module port nets as connected for pow
     const auto regulator_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Regulator", std::vector{power_source}});
 
-    const auto module = circuit.add_module_definition(volt::ModuleDefinition{
-        volt::ModuleName{"LoadBlock"},
-    });
-    const auto template_net = circuit.add_template_net(
+    const auto module =
+        volt::CircuitHierarchy{circuit}.add_module_definition(volt::ModuleDefinition{
+            volt::ModuleName{"LoadBlock"},
+        });
+    const auto template_net = volt::CircuitHierarchy{circuit}.add_template_net(
         module, volt::TemplateNetDefinition{volt::NetName{"VCC"}, volt::NetKind::Power});
-    const auto port = circuit.add_port_definition(
+    const auto port = volt::CircuitHierarchy{circuit}.add_port_definition(
         module,
         volt::PortDefinition{volt::PortName{"VCC"}, template_net, volt::PortRole::PowerInput});
-    const auto module_component = circuit.add_module_component(
+    const auto module_component = volt::CircuitHierarchy{circuit}.add_module_component(
         module, volt::ModuleComponentTemplate{load_def, volt::ReferenceDesignator{"U1"}});
-    CHECK(circuit.connect_module_pin(module, template_net, module_component, power_input));
-    const auto instance =
-        circuit.instantiate_root_module(module, volt::ModuleInstanceName{"LOAD_A"});
+    CHECK(volt::CircuitHierarchy{circuit}.connect_module_pin(module, template_net, module_component,
+                                                             power_input));
+    const auto instance = volt::CircuitHierarchy{circuit}.instantiate_root_module(
+        module, volt::ModuleInstanceName{"LOAD_A"});
     const auto regulator =
         circuit.instantiate_component(regulator_def, volt::ReferenceDesignator{"U2"});
     const auto parent_net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.connect(parent_net, circuit.pin_by_name(regulator, "OUT").value());
-    [[maybe_unused]] const auto binding = circuit.bind_port(instance, port, parent_net);
+    circuit.connect(parent_net, circuit.view().pin_by_name(regulator, "OUT").value());
+    [[maybe_unused]] const auto binding =
+        volt::CircuitHierarchy{circuit}.bind_port(instance, port, parent_net);
 
     const auto report = volt::validate_circuit(circuit);
 
@@ -277,10 +287,10 @@ TEST_CASE("Circuit connectivity validation excludes electrical rule diagnostics"
         volt::ComponentDefinition{"Load", std::vector{power_input, unconnected_pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    const auto power_pin = circuit.pin_by_name(component, "VCC").value();
+    const auto power_pin = circuit.view().pin_by_name(component, "VCC").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.set_pin_definition_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_pin_definition_electrical_attribute(
         power_input,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage_range"},
@@ -292,7 +302,7 @@ TEST_CASE("Circuit connectivity validation excludes electrical rule diagnostics"
             volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
                                          volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
     circuit.connect(net, power_pin);
-    circuit.set_net_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_net_electrical_attribute(
         net,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
@@ -318,10 +328,10 @@ TEST_CASE("Circuit electrical-rule validation excludes connectivity diagnostics"
         volt::ComponentDefinition{"Load", std::vector{power_input, unconnected_pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    const auto power_pin = circuit.pin_by_name(component, "VCC").value();
+    const auto power_pin = circuit.view().pin_by_name(component, "VCC").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.set_pin_definition_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_pin_definition_electrical_attribute(
         power_input,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage_range"},
@@ -333,7 +343,7 @@ TEST_CASE("Circuit electrical-rule validation excludes connectivity diagnostics"
             volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
                                          volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
     circuit.connect(net, power_pin);
-    circuit.set_net_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_net_electrical_attribute(
         net,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
@@ -359,10 +369,10 @@ TEST_CASE("Full circuit validation preserves connectivity before electrical rule
         volt::ComponentDefinition{"Load", std::vector{power_input, unconnected_pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    const auto power_pin = circuit.pin_by_name(component, "VCC").value();
+    const auto power_pin = circuit.view().pin_by_name(component, "VCC").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.set_pin_definition_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_pin_definition_electrical_attribute(
         power_input,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage_range"},
@@ -374,7 +384,7 @@ TEST_CASE("Full circuit validation preserves connectivity before electrical rule
             volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 1.8},
                                          volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
     circuit.connect(net, power_pin);
-    circuit.set_net_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_net_electrical_attribute(
         net,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
@@ -400,8 +410,8 @@ TEST_CASE("PCB readiness validation reports components without selected physical
         volt::ComponentDefinition{"Resistor", std::vector{first_pin_def, second_pin_def}});
     const auto resistor =
         circuit.instantiate_component(resistor_def, volt::ReferenceDesignator{"R1"});
-    const auto first_pin = circuit.pin_by_number(resistor, "1").value();
-    const auto second_pin = circuit.pin_by_number(resistor, "2").value();
+    const auto first_pin = circuit.view().pin_by_number(resistor, "1").value();
+    const auto second_pin = circuit.view().pin_by_number(resistor, "2").value();
     const auto input = circuit.add_net(volt::Net{volt::NetName{"IN"}, volt::NetKind::Signal});
     const auto output = circuit.add_net(volt::Net{volt::NetName{"OUT"}, volt::NetKind::Signal});
 
@@ -435,14 +445,14 @@ TEST_CASE("PCB readiness validation accepts components with selected physical pa
         volt::ComponentDefinition{"Resistor", std::vector{first_pin_def, second_pin_def}});
     const auto resistor =
         circuit.instantiate_component(resistor_def, volt::ReferenceDesignator{"R1"});
-    const auto first_pin = circuit.pin_by_number(resistor, "1").value();
-    const auto second_pin = circuit.pin_by_number(resistor, "2").value();
+    const auto first_pin = circuit.view().pin_by_number(resistor, "1").value();
+    const auto second_pin = circuit.view().pin_by_number(resistor, "2").value();
     const auto input = circuit.add_net(volt::Net{volt::NetName{"IN"}, volt::NetKind::Signal});
     const auto output = circuit.add_net(volt::Net{volt::NetName{"OUT"}, volt::NetKind::Signal});
 
     circuit.connect(input, first_pin);
     circuit.connect(output, second_pin);
-    circuit.select_physical_part(
+    volt::CircuitElectrical{circuit}.select_physical_part(
         resistor, volt::PhysicalPart{volt::ManufacturerPart{"Yageo", "RC0603FR-0710KL"},
                                      volt::PackageRef{"0603"},
                                      volt::FootprintRef{"Resistor_SMD", "R_0603_1608Metric"},
@@ -464,22 +474,22 @@ TEST_CASE("Circuit validation reports selected part voltage rating violations") 
         volt::ComponentDefinition{"Capacitor", std::vector{pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"C1"});
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = circuit.view().pin_by_number(component, "1").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
 
     circuit.connect(net, pin);
-    circuit.set_net_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_net_electrical_attribute(
         net,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
             volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Voltage},
         volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 5.0}});
-    circuit.select_physical_part(
+    volt::CircuitElectrical{circuit}.select_physical_part(
         component,
         volt::PhysicalPart{volt::ManufacturerPart{"Test", "C-3V3"}, volt::PackageRef{"0603"},
                            volt::FootprintRef{"Capacitor_SMD", "C_0603"},
                            std::vector{volt::PinPadMapping{pin_def, "1"}}});
-    circuit.set_selected_part_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_selected_part_electrical_attribute(
         component,
         volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{"voltage_rating"},
                                       volt::ElectricalAttributeOwner::SelectedPart,
@@ -508,22 +518,22 @@ TEST_CASE("Circuit validation ignores non-quantity voltage attributes for voltag
         volt::ComponentDefinition{"Capacitor", std::vector{pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"C1"});
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = circuit.view().pin_by_number(component, "1").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
 
     circuit.connect(net, pin);
-    circuit.set_net_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_net_electrical_attribute(
         net,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
             volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Ratio},
         volt::ElectricalAttributeValue{volt::Tolerance::percent(0.1)});
-    circuit.select_physical_part(
+    volt::CircuitElectrical{circuit}.select_physical_part(
         component,
         volt::PhysicalPart{volt::ManufacturerPart{"Test", "C-16V"}, volt::PackageRef{"0603"},
                            volt::FootprintRef{"Capacitor_SMD", "C_0603"},
                            std::vector{volt::PinPadMapping{pin_def, "1"}}});
-    circuit.set_selected_part_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_selected_part_electrical_attribute(
         component,
         volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{"voltage_rating"},
                                       volt::ElectricalAttributeOwner::SelectedPart,
@@ -545,22 +555,22 @@ TEST_CASE("Circuit validation accepts nets within selected part voltage ratings"
         volt::ComponentDefinition{"Capacitor", std::vector{pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"C1"});
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = circuit.view().pin_by_number(component, "1").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
 
     circuit.connect(net, pin);
-    circuit.set_net_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_net_electrical_attribute(
         net,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
             volt::ElectricalAttributeKind::DesignInput, volt::UnitDimension::Voltage},
         volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}});
-    circuit.select_physical_part(
+    volt::CircuitElectrical{circuit}.select_physical_part(
         component,
         volt::PhysicalPart{volt::ManufacturerPart{"Test", "C-16V"}, volt::PackageRef{"0603"},
                            volt::FootprintRef{"Capacitor_SMD", "C_0603"},
                            std::vector{volt::PinPadMapping{pin_def, "1"}}});
-    circuit.set_selected_part_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_selected_part_electrical_attribute(
         component,
         volt::ElectricalAttributeSpec{volt::ElectricalAttributeName{"voltage_rating"},
                                       volt::ElectricalAttributeOwner::SelectedPart,
@@ -589,11 +599,11 @@ TEST_CASE("Circuit validation reports pin voltage range violations") {
     const auto load = circuit.instantiate_component(load_def, volt::ReferenceDesignator{"U1"});
     const auto regulator =
         circuit.instantiate_component(regulator_def, volt::ReferenceDesignator{"U2"});
-    const auto load_pin = circuit.pin_by_name(load, "VCC").value();
-    const auto source_pin = circuit.pin_by_name(regulator, "OUT").value();
+    const auto load_pin = circuit.view().pin_by_name(load, "VCC").value();
+    const auto source_pin = circuit.view().pin_by_name(regulator, "OUT").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.set_pin_definition_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_pin_definition_electrical_attribute(
         power_input,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage_range"},
@@ -606,7 +616,7 @@ TEST_CASE("Circuit validation reports pin voltage range violations") {
                                          volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
     circuit.connect(net, load_pin);
     circuit.connect(net, source_pin);
-    circuit.set_net_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_net_electrical_attribute(
         net,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
@@ -640,11 +650,11 @@ TEST_CASE("Circuit validation accepts net voltages within pin voltage ranges") {
     const auto load = circuit.instantiate_component(load_def, volt::ReferenceDesignator{"U1"});
     const auto regulator =
         circuit.instantiate_component(regulator_def, volt::ReferenceDesignator{"U2"});
-    const auto load_pin = circuit.pin_by_name(load, "VCC").value();
-    const auto source_pin = circuit.pin_by_name(regulator, "OUT").value();
+    const auto load_pin = circuit.view().pin_by_name(load, "VCC").value();
+    const auto source_pin = circuit.view().pin_by_name(regulator, "OUT").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.set_pin_definition_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_pin_definition_electrical_attribute(
         power_input,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage_range"},
@@ -657,7 +667,7 @@ TEST_CASE("Circuit validation accepts net voltages within pin voltage ranges") {
                                          volt::Quantity{volt::UnitDimension::Voltage, 3.6})});
     circuit.connect(net, load_pin);
     circuit.connect(net, source_pin);
-    circuit.set_net_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_net_electrical_attribute(
         net,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage"}, volt::ElectricalAttributeOwner::Net,
@@ -684,11 +694,11 @@ TEST_CASE("Circuit validation ignores pin voltage ranges without net voltage") {
     const auto load = circuit.instantiate_component(load_def, volt::ReferenceDesignator{"U1"});
     const auto regulator =
         circuit.instantiate_component(regulator_def, volt::ReferenceDesignator{"U2"});
-    const auto load_pin = circuit.pin_by_name(load, "VCC").value();
-    const auto source_pin = circuit.pin_by_name(regulator, "OUT").value();
+    const auto load_pin = circuit.view().pin_by_name(load, "VCC").value();
+    const auto source_pin = circuit.view().pin_by_name(regulator, "OUT").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
-    circuit.set_pin_definition_electrical_attribute(
+    volt::CircuitElectrical{circuit}.set_pin_definition_electrical_attribute(
         power_input,
         volt::ElectricalAttributeSpec{
             volt::ElectricalAttributeName{"voltage_range"},
@@ -722,8 +732,8 @@ TEST_CASE("Circuit validation reports power inputs without typed supply sources"
     const auto load = circuit.instantiate_component(load_def, volt::ReferenceDesignator{"U1"});
     const auto resistor =
         circuit.instantiate_component(resistor_def, volt::ReferenceDesignator{"R1"});
-    const auto load_pin = circuit.pin_by_name(load, "VCC").value();
-    const auto resistor_pin = circuit.pin_by_number(resistor, "1").value();
+    const auto load_pin = circuit.view().pin_by_name(load, "VCC").value();
+    const auto resistor_pin = circuit.view().pin_by_number(resistor, "1").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
     circuit.connect(net, load_pin);
@@ -754,8 +764,8 @@ TEST_CASE("Circuit validation accepts typed power inputs with typed supply sourc
     const auto load = circuit.instantiate_component(load_def, volt::ReferenceDesignator{"U1"});
     const auto regulator =
         circuit.instantiate_component(regulator_def, volt::ReferenceDesignator{"U2"});
-    const auto load_pin = circuit.pin_by_name(load, "VCC").value();
-    const auto source_pin = circuit.pin_by_name(regulator, "OUT").value();
+    const auto load_pin = circuit.view().pin_by_name(load, "VCC").value();
+    const auto source_pin = circuit.view().pin_by_name(regulator, "OUT").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
 
     circuit.connect(net, load_pin);
@@ -781,8 +791,8 @@ TEST_CASE("Circuit validation reports power and ground domain mismatches") {
     const auto grounded =
         circuit.instantiate_component(ground_def, volt::ReferenceDesignator{"U1"});
     const auto powered = circuit.instantiate_component(power_def, volt::ReferenceDesignator{"U2"});
-    const auto ground_pin = circuit.pin_by_name(grounded, "GND").value();
-    const auto power_pin = circuit.pin_by_name(powered, "VCC").value();
+    const auto ground_pin = circuit.view().pin_by_name(grounded, "GND").value();
+    const auto power_pin = circuit.view().pin_by_name(powered, "VCC").value();
     const auto power_net = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
     const auto ground_net = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
 
@@ -812,8 +822,8 @@ TEST_CASE("Circuit validation reports multiple output drivers on one net") {
         circuit.instantiate_component(driver_a, volt::ReferenceDesignator{"U1"});
     const auto component_b =
         circuit.instantiate_component(driver_b, volt::ReferenceDesignator{"U2"});
-    const auto pin_a = circuit.pin_by_name(component_a, "OUT_A").value();
-    const auto pin_b = circuit.pin_by_name(component_b, "OUT_B").value();
+    const auto pin_a = circuit.view().pin_by_name(component_a, "OUT_A").value();
+    const auto pin_b = circuit.view().pin_by_name(component_b, "OUT_B").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"CONFLICT"}, volt::NetKind::Signal});
 
     circuit.connect(net, pin_a);

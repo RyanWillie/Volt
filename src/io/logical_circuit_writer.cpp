@@ -378,7 +378,7 @@ void write_pin_definition_semantics(std::ostream &out, const PinDefinition &pin)
 
 namespace volt::io {
 
-void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
+void write_logical_circuit(std::ostream &out, CircuitView circuit) {
     out << "{\n";
     out << "  \"format\": " << detail::json_string(logical_circuit_format_name()) << ",\n";
     out << "  \"version\": " << logical_circuit_format_version() << ",\n";
@@ -688,7 +688,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
     out << "  ]\n";
     out << "}\n";
 }
-[[nodiscard]] std::string write_logical_circuit(const Circuit &circuit) {
+[[nodiscard]] std::string write_logical_circuit(CircuitView circuit) {
     auto out = std::ostringstream{};
     write_logical_circuit(out, circuit);
     return out.str();

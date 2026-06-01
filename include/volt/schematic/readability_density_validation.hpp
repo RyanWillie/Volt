@@ -28,7 +28,7 @@ void validate_crowded_tag_stacks(const Schematic &schematic, SheetId sheet_id, c
 void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_id,
                                      const Sheet &sheet, DiagnosticReport &report);
 
-[[nodiscard]] bool component_definition_is_passive(const Circuit &circuit,
+[[nodiscard]] bool component_definition_is_passive(CircuitView circuit,
                                                    ComponentDefId definition_id);
 
 [[nodiscard]] bool component_has_known_value(const ComponentInstance &component);
