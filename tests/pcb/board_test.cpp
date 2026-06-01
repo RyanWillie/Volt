@@ -117,6 +117,19 @@ struct MultiComponentNetCircuit {
     return nullptr;
 }
 
+[[nodiscard]] volt::FootprintDefinition conflicting_passive_0603_footprint() {
+    return volt::FootprintDefinition{
+        volt::FootprintRef{"passives", "R_0603_1608Metric"},
+        std::vector{
+            volt::FootprintPad::surface_mount(
+                "1", volt::FootprintPadShape::RoundedRectangle, volt::FootprintPoint{-0.80, 0.0},
+                volt::FootprintSize{0.90, 0.95}, volt::FootprintLayerSet::front_smd()),
+            volt::FootprintPad::surface_mount(
+                "2", volt::FootprintPadShape::RoundedRectangle, volt::FootprintPoint{0.80, 0.0},
+                volt::FootprintSize{0.90, 0.95}, volt::FootprintLayerSet::front_smd()),
+        }};
+}
+
 } // namespace
 
 TEST_CASE("Board stores metadata, layers, outline, features, and placements") {
@@ -322,9 +335,19 @@ TEST_CASE("Board rejects structurally invalid board and placement mutations") {
 
     [[maybe_unused]] const auto footprint =
         board.cache_footprint_definition(volt::passive_0603_footprint());
-    CHECK_THROWS_AS(board.cache_footprint_definition(volt::passive_0603_footprint()),
+    CHECK(board.cache_footprint_definition(volt::passive_0603_footprint()) == footprint);
+    CHECK_THROWS_AS(board.cache_footprint_definition(conflicting_passive_0603_footprint()),
                     std::logic_error);
     CHECK_THROWS_AS(board.footprint_definition(volt::FootprintDefId{99}), std::out_of_range);
+}
+
+TEST_CASE("Board rejects cached footprint definitions that conflict with resolution libraries") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    [[maybe_unused]] const auto footprint =
+        board.cache_footprint_definition(conflicting_passive_0603_footprint());
+
+    CHECK_THROWS_AS(board.resolve_pads(volt::builtin_footprint_library()), std::logic_error);
 }
 
 TEST_CASE("Board rejects structurally invalid copper mutations") {

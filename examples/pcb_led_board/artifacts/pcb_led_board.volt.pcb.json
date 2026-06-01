@@ -29,7 +29,7 @@
           "position": [0, -1.27],
           "size": [1.7, 1.7],
           "layers": ["front_copper", "back_copper", "front_solder_mask", "back_solder_mask"],
-          "drill": {"diameter_mm": 0.90000000000000002, "plating": "plated"},
+          "drill": {"diameter_mm": 1, "plating": "plated"},
           "mechanical_role": null
           },
           {
@@ -40,7 +40,7 @@
           "position": [0, 1.27],
           "size": [1.7, 1.7],
           "layers": ["front_copper", "back_copper", "front_solder_mask", "back_solder_mask"],
-          "drill": {"diameter_mm": 0.90000000000000002, "plating": "plated"},
+          "drill": {"diameter_mm": 1, "plating": "plated"},
           "mechanical_role": null
           }
         ]
@@ -126,7 +126,7 @@
         "pin": "pin:0",
         "net": "net:0",
         "status": "connected",
-        "geometry": {"kind": "through_hole", "shape": "circle", "size": [1.7, 1.7], "layers": ["front_copper", "back_copper", "front_solder_mask", "back_solder_mask"], "drill": {"diameter_mm": 0.90000000000000002, "plating": "plated"}, "mechanical_role": null}
+        "geometry": {"kind": "through_hole", "shape": "circle", "size": [1.7, 1.7], "layers": ["front_copper", "back_copper", "front_solder_mask", "back_solder_mask"], "drill": {"diameter_mm": 1, "plating": "plated"}, "mechanical_role": null}
       },
       {
         "id": "pcb_pad:0:1",
@@ -139,7 +139,7 @@
         "pin": "pin:1",
         "net": "net:2",
         "status": "connected",
-        "geometry": {"kind": "through_hole", "shape": "circle", "size": [1.7, 1.7], "layers": ["front_copper", "back_copper", "front_solder_mask", "back_solder_mask"], "drill": {"diameter_mm": 0.90000000000000002, "plating": "plated"}, "mechanical_role": null}
+        "geometry": {"kind": "through_hole", "shape": "circle", "size": [1.7, 1.7], "layers": ["front_copper", "back_copper", "front_solder_mask", "back_solder_mask"], "drill": {"diameter_mm": 1, "plating": "plated"}, "mechanical_role": null}
       },
       {
         "id": "pcb_pad:1:0",

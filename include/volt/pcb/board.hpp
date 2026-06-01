@@ -48,7 +48,7 @@ class Board {
     /** Add a physical board feature. */
     [[nodiscard]] BoardFeatureId add_feature(BoardFeature feature);
 
-    /** Cache a resolved footprint definition snapshot, rejecting duplicate footprint refs. */
+    /** Cache a resolved footprint definition snapshot, deduping identical footprint refs. */
     [[nodiscard]] FootprintDefId cache_footprint_definition(FootprintDefinition footprint);
 
     /** Place an existing logical component once on this board. */

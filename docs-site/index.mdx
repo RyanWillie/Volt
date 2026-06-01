@@ -1,0 +1,61 @@
+---
+title: Volt
+description: Python-first electronics design authoring over a C++ kernel that owns circuit meaning.
+---
+
+Volt is a modern electronics design kernel for tools and scripts that need circuit data they can trust.
+
+Most EDA workflows start with drawings. Volt starts with structured intent: component definitions, component instances, pins, nets, selected physical parts, schematic projection data, PCB placement/routing data, validation diagnostics, and deterministic JSON artifacts.
+
+<CardGroup cols={2}>
+  <Card title="Author circuits in Python" icon="code" href="/python/logical-authoring">
+    Create designs, nets, components, hierarchy, selected parts, and serialized logical artifacts.
+  </Card>
+  <Card title="Project readable schematics" icon="diagram-project" href="/python/schematic-authoring">
+    Place existing logical components, draw wires, add labels, and render deterministic SVG.
+  </Card>
+  <Card title="Describe PCB intent" icon="microchip" href="/python/pcb-authoring">
+    Define layers, outlines, footprints, placements, tracks, vias, zones, keepouts, and board text.
+  </Card>
+  <Card title="Validate before export" icon="circle-check" href="/python/diagnostics">
+    Structural mistakes raise immediately; design-quality issues are reported as diagnostics.
+  </Card>
+</CardGroup>
+
+## Core idea
+
+```text
+Invalid kernel state should be impossible.
+Bad circuit design should be diagnosable.
+```
+
+Python is an authoring surface over kernel-owned state. It makes circuit generation pleasant, but it does not become a second circuit database.
+
+<Tip>
+  If you are new to Volt, start with the quickstart, then read the Python overview. The examples move from a small LED circuit to a larger STM32 USB buck design.
+</Tip>
+
+## First path through the docs
+
+<Steps>
+  <Step title="Build and import Volt">
+    Follow the local development quickstart and create a tiny design.
+  </Step>
+  <Step title="Learn the Python mental model">
+    Understand `Design`, `Component`, `Pin`, `Net`, `Schematic`, and `Board`.
+  </Step>
+  <Step title="Author one artifact at a time">
+    Start logical, add schematic projection, then add PCB data when selected parts and footprints are available.
+  </Step>
+  <Step title="Use validation as feedback">
+    Treat diagnostics as design feedback and exceptions as rejected structural mutations.
+  </Step>
+</Steps>
+
+## What Volt writes
+
+Volt currently produces deterministic logical circuit JSON, schematic projection JSON, schematic SVG, PCB projection JSON, PCB SVG, and validation reports. These artifacts are intended to be easy to diff, test, and feed into future UI or adapter layers.
+
+<Card title="Start building" icon="terminal" href="/quickstart">
+  Build Volt locally, import the Python package, and write your first checked design.
+</Card>

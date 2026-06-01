@@ -38,15 +38,22 @@ def _small_resistor_led_design():
     return design, r1, d1
 
 
-def _passive_0603(ref):
+def _passive_0603(ref, *, pad_span=1.5, pad_width=0.8):
+    half_span = pad_span / 2
     return volt.FootprintDefinition(
         ref,
         pads=(
             volt.FootprintPad.surface_mount(
-                "1", at=(-0.75, 0.0), size=(0.80, 0.95), shape="rounded_rectangle"
+                "1",
+                at=(-half_span, 0.0),
+                size=(pad_width, 0.95),
+                shape="rounded_rectangle",
             ),
             volt.FootprintPad.surface_mount(
-                "2", at=(0.75, 0.0), size=(0.80, 0.95), shape="rounded_rectangle"
+                "2",
+                at=(half_span, 0.0),
+                size=(pad_width, 0.95),
+                shape="rounded_rectangle",
             ),
         ),
     )
@@ -263,9 +270,12 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
         board.set_layer_stack((front, 99), thickness=1.6)
     with pytest.raises(ValueError, match="Board point coordinates must be finite"):
         board.set_rectangular_outline(origin=(math.nan, 0.0), size=(10.0, 10.0))
-    with pytest.raises(RuntimeError, match="Board footprint definition already exists"):
-        board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
-        board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    footprint_id = board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    assert board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric"))) == footprint_id
+    with pytest.raises(RuntimeError, match="conflicts"):
+        board.cache_footprint(
+            _passive_0603(("passives", "R_0603_1608Metric"), pad_span=1.7)
+        )
     with pytest.raises(IndexError, match="Volt entity id is out of range"):
         board.place(99, at=(1.0, 1.0))
     with pytest.raises(TypeError, match="Board component IDs must be integers"):
@@ -300,3 +310,268 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
         )
     with pytest.raises(ValueError, match="Board text size must be positive"):
         board.add_text("REV A", at=(1.0, 1.0), layer=front, size=0.0)
+
+
+def test_python_board_auto_registers_object_owned_library_footprint():
+    footprint = _passive_0603(("volt.test", "Object0603"))
+    library = volt.Library("volt.test")
+    resistor = library.component(
+        "ObjectResistor",
+        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        physical_part=volt.PhysicalPartSpec(
+            manufacturer="Yageo",
+            part_number="RC0603FR-07330RL",
+            package="0603",
+            footprint=footprint,
+            pin_pads={1: "1", 2: "2"},
+        ),
+        prefix="R",
+    )
+    design = volt.Design("object-owned-footprint")
+    r1 = design.instantiate(resistor, ref="R1")
+    left = design.net("LEFT")
+    right = design.net("RIGHT")
+    left += r1[1]
+    right += r1[2]
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+
+    board.place(r1, at=(10.0, 6.0))
+    resolutions = board.resolve_pads()
+
+    assert [resolution.status for resolution in resolutions] == ["connected", "connected"]
+    assert [resolution.pad_label for resolution in resolutions] == ["1", "2"]
+    assert "PCB_FOOTPRINT_UNRESOLVED" not in {diagnostic.code for diagnostic in board.validate()}
+
+    document = json.loads(board.to_json())
+    definitions = document["board"]["footprint_definitions"]
+    assert [definition["ref"] for definition in definitions] == [
+        {"library": "volt.test", "name": "Object0603"}
+    ]
+    assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
+    assert len(document["viewer"]["pad_resolutions"]) == 2
+
+    svg = board.to_svg()
+    assert 'data-footprint="volt.test:Object0603"' in svg
+    assert 'class="footprint-pad' in svg
+
+
+def test_python_board_ref_only_missing_geometry_still_reports_unresolved():
+    design = volt.Design("missing-footprint")
+    r1 = design.R("1k", ref="R1")
+    left = design.net("LEFT")
+    right = design.net("RIGHT")
+    left += r1[1]
+    right += r1[2]
+    r1.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603FR-071KL",
+        package="0603",
+        footprint=("missing", "NotARealFootprint"),
+        pin_pads={1: "1", 2: "2"},
+    )
+    board = design.board()
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+    board.place(r1, at=(10.0, 6.0))
+
+    assert board.resolve_pads() == ()
+    assert "PCB_FOOTPRINT_UNRESOLVED" in {diagnostic.code for diagnostic in board.validate()}
+
+
+def test_python_board_object_owned_footprints_keep_pad_mapping_diagnostics():
+    footprint = _passive_0603(("volt.test", "Mapped0603"))
+    missing_pad_footprint = volt.Footprint(
+        ("volt.test", "Mapped0603WithExtraPad"),
+        pads=(
+            *footprint.pads,
+            volt.FootprintPad.surface_mount("3", at=(1.6, 0.0), size=(0.8, 0.95)),
+        ),
+    )
+    library = volt.Library("volt.test")
+    unknown_pad = library.component(
+        "UnknownPad",
+        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        physical_part=volt.PhysicalPartSpec(
+            manufacturer="Yageo",
+            part_number="BADPAD",
+            package="0603",
+            footprint=footprint,
+            pin_pads={1: "1", 2: "9"},
+        ),
+        prefix="R",
+    )
+    missing_pin = library.component(
+        "MissingPin",
+        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        physical_part=volt.PhysicalPartSpec(
+            manufacturer="Yageo",
+            part_number="MISSINGPIN",
+            package="0603",
+            footprint=missing_pad_footprint,
+            pin_pads={1: "1", 2: "2"},
+        ),
+        prefix="R",
+    )
+    design = volt.Design("object-footprint-mapping-diagnostics")
+    r1 = design.instantiate(unknown_pad, ref="R1")
+    r2 = design.instantiate(missing_pin, ref="R2")
+    for component in (r1, r2):
+        a_net = design.net(f"{component.reference}_A")
+        b_net = design.net(f"{component.reference}_B")
+        a_net += component[1]
+        b_net += component[2]
+    board = design.board()
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 12.0))
+    board.place(r1, at=(10.0, 6.0))
+    board.place(r2, at=(20.0, 6.0))
+
+    codes = {diagnostic.code for diagnostic in board.validate()}
+
+    assert "PCB_FOOTPRINT_UNRESOLVED" not in codes
+    assert "PCB_PAD_MAPPING_UNKNOWN_PAD" in codes
+    assert "PCB_PAD_MAPPING_MISSING_PIN" in codes
+
+
+def test_python_board_object_owned_footprint_supports_tied_and_mechanical_pads():
+    footprint = volt.Footprint(
+        ("volt.test", "TieAndMechanical"),
+        pads=(
+            volt.FootprintPad.surface_mount("1", at=(-1.0, 0.0), size=(0.6, 0.6)),
+            volt.FootprintPad.surface_mount("2", at=(0.0, 0.0), size=(0.6, 0.6)),
+            volt.FootprintPad.surface_mount("4", at=(1.0, 0.0), size=(0.6, 0.6)),
+            volt.FootprintPad.through_hole(
+                "MH",
+                at=(0.0, 2.0),
+                size=(1.8, 1.8),
+                drill=volt.FootprintDrill(1.0, plating="non_plated"),
+                layers="mechanical_hole",
+                mechanical_role="mounting",
+            ),
+        ),
+    )
+    library = volt.Library("volt.test")
+    connector = library.component(
+        "TieAndMechanical",
+        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        physical_part=volt.PhysicalPartSpec(
+            manufacturer="Volt",
+            part_number="TIE-MECH",
+            package="custom",
+            footprint=footprint,
+            pin_pads={1: "1", 2: ("2", "4")},
+        ),
+        prefix="J",
+    )
+    design = volt.Design("object-footprint-tied-mechanical")
+    j1 = design.instantiate(connector, ref="J1")
+    a_net = design.net("A")
+    a_net += j1[1]
+    tied_net = design.net("B")
+    tied_net += j1[2]
+    board = design.board()
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+    board.place(j1, at=(10.0, 6.0))
+
+    resolutions = {resolution.pad_label: resolution for resolution in board.resolve_pads()}
+
+    assert resolutions["1"].status == "connected"
+    assert resolutions["2"].status == "connected"
+    assert resolutions["4"].status == "connected"
+    assert resolutions["2"].pin == j1[2].index
+    assert resolutions["4"].pin == j1[2].index
+    assert resolutions["2"].net == tied_net.index
+    assert resolutions["4"].net == tied_net.index
+    assert resolutions["MH"].status == "non_electrical"
+    assert resolutions["MH"].pin is None
+    assert resolutions["MH"].net is None
+
+
+def test_python_board_dedupes_object_owned_footprints_and_rejects_conflicts():
+    first_footprint = _passive_0603(("volt.test", "Shared0603"))
+    duplicate_footprint = _passive_0603(("volt.test", "Shared0603"))
+    conflicting_footprint = _passive_0603(("volt.test", "Shared0603"), pad_span=1.9)
+    library = volt.Library("volt.test")
+    first = library.component(
+        "First",
+        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        physical_part=volt.PhysicalPartSpec.same_numbered(
+            manufacturer="Yageo",
+            part_number="FIRST",
+            package="0603",
+            footprint=first_footprint,
+        ),
+        prefix="R",
+    )
+    duplicate = library.component(
+        "Duplicate",
+        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        physical_part=volt.PhysicalPartSpec.same_numbered(
+            manufacturer="Yageo",
+            part_number="DUPLICATE",
+            package="0603",
+            footprint=duplicate_footprint,
+        ),
+        prefix="R",
+    )
+    conflicting = library.component(
+        "Conflicting",
+        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        physical_part=volt.PhysicalPartSpec.same_numbered(
+            manufacturer="Yageo",
+            part_number="CONFLICT",
+            package="0603",
+            footprint=conflicting_footprint,
+        ),
+        prefix="R",
+    )
+    design = volt.Design("object-footprint-dedupe")
+    r1 = design.instantiate(first, ref="R1")
+    r2 = design.instantiate(duplicate, ref="R2")
+    for component in (r1, r2):
+        a_net = design.net(f"{component.reference}_A")
+        b_net = design.net(f"{component.reference}_B")
+        a_net += component[1]
+        b_net += component[2]
+    board = design.board()
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 12.0))
+    board.place(r1, at=(10.0, 6.0))
+    board.place(r2, at=(20.0, 6.0))
+
+    document = json.loads(board.to_json())
+
+    assert len(document["board"]["footprint_definitions"]) == 1
+    assert [placement["footprint"] for placement in document["board"]["placements"]] == [
+        "footprint_def:0",
+        "footprint_def:0",
+    ]
+    with pytest.raises(ValueError, match="conflicts with already registered geometry"):
+        design.instantiate(conflicting, ref="R3")
+
+
+def test_python_board_rejects_object_owned_footprint_conflicting_with_builtin():
+    footprint = _passive_0603(("passives", "R_0603_1608Metric"), pad_span=1.9)
+    library = volt.Library("volt.test")
+    resistor = library.component(
+        "BuiltinConflict",
+        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        physical_part=volt.PhysicalPartSpec.same_numbered(
+            manufacturer="Yageo",
+            part_number="CONFLICT",
+            package="0603",
+            footprint=footprint,
+        ),
+        prefix="R",
+    )
+    design = volt.Design("object-footprint-builtin-conflict")
+    r1 = design.instantiate(resistor, ref="R1")
+    left = design.net("LEFT")
+    right = design.net("RIGHT")
+    left += r1[1]
+    right += r1[2]
+    board = design.board()
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+    board.place(r1, at=(10.0, 6.0))
+
+    for export_or_resolution in (board.resolve_pads, board.validate, board.to_json, board.to_svg):
+        with pytest.raises(RuntimeError, match="conflicts with footprint library definition"):
+            export_or_resolution()

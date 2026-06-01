@@ -1,0 +1,9 @@
+[
+  "api/python/index",
+  "api/python/design",
+  "api/python/logical",
+  "api/python/library",
+  "api/python/schematic",
+  "api/python/pcb",
+  "api/python/diagnostics"
+]

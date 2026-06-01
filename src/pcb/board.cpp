@@ -583,8 +583,12 @@ void Board::set_design_rules(BoardDesignRules rules) { design_rules_ = std::move
     return features_.insert(std::move(feature));
 }
 [[nodiscard]] FootprintDefId Board::cache_footprint_definition(FootprintDefinition footprint) {
-    if (footprint_definition_id(footprint.ref()).has_value()) {
-        throw std::logic_error{"Board footprint definition already exists"};
+    const auto existing = footprint_definition_id(footprint.ref());
+    if (existing.has_value()) {
+        if (footprint_definition(existing.value()) == footprint) {
+            return existing.value();
+        }
+        throw std::logic_error{"Board footprint definition conflicts with existing definition"};
     }
 
     return footprint_definitions_.insert(std::move(footprint));
@@ -987,8 +991,14 @@ transformed_pad_body_corners(const ComponentPlacement &placement, const Footprin
         library.add(board.footprint_definition(FootprintDefId{index}));
     }
     for (const auto &definition : footprints.definitions()) {
-        if (library.find(definition.ref()) == nullptr) {
+        const auto *existing = library.find(definition.ref());
+        if (existing == nullptr) {
             library.add(definition);
+            continue;
+        }
+        if (!(*existing == definition)) {
+            throw std::logic_error{
+                "Board footprint definition conflicts with footprint library definition"};
         }
     }
     return library;

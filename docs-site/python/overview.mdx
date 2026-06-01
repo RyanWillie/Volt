@@ -1,0 +1,68 @@
+---
+title: Python Overview
+description: The mental model for Volt's Python authoring facade.
+---
+
+Volt's Python API is a friendly facade over a C++ kernel. The kernel owns EDA meaning; Python gives you concise syntax for creating and projecting that meaning.
+
+```python
+import volt
+
+design = volt.Design("example")
+```
+
+## Ownership model
+
+`volt.Design` owns one logical circuit and can create schematic and PCB projections over that circuit. Handles such as `Component`, `Pin`, `Net`, `Schematic`, and `Board` are lightweight references back to kernel-owned state.
+
+| Python object | What it represents | Owns EDA meaning |
+| --- | --- | --- |
+| `volt.Design` | One logical design root | Yes, through the kernel |
+| `volt.Component` | One component instance | No, handle over kernel ID |
+| `volt.Pin` | One concrete component pin | No, handle over kernel ID |
+| `volt.Net` | One logical net | No, handle over kernel ID |
+| `volt.Schematic` | Projection sheet data | Yes, for presentation data only |
+| `volt.Board` | PCB placement/routing data | Yes, for physical projection data only |
+
+## Layer rule
+
+Logical connectivity belongs to the circuit. Schematic and PCB layers visualize or implement existing logical connectivity; they do not define the netlist.
+
+<Warning>
+  Do not use schematic wires as hidden connectivity. Connect pins to nets in the logical design first, then draw the schematic over those nets.
+</Warning>
+
+## Typical workflow
+
+<Steps>
+  <Step title="Create the logical design">
+    Use `design.net(...)`, component helpers such as `design.R(...)`, or `design.define_component(...)`.
+  </Step>
+  <Step title="Connect pins to nets">
+    Use `net += component[pin]` or `net.connect(pin)`. A pin can belong to only one net.
+  </Step>
+  <Step title="Validate">
+    Run `design.validate()` for logical checks and `design.validate_for_pcb()` before board work.
+  </Step>
+  <Step title="Project schematics and boards">
+    Use `design.schematic(...)` and `design.board(...)` after the logical model exists.
+  </Step>
+  <Step title="Write deterministic artifacts">
+    Use `design.write(...)`, `schematic.write_json(...)`, `schematic.write_svg(...)`, `board.write_json(...)`, and `board.write_svg(...)`.
+  </Step>
+</Steps>
+
+## Structural errors and diagnostics
+
+Volt separates rejected mutations from design feedback.
+
+| Situation | Result |
+| --- | --- |
+| Duplicate reference designator | Exception |
+| Unknown pin in selected-part mapping | Exception |
+| Pin connected to two nets | Exception |
+| Unconnected required pin | Diagnostic |
+| Single-pin net | Diagnostic |
+| Selected part rating below connected net voltage | Diagnostic |
+
+This split keeps invalid kernel state impossible while still letting incomplete designs be inspected and improved.

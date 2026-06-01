@@ -204,6 +204,10 @@ class FootprintPad {
     /** Return whether this pad should have a selected-part pin mapping. */
     [[nodiscard]] bool requires_pin_mapping() const noexcept;
 
+    /** Return whether two pads describe the same geometry. */
+    [[nodiscard]] friend bool operator==(const FootprintPad &lhs,
+                                         const FootprintPad &rhs) = default;
+
   private:
     FootprintPad(std::string label, FootprintPadKind kind, FootprintPadShape shape,
                  FootprintPoint position, FootprintSize size, FootprintLayerSet layers,
@@ -240,6 +244,10 @@ class FootprintDefinition {
 
     /** Return the stable pad ID for a pad label, if present. */
     [[nodiscard]] std::optional<FootprintPadId> pad_id(std::string_view label) const noexcept;
+
+    /** Return whether two footprint definitions describe the same geometry. */
+    [[nodiscard]] friend bool operator==(const FootprintDefinition &lhs,
+                                         const FootprintDefinition &rhs) = default;
 
   private:
     FootprintRef ref_;

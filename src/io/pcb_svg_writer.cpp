@@ -159,8 +159,14 @@ void write_pcb_svg_number(std::ostream &out, double value) {
         library.add(board.footprint_definition(FootprintDefId{index}));
     }
     for (const auto &definition : footprints.definitions()) {
-        if (library.find(definition.ref()) == nullptr) {
+        const auto *existing = library.find(definition.ref());
+        if (existing == nullptr) {
             library.add(definition);
+            continue;
+        }
+        if (!(*existing == definition)) {
+            throw std::logic_error{
+                "Board footprint definition conflicts with footprint library definition"};
         }
     }
     return library;

@@ -1,0 +1,56 @@
+---
+title: PCB LED Board
+description: Build a tiny board from logical design through selected parts, footprints, placement, routing, validation, and SVG.
+---
+
+The PCB LED board is the first full path from logical authoring to a board projection.
+
+Source: `examples/pcb_led_board/main.py`.
+
+## Flow
+
+<Steps>
+  <Step title="Create the logical circuit">
+    Define `+3V3`, `LED_A`, and `GND`, then connect a header, resistor, and LED.
+  </Step>
+  <Step title="Select physical parts">
+    Attach manufacturer, part number, package, footprint identity, and pin-pad mappings.
+  </Step>
+  <Step title="Cache footprint definitions">
+    Define through-hole and 0603 pad geometry.
+  </Step>
+  <Step title="Place and route">
+    Add layers, outline, mounting holes, placements, and tracks.
+  </Step>
+  <Step title="Validate and write artifacts">
+    Run logical, PCB-readiness, schematic, readability, and board validation before writing JSON/SVG.
+  </Step>
+</Steps>
+
+## Selected part example
+
+```python
+parts["R1"].select_part(
+    manufacturer="Yageo",
+    part_number="RC0603FR-07330RL",
+    package="0603",
+    footprint=("passives", "R_0603_1608Metric"),
+    pin_pads={1: "1", 2: "2"},
+    power_rating=0.1,
+)
+```
+
+## Board example
+
+```python
+board = design.board("First Board LED")
+front = board.add_layer("F.Cu", role="copper", side="top")
+back = board.add_layer("B.Cu", role="copper", side="bottom")
+board.set_layer_stack((front, back), thickness=1.6)
+board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 18.0))
+
+board.place(parts["R1"], at=(15.0, 7.0), rotation=0.0, side="top")
+board.add_track(nets["+3V3"], layer=front, points=[(5.0, 7.73), (14.25, 7.0)], width=0.25)
+```
+
+This is the best starting point for learning how Volt connects logical selected parts to physical footprint and pad data.

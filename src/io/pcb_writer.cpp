@@ -92,6 +92,14 @@ collect_footprint_definitions(const Board &board, const FootprintLibrary &footpr
         definitions.push_back(board.footprint_definition(FootprintDefId{index}));
     }
 
+    for (const auto &definition : footprints.definitions()) {
+        const auto existing = find_footprint_definition(definitions, definition.ref());
+        if (existing.has_value() && !(definitions[existing->index()] == definition)) {
+            throw std::logic_error{
+                "Board footprint definition conflicts with footprint library definition"};
+        }
+    }
+
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto &placement = board.placement(ComponentPlacementId{index});
         const auto &selected_part = board.circuit().selected_physical_part(placement.component());

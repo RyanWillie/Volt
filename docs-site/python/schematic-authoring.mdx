@@ -1,0 +1,79 @@
+---
+title: Schematic Authoring
+description: Draw deterministic schematic projections over an existing logical design.
+---
+
+Schematic authoring starts from an existing logical design. A schematic sheet can place components, labels, ports, wires, junctions, and no-connect markers. It does not create logical connectivity.
+
+## Create a sheet
+
+```python
+sheet = design.schematic(
+    "Main",
+    size=(220, 150),
+    orientation="landscape",
+    title="LED Reference Schematic",
+    project="Volt Examples",
+)
+```
+
+## Use the drawing cursor
+
+`SchematicDrawing` is the most concise way to create readable schematic geometry.
+
+```python
+with sheet.drawing(at=(30, 40), unit=20) as drawing:
+    resistor = drawing.two_terminal(r1).right().label_ref().label_value()
+    led = drawing.two_terminal(d1).right().reverse().label_ref()
+
+    drawing.connect(resistor.end, led.start, net=led_a)
+    drawing.power("+3V3", at=resistor.start, net=vcc)
+    drawing.ground("GND", at=led.end, net=gnd)
+    drawing.net_label(led_a, at=resistor.end.up(10))
+```
+
+The cursor tracks position and direction. Methods such as `.right()`, `.left()`, `.up()`, `.down()`, `.tox(...)`, and `.toy(...)` let you describe schematic flow without manually calculating every coordinate.
+
+## Place symbols directly
+
+Use `sheet.place(...)` when you want explicit placement control.
+
+```python
+r_sym = sheet.place(r1, at=(40, 30), symbol="resistor")
+d_sym = sheet.place(d1, at=(110, 30), symbol="led")
+
+sheet.wire(led_a).from_(r_sym.pin(2)).to(d_sym.pin("A")).orthogonal()
+sheet.label(led_a, at=r_sym.pin(2).right(8), orient="Left")
+```
+
+`symbol.pin(key)` returns a `SchematicPinAnchor`. Anchors are convenient points for wires, labels, ports, and nearby geometry.
+
+## Regions
+
+Regions group visual work without changing logical ownership.
+
+```python
+power = sheet.region("Power", x=18, y=18, w=180, h=90, style={"border": "dashed"})
+
+with power.drawing(unit=20) as drawing:
+    drawing.place(regulator, at=(60, 40)).label_ref()
+```
+
+Use regions for large schematics where physical grouping helps readers.
+
+## Validation and output
+
+```python
+readiness = sheet.validate()
+readability = sheet.validate_readability()
+
+if readiness.has_errors or readability.has_errors:
+    for report in (readiness, readability):
+        for diagnostic in report:
+            print(diagnostic.severity, diagnostic.code, diagnostic.message)
+
+sheet.write_json("main.volt.schematic.json")
+sheet.write_svg("main.svg")
+```
+
+SVG is an output artifact. The schematic JSON remains the source artifact for projection data.
