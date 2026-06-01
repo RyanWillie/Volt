@@ -98,7 +98,7 @@ TEST_CASE("Schematic reader loads projection JSON over a logical circuit") {
     const auto component = add_resistor(circuit);
     const auto net = add_net(circuit);
 
-    const auto schematic = volt::io::read_schematic(schematic_json(), circuit);
+    const auto schematic = volt::io::read_schematic_text(schematic_json().dump(), circuit);
 
     REQUIRE(schematic.symbol_definition_count() == 1);
     REQUIRE(schematic.sheet_count() == 1);
@@ -129,7 +129,7 @@ TEST_CASE("Schematic reader loads optional net label display text") {
     fixture["net_labels"][0]["label"] = "SWDIO";
     fixture["net_labels"][0]["text_position"] = {{"x", 18.0}, {"y", 14.0}};
 
-    const auto schematic = volt::io::read_schematic(fixture, circuit);
+    const auto schematic = volt::io::read_schematic_text(fixture.dump(), circuit);
 
     REQUIRE(schematic.net_label_count() == 1);
     CHECK(schematic.net_label(volt::NetLabelId{0}).label() == std::optional<std::string>{"SWDIO"});
@@ -161,7 +161,7 @@ TEST_CASE("Schematic reader loads explicit text presentation metadata") {
                                                        {"vertical_alignment", "Top"},
                                                        {"font_size", 3.5}}});
 
-    const auto schematic = volt::io::read_schematic(fixture, circuit);
+    const auto schematic = volt::io::read_schematic_text(fixture.dump(), circuit);
 
     const auto &primitive = std::get<volt::SymbolText>(
         schematic.symbol_definition(volt::SymbolDefId{0}).primitives()[4]);
@@ -190,13 +190,14 @@ TEST_CASE("Schematic reader rejects invalid text presentation metadata") {
 
     auto invalid_alignment = schematic_json();
     invalid_alignment["net_labels"][0]["horizontal_alignment"] = "Centerish";
-    CHECK_THROWS_MATCHES(volt::io::read_schematic(invalid_alignment, circuit), std::logic_error,
+    CHECK_THROWS_MATCHES(volt::io::read_schematic_text(invalid_alignment.dump(), circuit),
+                         std::logic_error,
                          Catch::Matchers::Message("Invalid text horizontal alignment"));
 
     auto invalid_font_size = schematic_json();
     invalid_font_size["symbol_definitions"][0]["primitives"][4]["font_size"] = 0.0;
     CHECK_THROWS_MATCHES(
-        volt::io::read_schematic(invalid_font_size, circuit), std::logic_error,
+        volt::io::read_schematic_text(invalid_font_size.dump(), circuit), std::logic_error,
         Catch::Matchers::Message("Expected positive finite number field: font_size"));
 }
 
@@ -208,7 +209,7 @@ TEST_CASE("Schematic reader rejects instance-owned reference labels") {
     fixture["symbol_instances"][0]["reference_label"] = "R1";
 
     CHECK_THROWS_MATCHES(
-        volt::io::read_schematic(fixture, circuit), std::logic_error,
+        volt::io::read_schematic_text(fixture.dump(), circuit), std::logic_error,
         Catch::Matchers::Message("Schematic symbol instance reference_label is no longer "
                                  "supported; use a symbol_fields entry named reference"));
 }
@@ -270,7 +271,7 @@ TEST_CASE("Schematic reader loads professional primitives over logical IDs") {
                                                        {"position", {{"x", 40.0}, {"y", 32.0}}},
                                                        {"orientation", "Right"}}});
 
-    const auto schematic = volt::io::read_schematic(fixture, circuit);
+    const auto schematic = volt::io::read_schematic_text(fixture.dump(), circuit);
 
     CHECK(schematic.sheet(volt::SheetId{0}).metadata().title() == "Power sheet");
     CHECK(schematic.sheet(volt::SheetId{0}).metadata().size().width() == 420.0);
@@ -318,7 +319,7 @@ TEST_CASE("Schematic reader loads drawing page metadata and named regions") {
           {"bounds", {{"x", 10.0}, {"y", 12.0}, {"width", 260.0}, {"height", 55.0}}},
           {"style", {{"accent", "orange"}}}}});
 
-    const auto schematic = volt::io::read_schematic(fixture, circuit);
+    const auto schematic = volt::io::read_schematic_text(fixture.dump(), circuit);
     const auto &sheet = schematic.sheet(volt::SheetId{0});
 
     CHECK(sheet.metadata().orientation() == volt::SheetOrientation::Landscape);
@@ -354,7 +355,7 @@ TEST_CASE("Schematic reader rejects duplicate sheet region names") {
           {"bounds", {{"x", 15.0}, {"y", 12.0}, {"width", 260.0}, {"height", 55.0}}},
           {"style", nlohmann::json::object()}}});
 
-    CHECK_THROWS_MATCHES(volt::io::read_schematic(fixture, circuit), std::logic_error,
+    CHECK_THROWS_MATCHES(volt::io::read_schematic_text(fixture.dump(), circuit), std::logic_error,
                          Catch::Matchers::Message("Sheet region name already exists"));
 }
 
@@ -365,23 +366,24 @@ TEST_CASE("Schematic reader rejects dangling projection references") {
 
     auto missing_sheet = schematic_json();
     missing_sheet["symbol_instances"][0]["sheet"] = "sheet:99";
-    CHECK_THROWS_AS(volt::io::read_schematic(missing_sheet, circuit), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_schematic_text(missing_sheet.dump(), circuit), std::logic_error);
 
     auto missing_symbol = schematic_json();
     missing_symbol["symbol_instances"][0]["symbol_definition"] = "symbol_def:99";
-    CHECK_THROWS_AS(volt::io::read_schematic(missing_symbol, circuit), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_schematic_text(missing_symbol.dump(), circuit),
+                    std::logic_error);
 
     auto missing_component = schematic_json();
     missing_component["symbol_instances"][0]["component"] = "component:99";
     CHECK_THROWS_MATCHES(
-        volt::io::read_schematic(missing_component, circuit), std::logic_error,
+        volt::io::read_schematic_text(missing_component.dump(), circuit), std::logic_error,
         Catch::Matchers::Message(
             "Component reference points to a missing logical component: component:99"));
 
     auto missing_net = schematic_json();
     missing_net["wire_runs"][0]["net"] = "net:99";
     CHECK_THROWS_MATCHES(
-        volt::io::read_schematic(missing_net, circuit), std::logic_error,
+        volt::io::read_schematic_text(missing_net.dump(), circuit), std::logic_error,
         Catch::Matchers::Message("Net reference points to a missing logical net: net:99"));
 }
 
@@ -400,7 +402,7 @@ TEST_CASE("Schematic reader rejects dangling professional primitive references")
                                 {"position", {{"x", 0.0}, {"y", 0.0}}},
                                 {"orientation", "Up"}}});
     CHECK_THROWS_MATCHES(
-        volt::io::read_schematic(missing_power_net, circuit), std::logic_error,
+        volt::io::read_schematic_text(missing_power_net.dump(), circuit), std::logic_error,
         Catch::Matchers::Message("Net reference points to a missing logical net: net:99"));
 
     auto missing_pin = schematic_json();
@@ -412,7 +414,7 @@ TEST_CASE("Schematic reader rejects dangling professional primitive references")
                                 {"position", {{"x", 0.0}, {"y", 0.0}}},
                                 {"orientation", "Right"}}});
     CHECK_THROWS_MATCHES(
-        volt::io::read_schematic(missing_pin, circuit), std::logic_error,
+        volt::io::read_schematic_text(missing_pin.dump(), circuit), std::logic_error,
         Catch::Matchers::Message("Pin reference points to a missing logical pin: pin:99"));
 
     auto missing_instance = schematic_json();
@@ -425,7 +427,8 @@ TEST_CASE("Schematic reader rejects dangling professional primitive references")
                                 {"value", "10k"},
                                 {"position", {{"x", 0.0}, {"y", 0.0}}},
                                 {"orientation", "Right"}}});
-    CHECK_THROWS_AS(volt::io::read_schematic(missing_instance, circuit), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_schematic_text(missing_instance.dump(), circuit),
+                    std::logic_error);
 }
 
 TEST_CASE("Schematic reader rejects overflowing local ID indices") {
@@ -437,11 +440,11 @@ TEST_CASE("Schematic reader rejects overflowing local ID indices") {
     overflowing_component["symbol_instances"][0]["component"] =
         "component:" + std::to_string(std::numeric_limits<std::size_t>::max()) + "0";
 
-    CHECK_THROWS_MATCHES(volt::io::read_schematic(overflowing_component, circuit), std::logic_error,
-                         Catch::Matchers::Message("Local ID index is too large"));
+    CHECK_THROWS_MATCHES(volt::io::read_schematic_text(overflowing_component.dump(), circuit),
+                         std::logic_error, Catch::Matchers::Message("Local ID index is too large"));
 }
 
-TEST_CASE("Schematic reader rejects non-finite numeric fields at parse time") {
+TEST_CASE("Schematic reader rejects invalid numeric fields at parse time") {
     volt::Circuit circuit;
     add_resistor(circuit);
     add_net(circuit);
@@ -449,8 +452,8 @@ TEST_CASE("Schematic reader rejects non-finite numeric fields at parse time") {
     auto fixture = schematic_json();
     fixture["symbol_instances"][0]["position"]["x"] = std::numeric_limits<double>::infinity();
 
-    CHECK_THROWS_MATCHES(volt::io::read_schematic(fixture, circuit), std::logic_error,
-                         Catch::Matchers::Message("Schematic numeric field must be finite: x"));
+    CHECK_THROWS_MATCHES(volt::io::read_schematic_text(fixture.dump(), circuit), std::logic_error,
+                         Catch::Matchers::Message("Expected number field: x"));
 }
 
 TEST_CASE("Schematic reader rejects sheet instance list mismatches") {
@@ -461,17 +464,17 @@ TEST_CASE("Schematic reader rejects sheet instance list mismatches") {
     auto fixture = schematic_json();
     fixture["sheets"][0]["symbol_instances"] = nlohmann::json::array();
 
-    CHECK_THROWS_AS(volt::io::read_schematic(fixture, circuit), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_schematic_text(fixture.dump(), circuit), std::logic_error);
 
     auto wire_fixture = schematic_json();
     wire_fixture["sheets"][0]["wire_runs"] = nlohmann::json::array();
 
-    CHECK_THROWS_AS(volt::io::read_schematic(wire_fixture, circuit), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_schematic_text(wire_fixture.dump(), circuit), std::logic_error);
 
     auto label_fixture = schematic_json();
     label_fixture["sheets"][0]["net_labels"] = nlohmann::json::array();
 
-    CHECK_THROWS_AS(volt::io::read_schematic(label_fixture, circuit), std::logic_error);
+    CHECK_THROWS_AS(volt::io::read_schematic_text(label_fixture.dump(), circuit), std::logic_error);
 }
 
 TEST_CASE("Schematic reader rejects wire runs that collide with different logical nets") {
@@ -490,11 +493,11 @@ TEST_CASE("Schematic reader rejects wire runs that collide with different logica
          {"points",
           nlohmann::json::array({{{"x", 25.0}, {"y", 10.0}}, {{"x", 25.0}, {"y", 30.0}}})}});
 
-    CHECK_NOTHROW(volt::io::read_schematic(fixture, circuit));
+    CHECK_NOTHROW(volt::io::read_schematic_text(fixture.dump(), circuit));
 
     fixture["wire_runs"][1]["points"] =
         nlohmann::json::array({{{"x", 10.0}, {"y", 20.0}}, {{"x", 25.0}, {"y", 20.0}}});
     CHECK_THROWS_MATCHES(
-        volt::io::read_schematic(fixture, circuit), std::logic_error,
+        volt::io::read_schematic_text(fixture.dump(), circuit), std::logic_error,
         Catch::Matchers::Message("Schematic wire run collides with a different logical net"));
 }

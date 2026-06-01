@@ -16,11 +16,7 @@ namespace volt {
 class ModuleName {
   public:
     /** Construct a non-empty reusable module name. */
-    explicit ModuleName(std::string value) : value_{std::move(value)} {
-        if (value_.empty()) {
-            throw std::invalid_argument{"Module name must not be empty"};
-        }
-    }
+    explicit ModuleName(std::string value);
 
     /** Return the stored module name string. */
     [[nodiscard]] const std::string &value() const noexcept { return value_; }
@@ -38,11 +34,7 @@ class ModuleName {
 class ModuleInstanceName {
   public:
     /** Construct a non-empty root-level module instance name. */
-    explicit ModuleInstanceName(std::string value) : value_{std::move(value)} {
-        if (value_.empty()) {
-            throw std::invalid_argument{"Module instance name must not be empty"};
-        }
-    }
+    explicit ModuleInstanceName(std::string value);
 
     /** Return the stored module instance name string. */
     [[nodiscard]] const std::string &value() const noexcept { return value_; }
@@ -61,11 +53,7 @@ class ModuleInstanceName {
 class PortName {
   public:
     /** Construct a non-empty module port name. */
-    explicit PortName(std::string value) : value_{std::move(value)} {
-        if (value_.empty()) {
-            throw std::invalid_argument{"Port name must not be empty"};
-        }
-    }
+    explicit PortName(std::string value);
 
     /** Return the stored module port name string. */
     [[nodiscard]] const std::string &value() const noexcept { return value_; }
@@ -94,7 +82,7 @@ enum class PortRole {
 class TemplateNetDefinition {
   public:
     /** Construct a template-local net definition with its scoped name and kind. */
-    TemplateNetDefinition(NetName name, NetKind kind) : name_{std::move(name)}, kind_{kind} {}
+    TemplateNetDefinition(NetName name, NetKind kind);
 
     /** Return the template-local net name. */
     [[nodiscard]] const NetName &name() const noexcept { return name_; }
@@ -111,8 +99,7 @@ class PortDefinition {
   public:
     /** Construct a boundary port that maps to exactly one template-local internal net. */
     PortDefinition(PortName name, TemplateNetDefId internal_net, PortRole role = PortRole::Passive,
-                   bool required = true)
-        : name_{std::move(name)}, internal_net_{internal_net}, role_{role}, required_{required} {}
+                   bool required = true);
 
     /** Return the module-local port name. */
     [[nodiscard]] const PortName &name() const noexcept { return name_; }
@@ -135,9 +122,7 @@ class ModuleComponentTemplate {
   public:
     /** Construct a module-local component occurrence from a reusable component definition. */
     ModuleComponentTemplate(ComponentDefId definition, ReferenceDesignator reference,
-                            PropertyMap properties = {})
-        : definition_{definition}, reference_{std::move(reference)},
-          properties_{std::move(properties)} {}
+                            PropertyMap properties = {});
 
     /** Return the reusable component definition instantiated by this template. */
     [[nodiscard]] ComponentDefId definition() const noexcept { return definition_; }
@@ -156,8 +141,7 @@ class ModuleComponentTemplate {
 class ModulePinConnection {
   public:
     /** Construct a module-local pin connection. */
-    ModulePinConnection(TemplateNetDefId net, ModuleComponentId component, PinDefId pin)
-        : net_{net}, component_{component}, pin_{pin} {}
+    ModulePinConnection(TemplateNetDefId net, ModuleComponentId component, PinDefId pin);
 
     /** Return the template net connected to the pin. */
     [[nodiscard]] TemplateNetDefId net() const noexcept { return net_; }
@@ -176,7 +160,7 @@ class ModulePinConnection {
 class ModuleDefinition {
   public:
     /** Construct an empty reusable logical module template. */
-    explicit ModuleDefinition(ModuleName name) : name_{std::move(name)} {}
+    explicit ModuleDefinition(ModuleName name);
 
     /** Return the reusable module name. */
     [[nodiscard]] const ModuleName &name() const noexcept { return name_; }
@@ -187,16 +171,14 @@ class ModuleDefinition {
     /** Return module ports in deterministic insertion order. */
     [[nodiscard]] const std::vector<PortDefId> &ports() const noexcept { return ports_; }
     /** Return component templates in deterministic insertion order. */
-    [[nodiscard]] const std::vector<ModuleComponentId> &components() const noexcept {
-        return components_;
-    }
+    [[nodiscard]] const std::vector<ModuleComponentId> &components() const noexcept;
 
   private:
     friend class Circuit;
 
-    void add_template_net(TemplateNetDefId net) { template_nets_.push_back(net); }
-    void add_port(PortDefId port) { ports_.push_back(port); }
-    void add_component(ModuleComponentId component) { components_.push_back(component); }
+    void add_template_net(TemplateNetDefId net);
+    void add_port(PortDefId port);
+    void add_component(ModuleComponentId component);
 
     ModuleName name_;
     std::vector<TemplateNetDefId> template_nets_;
@@ -208,8 +190,7 @@ class ModuleDefinition {
 class ModuleInstance {
   public:
     /** Construct a root-level occurrence of a reusable module definition. */
-    ModuleInstance(ModuleDefId definition, ModuleInstanceName name)
-        : definition_{definition}, name_{std::move(name)} {}
+    ModuleInstance(ModuleDefId definition, ModuleInstanceName name);
 
     /** Return the reusable module definition instantiated here. */
     [[nodiscard]] ModuleDefId definition() const noexcept { return definition_; }
@@ -225,8 +206,7 @@ class ModuleInstance {
 class ModuleNetOrigin {
   public:
     /** Construct origin metadata for a concrete net copied from a template-local net. */
-    ModuleNetOrigin(ModuleInstanceId instance, TemplateNetDefId template_net)
-        : instance_{instance}, template_net_{template_net} {}
+    ModuleNetOrigin(ModuleInstanceId instance, TemplateNetDefId template_net);
 
     /** Return the module instance that owns the concrete net. */
     [[nodiscard]] ModuleInstanceId instance() const noexcept { return instance_; }
@@ -242,8 +222,7 @@ class ModuleNetOrigin {
 class ModuleComponentOrigin {
   public:
     /** Construct origin metadata for a concrete component copied from a module template. */
-    ModuleComponentOrigin(ModuleInstanceId instance, ModuleComponentId component)
-        : instance_{instance}, component_{component} {}
+    ModuleComponentOrigin(ModuleInstanceId instance, ModuleComponentId component);
 
     /** Return the module instance that owns the concrete component. */
     [[nodiscard]] ModuleInstanceId instance() const noexcept { return instance_; }
@@ -259,8 +238,7 @@ class ModuleComponentOrigin {
 class PortBinding {
   public:
     /** Construct an explicit connectivity edge from an instance port net to a parent net. */
-    PortBinding(ModuleInstanceId instance, PortDefId port, NetId internal_net, NetId parent_net)
-        : instance_{instance}, port_{port}, internal_net_{internal_net}, parent_net_{parent_net} {}
+    PortBinding(ModuleInstanceId instance, PortDefId port, NetId internal_net, NetId parent_net);
 
     /** Return the module instance whose port is bound. */
     [[nodiscard]] ModuleInstanceId instance() const noexcept { return instance_; }

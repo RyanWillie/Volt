@@ -17,15 +17,7 @@ namespace volt {
 class ManufacturerPart {
   public:
     /** Construct a manufacturer part from non-empty manufacturer and part-number labels. */
-    ManufacturerPart(std::string manufacturer, std::string part_number)
-        : manufacturer_{std::move(manufacturer)}, part_number_{std::move(part_number)} {
-        if (manufacturer_.empty()) {
-            throw std::invalid_argument{"Manufacturer name must not be empty"};
-        }
-        if (part_number_.empty()) {
-            throw std::invalid_argument{"Manufacturer part number must not be empty"};
-        }
-    }
+    ManufacturerPart(std::string manufacturer, std::string part_number);
 
     /** Return the selected part manufacturer name. */
     [[nodiscard]] const std::string &manufacturer() const noexcept { return manufacturer_; }
@@ -48,11 +40,7 @@ class ManufacturerPart {
 class PackageRef {
   public:
     /** Construct a non-empty package reference. */
-    explicit PackageRef(std::string value) : value_{std::move(value)} {
-        if (value_.empty()) {
-            throw std::invalid_argument{"Package reference must not be empty"};
-        }
-    }
+    explicit PackageRef(std::string value);
 
     /** Return the package reference label. */
     [[nodiscard]] const std::string &value() const noexcept { return value_; }
@@ -70,15 +58,7 @@ class PackageRef {
 class FootprintRef {
   public:
     /** Construct a footprint reference from non-empty library and footprint names. */
-    FootprintRef(std::string library, std::string name)
-        : library_{std::move(library)}, name_{std::move(name)} {
-        if (library_.empty()) {
-            throw std::invalid_argument{"Footprint library must not be empty"};
-        }
-        if (name_.empty()) {
-            throw std::invalid_argument{"Footprint name must not be empty"};
-        }
-    }
+    FootprintRef(std::string library, std::string name);
 
     /** Return the footprint library name. */
     [[nodiscard]] const std::string &library() const noexcept { return library_; }
@@ -101,11 +81,7 @@ class FootprintRef {
 class PinPadMapping {
   public:
     /** Construct a pin-to-pad mapping with a non-empty pad label. */
-    PinPadMapping(PinDefId pin, std::string pad) : pin_{pin}, pad_{std::move(pad)} {
-        if (pad_.empty()) {
-            throw std::invalid_argument{"Pad label must not be empty"};
-        }
-    }
+    PinPadMapping(PinDefId pin, std::string pad);
 
     /** Return the logical pin definition being mapped. */
     [[nodiscard]] PinDefId pin() const noexcept { return pin_; }
@@ -132,31 +108,10 @@ class PhysicalPart {
      * pin/pad mappings, and extensible properties.
      */
     PhysicalPart(ManufacturerPart manufacturer_part, PackageRef package, FootprintRef footprint,
-                 std::vector<PinPadMapping> pin_pad_mappings, PropertyMap properties = {})
-        : manufacturer_part_{std::move(manufacturer_part)}, package_{std::move(package)},
-          footprint_{std::move(footprint)}, pin_pad_mappings_{std::move(pin_pad_mappings)},
-          properties_{std::move(properties)} {
-        if (pin_pad_mappings_.empty()) {
-            throw std::invalid_argument{"Physical part must contain at least one pin-pad mapping"};
-        }
-
-        for (auto current = pin_pad_mappings_.begin(); current != pin_pad_mappings_.end();
-             ++current) {
-            const auto duplicate_pad = std::any_of(std::next(current), pin_pad_mappings_.end(),
-                                                   [current](const PinPadMapping &mapping) {
-                                                       return mapping.pad() == current->pad();
-                                                   });
-            if (duplicate_pad) {
-                throw std::invalid_argument{
-                    "Physical part contains duplicate physical pad mapping"};
-            }
-        }
-    }
+                 std::vector<PinPadMapping> pin_pad_mappings, PropertyMap properties = {});
 
     /** Return the selected manufacturer part identity. */
-    [[nodiscard]] const ManufacturerPart &manufacturer_part() const noexcept {
-        return manufacturer_part_;
-    }
+    [[nodiscard]] const ManufacturerPart &manufacturer_part() const noexcept;
 
     /** Return the selected package reference. */
     [[nodiscard]] const PackageRef &package() const noexcept { return package_; }
@@ -165,25 +120,19 @@ class PhysicalPart {
     [[nodiscard]] const FootprintRef &footprint() const noexcept { return footprint_; }
 
     /** Return logical pin to physical pad mappings in deterministic insertion order. */
-    [[nodiscard]] const std::vector<PinPadMapping> &pin_pad_mappings() const noexcept {
-        return pin_pad_mappings_;
-    }
+    [[nodiscard]] const std::vector<PinPadMapping> &pin_pad_mappings() const noexcept;
 
     /** Return extensible metadata properties for this physical part selection. */
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
     /** Return typed electrical attributes for this physical part selection. */
-    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept {
-        return electrical_attributes_;
-    }
+    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept;
 
   private:
     friend class ComponentInstance;
 
     void set_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                  ElectricalAttributeValue value) {
-        electrical_attributes_.set(spec, std::move(value));
-    }
+                                  ElectricalAttributeValue value);
 
     ManufacturerPart manufacturer_part_;
     PackageRef package_;

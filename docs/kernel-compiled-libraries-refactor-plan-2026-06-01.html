@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt kernel compiled libraries refactor plan - 2026-06-01</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fb;
+      --ink: #172026;
+      --muted: #5d6871;
+      --line: #cbd5de;
+      --panel: #ffffff;
+      --blue: #1c5d99;
+      --green: #1f6f55;
+      --amber: #986612;
+      --red: #9b332c;
+      --violet: #574c8a;
+      --soft-blue: #e9f2fb;
+      --soft-green: #e8f4ee;
+      --soft-amber: #fff2d7;
+      --soft-red: #f9e5e2;
+      --soft-violet: #eeecf7;
+      --code: #edf1f5;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 44px 0 76px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 34px;
+      align-items: end;
+      padding-bottom: 30px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    section {
+      display: grid;
+      grid-template-columns: 245px minmax(0, 1fr);
+      gap: 38px;
+      padding: 34px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 900px;
+      font-size: clamp(38px, 6vw, 72px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: clamp(25px, 3vw, 38px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 17px;
+      line-height: 1.25;
+    }
+
+    aside {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    a { color: var(--blue); }
+
+    code,
+    pre {
+      background: var(--code);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.92em;
+    }
+
+    code {
+      padding: 0.12em 0.34em;
+      border-radius: 5px;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      line-height: 1.42;
+      white-space: pre-wrap;
+    }
+
+    ul, ol {
+      margin: 0;
+      padding-left: 1.15rem;
+    }
+
+    li + li { margin-top: 0.48rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      vertical-align: top;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+    }
+
+    th {
+      background: var(--soft-blue);
+      color: var(--ink);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    td,
+    .muted,
+    .panel p,
+    .step p,
+    .decision p { color: var(--muted); }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 12px;
+      border-top: 2px solid var(--blue);
+      padding-top: 9px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dek {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    .meta {
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .meta strong { color: var(--ink); }
+
+    .stack { display: grid; gap: 18px; }
+    .tight { display: grid; gap: 10px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .panel,
+    .callout,
+    .step,
+    .decision {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .callout {
+      border-left: 6px solid var(--blue);
+      background: var(--soft-blue);
+    }
+
+    .callout.green {
+      border-left-color: var(--green);
+      background: var(--soft-green);
+    }
+
+    .callout.amber {
+      border-left-color: var(--amber);
+      background: var(--soft-amber);
+    }
+
+    .callout.red {
+      border-left-color: var(--red);
+      background: var(--soft-red);
+    }
+
+    .callout.violet {
+      border-left-color: var(--violet);
+      background: var(--soft-violet);
+    }
+
+    .label {
+      display: inline-block;
+      width: fit-content;
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .label.green { background: var(--green); }
+    .label.amber { background: var(--amber); }
+    .label.red { background: var(--red); }
+    .label.violet { background: var(--violet); }
+
+    .step {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .num {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--blue);
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .step.green .num { background: var(--green); }
+    .step.amber .num { background: var(--amber); }
+    .step.red .num { background: var(--red); }
+    .step.violet .num { background: var(--violet); }
+
+    .phase {
+      display: grid;
+      grid-template-columns: 135px minmax(0, 1fr);
+      gap: 14px;
+      padding: 16px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .phase:first-child { border-top: 0; padding-top: 0; }
+    .phase:last-child { padding-bottom: 0; }
+
+    .decision {
+      display: grid;
+      gap: 10px;
+      border-left: 6px solid var(--blue);
+    }
+
+    .decision.amber { border-left-color: var(--amber); }
+    .decision.green { border-left-color: var(--green); }
+    .decision.red { border-left-color: var(--red); }
+    .decision.violet { border-left-color: var(--violet); }
+
+    .checklist li {
+      list-style: none;
+      margin-left: -2rem;
+      padding-left: 2rem;
+    }
+
+    .checklist li::before {
+      content: "[ ]";
+      display: inline-block;
+      width: 2rem;
+      margin-left: -2rem;
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    @media (max-width: 860px) {
+      header,
+      section {
+        grid-template-columns: 1fr;
+      }
+
+      header { gap: 22px; }
+      section { gap: 18px; }
+      .grid,
+      .two { grid-template-columns: 1fr; }
+      .phase { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="stack">
+        <div>
+          <span class="eyebrow">Implementation plan</span>
+          <h1>Convert Volt kernel headers into compiled libraries</h1>
+        </div>
+        <p class="dek">
+          Refactor the C++20 kernel from mostly header-only targets into compiled static
+          libraries, starting with a tightly scoped PCB pilot. Keep behavior, validation,
+          serialization, and public include compatibility unchanged unless a later phase explicitly
+          calls out an API decision.
+        </p>
+      </div>
+      <div class="meta panel">
+        <p><strong>Date:</strong> 2026-06-01</p>
+        <p><strong>Audience:</strong> agentic implementers and reviewers</p>
+        <p><strong>Required execution skill:</strong> use <code>superpowers:subagent-driven-development</code> or <code>superpowers:executing-plans</code> task by task.</p>
+        <p><strong>Primary verification:</strong> <code>cmake --preset dev</code>, <code>cmake --build --preset dev</code>, <code>ctest --preset dev</code>.</p>
+      </div>
+    </header>
+
+    <section>
+      <aside>
+        The reason for doing this at all.
+      </aside>
+      <div class="stack">
+        <h2>Goal</h2>
+        <div class="callout green">
+          <p>
+            Make the kernel compile once per library instead of recompiling roughly 25k lines of
+            inline implementation in every test, example, benchmark, and Python binding translation
+            unit.
+          </p>
+        </div>
+        <div class="grid">
+          <div class="panel">
+            <span class="label green">Must</span>
+            <h3>Preserve behavior</h3>
+            <p>Golden fixtures, diagnostics, thrown exception types, and serialized output stay stable.</p>
+          </div>
+          <div class="panel">
+            <span class="label">Must</span>
+            <h3>Preserve includes</h3>
+            <p>Existing consumers of umbrella headers such as <code>volt/pcb/board.hpp</code> continue to compile.</p>
+          </div>
+          <div class="panel">
+            <span class="label amber">Measure</span>
+            <h3>Prove the win</h3>
+            <p>Record clean-build and targeted incremental rebuild timings before and after the PCB pilot.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>
+        Corrected repository facts from the assessment pass.
+      </aside>
+      <div class="stack">
+        <h2>Current State</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Target</th>
+              <th>Current shape</th>
+              <th>Refactor note</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Volt::Core</code></td>
+              <td>Compiled library via <code>src/core/version.cpp</code>.</td>
+              <td>Use as the CMake pattern for warnings, sanitizers, coverage, and include directories.</td>
+            </tr>
+            <tr>
+              <td><code>Volt::Circuit</code>, <code>Volt::Authoring</code>, <code>Volt::PCB</code>, <code>Volt::Schematic</code>, <code>Volt::IO</code>, <code>Volt::KiCadAdapter</code></td>
+              <td><code>INTERFACE</code> libraries.</td>
+              <td>Convert incrementally to compiled static libraries only after real bodies move to <code>.cpp</code>.</td>
+            </tr>
+            <tr>
+              <td><code>Volt::Volt</code></td>
+              <td>Umbrella <code>INTERFACE</code> target.</td>
+              <td>Keep interface-only. It has no implementation and intentionally does not include the KiCad adapter.</td>
+            </tr>
+            <tr>
+              <td>Tests</td>
+              <td><code>ctest --preset dev -N</code> currently reports 414 tests.</td>
+              <td>Use the full suite at library boundaries. Use narrower test slices inside a phase.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <aside>
+        Decisions to lock before implementation starts.
+      </aside>
+      <div class="stack">
+        <h2>Architecture Decisions</h2>
+        <div class="two">
+          <div class="decision green">
+            <span class="label green">Decision</span>
+            <h3>Move bodies, not semantics</h3>
+            <p>
+              This is a build-structure refactor. Do not change kernel invariants, diagnostics,
+              serialization field order, schema names, or public behavior.
+            </p>
+          </div>
+          <div class="decision">
+            <span class="label">Decision</span>
+            <h3>Compiled targets use public usage requirements</h3>
+            <p>
+              Public include directories, C++20 compile features, and public dependency targets must
+              stay <code>PUBLIC</code>. Use <code>PRIVATE</code> only for implementation-only dependencies.
+            </p>
+          </div>
+          <div class="decision violet">
+            <span class="label violet">Decision</span>
+            <h3>Static libraries must be PIC-safe</h3>
+            <p>
+              New static kernel libraries need position-independent code so they can link into the
+              Python extension <code>_volt</code> on Linux and wheel builds.
+            </p>
+          </div>
+          <div class="decision amber">
+            <span class="label amber">Decision</span>
+            <h3>JSON encapsulation is separate</h3>
+            <p>
+              Hiding <code>nlohmann::json</code> from <code>Volt::IO</code> is valuable, but it is a
+              source-breaking API change for parsed-JSON reader overloads. Do it as its own phase
+              after the compiled-library mechanics are proven.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>
+        Boundaries for the first implementation PR.
+      </aside>
+      <div class="stack">
+        <h2>Pilot Scope: <code>volt_pcb</code></h2>
+        <div class="callout">
+          <p>
+            Pilot the conversion in PCB because <code>include/volt/pcb/board.hpp</code> is the largest
+            header and has both rich concrete model code and validation logic. Stop after this pilot
+            until timings and review feedback prove the pattern.
+          </p>
+        </div>
+        <div class="two">
+          <div class="panel">
+            <h3>Create</h3>
+            <ul>
+              <li><code>include/volt/pcb/board_geometry.hpp</code></li>
+              <li><code>include/volt/pcb/board_layers.hpp</code></li>
+              <li><code>include/volt/pcb/board_primitives.hpp</code></li>
+              <li><code>include/volt/pcb/board_ratsnest.hpp</code></li>
+              <li><code>include/volt/pcb/board_validation.hpp</code></li>
+              <li><code>src/pcb/board_geometry.cpp</code></li>
+              <li><code>src/pcb/board_layers.cpp</code></li>
+              <li><code>src/pcb/board_primitives.cpp</code></li>
+              <li><code>src/pcb/board_ratsnest.cpp</code></li>
+              <li><code>src/pcb/board_validation.cpp</code></li>
+              <li><code>src/pcb/board.cpp</code></li>
+              <li><code>src/pcb/footprints.cpp</code></li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Modify</h3>
+            <ul>
+              <li><code>include/volt/pcb/board.hpp</code> becomes the umbrella facade and keeps <code>Board</code>.</li>
+              <li><code>include/volt/pcb/footprints.hpp</code> moves concrete constructors and lookup code out of line where possible.</li>
+              <li><code>src/pcb/CMakeLists.txt</code> becomes a compiled static target.</li>
+              <li><code>scripts/check-build-config.py</code> recognizes new compiled coverage targets.</li>
+              <li>Only touch tests if a public inline helper moves and a test needs an added include.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout amber">
+          <p>
+            Keep any helper used outside PCB public or move the dependent caller in the same phase.
+            For example, PCB SVG output currently calls <code>volt::detail::transform_footprint_point</code>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>
+        First PR as small, reviewable phases.
+      </aside>
+      <div class="stack">
+        <h2>Pilot Task Plan</h2>
+        <div class="step">
+          <div class="num">1</div>
+          <div class="tight">
+            <h3>Record the baseline</h3>
+            <p>Measure clean build and targeted rebuild before code movement.</p>
+            <pre>cmake --preset dev
+/usr/bin/time -p cmake --build --preset dev --clean-first
+touch include/volt/pcb/board.hpp
+/usr/bin/time -p cmake --build --preset dev</pre>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <div class="tight">
+            <h3>Split declarations while keeping inline bodies</h3>
+            <p>
+              Move cohesive PCB type definitions into subheaders and make <code>board.hpp</code>
+              include them. Keep every existing body inline for this step so behavior cannot drift.
+            </p>
+            <pre>cmake --build --preset dev
+ctest --preset dev -R "Board|Footprint|PCB" --output-on-failure</pre>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <div class="tight">
+            <h3>Extract geometry, layer, primitive, and ratsnest bodies</h3>
+            <p>
+              Move constructors, validators, private helper functions, and non-trivial free
+              functions into the matching <code>src/pcb/*.cpp</code> file. Leave one-line accessors,
+              defaulted comparisons, constants, and templates in headers.
+            </p>
+            <pre>cmake --build --preset dev
+ctest --preset dev -R "Board|Footprint|PCB" --output-on-failure</pre>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">4</div>
+          <div class="tight">
+            <h3>Extract validation and footprint implementation</h3>
+            <p>
+              Move <code>validate_board</code>, DRC helpers, built-in footprint constructors, footprint
+              resolution, and footprint diagnostics out of public headers where they are not
+              template-bound.
+            </p>
+            <pre>cmake --build --preset dev
+ctest --preset dev -R "Board|Footprint|PCB|SVG" --output-on-failure</pre>
+          </div>
+        </div>
+        <div class="step violet">
+          <div class="num">5</div>
+          <div class="tight">
+            <h3>Convert <code>volt_pcb</code> to a compiled static library</h3>
+            <p>
+              Replace <code>add_library(volt_pcb INTERFACE)</code> with sources, keep usage
+              requirements <code>PUBLIC</code>, link <code>Volt::Circuit</code> publicly, apply project
+              warnings, sanitizers, coverage, and PIC.
+            </p>
+            <pre>add_library(
+    volt_pcb
+    board.cpp
+    board_geometry.cpp
+    board_layers.cpp
+    board_primitives.cpp
+    board_ratsnest.cpp
+    board_validation.cpp
+    footprints.cpp
+)
+set_target_properties(volt_pcb PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_features(volt_pcb PUBLIC cxx_std_20)
+target_link_libraries(volt_pcb PUBLIC Volt::Circuit)
+target_include_directories(volt_pcb PUBLIC
+    $&lt;BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include&gt;
+    $&lt;INSTALL_INTERFACE:include&gt;
+)
+volt_apply_project_warnings(volt_pcb PRIVATE)
+volt_apply_sanitizers(volt_pcb)
+volt_apply_coverage(volt_pcb)</pre>
+          </div>
+        </div>
+        <div class="step green">
+          <div class="num">6</div>
+          <div class="tight">
+            <h3>Run full verification and measure again</h3>
+            <p>Stop after this step and report pass/fail plus build-time deltas before continuing.</p>
+            <pre>cmake --preset dev
+cmake --build --preset dev
+ctest --preset dev
+/usr/bin/time -p cmake --build --preset dev --clean-first
+touch include/volt/pcb/board.hpp
+/usr/bin/time -p cmake --build --preset dev</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>
+        Follow-on conversion order after the PCB pilot is reviewed.
+      </aside>
+      <div class="stack">
+        <h2>Library Rollout</h2>
+        <div class="phase">
+          <span class="label">1. Circuit</span>
+          <div class="tight">
+            <h3>Move bodies from <code>circuit.hpp</code> and sibling headers</h3>
+            <p>
+              Do not decompose the <code>Circuit</code> class by responsibility in this pass. Move
+              ordinary bodies into <code>src/circuit/*.cpp</code> and preserve all mutation-boundary
+              invariant checks exactly.
+            </p>
+          </div>
+        </div>
+        <div class="phase">
+          <span class="label">2. Schematic</span>
+          <div class="tight">
+            <h3>Split <code>schematic.hpp</code>, then compile bodies</h3>
+            <p>
+              Mirror the PCB split: sheet metadata, sheet content, endpoints, symbols-instances,
+              and <code>Schematic</code> mutation APIs. Keep umbrella compatibility through
+              <code>volt/schematic/schematic.hpp</code>.
+            </p>
+          </div>
+        </div>
+        <div class="phase">
+          <span class="label">3. Authoring</span>
+          <div class="tight">
+            <h3>Compile ergonomic helpers</h3>
+            <p>
+              Move concrete component-library, connection-helper, and reference-designator bodies.
+              Keep this layer as syntax over kernel-owned state only.
+            </p>
+          </div>
+        </div>
+        <div class="phase">
+          <span class="label amber">4. IO</span>
+          <div class="tight">
+            <h3>Compile readers and writers before hiding JSON</h3>
+            <p>
+              First move implementation out of the reader and writer headers. Then choose whether
+              to remove parsed-JSON overloads, deprecate them, or move them to an optional adapter.
+              Only after that may <code>nlohmann_json::nlohmann_json</code> become a private dependency.
+            </p>
+          </div>
+        </div>
+        <div class="phase">
+          <span class="label">5. KiCad</span>
+          <div class="tight">
+            <h3>Compile adapter export code</h3>
+            <p>
+              Keep the adapter outside <code>Volt::Volt</code>. Link only the circuit and schematic
+              targets it actually consumes.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>
+        What not to blur into this refactor.
+      </aside>
+      <div class="stack">
+        <h2>Out of Scope</h2>
+        <div class="grid">
+          <div class="panel">
+            <span class="label red">No</span>
+            <h3>No semantic redesign</h3>
+            <p>Do not split the <code>Circuit</code> god class or change ownership of EDA meaning.</p>
+          </div>
+          <div class="panel">
+            <span class="label red">No</span>
+            <h3>No validation changes</h3>
+            <p>Do not move structural integrity checks out of mutation APIs or diagnostics into core mutation paths.</p>
+          </div>
+          <div class="panel">
+            <span class="label red">No</span>
+            <h3>No broad install/export work</h3>
+            <p>C++ package installation is a separate project because current install rules only cover the Python extension.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>
+        The failure modes most likely to bite.
+      </aside>
+      <div class="stack">
+        <h2>Risk Register</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Risk</th>
+              <th>Symptom</th>
+              <th>Mitigation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Duplicate symbol definitions</td>
+              <td>Linker errors after moving an inline body into <code>.cpp</code>.</td>
+              <td>Remove <code>inline</code> from declarations that now have exactly one compiled definition.</td>
+            </tr>
+            <tr>
+              <td>Lost public usage requirements</td>
+              <td>Consumers fail to find headers or lose C++20 features.</td>
+              <td>Use <code>PUBLIC</code> for include dirs, compile features, and public target dependencies.</td>
+            </tr>
+            <tr>
+              <td>Private helper made too private</td>
+              <td>IO or SVG code no longer compiles after PCB helper movement.</td>
+              <td>Search for external <code>volt::detail</code> callers before hiding helpers.</td>
+            </tr>
+            <tr>
+              <td>Strict warnings surface for library code</td>
+              <td>New <code>-Wconversion</code>, <code>-Wsign-conversion</code>, or <code>-Wshadow</code> failures.</td>
+              <td>Fix warnings surgically in moved implementation code. Do not soften the warning policy.</td>
+            </tr>
+            <tr>
+              <td>Static library not suitable for Python module</td>
+              <td>Linux or wheel builds fail while linking <code>_volt</code>.</td>
+              <td>Set PIC on all new static kernel libraries and keep Python dev preset in verification.</td>
+            </tr>
+            <tr>
+              <td>Coverage check silently excludes new sources</td>
+              <td>Coverage target runs but gates the wrong compiled target set.</td>
+              <td>Update <code>scripts/check-build-config.py</code> and coverage target dependencies with new libraries.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <aside>
+        When a phase is done.
+      </aside>
+      <div class="stack">
+        <h2>Definition of Done</h2>
+        <div class="two">
+          <div class="panel">
+            <h3>Pilot done</h3>
+            <ul class="checklist">
+              <li><code>volt_pcb</code> is a compiled static library with real implementation sources.</li>
+              <li><code>board.hpp</code> remains an umbrella include and existing consumers compile unchanged.</li>
+              <li>Non-trivial PCB and footprint bodies live in <code>src/pcb/*.cpp</code>.</li>
+              <li>Full <code>ctest --preset dev</code> passes.</li>
+              <li>Clean-build and incremental rebuild timings are reported.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Whole refactor done</h3>
+            <ul class="checklist">
+              <li>All six former header-only targets are compiled static libraries.</li>
+              <li>Public headers retain only declarations, templates, constants, and trivial accessors.</li>
+              <li><code>nlohmann_json</code> is private only if public JSON overloads have been removed or isolated.</li>
+              <li>CI-relevant dev, ASAN, coverage, Python, docs, and examples still pass.</li>
+              <li>The final summary lists behavior-preservation evidence and build-time deltas.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>
+        Commands to use without re-reading the whole page.
+      </aside>
+      <div class="stack">
+        <h2>Verification Commands</h2>
+        <div class="two">
+          <div class="panel tight">
+            <h3>Routine</h3>
+            <pre>cmake --preset dev
+cmake --build --preset dev
+ctest --preset dev</pre>
+          </div>
+          <div class="panel tight">
+            <h3>Focused slices</h3>
+            <pre>ctest --preset dev -R "Board|Footprint|PCB" --output-on-failure
+ctest --preset dev -L python --output-on-failure
+ctest --preset dev -L docs --output-on-failure</pre>
+          </div>
+          <div class="panel tight">
+            <h3>Sanitizers</h3>
+            <pre>cmake --preset asan
+cmake --build --preset asan
+ctest --preset asan</pre>
+          </div>
+          <div class="panel tight">
+            <h3>Coverage</h3>
+            <pre>cmake --workflow --preset coverage</pre>
+          </div>
+        </div>
+        <div class="callout red">
+          <p>
+            Do not claim completion on a library conversion without a full dev build and CTest run.
+            Focused slices are for iteration only.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

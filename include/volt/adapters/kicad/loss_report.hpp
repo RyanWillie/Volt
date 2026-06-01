@@ -45,16 +45,7 @@ class LossReport {
   public:
     /** Add a warning for a KiCad construct with imperfect Volt representation. */
     void add_warning(LossKind kind, std::string construct, std::string message,
-                     LossSeverity severity = LossSeverity::Warning) {
-        if (construct.empty()) {
-            throw std::invalid_argument{"KiCad loss warning construct must not be empty"};
-        }
-        if (message.empty()) {
-            throw std::invalid_argument{"KiCad loss warning message must not be empty"};
-        }
-
-        warnings_.push_back(LossWarning{kind, std::move(construct), std::move(message), severity});
-    }
+                     LossSeverity severity = LossSeverity::Warning);
 
     /** Return whether any adapter warnings were recorded. */
     [[nodiscard]] bool has_warnings() const noexcept { return !warnings_.empty(); }

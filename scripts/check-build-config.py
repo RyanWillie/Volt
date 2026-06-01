@@ -70,6 +70,12 @@ def check_coverage() -> None:
 
     for path in (
         "src/core/CMakeLists.txt",
+        "src/circuit/CMakeLists.txt",
+        "src/authoring/CMakeLists.txt",
+        "src/pcb/CMakeLists.txt",
+        "src/schematic/CMakeLists.txt",
+        "src/io/CMakeLists.txt",
+        "src/adapters/kicad/CMakeLists.txt",
         "src/python/CMakeLists.txt",
         "tests/CMakeLists.txt",
         "examples/CMakeLists.txt",

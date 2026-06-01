@@ -15,11 +15,7 @@ namespace volt {
 class NetName {
   public:
     /** Construct a non-empty net name. */
-    explicit NetName(std::string value) : value_{std::move(value)} {
-        if (value_.empty()) {
-            throw std::invalid_argument{"Net name must not be empty"};
-        }
-    }
+    explicit NetName(std::string value);
 
     /** Return the stored net name string. */
     [[nodiscard]] const std::string &value() const noexcept { return value_; }
@@ -47,7 +43,7 @@ enum class NetKind {
 class Net {
   public:
     /** Construct a net with a name and broad classification. */
-    Net(NetName name, NetKind kind) : name_{std::move(name)}, kind_{kind} {}
+    Net(NetName name, NetKind kind);
 
     /** Return the human-facing net name. */
     [[nodiscard]] const NetName &name() const noexcept { return name_; }
@@ -59,43 +55,22 @@ class Net {
     [[nodiscard]] const std::vector<PinId> &pins() const noexcept { return pins_; }
 
     /** Return typed electrical attributes for this net. */
-    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept {
-        return electrical_attributes_;
-    }
+    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept;
 
     /** Return whether the pin is already connected to this net. */
-    [[nodiscard]] bool contains(PinId pin) const noexcept {
-        return std::find(pins_.begin(), pins_.end(), pin) != pins_.end();
-    }
+    [[nodiscard]] bool contains(PinId pin) const noexcept;
 
     /** Connect a pin if it is not already present; returns true when the net changed. */
-    bool connect(PinId pin) {
-        if (contains(pin)) {
-            return false;
-        }
-
-        pins_.push_back(pin);
-        return true;
-    }
+    bool connect(PinId pin);
 
     /** Disconnect a pin if present; returns true when the net changed. */
-    bool disconnect(PinId pin) {
-        const auto it = std::find(pins_.begin(), pins_.end(), pin);
-        if (it == pins_.end()) {
-            return false;
-        }
-
-        pins_.erase(it);
-        return true;
-    }
+    bool disconnect(PinId pin);
 
   private:
     friend class Circuit;
 
     void set_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                  ElectricalAttributeValue value) {
-        electrical_attributes_.set(spec, std::move(value));
-    }
+                                  ElectricalAttributeValue value);
 
     NetName name_;
     NetKind kind_;
