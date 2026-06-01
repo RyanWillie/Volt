@@ -8,15 +8,22 @@ option(VOLT_CLANG_TIDY_WARNINGS_AS_ERRORS "Treat clang-tidy warnings as errors" 
 set(VOLT_CLANG_TIDY_EXECUTABLE "" CACHE FILEPATH "Path to the clang-tidy executable")
 
 if(VOLT_ENABLE_CLANG_TIDY)
-    if(NOT VOLT_CLANG_TIDY_EXECUTABLE)
+    if(VOLT_CLANG_TIDY_EXECUTABLE)
+        set(volt_clang_tidy_executable "${VOLT_CLANG_TIDY_EXECUTABLE}")
+    else()
         find_program(
-            VOLT_CLANG_TIDY_EXECUTABLE
+            volt_clang_tidy_executable
             NAMES clang-tidy clang-tidy-21 clang-tidy-20 clang-tidy-19 clang-tidy-18 clang-tidy-17
             REQUIRED
+            NO_CACHE
+        )
+        set(
+            VOLT_CLANG_TIDY_EXECUTABLE "${volt_clang_tidy_executable}" CACHE FILEPATH
+            "Path to the clang-tidy executable" FORCE
         )
     endif()
 
-    set(VOLT_CLANG_TIDY_COMMAND ${VOLT_CLANG_TIDY_EXECUTABLE} --quiet)
+    set(VOLT_CLANG_TIDY_COMMAND ${volt_clang_tidy_executable} --quiet)
     if(VOLT_CLANG_TIDY_WARNINGS_AS_ERRORS)
         list(APPEND VOLT_CLANG_TIDY_COMMAND "--warnings-as-errors=*")
     endif()

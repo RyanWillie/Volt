@@ -7,6 +7,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -129,11 +130,10 @@ namespace {
 }
 
 [[maybe_unused]] const volt::Diagnostic &require_diagnostic(const volt::DiagnosticReport &report,
-                                                            const std::string &code) {
-    const auto it = std::find_if(report.diagnostics().begin(), report.diagnostics().end(),
-                                 [&code](const volt::Diagnostic &diagnostic) {
-                                     return diagnostic.code() == volt::DiagnosticCode{code};
-                                 });
+                                                            std::string_view code) {
+    const auto it = std::find_if(
+        report.diagnostics().begin(), report.diagnostics().end(),
+        [&code](const volt::Diagnostic &diagnostic) { return diagnostic.code().value() == code; });
     REQUIRE(it != report.diagnostics().end());
     return *it;
 }
