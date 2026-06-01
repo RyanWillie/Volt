@@ -20,5 +20,6 @@ target_include_directories(
         $<INSTALL_INTERFACE:include>
 )
 volt_apply_project_warnings(volt_pcb PRIVATE)
+volt_apply_clang_tidy(volt_pcb)
 volt_apply_sanitizers(volt_pcb)
 volt_apply_coverage(volt_pcb)

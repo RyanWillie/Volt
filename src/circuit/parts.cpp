@@ -60,7 +60,7 @@ PhysicalPart::PhysicalPart(ManufacturerPart manufacturer_part, PackageRef packag
 }
 void PhysicalPart::set_electrical_attribute(const ElectricalAttributeSpec &spec,
                                             ElectricalAttributeValue value) {
-    electrical_attributes_.set(spec, std::move(value));
+    electrical_attributes_.set(spec, value);
 }
 
 } // namespace volt

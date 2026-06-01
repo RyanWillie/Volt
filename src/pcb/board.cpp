@@ -25,7 +25,7 @@ void Board::set_layer_stack(LayerStack stack) {
     layer_stack_ = std::move(stack);
 }
 void Board::set_outline(BoardOutline outline) { outline_ = std::move(outline); }
-void Board::set_design_rules(BoardDesignRules rules) { design_rules_ = std::move(rules); }
+void Board::set_design_rules(BoardDesignRules rules) { design_rules_ = rules; }
 [[nodiscard]] BoardFeatureId Board::add_feature(BoardFeature feature) {
     return features_.insert(std::move(feature));
 }
@@ -46,7 +46,7 @@ void Board::set_design_rules(BoardDesignRules rules) { design_rules_ = std::move
         throw std::logic_error{"Component already has a board placement"};
     }
 
-    return placements_.insert(std::move(placement));
+    return placements_.insert(placement);
 }
 [[nodiscard]] BoardTrackId Board::add_track(BoardTrack track) {
     require_net(track.net());
@@ -57,7 +57,7 @@ void Board::set_design_rules(BoardDesignRules rules) { design_rules_ = std::move
     require_net(via.net());
     require_copper_layer(via.start_layer());
     require_copper_layer(via.end_layer());
-    return vias_.insert(std::move(via));
+    return vias_.insert(via);
 }
 [[nodiscard]] BoardZoneId Board::add_zone(BoardZone zone) {
     if (zone.net().has_value()) {

@@ -289,7 +289,7 @@ void Schematic::replace_with(Schematic replacement) {
     require_symbol_matches_component(instance.symbol_definition(), instance.component());
     require_authored_region(sheet, instance.authored_region());
 
-    const auto id = symbol_instances_.insert(std::move(instance));
+    const auto id = symbol_instances_.insert(instance);
     sheets_.get(sheet).add_symbol_instance(id);
     return id;
 }
@@ -299,7 +299,7 @@ void Schematic::replace_with(Schematic replacement) {
     require_authored_region(sheet, junction.authored_region());
     require_junction_does_not_touch_different_net(sheet, junction);
 
-    const auto id = junctions_.insert(std::move(junction));
+    const auto id = junctions_.insert(junction);
     sheets_.get(sheet).add_junction(id);
     return id;
 }

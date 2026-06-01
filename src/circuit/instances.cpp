@@ -29,7 +29,7 @@ void ComponentInstance::set_property(PropertyKey key, PropertyValue value) {
 }
 void ComponentInstance::set_electrical_attribute(const ElectricalAttributeSpec &spec,
                                                  ElectricalAttributeValue value) {
-    electrical_attributes_.set(spec, std::move(value));
+    electrical_attributes_.set(spec, value);
 }
 void ComponentInstance::select_physical_part(PhysicalPart physical_part) {
     selected_physical_part_ = std::move(physical_part);
@@ -40,7 +40,7 @@ void ComponentInstance::set_selected_part_electrical_attribute(const ElectricalA
         throw std::logic_error{"Component has no selected physical part"};
     }
 
-    selected_physical_part_->set_electrical_attribute(spec, std::move(value));
+    selected_physical_part_->set_electrical_attribute(spec, value);
 }
 PinInstance::PinInstance(ComponentId component, PinDefId definition)
     : component_{component}, definition_{definition} {}

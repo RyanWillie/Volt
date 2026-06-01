@@ -3,6 +3,7 @@ target_link_libraries(volt_led_circuit_example PRIVATE Volt::Authoring)
 target_compile_features(volt_led_circuit_example PRIVATE cxx_std_20)
 target_include_directories(volt_led_circuit_example PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 volt_apply_project_warnings(volt_led_circuit_example PRIVATE)
+volt_apply_clang_tidy(volt_led_circuit_example)
 volt_apply_sanitizers(volt_led_circuit_example)
 volt_apply_coverage(volt_led_circuit_example)
 

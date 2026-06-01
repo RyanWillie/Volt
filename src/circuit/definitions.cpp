@@ -26,7 +26,7 @@ PinDefinition::PinDefinition(std::string name, std::string number, PinRole role,
 }
 void PinDefinition::set_electrical_attribute(const ElectricalAttributeSpec &spec,
                                              ElectricalAttributeValue value) {
-    electrical_attributes_.set(spec, std::move(value));
+    electrical_attributes_.set(spec, value);
 }
 DefinitionSource::DefinitionSource(std::string namespace_name, std::string name,
                                    std::string version)

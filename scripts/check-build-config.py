@@ -84,6 +84,41 @@ def check_coverage() -> None:
         require("volt_apply_coverage" in read(path), f"{path} must apply coverage to compiled targets")
 
 
+def check_static_analysis() -> None:
+    compiler_options = read("cmake/VoltCompilerOptions.cmake")
+    ci_workflow = read(".github/workflows/ci.yml")
+    presets = json.loads(read("CMakePresets.json"))
+    configure_presets = {preset["name"]: preset for preset in presets["configurePresets"]}
+    build_presets = {preset["name"]: preset for preset in presets["buildPresets"]}
+    workflow_presets = {preset["name"]: preset for preset in presets["workflowPresets"]}
+
+    require((ROOT / ".clang-tidy").exists(), ".clang-tidy must exist")
+    require("VOLT_WARNINGS_AS_ERRORS" in compiler_options, "warnings-as-errors option must be declared")
+    require("-Werror" in compiler_options, "non-MSVC warnings must be treated as errors")
+    require("/WX" in compiler_options, "MSVC warnings must be treated as errors")
+    require("VOLT_ENABLE_CLANG_TIDY" in compiler_options, "clang-tidy option must be declared")
+    require("volt_apply_clang_tidy" in compiler_options, "clang-tidy helper must be available")
+    require("clang-tidy" in configure_presets, "clang-tidy configure preset must exist")
+    require("clang-tidy" in build_presets, "clang-tidy build preset must exist")
+    require("clang-tidy" in workflow_presets, "clang-tidy workflow preset must exist")
+    require("cmake --workflow --preset clang-tidy" in ci_workflow, "CI must run clang-tidy workflow")
+    require("sudo apt-get install -y ninja-build clang-tidy" in ci_workflow, "CI must install clang-tidy")
+
+    for path in (
+        "src/core/CMakeLists.txt",
+        "src/circuit/CMakeLists.txt",
+        "src/authoring/CMakeLists.txt",
+        "src/pcb/CMakeLists.txt",
+        "src/schematic/CMakeLists.txt",
+        "src/io/CMakeLists.txt",
+        "src/adapters/kicad/CMakeLists.txt",
+        "src/python/CMakeLists.txt",
+        "examples/CMakeLists.txt",
+        "benchmarks/CMakeLists.txt",
+    ):
+        require("volt_apply_clang_tidy" in read(path), f"{path} must apply clang-tidy to compiled targets")
+
+
 def check_benchmarks() -> None:
     top_level = read("CMakeLists.txt")
     presets = json.loads(read("CMakePresets.json"))
@@ -237,6 +272,7 @@ def main() -> int:
     checks = (
         check_test_presets,
         check_fetchcontent,
+        check_static_analysis,
         check_coverage,
         check_benchmarks,
         check_ci_tooling,

@@ -37,6 +37,17 @@
       }
     },
     {
+      "name": "clang-tidy",
+      "displayName": "Clang-Tidy",
+      "inherits": "dev",
+      "binaryDir": "${sourceDir}/build/clang-tidy",
+      "cacheVariables": {
+        "VOLT_BUILD_BENCHMARKS": "ON",
+        "VOLT_BUILD_PYTHON": "OFF",
+        "VOLT_ENABLE_CLANG_TIDY": "ON"
+      }
+    },
+    {
       "name": "benchmarks",
       "displayName": "Benchmarks",
       "generator": "Ninja",
@@ -77,6 +88,10 @@
     {
       "name": "asan",
       "configurePreset": "asan"
+    },
+    {
+      "name": "clang-tidy",
+      "configurePreset": "clang-tidy"
     },
     {
       "name": "benchmarks",
@@ -149,6 +164,20 @@
         {
           "type": "test",
           "name": "asan"
+        }
+      ]
+    },
+    {
+      "name": "clang-tidy",
+      "displayName": "Configure and build with clang-tidy",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "clang-tidy"
+        },
+        {
+          "type": "build",
+          "name": "clang-tidy"
         }
       ]
     },
