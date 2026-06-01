@@ -33,6 +33,10 @@ def test_api_generator_emits_mintlify_reference_pages(tmp_path):
     assert "net(self, name: str" in design
     assert "validate(self) -> DiagnosticReport" in design
 
+    diagnostics = (output / "diagnostics.mdx").read_text(encoding="utf-8")
+    assert "`has_errors: bool`" in diagnostics
+    assert "has_errors(self)" not in diagnostics
+
     index = (output / "index.mdx").read_text(encoding="utf-8")
     assert "Generated from `python/volt/__init__.py`" in index
     assert "/api/python/design" in index

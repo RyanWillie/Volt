@@ -128,6 +128,10 @@ def page_text(page: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def page_key(path: Path) -> str:
+    return path.with_suffix("").as_posix()
+
+
 def check_frontmatter(page: str, text: str) -> None:
     if not text.startswith("---\n"):
         fail(f"{page}.mdx is missing frontmatter")
@@ -183,7 +187,7 @@ def main() -> int:
         check_frontmatter(page, text)
 
     all_mdx_pages = {
-        str(path.relative_to(DOCS_SITE).with_suffix(""))
+        page_key(path.relative_to(DOCS_SITE))
         for path in DOCS_SITE.rglob("*.mdx")
     }
     unlisted = sorted(all_mdx_pages - navigation_pages)

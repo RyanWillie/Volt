@@ -10,16 +10,21 @@ Drawing-session authoring view over one placed schematic symbol.
 
 Source: `python/volt/_schematic_handles.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+| `component: Component` | No docstring yet. |
+| `orientation: str` | No docstring yet. |
+| `start: SchematicPinAnchor` | No docstring yet. |
+| `end: SchematicPinAnchor` | No docstring yet. |
+| `center: SchematicAnchor` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
-| `component(self) -> Component` | No docstring yet. |
-| `orientation(self) -> str` | No docstring yet. |
-| `start(self) -> SchematicPinAnchor` | No docstring yet. |
-| `end(self) -> SchematicPinAnchor` | No docstring yet. |
-| `center(self) -> SchematicAnchor` | No docstring yet. |
 | `__getitem__(self, key: int \| str) -> SchematicPinAnchor` | No docstring yet. |
 | `pin_anchor(self, number: int \| str) -> tuple[float, float]` | No docstring yet. |
 | `pin(self, key: int \| str) -> SchematicPinAnchor` | No docstring yet. |
@@ -37,11 +42,16 @@ Handle to kernel-owned schematic projection data for one sheet.
 
 Source: `python/volt/schematic.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `sheet_index: int` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `sheet_index(self) -> int` | No docstring yet. |
 | `drawing(self, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort = (0, 0), direction: str = 'Right', unit: float = 20) -> SchematicDrawing` | No docstring yet. |
 | `region(self, name: str, *, x: float, y: float, w: float, h: float, title: str \| None = None, style: dict[str, str] \| None = None) -> SchematicRegion` | No docstring yet. |
 | `place(self, component: Component, *, at: tuple[float, float], orient: str = 'Right', symbol: str \| SchematicSymbolSpec \| None = None, variant: str = 'default', _authored_region: int \| None = None, reference_label: str \| None = None) -> SchematicSymbol` | No docstring yet. |
@@ -83,13 +93,18 @@ Sheet point that can be offset directionally while preserving author intent.
 
 Source: `python/volt/_schematic_handles.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `x: float` | No docstring yet. |
+| `y: float` | No docstring yet. |
+| `point: tuple[float, float]` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `x(self) -> float` | No docstring yet. |
-| `y(self) -> float` | No docstring yet. |
-| `point(self) -> tuple[float, float]` | No docstring yet. |
 | `offset(self, dx: float = 0, dy: float = 0) -> SchematicAnchor` | No docstring yet. |
 | `left(self, distance: float) -> SchematicAnchor` | No docstring yet. |
 | `right(self, distance: float) -> SchematicAnchor` | No docstring yet. |
@@ -105,13 +120,18 @@ Cursor state for SchemDraw-style schematic authoring on one sheet.
 
 Source: `python/volt/schematic.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `here: SchematicAnchor` | No docstring yet. |
+| `direction: str` | No docstring yet. |
+| `unit: float` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `here(self) -> SchematicAnchor` | No docstring yet. |
-| `direction(self) -> str` | No docstring yet. |
-| `unit(self) -> float` | No docstring yet. |
 | `move(self, *, dx: float = 0, dy: float = 0) -> SchematicDrawing` | No docstring yet. |
 | `move_from(self, anchor: tuple[float, float] \| SchematicAnchor \| SchematicPort, *, dx: float = 0, dy: float = 0, direction: str \| None = None) -> SchematicDrawing` | No docstring yet. |
 | `push(self) -> SchematicDrawing` | No docstring yet. |
@@ -149,11 +169,11 @@ Read-only handle to an explicit schematic junction.
 
 Source: `python/volt/_schematic_handles.py`
 
-### Methods
+### Properties
 
-| Method | Summary |
+| Property | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
+| `index: int` | No docstring yet. |
 
 ## `volt.SchematicNetLabel`
 
@@ -161,11 +181,11 @@ Read-only handle to a schematic net label projection.
 
 Source: `python/volt/_schematic_handles.py`
 
-### Methods
+### Properties
 
-| Method | Summary |
+| Property | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
+| `index: int` | No docstring yet. |
 
 ## `volt.SchematicNoConnect`
 
@@ -173,11 +193,11 @@ Read-only handle to a schematic no-connect marker.
 
 Source: `python/volt/_schematic_handles.py`
 
-### Methods
+### Properties
 
-| Method | Summary |
+| Property | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
+| `index: int` | No docstring yet. |
 
 ## `volt.SchematicPinAnchor`
 
@@ -191,11 +211,11 @@ Handle to a placed terminal marker, sheet, or off-page schematic port.
 
 Source: `python/volt/_schematic_handles.py`
 
-### Methods
+### Properties
 
-| Method | Summary |
+| Property | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
+| `index: int` | No docstring yet. |
 
 ## `volt.SchematicRegion`
 
@@ -203,12 +223,17 @@ Presentation-only authoring surface for a named region on one schematic sheet.
 
 Source: `python/volt/schematic.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+| `origin: tuple[float, float]` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
-| `origin(self) -> tuple[float, float]` | No docstring yet. |
 | `drawing(self, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort = (0, 0), direction: str = 'Right', unit: float = 20) -> SchematicDrawing` | No docstring yet. |
 | `place(self, component: Component, *, at: tuple[float, float] \| SchematicAnchor \| SchematicPort, orient: str = 'Right', symbol: str \| SchematicSymbolSpec \| None = None, variant: str = 'default', reference_label: str \| None = None) -> SchematicSymbol` | No docstring yet. |
 | `wire(self, net: Net, points: Iterable[tuple[float, float] \| SchematicAnchor \| SchematicPort]) -> SchematicWire` | No docstring yet. |
@@ -249,11 +274,11 @@ Read-only handle to a placed schematic symbol field projection.
 
 Source: `python/volt/_schematic_handles.py`
 
-### Methods
+### Properties
 
-| Method | Summary |
+| Property | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
+| `index: int` | No docstring yet. |
 
 ## `volt.SchematicSymbol`
 
@@ -261,13 +286,18 @@ Read-only handle to a placed schematic symbol instance.
 
 Source: `python/volt/_schematic_handles.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+| `component: Component` | No docstring yet. |
+| `orientation: str` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
-| `component(self) -> Component` | No docstring yet. |
-| `orientation(self) -> str` | No docstring yet. |
 | `pin_anchor(self, number: int \| str) -> tuple[float, float]` | No docstring yet. |
 | `pin(self, key: int \| str) -> SchematicPinAnchor` | No docstring yet. |
 | `pins(self, name: str) -> tuple[SchematicPinAnchor, ...]` | No docstring yet. |
@@ -285,16 +315,21 @@ Deferred fluent placement for one two-terminal schematic component.
 
 Source: `python/volt/schematic.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+| `component: Component` | No docstring yet. |
+| `orientation: str` | No docstring yet. |
+| `start: SchematicPinAnchor` | No docstring yet. |
+| `end: SchematicPinAnchor` | No docstring yet. |
+| `center: SchematicAnchor` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
-| `component(self) -> Component` | No docstring yet. |
-| `orientation(self) -> str` | No docstring yet. |
-| `start(self) -> SchematicPinAnchor` | No docstring yet. |
-| `end(self) -> SchematicPinAnchor` | No docstring yet. |
-| `center(self) -> SchematicAnchor` | No docstring yet. |
 | `at(self, point: tuple[float, float] \| SchematicAnchor \| SchematicPort) -> SchematicTwoTerminalElement` | No docstring yet. |
 | `anchor(self, ref: str \| int) -> SchematicTwoTerminalElement` | No docstring yet. |
 | `drop(self, ref: str \| int) -> SchematicTwoTerminalElement` | No docstring yet. |
@@ -327,11 +362,16 @@ Read-only handle to a schematic wire run projection.
 
 Source: `python/volt/_schematic_handles.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
 | `dot(self) -> SchematicWire` | No docstring yet. |
 | `idot(self) -> SchematicWire` | No docstring yet. |
 

@@ -10,13 +10,18 @@ Handle to a kernel-owned component instance.
 
 Source: `python/volt/logical.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+| `reference: str` | No docstring yet. |
+| `schematic_symbol: SchematicSymbolSpec \| str \| None` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
-| `reference(self) -> str` | No docstring yet. |
-| `schematic_symbol(self) -> SchematicSymbolSpec \| str \| None` | No docstring yet. |
 | `schematic_symbol_variant(self, variant: str) -> SchematicSymbolSpec \| str \| None` | No docstring yet. |
 | `__getitem__(self, key: int \| str) -> Pin` | No docstring yet. |
 | `pins(self, name: str) -> PinGroup` | No docstring yet. |
@@ -28,11 +33,11 @@ Handle to a kernel-owned reusable component definition.
 
 Source: `python/volt/logical.py`
 
-### Methods
+### Properties
 
-| Method | Summary |
+| Property | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
+| `index: int` | No docstring yet. |
 
 ## `volt.ModuleComponent`
 
@@ -40,11 +45,16 @@ Handle to a component occurrence inside a reusable module definition.
 
 Source: `python/volt/logical.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
 | `__getitem__(self, key: int \| str) -> ModulePin` | No docstring yet. |
 | `pins(self, name: str) -> ModulePinGroup` | No docstring yet. |
 
@@ -95,11 +105,16 @@ Handle to a kernel-owned reusable module definition.
 
 Source: `python/volt/logical.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
 | `net(self, name: str, *, kind: str = 'signal') -> ModuleNet` | No docstring yet. |
 | `port(self, name: str, *, kind: str = 'signal', role: str = 'passive', required: bool = True) -> ModulePort` | No docstring yet. |
 | `instantiate(self, definition: ComponentDefinition \| LibraryComponent, *, ref: str, properties: dict \| None = None) -> ModuleComponent` | No docstring yet. |
@@ -115,11 +130,16 @@ Handle to a kernel-owned root module instance.
 
 Source: `python/volt/logical.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
 | `__getitem__(self, key: str) -> ModuleInstancePort` | No docstring yet. |
 | `component(self, ref: str) -> Component` | No docstring yet. |
 | `net_origins(self) -> tuple[ModuleNetOriginInfo, ...]` | No docstring yet. |
@@ -132,11 +152,11 @@ Handle to a root module instance port endpoint.
 
 Source: `python/volt/logical.py`
 
-### Methods
+### Properties
 
-| Method | Summary |
+| Property | Summary |
 | --- | --- |
-| `port_index(self) -> int` | No docstring yet. |
+| `port_index: int` | No docstring yet. |
 
 ## `volt.ModuleNetOriginInfo`
 
@@ -157,11 +177,16 @@ Handle to a template-local module net.
 
 Source: `python/volt/logical.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
 | `connect(self, *pins: ModulePin \| Iterable[ModulePin]) -> ModuleNet` | No docstring yet. |
 | `__iadd__(self, pins: ModulePin \| Iterable[ModulePin]) -> ModuleNet` | No docstring yet. |
 
@@ -185,11 +210,11 @@ Handle to a reusable pin definition on a module-local component template.
 
 Source: `python/volt/logical.py`
 
-### Methods
+### Properties
 
-| Method | Summary |
+| Property | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
+| `index: int` | No docstring yet. |
 
 ## `volt.ModulePort`
 
@@ -197,11 +222,11 @@ Handle to a module boundary port and its internal template net.
 
 Source: `python/volt/logical.py`
 
-### Methods
+### Properties
 
-| Method | Summary |
+| Property | Summary |
 | --- | --- |
-| `port_index(self) -> int` | No docstring yet. |
+| `port_index: int` | No docstring yet. |
 
 ## `volt.Net`
 
@@ -209,11 +234,16 @@ Handle to a kernel-owned logical net.
 
 Source: `python/volt/logical.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
 | `mark_stub(self) -> Net` | No docstring yet. |
 | `pins(self) -> tuple[Pin, ...]` | No docstring yet. |
 | `connect(self, *pins: Pin \| ModuleInstancePort \| Iterable[Pin \| ModuleInstancePort]) -> Net` | No docstring yet. |
@@ -225,11 +255,16 @@ Handle to a kernel-owned concrete pin.
 
 Source: `python/volt/logical.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `index(self) -> int` | No docstring yet. |
 | `mark_no_connect(self) -> Pin` | No docstring yet. |
 
 ## `volt.PinGroup`

@@ -211,10 +211,32 @@ def public_methods(node: ast.ClassDef) -> list[ast.FunctionDef]:
     for statement in node.body:
         if not isinstance(statement, ast.FunctionDef):
             continue
+        if is_property(statement):
+            continue
         if statement.name.startswith("_") and statement.name not in PUBLIC_MAGIC_METHODS:
             continue
         methods.append(statement)
     return methods
+
+
+def public_properties(node: ast.ClassDef) -> list[ast.FunctionDef]:
+    properties = []
+    for statement in node.body:
+        if not isinstance(statement, ast.FunctionDef):
+            continue
+        if not is_property(statement):
+            continue
+        if statement.name.startswith("_"):
+            continue
+        properties.append(statement)
+    return properties
+
+
+def is_property(function: ast.FunctionDef) -> bool:
+    for decorator in function.decorator_list:
+        if isinstance(decorator, ast.Name) and decorator.id == "property":
+            return True
+    return False
 
 
 def dataclass_fields(node: ast.ClassDef) -> list[str]:
@@ -249,6 +271,16 @@ def render_object(item: PublicObject) -> str:
         if fields:
             lines.extend(["### Fields", "", "| Field |", "| --- |"])
             lines.extend(f"| `{table_cell(field)}` |" for field in fields)
+            lines.append("")
+        properties = public_properties(node)
+        if properties:
+            lines.extend(["### Properties", "", "| Property | Summary |", "| --- | --- |"])
+            for prop in properties:
+                annotation = format_annotation(prop.returns)
+                signature = prop.name if not annotation else f"{prop.name}: {annotation}"
+                lines.append(
+                    f"| `{table_cell(signature)}` | {table_cell(first_sentence(ast.get_docstring(prop)))} |"
+                )
             lines.append("")
         methods = public_methods(node)
         if methods:
