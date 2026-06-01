@@ -1,0 +1,124 @@
+---
+title: PCB
+description: Generated reference for PCB board, footprint, pad, and placement helpers.
+---
+This page is generated from the public Python source. Add or improve docstrings in `python/volt` to improve the reference.
+
+## `volt.Board`
+
+Python handle to one kernel-owned PCB projection.
+
+Source: `python/volt/pcb.py`
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `design_rules(self) -> dict[str, float]` | No docstring yet. |
+| `set_design_rules(self, *, copper_clearance: float \| None = None, min_track_width: float \| None = None, min_via_drill: float \| None = None, min_via_annular: float \| None = None, board_outline_clearance: float \| None = None) -> Board` | No docstring yet. |
+| `add_layer(self, name: str, *, role: str, side: str, thickness: float = 0.0, enabled: bool = True) -> int` | No docstring yet. |
+| `set_layer_stack(self, layers: Iterable[int], *, thickness: float) -> Board` | No docstring yet. |
+| `set_rectangular_outline(self, *, origin: Point, size: Point) -> Board` | No docstring yet. |
+| `set_polygon_outline(self, vertices: Iterable[Point]) -> Board` | No docstring yet. |
+| `add_mounting_hole(self, label: str, *, at: Point, diameter: float) -> int` | No docstring yet. |
+| `cache_footprint(self, footprint: Footprint) -> int` | No docstring yet. |
+| `place(self, component: Component \| int, *, at: Point, rotation: float = 0.0, side: str = 'top', locked: bool = False) -> int` | No docstring yet. |
+| `add_track(self, net: Net \| int, *, layer: int, points: Iterable[Point], width: float) -> int` | No docstring yet. |
+| `add_via(self, net: Net \| int, *, at: Point, start_layer: int, end_layer: int, drill: float = 0.3, annular: float = 0.7) -> int` | No docstring yet. |
+| `add_zone(self, *, outline: Iterable[Point], layers: Iterable[int], net: Net \| int \| None = None, fill: str = 'solid', priority: int = 0) -> int` | No docstring yet. |
+| `add_keepout(self, *, outline: Iterable[Point], layers: Iterable[int], restrictions: Iterable[str]) -> int` | No docstring yet. |
+| `add_text(self, text: str, *, at: Point, layer: int, rotation: float = 0.0, size: float = 1.0, locked: bool = False) -> int` | No docstring yet. |
+| `resolve_pads(self) -> tuple[PadResolution, ...]` | No docstring yet. |
+| `validate(self) -> DiagnosticReport` | No docstring yet. |
+| `to_json(self) -> str` | No docstring yet. |
+| `to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True) -> str` | No docstring yet. |
+| `write_json(self, path: str \| Path) -> None` | No docstring yet. |
+| `write_svg(self, path: str \| Path) -> None` | No docstring yet. |
+
+## `volt.Footprint`
+
+Library-qualified footprint geometry for board-ready physical parts.
+
+Source: `python/volt/_footprint.py`
+
+### Fields
+
+| Field |
+| --- |
+| `ref: FootprintRef` |
+| `pads: tuple[Any, ...]` |
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `library: str` | No docstring yet. |
+| `name: str` | No docstring yet. |
+
+## `volt.FootprintDefinition`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/pcb.py`
+
+```python
+FootprintDefinition = Footprint
+```
+
+## `volt.FootprintDrill`
+
+Drill metadata for a through-hole footprint pad.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `diameter: float` |
+| `plating: str` |
+
+## `volt.FootprintPad`
+
+Normalized footprint pad geometry for board projection caches.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `label: str` |
+| `kind: str` |
+| `shape: str` |
+| `position: Point` |
+| `size: Point` |
+| `layers: str` |
+| `drill: FootprintDrill \| None` |
+| `mechanical_role: str \| None` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `surface_mount(cls, label: str, *, at: Point, size: Point, shape: str = 'rounded_rectangle', layers: str = 'front_smd', mechanical_role: str \| None = None) -> FootprintPad` | No docstring yet. |
+| `through_hole(cls, label: str, *, at: Point, size: Point, drill: FootprintDrill, shape: str = 'circle', layers: str = 'through_hole', mechanical_role: str \| None = None) -> FootprintPad` | No docstring yet. |
+
+## `volt.PadResolution`
+
+Derived board-space resolution for one placed footprint pad.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `placement: int` |
+| `component: int` |
+| `pad: int` |
+| `pad_label: str` |
+| `position: Point` |
+| `pin: int \| None` |
+| `net: int \| None` |
+| `status: str` |

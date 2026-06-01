@@ -1,0 +1,326 @@
+---
+title: Logical
+description: Generated reference for logical circuit handles and hierarchy inspection records.
+---
+This page is generated from the public Python source. Add or improve docstrings in `python/volt` to improve the reference.
+
+## `volt.Component`
+
+Handle to a kernel-owned component instance.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+| `reference: str` | No docstring yet. |
+| `schematic_symbol: SchematicSymbolSpec \| str \| None` | No docstring yet. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `schematic_symbol_variant(self, variant: str) -> SchematicSymbolSpec \| str \| None` | No docstring yet. |
+| `__getitem__(self, key: int \| str) -> Pin` | No docstring yet. |
+| `pins(self, name: str) -> PinGroup` | No docstring yet. |
+| `select_part(self, *, manufacturer: str, part_number: str, package: str, footprint: FootprintInput, pin_pads: dict[int \| str, PinPadValue], properties: dict \| None = None, voltage_rating: float \| None = None, power_rating: float \| None = None) -> Component` | No docstring yet. |
+
+## `volt.ComponentDefinition`
+
+Handle to a kernel-owned reusable component definition.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
+## `volt.ModuleComponent`
+
+Handle to a component occurrence inside a reusable module definition.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `__getitem__(self, key: int \| str) -> ModulePin` | No docstring yet. |
+| `pins(self, name: str) -> ModulePinGroup` | No docstring yet. |
+
+## `volt.ModuleComponentInfo`
+
+Read-only view of a component template inside a module definition.
+
+Source: `python/volt/logical.py`
+
+### Fields
+
+| Field |
+| --- |
+| `index: int` |
+| `definition: int` |
+| `reference: str` |
+
+## `volt.ModuleComponentOriginInfo`
+
+Read-only view of a concrete component created from a module component template.
+
+Source: `python/volt/logical.py`
+
+### Fields
+
+| Field |
+| --- |
+| `module_component: int` |
+| `component: int` |
+
+## `volt.ModuleConnectionInfo`
+
+Read-only view of a module-local pin-to-net connection.
+
+Source: `python/volt/logical.py`
+
+### Fields
+
+| Field |
+| --- |
+| `net: int` |
+| `component: int` |
+| `pin_definition: int` |
+
+## `volt.ModuleDefinition`
+
+Handle to a kernel-owned reusable module definition.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `net(self, name: str, *, kind: str = 'signal') -> ModuleNet` | No docstring yet. |
+| `port(self, name: str, *, kind: str = 'signal', role: str = 'passive', required: bool = True) -> ModulePort` | No docstring yet. |
+| `instantiate(self, definition: ComponentDefinition \| LibraryComponent, *, ref: str, properties: dict \| None = None) -> ModuleComponent` | No docstring yet. |
+| `connect(self, *endpoints) -> ModuleNet` | No docstring yet. |
+| `template_nets(self) -> tuple[TemplateNetInfo, ...]` | No docstring yet. |
+| `ports(self) -> tuple[PortInfo, ...]` | No docstring yet. |
+| `components(self) -> tuple[ModuleComponentInfo, ...]` | No docstring yet. |
+| `connections(self) -> tuple[ModuleConnectionInfo, ...]` | No docstring yet. |
+
+## `volt.ModuleInstance`
+
+Handle to a kernel-owned root module instance.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `__getitem__(self, key: str) -> ModuleInstancePort` | No docstring yet. |
+| `component(self, ref: str) -> Component` | No docstring yet. |
+| `net_origins(self) -> tuple[ModuleNetOriginInfo, ...]` | No docstring yet. |
+| `component_origins(self) -> tuple[ModuleComponentOriginInfo, ...]` | No docstring yet. |
+| `port_bindings(self) -> tuple[PortBindingInfo, ...]` | No docstring yet. |
+
+## `volt.ModuleInstancePort`
+
+Handle to a root module instance port endpoint.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `port_index: int` | No docstring yet. |
+
+## `volt.ModuleNetOriginInfo`
+
+Read-only view of a concrete net created from a module template net.
+
+Source: `python/volt/logical.py`
+
+### Fields
+
+| Field |
+| --- |
+| `template_net: int` |
+| `net: int` |
+
+## `volt.ModuleNet`
+
+Handle to a template-local module net.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `connect(self, *pins: ModulePin \| Iterable[ModulePin]) -> ModuleNet` | No docstring yet. |
+| `__iadd__(self, pins: ModulePin \| Iterable[ModulePin]) -> ModuleNet` | No docstring yet. |
+
+## `volt.ModulePinGroup`
+
+Repeated-label module component pins selected as a group.
+
+Source: `python/volt/logical.py`
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `__iter__(self) -> Iterator[ModulePin]` | No docstring yet. |
+| `__len__(self) -> int` | No docstring yet. |
+| `__getitem__(self, index: int) -> ModulePin` | No docstring yet. |
+
+## `volt.ModulePin`
+
+Handle to a reusable pin definition on a module-local component template.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
+## `volt.ModulePort`
+
+Handle to a module boundary port and its internal template net.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `port_index: int` | No docstring yet. |
+
+## `volt.Net`
+
+Handle to a kernel-owned logical net.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `mark_stub(self) -> Net` | No docstring yet. |
+| `pins(self) -> tuple[Pin, ...]` | No docstring yet. |
+| `connect(self, *pins: Pin \| ModuleInstancePort \| Iterable[Pin \| ModuleInstancePort]) -> Net` | No docstring yet. |
+| `__iadd__(self, pins: Pin \| ModuleInstancePort \| Iterable[Pin \| ModuleInstancePort]) -> Net` | No docstring yet. |
+
+## `volt.Pin`
+
+Handle to a kernel-owned concrete pin.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | No docstring yet. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `mark_no_connect(self) -> Pin` | No docstring yet. |
+
+## `volt.PinGroup`
+
+Repeated-label concrete pins selected as a group.
+
+Source: `python/volt/logical.py`
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `__iter__(self) -> Iterator[Pin]` | No docstring yet. |
+| `__len__(self) -> int` | No docstring yet. |
+| `__getitem__(self, index: int) -> Pin` | No docstring yet. |
+
+## `volt.PortBindingInfo`
+
+Read-only view of a module instance port binding edge.
+
+Source: `python/volt/logical.py`
+
+### Fields
+
+| Field |
+| --- |
+| `port: int` |
+| `internal_net: int` |
+| `parent_net: int` |
+
+## `volt.PortInfo`
+
+Read-only view of a module port definition.
+
+Source: `python/volt/logical.py`
+
+### Fields
+
+| Field |
+| --- |
+| `index: int` |
+| `name: str` |
+| `internal_net: int` |
+| `role: str` |
+| `required: bool` |
+
+## `volt.TemplateNetInfo`
+
+Read-only view of a module template-local net.
+
+Source: `python/volt/logical.py`
+
+### Fields
+
+| Field |
+| --- |
+| `index: int` |
+| `name: str` |
+| `kind: str` |

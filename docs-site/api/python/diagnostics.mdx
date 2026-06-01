@@ -1,0 +1,53 @@
+---
+title: Diagnostics
+description: Generated reference for diagnostics and validation report objects.
+---
+This page is generated from the public Python source. Add or improve docstrings in `python/volt` to improve the reference.
+
+## `volt.Diagnostic`
+
+Kernel-produced diagnostic exposed through the Python facade.
+
+Source: `python/volt/diagnostics.py`
+
+### Fields
+
+| Field |
+| --- |
+| `severity: str` |
+| `code: str` |
+| `message: str` |
+| `entities: tuple[DiagnosticEntity, ...]` |
+
+## `volt.DiagnosticEntity`
+
+Reference to a kernel entity involved in a diagnostic.
+
+Source: `python/volt/diagnostics.py`
+
+### Fields
+
+| Field |
+| --- |
+| `kind: str` |
+| `index: int` |
+
+## `volt.DiagnosticReport`
+
+Ordered collection of kernel diagnostics.
+
+Source: `python/volt/diagnostics.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `has_errors: bool` | No docstring yet. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `__iter__(self) -> Iterator[Diagnostic]` | No docstring yet. |
+| `__len__(self) -> int` | No docstring yet. |
+| `__getitem__(self, index: int) -> Diagnostic` | No docstring yet. |

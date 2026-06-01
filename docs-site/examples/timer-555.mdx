@@ -1,0 +1,59 @@
+---
+title: 555 Timer Blinker
+description: Author a 555 LED blinker with custom component definitions and schematic projection.
+---
+
+The 555 timer example demonstrates a custom IC definition, typed pins, built-in passive parts, named nets, schematic sheet metadata, and deterministic artifacts.
+
+Source: `examples/timer_555_led_blinker/main.py`.
+
+## Logical shape
+
+```python
+timer_definition = design.define_component(
+    "NE555",
+    pins=[
+        volt.PinSpec("GND", 1, role="ground", terminal="ground"),
+        volt.PinSpec("TRIG", 2, role="input", signal="analog"),
+        volt.PinSpec("OUT", 3, role="output", signal="digital"),
+        volt.PinSpec("RESET", 4, role="input", signal="digital"),
+        volt.PinSpec("CTRL", 5, role="input", signal="analog"),
+        volt.PinSpec("THRESH", 6, role="input", signal="analog"),
+        volt.PinSpec("DISCH", 7, role="output", signal="analog"),
+        volt.PinSpec("VCC", 8, role="power", terminal="power"),
+    ],
+    schematic_symbol=_timer_symbol(),
+)
+```
+
+The pins lower into kernel-owned pin definitions. The schematic symbol is presentation data that references the same logical pins.
+
+## Schematic shape
+
+```python
+sheet = design.schematic(
+    "555 LED Blinker",
+    size=(340, 240),
+    orientation="landscape",
+    title="555 LED Blinker Reference Schematic",
+)
+
+with sheet.drawing(at=(140, 80), unit=20) as drawing:
+    timer = drawing.place(parts["U1"]).label_ref(loc="top")
+    ground = drawing.ground("GND", at=timer.GND, orient="Down")
+    drawing.power_stub("+5V", at=timer.VCC)
+```
+
+The full example uses two-terminal elements, local labels, junction dots, and explicit validation reports.
+
+## Generated artifacts
+
+`write_artifacts()` produces:
+
+- Logical JSON.
+- Schematic JSON.
+- Full SVG and body SVG.
+- Per-page SVG output.
+- Validation report JSON.
+
+Use this example when you need a complete reference for logical plus schematic artifact generation.

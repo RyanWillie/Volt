@@ -1,0 +1,83 @@
+---
+title: Quickstart
+description: Build Volt locally and generate a checked Python-authored circuit artifact.
+---
+
+Volt is pre-release software. The most reliable way to try the Python API today is to build the repository locally and import the build-tree package.
+
+## Build
+
+From the repository root:
+
+```sh
+python3 scripts/install-python-dev-deps.py
+cmake --preset dev
+cmake --build --preset dev
+ctest --preset dev -L python --output-on-failure
+```
+
+The `dev` preset builds the private `_volt` extension and copies the Python package into `build/dev/python`.
+
+## Write a design
+
+Run this from the repository root after the build:
+
+```sh
+PYTHONPATH=build/dev/python python3 - <<'PY'
+from pathlib import Path
+import volt
+
+design = volt.Design("first_led")
+
+vcc = design.net("+3V3", kind="power", voltage=3.3)
+led_a = design.net("LED_A")
+gnd = design.net("GND", kind="ground")
+
+j1 = design.connector_1x02(ref="J1")
+r1 = design.R("330 ohm", resistance=330, tolerance=0.01, ref="R1")
+d1 = design.LED(ref="D1")
+
+vcc += j1[1], r1[1]
+led_a += r1[2], d1["A"]
+gnd += d1["K"], j1[2]
+
+report = design.validate()
+if report.has_errors:
+    for diagnostic in report:
+        print(diagnostic.severity, diagnostic.code, diagnostic.message)
+    raise SystemExit(1)
+
+Path("build/dev/first_led.volt.json").write_text(design.to_json(), encoding="utf-8")
+design.write("build/dev/first_led.writer.volt.json")
+print("Wrote build/dev/first_led.volt.json")
+PY
+```
+
+## Add a schematic
+
+```python
+sheet = design.schematic("Main")
+
+with sheet.drawing(at=(30, 30), unit=20) as drawing:
+    resistor = drawing.two_terminal(r1).right().label_ref().label_value()
+    led = drawing.two_terminal(d1).right().reverse().label_ref()
+
+    drawing.connect(resistor.end, led.start, net=led_a)
+    drawing.power("+3V3", at=resistor.start, net=vcc)
+    drawing.ground("GND", at=led.end, net=gnd)
+    drawing.net_label(led_a, at=resistor.end.up(10))
+
+sheet.write_svg("build/dev/first_led.svg")
+sheet.write_json("build/dev/first_led.volt.schematic.json")
+```
+
+## What to read next
+
+<CardGroup cols={2}>
+  <Card title="Python overview" icon="route" href="/python/overview">
+    Learn the objects and ownership rules behind the authoring API.
+  </Card>
+  <Card title="LED walkthrough" icon="lightbulb" href="/examples/led">
+    See the same circuit broken into authoring steps.
+  </Card>
+</CardGroup>

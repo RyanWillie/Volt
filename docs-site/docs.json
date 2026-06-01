@@ -1,0 +1,97 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "Volt",
+  "description": "Python-first electronics design authoring over a kernel-owned EDA model.",
+  "theme": "mint",
+  "colors": {
+    "primary": "#0E7C66",
+    "light": "#18A783",
+    "dark": "#084C3D"
+  },
+  "icons": {
+    "library": "fontawesome"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Start",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "index",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/kernel-principles"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Python",
+        "groups": [
+          {
+            "group": "Authoring",
+            "pages": [
+              "python/overview",
+              "python/logical-authoring",
+              "python/schematic-authoring",
+              "python/pcb-authoring",
+              "python/diagnostics",
+              "python/reference"
+            ]
+          },
+          {
+            "group": "Generated API Reference",
+            "pages": [
+              "api/python/index",
+              "api/python/design",
+              "api/python/logical",
+              "api/python/library",
+              "api/python/schematic",
+              "api/python/pcb",
+              "api/python/diagnostics"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Examples",
+        "groups": [
+          {
+            "group": "Walkthroughs",
+            "pages": [
+              "examples/index",
+              "examples/led",
+              "examples/timer-555",
+              "examples/pcb-led-board",
+              "examples/stm32-usb-buck"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/RyanWillie/Volt"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Quickstart",
+      "href": "/quickstart"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/RyanWillie/Volt"
+    }
+  }
+}

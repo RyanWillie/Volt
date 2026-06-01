@@ -1,0 +1,35 @@
+---
+title: Kernel Principles
+description: The architecture rules that keep Volt's Python, schematic, and PCB layers honest.
+---
+
+Volt's architecture is built around one rule:
+
+```text
+Invalid kernel state should be impossible; bad circuit design should be diagnosable.
+```
+
+## Structural integrity belongs in mutations
+
+Operations that would corrupt the model are rejected immediately. Examples include missing IDs, dangling references, pin instances from another circuit, duplicate net names, duplicate component references, invalid selected-part mappings, and a pin connected to more than one net.
+
+## Design quality belongs in diagnostics
+
+Design intent can be incomplete or questionable without making the data structure invalid. Examples include unconnected required pins, single-pin nets, incompatible electrical roles, missing selected parts before PCB work, unreadable schematic geometry, or board-rule issues.
+
+## Python is syntax over kernel-owned state
+
+The public Python API should make authoring pleasant. It should not become an alternate owner of EDA meaning.
+
+| Layer | Owns |
+| --- | --- |
+| Logical circuit | Components, pins, nets, pin-to-net membership, selected parts, hierarchy |
+| Schematic projection | Sheets, symbols, wires, labels, ports, junctions, no-connect markers |
+| PCB projection | Layers, outline, footprints, placements, tracks, vias, zones, keepouts, text |
+| Python | Ergonomic syntax over the kernel-owned model |
+
+## Projection layers do not define connectivity
+
+Schematic wires and PCB tracks reference existing logical nets. They may visualize or physically implement connectivity, but they do not create, merge, split, or rename logical nets.
+
+This keeps importers, UI tools, examples, scripts, and future adapters from becoming alternate circuit kernels.

@@ -83,3 +83,15 @@ add_test(
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-kicad-boundary.py
 )
 set_tests_properties(kicad_adapter_boundary PROPERTIES LABELS cpp)
+
+add_test(
+    NAME docs_site
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-docs-site.py
+)
+set_tests_properties(docs_site PROPERTIES LABELS docs)
+
+add_test(
+    NAME python_api_docs
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/generate-python-api-docs.py --check
+)
+set_tests_properties(python_api_docs PROPERTIES LABELS docs)

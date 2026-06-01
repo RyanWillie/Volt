@@ -1,0 +1,32 @@
+---
+title: Examples
+description: A progression of Volt examples from tiny logical circuits to a larger board-style project.
+---
+
+The examples are intended to be read in order. Each one is backed by code in the repository so docs and behavior can be checked together.
+
+<CardGroup cols={2}>
+  <Card title="LED circuit" icon="lightbulb" href="/examples/led">
+    A tiny logical circuit with validation and JSON output.
+  </Card>
+  <Card title="555 timer blinker" icon="wave-square" href="/examples/timer-555">
+    A full logical plus schematic example with a custom IC symbol.
+  </Card>
+  <Card title="PCB LED board" icon="microchip" href="/examples/pcb-led-board">
+    Selected parts, footprints, schematic, board placement, routing, validation, and SVG.
+  </Card>
+  <Card title="STM32 USB buck" icon="layer-group" href="/examples/stm32-usb-buck">
+    Modules, library components, regional schematics, and a larger generated artifact set.
+  </Card>
+</CardGroup>
+
+## Source locations
+
+| Example | Source |
+| --- | --- |
+| LED schematic sugar | `examples/schematic_sugar/compact_led.py` |
+| 555 timer blinker | `examples/timer_555_led_blinker/main.py` |
+| PCB LED board | `examples/pcb_led_board/main.py` |
+| STM32 USB buck | `examples/stm32_usb_buck/` |
+
+Run Python examples through the build-tree package after `cmake --build --preset dev`.
