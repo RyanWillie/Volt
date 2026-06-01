@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>555 Timer PCB Benchmark</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #14212b;
+      --muted: #5f6e78;
+      --line: #cfd8df;
+      --paper: #fbfcfd;
+      --accent: #0f6f5f;
+    }
+    body {
+      margin: 0;
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #eef3f5;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 42px 28px 56px;
+      background: var(--paper);
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 28px 0 10px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+    }
+    code {
+      font: 0.92em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #e8eef1;
+      padding: 1px 4px;
+      border-radius: 4px;
+      color: #0d3440;
+    }
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    li {
+      margin: 5px 0;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+    .fact {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: white;
+    }
+    .fact b {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+    }
+    @media (max-width: 720px) {
+      main {
+        padding: 28px 18px 42px;
+      }
+      .summary {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>555 timer PCB benchmark</h1>
+    <p>
+      This example turns the existing Volt-native 555 LED blinker schematic into a routed
+      real-board PCB benchmark using public Python APIs over the kernel-owned PCB model.
+    </p>
+
+    <section class="summary" aria-label="Benchmark summary">
+      <div class="fact">
+        <b>Circuit</b>
+        NE555 astable LED blinker with timing RC network, control bypass, LED load, and power header.
+      </div>
+      <div class="fact">
+        <b>Board</b>
+        Two copper layers, silkscreen, rectangular outline, mounting holes, placements, tracks, and vias.
+      </div>
+      <div class="fact">
+        <b>Validation</b>
+        Logical, schematic, PCB-readiness, and board DRC reports must all serialize cleanly.
+      </div>
+    </section>
+
+    <h2>Why this board exists</h2>
+    <p>
+      VOL-161 needs one deterministic, routed, real-board PCB example that exercises the
+      public Python authoring facade without making Python the owner of EDA semantics.
+      The 555 timer is the better benchmark because the logical and schematic example
+      already exists, so the PCB layer proves that the same circuit can be carried through
+      physical part selection, footprint resolution, placement, routing, DRC, JSON, and SVG.
+    </p>
+
+    <h2>Committed artifacts</h2>
+    <ul>
+      <li><code>timer_555_led_blinker.volt.json</code></li>
+      <li><code>timer_555_led_blinker.volt.schematic.json</code></li>
+      <li><code>timer_555_led_blinker.svg</code>, body SVG, and page SVG</li>
+      <li><code>timer_555_led_blinker.volt.pcb.json</code></li>
+      <li><code>timer_555_led_blinker.pcb.svg</code></li>
+      <li><code>timer_555_led_blinker.validation.json</code></li>
+    </ul>
+
+    <h2>Boundary</h2>
+    <p>
+      The Python example describes author intent and calls kernel-backed mutation APIs.
+      Logical connectivity remains in the circuit model. The schematic only presents that
+      connectivity, and the PCB only implements it physically through selected parts,
+      footprint mappings, board geometry, copper, and validation artifacts.
+    </p>
+  </main>
+</body>
+</html>
