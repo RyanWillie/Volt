@@ -352,6 +352,7 @@ void append_pad_shapes(const Board &board, const FootprintLibrary &footprints,
                 !resolution->net().has_value()) {
                 continue;
             }
+            const auto net = resolution->net().value();
 
             const auto &pad = definition->pad(pad_id);
             auto layers = pad_copper_layers(board, pad, placement.side());
@@ -373,7 +374,7 @@ void append_pad_shapes(const Board &board, const FootprintLibrary &footprints,
 
             shapes.push_back(BoardCopperShape{
                 kind,
-                resolution->net().value(),
+                net,
                 std::move(layers),
                 std::vector{EntityRef::component_placement(placement_id),
                             EntityRef::footprint_pad(pad_id)},
@@ -686,7 +687,8 @@ shape_index_for_pad(const std::vector<BoardCopperShape> &shapes, ComponentPlacem
         if (!shapes[index].pad.has_value()) {
             continue;
         }
-        if (shapes[index].pad->placement == placement && shapes[index].pad->pad == pad) {
+        const auto shape_pad = shapes[index].pad.value();
+        if (shape_pad.placement == placement && shape_pad.pad == pad) {
             return index;
         }
     }

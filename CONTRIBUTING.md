@@ -28,11 +28,14 @@ Use normal CMake presets:
 cmake --preset dev
 cmake --build --preset dev
 ctest --preset dev
+cmake --workflow --preset clang-tidy
 cmake --build --preset dev --target docs
 ```
 
 The `dev` preset uses Ninja, a debug build, exported compile commands, and tests enabled.
 On macOS it also asks CMake to use the active macOS SDK via `CMAKE_OSX_SYSROOT=macosx`.
+Compiler warnings are treated as errors for Volt targets by default. The `clang-tidy`
+workflow runs first-party static analysis on Linux CI.
 
 Useful checks before sending changes:
 
@@ -40,6 +43,7 @@ Useful checks before sending changes:
 python3 scripts/check-format.py
 cmake --build --preset dev
 ctest --preset dev
+cmake --workflow --preset clang-tidy
 cmake --build --preset dev --target docs
 ```
 

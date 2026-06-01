@@ -205,7 +205,7 @@ class ElectricalAttributeMap {
     /** Set or replace an attribute value after checking it against the spec. */
     void set(const ElectricalAttributeSpec &spec, ElectricalAttributeValue value) {
         spec.require_compatible(value);
-        entries_.insert_or_assign(spec.name(), std::move(value));
+        entries_.insert_or_assign(spec.name(), value);
     }
 
     /** Return an attribute value or throw if the name is missing. */

@@ -15,5 +15,6 @@ target_include_directories(
         $<INSTALL_INTERFACE:include>
 )
 volt_apply_project_warnings(volt_kicad_adapter PRIVATE)
+volt_apply_clang_tidy(volt_kicad_adapter)
 volt_apply_sanitizers(volt_kicad_adapter)
 volt_apply_coverage(volt_kicad_adapter)

@@ -30,5 +30,6 @@ target_include_directories(
         $<INSTALL_INTERFACE:include>
 )
 volt_apply_project_warnings(volt_schematic PRIVATE)
+volt_apply_clang_tidy(volt_schematic)
 volt_apply_sanitizers(volt_schematic)
 volt_apply_coverage(volt_schematic)

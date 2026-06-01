@@ -55,8 +55,9 @@ derive_ratsnest_edges(const std::vector<PadResolution> &resolutions) {
             !resolution.net().has_value()) {
             continue;
         }
+        const auto net = resolution.net().value();
         endpoints.push_back(EndpointWithNet{
-            resolution.net().value(),
+            net,
             RatsnestEndpoint{resolution.placement(), resolution.component(), resolution.pad(),
                              resolution.position()},
         });

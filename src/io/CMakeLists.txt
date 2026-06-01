@@ -45,5 +45,6 @@ target_include_directories(
         $<INSTALL_INTERFACE:include>
 )
 volt_apply_project_warnings(volt_io PRIVATE)
+volt_apply_clang_tidy(volt_io)
 volt_apply_sanitizers(volt_io)
 volt_apply_coverage(volt_io)

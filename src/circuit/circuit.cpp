@@ -37,7 +37,7 @@ namespace volt {
         throw std::out_of_range{"Pin instance references a missing pin definition"};
     }
 
-    return pins_.insert(std::move(pin));
+    return pins_.insert(pin);
 }
 [[nodiscard]] NetId Circuit::add_net(Net net) {
     if (net_by_name(net.name()).has_value()) {
@@ -340,14 +340,14 @@ void Circuit::set_component_electrical_attribute(ComponentId component,
                                                  ElectricalAttributeValue value) {
     require_component(component);
     require_attribute_owner(spec, ElectricalAttributeOwner::ComponentInstance);
-    components_.get(component).set_electrical_attribute(spec, std::move(value));
+    components_.get(component).set_electrical_attribute(spec, value);
 }
 void Circuit::set_pin_definition_electrical_attribute(PinDefId pin_definition,
                                                       const ElectricalAttributeSpec &spec,
                                                       ElectricalAttributeValue value) {
     require_pin_definition(pin_definition);
     require_attribute_owner(spec, ElectricalAttributeOwner::PinSpec);
-    pin_definitions_.get(pin_definition).set_electrical_attribute(spec, std::move(value));
+    pin_definitions_.get(pin_definition).set_electrical_attribute(spec, value);
 }
 void Circuit::select_physical_part(ComponentId component, PhysicalPart physical_part) {
     require_component(component);
@@ -361,13 +361,13 @@ void Circuit::set_selected_part_electrical_attribute(ComponentId component,
                                                      ElectricalAttributeValue value) {
     require_component(component);
     require_attribute_owner(spec, ElectricalAttributeOwner::SelectedPart);
-    components_.get(component).set_selected_part_electrical_attribute(spec, std::move(value));
+    components_.get(component).set_selected_part_electrical_attribute(spec, value);
 }
 void Circuit::set_net_electrical_attribute(NetId net, const ElectricalAttributeSpec &spec,
                                            ElectricalAttributeValue value) {
     require_net(net);
     require_attribute_owner(spec, ElectricalAttributeOwner::Net);
-    nets_.get(net).set_electrical_attribute(spec, std::move(value));
+    nets_.get(net).set_electrical_attribute(spec, value);
 }
 bool Circuit::mark_intentional_stub_net(NetId net) {
     require_net(net);
