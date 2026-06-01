@@ -89,7 +89,26 @@ docs                   architecture, format, authoring, and development notes
 
 ## Documentation
 
-Volt uses Doxygen for public API documentation:
+Volt has two documentation surfaces:
+
+- Public user docs live in `docs-site/` as a Mintlify site.
+- C++ API documentation is generated with Doxygen from public headers and project docs.
+
+Preview the public docs with the Mintlify CLI:
+
+```sh
+cd docs-site
+mint dev
+```
+
+Check that the public docs stay aligned with the Python API and example workflows:
+
+```sh
+python3 scripts/generate-python-api-docs.py --check
+python3 scripts/check-docs-site.py
+```
+
+Generate C++ API documentation with:
 
 ```sh
 cmake --build --preset dev --target docs

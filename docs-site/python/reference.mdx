@@ -1,0 +1,106 @@
+---
+title: Python API Reference
+description: Compact reference for the public objects exported from the top-level volt Python package.
+---
+
+This page is the human-readable index for the public names exported by `volt.__all__`. For generated signatures and source-derived method lists, use the generated API reference.
+
+<Note>
+  The repository checks this page with `python3 scripts/check-docs-site.py`. Generated API pages are checked separately with `python3 scripts/generate-python-api-docs.py --check`.
+</Note>
+
+<Card title="Generated Python API Reference" icon="book-open" href="/api/python/index">
+  Browse generated pages for `Design`, logical handles, library specs, schematic authoring, PCB authoring, and diagnostics.
+</Card>
+
+## Design root
+
+| Export | Purpose |
+| --- | --- |
+| `volt.Design` | Root handle for one kernel-owned logical circuit plus schematic and PCB projections. |
+
+Common methods: `net`, `nets`, `R`, `C`, `CP`, `L`, `LED`, `diode`, `switch`, `crystal`, `test_point`, `connector_1x01`, `connector_1x02`, `connector_1x03`, `regulator`, `op_amp`, `define_component`, `define_module`, `instantiate`, `schematic`, `board`, `validate`, `validate_for_pcb`, `to_json`, and `write`.
+
+## Logical circuit handles
+
+| Export | Purpose |
+| --- | --- |
+| `volt.Component` | Component instance handle. |
+| `volt.ComponentDefinition` | Reusable logical component definition handle. |
+| `volt.Pin` | Concrete pin handle. |
+| `volt.PinGroup` | Group of concrete pins resolved from a component. |
+| `volt.Net` | Logical net handle with connection helpers. |
+| `volt.ModuleDefinition` | Reusable logical subcircuit definition. |
+| `volt.ModuleInstance` | Root-level module instance handle. |
+| `volt.ModuleInstancePort` | Port handle on a concrete module instance. |
+| `volt.ModuleComponent` | Component template inside a module definition. |
+| `volt.ModulePin` | Module-local component pin handle. |
+| `volt.ModulePinGroup` | Group of module-local pins. |
+| `volt.ModuleNet` | Module-local internal net. |
+| `volt.ModulePort` | Module-local port. |
+
+Inspection records: `volt.TemplateNetInfo`, `volt.PortInfo`, `volt.ModuleComponentInfo`, `volt.ModuleConnectionInfo`, `volt.ModuleNetOriginInfo`, `volt.ModuleComponentOriginInfo`, `volt.PortBindingInfo`.
+
+## Library and component specs
+
+| Export | Purpose |
+| --- | --- |
+| `volt.PinSpec` | Data for a component pin definition. |
+| `volt.PhysicalPartSpec` | Reusable selected physical part data. |
+| `volt.Library` | Namespace/versioned collection of reusable `LibraryComponent` specs. |
+| `volt.LibraryComponent` | Reusable logical component spec with optional selected part and symbols. |
+| `volt.SchematicSymbolSpec` | Kernel-serializable symbol definition spec. |
+| `volt.SchematicSymbolPinSpec` | Symbol pin geometry and metadata. |
+| `volt.SchematicBlockPinSpec` | Declarative IC/block symbol pin placement. |
+| `volt.SchematicBlockSideLayoutSpec` | Declarative IC/block symbol side layout. |
+
+## Schematic authoring
+
+| Export | Purpose |
+| --- | --- |
+| `volt.Schematic` | One schematic sheet facade. |
+| `volt.SchematicRegion` | Visual region within a schematic sheet. |
+| `volt.SchematicDrawing` | Cursor-based schematic drawing session. |
+| `volt.SchematicWireBuilder` | Fluent builder for wire runs. |
+| `volt.SchematicTwoTerminalElement` | Fluent handle for placed two-terminal elements. |
+| `volt.SchematicAnchor` | Generic schematic coordinate anchor. |
+| `volt.SchematicPinAnchor` | Anchor tied to a logical pin. |
+| `volt.SchematicPort` | Sheet or terminal port handle. |
+| `volt.SchematicJunction` | Junction marker handle. |
+| `volt.SchematicNoConnect` | Intentional no-connect marker handle. |
+| `volt.SchematicSymbol` | Placed symbol handle. |
+| `volt.PlacedSchematicElement` | Base-style handle for placed schematic elements. |
+| `volt.SchematicWire` | Wire run handle. |
+| `volt.SchematicNetLabel` | Net label handle. |
+| `volt.SchematicSignalStub` | Signal stub handle. |
+| `volt.SchematicSignalTag` | Signal tag handle. |
+| `volt.SchematicTerminalStub` | Power/ground terminal stub handle. |
+| `volt.SchematicSymbolField` | Symbol field label handle. |
+
+## PCB authoring
+
+| Export | Purpose |
+| --- | --- |
+| `volt.Board` | PCB projection facade. |
+| `volt.Footprint` | Footprint reference value. |
+| `volt.FootprintDefinition` | Cached footprint geometry definition. |
+| `volt.FootprintPad` | Surface-mount or through-hole pad definition. |
+| `volt.FootprintDrill` | Through-hole drill definition. |
+| `volt.PadResolution` | Resolved component-pad-to-net inspection record. |
+
+## Diagnostics
+
+| Export | Purpose |
+| --- | --- |
+| `volt.DiagnosticReport` | Iterable validation report with `has_errors`. |
+| `volt.Diagnostic` | One diagnostic severity, code, message, and entity list. |
+| `volt.DiagnosticEntity` | Reference to an entity involved in a diagnostic. |
+
+## Example lookup
+
+<CardGroup cols={2}>
+  <Card title="Logical authoring" icon="network-wired" href="/python/logical-authoring" />
+  <Card title="Schematic authoring" icon="diagram-project" href="/python/schematic-authoring" />
+  <Card title="PCB authoring" icon="microchip" href="/python/pcb-authoring" />
+  <Card title="Diagnostics" icon="circle-exclamation" href="/python/diagnostics" />
+</CardGroup>

@@ -1,0 +1,173 @@
+---
+title: Library
+description: Generated reference for library, component, pin, and schematic symbol specs.
+---
+This page is generated from the public Python source. Add or improve docstrings in `python/volt` to improve the reference.
+
+## `volt.Library`
+
+Collection of reusable Python-authored component definitions.
+
+Source: `python/volt/library.py`
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `component(self, name: str, *, pins: Iterable[PinSpec], properties: dict \| None = None, source_name: str \| None = None, source_version: str \| None = None, physical_part: PhysicalPartSpec \| None = None, prefix: str = 'U', schematic_symbol: SchematicSymbolSpec \| Iterable[SchematicSymbolSpec] \| None = None) -> LibraryComponent` | No docstring yet. |
+| `__getitem__(self, name: str) -> LibraryComponent` | No docstring yet. |
+
+## `volt.LibraryComponent`
+
+Reusable component entry owned by a Python library.
+
+Source: `python/volt/library.py`
+
+### Fields
+
+| Field |
+| --- |
+| `library: Library` |
+| `name: str` |
+| `pins: tuple[PinSpec, ...]` |
+| `properties: dict` |
+| `source_name: str` |
+| `source_version: str` |
+| `physical_part: PhysicalPartSpec \| None` |
+| `prefix: str` |
+| `schematic_symbols: tuple[SchematicSymbolSpec, ...]` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `cache_key(self) -> tuple[str, str, str, str]` | No docstring yet. |
+| `schematic_symbol(self) -> SchematicSymbolSpec \| None` | No docstring yet. |
+
+## `volt.PinSpec`
+
+Reusable pin definition data for Python-authored component definitions.
+
+Source: `python/volt/library.py`
+
+### Fields
+
+| Field |
+| --- |
+| `name: str` |
+| `number: int \| str` |
+| `role: str` |
+| `requirement: str` |
+| `terminal: str` |
+| `direction: str` |
+| `signal: str` |
+| `drive: str` |
+| `polarity: str` |
+| `voltage_range: tuple[float \| None, float \| None] \| None` |
+
+## `volt.PhysicalPartSpec`
+
+Reusable selected physical part data for library-authored components.
+
+Source: `python/volt/library.py`
+
+### Fields
+
+| Field |
+| --- |
+| `manufacturer: str` |
+| `part_number: str` |
+| `package: str` |
+| `footprint: FootprintInput` |
+| `pin_pads: dict[int \| str, PinPadValue] \| None` |
+| `properties: dict \| None` |
+| `voltage_rating: float \| None` |
+| `power_rating: float \| None` |
+| `same_numbered_pads: bool` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `same_numbered(cls, *, manufacturer: str, part_number: str, package: str, footprint: FootprintInput, properties: dict \| None = None, voltage_rating: float \| None = None, power_rating: float \| None = None) -> PhysicalPartSpec` | No docstring yet. |
+| `pin_pads_for(self, component: LibraryComponent) -> dict[int \| str, PinPadValue]` | No docstring yet. |
+
+## `volt.SchematicBlockPinSpec`
+
+Pin placement input for generic block and IC schematic symbols.
+
+Source: `python/volt/library.py`
+
+### Fields
+
+| Field |
+| --- |
+| `name: str` |
+| `number: int \| str` |
+| `side: str` |
+| `slot: int \| None` |
+| `label: str \| None` |
+
+## `volt.SchematicBlockSideLayoutSpec`
+
+Per-side placement overrides for generic block and IC schematic symbols.
+
+Source: `python/volt/library.py`
+
+### Fields
+
+| Field |
+| --- |
+| `side: str` |
+| `pad: float \| None` |
+| `lead_length: float \| None` |
+| `pin_pitch: float \| None` |
+| `pin_label_offset: float \| None` |
+| `pin_number_offset: float \| None` |
+
+## `volt.SchematicSymbolPinSpec`
+
+Reusable visual pin anchor data for Python-authored schematic symbols.
+
+Source: `python/volt/library.py`
+
+### Fields
+
+| Field |
+| --- |
+| `name: str` |
+| `number: int \| str` |
+| `at: tuple[float, float]` |
+| `orientation: str` |
+
+## `volt.SchematicSymbolSpec`
+
+Reusable Volt-native schematic symbol data for Python-authored libraries.
+
+Source: `python/volt/library.py`
+
+### Fields
+
+| Field |
+| --- |
+| `name: str` |
+| `pins: tuple[SchematicSymbolPinSpec, ...]` |
+| `primitives: tuple[dict, ...]` |
+| `variant: str` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `pin(name: str, number: int \| str, at: tuple[float, float], orientation: str = 'Right') -> SchematicSymbolPinSpec` | No docstring yet. |
+| `block_pin(name: str, number: int \| str, *, side: str, slot: int \| None = None, label: str \| None = None) -> SchematicBlockPinSpec` | No docstring yet. |
+| `ic_pin(name: str, number: int \| str, *, side: str, slot: int \| None = None, label: str \| None = None) -> SchematicBlockPinSpec` | No docstring yet. |
+| `side_layout(side: str, *, pad: float \| None = None, lead_length: float \| None = None, pin_pitch: float \| None = None, pin_label_offset: float \| None = None, pin_number_offset: float \| None = None) -> SchematicBlockSideLayoutSpec` | No docstring yet. |
+| `block(name: str, *, pins: Iterable[SchematicBlockPinSpec], width: float \| None = None, height: float \| None = None, lead_length: float = 6, pin_pitch: float = 10, pin_label_offset: float = 2, side_layouts: Iterable[SchematicBlockSideLayoutSpec] = (), center_label: str \| None = None, bottom_label: str \| None = None, pin_labels: bool = True, pin_numbers: bool = False, pin_number_offset: float = 2, variant: str = 'default') -> SchematicSymbolSpec` | No docstring yet. |
+| `ic(name: str, *, pins: Iterable[SchematicBlockPinSpec], width: float \| None = None, height: float \| None = None, lead_length: float = 6, pin_pitch: float = 10, pin_label_offset: float = 2, side_layouts: Iterable[SchematicBlockSideLayoutSpec] = (), center_label: str \| None = None, bottom_label: str \| None = None, pin_labels: bool = True, pin_numbers: bool = False, pin_number_offset: float = 2, variant: str = 'default') -> SchematicSymbolSpec` | No docstring yet. |
+| `line(start: tuple[float, float], end: tuple[float, float], *, role: str \| None = None) -> dict` | No docstring yet. |
+| `terminal_lead(start: tuple[float, float], end: tuple[float, float], *, terminal: str) -> dict` | No docstring yet. |
+| `rectangle(first_corner: tuple[float, float], second_corner: tuple[float, float]) -> dict` | No docstring yet. |
+| `circle(center: tuple[float, float], radius: float) -> dict` | No docstring yet. |
+| `arc(center: tuple[float, float], radius: float, start_degrees: float, sweep_degrees: float) -> dict` | No docstring yet. |
+| `text(text: str, at: tuple[float, float], orientation: str = 'Right', *, align: str = 'middle', baseline: str = 'baseline', font_size: float \| None = None) -> dict` | No docstring yet. |

@@ -1,0 +1,42 @@
+---
+title: STM32 USB Buck
+description: Study a larger generated design with modules, library components, regional schematic authoring, and project-level organization.
+---
+
+The STM32 USB buck example shows how Volt scales beyond a single-file toy design while keeping kernel ownership clear.
+
+Source: `examples/stm32_usb_buck/`.
+
+## What it demonstrates
+
+- Reusable logical modules for power, USB, support circuitry, and LEDs.
+- A small library in `python/volt/libraries/stm32_usb_buck.py`.
+- Module instance port binding into parent nets.
+- Custom schematic symbols for MCU, USB, passives, connectors, and regulators.
+- Regional schematic authoring for power, MCU, and connector areas.
+- Generated logical JSON, schematic JSON, SVG, per-page SVG, and validation report JSON.
+
+## Project shape
+
+| File | Responsibility |
+| --- | --- |
+| `stm32_board.py` | Top-level logical composition. |
+| `power_blocks.py` | Power input and regulator module. |
+| `connection_blocks.py` | USB and connector modules. |
+| `utility_blocks.py` | External supply and LED helper modules. |
+| `schematic_output.py` | Sheet metadata and region orchestration. |
+| `schematic_power.py` | Power-region drawing. |
+| `schematic_mcu.py` | MCU-region drawing. |
+| `schematic_connectors.py` | USB and connector-region drawing. |
+
+## Pattern to copy
+
+Keep logical composition separate from schematic projection:
+
+```python
+project = build_board()
+design = project.design
+schematic = build_schematic(project)
+```
+
+That separation makes it easier to test logical correctness independently from schematic readability.

@@ -1,0 +1,43 @@
+---
+title: Design
+description: Generated reference for the design root and top-level authoring helpers.
+---
+This page is generated from the public Python source. Add or improve docstrings in `python/volt` to improve the reference.
+
+## `volt.Design`
+
+Root Python handle for one kernel-owned logical circuit.
+
+Source: `python/volt/design.py`
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `net(self, name: str, *, kind: str = 'signal', voltage: float \| None = None) -> Net` | No docstring yet. |
+| `nets(self) -> tuple[Net, ...]` | No docstring yet. |
+| `R(self, value: str \| None = None, *, resistance: float \| None = None, tolerance: float \| None = None, ref: str \| None = None) -> Component` | No docstring yet. |
+| `C(self, value: str \| None = None, *, capacitance: float \| None = None, voltage_rating: float \| None = None, ref: str \| None = None) -> Component` | No docstring yet. |
+| `CP(self, value: str \| None = None, *, capacitance: float \| None = None, voltage_rating: float \| None = None, ref: str \| None = None) -> Component` | No docstring yet. |
+| `L(self, value: str \| None = None, *, inductance: float \| None = None, ref: str \| None = None) -> Component` | No docstring yet. |
+| `define_component(self, name: str, *, pins: Iterable[PinSpec], properties: dict \| None = None, source: tuple[str, str, str] \| None = None, schematic_symbol: SchematicSymbolSpec \| Iterable[SchematicSymbolSpec] \| None = None) -> ComponentDefinition` | No docstring yet. |
+| `define_module(self, name: str) -> ModuleDefinition` | No docstring yet. |
+| `instantiate(self, definition: ComponentDefinition \| ModuleDefinition \| LibraryComponent, *, ref: str \| None = None, prefix: str \| None = None, properties: dict \| None = None) -> Component \| ModuleInstance` | No docstring yet. |
+| `LED(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
+| `diode(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
+| `switch(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
+| `crystal(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
+| `test_point(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
+| `connector_1x01(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
+| `connector_1x02(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
+| `connector_1x03(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
+| `regulator(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
+| `op_amp(self, *, ref: str \| None = None) -> Component` | No docstring yet. |
+| `schematic(self, name: str, *, size: str \| tuple[float, float] \| dict \| None = None, orientation: str \| None = None, title: str \| None = None, number: str \| int \| None = None, page_count: str \| int \| None = None, revision: str \| None = None, date: str \| None = None, project: str \| None = None, file: str \| None = None, title_block: dict[str, str] \| Iterable[tuple[str, str] \| dict] \| None = None, margins: float \| tuple[float, float, float, float] \| dict \| None = None, coordinate_zones: tuple[int, int] \| dict \| None = None, grid: float \| dict \| None = None) -> Schematic` | No docstring yet. |
+| `board(self, name: str = 'Main')` | No docstring yet. |
+| `load_schematic_json(self, text: str) -> Schematic` | No docstring yet. |
+| `load_schematic(self, path: str \| Path) -> Schematic` | No docstring yet. |
+| `validate(self) -> DiagnosticReport` | No docstring yet. |
+| `validate_for_pcb(self) -> DiagnosticReport` | No docstring yet. |
+| `to_json(self) -> str` | No docstring yet. |
+| `write(self, path: str \| Path) -> None` | No docstring yet. |

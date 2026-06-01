@@ -1,0 +1,55 @@
+---
+title: LED Circuit
+description: Build a minimal LED circuit and validate the logical model.
+---
+
+This is the smallest useful Volt pattern: create nets, instantiate built-in parts, connect pins, validate, and write logical JSON.
+
+```python
+import volt
+
+design = volt.Design("led")
+
+vcc = design.net("VCC", kind="power")
+led_a = design.net("LED_A")
+gnd = design.net("GND", kind="ground")
+
+j1 = design.connector_1x02(ref="J1")
+r1 = design.R("330 ohm", ref="R1")
+d1 = design.LED(ref="D1")
+
+vcc += j1[1], r1[1]
+led_a += r1[2], d1["A"]
+gnd += d1["K"], j1[2]
+
+report = design.validate()
+assert not report.has_errors
+
+design.write("led.volt.json")
+```
+
+## What this teaches
+
+- Nets own logical connectivity.
+- Component helpers lazily create kernel-owned component definitions.
+- Components can be indexed by pin number or pin name.
+- Validation returns a `DiagnosticReport`; it does not mutate the design.
+
+## Add a small schematic
+
+```python
+sheet = design.schematic("Main")
+
+with sheet.drawing(at=(20, 20), unit=20) as drawing:
+    resistor = drawing.two_terminal(r1).right().label_ref().label_value()
+    led = drawing.two_terminal(d1).right().reverse().label_ref()
+
+    drawing.connect(resistor.end, led.start, net=led_a)
+    drawing.power("VCC", net=vcc, at=resistor.start)
+    drawing.ground("GND", net=gnd, at=led.end)
+    drawing.net_label(led_a, at=resistor.end.up(10))
+
+sheet.write_svg("led.svg")
+```
+
+For a repository-backed version, see `examples/schematic_sugar/compact_led.py`.

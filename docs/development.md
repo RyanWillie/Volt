@@ -62,6 +62,29 @@ Documentation is generated with Doxygen from public headers and Markdown docs. T
 keeps Doxygen optional for normal compilation, but public APIs should be documented as
 they are added.
 
+The public-facing user docs live in `docs-site/` as a Mintlify site. Preview them with
+the Mintlify CLI:
+
+```sh
+cd docs-site
+mint dev
+```
+
+Keep the public docs aligned with the Python API and example workflows:
+
+```sh
+python3 scripts/generate-python-api-docs.py
+python3 scripts/generate-python-api-docs.py --check
+python3 scripts/check-docs-site.py
+ctest --preset dev -L docs --output-on-failure
+```
+
+The docs-site check validates Mintlify navigation, required first-read pages,
+frontmatter, workflow snippets, and coverage of the public names exported by
+`python/volt/__init__.py`. The generated API check validates that
+`docs-site/api/python/` matches the signatures, docstrings, and exported symbols in
+`python/volt`.
+
 Build performance-sensitive benchmark executables with:
 
 ```sh

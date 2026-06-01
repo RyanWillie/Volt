@@ -1,0 +1,56 @@
+---
+title: Diagnostics
+description: Understand the difference between rejected structural mutations and design-quality validation results.
+---
+
+Volt uses two feedback paths: exceptions for invalid structural mutations and diagnostics for design-quality findings.
+
+## Exceptions reject invalid state
+
+Structural integrity belongs at mutation boundaries. If an operation would make the kernel state invalid, Volt raises and does not continue with a partial model.
+
+Common examples:
+
+- Duplicate component references.
+- Duplicate net names.
+- Unknown or duplicate pins in selected-part pad mappings.
+- A pin connected to more than one net.
+- Schematic or PCB references to IDs that do not belong to the design.
+
+## Diagnostics report design intent issues
+
+Validation reports incomplete or questionable design intent without pretending the data structure is invalid.
+
+```python
+report: volt.DiagnosticReport = design.validate()
+
+if report.has_errors:
+    for diagnostic in report:
+        print(diagnostic.severity, diagnostic.code, diagnostic.message)
+        for entity in diagnostic.entities:
+            print("  ", entity.kind, entity.index)
+```
+
+Each `diagnostic.code` is stable enough for tests and tooling to classify. The human-readable message is for display.
+
+## Which validator to run
+
+| Stage | Call | Typical findings |
+| --- | --- | --- |
+| Logical circuit | `design.validate()` | Unconnected required pins, single-pin nets, incompatible electrical roles |
+| PCB readiness | `design.validate_for_pcb()` | Components that need selected physical parts before board work |
+| Schematic projection | `schematic.validate()` | Missing presentation references or structurally invalid projection data |
+| Schematic readability | `schematic.validate_readability()` | Hard-to-read routes, labels, geometry, and density issues |
+| PCB projection | `board.validate()` | Missing footprints, invalid physical layout, rule violations |
+
+## Testing pattern
+
+Treat diagnostics as part of the authoring contract.
+
+```python
+report = design.validate()
+assert not report.has_errors
+assert {diagnostic.code for diagnostic in report} == set()
+```
+
+For examples and generated artifacts, fail fast on unexpected diagnostics so drift is caught in CI.

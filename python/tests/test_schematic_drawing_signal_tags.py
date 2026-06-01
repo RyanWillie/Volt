@@ -84,6 +84,7 @@ def test_python_schematic_signal_tag_sugar_emits_short_wire_and_port_tag():
     projection = schematic_projection(schematic)
 
     assert design.to_json() == logical_before
+    assert isinstance(tag, volt.SchematicSignalTag)
     assert tag.start.point == (40.0, 40.0)
     assert tag.end.point == (46.0, 40.0)
     assert tag.port.pin.point == (46.0, 40.0)

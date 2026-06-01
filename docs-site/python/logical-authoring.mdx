@@ -1,0 +1,122 @@
+---
+title: Logical Authoring
+description: Create components, nets, hierarchy, selected parts, and logical JSON from Python.
+---
+
+Logical authoring is the source of truth for connectivity. Start here before creating schematic or PCB projections.
+
+## Built-in components
+
+```python
+import volt
+
+design = volt.Design("divider")
+
+vin = design.net("VIN", kind="power", voltage=5.0)
+vout = design.net("VOUT")
+gnd = design.net("GND", kind="ground")
+
+top = design.R("10k", resistance=10_000, tolerance=0.01, ref="R1")
+bottom = design.R("20k", resistance=20_000, tolerance=0.01, ref="R2")
+
+vin += top[1]
+vout += top[2], bottom[1]
+gnd += bottom[2]
+```
+
+Built-in helpers include `R`, `C`, `CP`, `L`, `LED`, `diode`, `switch`, `crystal`, `test_point`, `connector_1x01`, `connector_1x02`, `connector_1x03`, `regulator`, and `op_amp`.
+
+## Pin access
+
+Two-terminal parts accept numbered pin access:
+
+```python
+r1 = design.R("330 ohm", ref="R1")
+pin = r1[1]
+```
+
+Named-pin parts accept string access:
+
+```python
+led = design.LED(ref="D1")
+anode = led["A"]
+cathode = led["K"]
+```
+
+When documenting or teaching the API, read `net += pin` as "connect this existing logical pin to this existing logical net."
+
+## Custom components
+
+Use `PinSpec` to define reusable logical component shapes.
+
+```python
+opamp = design.define_component(
+    "OpAmp",
+    pins=[
+        volt.PinSpec("OUT", 1, role="output", terminal="signal", direction="output"),
+        volt.PinSpec("IN-", 2, role="input", terminal="signal", direction="input"),
+        volt.PinSpec("IN+", 3, role="input", terminal="signal", direction="input"),
+        volt.PinSpec("V-", 4, role="ground", terminal="ground"),
+        volt.PinSpec("V+", 8, role="power", terminal="power", voltage_range=(2.7, 5.5)),
+    ],
+)
+
+u1 = design.instantiate(opamp, ref="U1")
+```
+
+`PinSpec` lowers into kernel-owned pin definitions. The Python object is not the circuit model.
+
+## Selected physical parts
+
+Attach physical implementation data to a component instance before PCB validation.
+
+```python
+r1.select_part(
+    manufacturer="Yageo",
+    part_number="RC0603FR-07330RL",
+    package="0603",
+    footprint=("passives", "R_0603_1608Metric"),
+    pin_pads={1: "1", 2: "2"},
+    power_rating=0.1,
+)
+```
+
+Selected parts own package, footprint identity, logical-pin-to-pad mapping, metadata, and selected-part electrical ratings. Invalid mappings are rejected at mutation time.
+
+## Modules
+
+Modules are reusable logical subcircuits with explicit ports.
+
+```python
+resistor = design.define_component(
+    "Resistor",
+    pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+)
+
+divider = design.define_module("Divider")
+vin = divider.port("VIN", kind="power", role="power_input")
+out = divider.port("OUT")
+r1 = divider.instantiate(resistor, ref="R1")
+
+vin += r1[1]
+out += r1[2]
+
+parent_vin = design.net("VIN", kind="power")
+parent_out = design.net("OUT")
+instance = design.instantiate(divider, ref="DIV_A")
+
+parent_vin += instance["VIN"]
+parent_out += instance["OUT"]
+```
+
+Module contents and port bindings serialize through logical JSON. Inspection helpers such as `template_nets()`, `ports()`, `components()`, `connections()`, `net_origins()`, `component_origins()`, and `port_bindings()` return read-only records, not mutation handles.
+
+## Serialization
+
+```python
+report = design.validate()
+if not report.has_errors:
+    design.write("divider.volt.json")
+```
+
+`design.write(...)` writes the logical circuit. Schematic and PCB projections write their own JSON artifacts.

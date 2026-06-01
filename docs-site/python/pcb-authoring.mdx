@@ -1,0 +1,99 @@
+---
+title: PCB Authoring
+description: Describe PCB layers, footprints, placements, routing, zones, keepouts, text, validation, and output.
+---
+
+PCB authoring projects the logical design into physical board data. It requires selected physical parts and cached footprint definitions for components you place.
+
+## Board setup
+
+```python
+board = design.board("First Board LED")
+
+front = board.add_layer("F.Cu", role="copper", side="top")
+back = board.add_layer("B.Cu", role="copper", side="bottom")
+
+board.set_layer_stack((front, back), thickness=1.6)
+board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 18.0))
+```
+
+## Footprints
+
+```python
+resistor_0603 = volt.FootprintDefinition(
+    ("passives", "R_0603_1608Metric"),
+    pads=(
+        volt.FootprintPad.surface_mount(
+            "1",
+            at=(-0.75, 0.0),
+            size=(0.80, 0.95),
+            shape="rounded_rectangle",
+        ),
+        volt.FootprintPad.surface_mount(
+            "2",
+            at=(0.75, 0.0),
+            size=(0.80, 0.95),
+            shape="rounded_rectangle",
+        ),
+    ),
+)
+
+board.cache_footprint(resistor_0603)
+```
+
+Footprint identities must match the selected part footprint attached to the logical component.
+
+## Placement and routing
+
+```python
+board.place(r1, at=(15.0, 7.0), rotation=0.0, side="top")
+board.place(d1, at=(24.0, 7.0), rotation=180.0, side="top")
+
+board.add_track(
+    led_a,
+    layer=front,
+    points=[(15.75, 7.0), (20.0, 3.0), (24.75, 7.0)],
+    width=0.25,
+)
+
+board.add_via(gnd, at=(10.0, 10.0), start_layer=front, end_layer=back, drill=0.3, annular=0.6)
+```
+
+Tracks and vias reference existing logical nets. Board data implements connectivity; it does not define the netlist.
+
+## Zones, keepouts, and text
+
+```python
+board.add_zone(
+    net=gnd,
+    layers=(front, back),
+    outline=[(2.0, 2.0), (30.0, 2.0), (30.0, 16.0), (2.0, 16.0)],
+    fill="solid",
+    priority=0,
+)
+
+board.add_keepout(
+    layers=(front,),
+    outline=[(4.0, 4.0), (8.0, 4.0), (8.0, 8.0), (4.0, 8.0)],
+    restrictions=("tracks", "vias"),
+)
+
+board.add_text("Volt", at=(16.0, 15.0), layer=front, size=1.2)
+```
+
+## Validate and write
+
+```python
+readiness = design.validate_for_pcb()
+board_report = board.validate()
+
+if readiness.has_errors or board_report.has_errors:
+    for report in (readiness, board_report):
+        for diagnostic in report:
+            print(diagnostic.severity, diagnostic.code, diagnostic.message)
+
+board.write_json("board.volt.pcb.json")
+board.write_svg("board.svg")
+```
+
+`board.validate()` catches board-level issues such as missing footprint definitions, invalid layer usage, and DRC-style projection problems.
