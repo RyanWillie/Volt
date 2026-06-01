@@ -14,26 +14,26 @@ Source: `python/volt/pcb.py`
 
 | Method | Summary |
 | --- | --- |
-| `design_rules(self) -> dict[str, float]` | No docstring yet. |
-| `set_design_rules(self, *, copper_clearance: float \| None = None, min_track_width: float \| None = None, min_via_drill: float \| None = None, min_via_annular: float \| None = None, board_outline_clearance: float \| None = None) -> Board` | No docstring yet. |
-| `add_layer(self, name: str, *, role: str, side: str, thickness: float = 0.0, enabled: bool = True) -> int` | No docstring yet. |
-| `set_layer_stack(self, layers: Iterable[int], *, thickness: float) -> Board` | No docstring yet. |
-| `set_rectangular_outline(self, *, origin: Point, size: Point) -> Board` | No docstring yet. |
-| `set_polygon_outline(self, vertices: Iterable[Point]) -> Board` | No docstring yet. |
-| `add_mounting_hole(self, label: str, *, at: Point, diameter: float) -> int` | No docstring yet. |
-| `cache_footprint(self, footprint: Footprint) -> int` | No docstring yet. |
-| `place(self, component: Component \| int, *, at: Point, rotation: float = 0.0, side: str = 'top', locked: bool = False) -> int` | No docstring yet. |
-| `add_track(self, net: Net \| int, *, layer: int, points: Iterable[Point], width: float) -> int` | No docstring yet. |
-| `add_via(self, net: Net \| int, *, at: Point, start_layer: int, end_layer: int, drill: float = 0.3, annular: float = 0.7) -> int` | No docstring yet. |
-| `add_zone(self, *, outline: Iterable[Point], layers: Iterable[int], net: Net \| int \| None = None, fill: str = 'solid', priority: int = 0) -> int` | No docstring yet. |
-| `add_keepout(self, *, outline: Iterable[Point], layers: Iterable[int], restrictions: Iterable[str]) -> int` | No docstring yet. |
-| `add_text(self, text: str, *, at: Point, layer: int, rotation: float = 0.0, size: float = 1.0, locked: bool = False) -> int` | No docstring yet. |
-| `resolve_pads(self) -> tuple[PadResolution, ...]` | No docstring yet. |
-| `validate(self) -> DiagnosticReport` | No docstring yet. |
-| `to_json(self) -> str` | No docstring yet. |
-| `to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True) -> str` | No docstring yet. |
-| `write_json(self, path: str \| Path) -> None` | No docstring yet. |
-| `write_svg(self, path: str \| Path) -> None` | No docstring yet. |
+| `design_rules(self) -> dict[str, float]` | Return the board design-rule values currently stored in the kernel. |
+| `set_design_rules(self, *, copper_clearance: float \| None = None, min_track_width: float \| None = None, min_via_drill: float \| None = None, min_via_annular: float \| None = None, board_outline_clearance: float \| None = None) -> Board` | Update board design rules, preserving unspecified rule values. |
+| `add_layer(self, name: str, *, role: str, side: str, thickness: float = 0.0, enabled: bool = True) -> int` | Add a physical or logical board layer and return its kernel index. |
+| `set_layer_stack(self, layers: Iterable[int], *, thickness: float) -> Board` | Set the board layer stack order and total thickness. |
+| `set_rectangular_outline(self, *, origin: Point, size: Point) -> Board` | Set a rectangular board outline from an origin and size. |
+| `set_polygon_outline(self, vertices: Iterable[Point]) -> Board` | Set a polygon board outline from ordered vertices. |
+| `add_mounting_hole(self, label: str, *, at: Point, diameter: float) -> int` | Add a board-level mounting hole and return its kernel index. |
+| `cache_footprint(self, footprint: Footprint) -> int` | Cache a footprint definition in the board projection. |
+| `place(self, component: Component \| int, *, at: Point, rotation: float = 0.0, side: str = 'top', locked: bool = False) -> int` | Place a component footprint on the board and return the placement index. |
+| `add_track(self, net: Net \| int, *, layer: int, points: Iterable[Point], width: float) -> int` | Add a routed track segment sequence for a logical net. |
+| `add_via(self, net: Net \| int, *, at: Point, start_layer: int, end_layer: int, drill: float = 0.3, annular: float = 0.7) -> int` | Add a via connecting a net between two board layers. |
+| `add_zone(self, *, outline: Iterable[Point], layers: Iterable[int], net: Net \| int \| None = None, fill: str = 'solid', priority: int = 0) -> int` | Add a copper zone, optionally bound to a logical net. |
+| `add_keepout(self, *, outline: Iterable[Point], layers: Iterable[int], restrictions: Iterable[str]) -> int` | Add a keepout region with layer and feature restrictions. |
+| `add_text(self, text: str, *, at: Point, layer: int, rotation: float = 0.0, size: float = 1.0, locked: bool = False) -> int` | Add a board text item and return its kernel index. |
+| `resolve_pads(self) -> tuple[PadResolution, ...]` | Resolve placed footprint pads to component pins and logical nets. |
+| `validate(self) -> DiagnosticReport` | Run PCB projection validation and return the diagnostic report. |
+| `to_json(self) -> str` | Serialize the PCB projection to Volt board JSON. |
+| `to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True) -> str` | Render the PCB projection as SVG. |
+| `write_json(self, path: str \| Path) -> None` | Write the PCB projection JSON to a file. |
+| `write_svg(self, path: str \| Path) -> None` | Write the PCB projection SVG to a file. |
 
 ## `volt.Footprint`
 
@@ -52,8 +52,8 @@ Source: `python/volt/_footprint.py`
 
 | Property | Summary |
 | --- | --- |
-| `library: str` | No docstring yet. |
-| `name: str` | No docstring yet. |
+| `library: str` | Return the footprint library name from the footprint reference. |
+| `name: str` | Return the footprint name from the footprint reference. |
 
 ## `volt.FootprintDefinition`
 
@@ -101,8 +101,8 @@ Source: `python/volt/pcb.py`
 
 | Method | Summary |
 | --- | --- |
-| `surface_mount(cls, label: str, *, at: Point, size: Point, shape: str = 'rounded_rectangle', layers: str = 'front_smd', mechanical_role: str \| None = None) -> FootprintPad` | No docstring yet. |
-| `through_hole(cls, label: str, *, at: Point, size: Point, drill: FootprintDrill, shape: str = 'circle', layers: str = 'through_hole', mechanical_role: str \| None = None) -> FootprintPad` | No docstring yet. |
+| `surface_mount(cls, label: str, *, at: Point, size: Point, shape: str = 'rounded_rectangle', layers: str = 'front_smd', mechanical_role: str \| None = None) -> FootprintPad` | Create a surface-mount footprint pad definition. |
+| `through_hole(cls, label: str, *, at: Point, size: Point, drill: FootprintDrill, shape: str = 'circle', layers: str = 'through_hole', mechanical_role: str \| None = None) -> FootprintPad` | Create a through-hole footprint pad definition with drill metadata. |
 
 ## `volt.PadResolution`
 

@@ -77,6 +77,7 @@ class FootprintPad:
         layers: str = "front_smd",
         mechanical_role: str | None = None,
     ) -> FootprintPad:
+        """Create a surface-mount footprint pad definition."""
         return cls(
             label,
             "surface_mount",
@@ -99,6 +100,7 @@ class FootprintPad:
         layers: str = "through_hole",
         mechanical_role: str | None = None,
     ) -> FootprintPad:
+        """Create a through-hole footprint pad definition with drill metadata."""
         return cls(
             label,
             "through_hole",
@@ -152,6 +154,7 @@ class Board:
         self.units = info["units"]
 
     def design_rules(self) -> dict[str, float]:
+        """Return the board design-rule values currently stored in the kernel."""
         return dict(self._design._circuit.board_design_rules())
 
     def set_design_rules(
@@ -163,6 +166,7 @@ class Board:
         min_via_annular: float | None = None,
         board_outline_clearance: float | None = None,
     ) -> Board:
+        """Update board design rules, preserving unspecified rule values."""
         rules = self.design_rules()
         copper_clearance_value = (
             rules["copper_clearance_mm"] if copper_clearance is None else copper_clearance
@@ -203,31 +207,37 @@ class Board:
         thickness: float = 0.0,
         enabled: bool = True,
     ) -> int:
+        """Add a physical or logical board layer and return its kernel index."""
         return self._design._circuit.board_add_layer(name, role, side, float(thickness), enabled)
 
     def set_layer_stack(self, layers: Iterable[int], *, thickness: float) -> Board:
+        """Set the board layer stack order and total thickness."""
         self._design._circuit.board_set_layer_stack(
             [_layer_index(layer) for layer in layers], float(thickness)
         )
         return self
 
     def set_rectangular_outline(self, *, origin: Point, size: Point) -> Board:
+        """Set a rectangular board outline from an origin and size."""
         x, y = _point(origin, "Board outline origin")
         width, height = _point(size, "Board outline size")
         self._design._circuit.board_set_rectangular_outline(x, y, width, height)
         return self
 
     def set_polygon_outline(self, vertices: Iterable[Point]) -> Board:
+        """Set a polygon board outline from ordered vertices."""
         self._design._circuit.board_set_polygon_outline(
             [_point(vertex, "Board outline vertex") for vertex in vertices]
         )
         return self
 
     def add_mounting_hole(self, label: str, *, at: Point, diameter: float) -> int:
+        """Add a board-level mounting hole and return its kernel index."""
         x, y = _point(at, "Board feature position")
         return self._design._circuit.board_add_mounting_hole(label, x, y, float(diameter))
 
     def cache_footprint(self, footprint: Footprint) -> int:
+        """Cache a footprint definition in the board projection."""
         if not isinstance(footprint, Footprint):
             raise TypeError("cache_footprint expects a Footprint")
         return self._design._ensure_board_footprint_cached(footprint)
@@ -241,6 +251,7 @@ class Board:
         side: str = "top",
         locked: bool = False,
     ) -> int:
+        """Place a component footprint on the board and return the placement index."""
         if isinstance(component, Component):
             if component._design is not self._design:
                 raise ValueError("Component belongs to a different design")
@@ -263,6 +274,7 @@ class Board:
         points: Iterable[Point],
         width: float,
     ) -> int:
+        """Add a routed track segment sequence for a logical net."""
         if isinstance(net, Net):
             if net._design is not self._design:
                 raise ValueError("Net belongs to a different design")
@@ -286,6 +298,7 @@ class Board:
         drill: float = 0.30,
         annular: float = 0.70,
     ) -> int:
+        """Add a via connecting a net between two board layers."""
         if isinstance(net, Net):
             if net._design is not self._design:
                 raise ValueError("Net belongs to a different design")
@@ -312,6 +325,7 @@ class Board:
         fill: str = "solid",
         priority: int = 0,
     ) -> int:
+        """Add a copper zone, optionally bound to a logical net."""
         if isinstance(net, Net):
             if net._design is not self._design:
                 raise ValueError("Net belongs to a different design")
@@ -335,6 +349,7 @@ class Board:
         layers: Iterable[int],
         restrictions: Iterable[str],
     ) -> int:
+        """Add a keepout region with layer and feature restrictions."""
         return self._design._circuit.board_add_keepout(
             _layer_indices(layers),
             [_point(point, "Board keepout outline point") for point in outline],
@@ -351,6 +366,7 @@ class Board:
         size: float = 1.0,
         locked: bool = False,
     ) -> int:
+        """Add a board text item and return its kernel index."""
         x, y = _point(at, "Board text position")
         return self._design._circuit.board_add_text(
             text,
@@ -363,6 +379,7 @@ class Board:
         )
 
     def resolve_pads(self) -> tuple[PadResolution, ...]:
+        """Resolve placed footprint pads to component pins and logical nets."""
         self._sync_object_footprints()
         return tuple(
             PadResolution(
@@ -379,16 +396,19 @@ class Board:
         )
 
     def validate(self) -> DiagnosticReport:
+        """Run PCB projection validation and return the diagnostic report."""
         self._sync_object_footprints()
         return DiagnosticReport(
             _diagnostic_from_dict(item) for item in self._design._circuit.board_validate()
         )
 
     def to_json(self) -> str:
+        """Serialize the PCB projection to Volt board JSON."""
         self._sync_object_footprints()
         return self._design._circuit.board_to_json()
 
     def to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True) -> str:
+        """Render the PCB projection as SVG."""
         self._sync_object_footprints()
         return self._design._circuit.board_to_svg(pad_net_overlays, diagnostic_overlays)
 
@@ -402,7 +422,9 @@ class Board:
             self._sync_component_object_footprint(component)
 
     def write_json(self, path: str | Path) -> None:
+        """Write the PCB projection JSON to a file."""
         Path(path).write_text(self.to_json(), encoding="utf-8")
 
     def write_svg(self, path: str | Path) -> None:
+        """Write the PCB projection SVG to a file."""
         Path(path).write_text(self.to_svg(), encoding="utf-8")

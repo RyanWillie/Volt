@@ -14,18 +14,18 @@ Source: `python/volt/logical.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
-| `reference: str` | No docstring yet. |
-| `schematic_symbol: SchematicSymbolSpec \| str \| None` | No docstring yet. |
+| `index: int` | Return the kernel index for this component instance. |
+| `reference: str` | Return the schematic reference designator for this component. |
+| `schematic_symbol: SchematicSymbolSpec \| str \| None` | Return the default schematic symbol for this component, if one is registered. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `schematic_symbol_variant(self, variant: str) -> SchematicSymbolSpec \| str \| None` | No docstring yet. |
-| `__getitem__(self, key: int \| str) -> Pin` | No docstring yet. |
-| `pins(self, name: str) -> PinGroup` | No docstring yet. |
-| `select_part(self, *, manufacturer: str, part_number: str, package: str, footprint: FootprintInput, pin_pads: dict[int \| str, PinPadValue], properties: dict \| None = None, voltage_rating: float \| None = None, power_rating: float \| None = None) -> Component` | No docstring yet. |
+| `schematic_symbol_variant(self, variant: str) -> SchematicSymbolSpec \| str \| None` | Return the schematic symbol registered for a named symbol variant. |
+| `__getitem__(self, key: int \| str) -> Pin` | Return a component pin by physical number, name, or explicit alias. |
+| `pins(self, name: str) -> PinGroup` | Return every component pin that has the given name. |
+| `select_part(self, *, manufacturer: str, part_number: str, package: str, footprint: FootprintInput, pin_pads: dict[int \| str, PinPadValue], properties: dict \| None = None, voltage_rating: float \| None = None, power_rating: float \| None = None) -> Component` | Attach a selected physical part and footprint mapping to this component. |
 
 ## `volt.ComponentDefinition`
 
@@ -37,7 +37,7 @@ Source: `python/volt/logical.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this component definition. |
 
 ## `volt.ModuleComponent`
 
@@ -49,14 +49,14 @@ Source: `python/volt/logical.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this module component template. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `__getitem__(self, key: int \| str) -> ModulePin` | No docstring yet. |
-| `pins(self, name: str) -> ModulePinGroup` | No docstring yet. |
+| `__getitem__(self, key: int \| str) -> ModulePin` | Return a module component pin by physical number, name, or explicit alias. |
+| `pins(self, name: str) -> ModulePinGroup` | Return every module component pin that has the given name. |
 
 ## `volt.ModuleComponentInfo`
 
@@ -109,20 +109,20 @@ Source: `python/volt/logical.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this module definition. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `net(self, name: str, *, kind: str = 'signal') -> ModuleNet` | No docstring yet. |
-| `port(self, name: str, *, kind: str = 'signal', role: str = 'passive', required: bool = True) -> ModulePort` | No docstring yet. |
-| `instantiate(self, definition: ComponentDefinition \| LibraryComponent, *, ref: str, properties: dict \| None = None) -> ModuleComponent` | No docstring yet. |
-| `connect(self, *endpoints) -> ModuleNet` | No docstring yet. |
-| `template_nets(self) -> tuple[TemplateNetInfo, ...]` | No docstring yet. |
-| `ports(self) -> tuple[PortInfo, ...]` | No docstring yet. |
-| `components(self) -> tuple[ModuleComponentInfo, ...]` | No docstring yet. |
-| `connections(self) -> tuple[ModuleConnectionInfo, ...]` | No docstring yet. |
+| `net(self, name: str, *, kind: str = 'signal') -> ModuleNet` | Create a template-local net inside this module definition. |
+| `port(self, name: str, *, kind: str = 'signal', role: str = 'passive', required: bool = True) -> ModulePort` | Create a module boundary port backed by an internal template net. |
+| `instantiate(self, definition: ComponentDefinition \| LibraryComponent, *, ref: str, properties: dict \| None = None) -> ModuleComponent` | Instantiate a component template inside this module definition. |
+| `connect(self, *endpoints) -> ModuleNet` | Connect module-local pins to exactly one module net or port. |
+| `template_nets(self) -> tuple[TemplateNetInfo, ...]` | Return read-only descriptions of this module's template nets. |
+| `ports(self) -> tuple[PortInfo, ...]` | Return read-only descriptions of this module's boundary ports. |
+| `components(self) -> tuple[ModuleComponentInfo, ...]` | Return read-only descriptions of component templates in this module. |
+| `connections(self) -> tuple[ModuleConnectionInfo, ...]` | Return read-only descriptions of module-local pin connections. |
 
 ## `volt.ModuleInstance`
 
@@ -134,17 +134,17 @@ Source: `python/volt/logical.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this root module instance. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `__getitem__(self, key: str) -> ModuleInstancePort` | No docstring yet. |
-| `component(self, ref: str) -> Component` | No docstring yet. |
-| `net_origins(self) -> tuple[ModuleNetOriginInfo, ...]` | No docstring yet. |
-| `component_origins(self) -> tuple[ModuleComponentOriginInfo, ...]` | No docstring yet. |
-| `port_bindings(self) -> tuple[PortBindingInfo, ...]` | No docstring yet. |
+| `__getitem__(self, key: str) -> ModuleInstancePort` | Return a root module instance port by port name. |
+| `component(self, ref: str) -> Component` | Return the concrete component created from a module component reference. |
+| `net_origins(self) -> tuple[ModuleNetOriginInfo, ...]` | Return concrete nets mapped back to their module template nets. |
+| `component_origins(self) -> tuple[ModuleComponentOriginInfo, ...]` | Return concrete components mapped back to their module templates. |
+| `port_bindings(self) -> tuple[PortBindingInfo, ...]` | Return parent-net bindings for this module instance's ports. |
 
 ## `volt.ModuleInstancePort`
 
@@ -156,7 +156,7 @@ Source: `python/volt/logical.py`
 
 | Property | Summary |
 | --- | --- |
-| `port_index: int` | No docstring yet. |
+| `port_index: int` | Return the kernel index for the module port definition. |
 
 ## `volt.ModuleNetOriginInfo`
 
@@ -181,14 +181,14 @@ Source: `python/volt/logical.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this module template net. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `connect(self, *pins: ModulePin \| Iterable[ModulePin]) -> ModuleNet` | No docstring yet. |
-| `__iadd__(self, pins: ModulePin \| Iterable[ModulePin]) -> ModuleNet` | No docstring yet. |
+| `connect(self, *pins: ModulePin \| Iterable[ModulePin]) -> ModuleNet` | Connect module-local pins to this template net. |
+| `__iadd__(self, pins: ModulePin \| Iterable[ModulePin]) -> ModuleNet` | Connect module-local pins to this template net with ``+=`` syntax. |
 
 ## `volt.ModulePinGroup`
 
@@ -200,9 +200,9 @@ Source: `python/volt/logical.py`
 
 | Method | Summary |
 | --- | --- |
-| `__iter__(self) -> Iterator[ModulePin]` | No docstring yet. |
-| `__len__(self) -> int` | No docstring yet. |
-| `__getitem__(self, index: int) -> ModulePin` | No docstring yet. |
+| `__iter__(self) -> Iterator[ModulePin]` | Iterate over the module pins in this repeated-name group. |
+| `__len__(self) -> int` | Return the number of module pins in this group. |
+| `__getitem__(self, index: int) -> ModulePin` | Return one module pin from this group by positional index. |
 
 ## `volt.ModulePin`
 
@@ -214,7 +214,7 @@ Source: `python/volt/logical.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this module-local pin definition. |
 
 ## `volt.ModulePort`
 
@@ -226,7 +226,7 @@ Source: `python/volt/logical.py`
 
 | Property | Summary |
 | --- | --- |
-| `port_index: int` | No docstring yet. |
+| `port_index: int` | Return the kernel index for this module boundary port. |
 
 ## `volt.Net`
 
@@ -238,16 +238,16 @@ Source: `python/volt/logical.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this logical net. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `mark_stub(self) -> Net` | No docstring yet. |
-| `pins(self) -> tuple[Pin, ...]` | No docstring yet. |
-| `connect(self, *pins: Pin \| ModuleInstancePort \| Iterable[Pin \| ModuleInstancePort]) -> Net` | No docstring yet. |
-| `__iadd__(self, pins: Pin \| ModuleInstancePort \| Iterable[Pin \| ModuleInstancePort]) -> Net` | No docstring yet. |
+| `mark_stub(self) -> Net` | Mark this net as intentionally exposed by a schematic stub. |
+| `pins(self) -> tuple[Pin, ...]` | Return the concrete pins currently connected to this net. |
+| `connect(self, *pins: Pin \| ModuleInstancePort \| Iterable[Pin \| ModuleInstancePort]) -> Net` | Connect concrete pins or module instance ports to this logical net. |
+| `__iadd__(self, pins: Pin \| ModuleInstancePort \| Iterable[Pin \| ModuleInstancePort]) -> Net` | Connect pins or module instance ports to this net with ``+=`` syntax. |
 
 ## `volt.Pin`
 
@@ -259,13 +259,13 @@ Source: `python/volt/logical.py`
 
 | Property | Summary |
 | --- | --- |
-| `index: int` | No docstring yet. |
+| `index: int` | Return the kernel index for this concrete pin. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `mark_no_connect(self) -> Pin` | No docstring yet. |
+| `mark_no_connect(self) -> Pin` | Mark this pin as intentionally unconnected for diagnostics. |
 
 ## `volt.PinGroup`
 
@@ -277,9 +277,9 @@ Source: `python/volt/logical.py`
 
 | Method | Summary |
 | --- | --- |
-| `__iter__(self) -> Iterator[Pin]` | No docstring yet. |
-| `__len__(self) -> int` | No docstring yet. |
-| `__getitem__(self, index: int) -> Pin` | No docstring yet. |
+| `__iter__(self) -> Iterator[Pin]` | Iterate over the concrete pins in this repeated-name group. |
+| `__len__(self) -> int` | Return the number of concrete pins in this group. |
+| `__getitem__(self, index: int) -> Pin` | Return one concrete pin from this group by positional index. |
 
 ## `volt.PortBindingInfo`
 

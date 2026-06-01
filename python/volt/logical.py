@@ -83,6 +83,7 @@ class ComponentDefinition:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this component definition."""
         return self._index
 
     def __repr__(self) -> str:
@@ -101,9 +102,11 @@ class ModuleDefinition:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this module definition."""
         return self._index
 
     def net(self, name: str, *, kind: str = "signal") -> ModuleNet:
+        """Create a template-local net inside this module definition."""
         net = self._design._circuit.add_template_net(self._index, name, kind)
         return ModuleNet(self, net, name)
 
@@ -115,6 +118,7 @@ class ModuleDefinition:
         role: str = "passive",
         required: bool = True,
     ) -> ModulePort:
+        """Create a module boundary port backed by an internal template net."""
         net = self._design._circuit.add_template_net(self._index, name, kind)
         port = self._design._circuit.add_port(self._index, name, net, role, required)
         self._ports_by_name[name] = port
@@ -127,6 +131,7 @@ class ModuleDefinition:
         ref: str,
         properties: dict | None = None,
     ) -> ModuleComponent:
+        """Instantiate a component template inside this module definition."""
         if isinstance(definition, LibraryComponent):
             if definition.physical_part is not None:
                 raise ValueError("Module library components do not support selected physical parts")
@@ -142,15 +147,18 @@ class ModuleDefinition:
         return ModuleComponent(self, component, ref)
 
     def connect(self, *endpoints) -> ModuleNet:
+        """Connect module-local pins to exactly one module net or port."""
         return _connect_module_endpoints(_flatten_module_endpoints(endpoints))
 
     def template_nets(self) -> tuple[TemplateNetInfo, ...]:
+        """Return read-only descriptions of this module's template nets."""
         return tuple(
             TemplateNetInfo(item["index"], item["name"], item["kind"])
             for item in self._design._circuit.template_nets(self._index)
         )
 
     def ports(self) -> tuple[PortInfo, ...]:
+        """Return read-only descriptions of this module's boundary ports."""
         return tuple(
             PortInfo(
                 item["index"],
@@ -163,12 +171,14 @@ class ModuleDefinition:
         )
 
     def components(self) -> tuple[ModuleComponentInfo, ...]:
+        """Return read-only descriptions of component templates in this module."""
         return tuple(
             ModuleComponentInfo(item["index"], item["definition"], item["reference"])
             for item in self._design._circuit.module_components(self._index)
         )
 
     def connections(self) -> tuple[ModuleConnectionInfo, ...]:
+        """Return read-only descriptions of module-local pin connections."""
         return tuple(
             ModuleConnectionInfo(item["net"], item["component"], item["pin_definition"])
             for item in self._design._circuit.module_connections(self._index)
@@ -188,12 +198,15 @@ class ModuleNet:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this module template net."""
         return self._index
 
     def connect(self, *pins: ModulePin | Iterable[ModulePin]) -> ModuleNet:
+        """Connect module-local pins to this template net."""
         return _connect_module_endpoints((self, *_flatten_module_endpoints(pins)))
 
     def __iadd__(self, pins: ModulePin | Iterable[ModulePin]) -> ModuleNet:
+        """Connect module-local pins to this template net with ``+=`` syntax."""
         return self.connect(pins)
 
     def __repr__(self) -> str:
@@ -209,6 +222,7 @@ class ModulePort(ModuleNet):
 
     @property
     def port_index(self) -> int:
+        """Return the kernel index for this module boundary port."""
         return self._port_index
 
     def __repr__(self) -> str:
@@ -227,6 +241,7 @@ class ModulePin:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this module-local pin definition."""
         return self._index
 
     def __repr__(self) -> str:
@@ -242,12 +257,15 @@ class ModulePinGroup:
         self._pins = tuple(pins)
 
     def __iter__(self) -> Iterator[ModulePin]:
+        """Iterate over the module pins in this repeated-name group."""
         return iter(self._pins)
 
     def __len__(self) -> int:
+        """Return the number of module pins in this group."""
         return len(self._pins)
 
     def __getitem__(self, index: int) -> ModulePin:
+        """Return one module pin from this group by positional index."""
         return self._pins[index]
 
     def __repr__(self) -> str:
@@ -264,9 +282,11 @@ class ModuleComponent:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this module component template."""
         return self._index
 
     def __getitem__(self, key: int | str) -> ModulePin:
+        """Return a module component pin by physical number, name, or explicit alias."""
         if isinstance(key, int):
             pin = self._module._design._circuit.module_component_pin_by_number(
                 self._index, str(key)
@@ -287,6 +307,7 @@ class ModuleComponent:
         return ModulePin(self, pin)
 
     def pins(self, name: str) -> ModulePinGroup:
+        """Return every module component pin that has the given name."""
         if not isinstance(name, str):
             raise TypeError("Module component pin groups are addressed by str name")
         matches = _pin_refs_by_name(self._pin_refs(), name)
@@ -311,6 +332,7 @@ class ModuleInstancePort:
 
     @property
     def port_index(self) -> int:
+        """Return the kernel index for the module port definition."""
         return self._port_index
 
     def __repr__(self) -> str:
@@ -330,9 +352,11 @@ class ModuleInstance:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this root module instance."""
         return self._index
 
     def __getitem__(self, key: str) -> ModuleInstancePort:
+        """Return a root module instance port by port name."""
         if not isinstance(key, str):
             raise TypeError("Module instance ports are addressed by str name")
         if key not in self._ports_by_name:
@@ -340,23 +364,27 @@ class ModuleInstance:
         return ModuleInstancePort(self, self._ports_by_name[key], key)
 
     def component(self, ref: str) -> Component:
+        """Return the concrete component created from a module component reference."""
         if ref not in self._components_by_ref:
             raise KeyError(ref)
         return Component(self._design, self._components_by_ref[ref])
 
     def net_origins(self) -> tuple[ModuleNetOriginInfo, ...]:
+        """Return concrete nets mapped back to their module template nets."""
         return tuple(
             ModuleNetOriginInfo(item["template_net"], item["net"])
             for item in self._design._circuit.module_net_origins(self._index)
         )
 
     def component_origins(self) -> tuple[ModuleComponentOriginInfo, ...]:
+        """Return concrete components mapped back to their module templates."""
         return tuple(
             ModuleComponentOriginInfo(item["module_component"], item["component"])
             for item in self._design._circuit.module_component_origins(self._index)
         )
 
     def port_bindings(self) -> tuple[PortBindingInfo, ...]:
+        """Return parent-net bindings for this module instance's ports."""
         return tuple(
             PortBindingInfo(item["port"], item["internal_net"], item["parent_net"])
             for item in self._design._circuit.port_bindings(self._index)
@@ -375,9 +403,11 @@ class Pin:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this concrete pin."""
         return self._index
 
     def mark_no_connect(self) -> Pin:
+        """Mark this pin as intentionally unconnected for diagnostics."""
         self._design._circuit.mark_intentional_no_connect_pin(self._index)
         return self
 
@@ -394,12 +424,15 @@ class PinGroup:
         self._pins = tuple(pins)
 
     def __iter__(self) -> Iterator[Pin]:
+        """Iterate over the concrete pins in this repeated-name group."""
         return iter(self._pins)
 
     def __len__(self) -> int:
+        """Return the number of concrete pins in this group."""
         return len(self._pins)
 
     def __getitem__(self, index: int) -> Pin:
+        """Return one concrete pin from this group by positional index."""
         return self._pins[index]
 
     def __repr__(self) -> str:
@@ -415,17 +448,21 @@ class Component:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this component instance."""
         return self._index
 
     @property
     def reference(self) -> str:
+        """Return the schematic reference designator for this component."""
         return self._design._circuit.component_reference(self._index)
 
     @property
     def schematic_symbol(self) -> SchematicSymbolSpec | str | None:
+        """Return the default schematic symbol for this component, if one is registered."""
         return self.schematic_symbol_variant("default")
 
     def schematic_symbol_variant(self, variant: str) -> SchematicSymbolSpec | str | None:
+        """Return the schematic symbol registered for a named symbol variant."""
         if not isinstance(variant, str):
             raise TypeError("schematic symbol variant must be a string")
         if not variant:
@@ -436,6 +473,7 @@ class Component:
         return self._design._schematic_symbols.get(name, name)
 
     def __getitem__(self, key: int | str) -> Pin:
+        """Return a component pin by physical number, name, or explicit alias."""
         if isinstance(key, int):
             pin = self._design._circuit.pin_by_number(self._index, str(key))
         elif isinstance(key, str):
@@ -454,6 +492,7 @@ class Component:
         return Pin(self._design, pin)
 
     def pins(self, name: str) -> PinGroup:
+        """Return every component pin that has the given name."""
         if not isinstance(name, str):
             raise TypeError("Component pin groups are addressed by str name")
         matches = _pin_refs_by_name(self._pin_refs(), name)
@@ -476,6 +515,7 @@ class Component:
         voltage_rating: float | None = None,
         power_rating: float | None = None,
     ) -> Component:
+        """Attach a selected physical part and footprint mapping to this component."""
         if not isinstance(pin_pads, dict):
             raise TypeError("pin_pads must be a dict")
         object_footprint = footprint if isinstance(footprint, Footprint) else None
@@ -521,18 +561,22 @@ class Net:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this logical net."""
         return self._index
 
     def mark_stub(self) -> Net:
+        """Mark this net as intentionally exposed by a schematic stub."""
         self._design._circuit.mark_intentional_stub_net(self._index)
         return self
 
     def pins(self) -> tuple[Pin, ...]:
+        """Return the concrete pins currently connected to this net."""
         return tuple(
             Pin(self._design, index) for index in self._design._circuit.net_pins(self._index)
         )
 
     def connect(self, *pins: Pin | ModuleInstancePort | Iterable[Pin | ModuleInstancePort]) -> Net:
+        """Connect concrete pins or module instance ports to this logical net."""
         for pin in _flatten_pins(pins):
             if isinstance(pin, Pin):
                 self._design._circuit.connect(self._index, pin.index)
@@ -547,6 +591,7 @@ class Net:
         return self
 
     def __iadd__(self, pins: Pin | ModuleInstancePort | Iterable[Pin | ModuleInstancePort]) -> Net:
+        """Connect pins or module instance ports to this net with ``+=`` syntax."""
         return self.connect(pins)
 
     def __repr__(self) -> str:

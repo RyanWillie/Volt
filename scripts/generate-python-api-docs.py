@@ -54,6 +54,17 @@ class PublicObject:
     node: ast.AST
 
 
+@dataclass(frozen=True)
+class MissingDocstring:
+    path: Path
+    name: str
+    kind: str
+    line: int
+
+    def message(self) -> str:
+        return f"{relative(self.path)}:{self.line}: missing docstring for {self.kind} {self.name}"
+
+
 def literal_all(tree: ast.Module) -> tuple[str, ...]:
     for statement in tree.body:
         if isinstance(statement, ast.Assign):
@@ -232,6 +243,13 @@ def public_properties(node: ast.ClassDef) -> list[ast.FunctionDef]:
     return properties
 
 
+def public_members(node: ast.ClassDef) -> list[tuple[str, ast.FunctionDef]]:
+    return [
+        *(("property", prop) for prop in public_properties(node)),
+        *(("method", method) for method in public_methods(node)),
+    ]
+
+
 def is_property(function: ast.FunctionDef) -> bool:
     for decorator in function.decorator_list:
         if isinstance(decorator, ast.Name) and decorator.id == "property":
@@ -255,6 +273,29 @@ def table_cell(value: str) -> str:
     return value.replace("|", "\\|").replace("\n", " ")
 
 
+def missing_docstrings(objects: Iterable[PublicObject]) -> list[MissingDocstring]:
+    missing: list[MissingDocstring] = []
+    for item in objects:
+        node = item.node
+        if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and not ast.get_docstring(node):
+            kind = "class" if isinstance(node, ast.ClassDef) else "function"
+            missing.append(
+                MissingDocstring(item.source_path, f"volt.{item.name}", kind, node.lineno)
+            )
+        if isinstance(node, ast.ClassDef):
+            for kind, member in public_members(node):
+                if not ast.get_docstring(member):
+                    missing.append(
+                        MissingDocstring(
+                            item.source_path,
+                            f"volt.{item.name}.{member.name}",
+                            kind,
+                            member.lineno,
+                        )
+                    )
+    return missing
+
+
 def render_object(item: PublicObject) -> str:
     node = item.node
     source = relative(item.source_path)
@@ -272,7 +313,7 @@ def render_object(item: PublicObject) -> str:
             lines.extend(["### Fields", "", "| Field |", "| --- |"])
             lines.extend(f"| `{table_cell(field)}` |" for field in fields)
             lines.append("")
-        properties = public_properties(node)
+        properties = [member for kind, member in public_members(node) if kind == "property"]
         if properties:
             lines.extend(["### Properties", "", "| Property | Summary |", "| --- | --- |"])
             for prop in properties:
@@ -282,7 +323,7 @@ def render_object(item: PublicObject) -> str:
                     f"| `{table_cell(signature)}` | {table_cell(first_sentence(ast.get_docstring(prop)))} |"
                 )
             lines.append("")
-        methods = public_methods(node)
+        methods = [member for kind, member in public_members(node) if kind == "method"]
         if methods:
             lines.extend(["### Methods", "", "| Method | Summary |", "| --- | --- |"])
             for method in methods:
@@ -421,6 +462,13 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
 
 def main(argv: Iterable[str] = sys.argv[1:]) -> int:
     args = parse_args(argv)
+    objects = public_objects()
+    missing = missing_docstrings(objects)
+    if missing:
+        print("public Python API docstrings are incomplete:", file=sys.stderr)
+        for item in missing:
+            print(f"  {item.message()}", file=sys.stderr)
+        return 1
     files = render_files()
     if args.check:
         stale = stale_paths(args.output, args.navigation, files)

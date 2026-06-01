@@ -31,16 +31,20 @@ class DiagnosticReport:
         self._diagnostics = tuple(diagnostics)
 
     def __iter__(self) -> Iterator[Diagnostic]:
+        """Iterate over diagnostics in report order."""
         return iter(self._diagnostics)
 
     def __len__(self) -> int:
+        """Return the number of diagnostics in this report."""
         return len(self._diagnostics)
 
     def __getitem__(self, index: int) -> Diagnostic:
+        """Return one diagnostic by positional index."""
         return self._diagnostics[index]
 
     @property
     def has_errors(self) -> bool:
+        """Return whether this report contains at least one error diagnostic."""
         return any(diagnostic.severity == "error" for diagnostic in self._diagnostics)
 
 

@@ -42,10 +42,12 @@ class Footprint:
 
     @property
     def library(self) -> str:
+        """Return the footprint library name from the footprint reference."""
         return self.ref[0]
 
     @property
     def name(self) -> str:
+        """Return the footprint name from the footprint reference."""
         return self.ref[1]
 
     def _to_dict(self) -> dict:

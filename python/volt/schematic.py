@@ -89,15 +89,18 @@ class SchematicWireBuilder:
         self._dot_end = False
 
     def at(self, point) -> SchematicWireBuilder:
+        """Start this wire at an explicit anchor or point."""
         return self.from_(point)
 
     def endpoints(
         self, start, end, *, shape: str | None = None, k: float | None = None
     ) -> SchematicWireBuilder:
+        """Set both endpoints for this wire builder."""
         self.from_(start)
         return self.to(end, shape=shape, k=k)
 
     def from_(self, point) -> SchematicWireBuilder:
+        """Start this wire at an explicit anchor or point."""
         self._require_unmaterialized()
         converted, endpoint = self._point_and_endpoint_for_authoring(point)
         self._points = [converted]
@@ -164,23 +167,29 @@ class SchematicWireBuilder:
         return self
 
     def right(self, length: float) -> SchematicWireBuilder:
+        """Append a segment to the right by a distance."""
         return self._relative(dx=_coordinate(length), dy=0)
 
     def left(self, length: float) -> SchematicWireBuilder:
+        """Append a segment to the left by a distance."""
         return self._relative(dx=-_coordinate(length), dy=0)
 
     def up(self, length: float) -> SchematicWireBuilder:
+        """Append a segment upward by a distance."""
         return self._relative(dx=0, dy=-_coordinate(length))
 
     def down(self, length: float) -> SchematicWireBuilder:
+        """Append a segment downward by a distance."""
         return self._relative(dx=0, dy=_coordinate(length))
 
     def dot(self) -> SchematicWireBuilder:
+        """Request a junction dot at the final wire endpoint."""
         self._require_unmaterialized()
         self._dot_end = True
         return self
 
     def idot(self) -> SchematicWireBuilder:
+        """Request a junction dot at the initial wire endpoint."""
         self._require_unmaterialized()
         self._dot_start = True
         return self
@@ -395,17 +404,21 @@ class SchematicDrawing:
 
     @property
     def here(self) -> SchematicAnchor:
+        """Return the drawing cursor's current anchor."""
         return self._here
 
     @property
     def direction(self) -> str:
+        """Return the drawing cursor's current orientation."""
         return self._direction
 
     @property
     def unit(self) -> float:
+        """Return the drawing unit used by relative placement helpers."""
         return self._unit
 
     def move(self, *, dx: float = 0, dy: float = 0) -> SchematicDrawing:
+        """Move the drawing cursor by a relative offset."""
         self._flush_pending()
         self._here = self._here.offset(dx=dx, dy=dy)
         return self
@@ -418,6 +431,7 @@ class SchematicDrawing:
         dy: float = 0,
         direction: str | None = None,
     ) -> SchematicDrawing:
+        """Move the drawing cursor to an anchor plus an optional relative offset."""
         self._flush_pending()
         next_direction = self._direction if direction is None else _orientation(direction)
         self._here = self._anchor_at(anchor).offset(dx=dx, dy=dy)
@@ -425,11 +439,13 @@ class SchematicDrawing:
         return self
 
     def push(self) -> SchematicDrawing:
+        """Push the current cursor anchor and direction onto the drawing stack."""
         self._flush_pending()
         self._stack.append((self._here, self._direction))
         return self
 
     def pop(self) -> SchematicDrawing:
+        """Restore the most recently pushed cursor anchor and direction."""
         self._flush_pending()
         if not self._stack:
             raise ValueError(
@@ -447,6 +463,7 @@ class SchematicDrawing:
         variant: str = "default",
         reference_label: str | None = None,
     ) -> SchematicTwoTerminalElement:
+        """Start fluent placement for a two-terminal component."""
         self._flush_pending()
         element = SchematicTwoTerminalElement(
             self,
@@ -468,6 +485,7 @@ class SchematicDrawing:
         variant: str = "default",
         reference_label: str | None = None,
     ) -> PlacedSchematicElement:
+        """Place a component symbol at the drawing cursor or an explicit anchor."""
         self._flush_pending()
         placed = self._authoring.place(
             component,
@@ -525,6 +543,7 @@ class SchematicDrawing:
         shape: str | None = None,
         k: float | None = None,
     ) -> tuple[SchematicWire, ...]:
+        """Create multiple orthogonal wire runs from entry tuples."""
         self._flush_pending()
         return self._authoring.ortho_lines(
             entries,
@@ -533,6 +552,7 @@ class SchematicDrawing:
         )
 
     def wire(self, net: Net) -> SchematicWireBuilder:
+        """Start a fluent wire builder on a logical net from the current cursor."""
         self._flush_pending()
         builder = self._authoring.wire(net)
         builder._drawing = self
@@ -544,6 +564,7 @@ class SchematicDrawing:
         return builder
 
     def line(self, net: Net) -> SchematicWireBuilder:
+        """Alias for ``wire()`` when authoring direct line segments."""
         return self.wire(net)
 
     def terminal(
@@ -719,6 +740,7 @@ class SchematicDrawing:
         orient: str = "Right",
         label: str | None = None,
     ) -> SchematicNetLabel:
+        """Place a net label at the drawing cursor or an explicit anchor."""
         self._flush_pending()
         return self._authoring.net_label(
             name_or_net,
@@ -736,6 +758,7 @@ class SchematicDrawing:
         offset: float = 2,
         orient: str | None = None,
     ) -> SchematicNetLabel:
+        """Place a short-offset local net label near an anchor."""
         self._flush_pending()
         return self._authoring.local_label(
             name_or_net,
@@ -756,6 +779,7 @@ class SchematicDrawing:
         orient: str | None = None,
         label: str | None = None,
     ) -> SchematicSignalStub:
+        """Draw a short signal stub ending in a local net label."""
         self._flush_pending()
         return self._authoring.signal_stub(
             name_or_net,
@@ -778,6 +802,7 @@ class SchematicDrawing:
         kind: str = "Bidirectional",
         orient: str | None = None,
     ) -> SchematicSignalTag:
+        """Draw a short signal stub ending in a sheet-port style tag."""
         self._flush_pending()
         return self._authoring.signal_tag(
             name_or_net,
@@ -800,6 +825,7 @@ class SchematicDrawing:
         kind: str = "Bidirectional",
         orient: str | None = None,
     ) -> tuple[SchematicSignalTag, ...]:
+        """Place a pitched stack of signal tags."""
         self._flush_pending()
         return self._authoring.signal_tags(
             items,
@@ -823,6 +849,7 @@ class SchematicDrawing:
         label_gap: float = 2,
         orient: str | None = None,
     ) -> tuple[SchematicSignalStub, ...]:
+        """Place a pitched stack of signal stubs."""
         self._flush_pending()
         return self._authoring.signal_stubs(
             items,
@@ -843,6 +870,7 @@ class SchematicDrawing:
         pitch: float | None = None,
         at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
     ) -> tuple[SchematicAnchor, ...]:
+        """Return evenly spaced anchors from the current cursor or an explicit anchor."""
         if isinstance(count, bool) or not isinstance(count, int):
             raise TypeError("Schematic stack count must be an integer")
         if count < 0:
@@ -864,6 +892,7 @@ class SchematicDrawing:
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort | None = None,
     ) -> SchematicJunction:
+        """Place an explicit junction marker on a logical net."""
         self._flush_pending()
         return self._authoring.junction(
             net,
@@ -878,6 +907,7 @@ class SchematicDrawing:
         offset: float = 0,
         reason: str | None = None,
     ) -> SchematicNoConnect:
+        """Place a no-connect marker on a placed pin anchor."""
         self._flush_pending()
         return self._authoring.no_connect(
             anchor,
@@ -895,6 +925,7 @@ class SchematicDrawing:
         kind: str = "Bidirectional",
         orient: str = "Right",
     ) -> SchematicPort:
+        """Place a sheet port on an existing or name-resolved logical net."""
         self._flush_pending()
         return self._authoring.sheet_port(
             name,
@@ -912,6 +943,7 @@ class SchematicDrawing:
         net: Net | None = None,
         orient: str = "Right",
     ) -> SchematicPort:
+        """Place an off-page connector on an existing or name-resolved logical net."""
         self._flush_pending()
         return self._authoring.off_page(
             name,
@@ -922,6 +954,7 @@ class SchematicDrawing:
 
     @contextmanager
     def hold(self):
+        """Temporarily author from the current cursor, then restore cursor state."""
         self._flush_pending()
         saved_stack = list(self._stack)
         saved_here = self._here
@@ -944,6 +977,7 @@ class SchematicDrawing:
         *,
         direction: str | None = None,
     ):
+        """Temporarily author in a local coordinate frame."""
         self._flush_pending()
         saved_origin = self._coordinate_origin
         saved_stack = list(self._stack)
@@ -1056,43 +1090,52 @@ class SchematicTwoTerminalElement:
 
     @property
     def index(self) -> int:
+        """Return the kernel index after materializing this placement."""
         return self._materialize().index
 
     @property
     def component(self) -> Component:
+        """Return the component being placed."""
         return self._component
 
     @property
     def orientation(self) -> str:
+        """Return the placed symbol orientation after materialization."""
         return self._materialize().orientation
 
     @property
     def start(self) -> SchematicPinAnchor:
+        """Return the start pin anchor after materialization."""
         return self._materialize().start
 
     @property
     def end(self) -> SchematicPinAnchor:
+        """Return the end pin anchor after materialization."""
         return self._materialize().end
 
     @property
     def center(self) -> SchematicAnchor:
+        """Return the placed element center after materialization."""
         return self._materialize().center
 
     def at(
         self, point: tuple[float, float] | SchematicAnchor | SchematicPort
     ) -> SchematicTwoTerminalElement:
+        """Set the anchor point for the two-terminal placement."""
         self._require_unplaced("at")
         self._at = self._drawing._anchor_at(point)
         self._commit_cursor()
         return self
 
     def anchor(self, ref: str | int) -> SchematicTwoTerminalElement:
+        """Choose which local terminal or named anchor is fixed to ``at``."""
         self._require_unplaced("anchor")
         self._anchor_ref = ref
         self._commit_cursor()
         return self
 
     def drop(self, ref: str | int) -> SchematicTwoTerminalElement:
+        """Choose which local terminal or named anchor drives the cursor endpoint."""
         self._require_unplaced("drop")
         self._drop_ref = ref
         self._commit_cursor()
@@ -1106,6 +1149,7 @@ class SchematicTwoTerminalElement:
         anchor: str | int = "start",
         drop: str | int = "end",
     ) -> SchematicTwoTerminalElement:
+        """Place the element between two aligned anchors."""
         self._require_unplaced("between")
         start_anchor = self._drawing._anchor_at(start)
         end_anchor = self._drawing._anchor_at(end)
@@ -1125,11 +1169,13 @@ class SchematicTwoTerminalElement:
         anchor: str | int = "start",
         drop: str | int = "end",
     ) -> SchematicTwoTerminalElement:
+        """Alias for ``between()``."""
         return self.between(start, end, anchor=anchor, drop=drop)
 
     def to(
         self, end: tuple[float, float] | SchematicAnchor | SchematicPort
     ) -> SchematicTwoTerminalElement:
+        """Place the element from its current anchor to an aligned endpoint."""
         self._require_unplaced("to")
         return self._configure_between(
             self._at,
@@ -1138,6 +1184,7 @@ class SchematicTwoTerminalElement:
         )
 
     def tox(self, anchor_or_x) -> SchematicTwoTerminalElement:
+        """Place the element horizontally to a target x coordinate."""
         self._require_unplaced("tox")
         target_x = _schematic_axis_target(
             self._axis_target_arg(anchor_or_x, "x"),
@@ -1151,6 +1198,7 @@ class SchematicTwoTerminalElement:
         )
 
     def toy(self, anchor_or_y) -> SchematicTwoTerminalElement:
+        """Place the element vertically to a target y coordinate."""
         self._require_unplaced("toy")
         target_y = _schematic_axis_target(
             self._axis_target_arg(anchor_or_y, "y"),
@@ -1196,30 +1244,37 @@ class SchematicTwoTerminalElement:
         return self
 
     def length(self, value: float) -> SchematicTwoTerminalElement:
+        """Set the element length in drawing units."""
         self._require_unplaced("length")
         self._length = self._length_from_units(value)
         self._commit_cursor()
         return self
 
     def right(self, length: float | None = None) -> SchematicTwoTerminalElement:
+        """Orient the element to the right, optionally with a length in drawing units."""
         return self._direction("Right", length)
 
     def left(self, length: float | None = None) -> SchematicTwoTerminalElement:
+        """Orient the element to the left, optionally with a length in drawing units."""
         return self._direction("Left", length)
 
     def up(self, length: float | None = None) -> SchematicTwoTerminalElement:
+        """Orient the element upward, optionally with a length in drawing units."""
         return self._direction("Up", length)
 
     def down(self, length: float | None = None) -> SchematicTwoTerminalElement:
+        """Orient the element downward, optionally with a length in drawing units."""
         return self._direction("Down", length)
 
     def reverse(self) -> SchematicTwoTerminalElement:
+        """Swap the generated two-terminal symbol's start and end pins."""
         self._require_unplaced("reverse")
         self._reverse = not self._reverse
         self._commit_cursor()
         return self
 
     def flip(self) -> SchematicTwoTerminalElement:
+        """Flip the generated two-terminal symbol across its placement axis."""
         self._require_unplaced("flip")
         self._flip = not self._flip
         self._commit_cursor()
@@ -1235,6 +1290,7 @@ class SchematicTwoTerminalElement:
         ofst: float | None = None,
         orient: str | None = None,
     ) -> PlacedSchematicElement:
+        """Materialize the element and add a text field near it."""
         return self._materialize().label(
             text, loc=loc, name=name, offset=offset, ofst=ofst, orient=orient
         )
@@ -1247,6 +1303,7 @@ class SchematicTwoTerminalElement:
         ofst: float | None = None,
         orient: str | None = None,
     ) -> PlacedSchematicElement:
+        """Materialize the element and add its reference-designator label."""
         return self._materialize().label_ref(
             loc=loc, offset=offset, ofst=ofst, orient=orient
         )
@@ -1259,32 +1316,40 @@ class SchematicTwoTerminalElement:
         ofst: float | None = None,
         orient: str | None = None,
     ) -> PlacedSchematicElement:
+        """Materialize the element and add its value label."""
         return self._materialize().label_value(
             loc=loc, offset=offset, ofst=ofst, orient=orient
         )
 
     def dot(self, *, net: Net | None = None) -> PlacedSchematicElement:
+        """Materialize the element and add a junction dot at its end terminal."""
         return self._materialize().dot(net=net)
 
     def idot(self, *, net: Net | None = None) -> PlacedSchematicElement:
+        """Materialize the element and add a junction dot at its start terminal."""
         return self._materialize().idot(net=net)
 
     def __getitem__(self, key: int | str) -> SchematicPinAnchor:
+        """Materialize the element and return a pin anchor by name or number."""
         return self._materialize()[key]
 
     def __getattr__(self, name: str) -> SchematicPinAnchor:
         return getattr(self._materialize(), name)
 
     def pin_anchor(self, number: int | str) -> tuple[float, float]:
+        """Materialize the element and return a pin coordinate by number."""
         return self._materialize().pin_anchor(number)
 
     def pin(self, key: int | str) -> SchematicPinAnchor:
+        """Materialize the element and return a pin anchor by name or number."""
         return self._materialize().pin(key)
 
     def pins(self, name: str) -> tuple[SchematicPinAnchor, ...]:
+        """Materialize the element and return all pin anchors with the given name."""
         return self._materialize().pins(name)
 
     def pin_anchors(self) -> tuple[SchematicPinAnchor, ...]:
+        """Materialize the element and return all pin anchors."""
         return self._materialize().pin_anchors()
 
     def _direction(
@@ -1524,6 +1589,7 @@ class Schematic:
 
     @property
     def sheet_index(self) -> int:
+        """Return the kernel index for this schematic sheet."""
         return self._sheet_index
 
     def drawing(
@@ -1533,6 +1599,7 @@ class Schematic:
         direction: str = "Right",
         unit: float = 20,
     ) -> SchematicDrawing:
+        """Create a SchemDraw-style cursor for fluent sheet authoring."""
         return SchematicDrawing(self, at=at, direction=direction, unit=unit)
 
     def region(
@@ -1546,6 +1613,7 @@ class Schematic:
         title: str | None = None,
         style: dict[str, str] | None = None,
     ) -> SchematicRegion:
+        """Create a named presentation region on this schematic sheet."""
         if not isinstance(name, str):
             raise TypeError("Schematic region names must be strings")
         if not name:
@@ -1591,6 +1659,7 @@ class Schematic:
         _authored_region: int | None = None,
         reference_label: str | None = None,
     ) -> SchematicSymbol:
+        """Place a component symbol on this schematic sheet."""
         if not isinstance(component, Component):
             raise TypeError("Schematic placement expects a Component handle")
         if component._design is not self._design:
@@ -1638,6 +1707,7 @@ class Schematic:
         return placed
 
     def register_symbol(self, symbol: SchematicSymbolSpec) -> None:
+        """Register a schematic symbol definition with this design."""
         if not isinstance(symbol, SchematicSymbolSpec):
             raise TypeError("register_symbol expects a SchematicSymbolSpec")
         self._design._register_schematic_symbol(symbol)
@@ -1649,6 +1719,7 @@ class Schematic:
         *,
         _authored_region: int | None = None,
     ) -> SchematicWire | SchematicWireBuilder:
+        """Create a wire on a logical net or return a fluent wire builder."""
         if not isinstance(net, Net):
             raise TypeError("Schematic wires expect a Net handle")
         if net._design is not self._design:
@@ -1776,6 +1847,7 @@ class Schematic:
         k: float | None = None,
         _authored_region: int | None = None,
     ) -> tuple[SchematicWire, ...]:
+        """Create multiple orthogonal wire runs from entry tuples."""
         wires = []
         for entry in entries:
             net, start, end = _schematic_ortho_line_entry_parts(entry)
@@ -1897,6 +1969,7 @@ class Schematic:
         baseline: str = "baseline",
         font_size: float | None = None,
     ) -> SchematicNetLabel:
+        """Place a net label bound to an existing logical net."""
         if not isinstance(net, Net):
             raise TypeError("Schematic labels expect a Net handle")
         if net._design is not self._design:
@@ -1964,6 +2037,7 @@ class Schematic:
         baseline: str = "baseline",
         font_size: float | None = None,
     ) -> SchematicNetLabel:
+        """Place a net label by net handle or design net name."""
         try:
             net = _resolve_schematic_net_label(self._design, name_or_net)
         except ValueError as error:
@@ -1989,6 +2063,7 @@ class Schematic:
         orient: str | None = None,
         _authored_region: int | None = None,
     ) -> SchematicNetLabel:
+        """Place a short-offset local net label near an anchor."""
         side_orientation = _orientation(side)
         label_orientation = side_orientation if orient is None else _orientation(orient)
         try:
@@ -2027,6 +2102,7 @@ class Schematic:
         label: str | None = None,
         _authored_region: int | None = None,
     ) -> SchematicSignalStub:
+        """Draw a short signal stub ending in a local net label."""
         side_orientation = _signal_stub_side(side, at)
         label_orientation = side_orientation if orient is None else _orientation(orient)
         try:
@@ -2089,6 +2165,7 @@ class Schematic:
         orient: str | None = None,
         _authored_region: int | None = None,
     ) -> SchematicSignalTag:
+        """Draw a short signal stub ending in a sheet-port style tag."""
         side_orientation = _signal_stub_side(side, at)
         tag_orientation = side_orientation if orient is None else _orientation(orient)
         try:
@@ -2145,6 +2222,7 @@ class Schematic:
         orient: str | None = None,
         _authored_region: int | None = None,
     ) -> tuple[SchematicSignalTag, ...]:
+        """Place a pitched stack of signal tags."""
         side_orientation = (
             _signal_stub_side(side, at)
             if at is not None
@@ -2185,6 +2263,7 @@ class Schematic:
         orient: str | None = None,
         _authored_region: int | None = None,
     ) -> tuple[SchematicSignalStub, ...]:
+        """Place a pitched stack of signal stubs."""
         side_orientation = (
             _signal_stub_side(side, at)
             if at is not None
@@ -2268,6 +2347,7 @@ class Schematic:
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
         _authored_region: int | None = None,
     ) -> SchematicJunction:
+        """Place an explicit junction marker on a logical net."""
         if not isinstance(net, Net):
             raise TypeError("Schematic junctions expect a Net handle")
         if net._design is not self._design:
@@ -2612,6 +2692,7 @@ class Schematic:
         reason: str | None = None,
         _authored_region: int | None = None,
     ) -> SchematicNoConnect:
+        """Place a no-connect marker on a placed pin anchor."""
         if not isinstance(pin, SchematicPinAnchor):
             raise TypeError("Schematic no-connect markers expect a placed pin anchor")
         if reason is not None and not isinstance(reason, str):
@@ -2649,6 +2730,7 @@ class Schematic:
         orient: str = "Right",
         _authored_region: int | None = None,
     ) -> SchematicPort:
+        """Place a sheet port on an existing or name-resolved logical net."""
         if not isinstance(name, str):
             raise TypeError("Schematic sheet port names must be strings")
         if not name:
@@ -2706,6 +2788,7 @@ class Schematic:
         orient: str = "Right",
         _authored_region: int | None = None,
     ) -> SchematicPort:
+        """Place an off-page connector on an existing or name-resolved logical net."""
         return self.sheet_port(
             name,
             at=at,
@@ -2716,9 +2799,11 @@ class Schematic:
         )
 
     def to_json(self) -> str:
+        """Serialize schematic projection data to Volt JSON."""
         return self._design._circuit.schematic_to_json()
 
     def to_svg(self) -> str:
+        """Render all schematic sheets as SVG."""
         return self._design._circuit.schematic_to_svg()
 
     def to_body_svg(self, *, margin: float = 4.0) -> str:
@@ -2729,6 +2814,7 @@ class Schematic:
         )
 
     def to_svg_pages(self) -> tuple[dict[str, int | str], ...]:
+        """Render schematic sheets as individual SVG page records."""
         return tuple(
             {
                 "sheet": int(page["sheet"]),
@@ -2739,26 +2825,31 @@ class Schematic:
         )
 
     def validate(self) -> DiagnosticReport:
+        """Run schematic validation and return the diagnostic report."""
         return DiagnosticReport(
             _diagnostic_from_dict(item)
             for item in self._design._circuit.validate_schematic()
         )
 
     def validate_readability(self) -> DiagnosticReport:
+        """Run schematic readability validation and return the diagnostic report."""
         return DiagnosticReport(
             _diagnostic_from_dict(item)
             for item in self._design._circuit.validate_schematic_readability()
         )
 
     def write_svg(self, path: str | Path) -> None:
+        """Write the rendered schematic SVG to a file."""
         Path(path).write_text(self.to_svg(), encoding="utf-8")
 
     def write_body_svg(self, path: str | Path, *, margin: float = 4.0) -> None:
+        """Write a content-tight SVG for this sheet's body to a file."""
         Path(path).write_text(self.to_body_svg(margin=margin), encoding="utf-8")
 
     def write_svg_pages(
         self, directory: str | Path, *, prefix: str | None = None
     ) -> tuple[Path, ...]:
+        """Write each rendered schematic SVG page to a directory."""
         if prefix is not None and not isinstance(prefix, str):
             raise TypeError("Schematic SVG page prefixes must be strings")
         if prefix is not None and ("/" in prefix or "\\" in prefix):
@@ -2783,6 +2874,7 @@ class Schematic:
         return tuple(paths)
 
     def write_json(self, path: str | Path) -> None:
+        """Write schematic projection JSON to a file."""
         Path(path).write_text(self.to_json(), encoding="utf-8")
 
     def __repr__(self) -> str:
@@ -2821,10 +2913,12 @@ class SchematicRegion:
 
     @property
     def index(self) -> int:
+        """Return the kernel index for this schematic region."""
         return self._index
 
     @property
     def origin(self) -> tuple[float, float]:
+        """Return the sheet-space origin for this region."""
         return (self.bounds[0], self.bounds[1])
 
     def drawing(
@@ -2834,6 +2928,7 @@ class SchematicRegion:
         direction: str = "Right",
         unit: float = 20,
     ) -> SchematicDrawing:
+        """Create a SchemDraw-style cursor in this region's local coordinates."""
         return SchematicDrawing(
             self._sheet,
             at=at,
@@ -2853,6 +2948,7 @@ class SchematicRegion:
         variant: str = "default",
         reference_label: str | None = None,
     ) -> SchematicSymbol:
+        """Place a component symbol using region-local coordinates."""
         return self._authoring.place(
             component,
             at=at,
@@ -2867,6 +2963,7 @@ class SchematicRegion:
         net: Net,
         points: Iterable[tuple[float, float] | SchematicAnchor | SchematicPort],
     ) -> SchematicWire:
+        """Create a wire in this region using region-local coordinates."""
         return self._authoring.wire(net, points)
 
     def ortho_lines(
@@ -2876,6 +2973,7 @@ class SchematicRegion:
         shape: str | None = None,
         k: float | None = None,
     ) -> tuple[SchematicWire, ...]:
+        """Create multiple orthogonal wire runs in this region."""
         return self._authoring.ortho_lines(
             entries,
             shape=shape,
@@ -2890,6 +2988,7 @@ class SchematicRegion:
         orient: str = "Right",
         label: str | None = None,
     ) -> SchematicNetLabel:
+        """Place a net label in this region."""
         return self._authoring.label(
             net,
             at=at,
@@ -2905,6 +3004,7 @@ class SchematicRegion:
         orient: str = "Right",
         label: str | None = None,
     ) -> SchematicNetLabel:
+        """Place a net label by net handle or design net name in this region."""
         return self._authoring.net_label(
             name_or_net,
             at=at,
@@ -2921,6 +3021,7 @@ class SchematicRegion:
         offset: float = 2,
         orient: str | None = None,
     ) -> SchematicNetLabel:
+        """Place a short-offset local net label in this region."""
         return self._authoring.local_label(
             name_or_net,
             at=at,
@@ -2940,6 +3041,7 @@ class SchematicRegion:
         orient: str | None = None,
         label: str | None = None,
     ) -> SchematicSignalStub:
+        """Draw a signal stub ending in a local net label in this region."""
         return self._authoring.signal_stub(
             name_or_net,
             at=at,
@@ -2961,6 +3063,7 @@ class SchematicRegion:
         kind: str = "Bidirectional",
         orient: str | None = None,
     ) -> SchematicSignalTag:
+        """Draw a signal stub ending in a sheet-port style tag in this region."""
         return self._authoring.signal_tag(
             name_or_net,
             at=at,
@@ -2982,6 +3085,7 @@ class SchematicRegion:
         kind: str = "Bidirectional",
         orient: str | None = None,
     ) -> tuple[SchematicSignalTag, ...]:
+        """Place a pitched stack of signal tags in this region."""
         return self._authoring.signal_tags(
             items,
             at=at,
@@ -3003,6 +3107,7 @@ class SchematicRegion:
         label_gap: float = 2,
         orient: str | None = None,
     ) -> tuple[SchematicSignalStub, ...]:
+        """Place a pitched stack of signal stubs in this region."""
         return self._authoring.signal_stubs(
             items,
             at=at,
@@ -3019,6 +3124,7 @@ class SchematicRegion:
         *,
         at: tuple[float, float] | SchematicAnchor | SchematicPort,
     ) -> SchematicJunction:
+        """Place an explicit junction marker in this region."""
         return self._authoring.junction(net, at=at)
 
     def terminal(
@@ -3154,6 +3260,7 @@ class SchematicRegion:
         kind: str = "Bidirectional",
         orient: str = "Right",
     ) -> SchematicPort:
+        """Place a sheet port in this region."""
         return self._authoring.sheet_port(
             name,
             at=at,
@@ -3170,6 +3277,7 @@ class SchematicRegion:
         net: Net | None = None,
         orient: str = "Right",
     ) -> SchematicPort:
+        """Place an off-page connector in this region."""
         return self._authoring.off_page(
             name,
             at=at,
@@ -3185,6 +3293,7 @@ class SchematicRegion:
         offset: float = 0,
         reason: str | None = None,
     ) -> SchematicNoConnect:
+        """Place a no-connect marker in this region."""
         return self._authoring.no_connect(
             anchor,
             orient=orient,

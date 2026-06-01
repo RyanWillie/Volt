@@ -86,6 +86,7 @@ class PhysicalPartSpec:
         voltage_rating: float | None = None,
         power_rating: float | None = None,
     ) -> PhysicalPartSpec:
+        """Create a physical part whose footprint pad labels match pin numbers."""
         return cls(
             manufacturer=manufacturer,
             part_number=part_number,
@@ -98,6 +99,7 @@ class PhysicalPartSpec:
         )
 
     def pin_pads_for(self, component: LibraryComponent) -> dict[int | str, PinPadValue]:
+        """Return the pin-to-pad mapping for a library component."""
         if self.same_numbered_pads:
             result: dict[int | str, PinPadValue] = {}
             for pin in component.pins:
@@ -212,6 +214,7 @@ class SchematicSymbolSpec:
         at: tuple[float, float],
         orientation: str = "Right",
     ) -> SchematicSymbolPinSpec:
+        """Create a pin anchor for a custom schematic symbol."""
         return SchematicSymbolPinSpec(name, number, at, orientation)
 
     @staticmethod
@@ -223,6 +226,7 @@ class SchematicSymbolSpec:
         slot: int | None = None,
         label: str | None = None,
     ) -> SchematicBlockPinSpec:
+        """Create a pin placement entry for block-style schematic symbols."""
         return SchematicBlockPinSpec(name, number, side=side, slot=slot, label=label)
 
     @staticmethod
@@ -234,6 +238,7 @@ class SchematicSymbolSpec:
         slot: int | None = None,
         label: str | None = None,
     ) -> SchematicBlockPinSpec:
+        """Create a pin placement entry for IC-style schematic symbols."""
         return SchematicSymbolSpec.block_pin(
             name,
             number,
@@ -252,6 +257,7 @@ class SchematicSymbolSpec:
         pin_label_offset: float | None = None,
         pin_number_offset: float | None = None,
     ) -> SchematicBlockSideLayoutSpec:
+        """Create per-side layout overrides for a block-style symbol."""
         return SchematicBlockSideLayoutSpec(
             side,
             pad=pad,
@@ -279,6 +285,7 @@ class SchematicSymbolSpec:
         pin_number_offset: float = 2,
         variant: str = "default",
     ) -> SchematicSymbolSpec:
+        """Build a rectangular block schematic symbol from pin placement specs."""
         return _schematic_block_symbol_spec(
             name,
             pins=pins,
@@ -314,6 +321,7 @@ class SchematicSymbolSpec:
         pin_number_offset: float = 2,
         variant: str = "default",
     ) -> SchematicSymbolSpec:
+        """Build an IC-style schematic symbol from pin placement specs."""
         return SchematicSymbolSpec.block(
             name,
             pins=pins,
@@ -338,6 +346,7 @@ class SchematicSymbolSpec:
         *,
         role: str | None = None,
     ) -> dict:
+        """Create a line primitive for a custom schematic symbol."""
         primitive = {"type": "line", "start": _symbol_point(start), "end": _symbol_point(end)}
         if role is not None:
             primitive["role"] = _symbol_line_role(role)
@@ -350,6 +359,7 @@ class SchematicSymbolSpec:
         *,
         terminal: str,
     ) -> dict:
+        """Create a terminal lead line primitive for a custom schematic symbol."""
         return SchematicSymbolSpec.line(
             start,
             end,
@@ -358,6 +368,7 @@ class SchematicSymbolSpec:
 
     @staticmethod
     def rectangle(first_corner: tuple[float, float], second_corner: tuple[float, float]) -> dict:
+        """Create a rectangle primitive for a custom schematic symbol."""
         return {
             "type": "rectangle",
             "first_corner": _symbol_point(first_corner),
@@ -366,6 +377,7 @@ class SchematicSymbolSpec:
 
     @staticmethod
     def circle(center: tuple[float, float], radius: float) -> dict:
+        """Create a circle primitive for a custom schematic symbol."""
         return {"type": "circle", "center": _symbol_point(center), "radius": _coordinate(radius)}
 
     @staticmethod
@@ -375,6 +387,7 @@ class SchematicSymbolSpec:
         start_degrees: float,
         sweep_degrees: float,
     ) -> dict:
+        """Create an arc primitive for a custom schematic symbol."""
         return {
             "type": "arc",
             "center": _symbol_point(center),
@@ -393,6 +406,7 @@ class SchematicSymbolSpec:
         baseline: str = "baseline",
         font_size: float | None = None,
     ) -> dict:
+        """Create a text primitive for a custom schematic symbol."""
         primitive = {
             "type": "text",
             "text": text,
@@ -429,10 +443,12 @@ class LibraryComponent:
 
     @property
     def cache_key(self) -> tuple[str, str, str, str]:
+        """Return the stable design-local cache key for this library component."""
         return (self.library.namespace, self.source_name, self.source_version, self.name)
 
     @property
     def schematic_symbol(self) -> SchematicSymbolSpec | None:
+        """Return this component's default schematic symbol, if one is registered."""
         return _schematic_symbol_for_variant(self.schematic_symbols, "default")
 
 
@@ -460,6 +476,7 @@ class Library:
         prefix: str = "U",
         schematic_symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
     ) -> LibraryComponent:
+        """Register a reusable component entry in this Python library."""
         if not name:
             raise ValueError("Library component name must not be empty")
         if not prefix:
@@ -481,6 +498,7 @@ class Library:
         return component
 
     def __getitem__(self, name: str) -> LibraryComponent:
+        """Return a registered library component by name."""
         return self._components[name]
 
 
