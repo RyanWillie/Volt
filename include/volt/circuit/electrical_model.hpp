@@ -13,29 +13,38 @@ namespace volt {
 /** Owns typed electrical metadata and selected physical implementation state. */
 class ElectricalModel {
   public:
+    /** Set typed electrical metadata for a concrete component. */
     void set_component_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
                                  ElectricalAttributeValue value);
 
+    /** Set typed electrical metadata for a reusable pin definition. */
     void set_pin_definition_attribute(PinDefId pin_definition, const ElectricalAttributeSpec &spec,
                                       ElectricalAttributeValue value);
 
+    /** Set typed electrical metadata for a logical net. */
     void set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
                            ElectricalAttributeValue value);
 
+    /** Select the physical part used to implement a concrete component. */
     void select_physical_part(ComponentId component, PhysicalPart physical_part,
                               const std::vector<PinDefId> &component_pins);
 
+    /** Set typed electrical metadata for a selected physical part. */
     void set_selected_part_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
                                      ElectricalAttributeValue value);
 
+    /** Return typed electrical metadata for a concrete component. */
     [[nodiscard]] const ElectricalAttributeMap &
     component_attributes(ComponentId component) const noexcept;
 
+    /** Return typed electrical metadata for a reusable pin definition. */
     [[nodiscard]] const ElectricalAttributeMap &
     pin_definition_attributes(PinDefId pin_definition) const noexcept;
 
+    /** Return typed electrical metadata for a logical net. */
     [[nodiscard]] const ElectricalAttributeMap &net_attributes(NetId net) const noexcept;
 
+    /** Return the selected physical part for a concrete component, if present. */
     [[nodiscard]] const std::optional<PhysicalPart> &
     selected_physical_part(ComponentId component) const noexcept;
 

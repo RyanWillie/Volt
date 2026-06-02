@@ -235,24 +235,39 @@ inline constexpr double board_drc_epsilon = 1.0e-9;
 [[nodiscard]] double polygon_outline_boundary_distance(const BoardOutline &outline,
                                                        const std::vector<BoardPoint> &polygon);
 
+/** Geometric primitive category used while checking copper spacing. */
 enum class BoardCopperShapeKind {
+    /** Circular copper shape. */
     Disc,
+    /** Line-segment copper shape with radius. */
     Segment,
+    /** Polygon copper shape. */
     Polygon,
 };
 
+/** Identifies the placed footprint pad that contributed a copper shape. */
 struct BoardPadShapeKey {
+    /** Placement containing the footprint pad. */
     ComponentPlacementId placement;
+    /** Footprint pad within the placed component. */
     FootprintPadId pad;
 };
 
+/** Normalized copper geometry used by board DRC without owning board state. */
 struct BoardCopperShape {
+    /** Shape geometry category. */
     BoardCopperShapeKind kind;
+    /** Logical net owning the copper shape. */
     NetId net;
+    /** Copper layers occupied by the shape. */
     std::vector<BoardLayerId> layers;
+    /** Entities reported when this shape participates in a diagnostic. */
     std::vector<EntityRef> primary_entities;
+    /** Shape points: center, segment endpoints, or polygon vertices. */
     std::vector<BoardPoint> points;
+    /** Radius used for circular and segment shapes. */
     double radius_mm;
+    /** Source pad, when this shape came from a placed footprint pad. */
     std::optional<BoardPadShapeKey> pad;
 };
 
