@@ -8,9 +8,7 @@ namespace volt {
 [[nodiscard]] BoardTrackId BoardCopperModel::add_track(BoardTrack track) {
     return tracks_.insert(std::move(track));
 }
-[[nodiscard]] BoardViaId BoardCopperModel::add_via(BoardVia via) {
-    return vias_.insert(std::move(via));
-}
+[[nodiscard]] BoardViaId BoardCopperModel::add_via(BoardVia via) { return vias_.insert(via); }
 [[nodiscard]] BoardZoneId BoardCopperModel::add_zone(BoardZone zone) {
     return zones_.insert(std::move(zone));
 }

@@ -16,6 +16,7 @@ struct ConnectivityFixture {
 
 ConnectivityFixture make_connectivity_fixture() {
     ConnectivityFixture fixture{
+        .model = {},
         .first_pin = volt::PinDefId{0},
         .second_pin = volt::PinDefId{0},
         .component_definition = volt::ComponentDefId{0},

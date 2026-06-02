@@ -7,7 +7,7 @@
 namespace volt {
 
 [[nodiscard]] SymbolInstanceId SchematicItemsModel::add_symbol_instance(SymbolInstance instance) {
-    return symbol_instances_.insert(std::move(instance));
+    return symbol_instances_.insert(instance);
 }
 [[nodiscard]] WireRunId SchematicItemsModel::add_wire_run(WireRun wire) {
     return wire_runs_.insert(std::move(wire));

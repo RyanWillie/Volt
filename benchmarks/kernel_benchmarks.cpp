@@ -12,6 +12,7 @@
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/nets.hpp>
+#include <volt/circuit/queries.hpp>
 #include <volt/circuit/validation.hpp>
 #include <volt/io/logical_circuit_reader.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
@@ -75,8 +76,8 @@ volt::Circuit build_resistor_chain(std::size_t component_count) {
         const auto component = components[index];
         const auto first_net = volt::NetId{index};
         const auto second_net = volt::NetId{index + 1};
-        const auto first_pin = circuit.pin_by_number(component, "1").value();
-        const auto second_pin = circuit.pin_by_number(component, "2").value();
+        const auto first_pin = volt::queries::pin_by_number(circuit, component, "1").value();
+        const auto second_pin = volt::queries::pin_by_number(circuit, component, "2").value();
         volt::authoring::connect(circuit, first_net, {first_pin});
         volt::authoring::connect(circuit, second_net, {second_pin});
     }

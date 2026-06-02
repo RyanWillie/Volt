@@ -17,6 +17,7 @@ struct HierarchyFixture {
 
 HierarchyFixture make_hierarchy_fixture() {
     HierarchyFixture fixture{
+        .model = {},
         .module = volt::ModuleDefId{0},
         .input = volt::TemplateNetDefId{0},
         .output = volt::TemplateNetDefId{0},

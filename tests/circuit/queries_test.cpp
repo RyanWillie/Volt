@@ -18,6 +18,7 @@ struct QueryFixture {
 
 QueryFixture make_query_fixture() {
     QueryFixture fixture{
+        .circuit = {},
         .first_pin = volt::PinDefId{0},
         .second_pin = volt::PinDefId{0},
         .component_definition = volt::ComponentDefId{0},

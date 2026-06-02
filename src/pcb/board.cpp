@@ -38,7 +38,7 @@ void Board::set_design_rules(BoardDesignRules rules) { structure_.set_design_rul
     require_net(via.net());
     require_copper_layer(via.start_layer());
     require_copper_layer(via.end_layer());
-    return copper_.add_via(std::move(via));
+    return copper_.add_via(via);
 }
 [[nodiscard]] BoardZoneId Board::add_zone(BoardZone zone) {
     if (zone.net().has_value()) {
