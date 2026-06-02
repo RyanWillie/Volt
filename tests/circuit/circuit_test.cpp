@@ -224,7 +224,8 @@ TEST_CASE("Circuit assigns and reads a selected physical part for a component") 
     volt::CircuitElectrical{circuit}.select_physical_part(
         component, make_resistor_physical_part(first_pin, second_pin));
 
-    const auto &selected_part = circuit.view().selected_physical_part(component);
+    const auto view = circuit.view();
+    const auto &selected_part = view.selected_physical_part(component);
     REQUIRE(selected_part.has_value());
     CHECK(selected_part->manufacturer_part().manufacturer() == "Yageo");
     CHECK(selected_part->manufacturer_part().part_number() == "RC0603FR-07330RL");
@@ -333,8 +334,8 @@ TEST_CASE("Circuit sets typed electrical attributes on pin definitions") {
             volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 4.5},
                                          volt::Quantity{volt::UnitDimension::Voltage, 16.0})});
 
-    const auto &stored_range = circuit.view()
-                                   .pin_definition(pin_definition)
+    const auto view = circuit.view();
+    const auto &stored_range = view.pin_definition(pin_definition)
                                    .electrical_attributes()
                                    .get(volt::ElectricalAttributeName{"voltage_range"})
                                    .as_range();

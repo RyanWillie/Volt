@@ -55,8 +55,9 @@ TEST_CASE("Logical circuit reader preserves typed electrical attributes") {
     };
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
-    const auto &component = circuit.view().component(volt::ComponentId{1});
-    const auto &selected_part = circuit.view().selected_physical_part(volt::ComponentId{1}).value();
+    const auto view = circuit.view();
+    const auto &component = view.component(volt::ComponentId{1});
+    const auto &selected_part = view.selected_physical_part(volt::ComponentId{1}).value();
 
     CHECK(component.electrical_attributes()
               .get(volt::ElectricalAttributeName{"resistance"})
@@ -124,7 +125,8 @@ TEST_CASE("Logical circuit reader preserves pin electrical semantics") {
     };
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
-    const auto &definition = circuit.view().pin_definition(volt::PinDefId{0});
+    const auto view = circuit.view();
+    const auto &definition = view.pin_definition(volt::PinDefId{0});
 
     CHECK(definition.terminal_kind() == volt::ElectricalTerminalKind::Signal);
     CHECK(definition.direction() == volt::ElectricalDirection::Output);

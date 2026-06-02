@@ -20,13 +20,14 @@ inline Circuit build_led_circuit() {
     const auto resistor = authoring::define_component(circuit, authoring::resistor());
     const auto led = authoring::define_component(circuit, authoring::led());
 
-    const auto &connector_pins = circuit.view().component_definition(connector).pins();
+    const auto view = circuit.view();
+    const auto &connector_pins = view.component_definition(connector).pins();
     const auto connector_positive = connector_pins[0];
     const auto connector_negative = connector_pins[1];
-    const auto &resistor_pins = circuit.view().component_definition(resistor).pins();
+    const auto &resistor_pins = view.component_definition(resistor).pins();
     const auto resistor_pin_1 = resistor_pins[0];
     const auto resistor_pin_2 = resistor_pins[1];
-    const auto &led_pins = circuit.view().component_definition(led).pins();
+    const auto &led_pins = view.component_definition(led).pins();
     const auto led_anode = led_pins[0];
     const auto led_cathode = led_pins[1];
 
@@ -56,14 +57,11 @@ inline Circuit build_led_circuit() {
     const auto gnd = circuit.add_net(Net{NetName{"GND"}, NetKind::Ground});
 
     authoring::connect(circuit, vcc,
-                       {circuit.view().pin_by_number(j1, "1").value(),
-                        circuit.view().pin_by_number(r1, "1").value()});
+                       {view.pin_by_number(j1, "1").value(), view.pin_by_number(r1, "1").value()});
     authoring::connect(circuit, led_a,
-                       {circuit.view().pin_by_number(r1, "2").value(),
-                        circuit.view().pin_by_name(d1, "A").value()});
+                       {view.pin_by_number(r1, "2").value(), view.pin_by_name(d1, "A").value()});
     authoring::connect(circuit, gnd,
-                       {circuit.view().pin_by_name(d1, "K").value(),
-                        circuit.view().pin_by_number(j1, "2").value()});
+                       {view.pin_by_name(d1, "K").value(), view.pin_by_number(j1, "2").value()});
 
     return circuit;
 }
