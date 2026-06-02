@@ -21,13 +21,6 @@ PinDefinition::PinDefinition(std::string name, std::string number, PinRole role,
 [[nodiscard]] ConnectionRequirement PinDefinition::connection_requirement() const noexcept {
     return connection_requirement_;
 }
-[[nodiscard]] const ElectricalAttributeMap &PinDefinition::electrical_attributes() const noexcept {
-    return electrical_attributes_;
-}
-void PinDefinition::set_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                             ElectricalAttributeValue value) {
-    electrical_attributes_.set(spec, value);
-}
 DefinitionSource::DefinitionSource(std::string namespace_name, std::string name,
                                    std::string version)
     : namespace_{std::move(namespace_name)}, name_{std::move(name)}, version_{std::move(version)} {

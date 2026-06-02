@@ -13,6 +13,8 @@
 
 namespace volt {
 
+class ElectricalModel;
+
 /** Manufacturer-specific ordering identity for a selected physical part. */
 class ManufacturerPart {
   public:
@@ -129,7 +131,7 @@ class PhysicalPart {
     [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept;
 
   private:
-    friend class ComponentInstance;
+    friend class ElectricalModel;
 
     void set_electrical_attribute(const ElectricalAttributeSpec &spec,
                                   ElectricalAttributeValue value);

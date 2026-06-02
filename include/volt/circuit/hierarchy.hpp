@@ -12,6 +12,8 @@
 
 namespace volt {
 
+class HierarchyModel;
+
 /** Human-facing reusable module name. */
 class ModuleName {
   public:
@@ -174,7 +176,7 @@ class ModuleDefinition {
     [[nodiscard]] const std::vector<ModuleComponentId> &components() const noexcept;
 
   private:
-    friend class Circuit;
+    friend class HierarchyModel;
 
     void add_template_net(TemplateNetDefId net);
     void add_port(PortDefId port);

@@ -1,11 +1,17 @@
 add_library(
     volt_circuit
     circuit.cpp
+    connectivity_model.cpp
     definitions.cpp
+    design_intent.cpp
+    electrical_model.cpp
     hierarchy.cpp
+    hierarchy_model.cpp
     instances.cpp
     nets.cpp
     parts.cpp
+    queries.cpp
+    rule_classes.cpp
     validation.cpp
 )
 add_library(Volt::Circuit ALIAS volt_circuit)

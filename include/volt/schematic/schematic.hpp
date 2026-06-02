@@ -7,11 +7,13 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
-#include <volt/core/entity_table.hpp>
 #include <volt/schematic/geometry.hpp>
 #include <volt/schematic/schematic_items.hpp>
+#include <volt/schematic/schematic_items_model.hpp>
+#include <volt/schematic/schematic_library_model.hpp>
 #include <volt/schematic/schematic_sheet.hpp>
 #include <volt/schematic/schematic_sheet_metadata.hpp>
+#include <volt/schematic/schematic_sheet_model.hpp>
 #include <volt/schematic/symbols.hpp>
 #include <volt/schematic/wire_topology.hpp>
 
@@ -123,7 +125,7 @@ class Schematic {
     [[nodiscard]] const SymbolDefinition &symbol_definition(SymbolDefId id) const;
 
     /** Return a schematic sheet by ID. */
-    [[nodiscard]] const Sheet &sheet(SheetId id) const { return sheets_.get(id); }
+    [[nodiscard]] const Sheet &sheet(SheetId id) const { return sheets_.sheet(id); }
 
     /** Return a named presentation region by sheet and sheet-local region index. */
     [[nodiscard]] const SheetRegion &sheet_region(SheetId sheet, std::size_t region) const;
@@ -132,19 +134,21 @@ class Schematic {
     [[nodiscard]] const SymbolInstance &symbol_instance(SymbolInstanceId id) const;
 
     /** Return a wire run by ID. */
-    [[nodiscard]] const WireRun &wire_run(WireRunId id) const { return wire_runs_.get(id); }
+    [[nodiscard]] const WireRun &wire_run(WireRunId id) const { return items_.wire_run(id); }
 
     /** Return a net label by ID. */
-    [[nodiscard]] const NetLabel &net_label(NetLabelId id) const { return net_labels_.get(id); }
+    [[nodiscard]] const NetLabel &net_label(NetLabelId id) const { return items_.net_label(id); }
 
     /** Move net label text without changing its presentation anchor. */
     void move_net_label_text(NetLabelId id, Point position);
 
     /** Return an explicit junction by ID. */
-    [[nodiscard]] const Junction &junction(JunctionId id) const { return junctions_.get(id); }
+    [[nodiscard]] const Junction &junction(JunctionId id) const { return items_.junction(id); }
 
     /** Return a power or ground port by ID. */
-    [[nodiscard]] const PowerPort &power_port(PowerPortId id) const { return power_ports_.get(id); }
+    [[nodiscard]] const PowerPort &power_port(PowerPortId id) const {
+        return items_.power_port(id);
+    }
 
     /** Move power or ground marker label text without changing the marker anchor. */
     void move_power_port_label(PowerPortId id, Point position);
@@ -153,7 +157,9 @@ class Schematic {
     [[nodiscard]] const NoConnectMarker &no_connect_marker(NoConnectMarkerId id) const;
 
     /** Return a sheet/off-page port by ID. */
-    [[nodiscard]] const SheetPort &sheet_port(SheetPortId id) const { return sheet_ports_.get(id); }
+    [[nodiscard]] const SheetPort &sheet_port(SheetPortId id) const {
+        return items_.sheet_port(id);
+    }
 
     /** Return a placed symbol field by ID. */
     [[nodiscard]] const SymbolField &symbol_field(SymbolFieldId id) const;
@@ -168,31 +174,37 @@ class Schematic {
     [[nodiscard]] std::size_t symbol_definition_count() const noexcept;
 
     /** Return the number of stored sheets. */
-    [[nodiscard]] std::size_t sheet_count() const noexcept { return sheets_.size(); }
+    [[nodiscard]] std::size_t sheet_count() const noexcept { return sheets_.sheet_count(); }
 
     /** Return the number of stored symbol instances. */
     [[nodiscard]] std::size_t symbol_instance_count() const noexcept;
 
     /** Return the number of stored wire runs. */
-    [[nodiscard]] std::size_t wire_run_count() const noexcept { return wire_runs_.size(); }
+    [[nodiscard]] std::size_t wire_run_count() const noexcept { return items_.wire_run_count(); }
 
     /** Return the number of stored net labels. */
-    [[nodiscard]] std::size_t net_label_count() const noexcept { return net_labels_.size(); }
+    [[nodiscard]] std::size_t net_label_count() const noexcept { return items_.net_label_count(); }
 
     /** Return the number of stored explicit junctions. */
-    [[nodiscard]] std::size_t junction_count() const noexcept { return junctions_.size(); }
+    [[nodiscard]] std::size_t junction_count() const noexcept { return items_.junction_count(); }
 
     /** Return the number of stored power and ground ports. */
-    [[nodiscard]] std::size_t power_port_count() const noexcept { return power_ports_.size(); }
+    [[nodiscard]] std::size_t power_port_count() const noexcept {
+        return items_.power_port_count();
+    }
 
     /** Return the number of stored no-connect markers. */
     [[nodiscard]] std::size_t no_connect_marker_count() const noexcept;
 
     /** Return the number of stored sheet/off-page ports. */
-    [[nodiscard]] std::size_t sheet_port_count() const noexcept { return sheet_ports_.size(); }
+    [[nodiscard]] std::size_t sheet_port_count() const noexcept {
+        return items_.sheet_port_count();
+    }
 
     /** Return the number of stored symbol fields. */
-    [[nodiscard]] std::size_t symbol_field_count() const noexcept { return symbol_fields_.size(); }
+    [[nodiscard]] std::size_t symbol_field_count() const noexcept {
+        return items_.symbol_field_count();
+    }
 
   private:
     void require_sheet(SheetId sheet) const;
@@ -239,16 +251,9 @@ class Schematic {
                               const std::vector<SchematicEndpoint> &endpoints) const;
 
     const Circuit &circuit_;
-    EntityTable<SymbolDefinition, SymbolDefId> symbol_definitions_;
-    EntityTable<Sheet, SheetId> sheets_;
-    EntityTable<SymbolInstance, SymbolInstanceId> symbol_instances_;
-    EntityTable<WireRun, WireRunId> wire_runs_;
-    EntityTable<NetLabel, NetLabelId> net_labels_;
-    EntityTable<Junction, JunctionId> junctions_;
-    EntityTable<PowerPort, PowerPortId> power_ports_;
-    EntityTable<NoConnectMarker, NoConnectMarkerId> no_connect_markers_;
-    EntityTable<SheetPort, SheetPortId> sheet_ports_;
-    EntityTable<SymbolField, SymbolFieldId> symbol_fields_;
+    SchematicLibraryModel library_;
+    SchematicSheetModel sheets_;
+    SchematicItemsModel items_;
 };
 
 } // namespace volt

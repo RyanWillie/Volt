@@ -1,5 +1,7 @@
 #include <volt/schematic/presentation_geometry.hpp>
 
+#include <volt/circuit/queries.hpp>
+
 namespace volt::detail {
 
 [[nodiscard]] SchematicBounds bounds_from_point(Point point) noexcept {
@@ -339,11 +341,11 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
     const auto &second_symbol = schematic.symbol_definition(second.symbol_definition());
     for (const auto &first_pin : first_symbol.pins()) {
         const auto first_concrete_pin =
-            circuit.pin_by_number(first.component(), first_pin.number());
+            queries::pin_by_number(circuit, first.component(), first_pin.number());
         if (!first_concrete_pin.has_value()) {
             continue;
         }
-        const auto first_net = circuit.net_of(first_concrete_pin.value());
+        const auto first_net = queries::net_of(circuit, first_concrete_pin.value());
         if (!first_net.has_value()) {
             continue;
         }
@@ -351,11 +353,11 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
             transform_schematic_point(first_pin.anchor(), first.position(), first.orientation());
         for (const auto &second_pin : second_symbol.pins()) {
             const auto second_concrete_pin =
-                circuit.pin_by_number(second.component(), second_pin.number());
+                queries::pin_by_number(circuit, second.component(), second_pin.number());
             if (!second_concrete_pin.has_value()) {
                 continue;
             }
-            const auto second_net = circuit.net_of(second_concrete_pin.value());
+            const auto second_net = queries::net_of(circuit, second_concrete_pin.value());
             if (!second_net.has_value() || second_net.value() != first_net.value()) {
                 continue;
             }

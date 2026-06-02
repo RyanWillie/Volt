@@ -8,56 +8,37 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/queries.hpp>
+
 namespace volt {
 
 Board::Board(const Circuit &circuit, BoardName name) : circuit_{&circuit}, name_{std::move(name)} {}
 [[nodiscard]] BoardLayerId Board::add_layer(BoardLayer layer) {
-    if (layer_by_name(layer.name()).has_value()) {
-        throw std::logic_error{"Board layer name already exists"};
-    }
-
-    return layers_.insert(std::move(layer));
+    return structure_.add_layer(std::move(layer));
 }
-void Board::set_layer_stack(LayerStack stack) {
-    for (const auto layer : stack.layers()) {
-        require_layer(layer);
-    }
-    layer_stack_ = std::move(stack);
-}
-void Board::set_outline(BoardOutline outline) { outline_ = std::move(outline); }
-void Board::set_design_rules(BoardDesignRules rules) { design_rules_ = rules; }
+void Board::set_layer_stack(LayerStack stack) { structure_.set_layer_stack(std::move(stack)); }
+void Board::set_outline(BoardOutline outline) { structure_.set_outline(std::move(outline)); }
+void Board::set_design_rules(BoardDesignRules rules) { structure_.set_design_rules(rules); }
 [[nodiscard]] BoardFeatureId Board::add_feature(BoardFeature feature) {
-    return features_.insert(std::move(feature));
+    return structure_.add_feature(std::move(feature));
 }
 [[nodiscard]] FootprintDefId Board::cache_footprint_definition(FootprintDefinition footprint) {
-    const auto existing = footprint_definition_id(footprint.ref());
-    if (existing.has_value()) {
-        if (footprint_definition(existing.value()) == footprint) {
-            return existing.value();
-        }
-        throw std::logic_error{"Board footprint definition conflicts with existing definition"};
-    }
-
-    return footprint_definitions_.insert(std::move(footprint));
+    return footprint_cache_.cache_footprint_definition(std::move(footprint));
 }
 [[nodiscard]] ComponentPlacementId Board::place_component(ComponentPlacement placement) {
     static_cast<void>(circuit().component(placement.component()));
-    if (placement_for_component(placement.component()).has_value()) {
-        throw std::logic_error{"Component already has a board placement"};
-    }
-
-    return placements_.insert(placement);
+    return placements_.place_component(placement);
 }
 [[nodiscard]] BoardTrackId Board::add_track(BoardTrack track) {
     require_net(track.net());
     require_copper_layer(track.layer());
-    return tracks_.insert(std::move(track));
+    return copper_.add_track(std::move(track));
 }
 [[nodiscard]] BoardViaId Board::add_via(BoardVia via) {
     require_net(via.net());
     require_copper_layer(via.start_layer());
     require_copper_layer(via.end_layer());
-    return vias_.insert(via);
+    return copper_.add_via(std::move(via));
 }
 [[nodiscard]] BoardZoneId Board::add_zone(BoardZone zone) {
     if (zone.net().has_value()) {
@@ -69,57 +50,43 @@ void Board::set_design_rules(BoardDesignRules rules) { design_rules_ = rules; }
             throw std::logic_error{"Board copper zones require copper layers"};
         }
     }
-    return zones_.insert(std::move(zone));
+    return copper_.add_zone(std::move(zone));
 }
 [[nodiscard]] BoardKeepoutId Board::add_keepout(BoardKeepout keepout) {
     for (const auto layer : keepout.layers()) {
         require_layer(layer);
     }
-    return keepouts_.insert(std::move(keepout));
+    return copper_.add_keepout(std::move(keepout));
 }
 [[nodiscard]] BoardTextId Board::add_text(BoardText text) {
     require_layer(text.layer());
-    return texts_.insert(std::move(text));
+    return copper_.add_text(std::move(text));
 }
 [[nodiscard]] const std::optional<LayerStack> &Board::layer_stack() const noexcept {
-    return layer_stack_;
+    return structure_.layer_stack();
 }
 [[nodiscard]] const FootprintDefinition &Board::footprint_definition(FootprintDefId id) const {
-    return footprint_definitions_.get(id);
+    return footprint_cache_.footprint_definition(id);
 }
 [[nodiscard]] std::size_t Board::footprint_definition_count() const noexcept {
-    return footprint_definitions_.size();
+    return footprint_cache_.footprint_definition_count();
 }
 [[nodiscard]] std::optional<FootprintDefId>
 Board::footprint_definition_id(const FootprintRef &ref) const noexcept {
-    for (std::size_t index = 0; index < footprint_definitions_.size(); ++index) {
-        const auto id = FootprintDefId{index};
-        if (footprint_definitions_.get(id).ref() == ref) {
-            return id;
-        }
-    }
-
-    return std::nullopt;
+    return footprint_cache_.footprint_definition_id(ref);
 }
 [[nodiscard]] const ComponentPlacement &Board::placement(ComponentPlacementId id) const {
-    return placements_.get(id);
+    return placements_.placement(id);
 }
 [[nodiscard]] std::optional<ComponentPlacementId>
 Board::placement_for_component(ComponentId component) const noexcept {
-    for (std::size_t index = 0; index < placements_.size(); ++index) {
-        const auto id = ComponentPlacementId{index};
-        if (placements_.get(id).component() == component) {
-            return id;
-        }
-    }
-
-    return std::nullopt;
+    return placements_.placement_for_component(component);
 }
 [[nodiscard]] std::vector<PadResolution>
 Board::resolve_pads(const FootprintLibrary &footprints) const {
     auto resolutions = std::vector<PadResolution>{};
     const auto resolution_footprints = detail::board_resolution_footprints(*this, footprints);
-    for (std::size_t index = 0; index < placements_.size(); ++index) {
+    for (std::size_t index = 0; index < placements_.placement_count(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
         const auto &component_placement = placement(placement_id);
         const auto &selected_part =
@@ -145,27 +112,13 @@ Board::resolve_pads(const FootprintLibrary &footprints) const {
 Board::ratsnest_edges(const FootprintLibrary &footprints) const {
     return derive_ratsnest_edges(resolve_pads(footprints));
 }
-void Board::require_layer(BoardLayerId layer) const {
-    if (!layers_.contains(layer)) {
-        throw std::out_of_range{"Board layer ID does not belong to this board"};
-    }
-}
+void Board::require_layer(BoardLayerId layer) const { structure_.require_layer(layer); }
 void Board::require_net(NetId net) const { static_cast<void>(circuit().net(net)); }
 void Board::require_copper_layer(BoardLayerId layer_id) const {
     require_layer(layer_id);
     if (layer(layer_id).role() != BoardLayerRole::Copper) {
         throw std::logic_error{"Board copper primitives require copper layers"};
     }
-}
-[[nodiscard]] std::optional<BoardLayerId> Board::layer_by_name(const std::string &name) const {
-    for (std::size_t index = 0; index < layers_.size(); ++index) {
-        const auto id = BoardLayerId{index};
-        if (layers_.get(id).name() == name) {
-            return id;
-        }
-    }
-
-    return std::nullopt;
 }
 void Board::append_pad_resolutions(ComponentPlacementId placement_id,
                                    const ComponentPlacement &component_placement,
@@ -195,7 +148,7 @@ void Board::append_pad_resolutions(ComponentPlacementId placement_id,
         }
 
         const auto pin =
-            circuit().pin_by_definition(component_placement.component(), binding->pin());
+            queries::pin_by_definition(circuit(), component_placement.component(), binding->pin());
         if (!pin.has_value()) {
             resolutions.emplace_back(placement_id, component_placement.component(), pad_id,
                                      pad.label(), position, std::nullopt, std::nullopt,
@@ -203,7 +156,7 @@ void Board::append_pad_resolutions(ComponentPlacementId placement_id,
             continue;
         }
 
-        const auto net = circuit().net_of(pin.value());
+        const auto net = queries::net_of(circuit(), pin.value());
         const auto status =
             net.has_value() ? PadResolutionStatus::Connected : PadResolutionStatus::Unconnected;
         resolutions.emplace_back(placement_id, component_placement.component(), pad_id, pad.label(),
@@ -258,8 +211,7 @@ void Board::append_pad_resolutions(ComponentPlacementId placement_id,
         }
 
         for (const auto &binding : footprint_resolution.pad_bindings()) {
-            if (board.circuit()
-                    .pin_by_definition(placement.component(), binding.pin())
+            if (queries::pin_by_definition(board.circuit(), placement.component(), binding.pin())
                     .has_value()) {
                 continue;
             }

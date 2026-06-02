@@ -2,10 +2,14 @@ add_library(
     volt_pcb
     board.cpp
     board_copper.cpp
+    board_copper_model.cpp
     board_features.cpp
+    board_footprint_model.cpp
     board_geometry.cpp
     board_layers.cpp
     board_outline.cpp
+    board_placement_model.cpp
+    board_structure_model.cpp
     footprints.cpp
 )
 add_library(Volt::PCB ALIAS volt_pcb)

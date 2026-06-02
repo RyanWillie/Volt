@@ -44,6 +44,9 @@ template <> struct LocalIdPrefix<ModuleComponentId> {
 template <> struct LocalIdPrefix<PortDefId> {
     static constexpr auto value = std::string_view{"port:"};
 };
+template <> struct LocalIdPrefix<RuleClassId> {
+    static constexpr auto value = std::string_view{"rule_class:"};
+};
 template <> struct LocalIdPrefix<SymbolDefId> {
     static constexpr auto value = std::string_view{"symbol_def:"};
 };

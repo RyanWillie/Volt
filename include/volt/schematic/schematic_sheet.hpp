@@ -59,7 +59,7 @@ class Sheet {
     [[nodiscard]] const SheetRegion &region(std::size_t index) const;
 
   private:
-    friend class Schematic;
+    friend class SchematicSheetModel;
 
     std::size_t add_region(SheetRegion region);
 

@@ -8,7 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
@@ -121,15 +120,7 @@ class PinDefinition {
     /** Return the pin's logical polarity. */
     [[nodiscard]] ElectricalPolarity polarity() const noexcept { return polarity_; }
 
-    /** Return typed electrical attributes attached to this pin definition. */
-    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept;
-
   private:
-    friend class Circuit;
-
-    void set_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                  ElectricalAttributeValue value);
-
     std::string name_;
     std::string number_;
     PinRole role_;
@@ -139,7 +130,6 @@ class PinDefinition {
     ElectricalSignalDomain signal_domain_;
     ElectricalDriveKind drive_kind_;
     ElectricalPolarity polarity_;
-    ElectricalAttributeMap electrical_attributes_;
 };
 
 /** Provenance for a reusable definition imported from a library. */

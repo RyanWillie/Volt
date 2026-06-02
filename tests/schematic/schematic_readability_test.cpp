@@ -1,5 +1,7 @@
 #include "schematic_test_helpers.hpp"
 
+#include <volt/circuit/queries.hpp>
+
 TEST_CASE("Schematic readability reports usable-area and title-block layout issues") {
     volt::Circuit circuit;
     const auto net = add_net(circuit);
@@ -271,8 +273,9 @@ TEST_CASE("Schematic readability reports missing passive values and dense no-con
     for (auto index = 1; index <= 6; ++index) {
         markers.push_back(schematic.add_no_connect_marker(
             sheet,
-            volt::NoConnectMarker{circuit.pin_by_number(connector, std::to_string(index)).value(),
-                                  volt::Point{80.0 + static_cast<double>(index), 40.0}}));
+            volt::NoConnectMarker{
+                volt::queries::pin_by_number(circuit, connector, std::to_string(index)).value(),
+                volt::Point{80.0 + static_cast<double>(index), 40.0}}));
     }
 
     const auto report = volt::validate_schematic_readability(schematic);
@@ -699,7 +702,7 @@ TEST_CASE("Schematic readability reports terminal markers touching symbol bodies
 TEST_CASE("Schematic readability reports no-connect markers misplaced on owning symbol bodies") {
     volt::Circuit circuit;
     const auto component = add_four_pin_component(circuit, "U1");
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
     circuit.mark_intentional_no_connect_pin(pin);
 
     volt::Schematic schematic{circuit};
@@ -748,7 +751,7 @@ TEST_CASE("Schematic readability reports generic visual element collisions") {
 TEST_CASE("Schematic readability reports no-connect markers crowding wire geometry") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
     const auto net = add_named_net(circuit, "BOOT0");
 
     volt::Schematic schematic{circuit};

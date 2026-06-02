@@ -7,6 +7,8 @@
 #include <iterator>
 #include <string>
 
+#include <volt/circuit/queries.hpp>
+#include <volt/circuit/validation.hpp>
 #include <volt/io/logical_circuit_reader.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 
@@ -55,13 +57,12 @@ TEST_CASE("Logical circuit reader preserves typed electrical attributes") {
     };
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
-    const auto &component = circuit.component(volt::ComponentId{1});
     const auto &selected_part = circuit.selected_physical_part(volt::ComponentId{1}).value();
 
-    CHECK(component.electrical_attributes()
+    CHECK(circuit.component_electrical_attributes(volt::ComponentId{1})
               .get(volt::ElectricalAttributeName{"resistance"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Resistance, 330.0});
-    CHECK(component.electrical_attributes()
+    CHECK(circuit.component_electrical_attributes(volt::ComponentId{1})
               .get(volt::ElectricalAttributeName{"tolerance"})
               .as_tolerance()
               .plus() == volt::Quantity{volt::UnitDimension::Ratio, 0.01});
@@ -78,8 +79,7 @@ TEST_CASE("Logical circuit reader preserves net typed electrical attributes") {
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
 
-    CHECK(circuit.net(volt::NetId{0})
-              .electrical_attributes()
+    CHECK(circuit.net_electrical_attributes(volt::NetId{0})
               .get(volt::ElectricalAttributeName{"voltage"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 3.3});
 }
@@ -97,6 +97,52 @@ TEST_CASE("Logical circuit reader preserves design intent") {
     CHECK(circuit.is_intentional_no_connect_pin(volt::PinId{5}));
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
     CHECK(output["design_intent"] == fixture["design_intent"]);
+}
+
+TEST_CASE("Logical circuit reader preserves rule classes and net assignments") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["nets"][0]["electrical_attributes"] = {
+        {"voltage", {{"type", "quantity"}, {"dimension", "voltage"}, {"value", 5.0}}},
+    };
+    fixture["rule_classes"] = {
+        {"classes", nlohmann::json::array(
+                        {{{"id", "rule_class:0"},
+                          {"name", "Logic"},
+                          {"maximum_net_voltage", {{"dimension", "voltage"}, {"value", 3.6}}},
+                          {"copper_clearance_mm", 0.25}}})},
+        {"net_assignments",
+         nlohmann::json::array({{{"net", "net:0"}, {"rule_class", "rule_class:0"}}})},
+    };
+
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
+
+    CHECK(circuit.rule_class_count() == 1);
+    REQUIRE(circuit.rule_class_for_net(volt::NetId{0}).has_value());
+    CHECK(circuit.rule_class_for_net(volt::NetId{0}).value() == volt::RuleClassId{0});
+    CHECK(circuit.rule_class(volt::RuleClassId{0}).name() == volt::RuleClassName{"Logic"});
+    REQUIRE(circuit.rule_class(volt::RuleClassId{0}).maximum_net_voltage().has_value());
+    CHECK(circuit.rule_class(volt::RuleClassId{0}).maximum_net_voltage()->value() == 3.6);
+    REQUIRE(circuit.rule_class(volt::RuleClassId{0}).copper_clearance_mm().has_value());
+    CHECK(circuit.rule_class(volt::RuleClassId{0}).copper_clearance_mm().value() == 0.25);
+
+    const auto report = volt::validate_electrical_rules(circuit);
+    REQUIRE(report.count() == 1);
+    CHECK(report.diagnostics().front().code() ==
+          volt::DiagnosticCode{"NET_RULE_CLASS_VOLTAGE_EXCEEDED"});
+
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+    CHECK(output["rule_classes"] == fixture["rule_classes"]);
+}
+
+TEST_CASE("Logical circuit reader rejects malformed rule-class references") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["rule_classes"] = {
+        {"classes", nlohmann::json::array({{{"id", "rule_class:0"}, {"name", "Logic"}}})},
+        {"net_assignments",
+         nlohmann::json::array({{{"net", "net:99"}, {"rule_class", "rule_class:0"}}})},
+    };
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
 }
 
 TEST_CASE("Logical circuit reader rejects malformed design intent references") {
@@ -123,15 +169,18 @@ TEST_CASE("Logical circuit reader preserves pin electrical semantics") {
     };
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
-    const auto &definition = circuit.pin_definition(volt::PinDefId{0});
+    CHECK(circuit.pin_definition(volt::PinDefId{0}).terminal_kind() ==
+          volt::ElectricalTerminalKind::Signal);
+    CHECK(circuit.pin_definition(volt::PinDefId{0}).direction() ==
+          volt::ElectricalDirection::Output);
+    CHECK(circuit.pin_definition(volt::PinDefId{0}).signal_domain() ==
+          volt::ElectricalSignalDomain::Digital);
+    CHECK(circuit.pin_definition(volt::PinDefId{0}).drive_kind() ==
+          volt::ElectricalDriveKind::PushPull);
+    CHECK(circuit.pin_definition(volt::PinDefId{0}).polarity() ==
+          volt::ElectricalPolarity::ActiveHigh);
 
-    CHECK(definition.terminal_kind() == volt::ElectricalTerminalKind::Signal);
-    CHECK(definition.direction() == volt::ElectricalDirection::Output);
-    CHECK(definition.signal_domain() == volt::ElectricalSignalDomain::Digital);
-    CHECK(definition.drive_kind() == volt::ElectricalDriveKind::PushPull);
-    CHECK(definition.polarity() == volt::ElectricalPolarity::ActiveHigh);
-
-    const auto &range = definition.electrical_attributes()
+    const auto &range = circuit.pin_definition_electrical_attributes(volt::PinDefId{0})
                             .get(volt::ElectricalAttributeName{"voltage_range"})
                             .as_range();
     REQUIRE(range.minimum().has_value());
@@ -218,11 +267,12 @@ TEST_CASE("Logical circuit reader preserves hierarchy module scaffold") {
     CHECK(circuit.port_binding_count() == 1);
     CHECK(circuit.module_definition(volt::ModuleDefId{0}).name() ==
           volt::ModuleName{"BuckConverter"});
-    CHECK(circuit.concrete_net_for(volt::ModuleInstanceId{0}, volt::TemplateNetDefId{0}) ==
-          volt::NetId{3});
-    CHECK(circuit.concrete_net_for(volt::ModuleInstanceId{0}, volt::TemplateNetDefId{1}) ==
-          volt::NetId{4});
-    CHECK(circuit.concrete_component_for(volt::ModuleInstanceId{0}, volt::ModuleComponentId{0}) ==
+    CHECK(volt::queries::concrete_net_for(circuit, volt::ModuleInstanceId{0},
+                                          volt::TemplateNetDefId{0}) == volt::NetId{3});
+    CHECK(volt::queries::concrete_net_for(circuit, volt::ModuleInstanceId{0},
+                                          volt::TemplateNetDefId{1}) == volt::NetId{4});
+    CHECK(volt::queries::concrete_component_for(circuit, volt::ModuleInstanceId{0},
+                                                volt::ModuleComponentId{0}) ==
           volt::ComponentId{3});
     CHECK(circuit.port_binding(volt::PortBindingId{0}).parent_net() == volt::NetId{0});
 }
@@ -235,7 +285,8 @@ TEST_CASE("Logical circuit reader infers missing module component origins for v1
 
     CHECK(circuit.module_instance_count() == 1);
     CHECK(circuit.module_component_count() == 1);
-    CHECK(circuit.concrete_component_for(volt::ModuleInstanceId{0}, volt::ModuleComponentId{0}) ==
+    CHECK(volt::queries::concrete_component_for(circuit, volt::ModuleInstanceId{0},
+                                                volt::ModuleComponentId{0}) ==
           volt::ComponentId{0});
 }
 
@@ -252,9 +303,9 @@ TEST_CASE("Logical circuit reader defaults missing typed electrical attributes t
 
     CHECK(circuit.pin_definition(volt::PinDefId{0}).terminal_kind() ==
           volt::ElectricalTerminalKind::Unspecified);
-    CHECK(circuit.pin_definition(volt::PinDefId{0}).electrical_attributes().empty());
-    CHECK(circuit.component(volt::ComponentId{1}).electrical_attributes().empty());
-    CHECK(circuit.net(volt::NetId{0}).electrical_attributes().empty());
+    CHECK(circuit.pin_definition_electrical_attributes(volt::PinDefId{0}).empty());
+    CHECK(circuit.component_electrical_attributes(volt::ComponentId{1}).empty());
+    CHECK(circuit.net_electrical_attributes(volt::NetId{0}).empty());
     REQUIRE(circuit.selected_physical_part(volt::ComponentId{1}).has_value());
     CHECK(circuit.selected_physical_part(volt::ComponentId{1})
               .value()

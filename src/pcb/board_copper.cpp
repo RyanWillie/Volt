@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include <volt/core/rule_set.hpp>
+
 namespace volt {
 
 BoardZone::BoardZone(std::vector<BoardPoint> outline, std::vector<BoardLayerId> layers,
@@ -506,9 +508,21 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
                                                 EntityRef::board_layer(zone.layers().front())}));
     }
 }
+[[nodiscard]] double net_rule_class_copper_clearance(const Circuit &circuit, NetId net) {
+    const auto rule_class_id = circuit.rule_class_for_net(net);
+    if (!rule_class_id.has_value()) {
+        return 0.0;
+    }
+
+    return circuit.rule_class(rule_class_id.value()).copper_clearance_mm().value_or(0.0);
+}
+[[nodiscard]] double required_copper_clearance(const Board &board, NetId lhs, NetId rhs) {
+    return std::max(board.design_rules().copper_clearance_mm(),
+                    std::max(net_rule_class_copper_clearance(board.circuit(), lhs),
+                             net_rule_class_copper_clearance(board.circuit(), rhs)));
+}
 void validate_copper_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
                                DiagnosticReport &report) {
-    const auto required = board.design_rules().copper_clearance_mm();
     for (std::size_t lhs_index = 0; lhs_index < shapes.size(); ++lhs_index) {
         for (std::size_t rhs_index = lhs_index + 1U; rhs_index < shapes.size(); ++rhs_index) {
             const auto &lhs = shapes[lhs_index];
@@ -521,6 +535,7 @@ void validate_copper_clearance(const Board &board, const std::vector<BoardCopper
                 continue;
             }
             const auto clearance = shape_distance(lhs, rhs) - lhs.radius_mm - rhs.radius_mm;
+            const auto required = required_copper_clearance(board, lhs.net, rhs.net);
             if (clearance + board_drc_epsilon >= required) {
                 continue;
             }
@@ -532,7 +547,7 @@ void validate_copper_clearance(const Board &board, const std::vector<BoardCopper
             entities.push_back(EntityRef::net(rhs.net));
             entities.push_back(EntityRef::board_layer(layer.value()));
             report.add(board_diagnostic(DiagnosticCode{"PCB_COPPER_CLEARANCE_VIOLATION"},
-                                        "Copper on different nets violates board clearance",
+                                        "Copper on different nets violates required clearance",
                                         std::move(entities)));
         }
     }
@@ -744,17 +759,40 @@ void validate_unrouted_nets(const std::vector<PadResolution> &resolutions,
 void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
                         const std::vector<PadResolution> &pad_resolutions,
                         DiagnosticReport &report) {
-    validate_track_widths(board, report);
-    validate_via_rules(board, report);
     const auto shapes = collect_copper_shapes(board, footprints, pad_resolutions);
-    validate_outline_clearance(board, shapes, report);
-    validate_netless_zone_outline_clearance(board, report);
-    validate_copper_clearance(board, shapes, report);
-    validate_keepout_copper_shapes(board, shapes, report);
-    validate_keepout_zones(board, report);
-    validate_keepout_vias(board, report);
-    validate_keepout_placements(board, report);
-    validate_unrouted_nets(pad_resolutions, shapes, report);
+    auto rules = RuleSet<Board>{};
+    rules
+        .add([](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_track_widths(rule_board, rule_report);
+        })
+        .add([](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_via_rules(rule_board, rule_report);
+        })
+        .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_outline_clearance(rule_board, shapes, rule_report);
+        })
+        .add([](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_netless_zone_outline_clearance(rule_board, rule_report);
+        })
+        .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_copper_clearance(rule_board, shapes, rule_report);
+        })
+        .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_keepout_copper_shapes(rule_board, shapes, rule_report);
+        })
+        .add([](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_keepout_zones(rule_board, rule_report);
+        })
+        .add([](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_keepout_vias(rule_board, rule_report);
+        })
+        .add([](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_keepout_placements(rule_board, rule_report);
+        })
+        .add([&pad_resolutions, &shapes](const Board &, DiagnosticReport &rule_report) {
+            validate_unrouted_nets(pad_resolutions, shapes, rule_report);
+        });
+    rules.run(board, report);
 }
 
 } // namespace volt::detail

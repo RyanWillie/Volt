@@ -269,8 +269,9 @@ void write_symbol_instance(std::ostream &out, const Schematic &schematic, Symbol
         property_y += 7.0;
     }
 
-    if (component.selected_physical_part().has_value()) {
-        const auto &footprint = component.selected_physical_part()->footprint();
+    if (schematic.circuit().selected_physical_part(instance.component()).has_value()) {
+        const auto &footprint =
+            schematic.circuit().selected_physical_part(instance.component())->footprint();
         write_symbol_property(out, "Footprint", footprint.library() + ":" + footprint.name(),
                               Point{instance.position().x(), property_y});
     }

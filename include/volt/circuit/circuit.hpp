@@ -8,12 +8,16 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/connectivity_model.hpp>
 #include <volt/circuit/definitions.hpp>
+#include <volt/circuit/design_intent.hpp>
+#include <volt/circuit/electrical_model.hpp>
 #include <volt/circuit/hierarchy.hpp>
+#include <volt/circuit/hierarchy_model.hpp>
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/circuit/parts.hpp>
-#include <volt/core/entity_table.hpp>
+#include <volt/circuit/rule_classes.hpp>
 #include <volt/core/ids.hpp>
 
 namespace volt {
@@ -112,54 +116,29 @@ class Circuit {
     /** Record that an otherwise connectable concrete pin is intentionally left open. */
     bool mark_intentional_no_connect_pin(PinId pin);
 
+    /** Store a reusable rule class intent definition. */
+    [[nodiscard]] RuleClassId add_rule_class(RuleClass rule_class);
+
+    /** Assign an existing rule class to an existing logical net. */
+    bool assign_net_rule_class(NetId net, RuleClassId rule_class);
+
     /** Return the selected physical implementation for a component, if one has been assigned. */
     [[nodiscard]] const std::optional<PhysicalPart> &
     selected_physical_part(ComponentId component) const;
 
-    /** Return the net currently connected to the pin, if any. */
-    [[nodiscard]] std::optional<NetId> net_of(PinId pin) const;
+    /** Return typed electrical attributes for an existing component instance. */
+    [[nodiscard]] const ElectricalAttributeMap &
+    component_electrical_attributes(ComponentId component) const;
 
-    /** Return the component with this reference designator, if it exists. */
-    [[nodiscard]] std::optional<ComponentId>
-    component_by_reference(const ReferenceDesignator &reference) const;
+    /** Return typed electrical attributes for an existing reusable pin definition. */
+    [[nodiscard]] const ElectricalAttributeMap &
+    pin_definition_electrical_attributes(PinDefId pin_definition) const;
 
-    /** Return the module definition with this name, if it exists. */
-    [[nodiscard]] std::optional<ModuleDefId>
-    module_definition_by_name(const ModuleName &name) const;
-
-    /** Return the root-level module instance with this name, if it exists. */
-    [[nodiscard]] std::optional<ModuleInstanceId>
-    module_instance_by_name(const ModuleInstanceName &name) const;
-
-    /** Return a template-local net in a module definition by name, if it exists. */
-    [[nodiscard]] std::optional<TemplateNetDefId> template_net_by_name(ModuleDefId module,
-                                                                       const NetName &name) const;
-
-    /** Return a port in a module definition by name, if it exists. */
-    [[nodiscard]] std::optional<PortDefId> port_by_name(ModuleDefId module,
-                                                        const PortName &name) const;
-
-    /** Return a module component by local reference designator, if it exists. */
-    [[nodiscard]] std::optional<ModuleComponentId>
-    module_component_by_reference(ModuleDefId module, const ReferenceDesignator &reference) const;
-
-    /** Return the template net connected to a module component pin, if any. */
-    [[nodiscard]] std::optional<TemplateNetDefId>
-    template_net_for(ModuleDefId module, ModuleComponentId component, PinDefId pin) const;
+    /** Return typed electrical attributes for an existing net. */
+    [[nodiscard]] const ElectricalAttributeMap &net_electrical_attributes(NetId net) const;
 
     /** Return module-local pin connections for one module definition. */
     [[nodiscard]] std::vector<ModulePinConnection> module_pin_connections(ModuleDefId module) const;
-
-    /** Return the explicit binding for a module instance port, if it exists. */
-    [[nodiscard]] std::optional<PortBindingId> port_binding_for(ModuleInstanceId instance,
-                                                                PortDefId port) const;
-
-    /** Return explicit port binding IDs for one module instance in module port order. */
-    [[nodiscard]] std::vector<PortBindingId> port_bindings_for(ModuleInstanceId instance) const;
-
-    /** Return the concrete component created for a module instance component template, if any. */
-    [[nodiscard]] std::optional<ComponentId>
-    concrete_component_for(ModuleInstanceId instance, ModuleComponentId component) const;
 
     /** Return concrete net origins for one module instance in module template-net order. */
     [[nodiscard]] std::vector<std::pair<TemplateNetDefId, NetId>>
@@ -168,9 +147,6 @@ class Circuit {
     /** Return concrete component origins for one module instance in module component order. */
     [[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>>
     module_component_origins(ModuleInstanceId instance) const;
-
-    /** Return whether a net is concrete module-origin net. */
-    [[nodiscard]] bool is_module_origin_net(NetId net) const;
 
     /** Return whether this net has explicit author intent as a named/exported stub. */
     [[nodiscard]] bool is_intentional_stub_net(NetId net) const;
@@ -184,30 +160,18 @@ class Circuit {
     /** Return intentional no-connect pin assertions in deterministic insertion order. */
     [[nodiscard]] const std::vector<PinId> &intentional_no_connect_pins() const noexcept;
 
-    /** Return whether a component is a concrete module-origin component. */
-    [[nodiscard]] bool is_module_origin_component(ComponentId component) const;
+    /** Return a reusable rule class intent definition by ID. */
+    [[nodiscard]] const RuleClass &rule_class(RuleClassId id) const;
 
-    /** Return the concrete net created for a module instance template-local net, if any. */
-    [[nodiscard]] std::optional<NetId> concrete_net_for(ModuleInstanceId instance,
-                                                        TemplateNetDefId template_net) const;
+    /** Return a rule class by stable name, if one exists. */
+    [[nodiscard]] std::optional<RuleClassId> rule_class_by_name(const RuleClassName &name) const;
 
-    /** Return the net with this name, if it exists. */
-    [[nodiscard]] std::optional<NetId> net_by_name(const NetName &name) const;
+    /** Return the assigned rule class for a net, if one exists. */
+    [[nodiscard]] std::optional<RuleClassId> rule_class_for_net(NetId net) const;
 
-    /** Return concrete pins belonging to a component in deterministic creation order. */
-    [[nodiscard]] std::vector<PinId> pins_for(ComponentId component) const;
-
-    /** Return a component pin by reusable pin definition name, if it exists. */
-    [[nodiscard]] std::optional<PinId> pin_by_name(ComponentId component,
-                                                   std::string_view name) const;
-
-    /** Return a component pin by reusable pin definition, if it exists. */
-    [[nodiscard]] std::optional<PinId> pin_by_definition(ComponentId component,
-                                                         PinDefId definition) const;
-
-    /** Return a component pin by reusable pin definition number, if it exists. */
-    [[nodiscard]] std::optional<PinId> pin_by_number(ComponentId component,
-                                                     std::string_view number) const;
+    /** Return rule-class net assignments in deterministic insertion order. */
+    [[nodiscard]] const std::vector<std::pair<NetId, RuleClassId>> &
+    net_rule_class_assignments() const noexcept;
 
     /** Return a reusable pin definition by ID. */
     [[nodiscard]] const PinDefinition &pin_definition(PinDefId id) const;
@@ -219,17 +183,17 @@ class Circuit {
     [[nodiscard]] const ComponentInstance &component(ComponentId id) const;
 
     /** Return a concrete pin instance by ID. */
-    [[nodiscard]] const PinInstance &pin(PinId id) const { return pins_.get(id); }
+    [[nodiscard]] const PinInstance &pin(PinId id) const { return connectivity_.pin(id); }
 
     /** Return a canonical net by ID. */
-    [[nodiscard]] const Net &net(NetId id) const { return nets_.get(id); }
+    [[nodiscard]] const Net &net(NetId id) const { return connectivity_.net(id); }
 
     /** Return a reusable module definition by ID. */
     [[nodiscard]] const ModuleDefinition &module_definition(ModuleDefId id) const;
 
     /** Return a template-local net definition by ID. */
     [[nodiscard]] const TemplateNetDefinition &template_net_definition(TemplateNetDefId id) const {
-        return template_net_definitions_.get(id);
+        return hierarchy_.template_net_definition(id);
     }
 
     /** Return a module port definition by ID. */
@@ -238,7 +202,7 @@ class Circuit {
     /** Return a module component template by ID. */
     [[nodiscard]] const ModuleComponentTemplate &
     module_component_template(ModuleComponentId id) const {
-        return module_component_templates_.get(id);
+        return hierarchy_.module_component_template(id);
     }
 
     /** Return a root-level module instance by ID. */
@@ -254,20 +218,22 @@ class Circuit {
     [[nodiscard]] std::size_t component_definition_count() const noexcept;
 
     /** Return the number of component instances. */
-    [[nodiscard]] std::size_t component_count() const noexcept { return components_.size(); }
+    [[nodiscard]] std::size_t component_count() const noexcept {
+        return connectivity_.component_count();
+    }
 
     /** Return the number of concrete pin instances. */
-    [[nodiscard]] std::size_t pin_count() const noexcept { return pins_.size(); }
+    [[nodiscard]] std::size_t pin_count() const noexcept { return connectivity_.pin_count(); }
 
     /** Return the number of canonical nets. */
-    [[nodiscard]] std::size_t net_count() const noexcept { return nets_.size(); }
+    [[nodiscard]] std::size_t net_count() const noexcept { return connectivity_.net_count(); }
 
     /** Return the number of reusable module definitions. */
     [[nodiscard]] std::size_t module_definition_count() const noexcept;
 
     /** Return the number of template-local net definitions. */
     [[nodiscard]] std::size_t template_net_definition_count() const noexcept {
-        return template_net_definitions_.size();
+        return hierarchy_.template_net_definition_count();
     }
 
     /** Return the number of module port definitions. */
@@ -283,7 +249,14 @@ class Circuit {
     [[nodiscard]] std::size_t module_instance_count() const noexcept;
 
     /** Return the number of explicit module port bindings. */
-    [[nodiscard]] std::size_t port_binding_count() const noexcept { return port_bindings_.size(); }
+    [[nodiscard]] std::size_t port_binding_count() const noexcept {
+        return hierarchy_.port_binding_count();
+    }
+
+    /** Return the number of reusable rule class intent definitions. */
+    [[nodiscard]] std::size_t rule_class_count() const noexcept {
+        return rule_classes_.rule_class_count();
+    }
 
   private:
     void require_pin_definition(PinDefId pin_definition) const;
@@ -310,10 +283,7 @@ class Circuit {
 
     [[nodiscard]] bool require_template_net_in_module_if_present(ModuleDefId module,
                                                                  TemplateNetDefId net) const {
-        require_module_definition(module);
-        require_template_net(net);
-        const auto &nets = module_definitions_.get(module).template_nets();
-        return std::find(nets.begin(), nets.end(), net) != nets.end();
+        return hierarchy_.template_net_belongs_to_module(module, net);
     }
 
     [[nodiscard]] bool
@@ -330,33 +300,15 @@ class Circuit {
 
     void require_net(NetId net) const;
 
-    static void require_attribute_owner(const ElectricalAttributeSpec &spec,
-                                        ElectricalAttributeOwner expected);
-
-    void
-    require_physical_part_matches_component_definition(ComponentDefId component_definition,
-                                                       const PhysicalPart &physical_part) const;
+    void require_rule_class(RuleClassId rule_class) const;
 
     [[nodiscard]] std::optional<NetId> net_of_existing_pin(PinId pin) const;
 
-    EntityTable<PinDefinition, PinDefId> pin_definitions_;
-    EntityTable<ComponentDefinition, ComponentDefId> component_definitions_;
-    EntityTable<ComponentInstance, ComponentId> components_;
-    EntityTable<PinInstance, PinId> pins_;
-    EntityTable<Net, NetId> nets_;
-    EntityTable<ModuleDefinition, ModuleDefId> module_definitions_;
-    EntityTable<TemplateNetDefinition, TemplateNetDefId> template_net_definitions_;
-    EntityTable<ModuleComponentTemplate, ModuleComponentId> module_component_templates_;
-    EntityTable<PortDefinition, PortDefId> port_definitions_;
-    EntityTable<ModuleInstance, ModuleInstanceId> module_instances_;
-    EntityTable<PortBinding, PortBindingId> port_bindings_;
-    std::vector<ModulePinConnection> module_pin_connections_;
-    std::vector<ModuleNetOrigin> module_net_origins_;
-    std::vector<NetId> module_origin_nets_;
-    std::vector<ModuleComponentOrigin> module_component_origins_;
-    std::vector<ComponentId> module_origin_components_;
-    std::vector<NetId> intentional_stub_nets_;
-    std::vector<PinId> intentional_no_connect_pins_;
+    ConnectivityModel connectivity_;
+    HierarchyModel hierarchy_;
+    ElectricalModel electrical_;
+    DesignIntent intent_;
+    RuleClasses rule_classes_;
 };
 
 } // namespace volt

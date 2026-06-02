@@ -9,6 +9,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <volt/circuit/queries.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 
@@ -154,7 +155,7 @@ TEST_CASE("Logical circuit writer emits design intent") {
         circuit.add_component_definition(volt::ComponentDefinition{"MCU", std::vector{pin_def}});
     const auto component =
         circuit.instantiate_component(component_def, volt::ReferenceDesignator{"U1"});
-    const auto pin = circuit.pin_by_name(component, "BOOT0").value();
+    const auto pin = volt::queries::pin_by_name(circuit, component, "BOOT0").value();
     const auto net = circuit.add_net(volt::Net{volt::NetName{"BOOT0"}, volt::NetKind::Signal});
 
     circuit.mark_intentional_stub_net(net);
@@ -165,6 +166,30 @@ TEST_CASE("Logical circuit writer emits design intent") {
     REQUIRE(output.contains("design_intent"));
     CHECK(output["design_intent"]["stub_nets"] == nlohmann::json::array({"net:0"}));
     CHECK(output["design_intent"]["no_connect_pins"] == nlohmann::json::array({"pin:0"}));
+}
+
+TEST_CASE("Logical circuit writer emits rule classes and net assignments") {
+    volt::Circuit circuit;
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"HV"}, volt::NetKind::Power});
+    auto rule_class = volt::RuleClass{volt::RuleClassName{"HighVoltage"}};
+    rule_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 60.0});
+    rule_class.set_copper_clearance_mm(0.5);
+    const auto rule_class_id = circuit.add_rule_class(std::move(rule_class));
+    circuit.assign_net_rule_class(net, rule_class_id);
+
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+
+    REQUIRE(output.contains("rule_classes"));
+    const auto &classes = output["rule_classes"]["classes"];
+    const auto &assignments = output["rule_classes"]["net_assignments"];
+    REQUIRE(classes.size() == 1);
+    CHECK(classes[0]["id"] == "rule_class:0");
+    CHECK(classes[0]["name"] == "HighVoltage");
+    CHECK(classes[0]["maximum_net_voltage"]["dimension"] == "voltage");
+    CHECK(classes[0]["maximum_net_voltage"]["value"] == 60.0);
+    CHECK(classes[0]["copper_clearance_mm"] == 0.5);
+    CHECK(assignments ==
+          nlohmann::json::array({{{"net", "net:0"}, {"rule_class", "rule_class:0"}}}));
 }
 
 TEST_CASE("Logical circuit writer emits pin electrical semantics") {

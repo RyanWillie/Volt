@@ -7,6 +7,7 @@
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/nets.hpp>
+#include <volt/circuit/queries.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt::examples {
@@ -53,15 +54,15 @@ inline Circuit build_led_circuit() {
     const auto led_a = circuit.add_net(Net{NetName{"LED_A"}, NetKind::Signal});
     const auto gnd = circuit.add_net(Net{NetName{"GND"}, NetKind::Ground});
 
-    authoring::connect(
-        circuit, vcc,
-        {circuit.pin_by_number(j1, "1").value(), circuit.pin_by_number(r1, "1").value()});
-    authoring::connect(
-        circuit, led_a,
-        {circuit.pin_by_number(r1, "2").value(), circuit.pin_by_name(d1, "A").value()});
-    authoring::connect(
-        circuit, gnd,
-        {circuit.pin_by_name(d1, "K").value(), circuit.pin_by_number(j1, "2").value()});
+    authoring::connect(circuit, vcc,
+                       {volt::queries::pin_by_number(circuit, j1, "1").value(),
+                        volt::queries::pin_by_number(circuit, r1, "1").value()});
+    authoring::connect(circuit, led_a,
+                       {volt::queries::pin_by_number(circuit, r1, "2").value(),
+                        volt::queries::pin_by_name(circuit, d1, "A").value()});
+    authoring::connect(circuit, gnd,
+                       {volt::queries::pin_by_name(circuit, d1, "K").value(),
+                        volt::queries::pin_by_number(circuit, j1, "2").value()});
 
     return circuit;
 }

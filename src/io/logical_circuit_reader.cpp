@@ -1,5 +1,7 @@
 #include <volt/io/logical_circuit_reader.hpp>
 
+#include <volt/circuit/queries.hpp>
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -118,6 +120,8 @@ class LogicalCircuitReader {
 
     void read_nets();
 
+    void read_rule_classes();
+
     void read_design_intent();
 
     void read_module_definitions();
@@ -138,6 +142,7 @@ class LogicalCircuitReader {
     std::map<std::string, ComponentId> component_ids_;
     std::map<std::string, PinId> pin_ids_;
     std::map<std::string, NetId> net_ids_;
+    std::map<std::string, RuleClassId> rule_class_ids_;
     std::map<std::string, ModuleDefId> module_def_ids_;
     std::map<std::string, TemplateNetDefId> template_net_ids_;
     std::map<std::string, ModuleComponentId> module_component_ids_;
@@ -156,6 +161,7 @@ class LogicalCircuitReader {
     read_components();
     read_pins();
     read_nets();
+    read_rule_classes();
     read_design_intent();
     read_module_definitions();
     read_module_instances();
@@ -619,6 +625,51 @@ void LogicalCircuitReader::read_nets() {
         read_net_electrical_attributes(net_object, net_id);
     }
 }
+void LogicalCircuitReader::read_rule_classes() {
+    const auto it = document_.find("rule_classes");
+    if (it == document_.end()) {
+        return;
+    }
+    require(it->is_object(), "Rule classes must be an object");
+
+    auto seen_rule_classes = std::set<std::string>{};
+    for (const auto &rule_class_object : array_field(*it, "classes")) {
+        require(rule_class_object.is_object(), "Rule class must be an object");
+        const auto id = local_id<RuleClassId>(rule_class_object, seen_rule_classes);
+        auto rule_class = RuleClass{RuleClassName{string_field(rule_class_object, "name")}};
+
+        if (const auto maximum_voltage = rule_class_object.find("maximum_net_voltage");
+            maximum_voltage != rule_class_object.end()) {
+            require(maximum_voltage->is_object(),
+                    "Rule class maximum net voltage must be an object");
+            rule_class.set_maximum_net_voltage(
+                Quantity{unit_dimension(string_field(*maximum_voltage, "dimension")),
+                         number_field(*maximum_voltage, "value")});
+        }
+        if (const auto copper_clearance = rule_class_object.find("copper_clearance_mm");
+            copper_clearance != rule_class_object.end()) {
+            require(copper_clearance->is_number(), "Rule class copper clearance must be a number");
+            rule_class.set_copper_clearance_mm(copper_clearance->get<double>());
+        }
+
+        rule_class_ids_.emplace(id, circuit_.add_rule_class(std::move(rule_class)));
+    }
+
+    const auto assignments = optional_array_field(*it, "net_assignments");
+    if (assignments == nullptr) {
+        return;
+    }
+
+    auto seen_assignment_nets = std::set<std::string>{};
+    for (const auto &assignment : *assignments) {
+        require(assignment.is_object(), "Rule class net assignment must be an object");
+        const auto net = string_field(assignment, "net");
+        require(seen_assignment_nets.insert(net).second, "Duplicate rule-class net assignment");
+        [[maybe_unused]] const auto changed = circuit_.assign_net_rule_class(
+            resolve(net_ids_, net),
+            resolve(rule_class_ids_, string_field(assignment, "rule_class")));
+    }
+}
 void LogicalCircuitReader::read_design_intent() {
     const auto it = document_.find("design_intent");
     if (it == document_.end()) {
@@ -759,7 +810,8 @@ LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
         const auto &template_component = circuit_.module_component_template(component);
         const auto concrete_reference =
             ReferenceDesignator{name.value() + "/" + template_component.reference().value()};
-        const auto concrete_component = circuit_.component_by_reference(concrete_reference);
+        const auto concrete_component =
+            queries::component_by_reference(circuit_, concrete_reference);
         require(concrete_component.has_value(),
                 "Missing module instance concrete component for inferred component origin");
         component_origins.emplace_back(component, concrete_component.value());

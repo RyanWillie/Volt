@@ -1,5 +1,7 @@
 #include "schematic_test_helpers.hpp"
 
+#include <volt/circuit/queries.hpp>
+
 TEST_CASE("Schematic readiness reports connected symbol pins without visual net coverage") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
@@ -27,7 +29,7 @@ TEST_CASE("Schematic readiness reports connected symbol pins without visual net 
     REQUIRE(diagnostic.entities().size() == 5);
     CHECK(diagnostic.entities()[0] == volt::EntityRef::sheet(sheet));
     CHECK(diagnostic.entities()[1] == volt::EntityRef::component(component));
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
     CHECK(diagnostic.entities()[2] == volt::EntityRef::pin(pin));
     CHECK(diagnostic.entities()[3] == volt::EntityRef::pin_def(circuit.pin(pin).definition()));
     CHECK(diagnostic.entities()[4] == volt::EntityRef::net(net));
@@ -102,7 +104,7 @@ TEST_CASE("Schematic validation reports connected logical pins missing from a pl
     const auto &diagnostic = report.diagnostics().front();
     CHECK(diagnostic.severity() == volt::Severity::Error);
     CHECK(diagnostic.code() == volt::DiagnosticCode{"SCHEMATIC_CONNECTED_PIN_MISSING_SYMBOL_PIN"});
-    const auto pin = circuit.pin_by_number(component, "3").value();
+    const auto pin = volt::queries::pin_by_number(circuit, component, "3").value();
     CHECK(diagnostic.entities() ==
           std::vector{volt::EntityRef::component(component), volt::EntityRef::pin(pin),
                       volt::EntityRef::pin_def(circuit.pin(pin).definition()),
@@ -290,7 +292,7 @@ TEST_CASE("Schematic validation reports one same-net crossing diagnostic per wir
 TEST_CASE("Schematic validation reports no-connect markers without kernel-owned intent") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
@@ -319,7 +321,7 @@ TEST_CASE("Schematic validation accepts no-connect markers on no-connect pin def
         volt::ComponentDefinition{"NoConnectPad", std::vector{pin_definition}});
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"TP1"});
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
 
     auto symbol_definition = volt::SymbolDefinition{"NoConnectPad"};
     symbol_definition.add_pin(

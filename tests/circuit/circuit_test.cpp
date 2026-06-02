@@ -8,6 +8,7 @@
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/circuit/parts.hpp>
+#include <volt/circuit/queries.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 
@@ -156,8 +157,8 @@ TEST_CASE("Circuit connects existing pins to existing nets") {
     CHECK_FALSE(circuit.connect(net, pin));
     REQUIRE(circuit.net(net).pins().size() == 1);
     CHECK(circuit.net(net).pins().front() == pin);
-    REQUIRE(circuit.net_of(pin).has_value());
-    CHECK(circuit.net_of(pin).value() == net);
+    REQUIRE(volt::queries::net_of(circuit, pin).has_value());
+    CHECK(volt::queries::net_of(circuit, pin).value() == net);
 }
 
 TEST_CASE("Circuit rejects connect operations with missing IDs") {
@@ -202,7 +203,7 @@ TEST_CASE("Circuit disconnects a pin from its current net") {
 
     CHECK(circuit.disconnect(pin));
     CHECK_FALSE(circuit.disconnect(pin));
-    CHECK_FALSE(circuit.net_of(pin).has_value());
+    CHECK_FALSE(volt::queries::net_of(circuit, pin).has_value());
     CHECK(circuit.net(net).pins().empty());
 }
 
@@ -298,8 +299,7 @@ TEST_CASE("Circuit sets typed electrical attributes on component instances") {
         component, resistance,
         volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Resistance, 330.0}});
 
-    CHECK(circuit.component(component)
-              .electrical_attributes()
+    CHECK(circuit.component_electrical_attributes(component)
               .get(volt::ElectricalAttributeName{"resistance"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Resistance, 330.0});
 }
@@ -327,8 +327,7 @@ TEST_CASE("Circuit sets typed electrical attributes on pin definitions") {
             volt::QuantityRange::bounded(volt::Quantity{volt::UnitDimension::Voltage, 4.5},
                                          volt::Quantity{volt::UnitDimension::Voltage, 16.0})});
 
-    const auto &stored_range = circuit.pin_definition(pin_definition)
-                                   .electrical_attributes()
+    const auto &stored_range = circuit.pin_definition_electrical_attributes(pin_definition)
                                    .get(volt::ElectricalAttributeName{"voltage_range"})
                                    .as_range();
     REQUIRE(stored_range.minimum().has_value());
@@ -351,8 +350,7 @@ TEST_CASE("Circuit sets typed electrical attributes on nets") {
         net, voltage,
         volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 3.3}});
 
-    CHECK(circuit.net(net)
-              .electrical_attributes()
+    CHECK(circuit.net_electrical_attributes(net)
               .get(volt::ElectricalAttributeName{"voltage"})
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 3.3});
 }

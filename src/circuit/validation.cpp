@@ -1,5 +1,8 @@
 #include <volt/circuit/validation.hpp>
 
+#include <volt/circuit/queries.hpp>
+#include <volt/core/rule_set.hpp>
+
 namespace volt::detail {
 
 [[nodiscard]] bool is_no_connect_pin(const PinDefinition &definition) {
@@ -65,7 +68,7 @@ void validate_pin_connection_requirements(const Circuit &circuit, DiagnosticRepo
         const auto pin_id = PinId{index};
         const auto &pin = circuit.pin(pin_id);
         const auto &definition = circuit.pin_definition(pin.definition());
-        const auto connected_net = circuit.net_of(pin_id);
+        const auto connected_net = queries::net_of(circuit, pin_id);
 
         if (is_no_connect_pin(definition)) {
             if (connected_net.has_value()) {
@@ -183,13 +186,14 @@ void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, c
         });
     }
 }
-void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id, const Net &net,
+void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id, const Net &,
                                             const std::vector<PinId> &group_pins,
                                             DiagnosticReport &report) {
     const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
     const auto voltage_rating_attribute_name = ElectricalAttributeName{"voltage_rating"};
-    if (net.electrical_attributes().contains(voltage_attribute_name)) {
-        const auto &net_voltage_attribute = net.electrical_attributes().get(voltage_attribute_name);
+    const auto &net_attributes = circuit.net_electrical_attributes(net_id);
+    if (net_attributes.contains(voltage_attribute_name)) {
+        const auto &net_voltage_attribute = net_attributes.get(voltage_attribute_name);
         if (net_voltage_attribute.kind() == ElectricalAttributeValueKind::Quantity) {
             const auto net_voltage = std::abs(net_voltage_attribute.as_quantity().value());
             for (const auto pin_id : group_pins) {
@@ -220,15 +224,16 @@ void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id
         }
     }
 }
-void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net &net,
+void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net &,
                                  const std::vector<PinId> &group_pins, DiagnosticReport &report) {
     const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
     const auto voltage_range_attribute_name = ElectricalAttributeName{"voltage_range"};
-    if (!net.electrical_attributes().contains(voltage_attribute_name)) {
+    const auto &net_attributes = circuit.net_electrical_attributes(net_id);
+    if (!net_attributes.contains(voltage_attribute_name)) {
         return;
     }
 
-    const auto &net_voltage_attribute = net.electrical_attributes().get(voltage_attribute_name);
+    const auto &net_voltage_attribute = net_attributes.get(voltage_attribute_name);
     if (net_voltage_attribute.kind() != ElectricalAttributeValueKind::Quantity) {
         return;
     }
@@ -241,13 +246,13 @@ void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net
     const auto net_voltage = net_voltage_quantity.value();
     for (const auto pin_id : group_pins) {
         const auto &pin = circuit.pin(pin_id);
-        const auto &definition = circuit.pin_definition(pin.definition());
-        if (!definition.electrical_attributes().contains(voltage_range_attribute_name)) {
+        const auto &definition_attributes =
+            circuit.pin_definition_electrical_attributes(pin.definition());
+        if (!definition_attributes.contains(voltage_range_attribute_name)) {
             continue;
         }
 
-        const auto &range_attribute =
-            definition.electrical_attributes().get(voltage_range_attribute_name);
+        const auto &range_attribute = definition_attributes.get(voltage_range_attribute_name);
         if (range_attribute.kind() != ElectricalAttributeValueKind::Range) {
             continue;
         }
@@ -271,6 +276,42 @@ void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net
             });
         }
     }
+}
+void validate_rule_class_voltage_limit(const Circuit &circuit, NetId net_id,
+                                       DiagnosticReport &report) {
+    const auto rule_class_id = circuit.rule_class_for_net(net_id);
+    if (!rule_class_id.has_value()) {
+        return;
+    }
+
+    const auto &rule_class = circuit.rule_class(rule_class_id.value());
+    if (!rule_class.maximum_net_voltage().has_value()) {
+        return;
+    }
+
+    const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
+    const auto &net_attributes = circuit.net_electrical_attributes(net_id);
+    if (!net_attributes.contains(voltage_attribute_name)) {
+        return;
+    }
+
+    const auto &net_voltage_attribute = net_attributes.get(voltage_attribute_name);
+    if (net_voltage_attribute.kind() != ElectricalAttributeValueKind::Quantity ||
+        net_voltage_attribute.as_quantity().dimension() != UnitDimension::Voltage) {
+        return;
+    }
+
+    const auto net_voltage = std::abs(net_voltage_attribute.as_quantity().value());
+    if (net_voltage <= rule_class.maximum_net_voltage()->value()) {
+        return;
+    }
+
+    report.add(Diagnostic{
+        Severity::Error,
+        DiagnosticCode{"NET_RULE_CLASS_VOLTAGE_EXCEEDED"},
+        "Net voltage exceeds assigned rule class limit",
+        std::vector{EntityRef::net(net_id)},
+    });
 }
 void validate_output_driver_conflicts(const Circuit &circuit, NetId net_id,
                                       const std::vector<PinId> &group_pins,
@@ -320,6 +361,7 @@ void validate_net_electrical_rules(const Circuit &circuit, const NetContinuityVi
         validate_power_and_ground_semantics(circuit, net_id, net, group_pins, report);
         validate_selected_part_voltage_ratings(circuit, net_id, net, group_pins, report);
         validate_pin_voltage_ranges(circuit, net_id, net, group_pins, report);
+        validate_rule_class_voltage_limit(circuit, net_id, report);
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
     }
 }
@@ -336,6 +378,7 @@ void validate_net_semantics(const Circuit &circuit, const NetContinuityView &con
         validate_power_and_ground_semantics(circuit, net_id, net, group_pins, report);
         validate_selected_part_voltage_ratings(circuit, net_id, net, group_pins, report);
         validate_pin_voltage_ranges(circuit, net_id, net, group_pins, report);
+        validate_rule_class_voltage_limit(circuit, net_id, report);
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
     }
 }
@@ -347,7 +390,8 @@ void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &re
         const auto &definition = circuit.module_definition(instance.definition());
         for (const auto port_id : definition.ports()) {
             const auto &port = circuit.port_definition(port_id);
-            if (port.required() && !circuit.port_binding_for(instance_id, port_id).has_value()) {
+            if (port.required() &&
+                !queries::port_binding_for(circuit, instance_id, port_id).has_value()) {
                 report.add(Diagnostic{
                     Severity::Error,
                     DiagnosticCode{"UNBOUND_REQUIRED_PORT"},
@@ -364,7 +408,7 @@ void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &
     for (std::size_t index = 0; index < circuit.component_count(); ++index) {
         const auto component_id = ComponentId{index};
         const auto &component = circuit.component(component_id);
-        if (!component.selected_physical_part().has_value()) {
+        if (!circuit.selected_physical_part(component_id).has_value()) {
             report.add(Diagnostic{
                 Severity::Error,
                 DiagnosticCode{"PHYSICAL_PART_REQUIRED"},
@@ -382,36 +426,59 @@ namespace volt {
 
 [[nodiscard]] DiagnosticReport validate_connectivity(const Circuit &circuit) {
     auto report = DiagnosticReport{};
-    const auto continuity = detail::NetContinuityView{circuit};
-
-    detail::validate_pin_connection_requirements(circuit, report);
-    detail::validate_required_module_ports(circuit, report);
-    detail::validate_net_shapes(circuit, continuity, report);
+    auto rules = RuleSet<Circuit>{};
+    rules
+        .add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
+            detail::validate_pin_connection_requirements(rule_circuit, rule_report);
+        })
+        .add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
+            detail::validate_required_module_ports(rule_circuit, rule_report);
+        })
+        .add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
+            const auto continuity = detail::NetContinuityView{rule_circuit};
+            detail::validate_net_shapes(rule_circuit, continuity, rule_report);
+        });
+    rules.run(circuit, report);
 
     return report;
 }
 [[nodiscard]] DiagnosticReport validate_electrical_rules(const Circuit &circuit) {
     auto report = DiagnosticReport{};
-    const auto continuity = detail::NetContinuityView{circuit};
-
-    detail::validate_net_electrical_rules(circuit, continuity, report);
+    auto rules = RuleSet<Circuit>{};
+    rules.add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
+        const auto continuity = detail::NetContinuityView{rule_circuit};
+        detail::validate_net_electrical_rules(rule_circuit, continuity, rule_report);
+    });
+    rules.run(circuit, report);
 
     return report;
 }
 [[nodiscard]] DiagnosticReport validate_circuit(const Circuit &circuit) {
     auto report = DiagnosticReport{};
-    const auto continuity = detail::NetContinuityView{circuit};
-
-    detail::validate_pin_connection_requirements(circuit, report);
-    detail::validate_required_module_ports(circuit, report);
-    detail::validate_net_semantics(circuit, continuity, report);
+    auto rules = RuleSet<Circuit>{};
+    rules
+        .add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
+            detail::validate_pin_connection_requirements(rule_circuit, rule_report);
+        })
+        .add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
+            detail::validate_required_module_ports(rule_circuit, rule_report);
+        })
+        .add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
+            const auto continuity = detail::NetContinuityView{rule_circuit};
+            detail::validate_net_semantics(rule_circuit, continuity, rule_report);
+        });
+    rules.run(circuit, report);
 
     return report;
 }
 [[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit) {
     auto report = validate_circuit(circuit);
 
-    detail::validate_physical_part_selection(circuit, report);
+    auto rules = RuleSet<Circuit>{};
+    rules.add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
+        detail::validate_physical_part_selection(rule_circuit, rule_report);
+    });
+    rules.run(circuit, report);
 
     return report;
 }

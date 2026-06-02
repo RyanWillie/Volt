@@ -2,6 +2,7 @@
 
 #include "binding_pcb_conversions.hpp"
 
+#include <volt/circuit/queries.hpp>
 #include <volt/io/pcb_svg_writer.hpp>
 #include <volt/io/pcb_writer.hpp>
 
@@ -204,7 +205,7 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
         const auto key = string_from_pin_key(item.first);
         auto pin = std::optional<volt::PinId>{};
         if (py::isinstance<py::int_>(item.first)) {
-            pin = circuit_.pin_by_number(component_handle, key);
+            pin = queries::pin_by_number(circuit_, component_handle, key);
         } else {
             const auto matches = pins_by_name(component_handle, key);
             if (matches.size() > 1) {
@@ -309,7 +310,7 @@ std::size_t PyCircuit::pin_by_name(std::size_t component, const std::string &nam
 }
 
 std::size_t PyCircuit::pin_by_number(std::size_t component, const std::string &number) const {
-    const auto pin = circuit_.pin_by_number(component_id(component), number);
+    const auto pin = queries::pin_by_number(circuit_, component_id(component), number);
     if (!pin.has_value()) {
         throw std::out_of_range{"Component has no pin with that number"};
     }
@@ -327,7 +328,7 @@ std::string PyCircuit::component_reference(std::size_t component) const {
 
 py::list PyCircuit::pin_refs(std::size_t component) const {
     auto result = py::list{};
-    for (const auto pin : circuit_.pins_for(component_id(component))) {
+    for (const auto pin : queries::pins_for(circuit_, component_id(component))) {
         const auto &definition = circuit_.pin_definition(circuit_.pin(pin).definition());
         auto item = py::dict{};
         item["index"] = pin.index();
@@ -356,7 +357,7 @@ void PyCircuit::connect(std::size_t net, std::size_t pin) {
 }
 
 std::optional<std::size_t> PyCircuit::net_of(std::size_t pin) const {
-    const auto net = circuit_.net_of(pin_id(pin));
+    const auto net = queries::net_of(circuit_, pin_id(pin));
     if (!net.has_value()) {
         return std::nullopt;
     }
@@ -468,7 +469,7 @@ std::size_t PyCircuit::instantiate_root_module(std::size_t definition, const std
 }
 
 std::size_t PyCircuit::concrete_component_for(std::size_t instance, std::size_t component) const {
-    const auto concrete = circuit_.concrete_component_for(module_instance_id(instance),
+    const auto concrete = queries::concrete_component_for(circuit_, module_instance_id(instance),
                                                           module_component_id(component));
     if (!concrete.has_value()) {
         throw std::out_of_range{"Module instance has no concrete component for template"};
@@ -540,7 +541,7 @@ py::list PyCircuit::module_connections(std::size_t module) const {
 py::list PyCircuit::module_net_origins(std::size_t instance) const {
     auto result = py::list{};
     for (const auto &[template_net, concrete_net] :
-         circuit_.module_net_origins(module_instance_id(instance))) {
+         queries::module_net_origins(circuit_, module_instance_id(instance))) {
         auto item = py::dict{};
         item["template_net"] = template_net.index();
         item["net"] = concrete_net.index();
@@ -552,7 +553,7 @@ py::list PyCircuit::module_net_origins(std::size_t instance) const {
 py::list PyCircuit::module_component_origins(std::size_t instance) const {
     auto result = py::list{};
     for (const auto &[module_component, concrete_component] :
-         circuit_.module_component_origins(module_instance_id(instance))) {
+         queries::module_component_origins(circuit_, module_instance_id(instance))) {
         auto item = py::dict{};
         item["module_component"] = module_component.index();
         item["component"] = concrete_component.index();
@@ -563,7 +564,8 @@ py::list PyCircuit::module_component_origins(std::size_t instance) const {
 
 py::list PyCircuit::port_bindings(std::size_t instance) const {
     auto result = py::list{};
-    for (const auto binding_id : circuit_.port_bindings_for(module_instance_id(instance))) {
+    for (const auto binding_id :
+         queries::port_bindings_for(circuit_, module_instance_id(instance))) {
         const auto &binding = circuit_.port_binding(binding_id);
         auto item = py::dict{};
         item["port"] = binding.port().index();
@@ -1185,7 +1187,7 @@ std::string PyCircuit::board_to_svg(bool pad_net_overlays, bool diagnostic_overl
 std::vector<volt::PinId> PyCircuit::pins_by_name(volt::ComponentId component,
                                                  const std::string &name) const {
     auto result = std::vector<volt::PinId>{};
-    for (const auto pin : circuit_.pins_for(component)) {
+    for (const auto pin : queries::pins_for(circuit_, component)) {
         const auto definition = circuit_.pin(pin).definition();
         if (circuit_.pin_definition(definition).name() == name) {
             result.push_back(pin);
