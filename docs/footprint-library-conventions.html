@@ -120,9 +120,11 @@
     </header>
 
     <section class="callout">
-      <strong>Boundary:</strong> selected physical parts own <code>FootprintRef</code> and
-      logical pin-to-pad mappings. A board projection places existing components and resolves
-      those selected-part references against a <code>FootprintLibrary</code>.
+      <strong>Boundary:</strong> selected physical parts own package identity, a
+      <code>FootprintRef</code>, and logical pin-to-pad mappings. Board-ready Python parts should
+      carry a first-class <code>volt.Footprint</code> object with the corresponding geometry, while
+      board projections place existing components and resolve geometry without choosing library
+      parts.
     </section>
 
     <div class="grid">
@@ -202,7 +204,8 @@
     <h2>Growth Path</h2>
     <p>
       Future footprint growth should lower into the same Volt-owned <code>FootprintDefinition</code>
-      values before board use. A safe data-driven path is a small checked-in footprint-definition
+      values before board use. A package label or footprint reference alone is provenance, not
+      board-ready geometry. A safe data-driven path is a small checked-in footprint-definition
       format that validates into the kernel types. A safe KiCad path is a narrow adapter that imports
       only supported pad geometry, layer sets, drill data, and mechanical roles, records unsupported
       constructs as loss diagnostics, and never treats a KiCad footprint string as a selected physical

@@ -55,7 +55,7 @@ class FootprintDrill:
 
 @dataclass(frozen=True)
 class FootprintPad:
-    """Normalized footprint pad geometry for board projection caches."""
+    """Normalized footprint pad geometry for board-ready footprints."""
 
     label: str
     kind: str
@@ -237,7 +237,7 @@ class Board:
         return self._design._circuit.board_add_mounting_hole(label, x, y, float(diameter))
 
     def cache_footprint(self, footprint: Footprint) -> int:
-        """Cache a footprint definition in the board projection."""
+        """Cache an explicit board-owned footprint definition for importers and low-level tests."""
         if not isinstance(footprint, Footprint):
             raise TypeError("cache_footprint expects a Footprint")
         return self._design._ensure_board_footprint_cached(footprint)

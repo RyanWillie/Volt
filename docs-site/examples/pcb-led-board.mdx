@@ -14,10 +14,10 @@ Source: `examples/pcb_led_board/main.py`.
     Define `+3V3`, `LED_A`, and `GND`, then connect a header, resistor, and LED.
   </Step>
   <Step title="Select physical parts">
-    Attach manufacturer, part number, package, footprint identity, and pin-pad mappings.
+    Attach manufacturer, part number, package label, object-owned footprint geometry, and pin-pad mappings.
   </Step>
-  <Step title="Cache footprint definitions">
-    Define through-hole and 0603 pad geometry.
+  <Step title="Carry footprint geometry">
+    Keep the through-hole and 0603 pad geometry on each selected physical part.
   </Step>
   <Step title="Place and route">
     Add layers, outline, mounting holes, placements, and tracks.
@@ -34,7 +34,13 @@ parts["R1"].select_part(
     manufacturer="Yageo",
     part_number="RC0603FR-07330RL",
     package="0603",
-    footprint=("passives", "R_0603_1608Metric"),
+    footprint=volt.Footprint(
+        ("passives", "R_0603_1608Metric"),
+        pads=(
+            volt.FootprintPad.surface_mount("1", at=(-0.75, 0.0), size=(0.80, 0.95)),
+            volt.FootprintPad.surface_mount("2", at=(0.75, 0.0), size=(0.80, 0.95)),
+        ),
+    ),
     pin_pads={1: "1", 2: "2"},
     power_rating=0.1,
 )
@@ -53,4 +59,4 @@ board.place(parts["R1"], at=(15.0, 7.0), rotation=0.0, side="top")
 board.add_track(nets["+3V3"], layer=front, points=[(5.0, 7.73), (14.25, 7.0)], width=0.25)
 ```
 
-This is the best starting point for learning how Volt connects logical selected parts to physical footprint and pad data.
+This is the best starting point for learning how Volt connects logical selected parts to physical footprint and pad data without using the board API to choose library part geometry.

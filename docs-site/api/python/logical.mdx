@@ -25,7 +25,7 @@ Source: `python/volt/logical.py`
 | `schematic_symbol_variant(self, variant: str) -> SchematicSymbolSpec \| str \| None` | Return the schematic symbol registered for a named symbol variant. |
 | `__getitem__(self, key: int \| str) -> Pin` | Return a component pin by physical number, name, or explicit alias. |
 | `pins(self, name: str) -> PinGroup` | Return every component pin that has the given name. |
-| `select_part(self, *, manufacturer: str, part_number: str, package: str, footprint: FootprintInput, pin_pads: dict[int \| str, PinPadValue], properties: dict \| None = None, voltage_rating: float \| None = None, power_rating: float \| None = None) -> Component` | Attach a selected physical part and footprint mapping to this component. |
+| `select_part(self, *, manufacturer: str, part_number: str, package: str, footprint: FootprintInput, pin_pads: dict[int \| str, PinPadValue], properties: dict \| None = None, voltage_rating: float \| None = None, power_rating: float \| None = None) -> Component` | Attach selected physical part data; pass a Footprint object for board-ready geometry. |
 
 ## `volt.ComponentDefinition`
 

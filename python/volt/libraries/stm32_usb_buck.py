@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
-from volt import Library, PhysicalPartSpec, PinSpec, SchematicSymbolSpec
+from volt import (
+    Footprint,
+    FootprintDrill,
+    FootprintPad,
+    Library,
+    PhysicalPartSpec,
+    PinSpec,
+    SchematicSymbolSpec,
+)
 
 LIB = Library("volt.benchmarks.stm32_usb_buck")
 
@@ -47,6 +55,271 @@ def _passive(name: str, number: int | str) -> PinSpec:
 
 def _symbol_name(name: str) -> str:
     return f"{LIB.namespace}:{name}"
+
+
+def _front_smd_pad(
+    label: str,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    *,
+    shape: str = "rounded_rectangle",
+) -> FootprintPad:
+    return FootprintPad.surface_mount(label, at=(x, y), size=(width, height), shape=shape)
+
+
+def _two_terminal_smd_footprint(
+    ref: tuple[str, str],
+    *,
+    pad_span: float,
+    pad_width: float,
+    pad_height: float,
+) -> Footprint:
+    half_span = pad_span / 2.0
+    return Footprint(
+        ref,
+        pads=(
+            _front_smd_pad("1", -half_span, 0.0, pad_width, pad_height),
+            _front_smd_pad("2", half_span, 0.0, pad_width, pad_height),
+        ),
+    )
+
+
+def _plated_header_pad(label: str, x: float, y: float) -> FootprintPad:
+    return FootprintPad.through_hole(
+        label,
+        at=(x, y),
+        size=(1.70, 1.70),
+        drill=FootprintDrill(1.00),
+    )
+
+
+def _single_row_header_footprint(
+    ref: tuple[str, str],
+    *,
+    pin_count: int,
+    pitch: float,
+) -> Footprint:
+    first_y = -(pin_count - 1) * pitch / 2.0
+    return Footprint(
+        ref,
+        pads=tuple(
+            _plated_header_pad(str(index + 1), 0.0, first_y + index * pitch)
+            for index in range(pin_count)
+        ),
+    )
+
+
+def _dual_row_header_footprint(
+    ref: tuple[str, str],
+    *,
+    pins_per_row: int,
+    row_spacing: float,
+    pitch: float,
+) -> Footprint:
+    first_y = -(pins_per_row - 1) * pitch / 2.0
+    left_x = -row_spacing / 2.0
+    right_x = row_spacing / 2.0
+    pads = []
+    for row in range(pins_per_row):
+        y = first_y + row * pitch
+        pads.append(_plated_header_pad(str(row * 2 + 1), left_x, y))
+        pads.append(_plated_header_pad(str(row * 2 + 2), right_x, y))
+    return Footprint(ref, pads=tuple(pads))
+
+
+def _two_side_smd_package(
+    ref: tuple[str, str],
+    *,
+    pin_count: int,
+    row_center_x: float,
+    pitch: float,
+    pad_width: float,
+    pad_height: float,
+) -> Footprint:
+    pins_per_side = pin_count // 2
+    first_y = (pins_per_side - 1) * pitch / 2.0
+    pads = []
+    for index in range(pins_per_side):
+        pads.append(
+            _front_smd_pad(
+                str(index + 1),
+                -row_center_x,
+                first_y - index * pitch,
+                pad_width,
+                pad_height,
+            )
+        )
+    for index in range(pins_per_side):
+        pads.append(
+            _front_smd_pad(
+                str(pins_per_side + index + 1),
+                row_center_x,
+                -first_y + index * pitch,
+                pad_width,
+                pad_height,
+            )
+        )
+    return Footprint(ref, pads=tuple(pads))
+
+
+def _qfp_footprint(
+    ref: tuple[str, str],
+    *,
+    pin_count: int,
+    side_center: float,
+    pitch: float,
+    pad_length: float,
+    pad_width: float,
+) -> Footprint:
+    pins_per_side = pin_count // 4
+    first = (pins_per_side - 1) * pitch / 2.0
+    pads = []
+    for index in range(pins_per_side):
+        pads.append(
+            _front_smd_pad(
+                str(index + 1),
+                -side_center,
+                first - index * pitch,
+                pad_length,
+                pad_width,
+            )
+        )
+    for index in range(pins_per_side):
+        pads.append(
+            _front_smd_pad(
+                str(pins_per_side + index + 1),
+                -first + index * pitch,
+                -side_center,
+                pad_width,
+                pad_length,
+            )
+        )
+    for index in range(pins_per_side):
+        pads.append(
+            _front_smd_pad(
+                str(pins_per_side * 2 + index + 1),
+                side_center,
+                -first + index * pitch,
+                pad_length,
+                pad_width,
+            )
+        )
+    for index in range(pins_per_side):
+        pads.append(
+            _front_smd_pad(
+                str(pins_per_side * 3 + index + 1),
+                first - index * pitch,
+                side_center,
+                pad_width,
+                pad_length,
+            )
+        )
+    return Footprint(ref, pads=tuple(pads))
+
+
+def _micro_usb_b_footprint() -> Footprint:
+    return Footprint(
+        ("connectors", "USB_Micro-B_Receptacle"),
+        pads=(
+            _front_smd_pad("1", -1.30, -1.70, 0.40, 1.35, shape="rectangle"),
+            _front_smd_pad("2", -0.65, -1.70, 0.40, 1.35, shape="rectangle"),
+            _front_smd_pad("3", 0.00, -1.70, 0.40, 1.35, shape="rectangle"),
+            _front_smd_pad("4", 0.65, -1.70, 0.40, 1.35, shape="rectangle"),
+            _front_smd_pad("5", 1.30, -1.70, 0.40, 1.35, shape="rectangle"),
+            _front_smd_pad("6", 0.00, 1.70, 3.20, 1.10, shape="rectangle"),
+            FootprintPad.through_hole(
+                "M1",
+                at=(-2.15, 0.35),
+                size=(1.00, 1.00),
+                drill=FootprintDrill(0.70, plating="non_plated"),
+                layers="mechanical_hole",
+                mechanical_role="mechanical_support",
+            ),
+            FootprintPad.through_hole(
+                "M2",
+                at=(2.15, 0.35),
+                size=(1.00, 1.00),
+                drill=FootprintDrill(0.70, plating="non_plated"),
+                layers="mechanical_hole",
+                mechanical_role="mechanical_support",
+            ),
+        ),
+    )
+
+
+def _sot_223_3_footprint() -> Footprint:
+    return Footprint(
+        ("Package_TO_SOT_SMD", "SOT-223-3_TabPin2"),
+        pads=(
+            _front_smd_pad("1", -2.30, -1.50, 1.05, 1.80),
+            _front_smd_pad("2", 0.00, -1.50, 1.05, 1.80),
+            _front_smd_pad("3", 2.30, -1.50, 1.05, 1.80),
+            _front_smd_pad("4", 0.00, 2.05, 3.80, 2.20),
+        ),
+    )
+
+
+LQFP_64_FOOTPRINT = _qfp_footprint(
+    ("Package_QFP", "LQFP-64_10x10mm_P0.5mm"),
+    pin_count=64,
+    side_center=5.80,
+    pitch=0.50,
+    pad_length=1.35,
+    pad_width=0.30,
+)
+MICRO_USB_B_FOOTPRINT = _micro_usb_b_footprint()
+SOT_23_6_FOOTPRINT = _two_side_smd_package(
+    ("Package_TO_SOT_SMD", "SOT-23-6"),
+    pin_count=6,
+    row_center_x=1.25,
+    pitch=0.95,
+    pad_width=0.60,
+    pad_height=0.80,
+)
+SOT_223_3_FOOTPRINT = _sot_223_3_footprint()
+FERRITE_0603_FOOTPRINT = _two_terminal_smd_footprint(
+    ("passives", "L_0603_1608Metric"),
+    pad_span=1.50,
+    pad_width=0.80,
+    pad_height=0.95,
+)
+HEADER_2X05_127_FOOTPRINT = _dual_row_header_footprint(
+    ("connectors", "PinHeader_2x05_P1.27mm_Vertical"),
+    pins_per_row=5,
+    row_spacing=1.27,
+    pitch=1.27,
+)
+HEADER_1X04_FOOTPRINT = _single_row_header_footprint(
+    ("connectors", "PinHeader_1x04_P2.54mm_Vertical"),
+    pin_count=4,
+    pitch=2.54,
+)
+DIODE_SOD_123_FOOTPRINT = _two_terminal_smd_footprint(
+    ("diodes", "D_SOD-123"),
+    pad_span=3.70,
+    pad_width=1.20,
+    pad_height=1.35,
+)
+RESISTOR_0603_FOOTPRINT = _two_terminal_smd_footprint(
+    ("passives", "R_0603_1608Metric"),
+    pad_span=1.50,
+    pad_width=0.80,
+    pad_height=0.95,
+)
+CAPACITOR_0603_FOOTPRINT = _two_terminal_smd_footprint(
+    ("passives", "C_0603_1608Metric"),
+    pad_span=1.50,
+    pad_width=0.80,
+    pad_height=0.95,
+)
+INDUCTOR_0603_FOOTPRINT = _two_terminal_smd_footprint(
+    ("passives", "L_0603_1608Metric"),
+    pad_span=1.50,
+    pad_width=0.80,
+    pad_height=0.95,
+)
 
 
 def _two_pin_symbol(name: str, label: str) -> SchematicSymbolSpec:
@@ -277,7 +550,7 @@ STM32F405RGTx = LIB.component(
         manufacturer="STMicroelectronics",
         part_number="STM32F405RGT6",
         package="LQFP-64",
-        footprint=("Package_QFP", "LQFP-64_10x10mm_P0.5mm"),
+        footprint=LQFP_64_FOOTPRINT,
     ),
     prefix="U",
     schematic_symbol=_stm32_symbol("STM32F405RGTx", STM32F405RGTx_PINS),
@@ -298,7 +571,7 @@ USB_B_MICRO = LIB.component(
         manufacturer="Molex",
         part_number="105017-0001",
         package="Micro-USB-B receptacle",
-        footprint=("connectors", "USB_Micro-B_Receptacle"),
+        footprint=MICRO_USB_B_FOOTPRINT,
     ),
     prefix="J",
     schematic_symbol=_connector_symbol(
@@ -330,7 +603,7 @@ USBLC6_4SC6 = LIB.component(
         manufacturer="STMicroelectronics",
         part_number="USBLC6-4SC6",
         package="SOT-23-6",
-        footprint=("Package_TO_SOT_SMD", "SOT-23-6"),
+        footprint=SOT_23_6_FOOTPRINT,
     ),
     prefix="U",
     schematic_symbol=_usb_protection_symbol("USBLC6-4SC6"),
@@ -348,7 +621,7 @@ AP1117_15 = LIB.component(
         manufacturer="Diodes Incorporated",
         part_number="AP1117E15G-13",
         package="SOT-223-3",
-        footprint=("Package_TO_SOT_SMD", "SOT-223-3_TabPin2"),
+        footprint=SOT_223_3_FOOTPRINT,
         pin_pads={1: "1", 2: ("2", "4"), 3: "3"},
     ),
     prefix="U",
@@ -377,7 +650,7 @@ FERRITE_BEAD = LIB.component(
         manufacturer="Murata",
         part_number="BLM18AG601SN1D",
         package="0603",
-        footprint=("passives", "L_0603_1608Metric"),
+        footprint=FERRITE_0603_FOOTPRINT,
     ),
     prefix="FB",
 )
@@ -417,7 +690,7 @@ JTAG_SWD_10 = LIB.component(
         manufacturer="Samtec",
         part_number="FTSH-105-01-L-DV-K",
         package="2x05 1.27mm",
-        footprint=("connectors", "PinHeader_2x05_P1.27mm_Vertical"),
+        footprint=HEADER_2X05_127_FOOTPRINT,
     ),
     prefix="J",
     schematic_symbol=_connector_symbol(
@@ -451,7 +724,7 @@ CONNECTOR_1X04 = LIB.component(
         manufacturer="Sullins",
         part_number="PEC04SAAN",
         package="1x04 2.54mm",
-        footprint=("connectors", "PinHeader_1x04_P2.54mm_Vertical"),
+        footprint=HEADER_1X04_FOOTPRINT,
     ),
     prefix="J",
     schematic_symbol=_connector_symbol(
@@ -481,7 +754,7 @@ DIODE = LIB.component(
         manufacturer="Diodes Incorporated",
         part_number="1N4148W-7-F",
         package="SOD-123",
-        footprint=("diodes", "D_SOD-123"),
+        footprint=DIODE_SOD_123_FOOTPRINT,
     ),
     prefix="D",
     schematic_symbol=_two_pin_symbol("Diode", "D"),
@@ -496,7 +769,7 @@ ZENER_DIODE = LIB.component(
         manufacturer="Diodes Incorporated",
         part_number="BZT52C3V3-7-F",
         package="SOD-123",
-        footprint=("diodes", "D_SOD-123"),
+        footprint=DIODE_SOD_123_FOOTPRINT,
     ),
     prefix="D",
 )
@@ -509,7 +782,7 @@ RESISTOR = LIB.component(
         manufacturer="Yageo",
         part_number="RC0603FR-0710KL",
         package="0603",
-        footprint=("passives", "R_0603_1608Metric"),
+        footprint=RESISTOR_0603_FOOTPRINT,
         power_rating=0.1,
     ),
     prefix="R",
@@ -524,7 +797,7 @@ CAPACITOR = LIB.component(
         manufacturer="Murata",
         part_number="GRM188R71C104KA01D",
         package="0603",
-        footprint=("passives", "C_0603_1608Metric"),
+        footprint=CAPACITOR_0603_FOOTPRINT,
         voltage_rating=16,
     ),
     prefix="C",
@@ -539,7 +812,7 @@ INDUCTOR = LIB.component(
         manufacturer="Murata",
         part_number="LQG18HN10NJ00D",
         package="0603",
-        footprint=("passives", "L_0603_1608Metric"),
+        footprint=INDUCTOR_0603_FOOTPRINT,
     ),
     prefix="L",
 )

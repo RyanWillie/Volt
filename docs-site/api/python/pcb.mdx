@@ -21,7 +21,7 @@ Source: `python/volt/pcb.py`
 | `set_rectangular_outline(self, *, origin: Point, size: Point) -> Board` | Set a rectangular board outline from an origin and size. |
 | `set_polygon_outline(self, vertices: Iterable[Point]) -> Board` | Set a polygon board outline from ordered vertices. |
 | `add_mounting_hole(self, label: str, *, at: Point, diameter: float) -> int` | Add a board-level mounting hole and return its kernel index. |
-| `cache_footprint(self, footprint: Footprint) -> int` | Cache a footprint definition in the board projection. |
+| `cache_footprint(self, footprint: Footprint) -> int` | Cache an explicit board-owned footprint definition for importers and low-level tests. |
 | `place(self, component: Component \| int, *, at: Point, rotation: float = 0.0, side: str = 'top', locked: bool = False) -> int` | Place a component footprint on the board and return the placement index. |
 | `add_track(self, net: Net \| int, *, layer: int, points: Iterable[Point], width: float) -> int` | Add a routed track segment sequence for a logical net. |
 | `add_via(self, net: Net \| int, *, at: Point, start_layer: int, end_layer: int, drill: float = 0.3, annular: float = 0.7) -> int` | Add a via connecting a net between two board layers. |
@@ -80,7 +80,7 @@ Source: `python/volt/pcb.py`
 
 ## `volt.FootprintPad`
 
-Normalized footprint pad geometry for board projection caches.
+Normalized footprint pad geometry for board-ready footprints.
 
 Source: `python/volt/pcb.py`
 

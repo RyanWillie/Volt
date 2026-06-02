@@ -136,14 +136,14 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
         manufacturer="Generic",
         part_number="HDR-1x02-2.54mm",
         package="2.54mm-1x02",
-        footprint=("connectors", "PinHeader_1x02_P2.54mm_Vertical"),
+        footprint=_header_1x02(),
         pin_pads={1: "1", 2: "2"},
     )
     parts["R1"].select_part(
         manufacturer="Yageo",
         part_number="RC0603FR-07330RL",
         package="0603",
-        footprint=("passives", "R_0603_1608Metric"),
+        footprint=_passive_0603(("passives", "R_0603_1608Metric")),
         pin_pads={1: "1", 2: "2"},
         power_rating=0.1,
     )
@@ -151,7 +151,7 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
         manufacturer="Lite-On",
         part_number="LTST-C190KRKT",
         package="0603",
-        footprint=("leds", "LED_0603_1608Metric"),
+        footprint=_passive_0603(("leds", "LED_0603_1608Metric")),
         pin_pads={"A": "1", "K": "2"},
     )
     return design, nets, parts
@@ -220,10 +220,6 @@ def build_board(
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 18.0))
     board.add_mounting_hole("MH1", at=(3.0, 3.0), diameter=2.7)
     board.add_mounting_hole("MH2", at=(29.0, 15.0), diameter=2.7)
-
-    board.cache_footprint(_header_1x02())
-    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
-    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
 
     board.place(parts["J1"], at=(5.0, 9.0), rotation=0.0, side="top", locked=True)
     board.place(parts["R1"], at=(15.0, 7.0), rotation=0.0, side="top")
