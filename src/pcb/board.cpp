@@ -13,33 +13,43 @@
 namespace volt {
 
 Board::Board(const Circuit &circuit, BoardName name) : circuit_{&circuit}, name_{std::move(name)} {}
+
 [[nodiscard]] BoardLayerId Board::add_layer(BoardLayer layer) {
     return structure_.add_layer(std::move(layer));
 }
+
 void Board::set_layer_stack(LayerStack stack) { structure_.set_layer_stack(std::move(stack)); }
+
 void Board::set_outline(BoardOutline outline) { structure_.set_outline(std::move(outline)); }
+
 void Board::set_design_rules(BoardDesignRules rules) { structure_.set_design_rules(rules); }
+
 [[nodiscard]] BoardFeatureId Board::add_feature(BoardFeature feature) {
     return structure_.add_feature(std::move(feature));
 }
+
 [[nodiscard]] FootprintDefId Board::cache_footprint_definition(FootprintDefinition footprint) {
     return footprint_cache_.cache_footprint_definition(std::move(footprint));
 }
+
 [[nodiscard]] ComponentPlacementId Board::place_component(ComponentPlacement placement) {
     static_cast<void>(circuit().component(placement.component()));
     return placements_.place_component(placement);
 }
+
 [[nodiscard]] BoardTrackId Board::add_track(BoardTrack track) {
     require_net(track.net());
     require_copper_layer(track.layer());
     return copper_.add_track(std::move(track));
 }
+
 [[nodiscard]] BoardViaId Board::add_via(BoardVia via) {
     require_net(via.net());
     require_copper_layer(via.start_layer());
     require_copper_layer(via.end_layer());
     return copper_.add_via(via);
 }
+
 [[nodiscard]] BoardZoneId Board::add_zone(BoardZone zone) {
     if (zone.net().has_value()) {
         require_net(zone.net().value());
@@ -52,36 +62,45 @@ void Board::set_design_rules(BoardDesignRules rules) { structure_.set_design_rul
     }
     return copper_.add_zone(std::move(zone));
 }
+
 [[nodiscard]] BoardKeepoutId Board::add_keepout(BoardKeepout keepout) {
     for (const auto layer : keepout.layers()) {
         require_layer(layer);
     }
     return copper_.add_keepout(std::move(keepout));
 }
+
 [[nodiscard]] BoardTextId Board::add_text(BoardText text) {
     require_layer(text.layer());
     return copper_.add_text(std::move(text));
 }
+
 [[nodiscard]] const std::optional<LayerStack> &Board::layer_stack() const noexcept {
     return structure_.layer_stack();
 }
+
 [[nodiscard]] const FootprintDefinition &Board::footprint_definition(FootprintDefId id) const {
     return footprint_cache_.footprint_definition(id);
 }
+
 [[nodiscard]] std::size_t Board::footprint_definition_count() const noexcept {
     return footprint_cache_.footprint_definition_count();
 }
+
 [[nodiscard]] std::optional<FootprintDefId>
 Board::footprint_definition_id(const FootprintRef &ref) const noexcept {
     return footprint_cache_.footprint_definition_id(ref);
 }
+
 [[nodiscard]] const ComponentPlacement &Board::placement(ComponentPlacementId id) const {
     return placements_.placement(id);
 }
+
 [[nodiscard]] std::optional<ComponentPlacementId>
 Board::placement_for_component(ComponentId component) const noexcept {
     return placements_.placement_for_component(component);
 }
+
 [[nodiscard]] std::vector<PadResolution>
 Board::resolve_pads(const FootprintLibrary &footprints) const {
     auto resolutions = std::vector<PadResolution>{};
@@ -108,18 +127,23 @@ Board::resolve_pads(const FootprintLibrary &footprints) const {
 
     return resolutions;
 }
+
 [[nodiscard]] std::vector<RatsnestEdge>
 Board::ratsnest_edges(const FootprintLibrary &footprints) const {
     return derive_ratsnest_edges(resolve_pads(footprints));
 }
+
 void Board::require_layer(BoardLayerId layer) const { structure_.require_layer(layer); }
+
 void Board::require_net(NetId net) const { static_cast<void>(circuit().net(net)); }
+
 void Board::require_copper_layer(BoardLayerId layer_id) const {
     require_layer(layer_id);
     if (layer(layer_id).role() != BoardLayerRole::Copper) {
         throw std::logic_error{"Board copper primitives require copper layers"};
     }
 }
+
 void Board::append_pad_resolutions(ComponentPlacementId placement_id,
                                    const ComponentPlacement &component_placement,
                                    const FootprintDefinition &definition,
@@ -163,6 +187,7 @@ void Board::append_pad_resolutions(ComponentPlacementId placement_id,
                                  position, pin, net, status);
     }
 }
+
 [[nodiscard]] DiagnosticReport validate_board(const Board &board,
                                               const FootprintLibrary &footprints) {
     auto report = DiagnosticReport{};
@@ -290,19 +315,23 @@ namespace volt::detail {
     }
     return library;
 }
+
 [[nodiscard]] Diagnostic board_diagnostic(DiagnosticCode code, std::string message,
                                           std::vector<EntityRef> entities) {
     return Diagnostic{Severity::Error, std::move(code), std::move(message), std::move(entities)};
 }
+
 [[nodiscard]] Diagnostic board_warning(DiagnosticCode code, std::string message,
                                        std::vector<EntityRef> entities) {
     return Diagnostic{Severity::Warning, std::move(code), std::move(message), std::move(entities)};
 }
+
 [[nodiscard]] Diagnostic board_component_diagnostic(DiagnosticCode code, std::string message,
                                                     ComponentId component) {
     return board_diagnostic(std::move(code), std::move(message),
                             std::vector{EntityRef::component(component)});
 }
+
 [[nodiscard]] Diagnostic board_placement_diagnostic(DiagnosticCode code, std::string message,
                                                     ComponentId component,
                                                     ComponentPlacementId placement) {

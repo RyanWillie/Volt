@@ -16,34 +16,44 @@ namespace volt {
 [[nodiscard]] PinDefId Circuit::add_pin_definition(PinDefinition definition) {
     return connectivity_.add_pin_definition(std::move(definition));
 }
+
 [[nodiscard]] ComponentDefId Circuit::add_component_definition(ComponentDefinition definition) {
     return connectivity_.add_component_definition(std::move(definition));
 }
+
 [[nodiscard]] ComponentId Circuit::add_component(ComponentInstance component) {
     return connectivity_.add_component(std::move(component));
 }
+
 [[nodiscard]] PinId Circuit::add_pin(PinInstance pin) { return connectivity_.add_pin(pin); }
+
 [[nodiscard]] NetId Circuit::add_net(Net net) { return connectivity_.add_net(std::move(net)); }
+
 [[nodiscard]] ModuleDefId Circuit::add_module_definition(ModuleDefinition definition) {
     return hierarchy_.add_module_definition(std::move(definition));
 }
+
 [[nodiscard]] TemplateNetDefId Circuit::add_template_net(ModuleDefId module,
                                                          TemplateNetDefinition net) {
     return hierarchy_.add_template_net(module, std::move(net));
 }
+
 [[nodiscard]] PortDefId Circuit::add_port_definition(ModuleDefId module, PortDefinition port) {
     return hierarchy_.add_port_definition(module, std::move(port));
 }
+
 [[nodiscard]] ModuleComponentId Circuit::add_module_component(ModuleDefId module,
                                                               ModuleComponentTemplate component) {
     require_component_definition(component.definition());
     return hierarchy_.add_module_component(module, std::move(component));
 }
+
 bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
                                  ModuleComponentId component, PinDefId pin) {
     require_pin_in_module_component(component, pin);
     return hierarchy_.connect_module_pin(module, net, component, pin);
 }
+
 [[nodiscard]] ModuleInstanceId Circuit::instantiate_root_module(ModuleDefId definition,
                                                                 ModuleInstanceName name) {
     require_module_definition(definition);
@@ -110,6 +120,7 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
 
     return instance;
 }
+
 [[nodiscard]] PortBindingId Circuit::bind_port(ModuleInstanceId instance, PortDefId port,
                                                NetId parent_net) {
     require_net(parent_net);
@@ -125,6 +136,7 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
 
     return hierarchy_.bind_port(instance, port, internal_net.value(), parent_net);
 }
+
 [[nodiscard]] ModuleInstanceId Circuit::restore_root_module_instance(
     ModuleDefId definition, ModuleInstanceName name,
     const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
@@ -207,201 +219,256 @@ bool Circuit::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
     return hierarchy_.restore_root_module_instance(definition, std::move(name), origins,
                                                    component_origins);
 }
+
 [[nodiscard]] ComponentId Circuit::instantiate_component(ComponentDefId definition,
                                                          ReferenceDesignator reference,
                                                          PropertyMap properties) {
     return connectivity_.instantiate_component(definition, std::move(reference),
                                                std::move(properties));
 }
+
 bool Circuit::connect(NetId net, PinId pin) { return connectivity_.connect(net, pin); }
+
 bool Circuit::disconnect(PinId pin) { return connectivity_.disconnect(pin); }
+
 void Circuit::set_component_property(ComponentId component, PropertyKey key, PropertyValue value) {
     connectivity_.set_component_property(component, std::move(key), std::move(value));
 }
+
 void Circuit::set_component_electrical_attribute(ComponentId component,
                                                  const ElectricalAttributeSpec &spec,
                                                  ElectricalAttributeValue value) {
     require_component(component);
     electrical_.set_component_attribute(component, spec, value);
 }
+
 void Circuit::set_pin_definition_electrical_attribute(PinDefId pin_definition,
                                                       const ElectricalAttributeSpec &spec,
                                                       ElectricalAttributeValue value) {
     require_pin_definition(pin_definition);
     electrical_.set_pin_definition_attribute(pin_definition, spec, value);
 }
+
 void Circuit::select_physical_part(ComponentId component, PhysicalPart physical_part) {
     require_component(component);
     electrical_.select_physical_part(
         component, std::move(physical_part),
         component_definition(this->component(component).definition()).pins());
 }
+
 void Circuit::set_selected_part_electrical_attribute(ComponentId component,
                                                      const ElectricalAttributeSpec &spec,
                                                      ElectricalAttributeValue value) {
     require_component(component);
     electrical_.set_selected_part_attribute(component, spec, value);
 }
+
 void Circuit::set_net_electrical_attribute(NetId net, const ElectricalAttributeSpec &spec,
                                            ElectricalAttributeValue value) {
     require_net(net);
     electrical_.set_net_attribute(net, spec, value);
 }
+
 bool Circuit::mark_intentional_stub_net(NetId net) {
     require_net(net);
     return intent_.mark_intentional_stub_net(net);
 }
+
 bool Circuit::mark_intentional_no_connect_pin(PinId pin) {
     require_pin(pin);
     return intent_.mark_intentional_no_connect_pin(pin);
 }
+
 [[nodiscard]] RuleClassId Circuit::add_rule_class(RuleClass rule_class) {
     return rule_classes_.add_rule_class(std::move(rule_class));
 }
+
 bool Circuit::assign_net_rule_class(NetId net, RuleClassId rule_class) {
     require_net(net);
     require_rule_class(rule_class);
     return rule_classes_.assign_net_rule_class(net, rule_class);
 }
+
 [[nodiscard]] const std::optional<PhysicalPart> &
 Circuit::selected_physical_part(ComponentId component) const {
     require_component(component);
     return electrical_.selected_physical_part(component);
 }
+
 [[nodiscard]] const ElectricalAttributeMap &
 Circuit::component_electrical_attributes(ComponentId component) const {
     require_component(component);
     return electrical_.component_attributes(component);
 }
+
 [[nodiscard]] const ElectricalAttributeMap &
 Circuit::pin_definition_electrical_attributes(PinDefId pin_definition) const {
     require_pin_definition(pin_definition);
     return electrical_.pin_definition_attributes(pin_definition);
 }
+
 [[nodiscard]] const ElectricalAttributeMap &Circuit::net_electrical_attributes(NetId net) const {
     require_net(net);
     return electrical_.net_attributes(net);
 }
+
 [[nodiscard]] std::vector<ModulePinConnection>
 Circuit::module_pin_connections(ModuleDefId module) const {
     return hierarchy_.module_pin_connections(module);
 }
+
 [[nodiscard]] std::vector<std::pair<TemplateNetDefId, NetId>>
 Circuit::module_net_origins(ModuleInstanceId instance) const {
     return hierarchy_.module_net_origins(instance);
 }
+
 [[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>>
 Circuit::module_component_origins(ModuleInstanceId instance) const {
     return hierarchy_.module_component_origins(instance);
 }
+
 [[nodiscard]] bool Circuit::is_intentional_stub_net(NetId net) const {
     require_net(net);
     return intent_.is_intentional_stub_net(net);
 }
+
 [[nodiscard]] bool Circuit::is_intentional_no_connect_pin(PinId pin) const {
     require_pin(pin);
     return intent_.is_intentional_no_connect_pin(pin);
 }
+
 [[nodiscard]] const std::vector<NetId> &Circuit::intentional_stub_nets() const noexcept {
     return intent_.intentional_stub_nets();
 }
+
 [[nodiscard]] const std::vector<PinId> &Circuit::intentional_no_connect_pins() const noexcept {
     return intent_.intentional_no_connect_pins();
 }
+
 [[nodiscard]] const RuleClass &Circuit::rule_class(RuleClassId id) const {
     return rule_classes_.rule_class(id);
 }
+
 [[nodiscard]] std::optional<RuleClassId>
 Circuit::rule_class_by_name(const RuleClassName &name) const {
     return rule_classes_.rule_class_by_name(name);
 }
+
 [[nodiscard]] std::optional<RuleClassId> Circuit::rule_class_for_net(NetId net) const {
     require_net(net);
     return rule_classes_.rule_class_for_net(net);
 }
+
 [[nodiscard]] const std::vector<std::pair<NetId, RuleClassId>> &
 Circuit::net_rule_class_assignments() const noexcept {
     return rule_classes_.net_rule_class_assignments();
 }
+
 [[nodiscard]] const PinDefinition &Circuit::pin_definition(PinDefId id) const {
     return connectivity_.pin_definition(id);
 }
+
 [[nodiscard]] const ComponentDefinition &Circuit::component_definition(ComponentDefId id) const {
     return connectivity_.component_definition(id);
 }
+
 [[nodiscard]] const ComponentInstance &Circuit::component(ComponentId id) const {
     return connectivity_.component(id);
 }
+
 [[nodiscard]] const ModuleDefinition &Circuit::module_definition(ModuleDefId id) const {
     return hierarchy_.module_definition(id);
 }
+
 [[nodiscard]] const PortDefinition &Circuit::port_definition(PortDefId id) const {
     return hierarchy_.port_definition(id);
 }
+
 [[nodiscard]] const ModuleInstance &Circuit::module_instance(ModuleInstanceId id) const {
     return hierarchy_.module_instance(id);
 }
+
 [[nodiscard]] const PortBinding &Circuit::port_binding(PortBindingId id) const {
     return hierarchy_.port_binding(id);
 }
+
 [[nodiscard]] std::size_t Circuit::pin_definition_count() const noexcept {
     return connectivity_.pin_definition_count();
 }
+
 [[nodiscard]] std::size_t Circuit::component_definition_count() const noexcept {
     return connectivity_.component_definition_count();
 }
+
 [[nodiscard]] std::size_t Circuit::module_definition_count() const noexcept {
     return hierarchy_.module_definition_count();
 }
+
 [[nodiscard]] std::size_t Circuit::port_definition_count() const noexcept {
     return hierarchy_.port_definition_count();
 }
+
 [[nodiscard]] std::size_t Circuit::module_component_count() const noexcept {
     return hierarchy_.module_component_count();
 }
+
 [[nodiscard]] std::size_t Circuit::module_pin_connection_count() const noexcept {
     return hierarchy_.module_pin_connection_count();
 }
+
 [[nodiscard]] std::size_t Circuit::module_instance_count() const noexcept {
     return hierarchy_.module_instance_count();
 }
+
 void Circuit::require_pin_definition(PinDefId pin_definition) const {
     connectivity_.require_pin_definition(pin_definition);
 }
+
 void Circuit::require_component_definition(ComponentDefId component_definition) const {
     connectivity_.require_component_definition(component_definition);
 }
+
 void Circuit::require_component(ComponentId component) const {
     connectivity_.require_component(component);
 }
+
 void Circuit::require_module_definition(ModuleDefId module) const {
     hierarchy_.require_module_definition(module);
 }
+
 void Circuit::require_template_net(TemplateNetDefId net) const {
     hierarchy_.require_template_net(net);
 }
+
 void Circuit::require_port(PortDefId port) const { hierarchy_.require_port(port); }
+
 void Circuit::require_module_component(ModuleComponentId component) const {
     hierarchy_.require_module_component(component);
 }
+
 void Circuit::require_module_instance(ModuleInstanceId instance) const {
     hierarchy_.require_module_instance(instance);
 }
+
 void Circuit::require_template_net_in_module(ModuleDefId module, TemplateNetDefId net) const {
     hierarchy_.require_template_net_in_module(module, net);
 }
+
 void Circuit::require_port_in_module(ModuleDefId module, PortDefId port) const {
     hierarchy_.require_port_in_module(module, port);
 }
+
 void Circuit::require_module_component_in_module(ModuleDefId module,
                                                  ModuleComponentId component) const {
     hierarchy_.require_module_component_in_module(module, component);
 }
+
 [[nodiscard]] bool
 Circuit::require_module_component_in_module_if_present(ModuleDefId module,
                                                        ModuleComponentId component) const {
     return hierarchy_.module_component_belongs_to_module(module, component);
 }
+
 void Circuit::require_pin_in_module_component(ModuleComponentId component, PinDefId pin) const {
     require_module_component(component);
     require_pin_definition(pin);
@@ -412,6 +479,7 @@ void Circuit::require_pin_in_module_component(ModuleComponentId component, PinDe
         throw std::logic_error{"Pin definition does not belong to module component definition"};
     }
 }
+
 void Circuit::require_restored_module_connectivity_matches_template(
     ModuleDefId definition, const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
     const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins) const {
@@ -439,11 +507,15 @@ void Circuit::require_restored_module_connectivity_matches_template(
         }
     }
 }
+
 void Circuit::require_pin(PinId pin) const { connectivity_.require_pin(pin); }
+
 void Circuit::require_net(NetId net) const { connectivity_.require_net(net); }
+
 void Circuit::require_rule_class(RuleClassId rule_class) const {
     rule_classes_.require_rule_class(rule_class);
 }
+
 [[nodiscard]] std::optional<NetId> Circuit::net_of_existing_pin(PinId pin) const {
     return connectivity_.net_of(pin);
 }

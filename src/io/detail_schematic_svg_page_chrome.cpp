@@ -10,6 +10,7 @@ namespace volt::io::detail {
     }
     return false;
 }
+
 void write_region_title_clip_defs_svg(std::ostream &out, SheetId sheet_id, const Sheet &sheet) {
     const auto sheet_token = svg_sheet_token(sheet_id);
     for (std::size_t index = 0; index < sheet.regions().size(); ++index) {
@@ -25,6 +26,7 @@ void write_region_title_clip_defs_svg(std::ostream &out, SheetId sheet_id, const
         out << "      </clipPath>\n";
     }
 }
+
 void write_sheet_defs_svg(std::ostream &out, SheetId sheet_id, const Sheet &sheet) {
     const auto &metadata = sheet.metadata();
     const auto area = drawing_area(metadata);
@@ -57,6 +59,7 @@ void write_sheet_defs_svg(std::ostream &out, SheetId sheet_id, const Sheet &shee
     }
     out << "    </defs>\n";
 }
+
 void write_sheet_grid_svg(std::ostream &out, SheetId sheet_id, const SheetMetadata &metadata) {
     if (!metadata.grid().has_value() || !metadata.grid()->visible()) {
         return;
@@ -73,6 +76,7 @@ void write_sheet_grid_svg(std::ostream &out, SheetId sheet_id, const SheetMetada
     write_svg_number(out, area.height);
     out << "\" fill=\"url(#grid-" << svg_sheet_token(sheet_id) << ")\"/>\n";
 }
+
 void write_coordinate_zones_svg(std::ostream &out, const SheetMetadata &metadata) {
     if (!metadata.coordinate_zones().has_value() || !metadata.coordinate_zones()->visible()) {
         return;
@@ -118,6 +122,7 @@ void write_coordinate_zones_svg(std::ostream &out, const SheetMetadata &metadata
     }
     out << "    </g>\n";
 }
+
 void write_title_block_text_svg(std::ostream &out, std::string_view css_class, double x, double y,
                                 std::string_view text, double available_width) {
     const auto fit = fit_title_block_text(text, available_width);
@@ -137,6 +142,7 @@ void write_title_block_text_svg(std::ostream &out, std::string_view css_class, d
     }
     out << ">" << svg_escape(fit.text) << "</text>\n";
 }
+
 void write_title_block_row_svg(std::ostream &out, const SvgRect &rect, std::size_t row,
                                std::string_view key, std::string_view value) {
     const auto text_y = (static_cast<double>(row) * title_block_row_height) + 4.2;
@@ -153,6 +159,7 @@ void write_title_block_row_svg(std::ostream &out, const SvgRect &rect, std::size
     write_title_block_text_svg(out, value_class, title_block_value_x, text_y, value,
                                value_available_width);
 }
+
 void write_title_block_svg(std::ostream &out, SheetId sheet_id, const SheetMetadata &metadata) {
     const auto rect = title_block_rect(metadata);
     out << "    <g class=\"title-block\" transform=\"translate(";
@@ -190,6 +197,7 @@ void write_title_block_svg(std::ostream &out, SheetId sheet_id, const SheetMetad
     }
     out << "    </g>\n";
 }
+
 void write_regions_svg(std::ostream &out, SheetId sheet_id, const Sheet &sheet) {
     const auto sheet_token = svg_sheet_token(sheet_id);
     for (std::size_t index = 0; index < sheet.regions().size(); ++index) {
@@ -219,6 +227,7 @@ void write_regions_svg(std::ostream &out, SheetId sheet_id, const Sheet &sheet) 
         out << "    </g>\n";
     }
 }
+
 void write_sheet_page_chrome_svg(std::ostream &out, SheetId sheet_id, const Sheet &sheet) {
     const auto &metadata = sheet.metadata();
     const auto area = drawing_area(metadata);

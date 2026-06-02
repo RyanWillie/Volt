@@ -17,96 +17,127 @@ template <typename Id> struct LocalIdPrefix;
 template <> struct LocalIdPrefix<ComponentDefId> {
     static constexpr auto value = std::string_view{"component_def:"};
 };
+
 template <> struct LocalIdPrefix<ComponentId> {
     static constexpr auto value = std::string_view{"component:"};
 };
+
 template <> struct LocalIdPrefix<PinDefId> {
     static constexpr auto value = std::string_view{"pin_def:"};
 };
+
 template <> struct LocalIdPrefix<PinId> {
     static constexpr auto value = std::string_view{"pin:"};
 };
+
 template <> struct LocalIdPrefix<NetId> {
     static constexpr auto value = std::string_view{"net:"};
 };
+
 template <> struct LocalIdPrefix<ModuleDefId> {
     static constexpr auto value = std::string_view{"module_def:"};
 };
+
 template <> struct LocalIdPrefix<ModuleInstanceId> {
     static constexpr auto value = std::string_view{"module:"};
 };
+
 template <> struct LocalIdPrefix<TemplateNetDefId> {
     static constexpr auto value = std::string_view{"template_net:"};
 };
+
 template <> struct LocalIdPrefix<ModuleComponentId> {
     static constexpr auto value = std::string_view{"module_component:"};
 };
+
 template <> struct LocalIdPrefix<PortDefId> {
     static constexpr auto value = std::string_view{"port:"};
 };
+
 template <> struct LocalIdPrefix<RuleClassId> {
     static constexpr auto value = std::string_view{"rule_class:"};
 };
+
 template <> struct LocalIdPrefix<SymbolDefId> {
     static constexpr auto value = std::string_view{"symbol_def:"};
 };
+
 template <> struct LocalIdPrefix<SheetId> {
     static constexpr auto value = std::string_view{"sheet:"};
 };
+
 template <> struct LocalIdPrefix<SymbolInstanceId> {
     static constexpr auto value = std::string_view{"symbol_instance:"};
 };
+
 template <> struct LocalIdPrefix<WireRunId> {
     static constexpr auto value = std::string_view{"wire_run:"};
 };
+
 template <> struct LocalIdPrefix<NetLabelId> {
     static constexpr auto value = std::string_view{"net_label:"};
 };
+
 template <> struct LocalIdPrefix<JunctionId> {
     static constexpr auto value = std::string_view{"junction:"};
 };
+
 template <> struct LocalIdPrefix<PowerPortId> {
     static constexpr auto value = std::string_view{"power_port:"};
 };
+
 template <> struct LocalIdPrefix<NoConnectMarkerId> {
     static constexpr auto value = std::string_view{"no_connect_marker:"};
 };
+
 template <> struct LocalIdPrefix<SheetPortId> {
     static constexpr auto value = std::string_view{"sheet_port:"};
 };
+
 template <> struct LocalIdPrefix<SymbolFieldId> {
     static constexpr auto value = std::string_view{"symbol_field:"};
 };
+
 template <> struct LocalIdPrefix<BoardLayerId> {
     static constexpr auto value = std::string_view{"board_layer:"};
 };
+
 template <> struct LocalIdPrefix<BoardFeatureId> {
     static constexpr auto value = std::string_view{"board_feature:"};
 };
+
 template <> struct LocalIdPrefix<BoardTrackId> {
     static constexpr auto value = std::string_view{"board_track:"};
 };
+
 template <> struct LocalIdPrefix<BoardViaId> {
     static constexpr auto value = std::string_view{"board_via:"};
 };
+
 template <> struct LocalIdPrefix<BoardZoneId> {
     static constexpr auto value = std::string_view{"board_zone:"};
 };
+
 template <> struct LocalIdPrefix<BoardKeepoutId> {
     static constexpr auto value = std::string_view{"board_keepout:"};
 };
+
 template <> struct LocalIdPrefix<BoardTextId> {
     static constexpr auto value = std::string_view{"board_text:"};
 };
+
 template <> struct LocalIdPrefix<FootprintDefId> {
     static constexpr auto value = std::string_view{"footprint_def:"};
 };
+
 template <> struct LocalIdPrefix<FootprintPadId> {
     static constexpr auto value = std::string_view{"footprint_pad:"};
 };
+
 template <> struct LocalIdPrefix<ComponentPlacementId> {
     static constexpr auto value = std::string_view{"component_placement:"};
 };
+
 /// @endcond
 
 /** Return the canonical serialized local-ID prefix for a Volt entity ID type. */

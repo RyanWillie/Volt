@@ -6,12 +6,15 @@ namespace volt::detail {
     return label.size() > overlong_label_character_threshold ||
            label.find('/') != std::string::npos || label.find("::") != std::string::npos;
 }
+
 [[nodiscard]] bool ascii_upper_alpha(char character) noexcept {
     return character >= 'A' && character <= 'Z';
 }
+
 [[nodiscard]] bool ascii_digit(char character) noexcept {
     return character >= '0' && character <= '9';
 }
+
 [[nodiscard]] bool visible_reference_label_looks_conventional(std::string_view label) noexcept {
     auto prefix_length = std::size_t{0};
     while (prefix_length < label.size() && ascii_upper_alpha(label[prefix_length])) {
@@ -27,6 +30,7 @@ namespace volt::detail {
     }
     return true;
 }
+
 void validate_visible_reference_labels(const Schematic &schematic, SheetId sheet_id,
                                        const Sheet &sheet, DiagnosticReport &report) {
     struct VisibleReference {
@@ -90,6 +94,7 @@ void validate_visible_reference_labels(const Schematic &schematic, SheetId sheet
         });
     }
 }
+
 void validate_label_readability(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                                 DiagnosticReport &report) {
     for (const auto label_id : sheet.net_labels()) {
@@ -135,6 +140,7 @@ void validate_label_readability(const Schematic &schematic, SheetId sheet_id, co
         }
     }
 }
+
 void validate_symbol_field_ownership_distance(const Schematic &schematic, SheetId sheet_id,
                                               const Sheet &sheet, DiagnosticReport &report) {
     for (const auto field_id : sheet.symbol_fields()) {
@@ -154,6 +160,7 @@ void validate_symbol_field_ownership_distance(const Schematic &schematic, SheetI
         });
     }
 }
+
 void validate_text_collisions(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                               DiagnosticReport &report) {
     const auto texts = readability_texts_for_sheet(schematic, sheet);

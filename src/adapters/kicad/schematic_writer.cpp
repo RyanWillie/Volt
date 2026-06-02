@@ -29,6 +29,7 @@ namespace volt::adapters::kicad::detail {
     result += '"';
     return result;
 }
+
 void write_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
         throw std::invalid_argument{"KiCad schematic numeric values must be finite"};
@@ -41,6 +42,7 @@ void write_number(std::ostream &out, double value) {
     formatted << std::setprecision(15) << value;
     out << formatted.str();
 }
+
 void write_xy(std::ostream &out, Point point) {
     out << "(xy ";
     write_number(out, point.x());
@@ -48,6 +50,7 @@ void write_xy(std::ostream &out, Point point) {
     write_number(out, point.y());
     out << ')';
 }
+
 void write_at(std::ostream &out, Point point, SchematicOrientation orientation) {
     out << "(at ";
     write_number(out, point.x());
@@ -69,17 +72,21 @@ void write_at(std::ostream &out, Point point, SchematicOrientation orientation) 
     }());
     out << ')';
 }
+
 [[nodiscard]] std::string stable_uuid(std::size_t value) {
     auto out = std::ostringstream{};
     out << "00000000-0000-0000-0000-" << std::setw(12) << std::setfill('0') << value;
     return out.str();
 }
+
 [[nodiscard]] std::string component_id(ComponentId id) {
     return "component:" + std::to_string(id.index());
 }
+
 [[nodiscard]] std::string symbol_library_name(const SymbolDefinition &symbol) {
     return "Volt:" + symbol.name();
 }
+
 [[nodiscard]] std::string property_value_to_string(const PropertyValue &value) {
     switch (value.kind()) {
     case PropertyValueKind::String:
@@ -96,6 +103,7 @@ void write_at(std::ostream &out, Point point, SchematicOrientation orientation) 
     }
     throw std::logic_error{"Unhandled property value kind"};
 }
+
 void write_effects(std::ostream &out, bool hidden) {
     out << "(effects (font (size 1.27 1.27))";
     if (hidden) {
@@ -103,6 +111,7 @@ void write_effects(std::ostream &out, bool hidden) {
     }
     out << ')';
 }
+
 [[nodiscard]] std::string component_value(const ComponentInstance &component,
                                           const ComponentDefinition &definition) {
     const auto value_key = PropertyKey{"Value"};
@@ -111,6 +120,7 @@ void write_effects(std::ostream &out, bool hidden) {
     }
     return definition.name();
 }
+
 void write_symbol_property(std::ostream &out, std::string_view name, std::string_view value,
                            Point at, bool hidden) {
     out << "    (property " << sexpr_string(name) << ' ' << sexpr_string(value) << " ";
@@ -121,6 +131,7 @@ void write_symbol_property(std::ostream &out, std::string_view name, std::string
     out << "\n";
     out << "    )\n";
 }
+
 void write_library_property(std::ostream &out, std::string_view name, std::string_view value,
                             Point at) {
     out << "      (property " << sexpr_string(name) << ' ' << sexpr_string(value) << " ";
@@ -131,6 +142,7 @@ void write_library_property(std::ostream &out, std::string_view name, std::strin
     out << "\n";
     out << "      )\n";
 }
+
 void report_unsupported_primitives(const SymbolDefinition &symbol, LossReport &loss_report) {
     for (const auto &primitive : symbol.primitives()) {
         if (std::holds_alternative<SymbolCircle>(primitive)) {
@@ -142,6 +154,7 @@ void report_unsupported_primitives(const SymbolDefinition &symbol, LossReport &l
         }
     }
 }
+
 void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive) {
     if (std::holds_alternative<SymbolLine>(primitive)) {
         const auto &line = std::get<SymbolLine>(primitive);
@@ -183,6 +196,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
         out << "        )\n";
     }
 }
+
 void write_symbol_pin(std::ostream &out, const SymbolPin &pin) {
     out << "        (pin passive line ";
     write_at(out, pin.anchor(), pin.orientation());
@@ -195,6 +209,7 @@ void write_symbol_pin(std::ostream &out, const SymbolPin &pin) {
     out << ")\n";
     out << "        )\n";
 }
+
 void write_library_symbol(std::ostream &out, const SymbolDefinition &symbol) {
     out << "    (symbol " << sexpr_string(symbol_library_name(symbol)) << "\n";
     out << "      (pin_names (offset 0))\n";
@@ -213,6 +228,7 @@ void write_library_symbol(std::ostream &out, const SymbolDefinition &symbol) {
     out << "      )\n";
     out << "    )\n";
 }
+
 void write_wire(std::ostream &out, const WireRun &wire, std::size_t index) {
     out << "  (wire\n";
     out << "    (pts";
@@ -225,6 +241,7 @@ void write_wire(std::ostream &out, const WireRun &wire, std::size_t index) {
     out << "    (uuid " << sexpr_string(stable_uuid(200U + index)) << ")\n";
     out << "  )\n";
 }
+
 void write_label(std::ostream &out, const Schematic &schematic, const NetLabel &label,
                  std::size_t index) {
     const auto &net = schematic.circuit().net(label.net());
@@ -235,6 +252,7 @@ void write_label(std::ostream &out, const Schematic &schematic, const NetLabel &
     out << "    (uuid " << sexpr_string(stable_uuid(300U + index)) << ")\n";
     out << "  )\n";
 }
+
 void write_symbol_instance(std::ostream &out, const Schematic &schematic, SymbolInstanceId id,
                            std::size_t index) {
     const auto &instance = schematic.symbol_instance(id);

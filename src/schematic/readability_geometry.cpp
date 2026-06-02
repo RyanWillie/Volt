@@ -13,6 +13,7 @@ namespace volt::detail {
     }
     return false;
 }
+
 [[nodiscard]] bool sheet_has_net_label_at_point(const Schematic &schematic, const Sheet &sheet,
                                                 NetId net, Point point) {
     for (const auto label_id : sheet.net_labels()) {
@@ -24,6 +25,7 @@ namespace volt::detail {
 
     return false;
 }
+
 [[nodiscard]] bool sheet_visually_covers_net_at_pin(const Schematic &schematic, const Sheet &sheet,
                                                     NetId net, Point point) {
     for (const auto wire_id : sheet.wire_runs()) {
@@ -53,6 +55,7 @@ namespace volt::detail {
 
     return false;
 }
+
 [[nodiscard]] bool sheet_has_coincident_same_net_symbol_pin(const Schematic &schematic,
                                                             const Sheet &sheet, NetId net,
                                                             PinId pin_id, Point point) {
@@ -81,6 +84,7 @@ namespace volt::detail {
 
     return false;
 }
+
 [[nodiscard]] bool schematic_readiness_exempts_pin(const Circuit &circuit, PinId pin_id,
                                                    PinDefId pin_def_id) {
     const auto &definition = circuit.pin_definition(pin_def_id);
@@ -88,6 +92,7 @@ namespace volt::detail {
            definition.connection_requirement() == ConnectionRequirement::MustNotConnect ||
            circuit.is_intentional_no_connect_pin(pin_id);
 }
+
 [[nodiscard]] std::optional<SymbolPin> symbol_pin_by_number(const SymbolDefinition &symbol,
                                                             const std::string &number) {
     for (const auto &symbol_pin : symbol.pins()) {
@@ -98,6 +103,7 @@ namespace volt::detail {
 
     return std::nullopt;
 }
+
 [[nodiscard]] std::vector<SymbolInstanceId>
 symbol_instances_for_component(const Schematic &schematic, ComponentId component) {
     auto result = std::vector<SymbolInstanceId>{};
@@ -112,6 +118,7 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
 
     return result;
 }
+
 [[nodiscard]] bool component_is_schematic_relevant(const Circuit &circuit, ComponentId component) {
     const auto &component_instance = circuit.component(component);
     const auto &definition = circuit.component_definition(component_instance.definition());
@@ -132,6 +139,7 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
 
     return false;
 }
+
 [[nodiscard]] bool sheet_has_junction_on_segments(const Schematic &schematic, const Sheet &sheet,
                                                   SchematicSegment first, SchematicSegment second,
                                                   NetId net) {
@@ -145,11 +153,13 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
 
     return false;
 }
+
 [[nodiscard]] bool point_inside_sheet(const Sheet &sheet, Point point) noexcept {
     const auto size = sheet.metadata().size();
     return point.x() >= 0.0 && point.y() >= 0.0 && point.x() <= size.width() &&
            point.y() <= size.height();
 }
+
 [[nodiscard]] SchematicBounds no_connect_marker_collision_bounds(const NoConnectMarker &marker) {
     return padded_bounds(no_connect_marker_bounds(marker), no_connect_marker_clearance);
 }

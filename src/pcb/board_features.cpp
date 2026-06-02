@@ -15,6 +15,7 @@ namespace volt {
     return BoardFeature{BoardFeatureKind::MountingHole, std::move(label), center,
                         drill_diameter_mm};
 }
+
 BoardFeature::BoardFeature(BoardFeatureKind kind, std::string label, BoardPoint position,
                            double diameter_mm)
     : kind_{kind}, label_{std::move(label)}, position_{position}, diameter_mm_{diameter_mm} {
@@ -25,19 +26,23 @@ BoardFeature::BoardFeature(BoardFeatureKind kind, std::string label, BoardPoint 
         throw std::invalid_argument{"Board feature diameter must be positive"};
     }
 }
+
 ComponentPlacement::ComponentPlacement(ComponentId component, BoardPoint position,
                                        BoardRotation rotation, BoardSide side, bool locked)
     : component_{component}, position_{position}, rotation_{rotation}, side_{side},
       locked_{locked} {}
+
 PadResolution::PadResolution(ComponentPlacementId placement, ComponentId component,
                              FootprintPadId pad, std::string pad_label, BoardPoint position,
                              std::optional<PinId> pin, std::optional<NetId> net,
                              PadResolutionStatus status)
     : placement_{placement}, component_{component}, pad_{pad}, pad_label_{std::move(pad_label)},
       position_{position}, pin_{pin}, net_{net}, status_{status} {}
+
 RatsnestEndpoint::RatsnestEndpoint(ComponentPlacementId placement, ComponentId component,
                                    FootprintPadId pad, BoardPoint position)
     : placement_{placement}, component_{component}, pad_{pad}, position_{position} {}
+
 RatsnestEdge::RatsnestEdge(NetId net, RatsnestEndpoint from, RatsnestEndpoint to)
     : net_{net}, from_{from}, to_{to} {}
 
@@ -83,6 +88,7 @@ derive_ratsnest_edges(const std::vector<PadResolution> &resolutions) {
         const auto group_size = group_end - group_begin;
         if (group_size >= 2U) {
             const auto edges_before_group = edges.size();
+
             struct CandidateEdge {
                 std::size_t from;
                 std::size_t to;
@@ -157,12 +163,14 @@ namespace volt::detail {
     }
     return lhs.pad().index() < rhs.pad().index();
 }
+
 [[nodiscard]] double ratsnest_distance_squared(const RatsnestEndpoint &lhs,
                                                const RatsnestEndpoint &rhs) noexcept {
     const auto dx = lhs.position().x_mm() - rhs.position().x_mm();
     const auto dy = lhs.position().y_mm() - rhs.position().y_mm();
     return (dx * dx) + (dy * dy);
 }
+
 [[nodiscard]] RatsnestEdge make_ratsnest_edge(NetId net, RatsnestEndpoint lhs,
                                               RatsnestEndpoint rhs) {
     if (ratsnest_endpoint_less(rhs, lhs)) {
@@ -170,6 +178,7 @@ namespace volt::detail {
     }
     return RatsnestEdge{net, lhs, rhs};
 }
+
 [[nodiscard]] std::size_t ratsnest_root(std::vector<std::size_t> &parents, std::size_t index) {
     while (parents[index] != index) {
         parents[index] = parents[parents[index]];
@@ -177,10 +186,12 @@ namespace volt::detail {
     }
     return index;
 }
+
 [[nodiscard]] bool same_ratsnest_endpoint(const RatsnestEndpoint &lhs,
                                           const RatsnestEndpoint &rhs) noexcept {
     return lhs.placement() == rhs.placement() && lhs.pad() == rhs.pad();
 }
+
 [[nodiscard]] BoardPoint transform_footprint_point(const ComponentPlacement &placement,
                                                    FootprintPoint point) {
     constexpr double pi = 3.14159265358979323846264338327950288;
@@ -196,6 +207,7 @@ namespace volt::detail {
     return BoardPoint{placement.position().x_mm() + rotated_x,
                       placement.position().y_mm() + rotated_y};
 }
+
 [[nodiscard]] std::vector<BoardPoint>
 transformed_pad_body_corners(const ComponentPlacement &placement, const FootprintPad &pad) {
     const auto half_width = pad.size().width_mm() / 2.0;
@@ -212,10 +224,12 @@ transformed_pad_body_corners(const ComponentPlacement &placement, const Footprin
             placement, FootprintPoint{center.x_mm() - half_width, center.y_mm() + half_height}),
     };
 }
+
 [[nodiscard]] double board_orientation(BoardPoint a, BoardPoint b, BoardPoint c) noexcept {
     return ((b.x_mm() - a.x_mm()) * (c.y_mm() - a.y_mm())) -
            ((b.y_mm() - a.y_mm()) * (c.x_mm() - a.x_mm()));
 }
+
 [[nodiscard]] bool segments_cross_properly(BoardPoint a, BoardPoint b, BoardPoint c,
                                            BoardPoint d) noexcept {
     constexpr double geometry_epsilon = 1.0e-9;
@@ -231,9 +245,11 @@ transformed_pad_body_corners(const ComponentPlacement &placement, const Footprin
 
     return ((ab_c > 0.0) != (ab_d > 0.0)) && ((cd_a > 0.0) != (cd_b > 0.0));
 }
+
 [[nodiscard]] BoardPoint segment_midpoint(BoardPoint a, BoardPoint b) {
     return BoardPoint{(a.x_mm() + b.x_mm()) / 2.0, (a.y_mm() + b.y_mm()) / 2.0};
 }
+
 [[nodiscard]] bool pad_body_exits_outline(const BoardOutline &outline,
                                           const std::vector<BoardPoint> &pad_corners) {
     for (const auto point : pad_corners) {

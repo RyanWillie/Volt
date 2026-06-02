@@ -10,10 +10,13 @@ Point::Point(double x, double y) : x_{x}, y_{y} {
         throw std::invalid_argument{"Schematic point coordinates must be finite"};
     }
 }
+
 SchematicSegment::SchematicSegment(Point start, Point end) : start_{start}, end_{end} {}
+
 [[nodiscard]] bool same_schematic_point(Point lhs, Point rhs) noexcept {
     return detail::nearly_equal(lhs.x(), rhs.x()) && detail::nearly_equal(lhs.y(), rhs.y());
 }
+
 [[nodiscard]] Point transform_schematic_point(Point local, Point origin,
                                               SchematicOrientation orientation) {
     auto rotated = local;
@@ -34,11 +37,13 @@ SchematicSegment::SchematicSegment(Point start, Point end) : start_{start}, end_
 
     return Point{origin.x() + rotated.x(), origin.y() + rotated.y()};
 }
+
 [[nodiscard]] bool point_on_schematic_segment(Point point, SchematicSegment segment) noexcept {
     return detail::nearly_equal(detail::cross(segment.start(), segment.end(), point), 0.0) &&
            detail::between(point.x(), segment.start().x(), segment.end().x()) &&
            detail::between(point.y(), segment.start().y(), segment.end().y());
 }
+
 [[nodiscard]] SchematicSegmentRelationship
 classify_segment_relationship(SchematicSegment first, SchematicSegment second) noexcept {
     const auto first_is_point = same_schematic_point(first.start(), first.end());
@@ -108,6 +113,7 @@ classify_segment_relationship(SchematicSegment first, SchematicSegment second) n
 
     return SchematicSegmentRelationship::Disjoint;
 }
+
 [[nodiscard]] bool same_net_segments_join(SchematicSegmentRelationship relationship,
                                           SchematicJunction junction) noexcept {
     switch (relationship) {
@@ -122,6 +128,7 @@ classify_segment_relationship(SchematicSegment first, SchematicSegment second) n
 
     return false;
 }
+
 [[nodiscard]] bool different_net_segments_collide(SchematicSegmentRelationship relationship,
                                                   SchematicJunction junction) noexcept {
     switch (relationship) {
@@ -144,15 +151,18 @@ namespace volt::detail {
 [[nodiscard]] bool nearly_equal(double lhs, double rhs) noexcept {
     return std::abs(lhs - rhs) <= schematic_geometry_tolerance;
 }
+
 [[nodiscard]] double cross(Point origin, Point a, Point b) noexcept {
     return ((a.x() - origin.x()) * (b.y() - origin.y())) -
            ((a.y() - origin.y()) * (b.x() - origin.x()));
 }
+
 [[nodiscard]] bool between(double value, double first, double second) noexcept {
     const auto minimum = std::min(first, second) - schematic_geometry_tolerance;
     const auto maximum = std::max(first, second) + schematic_geometry_tolerance;
     return minimum <= value && value <= maximum;
 }
+
 [[nodiscard]] double projected_coordinate(Point point, bool use_x) noexcept {
     return use_x ? point.x() : point.y();
 }

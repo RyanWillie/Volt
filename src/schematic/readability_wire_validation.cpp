@@ -11,6 +11,7 @@ namespace volt::detail {
     }
     return length;
 }
+
 void validate_long_local_doglegs(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                                  DiagnosticReport &report) {
     for (const auto wire_id : sheet.wire_runs()) {
@@ -35,6 +36,7 @@ void validate_long_local_doglegs(const Schematic &schematic, SheetId sheet_id, c
         });
     }
 }
+
 [[nodiscard]] bool points_align_as_stack(const std::vector<Point> &points) noexcept {
     auto min_x = points.front().x();
     auto max_x = points.front().x();
@@ -49,6 +51,7 @@ void validate_long_local_doglegs(const Schematic &schematic, SheetId sheet_id, c
     return (max_x - min_x) <= local_label_alignment_tolerance ||
            (max_y - min_y) <= local_label_alignment_tolerance;
 }
+
 void validate_misaligned_local_labels(const Schematic &schematic, SheetId sheet_id,
                                       const Sheet &sheet, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
@@ -106,6 +109,7 @@ void validate_misaligned_local_labels(const Schematic &schematic, SheetId sheet_
         }
     }
 }
+
 void validate_ambiguous_same_net_crossings(const Schematic &schematic, SheetId sheet_id,
                                            const Sheet &sheet, DiagnosticReport &report) {
     const auto &wires = sheet.wire_runs();
@@ -142,6 +146,7 @@ void validate_ambiguous_same_net_crossings(const Schematic &schematic, SheetId s
         }
     }
 }
+
 void validate_different_net_wire_crossings(const Schematic &schematic, SheetId sheet_id,
                                            const Sheet &sheet, DiagnosticReport &report) {
     const auto &wires = sheet.wire_runs();
@@ -181,6 +186,7 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
         }
     }
 }
+
 [[nodiscard]] bool sheet_has_same_net_tag_at_point(const Schematic &schematic, const Sheet &sheet,
                                                    NetId net, Point point) {
     if (sheet_has_net_label_at_point(schematic, sheet, net, point)) {
@@ -200,6 +206,7 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
     }
     return false;
 }
+
 [[nodiscard]] bool sheet_has_symbol_pin_for_net_at_point(const Schematic &schematic,
                                                          const Sheet &sheet, NetId net,
                                                          Point point) {
@@ -226,6 +233,7 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
     }
     return false;
 }
+
 [[nodiscard]] bool sheet_has_terminal_or_sheet_port_for_net_at_point(const Schematic &schematic,
                                                                      const Sheet &sheet, NetId net,
                                                                      Point point) {
@@ -243,6 +251,7 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
     }
     return false;
 }
+
 [[nodiscard]] bool sheet_has_junction_for_net_at_point(const Schematic &schematic,
                                                        const Sheet &sheet, NetId net, Point point) {
     for (const auto junction_id : sheet.junctions()) {
@@ -253,10 +262,12 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
     }
     return false;
 }
+
 [[nodiscard]] bool wire_has_endpoint_at_point(const WireRun &wire, Point point) noexcept {
     return same_schematic_point(wire.points().front(), point) ||
            same_schematic_point(wire.points().back(), point);
 }
+
 [[nodiscard]] bool sheet_has_other_same_net_wire_endpoint_at_point(const Schematic &schematic,
                                                                    const Sheet &sheet, NetId net,
                                                                    Point point,
@@ -272,6 +283,7 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
     }
     return false;
 }
+
 [[nodiscard]] bool wire_endpoint_has_readable_anchor(const Schematic &schematic, const Sheet &sheet,
                                                      NetId net, Point point, WireRunId wire_id) {
     return sheet_has_symbol_pin_for_net_at_point(schematic, sheet, net, point) ||
@@ -279,6 +291,7 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
            sheet_has_junction_for_net_at_point(schematic, sheet, net, point) ||
            sheet_has_other_same_net_wire_endpoint_at_point(schematic, sheet, net, point, wire_id);
 }
+
 void validate_dangling_wire_endpoints(const Schematic &schematic, SheetId sheet_id,
                                       const Sheet &sheet, DiagnosticReport &report) {
     for (const auto wire_id : sheet.wire_runs()) {
@@ -297,6 +310,7 @@ void validate_dangling_wire_endpoints(const Schematic &schematic, SheetId sheet_
         }
     }
 }
+
 [[nodiscard]] bool sheet_has_other_same_net_wire_at_point(const Schematic &schematic,
                                                           const Sheet &sheet, NetId net,
                                                           Point point, WireRunId excluded_wire) {
@@ -311,6 +325,7 @@ void validate_dangling_wire_endpoints(const Schematic &schematic, SheetId sheet_
     }
     return false;
 }
+
 void validate_floating_stub_clusters(const Schematic &schematic, SheetId sheet_id,
                                      const Sheet &sheet, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
@@ -381,6 +396,7 @@ void validate_floating_stub_clusters(const Schematic &schematic, SheetId sheet_i
         }
     }
 }
+
 void validate_duplicate_junctions(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                                   DiagnosticReport &report) {
     const auto &junctions = sheet.junctions();

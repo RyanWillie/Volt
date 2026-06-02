@@ -6,6 +6,7 @@ void add_pin(SymbolDefinition &symbol, std::string name, std::string number, Poi
              SchematicOrientation orientation) {
     symbol.add_pin(SymbolPin{std::move(name), std::move(number), anchor, orientation});
 }
+
 void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::string left_number,
                          std::string right_name, std::string right_number) {
     add_pin(symbol, std::move(left_name), std::move(left_number), Point{0.0, 0.0},
@@ -13,6 +14,7 @@ void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::s
     add_pin(symbol, std::move(right_name), std::move(right_number), Point{20.0, 0.0},
             SchematicOrientation::Right);
 }
+
 [[nodiscard]] SymbolDefinition resistor_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "1", "1", "2", "2");
@@ -29,6 +31,7 @@ void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::s
         SymbolLine{Point{15.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     return symbol;
 }
+
 [[nodiscard]] SymbolDefinition capacitor_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "1", "1", "2", "2");
@@ -40,6 +43,7 @@ void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::s
         SymbolLine{Point{12.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     return symbol;
 }
+
 [[nodiscard]] SymbolDefinition polarized_capacitor_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "+", "1", "-", "2");
@@ -52,6 +56,7 @@ void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::s
     symbol.add_primitive(SymbolText{"+", Point{6.0, -8.0}});
     return symbol;
 }
+
 [[nodiscard]] SymbolDefinition inductor_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "1", "1", "2", "2");
@@ -64,6 +69,7 @@ void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::s
         SymbolLine{Point{16.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     return symbol;
 }
+
 [[nodiscard]] SymbolDefinition diode_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "K", "1", "A", "2");
@@ -76,12 +82,14 @@ void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::s
         SymbolLine{Point{13.0, 0.0}, Point{20.0, 0.0}, SymbolLineRole::TerminalLeadEnd});
     return symbol;
 }
+
 [[nodiscard]] SymbolDefinition led_symbol(std::string_view name) {
     auto symbol = diode_symbol(name);
     symbol.add_primitive(SymbolLine{Point{13.0, -6.0}, Point{17.0, -10.0}});
     symbol.add_primitive(SymbolLine{Point{15.0, -4.0}, Point{19.0, -8.0}});
     return symbol;
 }
+
 [[nodiscard]] SymbolDefinition switch_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "A", "1", "B", "2");
@@ -95,6 +103,7 @@ void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::s
     symbol.add_primitive(SymbolText{"SW", Point{10.0, -10.0}});
     return symbol;
 }
+
 [[nodiscard]] SymbolDefinition crystal_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_two_pin_anchors(symbol, "1", "1", "2", "2");
@@ -108,6 +117,7 @@ void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::s
     symbol.add_primitive(SymbolText{"Y", Point{10.0, -11.0}});
     return symbol;
 }
+
 [[nodiscard]] SymbolDefinition test_point_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_pin(symbol, "TP", "1", Point{0.0, 0.0}, SchematicOrientation::Left);
@@ -116,6 +126,7 @@ void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::s
     symbol.add_primitive(SymbolText{"TP", Point{7.0, -8.0}});
     return symbol;
 }
+
 [[nodiscard]] SymbolDefinition connector_symbol(std::string_view name,
                                                 std::initializer_list<std::string_view> pin_names) {
     auto symbol = SymbolDefinition{std::string{name}};
@@ -134,6 +145,7 @@ void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::s
     }
     return symbol;
 }
+
 [[nodiscard]] SymbolDefinition regulator_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_pin(symbol, "IN", "3", Point{0.0, 10.0}, SchematicOrientation::Left);
@@ -146,6 +158,7 @@ void add_two_pin_anchors(SymbolDefinition &symbol, std::string left_name, std::s
     symbol.add_primitive(SymbolText{"REG", Point{25.0, 14.0}});
     return symbol;
 }
+
 [[nodiscard]] SymbolDefinition op_amp_symbol(std::string_view name) {
     auto symbol = SymbolDefinition{std::string{name}};
     add_pin(symbol, "IN+", "3", Point{0.0, 16.0}, SchematicOrientation::Left);

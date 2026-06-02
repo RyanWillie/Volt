@@ -6,9 +6,11 @@ namespace volt::io::detail {
                                                 FootprintPadId pad) {
     return "pcb_pad:" + std::to_string(placement.index()) + ":" + std::to_string(pad.index());
 }
+
 [[nodiscard]] std::string pcb_ratsnest_edge_id(NetId net, std::size_t edge) {
     return "ratsnest:" + std::to_string(net.index()) + ":" + std::to_string(edge);
 }
+
 [[nodiscard]] std::string board_units_name(BoardUnits units) {
     switch (units) {
     case BoardUnits::Millimeters:
@@ -16,12 +18,14 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled board units"};
 }
+
 [[nodiscard]] BoardUnits board_units_from_name(const std::string &value) {
     if (value == "mm") {
         return BoardUnits::Millimeters;
     }
     throw std::logic_error{"Invalid PCB board units"};
 }
+
 [[nodiscard]] std::string board_side_name(BoardSide side) {
     switch (side) {
     case BoardSide::Top:
@@ -31,6 +35,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled board side"};
 }
+
 [[nodiscard]] BoardSide board_side_from_name(const std::string &value) {
     if (value == "top") {
         return BoardSide::Top;
@@ -40,6 +45,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Invalid PCB board side"};
 }
+
 [[nodiscard]] std::string board_layer_role_name(BoardLayerRole role) {
     switch (role) {
     case BoardLayerRole::Copper:
@@ -65,6 +71,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled PCB board layer role"};
 }
+
 [[nodiscard]] BoardLayerRole board_layer_role_from_name(const std::string &value) {
     if (value == "copper") {
         return BoardLayerRole::Copper;
@@ -98,6 +105,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Invalid PCB board layer role"};
 }
+
 [[nodiscard]] std::string board_layer_side_name(BoardLayerSide side) {
     switch (side) {
     case BoardLayerSide::Top:
@@ -113,6 +121,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled PCB board layer side"};
 }
+
 [[nodiscard]] BoardLayerSide board_layer_side_from_name(const std::string &value) {
     if (value == "top") {
         return BoardLayerSide::Top;
@@ -131,6 +140,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Invalid PCB board layer side"};
 }
+
 [[nodiscard]] std::string board_feature_kind_name(BoardFeatureKind kind) {
     switch (kind) {
     case BoardFeatureKind::MountingHole:
@@ -150,6 +160,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled PCB board feature kind"};
 }
+
 [[nodiscard]] BoardFeatureKind board_feature_kind_from_name(const std::string &value) {
     if (value == "mounting_hole") {
         return BoardFeatureKind::MountingHole;
@@ -174,6 +185,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Invalid PCB board feature kind"};
 }
+
 [[nodiscard]] std::string board_zone_fill_name(BoardZoneFill fill) {
     switch (fill) {
     case BoardZoneFill::Solid:
@@ -181,12 +193,14 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled PCB board zone fill"};
 }
+
 [[nodiscard]] BoardZoneFill board_zone_fill_from_name(const std::string &value) {
     if (value == "solid") {
         return BoardZoneFill::Solid;
     }
     throw std::logic_error{"Invalid PCB board zone fill"};
 }
+
 [[nodiscard]] std::string board_keepout_restriction_name(BoardKeepoutRestriction restriction) {
     switch (restriction) {
     case BoardKeepoutRestriction::Copper:
@@ -200,6 +214,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled PCB board keepout restriction"};
 }
+
 [[nodiscard]] BoardKeepoutRestriction
 board_keepout_restriction_from_name(const std::string &value) {
     if (value == "copper") {
@@ -216,6 +231,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     }
     throw std::logic_error{"Invalid PCB board keepout restriction"};
 }
+
 [[nodiscard]] std::string footprint_layer_name(FootprintLayer layer) {
     switch (layer) {
     case FootprintLayer::FrontCopper:
@@ -233,6 +249,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     }
     throw std::logic_error{"Unhandled PCB footprint layer"};
 }
+
 [[nodiscard]] FootprintLayer footprint_layer_from_name(const std::string &value) {
     if (value == "front_copper") {
         return FootprintLayer::FrontCopper;
@@ -254,6 +271,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     }
     throw std::logic_error{"Invalid PCB footprint layer"};
 }
+
 [[nodiscard]] std::string footprint_pad_kind_name(FootprintPadKind kind) {
     switch (kind) {
     case FootprintPadKind::SurfaceMount:
@@ -263,6 +281,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     }
     throw std::logic_error{"Unhandled PCB footprint pad kind"};
 }
+
 [[nodiscard]] FootprintPadKind footprint_pad_kind_from_name(const std::string &value) {
     if (value == "surface_mount") {
         return FootprintPadKind::SurfaceMount;
@@ -272,6 +291,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     }
     throw std::logic_error{"Invalid PCB footprint pad kind"};
 }
+
 [[nodiscard]] std::string footprint_pad_shape_name(FootprintPadShape shape) {
     switch (shape) {
     case FootprintPadShape::Rectangle:
@@ -285,6 +305,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     }
     throw std::logic_error{"Unhandled PCB footprint pad shape"};
 }
+
 [[nodiscard]] FootprintPadShape footprint_pad_shape_from_name(const std::string &value) {
     if (value == "rectangle") {
         return FootprintPadShape::Rectangle;
@@ -300,6 +321,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     }
     throw std::logic_error{"Invalid PCB footprint pad shape"};
 }
+
 [[nodiscard]] std::string footprint_pad_plating_name(FootprintPadPlating plating) {
     switch (plating) {
     case FootprintPadPlating::Plated:
@@ -309,6 +331,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     }
     throw std::logic_error{"Unhandled PCB footprint pad plating"};
 }
+
 [[nodiscard]] FootprintPadPlating footprint_pad_plating_from_name(const std::string &value) {
     if (value == "plated") {
         return FootprintPadPlating::Plated;
@@ -318,6 +341,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     }
     throw std::logic_error{"Invalid PCB footprint pad plating"};
 }
+
 [[nodiscard]] std::string footprint_pad_mechanical_role_name(FootprintPadMechanicalRole role) {
     switch (role) {
     case FootprintPadMechanicalRole::Mounting:
@@ -329,6 +353,7 @@ board_keepout_restriction_from_name(const std::string &value) {
     }
     throw std::logic_error{"Unhandled PCB footprint pad mechanical role"};
 }
+
 [[nodiscard]] FootprintPadMechanicalRole
 footprint_pad_mechanical_role_from_name(const std::string &value) {
     if (value == "mounting") {
@@ -342,6 +367,7 @@ footprint_pad_mechanical_role_from_name(const std::string &value) {
     }
     throw std::logic_error{"Invalid PCB footprint pad mechanical role"};
 }
+
 [[nodiscard]] std::string pad_resolution_status_name(PadResolutionStatus status) {
     switch (status) {
     case PadResolutionStatus::Connected:
@@ -355,6 +381,7 @@ footprint_pad_mechanical_role_from_name(const std::string &value) {
     }
     throw std::logic_error{"Unhandled PCB pad resolution status"};
 }
+
 [[nodiscard]] PadResolutionStatus pad_resolution_status_from_name(const std::string &value) {
     if (value == "connected") {
         return PadResolutionStatus::Connected;

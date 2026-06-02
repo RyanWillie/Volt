@@ -9,6 +9,7 @@ namespace volt::detail {
     return text.kind == ReadabilityTextKind::NetLabel && text.net.has_value() &&
            text.net.value() == wire.net() && wire_covers_point(wire, text.anchor);
 }
+
 void validate_text_wire_collisions(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                                    DiagnosticReport &report) {
     const auto texts = readability_texts_for_sheet(schematic, sheet);
@@ -47,6 +48,7 @@ void validate_text_wire_collisions(const Schematic &schematic, SheetId sheet_id,
         }
     }
 }
+
 void validate_text_symbol_collisions(const Schematic &schematic, SheetId sheet_id,
                                      const Sheet &sheet, DiagnosticReport &report) {
     const auto texts = readability_texts_for_sheet(schematic, sheet);
@@ -70,6 +72,7 @@ void validate_text_symbol_collisions(const Schematic &schematic, SheetId sheet_i
         }
     }
 }
+
 void validate_symbol_overlaps(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                               DiagnosticReport &report) {
     for (std::size_t first = 0; first < sheet.symbol_instances().size(); ++first) {
@@ -103,6 +106,7 @@ void validate_symbol_overlaps(const Schematic &schematic, SheetId sheet_id, cons
         }
     }
 }
+
 [[nodiscard]] bool segment_visually_attaches_to_symbol_pin(const Schematic &schematic,
                                                            const WireRun &wire,
                                                            SchematicSegment segment,
@@ -127,6 +131,7 @@ void validate_symbol_overlaps(const Schematic &schematic, SheetId sheet_id, cons
     }
     return false;
 }
+
 void validate_wire_symbol_collisions(const Schematic &schematic, SheetId sheet_id,
                                      const Sheet &sheet, DiagnosticReport &report) {
     for (const auto wire_id : sheet.wire_runs()) {
@@ -162,6 +167,7 @@ void validate_wire_symbol_collisions(const Schematic &schematic, SheetId sheet_i
         }
     }
 }
+
 void validate_terminal_wire_collisions(const Schematic &schematic, SheetId sheet_id,
                                        const Sheet &sheet, DiagnosticReport &report) {
     for (const auto port_id : sheet.power_ports()) {
@@ -196,6 +202,7 @@ void validate_terminal_wire_collisions(const Schematic &schematic, SheetId sheet
         }
     }
 }
+
 void validate_terminal_symbol_collisions(const Schematic &schematic, SheetId sheet_id,
                                          const Sheet &sheet, DiagnosticReport &report) {
     for (const auto port_id : sheet.power_ports()) {
@@ -222,12 +229,14 @@ void validate_terminal_symbol_collisions(const Schematic &schematic, SheetId she
         }
     }
 }
+
 [[nodiscard]] bool readability_collision_kind_pair(ReadabilityCollisionKind first,
                                                    ReadabilityCollisionKind second,
                                                    ReadabilityCollisionKind lhs,
                                                    ReadabilityCollisionKind rhs) noexcept {
     return (first == lhs && second == rhs) || (first == rhs && second == lhs);
 }
+
 [[nodiscard]] bool
 readability_collision_is_handled_by_specific_validator(const ReadabilityCollisionObject &first,
                                                        const ReadabilityCollisionObject &second) {
@@ -271,6 +280,7 @@ readability_collision_is_handled_by_specific_validator(const ReadabilityCollisio
                                            ReadabilityCollisionKind::TerminalGlyph,
                                            ReadabilityCollisionKind::SymbolBody);
 }
+
 [[nodiscard]] bool
 readability_collision_is_intentional_wire_contact(const ReadabilityCollisionObject &first,
                                                   const ReadabilityCollisionObject &second) {
@@ -287,6 +297,7 @@ readability_collision_is_intentional_wire_contact(const ReadabilityCollisionObje
     }
     return point_on_schematic_segment(object->anchor.value(), wire->segment.value());
 }
+
 [[nodiscard]] bool readability_collision_is_intentional_owning_symbol_contact(
     const Schematic &schematic, const ReadabilityCollisionObject &first,
     const ReadabilityCollisionObject &second) {
@@ -316,6 +327,7 @@ readability_collision_is_intentional_wire_contact(const ReadabilityCollisionObje
     }
     return false;
 }
+
 [[nodiscard]] bool
 readability_collision_is_intentional_junction_contact(const ReadabilityCollisionObject &first,
                                                       const ReadabilityCollisionObject &second) {
@@ -324,6 +336,7 @@ readability_collision_is_intentional_junction_contact(const ReadabilityCollision
            first.net.has_value() && second.net.has_value() &&
            first.net.value() == second.net.value();
 }
+
 [[nodiscard]] bool readability_collision_is_intentional_junction_symbol_pin_contact(
     const Schematic &schematic, const ReadabilityCollisionObject &first,
     const ReadabilityCollisionObject &second) {
@@ -359,6 +372,7 @@ readability_collision_is_intentional_junction_contact(const ReadabilityCollision
     }
     return false;
 }
+
 [[nodiscard]] bool
 readability_collision_is_intentional_contact(const Schematic &schematic,
                                              const ReadabilityCollisionObject &first,
@@ -370,6 +384,7 @@ readability_collision_is_intentional_contact(const Schematic &schematic,
            readability_collision_is_intentional_junction_symbol_pin_contact(schematic, first,
                                                                             second);
 }
+
 [[nodiscard]] bool
 readability_collision_shapes_intersect(const ReadabilityCollisionObject &first,
                                        const ReadabilityCollisionObject &second) {
@@ -388,6 +403,7 @@ readability_collision_shapes_intersect(const ReadabilityCollisionObject &first,
     }
     return true;
 }
+
 [[nodiscard]] bool readability_collision_pair_reported(
     const std::vector<std::pair<EntityRef, EntityRef>> &reported_pairs, EntityRef first,
     EntityRef second) {
@@ -397,6 +413,7 @@ readability_collision_shapes_intersect(const ReadabilityCollisionObject &first,
                                   (pair.first == second && pair.second == first);
                        });
 }
+
 void validate_visual_element_collisions(const Schematic &schematic, SheetId sheet_id,
                                         const Sheet &sheet, DiagnosticReport &report) {
     const auto objects = readability_collision_objects_for_sheet(schematic, sheet);

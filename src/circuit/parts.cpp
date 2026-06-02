@@ -11,11 +11,13 @@ ManufacturerPart::ManufacturerPart(std::string manufacturer, std::string part_nu
         throw std::invalid_argument{"Manufacturer part number must not be empty"};
     }
 }
+
 PackageRef::PackageRef(std::string value) : value_{std::move(value)} {
     if (value_.empty()) {
         throw std::invalid_argument{"Package reference must not be empty"};
     }
 }
+
 FootprintRef::FootprintRef(std::string library, std::string name)
     : library_{std::move(library)}, name_{std::move(name)} {
     if (library_.empty()) {
@@ -25,11 +27,13 @@ FootprintRef::FootprintRef(std::string library, std::string name)
         throw std::invalid_argument{"Footprint name must not be empty"};
     }
 }
+
 PinPadMapping::PinPadMapping(PinDefId pin, std::string pad) : pin_{pin}, pad_{std::move(pad)} {
     if (pad_.empty()) {
         throw std::invalid_argument{"Pad label must not be empty"};
     }
 }
+
 PhysicalPart::PhysicalPart(ManufacturerPart manufacturer_part, PackageRef package,
                            FootprintRef footprint, std::vector<PinPadMapping> pin_pad_mappings,
                            PropertyMap properties)
@@ -49,15 +53,19 @@ PhysicalPart::PhysicalPart(ManufacturerPart manufacturer_part, PackageRef packag
         }
     }
 }
+
 [[nodiscard]] const ManufacturerPart &PhysicalPart::manufacturer_part() const noexcept {
     return manufacturer_part_;
 }
+
 [[nodiscard]] const std::vector<PinPadMapping> &PhysicalPart::pin_pad_mappings() const noexcept {
     return pin_pad_mappings_;
 }
+
 [[nodiscard]] const ElectricalAttributeMap &PhysicalPart::electrical_attributes() const noexcept {
     return electrical_attributes_;
 }
+
 void PhysicalPart::set_electrical_attribute(const ElectricalAttributeSpec &spec,
                                             ElectricalAttributeValue value) {
     electrical_attributes_.set(spec, value);
