@@ -119,6 +119,26 @@ def check_static_analysis() -> None:
         require("volt_apply_clang_tidy" in read(path), f"{path} must apply clang-tidy to compiled targets")
 
 
+def check_sanitizers() -> None:
+    compiler_options = read("cmake/VoltCompilerOptions.cmake")
+    ci_workflow = read(".github/workflows/ci.yml")
+    presets = json.loads(read("CMakePresets.json"))
+    configure_presets = {preset["name"]: preset for preset in presets["configurePresets"]}
+    test_presets = {preset["name"]: preset for preset in presets["testPresets"]}
+    workflow_presets = {preset["name"]: preset for preset in presets["workflowPresets"]}
+
+    require("VOLT_ENABLE_ASAN" in compiler_options, "AddressSanitizer option must be declared")
+    require("VOLT_ENABLE_UBSAN" in compiler_options, "UndefinedBehaviorSanitizer option must be declared")
+    require("volt_apply_sanitizers" in compiler_options, "sanitizer helper must be available")
+    require("asan" in configure_presets, "asan configure preset must exist")
+    asan_cache = configure_presets["asan"]["cacheVariables"]
+    require(asan_cache["VOLT_ENABLE_ASAN"] == "ON", "asan preset must enable AddressSanitizer")
+    require(asan_cache["VOLT_ENABLE_UBSAN"] == "ON", "asan preset must enable UndefinedBehaviorSanitizer")
+    require("asan" in test_presets, "asan test preset must exist")
+    require("asan" in workflow_presets, "asan workflow preset must exist")
+    require("cmake --workflow --preset asan" in ci_workflow, "CI must run the sanitizer workflow")
+
+
 def check_benchmarks() -> None:
     top_level = read("CMakeLists.txt")
     presets = json.loads(read("CMakePresets.json"))
@@ -273,6 +293,7 @@ def main() -> int:
         check_test_presets,
         check_fetchcontent,
         check_static_analysis,
+        check_sanitizers,
         check_coverage,
         check_benchmarks,
         check_ci_tooling,

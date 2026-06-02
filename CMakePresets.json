@@ -32,6 +32,7 @@
       "inherits": "dev",
       "binaryDir": "${sourceDir}/build/asan",
       "cacheVariables": {
+        "VOLT_BUILD_PYTHON": "OFF",
         "VOLT_ENABLE_ASAN": "ON",
         "VOLT_ENABLE_UBSAN": "ON"
       }
