@@ -414,6 +414,23 @@ def test_stm32_usb_buck_library_exposes_native_components():
 
 
 def test_stm32_usb_buck_library_selected_parts_resolve_builtin_footprints():
+    board_ready_components = (
+        stm32_usb_buck.STM32F405RGTx,
+        stm32_usb_buck.USB_B_MICRO,
+        stm32_usb_buck.USBLC6_4SC6,
+        stm32_usb_buck.AP1117_15,
+        stm32_usb_buck.FERRITE_BEAD,
+        stm32_usb_buck.JTAG_SWD_10,
+        stm32_usb_buck.CONNECTOR_1X04,
+        stm32_usb_buck.DIODE,
+        stm32_usb_buck.ZENER_DIODE,
+        stm32_usb_buck.RESISTOR,
+        stm32_usb_buck.CAPACITOR,
+        stm32_usb_buck.INDUCTOR,
+    )
+    for component in board_ready_components:
+        assert isinstance(component.physical_part.footprint, volt.Footprint), component.name
+
     design = volt.Design("stm32-library-pcb")
     components = {
         "J1": design.instantiate(stm32_usb_buck.USB_B_MICRO, ref="J1"),

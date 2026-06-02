@@ -62,7 +62,7 @@ class PinSpec:
 
 @dataclass(frozen=True)
 class PhysicalPartSpec:
-    """Reusable selected physical part data for library-authored components."""
+    """Reusable selected physical part data; board-ready real parts should carry Footprint objects."""
 
     manufacturer: str
     part_number: str

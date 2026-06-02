@@ -515,7 +515,7 @@ class Component:
         voltage_rating: float | None = None,
         power_rating: float | None = None,
     ) -> Component:
-        """Attach a selected physical part and footprint mapping to this component."""
+        """Attach selected physical part data; pass a Footprint object for board-ready geometry."""
         if not isinstance(pin_pads, dict):
             raise TypeError("pin_pads must be a dict")
         object_footprint = footprint if isinstance(footprint, Footprint) else None

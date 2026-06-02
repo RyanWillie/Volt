@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import volt
+
 
 def _artifact_texts(artifacts):
     return {
@@ -47,6 +49,22 @@ def _committed_artifact_texts(main):
             path.read_text(encoding="utf-8") for path in sorted(pages_dir.glob("*.svg"))
         ),
     }
+
+
+def test_pcb_led_board_example_uses_object_owned_footprints(monkeypatch, tmp_path):
+    main = importlib.import_module("examples.pcb_led_board.main")
+
+    def reject_manual_cache(*_args, **_kwargs):
+        raise AssertionError("PCB LED board example should use object-owned footprints")
+
+    monkeypatch.setattr(volt.Board, "cache_footprint", reject_manual_cache)
+
+    artifacts = main.write_artifacts(tmp_path)
+    pcb = json.loads(artifacts.pcb_json.read_text(encoding="utf-8"))
+
+    assert len(pcb["board"]["footprint_definitions"]) == 3
+    assert len(pcb["viewer"]["pad_resolutions"]) == 6
+    assert pcb["viewer"]["diagnostics"] == []
 
 
 def test_pcb_led_board_example_writes_stable_public_api_artifacts():

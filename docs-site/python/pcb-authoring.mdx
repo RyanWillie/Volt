@@ -3,7 +3,7 @@ title: PCB Authoring
 description: Describe PCB layers, footprints, placements, routing, zones, keepouts, text, validation, and output.
 ---
 
-PCB authoring projects the logical design into physical board data. It requires selected physical parts and cached footprint definitions for components you place.
+PCB authoring projects the logical design into physical board data. Board-ready real parts should attach selected physical part data with a first-class `volt.Footprint` object; board placement then resolves that object-owned geometry automatically.
 
 ## Board setup
 
@@ -20,7 +20,7 @@ board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 18.0))
 ## Footprints
 
 ```python
-resistor_0603 = volt.FootprintDefinition(
+resistor_0603 = volt.Footprint(
     ("passives", "R_0603_1608Metric"),
     pads=(
         volt.FootprintPad.surface_mount(
@@ -38,10 +38,16 @@ resistor_0603 = volt.FootprintDefinition(
     ),
 )
 
-board.cache_footprint(resistor_0603)
+r1.select_part(
+    manufacturer="Yageo",
+    part_number="RC0603FR-07330RL",
+    package="0603",
+    footprint=resistor_0603,
+    pin_pads={1: "1", 2: "2"},
+)
 ```
 
-Footprint identities must match the selected part footprint attached to the logical component.
+The footprint identity is still serialized as the selected part reference, but the `volt.Footprint` object carries the pad geometry needed for board placement. `board.cache_footprint(...)` remains available for importers, explicit board-owned snapshots, and low-level tests.
 
 ## Placement and routing
 
@@ -96,4 +102,4 @@ board.write_json("board.volt.pcb.json")
 board.write_svg("board.svg")
 ```
 
-`board.validate()` catches board-level issues such as missing footprint definitions, invalid layer usage, and DRC-style projection problems.
+`board.validate()` catches board-level issues such as missing selected parts, unresolved footprint geometry, invalid layer usage, and DRC-style projection problems.

@@ -75,13 +75,19 @@ r1.select_part(
     manufacturer="Yageo",
     part_number="RC0603FR-07330RL",
     package="0603",
-    footprint=("passives", "R_0603_1608Metric"),
+    footprint=volt.Footprint(
+        ("passives", "R_0603_1608Metric"),
+        pads=(
+            volt.FootprintPad.surface_mount("1", at=(-0.75, 0.0), size=(0.80, 0.95)),
+            volt.FootprintPad.surface_mount("2", at=(0.75, 0.0), size=(0.80, 0.95)),
+        ),
+    ),
     pin_pads={1: "1", 2: "2"},
     power_rating=0.1,
 )
 ```
 
-Selected parts own package, footprint identity, logical-pin-to-pad mapping, metadata, and selected-part electrical ratings. Invalid mappings are rejected at mutation time.
+Selected parts own package, footprint identity, logical-pin-to-pad mapping, metadata, and selected-part electrical ratings. Board-ready real parts should carry first-class footprint geometry, while invalid mappings are rejected at mutation time.
 
 ## Modules
 
