@@ -19,7 +19,7 @@ class SchematicDocument {
     explicit SchematicDocument(Schematic schematic);
 
     /** Return the logical circuit this schematic document visualizes. */
-    [[nodiscard]] CircuitView circuit() const noexcept { return schematic_.circuit(); }
+    [[nodiscard]] const CircuitView &circuit() const noexcept { return schematic_.circuit(); }
 
     /** Return the mutable kernel-owned schematic projection. */
     [[nodiscard]] Schematic &schematic() noexcept { return schematic_; }

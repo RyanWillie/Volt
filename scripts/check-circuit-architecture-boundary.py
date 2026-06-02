@@ -67,13 +67,13 @@ def check_view_contracts() -> None:
             "Circuit must convert to CircuitView for existing read-only call sites")
 
     require("CircuitView circuit_;" in schematic, "Schematic must store CircuitView, not Circuit")
-    require("CircuitView circuit() const noexcept" in schematic,
+    require("const CircuitView &circuit() const noexcept" in schematic,
             "Schematic must expose its logical circuit as CircuitView")
-    require("CircuitView circuit() const noexcept" in schematic_document,
+    require("const CircuitView &circuit() const noexcept" in schematic_document,
             "SchematicDocument must expose its logical circuit as CircuitView")
 
     require("CircuitView circuit_;" in board, "Board must store CircuitView, not Circuit")
-    require("CircuitView circuit() const noexcept" in board,
+    require("const CircuitView &circuit() const noexcept" in board,
             "Board must expose its logical circuit as CircuitView")
 
     require("CircuitView" in read("include/volt/circuit/validation.hpp"),

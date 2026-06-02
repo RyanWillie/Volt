@@ -165,7 +165,7 @@ class Schematic {
     void move_symbol_field(SymbolFieldId id, Point position);
 
     /** Return the logical circuit this schematic projection references. */
-    [[nodiscard]] CircuitView circuit() const noexcept { return circuit_; }
+    [[nodiscard]] const CircuitView &circuit() const noexcept { return circuit_; }
 
     /** Return the number of stored symbol definitions. */
     [[nodiscard]] std::size_t symbol_definition_count() const noexcept;

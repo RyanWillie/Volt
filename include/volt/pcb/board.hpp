@@ -34,7 +34,7 @@ class Board {
     [[nodiscard]] BoardUnits units() const noexcept { return units_; }
 
     /** Return the logical circuit this board projects. */
-    [[nodiscard]] CircuitView circuit() const noexcept { return circuit_; }
+    [[nodiscard]] const CircuitView &circuit() const noexcept { return circuit_; }
 
     /** Add a board layer, rejecting duplicate board-local layer names. */
     [[nodiscard]] BoardLayerId add_layer(BoardLayer layer);
