@@ -1,48 +1,64 @@
-Schematic
-replace_with
-add_symbol_definition
-add_sheet
-add_sheet_region
-place_symbol
-add_junction
-add_power_port
-add_power_port_for_endpoint
-add_terminal_marker
-add_terminal_marker_for_endpoint
-add_no_connect_marker
-add_sheet_port
-add_sheet_port_for_endpoint
-add_symbol_field
-add_wire_run
-add_wire_run_for_endpoints
-add_net_label
-add_net_label_for_endpoint
-add_junction_for_endpoint
-symbol_definition_by_name
-sheet_by_name
-sheet_region_by_name
-symbol_definition
-sheet
-sheet_region
-symbol_instance
-wire_run
-net_label
-move_net_label_text
-junction
-power_port
-move_power_port_label
-no_connect_marker
-sheet_port
-symbol_field
-move_symbol_field
-circuit
-symbol_definition_count
-sheet_count
-symbol_instance_count
-wire_run_count
-net_label_count
-junction_count
-power_port_count
-no_connect_marker_count
-sheet_port_count
-symbol_field_count
+include <cstddef>
+include <optional>
+include <string>
+include <string_view>
+include <vector>
+include <volt/circuit/circuit.hpp>
+include <volt/schematic/geometry.hpp>
+include <volt/schematic/schematic_items.hpp>
+include <volt/schematic/schematic_items_model.hpp>
+include <volt/schematic/schematic_library_model.hpp>
+include <volt/schematic/schematic_sheet.hpp>
+include <volt/schematic/schematic_sheet_metadata.hpp>
+include <volt/schematic/schematic_sheet_model.hpp>
+include <volt/schematic/symbols.hpp>
+include <volt/schematic/wire_topology.hpp>
+
+explicit Schematic(const Circuit &circuit)
+void replace_with(Schematic replacement)
+[[nodiscard]] SymbolDefId add_symbol_definition(SymbolDefinition definition)
+[[nodiscard]] SheetId add_sheet(Sheet sheet)
+[[nodiscard]] std::size_t add_sheet_region(SheetId sheet, SheetRegion region)
+[[nodiscard]] SymbolInstanceId place_symbol(SheetId sheet, SymbolInstance instance)
+[[nodiscard]] JunctionId add_junction(SheetId sheet, Junction junction)
+[[nodiscard]] PowerPortId add_power_port(SheetId sheet, PowerPort port)
+[[nodiscard]] PowerPortId add_power_port_for_endpoint(SheetId sheet, std::optional<NetId> net, const SchematicEndpoint &endpoint, PowerPortKind kind, SchematicOrientation orientation = SchematicOrientation::Up, std::optional<std::size_t> authored_region = std::nullopt, std::optional<std::string> label = std::nullopt)
+[[nodiscard]] PowerPortId add_terminal_marker(SheetId sheet, PowerPort marker)
+[[nodiscard]] PowerPortId add_terminal_marker_for_endpoint(SheetId sheet, std::optional<NetId> net, const SchematicEndpoint &endpoint, PowerPortKind kind, SchematicOrientation orientation = SchematicOrientation::Up, std::optional<std::size_t> authored_region = std::nullopt, std::optional<std::string> label = std::nullopt)
+[[nodiscard]] NoConnectMarkerId add_no_connect_marker(SheetId sheet, NoConnectMarker marker)
+[[nodiscard]] SheetPortId add_sheet_port(SheetId sheet, SheetPort port)
+[[nodiscard]] SheetPortId add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net, const SchematicEndpoint &endpoint, std::string name, SheetPortKind kind, SchematicOrientation orientation = SchematicOrientation::Right, std::optional<std::size_t> authored_region = std::nullopt)
+[[nodiscard]] SymbolFieldId add_symbol_field(SheetId sheet, SymbolField field)
+[[nodiscard]] WireRunId add_wire_run(SheetId sheet, WireRun wire)
+[[nodiscard]] WireRunId add_wire_run_for_endpoints(SheetId sheet, std::optional<NetId> net, std::vector<Point> points, const std::vector<SchematicEndpoint> &endpoints, RouteIntent route_intent = RouteIntent::Direct, std::optional<std::size_t> authored_region = std::nullopt)
+[[nodiscard]] NetLabelId add_net_label(SheetId sheet, NetLabel label)
+[[nodiscard]] NetLabelId add_net_label_for_endpoint(SheetId sheet, std::optional<NetId> net, const SchematicEndpoint &endpoint, SchematicOrientation orientation = SchematicOrientation::Right, std::optional<std::size_t> authored_region = std::nullopt, std::optional<std::string> label = std::nullopt, SchematicTextStyle style = SchematicTextStyle{TextHorizontalAlignment::Start}, std::optional<Point> text_position = std::nullopt)
+[[nodiscard]] JunctionId add_junction_for_endpoint(SheetId sheet, std::optional<NetId> net, const SchematicEndpoint &endpoint, std::optional<std::size_t> authored_region = std::nullopt)
+[[nodiscard]] std::optional<SymbolDefId> symbol_definition_by_name(const std::string &name) const
+[[nodiscard]] std::optional<SheetId> sheet_by_name(const std::string &name) const
+[[nodiscard]] std::optional<std::size_t> sheet_region_by_name(SheetId sheet, const std::string &name) const
+[[nodiscard]] const SymbolDefinition &symbol_definition(SymbolDefId id) const
+[[nodiscard]] const Sheet &sheet(SheetId id) const
+[[nodiscard]] const SheetRegion &sheet_region(SheetId sheet, std::size_t region) const
+[[nodiscard]] const SymbolInstance &symbol_instance(SymbolInstanceId id) const
+[[nodiscard]] const WireRun &wire_run(WireRunId id) const
+[[nodiscard]] const NetLabel &net_label(NetLabelId id) const
+void move_net_label_text(NetLabelId id, Point position)
+[[nodiscard]] const Junction &junction(JunctionId id) const
+[[nodiscard]] const PowerPort &power_port(PowerPortId id) const
+void move_power_port_label(PowerPortId id, Point position)
+[[nodiscard]] const NoConnectMarker &no_connect_marker(NoConnectMarkerId id) const
+[[nodiscard]] const SheetPort &sheet_port(SheetPortId id) const
+[[nodiscard]] const SymbolField &symbol_field(SymbolFieldId id) const
+void move_symbol_field(SymbolFieldId id, Point position)
+[[nodiscard]] const Circuit &circuit() const noexcept
+[[nodiscard]] std::size_t symbol_definition_count() const noexcept
+[[nodiscard]] std::size_t sheet_count() const noexcept
+[[nodiscard]] std::size_t symbol_instance_count() const noexcept
+[[nodiscard]] std::size_t wire_run_count() const noexcept
+[[nodiscard]] std::size_t net_label_count() const noexcept
+[[nodiscard]] std::size_t junction_count() const noexcept
+[[nodiscard]] std::size_t power_port_count() const noexcept
+[[nodiscard]] std::size_t no_connect_marker_count() const noexcept
+[[nodiscard]] std::size_t sheet_port_count() const noexcept
+[[nodiscard]] std::size_t symbol_field_count() const noexcept

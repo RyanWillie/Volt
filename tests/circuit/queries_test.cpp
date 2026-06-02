@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <stdexcept>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
@@ -107,4 +108,43 @@ TEST_CASE("Circuit queries inspect hierarchy views through const Circuit") {
         circuit, volt::queries::concrete_net_for(circuit, instance, input).value()));
     CHECK(volt::queries::is_module_origin_component(
         circuit, volt::queries::concrete_component_for(circuit, instance, component).value()));
+}
+
+TEST_CASE("Circuit hierarchy queries preserve model-owned validation contracts") {
+    volt::Circuit circuit;
+    const auto pin =
+        circuit.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
+    const auto component_definition =
+        circuit.add_component_definition(volt::ComponentDefinition{"Thing", std::vector{pin}});
+
+    const auto first_module =
+        circuit.add_module_definition(volt::ModuleDefinition{volt::ModuleName{"First"}});
+    const auto first_net = circuit.add_template_net(
+        first_module, volt::TemplateNetDefinition{volt::NetName{"FIRST"}, volt::NetKind::Signal});
+    const auto first_port = circuit.add_port_definition(
+        first_module,
+        volt::PortDefinition{volt::PortName{"FIRST"}, first_net, volt::PortRole::Passive});
+    const auto first_component = circuit.add_module_component(
+        first_module,
+        volt::ModuleComponentTemplate{component_definition, volt::ReferenceDesignator{"U1"}});
+    CHECK(circuit.connect_module_pin(first_module, first_net, first_component, pin));
+
+    const auto second_module =
+        circuit.add_module_definition(volt::ModuleDefinition{volt::ModuleName{"Second"}});
+    const auto second_net = circuit.add_template_net(
+        second_module, volt::TemplateNetDefinition{volt::NetName{"SECOND"}, volt::NetKind::Signal});
+    const auto second_port = circuit.add_port_definition(
+        second_module,
+        volt::PortDefinition{volt::PortName{"SECOND"}, second_net, volt::PortRole::Passive});
+
+    const auto parent_net =
+        circuit.add_net(volt::Net{volt::NetName{"PARENT"}, volt::NetKind::Signal});
+    const auto first_instance =
+        circuit.instantiate_root_module(first_module, volt::ModuleInstanceName{"FIRST_A"});
+    [[maybe_unused]] const auto binding = circuit.bind_port(first_instance, first_port, parent_net);
+
+    CHECK_THROWS_AS(volt::queries::template_net_for(circuit, second_module, first_component, pin),
+                    std::logic_error);
+    CHECK_THROWS_AS(volt::queries::port_binding_for(circuit, first_instance, second_port),
+                    std::logic_error);
 }

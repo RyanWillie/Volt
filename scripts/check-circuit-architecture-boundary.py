@@ -79,9 +79,11 @@ def public_section(body: str) -> str:
 
 
 def normalize_declaration(declaration: str) -> str:
-    declaration = re.sub(r"\[\[[^\]]+\]\]", " ", declaration)
-    declaration = re.sub(r"\bnoexcept\b", " ", declaration)
     declaration = re.sub(r"\s+", " ", declaration)
+    declaration = re.sub(r"\(\s+", "(", declaration)
+    declaration = re.sub(r"\s+\)", ")", declaration)
+    declaration = re.sub(r"\s+,", ",", declaration)
+    declaration = re.sub(r"\s*([*&])\s+([A-Za-z_]\w*)", r" \1\2", declaration)
     return declaration.strip()
 
 
@@ -90,9 +92,9 @@ def declaration_chunks(section: str) -> list[str]:
     return [normalize_declaration(chunk) for chunk in section.split(";")]
 
 
-def public_methods(class_name: str, header_path: Path) -> list[str]:
+def public_declarations(class_name: str, header_path: Path) -> list[str]:
     body = class_body(strip_comments(read(header_path)), class_name)
-    methods: list[str] = []
+    declarations: list[str] = []
     for chunk in declaration_chunks(public_section(body)):
         if "(" not in chunk or ")" not in chunk:
             continue
@@ -102,8 +104,25 @@ def public_methods(class_name: str, header_path: Path) -> list[str]:
         name = prefix.split()[-1].split("::")[-1].strip("&*")
         if name in {"if", "for", "while", "switch"}:
             continue
-        methods.append(name)
-    return methods
+        declarations.append(chunk)
+    return declarations
+
+
+def header_includes(header_path: Path) -> list[str]:
+    includes: list[str] = []
+    for line in read(header_path).splitlines():
+        match = re.match(r"\s*#include\s+([<\"].*[>\"])", line)
+        if match is not None:
+            includes.append(f"include {match.group(1)}")
+    return includes
+
+
+def public_api_snapshot(class_name: str, header_path: Path) -> list[str]:
+    return [
+        *header_includes(header_path),
+        "",
+        *public_declarations(class_name, header_path),
+    ]
 
 
 def check_rejected_tokens(failures: list[str]) -> None:
@@ -127,11 +146,11 @@ def check_public_api_snapshots(failures: list[str]) -> None:
             fail(f"{allowlist.relative_to(ROOT)} is missing", failures)
             continue
 
-        actual = public_methods(class_name, header_path)
+        actual = public_api_snapshot(class_name, header_path)
         expected = [
-            line.strip()
+            line.rstrip()
             for line in read(allowlist).splitlines()
-            if line.strip() and not line.startswith("#")
+            if not line.startswith("#")
         ]
         if actual != expected:
             fail(

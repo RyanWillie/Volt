@@ -137,6 +137,14 @@ class Circuit {
     /** Return typed electrical attributes for an existing net. */
     [[nodiscard]] const ElectricalAttributeMap &net_electrical_attributes(NetId net) const;
 
+    /** Return read-only access to connectivity-owned query primitives. */
+    [[nodiscard]] const ConnectivityModel &connectivity_model() const noexcept {
+        return connectivity_;
+    }
+
+    /** Return read-only access to hierarchy-owned query primitives. */
+    [[nodiscard]] const HierarchyModel &hierarchy_model() const noexcept { return hierarchy_; }
+
     /** Return module-local pin connections for one module definition. */
     [[nodiscard]] std::vector<ModulePinConnection> module_pin_connections(ModuleDefId module) const;
 
