@@ -4,7 +4,6 @@
 #include <vector>
 
 #include <volt/circuit/nets.hpp>
-#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 
 TEST_CASE("NetName stores a non-empty domain name") {
@@ -24,7 +23,6 @@ TEST_CASE("Net stores name kind and starts with no pins") {
     CHECK(net.name() == volt::NetName{"3V3"});
     CHECK(net.kind() == volt::NetKind::Power);
     CHECK(net.pins().empty());
-    CHECK(net.electrical_attributes().empty());
 }
 
 TEST_CASE("Net connects pins in insertion order") {

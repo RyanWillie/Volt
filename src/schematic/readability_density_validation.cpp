@@ -201,7 +201,8 @@ void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_i
                            return circuit.pin_definition(pin_definition).role() == PinRole::Passive;
                        });
 }
-[[nodiscard]] bool component_has_known_value(const ComponentInstance &component) {
+[[nodiscard]] bool component_has_known_value(const Circuit &circuit, ComponentId component_id) {
+    const auto &component = circuit.component(component_id);
     if (component.properties().contains(PropertyKey{"value"}) ||
         component.properties().contains(PropertyKey{"Value"})) {
         return true;
@@ -210,7 +211,7 @@ void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_i
         ElectricalAttributeName{"resistance"}, ElectricalAttributeName{"capacitance"},
         ElectricalAttributeName{"inductance"}, ElectricalAttributeName{"voltage"},
         ElectricalAttributeName{"current"},    ElectricalAttributeName{"power"}};
-    const auto &attributes = component.electrical_attributes();
+    const auto &attributes = circuit.component_electrical_attributes(component_id);
     return std::any_of(
         known_values.begin(), known_values.end(),
         [&attributes](const ElectricalAttributeName &name) { return attributes.contains(name); });
@@ -233,7 +234,7 @@ void validate_missing_passive_value_fields(const Schematic &schematic, SheetId s
         const auto &instance = schematic.symbol_instance(instance_id);
         const auto &component = circuit.component(instance.component());
         if (!component_definition_is_passive(circuit, component.definition()) ||
-            !component_has_known_value(component) ||
+            !component_has_known_value(circuit, instance.component()) ||
             symbol_instance_has_value_field(schematic, sheet, instance_id)) {
             continue;
         }

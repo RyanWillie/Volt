@@ -19,12 +19,18 @@ add_executable(
     authoring/reference_designators_test.cpp
     circuit/circuit_test.cpp
     circuit/authoring_test.cpp
+    circuit/connectivity_model_test.cpp
     circuit/definitions_test.cpp
+    circuit/design_intent_test.cpp
+    circuit/electrical_model_test.cpp
+    circuit/hierarchy_model_test.cpp
     circuit/hierarchy_test.cpp
     circuit/instances_test.cpp
     circuit/led_circuit_test.cpp
     circuit/nets_test.cpp
     circuit/parts_test.cpp
+    circuit/queries_test.cpp
+    circuit/rule_classes_test.cpp
     circuit/validation_test.cpp
     core/diagnostics_test.cpp
     core/electrical_attributes_test.cpp
@@ -32,6 +38,7 @@ add_executable(
     core/ids_test.cpp
     core/properties_test.cpp
     core/quantities_test.cpp
+    core/rule_set_test.cpp
     core/umbrella_header_test.cpp
     core/version_test.cpp
     io/logical_circuit_reader_test.cpp
@@ -45,6 +52,7 @@ add_executable(
     io/schematic_svg_writer_test.cpp
     io/schematic_writer_test.cpp
     pcb/board_test.cpp
+    pcb/board_models_test.cpp
     pcb/footprints_test.cpp
     adapters/kicad_boundary_test.cpp
     adapters/kicad_loss_report_test.cpp
@@ -54,6 +62,7 @@ add_executable(
     schematic/schematic_readability_routing_test.cpp
     schematic/schematic_readability_test.cpp
     schematic/schematic_readiness_test.cpp
+    schematic/schematic_models_test.cpp
     schematic/schematic_test.cpp
 )
 target_link_libraries(
@@ -83,6 +92,12 @@ add_test(
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-kicad-boundary.py
 )
 set_tests_properties(kicad_adapter_boundary PROPERTIES LABELS cpp)
+
+add_test(
+    NAME circuit_architecture_boundary
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check-circuit-architecture-boundary.py
+)
+set_tests_properties(circuit_architecture_boundary PROPERTIES LABELS cpp)
 
 add_test(
     NAME docs_site

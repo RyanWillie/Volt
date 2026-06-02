@@ -6,6 +6,7 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/definitions.hpp>
+#include <volt/circuit/queries.hpp>
 #include <volt/io/schematic_writer.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
@@ -193,7 +194,7 @@ TEST_CASE("Schematic writer emits professional primitives and sheet metadata") {
     const auto component = add_resistor(circuit);
     const auto vcc = add_net(circuit);
     const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
-    const auto no_connect_pin = circuit.pin_by_number(component, "2").value();
+    const auto no_connect_pin = volt::queries::pin_by_number(circuit, component, "2").value();
     circuit.mark_intentional_no_connect_pin(no_connect_pin);
 
     auto schematic = volt::Schematic{circuit};

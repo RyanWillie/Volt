@@ -15,6 +15,9 @@ add_library(
     readiness_validation.cpp
     schematic.cpp
     schematic_document.cpp
+    schematic_items_model.cpp
+    schematic_library_model.cpp
+    schematic_sheet_model.cpp
     symbols.cpp
     wire_topology.cpp
 )

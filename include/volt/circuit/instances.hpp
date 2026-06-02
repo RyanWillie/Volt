@@ -1,18 +1,16 @@
 #pragma once
 
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 #include <volt/circuit/parts.hpp>
-#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt {
 
-class Circuit;
+class ConnectivityModel;
 
 /** Human-facing reference designator for a component instance, such as R1 or U1. */
 class ReferenceDesignator {
@@ -49,30 +47,14 @@ class ComponentInstance {
     /** Return extensible metadata properties for this component instance. */
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
-    /** Return typed electrical attributes for this component instance. */
-    [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept;
-
-    /** Return the selected physical implementation for this component, if assigned. */
-    [[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part() const noexcept;
-
   private:
-    friend class Circuit;
+    friend class ConnectivityModel;
 
     void set_property(PropertyKey key, PropertyValue value);
-
-    void set_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                  ElectricalAttributeValue value);
-
-    void select_physical_part(PhysicalPart physical_part);
-
-    void set_selected_part_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                                ElectricalAttributeValue value);
 
     ComponentDefId definition_;
     ReferenceDesignator reference_;
     PropertyMap properties_;
-    ElectricalAttributeMap electrical_attributes_;
-    std::optional<PhysicalPart> selected_physical_part_;
 };
 
 /** Concrete pin occurrence belonging to a component instance. */

@@ -1,5 +1,7 @@
 #include <volt/schematic/readability_validation_common.hpp>
 
+#include <volt/circuit/queries.hpp>
+
 namespace volt::detail {
 
 void add_readability_diagnostic(DiagnosticReport &report, Severity severity,
@@ -317,11 +319,11 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
     const auto &definition = schematic.symbol_definition(instance.symbol_definition());
     const auto &circuit = schematic.circuit();
     for (const auto &symbol_pin : definition.pins()) {
-        const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
+        const auto pin = queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
         if (!pin.has_value()) {
             continue;
         }
-        const auto pin_net = circuit.net_of(pin.value());
+        const auto pin_net = queries::net_of(circuit, pin.value());
         if (!pin_net.has_value() || pin_net.value() != port.net()) {
             continue;
         }

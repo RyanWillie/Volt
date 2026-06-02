@@ -1,5 +1,7 @@
 #include <volt/schematic/readiness_validation.hpp>
 
+#include <volt/circuit/queries.hpp>
+
 namespace volt::detail {
 
 void add_outside_sheet_diagnostic(DiagnosticReport &report, SheetId sheet_id, EntityRef object,
@@ -22,7 +24,7 @@ void validate_component_placement_coverage(const Schematic &schematic, const She
     const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
 
     for (const auto &symbol_pin : symbol.pins()) {
-        const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
+        const auto pin = queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
         if (!pin.has_value()) {
             report.add(Diagnostic{
                 Severity::Error,
@@ -36,10 +38,10 @@ void validate_component_placement_coverage(const Schematic &schematic, const She
         }
     }
 
-    for (const auto pin_id : circuit.pins_for(instance.component())) {
+    for (const auto pin_id : queries::pins_for(circuit, instance.component())) {
         const auto &pin_instance = circuit.pin(pin_id);
         const auto pin_def_id = pin_instance.definition();
-        const auto net = circuit.net_of(pin_id);
+        const auto net = queries::net_of(circuit, pin_id);
         if (!net.has_value() || schematic_readiness_exempts_pin(circuit, pin_id, pin_def_id)) {
             continue;
         }
@@ -156,11 +158,12 @@ void validate_fragmented_pin_labels_for_net(const Schematic &schematic, SheetId 
         const auto &instance = schematic.symbol_instance(instance_id);
         const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
         for (const auto &symbol_pin : symbol.pins()) {
-            const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
+            const auto pin =
+                queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
             if (!pin.has_value()) {
                 continue;
             }
-            const auto pin_net = circuit.net_of(pin.value());
+            const auto pin_net = queries::net_of(circuit, pin.value());
             if (!pin_net.has_value() || pin_net.value() != net_id) {
                 continue;
             }
@@ -305,7 +308,7 @@ void validate_no_connect_markers(const Schematic &schematic, SheetId sheet_id, c
     for (const auto marker_id : sheet.no_connect_markers()) {
         const auto &marker = schematic.no_connect_marker(marker_id);
         const auto &pin = circuit.pin(marker.pin());
-        const auto net = circuit.net_of(marker.pin());
+        const auto net = queries::net_of(circuit, marker.pin());
         if (net.has_value()) {
             report.add(Diagnostic{
                 Severity::Error,

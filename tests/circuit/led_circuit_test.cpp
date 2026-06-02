@@ -2,6 +2,7 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/nets.hpp>
+#include <volt/circuit/queries.hpp>
 #include <volt/circuit/validation.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/ids.hpp>
@@ -16,9 +17,9 @@ TEST_CASE("LED example builds a valid logical circuit") {
     CHECK(circuit.pin_count() == 6);
     CHECK(circuit.net_count() == 3);
 
-    const auto vcc = circuit.net_by_name(volt::NetName{"VCC"});
-    const auto led_a = circuit.net_by_name(volt::NetName{"LED_A"});
-    const auto gnd = circuit.net_by_name(volt::NetName{"GND"});
+    const auto vcc = volt::queries::net_by_name(circuit, volt::NetName{"VCC"});
+    const auto led_a = volt::queries::net_by_name(circuit, volt::NetName{"LED_A"});
+    const auto gnd = volt::queries::net_by_name(circuit, volt::NetName{"GND"});
 
     REQUIRE(vcc.has_value());
     REQUIRE(led_a.has_value());
@@ -30,9 +31,9 @@ TEST_CASE("LED example builds a valid logical circuit") {
     CHECK(circuit.net(led_a.value()).pins().size() == 2);
     CHECK(circuit.net(gnd.value()).pins().size() == 2);
 
-    const auto j1 = circuit.component_by_reference(volt::ReferenceDesignator{"J1"});
-    const auto r1 = circuit.component_by_reference(volt::ReferenceDesignator{"R1"});
-    const auto d1 = circuit.component_by_reference(volt::ReferenceDesignator{"D1"});
+    const auto j1 = volt::queries::component_by_reference(circuit, volt::ReferenceDesignator{"J1"});
+    const auto r1 = volt::queries::component_by_reference(circuit, volt::ReferenceDesignator{"R1"});
+    const auto d1 = volt::queries::component_by_reference(circuit, volt::ReferenceDesignator{"D1"});
     REQUIRE(j1.has_value());
     REQUIRE(r1.has_value());
     REQUIRE(d1.has_value());

@@ -8,12 +8,15 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/core/diagnostics.hpp>
-#include <volt/core/entity_table.hpp>
 #include <volt/pcb/board_copper.hpp>
+#include <volt/pcb/board_copper_model.hpp>
 #include <volt/pcb/board_features.hpp>
+#include <volt/pcb/board_footprint_model.hpp>
 #include <volt/pcb/board_geometry.hpp>
 #include <volt/pcb/board_layers.hpp>
 #include <volt/pcb/board_outline.hpp>
+#include <volt/pcb/board_placement_model.hpp>
+#include <volt/pcb/board_structure_model.hpp>
 #include <volt/pcb/footprints.hpp>
 
 namespace volt {
@@ -70,25 +73,31 @@ class Board {
     [[nodiscard]] BoardTextId add_text(BoardText text);
 
     /** Return a board layer by board-local ID. */
-    [[nodiscard]] const BoardLayer &layer(BoardLayerId id) const { return layers_.get(id); }
+    [[nodiscard]] const BoardLayer &layer(BoardLayerId id) const { return structure_.layer(id); }
 
     /** Return the number of board layers. */
-    [[nodiscard]] std::size_t layer_count() const noexcept { return layers_.size(); }
+    [[nodiscard]] std::size_t layer_count() const noexcept { return structure_.layer_count(); }
 
     /** Return the current layer stack, if assigned. */
     [[nodiscard]] const std::optional<LayerStack> &layer_stack() const noexcept;
 
     /** Return the board outline, if assigned. */
-    [[nodiscard]] const std::optional<BoardOutline> &outline() const noexcept { return outline_; }
+    [[nodiscard]] const std::optional<BoardOutline> &outline() const noexcept {
+        return structure_.outline();
+    }
 
     /** Return board-owned design rules used by DRC validation. */
-    [[nodiscard]] const BoardDesignRules &design_rules() const noexcept { return design_rules_; }
+    [[nodiscard]] const BoardDesignRules &design_rules() const noexcept {
+        return structure_.design_rules();
+    }
 
     /** Return a board feature by ID. */
-    [[nodiscard]] const BoardFeature &feature(BoardFeatureId id) const { return features_.get(id); }
+    [[nodiscard]] const BoardFeature &feature(BoardFeatureId id) const {
+        return structure_.feature(id);
+    }
 
     /** Return the number of stored board features. */
-    [[nodiscard]] std::size_t feature_count() const noexcept { return features_.size(); }
+    [[nodiscard]] std::size_t feature_count() const noexcept { return structure_.feature_count(); }
 
     /** Return a cached footprint definition by board-local ID. */
     [[nodiscard]] const FootprintDefinition &footprint_definition(FootprintDefId id) const;
@@ -104,37 +113,41 @@ class Board {
     [[nodiscard]] const ComponentPlacement &placement(ComponentPlacementId id) const;
 
     /** Return the number of component placements. */
-    [[nodiscard]] std::size_t placement_count() const noexcept { return placements_.size(); }
+    [[nodiscard]] std::size_t placement_count() const noexcept {
+        return placements_.placement_count();
+    }
 
     /** Return a routed copper track by board-local ID. */
-    [[nodiscard]] const BoardTrack &track(BoardTrackId id) const { return tracks_.get(id); }
+    [[nodiscard]] const BoardTrack &track(BoardTrackId id) const { return copper_.track(id); }
 
     /** Return the number of routed copper tracks. */
-    [[nodiscard]] std::size_t track_count() const noexcept { return tracks_.size(); }
+    [[nodiscard]] std::size_t track_count() const noexcept { return copper_.track_count(); }
 
     /** Return a routed copper via by board-local ID. */
-    [[nodiscard]] const BoardVia &via(BoardViaId id) const { return vias_.get(id); }
+    [[nodiscard]] const BoardVia &via(BoardViaId id) const { return copper_.via(id); }
 
     /** Return the number of routed copper vias. */
-    [[nodiscard]] std::size_t via_count() const noexcept { return vias_.size(); }
+    [[nodiscard]] std::size_t via_count() const noexcept { return copper_.via_count(); }
 
     /** Return a copper zone by board-local ID. */
-    [[nodiscard]] const BoardZone &zone(BoardZoneId id) const { return zones_.get(id); }
+    [[nodiscard]] const BoardZone &zone(BoardZoneId id) const { return copper_.zone(id); }
 
     /** Return the number of copper zones. */
-    [[nodiscard]] std::size_t zone_count() const noexcept { return zones_.size(); }
+    [[nodiscard]] std::size_t zone_count() const noexcept { return copper_.zone_count(); }
 
     /** Return a keepout by board-local ID. */
-    [[nodiscard]] const BoardKeepout &keepout(BoardKeepoutId id) const { return keepouts_.get(id); }
+    [[nodiscard]] const BoardKeepout &keepout(BoardKeepoutId id) const {
+        return copper_.keepout(id);
+    }
 
     /** Return the number of keepouts. */
-    [[nodiscard]] std::size_t keepout_count() const noexcept { return keepouts_.size(); }
+    [[nodiscard]] std::size_t keepout_count() const noexcept { return copper_.keepout_count(); }
 
     /** Return board text by board-local ID. */
-    [[nodiscard]] const BoardText &text(BoardTextId id) const { return texts_.get(id); }
+    [[nodiscard]] const BoardText &text(BoardTextId id) const { return copper_.text(id); }
 
     /** Return the number of board text primitives. */
-    [[nodiscard]] std::size_t text_count() const noexcept { return texts_.size(); }
+    [[nodiscard]] std::size_t text_count() const noexcept { return copper_.text_count(); }
 
     /** Return the placement ID for a component, if present. */
     [[nodiscard]] std::optional<ComponentPlacementId>
@@ -154,8 +167,6 @@ class Board {
 
     void require_copper_layer(BoardLayerId layer_id) const;
 
-    [[nodiscard]] std::optional<BoardLayerId> layer_by_name(const std::string &name) const;
-
     void append_pad_resolutions(ComponentPlacementId placement_id,
                                 const ComponentPlacement &component_placement,
                                 const FootprintDefinition &definition,
@@ -165,18 +176,10 @@ class Board {
     const Circuit *circuit_;
     BoardName name_;
     BoardUnits units_{BoardUnits::Millimeters};
-    EntityTable<BoardLayer, BoardLayerId> layers_;
-    std::optional<LayerStack> layer_stack_;
-    std::optional<BoardOutline> outline_;
-    BoardDesignRules design_rules_;
-    EntityTable<BoardFeature, BoardFeatureId> features_;
-    EntityTable<FootprintDefinition, FootprintDefId> footprint_definitions_;
-    EntityTable<ComponentPlacement, ComponentPlacementId> placements_;
-    EntityTable<BoardTrack, BoardTrackId> tracks_;
-    EntityTable<BoardVia, BoardViaId> vias_;
-    EntityTable<BoardZone, BoardZoneId> zones_;
-    EntityTable<BoardKeepout, BoardKeepoutId> keepouts_;
-    EntityTable<BoardText, BoardTextId> texts_;
+    BoardStructureModel structure_;
+    BoardFootprintModel footprint_cache_;
+    BoardPlacementModel placements_;
+    BoardCopperModel copper_;
 };
 
 namespace detail {
@@ -232,24 +235,39 @@ inline constexpr double board_drc_epsilon = 1.0e-9;
 [[nodiscard]] double polygon_outline_boundary_distance(const BoardOutline &outline,
                                                        const std::vector<BoardPoint> &polygon);
 
+/** Geometric primitive category used while checking copper spacing. */
 enum class BoardCopperShapeKind {
+    /** Circular copper shape. */
     Disc,
+    /** Line-segment copper shape with radius. */
     Segment,
+    /** Polygon copper shape. */
     Polygon,
 };
 
+/** Identifies the placed footprint pad that contributed a copper shape. */
 struct BoardPadShapeKey {
+    /** Placement containing the footprint pad. */
     ComponentPlacementId placement;
+    /** Footprint pad within the placed component. */
     FootprintPadId pad;
 };
 
+/** Normalized copper geometry used by board DRC without owning board state. */
 struct BoardCopperShape {
+    /** Shape geometry category. */
     BoardCopperShapeKind kind;
+    /** Logical net owning the copper shape. */
     NetId net;
+    /** Copper layers occupied by the shape. */
     std::vector<BoardLayerId> layers;
+    /** Entities reported when this shape participates in a diagnostic. */
     std::vector<EntityRef> primary_entities;
+    /** Shape points: center, segment endpoints, or polygon vertices. */
     std::vector<BoardPoint> points;
+    /** Radius used for circular and segment shapes. */
     double radius_mm;
+    /** Source pad, when this shape came from a placed footprint pad. */
     std::optional<BoardPadShapeKey> pad;
 };
 

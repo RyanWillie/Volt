@@ -1,0 +1,59 @@
+include <cstddef>
+include <optional>
+include <string>
+include <utility>
+include <vector>
+include <volt/circuit/circuit.hpp>
+include <volt/core/diagnostics.hpp>
+include <volt/pcb/board_copper.hpp>
+include <volt/pcb/board_copper_model.hpp>
+include <volt/pcb/board_features.hpp>
+include <volt/pcb/board_footprint_model.hpp>
+include <volt/pcb/board_geometry.hpp>
+include <volt/pcb/board_layers.hpp>
+include <volt/pcb/board_outline.hpp>
+include <volt/pcb/board_placement_model.hpp>
+include <volt/pcb/board_structure_model.hpp>
+include <volt/pcb/footprints.hpp>
+
+explicit Board(const Circuit &circuit, BoardName name = BoardName{"Main"})
+[[nodiscard]] const BoardName &name() const noexcept
+[[nodiscard]] BoardUnits units() const noexcept
+[[nodiscard]] const Circuit &circuit() const noexcept
+[[nodiscard]] BoardLayerId add_layer(BoardLayer layer)
+void set_layer_stack(LayerStack stack)
+void set_outline(BoardOutline outline)
+void set_design_rules(BoardDesignRules rules)
+[[nodiscard]] BoardFeatureId add_feature(BoardFeature feature)
+[[nodiscard]] FootprintDefId cache_footprint_definition(FootprintDefinition footprint)
+[[nodiscard]] ComponentPlacementId place_component(ComponentPlacement placement)
+[[nodiscard]] BoardTrackId add_track(BoardTrack track)
+[[nodiscard]] BoardViaId add_via(BoardVia via)
+[[nodiscard]] BoardZoneId add_zone(BoardZone zone)
+[[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout)
+[[nodiscard]] BoardTextId add_text(BoardText text)
+[[nodiscard]] const BoardLayer &layer(BoardLayerId id) const
+[[nodiscard]] std::size_t layer_count() const noexcept
+[[nodiscard]] const std::optional<LayerStack> &layer_stack() const noexcept
+[[nodiscard]] const std::optional<BoardOutline> &outline() const noexcept
+[[nodiscard]] const BoardDesignRules &design_rules() const noexcept
+[[nodiscard]] const BoardFeature &feature(BoardFeatureId id) const
+[[nodiscard]] std::size_t feature_count() const noexcept
+[[nodiscard]] const FootprintDefinition &footprint_definition(FootprintDefId id) const
+[[nodiscard]] std::size_t footprint_definition_count() const noexcept
+[[nodiscard]] std::optional<FootprintDefId> footprint_definition_id(const FootprintRef &ref) const noexcept
+[[nodiscard]] const ComponentPlacement &placement(ComponentPlacementId id) const
+[[nodiscard]] std::size_t placement_count() const noexcept
+[[nodiscard]] const BoardTrack &track(BoardTrackId id) const
+[[nodiscard]] std::size_t track_count() const noexcept
+[[nodiscard]] const BoardVia &via(BoardViaId id) const
+[[nodiscard]] std::size_t via_count() const noexcept
+[[nodiscard]] const BoardZone &zone(BoardZoneId id) const
+[[nodiscard]] std::size_t zone_count() const noexcept
+[[nodiscard]] const BoardKeepout &keepout(BoardKeepoutId id) const
+[[nodiscard]] std::size_t keepout_count() const noexcept
+[[nodiscard]] const BoardText &text(BoardTextId id) const
+[[nodiscard]] std::size_t text_count() const noexcept
+[[nodiscard]] std::optional<ComponentPlacementId> placement_for_component(ComponentId component) const noexcept
+[[nodiscard]] std::vector<PadResolution> resolve_pads(const FootprintLibrary &footprints) const
+[[nodiscard]] std::vector<RatsnestEdge> ratsnest_edges(const FootprintLibrary &footprints) const

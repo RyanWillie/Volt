@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/queries.hpp>
+
 namespace volt {
 
 SheetSize::SheetSize(double width, double height) : width_{width}, height_{height} {
@@ -248,39 +250,18 @@ void Schematic::replace_with(Schematic replacement) {
         throw std::logic_error{"Schematic replacement must reference the same logical circuit"};
     }
 
-    symbol_definitions_ = std::move(replacement.symbol_definitions_);
+    library_ = std::move(replacement.library_);
     sheets_ = std::move(replacement.sheets_);
-    symbol_instances_ = std::move(replacement.symbol_instances_);
-    wire_runs_ = std::move(replacement.wire_runs_);
-    net_labels_ = std::move(replacement.net_labels_);
-    junctions_ = std::move(replacement.junctions_);
-    power_ports_ = std::move(replacement.power_ports_);
-    no_connect_markers_ = std::move(replacement.no_connect_markers_);
-    sheet_ports_ = std::move(replacement.sheet_ports_);
-    symbol_fields_ = std::move(replacement.symbol_fields_);
+    items_ = std::move(replacement.items_);
 }
 [[nodiscard]] SymbolDefId Schematic::add_symbol_definition(SymbolDefinition definition) {
-    if (symbol_definition_by_name(definition.name()).has_value()) {
-        throw std::logic_error{"Symbol definition name already exists"};
-    }
-
-    return symbol_definitions_.insert(std::move(definition));
+    return library_.add_symbol_definition(std::move(definition));
 }
 [[nodiscard]] SheetId Schematic::add_sheet(Sheet sheet) {
-    if (sheet_by_name(sheet.name()).has_value()) {
-        throw std::logic_error{"Sheet name already exists"};
-    }
-
-    return sheets_.insert(std::move(sheet));
+    return sheets_.add_sheet(std::move(sheet));
 }
 [[nodiscard]] std::size_t Schematic::add_sheet_region(SheetId sheet, SheetRegion region) {
-    require_sheet(sheet);
-    auto &sheet_ref = sheets_.get(sheet);
-    if (sheet_ref.region_by_name(region.name()).has_value()) {
-        throw std::logic_error{"Sheet region name already exists"};
-    }
-
-    return sheet_ref.add_region(std::move(region));
+    return sheets_.add_sheet_region(sheet, std::move(region));
 }
 [[nodiscard]] SymbolInstanceId Schematic::place_symbol(SheetId sheet, SymbolInstance instance) {
     require_sheet(sheet);
@@ -289,8 +270,8 @@ void Schematic::replace_with(Schematic replacement) {
     require_symbol_matches_component(instance.symbol_definition(), instance.component());
     require_authored_region(sheet, instance.authored_region());
 
-    const auto id = symbol_instances_.insert(instance);
-    sheets_.get(sheet).add_symbol_instance(id);
+    const auto id = items_.add_symbol_instance(instance);
+    sheets_.add_symbol_instance(sheet, id);
     return id;
 }
 [[nodiscard]] JunctionId Schematic::add_junction(SheetId sheet, Junction junction) {
@@ -299,8 +280,8 @@ void Schematic::replace_with(Schematic replacement) {
     require_authored_region(sheet, junction.authored_region());
     require_junction_does_not_touch_different_net(sheet, junction);
 
-    const auto id = junctions_.insert(junction);
-    sheets_.get(sheet).add_junction(id);
+    const auto id = items_.add_junction(junction);
+    sheets_.add_junction(sheet, id);
     return id;
 }
 [[nodiscard]] PowerPortId Schematic::add_power_port(SheetId sheet, PowerPort port) {
@@ -308,8 +289,8 @@ void Schematic::replace_with(Schematic replacement) {
     static_cast<void>(circuit_.net(port.net()));
     require_authored_region(sheet, port.authored_region());
 
-    const auto id = power_ports_.insert(std::move(port));
-    sheets_.get(sheet).add_power_port(id);
+    const auto id = items_.add_power_port(std::move(port));
+    sheets_.add_power_port(sheet, id);
     return id;
 }
 [[nodiscard]] PowerPortId Schematic::add_power_port_for_endpoint(
@@ -339,8 +320,8 @@ void Schematic::replace_with(Schematic replacement) {
     static_cast<void>(circuit_.pin(marker.pin()));
     require_authored_region(sheet, marker.authored_region());
 
-    const auto id = no_connect_markers_.insert(std::move(marker));
-    sheets_.get(sheet).add_no_connect_marker(id);
+    const auto id = items_.add_no_connect_marker(std::move(marker));
+    sheets_.add_no_connect_marker(sheet, id);
     return id;
 }
 [[nodiscard]] SheetPortId Schematic::add_sheet_port(SheetId sheet, SheetPort port) {
@@ -348,8 +329,8 @@ void Schematic::replace_with(Schematic replacement) {
     static_cast<void>(circuit_.net(port.net()));
     require_authored_region(sheet, port.authored_region());
 
-    const auto id = sheet_ports_.insert(std::move(port));
-    sheets_.get(sheet).add_sheet_port(id);
+    const auto id = items_.add_sheet_port(std::move(port));
+    sheets_.add_sheet_port(sheet, id);
     return id;
 }
 [[nodiscard]] SheetPortId
@@ -369,8 +350,8 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
         throw std::logic_error{"Symbol field must be placed on the symbol instance sheet"};
     }
 
-    const auto id = symbol_fields_.insert(std::move(field));
-    sheets_.get(sheet).add_symbol_field(id);
+    const auto id = items_.add_symbol_field(std::move(field));
+    sheets_.add_symbol_field(sheet, id);
     return id;
 }
 [[nodiscard]] WireRunId Schematic::add_wire_run(SheetId sheet, WireRun wire) {
@@ -379,8 +360,8 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
     require_authored_region(sheet, wire.authored_region());
     require_wire_run_does_not_collide_with_different_net(sheet, wire);
 
-    const auto id = wire_runs_.insert(std::move(wire));
-    sheets_.get(sheet).add_wire_run(id);
+    const auto id = items_.add_wire_run(std::move(wire));
+    sheets_.add_wire_run(sheet, id);
     return id;
 }
 [[nodiscard]] WireRunId Schematic::add_wire_run_for_endpoints(
@@ -396,8 +377,8 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
     static_cast<void>(circuit_.net(label.net()));
     require_authored_region(sheet, label.authored_region());
 
-    const auto id = net_labels_.insert(std::move(label));
-    sheets_.get(sheet).add_net_label(id);
+    const auto id = items_.add_net_label(std::move(label));
+    sheets_.add_net_label(sheet, id);
     return id;
 }
 [[nodiscard]] NetLabelId Schematic::add_net_label_for_endpoint(
@@ -418,97 +399,73 @@ Schematic::add_junction_for_endpoint(SheetId sheet, std::optional<NetId> net,
 }
 [[nodiscard]] std::optional<SymbolDefId>
 Schematic::symbol_definition_by_name(const std::string &name) const {
-    for (std::size_t index = 0; index < symbol_definitions_.size(); ++index) {
-        const auto id = SymbolDefId{index};
-        if (symbol_definitions_.get(id).name() == name) {
-            return id;
-        }
-    }
-
-    return std::nullopt;
+    return library_.symbol_definition_by_name(name);
 }
 [[nodiscard]] std::optional<SheetId> Schematic::sheet_by_name(const std::string &name) const {
-    for (std::size_t index = 0; index < sheets_.size(); ++index) {
-        const auto id = SheetId{index};
-        if (sheets_.get(id).name() == name) {
-            return id;
-        }
-    }
-
-    return std::nullopt;
+    return sheets_.sheet_by_name(name);
 }
 [[nodiscard]] std::optional<std::size_t>
 Schematic::sheet_region_by_name(SheetId sheet, const std::string &name) const {
-    require_sheet(sheet);
-    return sheets_.get(sheet).region_by_name(name);
+    return sheets_.sheet_region_by_name(sheet, name);
 }
 [[nodiscard]] const SymbolDefinition &Schematic::symbol_definition(SymbolDefId id) const {
-    return symbol_definitions_.get(id);
+    return library_.symbol_definition(id);
 }
 [[nodiscard]] const SheetRegion &Schematic::sheet_region(SheetId sheet, std::size_t region) const {
-    require_sheet(sheet);
-    return sheets_.get(sheet).region(region);
+    return sheets_.sheet_region(sheet, region);
 }
 [[nodiscard]] const SymbolInstance &Schematic::symbol_instance(SymbolInstanceId id) const {
-    return symbol_instances_.get(id);
+    return items_.symbol_instance(id);
 }
 void Schematic::move_net_label_text(NetLabelId id, Point position) {
-    net_labels_.get(id).move_text_to(position);
+    items_.move_net_label_text(id, position);
 }
 void Schematic::move_power_port_label(PowerPortId id, Point position) {
-    power_ports_.get(id).move_label_to(position);
+    items_.move_power_port_label(id, position);
 }
 [[nodiscard]] const NoConnectMarker &Schematic::no_connect_marker(NoConnectMarkerId id) const {
-    return no_connect_markers_.get(id);
+    return items_.no_connect_marker(id);
 }
 [[nodiscard]] const SymbolField &Schematic::symbol_field(SymbolFieldId id) const {
-    return symbol_fields_.get(id);
+    return items_.symbol_field(id);
 }
 void Schematic::move_symbol_field(SymbolFieldId id, Point position) {
-    symbol_fields_.get(id).move_to(position);
+    items_.move_symbol_field(id, position);
 }
 [[nodiscard]] std::size_t Schematic::symbol_definition_count() const noexcept {
-    return symbol_definitions_.size();
+    return library_.symbol_definition_count();
 }
 [[nodiscard]] std::size_t Schematic::symbol_instance_count() const noexcept {
-    return symbol_instances_.size();
+    return items_.symbol_instance_count();
 }
 [[nodiscard]] std::size_t Schematic::no_connect_marker_count() const noexcept {
-    return no_connect_markers_.size();
+    return items_.no_connect_marker_count();
 }
-void Schematic::require_sheet(SheetId sheet) const {
-    if (!sheets_.contains(sheet)) {
-        throw std::out_of_range{"Sheet ID does not belong to this schematic"};
-    }
-}
+void Schematic::require_sheet(SheetId sheet) const { sheets_.require_sheet(sheet); }
 void Schematic::require_symbol_definition(SymbolDefId symbol_definition) const {
-    if (!symbol_definitions_.contains(symbol_definition)) {
-        throw std::out_of_range{"Symbol definition ID does not belong to this schematic"};
-    }
+    library_.require_symbol_definition(symbol_definition);
 }
 void Schematic::require_symbol_instance(SymbolInstanceId instance) const {
-    if (!symbol_instances_.contains(instance)) {
-        throw std::out_of_range{"Symbol instance ID does not belong to this schematic"};
-    }
+    items_.require_symbol_instance(instance);
 }
 void Schematic::require_authored_region(SheetId sheet,
                                         const std::optional<std::size_t> &region) const {
-    if (region.has_value() && region.value() >= sheets_.get(sheet).regions().size()) {
+    if (region.has_value() && region.value() >= sheets_.sheet(sheet).regions().size()) {
         throw std::out_of_range{"Authored schematic region does not belong to this sheet"};
     }
 }
 void Schematic::require_symbol_matches_component(SymbolDefId symbol_definition,
                                                  ComponentId component) const {
-    const auto &symbol = symbol_definitions_.get(symbol_definition);
+    const auto &symbol = library_.symbol_definition(symbol_definition);
     for (const auto &pin : symbol.pins()) {
-        if (!circuit_.pin_by_number(component, pin.number()).has_value()) {
+        if (!queries::pin_by_number(circuit_, component, pin.number()).has_value()) {
             throw std::logic_error{"Schematic symbol pin does not match component pin"};
         }
     }
 }
 [[nodiscard]] bool Schematic::sheet_contains_symbol_instance(SheetId sheet,
                                                              SymbolInstanceId instance) const {
-    for (const auto candidate : sheets_.get(sheet).symbol_instances()) {
+    for (const auto candidate : sheets_.sheet(sheet).symbol_instances()) {
         if (candidate == instance) {
             return true;
         }
@@ -526,8 +483,8 @@ void Schematic::require_symbol_matches_component(SymbolDefId symbol_definition,
 }
 [[nodiscard]] bool Schematic::has_junction_on_segments(SheetId sheet, SchematicSegment first,
                                                        SchematicSegment second) const {
-    for (const auto junction_id : sheets_.get(sheet).junctions()) {
-        const auto &junction = junctions_.get(junction_id);
+    for (const auto junction_id : sheets_.sheet(sheet).junctions()) {
+        const auto &junction = items_.junction(junction_id);
         if (point_on_schematic_segment(junction.position(), first) &&
             point_on_schematic_segment(junction.position(), second)) {
             return true;
@@ -537,8 +494,8 @@ void Schematic::require_symbol_matches_component(SymbolDefId symbol_definition,
 }
 void Schematic::require_junction_does_not_touch_different_net(SheetId sheet,
                                                               const Junction &junction) const {
-    for (const auto wire_id : sheets_.get(sheet).wire_runs()) {
-        const auto &wire = wire_runs_.get(wire_id);
+    for (const auto wire_id : sheets_.sheet(sheet).wire_runs()) {
+        const auto &wire = items_.wire_run(wire_id);
         if (wire.net() != junction.net() && wire_contains_point(wire, junction.position())) {
             throw std::logic_error{"Schematic junction collides with a different logical net"};
         }
@@ -546,8 +503,8 @@ void Schematic::require_junction_does_not_touch_different_net(SheetId sheet,
 }
 void Schematic::require_wire_run_does_not_collide_with_different_net(SheetId sheet,
                                                                      const WireRun &wire) const {
-    for (const auto existing_id : sheets_.get(sheet).wire_runs()) {
-        const auto &existing = wire_runs_.get(existing_id);
+    for (const auto existing_id : sheets_.sheet(sheet).wire_runs()) {
+        const auto &existing = items_.wire_run(existing_id);
         if (existing.net() == wire.net()) {
             continue;
         }
@@ -586,7 +543,7 @@ void Schematic::require_wire_run_does_not_collide_with_different_net(SheetId she
 Schematic::infer_endpoint_net(const SchematicEndpoint &endpoint) const {
     if (endpoint.pin().has_value()) {
         static_cast<void>(circuit_.pin(endpoint.pin().value()));
-        const auto pin_net = circuit_.net_of(endpoint.pin().value());
+        const auto pin_net = queries::net_of(circuit_, endpoint.pin().value());
         if (!pin_net.has_value()) {
             throw std::invalid_argument{"Schematic endpoint " + pin_label(endpoint.pin().value()) +
                                         " is not connected to any logical net"};

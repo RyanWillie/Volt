@@ -1,5 +1,7 @@
 #include <volt/schematic/readability_collision_validation.hpp>
 
+#include <volt/circuit/queries.hpp>
+
 namespace volt::detail {
 
 [[nodiscard]] bool text_anchor_intentionally_attaches_to_wire(const ReadabilityTextObject &text,
@@ -109,11 +111,11 @@ void validate_symbol_overlaps(const Schematic &schematic, SheetId sheet_id, cons
     const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
     const auto &circuit = schematic.circuit();
     for (const auto &symbol_pin : symbol.pins()) {
-        const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
+        const auto pin = queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
         if (!pin.has_value()) {
             continue;
         }
-        const auto pin_net = circuit.net_of(pin.value());
+        const auto pin_net = queries::net_of(circuit, pin.value());
         if (!pin_net.has_value() || pin_net.value() != wire.net()) {
             continue;
         }
@@ -304,7 +306,7 @@ readability_collision_is_intentional_wire_contact(const ReadabilityCollisionObje
     const auto &definition = schematic.symbol_definition(instance.symbol_definition());
     const auto &circuit = schematic.circuit();
     for (const auto &symbol_pin : definition.pins()) {
-        const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
+        const auto pin = queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
         if (!pin.has_value() || pin.value() != object->pin.value()) {
             continue;
         }
@@ -341,11 +343,11 @@ readability_collision_is_intentional_junction_contact(const ReadabilityCollision
     const auto &definition = schematic.symbol_definition(instance.symbol_definition());
     const auto &circuit = schematic.circuit();
     for (const auto &symbol_pin : definition.pins()) {
-        const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
+        const auto pin = queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
         if (!pin.has_value()) {
             continue;
         }
-        const auto net = circuit.net_of(pin.value());
+        const auto net = queries::net_of(circuit, pin.value());
         if (!net.has_value() || net.value() != junction->net.value()) {
             continue;
         }

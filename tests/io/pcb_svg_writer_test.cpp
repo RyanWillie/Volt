@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/queries.hpp>
 #include <volt/io/pcb_svg_writer.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/footprints.hpp>
@@ -42,8 +43,10 @@ struct MultiComponentNetCircuit {
         volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
     const auto component =
         circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
-    const auto first_pin = circuit.pin_by_definition(component, first_pin_definition).value();
-    const auto second_pin = circuit.pin_by_definition(component, second_pin_definition).value();
+    const auto first_pin =
+        volt::queries::pin_by_definition(circuit, component, first_pin_definition).value();
+    const auto second_pin =
+        volt::queries::pin_by_definition(circuit, component, second_pin_definition).value();
     const auto first_net = circuit.add_net(volt::Net{volt::NetName{"LEFT"}, volt::NetKind::Signal});
     const auto second_net =
         circuit.add_net(volt::Net{volt::NetName{"RIGHT"}, volt::NetKind::Signal});
@@ -98,8 +101,9 @@ struct MultiComponentNetCircuit {
                        });
         const auto connected_pin_definition =
             index == 0U ? second_pin_definition : first_pin_definition;
-        circuit.connect(shared_net,
-                        circuit.pin_by_definition(component, connected_pin_definition).value());
+        circuit.connect(
+            shared_net,
+            volt::queries::pin_by_definition(circuit, component, connected_pin_definition).value());
         components.push_back(component);
     }
 

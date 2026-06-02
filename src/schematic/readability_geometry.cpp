@@ -1,5 +1,7 @@
 #include <volt/schematic/readability_geometry.hpp>
 
+#include <volt/circuit/queries.hpp>
+
 namespace volt::detail {
 
 [[nodiscard]] bool wire_covers_point(const WireRun &wire, Point point) noexcept {
@@ -60,12 +62,12 @@ namespace volt::detail {
         const auto &other_instance = schematic.symbol_instance(other_instance_id);
         const auto &other_symbol = schematic.symbol_definition(other_instance.symbol_definition());
         for (const auto &other_symbol_pin : other_symbol.pins()) {
-            const auto other_pin =
-                circuit.pin_by_number(other_instance.component(), other_symbol_pin.number());
+            const auto other_pin = queries::pin_by_number(circuit, other_instance.component(),
+                                                          other_symbol_pin.number());
             if (!other_pin.has_value() || other_pin.value() == pin_id) {
                 continue;
             }
-            const auto other_net = circuit.net_of(other_pin.value());
+            const auto other_net = queries::net_of(circuit, other_pin.value());
             if (!other_net.has_value() || other_net.value() != net) {
                 continue;
             }
@@ -121,8 +123,9 @@ symbol_instances_for_component(const Schematic &schematic, ComponentId component
         }
     }
 
-    for (const auto pin_id : circuit.pins_for(component)) {
-        if (circuit.net_of(pin_id).has_value() || circuit.is_intentional_no_connect_pin(pin_id)) {
+    for (const auto pin_id : queries::pins_for(circuit, component)) {
+        if (queries::net_of(circuit, pin_id).has_value() ||
+            circuit.is_intentional_no_connect_pin(pin_id)) {
             return true;
         }
     }

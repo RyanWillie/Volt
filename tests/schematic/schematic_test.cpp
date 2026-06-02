@@ -1,5 +1,7 @@
 #include "schematic_test_helpers.hpp"
 
+#include <volt/circuit/queries.hpp>
+
 TEST_CASE("Symbol definitions store structured drawing primitives and pins") {
     const auto symbol = make_resistor_symbol();
 
@@ -93,8 +95,8 @@ TEST_CASE("Schematic authoring mutations infer nets from logical pin endpoints")
     const auto first_component = add_resistor(circuit, "R1");
     const auto second_component = add_resistor(circuit, "R2");
     const auto net = add_named_net(circuit, "SIG");
-    const auto first_pin = circuit.pin_by_number(first_component, "2").value();
-    const auto second_pin = circuit.pin_by_number(second_component, "1").value();
+    const auto first_pin = volt::queries::pin_by_number(circuit, first_component, "2").value();
+    const auto second_pin = volt::queries::pin_by_number(circuit, second_component, "1").value();
     circuit.connect(net, first_pin);
     circuit.connect(net, second_pin);
     const auto net_count = circuit.net_count();
@@ -118,8 +120,8 @@ TEST_CASE("Schematic authoring mutations reject unconnected and mismatched endpo
     const auto component = add_resistor(circuit, "R1");
     const auto first_net = add_named_net(circuit, "SIG");
     const auto second_net = add_named_net(circuit, "ALT");
-    const auto connected_pin = circuit.pin_by_number(component, "1").value();
-    const auto unconnected_pin = circuit.pin_by_number(component, "2").value();
+    const auto connected_pin = volt::queries::pin_by_number(circuit, component, "1").value();
+    const auto unconnected_pin = volt::queries::pin_by_number(circuit, component, "2").value();
     circuit.connect(first_net, connected_pin);
 
     volt::Schematic schematic{circuit};
@@ -150,7 +152,7 @@ TEST_CASE("Schematic stores professional primitives without changing logical con
     const auto component = add_resistor(circuit);
     const auto vcc = add_net(circuit);
     const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
-    const auto no_connect_pin = circuit.pin_by_number(component, "2").value();
+    const auto no_connect_pin = volt::queries::pin_by_number(circuit, component, "2").value();
     circuit.mark_intentional_no_connect_pin(no_connect_pin);
 
     auto metadata = volt::SheetMetadata{
@@ -216,7 +218,7 @@ TEST_CASE("Schematic stores professional primitives without changing logical con
     CHECK(schematic.symbol_field(field).value() == "10k");
     CHECK(circuit.net(vcc).pins().empty());
     CHECK(circuit.net(gnd).pins().empty());
-    CHECK_FALSE(circuit.net_of(no_connect_pin).has_value());
+    CHECK_FALSE(volt::queries::net_of(circuit, no_connect_pin).has_value());
 }
 
 TEST_CASE("Schematic rejects empty presentation names") {
@@ -308,7 +310,7 @@ TEST_CASE("Schematic rejects professional primitives with missing references") {
     volt::Circuit circuit;
     const auto component = add_resistor(circuit);
     const auto net = add_net(circuit);
-    const auto pin = circuit.pin_by_number(component, "1").value();
+    const auto pin = volt::queries::pin_by_number(circuit, component, "1").value();
 
     volt::Schematic schematic{circuit};
     const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});

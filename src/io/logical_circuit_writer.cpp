@@ -1,5 +1,7 @@
 #include <volt/io/logical_circuit_writer.hpp>
 
+#include <volt/circuit/queries.hpp>
+
 namespace volt::io::detail {
 
 [[nodiscard]] std::string json_string(std::string_view value) {
@@ -323,6 +325,7 @@ void write_electrical_attributes(std::ostream &out, const ElectricalAttributeMap
 }
 [[nodiscard]] std::string module_component_id(ModuleComponentId id) { return encode_local_id(id); }
 [[nodiscard]] std::string module_instance_id(ModuleInstanceId id) { return encode_local_id(id); }
+[[nodiscard]] std::string rule_class_id(RuleClassId id) { return encode_local_id(id); }
 void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
     out << "{\n";
     out << "      \"manufacturer_part\": { \"manufacturer\": "
@@ -368,10 +371,51 @@ void write_pin_definition_semantics(std::ostream &out, const PinDefinition &pin)
     if (pin.polarity() != ElectricalPolarity::None) {
         out << ", \"polarity\": " << json_string(electrical_polarity_name(pin.polarity()));
     }
-    if (!pin.electrical_attributes().empty()) {
+}
+void write_pin_definition_electrical_attributes(std::ostream &out,
+                                                const ElectricalAttributeMap &attributes) {
+    if (!attributes.empty()) {
         out << ", \"electrical_attributes\": ";
-        write_electrical_attributes(out, pin.electrical_attributes(), "        ", "      ");
+        write_electrical_attributes(out, attributes, "        ", "      ");
     }
+}
+void write_rule_classes(std::ostream &out, const Circuit &circuit) {
+    out << "  \"rule_classes\": { \"classes\": [\n";
+    for (std::size_t index = 0; index < circuit.rule_class_count(); ++index) {
+        const auto id = RuleClassId{index};
+        const auto &rule_class = circuit.rule_class(id);
+        out << "    { \"id\": " << json_string(rule_class_id(id))
+            << ", \"name\": " << json_string(rule_class.name().value());
+        if (rule_class.maximum_net_voltage().has_value()) {
+            out << ", \"maximum_net_voltage\": { ";
+            write_quantity_payload(out, rule_class.maximum_net_voltage().value());
+            out << " }";
+        }
+        if (rule_class.copper_clearance_mm().has_value()) {
+            out << ", \"copper_clearance_mm\": ";
+            write_json_number(out, rule_class.copper_clearance_mm().value());
+        }
+        out << " }";
+        if (index + 1 != circuit.rule_class_count()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "  ], \"net_assignments\": [";
+    if (!circuit.net_rule_class_assignments().empty()) {
+        out << '\n';
+        for (std::size_t index = 0; index < circuit.net_rule_class_assignments().size(); ++index) {
+            const auto [net, rule_class] = circuit.net_rule_class_assignments()[index];
+            out << "    { \"net\": " << json_string(net_id(net))
+                << ", \"rule_class\": " << json_string(rule_class_id(rule_class)) << " }";
+            if (index + 1 != circuit.net_rule_class_assignments().size()) {
+                out << ',';
+            }
+            out << '\n';
+        }
+        out << "  ";
+    }
+    out << "] }";
 }
 
 } // namespace volt::io::detail
@@ -395,6 +439,8 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             << detail::json_string(
                    detail::connection_requirement_name(pin.connection_requirement()));
         detail::write_pin_definition_semantics(out, pin);
+        detail::write_pin_definition_electrical_attributes(
+            out, circuit.pin_definition_electrical_attributes(id));
         out << " }";
         if (index + 1 != circuit.pin_definition_count()) {
             out << ',';
@@ -455,14 +501,14 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             << ", \"reference\": " << detail::json_string(component.reference().value())
             << ", \"properties\": ";
         detail::write_properties(out, component.properties());
-        if (!component.electrical_attributes().empty()) {
+        const auto &component_attributes = circuit.component_electrical_attributes(id);
+        if (!component_attributes.empty()) {
             out << ", \"electrical_attributes\": ";
-            detail::write_electrical_attributes(out, component.electrical_attributes(), "        ",
-                                                "      ");
+            detail::write_electrical_attributes(out, component_attributes, "        ", "      ");
         }
-        if (component.selected_physical_part().has_value()) {
+        if (circuit.selected_physical_part(id).has_value()) {
             out << ", \"selected_physical_part\": ";
-            detail::write_selected_physical_part(out, component.selected_physical_part().value());
+            detail::write_selected_physical_part(out, circuit.selected_physical_part(id).value());
         }
         out << " }";
         if (index + 1 != circuit.component_count()) {
@@ -502,10 +548,10 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             }
         }
         out << "]";
-        if (!net.electrical_attributes().empty()) {
+        const auto &net_attributes = circuit.net_electrical_attributes(id);
+        if (!net_attributes.empty()) {
             out << ", \"electrical_attributes\": ";
-            detail::write_electrical_attributes(out, net.electrical_attributes(), "        ",
-                                                "      ");
+            detail::write_electrical_attributes(out, net_attributes, "        ", "      ");
         }
         out << " }";
         if (index + 1 != circuit.net_count()) {
@@ -515,9 +561,16 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
     }
     const auto has_design_intent =
         !circuit.intentional_stub_nets().empty() || !circuit.intentional_no_connect_pins().empty();
+    const auto has_rule_classes =
+        circuit.rule_class_count() != 0 || !circuit.net_rule_class_assignments().empty();
     const auto has_hierarchy =
         circuit.module_definition_count() != 0 || circuit.module_instance_count() != 0;
-    out << ((has_design_intent || has_hierarchy) ? "  ],\n" : "  ]\n");
+    out << ((has_rule_classes || has_design_intent || has_hierarchy) ? "  ],\n" : "  ]\n");
+
+    if (has_rule_classes) {
+        detail::write_rule_classes(out, circuit);
+        out << ((has_design_intent || has_hierarchy) ? ",\n" : "\n");
+    }
 
     if (has_design_intent) {
         out << "  \"design_intent\": { \"stub_nets\": [";
@@ -584,7 +637,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             const auto &component = circuit.module_component_template(component_id);
             const auto &component_definition = circuit.component_definition(component.definition());
             for (const auto pin_id : component_definition.pins()) {
-                const auto net = circuit.template_net_for(id, component_id, pin_id);
+                const auto net = queries::template_net_for(circuit, id, component_id, pin_id);
                 if (!net.has_value()) {
                     continue;
                 }
@@ -634,7 +687,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         for (std::size_t net_index = 0; net_index < definition.template_nets().size();
              ++net_index) {
             const auto template_net_id = definition.template_nets()[net_index];
-            const auto concrete_net = circuit.concrete_net_for(id, template_net_id);
+            const auto concrete_net = queries::concrete_net_for(circuit, id, template_net_id);
             if (!concrete_net.has_value()) {
                 throw std::logic_error{"Module instance is missing concrete net origin"};
             }
@@ -651,7 +704,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
              ++component_index) {
             const auto template_component_id = definition.components()[component_index];
             const auto concrete_component =
-                circuit.concrete_component_for(id, template_component_id);
+                queries::concrete_component_for(circuit, id, template_component_id);
             if (!concrete_component.has_value()) {
                 throw std::logic_error{"Module instance is missing concrete component origin"};
             }
@@ -666,7 +719,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         out << "], \"port_bindings\": [";
         auto wrote_binding = false;
         for (const auto port_id : definition.ports()) {
-            const auto binding = circuit.port_binding_for(id, port_id);
+            const auto binding = queries::port_binding_for(circuit, id, port_id);
             if (!binding.has_value()) {
                 continue;
             }

@@ -1,5 +1,7 @@
 #include <volt/schematic/readability_wire_validation.hpp>
 
+#include <volt/circuit/queries.hpp>
+
 namespace volt::detail {
 
 [[nodiscard]] double wire_run_length(const WireRun &wire) noexcept {
@@ -206,11 +208,12 @@ void validate_different_net_wire_crossings(const Schematic &schematic, SheetId s
         const auto &instance = schematic.symbol_instance(instance_id);
         const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
         for (const auto &symbol_pin : symbol.pins()) {
-            const auto pin = circuit.pin_by_number(instance.component(), symbol_pin.number());
+            const auto pin =
+                queries::pin_by_number(circuit, instance.component(), symbol_pin.number());
             if (!pin.has_value()) {
                 continue;
             }
-            const auto pin_net = circuit.net_of(pin.value());
+            const auto pin_net = queries::net_of(circuit, pin.value());
             if (!pin_net.has_value() || pin_net.value() != net) {
                 continue;
             }

@@ -14,9 +14,6 @@ NetName::NetName(std::string value) : value_{std::move(value)} {
     }
 }
 Net::Net(NetName name, NetKind kind) : name_{std::move(name)}, kind_{kind} {}
-[[nodiscard]] const ElectricalAttributeMap &Net::electrical_attributes() const noexcept {
-    return electrical_attributes_;
-}
 [[nodiscard]] bool Net::contains(PinId pin) const noexcept {
     return std::find(pins_.begin(), pins_.end(), pin) != pins_.end();
 }
@@ -36,10 +33,6 @@ bool Net::disconnect(PinId pin) {
 
     pins_.erase(it);
     return true;
-}
-void Net::set_electrical_attribute(const ElectricalAttributeSpec &spec,
-                                   ElectricalAttributeValue value) {
-    electrical_attributes_.set(spec, value);
 }
 
 } // namespace volt

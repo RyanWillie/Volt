@@ -5,6 +5,8 @@
 #include <string>
 #include <utility>
 
+#include <volt/circuit/queries.hpp>
+
 namespace volt::authoring {
 
 [[nodiscard]] ReferenceDesignator allocate_reference(const Circuit &circuit,
@@ -15,7 +17,7 @@ namespace volt::authoring {
 
     for (std::size_t index = 1;; ++index) {
         const auto candidate = ReferenceDesignator{std::string{prefix} + std::to_string(index)};
-        if (!circuit.component_by_reference(candidate).has_value()) {
+        if (!queries::component_by_reference(circuit, candidate).has_value()) {
             return candidate;
         }
     }

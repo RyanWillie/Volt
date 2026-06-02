@@ -5,6 +5,7 @@
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/hierarchy.hpp>
 #include <volt/circuit/nets.hpp>
+#include <volt/circuit/queries.hpp>
 #include <volt/circuit/validation.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/ids.hpp>
@@ -127,8 +128,8 @@ TEST_CASE("Circuit stores module component templates and template pin connectivi
     CHECK(circuit.connect_module_pin(module, input, component, left));
     CHECK(circuit.connect_module_pin(module, output, component, right));
     CHECK_FALSE(circuit.connect_module_pin(module, input, component, left));
-    CHECK(circuit.template_net_for(module, component, left) == input);
-    CHECK(circuit.template_net_for(module, component, right) == output);
+    CHECK(volt::queries::template_net_for(circuit, module, component, left) == input);
+    CHECK(volt::queries::template_net_for(circuit, module, component, right) == output);
     CHECK(circuit.module_component_count() == 1);
     CHECK(circuit.module_pin_connection_count() == 2);
 }
@@ -157,19 +158,24 @@ TEST_CASE("Root module instantiation materializes module component templates") {
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"DIV_A"});
 
-    const auto concrete_component = circuit.concrete_component_for(instance, component);
+    const auto concrete_component =
+        volt::queries::concrete_component_for(circuit, instance, component);
     REQUIRE(concrete_component.has_value());
     CHECK(concrete_component.value() == volt::ComponentId{0});
     CHECK(circuit.component(concrete_component.value()).reference() ==
           volt::ReferenceDesignator{"DIV_A/R1"});
-    REQUIRE(circuit.concrete_net_for(instance, input).has_value());
-    REQUIRE(circuit.concrete_net_for(instance, output).has_value());
-    REQUIRE(circuit.pin_by_number(concrete_component.value(), "1").has_value());
-    REQUIRE(circuit.pin_by_number(concrete_component.value(), "2").has_value());
-    CHECK(circuit.net_of(circuit.pin_by_number(concrete_component.value(), "1").value()) ==
-          circuit.concrete_net_for(instance, input));
-    CHECK(circuit.net_of(circuit.pin_by_number(concrete_component.value(), "2").value()) ==
-          circuit.concrete_net_for(instance, output));
+    REQUIRE(volt::queries::concrete_net_for(circuit, instance, input).has_value());
+    REQUIRE(volt::queries::concrete_net_for(circuit, instance, output).has_value());
+    REQUIRE(volt::queries::pin_by_number(circuit, concrete_component.value(), "1").has_value());
+    REQUIRE(volt::queries::pin_by_number(circuit, concrete_component.value(), "2").has_value());
+    CHECK(volt::queries::net_of(
+              circuit,
+              volt::queries::pin_by_number(circuit, concrete_component.value(), "1").value()) ==
+          volt::queries::concrete_net_for(circuit, instance, input));
+    CHECK(volt::queries::net_of(
+              circuit,
+              volt::queries::pin_by_number(circuit, concrete_component.value(), "2").value()) ==
+          volt::queries::concrete_net_for(circuit, instance, output));
 }
 
 TEST_CASE("Circuit exposes hierarchy inspection views") {
@@ -206,7 +212,7 @@ TEST_CASE("Circuit exposes hierarchy inspection views") {
     CHECK(circuit.module_net_origins(instance)[0].first == input);
     CHECK(circuit.module_component_origins(instance).size() == 1);
     CHECK(circuit.module_component_origins(instance)[0].first == component);
-    CHECK(circuit.port_bindings_for(instance) == std::vector{binding});
+    CHECK(volt::queries::port_bindings_for(circuit, instance) == std::vector{binding});
 }
 
 TEST_CASE("Circuit restore rejects mismatched module connectivity before mutating") {
@@ -223,10 +229,12 @@ TEST_CASE("Circuit restore rejects mismatched module connectivity before mutatin
     const auto first_net =
         circuit.add_net(volt::Net{volt::NetName{"DIV_A/IN"}, volt::NetKind::Signal});
     auto second = volt::Net{volt::NetName{"DIV_A/OUT"}, volt::NetKind::Signal};
-    REQUIRE(circuit.pin_by_definition(concrete_component, left).has_value());
-    REQUIRE(circuit.pin_by_definition(concrete_component, right).has_value());
-    CHECK(second.connect(circuit.pin_by_definition(concrete_component, left).value()));
-    CHECK(second.connect(circuit.pin_by_definition(concrete_component, right).value()));
+    REQUIRE(volt::queries::pin_by_definition(circuit, concrete_component, left).has_value());
+    REQUIRE(volt::queries::pin_by_definition(circuit, concrete_component, right).has_value());
+    CHECK(second.connect(
+        volt::queries::pin_by_definition(circuit, concrete_component, left).value()));
+    CHECK(second.connect(
+        volt::queries::pin_by_definition(circuit, concrete_component, right).value()));
     const auto second_net = circuit.add_net(std::move(second));
 
     const auto module = circuit.add_module_definition(volt::ModuleDefinition{
@@ -312,9 +320,9 @@ TEST_CASE("Root module instantiation creates concrete nets for template-local ne
     CHECK(circuit.module_instance_count() == 2);
     CHECK(circuit.net_count() == 4);
 
-    const auto first_vin = circuit.concrete_net_for(first, vin);
-    const auto first_fb = circuit.concrete_net_for(first, fb);
-    const auto second_fb = circuit.concrete_net_for(second, fb);
+    const auto first_vin = volt::queries::concrete_net_for(circuit, first, vin);
+    const auto first_fb = volt::queries::concrete_net_for(circuit, first, fb);
+    const auto second_fb = volt::queries::concrete_net_for(circuit, second, fb);
     REQUIRE(first_vin.has_value());
     REQUIRE(first_fb.has_value());
     REQUIRE(second_fb.has_value());
@@ -340,8 +348,8 @@ TEST_CASE("Circuit records port bindings as explicit edges without merging nets"
 
     const auto binding = circuit.bind_port(instance, port, parent_net);
 
-    REQUIRE(circuit.concrete_net_for(instance, vin).has_value());
-    const auto internal_net = circuit.concrete_net_for(instance, vin).value();
+    REQUIRE(volt::queries::concrete_net_for(circuit, instance, vin).has_value());
+    const auto internal_net = volt::queries::concrete_net_for(circuit, instance, vin).value();
     CHECK(binding == volt::PortBindingId{0});
     CHECK(circuit.port_binding(binding).instance() == instance);
     CHECK(circuit.port_binding(binding).port() == port);
@@ -386,7 +394,7 @@ TEST_CASE("Circuit rejects binding a module port to its own internal net") {
         module, volt::PortDefinition{volt::PortName{"VIN"}, vin, volt::PortRole::PowerInput});
     const auto instance =
         circuit.instantiate_root_module(module, volt::ModuleInstanceName{"BUCK_A"});
-    const auto internal_net = circuit.concrete_net_for(instance, vin);
+    const auto internal_net = volt::queries::concrete_net_for(circuit, instance, vin);
     REQUIRE(internal_net.has_value());
 
     CHECK_THROWS_AS(circuit.bind_port(instance, port, internal_net.value()), std::logic_error);

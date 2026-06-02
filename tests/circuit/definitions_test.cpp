@@ -6,7 +6,6 @@
 #include <vector>
 
 #include <volt/circuit/definitions.hpp>
-#include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
@@ -27,7 +26,6 @@ TEST_CASE("PinDefinition stores logical pin metadata") {
     CHECK(pin.signal_domain() == volt::ElectricalSignalDomain::Unspecified);
     CHECK(pin.drive_kind() == volt::ElectricalDriveKind::Unspecified);
     CHECK(pin.polarity() == volt::ElectricalPolarity::None);
-    CHECK(pin.electrical_attributes().empty());
 }
 
 TEST_CASE("PinDefinition can represent explicit connection requirements") {

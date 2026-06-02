@@ -14,6 +14,7 @@
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/definitions.hpp>
 #include <volt/circuit/instances.hpp>
+#include <volt/circuit/queries.hpp>
 #include <volt/schematic/geometry.hpp>
 #include <volt/schematic/layout.hpp>
 #include <volt/schematic/schematic.hpp>
@@ -75,7 +76,7 @@ namespace {
 [[maybe_unused]] void connect_pin_by_number(volt::Circuit &circuit, volt::NetId net,
                                             volt::ComponentId component,
                                             const std::string &number) {
-    circuit.connect(net, circuit.pin_by_number(component, number).value());
+    circuit.connect(net, volt::queries::pin_by_number(circuit, component, number).value());
 }
 
 [[maybe_unused]] volt::SymbolDefinition make_resistor_symbol() {
