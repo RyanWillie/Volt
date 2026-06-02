@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt KiCad PCB handoff</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f7f4;
+      --ink: #16201c;
+      --muted: #617069;
+      --line: #cfd8d2;
+      --panel: #ffffff;
+      --green: #245e48;
+      --blue: #285f86;
+      --amber: #946c20;
+      --red: #9b3d34;
+      --code: #e9eee9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 44px 0 72px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 36px;
+      align-items: end;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 30px;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 820px;
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(40px, 7vw, 76px);
+      line-height: 0.96;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      font-size: clamp(28px, 3vw, 40px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h3 { font-size: 18px; }
+
+    section {
+      display: grid;
+      grid-template-columns: 230px minmax(0, 1fr);
+      gap: 42px;
+      padding: 36px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    aside {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .eyebrow {
+      margin-bottom: 14px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dek {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    .stack { display: grid; gap: 18px; }
+
+    .callout {
+      border-left: 6px solid var(--green);
+      background: #e5f0e9;
+      padding: 16px 18px;
+    }
+
+    .warning {
+      border-left-color: var(--amber);
+      background: #f4ead4;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    td, li { color: var(--muted); }
+
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      background: var(--code);
+      border-left: 4px solid var(--blue);
+      padding: 15px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    ul, ol {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    li + li { margin-top: 7px; }
+
+    @media (max-width: 860px) {
+      header, section { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">VOL-162 handoff contract</p>
+        <h1>KiCad PCB is a manufacturing bridge, not Volt's board model.</h1>
+      </div>
+      <p class="dek">
+        Volt board JSON and kernel board data stay canonical. The KiCad writer consumes
+        that data and emits a deterministic <code>.kicad_pcb</code> file for inspection and
+        downstream fabrication tooling.
+      </p>
+    </header>
+
+    <section>
+      <aside>Boundary</aside>
+      <div class="stack">
+        <h2>Export is one-way and adapter-shaped.</h2>
+        <p>
+          The writer lives under <code>volt/adapters/kicad</code>, depends on Volt circuit
+          and PCB model targets, and does not make KiCad file structures part of core,
+          IO, or board mutation APIs.
+        </p>
+        <div class="callout">
+          Logical nets, selected parts, footprint geometry, placements, copper routes,
+          board text, and board outline come from Volt-owned data. The exporter never
+          creates, merges, splits, infers, or repairs logical connectivity.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Supported subset</aside>
+      <div class="stack">
+        <h2>The first subset is intentionally narrow.</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Volt construct</th>
+              <th>KiCad output</th>
+              <th>Current support</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Board outline</td>
+              <td><code>gr_line</code> edges on <code>Edge.Cuts</code></td>
+              <td>Polygon outlines export as deterministic closed edge segments.</td>
+            </tr>
+            <tr>
+              <td>Layers</td>
+              <td>KiCad layer table</td>
+              <td>Top and bottom copper layers are mapped to <code>F.Cu</code> and <code>B.Cu</code>. Standard paste, mask, silkscreen, fabrication, and edge-cut layers are emitted as adapter output layers when needed by KiCad.</td>
+            </tr>
+            <tr>
+              <td>Footprints, pads, placements</td>
+              <td>Inline KiCad <code>footprint</code> and <code>pad</code> blocks</td>
+              <td>Top-side placements export with surface-mount, through-hole, and non-plated mechanical pads. Generated reference/value metadata is placed on fabrication layers so it does not become copper. Pad nets are taken only from Volt pad resolution.</td>
+            </tr>
+            <tr>
+              <td>Mounting holes</td>
+              <td>Non-plated through-hole footprint</td>
+              <td>Board mounting-hole features export as drill-producing KiCad footprints.</td>
+            </tr>
+            <tr>
+              <td>Tracks</td>
+              <td><code>segment</code></td>
+              <td>Routed point chains export as one KiCad segment per adjacent point pair on mapped copper layers.</td>
+            </tr>
+            <tr>
+              <td>Vias</td>
+              <td><code>via</code></td>
+              <td>Vias export between mapped copper layers using Volt drill and annular diameters.</td>
+            </tr>
+            <tr>
+              <td>Text and annotations</td>
+              <td><code>gr_text</code></td>
+              <td>Board text exports on mapped KiCad layers with deterministic size, position, and rotation.</td>
+            </tr>
+            <tr>
+              <td>Zones and keepouts</td>
+              <td>Loss report only</td>
+              <td>Not exported in the first subset. They are explicitly reported so users know the handoff is incomplete.</td>
+            </tr>
+            <tr>
+              <td>Nets</td>
+              <td>KiCad <code>net</code> table plus pad, route, and via references</td>
+              <td>Net names and IDs come from the canonical Volt circuit. The exporter does not synthesize nets.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <aside>Python handoff</aside>
+      <div class="stack">
+        <h2>Call the adapter from a board projection.</h2>
+        <pre><code>export = board.write_kicad_pcb("artifacts/pcb_led_board.kicad_pcb")
+if export.warnings:
+    for warning in export.warnings:
+        print(warning.kind, warning.construct, warning.message)</code></pre>
+        <p>
+          The example board at <code>examples/pcb_led_board</code> commits a generated
+          <code>pcb_led_board.kicad_pcb</code> artifact alongside Volt JSON and SVG output.
+          Its test fails if the KiCad export reports any loss.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <aside>Inspection</aside>
+      <div class="stack">
+        <h2>Use KiCad as the inspection and fabrication tool.</h2>
+        <ol>
+          <li>Open the generated <code>.kicad_pcb</code> in KiCad PCB Editor.</li>
+          <li>Inspect board outline, drill holes, footprints, pad nets, routed tracks, and vias.</li>
+          <li>Run KiCad DRC for fabrication-facing checks that are outside Volt's current subset.</li>
+          <li>Use KiCad's plotting tools to generate Gerber and Excellon files for a fabricator.</li>
+        </ol>
+        <div class="callout warning">
+          Treat adapter warnings as part of the artifact. If zones, keepouts, unsupported layers,
+          or unsupported placement sides are reported, inspect or resolve those constructs before
+          manufacturing from the KiCad file.
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

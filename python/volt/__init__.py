@@ -37,7 +37,16 @@ from .logical import (
     PortInfo,
     TemplateNetInfo,
 )
-from .pcb import Board, Footprint, FootprintDefinition, FootprintDrill, FootprintPad, PadResolution
+from .pcb import (
+    Board,
+    Footprint,
+    FootprintDefinition,
+    FootprintDrill,
+    FootprintPad,
+    KiCadLossWarning,
+    KiCadPcbExport,
+    PadResolution,
+)
 from .schematic import (
     PlacedSchematicElement,
     Schematic,
@@ -90,6 +99,8 @@ __all__ = [
     "FootprintDefinition",
     "FootprintDrill",
     "FootprintPad",
+    "KiCadLossWarning",
+    "KiCadPcbExport",
     "PhysicalPartSpec",
     "PlacedSchematicElement",
     "PadResolution",

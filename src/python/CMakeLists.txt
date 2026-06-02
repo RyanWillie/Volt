@@ -56,8 +56,9 @@ pybind11_add_module(
     bindings.cpp
     circuit_bindings.cpp
     py_circuit.cpp
+    py_kicad.cpp
 )
-target_link_libraries(_volt PRIVATE Volt::Authoring Volt::IO)
+target_link_libraries(_volt PRIVATE Volt::Authoring Volt::IO Volt::KiCadAdapter)
 if(MINGW)
     target_compile_options(_volt PRIVATE -Wa,-mbig-obj)
 endif()

@@ -14,6 +14,7 @@ def _artifact_texts(artifacts):
         "schematic_body_svg": artifacts.schematic_body_svg.read_text(encoding="utf-8"),
         "pcb": artifacts.pcb_json.read_text(encoding="utf-8"),
         "pcb_svg": artifacts.pcb_svg.read_text(encoding="utf-8"),
+        "kicad_pcb": artifacts.kicad_pcb.read_text(encoding="utf-8"),
         "validation": artifacts.validation_report.read_text(encoding="utf-8"),
         "pages": tuple(path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages),
     }
@@ -40,6 +41,9 @@ def _committed_artifact_texts(main):
             encoding="utf-8"
         ),
         "pcb_svg": (artifact_dir / f"{main.EXAMPLE_SLUG}.pcb.svg").read_text(
+            encoding="utf-8"
+        ),
+        "kicad_pcb": (artifact_dir / f"{main.EXAMPLE_SLUG}.kicad_pcb").read_text(
             encoding="utf-8"
         ),
         "validation": (artifact_dir / f"{main.EXAMPLE_SLUG}.validation.json").read_text(
@@ -129,6 +133,11 @@ def test_pcb_led_board_example_writes_stable_public_api_artifacts():
     assert 'data-board-name="First Board LED"' in first_texts["pcb_svg"]
     assert 'data-placement="component_placement:0"' in first_texts["pcb_svg"]
     assert 'data-net="net:0"' in first_texts["pcb_svg"]
+    assert first_texts["kicad_pcb"].startswith("(kicad_pcb\n")
+    assert '(generator "Volt")' in first_texts["kicad_pcb"]
+    assert '(footprint "PinHeader_1x02_P2.54mm_Vertical"' in first_texts["kicad_pcb"]
+    assert '(49 "F.Fab" user)' in first_texts["kicad_pcb"]
+    assert '(segment\n    (start 5 7.73)' in first_texts["kicad_pcb"]
 
     guide = example_dir / "guide.html"
     guide_text = guide.read_text(encoding="utf-8")

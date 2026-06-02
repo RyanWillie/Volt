@@ -1,13 +1,15 @@
 add_library(
     volt_kicad_adapter
+    format.cpp
     loss_report.cpp
+    pcb_writer.cpp
     schematic_writer.cpp
 )
 add_library(Volt::KiCadAdapter ALIAS volt_kicad_adapter)
 
 set_target_properties(volt_kicad_adapter PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_features(volt_kicad_adapter PUBLIC cxx_std_20)
-target_link_libraries(volt_kicad_adapter PUBLIC Volt::Circuit Volt::Schematic)
+target_link_libraries(volt_kicad_adapter PUBLIC Volt::Circuit Volt::PCB Volt::Schematic)
 target_include_directories(
     volt_kicad_adapter
     PUBLIC
