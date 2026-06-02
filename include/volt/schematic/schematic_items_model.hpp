@@ -8,33 +8,11 @@
 
 namespace volt {
 
+class Schematic;
+
 /** Owns schematic presentation items that reference existing logical kernel entities. */
 class SchematicItemsModel {
   public:
-    /** Add a symbol placement over an existing logical component. */
-    [[nodiscard]] SymbolInstanceId add_symbol_instance(SymbolInstance instance);
-
-    /** Add a drawn wire run over an existing logical net. */
-    [[nodiscard]] WireRunId add_wire_run(WireRun wire);
-
-    /** Add a net label over an existing logical net. */
-    [[nodiscard]] NetLabelId add_net_label(NetLabel label);
-
-    /** Add a junction over an existing logical net. */
-    [[nodiscard]] JunctionId add_junction(Junction junction);
-
-    /** Add a power or ground marker over an existing logical net. */
-    [[nodiscard]] PowerPortId add_power_port(PowerPort port);
-
-    /** Add a no-connect marker over an existing logical pin. */
-    [[nodiscard]] NoConnectMarkerId add_no_connect_marker(NoConnectMarker marker);
-
-    /** Add a sheet or off-page port over an existing logical net. */
-    [[nodiscard]] SheetPortId add_sheet_port(SheetPort port);
-
-    /** Add a field owned by an existing symbol instance. */
-    [[nodiscard]] SymbolFieldId add_symbol_field(SymbolField field);
-
     /** Return a symbol placement by schematic-local ID. */
     [[nodiscard]] const SymbolInstance &symbol_instance(SymbolInstanceId id) const;
 
@@ -96,6 +74,32 @@ class SchematicItemsModel {
     void require_symbol_instance(SymbolInstanceId instance) const;
 
   private:
+    friend class Schematic;
+
+    /** Add a symbol placement over an existing logical component. */
+    [[nodiscard]] SymbolInstanceId add_symbol_instance(SymbolInstance instance);
+
+    /** Add a drawn wire run over an existing logical net. */
+    [[nodiscard]] WireRunId add_wire_run(WireRun wire);
+
+    /** Add a net label over an existing logical net. */
+    [[nodiscard]] NetLabelId add_net_label(NetLabel label);
+
+    /** Add a junction over an existing logical net. */
+    [[nodiscard]] JunctionId add_junction(Junction junction);
+
+    /** Add a power or ground marker over an existing logical net. */
+    [[nodiscard]] PowerPortId add_power_port(PowerPort port);
+
+    /** Add a no-connect marker over an existing logical pin. */
+    [[nodiscard]] NoConnectMarkerId add_no_connect_marker(NoConnectMarker marker);
+
+    /** Add a sheet or off-page port over an existing logical net. */
+    [[nodiscard]] SheetPortId add_sheet_port(SheetPort port);
+
+    /** Add a field owned by an existing symbol instance. */
+    [[nodiscard]] SymbolFieldId add_symbol_field(SymbolField field);
+
     EntityTable<SymbolInstance, SymbolInstanceId> symbol_instances_;
     EntityTable<WireRun, WireRunId> wire_runs_;
     EntityTable<NetLabel, NetLabelId> net_labels_;

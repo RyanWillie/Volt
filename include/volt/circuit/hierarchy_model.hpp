@@ -11,6 +11,8 @@
 
 namespace volt {
 
+class Circuit;
+
 /** Owns module hierarchy storage, template connectivity, origin metadata, and port bindings. */
 class HierarchyModel {
   public:
@@ -23,35 +25,9 @@ class HierarchyModel {
     /** Add a port definition to a module definition. */
     [[nodiscard]] PortDefId add_port_definition(ModuleDefId module, PortDefinition port);
 
-    /** Add a component template to a module definition. */
-    [[nodiscard]] ModuleComponentId add_module_component(ModuleDefId module,
-                                                         ModuleComponentTemplate component);
-
-    /** Connect a module component pin to a template net. */
-    bool connect_module_pin(ModuleDefId module, TemplateNetDefId net, ModuleComponentId component,
-                            PinDefId pin);
-
     /** Instantiate a root module without origin metadata. */
     [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition,
                                                            ModuleInstanceName name);
-
-    /** Restore a root module instance with pre-existing concrete origins. */
-    [[nodiscard]] ModuleInstanceId restore_root_module_instance(
-        ModuleDefId definition, ModuleInstanceName name,
-        const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
-        const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins);
-
-    /** Record the concrete net created for a module template net. */
-    void record_module_net_origin(ModuleInstanceId instance, TemplateNetDefId template_net,
-                                  NetId concrete_net);
-
-    /** Record the concrete component created for a module component template. */
-    void record_module_component_origin(ModuleInstanceId instance, ModuleComponentId component,
-                                        ComponentId concrete_component);
-
-    /** Bind a module instance port between an internal and parent net. */
-    [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port,
-                                          NetId internal_net, NetId parent_net);
 
     /** Return a module definition by name, if present. */
     [[nodiscard]] std::optional<ModuleDefId>
@@ -182,6 +158,34 @@ class HierarchyModel {
                                                           ModuleComponentId component) const;
 
   private:
+    friend class Circuit;
+
+    /** Add a component template to a module definition. */
+    [[nodiscard]] ModuleComponentId add_module_component(ModuleDefId module,
+                                                         ModuleComponentTemplate component);
+
+    /** Connect a module component pin to a template net. */
+    bool connect_module_pin(ModuleDefId module, TemplateNetDefId net, ModuleComponentId component,
+                            PinDefId pin);
+
+    /** Restore a root module instance with pre-existing concrete origins. */
+    [[nodiscard]] ModuleInstanceId restore_root_module_instance(
+        ModuleDefId definition, ModuleInstanceName name,
+        const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
+        const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins);
+
+    /** Record the concrete net created for a module template net. */
+    void record_module_net_origin(ModuleInstanceId instance, TemplateNetDefId template_net,
+                                  NetId concrete_net);
+
+    /** Record the concrete component created for a module component template. */
+    void record_module_component_origin(ModuleInstanceId instance, ModuleComponentId component,
+                                        ComponentId concrete_component);
+
+    /** Bind a module instance port between an internal and parent net. */
+    [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port,
+                                          NetId internal_net, NetId parent_net);
+
     EntityTable<ModuleDefinition, ModuleDefId> module_definitions_;
     EntityTable<TemplateNetDefinition, TemplateNetDefId> template_net_definitions_;
     EntityTable<ModuleComponentTemplate, ModuleComponentId> module_component_templates_;

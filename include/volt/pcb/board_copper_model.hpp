@@ -8,24 +8,11 @@
 
 namespace volt {
 
+class Board;
+
 /** Owns routed and presentation copper primitives for a board projection. */
 class BoardCopperModel {
   public:
-    /** Add a routed copper track and return its stable board-local ID. */
-    [[nodiscard]] BoardTrackId add_track(BoardTrack track);
-
-    /** Add a routed copper via and return its stable board-local ID. */
-    [[nodiscard]] BoardViaId add_via(BoardVia via);
-
-    /** Add a copper zone and return its stable board-local ID. */
-    [[nodiscard]] BoardZoneId add_zone(BoardZone zone);
-
-    /** Add a copper keepout and return its stable board-local ID. */
-    [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout);
-
-    /** Add board text and return its stable board-local ID. */
-    [[nodiscard]] BoardTextId add_text(BoardText text);
-
     /** Return a routed track by board-local ID. */
     [[nodiscard]] const BoardTrack &track(BoardTrackId id) const;
 
@@ -57,6 +44,23 @@ class BoardCopperModel {
     [[nodiscard]] std::size_t text_count() const noexcept;
 
   private:
+    friend class Board;
+
+    /** Add a routed copper track and return its stable board-local ID. */
+    [[nodiscard]] BoardTrackId add_track(BoardTrack track);
+
+    /** Add a routed copper via and return its stable board-local ID. */
+    [[nodiscard]] BoardViaId add_via(BoardVia via);
+
+    /** Add a copper zone and return its stable board-local ID. */
+    [[nodiscard]] BoardZoneId add_zone(BoardZone zone);
+
+    /** Add a copper keepout and return its stable board-local ID. */
+    [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout);
+
+    /** Add board text and return its stable board-local ID. */
+    [[nodiscard]] BoardTextId add_text(BoardText text);
+
     EntityTable<BoardTrack, BoardTrackId> tracks_;
     EntityTable<BoardVia, BoardViaId> vias_;
     EntityTable<BoardZone, BoardZoneId> zones_;

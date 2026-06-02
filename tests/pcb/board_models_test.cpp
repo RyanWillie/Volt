@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <concepts>
 #include <stdexcept>
 #include <vector>
 
@@ -8,6 +9,37 @@
 #include <volt/pcb/board_placement_model.hpp>
 #include <volt/pcb/board_structure_model.hpp>
 #include <volt/pcb/footprints.hpp>
+
+namespace {
+
+template <typename Model>
+concept CanPlaceComponent =
+    requires(Model model, volt::ComponentPlacement placement) { model.place_component(placement); };
+
+template <typename Model>
+concept CanAddTrack = requires(Model model, volt::BoardTrack track) { model.add_track(track); };
+
+template <typename Model>
+concept CanAddVia = requires(Model model, volt::BoardVia via) { model.add_via(via); };
+
+template <typename Model>
+concept CanAddZone = requires(Model model, volt::BoardZone zone) { model.add_zone(zone); };
+
+template <typename Model>
+concept CanAddKeepout =
+    requires(Model model, volt::BoardKeepout keepout) { model.add_keepout(keepout); };
+
+template <typename Model>
+concept CanAddText = requires(Model model, volt::BoardText text) { model.add_text(text); };
+
+static_assert(!CanPlaceComponent<volt::BoardPlacementModel>);
+static_assert(!CanAddTrack<volt::BoardCopperModel>);
+static_assert(!CanAddVia<volt::BoardCopperModel>);
+static_assert(!CanAddZone<volt::BoardCopperModel>);
+static_assert(!CanAddKeepout<volt::BoardCopperModel>);
+static_assert(!CanAddText<volt::BoardCopperModel>);
+
+} // namespace
 
 TEST_CASE("BoardStructureModel owns layers, stack, outline, rules, and features") {
     auto model = volt::BoardStructureModel{};
@@ -54,52 +86,4 @@ TEST_CASE("BoardFootprintModel dedupes identical cached definitions and rejects 
             volt::FootprintSize{0.5, 0.5}, volt::FootprintLayerSet::front_smd())},
     };
     CHECK_THROWS_AS(model.cache_footprint_definition(std::move(conflict)), std::logic_error);
-}
-
-TEST_CASE("BoardPlacementModel owns one placement per logical component") {
-    auto model = volt::BoardPlacementModel{};
-    const auto placement = model.place_component(volt::ComponentPlacement{
-        volt::ComponentId{2}, volt::BoardPoint{10.0, 5.0}, volt::BoardRotation::degrees(90.0)});
-
-    CHECK(model.placement_count() == 1);
-    CHECK(model.placement(placement).component() == volt::ComponentId{2});
-    CHECK(model.placement_for_component(volt::ComponentId{2}) == placement);
-    CHECK_FALSE(model.placement_for_component(volt::ComponentId{3}).has_value());
-    CHECK_THROWS_AS(
-        model.place_component(volt::ComponentPlacement{
-            volt::ComponentId{2}, volt::BoardPoint{12.0, 5.0}, volt::BoardRotation::degrees(0.0)}),
-        std::logic_error);
-}
-
-TEST_CASE("BoardCopperModel owns routed and presentation board primitives") {
-    auto model = volt::BoardCopperModel{};
-    const auto front = volt::BoardLayerId{0};
-    const auto back = volt::BoardLayerId{1};
-    const auto net = volt::NetId{3};
-    const auto track = model.add_track(volt::BoardTrack{
-        net, front, std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{5.0, 1.0}}, 0.25});
-    const auto via =
-        model.add_via(volt::BoardVia{net, volt::BoardPoint{5.0, 1.0}, front, back, 0.30, 0.70});
-    const auto zone = model.add_zone(
-        volt::BoardZone{std::vector{volt::BoardPoint{0.0, 0.0}, volt::BoardPoint{4.0, 0.0},
-                                    volt::BoardPoint{4.0, 4.0}, volt::BoardPoint{0.0, 4.0}},
-                        std::vector{front}, net});
-    const auto keepout = model.add_keepout(
-        volt::BoardKeepout{std::vector{volt::BoardPoint{6.0, 0.0}, volt::BoardPoint{8.0, 0.0},
-                                       volt::BoardPoint{8.0, 2.0}, volt::BoardPoint{6.0, 2.0}},
-                           std::vector{front}, std::vector{volt::BoardKeepoutRestriction::Copper}});
-    const auto text = model.add_text(volt::BoardText{"REV A", volt::BoardPoint{1.0, 6.0},
-                                                     volt::BoardRotation::degrees(0.0), back, 1.0});
-
-    CHECK(model.track(track).net() == net);
-    CHECK(model.via(via).end_layer() == back);
-    CHECK(model.zone(zone).layers() == std::vector{front});
-    CHECK(model.keepout(keepout).restrictions() ==
-          std::vector{volt::BoardKeepoutRestriction::Copper});
-    CHECK(model.text(text).text() == "REV A");
-    CHECK(model.track_count() == 1);
-    CHECK(model.via_count() == 1);
-    CHECK(model.zone_count() == 1);
-    CHECK(model.keepout_count() == 1);
-    CHECK(model.text_count() == 1);
 }

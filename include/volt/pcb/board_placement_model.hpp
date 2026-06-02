@@ -9,12 +9,11 @@
 
 namespace volt {
 
+class Board;
+
 /** Owns physical placements of logical components on a board. */
 class BoardPlacementModel {
   public:
-    /** Place one logical component on the board and return its placement ID. */
-    [[nodiscard]] ComponentPlacementId place_component(ComponentPlacement placement);
-
     /** Return a component placement by board-local ID. */
     [[nodiscard]] const ComponentPlacement &placement(ComponentPlacementId id) const;
 
@@ -26,6 +25,11 @@ class BoardPlacementModel {
     placement_for_component(ComponentId component) const noexcept;
 
   private:
+    friend class Board;
+
+    /** Place one logical component on the board and return its placement ID. */
+    [[nodiscard]] ComponentPlacementId place_component(ComponentPlacement placement);
+
     EntityTable<ComponentPlacement, ComponentPlacementId> placements_;
 };
 

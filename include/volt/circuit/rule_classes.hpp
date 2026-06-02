@@ -12,6 +12,8 @@
 
 namespace volt {
 
+class Circuit;
+
 /** Stable name for a kernel-owned rule class. */
 class RuleClassName {
   public:
@@ -68,9 +70,6 @@ class RuleClasses {
     /** Add a reusable rule class and return its stable ID. */
     [[nodiscard]] RuleClassId add_rule_class(RuleClass rule_class);
 
-    /** Assign a rule class to a logical net. */
-    [[nodiscard]] bool assign_net_rule_class(NetId net, RuleClassId rule_class);
-
     /** Return a rule class by stable ID. */
     [[nodiscard]] const RuleClass &rule_class(RuleClassId id) const;
 
@@ -91,6 +90,11 @@ class RuleClasses {
     void require_rule_class(RuleClassId rule_class) const;
 
   private:
+    friend class Circuit;
+
+    /** Assign a rule class to a logical net. */
+    [[nodiscard]] bool assign_net_rule_class(NetId net, RuleClassId rule_class);
+
     EntityTable<RuleClass, RuleClassId> rule_classes_;
     std::vector<std::pair<NetId, RuleClassId>> net_rule_class_assignments_;
 };

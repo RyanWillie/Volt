@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <concepts>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -18,6 +19,13 @@
 #include <volt/pcb/footprints.hpp>
 
 namespace {
+
+template <typename Model>
+concept CanAssignNetRuleClass = requires(Model model, volt::NetId net, volt::RuleClassId rule) {
+    model.assign_net_rule_class(net, rule);
+};
+
+static_assert(!CanAssignNetRuleClass<volt::RuleClasses>);
 
 [[nodiscard]] const volt::Diagnostic *find_diagnostic(const volt::DiagnosticReport &report,
                                                       const std::string &code) {
@@ -40,7 +48,7 @@ namespace {
 
 } // namespace
 
-TEST_CASE("RuleClasses stores rule classes and deterministic net assignments") {
+TEST_CASE("RuleClasses stores rule classes by stable ID and name") {
     auto high_voltage = volt::RuleClass{volt::RuleClassName{"HighVoltage"}};
     high_voltage.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 60.0});
     high_voltage.set_copper_clearance_mm(0.6);
@@ -56,18 +64,12 @@ TEST_CASE("RuleClasses stores rule classes and deterministic net assignments") {
     REQUIRE(model.rule_class(high_voltage_id).copper_clearance_mm().has_value());
     CHECK(model.rule_class(high_voltage_id).copper_clearance_mm().value() == 0.6);
     CHECK(model.rule_class_by_name(volt::RuleClassName{"HighVoltage"}) == high_voltage_id);
+    CHECK(model.rule_class_by_name(volt::RuleClassName{"Logic"}) == logic_id);
     CHECK_THROWS_AS(model.add_rule_class(volt::RuleClass{volt::RuleClassName{"Logic"}}),
                     std::logic_error);
 
-    CHECK(model.assign_net_rule_class(volt::NetId{7}, high_voltage_id));
-    CHECK_FALSE(model.assign_net_rule_class(volt::NetId{7}, high_voltage_id));
-    CHECK(model.assign_net_rule_class(volt::NetId{7}, logic_id));
-
-    CHECK(model.rule_class_for_net(volt::NetId{7}) == logic_id);
-    CHECK(model.net_rule_class_assignments() ==
-          std::vector<std::pair<volt::NetId, volt::RuleClassId>>{{volt::NetId{7}, logic_id}});
-    CHECK_THROWS_AS(model.assign_net_rule_class(volt::NetId{8}, volt::RuleClassId{99}),
-                    std::out_of_range);
+    CHECK_FALSE(model.rule_class_for_net(volt::NetId{7}).has_value());
+    CHECK(model.net_rule_class_assignments().empty());
 }
 
 TEST_CASE("RuleClass rejects malformed local constraints") {

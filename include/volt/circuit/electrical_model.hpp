@@ -10,9 +10,29 @@
 
 namespace volt {
 
+class Circuit;
+
 /** Owns typed electrical metadata and selected physical implementation state. */
 class ElectricalModel {
   public:
+    /** Return typed electrical metadata for a concrete component. */
+    [[nodiscard]] const ElectricalAttributeMap &
+    component_attributes(ComponentId component) const noexcept;
+
+    /** Return typed electrical metadata for a reusable pin definition. */
+    [[nodiscard]] const ElectricalAttributeMap &
+    pin_definition_attributes(PinDefId pin_definition) const noexcept;
+
+    /** Return typed electrical metadata for a logical net. */
+    [[nodiscard]] const ElectricalAttributeMap &net_attributes(NetId net) const noexcept;
+
+    /** Return the selected physical part for a concrete component, if present. */
+    [[nodiscard]] const std::optional<PhysicalPart> &
+    selected_physical_part(ComponentId component) const noexcept;
+
+  private:
+    friend class Circuit;
+
     /** Set typed electrical metadata for a concrete component. */
     void set_component_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
                                  ElectricalAttributeValue value);
@@ -33,22 +53,6 @@ class ElectricalModel {
     void set_selected_part_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
                                      ElectricalAttributeValue value);
 
-    /** Return typed electrical metadata for a concrete component. */
-    [[nodiscard]] const ElectricalAttributeMap &
-    component_attributes(ComponentId component) const noexcept;
-
-    /** Return typed electrical metadata for a reusable pin definition. */
-    [[nodiscard]] const ElectricalAttributeMap &
-    pin_definition_attributes(PinDefId pin_definition) const noexcept;
-
-    /** Return typed electrical metadata for a logical net. */
-    [[nodiscard]] const ElectricalAttributeMap &net_attributes(NetId net) const noexcept;
-
-    /** Return the selected physical part for a concrete component, if present. */
-    [[nodiscard]] const std::optional<PhysicalPart> &
-    selected_physical_part(ComponentId component) const noexcept;
-
-  private:
     template <typename Id>
     [[nodiscard]] static ElectricalAttributeMap &
     mutable_attributes(std::vector<std::pair<Id, ElectricalAttributeMap>> &entries, Id owner);

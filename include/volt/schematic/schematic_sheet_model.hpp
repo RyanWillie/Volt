@@ -10,6 +10,8 @@
 
 namespace volt {
 
+class Schematic;
+
 /** Owns schematic sheets, authored regions, and sheet-local item membership lists. */
 class SchematicSheetModel {
   public:
@@ -18,6 +20,28 @@ class SchematicSheetModel {
 
     /** Add a named authored region to an existing sheet. */
     [[nodiscard]] std::size_t add_sheet_region(SheetId sheet, SheetRegion region);
+
+    /** Return the sheet with the requested name, if present. */
+    [[nodiscard]] std::optional<SheetId> sheet_by_name(const std::string &name) const;
+
+    /** Return a sheet-local authored region index by name, if present. */
+    [[nodiscard]] std::optional<std::size_t> sheet_region_by_name(SheetId sheet,
+                                                                  const std::string &name) const;
+
+    /** Return a sheet by schematic-local ID. */
+    [[nodiscard]] const Sheet &sheet(SheetId id) const;
+
+    /** Return an authored region by sheet and sheet-local index. */
+    [[nodiscard]] const SheetRegion &sheet_region(SheetId sheet, std::size_t region) const;
+
+    /** Return the number of sheets. */
+    [[nodiscard]] std::size_t sheet_count() const noexcept;
+
+    /** Require that a sheet ID belongs to this model. */
+    void require_sheet(SheetId sheet) const;
+
+  private:
+    friend class Schematic;
 
     /** Record that a symbol instance appears on a sheet. */
     void add_symbol_instance(SheetId sheet, SymbolInstanceId instance);
@@ -43,26 +67,6 @@ class SchematicSheetModel {
     /** Record that a symbol field appears on a sheet. */
     void add_symbol_field(SheetId sheet, SymbolFieldId field);
 
-    /** Return the sheet with the requested name, if present. */
-    [[nodiscard]] std::optional<SheetId> sheet_by_name(const std::string &name) const;
-
-    /** Return a sheet-local authored region index by name, if present. */
-    [[nodiscard]] std::optional<std::size_t> sheet_region_by_name(SheetId sheet,
-                                                                  const std::string &name) const;
-
-    /** Return a sheet by schematic-local ID. */
-    [[nodiscard]] const Sheet &sheet(SheetId id) const;
-
-    /** Return an authored region by sheet and sheet-local index. */
-    [[nodiscard]] const SheetRegion &sheet_region(SheetId sheet, std::size_t region) const;
-
-    /** Return the number of sheets. */
-    [[nodiscard]] std::size_t sheet_count() const noexcept;
-
-    /** Require that a sheet ID belongs to this model. */
-    void require_sheet(SheetId sheet) const;
-
-  private:
     [[nodiscard]] Sheet &mutable_sheet(SheetId id);
 
     EntityTable<Sheet, SheetId> sheets_;
