@@ -279,7 +279,7 @@
             <tr><td><code>board.layers[]</code></td><td>Layer ID, name, role, side, thickness, and enabled state.</td><td>Layer lists, filtering, coloring, and stack views.</td></tr>
             <tr><td><code>board.layer_stack</code></td><td>Optional ordered layer IDs plus total board thickness in millimeters.</td><td>2D ordering and 3D board thickness hints.</td></tr>
             <tr><td><code>board.outline</code></td><td>Optional polygon outline in board coordinates.</td><td>Board shape, bounds, and hit regions.</td></tr>
-            <tr><td><code>board.features[]</code></td><td>Board-owned physical features such as mounting holes with stable IDs, labels, positions, and diameter.</td><td>Mechanical overlays and selectable board features.</td></tr>
+            <tr><td><code>board.features[]</code></td><td>Board-owned physical features such as drilled holes with stable IDs, labels, positions, diameter, and role metadata.</td><td>Mechanical overlays and selectable board features.</td></tr>
           </tbody>
         </table>
         <div class="callout">
@@ -345,7 +345,7 @@
           <tbody>
             <tr><td>Board body</td><td><code>board.outline.vertices</code>, <code>board.layer_stack.board_thickness_mm</code>, <code>board.units</code></td><td>Extrude the outline by board thickness in millimeters. The renderer chooses camera and z-origin conventions.</td></tr>
             <tr><td>Layer controls</td><td><code>board.layers[]</code>, <code>board.layer_stack.layers[]</code></td><td>Use layer IDs, names, roles, sides, enabled state, and stack order for visibility and inspection.</td></tr>
-            <tr><td>Mechanical features</td><td><code>board.features[]</code></td><td>Render mounting holes and future board features from stable feature IDs and board-space geometry.</td></tr>
+            <tr><td>Mechanical features</td><td><code>board.features[]</code></td><td>Render board holes and future board features from stable feature IDs and board-space geometry.</td></tr>
             <tr><td>Footprint pad bodies</td><td><code>board.footprint_definitions[].pads[]</code></td><td>Render pad shape, size, drill, and layer membership in footprint-local coordinates.</td></tr>
             <tr><td>Placed pads</td><td><code>board.placements[]</code> plus referenced <code>footprint_def</code></td><td>Apply placement side, rotation, and translation to every footprint-local pad. Bottom-side placements mirror local X before rotation.</td></tr>
             <tr><td>Selection identity</td><td><code>viewer.pad_resolutions[]</code>, <code>viewer.diagnostics[]</code></td><td>Use derived pad projection IDs, pin refs, net refs, and diagnostic entity refs for overlays and inspection panels.</td></tr>

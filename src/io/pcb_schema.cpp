@@ -135,8 +135,6 @@ namespace volt::io::detail {
     switch (kind) {
     case BoardFeatureKind::Hole:
         return "hole";
-    case BoardFeatureKind::MountingHole:
-        return "mounting_hole";
     case BoardFeatureKind::Slot:
         return "slot";
     case BoardFeatureKind::Cutout:
@@ -155,9 +153,6 @@ namespace volt::io::detail {
 [[nodiscard]] BoardFeatureKind board_feature_kind_from_name(const std::string &value) {
     if (value == "hole") {
         return BoardFeatureKind::Hole;
-    }
-    if (value == "mounting_hole") {
-        return BoardFeatureKind::MountingHole;
     }
     if (value == "slot") {
         return BoardFeatureKind::Slot;

@@ -17,7 +17,6 @@ namespace volt {
 /** Physical board feature kind for placement-only PCB models. */
 enum class BoardFeatureKind {
     Hole,
-    MountingHole,
     Slot,
     Cutout,
     Fiducial,
@@ -192,12 +191,6 @@ class BoardFeature {
     [[nodiscard]] static BoardFeature
     hole(std::string label, BoardPoint center, double drill_diameter_mm, bool plated = false,
          std::string role = {}, std::optional<double> finished_diameter_mm = std::nullopt);
-
-    /** Construct a circular mounting hole feature. */
-    [[nodiscard]] static BoardFeature
-    mounting_hole(std::string label, BoardPoint center, double drill_diameter_mm,
-                  bool plated = false, std::optional<double> finished_diameter_mm = std::nullopt,
-                  std::string role = "mounting");
 
     /** Construct a circular tooling hole feature. */
     [[nodiscard]] static BoardFeature

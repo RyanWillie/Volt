@@ -148,7 +148,7 @@ TEST_CASE("Board stores metadata, layers, outline, features, and placements") {
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
     const auto feature = board.add_feature(
-        volt::BoardFeature::mounting_hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2));
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2, false, "mounting"));
     const auto slot = board.add_feature(volt::BoardFeature::slot(
         "SLOT1", volt::BoardPoint{8.0, 4.0}, volt::BoardPoint{14.0, 4.0}, 1.5, false, "mounting"));
     const auto cutout = board.add_feature(volt::BoardFeature::cutout(
@@ -167,7 +167,7 @@ TEST_CASE("Board stores metadata, layers, outline, features, and placements") {
     REQUIRE(board.layer_stack().has_value());
     CHECK(board.layer_stack()->layers() == std::vector{front, back});
     REQUIRE(board.outline().has_value());
-    CHECK(board.feature(feature).kind() == volt::BoardFeatureKind::MountingHole);
+    CHECK(board.feature(feature).kind() == volt::BoardFeatureKind::Hole);
     CHECK(board.feature(feature).hole().drill_diameter_mm() == 3.2);
     CHECK(board.feature(feature).role() == "mounting");
     CHECK(board.feature(slot).slot().width_mm() == 1.5);

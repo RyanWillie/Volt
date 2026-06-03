@@ -121,7 +121,7 @@ struct MultiComponentNetCircuit {
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
     [[maybe_unused]] const auto feature = board.add_feature(
-        volt::BoardFeature::mounting_hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2));
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2, false, "mounting"));
     [[maybe_unused]] const auto placement = board.place_component(
         volt::ComponentPlacement{fixture.component, volt::BoardPoint{25.0, 15.0},
                                  volt::BoardRotation::degrees(90.0), volt::BoardSide::Top, true});
@@ -175,7 +175,7 @@ TEST_CASE("PCB SVG writer renders generic board feature primitives") {
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{40.0, 24.0}));
     static_cast<void>(board.add_feature(
-        volt::BoardFeature::mounting_hole("MH1", volt::BoardPoint{4.0, 4.0}, 3.2)));
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{4.0, 4.0}, 3.2, false, "mounting")));
     static_cast<void>(board.add_feature(volt::BoardFeature::slot(
         "SLOT", volt::BoardPoint{8.0, 4.0}, volt::BoardPoint{16.0, 4.0}, 1.5, false, "mounting")));
     static_cast<void>(board.add_feature(volt::BoardFeature::cutout(
@@ -190,7 +190,7 @@ TEST_CASE("PCB SVG writer renders generic board feature primitives") {
 
     const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
 
-    CHECK(svg.find("class=\"board-feature mounting-hole\"") != std::string::npos);
+    CHECK(svg.find("class=\"board-feature hole\"") != std::string::npos);
     CHECK(svg.find("class=\"board-feature slot\"") != std::string::npos);
     CHECK(svg.find("x1=\"8\" y1=\"4\" x2=\"16\" y2=\"4\" stroke-width=\"1.5\"") !=
           std::string::npos);

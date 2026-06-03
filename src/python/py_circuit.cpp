@@ -1035,15 +1035,6 @@ void PyCircuit::board_set_polygon_outline(const std::vector<std::pair<double, do
     board_projection().set_outline(volt::BoardOutline{std::move(points)});
 }
 
-std::size_t PyCircuit::board_add_mounting_hole(const std::string &label, double x, double y,
-                                               double diameter_mm, bool plated,
-                                               std::optional<double> finished_diameter_mm) {
-    return board_projection()
-        .add_feature(volt::BoardFeature::mounting_hole(label, volt::BoardPoint{x, y}, diameter_mm,
-                                                       plated, finished_diameter_mm))
-        .index();
-}
-
 std::size_t PyCircuit::board_add_tooling_hole(const std::string &label, double x, double y,
                                               double diameter_mm,
                                               std::optional<double> finished_diameter_mm) {

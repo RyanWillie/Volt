@@ -97,7 +97,7 @@ struct ResistorCircuit {
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
     [[maybe_unused]] const auto feature = board.add_feature(
-        volt::BoardFeature::mounting_hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2));
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2, false, "mounting"));
     [[maybe_unused]] const auto footprint =
         board.cache_footprint_definition(volt::passive_0603_footprint());
     [[maybe_unused]] const auto placement = board.place_component(
@@ -232,7 +232,7 @@ TEST_CASE("KiCad PCB writer keeps generated footprint metadata DRC-neutral") {
     CHECK(result.text.find("(footprint \"passives:") == std::string::npos);
     CHECK(result.text.find("(footprint \"Volt:") == std::string::npos);
     CHECK(result.text.find("(footprint \"R_0603_1608Metric\"") != std::string::npos);
-    CHECK(result.text.find("(footprint \"MountingHole_NPTH\"") != std::string::npos);
+    CHECK(result.text.find("(footprint \"BoardHole_NPTH\"") != std::string::npos);
     CHECK(result.text.find("(49 \"F.Fab\" user)") != std::string::npos);
     CHECK(result.text.find(
               "(property \"Reference\" \"R1\"\n      (at 0 -1.5 0)\n      (layer \"F.Fab\")") !=

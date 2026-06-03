@@ -18,9 +18,9 @@
   <g class="board-content" transform="translate(4 4)">
     <polygon class="board-outline" data-board="board:0" points="0,0 32,0 32,18 0,18"/>
     <g class="layer layer-board-features">
-      <circle class="board-feature mounting-hole" data-board-feature="board_feature:0" cx="3" cy="3" r="1.35"/>
+      <circle class="board-feature hole" data-board-feature="board_feature:0" cx="3" cy="3" r="1.35"/>
       <text class="board-feature-label" data-board-feature="board_feature:0" x="3" y="6.35" text-anchor="middle">MH1</text>
-      <circle class="board-feature mounting-hole" data-board-feature="board_feature:1" cx="29" cy="15" r="1.35"/>
+      <circle class="board-feature hole" data-board-feature="board_feature:1" cx="29" cy="15" r="1.35"/>
       <text class="board-feature-label" data-board-feature="board_feature:1" x="29" y="18.35" text-anchor="middle">MH2</text>
     </g>
     <g class="layer layer-copper">

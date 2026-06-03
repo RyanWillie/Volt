@@ -260,7 +260,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert [
         feature["label"]
         for feature in pcb["board"]["features"]
-        if feature["kind"] == "mounting_hole"
+        if feature["kind"] == "hole" and feature["role"] == "mounting"
     ] == [
         "MH1",
         "MH2",

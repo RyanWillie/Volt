@@ -344,12 +344,9 @@ void write_nets(std::ostream &out, const Circuit &circuit) {
 
 void write_board_hole(std::ostream &out, const BoardFeature &feature, BoardFeatureId id) {
     const auto &hole = feature.hole();
-    out << "  (footprint \""
-        << (feature.kind() == BoardFeatureKind::ToolingHole
-                ? "ToolingHole_NPTH"
-                : (feature.kind() == BoardFeatureKind::MountingHole ? "MountingHole_NPTH"
-                                                                    : "BoardHole_NPTH"))
-        << "\"\n";
+    const auto footprint_name =
+        feature.kind() == BoardFeatureKind::ToolingHole ? "ToolingHole_NPTH" : "BoardHole_NPTH";
+    out << "  (footprint \"" << footprint_name << "\"\n";
     out << "    (layer \"F.Cu\")\n";
     out << "    (uuid " << sexpr_string(pcb_uuid("board-feature", id.index(), "footprint"))
         << ")\n";
@@ -379,7 +376,6 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
         const auto id = BoardFeatureId{index};
         const auto &feature = board.feature(id);
         if (feature.kind() == BoardFeatureKind::Hole ||
-            feature.kind() == BoardFeatureKind::MountingHole ||
             feature.kind() == BoardFeatureKind::ToolingHole) {
             if (feature.hole().plated()) {
                 loss_report.add_warning(

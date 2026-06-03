@@ -19,13 +19,13 @@
   <g class="board-content" transform="translate(4 4)">
     <polygon class="board-outline" data-board="board:0" points="0,0 90,0 90,56 0,56"/>
     <g class="layer layer-board-features">
-      <circle class="board-feature mounting-hole" data-board-feature="board_feature:0" cx="4" cy="4" r="1.35"/>
+      <circle class="board-feature hole" data-board-feature="board_feature:0" cx="4" cy="4" r="1.35"/>
       <text class="board-feature-label" data-board-feature="board_feature:0" x="4" y="7.35" text-anchor="middle">MH1</text>
-      <circle class="board-feature mounting-hole" data-board-feature="board_feature:1" cx="86" cy="4" r="1.35"/>
+      <circle class="board-feature hole" data-board-feature="board_feature:1" cx="86" cy="4" r="1.35"/>
       <text class="board-feature-label" data-board-feature="board_feature:1" x="86" y="7.35" text-anchor="middle">MH2</text>
-      <circle class="board-feature mounting-hole" data-board-feature="board_feature:2" cx="4" cy="52" r="1.35"/>
+      <circle class="board-feature hole" data-board-feature="board_feature:2" cx="4" cy="52" r="1.35"/>
       <text class="board-feature-label" data-board-feature="board_feature:2" x="4" y="55.35" text-anchor="middle">MH3</text>
-      <circle class="board-feature mounting-hole" data-board-feature="board_feature:3" cx="86" cy="52" r="1.35"/>
+      <circle class="board-feature hole" data-board-feature="board_feature:3" cx="86" cy="52" r="1.35"/>
       <text class="board-feature-label" data-board-feature="board_feature:3" x="86" y="55.35" text-anchor="middle">MH4</text>
     </g>
     <g class="layer layer-copper">

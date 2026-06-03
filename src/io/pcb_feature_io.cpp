@@ -119,10 +119,6 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
     const auto position = board_point(field(feature, "position"));
     const auto drill = drill_diameter(feature);
     const auto finished = optional_finished_diameter(feature);
-    if (kind == BoardFeatureKind::MountingHole) {
-        return BoardFeature::mounting_hole(label, position, drill, optional_plated(feature),
-                                           finished, role.empty() ? "mounting" : role);
-    }
     if (kind == BoardFeatureKind::ToolingHole) {
         return BoardFeature::tooling_hole(label, position, drill, finished,
                                           role.empty() ? "tooling" : role);
@@ -136,7 +132,6 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
 
     switch (kind) {
     case BoardFeatureKind::Hole:
-    case BoardFeatureKind::MountingHole:
     case BoardFeatureKind::ToolingHole:
         return read_hole_feature(kind, feature, label, role);
     case BoardFeatureKind::Slot:
@@ -207,7 +202,6 @@ void write_features(std::ostream &out, const Board &board) {
             << ", \"label\": " << json_string(feature.label());
         switch (feature.kind()) {
         case BoardFeatureKind::Hole:
-        case BoardFeatureKind::MountingHole:
         case BoardFeatureKind::ToolingHole: {
             const auto &hole = feature.hole();
             out << ", \"position\": ";

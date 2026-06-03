@@ -204,7 +204,6 @@ namespace {
 [[nodiscard]] std::vector<BoardPoint> feature_outline_points(const BoardFeature &feature) {
     switch (feature.kind()) {
     case BoardFeatureKind::Hole:
-    case BoardFeatureKind::MountingHole:
     case BoardFeatureKind::ToolingHole:
         return std::vector{feature.hole().center()};
     case BoardFeatureKind::Slot:
@@ -222,9 +221,8 @@ namespace {
 }
 
 [[nodiscard]] bool feature_role_expected(BoardFeatureKind kind) noexcept {
-    return kind == BoardFeatureKind::Hole || kind == BoardFeatureKind::MountingHole ||
-           kind == BoardFeatureKind::ToolingHole || kind == BoardFeatureKind::Slot ||
-           kind == BoardFeatureKind::Cutout;
+    return kind == BoardFeatureKind::Hole || kind == BoardFeatureKind::ToolingHole ||
+           kind == BoardFeatureKind::Slot || kind == BoardFeatureKind::Cutout;
 }
 
 } // namespace

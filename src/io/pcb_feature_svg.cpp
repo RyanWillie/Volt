@@ -14,7 +14,6 @@ namespace {
 [[nodiscard]] BoardPoint feature_label_anchor(const BoardFeature &feature) {
     switch (feature.kind()) {
     case BoardFeatureKind::Hole:
-    case BoardFeatureKind::MountingHole:
     case BoardFeatureKind::ToolingHole:
         return BoardPoint{feature.hole().center().x_mm(),
                           feature.hole().center().y_mm() +
@@ -40,9 +39,6 @@ namespace {
     if (kind == BoardFeatureKind::ToolingHole) {
         return "tooling-hole";
     }
-    if (kind == BoardFeatureKind::MountingHole) {
-        return "mounting-hole";
-    }
     return "hole";
 }
 
@@ -51,7 +47,6 @@ namespace {
 void include_feature_bounds(PcbSvgBounds &bounds, const BoardFeature &feature) {
     switch (feature.kind()) {
     case BoardFeatureKind::Hole:
-    case BoardFeatureKind::MountingHole:
     case BoardFeatureKind::ToolingHole: {
         const auto radius = feature.hole().drill_diameter_mm() / 2.0;
         const auto center = feature.hole().center();
@@ -103,7 +98,6 @@ void write_pcb_svg_features(std::ostream &out, const Board &board) {
         const auto &feature = board.feature(id);
         switch (feature.kind()) {
         case BoardFeatureKind::Hole:
-        case BoardFeatureKind::MountingHole:
         case BoardFeatureKind::ToolingHole:
             out << "      <circle class=\"board-feature " << hole_class(feature.kind())
                 << "\" data-board-feature=\"" << encode_local_id(id) << "\" cx=\"";

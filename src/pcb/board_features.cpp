@@ -112,13 +112,6 @@ BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotati
     return BoardFeature{BoardFeatureKind::Hole, std::move(label), std::move(role),
                         BoardHole{center, drill_diameter_mm, plated, finished_diameter_mm}};
 }
-[[nodiscard]] BoardFeature BoardFeature::mounting_hole(std::string label, BoardPoint center,
-                                                       double drill_diameter_mm, bool plated,
-                                                       std::optional<double> finished_diameter_mm,
-                                                       std::string role) {
-    return BoardFeature{BoardFeatureKind::MountingHole, std::move(label), std::move(role),
-                        BoardHole{center, drill_diameter_mm, plated, finished_diameter_mm}};
-}
 [[nodiscard]] BoardFeature BoardFeature::tooling_hole(std::string label, BoardPoint center,
                                                       double drill_diameter_mm,
                                                       std::optional<double> finished_diameter_mm,
@@ -151,7 +144,6 @@ BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotati
 [[nodiscard]] bool is_board_hole_feature(BoardFeatureKind kind) noexcept {
     switch (kind) {
     case BoardFeatureKind::Hole:
-    case BoardFeatureKind::MountingHole:
     case BoardFeatureKind::ToolingHole:
         return true;
     case BoardFeatureKind::Cutout:

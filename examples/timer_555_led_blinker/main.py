@@ -432,10 +432,10 @@ def build_board(
         board_outline_clearance=0.25,
     )
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(90.0, 56.0))
-    board.add(volt.MountingHole(center=(4.0, 4.0), diameter=2.7, label="MH1"))
-    board.add(volt.MountingHole(center=(86.0, 4.0), diameter=2.7, label="MH2"))
-    board.add(volt.MountingHole(center=(4.0, 52.0), diameter=2.7, label="MH3"))
-    board.add(volt.MountingHole(center=(86.0, 52.0), diameter=2.7, label="MH4"))
+    board.add(volt.Hole(center=(4.0, 4.0), diameter=2.7, role="mounting", label="MH1"))
+    board.add(volt.Hole(center=(86.0, 4.0), diameter=2.7, role="mounting", label="MH2"))
+    board.add(volt.Hole(center=(4.0, 52.0), diameter=2.7, role="mounting", label="MH3"))
+    board.add(volt.Hole(center=(86.0, 52.0), diameter=2.7, role="mounting", label="MH4"))
 
     board.place(parts["J1"], at=(8.0, 28.0), rotation=0.0, side="top", locked=True)
     board.place(parts["U1"], at=(42.0, 28.0), rotation=0.0, side="top", locked=True)

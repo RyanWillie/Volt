@@ -76,7 +76,7 @@ struct ResistorCircuit {
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
     [[maybe_unused]] const auto feature = board.add_feature(
-        volt::BoardFeature::mounting_hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2));
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2, false, "mounting"));
     [[maybe_unused]] const auto footprint =
         board.cache_footprint_definition(volt::passive_0603_footprint());
     [[maybe_unused]] const auto placement = board.place_component(
@@ -127,7 +127,7 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["outline"]["kind"] == "polygon");
     CHECK(document["board"]["outline"]["vertices"][2] == nlohmann::json::array({50.0, 30.0}));
     CHECK(document["board"]["features"][0]["id"] == "board_feature:0");
-    CHECK(document["board"]["features"][0]["kind"] == "mounting_hole");
+    CHECK(document["board"]["features"][0]["kind"] == "hole");
     CHECK(document["board"]["features"][0]["position"] == nlohmann::json::array({3.0, 3.0}));
     CHECK(document["board"]["features"][0]["drill_diameter_mm"] == 3.2);
     CHECK(document["board"]["features"][0]["plated"] == false);

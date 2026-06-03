@@ -13,8 +13,8 @@
     "layer_stack": {"board_thickness_mm": 1.6000000000000001, "layers": ["board_layer:0", "board_layer:1"]},
     "outline": {"kind": "polygon", "vertices": [[0, 0], [32, 0], [32, 18], [0, 18]]},
     "features": [
-      {"id": "board_feature:0", "kind": "mounting_hole", "label": "MH1", "position": [3, 3], "drill_diameter_mm": 2.7000000000000002, "finished_diameter_mm": null, "plated": false, "role": "mounting"},
-      {"id": "board_feature:1", "kind": "mounting_hole", "label": "MH2", "position": [29, 15], "drill_diameter_mm": 2.7000000000000002, "finished_diameter_mm": null, "plated": false, "role": "mounting"}
+      {"id": "board_feature:0", "kind": "hole", "label": "MH1", "position": [3, 3], "drill_diameter_mm": 2.7000000000000002, "finished_diameter_mm": null, "plated": false, "role": "mounting"},
+      {"id": "board_feature:1", "kind": "hole", "label": "MH2", "position": [29, 15], "drill_diameter_mm": 2.7000000000000002, "finished_diameter_mm": null, "plated": false, "role": "mounting"}
     ],
     "footprint_definitions": [
       {

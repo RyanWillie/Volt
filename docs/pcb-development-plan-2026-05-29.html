@@ -338,7 +338,7 @@
           <div class="panel tight">
             <span class="label green">4</span>
             <h3>Mechanical and electrical intent stay distinct.</h3>
-            <p>Mounting holes, slots, fiducials, and cutouts are board features unless they carry electrical intent. Test points, connectors, chassis lugs, and tied mounting holes should be logical components when they participate in the circuit.</p>
+            <p>Board holes, slots, fiducials, and cutouts are board features unless they carry electrical intent. Test points, connectors, chassis lugs, and tied mounting holes should be logical components when they participate in the circuit.</p>
           </div>
           <div class="panel tight">
             <span class="label green">5</span>
@@ -381,7 +381,7 @@ board.layers.two_layer(thickness="1.6mm")
 
 with board.outline() as outline:
     outline.rectangle("50mm", "35mm").fillet("2mm")
-    outline.mounting_hole("M1", at=outline.nw.offset("4mm", "-4mm"), drill="3.2mm")
+    outline.hole("M1", at=outline.nw.offset("4mm", "-4mm"), drill="3.2mm", role="mounting")
 
 u1 = board.place(U1).at(board.center)
 c1 = board.place(C1).near(u1.pad("VDD"), distance="2mm").align_y(u1)
@@ -481,7 +481,7 @@ board.preview_svg("main-board.svg")</code></pre>
           </div>
           <div class="panel tight">
             <h3><code>BoardFeature</code></h3>
-            <p>Physical-only features: mounting holes, slots, cutouts, fiducials, tooling holes, text, mechanical keepouts.</p>
+            <p>Physical-only features: board holes, slots, cutouts, fiducials, tooling holes, text, mechanical keepouts.</p>
           </div>
           <div class="panel tight">
             <h3><code>FootprintDefinition</code></h3>
@@ -673,7 +673,7 @@ circuit.select_physical_part(r1, "Yageo", "RC0603FR-0710KL", "0603",
 board = circuit.board("Main")
 board.layers.two_layer(thickness="1.6mm")
 board.outline.rectangle("50mm", "35mm").fillet("2mm")
-board.feature.mounting_hole("M1", at=("4mm", "4mm"), drill="3.2mm")
+board.feature.hole("M1", at=("4mm", "4mm"), drill="3.2mm", role="mounting")
 
 board.place(r1).at(("20mm", "12mm")).rotate(90).on_top()
 
@@ -822,7 +822,7 @@ svg = board.preview_svg()</code></pre>
       "radius": 2.0
     },
     "features": [
-      {"id": "board_feature:0", "kind": "mounting_hole", "at": [4.0, 4.0], "drill": 3.2}
+      {"id": "board_feature:0", "kind": "hole", "at": [4.0, 4.0], "drill": 3.2, "role": "mounting"}
     ],
     "placements": [
       {
