@@ -518,6 +518,7 @@ class Component:
         """Attach selected physical part data; pass a Footprint object for board-ready geometry."""
         if not isinstance(pin_pads, dict):
             raise TypeError("pin_pads must be a dict")
+        normalized_pin_pads = _normalized_component_pin_pad_mappings(self, pin_pads)
         object_footprint = footprint if isinstance(footprint, Footprint) else None
         if object_footprint is not None:
             self._design._check_object_footprint(object_footprint)
@@ -541,6 +542,7 @@ class Component:
         )
         for name, dimension, value in selected_part_ratings:
             self._design._circuit.set_selected_part_quantity(self._index, name, dimension, value)
+        self._design._component_pin_pad_mappings[self._index] = normalized_pin_pads
         if object_footprint is not None:
             self._design._register_component_object_footprint(self._index, object_footprint)
         else:
@@ -634,6 +636,34 @@ def _flatten_pins(values):
             yield from _flatten_pins(value)
         else:
             yield value
+
+
+def _normalized_component_pin_pad_mappings(
+    component: Component,
+    pin_pads: dict[int | str, PinPadValue],
+) -> dict[int, tuple[str, ...]]:
+    result: dict[int, tuple[str, ...]] = {}
+    for key, value in pin_pads.items():
+        pin = component[key]
+        result[pin.index] = _pin_pad_labels_from_value(value)
+    return result
+
+
+def _pin_pad_labels_from_value(value: PinPadValue) -> tuple[str, ...]:
+    if isinstance(value, str):
+        return (value,)
+    if isinstance(value, (tuple, list)):
+        if not value:
+            raise ValueError("Pin-pad mapping pad lists must not be empty")
+        labels = []
+        for item in value:
+            if not isinstance(item, str):
+                raise TypeError(
+                    "Pin-pad mapping values must be pad labels or sequences of pad labels"
+                )
+            labels.append(item)
+        return tuple(labels)
+    raise TypeError("Pin-pad mapping values must be pad labels or sequences of pad labels")
 
 
 def _flatten_module_endpoints(values):

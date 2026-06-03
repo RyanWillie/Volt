@@ -437,14 +437,51 @@ def build_board(
     board.add(volt.Hole(center=(4.0, 52.0), diameter=2.7, role="mounting", label="MH3"))
     board.add(volt.Hole(center=(86.0, 52.0), diameter=2.7, role="mounting", label="MH4"))
 
-    board.place(parts["J1"], at=(8.0, 28.0), rotation=0.0, side="top", locked=True)
-    board.place(parts["U1"], at=(42.0, 28.0), rotation=0.0, side="top", locked=True)
-    board.place(parts["RA"], at=(58.0, 22.0), rotation=0.0, side="top")
-    board.place(parts["RB"], at=(58.0, 30.0), rotation=0.0, side="top")
-    board.place(parts["CT"], at=(68.0, 38.0), rotation=0.0, side="top")
-    board.place(parts["CCTRL"], at=(58.0, 16.0), rotation=0.0, side="top")
-    board.place(parts["RLED"], at=(28.0, 20.0), rotation=180.0, side="top")
-    board.place(parts["DLED"], at=(17.0, 20.0), rotation=0.0, side="top")
+    with board.layout(unit=1.0) as layout:
+        header = layout.place(
+            parts["J1"],
+            at=board.edge("left").center().right(8),
+            orient="right",
+            locked=True,
+        )
+        timer = layout.place(
+            parts["U1"],
+            at=header.center.right(34),
+            orient="right",
+            locked=True,
+        )
+
+        with layout.hold():
+            ra = (
+                layout.two_pad(parts["RA"])
+                .at(timer.center.right(16).up(6))
+                .anchor("center")
+                .right()
+            )
+            rb = (
+                layout.two_pad(parts["RB"])
+                .at(ra.center.down(8))
+                .anchor("center")
+                .right()
+            )
+            (
+                layout.two_pad(parts["CT"])
+                .at(rb.center.right(10).down(8))
+                .anchor("center")
+                .right()
+            )
+
+        with layout.hold():
+            layout.two_pad(parts["CCTRL"]).at(ra.center.up(6)).anchor("center").right()
+
+        with layout.hold():
+            rled = (
+                layout.two_pad(parts["RLED"])
+                .at(timer.center.left(14).up(8))
+                .anchor("center")
+                .left()
+            )
+            layout.two_pad(parts["DLED"]).at(rled.center.left(11)).anchor("center").right()
     board.add(volt.Text("555 BLINK", at=(61.0, 51.0), layer=silk, size=1.4))
 
     board.add_track(nets["+5V"], layer=front, points=((8.0, 26.73), (8.0, 8.0), (12.0, 8.0)), width=0.35)

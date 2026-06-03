@@ -10,6 +10,12 @@ Python handle to one kernel-owned PCB projection.
 
 Source: `python/volt/pcb.py`
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `center` | Return the center anchor of the board outline bounding box. |
+
 ### Methods
 
 | Method | Summary |
@@ -20,6 +26,9 @@ Source: `python/volt/pcb.py`
 | `set_layer_stack(self, layers: Iterable[int], *, thickness: float) -> Board` | Set the board layer stack order and total thickness. |
 | `set_rectangular_outline(self, *, origin: Point, size: Point) -> Board` | Set a rectangular board outline from an origin and size. |
 | `set_polygon_outline(self, vertices: Iterable[Point]) -> Board` | Set a polygon board outline from ordered vertices. |
+| `edge(self, name: str)` | Return a mechanical board edge helper. |
+| `corner(self, name: str)` | Return a mechanical board corner anchor. |
+| `layout(self, *, at: Point = (0, 0), direction: str = 'Right', unit: float = 1.0)` | Create a schematic-style PCB placement authoring session. |
 | `add(self, primitive) -> int` | Add a generic board primitive and return its kernel index. |
 | `cache_footprint(self, footprint: Footprint) -> int` | Cache an explicit board-owned footprint definition for importers and low-level tests. |
 | `place(self, component: Component \| int, *, at: Point, rotation: float = 0.0, side: str = 'top', locked: bool = False) -> int` | Place a component footprint on the board and return the placement index. |

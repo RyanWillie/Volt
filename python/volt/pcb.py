@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Iterable
 
@@ -353,6 +354,37 @@ class Board:
         )
         return self
 
+    @property
+    def center(self):
+        """Return the center anchor of the board outline bounding box."""
+        from ._pcb_layout import center_point
+
+        return center_point(self)
+
+    def edge(self, name: str):
+        """Return a mechanical board edge helper."""
+        from ._pcb_layout import BoardEdge
+
+        return BoardEdge(self, name)
+
+    def corner(self, name: str):
+        """Return a mechanical board corner anchor."""
+        from ._pcb_layout import corner_point
+
+        return corner_point(self, name)
+
+    def layout(
+        self,
+        *,
+        at: Point = (0, 0),
+        direction: str = "Right",
+        unit: float = 1.0,
+    ):
+        """Create a schematic-style PCB placement authoring session."""
+        from ._pcb_layout import BoardLayout
+
+        return BoardLayout(self, at=at, direction=direction, unit=unit)
+
     def add(self, primitive) -> int:
         """Add a generic board primitive and return its kernel index."""
         if isinstance(primitive, Hole):
@@ -591,6 +623,21 @@ class Board:
     def _sync_object_footprints(self) -> None:
         for component in self._design._board_placed_components:
             self._sync_component_object_footprint(component)
+
+    def _outline_vertices(self) -> tuple[Point, ...]:
+        outline = json.loads(self.to_json())["board"].get("outline")
+        if outline is None or not outline.get("vertices"):
+            raise ValueError("Board mechanical anchors require a board outline")
+        return tuple(
+            _point(tuple(vertex), "Board outline vertex")
+            for vertex in outline["vertices"]
+        )
+
+    def _outline_bbox(self) -> tuple[float, float, float, float]:
+        vertices = self._outline_vertices()
+        xs = tuple(vertex[0] for vertex in vertices)
+        ys = tuple(vertex[1] for vertex in vertices)
+        return (min(xs), min(ys), max(xs), max(ys))
 
     def write_json(self, path: str | Path) -> None:
         """Write the PCB projection JSON to a file."""
