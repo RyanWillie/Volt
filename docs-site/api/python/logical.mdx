@@ -39,97 +39,6 @@ Source: `python/volt/logical.py`
 | --- | --- |
 | `index: int` | Return the kernel index for this component definition. |
 
-## `volt.BoardAnchor`
-
-Board point that can be offset directionally while preserving author intent.
-
-Source: `python/volt/_pcb_layout.py`
-
-### Properties
-
-| Property | Summary |
-| --- | --- |
-| `x: float` | Return the board x coordinate. |
-| `y: float` | Return the board y coordinate. |
-| `point: tuple[float, float]` | Return this anchor as an ``(x, y)`` tuple. |
-
-### Methods
-
-| Method | Summary |
-| --- | --- |
-| `offset(self, dx: float = 0, dy: float = 0) -> BoardAnchor` | Return a new anchor offset from this point. |
-| `left(self, distance: float) -> BoardAnchor` | Return a new anchor moved left by a distance. |
-| `right(self, distance: float) -> BoardAnchor` | Return a new anchor moved right by a distance. |
-| `up(self, distance: float) -> BoardAnchor` | Return a new anchor moved up by a distance. |
-| `down(self, distance: float) -> BoardAnchor` | Return a new anchor moved down by a distance. |
-| `tox(self, anchor_or_x) -> BoardAnchor` | Return an anchor at this y coordinate and the target x coordinate. |
-| `toy(self, anchor_or_y) -> BoardAnchor` | Return an anchor at this x coordinate and the target y coordinate. |
-| `__iter__(self)` | Iterate over the ``(x, y)`` coordinate values. |
-
-## `volt.BoardLayout`
-
-Cursor state for schematic-style PCB placement authoring.
-
-Source: `python/volt/_pcb_layout.py`
-
-### Properties
-
-| Property | Summary |
-| --- | --- |
-| `here: BoardAnchor` | Return the layout cursor's current anchor. |
-| `direction: str` | Return the layout cursor's current direction. |
-| `unit: float` | Return the layout unit used by stack spacing defaults. |
-
-### Methods
-
-| Method | Summary |
-| --- | --- |
-| `move(self, *, dx: float = 0, dy: float = 0) -> BoardLayout` | Move the layout cursor by a relative offset. |
-| `move_from(self, anchor: tuple[float, float] \| BoardAnchor, *, dx: float = 0, dy: float = 0, direction: str \| None = None) -> BoardLayout` | Move the layout cursor to an anchor plus an optional relative offset. |
-| `place(self, component: Component, *, at: tuple[float, float] \| BoardAnchor \| None = None, orient: str \| None = None, side: str = 'top', locked: bool = False) -> PlacedBoardComponent` | Place a component at the cursor or an explicit board anchor. |
-| `two_pad(self, component: Component, *, side: str = 'top', locked: bool = False) -> BoardTwoPadComponent` | Start fluent placement for a two-pad component footprint. |
-| `node(self, at: tuple[float, float] \| BoardAnchor \| None = None, *, dx: float = 0, dy: float = 0) -> BoardAnchor` | Return a reusable board-local geometry anchor without adding objects. |
-| `stack(self, *, count: int, direction: str \| None = None, pitch: float \| None = None, at: tuple[float, float] \| BoardAnchor \| None = None) -> tuple[BoardAnchor, ...]` | Return evenly spaced anchors from the current cursor or an explicit anchor. |
-| `hold(self)` | Temporarily author from the current cursor, then restore cursor state. |
-| `frame(self, at: tuple[float, float] \| BoardAnchor = (0, 0), *, direction: str \| None = None)` | Temporarily author in a local board coordinate frame. |
-
-## `volt.BoardPadAnchor`
-
-Anchor for one resolved footprint pad on a placed component.
-
-Source: `python/volt/_pcb_layout.py`
-
-## `volt.BoardTwoPadComponent`
-
-Deferred fluent placement for one two-pad PCB component.
-
-Source: `python/volt/_pcb_layout.py`
-
-### Properties
-
-| Property | Summary |
-| --- | --- |
-| `index: int` | Return the kernel placement index after materialization. |
-| `component: Component` | Return the component being placed. |
-| `center: BoardAnchor` | Return the placed footprint center after materialization. |
-| `start: BoardPadAnchor` | Return the start pad anchor after materialization. |
-| `end: BoardPadAnchor` | Return the end pad anchor after materialization. |
-
-### Methods
-
-| Method | Summary |
-| --- | --- |
-| `at(self, point: tuple[float, float] \| BoardAnchor) -> BoardTwoPadComponent` | Set the anchor point for the two-pad placement. |
-| `anchor(self, ref: str \| int) -> BoardTwoPadComponent` | Choose which local pad or pin anchor is fixed to ``at``. |
-| `drop(self, ref: str \| int) -> BoardTwoPadComponent` | Choose which local pad or pin anchor drives the cursor endpoint. |
-| `right(self) -> BoardTwoPadComponent` | Orient the footprint so its end pad is to the right of its start pad. |
-| `left(self) -> BoardTwoPadComponent` | Orient the footprint so its end pad is to the left of its start pad. |
-| `up(self) -> BoardTwoPadComponent` | Orient the footprint so its end pad is above its start pad. |
-| `down(self) -> BoardTwoPadComponent` | Orient the footprint so its end pad is below its start pad. |
-| `pad(self, label: str) -> BoardPadAnchor` | Materialize and return a pad anchor by footprint pad label. |
-| `pin(self, key: int \| str) -> BoardPadAnchor` | Materialize and return a pin anchor by logical pin number or name. |
-| `__getitem__(self, key: int \| str) -> BoardPadAnchor` | Materialize and return a pin anchor by logical pin number or name. |
-
 ## `volt.ModuleComponent`
 
 Handle to a component occurrence inside a reusable module definition.
@@ -371,34 +280,6 @@ Source: `python/volt/logical.py`
 | `__iter__(self) -> Iterator[Pin]` | Iterate over the concrete pins in this repeated-name group. |
 | `__len__(self) -> int` | Return the number of concrete pins in this group. |
 | `__getitem__(self, index: int) -> Pin` | Return one concrete pin from this group by positional index. |
-
-## `volt.PlacedBoardComponent`
-
-Read-only handle to one placed PCB component footprint.
-
-Source: `python/volt/_pcb_layout.py`
-
-### Properties
-
-| Property | Summary |
-| --- | --- |
-| `index: int` | Return the kernel placement index. |
-| `component: Component` | Return the logical component represented by this placement. |
-| `rotation: float` | Return the resolved board rotation in degrees. |
-| `side: str` | Return the board side for this placement. |
-| `center: BoardAnchor` | Return the placement center anchor. |
-| `start: BoardPadAnchor` | Return the first logical pin's pad anchor for a two-pin component. |
-| `end: BoardPadAnchor` | Return the last logical pin's pad anchor for a two-pin component. |
-
-### Methods
-
-| Method | Summary |
-| --- | --- |
-| `pad(self, label: str) -> BoardPadAnchor` | Return a resolved pad anchor by footprint pad label. |
-| `pin(self, key: int \| str) -> BoardPadAnchor` | Return a resolved pad anchor by logical pin number or name. |
-| `pins(self, name: str) -> tuple[BoardPadAnchor, ...]` | Return every resolved pad anchor for logical pins with the given name. |
-| `pin_anchors(self) -> tuple[BoardPadAnchor, ...]` | Return resolved pad anchors for every logical pin with a single mapped pad. |
-| `__getitem__(self, key: int \| str) -> BoardPadAnchor` | Return a placed component pin anchor by pin name or number. |
 
 ## `volt.PortBindingInfo`
 

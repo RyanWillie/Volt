@@ -6,12 +6,11 @@ from contextlib import contextmanager
 from math import cos, radians, sin
 from typing import TYPE_CHECKING
 
-from ._footprint import Footprint
 from ._utils import _coordinate, _positive_coordinate
 from .logical import Component, Pin, _pin_refs_by_name
 
 if TYPE_CHECKING:
-    from .pcb import Board, FootprintPad
+    from .pcb import Board, ComponentFootprintPad
 
 
 class BoardAnchor:
@@ -350,7 +349,6 @@ class BoardLayout:
         self._here = self._anchor_at(at)
         self._direction = _direction(direction)
         self._unit = _positive_coordinate(unit, "Board layout unit")
-        self._pending: BoardTwoPadComponent | None = None
 
     @property
     def here(self) -> BoardAnchor:
@@ -369,7 +367,6 @@ class BoardLayout:
 
     def move(self, *, dx: float = 0, dy: float = 0) -> BoardLayout:
         """Move the layout cursor by a relative offset."""
-        self._flush_pending()
         self._here = self._here.offset(dx=dx, dy=dy)
         return self
 
@@ -382,7 +379,6 @@ class BoardLayout:
         direction: str | None = None,
     ) -> BoardLayout:
         """Move the layout cursor to an anchor plus an optional relative offset."""
-        self._flush_pending()
         self._here = self._anchor_at(anchor).offset(dx=dx, dy=dy)
         if direction is not None:
             self._direction = _direction(direction)
@@ -398,7 +394,6 @@ class BoardLayout:
         locked: bool = False,
     ) -> PlacedBoardComponent:
         """Place a component at the cursor or an explicit board anchor."""
-        self._flush_pending()
         if not isinstance(component, Component):
             raise TypeError("Board layout place expects a Component handle")
         if component._design is not self._board._design:
@@ -430,10 +425,7 @@ class BoardLayout:
         locked: bool = False,
     ) -> BoardTwoPadComponent:
         """Start fluent placement for a two-pad component footprint."""
-        self._flush_pending()
-        element = BoardTwoPadComponent(self, component, side=side, locked=locked)
-        self._pending = element
-        return element
+        return BoardTwoPadComponent(self, component, side=side, locked=locked)
 
     def node(
         self,
@@ -473,17 +465,13 @@ class BoardLayout:
     @contextmanager
     def hold(self):
         """Temporarily author from the current cursor, then restore cursor state."""
-        self._flush_pending()
         saved_here = self._here
         saved_direction = self._direction
-        saved_pending = self._pending
         try:
             yield self
-            self._flush_pending()
         finally:
             self._here = saved_here
             self._direction = saved_direction
-            self._pending = saved_pending
 
     @contextmanager
     def frame(
@@ -493,32 +481,25 @@ class BoardLayout:
         direction: str | None = None,
     ):
         """Temporarily author in a local board coordinate frame."""
-        self._flush_pending()
         saved_origin = self._coordinate_origin
         saved_here = self._here
         saved_direction = self._direction
-        saved_pending = self._pending
         origin = self._anchor_at(at).point
         self._coordinate_origin = origin
         self._here = BoardAnchor(origin, board=self._board)
         if direction is not None:
             self._direction = _direction(direction)
-        self._pending = None
         try:
             yield self
-            self._flush_pending()
         finally:
             self._coordinate_origin = saved_origin
             self._here = saved_here
             self._direction = saved_direction
-            self._pending = saved_pending
 
     def __enter__(self) -> BoardLayout:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> bool:
-        if exc_type is None:
-            self._flush_pending()
         return False
 
     def _anchor_at(self, value: tuple[float, float] | BoardAnchor) -> BoardAnchor:
@@ -530,13 +511,6 @@ class BoardLayout:
             )
         return BoardAnchor(point, board=self._board)
 
-    def _flush_pending(self) -> None:
-        pending = self._pending
-        if pending is not None:
-            pending._materialize()
-            if self._pending is pending:
-                self._pending = None
-
     def __repr__(self) -> str:
         return (
             f"BoardLayout(here={self._here.point!r}, "
@@ -545,7 +519,7 @@ class BoardLayout:
 
 
 class BoardTwoPadComponent:
-    """Deferred fluent placement for one two-pad PCB component."""
+    """Fluent builder for one two-pad PCB component placement."""
 
     def __init__(
         self,
@@ -566,13 +540,10 @@ class BoardTwoPadComponent:
         self._component = component
         self._side = side
         self._locked = locked
-        self._start_here = layout.here
-        self._start_direction = layout.direction
         self._at = layout.here
         self._anchor_ref: str | int = "start"
         self._drop_ref: str | int = "end"
         self._direction = layout.direction
-        self._cursor_committed = False
         self._placed: PlacedBoardComponent | None = None
 
     @property
@@ -604,36 +575,33 @@ class BoardTwoPadComponent:
         """Set the anchor point for the two-pad placement."""
         self._require_unplaced("at")
         self._at = self._layout._anchor_at(point)
-        self._commit_cursor()
         return self
 
     def anchor(self, ref: str | int) -> BoardTwoPadComponent:
         """Choose which local pad or pin anchor is fixed to ``at``."""
         self._require_unplaced("anchor")
         self._anchor_ref = ref
-        self._commit_cursor()
         return self
 
     def drop(self, ref: str | int) -> BoardTwoPadComponent:
         """Choose which local pad or pin anchor drives the cursor endpoint."""
         self._require_unplaced("drop")
         self._drop_ref = ref
-        self._commit_cursor()
         return self
 
-    def right(self) -> BoardTwoPadComponent:
+    def right(self) -> PlacedBoardComponent:
         """Orient the footprint so its end pad is to the right of its start pad."""
         return self._set_direction("Right")
 
-    def left(self) -> BoardTwoPadComponent:
+    def left(self) -> PlacedBoardComponent:
         """Orient the footprint so its end pad is to the left of its start pad."""
         return self._set_direction("Left")
 
-    def up(self) -> BoardTwoPadComponent:
+    def up(self) -> PlacedBoardComponent:
         """Orient the footprint so its end pad is above its start pad."""
         return self._set_direction("Up")
 
-    def down(self) -> BoardTwoPadComponent:
+    def down(self) -> PlacedBoardComponent:
         """Orient the footprint so its end pad is below its start pad."""
         return self._set_direction("Down")
 
@@ -652,69 +620,42 @@ class BoardTwoPadComponent:
     def __getattr__(self, name: str) -> BoardPadAnchor:
         return getattr(self._materialize(), name)
 
-    def _set_direction(self, direction: str) -> BoardTwoPadComponent:
+    def _set_direction(self, direction: str) -> PlacedBoardComponent:
         self._require_unplaced(direction.lower())
         self._direction = _direction(direction)
-        self._commit_cursor()
-        return self
-
-    def _commit_cursor(self) -> None:
-        try:
-            center = self._center()
-            drop = _transform_local_point(
-                self._local_anchor(self._drop_ref),
-                rotation=_rotation_from_direction(self._direction),
-                side=self._side,
-            )
-            self._layout._here = BoardAnchor(
-                (center[0] + drop[0], center[1] + drop[1]),
-                board=self._layout._board,
-            )
-            self._layout._direction = self._direction
-            self._cursor_committed = True
-        except Exception:
-            if self._layout._pending is self:
-                self._layout._pending = None
-            self._restore_layout_state()
-            raise
+        return self._materialize()
 
     def _materialize(self) -> PlacedBoardComponent:
         if self._placed is not None:
             return self._placed
-        try:
-            center = self._center()
-            rotation = _rotation_from_direction(self._direction)
-            placement = self._layout._board.place(
-                self._component,
-                at=center,
-                rotation=rotation,
-                side=self._side,
-                locked=self._locked,
-            )
-            self._placed = PlacedBoardComponent(
-                self._layout._board,
-                placement,
-                self._component,
-                at=center,
-                rotation=rotation,
-                side=self._side,
-            )
-            if not self._cursor_committed:
-                self._commit_cursor()
-            if self._layout._pending is self:
-                self._layout._pending = None
-            return self._placed
-        except Exception:
-            if self._layout._pending is self:
-                self._layout._pending = None
-            self._restore_layout_state()
-            raise
-
-    def _restore_layout_state(self) -> None:
-        if self._cursor_committed:
-            self._layout._here = self._start_here
-            self._layout._direction = self._start_direction
-            self._cursor_committed = False
+        center = self._center()
+        rotation = _rotation_from_direction(self._direction)
+        drop = _transform_local_point(
+            self._local_anchor(self._drop_ref),
+            rotation=rotation,
+            side=self._side,
+        )
+        placement = self._layout._board.place(
+            self._component,
+            at=center,
+            rotation=rotation,
+            side=self._side,
+            locked=self._locked,
+        )
+        self._placed = PlacedBoardComponent(
+            self._layout._board,
+            placement,
+            self._component,
+            at=center,
+            rotation=rotation,
+            side=self._side,
+        )
+        self._layout._here = BoardAnchor(
+            (center[0] + drop[0], center[1] + drop[1]),
+            board=self._layout._board,
+        )
+        self._layout._direction = self._direction
+        return self._placed
 
     def _center(self) -> tuple[float, float]:
         aligned = self._at.point
@@ -741,39 +682,37 @@ class BoardTwoPadComponent:
                     (start_pad.position[0] + end_pad.position[0]) / 2,
                     (start_pad.position[1] + end_pad.position[1]) / 2,
                 )
-            for pad in self._footprint().pads:
-                if pad.label == ref:
+            for pad in self._component_pads():
+                if pad.pad_label == ref:
                     return pad.position
         if isinstance(ref, (str, int)):
             pin = self._component[ref]
-            labels = self._pin_pad_labels().get(pin.index, ())
-            if len(labels) == 1:
-                return self._pad_by_label(labels[0]).position
-            if len(labels) > 1:
+            pads = self._pads_for_pin(pin.index)
+            if len(pads) == 1:
+                return pads[0].position
+            if len(pads) > 1:
                 raise ValueError(
                     f"Board two-pad component {self._component.reference} pin "
                     f"{ref!r} maps to multiple pads; use pad(label)"
                 )
         raise ValueError(f"Board two-pad component has no anchor named {ref!r}")
 
-    def _start_end_pads(self) -> tuple[FootprintPad, FootprintPad]:
+    def _start_end_pads(self) -> tuple[ComponentFootprintPad, ComponentFootprintPad]:
         pins = tuple(self._component._pin_refs())
-        labels = self._pin_pad_labels()
-        try:
-            start_labels = labels[pins[0]["index"]]
-            end_labels = labels[pins[-1]["index"]]
-        except KeyError as error:
+        start_pads = self._pads_for_pin(pins[0]["index"])
+        end_pads = self._pads_for_pin(pins[-1]["index"])
+        if not start_pads or not end_pads:
             raise ValueError(
                 f"Board two-pad component {self._component.reference} requires selected "
                 "physical part pin-pad mappings"
-            ) from error
-        if len(start_labels) != 1 or len(end_labels) != 1:
+            )
+        if len(start_pads) != 1 or len(end_pads) != 1:
             raise ValueError(
                 f"Board two-pad component {self._component.reference} requires exactly "
                 "one pad mapped to each component pin"
             )
-        start = self._pad_by_label(start_labels[0])
-        end = self._pad_by_label(end_labels[0])
+        start = start_pads[0]
+        end = end_pads[0]
         if start.position == end.position:
             raise ValueError(
                 f"Board two-pad component {self._component.reference} pad anchors "
@@ -781,8 +720,8 @@ class BoardTwoPadComponent:
             )
         return start, end
 
-    def _pad_by_label(self, label: str) -> FootprintPad:
-        matches = tuple(pad for pad in self._footprint().pads if pad.label == label)
+    def _pad_by_label(self, label: str) -> ComponentFootprintPad:
+        matches = tuple(pad for pad in self._component_pads() if pad.pad_label == label)
         if len(matches) == 1:
             return matches[0]
         if len(matches) > 1:
@@ -795,22 +734,17 @@ class BoardTwoPadComponent:
             f"label {label!r}"
         )
 
-    def _footprint(self) -> Footprint:
-        footprint = self._layout._board._design._object_footprint_for_component(
-            self._component.index
-        )
-        if footprint is None:
+    def _pads_for_pin(self, pin_index: int) -> tuple[ComponentFootprintPad, ...]:
+        return tuple(pad for pad in self._component_pads() if pad.pin == pin_index)
+
+    def _component_pads(self) -> tuple[ComponentFootprintPad, ...]:
+        pads = self._layout._board._component_footprint_pads(self._component.index)
+        if not pads:
             raise ValueError(
                 f"Board two-pad component {self._component.reference} requires a "
-                "board-ready footprint with pad geometry"
+                "selected physical part with resolved footprint pad geometry"
             )
-        return footprint
-
-    def _pin_pad_labels(self) -> dict[int, tuple[str, ...]]:
-        return self._component._design._component_pin_pad_mappings.get(
-            self._component.index,
-            {},
-        )
+        return pads
 
     def _require_unplaced(self, method: str) -> None:
         if self._placed is not None:

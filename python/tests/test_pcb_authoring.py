@@ -187,6 +187,68 @@ def test_pcb_layout_two_pad_right_left_up_down_places_resolved_coordinates():
     }
 
 
+def test_pcb_layout_two_pad_uses_kernel_resolved_builtin_footprints():
+    design, r1, _d1 = _small_resistor_led_design()
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+
+    with board.layout(unit=1.0) as layout:
+        resistor = layout.two_pad(r1).at((5.0, 5.0)).right()
+
+    assert isinstance(resistor, volt.PlacedBoardComponent)
+    assert resistor.start.point == (5.0, 5.0)
+    assert resistor.end.point == (6.5, 5.0)
+    assert _placed_positions(board) == {
+        "component:0": ((5.75, 5.0), 0, False),
+    }
+
+
+def test_pcb_layout_two_pad_builder_does_not_flush_from_layout_operations():
+    design = volt.Design("pcb-layout-two-pad-builder")
+    r1 = design.R("1k", ref="R1")
+    net_a = design.net("A")
+    net_b = design.net("B")
+    net_a += r1[1]
+    net_b += r1[2]
+    r1.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603",
+        package="0603",
+        footprint=_passive_0603(("passives", "R_0603")),
+        pin_pads={1: "1", 2: "2"},
+    )
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+
+    with board.layout(unit=1.0) as layout:
+        builder = layout.two_pad(r1).at((5.0, 5.0))
+        layout.move(dx=4.0)
+        assert board.resolve_pads() == ()
+        placed = builder.right()
+
+    assert placed.start.point == (5.0, 5.0)
+    assert placed.end.point == (6.5, 5.0)
+    assert _placed_positions(board) == {
+        "component:0": ((5.75, 5.0), 0, False),
+    }
+    assert layout.here.point == (6.5, 5.0)
+
+
+def test_pcb_layout_board_anchors_read_outline_without_serializing(monkeypatch):
+    design = volt.Design("pcb-layout-outline-query")
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(2.0, 3.0), size=(30.0, 20.0))
+
+    def fail_to_json():
+        raise AssertionError("board anchors should not serialize PCB JSON")
+
+    monkeypatch.setattr(board, "to_json", fail_to_json)
+
+    assert board.center.point == (17.0, 13.0)
+    assert board.edge("right").center().point == (32.0, 13.0)
+    assert board.corner("bottom-left").point == (2.0, 23.0)
+
+
 def test_pcb_layout_frame_and_json_match_absolute_placement_equivalent():
     relative_design, relative_r1, relative_d1 = _small_resistor_led_design()
     relative_board = relative_design.board("Control")
@@ -247,10 +309,10 @@ def test_pcb_layout_reports_invalid_components_and_ambiguous_pin_names():
         manufacturer="Yageo",
         part_number="RC0603",
         package="0603",
-        footprint=("passives", "R_0603_1608Metric"),
+        footprint=("missing", "R_0603_1608Metric"),
         pin_pads={1: "1", 2: "2"},
     )
-    with pytest.raises(ValueError, match="board-ready footprint"):
+    with pytest.raises(ValueError, match="resolved footprint pad geometry"):
         layout.two_pad(missing).right()
 
 

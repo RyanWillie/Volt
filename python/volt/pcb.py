@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import json
 from pathlib import Path
 from typing import Iterable
 
@@ -141,6 +140,16 @@ class PadResolution:
     pin: int | None
     net: int | None
     status: str
+
+
+@dataclass(frozen=True)
+class ComponentFootprintPad:
+    """Resolved local footprint pad geometry for a selected component part."""
+
+    pad: int
+    pad_label: str
+    position: Point
+    pin: int | None
 
 
 @dataclass(frozen=True)
@@ -624,13 +633,25 @@ class Board:
         for component in self._design._board_placed_components:
             self._sync_component_object_footprint(component)
 
+    def _component_footprint_pads(self, component: int) -> tuple[ComponentFootprintPad, ...]:
+        self._sync_component_object_footprint(component)
+        return tuple(
+            ComponentFootprintPad(
+                pad=item["pad"],
+                pad_label=item["pad_label"],
+                position=_point(tuple(item["position"]), "Component footprint pad position"),
+                pin=item["pin"],
+            )
+            for item in self._design._circuit.board_component_footprint_pads(component)
+        )
+
     def _outline_vertices(self) -> tuple[Point, ...]:
-        outline = json.loads(self.to_json())["board"].get("outline")
-        if outline is None or not outline.get("vertices"):
+        vertices = self._design._circuit.board_outline_vertices()
+        if not vertices:
             raise ValueError("Board mechanical anchors require a board outline")
         return tuple(
             _point(tuple(vertex), "Board outline vertex")
-            for vertex in outline["vertices"]
+            for vertex in vertices
         )
 
     def _outline_bbox(self) -> tuple[float, float, float, float]:

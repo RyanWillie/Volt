@@ -34,7 +34,6 @@ class Design:
         self._library_definitions: dict[tuple[str, str, str], ComponentDefinition] = {}
         self._object_footprints: dict[FootprintRef, Footprint] = {}
         self._component_object_footprints: dict[int, FootprintRef] = {}
-        self._component_pin_pad_mappings: dict[int, dict[int, tuple[str, ...]]] = {}
         self._board_cached_footprints: dict[FootprintRef, tuple[int, Footprint]] = {}
         self._board_placed_components: list[int] = []
         self._schematic_symbols: dict[str, SchematicSymbolSpec] = {}
