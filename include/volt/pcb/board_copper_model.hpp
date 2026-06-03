@@ -10,7 +10,15 @@ namespace volt {
 
 class Board;
 
-/** Owns routed and presentation copper primitives for a board projection. */
+/**
+ * Owns routed and presentation copper primitives for a board projection: tracks, vias, zones,
+ * and derived copper shapes.
+ *
+ * Responsibility: stores net- and layer-tagged copper geometry placed on the board.
+ * Invariants: copper references existing logical NetIds (never creates nets) and existing board
+ *   layers.
+ * Collaborators: composed by Board; read by DRC clearance/keepout rules; acyclic.
+ */
 class BoardCopperModel {
   public:
     /** Return a routed track by board-local ID. */

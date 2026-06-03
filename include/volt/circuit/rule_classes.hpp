@@ -64,7 +64,15 @@ class RuleClass {
     std::optional<double> copper_clearance_mm_;
 };
 
-/** Owns rule classes and deterministic net-to-rule-class assignments. */
+/**
+ * Owns rule classes and deterministic net-to-rule-class assignments.
+ *
+ * Responsibility: stores kernel-owned rule-class (netclass) intent — named electrical/physical
+ *   constraint parameters — and which logical nets they apply to.
+ * Invariants: rule-class names are stable and unique; assignments reference existing nets.
+ * Collaborators: composed by Circuit; the constraint parameters are read by both ERC (voltage)
+ *   and DRC (clearance) checkers; persisted through logical-circuit IO; acyclic.
+ */
 class RuleClasses {
   public:
     /** Add a reusable rule class and return its stable ID. */

@@ -16,7 +16,14 @@
 
 namespace volt {
 
-/** Owns logical connectivity storage: component definitions, component instances, pins, and nets.
+/**
+ * Owns logical connectivity storage: component definitions, instances, pins, and nets.
+ *
+ * Responsibility: the source of truth for logical "what connects to what"; holds the entity
+ *   tables and the connect/disconnect primitives.
+ * Invariants: a pin connects to at most one net; nets and pins reference only existing
+ *   entities. Violations throw at the mutation boundary.
+ * Collaborators: composed by Circuit; never references Circuit back (acyclic).
  */
 class ConnectivityModel {
   public:

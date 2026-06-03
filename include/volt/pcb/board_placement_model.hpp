@@ -11,7 +11,16 @@ namespace volt {
 
 class Board;
 
-/** Owns physical placements of logical components on a board. */
+/**
+ * Owns physical placements of logical components on a board, and pad-to-net resolution.
+ *
+ * Responsibility: stores where each placed logical component sits and resolves its footprint
+ *   pads back to logical pins and existing nets.
+ * Invariants: placements reference existing logical components; resolved pads map to existing
+ *   pins/nets.
+ * Collaborators: composed by Board; uses BoardFootprintModel for geometry; feeds ratsnest and
+ *   DRC; acyclic.
+ */
 class BoardPlacementModel {
   public:
     /** Return a component placement by board-local ID. */

@@ -9,7 +9,14 @@
 
 namespace volt {
 
-/** Owns board-cached footprint definitions used by placements and projection IO. */
+/**
+ * Owns board-cached footprint definitions used by placements and projection IO.
+ *
+ * Responsibility: caches resolved footprint geometry so placements and IO share one definition.
+ * Invariants: footprint identity comes from selected physical parts — this model stores it, it
+ *   does not choose footprints.
+ * Collaborators: composed by Board; consumed by BoardPlacementModel and projection IO; acyclic.
+ */
 class BoardFootprintModel {
   public:
     /** Cache a footprint definition for board projection use. */

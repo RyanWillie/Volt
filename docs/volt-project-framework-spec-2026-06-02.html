@@ -1,0 +1,1216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt Project Framework Spec - 2026-06-02</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f8fb;
+      --ink: #172026;
+      --muted: #5f6b75;
+      --line: #ccd5df;
+      --panel: #ffffff;
+      --code: #edf1f5;
+      --blue: #1d5d91;
+      --green: #1f684f;
+      --amber: #916616;
+      --red: #9a342d;
+      --soft-blue: #e8f2fb;
+      --soft-green: #e7f3ed;
+      --soft-amber: #fff1d4;
+      --soft-red: #f8e4e1;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 46px 0 76px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.72fr);
+      gap: 38px;
+      align-items: end;
+      padding-bottom: 34px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    section {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 42px;
+      padding: 38px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 900px;
+      font-size: clamp(38px, 6.5vw, 78px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: clamp(27px, 3vw, 40px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 18px;
+      line-height: 1.24;
+    }
+
+    aside {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    code, pre {
+      background: var(--code);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    code {
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-size: 0.94em;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 15px;
+      color: #24303a;
+      font-size: 13px;
+      line-height: 1.48;
+      white-space: pre;
+    }
+
+    ul, ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    li + li { margin-top: 7px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    th, td {
+      padding: 12px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    td { color: var(--muted); }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 14px;
+      border-top: 2px solid var(--blue);
+      padding-top: 10px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dek {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    .meta {
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .meta strong { color: var(--ink); }
+
+    .stack { display: grid; gap: 18px; }
+    .tight { display: grid; gap: 10px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .panel,
+    .callout,
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 16px;
+    }
+
+    .callout {
+      border-left: 6px solid var(--blue);
+      background: var(--soft-blue);
+    }
+
+    .callout.green {
+      border-left-color: var(--green);
+      background: var(--soft-green);
+    }
+
+    .callout.amber {
+      border-left-color: var(--amber);
+      background: var(--soft-amber);
+    }
+
+    .callout.red {
+      border-left-color: var(--red);
+      background: var(--soft-red);
+    }
+
+    .label {
+      display: inline-block;
+      width: fit-content;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .label.green { background: var(--green); }
+    .label.amber { background: var(--amber); }
+    .label.red { background: var(--red); }
+
+    .step {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .num {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--blue);
+      font-weight: 850;
+      font-size: 14px;
+    }
+
+    .rail {
+      border-left: 3px solid var(--line);
+      padding-left: 16px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .flow div {
+      display: grid;
+      align-content: center;
+      min-height: 86px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 12px;
+      text-align: center;
+      font-weight: 750;
+    }
+
+    .flow span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .small { font-size: 14px; color: var(--muted); }
+
+    @media (max-width: 860px) {
+      header, section {
+        grid-template-columns: 1fr;
+      }
+
+      header { gap: 22px; }
+      section { gap: 18px; }
+      .grid, .two, .flow { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <span class="eyebrow">Volt architecture spec</span>
+      <h1>Project Framework</h1>
+    </div>
+    <div class="meta">
+      <p><strong>Date:</strong> 2026-06-02</p>
+      <p><strong>Status:</strong> proposed design and implementation plan</p>
+      <p><strong>Scope:</strong> Python project structure, deterministic build result, declared assets, viewer bundle, and future analysis hooks.</p>
+      <p><strong>Guiding sentence:</strong> A Volt project is a deterministic Python entrypoint for constructing kernel-owned electronics state and declared physical assets.</p>
+    </div>
+  </header>
+
+  <section>
+    <aside>
+      <span class="label green">Thesis</span>
+    </aside>
+    <div class="stack">
+      <p class="dek">
+        <code>volt.Project</code> should be boring. It is not an application framework, package
+        manager, task runner, or alternate EDA model. It is a tiny structure around the Python
+        code that defines electronics, runs that definition, and returns a deterministic result
+        that the app, viewer, tests, exporters, agents, and future simulation tools can consume.
+      </p>
+      <div class="callout green">
+        <p>
+          The project framework gives Volt a stable answer to: "What code builds this board?"
+          It does not change the answer to: "Who owns electronics meaning?" The kernel still owns
+          circuits, schematics, PCB projections, validation, and serialized design state.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Problem</span>
+    </aside>
+    <div class="stack">
+      <h2>What is missing today</h2>
+      <p>
+        Current examples work by convention: each file defines a local <code>build_example()</code>,
+        local artifact dataclasses, and local <code>write_artifacts(...)</code> functions. That is
+        enough for tests, but it leaves every consumer to guess how to run a design, which outputs
+        matter, where assets live, and how diagnostics should be collected.
+      </p>
+      <div class="grid">
+        <div class="panel tight">
+          <h3>Application problem</h3>
+          <p class="small">The future app needs one known entrypoint to run, inspect, visualize, and rerun after an agent changes code.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Viewer problem</h3>
+          <p class="small">The 3D viewer needs PCB JSON plus generated or referenced model assets, not only arbitrary Python state.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Simulation problem</h3>
+          <p class="small">Future analyses need a structured place to be declared without making simulation scripts own circuit meaning.</p>
+        </div>
+      </div>
+      <div class="callout amber">
+        <p>
+          Without a project layer, every tool becomes a one-off runner for arbitrary Python. That
+          is flexible in the worst way: powerful, but hard for an app, agent, CI job, or viewer to
+          understand reliably.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Principles</span>
+    </aside>
+    <div class="stack">
+      <h2>Design principles</h2>
+      <div class="two">
+        <div class="panel tight">
+          <h3>1. Project is orchestration, not EDA meaning</h3>
+          <p class="small">
+            A project may call Python APIs, register generated assets, and collect outputs. Nets,
+            components, footprints, schematics, board geometry, routes, rules, and diagnostics
+            remain kernel-owned model data.
+          </p>
+        </div>
+        <div class="panel tight">
+          <h3>2. Boring primitives first</h3>
+          <p class="small">
+            The core API is just project, build context, result, artifact, and asset. Higher-level
+            templates and app workflows can compose those primitives later.
+          </p>
+        </div>
+        <div class="panel tight">
+          <h3>3. Python builds, JSON communicates</h3>
+          <p class="small">
+            The app can execute project Python in a controlled run. The viewer should consume the
+            resulting JSON and assets, never depend on executing arbitrary Python.
+          </p>
+        </div>
+        <div class="panel tight">
+          <h3>4. Determinism is a feature</h3>
+          <p class="small">
+            Re-running the same project should produce stable artifacts, stable IDs, stable asset
+            paths, stable hashes, and comparable diagnostics.
+          </p>
+        </div>
+        <div class="panel tight">
+          <h3>5. App hooks are downstream</h3>
+          <p class="small">
+            The product app can watch files, run agents, show viewers, diff results, and manage UI
+            state. The project framework only provides the reliable electronics construction
+            contract.
+          </p>
+        </div>
+        <div class="panel tight">
+          <h3>6. Plain scripts still work</h3>
+          <p class="small">
+            Volt remains a Python library. <code>Project</code> is the recommended structured path
+            for serious, app-backed, bundled, or testable designs, not a requirement for every quick
+            script.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label red">Non-goals</span>
+    </aside>
+    <div class="stack">
+      <h2>What this must not become</h2>
+      <div class="callout red">
+        <p>
+          The main failure mode is letting <code>Project</code> expand until it becomes a hidden
+          application runtime. That would make Volt harder to understand and would blur the kernel
+          ownership boundary.
+        </p>
+      </div>
+      <ul>
+        <li>No package manager or dependency resolver.</li>
+        <li>No general-purpose task graph.</li>
+        <li>No build system replacement.</li>
+        <li>No persistent workspace database.</li>
+        <li>No UI state store.</li>
+        <li>No hidden source of truth for circuit, schematic, PCB, simulation, or manufacturing semantics.</li>
+        <li>No Python-only EDA meaning that cannot be serialized or inspected after the run.</li>
+        <li>No requirement that every Volt script must become a project.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Layers</span>
+    </aside>
+    <div class="stack">
+      <h2>Ownership boundaries</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Owns</th>
+            <th>Does not own</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Kernel</td>
+            <td>EDA state: components, pins, nets, physical parts, schematic projections, PCB projections, rules, validation, serialization.</td>
+            <td>How a Python file is organized, where assets are written, app UI state, file watching.</td>
+          </tr>
+          <tr>
+            <td>Python authoring</td>
+            <td>Ergonomic syntax for creating kernel-owned state and declared generated assets.</td>
+            <td>Alternate semantics that cannot lower into the kernel or project result.</td>
+          </tr>
+          <tr>
+            <td>Project framework</td>
+            <td>Build entrypoint, context, output collection, asset registry, diagnostics aggregation, deterministic bundle writing.</td>
+            <td>Nets, routes, boards, simulation math, manufacturing meaning, app behavior.</td>
+          </tr>
+          <tr>
+            <td>Application</td>
+            <td>Chat, editor, file watching, agent workflow, viewer UI, permissions, project navigation, result diffing.</td>
+            <td>Canonical electronics meaning.</td>
+          </tr>
+          <tr>
+            <td>Viewer/exporters</td>
+            <td>Projections from project result artifacts into 2D, 3D, KiCad, Gerber, STEP, simulation results, reports.</td>
+            <td>Repairing or inventing missing design semantics.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label green">API</span>
+    </aside>
+    <div class="stack">
+      <h2>First user-facing API</h2>
+      <p>
+        The first API should feel nearly invisible. A user names a project, marks the function that
+        constructs the electronics, and then asks Volt to run it.
+      </p>
+      <pre><code>import volt
+
+project = volt.Project("my-board")
+
+@project.build
+def build(ctx: volt.BuildContext) -&gt; volt.Design:
+    design = volt.Design("my-board")
+
+    # Define logical circuit.
+    # Author schematic projection.
+    # Author PCB projection.
+    # Declare or generate physical assets when needed.
+
+    return design
+
+if __name__ == "__main__":
+    project.write("dist/my-board.volt")</code></pre>
+      <div class="callout green">
+        <p>
+          <code>project.write(...)</code> is convenience. The core operation is
+          <code>result = project.run()</code>. A result is only the current output of executing the
+          electronics definition. It is not version history, a cache, or persistent project state.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Types</span>
+    </aside>
+    <div class="stack">
+      <h2>Core data structures</h2>
+      <div class="grid">
+        <div class="panel tight">
+          <h3><code>Project</code></h3>
+          <p class="small">Names the project and stores one build entrypoint. It can run the entrypoint and write the result bundle.</p>
+        </div>
+        <div class="panel tight">
+          <h3><code>BuildContext</code></h3>
+          <p class="small">Supplies deterministic paths, project metadata, asset registration helpers, and optional publish helpers.</p>
+        </div>
+        <div class="panel tight">
+          <h3><code>ProjectResult</code></h3>
+          <p class="small">Simple immutable result of one run: design, collected projections, diagnostics, artifacts, and assets.</p>
+        </div>
+        <div class="panel tight">
+          <h3><code>ProjectArtifact</code></h3>
+          <p class="small">A typed output such as logical JSON, PCB JSON, schematic JSON, SVG, validation report, or export report.</p>
+        </div>
+        <div class="panel tight">
+          <h3><code>ProjectAsset</code></h3>
+          <p class="small">A referenced or generated file needed by artifacts, such as a 3D model, texture, STEP file, or future simulation dataset.</p>
+        </div>
+        <div class="panel tight">
+          <h3><code>ProjectManifest</code></h3>
+          <p class="small">Deterministic index describing every artifact, asset, hash, role, and primary viewer entrypoint in the bundle.</p>
+        </div>
+      </div>
+      <pre><code>class Project:
+    def __init__(self, name: str, *, version: str = "0.1.0"): ...
+    def build(self, fn): ...
+    def run(self, *, output_dir: str | Path | None = None) -&gt; ProjectResult: ...
+    def write(self, path: str | Path) -&gt; ProjectResult: ...
+
+class BuildContext:
+    project_name: str
+    root: Path
+    output_dir: Path | None
+    assets: AssetRegistry
+    def publish(self, item, *, role: str | None = None, name: str | None = None) -&gt; None: ...
+
+class ProjectResult:
+    design: volt.Design
+    artifacts: tuple[ProjectArtifact, ...]
+    assets: tuple[ProjectAsset, ...]
+    diagnostics: volt.DiagnosticReport
+    def write(self, path: str | Path) -&gt; None: ...</code></pre>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Return</span>
+    </aside>
+    <div class="stack">
+      <h2>What the build function returns</h2>
+      <p>
+        The first version should allow the build function to return a <code>volt.Design</code>.
+        That keeps authoring simple and avoids inventing a project-specific EDA object. The result
+        builder can discover projections attached to the design, then collect logical, schematic,
+        PCB, SVG, and validation artifacts.
+      </p>
+      <div class="two">
+        <div class="panel tight">
+          <h3>Default path</h3>
+          <pre><code>@project.build
+def build(ctx):
+    design = volt.Design("controller")
+    ...
+    return design</code></pre>
+        </div>
+        <div class="panel tight">
+          <h3>Explicit publish path</h3>
+          <pre><code>@project.build
+def build(ctx):
+    design = volt.Design("controller")
+    schematic = design.schematic("Main")
+    board = design.board("Main")
+
+    ctx.publish(schematic, role="main")
+    ctx.publish(board, role="main")
+    return design</code></pre>
+        </div>
+      </div>
+      <div class="callout amber">
+        <p>
+          <code>ctx.publish(...)</code> is only an output selection primitive. It does not make the
+          context own the board or schematic. It tells the project result which kernel-owned
+          projections should be primary artifacts when automatic discovery is ambiguous.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Run</span>
+    </aside>
+    <div class="stack">
+      <h2>Project run lifecycle</h2>
+      <div class="flow">
+        <div>Load<span>Import project Python</span></div>
+        <div>Run<span>Call build(ctx)</span></div>
+        <div>Collect<span>Design, projections, diagnostics</span></div>
+        <div>Lower<span>Artifacts and assets</span></div>
+        <div>Write<span>Bundle or in-memory result</span></div>
+      </div>
+      <div class="stack">
+        <div class="step">
+          <div class="num">1</div>
+          <div>
+            <h3>Create context</h3>
+            <p class="small">Resolve project root, deterministic output path, asset registry, and project metadata.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <div>
+            <h3>Execute build entrypoint</h3>
+            <p class="small">Call the registered function. Kernel mutation APIs reject structurally invalid state as usual.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <div>
+            <h3>Collect kernel outputs</h3>
+            <p class="small">Find the returned design and any published or discoverable schematic and PCB projections.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">4</div>
+          <div>
+            <h3>Validate and aggregate diagnostics</h3>
+            <p class="small">Run logical validation, schematic readiness/readability where applicable, PCB validation, and asset validation.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="num">5</div>
+          <div>
+            <h3>Materialize artifacts</h3>
+            <p class="small">Create deterministic JSON, SVG, reports, model assets, and a manifest that indexes the result.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label green">Bundle</span>
+    </aside>
+    <div class="stack">
+      <h2>Viewer and application bundle</h2>
+      <p>
+        The result can be consumed in memory by tests and the app, or written as a directory bundle.
+        The bundle is the handoff between Python execution and consumers that should not execute
+        Python, such as the viewer.
+      </p>
+      <pre><code>my-board.volt/
+  manifest.volt.json
+  logical/
+    my-board.volt.json
+  schematic/
+    main.volt.schematic.json
+    main.svg
+    pages/
+      main.svg
+  pcb/
+    main.volt.pcb.json
+    main.pcb.svg
+  diagnostics/
+    report.json
+  assets/
+    models/
+      soic8.glb
+      resistor_0603.glb
+    cad/
+      enclosure.step</code></pre>
+      <p>
+        The exact directory names can change, but the contract should not: the manifest lists all
+        artifacts and assets, their roles, stable IDs, media types, paths, and hashes.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Manifest</span>
+    </aside>
+    <div class="stack">
+      <h2>Manifest shape</h2>
+      <pre><code>{
+  "schema": "volt.project.manifest",
+  "version": 1,
+  "project": {
+    "name": "my-board",
+    "source": "project.py",
+    "build": "build"
+  },
+  "entrypoints": {
+    "logical": "logical/my-board.volt.json",
+    "schematic": "schematic/main.volt.schematic.json",
+    "pcb": "pcb/main.volt.pcb.json",
+    "viewer": "pcb/main.volt.pcb.json"
+  },
+  "artifacts": [
+    {
+      "role": "pcb-json",
+      "path": "pcb/main.volt.pcb.json",
+      "media_type": "application/vnd.volt.pcb+json",
+      "sha256": "..."
+    }
+  ],
+  "assets": [
+    {
+      "role": "model-3d",
+      "path": "assets/models/soic8.glb",
+      "media_type": "model/gltf-binary",
+      "sha256": "...",
+      "source": "generated"
+    }
+  ],
+  "diagnostics": {
+    "path": "diagnostics/report.json",
+    "summary": { "errors": 0, "warnings": 1, "infos": 0 }
+  }
+}</code></pre>
+      <div class="callout">
+        <p>
+          The PCB JSON can reference <code>assets/models/soic8.glb</code>. The manifest proves the
+          asset exists and gives the viewer a hash and media type. This keeps binary model data out
+          of normal JSON while still making the bundle complete.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Assets</span>
+    </aside>
+    <div class="stack">
+      <h2>Asset registry</h2>
+      <p>
+        Assets are declared during the project run, then copied or generated into the bundle. This
+        is the missing bridge for code-defined or externally sourced physical models.
+      </p>
+      <pre><code>@project.build
+def build(ctx):
+    design = volt.Design("my-board")
+
+    soic_model = ctx.assets.generated(
+        "models/soic8.glb",
+        kind="model-3d",
+        media_type="model/gltf-binary",
+        write=lambda path: make_soic8_model(path),
+        source="generated:parametric"
+    )
+
+    part = volt.PhysicalPartSpec(
+        manufacturer="Texas Instruments",
+        part_number="NE555DR",
+        package="SOIC-8",
+        footprint=SOIC8,
+        pin_pads={...},
+        properties={
+            "model_3d": soic_model.ref
+        },
+    )
+
+    return design</code></pre>
+      <div class="two">
+        <div class="panel tight">
+          <h3>Generated assets</h3>
+          <p class="small">Created during the run from deterministic Python functions, package dimensions, or future CAD helpers.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Referenced assets</h3>
+          <p class="small">Existing vendor or library files copied into the bundle or referenced with stable URI and hash.</p>
+        </div>
+      </div>
+      <div class="callout amber">
+        <p>
+          First implementation can store asset refs in structured properties until first-class 3D
+          model value types land. The framework still gives the app and viewer a place to find the
+          asset and verify it.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">3D</span>
+    </aside>
+    <div class="stack">
+      <h2>How this supports the 3D viewer</h2>
+      <p>
+        The viewer should not execute Python. The project run is where Python-authored shapes,
+        generated models, and external assets are resolved into a stable result. The viewer receives
+        the PCB JSON plus manifest-indexed assets.
+      </p>
+      <div class="rail stack">
+        <p><strong>Python source:</strong> defines parts, footprints, board geometry, and declared or generated physical assets.</p>
+        <p><strong>Project run:</strong> executes the source once, writes or indexes generated assets, and emits PCB JSON.</p>
+        <p><strong>PCB JSON:</strong> references component model assets, placement transforms, board geometry, layers, and stable IDs.</p>
+        <p><strong>Manifest:</strong> tells the viewer where those assets are and verifies hashes.</p>
+        <p><strong>Viewer:</strong> loads JSON and assets, builds a 3D scene, and maps selections back to stable Volt IDs.</p>
+      </div>
+      <div class="callout green">
+        <p>
+          This lets Volt support Python-defined physical models without putting Python in the
+          viewer. Code is the source of truth for authoring; JSON and assets are the portable
+          projection for rendering.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Simulation</span>
+    </aside>
+    <div class="stack">
+      <h2>Future simulation hooks</h2>
+      <p>
+        Simulation should not be part of the first implementation, but the project layer gives it a
+        natural future home. The project can declare named analyses while the kernel and simulation
+        model contracts own the electrical meaning.
+      </p>
+      <pre><code>@project.simulation("startup")
+def startup(ctx, design):
+    return volt.SimulationScenario(
+        board="Main",
+        duration="10ms",
+        probes=["OUT", "+5V"],
+    )</code></pre>
+      <p>
+        This is not a task runner. It is a way to expose "these are the analyses this electronics
+        project defines" to the app, CI, and agents. The simulation graph, validation rules, and
+        backend adapters remain separate kernel/model work.
+      </p>
+      <div class="grid">
+        <div class="panel tight">
+          <h3>App benefit</h3>
+          <p class="small">The app can list named analyses and run them without reading arbitrary script conventions.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Agent benefit</h3>
+          <p class="small">Agents can modify a circuit, rerun the project, and compare simulation outputs deterministically.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Kernel boundary</h3>
+          <p class="small">Project declares the scenario. Simulation contracts lower the design into analysis data.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label green">Enables</span>
+    </aside>
+    <div class="stack">
+      <h2>What this enables</h2>
+      <div class="grid">
+        <div class="panel tight">
+          <h3>One-click project open</h3>
+          <p class="small">The app can load one file, find the build entrypoint, run it, and open the main board or schematic.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Reliable agent loop</h3>
+          <p class="small">Agent edits code, project reruns, result diff shows logical, schematic, PCB, 3D, and diagnostic changes.</p>
+        </div>
+        <div class="panel tight">
+          <h3>3D viewer bundle</h3>
+          <p class="small">PCB JSON and model assets travel together, so the viewer gets complete render inputs.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Generated physical assets</h3>
+          <p class="small">Part definitions can generate model assets during the run and reference them deterministically.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Project regression tests</h3>
+          <p class="small">Tests can assert that a project run produces stable artifacts and expected diagnostics.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Manufacturing handoff</h3>
+          <p class="small">KiCad/Gerber/STEP exporters can consume a ProjectResult instead of re-running custom example code.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Simulation scenarios</h3>
+          <p class="small">Named analyses can become first-class project outputs later without becoming the project framework itself.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Component library QA</h3>
+          <p class="small">Library packages can include tiny projects that prove parts lower into footprints, board geometry, and assets.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Templateable projects</h3>
+          <p class="small">The app can create starter projects with normal Python files and a boring known entrypoint.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label amber">Tradeoffs</span>
+    </aside>
+    <div class="stack">
+      <h2>What we give up</h2>
+      <ul>
+        <li>Some arbitrary script freedom in the app-backed path. Users can still write scripts, but the product path has a known project entrypoint.</li>
+        <li>Build functions need to be deterministic enough for stable artifacts, hashes, and agent diffs.</li>
+        <li>Generated outputs become generated outputs. Users should edit source code, not hand-edit bundle artifacts.</li>
+        <li>The framework adds a small API surface that must be maintained with the same care as the rest of Python authoring.</li>
+        <li>Application runners will need to execute project Python, which is powerful but not a safe declarative file format. The bundle is the safer viewer/export surface.</li>
+        <li>We will need rules for asset path collisions, stale generated assets, and what happens when a build fails halfway.</li>
+      </ul>
+      <div class="callout amber">
+        <p>
+          These are acceptable tradeoffs because they buy a stable boundary between source code and
+          product experience. The alternative is every app feature inventing its own way to run and
+          understand arbitrary Python files.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Errors</span>
+    </aside>
+    <div class="stack">
+      <h2>Error handling and diagnostics</h2>
+      <div class="two">
+        <div class="panel tight">
+          <h3>Structural errors</h3>
+          <p class="small">
+            Invalid kernel mutations still fail immediately. The project framework should not catch
+            and reinterpret invalid kernel state as diagnostics.
+          </p>
+        </div>
+        <div class="panel tight">
+          <h3>Design diagnostics</h3>
+          <p class="small">
+            Logical validation, schematic readiness/readability, PCB DRC, asset missing warnings,
+            and future simulation readiness checks are aggregated into result diagnostics.
+          </p>
+        </div>
+      </div>
+      <pre><code>{
+  "build": {
+    "status": "completed",
+    "errors": 0,
+    "warnings": 2
+  },
+  "reports": {
+    "logical": "diagnostics/logical.json",
+    "schematic:Main": "diagnostics/schematic-main.json",
+    "pcb:Main": "diagnostics/pcb-main.json",
+    "assets": "diagnostics/assets.json"
+  }
+}</code></pre>
+      <p>
+        If Python raises during the build, the app receives a project run failure with traceback
+        context. If the design builds but has bad design intent, the result contains diagnostics.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Testing</span>
+    </aside>
+    <div class="stack">
+      <h2>Testing strategy</h2>
+      <div class="grid">
+        <div class="panel tight">
+          <h3>Unit tests</h3>
+          <p class="small">Project registration, duplicate build functions, invalid return values, asset registration, manifest sorting.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Example tests</h3>
+          <p class="small">Migrate LED board and 555 benchmark to project runs while preserving deterministic output.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Bundle tests</h3>
+          <p class="small">Write the same project twice and assert identical manifest, JSON, SVG, diagnostics, and asset hashes.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Failure tests</h3>
+          <p class="small">Missing build function, build exception, missing asset writer output, duplicate asset path, invalid artifact role.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Viewer contract tests</h3>
+          <p class="small">Assert PCB JSON model refs are present in manifest assets and every referenced asset exists.</p>
+        </div>
+        <div class="panel tight">
+          <h3>Compatibility tests</h3>
+          <p class="small">Plain scripts and existing direct <code>Design</code>, <code>Schematic</code>, and <code>Board</code> APIs continue to work.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label green">Plan</span>
+    </aside>
+    <div class="stack">
+      <h2>Implementation plan</h2>
+      <div class="step">
+        <div class="num">1</div>
+        <div>
+          <h3>Introduce the minimal project API</h3>
+          <p class="small">
+            Add <code>Project</code>, <code>BuildContext</code>, <code>ProjectResult</code>,
+            <code>ProjectArtifact</code>, and <code>ProjectAsset</code> in Python. First version
+            supports one build function returning <code>Design</code>.
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <div>
+          <h3>Collect existing outputs</h3>
+          <p class="small">
+            Convert logical JSON, schematic JSON/SVG, PCB JSON/SVG, and validation reports into
+            result artifacts. Use direct existing APIs rather than adding new kernel semantics.
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div>
+          <h3>Add deterministic bundle writing</h3>
+          <p class="small">
+            Write a directory bundle with manifest, artifacts, diagnostics, and asset entries. Add
+            stable ordering and hash calculation.
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <div>
+          <h3>Add asset registry</h3>
+          <p class="small">
+            Support referenced and generated assets. Begin with generic file assets, then connect
+            this to PCB 3D model refs when those value types are settled.
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">5</div>
+        <div>
+          <h3>Migrate examples</h3>
+          <p class="small">
+            Convert PCB LED board and 555 timer board examples to <code>volt.Project</code> while
+            preserving old helper functions temporarily if tests or docs still call them.
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">6</div>
+        <div>
+          <h3>Define application integration contract</h3>
+          <p class="small">
+            Document how the app locates a project file, runs it, reads a result, opens the viewer,
+            and maps selected IDs back to source-facing objects.
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">7</div>
+        <div>
+          <h3>Add future analysis registration only after simulation contracts</h3>
+          <p class="small">
+            Keep simulation hooks out of the first PR unless they are only documentation. Add them
+            after kernel-owned simulation model contracts exist.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label">Tickets</span>
+    </aside>
+    <div class="stack">
+      <h2>Suggested Linear breakdown</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Ticket</th>
+            <th>Outcome</th>
+            <th>Acceptance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Define Volt Project framework contract</td>
+            <td>Persist this architecture decision and API shape.</td>
+            <td>Single-page spec, non-goals, object responsibilities, first API, bundle contract.</td>
+          </tr>
+          <tr>
+            <td>Add minimal Python <code>Project</code> API</td>
+            <td>Users can register and run a build function returning <code>Design</code>.</td>
+            <td>Project, context, result, duplicate registration errors, build failure behavior, unit tests.</td>
+          </tr>
+          <tr>
+            <td>Add project bundle manifest and writer</td>
+            <td>Project results can be written as deterministic app/viewer bundles.</td>
+            <td>Manifest JSON, artifact roles, hashes, stable paths, deterministic tests.</td>
+          </tr>
+          <tr>
+            <td>Add project asset registry</td>
+            <td>Generated or referenced files can be declared during a project run.</td>
+            <td>Referenced assets, generated assets, duplicate path checks, missing output diagnostics, hashes.</td>
+          </tr>
+          <tr>
+            <td>Migrate examples to <code>volt.Project</code></td>
+            <td>Examples demonstrate the official structured project workflow.</td>
+            <td>PCB LED, 555 timer, schematic examples preserve artifacts and deterministic tests.</td>
+          </tr>
+          <tr>
+            <td>Connect PCB 3D model refs to project assets</td>
+            <td>PCB JSON can reference bundle assets for the future 3D viewer.</td>
+            <td>Asset-backed model refs appear in PCB JSON and are validated against manifest assets.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label amber">Questions</span>
+    </aside>
+    <div class="stack">
+      <h2>Decisions to make before implementation</h2>
+      <ol>
+        <li>Should <code>project.write(path)</code> write a directory bundle by default, or should it require <code>write_bundle(...)</code> for clarity?</li>
+        <li>Should the first version auto-discover all boards and schematics, or require explicit <code>ctx.publish(...)</code> for the primary outputs?</li>
+        <li>Should bundle paths include project name in filenames, or use stable generic paths such as <code>pcb/main.volt.pcb.json</code>?</li>
+        <li>Should build functions be required to accept <code>ctx</code>, or should zero-argument build functions be supported for small scripts?</li>
+        <li>Should generated assets be written during build execution, or staged and written only when the result bundle is written?</li>
+      </ol>
+      <div class="callout">
+        <p>
+          Recommended defaults: directory bundle, auto-discover with optional explicit publish,
+          project-name filenames for human readability, require <code>ctx</code>, and stage generated
+          assets until bundle writing so failed runs do not leave partial output.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <span class="label green">Definition</span>
+    </aside>
+    <div class="stack">
+      <h2>Definition of done for the first milestone</h2>
+      <ul>
+        <li><code>volt.Project</code> can register exactly one build function.</li>
+        <li>A project run returns a <code>ProjectResult</code> containing the returned <code>Design</code>.</li>
+        <li>The result can write deterministic logical, schematic, PCB, SVG, diagnostics, manifest, and asset entries for existing examples.</li>
+        <li>The result exposes artifacts and assets in memory for the application.</li>
+        <li>Generated output paths are deterministic and reject unsafe or duplicate paths.</li>
+        <li>Existing direct Python authoring APIs remain valid.</li>
+        <li>At least one PCB example and one schematic-only example use the framework.</li>
+        <li>Tests prove repeated runs are stable.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+</body>
+</html>
