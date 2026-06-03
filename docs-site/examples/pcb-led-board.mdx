@@ -1,6 +1,6 @@
 ---
 title: PCB LED Board
-description: Build a tiny board from logical design through selected parts, footprints, placement, routing, validation, and SVG.
+description: Build a tiny board from logical design through selected parts, footprints, placement, routing, validation, SVG, and KiCad PCB export.
 ---
 
 The PCB LED board is the first full path from logical authoring to a board projection.
@@ -23,7 +23,7 @@ Source: `examples/pcb_led_board/main.py`.
     Add layers, outline, mounting holes, placements, and tracks.
   </Step>
   <Step title="Validate and write artifacts">
-    Run logical, PCB-readiness, schematic, readability, and board validation before writing JSON/SVG.
+    Run logical, PCB-readiness, schematic, readability, and board validation before writing JSON/SVG/KiCad artifacts.
   </Step>
 </Steps>
 
@@ -58,5 +58,14 @@ board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 18.0))
 board.place(parts["R1"], at=(15.0, 7.0), rotation=0.0, side="top")
 board.add_track(nets["+3V3"], layer=front, points=[(5.0, 7.73), (14.25, 7.0)], width=0.25)
 ```
+
+## KiCad handoff
+
+```python
+export = board.write_kicad_pcb("pcb_led_board.kicad_pcb")
+assert export.warnings == ()
+```
+
+The KiCad file is an adapter output for inspection and downstream Gerber/Excellon generation. Volt board JSON remains the source of truth. The checked-in artifact is expected to parse in KiCad, pass KiCad PCB DRC, and export Gerber plus Excellon drill files.
 
 This is the best starting point for learning how Volt connects logical selected parts to physical footprint and pad data without using the board API to choose library part geometry.

@@ -32,8 +32,10 @@ Source: `python/volt/pcb.py`
 | `validate(self) -> DiagnosticReport` | Run PCB projection validation and return the diagnostic report. |
 | `to_json(self) -> str` | Serialize the PCB projection to Volt board JSON. |
 | `to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True) -> str` | Render the PCB projection as SVG. |
+| `to_kicad_pcb(self) -> KiCadPcbExport` | Export the PCB projection to a KiCad `.kicad_pcb` adapter document. |
 | `write_json(self, path: str \| Path) -> None` | Write the PCB projection JSON to a file. |
 | `write_svg(self, path: str \| Path) -> None` | Write the PCB projection SVG to a file. |
+| `write_kicad_pcb(self, path: str \| Path) -> KiCadPcbExport` | Write the KiCad PCB adapter document and return its loss report. |
 
 ## `volt.Footprint`
 
@@ -103,6 +105,34 @@ Source: `python/volt/pcb.py`
 | --- | --- |
 | `surface_mount(cls, label: str, *, at: Point, size: Point, shape: str = 'rounded_rectangle', layers: str = 'front_smd', mechanical_role: str \| None = None) -> FootprintPad` | Create a surface-mount footprint pad definition. |
 | `through_hole(cls, label: str, *, at: Point, size: Point, drill: FootprintDrill, shape: str = 'circle', layers: str = 'through_hole', mechanical_role: str \| None = None) -> FootprintPad` | Create a through-hole footprint pad definition with drill metadata. |
+
+## `volt.KiCadLossWarning`
+
+Structured warning for an unsupported or lossy KiCad adapter construct.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `kind: str` |
+| `construct: str` |
+| `message: str` |
+| `severity: str` |
+
+## `volt.KiCadPcbExport`
+
+Result of exporting a board projection to a KiCad PCB file.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `text: str` |
+| `warnings: tuple[KiCadLossWarning, ...]` |
 
 ## `volt.PadResolution`
 

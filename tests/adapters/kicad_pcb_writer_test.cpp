@@ -1,0 +1,297 @@
+#include <catch2/catch_test_macros.hpp>
+
+#include <fstream>
+#include <iterator>
+#include <set>
+#include <string>
+#include <vector>
+
+#include <volt/adapters/kicad/pcb_writer.hpp>
+#include <volt/circuit/circuit.hpp>
+#include <volt/circuit/queries.hpp>
+#include <volt/pcb/board.hpp>
+#include <volt/pcb/footprints.hpp>
+
+namespace {
+
+std::string read_fixture(const std::string &name) {
+    auto input = std::ifstream{std::string{VOLT_TEST_FIXTURE_DIR} + "/" + name};
+    return {std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+}
+
+[[nodiscard]] std::size_t count_occurrences(const std::string &text, std::string_view needle) {
+    auto count = std::size_t{0};
+    auto position = std::size_t{0};
+    while ((position = text.find(needle, position)) != std::string::npos) {
+        ++count;
+        position += needle.size();
+    }
+    return count;
+}
+
+[[nodiscard]] std::vector<std::string> extract_uuids(const std::string &text) {
+    auto uuids = std::vector<std::string>{};
+    const auto marker = std::string{"(uuid \""};
+    auto position = std::size_t{0};
+    while ((position = text.find(marker, position)) != std::string::npos) {
+        const auto start = position + marker.size();
+        const auto end = text.find('"', start);
+        REQUIRE(end != std::string::npos);
+        uuids.push_back(text.substr(start, end - start));
+        position = end;
+    }
+    return uuids;
+}
+
+struct ResistorCircuit {
+    volt::Circuit circuit;
+    volt::ComponentId component;
+    volt::PinDefId first_pin_definition;
+    volt::PinDefId second_pin_definition;
+    volt::NetId left_net;
+    volt::NetId right_net;
+};
+
+[[nodiscard]] ResistorCircuit make_resistor_circuit() {
+    auto circuit = volt::Circuit{};
+    const auto first_pin_definition =
+        circuit.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
+    const auto second_pin_definition =
+        circuit.add_pin_definition(volt::PinDefinition{"B", "2", volt::PinRole::Passive});
+    const auto component_definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
+    const auto component =
+        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    circuit.set_component_property(component, volt::PropertyKey{"Value"},
+                                   volt::PropertyValue{"330R"});
+
+    const auto first_pin =
+        volt::queries::pin_by_definition(circuit, component, first_pin_definition).value();
+    const auto second_pin =
+        volt::queries::pin_by_definition(circuit, component, second_pin_definition).value();
+    const auto left_net = circuit.add_net(volt::Net{volt::NetName{"LEFT"}, volt::NetKind::Signal});
+    const auto right_net =
+        circuit.add_net(volt::Net{volt::NetName{"RIGHT"}, volt::NetKind::Signal});
+    circuit.connect(left_net, first_pin);
+    circuit.connect(right_net, second_pin);
+    circuit.select_physical_part(component,
+                                 volt::PhysicalPart{
+                                     volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                                     volt::PackageRef{"0603"},
+                                     volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                                     std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                                 volt::PinPadMapping{second_pin_definition, "2"}},
+                                 });
+
+    return ResistorCircuit{std::move(circuit),    component, first_pin_definition,
+                           second_pin_definition, left_net,  right_net};
+}
+
+[[nodiscard]] volt::Board make_routed_board(const ResistorCircuit &fixture) {
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
+    [[maybe_unused]] const auto feature = board.add_feature(
+        volt::BoardFeature::mounting_hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2));
+    [[maybe_unused]] const auto footprint =
+        board.cache_footprint_definition(volt::passive_0603_footprint());
+    [[maybe_unused]] const auto placement = board.place_component(
+        volt::ComponentPlacement{fixture.component, volt::BoardPoint{25.0, 15.0},
+                                 volt::BoardRotation::degrees(90.0), volt::BoardSide::Top, true});
+    [[maybe_unused]] const auto track = board.add_track(volt::BoardTrack{
+        fixture.left_net,
+        front,
+        std::vector{
+            volt::BoardPoint{5.0, 5.0},
+            volt::BoardPoint{12.0, 5.0},
+            volt::BoardPoint{12.0, 8.0},
+        },
+        0.25,
+    });
+    [[maybe_unused]] const auto via = board.add_via(
+        volt::BoardVia{fixture.left_net, volt::BoardPoint{12.0, 8.0}, front, back, 0.30, 0.70});
+    [[maybe_unused]] const auto text =
+        board.add_text(volt::BoardText{"REV A", volt::BoardPoint{5.0, 24.0},
+                                       volt::BoardRotation::degrees(90.0), front, 1.2, true});
+    return board;
+}
+
+[[nodiscard]] volt::FootprintDefinition make_large_footprint(std::size_t pad_count) {
+    auto pads = std::vector<volt::FootprintPad>{};
+    pads.reserve(pad_count);
+    for (std::size_t index = 0; index < pad_count; ++index) {
+        pads.push_back(volt::FootprintPad::surface_mount(
+            std::to_string(index + 1U), volt::FootprintPadShape::Rectangle,
+            volt::FootprintPoint{static_cast<double>(index) * 0.1, 0.0},
+            volt::FootprintSize{0.05, 0.05}, volt::FootprintLayerSet::front_smd()));
+    }
+    return volt::FootprintDefinition{volt::FootprintRef{"test", "LargePadArray"}, std::move(pads)};
+}
+
+struct TwoLargeFootprintComponents {
+    volt::Circuit circuit;
+    volt::ComponentId first_component;
+    volt::ComponentId second_component;
+};
+
+[[nodiscard]] TwoLargeFootprintComponents make_two_large_footprint_components() {
+    auto circuit = volt::Circuit{};
+    const auto first_pin_definition =
+        circuit.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
+    const auto second_pin_definition =
+        circuit.add_pin_definition(volt::PinDefinition{"B", "2", volt::PinRole::Passive});
+    const auto component_definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"LargePackage", {first_pin_definition, second_pin_definition}});
+    const auto first_component =
+        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"U1"});
+    const auto second_component =
+        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"U2"});
+
+    for (const auto component : {first_component, second_component}) {
+        circuit.select_physical_part(
+            component, volt::PhysicalPart{
+                           volt::ManufacturerPart{"Test", "LargePadArray"},
+                           volt::PackageRef{"LARGE"},
+                           volt::FootprintRef{"test", "LargePadArray"},
+                           std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                       volt::PinPadMapping{second_pin_definition, "2"}},
+                       });
+    }
+
+    return TwoLargeFootprintComponents{std::move(circuit), first_component, second_component};
+}
+
+} // namespace
+
+TEST_CASE("KiCad PCB writer exports a deterministic manufacturable board subset") {
+    const auto fixture = make_resistor_circuit();
+    const auto board = make_routed_board(fixture);
+
+    const auto result =
+        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+
+    CHECK_FALSE(result.loss_report.has_warnings());
+    CHECK(result.text == read_fixture("kicad_flat_resistor.kicad_pcb"));
+    CHECK(result.text ==
+          volt::adapters::kicad::write_board(board, volt::builtin_footprint_library()).text);
+}
+
+TEST_CASE("KiCad PCB writer reports unsupported out-of-subset board constructs") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_routed_board(fixture);
+    [[maybe_unused]] const auto zone = board.add_zone(volt::BoardZone{
+        std::vector{volt::BoardPoint{2.0, 2.0}, volt::BoardPoint{12.0, 2.0},
+                    volt::BoardPoint{12.0, 8.0}, volt::BoardPoint{2.0, 8.0}},
+        std::vector{volt::BoardLayerId{0}},
+        fixture.left_net,
+    });
+    [[maybe_unused]] const auto keepout = board.add_keepout(volt::BoardKeepout{
+        std::vector{volt::BoardPoint{15.0, 2.0}, volt::BoardPoint{18.0, 2.0},
+                    volt::BoardPoint{18.0, 6.0}, volt::BoardPoint{15.0, 6.0}},
+        std::vector{volt::BoardLayerId{0}, volt::BoardLayerId{1}},
+        std::vector{volt::BoardKeepoutRestriction::Copper,
+                    volt::BoardKeepoutRestriction::Placement},
+    });
+
+    const auto result =
+        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+
+    REQUIRE(result.loss_report.warnings().size() == 2);
+    CHECK(result.loss_report.warnings().at(0).kind ==
+          volt::adapters::kicad::LossKind::UnsupportedConstruct);
+    CHECK(result.loss_report.warnings().at(0).construct == "board.zone");
+    CHECK(result.loss_report.warnings().at(1).kind ==
+          volt::adapters::kicad::LossKind::UnsupportedConstruct);
+    CHECK(result.loss_report.warnings().at(1).construct == "board.keepout");
+}
+
+TEST_CASE("KiCad PCB writer keeps generated footprint metadata DRC-neutral") {
+    const auto fixture = make_resistor_circuit();
+    const auto board = make_routed_board(fixture);
+
+    const auto result =
+        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+
+    CHECK(result.text.find("(footprint \"passives:") == std::string::npos);
+    CHECK(result.text.find("(footprint \"Volt:") == std::string::npos);
+    CHECK(result.text.find("(footprint \"R_0603_1608Metric\"") != std::string::npos);
+    CHECK(result.text.find("(footprint \"MountingHole_NPTH\"") != std::string::npos);
+    CHECK(result.text.find("(49 \"F.Fab\" user)") != std::string::npos);
+    CHECK(result.text.find(
+              "(property \"Reference\" \"R1\"\n      (at 0 -1.5 0)\n      (layer \"F.Fab\")") !=
+          std::string::npos);
+    CHECK(result.text.find(
+              "(property \"Value\" \"330R\"\n      (at 0 1.5 0)\n      (layer \"F.Fab\")") !=
+          std::string::npos);
+}
+
+TEST_CASE("KiCad PCB writer does not collapse distinct Volt layers onto one KiCad layer") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_routed_board(fixture);
+    const auto auxiliary_front = board.add_layer(
+        volt::BoardLayer{"TopAux", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    [[maybe_unused]] const auto ambiguous_track = board.add_track(volt::BoardTrack{
+        fixture.right_net,
+        auxiliary_front,
+        std::vector{volt::BoardPoint{2.0, 2.0}, volt::BoardPoint{6.0, 2.0}},
+        0.25,
+    });
+
+    const auto result =
+        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+
+    CHECK(count_occurrences(result.text, "(segment\n") == 2);
+    REQUIRE(result.loss_report.warnings().size() == 2);
+    CHECK(result.loss_report.warnings().at(0).construct == "board.layer.mapping");
+    CHECK(result.loss_report.warnings().at(1).construct == "board.track.layer");
+}
+
+TEST_CASE("KiCad PCB writer generates unique UUIDs without footprint pad range contracts") {
+    auto fixture = make_two_large_footprint_components();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"LargeFootprints"}};
+    [[maybe_unused]] const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    [[maybe_unused]] const auto first_placement = board.place_component(
+        volt::ComponentPlacement{fixture.first_component, volt::BoardPoint{0.0, 0.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top, true});
+    [[maybe_unused]] const auto second_placement = board.place_component(
+        volt::ComponentPlacement{fixture.second_component, volt::BoardPoint{200.0, 0.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top, true});
+
+    auto footprints = volt::FootprintLibrary{};
+    footprints.add(make_large_footprint(950U));
+
+    const auto result = volt::adapters::kicad::write_board(board, footprints);
+    const auto uuids = extract_uuids(result.text);
+    const auto unique_uuids = std::set<std::string>{uuids.begin(), uuids.end()};
+
+    CHECK(uuids.size() == unique_uuids.size());
+}
+
+TEST_CASE("KiCad PCB writer reports invalid pad resolutions before omitting pad nets") {
+    auto fixture = make_resistor_circuit();
+    fixture.circuit.select_physical_part(
+        fixture.component, volt::PhysicalPart{
+                               volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                               volt::PackageRef{"0603"},
+                               volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "99"},
+                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+                           });
+    const auto board = make_routed_board(fixture);
+
+    const auto result =
+        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+
+    REQUIRE(result.loss_report.warnings().size() == 1);
+    const auto &warning = result.loss_report.warnings().at(0);
+    CHECK(warning.kind == volt::adapters::kicad::LossKind::IncompleteConstruct);
+    CHECK(warning.construct == "pad_resolution");
+    CHECK(warning.message.find("R1") != std::string::npos);
+    CHECK(warning.message.find("without a net") != std::string::npos);
+}

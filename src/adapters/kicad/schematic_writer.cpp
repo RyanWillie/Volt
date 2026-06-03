@@ -1,47 +1,8 @@
 #include <volt/adapters/kicad/schematic_writer.hpp>
 
+#include "format.hpp"
+
 namespace volt::adapters::kicad::detail {
-
-[[nodiscard]] std::string sexpr_string(std::string_view value) {
-    auto result = std::string{"\""};
-    for (const auto character : value) {
-        switch (character) {
-        case '\\':
-            result += "\\\\";
-            break;
-        case '"':
-            result += "\\\"";
-            break;
-        case '\n':
-            result += "\\n";
-            break;
-        case '\r':
-            result += "\\r";
-            break;
-        case '\t':
-            result += "\\t";
-            break;
-        default:
-            result += character;
-            break;
-        }
-    }
-    result += '"';
-    return result;
-}
-
-void write_number(std::ostream &out, double value) {
-    if (!std::isfinite(value)) {
-        throw std::invalid_argument{"KiCad schematic numeric values must be finite"};
-    }
-    if (std::abs(value) < 1e-12) {
-        value = 0.0;
-    }
-
-    auto formatted = std::ostringstream{};
-    formatted << std::setprecision(15) << value;
-    out << formatted.str();
-}
 
 void write_xy(std::ostream &out, Point point) {
     out << "(xy ";
@@ -85,23 +46,6 @@ void write_at(std::ostream &out, Point point, SchematicOrientation orientation) 
 
 [[nodiscard]] std::string symbol_library_name(const SymbolDefinition &symbol) {
     return "Volt:" + symbol.name();
-}
-
-[[nodiscard]] std::string property_value_to_string(const PropertyValue &value) {
-    switch (value.kind()) {
-    case PropertyValueKind::String:
-        return value.as_string();
-    case PropertyValueKind::Boolean:
-        return value.as_bool() ? "true" : "false";
-    case PropertyValueKind::Integer:
-        return std::to_string(value.as_integer());
-    case PropertyValueKind::Number: {
-        auto out = std::ostringstream{};
-        write_number(out, value.as_number());
-        return out.str();
-    }
-    }
-    throw std::logic_error{"Unhandled property value kind"};
 }
 
 void write_effects(std::ostream &out, bool hidden) {

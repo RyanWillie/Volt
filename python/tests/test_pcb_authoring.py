@@ -134,6 +134,55 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     assert svg_path.read_text(encoding="utf-8") == svg
 
 
+def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
+    design, r1, d1 = _small_resistor_led_design()
+    led_a = next(net for net in design.nets() if net.name == "LED_A")
+    board = design.board("Control")
+
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
+    board.add_mounting_hole("MH1", at=(3.0, 3.0), diameter=3.2)
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
+    board.place(r1, at=(18.0, 15.0), rotation=0.0, side="top", locked=True)
+    board.place(d1, at=(28.0, 15.0), rotation=180.0, side="top")
+    board.add_track(
+        led_a,
+        layer=front,
+        points=((18.75, 15.0), (23.0, 10.0), (28.75, 15.0)),
+        width=0.25,
+    )
+
+    export = board.to_kicad_pcb()
+
+    assert export.warnings == ()
+    assert export.text == board.to_kicad_pcb().text
+    assert export.text.startswith("(kicad_pcb\n")
+    assert '(generator "Volt")' in export.text
+    assert '(net 1 "VCC")' in export.text
+    assert '(net 2 "LED_A")' in export.text
+    assert '(footprint "R_0603_1608Metric"' in export.text
+    assert '(49 "F.Fab" user)' in export.text
+    assert '(segment\n    (start 18.75 15)' in export.text
+
+    kicad_path = tmp_path / "board.kicad_pcb"
+    written = board.write_kicad_pcb(kicad_path)
+    assert written.text == export.text
+    assert kicad_path.read_text(encoding="utf-8") == export.text
+
+    board.add_zone(
+        outline=((2.0, 2.0), (12.0, 2.0), (12.0, 8.0), (2.0, 8.0)),
+        layers=(front,),
+        net=led_a,
+    )
+    with_loss = board.to_kicad_pcb()
+    assert [warning.construct for warning in with_loss.warnings] == ["board.zone"]
+    assert with_loss.warnings[0].kind == "unsupported"
+    assert with_loss.warnings[0].severity == "warning"
+
+
 def test_python_board_authoring_writes_zones_keepouts_and_text():
     design, r1, _d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")

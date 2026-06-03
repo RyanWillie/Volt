@@ -33,6 +33,7 @@ def check_adapter_target() -> None:
     )
     require("add_library(Volt::KiCadAdapter" in adapter_cmake, "KiCad adapter alias must exist")
     require("Volt::Circuit" in adapter_cmake, "KiCad adapter must depend on Volt::Circuit")
+    require("Volt::PCB" in adapter_cmake, "KiCad PCB export must depend on Volt::PCB")
     require("Volt::Schematic" in adapter_cmake, "KiCad adapter must depend on Volt::Schematic")
 
 
