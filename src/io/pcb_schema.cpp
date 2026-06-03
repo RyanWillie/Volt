@@ -139,10 +139,8 @@ namespace volt::io::detail {
         return "slot";
     case BoardFeatureKind::Cutout:
         return "cutout";
-    case BoardFeatureKind::Fiducial:
-        return "fiducial";
-    case BoardFeatureKind::ToolingHole:
-        return "tooling_hole";
+    case BoardFeatureKind::Circle:
+        return "circle";
     case BoardFeatureKind::Text:
         return "text";
     case BoardFeatureKind::MechanicalKeepout:
@@ -160,11 +158,8 @@ namespace volt::io::detail {
     if (value == "cutout") {
         return BoardFeatureKind::Cutout;
     }
-    if (value == "fiducial") {
-        return BoardFeatureKind::Fiducial;
-    }
-    if (value == "tooling_hole") {
-        return BoardFeatureKind::ToolingHole;
+    if (value == "circle") {
+        return BoardFeatureKind::Circle;
     }
     if (value == "text") {
         return BoardFeatureKind::Text;

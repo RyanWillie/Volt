@@ -247,8 +247,8 @@ def test_python_board_authoring_adds_generic_board_primitives():
             label="CUT1",
         )
     )
-    board.add(volt.Fiducial(center=(34.0, 4.0), diameter=1.0, label="FID1"))
-    board.add(volt.ToolingHole(center=(4.0, 20.0), diameter=2.0, label="TH1"))
+    board.add(volt.Circle(center=(34.0, 4.0), diameter=1.0, role="fiducial", label="FID1"))
+    board.add(volt.Hole(center=(4.0, 20.0), diameter=2.0, role="tooling", label="TH1"))
     board.add(volt.Text("REV A", at=(20.0, 20.0), layer=silk, size=1.2))
     board.add(
         volt.MechanicalKeepout(
@@ -268,8 +268,8 @@ def test_python_board_authoring_adds_generic_board_primitives():
         "hole",
         "slot",
         "cutout",
-        "fiducial",
-        "tooling_hole",
+        "circle",
+        "hole",
         "text",
         "mechanical_keepout",
     ]
@@ -279,6 +279,7 @@ def test_python_board_authoring_adds_generic_board_primitives():
     assert features[2]["width_mm"] == 1.5
     assert features[3]["outline"][2] == [25.0, 9.0]
     assert features[4]["side"] == "top"
+    assert features[4]["role"] == "fiducial"
     assert features[5]["role"] == "tooling"
     assert features[6]["text"] == "REV A"
     assert features[7]["restrictions"] == ["copper", "via"]
@@ -288,7 +289,7 @@ def test_python_board_authoring_adds_generic_board_primitives():
     assert 'class="board-feature hole"' in svg
     assert 'class="board-feature slot"' in svg
     assert 'class="board-feature cutout"' in svg
-    assert 'class="board-feature fiducial top"' in svg
+    assert 'class="board-feature circle top"' in svg
     assert 'data-keepout="board_keepout:0"' in svg
     assert 'data-text="board_text:0"' in svg
 
@@ -297,7 +298,7 @@ def test_python_board_authoring_adds_generic_board_primitives():
         "board.keepout",
         "board.feature.slot",
         "board.feature.cutout",
-        "board.feature.fiducial",
+        "board.feature.circle",
     ]
 
 

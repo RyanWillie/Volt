@@ -185,10 +185,10 @@ TEST_CASE("PCB projection writer and reader round-trip generic board features") 
         std::vector{volt::BoardPoint{20.0, 4.0}, volt::BoardPoint{25.0, 4.0},
                     volt::BoardPoint{25.0, 9.0}, volt::BoardPoint{20.0, 9.0}},
         "access")));
-    static_cast<void>(
-        board.add_feature(volt::BoardFeature::fiducial("FID", volt::BoardPoint{34.0, 4.0}, 1.0)));
+    static_cast<void>(board.add_feature(volt::BoardFeature::circle(
+        "FID", volt::BoardPoint{34.0, 4.0}, 1.0, volt::BoardSide::Top, "fiducial")));
     static_cast<void>(board.add_feature(
-        volt::BoardFeature::tooling_hole("TH", volt::BoardPoint{4.0, 24.0}, 2.0)));
+        volt::BoardFeature::hole("TH", volt::BoardPoint{4.0, 24.0}, 2.0, false, "tooling")));
 
     const auto text = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
     const auto document = nlohmann::json::parse(text);
@@ -202,9 +202,10 @@ TEST_CASE("PCB projection writer and reader round-trip generic board features") 
     CHECK(document["board"]["features"][2]["width_mm"] == 1.5);
     CHECK(document["board"]["features"][3]["kind"] == "cutout");
     CHECK(document["board"]["features"][3]["role"] == "access");
-    CHECK(document["board"]["features"][4]["kind"] == "fiducial");
+    CHECK(document["board"]["features"][4]["kind"] == "circle");
     CHECK(document["board"]["features"][4]["side"] == "top");
-    CHECK(document["board"]["features"][5]["kind"] == "tooling_hole");
+    CHECK(document["board"]["features"][4]["role"] == "fiducial");
+    CHECK(document["board"]["features"][5]["kind"] == "hole");
     CHECK(document["board"]["features"][5]["role"] == "tooling");
 
     const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
@@ -212,7 +213,7 @@ TEST_CASE("PCB projection writer and reader round-trip generic board features") 
     CHECK(restored.feature(volt::BoardFeatureId{1}).hole().drill_diameter_mm() == 1.0);
     CHECK(restored.feature(volt::BoardFeatureId{2}).slot().width_mm() == 1.5);
     CHECK(restored.feature(volt::BoardFeatureId{3}).cutout().outline().size() == 4);
-    CHECK(restored.feature(volt::BoardFeatureId{4}).fiducial().diameter_mm() == 1.0);
+    CHECK(restored.feature(volt::BoardFeatureId{4}).circle().diameter_mm() == 1.0);
     CHECK(restored.feature(volt::BoardFeatureId{5}).hole().drill_diameter_mm() == 2.0);
 }
 

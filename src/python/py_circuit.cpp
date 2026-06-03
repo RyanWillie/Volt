@@ -1035,15 +1035,6 @@ void PyCircuit::board_set_polygon_outline(const std::vector<std::pair<double, do
     board_projection().set_outline(volt::BoardOutline{std::move(points)});
 }
 
-std::size_t PyCircuit::board_add_tooling_hole(const std::string &label, double x, double y,
-                                              double diameter_mm,
-                                              std::optional<double> finished_diameter_mm) {
-    return board_projection()
-        .add_feature(volt::BoardFeature::tooling_hole(label, volt::BoardPoint{x, y}, diameter_mm,
-                                                      finished_diameter_mm))
-        .index();
-}
-
 std::size_t PyCircuit::board_add_hole(const std::string &label, double x, double y,
                                       double drill_diameter_mm, bool plated,
                                       const std::string &role,
@@ -1078,11 +1069,12 @@ std::size_t PyCircuit::board_add_cutout(const std::string &label,
         .index();
 }
 
-std::size_t PyCircuit::board_add_fiducial(const std::string &label, double x, double y,
-                                          double diameter_mm, const std::string &side) {
+std::size_t PyCircuit::board_add_circle(const std::string &label, double x, double y,
+                                        double diameter_mm, const std::string &side,
+                                        const std::string &role) {
     return board_projection()
-        .add_feature(volt::BoardFeature::fiducial(label, volt::BoardPoint{x, y}, diameter_mm,
-                                                  parse_board_side(side)))
+        .add_feature(volt::BoardFeature::circle(label, volt::BoardPoint{x, y}, diameter_mm,
+                                                parse_board_side(side), role))
         .index();
 }
 

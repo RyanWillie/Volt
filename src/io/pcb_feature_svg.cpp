@@ -14,7 +14,6 @@ namespace {
 [[nodiscard]] BoardPoint feature_label_anchor(const BoardFeature &feature) {
     switch (feature.kind()) {
     case BoardFeatureKind::Hole:
-    case BoardFeatureKind::ToolingHole:
         return BoardPoint{feature.hole().center().x_mm(),
                           feature.hole().center().y_mm() +
                               (feature.hole().drill_diameter_mm() / 2.0) + 2.0};
@@ -24,10 +23,10 @@ namespace {
                               (feature.slot().width_mm() / 2.0) + 2.0};
     case BoardFeatureKind::Cutout:
         return feature.cutout().outline().front();
-    case BoardFeatureKind::Fiducial:
-        return BoardPoint{feature.fiducial().center().x_mm(),
-                          feature.fiducial().center().y_mm() +
-                              (feature.fiducial().diameter_mm() / 2.0) + 2.0};
+    case BoardFeatureKind::Circle:
+        return BoardPoint{feature.circle().center().x_mm(),
+                          feature.circle().center().y_mm() +
+                              (feature.circle().diameter_mm() / 2.0) + 2.0};
     case BoardFeatureKind::Text:
     case BoardFeatureKind::MechanicalKeepout:
         break;
@@ -35,19 +34,11 @@ namespace {
     throw std::logic_error{"Board feature kind has no SVG feature label anchor"};
 }
 
-[[nodiscard]] std::string hole_class(BoardFeatureKind kind) {
-    if (kind == BoardFeatureKind::ToolingHole) {
-        return "tooling-hole";
-    }
-    return "hole";
-}
-
 } // namespace
 
 void include_feature_bounds(PcbSvgBounds &bounds, const BoardFeature &feature) {
     switch (feature.kind()) {
-    case BoardFeatureKind::Hole:
-    case BoardFeatureKind::ToolingHole: {
+    case BoardFeatureKind::Hole: {
         const auto radius = feature.hole().drill_diameter_mm() / 2.0;
         const auto center = feature.hole().center();
         include_board_point(bounds, BoardPoint{center.x_mm() - radius, center.y_mm()});
@@ -71,9 +62,9 @@ void include_feature_bounds(PcbSvgBounds &bounds, const BoardFeature &feature) {
             include_board_point(bounds, point);
         }
         break;
-    case BoardFeatureKind::Fiducial: {
-        const auto radius = feature.fiducial().diameter_mm() / 2.0;
-        const auto center = feature.fiducial().center();
+    case BoardFeatureKind::Circle: {
+        const auto radius = feature.circle().diameter_mm() / 2.0;
+        const auto center = feature.circle().center();
         include_board_point(bounds, BoardPoint{center.x_mm() - radius, center.y_mm()});
         include_board_point(bounds, BoardPoint{center.x_mm() + radius, center.y_mm()});
         include_board_point(bounds, BoardPoint{center.x_mm(), center.y_mm() - radius});
@@ -98,9 +89,8 @@ void write_pcb_svg_features(std::ostream &out, const Board &board) {
         const auto &feature = board.feature(id);
         switch (feature.kind()) {
         case BoardFeatureKind::Hole:
-        case BoardFeatureKind::ToolingHole:
-            out << "      <circle class=\"board-feature " << hole_class(feature.kind())
-                << "\" data-board-feature=\"" << encode_local_id(id) << "\" cx=\"";
+            out << "      <circle class=\"board-feature hole\" data-board-feature=\""
+                << encode_local_id(id) << "\" cx=\"";
             write_pcb_svg_number(out, feature.hole().center().x_mm());
             out << "\" cy=\"";
             write_pcb_svg_number(out, feature.hole().center().y_mm());
@@ -128,15 +118,15 @@ void write_pcb_svg_features(std::ostream &out, const Board &board) {
             write_pcb_point_list(out, feature.cutout().outline());
             out << "\"/>\n";
             break;
-        case BoardFeatureKind::Fiducial:
-            out << "      <circle class=\"board-feature fiducial "
-                << board_side_name(feature.fiducial().side()) << "\" data-board-feature=\""
+        case BoardFeatureKind::Circle:
+            out << "      <circle class=\"board-feature circle "
+                << board_side_name(feature.circle().side()) << "\" data-board-feature=\""
                 << encode_local_id(id) << "\" cx=\"";
-            write_pcb_svg_number(out, feature.fiducial().center().x_mm());
+            write_pcb_svg_number(out, feature.circle().center().x_mm());
             out << "\" cy=\"";
-            write_pcb_svg_number(out, feature.fiducial().center().y_mm());
+            write_pcb_svg_number(out, feature.circle().center().y_mm());
             out << "\" r=\"";
-            write_pcb_svg_number(out, feature.fiducial().diameter_mm() / 2.0);
+            write_pcb_svg_number(out, feature.circle().diameter_mm() / 2.0);
             out << "\"/>\n";
             break;
         case BoardFeatureKind::Text:

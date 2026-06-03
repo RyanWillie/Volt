@@ -39,8 +39,8 @@ from .logical import (
 )
 from .pcb import (
     Board,
+    Circle,
     Cutout,
-    Fiducial,
     Footprint,
     FootprintDefinition,
     FootprintDrill,
@@ -52,7 +52,6 @@ from .pcb import (
     PadResolution,
     Slot,
     Text,
-    ToolingHole,
 )
 from .schematic import (
     PlacedSchematicElement,
@@ -80,12 +79,12 @@ __all__ = [
     "Component",
     "ComponentDefinition",
     "Board",
+    "Circle",
     "Cutout",
     "Design",
     "Diagnostic",
     "DiagnosticEntity",
     "DiagnosticReport",
-    "Fiducial",
     "Library",
     "LibraryComponent",
     "ModuleComponent",
@@ -141,5 +140,4 @@ __all__ = [
     "Slot",
     "TemplateNetInfo",
     "Text",
-    "ToolingHole",
 ]

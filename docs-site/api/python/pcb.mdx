@@ -37,6 +37,22 @@ Source: `python/volt/pcb.py`
 | `write_svg(self, path: str \| Path) -> None` | Write the PCB projection SVG to a file. |
 | `write_kicad_pcb(self, path: str \| Path) -> KiCadPcbExport` | Write the KiCad PCB adapter document and return its loss report. |
 
+## `volt.Circle`
+
+Generic circular board-side primitive.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `center: Point` |
+| `diameter: float` |
+| `label: str` |
+| `side: str` |
+| `role: str` |
+
 ## `volt.Cutout`
 
 Generic board cutout primitive.
@@ -56,21 +72,6 @@ Source: `python/volt/pcb.py`
 | Method | Summary |
 | --- | --- |
 | `polygon(cls, vertices: Iterable[Point], *, role: str = '', label: str = '') -> 'Cutout'` | Create a polygonal board cutout. |
-
-## `volt.Fiducial`
-
-Generic board fiducial primitive.
-
-Source: `python/volt/pcb.py`
-
-### Fields
-
-| Field |
-| --- |
-| `center: Point` |
-| `diameter: float` |
-| `label: str` |
-| `side: str` |
 
 ## `volt.Footprint`
 
@@ -252,18 +253,3 @@ Source: `python/volt/pcb.py`
 | `rotation: float` |
 | `size: float` |
 | `locked: bool` |
-
-## `volt.ToolingHole`
-
-Generic tooling hole primitive.
-
-Source: `python/volt/pcb.py`
-
-### Fields
-
-| Field |
-| --- |
-| `center: Point` |
-| `diameter: float` |
-| `label: str` |
-| `finished_diameter: float \| None` |

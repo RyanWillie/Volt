@@ -268,10 +268,6 @@ class PyCircuit {
 
     void board_set_polygon_outline(const std::vector<std::pair<double, double>> &vertices);
 
-    [[nodiscard]] std::size_t board_add_tooling_hole(const std::string &label, double x, double y,
-                                                     double diameter_mm,
-                                                     std::optional<double> finished_diameter_mm);
-
     [[nodiscard]] std::size_t board_add_hole(const std::string &label, double x, double y,
                                              double drill_diameter_mm, bool plated,
                                              const std::string &role,
@@ -286,8 +282,9 @@ class PyCircuit {
                      const std::vector<std::pair<double, double>> &outline,
                      const std::string &role);
 
-    [[nodiscard]] std::size_t board_add_fiducial(const std::string &label, double x, double y,
-                                                 double diameter_mm, const std::string &side);
+    [[nodiscard]] std::size_t board_add_circle(const std::string &label, double x, double y,
+                                               double diameter_mm, const std::string &side,
+                                               const std::string &role);
 
     [[nodiscard]] std::size_t board_cache_footprint_definition(const py::dict &definition);
 

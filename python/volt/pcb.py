@@ -176,19 +176,6 @@ class Hole:
 
 
 @dataclass(frozen=True)
-class ToolingHole:
-    """Generic tooling hole primitive."""
-
-    center: Point
-    diameter: float
-    label: str = ""
-    finished_diameter: float | None = None
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "center", _point(self.center, "Board tooling hole center"))
-
-
-@dataclass(frozen=True)
 class Slot:
     """Generic slotted board hole primitive."""
 
@@ -225,16 +212,17 @@ class Cutout:
 
 
 @dataclass(frozen=True)
-class Fiducial:
-    """Generic board fiducial primitive."""
+class Circle:
+    """Generic circular board-side primitive."""
 
     center: Point
     diameter: float
     label: str = ""
     side: str = "top"
+    role: str = ""
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "center", _point(self.center, "Board fiducial center"))
+        object.__setattr__(self, "center", _point(self.center, "Board circle center"))
 
 
 @dataclass(frozen=True)
@@ -378,15 +366,6 @@ class Board:
                 primitive.role,
                 None if primitive.finished_diameter is None else float(primitive.finished_diameter),
             )
-        if isinstance(primitive, ToolingHole):
-            x, y = primitive.center
-            return self._design._circuit.board_add_tooling_hole(
-                primitive.label,
-                x,
-                y,
-                float(primitive.diameter),
-                None if primitive.finished_diameter is None else float(primitive.finished_diameter),
-            )
         if isinstance(primitive, Slot):
             start_x, start_y = primitive.start
             end_x, end_y = primitive.end
@@ -404,10 +383,10 @@ class Board:
             return self._design._circuit.board_add_cutout(
                 primitive.label, list(primitive.outline), primitive.role
             )
-        if isinstance(primitive, Fiducial):
+        if isinstance(primitive, Circle):
             x, y = primitive.center
-            return self._design._circuit.board_add_fiducial(
-                primitive.label, x, y, float(primitive.diameter), primitive.side
+            return self._design._circuit.board_add_circle(
+                primitive.label, x, y, float(primitive.diameter), primitive.side, primitive.role
             )
         if isinstance(primitive, Text):
             x, y = primitive.at

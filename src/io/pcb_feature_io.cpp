@@ -114,15 +114,11 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
 [[nodiscard]] bool optional_plated(const nlohmann::json &feature) {
     return optional_field(feature, "plated") != nullptr && bool_field(feature, "plated");
 }
-[[nodiscard]] BoardFeature read_hole_feature(BoardFeatureKind kind, const nlohmann::json &feature,
+[[nodiscard]] BoardFeature read_hole_feature(const nlohmann::json &feature,
                                              const std::string &label, const std::string &role) {
     const auto position = board_point(field(feature, "position"));
     const auto drill = drill_diameter(feature);
     const auto finished = optional_finished_diameter(feature);
-    if (kind == BoardFeatureKind::ToolingHole) {
-        return BoardFeature::tooling_hole(label, position, drill, finished,
-                                          role.empty() ? "tooling" : role);
-    }
     return BoardFeature::hole(label, position, drill, optional_plated(feature), role, finished);
 }
 [[nodiscard]] BoardFeature read_feature(const Board &board, const nlohmann::json &feature) {
@@ -132,20 +128,20 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
 
     switch (kind) {
     case BoardFeatureKind::Hole:
-    case BoardFeatureKind::ToolingHole:
-        return read_hole_feature(kind, feature, label, role);
+        return read_hole_feature(feature, label, role);
     case BoardFeatureKind::Slot:
         return BoardFeature::slot(
             label, board_point(field(feature, "start")), board_point(field(feature, "end")),
             number_field(feature, "width_mm"), optional_plated(feature), role);
     case BoardFeatureKind::Cutout:
         return BoardFeature::cutout(label, board_points(field(feature, "outline")), role);
-    case BoardFeatureKind::Fiducial:
-        return BoardFeature::fiducial(label, board_point(field(feature, "position")),
-                                      number_field(feature, "diameter_mm"),
-                                      optional_field(feature, "side") == nullptr
-                                          ? BoardSide::Top
-                                          : board_side_from_name(string_field(feature, "side")));
+    case BoardFeatureKind::Circle:
+        return BoardFeature::circle(label, board_point(field(feature, "position")),
+                                    number_field(feature, "diameter_mm"),
+                                    optional_field(feature, "side") == nullptr
+                                        ? BoardSide::Top
+                                        : board_side_from_name(string_field(feature, "side")),
+                                    role);
     case BoardFeatureKind::Text: {
         const auto layer = typed_id<BoardLayerId>(feature, "layer");
         require(layer.index() < board.layer_count(), "PCB text references missing board layer");
@@ -201,8 +197,7 @@ void write_features(std::ostream &out, const Board &board) {
             << ", \"kind\": " << json_string(board_feature_kind_name(feature.kind()))
             << ", \"label\": " << json_string(feature.label());
         switch (feature.kind()) {
-        case BoardFeatureKind::Hole:
-        case BoardFeatureKind::ToolingHole: {
+        case BoardFeatureKind::Hole: {
             const auto &hole = feature.hole();
             out << ", \"position\": ";
             write_board_point(out, hole.center());
@@ -235,12 +230,12 @@ void write_features(std::ostream &out, const Board &board) {
             write_board_points(out, feature.cutout().outline());
             out << ", \"role\": " << json_string(feature.role());
             break;
-        case BoardFeatureKind::Fiducial:
+        case BoardFeatureKind::Circle:
             out << ", \"position\": ";
-            write_board_point(out, feature.fiducial().center());
+            write_board_point(out, feature.circle().center());
             out << ", \"diameter_mm\": ";
-            write_number(out, feature.fiducial().diameter_mm());
-            out << ", \"side\": " << json_string(board_side_name(feature.fiducial().side()))
+            write_number(out, feature.circle().diameter_mm());
+            out << ", \"side\": " << json_string(board_side_name(feature.circle().side()))
                 << ", \"role\": " << json_string(feature.role());
             break;
         case BoardFeatureKind::Text:

@@ -44,13 +44,13 @@ BoardCutout::BoardCutout(std::vector<BoardPoint> outline) : outline_{std::move(o
 [[nodiscard]] const std::vector<BoardPoint> &BoardCutout::outline() const noexcept {
     return outline_.vertices();
 }
-BoardFiducial::BoardFiducial(BoardPoint center, double diameter_mm, BoardSide side)
+BoardCircle::BoardCircle(BoardPoint center, double diameter_mm, BoardSide side)
     : center_{center}, diameter_mm_{diameter_mm}, side_{side} {
     if (!std::isfinite(diameter_mm_)) {
-        throw std::invalid_argument{"Board fiducial diameter must be finite"};
+        throw std::invalid_argument{"Board circle diameter must be finite"};
     }
     if (diameter_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board fiducial diameter must be positive"};
+        throw std::invalid_argument{"Board circle diameter must be positive"};
     }
 }
 BoardKeepout::BoardKeepout(std::vector<BoardPoint> outline, std::vector<BoardLayerId> layers,
@@ -112,13 +112,6 @@ BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotati
     return BoardFeature{BoardFeatureKind::Hole, std::move(label), std::move(role),
                         BoardHole{center, drill_diameter_mm, plated, finished_diameter_mm}};
 }
-[[nodiscard]] BoardFeature BoardFeature::tooling_hole(std::string label, BoardPoint center,
-                                                      double drill_diameter_mm,
-                                                      std::optional<double> finished_diameter_mm,
-                                                      std::string role) {
-    return BoardFeature{BoardFeatureKind::ToolingHole, std::move(label), std::move(role),
-                        BoardHole{center, drill_diameter_mm, false, finished_diameter_mm}};
-}
 [[nodiscard]] BoardFeature BoardFeature::slot(std::string label, BoardPoint start, BoardPoint end,
                                               double width_mm, bool plated, std::string role) {
     return BoardFeature{BoardFeatureKind::Slot, std::move(label), std::move(role),
@@ -129,10 +122,11 @@ BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotati
     return BoardFeature{BoardFeatureKind::Cutout, std::move(label), std::move(role),
                         BoardCutout{std::move(outline)}};
 }
-[[nodiscard]] BoardFeature BoardFeature::fiducial(std::string label, BoardPoint center,
-                                                  double diameter_mm, BoardSide side) {
-    return BoardFeature{BoardFeatureKind::Fiducial, std::move(label), "fiducial",
-                        BoardFiducial{center, diameter_mm, side}};
+[[nodiscard]] BoardFeature BoardFeature::circle(std::string label, BoardPoint center,
+                                                double diameter_mm, BoardSide side,
+                                                std::string role) {
+    return BoardFeature{BoardFeatureKind::Circle, std::move(label), std::move(role),
+                        BoardCircle{center, diameter_mm, side}};
 }
 [[nodiscard]] BoardFeature BoardFeature::text(BoardText text) {
     return BoardFeature{BoardFeatureKind::Text, {}, {}, std::move(text)};
@@ -144,10 +138,9 @@ BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotati
 [[nodiscard]] bool is_board_hole_feature(BoardFeatureKind kind) noexcept {
     switch (kind) {
     case BoardFeatureKind::Hole:
-    case BoardFeatureKind::ToolingHole:
         return true;
+    case BoardFeatureKind::Circle:
     case BoardFeatureKind::Cutout:
-    case BoardFeatureKind::Fiducial:
     case BoardFeatureKind::MechanicalKeepout:
     case BoardFeatureKind::Slot:
     case BoardFeatureKind::Text:
@@ -160,8 +153,8 @@ BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotati
 [[nodiscard]] const BoardCutout &BoardFeature::cutout() const {
     return std::get<BoardCutout>(payload_);
 }
-[[nodiscard]] const BoardFiducial &BoardFeature::fiducial() const {
-    return std::get<BoardFiducial>(payload_);
+[[nodiscard]] const BoardCircle &BoardFeature::circle() const {
+    return std::get<BoardCircle>(payload_);
 }
 [[nodiscard]] const BoardText &BoardFeature::text() const { return std::get<BoardText>(payload_); }
 [[nodiscard]] const BoardKeepout &BoardFeature::keepout() const {

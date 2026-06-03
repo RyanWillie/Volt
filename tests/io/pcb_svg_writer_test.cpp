@@ -183,10 +183,10 @@ TEST_CASE("PCB SVG writer renders generic board feature primitives") {
         std::vector{volt::BoardPoint{20.0, 4.0}, volt::BoardPoint{25.0, 4.0},
                     volt::BoardPoint{25.0, 9.0}, volt::BoardPoint{20.0, 9.0}},
         "access")));
-    static_cast<void>(
-        board.add_feature(volt::BoardFeature::fiducial("FID", volt::BoardPoint{34.0, 4.0}, 1.0)));
+    static_cast<void>(board.add_feature(volt::BoardFeature::circle(
+        "FID", volt::BoardPoint{34.0, 4.0}, 1.0, volt::BoardSide::Top, "fiducial")));
     static_cast<void>(board.add_feature(
-        volt::BoardFeature::tooling_hole("TH", volt::BoardPoint{4.0, 20.0}, 2.0)));
+        volt::BoardFeature::hole("TH", volt::BoardPoint{4.0, 20.0}, 2.0, false, "tooling")));
 
     const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
 
@@ -196,8 +196,7 @@ TEST_CASE("PCB SVG writer renders generic board feature primitives") {
           std::string::npos);
     CHECK(svg.find("class=\"board-feature cutout\"") != std::string::npos);
     CHECK(svg.find("points=\"20,4 25,4 25,9 20,9\"") != std::string::npos);
-    CHECK(svg.find("class=\"board-feature fiducial top\"") != std::string::npos);
-    CHECK(svg.find("class=\"board-feature tooling-hole\"") != std::string::npos);
+    CHECK(svg.find("class=\"board-feature circle top\"") != std::string::npos);
 }
 
 TEST_CASE("PCB SVG writer renders stable ratsnest selectors for placed multi-pad nets") {

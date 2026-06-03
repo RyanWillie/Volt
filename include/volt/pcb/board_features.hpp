@@ -19,8 +19,7 @@ enum class BoardFeatureKind {
     Hole,
     Slot,
     Cutout,
-    Fiducial,
-    ToolingHole,
+    Circle,
     Text,
     MechanicalKeepout,
 };
@@ -99,19 +98,19 @@ class BoardCutout {
     BoardPolygon outline_;
 };
 
-/** Generic board fiducial primitive. */
-class BoardFiducial {
+/** Generic circular board-side primitive. */
+class BoardCircle {
   public:
-    /** Construct a circular fiducial marker. */
-    BoardFiducial(BoardPoint center, double diameter_mm, BoardSide side = BoardSide::Top);
+    /** Construct a circular board feature. */
+    BoardCircle(BoardPoint center, double diameter_mm, BoardSide side = BoardSide::Top);
 
-    /** Return the fiducial center. */
+    /** Return the circle center. */
     [[nodiscard]] BoardPoint center() const noexcept { return center_; }
 
-    /** Return fiducial diameter in millimeters. */
+    /** Return circle diameter in millimeters. */
     [[nodiscard]] double diameter_mm() const noexcept { return diameter_mm_; }
 
-    /** Return the board side carrying the fiducial. */
+    /** Return the board side carrying the circle. */
     [[nodiscard]] BoardSide side() const noexcept { return side_; }
 
   private:
@@ -185,18 +184,12 @@ class BoardFeature {
   public:
     /** Payload held by one board feature. */
     using Payload =
-        std::variant<BoardHole, BoardSlot, BoardCutout, BoardFiducial, BoardText, BoardKeepout>;
+        std::variant<BoardHole, BoardSlot, BoardCutout, BoardCircle, BoardText, BoardKeepout>;
 
     /** Construct a circular board hole feature. */
     [[nodiscard]] static BoardFeature
     hole(std::string label, BoardPoint center, double drill_diameter_mm, bool plated = false,
          std::string role = {}, std::optional<double> finished_diameter_mm = std::nullopt);
-
-    /** Construct a circular tooling hole feature. */
-    [[nodiscard]] static BoardFeature
-    tooling_hole(std::string label, BoardPoint center, double drill_diameter_mm,
-                 std::optional<double> finished_diameter_mm = std::nullopt,
-                 std::string role = "tooling");
 
     /** Construct a slotted board feature. */
     [[nodiscard]] static BoardFeature slot(std::string label, BoardPoint start, BoardPoint end,
@@ -207,9 +200,10 @@ class BoardFeature {
     [[nodiscard]] static BoardFeature cutout(std::string label, std::vector<BoardPoint> outline,
                                              std::string role = {});
 
-    /** Construct a fiducial feature. */
-    [[nodiscard]] static BoardFeature fiducial(std::string label, BoardPoint center,
-                                               double diameter_mm, BoardSide side = BoardSide::Top);
+    /** Construct a circular board-side feature. */
+    [[nodiscard]] static BoardFeature circle(std::string label, BoardPoint center,
+                                             double diameter_mm, BoardSide side = BoardSide::Top,
+                                             std::string role = {});
 
     /** Construct a board text feature. */
     [[nodiscard]] static BoardFeature text(BoardText text);
@@ -235,8 +229,8 @@ class BoardFeature {
     /** Return cutout payload. */
     [[nodiscard]] const BoardCutout &cutout() const;
 
-    /** Return fiducial payload. */
-    [[nodiscard]] const BoardFiducial &fiducial() const;
+    /** Return circle payload. */
+    [[nodiscard]] const BoardCircle &circle() const;
 
     /** Return text payload. */
     [[nodiscard]] const BoardText &text() const;

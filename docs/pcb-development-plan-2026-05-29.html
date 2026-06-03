@@ -297,7 +297,7 @@
         <div class="panel tight">
           <span class="label green">Author</span>
           <h3>CAD-like board shape</h3>
-          <p>Define outlines, holes, slots, cutouts, fiducials, keepouts, and mechanical features with local coordinate frames and relative construction helpers.</p>
+          <p>Define outlines, holes, slots, cutouts, circles, keepouts, and mechanical features with local coordinate frames and relative construction helpers.</p>
         </div>
         <div class="panel tight">
           <span class="label green">Place</span>
@@ -338,7 +338,7 @@
           <div class="panel tight">
             <span class="label green">4</span>
             <h3>Mechanical and electrical intent stay distinct.</h3>
-            <p>Board holes, slots, fiducials, and cutouts are board features unless they carry electrical intent. Test points, connectors, chassis lugs, and tied mounting holes should be logical components when they participate in the circuit.</p>
+            <p>Board holes, slots, circles, and cutouts are board features unless they carry electrical intent. Test points, connectors, chassis lugs, and tied mounting holes should be logical components when they participate in the circuit.</p>
           </div>
           <div class="panel tight">
             <span class="label green">5</span>
@@ -437,7 +437,7 @@ board.preview_svg("main-board.svg")</code></pre>
             <tr>
               <td>Board features</td>
               <td>PCB kernel</td>
-              <td>Mechanical geometry such as holes, slots, cutouts, fiducials, text, and keepouts.</td>
+              <td>Mechanical geometry such as holes, slots, cutouts, circles, text, and keepouts.</td>
               <td>Electrical meaning unless represented as logical components or future copper tied to existing nets.</td>
             </tr>
             <tr>
@@ -481,7 +481,7 @@ board.preview_svg("main-board.svg")</code></pre>
           </div>
           <div class="panel tight">
             <h3><code>BoardFeature</code></h3>
-            <p>Physical-only features: board holes, slots, cutouts, fiducials, tooling holes, text, mechanical keepouts.</p>
+            <p>Physical-only features: board holes, slots, cutouts, circles, text, mechanical keepouts, with roles for uses such as tooling or fiducials.</p>
           </div>
           <div class="panel tight">
             <h3><code>FootprintDefinition</code></h3>

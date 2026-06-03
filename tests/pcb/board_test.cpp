@@ -156,8 +156,8 @@ TEST_CASE("Board stores metadata, layers, outline, features, and placements") {
         std::vector{volt::BoardPoint{18.0, 4.0}, volt::BoardPoint{22.0, 4.0},
                     volt::BoardPoint{22.0, 8.0}, volt::BoardPoint{18.0, 8.0}},
         "access"));
-    const auto fiducial =
-        board.add_feature(volt::BoardFeature::fiducial("FID1", volt::BoardPoint{45.0, 25.0}, 1.0));
+    const auto circle = board.add_feature(volt::BoardFeature::circle(
+        "FID1", volt::BoardPoint{45.0, 25.0}, 1.0, volt::BoardSide::Top, "fiducial"));
     const auto placement = board.place_component(
         volt::ComponentPlacement{fixture.component, volt::BoardPoint{25.0, 15.0},
                                  volt::BoardRotation::degrees(90.0), volt::BoardSide::Top, true});
@@ -174,7 +174,8 @@ TEST_CASE("Board stores metadata, layers, outline, features, and placements") {
     CHECK(board.feature(slot).role() == "mounting");
     CHECK(board.feature(cutout).cutout().outline().size() == 4);
     CHECK(board.feature(cutout).role() == "access");
-    CHECK(board.feature(fiducial).fiducial().side() == volt::BoardSide::Top);
+    CHECK(board.feature(circle).circle().side() == volt::BoardSide::Top);
+    CHECK(board.feature(circle).role() == "fiducial");
     CHECK(board.placement(placement).component() == fixture.component);
     CHECK(board.placement(placement).position() == volt::BoardPoint{25.0, 15.0});
     CHECK(board.placement(placement).rotation() == volt::BoardRotation::degrees(90.0));
@@ -594,8 +595,8 @@ TEST_CASE("Board validation reports suspicious board primitive intent") {
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{10.0, 10.0}));
     const auto missing_role = board.add_feature(volt::BoardFeature::slot(
         "SLOT", volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{4.0, 1.0}, 1.0));
-    const auto outside =
-        board.add_feature(volt::BoardFeature::tooling_hole("TH", volt::BoardPoint{12.0, 5.0}, 2.0));
+    const auto outside = board.add_feature(
+        volt::BoardFeature::hole("TH", volt::BoardPoint{12.0, 5.0}, 2.0, false, "tooling"));
 
     const auto report = volt::validate_board(board, volt::builtin_footprint_library());
 

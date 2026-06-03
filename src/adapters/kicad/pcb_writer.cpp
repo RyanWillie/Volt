@@ -344,9 +344,7 @@ void write_nets(std::ostream &out, const Circuit &circuit) {
 
 void write_board_hole(std::ostream &out, const BoardFeature &feature, BoardFeatureId id) {
     const auto &hole = feature.hole();
-    const auto footprint_name =
-        feature.kind() == BoardFeatureKind::ToolingHole ? "ToolingHole_NPTH" : "BoardHole_NPTH";
-    out << "  (footprint \"" << footprint_name << "\"\n";
+    out << "  (footprint \"BoardHole_NPTH\"\n";
     out << "    (layer \"F.Cu\")\n";
     out << "    (uuid " << sexpr_string(pcb_uuid("board-feature", id.index(), "footprint"))
         << ")\n";
@@ -375,8 +373,7 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
     for (std::size_t index = 0; index < board.feature_count(); ++index) {
         const auto id = BoardFeatureId{index};
         const auto &feature = board.feature(id);
-        if (feature.kind() == BoardFeatureKind::Hole ||
-            feature.kind() == BoardFeatureKind::ToolingHole) {
+        if (feature.kind() == BoardFeatureKind::Hole) {
             if (feature.hole().plated()) {
                 loss_report.add_warning(
                     LossKind::UnsupportedConstruct, "board.feature.hole.plated",
@@ -402,10 +399,10 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
                 "The first KiCad PCB writer subset does not export board cutouts");
             continue;
         }
-        if (feature.kind() == BoardFeatureKind::Fiducial) {
+        if (feature.kind() == BoardFeatureKind::Circle) {
             loss_report.add_warning(
-                LossKind::UnsupportedConstruct, "board.feature.fiducial",
-                "The first KiCad PCB writer subset does not export board fiducials");
+                LossKind::UnsupportedConstruct, "board.feature.circle",
+                "The first KiCad PCB writer subset does not export board circles");
             continue;
         }
     }
