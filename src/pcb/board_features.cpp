@@ -4,28 +4,114 @@
 #include <cmath>
 #include <cstddef>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace volt {
 
-[[nodiscard]] BoardFeature BoardFeature::mounting_hole(std::string label, BoardPoint center,
-                                                       double drill_diameter_mm) {
-    return BoardFeature{BoardFeatureKind::MountingHole, std::move(label), center,
-                        drill_diameter_mm};
+BoardHole::BoardHole(BoardPoint center, double drill_diameter_mm, bool plated,
+                     std::optional<double> finished_diameter_mm)
+    : center_{center}, drill_diameter_mm_{drill_diameter_mm}, plated_{plated},
+      finished_diameter_mm_{finished_diameter_mm} {
+    if (!std::isfinite(drill_diameter_mm_)) {
+        throw std::invalid_argument{"Board hole drill diameter must be finite"};
+    }
+    if (drill_diameter_mm_ <= 0.0) {
+        throw std::invalid_argument{"Board hole drill diameter must be positive"};
+    }
+    if (finished_diameter_mm_.has_value() && !std::isfinite(finished_diameter_mm_.value())) {
+        throw std::invalid_argument{"Board hole finished diameter must be finite"};
+    }
+    if (finished_diameter_mm_.has_value() && finished_diameter_mm_.value() <= 0.0) {
+        throw std::invalid_argument{"Board hole finished diameter must be positive"};
+    }
 }
 
-BoardFeature::BoardFeature(BoardFeatureKind kind, std::string label, BoardPoint position,
-                           double diameter_mm)
-    : kind_{kind}, label_{std::move(label)}, position_{position}, diameter_mm_{diameter_mm} {
-    if (!std::isfinite(diameter_mm_)) {
-        throw std::invalid_argument{"Board feature diameter must be finite"};
+BoardSlot::BoardSlot(BoardPoint start, BoardPoint end, double width_mm, bool plated)
+    : start_{start}, end_{end}, width_mm_{width_mm}, plated_{plated} {
+    if (start_ == end_) {
+        throw std::invalid_argument{"Board slot endpoints must be distinct"};
     }
-    if (diameter_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board feature diameter must be positive"};
+    if (!std::isfinite(width_mm_)) {
+        throw std::invalid_argument{"Board slot width must be finite"};
+    }
+    if (width_mm_ <= 0.0) {
+        throw std::invalid_argument{"Board slot width must be positive"};
     }
 }
+
+BoardCutout::BoardCutout(std::vector<BoardPoint> outline) : outline_{std::move(outline)} {}
+
+[[nodiscard]] const std::vector<BoardPoint> &BoardCutout::outline() const noexcept {
+    return outline_.vertices();
+}
+
+BoardCircle::BoardCircle(BoardPoint center, double diameter_mm, BoardSide side)
+    : center_{center}, diameter_mm_{diameter_mm}, side_{side} {
+    if (!std::isfinite(diameter_mm_)) {
+        throw std::invalid_argument{"Board circle diameter must be finite"};
+    }
+    if (diameter_mm_ <= 0.0) {
+        throw std::invalid_argument{"Board circle diameter must be positive"};
+    }
+}
+
+[[nodiscard]] BoardFeature BoardFeature::hole(std::string label, BoardPoint center,
+                                              double drill_diameter_mm, bool plated,
+                                              std::string role,
+                                              std::optional<double> finished_diameter_mm) {
+    return BoardFeature{BoardFeatureKind::Hole, std::move(label), std::move(role),
+                        BoardHole{center, drill_diameter_mm, plated, finished_diameter_mm}};
+}
+
+[[nodiscard]] BoardFeature BoardFeature::slot(std::string label, BoardPoint start, BoardPoint end,
+                                              double width_mm, bool plated, std::string role) {
+    return BoardFeature{BoardFeatureKind::Slot, std::move(label), std::move(role),
+                        BoardSlot{start, end, width_mm, plated}};
+}
+
+[[nodiscard]] BoardFeature BoardFeature::cutout(std::string label, std::vector<BoardPoint> outline,
+                                                std::string role) {
+    return BoardFeature{BoardFeatureKind::Cutout, std::move(label), std::move(role),
+                        BoardCutout{std::move(outline)}};
+}
+
+[[nodiscard]] BoardFeature BoardFeature::circle(std::string label, BoardPoint center,
+                                                double diameter_mm, BoardSide side,
+                                                std::string role) {
+    return BoardFeature{BoardFeatureKind::Circle, std::move(label), std::move(role),
+                        BoardCircle{center, diameter_mm, side}};
+}
+
+[[nodiscard]] bool is_board_hole_feature(BoardFeatureKind kind) noexcept {
+    switch (kind) {
+    case BoardFeatureKind::Hole:
+        return true;
+    case BoardFeatureKind::Circle:
+    case BoardFeatureKind::Cutout:
+    case BoardFeatureKind::Slot:
+        return false;
+    }
+    return false;
+}
+
+[[nodiscard]] const BoardHole &BoardFeature::hole() const { return std::get<BoardHole>(payload_); }
+
+[[nodiscard]] const BoardSlot &BoardFeature::slot() const { return std::get<BoardSlot>(payload_); }
+
+[[nodiscard]] const BoardCutout &BoardFeature::cutout() const {
+    return std::get<BoardCutout>(payload_);
+}
+
+[[nodiscard]] const BoardCircle &BoardFeature::circle() const {
+    return std::get<BoardCircle>(payload_);
+}
+
+BoardFeature::BoardFeature(BoardFeatureKind kind, std::string label, std::string role,
+                           Payload payload)
+    : kind_{kind}, label_{std::move(label)}, role_{std::move(role)}, payload_{std::move(payload)} {}
 
 ComponentPlacement::ComponentPlacement(ComponentId component, BoardPoint position,
                                        BoardRotation rotation, BoardSide side, bool locked)

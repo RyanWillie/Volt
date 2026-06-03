@@ -76,7 +76,7 @@ struct ResistorCircuit {
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
     [[maybe_unused]] const auto feature = board.add_feature(
-        volt::BoardFeature::mounting_hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2));
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2, false, "mounting"));
     [[maybe_unused]] const auto footprint =
         board.cache_footprint_definition(volt::passive_0603_footprint());
     [[maybe_unused]] const auto placement = board.place_component(
@@ -127,8 +127,11 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["outline"]["kind"] == "polygon");
     CHECK(document["board"]["outline"]["vertices"][2] == nlohmann::json::array({50.0, 30.0}));
     CHECK(document["board"]["features"][0]["id"] == "board_feature:0");
-    CHECK(document["board"]["features"][0]["kind"] == "mounting_hole");
+    CHECK(document["board"]["features"][0]["kind"] == "hole");
     CHECK(document["board"]["features"][0]["position"] == nlohmann::json::array({3.0, 3.0}));
+    CHECK(document["board"]["features"][0]["drill_diameter_mm"] == 3.2);
+    CHECK(document["board"]["features"][0]["plated"] == false);
+    CHECK(document["board"]["features"][0]["role"] == "mounting");
 
     REQUIRE(document["board"]["footprint_definitions"].size() == 1);
     CHECK(document["board"]["footprint_definitions"][0]["id"] == "footprint_def:0");
@@ -168,6 +171,50 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["viewer"]["pad_resolutions"][0]["geometry"]["layers"] ==
           nlohmann::json::array({"front_copper", "front_solder_mask", "front_paste"}));
     CHECK(document["viewer"]["diagnostics"] == nlohmann::json::array());
+}
+
+TEST_CASE("PCB projection writer and reader round-trip generic board features") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_viewer_ready_board(fixture);
+    static_cast<void>(board.add_feature(
+        volt::BoardFeature::hole("DRILL", volt::BoardPoint{36.0, 4.0}, 1.0, false, "fixture")));
+    static_cast<void>(board.add_feature(volt::BoardFeature::slot(
+        "SLOT", volt::BoardPoint{8.0, 4.0}, volt::BoardPoint{16.0, 4.0}, 1.5, false, "mounting")));
+    static_cast<void>(board.add_feature(volt::BoardFeature::cutout(
+        "CUT",
+        std::vector{volt::BoardPoint{20.0, 4.0}, volt::BoardPoint{25.0, 4.0},
+                    volt::BoardPoint{25.0, 9.0}, volt::BoardPoint{20.0, 9.0}},
+        "access")));
+    static_cast<void>(board.add_feature(volt::BoardFeature::circle(
+        "FID", volt::BoardPoint{34.0, 4.0}, 1.0, volt::BoardSide::Top, "fiducial")));
+    static_cast<void>(board.add_feature(
+        volt::BoardFeature::hole("TH", volt::BoardPoint{4.0, 24.0}, 2.0, false, "tooling")));
+
+    const auto text = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
+    const auto document = nlohmann::json::parse(text);
+
+    REQUIRE(document["board"]["features"].size() == 6);
+    CHECK(document["board"]["features"][1]["kind"] == "hole");
+    CHECK(document["board"]["features"][1]["role"] == "fixture");
+    CHECK(document["board"]["features"][2]["kind"] == "slot");
+    CHECK(document["board"]["features"][2]["start"] == nlohmann::json::array({8.0, 4.0}));
+    CHECK(document["board"]["features"][2]["end"] == nlohmann::json::array({16.0, 4.0}));
+    CHECK(document["board"]["features"][2]["width_mm"] == 1.5);
+    CHECK(document["board"]["features"][3]["kind"] == "cutout");
+    CHECK(document["board"]["features"][3]["role"] == "access");
+    CHECK(document["board"]["features"][4]["kind"] == "circle");
+    CHECK(document["board"]["features"][4]["side"] == "top");
+    CHECK(document["board"]["features"][4]["role"] == "fiducial");
+    CHECK(document["board"]["features"][5]["kind"] == "hole");
+    CHECK(document["board"]["features"][5]["role"] == "tooling");
+
+    const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
+    CHECK(volt::io::write_pcb_board(restored, volt::builtin_footprint_library()) == text);
+    CHECK(restored.feature(volt::BoardFeatureId{1}).hole().drill_diameter_mm() == 1.0);
+    CHECK(restored.feature(volt::BoardFeatureId{2}).slot().width_mm() == 1.5);
+    CHECK(restored.feature(volt::BoardFeatureId{3}).cutout().outline().size() == 4);
+    CHECK(restored.feature(volt::BoardFeatureId{4}).circle().diameter_mm() == 1.0);
+    CHECK(restored.feature(volt::BoardFeatureId{5}).hole().drill_diameter_mm() == 2.0);
 }
 
 TEST_CASE("PCB projection JSON contains renderer-ready geometry without SVG") {
@@ -222,7 +269,7 @@ TEST_CASE("PCB projection reader round-trips board metadata, placements, and pad
     CHECK(restored.layer_stack()->board_thickness_mm() == 1.6);
     REQUIRE(restored.outline().has_value());
     CHECK(restored.outline()->vertices()[2] == volt::BoardPoint{50.0, 30.0});
-    CHECK(restored.feature(volt::BoardFeatureId{0}).diameter_mm() == 3.2);
+    CHECK(restored.feature(volt::BoardFeatureId{0}).hole().drill_diameter_mm() == 3.2);
     CHECK(restored.footprint_definition(volt::FootprintDefId{0})
               .pad(volt::FootprintPadId{0})
               .size() == volt::FootprintSize{0.80, 0.95});
@@ -320,6 +367,7 @@ TEST_CASE("PCB projection writer and reader round-trip zones, keepouts, and boar
               {nlohmann::json::array({2.0, 2.0}), nlohmann::json::array({12.0, 2.0}),
                nlohmann::json::array({12.0, 8.0}), nlohmann::json::array({2.0, 8.0})}));
 
+    REQUIRE(document["board"]["features"].size() == 1);
     REQUIRE(document["board"]["keepouts"].size() == 1);
     CHECK(document["board"]["keepouts"][0]["id"] == "board_keepout:0");
     CHECK(document["board"]["keepouts"][0]["layers"] ==

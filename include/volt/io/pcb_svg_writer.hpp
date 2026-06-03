@@ -88,6 +88,8 @@ void include_board_point(PcbSvgBounds &bounds, BoardPoint point);
 void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &placement,
                               const FootprintDefinition &definition);
 
+void include_feature_bounds(PcbSvgBounds &bounds, const BoardFeature &feature);
+
 [[nodiscard]] PcbSvgBounds bounds_from_board(const Board &board,
                                              const FootprintLibrary &footprints);
 

@@ -97,7 +97,7 @@ struct ResistorCircuit {
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
     [[maybe_unused]] const auto feature = board.add_feature(
-        volt::BoardFeature::mounting_hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2));
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2, false, "mounting"));
     [[maybe_unused]] const auto footprint =
         board.cache_footprint_definition(volt::passive_0603_footprint());
     [[maybe_unused]] const auto placement = board.place_component(
@@ -197,17 +197,29 @@ TEST_CASE("KiCad PCB writer reports unsupported out-of-subset board constructs")
         std::vector{volt::BoardKeepoutRestriction::Copper,
                     volt::BoardKeepoutRestriction::Placement},
     });
+    static_cast<void>(board.add_feature(volt::BoardFeature::slot(
+        "SLOT", volt::BoardPoint{20.0, 2.0}, volt::BoardPoint{24.0, 2.0}, 1.2, false, "mounting")));
+    static_cast<void>(board.add_feature(volt::BoardFeature::cutout(
+        "CUT",
+        std::vector{volt::BoardPoint{30.0, 2.0}, volt::BoardPoint{34.0, 2.0},
+                    volt::BoardPoint{34.0, 6.0}, volt::BoardPoint{30.0, 6.0}},
+        "access")));
+    static_cast<void>(board.add_feature(volt::BoardFeature::circle(
+        "FID", volt::BoardPoint{42.0, 2.0}, 1.0, volt::BoardSide::Top, "fiducial")));
 
     const auto result =
         volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
 
-    REQUIRE(result.loss_report.warnings().size() == 2);
+    REQUIRE(result.loss_report.warnings().size() == 5);
     CHECK(result.loss_report.warnings().at(0).kind ==
           volt::adapters::kicad::LossKind::UnsupportedConstruct);
     CHECK(result.loss_report.warnings().at(0).construct == "board.zone");
     CHECK(result.loss_report.warnings().at(1).kind ==
           volt::adapters::kicad::LossKind::UnsupportedConstruct);
     CHECK(result.loss_report.warnings().at(1).construct == "board.keepout");
+    CHECK(result.loss_report.warnings().at(2).construct == "board.feature.slot");
+    CHECK(result.loss_report.warnings().at(3).construct == "board.feature.cutout");
+    CHECK(result.loss_report.warnings().at(4).construct == "board.feature.circle");
 }
 
 TEST_CASE("KiCad PCB writer keeps generated footprint metadata DRC-neutral") {
@@ -220,7 +232,7 @@ TEST_CASE("KiCad PCB writer keeps generated footprint metadata DRC-neutral") {
     CHECK(result.text.find("(footprint \"passives:") == std::string::npos);
     CHECK(result.text.find("(footprint \"Volt:") == std::string::npos);
     CHECK(result.text.find("(footprint \"R_0603_1608Metric\"") != std::string::npos);
-    CHECK(result.text.find("(footprint \"MountingHole_NPTH\"") != std::string::npos);
+    CHECK(result.text.find("(footprint \"BoardHole_NPTH\"") != std::string::npos);
     CHECK(result.text.find("(49 \"F.Fab\" user)") != std::string::npos);
     CHECK(result.text.find(
               "(property \"Reference\" \"R1\"\n      (at 0 -1.5 0)\n      (layer \"F.Fab\")") !=

@@ -20,7 +20,7 @@ Source: `python/volt/pcb.py`
 | `set_layer_stack(self, layers: Iterable[int], *, thickness: float) -> Board` | Set the board layer stack order and total thickness. |
 | `set_rectangular_outline(self, *, origin: Point, size: Point) -> Board` | Set a rectangular board outline from an origin and size. |
 | `set_polygon_outline(self, vertices: Iterable[Point]) -> Board` | Set a polygon board outline from ordered vertices. |
-| `add_mounting_hole(self, label: str, *, at: Point, diameter: float) -> int` | Add a board-level mounting hole and return its kernel index. |
+| `add(self, primitive) -> int` | Add a generic board primitive and return its kernel index. |
 | `cache_footprint(self, footprint: Footprint) -> int` | Cache an explicit board-owned footprint definition for importers and low-level tests. |
 | `place(self, component: Component \| int, *, at: Point, rotation: float = 0.0, side: str = 'top', locked: bool = False) -> int` | Place a component footprint on the board and return the placement index. |
 | `add_track(self, net: Net \| int, *, layer: int, points: Iterable[Point], width: float) -> int` | Add a routed track segment sequence for a logical net. |
@@ -36,6 +36,42 @@ Source: `python/volt/pcb.py`
 | `write_json(self, path: str \| Path) -> None` | Write the PCB projection JSON to a file. |
 | `write_svg(self, path: str \| Path) -> None` | Write the PCB projection SVG to a file. |
 | `write_kicad_pcb(self, path: str \| Path) -> KiCadPcbExport` | Write the KiCad PCB adapter document and return its loss report. |
+
+## `volt.Circle`
+
+Generic circular board-side primitive.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `center: Point` |
+| `diameter: float` |
+| `label: str` |
+| `side: str` |
+| `role: str` |
+
+## `volt.Cutout`
+
+Generic board cutout primitive.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `outline: tuple[Point, ...]` |
+| `role: str` |
+| `label: str` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `polygon(cls, vertices: Iterable[Point], *, role: str = '', label: str = '') -> 'Cutout'` | Create a polygonal board cutout. |
 
 ## `volt.Footprint`
 
@@ -106,6 +142,23 @@ Source: `python/volt/pcb.py`
 | `surface_mount(cls, label: str, *, at: Point, size: Point, shape: str = 'rounded_rectangle', layers: str = 'front_smd', mechanical_role: str \| None = None) -> FootprintPad` | Create a surface-mount footprint pad definition. |
 | `through_hole(cls, label: str, *, at: Point, size: Point, drill: FootprintDrill, shape: str = 'circle', layers: str = 'through_hole', mechanical_role: str \| None = None) -> FootprintPad` | Create a through-hole footprint pad definition with drill metadata. |
 
+## `volt.Hole`
+
+Generic circular board hole primitive.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `center: Point` |
+| `diameter: float` |
+| `plated: bool` |
+| `role: str` |
+| `label: str` |
+| `finished_diameter: float \| None` |
+
 ## `volt.KiCadLossWarning`
 
 Structured warning for an unsupported or lossy KiCad adapter construct.
@@ -134,6 +187,20 @@ Source: `python/volt/pcb.py`
 | `text: str` |
 | `warnings: tuple[KiCadLossWarning, ...]` |
 
+## `volt.MechanicalKeepout`
+
+Generic mechanical keepout primitive.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `outline: tuple[Point, ...]` |
+| `layers: tuple[int, ...]` |
+| `restrictions: tuple[str, ...]` |
+
 ## `volt.PadResolution`
 
 Derived board-space resolution for one placed footprint pad.
@@ -152,3 +219,37 @@ Source: `python/volt/pcb.py`
 | `pin: int \| None` |
 | `net: int \| None` |
 | `status: str` |
+
+## `volt.Slot`
+
+Generic slotted board hole primitive.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `start: Point` |
+| `end: Point` |
+| `width: float` |
+| `plated: bool` |
+| `role: str` |
+| `label: str` |
+
+## `volt.Text`
+
+Generic board text/annotation primitive.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `text: str` |
+| `at: Point` |
+| `layer: int` |
+| `rotation: float` |
+| `size: float` |
+| `locked: bool` |

@@ -96,6 +96,16 @@ Board::footprint_definition_id(const FootprintRef &ref) const noexcept {
     return placements_.placement(id);
 }
 
+[[nodiscard]] const BoardKeepout &Board::keepout(BoardKeepoutId id) const {
+    return copper_.keepout(id);
+}
+
+[[nodiscard]] std::size_t Board::keepout_count() const noexcept { return copper_.keepout_count(); }
+
+[[nodiscard]] const BoardText &Board::text(BoardTextId id) const { return copper_.text(id); }
+
+[[nodiscard]] std::size_t Board::text_count() const noexcept { return copper_.text_count(); }
+
 [[nodiscard]] std::optional<ComponentPlacementId>
 Board::placement_for_component(ComponentId component) const noexcept {
     return placements_.placement_for_component(component);
@@ -188,6 +198,35 @@ void Board::append_pad_resolutions(ComponentPlacementId placement_id,
     }
 }
 
+namespace {
+
+[[nodiscard]] bool board_points_inside_outline(const BoardOutline &outline,
+                                               const std::vector<BoardPoint> &points) {
+    return std::all_of(points.begin(), points.end(),
+                       [&outline](BoardPoint point) { return outline.contains(point); });
+}
+
+[[nodiscard]] std::vector<BoardPoint> feature_outline_points(const BoardFeature &feature) {
+    switch (feature.kind()) {
+    case BoardFeatureKind::Hole:
+        return std::vector{feature.hole().center()};
+    case BoardFeatureKind::Slot:
+        return std::vector{feature.slot().start(), feature.slot().end()};
+    case BoardFeatureKind::Cutout:
+        return feature.cutout().outline();
+    case BoardFeatureKind::Circle:
+        return std::vector{feature.circle().center()};
+    }
+    throw std::logic_error{"Unhandled board feature kind"};
+}
+
+[[nodiscard]] bool feature_role_expected(BoardFeatureKind kind) noexcept {
+    return kind == BoardFeatureKind::Hole || kind == BoardFeatureKind::Slot ||
+           kind == BoardFeatureKind::Cutout || kind == BoardFeatureKind::Circle;
+}
+
+} // namespace
+
 [[nodiscard]] DiagnosticReport validate_board(const Board &board,
                                               const FootprintLibrary &footprints) {
     auto report = DiagnosticReport{};
@@ -197,6 +236,24 @@ void Board::append_pad_resolutions(ComponentPlacementId placement_id,
     if (!board.outline().has_value()) {
         report.add(detail::board_diagnostic(DiagnosticCode{"PCB_BOARD_OUTLINE_MISSING"},
                                             "Board has no outline"));
+    }
+
+    for (std::size_t index = 0; index < board.feature_count(); ++index) {
+        const auto feature_id = BoardFeatureId{index};
+        const auto &feature = board.feature(feature_id);
+        if (feature_role_expected(feature.kind()) && feature.role().empty()) {
+            report.add(detail::board_warning(DiagnosticCode{"PCB_BOARD_FEATURE_ROLE_MISSING"},
+                                             "Board feature is missing mechanical role metadata",
+                                             std::vector{EntityRef::board_feature(feature_id)}));
+        }
+        if (board.outline().has_value() &&
+            !board_points_inside_outline(board.outline().value(),
+                                         feature_outline_points(feature))) {
+            report.add(
+                detail::board_diagnostic(DiagnosticCode{"PCB_BOARD_FEATURE_OUTSIDE_OUTLINE"},
+                                         "Board feature geometry is outside the board outline",
+                                         std::vector{EntityRef::board_feature(feature_id)}));
+        }
     }
 
     for (std::size_t index = 0; index < board.circuit().component_count(); ++index) {

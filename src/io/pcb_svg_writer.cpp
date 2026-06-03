@@ -302,16 +302,7 @@ void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &pl
                                              const FootprintLibrary &footprints) {
     auto bounds = bounds_from_outline(board);
     for (std::size_t index = 0; index < board.feature_count(); ++index) {
-        const auto &feature = board.feature(BoardFeatureId{index});
-        const auto radius = feature.diameter_mm() / 2.0;
-        include_board_point(
-            bounds, BoardPoint{feature.position().x_mm() - radius, feature.position().y_mm()});
-        include_board_point(
-            bounds, BoardPoint{feature.position().x_mm() + radius, feature.position().y_mm()});
-        include_board_point(
-            bounds, BoardPoint{feature.position().x_mm(), feature.position().y_mm() - radius});
-        include_board_point(
-            bounds, BoardPoint{feature.position().x_mm(), feature.position().y_mm() + radius});
+        include_feature_bounds(bounds, board.feature(BoardFeatureId{index}));
     }
     for (std::size_t index = 0; index < board.track_count(); ++index) {
         const auto &track = board.track(BoardTrackId{index});
@@ -430,35 +421,7 @@ void write_pcb_svg_outline(std::ostream &out, const Board &board) {
     out << "\"/>\n";
 }
 
-void write_pcb_svg_features(std::ostream &out, const Board &board) {
-    out << "    <g class=\"layer layer-board-features\">\n";
-    for (std::size_t index = 0; index < board.feature_count(); ++index) {
-        const auto id = BoardFeatureId{index};
-        const auto &feature = board.feature(id);
-        if (feature.kind() != BoardFeatureKind::MountingHole) {
-            continue;
-        }
-
-        out << "      <circle class=\"board-feature mounting-hole\" data-board-feature=\""
-            << encode_local_id(id) << "\" cx=\"";
-        write_pcb_svg_number(out, feature.position().x_mm());
-        out << "\" cy=\"";
-        write_pcb_svg_number(out, feature.position().y_mm());
-        out << "\" r=\"";
-        write_pcb_svg_number(out, feature.diameter_mm() / 2.0);
-        out << "\"/>\n";
-        if (!feature.label().empty()) {
-            out << "      <text class=\"board-feature-label\" data-board-feature=\""
-                << encode_local_id(id) << "\" x=\"";
-            write_pcb_svg_number(out, feature.position().x_mm());
-            out << "\" y=\"";
-            write_pcb_svg_number(out,
-                                 feature.position().y_mm() + (feature.diameter_mm() / 2.0) + 2.0);
-            out << "\" text-anchor=\"middle\">" << pcb_svg_escape(feature.label()) << "</text>\n";
-        }
-    }
-    out << "    </g>\n";
-}
+void write_pcb_point_list(std::ostream &out, const std::vector<BoardPoint> &points);
 
 void write_pcb_point_list(std::ostream &out, const std::vector<BoardPoint> &points) {
     for (std::size_t point_index = 0; point_index < points.size(); ++point_index) {

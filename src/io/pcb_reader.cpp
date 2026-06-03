@@ -16,6 +16,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "pcb_feature_io.hpp"
+
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/pcb_schema.hpp>
 #include <volt/pcb/board.hpp>
@@ -108,8 +110,6 @@ class PcbBoardReader {
     void read_outline(Board &board, const nlohmann::json &board_json) const;
 
     void read_rules(Board &board, const nlohmann::json &board_json) const;
-
-    void read_features(Board &board, const nlohmann::json &board_json) const;
 
     void read_footprint_definitions(Board &board, const nlohmann::json &board_json) const;
 
@@ -442,23 +442,6 @@ void PcbBoardReader::read_rules(Board &board, const nlohmann::json &board_json) 
         number_field(*rules, "minimum_via_annular_diameter_mm"),
         number_field(*rules, "board_outline_clearance_mm"),
     });
-}
-
-void PcbBoardReader::read_features(Board &board, const nlohmann::json &board_json) const {
-    const auto &features = array_field(board_json, "features");
-    for (std::size_t index = 0; index < features.size(); ++index) {
-        const auto &feature = features[index];
-        require(feature.is_object(), "PCB board feature must be an object");
-        const auto expected = BoardFeatureId{index};
-        require_sequential_id(feature, "id", expected, "PCB board feature IDs must be sequential");
-        const auto kind = board_feature_kind_from_name(string_field(feature, "kind"));
-        require(kind == BoardFeatureKind::MountingHole,
-                "PCB reader currently supports mounting-hole board features");
-        const auto id = board.add_feature(BoardFeature::mounting_hole(
-            string_field(feature, "label"), board_point(field(feature, "position")),
-            number_field(feature, "diameter_mm")));
-        require(id == expected, "PCB board feature IDs must be sequential");
-    }
 }
 
 void PcbBoardReader::read_footprint_definitions(Board &board,

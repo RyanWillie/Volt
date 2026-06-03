@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include <volt/core/ids.hpp>
@@ -15,21 +16,191 @@ namespace volt {
 
 /** Physical board feature kind for placement-only PCB models. */
 enum class BoardFeatureKind {
-    MountingHole,
+    Hole,
     Slot,
     Cutout,
-    Fiducial,
-    ToolingHole,
-    Text,
-    MechanicalKeepout,
+    Circle,
+};
+
+/** Object kinds restricted by a board keepout. */
+enum class BoardKeepoutRestriction {
+    Copper,
+    Via,
+    Placement,
+    All,
+};
+
+/** Generic drilled board hole primitive. */
+class BoardHole {
+  public:
+    /** Construct a board hole with drill metadata. */
+    BoardHole(BoardPoint center, double drill_diameter_mm, bool plated,
+              std::optional<double> finished_diameter_mm = std::nullopt);
+
+    /** Return the hole center. */
+    [[nodiscard]] BoardPoint center() const noexcept { return center_; }
+
+    /** Return drill diameter in millimeters. */
+    [[nodiscard]] double drill_diameter_mm() const noexcept { return drill_diameter_mm_; }
+
+    /** Return finished diameter in millimeters, when distinct from drill diameter. */
+    [[nodiscard]] std::optional<double> finished_diameter_mm() const noexcept {
+        return finished_diameter_mm_;
+    }
+
+    /** Return whether the hole is plated. */
+    [[nodiscard]] bool plated() const noexcept { return plated_; }
+
+  private:
+    BoardPoint center_;
+    double drill_diameter_mm_;
+    bool plated_;
+    std::optional<double> finished_diameter_mm_;
+};
+
+/** Generic slotted board hole primitive. */
+class BoardSlot {
+  public:
+    /** Construct a slot from a centerline and width. */
+    BoardSlot(BoardPoint start, BoardPoint end, double width_mm, bool plated);
+
+    /** Return the slot centerline start. */
+    [[nodiscard]] BoardPoint start() const noexcept { return start_; }
+
+    /** Return the slot centerline end. */
+    [[nodiscard]] BoardPoint end() const noexcept { return end_; }
+
+    /** Return the slot width in millimeters. */
+    [[nodiscard]] double width_mm() const noexcept { return width_mm_; }
+
+    /** Return whether the slot is plated. */
+    [[nodiscard]] bool plated() const noexcept { return plated_; }
+
+  private:
+    BoardPoint start_;
+    BoardPoint end_;
+    double width_mm_;
+    bool plated_;
+};
+
+/** Generic board cutout primitive. */
+class BoardCutout {
+  public:
+    /** Construct a cutout from a closed polygon. */
+    explicit BoardCutout(std::vector<BoardPoint> outline);
+
+    /** Return cutout polygon vertices. */
+    [[nodiscard]] const std::vector<BoardPoint> &outline() const noexcept;
+
+  private:
+    BoardPolygon outline_;
+};
+
+/** Generic circular board-side primitive. */
+class BoardCircle {
+  public:
+    /** Construct a circular board feature. */
+    BoardCircle(BoardPoint center, double diameter_mm, BoardSide side = BoardSide::Top);
+
+    /** Return the circle center. */
+    [[nodiscard]] BoardPoint center() const noexcept { return center_; }
+
+    /** Return circle diameter in millimeters. */
+    [[nodiscard]] double diameter_mm() const noexcept { return diameter_mm_; }
+
+    /** Return the board side carrying the circle. */
+    [[nodiscard]] BoardSide side() const noexcept { return side_; }
+
+  private:
+    BoardPoint center_;
+    double diameter_mm_;
+    BoardSide side_;
+};
+
+/** Kernel-owned board keepout constraint over a polygonal scope. */
+class BoardKeepout {
+  public:
+    /** Construct a keepout over board layers and restricted object kinds. */
+    BoardKeepout(std::vector<BoardPoint> outline, std::vector<BoardLayerId> layers,
+                 std::vector<BoardKeepoutRestriction> restrictions);
+
+    /** Return keepout polygon vertices. */
+    [[nodiscard]] const std::vector<BoardPoint> &outline() const noexcept;
+
+    /** Return board layers this keepout applies to. */
+    [[nodiscard]] const std::vector<BoardLayerId> &layers() const noexcept { return layers_; }
+
+    /** Return restricted object kinds. */
+    [[nodiscard]] const std::vector<BoardKeepoutRestriction> &restrictions() const noexcept;
+
+  private:
+    void validate_layers() const;
+
+    void validate_restrictions() const;
+
+    BoardPolygon outline_;
+    std::vector<BoardLayerId> layers_;
+    std::vector<BoardKeepoutRestriction> restrictions_;
+};
+
+/** Kernel-owned board text/annotation primitive. */
+class BoardText {
+  public:
+    /** Construct board text on an existing board layer. */
+    BoardText(std::string text, BoardPoint position, BoardRotation rotation, BoardLayerId layer,
+              double size_mm, bool locked = false);
+
+    /** Return text content. */
+    [[nodiscard]] const std::string &text() const noexcept { return text_; }
+
+    /** Return text anchor position. */
+    [[nodiscard]] BoardPoint position() const noexcept { return position_; }
+
+    /** Return text rotation. */
+    [[nodiscard]] BoardRotation rotation() const noexcept { return rotation_; }
+
+    /** Return board layer. */
+    [[nodiscard]] BoardLayerId layer() const noexcept { return layer_; }
+
+    /** Return text size in millimeters. */
+    [[nodiscard]] double size_mm() const noexcept { return size_mm_; }
+
+    /** Return whether the text is locked against movement. */
+    [[nodiscard]] bool locked() const noexcept { return locked_; }
+
+  private:
+    std::string text_;
+    BoardPoint position_;
+    BoardRotation rotation_;
+    BoardLayerId layer_;
+    double size_mm_;
+    bool locked_;
 };
 
 /** Board-owned physical feature that does not define electrical connectivity. */
 class BoardFeature {
   public:
-    /** Construct a circular mounting hole feature. */
-    [[nodiscard]] static BoardFeature mounting_hole(std::string label, BoardPoint center,
-                                                    double drill_diameter_mm);
+    /** Payload held by one board feature. */
+    using Payload = std::variant<BoardHole, BoardSlot, BoardCutout, BoardCircle>;
+
+    /** Construct a circular board hole feature. */
+    [[nodiscard]] static BoardFeature
+    hole(std::string label, BoardPoint center, double drill_diameter_mm, bool plated = false,
+         std::string role = {}, std::optional<double> finished_diameter_mm = std::nullopt);
+
+    /** Construct a slotted board feature. */
+    [[nodiscard]] static BoardFeature slot(std::string label, BoardPoint start, BoardPoint end,
+                                           double width_mm, bool plated = false,
+                                           std::string role = {});
+
+    /** Construct a polygonal board cutout feature. */
+    [[nodiscard]] static BoardFeature cutout(std::string label, std::vector<BoardPoint> outline,
+                                             std::string role = {});
+
+    /** Construct a circular board-side feature. */
+    [[nodiscard]] static BoardFeature circle(std::string label, BoardPoint center,
+                                             double diameter_mm, BoardSide side = BoardSide::Top,
+                                             std::string role = {});
 
     /** Return the feature kind. */
     [[nodiscard]] BoardFeatureKind kind() const noexcept { return kind_; }
@@ -37,20 +208,35 @@ class BoardFeature {
     /** Return the optional human-facing feature label. */
     [[nodiscard]] const std::string &label() const noexcept { return label_; }
 
-    /** Return the feature center or anchor point. */
-    [[nodiscard]] BoardPoint position() const noexcept { return position_; }
+    /** Return the optional mechanical/electrical role metadata. */
+    [[nodiscard]] const std::string &role() const noexcept { return role_; }
 
-    /** Return the feature primary diameter in millimeters. */
-    [[nodiscard]] double diameter_mm() const noexcept { return diameter_mm_; }
+    /** Return hole payload for hole-like features. */
+    [[nodiscard]] const BoardHole &hole() const;
+
+    /** Return slot payload. */
+    [[nodiscard]] const BoardSlot &slot() const;
+
+    /** Return cutout payload. */
+    [[nodiscard]] const BoardCutout &cutout() const;
+
+    /** Return circle payload. */
+    [[nodiscard]] const BoardCircle &circle() const;
+
+    /** Return the underlying typed payload. */
+    [[nodiscard]] const Payload &payload() const noexcept { return payload_; }
 
   private:
-    BoardFeature(BoardFeatureKind kind, std::string label, BoardPoint position, double diameter_mm);
+    BoardFeature(BoardFeatureKind kind, std::string label, std::string role, Payload payload);
 
     BoardFeatureKind kind_;
     std::string label_;
-    BoardPoint position_;
-    double diameter_mm_;
+    std::string role_;
+    Payload payload_;
 };
+
+/** Return whether a board feature kind stores a drilled hole payload. */
+[[nodiscard]] bool is_board_hole_feature(BoardFeatureKind kind) noexcept;
 
 /** Stored placement of an existing logical component on a board. */
 class ComponentPlacement {

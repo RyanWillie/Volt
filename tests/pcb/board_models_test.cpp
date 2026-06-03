@@ -52,7 +52,7 @@ TEST_CASE("BoardStructureModel owns layers, stack, outline, rules, and features"
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{40.0, 20.0}));
     model.set_design_rules(volt::BoardDesignRules{0.20, 0.18, 0.30, 0.70, 0.10});
     const auto feature = model.add_feature(
-        volt::BoardFeature::mounting_hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2));
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2, false, "mounting"));
 
     CHECK(model.layer_count() == 2);
     CHECK(model.layer(front).name() == "F.Cu");
@@ -60,7 +60,8 @@ TEST_CASE("BoardStructureModel owns layers, stack, outline, rules, and features"
     CHECK(model.layer_stack()->layers() == std::vector{front, back});
     REQUIRE(model.outline().has_value());
     CHECK(model.design_rules().minimum_track_width_mm() == 0.18);
-    CHECK(model.feature(feature).kind() == volt::BoardFeatureKind::MountingHole);
+    CHECK(model.feature(feature).kind() == volt::BoardFeatureKind::Hole);
+    CHECK(model.feature(feature).role() == "mounting");
 
     CHECK_THROWS_AS(model.add_layer(volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper,
                                                      volt::BoardLayerSide::Top}),

@@ -160,6 +160,110 @@ class KiCadPcbExport:
     warnings: tuple[KiCadLossWarning, ...]
 
 
+@dataclass(frozen=True)
+class Hole:
+    """Generic circular board hole primitive."""
+
+    center: Point
+    diameter: float
+    plated: bool = False
+    role: str = ""
+    label: str = ""
+    finished_diameter: float | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "center", _point(self.center, "Board hole center"))
+
+
+@dataclass(frozen=True)
+class Slot:
+    """Generic slotted board hole primitive."""
+
+    start: Point
+    end: Point
+    width: float
+    plated: bool = False
+    role: str = ""
+    label: str = ""
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "start", _point(self.start, "Board slot start"))
+        object.__setattr__(self, "end", _point(self.end, "Board slot end"))
+
+
+@dataclass(frozen=True)
+class Cutout:
+    """Generic board cutout primitive."""
+
+    outline: tuple[Point, ...]
+    role: str = ""
+    label: str = ""
+
+    @classmethod
+    def polygon(
+        cls, vertices: Iterable[Point], *, role: str = "", label: str = ""
+    ) -> "Cutout":
+        """Create a polygonal board cutout."""
+        return cls(
+            tuple(_point(vertex, "Board cutout vertex") for vertex in vertices),
+            role,
+            label,
+        )
+
+
+@dataclass(frozen=True)
+class Circle:
+    """Generic circular board-side primitive."""
+
+    center: Point
+    diameter: float
+    label: str = ""
+    side: str = "top"
+    role: str = ""
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "center", _point(self.center, "Board circle center"))
+
+
+@dataclass(frozen=True)
+class Text:
+    """Generic board text/annotation primitive."""
+
+    text: str
+    at: Point
+    layer: int
+    rotation: float = 0.0
+    size: float = 1.0
+    locked: bool = False
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "at", _point(self.at, "Board text position"))
+
+
+@dataclass(frozen=True)
+class MechanicalKeepout:
+    """Generic mechanical keepout primitive."""
+
+    outline: tuple[Point, ...]
+    layers: tuple[int, ...]
+    restrictions: tuple[str, ...] = ("all",)
+
+    def __init__(
+        self,
+        *,
+        outline: Iterable[Point],
+        layers: Iterable[int],
+        restrictions: Iterable[str] = ("all",),
+    ):
+        object.__setattr__(
+            self,
+            "outline",
+            tuple(_point(point, "Board keepout outline point") for point in outline),
+        )
+        object.__setattr__(self, "layers", tuple(_layer_indices(layers)))
+        object.__setattr__(self, "restrictions", tuple(restrictions))
+
+
 class Board:
     """Python handle to one kernel-owned PCB projection."""
 
@@ -249,10 +353,59 @@ class Board:
         )
         return self
 
-    def add_mounting_hole(self, label: str, *, at: Point, diameter: float) -> int:
-        """Add a board-level mounting hole and return its kernel index."""
-        x, y = _point(at, "Board feature position")
-        return self._design._circuit.board_add_mounting_hole(label, x, y, float(diameter))
+    def add(self, primitive) -> int:
+        """Add a generic board primitive and return its kernel index."""
+        if isinstance(primitive, Hole):
+            x, y = primitive.center
+            return self._design._circuit.board_add_hole(
+                primitive.label,
+                x,
+                y,
+                float(primitive.diameter),
+                primitive.plated,
+                primitive.role,
+                None if primitive.finished_diameter is None else float(primitive.finished_diameter),
+            )
+        if isinstance(primitive, Slot):
+            start_x, start_y = primitive.start
+            end_x, end_y = primitive.end
+            return self._design._circuit.board_add_slot(
+                primitive.label,
+                start_x,
+                start_y,
+                end_x,
+                end_y,
+                float(primitive.width),
+                primitive.plated,
+                primitive.role,
+            )
+        if isinstance(primitive, Cutout):
+            return self._design._circuit.board_add_cutout(
+                primitive.label, list(primitive.outline), primitive.role
+            )
+        if isinstance(primitive, Circle):
+            x, y = primitive.center
+            return self._design._circuit.board_add_circle(
+                primitive.label, x, y, float(primitive.diameter), primitive.side, primitive.role
+            )
+        if isinstance(primitive, Text):
+            x, y = primitive.at
+            return self._design._circuit.board_add_text(
+                primitive.text,
+                x,
+                y,
+                _layer_index(primitive.layer),
+                float(primitive.rotation),
+                float(primitive.size),
+                primitive.locked,
+            )
+        if isinstance(primitive, MechanicalKeepout):
+            return self._design._circuit.board_add_keepout(
+                list(primitive.layers),
+                list(primitive.outline),
+                list(primitive.restrictions),
+            )
+        raise TypeError("Board.add expects a Volt board primitive")
 
     def cache_footprint(self, footprint: Footprint) -> int:
         """Cache an explicit board-owned footprint definition for importers and low-level tests."""
@@ -368,10 +521,8 @@ class Board:
         restrictions: Iterable[str],
     ) -> int:
         """Add a keepout region with layer and feature restrictions."""
-        return self._design._circuit.board_add_keepout(
-            _layer_indices(layers),
-            [_point(point, "Board keepout outline point") for point in outline],
-            list(restrictions),
+        return self.add(
+            MechanicalKeepout(outline=outline, layers=layers, restrictions=restrictions)
         )
 
     def add_text(
@@ -385,15 +536,8 @@ class Board:
         locked: bool = False,
     ) -> int:
         """Add a board text item and return its kernel index."""
-        x, y = _point(at, "Board text position")
-        return self._design._circuit.board_add_text(
-            text,
-            x,
-            y,
-            _layer_index(layer),
-            float(rotation),
-            float(size),
-            locked,
+        return self.add(
+            Text(text, at=at, layer=layer, rotation=rotation, size=size, locked=locked)
         )
 
     def resolve_pads(self) -> tuple[PadResolution, ...]:

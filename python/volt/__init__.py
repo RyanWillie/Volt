@@ -39,13 +39,19 @@ from .logical import (
 )
 from .pcb import (
     Board,
+    Circle,
+    Cutout,
     Footprint,
     FootprintDefinition,
     FootprintDrill,
     FootprintPad,
+    Hole,
     KiCadLossWarning,
     KiCadPcbExport,
+    MechanicalKeepout,
     PadResolution,
+    Slot,
+    Text,
 )
 from .schematic import (
     PlacedSchematicElement,
@@ -73,6 +79,8 @@ __all__ = [
     "Component",
     "ComponentDefinition",
     "Board",
+    "Circle",
+    "Cutout",
     "Design",
     "Diagnostic",
     "DiagnosticEntity",
@@ -99,8 +107,10 @@ __all__ = [
     "FootprintDefinition",
     "FootprintDrill",
     "FootprintPad",
+    "Hole",
     "KiCadLossWarning",
     "KiCadPcbExport",
+    "MechanicalKeepout",
     "PhysicalPartSpec",
     "PlacedSchematicElement",
     "PadResolution",
@@ -127,5 +137,7 @@ __all__ = [
     "SchematicTwoTerminalElement",
     "SchematicWire",
     "SchematicWireBuilder",
+    "Slot",
     "TemplateNetInfo",
+    "Text",
 ]

@@ -231,6 +231,10 @@
           <p>Use <code>volt-sprint-kickoff</code>. Codex creates isolated branches or worktrees, dispatches developer agents only for independent work, and keeps Linear and GitHub state synchronized.</p>
         </article>
         <article class="step">
+          <h3>PR Thermonuclear Review</h3>
+          <p>After each PR is raised, Codex creates a fresh thread to run <code>thermo-nuclear-code-quality-review</code>. Findings, or a clean-review result, are recorded as a PR comment; the authoring agent then addresses actionable findings, pushes fixes to the peer branch, and comments with resolution evidence before the lane is review-ready.</p>
+        </article>
+        <article class="step">
           <h3>Sprint Review</h3>
           <p>Use <code>volt-sprint-review</code>. Codex summarizes what shipped, what changed architecturally, open PR or CI state, unfinished work, and the resulting product capability.</p>
         </article>
@@ -271,7 +275,7 @@
             <li>Acceptance criteria are met and out-of-scope work is captured separately.</li>
             <li>Volt architecture boundaries and kernel-owned semantics are preserved.</li>
             <li>Relevant tests, docs, local checks, and CI are passing or explicitly waived.</li>
-            <li>PR, review notes, Linear status, and follow-up tickets are complete.</li>
+            <li>PR, thermonuclear review comment, author resolution evidence, Linear status, and follow-up tickets are complete.</li>
           </ul>
         </article>
       </div>

@@ -147,18 +147,16 @@ class Board {
     [[nodiscard]] std::size_t zone_count() const noexcept { return copper_.zone_count(); }
 
     /** Return a keepout by board-local ID. */
-    [[nodiscard]] const BoardKeepout &keepout(BoardKeepoutId id) const {
-        return copper_.keepout(id);
-    }
+    [[nodiscard]] const BoardKeepout &keepout(BoardKeepoutId id) const;
 
     /** Return the number of keepouts. */
-    [[nodiscard]] std::size_t keepout_count() const noexcept { return copper_.keepout_count(); }
+    [[nodiscard]] std::size_t keepout_count() const noexcept;
 
     /** Return board text by board-local ID. */
-    [[nodiscard]] const BoardText &text(BoardTextId id) const { return copper_.text(id); }
+    [[nodiscard]] const BoardText &text(BoardTextId id) const;
 
     /** Return the number of board text primitives. */
-    [[nodiscard]] std::size_t text_count() const noexcept { return copper_.text_count(); }
+    [[nodiscard]] std::size_t text_count() const noexcept;
 
     /** Return the placement ID for a component, if present. */
     [[nodiscard]] std::optional<ComponentPlacementId>

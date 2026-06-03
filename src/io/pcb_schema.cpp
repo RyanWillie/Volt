@@ -143,27 +143,21 @@ namespace volt::io::detail {
 
 [[nodiscard]] std::string board_feature_kind_name(BoardFeatureKind kind) {
     switch (kind) {
-    case BoardFeatureKind::MountingHole:
-        return "mounting_hole";
+    case BoardFeatureKind::Hole:
+        return "hole";
     case BoardFeatureKind::Slot:
         return "slot";
     case BoardFeatureKind::Cutout:
         return "cutout";
-    case BoardFeatureKind::Fiducial:
-        return "fiducial";
-    case BoardFeatureKind::ToolingHole:
-        return "tooling_hole";
-    case BoardFeatureKind::Text:
-        return "text";
-    case BoardFeatureKind::MechanicalKeepout:
-        return "mechanical_keepout";
+    case BoardFeatureKind::Circle:
+        return "circle";
     }
     throw std::logic_error{"Unhandled PCB board feature kind"};
 }
 
 [[nodiscard]] BoardFeatureKind board_feature_kind_from_name(const std::string &value) {
-    if (value == "mounting_hole") {
-        return BoardFeatureKind::MountingHole;
+    if (value == "hole") {
+        return BoardFeatureKind::Hole;
     }
     if (value == "slot") {
         return BoardFeatureKind::Slot;
@@ -171,17 +165,8 @@ namespace volt::io::detail {
     if (value == "cutout") {
         return BoardFeatureKind::Cutout;
     }
-    if (value == "fiducial") {
-        return BoardFeatureKind::Fiducial;
-    }
-    if (value == "tooling_hole") {
-        return BoardFeatureKind::ToolingHole;
-    }
-    if (value == "text") {
-        return BoardFeatureKind::Text;
-    }
-    if (value == "mechanical_keepout") {
-        return BoardFeatureKind::MechanicalKeepout;
+    if (value == "circle") {
+        return BoardFeatureKind::Circle;
     }
     throw std::logic_error{"Invalid PCB board feature kind"};
 }

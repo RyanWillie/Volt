@@ -17,7 +17,7 @@ namespace volt {
  * Owns board structure data: layers, stackup, outline, design rules, and mechanical features.
  *
  * Responsibility: stores the physical board frame (copper/technical layers, stackup ordering,
- *   board outline, DRC rule values, holes/slots/cutouts/fiducials).
+ *   board outline, DRC rule values, holes/slots/cutouts/circles).
  * Invariants: layer references resolve within the stackup; outline/feature geometry is finite.
  * Collaborators: composed by Board; supplies design-rule values consumed by DRC; acyclic.
  */

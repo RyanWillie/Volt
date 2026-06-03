@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <volt/core/ids.hpp>
+#include <volt/pcb/board_features.hpp>
 #include <volt/pcb/board_geometry.hpp>
 #include <volt/pcb/board_layers.hpp>
 #include <volt/pcb/board_outline.hpp>
@@ -47,74 +48,6 @@ class BoardZone {
     std::optional<NetId> net_;
     BoardZoneFill fill_;
     int priority_;
-};
-
-/** Object kinds restricted by a board keepout. */
-enum class BoardKeepoutRestriction {
-    Copper,
-    Via,
-    Placement,
-    All,
-};
-
-/** Kernel-owned board keepout constraint over a polygonal scope. */
-class BoardKeepout {
-  public:
-    /** Construct a keepout over board layers and restricted object kinds. */
-    BoardKeepout(std::vector<BoardPoint> outline, std::vector<BoardLayerId> layers,
-                 std::vector<BoardKeepoutRestriction> restrictions);
-
-    /** Return keepout polygon vertices. */
-    [[nodiscard]] const std::vector<BoardPoint> &outline() const noexcept;
-
-    /** Return board layers this keepout applies to. */
-    [[nodiscard]] const std::vector<BoardLayerId> &layers() const noexcept { return layers_; }
-
-    /** Return restricted object kinds. */
-    [[nodiscard]] const std::vector<BoardKeepoutRestriction> &restrictions() const noexcept;
-
-  private:
-    void validate_layers() const;
-
-    void validate_restrictions() const;
-
-    BoardPolygon outline_;
-    std::vector<BoardLayerId> layers_;
-    std::vector<BoardKeepoutRestriction> restrictions_;
-};
-
-/** Kernel-owned board text/annotation primitive. */
-class BoardText {
-  public:
-    /** Construct board text on an existing board layer. */
-    BoardText(std::string text, BoardPoint position, BoardRotation rotation, BoardLayerId layer,
-              double size_mm, bool locked = false);
-
-    /** Return text content. */
-    [[nodiscard]] const std::string &text() const noexcept { return text_; }
-
-    /** Return text anchor position. */
-    [[nodiscard]] BoardPoint position() const noexcept { return position_; }
-
-    /** Return text rotation. */
-    [[nodiscard]] BoardRotation rotation() const noexcept { return rotation_; }
-
-    /** Return board layer. */
-    [[nodiscard]] BoardLayerId layer() const noexcept { return layer_; }
-
-    /** Return text size in millimeters. */
-    [[nodiscard]] double size_mm() const noexcept { return size_mm_; }
-
-    /** Return whether the text is locked against movement. */
-    [[nodiscard]] bool locked() const noexcept { return locked_; }
-
-  private:
-    std::string text_;
-    BoardPoint position_;
-    BoardRotation rotation_;
-    BoardLayerId layer_;
-    double size_mm_;
-    bool locked_;
 };
 
 /** Routed copper track that physically implements an existing logical net. */

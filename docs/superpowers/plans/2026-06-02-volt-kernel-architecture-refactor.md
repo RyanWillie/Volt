@@ -145,4 +145,4 @@
 - [ ] Confirm broad friend declarations on `Circuit` are gone.
 - [ ] Confirm subsystem `.cpp` files contain real logic rather than root delegation.
 - [ ] Run full verification and inspect fixture/API/boundary diffs.
-- [ ] Commit, push `feat/kernel-architecture`, open a ready PR, then add comments requesting `@copilot` and `@claude[agent]` review.
+- [ ] Commit, push `feat/kernel-architecture`, open a ready PR, create a fresh Codex thread requesting a thermonuclear review, record findings as a PR comment, address actionable findings, push fixes, and leave resolution evidence on the PR.

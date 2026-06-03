@@ -167,8 +167,16 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"))
         .def("board_set_polygon_outline", &PyCircuit::board_set_polygon_outline,
              py::arg("vertices"))
-        .def("board_add_mounting_hole", &PyCircuit::board_add_mounting_hole, py::arg("label"),
-             py::arg("x"), py::arg("y"), py::arg("diameter_mm"))
+        .def("board_add_hole", &PyCircuit::board_add_hole, py::arg("label"), py::arg("x"),
+             py::arg("y"), py::arg("drill_diameter_mm"), py::arg("plated") = false,
+             py::arg("role") = "", py::arg("finished_diameter_mm") = std::nullopt)
+        .def("board_add_slot", &PyCircuit::board_add_slot, py::arg("label"), py::arg("start_x"),
+             py::arg("start_y"), py::arg("end_x"), py::arg("end_y"), py::arg("width_mm"),
+             py::arg("plated") = false, py::arg("role") = "")
+        .def("board_add_cutout", &PyCircuit::board_add_cutout, py::arg("label"), py::arg("outline"),
+             py::arg("role") = "")
+        .def("board_add_circle", &PyCircuit::board_add_circle, py::arg("label"), py::arg("x"),
+             py::arg("y"), py::arg("diameter_mm"), py::arg("side") = "top", py::arg("role") = "")
         .def("board_cache_footprint_definition", &PyCircuit::board_cache_footprint_definition,
              py::arg("definition"))
         .def("board_place_component", &PyCircuit::board_place_component, py::arg("component"),

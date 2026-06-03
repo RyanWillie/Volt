@@ -15,7 +15,7 @@
   <g class="board-content" transform="translate(4 4)">
     <polygon class="board-outline" data-board="board:0" points="0,0 50,0 50,30 0,30"/>
     <g class="layer layer-board-features">
-      <circle class="board-feature mounting-hole" data-board-feature="board_feature:0" cx="3" cy="3" r="1.6"/>
+      <circle class="board-feature hole" data-board-feature="board_feature:0" cx="3" cy="3" r="1.6"/>
       <text class="board-feature-label" data-board-feature="board_feature:0" x="3" y="6.6" text-anchor="middle">MH1</text>
     </g>
     <g class="layer layer-footprints">

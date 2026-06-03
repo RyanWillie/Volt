@@ -432,10 +432,10 @@ def build_board(
         board_outline_clearance=0.25,
     )
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(90.0, 56.0))
-    board.add_mounting_hole("MH1", at=(4.0, 4.0), diameter=2.7)
-    board.add_mounting_hole("MH2", at=(86.0, 4.0), diameter=2.7)
-    board.add_mounting_hole("MH3", at=(4.0, 52.0), diameter=2.7)
-    board.add_mounting_hole("MH4", at=(86.0, 52.0), diameter=2.7)
+    board.add(volt.Hole(center=(4.0, 4.0), diameter=2.7, role="mounting", label="MH1"))
+    board.add(volt.Hole(center=(86.0, 4.0), diameter=2.7, role="mounting", label="MH2"))
+    board.add(volt.Hole(center=(4.0, 52.0), diameter=2.7, role="mounting", label="MH3"))
+    board.add(volt.Hole(center=(86.0, 52.0), diameter=2.7, role="mounting", label="MH4"))
 
     board.place(parts["J1"], at=(8.0, 28.0), rotation=0.0, side="top", locked=True)
     board.place(parts["U1"], at=(42.0, 28.0), rotation=0.0, side="top", locked=True)
@@ -445,7 +445,7 @@ def build_board(
     board.place(parts["CCTRL"], at=(58.0, 16.0), rotation=0.0, side="top")
     board.place(parts["RLED"], at=(28.0, 20.0), rotation=180.0, side="top")
     board.place(parts["DLED"], at=(17.0, 20.0), rotation=0.0, side="top")
-    board.add_text("555 BLINK", at=(61.0, 51.0), layer=silk, size=1.4)
+    board.add(volt.Text("555 BLINK", at=(61.0, 51.0), layer=silk, size=1.4))
 
     board.add_track(nets["+5V"], layer=front, points=((8.0, 26.73), (8.0, 8.0), (12.0, 8.0)), width=0.35)
     board.add_via(nets["+5V"], at=(12.0, 8.0), start_layer=front, end_layer=back)

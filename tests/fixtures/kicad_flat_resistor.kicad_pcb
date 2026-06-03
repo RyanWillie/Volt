@@ -24,7 +24,7 @@
   (net 0 "")
   (net 1 "LEFT")
   (net 2 "RIGHT")
-  (footprint "MountingHole_NPTH"
+  (footprint "BoardHole_NPTH"
     (layer "F.Cu")
     (uuid "f7e8e851-59de-59dd-8f9c-547b50351e56")
     (at 3 3)

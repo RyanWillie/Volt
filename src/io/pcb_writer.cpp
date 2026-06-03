@@ -308,26 +308,6 @@ void write_rules(std::ostream &out, const Board &board) {
     out << "},\n";
 }
 
-void write_features(std::ostream &out, const Board &board) {
-    out << "    \"features\": [\n";
-    for (std::size_t index = 0; index < board.feature_count(); ++index) {
-        const auto id = BoardFeatureId{index};
-        const auto &feature = board.feature(id);
-        out << "      {\"id\": " << json_string(encode_local_id(id))
-            << ", \"kind\": " << json_string(board_feature_kind_name(feature.kind()))
-            << ", \"label\": " << json_string(feature.label()) << ", \"position\": ";
-        write_board_point(out, feature.position());
-        out << ", \"diameter_mm\": ";
-        write_number(out, feature.diameter_mm());
-        out << '}';
-        if (index + 1U != board.feature_count()) {
-            out << ',';
-        }
-        out << '\n';
-    }
-    out << "    ],\n";
-}
-
 void write_footprint_definitions(std::ostream &out,
                                  const std::vector<FootprintDefinition> &definitions) {
     out << "    \"footprint_definitions\": [\n";
@@ -697,7 +677,7 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
         detail::write_board_keepouts(out, board, board.text_count() != 0U);
     }
     if (board.text_count() != 0U) {
-        detail::write_board_texts(out, board);
+        detail::write_board_texts(out, board, false);
     }
     out << "  },\n";
     detail::write_viewer(out, board, definitions);
