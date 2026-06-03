@@ -234,6 +234,10 @@ Before posting, verify that the issue is introduced or made materially worse by 
 
 ## Review output
 
+Post the review as a top-level PR comment. If the review thread cannot comment on GitHub
+directly, return the exact comment body to the authoring thread so the authoring agent can
+post it unchanged.
+
 Lead the summary with one of:
 
 - `No blocking issues found.`
