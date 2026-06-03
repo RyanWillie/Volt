@@ -165,9 +165,6 @@ class Board {
 
     void require_copper_layer(BoardLayerId layer_id) const;
 
-    [[nodiscard]] const BoardFeature &feature_by_kind_index(BoardFeatureKind kind,
-                                                            std::size_t index) const;
-
     void append_pad_resolutions(ComponentPlacementId placement_id,
                                 const ComponentPlacement &component_placement,
                                 const FootprintDefinition &definition,
@@ -181,6 +178,8 @@ class Board {
     BoardFootprintModel footprint_cache_;
     BoardPlacementModel placements_;
     BoardCopperModel copper_;
+    std::vector<BoardFeatureId> keepout_features_;
+    std::vector<BoardFeatureId> text_features_;
 };
 
 namespace detail {

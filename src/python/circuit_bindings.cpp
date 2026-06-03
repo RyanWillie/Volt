@@ -168,7 +168,11 @@ void bind_circuit(pybind11::module_ &module) {
         .def("board_set_polygon_outline", &PyCircuit::board_set_polygon_outline,
              py::arg("vertices"))
         .def("board_add_mounting_hole", &PyCircuit::board_add_mounting_hole, py::arg("label"),
-             py::arg("x"), py::arg("y"), py::arg("diameter_mm"))
+             py::arg("x"), py::arg("y"), py::arg("diameter_mm"), py::arg("plated") = false,
+             py::arg("finished_diameter_mm") = std::nullopt)
+        .def("board_add_tooling_hole", &PyCircuit::board_add_tooling_hole, py::arg("label"),
+             py::arg("x"), py::arg("y"), py::arg("diameter_mm"),
+             py::arg("finished_diameter_mm") = std::nullopt)
         .def("board_add_hole", &PyCircuit::board_add_hole, py::arg("label"), py::arg("x"),
              py::arg("y"), py::arg("drill_diameter_mm"), py::arg("plated") = false,
              py::arg("role") = "", py::arg("finished_diameter_mm") = std::nullopt)

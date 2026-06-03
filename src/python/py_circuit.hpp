@@ -269,7 +269,12 @@ class PyCircuit {
     void board_set_polygon_outline(const std::vector<std::pair<double, double>> &vertices);
 
     [[nodiscard]] std::size_t board_add_mounting_hole(const std::string &label, double x, double y,
-                                                      double diameter_mm);
+                                                      double diameter_mm, bool plated,
+                                                      std::optional<double> finished_diameter_mm);
+
+    [[nodiscard]] std::size_t board_add_tooling_hole(const std::string &label, double x, double y,
+                                                     double diameter_mm,
+                                                     std::optional<double> finished_diameter_mm);
 
     [[nodiscard]] std::size_t board_add_hole(const std::string &label, double x, double y,
                                              double drill_diameter_mm, bool plated,

@@ -219,8 +219,8 @@ def build_board(
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 18.0))
-    board.add(volt.Hole(center=(3.0, 3.0), diameter=2.7, label="MH1", role="mounting"))
-    board.add(volt.Hole(center=(29.0, 15.0), diameter=2.7, label="MH2", role="mounting"))
+    board.add(volt.MountingHole(center=(3.0, 3.0), diameter=2.7, label="MH1"))
+    board.add(volt.MountingHole(center=(29.0, 15.0), diameter=2.7, label="MH2"))
 
     board.place(parts["J1"], at=(5.0, 9.0), rotation=0.0, side="top", locked=True)
     board.place(parts["R1"], at=(15.0, 7.0), rotation=0.0, side="top")

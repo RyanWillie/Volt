@@ -49,6 +49,7 @@ from .pcb import (
     KiCadLossWarning,
     KiCadPcbExport,
     MechanicalKeepout,
+    MountingHole,
     PadResolution,
     Slot,
     Text,
@@ -142,4 +143,5 @@ __all__ = [
     "TemplateNetInfo",
     "Text",
     "ToolingHole",
+    "MountingHole",
 ]

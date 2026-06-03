@@ -28,7 +28,15 @@ void Board::set_design_rules(BoardDesignRules rules) { structure_.set_design_rul
             require_layer(layer);
         }
     }
-    return structure_.add_feature(std::move(feature));
+    const auto kind = feature.kind();
+    const auto id = structure_.add_feature(std::move(feature));
+    if (kind == BoardFeatureKind::Text) {
+        text_features_.push_back(id);
+    }
+    if (kind == BoardFeatureKind::MechanicalKeepout) {
+        keepout_features_.push_back(id);
+    }
+    return id;
 }
 [[nodiscard]] FootprintDefId Board::cache_footprint_definition(FootprintDefinition footprint) {
     return footprint_cache_.cache_footprint_definition(std::move(footprint));
@@ -87,29 +95,19 @@ Board::footprint_definition_id(const FootprintRef &ref) const noexcept {
     return placements_.placement(id);
 }
 [[nodiscard]] const BoardKeepout &Board::keepout(BoardKeepoutId id) const {
-    return feature_by_kind_index(BoardFeatureKind::MechanicalKeepout, id.index()).keepout();
-}
-[[nodiscard]] std::size_t Board::keepout_count() const noexcept {
-    auto count = std::size_t{0};
-    for (std::size_t index = 0; index < feature_count(); ++index) {
-        if (feature(BoardFeatureId{index}).kind() == BoardFeatureKind::MechanicalKeepout) {
-            ++count;
-        }
+    if (id.index() >= keepout_features_.size()) {
+        throw std::out_of_range{"Board keepout ID does not belong to this board"};
     }
-    return count;
+    return feature(keepout_features_[id.index()]).keepout();
 }
+[[nodiscard]] std::size_t Board::keepout_count() const noexcept { return keepout_features_.size(); }
 [[nodiscard]] const BoardText &Board::text(BoardTextId id) const {
-    return feature_by_kind_index(BoardFeatureKind::Text, id.index()).text();
-}
-[[nodiscard]] std::size_t Board::text_count() const noexcept {
-    auto count = std::size_t{0};
-    for (std::size_t index = 0; index < feature_count(); ++index) {
-        if (feature(BoardFeatureId{index}).kind() == BoardFeatureKind::Text) {
-            ++count;
-        }
+    if (id.index() >= text_features_.size()) {
+        throw std::out_of_range{"Board text ID does not belong to this board"};
     }
-    return count;
+    return feature(text_features_[id.index()]).text();
 }
+[[nodiscard]] std::size_t Board::text_count() const noexcept { return text_features_.size(); }
 [[nodiscard]] std::optional<ComponentPlacementId>
 Board::placement_for_component(ComponentId component) const noexcept {
     return placements_.placement_for_component(component);
@@ -151,21 +149,6 @@ void Board::require_copper_layer(BoardLayerId layer_id) const {
     if (layer(layer_id).role() != BoardLayerRole::Copper) {
         throw std::logic_error{"Board copper primitives require copper layers"};
     }
-}
-[[nodiscard]] const BoardFeature &Board::feature_by_kind_index(BoardFeatureKind kind,
-                                                               std::size_t index) const {
-    auto seen = std::size_t{0};
-    for (std::size_t feature_index = 0; feature_index < feature_count(); ++feature_index) {
-        const auto &candidate = feature(BoardFeatureId{feature_index});
-        if (candidate.kind() != kind) {
-            continue;
-        }
-        if (seen == index) {
-            return candidate;
-        }
-        ++seen;
-    }
-    throw std::out_of_range{"Board feature kind ID does not belong to this board"};
 }
 void Board::append_pad_resolutions(ComponentPlacementId placement_id,
                                    const ComponentPlacement &component_placement,

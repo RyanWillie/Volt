@@ -194,13 +194,16 @@ class BoardFeature {
          std::string role = {}, std::optional<double> finished_diameter_mm = std::nullopt);
 
     /** Construct a circular mounting hole feature. */
-    [[nodiscard]] static BoardFeature mounting_hole(std::string label, BoardPoint center,
-                                                    double drill_diameter_mm);
+    [[nodiscard]] static BoardFeature
+    mounting_hole(std::string label, BoardPoint center, double drill_diameter_mm,
+                  bool plated = false, std::optional<double> finished_diameter_mm = std::nullopt,
+                  std::string role = "mounting");
 
     /** Construct a circular tooling hole feature. */
     [[nodiscard]] static BoardFeature
     tooling_hole(std::string label, BoardPoint center, double drill_diameter_mm,
-                 std::optional<double> finished_diameter_mm = std::nullopt);
+                 std::optional<double> finished_diameter_mm = std::nullopt,
+                 std::string role = "tooling");
 
     /** Construct a slotted board feature. */
     [[nodiscard]] static BoardFeature slot(std::string label, BoardPoint start, BoardPoint end,
@@ -229,12 +232,6 @@ class BoardFeature {
 
     /** Return the optional mechanical/electrical role metadata. */
     [[nodiscard]] const std::string &role() const noexcept { return role_; }
-
-    /** Return the feature center or anchor point. */
-    [[nodiscard]] BoardPoint position() const;
-
-    /** Return the feature primary diameter in millimeters. */
-    [[nodiscard]] double diameter_mm() const;
 
     /** Return hole payload for hole-like features. */
     [[nodiscard]] const BoardHole &hole() const;
@@ -265,6 +262,9 @@ class BoardFeature {
     std::string role_;
     Payload payload_;
 };
+
+/** Return whether a board feature kind stores a drilled hole payload. */
+[[nodiscard]] bool is_board_hole_feature(BoardFeatureKind kind) noexcept;
 
 /** Stored placement of an existing logical component on a board. */
 class ComponentPlacement {

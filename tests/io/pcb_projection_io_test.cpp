@@ -268,7 +268,7 @@ TEST_CASE("PCB projection reader round-trips board metadata, placements, and pad
     CHECK(restored.layer_stack()->board_thickness_mm() == 1.6);
     REQUIRE(restored.outline().has_value());
     CHECK(restored.outline()->vertices()[2] == volt::BoardPoint{50.0, 30.0});
-    CHECK(restored.feature(volt::BoardFeatureId{0}).diameter_mm() == 3.2);
+    CHECK(restored.feature(volt::BoardFeatureId{0}).hole().drill_diameter_mm() == 3.2);
     CHECK(restored.footprint_definition(volt::FootprintDefId{0})
               .pad(volt::FootprintPadId{0})
               .size() == volt::FootprintSize{0.80, 0.95});

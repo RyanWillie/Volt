@@ -176,6 +176,20 @@ class Hole:
 
 
 @dataclass(frozen=True)
+class MountingHole:
+    """Generic mounting hole primitive."""
+
+    center: Point
+    diameter: float
+    label: str = ""
+    plated: bool = False
+    finished_diameter: float | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "center", _point(self.center, "Board mounting hole center"))
+
+
+@dataclass(frozen=True)
 class ToolingHole:
     """Generic tooling hole primitive."""
 
@@ -378,15 +392,23 @@ class Board:
                 primitive.role,
                 None if primitive.finished_diameter is None else float(primitive.finished_diameter),
             )
-        if isinstance(primitive, ToolingHole):
+        if isinstance(primitive, MountingHole):
             x, y = primitive.center
-            return self._design._circuit.board_add_hole(
+            return self._design._circuit.board_add_mounting_hole(
                 primitive.label,
                 x,
                 y,
                 float(primitive.diameter),
-                False,
-                "tooling",
+                primitive.plated,
+                None if primitive.finished_diameter is None else float(primitive.finished_diameter),
+            )
+        if isinstance(primitive, ToolingHole):
+            x, y = primitive.center
+            return self._design._circuit.board_add_tooling_hole(
+                primitive.label,
+                x,
+                y,
+                float(primitive.diameter),
                 None if primitive.finished_diameter is None else float(primitive.finished_diameter),
             )
         if isinstance(primitive, Slot):
@@ -432,7 +454,10 @@ class Board:
 
     def add_mounting_hole(self, label: str, *, at: Point, diameter: float) -> int:
         """Add a board-level mounting hole and return its kernel index."""
-        return self.add(Hole(center=at, diameter=diameter, label=label, role="mounting"))
+        x, y = _point(at, "Board mounting hole position")
+        return self._design._circuit.board_add_mounting_hole(
+            label, x, y, float(diameter), False, None
+        )
 
     def cache_footprint(self, footprint: Footprint) -> int:
         """Cache an explicit board-owned footprint definition for importers and low-level tests."""

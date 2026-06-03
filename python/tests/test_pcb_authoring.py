@@ -68,7 +68,7 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
-    board.add(volt.Hole(center=(3.0, 3.0), diameter=3.2, label="MH1", role="mounting"))
+    board.add(volt.MountingHole(center=(3.0, 3.0), diameter=3.2, label="MH1"))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
     board.place(r1, at=(18.0, 15.0), rotation=0.0, side="top", locked=True)
@@ -144,7 +144,7 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
-    board.add(volt.Hole(center=(3.0, 3.0), diameter=3.2, label="MH1", role="mounting"))
+    board.add(volt.MountingHole(center=(3.0, 3.0), diameter=3.2, label="MH1"))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
     board.place(r1, at=(18.0, 15.0), rotation=0.0, side="top", locked=True)
@@ -237,7 +237,7 @@ def test_python_board_authoring_adds_generic_board_primitives():
     silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 24.0))
 
-    board.add(volt.Hole(center=(4.0, 4.0), diameter=3.2, label="MH1", role="mounting"))
+    board.add(volt.MountingHole(center=(4.0, 4.0), diameter=3.2, label="MH1"))
     board.add(volt.Hole(center=(36.0, 4.0), diameter=1.0, label="DRILL1", role="fixture"))
     board.add(volt.Slot(start=(8.0, 4.0), end=(16.0, 4.0), width=1.5, role="mounting"))
     board.add(

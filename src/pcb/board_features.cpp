@@ -109,23 +109,21 @@ BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotati
                                               double drill_diameter_mm, bool plated,
                                               std::string role,
                                               std::optional<double> finished_diameter_mm) {
-    auto kind = BoardFeatureKind::Hole;
-    if (role == "mounting") {
-        kind = BoardFeatureKind::MountingHole;
-    } else if (role == "tooling") {
-        kind = BoardFeatureKind::ToolingHole;
-    }
-    return BoardFeature{kind, std::move(label), std::move(role),
+    return BoardFeature{BoardFeatureKind::Hole, std::move(label), std::move(role),
                         BoardHole{center, drill_diameter_mm, plated, finished_diameter_mm}};
 }
 [[nodiscard]] BoardFeature BoardFeature::mounting_hole(std::string label, BoardPoint center,
-                                                       double drill_diameter_mm) {
-    return BoardFeature::hole(std::move(label), center, drill_diameter_mm, false, "mounting");
+                                                       double drill_diameter_mm, bool plated,
+                                                       std::optional<double> finished_diameter_mm,
+                                                       std::string role) {
+    return BoardFeature{BoardFeatureKind::MountingHole, std::move(label), std::move(role),
+                        BoardHole{center, drill_diameter_mm, plated, finished_diameter_mm}};
 }
 [[nodiscard]] BoardFeature BoardFeature::tooling_hole(std::string label, BoardPoint center,
                                                       double drill_diameter_mm,
-                                                      std::optional<double> finished_diameter_mm) {
-    return BoardFeature{BoardFeatureKind::ToolingHole, std::move(label), "tooling",
+                                                      std::optional<double> finished_diameter_mm,
+                                                      std::string role) {
+    return BoardFeature{BoardFeatureKind::ToolingHole, std::move(label), std::move(role),
                         BoardHole{center, drill_diameter_mm, false, finished_diameter_mm}};
 }
 [[nodiscard]] BoardFeature BoardFeature::slot(std::string label, BoardPoint start, BoardPoint end,
@@ -149,41 +147,21 @@ BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotati
 [[nodiscard]] BoardFeature BoardFeature::mechanical_keepout(BoardKeepout keepout) {
     return BoardFeature{BoardFeatureKind::MechanicalKeepout, {}, "mechanical", std::move(keepout)};
 }
-[[nodiscard]] BoardPoint BoardFeature::position() const {
-    switch (kind_) {
+
+[[nodiscard]] bool is_board_hole_feature(BoardFeatureKind kind) noexcept {
+    switch (kind) {
     case BoardFeatureKind::Hole:
     case BoardFeatureKind::MountingHole:
     case BoardFeatureKind::ToolingHole:
-        return hole().center();
-    case BoardFeatureKind::Slot:
-        return slot().start();
+        return true;
     case BoardFeatureKind::Cutout:
-        return cutout().outline().front();
     case BoardFeatureKind::Fiducial:
-        return fiducial().center();
-    case BoardFeatureKind::Text:
-        return text().position();
     case BoardFeatureKind::MechanicalKeepout:
-        return keepout().outline().front();
-    }
-    throw std::logic_error{"Unhandled board feature kind"};
-}
-[[nodiscard]] double BoardFeature::diameter_mm() const {
-    switch (kind_) {
-    case BoardFeatureKind::Hole:
-    case BoardFeatureKind::MountingHole:
-    case BoardFeatureKind::ToolingHole:
-        return hole().drill_diameter_mm();
-    case BoardFeatureKind::Fiducial:
-        return fiducial().diameter_mm();
     case BoardFeatureKind::Slot:
-        return slot().width_mm();
-    case BoardFeatureKind::Cutout:
     case BoardFeatureKind::Text:
-    case BoardFeatureKind::MechanicalKeepout:
-        return 0.0;
+        return false;
     }
-    throw std::logic_error{"Unhandled board feature kind"};
+    return false;
 }
 [[nodiscard]] const BoardHole &BoardFeature::hole() const { return std::get<BoardHole>(payload_); }
 [[nodiscard]] const BoardSlot &BoardFeature::slot() const { return std::get<BoardSlot>(payload_); }

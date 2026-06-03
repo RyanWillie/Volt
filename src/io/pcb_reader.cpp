@@ -16,6 +16,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "pcb_feature_io.hpp"
+
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/pcb_schema.hpp>
 #include <volt/pcb/board.hpp>
@@ -108,8 +110,6 @@ class PcbBoardReader {
     void read_outline(Board &board, const nlohmann::json &board_json) const;
 
     void read_rules(Board &board, const nlohmann::json &board_json) const;
-
-    void read_features(Board &board, const nlohmann::json &board_json) const;
 
     void read_footprint_definitions(Board &board, const nlohmann::json &board_json) const;
 
@@ -415,106 +415,6 @@ void PcbBoardReader::read_rules(Board &board, const nlohmann::json &board_json) 
         number_field(*rules, "minimum_via_annular_diameter_mm"),
         number_field(*rules, "board_outline_clearance_mm"),
     });
-}
-void PcbBoardReader::read_features(Board &board, const nlohmann::json &board_json) const {
-    const auto &features = array_field(board_json, "features");
-    for (std::size_t index = 0; index < features.size(); ++index) {
-        const auto &feature = features[index];
-        require(feature.is_object(), "PCB board feature must be an object");
-        const auto expected = BoardFeatureId{index};
-        require_sequential_id(feature, "id", expected, "PCB board feature IDs must be sequential");
-        const auto kind = board_feature_kind_from_name(string_field(feature, "kind"));
-        const auto role = optional_field(feature, "role") == nullptr
-                              ? std::string{}
-                              : string_field(feature, "role");
-        const auto label = optional_field(feature, "label") == nullptr
-                               ? std::string{}
-                               : string_field(feature, "label");
-        auto id = BoardFeatureId{0};
-        switch (kind) {
-        case BoardFeatureKind::Hole:
-        case BoardFeatureKind::MountingHole:
-        case BoardFeatureKind::ToolingHole: {
-            auto finished = std::optional<double>{};
-            if (const auto *value = optional_field(feature, "finished_diameter_mm");
-                value != nullptr && !value->is_null()) {
-                require(value->is_number(), "PCB board hole finished diameter must be a number");
-                finished = value->get<double>();
-            }
-            const auto *drill = optional_field(feature, "drill_diameter_mm");
-            const auto drill_diameter = drill == nullptr
-                                            ? number_field(feature, "diameter_mm")
-                                            : number_field(feature, "drill_diameter_mm");
-            const auto plated =
-                optional_field(feature, "plated") != nullptr && bool_field(feature, "plated");
-            if (kind == BoardFeatureKind::ToolingHole) {
-                id = board.add_feature(BoardFeature::tooling_hole(
-                    label, board_point(field(feature, "position")), drill_diameter, finished));
-            } else if (kind == BoardFeatureKind::MountingHole) {
-                id = board.add_feature(BoardFeature::hole(
-                    label, board_point(field(feature, "position")), drill_diameter, plated,
-                    role.empty() ? "mounting" : role, finished));
-            } else {
-                id = board.add_feature(BoardFeature::hole(label,
-                                                          board_point(field(feature, "position")),
-                                                          drill_diameter, plated, role, finished));
-            }
-            break;
-        }
-        case BoardFeatureKind::Slot:
-            id = board.add_feature(BoardFeature::slot(
-                label, board_point(field(feature, "start")), board_point(field(feature, "end")),
-                number_field(feature, "width_mm"),
-                optional_field(feature, "plated") != nullptr && bool_field(feature, "plated"),
-                role));
-            break;
-        case BoardFeatureKind::Cutout:
-            id = board.add_feature(
-                BoardFeature::cutout(label, board_points(field(feature, "outline")), role));
-            break;
-        case BoardFeatureKind::Fiducial:
-            id = board.add_feature(
-                BoardFeature::fiducial(label, board_point(field(feature, "position")),
-                                       number_field(feature, "diameter_mm"),
-                                       optional_field(feature, "side") == nullptr
-                                           ? BoardSide::Top
-                                           : board_side_from_name(string_field(feature, "side"))));
-            break;
-        case BoardFeatureKind::Text: {
-            const auto layer = typed_id<BoardLayerId>(feature, "layer");
-            if (layer.index() >= board.layer_count()) {
-                throw std::logic_error{"PCB text references missing board layer"};
-            }
-            id = board.add_feature(BoardFeature::text(BoardText{
-                string_field(feature, "text"),
-                board_point(field(feature, "position")),
-                BoardRotation::degrees(number_field(feature, "rotation_deg")),
-                layer,
-                number_field(feature, "size_mm"),
-                bool_field(feature, "locked"),
-            }));
-            break;
-        }
-        case BoardFeatureKind::MechanicalKeepout: {
-            const auto &restrictions_json = array_field(feature, "restrictions");
-            auto restrictions = std::vector<BoardKeepoutRestriction>{};
-            restrictions.reserve(restrictions_json.size());
-            for (const auto &restriction_json : restrictions_json) {
-                require(restriction_json.is_string(), "PCB keepout restriction must be a string");
-                restrictions.push_back(
-                    board_keepout_restriction_from_name(restriction_json.get<std::string>()));
-            }
-            id = board.add_feature(BoardFeature::mechanical_keepout(BoardKeepout{
-                board_points(field(feature, "outline")),
-                read_board_layers(board, feature, "layers",
-                                  "PCB keepout references missing board layer"),
-                std::move(restrictions),
-            }));
-            break;
-        }
-        }
-        require(id == expected, "PCB board feature IDs must be sequential");
-    }
 }
 void PcbBoardReader::read_footprint_definitions(Board &board,
                                                 const nlohmann::json &board_json) const {
