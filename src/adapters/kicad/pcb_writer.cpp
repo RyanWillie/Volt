@@ -383,10 +383,6 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
             write_board_hole(out, feature, id);
             continue;
         }
-        if (feature.kind() == BoardFeatureKind::Text ||
-            feature.kind() == BoardFeatureKind::MechanicalKeepout) {
-            continue;
-        }
         if (feature.kind() == BoardFeatureKind::Slot) {
             loss_report.add_warning(
                 LossKind::UnsupportedConstruct, "board.feature.slot",

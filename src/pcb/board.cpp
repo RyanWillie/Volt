@@ -216,10 +216,6 @@ namespace {
         return feature.cutout().outline();
     case BoardFeatureKind::Circle:
         return std::vector{feature.circle().center()};
-    case BoardFeatureKind::Text:
-        return std::vector{feature.text().position()};
-    case BoardFeatureKind::MechanicalKeepout:
-        return feature.keepout().outline();
     }
     throw std::logic_error{"Unhandled board feature kind"};
 }

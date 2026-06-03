@@ -85,23 +85,13 @@ BoardCircle::BoardCircle(BoardPoint center, double diameter_mm, BoardSide side)
                         BoardCircle{center, diameter_mm, side}};
 }
 
-[[nodiscard]] BoardFeature BoardFeature::text(BoardText text) {
-    return BoardFeature{BoardFeatureKind::Text, {}, {}, std::move(text)};
-}
-
-[[nodiscard]] BoardFeature BoardFeature::mechanical_keepout(BoardKeepout keepout) {
-    return BoardFeature{BoardFeatureKind::MechanicalKeepout, {}, "mechanical", std::move(keepout)};
-}
-
 [[nodiscard]] bool is_board_hole_feature(BoardFeatureKind kind) noexcept {
     switch (kind) {
     case BoardFeatureKind::Hole:
         return true;
     case BoardFeatureKind::Circle:
     case BoardFeatureKind::Cutout:
-    case BoardFeatureKind::MechanicalKeepout:
     case BoardFeatureKind::Slot:
-    case BoardFeatureKind::Text:
         return false;
     }
     return false;
@@ -117,12 +107,6 @@ BoardCircle::BoardCircle(BoardPoint center, double diameter_mm, BoardSide side)
 
 [[nodiscard]] const BoardCircle &BoardFeature::circle() const {
     return std::get<BoardCircle>(payload_);
-}
-
-[[nodiscard]] const BoardText &BoardFeature::text() const { return std::get<BoardText>(payload_); }
-
-[[nodiscard]] const BoardKeepout &BoardFeature::keepout() const {
-    return std::get<BoardKeepout>(payload_);
 }
 
 BoardFeature::BoardFeature(BoardFeatureKind kind, std::string label, std::string role,

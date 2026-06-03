@@ -27,9 +27,6 @@ namespace {
         return BoardPoint{feature.circle().center().x_mm(),
                           feature.circle().center().y_mm() +
                               (feature.circle().diameter_mm() / 2.0) + 2.0};
-    case BoardFeatureKind::Text:
-    case BoardFeatureKind::MechanicalKeepout:
-        break;
     }
     throw std::logic_error{"Board feature kind has no SVG feature label anchor"};
 }
@@ -71,14 +68,6 @@ void include_feature_bounds(PcbSvgBounds &bounds, const BoardFeature &feature) {
         include_board_point(bounds, BoardPoint{center.x_mm(), center.y_mm() + radius});
         break;
     }
-    case BoardFeatureKind::Text:
-        include_board_point(bounds, feature.text().position());
-        break;
-    case BoardFeatureKind::MechanicalKeepout:
-        for (const auto point : feature.keepout().outline()) {
-            include_board_point(bounds, point);
-        }
-        break;
     }
 }
 
@@ -129,9 +118,6 @@ void write_pcb_svg_features(std::ostream &out, const Board &board) {
             write_pcb_svg_number(out, feature.circle().diameter_mm() / 2.0);
             out << "\"/>\n";
             break;
-        case BoardFeatureKind::Text:
-        case BoardFeatureKind::MechanicalKeepout:
-            continue;
         }
         if (!feature.label().empty()) {
             const auto anchor = feature_label_anchor(feature);

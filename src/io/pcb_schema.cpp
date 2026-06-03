@@ -151,10 +151,6 @@ namespace volt::io::detail {
         return "cutout";
     case BoardFeatureKind::Circle:
         return "circle";
-    case BoardFeatureKind::Text:
-        return "text";
-    case BoardFeatureKind::MechanicalKeepout:
-        return "mechanical_keepout";
     }
     throw std::logic_error{"Unhandled PCB board feature kind"};
 }
@@ -171,12 +167,6 @@ namespace volt::io::detail {
     }
     if (value == "circle") {
         return BoardFeatureKind::Circle;
-    }
-    if (value == "text") {
-        return BoardFeatureKind::Text;
-    }
-    if (value == "mechanical_keepout") {
-        return BoardFeatureKind::MechanicalKeepout;
     }
     throw std::logic_error{"Invalid PCB board feature kind"};
 }

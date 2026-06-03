@@ -20,8 +20,6 @@ enum class BoardFeatureKind {
     Slot,
     Cutout,
     Circle,
-    Text,
-    MechanicalKeepout,
 };
 
 /** Object kinds restricted by a board keepout. */
@@ -183,8 +181,7 @@ class BoardText {
 class BoardFeature {
   public:
     /** Payload held by one board feature. */
-    using Payload =
-        std::variant<BoardHole, BoardSlot, BoardCutout, BoardCircle, BoardText, BoardKeepout>;
+    using Payload = std::variant<BoardHole, BoardSlot, BoardCutout, BoardCircle>;
 
     /** Construct a circular board hole feature. */
     [[nodiscard]] static BoardFeature
@@ -204,12 +201,6 @@ class BoardFeature {
     [[nodiscard]] static BoardFeature circle(std::string label, BoardPoint center,
                                              double diameter_mm, BoardSide side = BoardSide::Top,
                                              std::string role = {});
-
-    /** Construct a board text feature. */
-    [[nodiscard]] static BoardFeature text(BoardText text);
-
-    /** Construct a mechanical keepout feature. */
-    [[nodiscard]] static BoardFeature mechanical_keepout(BoardKeepout keepout);
 
     /** Return the feature kind. */
     [[nodiscard]] BoardFeatureKind kind() const noexcept { return kind_; }
@@ -231,12 +222,6 @@ class BoardFeature {
 
     /** Return circle payload. */
     [[nodiscard]] const BoardCircle &circle() const;
-
-    /** Return text payload. */
-    [[nodiscard]] const BoardText &text() const;
-
-    /** Return keepout payload. */
-    [[nodiscard]] const BoardKeepout &keepout() const;
 
     /** Return the underlying typed payload. */
     [[nodiscard]] const Payload &payload() const noexcept { return payload_; }

@@ -5,7 +5,6 @@
 #include <ostream>
 #include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -90,22 +89,6 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
     return points;
 }
 
-[[nodiscard]] std::vector<BoardLayerId> read_board_layers(const Board &board,
-                                                          const nlohmann::json &object,
-                                                          const char *name,
-                                                          const std::string &missing_message) {
-    const auto &layers = array_field(object, name);
-    auto result = std::vector<BoardLayerId>{};
-    result.reserve(layers.size());
-    for (const auto &layer : layers) {
-        require(layer.is_string(), "PCB board layer reference must be a string");
-        const auto layer_id = decode_local_id<BoardLayerId>(layer.get<std::string>());
-        require(layer_id.index() < board.layer_count(), missing_message);
-        result.push_back(layer_id);
-    }
-    return result;
-}
-
 [[nodiscard]] std::string optional_string_field(const nlohmann::json &object, const char *name) {
     const auto *value = optional_field(object, name);
     return value == nullptr ? std::string{} : string_field(object, name);
@@ -138,7 +121,7 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
     return BoardFeature::hole(label, position, drill, optional_plated(feature), role, finished);
 }
 
-[[nodiscard]] BoardFeature read_feature(const Board &board, const nlohmann::json &feature) {
+[[nodiscard]] BoardFeature read_feature(const nlohmann::json &feature) {
     const auto kind = board_feature_kind_from_name(string_field(feature, "kind"));
     const auto label = optional_string_field(feature, "label");
     const auto role = optional_string_field(feature, "role");
@@ -159,34 +142,6 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
                                         ? BoardSide::Top
                                         : board_side_from_name(string_field(feature, "side")),
                                     role);
-    case BoardFeatureKind::Text: {
-        const auto layer = typed_id<BoardLayerId>(feature, "layer");
-        require(layer.index() < board.layer_count(), "PCB text references missing board layer");
-        return BoardFeature::text(BoardText{
-            string_field(feature, "text"),
-            board_point(field(feature, "position")),
-            BoardRotation::degrees(number_field(feature, "rotation_deg")),
-            layer,
-            number_field(feature, "size_mm"),
-            bool_field(feature, "locked"),
-        });
-    }
-    case BoardFeatureKind::MechanicalKeepout: {
-        const auto &restrictions_json = array_field(feature, "restrictions");
-        auto restrictions = std::vector<BoardKeepoutRestriction>{};
-        restrictions.reserve(restrictions_json.size());
-        for (const auto &restriction_json : restrictions_json) {
-            require(restriction_json.is_string(), "PCB keepout restriction must be a string");
-            restrictions.push_back(
-                board_keepout_restriction_from_name(restriction_json.get<std::string>()));
-        }
-        return BoardFeature::mechanical_keepout(BoardKeepout{
-            board_points(field(feature, "outline")),
-            read_board_layers(board, feature, "layers",
-                              "PCB keepout references missing board layer"),
-            std::move(restrictions),
-        });
-    }
     }
     throw std::logic_error{"Unhandled PCB board feature kind"};
 }
@@ -200,7 +155,7 @@ void read_features(Board &board, const nlohmann::json &board_json) {
         require(feature.is_object(), "PCB board feature must be an object");
         const auto expected = BoardFeatureId{index};
         require_sequential_id(feature, "id", expected, "PCB board feature IDs must be sequential");
-        const auto id = board.add_feature(read_feature(board, feature));
+        const auto id = board.add_feature(read_feature(feature));
         require(id == expected, "PCB board feature IDs must be sequential");
     }
 }
@@ -255,34 +210,6 @@ void write_features(std::ostream &out, const Board &board) {
             out << ", \"side\": " << json_string(board_side_name(feature.circle().side()))
                 << ", \"role\": " << json_string(feature.role());
             break;
-        case BoardFeatureKind::Text:
-            out << ", \"text\": " << json_string(feature.text().text()) << ", \"position\": ";
-            write_board_point(out, feature.text().position());
-            out << ", \"rotation_deg\": ";
-            write_number(out, feature.text().rotation().degrees());
-            out << ", \"layer\": " << json_string(encode_local_id(feature.text().layer()))
-                << ", \"size_mm\": ";
-            write_number(out, feature.text().size_mm());
-            out << ", \"locked\": " << (feature.text().locked() ? "true" : "false");
-            break;
-        case BoardFeatureKind::MechanicalKeepout: {
-            const auto &keepout = feature.keepout();
-            out << ", \"outline\": ";
-            write_board_points(out, keepout.outline());
-            out << ", \"layers\": ";
-            write_board_layers(out, keepout.layers());
-            out << ", \"restrictions\": [";
-            for (std::size_t restriction_index = 0;
-                 restriction_index < keepout.restrictions().size(); ++restriction_index) {
-                if (restriction_index != 0U) {
-                    out << ", ";
-                }
-                out << json_string(
-                    board_keepout_restriction_name(keepout.restrictions()[restriction_index]));
-            }
-            out << ']';
-            break;
-        }
         }
         out << '}';
         if (index + 1U != board.feature_count()) {
