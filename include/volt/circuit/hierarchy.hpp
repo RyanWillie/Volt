@@ -88,6 +88,7 @@ class TemplateNetDefinition {
 
     /** Return the template-local net name. */
     [[nodiscard]] const NetName &name() const noexcept { return name_; }
+
     /** Return the net kind copied to concrete nets at module instantiation. */
     [[nodiscard]] NetKind kind() const noexcept { return kind_; }
 
@@ -105,10 +106,13 @@ class PortDefinition {
 
     /** Return the module-local port name. */
     [[nodiscard]] const PortName &name() const noexcept { return name_; }
+
     /** Return the template-local net exposed by this port. */
     [[nodiscard]] TemplateNetDefId internal_net() const noexcept { return internal_net_; }
+
     /** Return the broad electrical role for this module boundary. */
     [[nodiscard]] PortRole role() const noexcept { return role_; }
+
     /** Return whether each module instance must bind this port. */
     [[nodiscard]] bool required() const noexcept { return required_; }
 
@@ -128,8 +132,10 @@ class ModuleComponentTemplate {
 
     /** Return the reusable component definition instantiated by this template. */
     [[nodiscard]] ComponentDefId definition() const noexcept { return definition_; }
+
     /** Return the module-local reference designator. */
     [[nodiscard]] const ReferenceDesignator &reference() const noexcept { return reference_; }
+
     /** Return module-local instance properties copied to concrete instances. */
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
@@ -147,8 +153,10 @@ class ModulePinConnection {
 
     /** Return the template net connected to the pin. */
     [[nodiscard]] TemplateNetDefId net() const noexcept { return net_; }
+
     /** Return the module component template that owns the pin. */
     [[nodiscard]] ModuleComponentId component() const noexcept { return component_; }
+
     /** Return the reusable pin definition connected on that component template. */
     [[nodiscard]] PinDefId pin() const noexcept { return pin_; }
 
@@ -166,12 +174,15 @@ class ModuleDefinition {
 
     /** Return the reusable module name. */
     [[nodiscard]] const ModuleName &name() const noexcept { return name_; }
+
     /** Return template-local nets in deterministic insertion order. */
     [[nodiscard]] const std::vector<TemplateNetDefId> &template_nets() const noexcept {
         return template_nets_;
     }
+
     /** Return module ports in deterministic insertion order. */
     [[nodiscard]] const std::vector<PortDefId> &ports() const noexcept { return ports_; }
+
     /** Return component templates in deterministic insertion order. */
     [[nodiscard]] const std::vector<ModuleComponentId> &components() const noexcept;
 
@@ -196,6 +207,7 @@ class ModuleInstance {
 
     /** Return the reusable module definition instantiated here. */
     [[nodiscard]] ModuleDefId definition() const noexcept { return definition_; }
+
     /** Return the root-level instance name. */
     [[nodiscard]] const ModuleInstanceName &name() const noexcept { return name_; }
 
@@ -212,6 +224,7 @@ class ModuleNetOrigin {
 
     /** Return the module instance that owns the concrete net. */
     [[nodiscard]] ModuleInstanceId instance() const noexcept { return instance_; }
+
     /** Return the template-local net copied into the concrete net. */
     [[nodiscard]] TemplateNetDefId template_net() const noexcept { return template_net_; }
 
@@ -228,6 +241,7 @@ class ModuleComponentOrigin {
 
     /** Return the module instance that owns the concrete component. */
     [[nodiscard]] ModuleInstanceId instance() const noexcept { return instance_; }
+
     /** Return the module component template copied into the concrete component. */
     [[nodiscard]] ModuleComponentId component() const noexcept { return component_; }
 
@@ -244,10 +258,13 @@ class PortBinding {
 
     /** Return the module instance whose port is bound. */
     [[nodiscard]] ModuleInstanceId instance() const noexcept { return instance_; }
+
     /** Return the module port definition being bound. */
     [[nodiscard]] PortDefId port() const noexcept { return port_; }
+
     /** Return the instance-local concrete port net. */
     [[nodiscard]] NetId internal_net() const noexcept { return internal_net_; }
+
     /** Return the parent/root concrete net connected by this binding edge. */
     [[nodiscard]] NetId parent_net() const noexcept { return parent_net_; }
 

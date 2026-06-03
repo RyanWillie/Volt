@@ -3,7 +3,9 @@
 namespace volt::io::detail {
 
 [[nodiscard]] std::string symbol_instance_id(SymbolInstanceId id) { return encode_local_id(id); }
+
 [[nodiscard]] std::string no_connect_marker_id(NoConnectMarkerId id) { return encode_local_id(id); }
+
 void write_point(std::ostream &out, Point point) {
     out << "{ \"x\": ";
     write_json_number(out, point.x());
@@ -11,6 +13,7 @@ void write_point(std::ostream &out, Point point) {
     write_json_number(out, point.y());
     out << " }";
 }
+
 void write_sheet_margins(std::ostream &out, SheetMargins margins) {
     out << "{ \"left\": ";
     write_json_number(out, margins.left());
@@ -22,20 +25,24 @@ void write_sheet_margins(std::ostream &out, SheetMargins margins) {
     write_json_number(out, margins.bottom());
     out << " }";
 }
+
 void write_sheet_frame(std::ostream &out, SheetFrame frame) {
     out << "{ \"visible\": " << (frame.visible() ? "true" : "false") << ", \"margins\": ";
     write_sheet_margins(out, frame.margins());
     out << " }";
 }
+
 void write_sheet_coordinate_zones(std::ostream &out, SheetCoordinateZones zones) {
     out << "{ \"columns\": " << zones.columns() << ", \"rows\": " << zones.rows()
         << ", \"visible\": " << (zones.visible() ? "true" : "false") << " }";
 }
+
 void write_sheet_grid(std::ostream &out, SheetGrid grid) {
     out << "{ \"spacing\": ";
     write_json_number(out, grid.spacing());
     out << ", \"visible\": " << (grid.visible() ? "true" : "false") << " }";
 }
+
 void write_sheet_region_style(std::ostream &out, const std::vector<SheetRegionStyleField> &style) {
     out << "{";
     for (std::size_t index = 0; index < style.size(); ++index) {
@@ -47,6 +54,7 @@ void write_sheet_region_style(std::ostream &out, const std::vector<SheetRegionSt
     }
     out << "}";
 }
+
 void write_sheet_region(std::ostream &out, const SheetRegion &region) {
     const auto bounds = region.bounds();
     out << "{ \"name\": " << json_string(region.name())
@@ -62,12 +70,14 @@ void write_sheet_region(std::ostream &out, const SheetRegion &region) {
     write_sheet_region_style(out, region.style());
     out << " }";
 }
+
 void write_authored_region(std::ostream &out, const Sheet &sheet,
                            const std::optional<std::size_t> &region) {
     if (region.has_value()) {
         out << ", \"authored_region\": " << json_string(sheet.region(region.value()).name());
     }
 }
+
 void write_text_style_fields(std::ostream &out, SchematicTextStyle style,
                              SchematicTextStyle defaults) {
     if (style.horizontal_alignment() != defaults.horizontal_alignment()) {
@@ -83,6 +93,7 @@ void write_text_style_fields(std::ostream &out, SchematicTextStyle style,
         write_json_number(out, style.font_size().value());
     }
 }
+
 void write_sheet_metadata(std::ostream &out, const SheetMetadata &metadata) {
     out << "{ \"title\": " << json_string(metadata.title())
         << ", \"orientation\": " << json_string(sheet_orientation_name(metadata.orientation()))
@@ -111,6 +122,7 @@ void write_sheet_metadata(std::ostream &out, const SheetMetadata &metadata) {
     }
     out << " }";
 }
+
 void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive) {
     if (std::holds_alternative<SymbolLine>(primitive)) {
         const auto &line = std::get<SymbolLine>(primitive);
@@ -163,6 +175,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
     write_text_style_fields(out, text.style(), SchematicTextStyle{});
     out << " }";
 }
+
 [[nodiscard]] SheetId sheet_for_symbol_instance(const Schematic &schematic,
                                                 SymbolInstanceId instance) {
     for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
@@ -174,6 +187,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
     }
     throw std::logic_error{"Symbol instance is not placed on a schematic sheet"};
 }
+
 [[nodiscard]] SheetId sheet_for_wire_run(const Schematic &schematic, WireRunId wire) {
     for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
@@ -184,6 +198,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
     }
     throw std::logic_error{"Wire run is not placed on a schematic sheet"};
 }
+
 [[nodiscard]] SheetId sheet_for_net_label(const Schematic &schematic, NetLabelId label) {
     for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
@@ -194,6 +209,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
     }
     throw std::logic_error{"Net label is not placed on a schematic sheet"};
 }
+
 [[nodiscard]] SheetId sheet_for_junction(const Schematic &schematic, JunctionId junction) {
     for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
@@ -204,6 +220,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
     }
     throw std::logic_error{"Junction is not placed on a schematic sheet"};
 }
+
 [[nodiscard]] SheetId sheet_for_power_port(const Schematic &schematic, PowerPortId port) {
     for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
@@ -214,6 +231,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
     }
     throw std::logic_error{"Power port is not placed on a schematic sheet"};
 }
+
 [[nodiscard]] SheetId sheet_for_no_connect_marker(const Schematic &schematic,
                                                   NoConnectMarkerId marker) {
     for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
@@ -225,6 +243,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
     }
     throw std::logic_error{"No-connect marker is not placed on a schematic sheet"};
 }
+
 [[nodiscard]] SheetId sheet_for_sheet_port(const Schematic &schematic, SheetPortId port) {
     for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
@@ -235,6 +254,7 @@ void write_symbol_primitive(std::ostream &out, const SymbolPrimitive &primitive)
     }
     throw std::logic_error{"Sheet port is not placed on a schematic sheet"};
 }
+
 [[nodiscard]] SheetId sheet_for_symbol_field(const Schematic &schematic, SymbolFieldId field) {
     for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
         const auto sheet = SheetId{sheet_index};
@@ -585,14 +605,17 @@ void write_schematic(std::ostream &out, const Schematic &schematic) {
     out << "  ]\n";
     out << "}\n";
 }
+
 [[nodiscard]] std::string write_schematic(const Schematic &schematic) {
     auto out = std::ostringstream{};
     write_schematic(out, schematic);
     return out.str();
 }
+
 void write_schematic(std::ostream &out, const SchematicDocument &document) {
     write_schematic(out, document.schematic());
 }
+
 [[nodiscard]] std::string write_schematic(const SchematicDocument &document) {
     return write_schematic(document.schematic());
 }

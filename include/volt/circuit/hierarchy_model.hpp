@@ -13,7 +13,17 @@ namespace volt {
 
 class Circuit;
 
-/** Owns module hierarchy storage, template connectivity, origin metadata, and port bindings. */
+/**
+ * Owns module hierarchy storage: module/template definitions, ports, components, instances,
+ * port bindings, and origin metadata.
+ *
+ * Responsibility: stores reusable module hierarchy and the orchestration for materializing a
+ *   module instance over concrete nets and components.
+ * Invariants: template/port/component IDs resolve within their module; instance origins map to
+ *   existing concrete entities. Violations throw.
+ * Collaborators: composed by Circuit, which pre-flights cross-references before delegating;
+ *   never references Circuit back (acyclic).
+ */
 class HierarchyModel {
   public:
     /** Add a reusable module definition and return its stable ID. */

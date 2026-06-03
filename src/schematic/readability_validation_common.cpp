@@ -11,6 +11,7 @@ void add_readability_diagnostic(DiagnosticReport &report, Severity severity,
     refs.insert(refs.end(), context.begin(), context.end());
     report.add(Diagnostic{severity, DiagnosticCode{code}, std::move(message), std::move(refs)});
 }
+
 [[nodiscard]] std::vector<ReadabilityObject>
 readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     auto objects = std::vector<ReadabilityObject>{};
@@ -84,6 +85,7 @@ readability_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     }
     return objects;
 }
+
 [[nodiscard]] std::vector<ReadabilityTagObject>
 readability_tags_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     auto tags = std::vector<ReadabilityTagObject>{};
@@ -113,6 +115,7 @@ readability_tags_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     }
     return tags;
 }
+
 [[nodiscard]] std::vector<ReadabilityTextObject>
 readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     auto texts = std::vector<ReadabilityTextObject>{};
@@ -197,6 +200,7 @@ readability_texts_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     }
     return texts;
 }
+
 [[nodiscard]] std::vector<ReadabilityCollisionObject>
 readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet &sheet) {
     auto objects = std::vector<ReadabilityCollisionObject>{};
@@ -312,6 +316,7 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
 
     return objects;
 }
+
 [[nodiscard]] bool power_port_attaches_to_symbol_pin(const Schematic &schematic,
                                                      const PowerPort &port,
                                                      SymbolInstanceId symbol_id) {
@@ -335,6 +340,7 @@ readability_collision_objects_for_sheet(const Schematic &schematic, const Sheet 
     }
     return false;
 }
+
 [[nodiscard]] bool terminal_marker_attaches_to_symbol_pin(const Schematic &schematic,
                                                           const ReadabilityObject &symbol,
                                                           const ReadabilityObject &object) {

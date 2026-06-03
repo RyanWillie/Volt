@@ -9,11 +9,13 @@ namespace volt::io::detail {
         primitive, instance, stroke_padding, stroke_padding,
         schematic_svg_visual_scale.symbol_text_font_size);
 }
+
 [[nodiscard]] SvgBounds symbol_instance_bounds(const Schematic &schematic, SymbolInstanceId id) {
     const auto stroke_padding = schematic_svg_visual_scale.symbol_stroke_width / 2.0;
     return ::volt::detail::symbol_instance_bounds(schematic, id, stroke_padding, stroke_padding,
                                                   schematic_svg_visual_scale.symbol_text_font_size);
 }
+
 [[nodiscard]] SvgBounds symbol_debug_overlay_bounds(const Schematic &schematic,
                                                     SymbolInstanceId id) {
     const auto &instance = schematic.symbol_instance(id);
@@ -34,10 +36,12 @@ namespace volt::io::detail {
     }
     return bounds;
 }
+
 [[nodiscard]] SvgBounds wire_run_bounds(const WireRun &wire) {
     return ::volt::detail::wire_run_bounds(wire,
                                            schematic_svg_visual_scale.wire_stroke_width / 2.0);
 }
+
 [[nodiscard]] SchematicOrientation power_port_bounds_orientation(PowerPortKind kind,
                                                                  SchematicOrientation orientation) {
     switch (kind) {
@@ -48,36 +52,44 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled power port kind"};
 }
+
 [[nodiscard]] Point transformed_power_port_anchor(const PowerPort &port, Point local_anchor) {
     return transform_schematic_point(
         local_anchor, port.position(),
         power_port_bounds_orientation(port.kind(), port.orientation()));
 }
+
 [[nodiscard]] SvgBounds power_port_label_bounds(const PowerPort &port, std::string_view label) {
     return ::volt::detail::power_port_label_bounds(
         port, label, schematic_svg_visual_scale.tag_port_label_font_size);
 }
+
 [[nodiscard]] SvgBounds power_port_bounds(const PowerPort &port, std::string_view label) {
     const auto stroke_padding = schematic_svg_visual_scale.tag_port_stroke_width / 2.0;
     return ::volt::detail::power_port_bounds(port, label, stroke_padding,
                                              schematic_svg_visual_scale.tag_port_label_font_size);
 }
+
 [[nodiscard]] SvgBounds no_connect_marker_bounds(const NoConnectMarker &marker) {
     return ::volt::detail::no_connect_marker_bounds(
         marker, 3.0 + (schematic_svg_visual_scale.no_connect_stroke_width / 2.0));
 }
+
 [[nodiscard]] Point transformed_sheet_port_anchor(const SheetPort &port, Point local_anchor) {
     return transform_schematic_point(local_anchor, port.position(), port.orientation());
 }
+
 [[nodiscard]] SvgBounds sheet_port_label_bounds(const SheetPort &port) {
     return ::volt::detail::sheet_port_label_bounds(
         port, schematic_svg_visual_scale.tag_port_label_font_size);
 }
+
 [[nodiscard]] SvgBounds sheet_port_bounds(const SheetPort &port) {
     return ::volt::detail::sheet_port_bounds(port,
                                              schematic_svg_visual_scale.tag_port_stroke_width / 2.0,
                                              schematic_svg_visual_scale.tag_port_label_font_size);
 }
+
 [[nodiscard]] std::optional<SvgBounds> sheet_content_bounds(const Schematic &schematic,
                                                             SheetId sheet_id,
                                                             SchematicSvgBodyOptions options) {
@@ -138,6 +150,7 @@ namespace volt::io::detail {
     }
     return bounds;
 }
+
 [[nodiscard]] SvgBounds expanded_body_bounds(const Schematic &schematic, SheetId sheet_id,
                                              SchematicSvgBodyOptions options) {
     if (!std::isfinite(options.margin) || options.margin < 0.0) {
@@ -147,6 +160,7 @@ namespace volt::io::detail {
         sheet_content_bounds(schematic, sheet_id, options).value_or(SvgBounds{0.0, 0.0, 1.0, 1.0});
     return padded_bounds(bounds, options.margin);
 }
+
 void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
     const auto &scale = schematic_svg_visual_scale;
 
@@ -210,6 +224,7 @@ void write_svg_style(std::ostream &out, SchematicSvgOptions options) {
     }
     out << "</style>\n";
 }
+
 void write_sheet_svg(std::ostream &out, const Schematic &schematic, SheetId sheet_id,
                      double y_offset, SchematicSvgOptions options) {
     const auto &sheet = schematic.sheet(sheet_id);
@@ -267,12 +282,14 @@ void write_schematic_body_svg(std::ostream &out, const Schematic &schematic, She
     out << "  </g>\n";
     out << "</svg>\n";
 }
+
 [[nodiscard]] std::string write_schematic_body_svg(const Schematic &schematic, SheetId sheet_id,
                                                    SchematicSvgBodyOptions options) {
     auto out = std::ostringstream{};
     write_schematic_body_svg(out, schematic, sheet_id, options);
     return out.str();
 }
+
 void write_schematic_svg(std::ostream &out, const Schematic &schematic,
                          SchematicSvgOptions options) {
     const auto sheet_count = schematic.sheet_count();
@@ -312,12 +329,14 @@ void write_schematic_svg(std::ostream &out, const Schematic &schematic,
 
     out << "</svg>\n";
 }
+
 [[nodiscard]] std::string write_schematic_svg(const Schematic &schematic,
                                               SchematicSvgOptions options) {
     auto out = std::ostringstream{};
     write_schematic_svg(out, schematic, options);
     return out.str();
 }
+
 void write_schematic_sheet_svg(std::ostream &out, const Schematic &schematic, SheetId sheet_id,
                                SchematicSvgOptions options) {
     const auto &metadata = schematic.sheet(sheet_id).metadata();
@@ -342,12 +361,14 @@ void write_schematic_sheet_svg(std::ostream &out, const Schematic &schematic, Sh
     detail::write_sheet_svg(out, schematic, sheet_id, 0.0, options);
     out << "</svg>\n";
 }
+
 [[nodiscard]] std::string write_schematic_sheet_svg(const Schematic &schematic, SheetId sheet_id,
                                                     SchematicSvgOptions options) {
     auto out = std::ostringstream{};
     write_schematic_sheet_svg(out, schematic, sheet_id, options);
     return out.str();
 }
+
 [[nodiscard]] std::vector<SchematicSvgPage> write_schematic_svg_pages(const Schematic &schematic,
                                                                       SchematicSvgOptions options) {
     auto pages = std::vector<SchematicSvgPage>{};

@@ -15,6 +15,7 @@ void add_outside_sheet_diagnostic(DiagnosticReport &report, SheetId sheet_id, En
         std::move(refs),
     });
 }
+
 void validate_component_placement_coverage(const Schematic &schematic, const Sheet &sheet,
                                            SheetId sheet_id, SymbolInstanceId instance_id,
                                            DiagnosticReport &report) {
@@ -85,6 +86,7 @@ void validate_component_placement_coverage(const Schematic &schematic, const She
         });
     }
 }
+
 void validate_component_placements(const Schematic &schematic, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
     for (std::size_t component_index = 0; component_index < circuit.component_count();
@@ -121,6 +123,7 @@ void validate_component_placements(const Schematic &schematic, DiagnosticReport 
         }
     }
 }
+
 void validate_repeated_labels(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                               DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
@@ -144,6 +147,7 @@ void validate_repeated_labels(const Schematic &schematic, SheetId sheet_id, cons
         }
     }
 }
+
 void validate_fragmented_pin_labels_for_net(const Schematic &schematic, SheetId sheet_id,
                                             const Sheet &sheet, NetId net_id,
                                             DiagnosticReport &report) {
@@ -185,6 +189,7 @@ void validate_fragmented_pin_labels_for_net(const Schematic &schematic, SheetId 
         });
     }
 }
+
 void validate_fragmented_pin_labels(const Schematic &schematic, SheetId sheet_id,
                                     const Sheet &sheet, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
@@ -193,6 +198,7 @@ void validate_fragmented_pin_labels(const Schematic &schematic, SheetId sheet_id
                                                report);
     }
 }
+
 void validate_outside_sheet_objects(const Schematic &schematic, SheetId sheet_id,
                                     const Sheet &sheet, DiagnosticReport &report) {
     for (const auto wire_id : sheet.wire_runs()) {
@@ -255,6 +261,7 @@ void validate_outside_sheet_objects(const Schematic &schematic, SheetId sheet_id
         }
     }
 }
+
 void validate_same_net_crossings(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                                  DiagnosticReport &report) {
     const auto &wires = sheet.wire_runs();
@@ -290,6 +297,7 @@ void validate_same_net_crossings(const Schematic &schematic, SheetId sheet_id, c
         }
     }
 }
+
 [[nodiscard]] bool schematic_has_no_connect_marker_for_pin(const Schematic &schematic, PinId pin) {
     for (std::size_t sheet_index = 0; sheet_index < schematic.sheet_count(); ++sheet_index) {
         const auto &sheet = schematic.sheet(SheetId{sheet_index});
@@ -302,6 +310,7 @@ void validate_same_net_crossings(const Schematic &schematic, SheetId sheet_id, c
 
     return false;
 }
+
 void validate_no_connect_markers(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                                  DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
@@ -332,6 +341,7 @@ void validate_no_connect_markers(const Schematic &schematic, SheetId sheet_id, c
 
     static_cast<void>(sheet_id);
 }
+
 void validate_missing_no_connect_markers(const Schematic &schematic, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
     for (const auto pin_id : circuit.intentional_no_connect_pins()) {

@@ -9,6 +9,7 @@ namespace volt::authoring {
     pin.drive_kind = ElectricalDriveKind::Passive;
     return pin;
 }
+
 [[nodiscard]] PinSpec bidirectional_pin(std::string name, std::string number) {
     auto pin = PinSpec{std::move(name), std::move(number), PinRole::Bidirectional};
     pin.terminal_kind = ElectricalTerminalKind::Signal;
@@ -16,6 +17,7 @@ namespace volt::authoring {
     pin.signal_domain = ElectricalSignalDomain::Mixed;
     return pin;
 }
+
 [[nodiscard]] PinSpec analog_input_pin(std::string name, std::string number) {
     auto pin = PinSpec{std::move(name), std::move(number), PinRole::AnalogInput};
     pin.terminal_kind = ElectricalTerminalKind::Signal;
@@ -23,6 +25,7 @@ namespace volt::authoring {
     pin.signal_domain = ElectricalSignalDomain::Analog;
     return pin;
 }
+
 [[nodiscard]] PinSpec analog_output_pin(std::string name, std::string number) {
     auto pin = PinSpec{std::move(name), std::move(number), PinRole::AnalogOutput};
     pin.terminal_kind = ElectricalTerminalKind::Signal;
@@ -30,24 +33,28 @@ namespace volt::authoring {
     pin.signal_domain = ElectricalSignalDomain::Analog;
     return pin;
 }
+
 [[nodiscard]] PinSpec power_input_pin(std::string name, std::string number) {
     auto pin = PinSpec{std::move(name), std::move(number), PinRole::PowerInput};
     pin.terminal_kind = ElectricalTerminalKind::Power;
     pin.direction = ElectricalDirection::Input;
     return pin;
 }
+
 [[nodiscard]] PinSpec power_output_pin(std::string name, std::string number) {
     auto pin = PinSpec{std::move(name), std::move(number), PinRole::PowerOutput};
     pin.terminal_kind = ElectricalTerminalKind::Power;
     pin.direction = ElectricalDirection::Output;
     return pin;
 }
+
 [[nodiscard]] PinSpec ground_pin(std::string name, std::string number) {
     auto pin = PinSpec{std::move(name), std::move(number), PinRole::Ground};
     pin.terminal_kind = ElectricalTerminalKind::Ground;
     pin.direction = ElectricalDirection::Passive;
     return pin;
 }
+
 [[nodiscard]] ComponentDefId define_component(Circuit &circuit, const ComponentSpec &spec) {
     auto pin_definitions = std::vector<PinDefId>{};
     pin_definitions.reserve(spec.pins.size());
@@ -71,6 +78,7 @@ namespace volt::authoring {
         ComponentDefinition{spec.name, std::move(pin_definitions), spec.properties, spec.source,
                             spec.schematic_symbols});
 }
+
 [[nodiscard]] ComponentSpec resistor() {
     return ComponentSpec{
         "Resistor",
@@ -80,6 +88,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.passives:resistor"}},
     };
 }
+
 [[nodiscard]] ComponentSpec capacitor() {
     return ComponentSpec{
         "Capacitor",
@@ -89,6 +98,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.passives:capacitor"}},
     };
 }
+
 [[nodiscard]] ComponentSpec polarized_capacitor() {
     return ComponentSpec{
         "Polarized capacitor",
@@ -99,6 +109,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.passives:capacitor_polarized"}},
     };
 }
+
 [[nodiscard]] ComponentSpec inductor() {
     return ComponentSpec{
         "Inductor",
@@ -108,6 +119,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.passives:inductor"}},
     };
 }
+
 [[nodiscard]] ComponentSpec diode() {
     return ComponentSpec{
         "Diode",
@@ -117,6 +129,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.discretes:diode"}},
     };
 }
+
 [[nodiscard]] ComponentSpec led() {
     return ComponentSpec{
         "LED",
@@ -126,6 +139,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.optos:led"}},
     };
 }
+
 [[nodiscard]] ComponentSpec switch_spst() {
     return ComponentSpec{
         "Switch",
@@ -135,6 +149,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.switches:switch_spst"}},
     };
 }
+
 [[nodiscard]] ComponentSpec crystal_2pin() {
     return ComponentSpec{
         "Crystal",
@@ -144,6 +159,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.frequency:crystal_2pin"}},
     };
 }
+
 [[nodiscard]] ComponentSpec test_point() {
     return ComponentSpec{
         "Test point",
@@ -153,6 +169,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.testpoints:test_point"}},
     };
 }
+
 [[nodiscard]] ComponentSpec connector_1x01() {
     return ComponentSpec{
         "One-pin connector",
@@ -162,6 +179,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.connectors:connector_1x01"}},
     };
 }
+
 [[nodiscard]] ComponentSpec connector_1x02() {
     return ComponentSpec{
         "Two-pin connector",
@@ -172,6 +190,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.connectors:connector_1x02"}},
     };
 }
+
 [[nodiscard]] ComponentSpec connector_1x03() {
     return ComponentSpec{
         "Three-pin connector",
@@ -183,6 +202,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.connectors:connector_1x03"}},
     };
 }
+
 [[nodiscard]] ComponentSpec regulator_3pin() {
     return ComponentSpec{
         "Regulator",
@@ -193,6 +213,7 @@ namespace volt::authoring {
         std::vector{SchematicSymbolReference{"volt.power:regulator_3pin"}},
     };
 }
+
 [[nodiscard]] ComponentSpec op_amp_5pin() {
     return ComponentSpec{
         "Op amp",

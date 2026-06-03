@@ -28,6 +28,7 @@ namespace volt::io::detail {
     }
     return result;
 }
+
 void write_pcb_svg_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
         throw std::invalid_argument{"PCB SVG numeric values must be finite"};
@@ -40,6 +41,7 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     formatted << std::setprecision(15) << value;
     out << formatted.str();
 }
+
 [[nodiscard]] PcbSvgBounds bounds_from_outline(const Board &board) {
     if (!board.outline().has_value()) {
         return PcbSvgBounds{0.0, 0.0, pcb_svg_default_width_mm, pcb_svg_default_height_mm};
@@ -56,9 +58,11 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     }
     return bounds;
 }
+
 [[nodiscard]] double preview_width(const PcbSvgBounds &bounds) {
     return (bounds.max_x - bounds.min_x) + (pcb_svg_margin_mm * 2.0);
 }
+
 [[nodiscard]] double preview_height(const PcbSvgBounds &bounds, const DiagnosticReport &diagnostics,
                                     PcbPlacementSvgOptions options) {
     auto height = (bounds.max_y - bounds.min_y) + (pcb_svg_margin_mm * 2.0);
@@ -67,6 +71,7 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     }
     return height;
 }
+
 [[nodiscard]] std::string entity_ref_svg_id(EntityRef entity) {
     switch (entity.kind()) {
     case EntityKind::ComponentDef:
@@ -128,6 +133,7 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     }
     throw std::logic_error{"Unhandled diagnostic entity kind"};
 }
+
 [[nodiscard]] std::string entity_ref_list(const Diagnostic &diagnostic) {
     auto result = std::string{};
     for (std::size_t index = 0; index < diagnostic.entities().size(); ++index) {
@@ -138,6 +144,7 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     }
     return result;
 }
+
 [[nodiscard]] std::string severity_class(Severity severity) {
     switch (severity) {
     case Severity::Info:
@@ -149,9 +156,11 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     }
     throw std::logic_error{"Unhandled diagnostic severity"};
 }
+
 [[nodiscard]] std::string footprint_ref_token(const FootprintRef &ref) {
     return ref.library() + ":" + ref.name();
 }
+
 [[nodiscard]] FootprintLibrary preview_footprint_library(const Board &board,
                                                          const FootprintLibrary &footprints) {
     auto library = FootprintLibrary{};
@@ -171,6 +180,7 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     }
     return library;
 }
+
 [[nodiscard]] const FootprintDefinition *
 resolve_definition_for_placement(const Board &board, const ComponentPlacement &placement,
                                  const FootprintLibrary &footprints) {
@@ -185,10 +195,12 @@ resolve_definition_for_placement(const Board &board, const ComponentPlacement &p
     }
     return footprints.find(selected_part->footprint());
 }
+
 [[nodiscard]] bool contains_footprint_ref(const std::vector<FootprintRef> &refs,
                                           const FootprintRef &ref) {
     return std::find(refs.begin(), refs.end(), ref) != refs.end();
 }
+
 [[nodiscard]] std::optional<FootprintDefId> projection_footprint_definition_id_for_placement(
     const Board &board, ComponentPlacementId placement_id, const FootprintLibrary &footprints) {
     const auto &placement = board.placement(placement_id);
@@ -221,6 +233,7 @@ resolve_definition_for_placement(const Board &board, const ComponentPlacement &p
     }
     return FootprintDefId{static_cast<std::size_t>(std::distance(refs.begin(), match))};
 }
+
 [[nodiscard]] const PadResolution *
 find_pad_resolution(const std::vector<PadResolution> &resolutions, ComponentPlacementId placement,
                     FootprintPadId pad) {
@@ -233,6 +246,7 @@ find_pad_resolution(const std::vector<PadResolution> &resolutions, ComponentPlac
     }
     return &*match;
 }
+
 [[nodiscard]] PcbSvgBounds footprint_local_bounds(const FootprintDefinition &definition) {
     auto bounds = PcbSvgBounds{0.0, 0.0, 0.0, 0.0};
     auto initialized = false;
@@ -259,12 +273,14 @@ find_pad_resolution(const std::vector<PadResolution> &resolutions, ComponentPlac
     return PcbSvgBounds{bounds.min_x - 0.5, bounds.min_y - 0.5, bounds.max_x + 0.5,
                         bounds.max_y + 0.5};
 }
+
 void include_board_point(PcbSvgBounds &bounds, BoardPoint point) {
     bounds.min_x = std::min(bounds.min_x, point.x_mm());
     bounds.min_y = std::min(bounds.min_y, point.y_mm());
     bounds.max_x = std::max(bounds.max_x, point.x_mm());
     bounds.max_y = std::max(bounds.max_y, point.y_mm());
 }
+
 void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &placement,
                               const FootprintDefinition &definition) {
     const auto local_bounds = footprint_local_bounds(definition);
@@ -281,6 +297,7 @@ void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &pl
                         volt::detail::transform_footprint_point(
                             placement, FootprintPoint{local_bounds.min_x, local_bounds.max_y}));
 }
+
 [[nodiscard]] PcbSvgBounds bounds_from_board(const Board &board,
                                              const FootprintLibrary &footprints) {
     auto bounds = bounds_from_outline(board);
@@ -342,6 +359,7 @@ void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &pl
     }
     return bounds;
 }
+
 [[nodiscard]] std::string pad_shape_class(FootprintPadShape shape) {
     switch (shape) {
     case FootprintPadShape::Rectangle:
@@ -355,6 +373,7 @@ void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &pl
     }
     throw std::logic_error{"Unhandled PCB footprint pad shape"};
 }
+
 void write_style(std::ostream &out, bool include_copper, bool include_zones, bool include_keepouts,
                  bool include_texts) {
     out << "  <style>\n";
@@ -392,6 +411,7 @@ void write_style(std::ostream &out, bool include_copper, bool include_zones, boo
     out << "    .diagnostic-label{fill:#b42318}\n";
     out << "  </style>\n";
 }
+
 void write_pcb_svg_outline(std::ostream &out, const Board &board) {
     if (!board.outline().has_value()) {
         return;
@@ -409,6 +429,7 @@ void write_pcb_svg_outline(std::ostream &out, const Board &board) {
     }
     out << "\"/>\n";
 }
+
 void write_pcb_svg_features(std::ostream &out, const Board &board) {
     out << "    <g class=\"layer layer-board-features\">\n";
     for (std::size_t index = 0; index < board.feature_count(); ++index) {
@@ -438,6 +459,7 @@ void write_pcb_svg_features(std::ostream &out, const Board &board) {
     }
     out << "    </g>\n";
 }
+
 void write_pcb_point_list(std::ostream &out, const std::vector<BoardPoint> &points) {
     for (std::size_t point_index = 0; point_index < points.size(); ++point_index) {
         if (point_index != 0U) {
@@ -448,6 +470,7 @@ void write_pcb_point_list(std::ostream &out, const std::vector<BoardPoint> &poin
         write_pcb_svg_number(out, points[point_index].y_mm());
     }
 }
+
 [[nodiscard]] std::string board_layer_list_attr(const std::vector<BoardLayerId> &layers) {
     auto result = std::string{};
     for (std::size_t index = 0; index < layers.size(); ++index) {
@@ -458,6 +481,7 @@ void write_pcb_point_list(std::ostream &out, const std::vector<BoardPoint> &poin
     }
     return result;
 }
+
 [[nodiscard]] std::string
 keepout_restriction_list_attr(const std::vector<BoardKeepoutRestriction> &restrictions) {
     auto result = std::string{};
@@ -469,6 +493,7 @@ keepout_restriction_list_attr(const std::vector<BoardKeepoutRestriction> &restri
     }
     return result;
 }
+
 void write_zones(std::ostream &out, const Board &board) {
     if (board.zone_count() == 0U) {
         return;
@@ -491,6 +516,7 @@ void write_zones(std::ostream &out, const Board &board) {
     }
     out << "    </g>\n";
 }
+
 void write_keepouts(std::ostream &out, const Board &board) {
     if (board.keepout_count() == 0U) {
         return;
@@ -511,6 +537,7 @@ void write_keepouts(std::ostream &out, const Board &board) {
     }
     out << "    </g>\n";
 }
+
 void write_texts(std::ostream &out, const Board &board) {
     if (board.text_count() == 0U) {
         return;
@@ -541,6 +568,7 @@ void write_texts(std::ostream &out, const Board &board) {
     }
     out << "    </g>\n";
 }
+
 void write_copper(std::ostream &out, const Board &board) {
     if (board.track_count() == 0U && board.via_count() == 0U) {
         return;
@@ -591,6 +619,7 @@ void write_copper(std::ostream &out, const Board &board) {
     }
     out << "    </g>\n";
 }
+
 void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id,
                const PadResolution *resolution) {
     const auto status = resolution == nullptr ? std::string{"invalid"}
@@ -657,6 +686,7 @@ void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id
     }
     out << "/>\n";
 }
+
 void write_placements(std::ostream &out, const Board &board, const FootprintLibrary &footprints,
                       const std::vector<PadResolution> &resolutions) {
     out << "    <g class=\"layer layer-footprints\">\n";
@@ -717,6 +747,7 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
     }
     out << "    </g>\n";
 }
+
 void write_pad_overlays(std::ostream &out, const Board &board,
                         const std::vector<PadResolution> &resolutions,
                         PcbPlacementSvgOptions options) {
@@ -751,6 +782,7 @@ void write_pad_overlays(std::ostream &out, const Board &board,
     }
     out << "    </g>\n";
 }
+
 void write_ratsnest(std::ostream &out, const std::vector<RatsnestEdge> &edges) {
     out << "    <g class=\"layer layer-ratsnest\">\n";
     auto current_net = std::optional<NetId>{};
@@ -780,6 +812,7 @@ void write_ratsnest(std::ostream &out, const std::vector<RatsnestEdge> &edges) {
     }
     out << "    </g>\n";
 }
+
 void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticReport &diagnostics,
                        const PcbSvgBounds &bounds, PcbPlacementSvgOptions options) {
     out << "    <g class=\"layer layer-diagnostics\">\n";
@@ -953,6 +986,7 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
     out << "  </g>\n";
     out << "</svg>\n";
 }
+
 [[nodiscard]] std::string write_pcb_placement_svg(const Board &board,
                                                   const FootprintLibrary &footprints,
                                                   PcbPlacementSvgOptions options) {

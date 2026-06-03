@@ -31,6 +31,7 @@ void validate_readability_bounds(const Schematic &schematic, SheetId sheet_id, c
         }
     }
 }
+
 void add_region_content_object_refs(std::vector<EntityRef> &refs,
                                     const std::vector<const ReadabilityObject *> &objects,
                                     SchematicBounds comparison_bounds) {
@@ -48,6 +49,7 @@ void add_region_content_object_refs(std::vector<EntityRef> &refs,
         refs.insert(refs.end(), objects.front()->context.begin(), objects.front()->context.end());
     }
 }
+
 void validate_authored_region_content_overlaps(const Schematic &schematic, SheetId sheet_id,
                                                const Sheet &sheet, DiagnosticReport &report) {
     const auto objects = readability_objects_for_sheet(schematic, sheet);
@@ -96,6 +98,7 @@ void validate_authored_region_content_overlaps(const Schematic &schematic, Sheet
         }
     }
 }
+
 void add_title_block_overflow_diagnostic(DiagnosticReport &report, SheetId sheet_id,
                                          std::string_view column, std::string_view row_label) {
     report.add(Diagnostic{
@@ -106,6 +109,7 @@ void add_title_block_overflow_diagnostic(DiagnosticReport &report, SheetId sheet
         std::vector{EntityRef::sheet(sheet_id)},
     });
 }
+
 void validate_title_block_text_overflow(SheetId sheet_id, const Sheet &sheet,
                                         DiagnosticReport &report) {
     const auto &metadata = sheet.metadata();

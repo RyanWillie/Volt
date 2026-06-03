@@ -19,7 +19,18 @@
 
 namespace volt {
 
-/** Kernel-owned schematic projection over a logical circuit. */
+/**
+ * Kernel-owned schematic projection over a logical circuit, and aggregate root of the
+ * schematic model.
+ *
+ * Responsibility: composes the library, sheet, and items subsystems into a schematic view over
+ *   existing logical entities.
+ * Invariants: references existing logical nets/pins/components and never owns connectivity;
+ *   consistency issues are reported as diagnostics.
+ * Collaborators: read-only consumer of Circuit; composes the Schematic*Model subsystems;
+ *   schematic checks run as a RuleSet<Schematic>. See
+ *   docs/superpowers/specs/2026-06-02-volt-kernel-architecture-design.md.
+ */
 class Schematic {
   public:
     /** Construct a schematic projection for one logical circuit context. */

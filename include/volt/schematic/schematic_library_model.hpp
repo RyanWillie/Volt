@@ -10,7 +10,15 @@
 
 namespace volt {
 
-/** Owns reusable schematic symbol definitions for one schematic projection. */
+/**
+ * Owns reusable schematic symbol definitions for one schematic projection.
+ *
+ * Responsibility: stores the symbol vocabulary (pins, graphics, anchors) that item instances
+ *   reference.
+ * Invariants: symbol names/IDs are stable and unique within the projection.
+ * Collaborators: composed by Schematic; referenced by SchematicItemsModel symbol instances;
+ *   acyclic.
+ */
 class SchematicLibraryModel {
   public:
     /** Add a reusable symbol definition and return its schematic-local ID. */

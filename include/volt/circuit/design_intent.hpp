@@ -8,7 +8,15 @@ namespace volt {
 
 class Circuit;
 
-/** Owns explicit design-intent assertions for otherwise suspicious connectivity shapes. */
+/**
+ * Owns explicit design-intent assertions for otherwise suspicious connectivity shapes.
+ *
+ * Responsibility: records deliberate intent (intentional stub nets, intentional no-connect
+ *   pins) so validation can distinguish a choice from a mistake.
+ * Invariants: assertions reference existing nets/pins (cross-reference confirmed by the root).
+ * Collaborators: composed by Circuit; read by ERC rules to suppress would-be diagnostics;
+ *   never references Circuit back (acyclic).
+ */
 class DesignIntent {
   public:
     /** Return whether a net is intentionally left as a stub. */

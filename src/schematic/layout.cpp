@@ -23,6 +23,7 @@ namespace volt::detail {
     }
     return candidates;
 }
+
 [[nodiscard]] bool schematic_text_bounds_clear_of_wires(const Schematic &schematic,
                                                         const Sheet &sheet,
                                                         SchematicBounds bounds) {
@@ -38,6 +39,7 @@ namespace volt::detail {
     }
     return true;
 }
+
 [[nodiscard]] bool schematic_text_bounds_clear_of_symbols(const Schematic &schematic,
                                                           const Sheet &sheet,
                                                           SchematicBounds bounds) {
@@ -48,6 +50,7 @@ namespace volt::detail {
     }
     return true;
 }
+
 [[nodiscard]] bool schematic_text_bounds_clear_of_fixed_objects(const Schematic &schematic,
                                                                 const Sheet &sheet,
                                                                 SchematicBounds bounds) {
@@ -75,6 +78,7 @@ namespace volt::detail {
     }
     return true;
 }
+
 [[nodiscard]] bool
 schematic_text_bounds_clear_of_placed_text(SchematicBounds bounds,
                                            const std::vector<SchematicBounds> &placed_text_bounds) {
@@ -85,6 +89,7 @@ schematic_text_bounds_clear_of_placed_text(SchematicBounds bounds,
     }
     return true;
 }
+
 [[nodiscard]] bool
 schematic_text_candidate_is_clear(const Schematic &schematic, const Sheet &sheet,
                                   SchematicBounds bounds,
@@ -100,6 +105,7 @@ schematic_text_candidate_is_clear(const Schematic &schematic, const Sheet &sheet
            schematic_text_bounds_clear_of_fixed_objects(schematic, sheet, keepout) &&
            schematic_text_bounds_clear_of_placed_text(keepout, placed_text_bounds);
 }
+
 [[nodiscard]] Point
 choose_net_label_position(const Schematic &schematic, const Sheet &sheet, const NetLabel &label,
                           const std::vector<SchematicBounds> &placed_text_bounds,
@@ -116,6 +122,7 @@ choose_net_label_position(const Schematic &schematic, const Sheet &sheet, const 
     }
     return label.text_position();
 }
+
 [[nodiscard]] Point choose_symbol_field_position(
     const Schematic &schematic, const Sheet &sheet, const SymbolField &field,
     const std::vector<SchematicBounds> &placed_text_bounds, double clearance) {
@@ -147,11 +154,13 @@ choose_net_label_position(const Schematic &schematic, const Sheet &sheet, const 
     }
     return found ? best_position : field.position();
 }
+
 [[nodiscard]] Point default_power_port_label_position(const PowerPort &port) {
     const auto label_y =
         port.kind() == PowerPortKind::Ground ? ground_port_label_offset : -power_port_label_offset;
     return transformed_port_anchor(port, Point{0.0, label_y});
 }
+
 [[nodiscard]] Point choose_power_port_label_position(
     const Schematic &schematic, const Sheet &sheet, const PowerPort &port,
     const std::vector<SchematicBounds> &placed_text_bounds, double clearance) {
@@ -169,6 +178,7 @@ choose_net_label_position(const Schematic &schematic, const Sheet &sheet, const 
     }
     return anchor;
 }
+
 void collect_fixed_text_bounds(const Schematic &schematic, const Sheet &sheet,
                                std::vector<SchematicBounds> &placed_text_bounds) {
     for (const auto port_id : sheet.sheet_ports()) {

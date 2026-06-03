@@ -30,10 +30,12 @@ void validate_port_tag_scale(const Schematic &schematic, SheetId sheet_id, const
             sheet_id, EntityRef::sheet_port(port_id), std::vector{EntityRef::net(port.net())});
     }
 }
+
 [[nodiscard]] bool label_or_tag_crowds_symbols(ReadabilityObjectKind kind) noexcept {
     return kind == ReadabilityObjectKind::NetLabel || kind == ReadabilityObjectKind::PowerPort ||
            kind == ReadabilityObjectKind::SheetPort;
 }
+
 void validate_symbol_crowding(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                               DiagnosticReport &report) {
     const auto objects = readability_objects_for_sheet(schematic, sheet);
@@ -72,6 +74,7 @@ void validate_symbol_crowding(const Schematic &schematic, SheetId sheet_id, cons
         });
     }
 }
+
 [[nodiscard]] double tag_stack_primary_position(const ReadabilityTagObject &tag) noexcept {
     switch (tag.orientation) {
     case SchematicOrientation::Right:
@@ -83,6 +86,7 @@ void validate_symbol_crowding(const Schematic &schematic, SheetId sheet_id, cons
     }
     return tag.position.y();
 }
+
 [[nodiscard]] double tag_stack_cross_position(const ReadabilityTagObject &tag) noexcept {
     switch (tag.orientation) {
     case SchematicOrientation::Right:
@@ -94,6 +98,7 @@ void validate_symbol_crowding(const Schematic &schematic, SheetId sheet_id, cons
     }
     return tag.position.x();
 }
+
 void add_crowded_tag_stack_diagnostic(DiagnosticReport &report, SheetId sheet_id,
                                       const std::vector<ReadabilityTagObject> &tags,
                                       const std::vector<std::size_t> &cluster) {
@@ -111,6 +116,7 @@ void add_crowded_tag_stack_diagnostic(DiagnosticReport &report, SheetId sheet_id
         std::move(refs),
     });
 }
+
 void validate_crowded_tag_stacks(const Schematic &schematic, SheetId sheet_id, const Sheet &sheet,
                                  DiagnosticReport &report) {
     const auto tags = readability_tags_for_sheet(schematic, sheet);
@@ -163,6 +169,7 @@ void validate_crowded_tag_stacks(const Schematic &schematic, SheetId sheet_id, c
         add_crowded_tag_stack_diagnostic(report, sheet_id, tags, cluster);
     }
 }
+
 void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_id,
                                      const Sheet &sheet, DiagnosticReport &report) {
     const auto tags = readability_tags_for_sheet(schematic, sheet);
@@ -190,6 +197,7 @@ void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_i
         });
     }
 }
+
 [[nodiscard]] bool component_definition_is_passive(const Circuit &circuit,
                                                    ComponentDefId definition_id) {
     const auto &definition = circuit.component_definition(definition_id);
@@ -201,6 +209,7 @@ void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_i
                            return circuit.pin_definition(pin_definition).role() == PinRole::Passive;
                        });
 }
+
 [[nodiscard]] bool component_has_known_value(const Circuit &circuit, ComponentId component_id) {
     const auto &component = circuit.component(component_id);
     if (component.properties().contains(PropertyKey{"value"}) ||
@@ -216,6 +225,7 @@ void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_i
         known_values.begin(), known_values.end(),
         [&attributes](const ElectricalAttributeName &name) { return attributes.contains(name); });
 }
+
 [[nodiscard]] bool symbol_instance_has_value_field(const Schematic &schematic, const Sheet &sheet,
                                                    SymbolInstanceId instance) {
     for (const auto field_id : sheet.symbol_fields()) {
@@ -227,6 +237,7 @@ void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_i
     }
     return false;
 }
+
 void validate_missing_passive_value_fields(const Schematic &schematic, SheetId sheet_id,
                                            const Sheet &sheet, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
@@ -247,11 +258,13 @@ void validate_missing_passive_value_fields(const Schematic &schematic, SheetId s
         });
     }
 }
+
 [[nodiscard]] double squared_distance(Point lhs, Point rhs) noexcept {
     const auto dx = lhs.x() - rhs.x();
     const auto dy = lhs.y() - rhs.y();
     return (dx * dx) + (dy * dy);
 }
+
 void validate_terminal_marker_net_kind_mismatch(const Schematic &schematic, SheetId sheet_id,
                                                 const Sheet &sheet, DiagnosticReport &report) {
     const auto &circuit = schematic.circuit();
@@ -278,6 +291,7 @@ void validate_terminal_marker_net_kind_mismatch(const Schematic &schematic, Shee
         }
     }
 }
+
 void validate_dense_no_connect_clusters(const Schematic &schematic, SheetId sheet_id,
                                         const Sheet &sheet, DiagnosticReport &report) {
     const auto radius_squared = dense_no_connect_cluster_radius * dense_no_connect_cluster_radius;

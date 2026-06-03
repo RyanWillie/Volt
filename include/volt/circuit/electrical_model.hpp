@@ -12,7 +12,15 @@ namespace volt {
 
 class Circuit;
 
-/** Owns typed electrical metadata and selected physical implementation state. */
+/**
+ * Owns typed electrical metadata and selected physical implementation state.
+ *
+ * Responsibility: stores typed electrical attributes (on pins, nets, components) and the
+ *   selected physical part per component, keyed by entity ID.
+ * Invariants: an attribute's value matches its spec's dimension; attributes attach only to
+ *   entities the root has confirmed exist.
+ * Collaborators: composed by Circuit; read by ERC rules; never references Circuit back (acyclic).
+ */
 class ElectricalModel {
   public:
     /** Return typed electrical metadata for a concrete component. */

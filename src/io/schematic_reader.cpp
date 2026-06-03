@@ -246,22 +246,26 @@ class SchematicReader {
 
     return std::move(schematic_);
 }
+
 void SchematicReader::require(bool condition, const std::string &message) {
     if (!condition) {
         throw std::logic_error{message};
     }
 }
+
 const nlohmann::json &SchematicReader::field(const nlohmann::json &object, const char *name) {
     require(object.is_object(), "Expected object while reading schematic");
     const auto it = object.find(name);
     require(it != object.end(), std::string{"Missing required field: "} + name);
     return *it;
 }
+
 std::string SchematicReader::string_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_string(), std::string{"Expected string field: "} + name);
     return value.get<std::string>();
 }
+
 std::string SchematicReader::optional_string_field(const nlohmann::json &object, const char *name) {
     require(object.is_object(), "Expected object while reading schematic");
     const auto it = object.find(name);
@@ -271,6 +275,7 @@ std::string SchematicReader::optional_string_field(const nlohmann::json &object,
     require(it->is_string(), std::string{"Expected string field: "} + name);
     return it->get<std::string>();
 }
+
 std::string SchematicReader::optional_string_field(const nlohmann::json &object, const char *name,
                                                    std::string fallback) {
     require(object.is_object(), "Expected object while reading schematic");
@@ -281,6 +286,7 @@ std::string SchematicReader::optional_string_field(const nlohmann::json &object,
     require(it->is_string(), std::string{"Expected string field: "} + name);
     return it->get<std::string>();
 }
+
 std::optional<std::string>
 SchematicReader::optional_non_empty_string_field(const nlohmann::json &object, const char *name) {
     require(object.is_object(), "Expected object while reading schematic");
@@ -293,6 +299,7 @@ SchematicReader::optional_non_empty_string_field(const nlohmann::json &object, c
     require(!value.empty(), std::string{"Expected non-empty string field: "} + name);
     return value;
 }
+
 bool SchematicReader::optional_bool_field(const nlohmann::json &object, const char *name,
                                           bool fallback) {
     require(object.is_object(), "Expected object while reading schematic");
@@ -303,6 +310,7 @@ bool SchematicReader::optional_bool_field(const nlohmann::json &object, const ch
     require(it->is_boolean(), std::string{"Expected boolean field: "} + name);
     return it->get<bool>();
 }
+
 double SchematicReader::number_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_number(), std::string{"Expected number field: "} + name);
@@ -310,6 +318,7 @@ double SchematicReader::number_field(const nlohmann::json &object, const char *n
     require(std::isfinite(number), std::string{"Schematic numeric field must be finite: "} + name);
     return number;
 }
+
 std::optional<double> SchematicReader::optional_positive_number_field(const nlohmann::json &object,
                                                                       const char *name) {
     require(object.is_object(), "Expected object while reading schematic");
@@ -323,11 +332,13 @@ std::optional<double> SchematicReader::optional_positive_number_field(const nloh
             std::string{"Expected positive finite number field: "} + name);
     return number;
 }
+
 const nlohmann::json &SchematicReader::array_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_array(), std::string{"Expected array field: "} + name);
     return value;
 }
+
 const nlohmann::json &SchematicReader::optional_array_field(const nlohmann::json &object,
                                                             const char *name) {
     require(object.is_object(), "Expected object while reading schematic");
@@ -339,6 +350,7 @@ const nlohmann::json &SchematicReader::optional_array_field(const nlohmann::json
     require(it->is_array(), std::string{"Expected array field: "} + name);
     return *it;
 }
+
 std::size_t SchematicReader::positive_size_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_number_unsigned() || value.is_number_integer(),
@@ -347,10 +359,12 @@ std::size_t SchematicReader::positive_size_field(const nlohmann::json &object, c
     require(signed_value > 0, std::string{"Expected positive integer field: "} + name);
     return static_cast<std::size_t>(signed_value);
 }
+
 void SchematicReader::require_format(const nlohmann::json &object) {
     const auto actual = string_field(object, "format");
     require(actual == schematic_format_name(), "Unsupported schematic format: " + actual);
 }
+
 void SchematicReader::require_version(const nlohmann::json &object) {
     const auto &value = field(object, "version");
     require(value.is_number_integer(), "Expected integer field: version");
@@ -358,10 +372,12 @@ void SchematicReader::require_version(const nlohmann::json &object) {
     require(actual == schematic_format_version(),
             "Unsupported schematic format version: " + std::to_string(actual));
 }
+
 [[nodiscard]] Point SchematicReader::point(const nlohmann::json &object) {
     require(object.is_object(), "Schematic point must be an object");
     return Point{number_field(object, "x"), number_field(object, "y")};
 }
+
 [[nodiscard]] std::optional<Point>
 SchematicReader::optional_point_field(const nlohmann::json &object, const char *name) {
     require(object.is_object(), "Expected object while reading schematic");
@@ -371,18 +387,21 @@ SchematicReader::optional_point_field(const nlohmann::json &object, const char *
     }
     return point(*it);
 }
+
 [[nodiscard]] SchematicOrientation SchematicReader::orientation(const std::string &value) {
     if (const auto parsed = schematic_orientation_from_name(value)) {
         return *parsed;
     }
     throw std::logic_error{"Invalid schematic orientation value"};
 }
+
 [[nodiscard]] SymbolLineRole SchematicReader::symbol_line_role(const std::string &value) {
     if (const auto parsed = symbol_line_role_from_name(value)) {
         return *parsed;
     }
     throw std::logic_error{"Invalid symbol line role"};
 }
+
 [[nodiscard]] TextHorizontalAlignment
 SchematicReader::text_horizontal_alignment(const std::string &value) {
     if (const auto parsed = text_horizontal_alignment_from_name(value)) {
@@ -390,6 +409,7 @@ SchematicReader::text_horizontal_alignment(const std::string &value) {
     }
     throw std::logic_error{"Invalid text horizontal alignment"};
 }
+
 [[nodiscard]] TextVerticalAlignment
 SchematicReader::text_vertical_alignment(const std::string &value) {
     if (const auto parsed = text_vertical_alignment_from_name(value)) {
@@ -397,6 +417,7 @@ SchematicReader::text_vertical_alignment(const std::string &value) {
     }
     throw std::logic_error{"Invalid text vertical alignment"};
 }
+
 [[nodiscard]] SchematicTextStyle SchematicReader::text_style(const nlohmann::json &object,
                                                              SchematicTextStyle defaults) {
     auto font_size = optional_positive_number_field(object, "font_size");
@@ -412,48 +433,56 @@ SchematicReader::text_vertical_alignment(const std::string &value) {
             std::string{text_vertical_alignment_name(defaults.vertical_alignment())})),
         font_size};
 }
+
 [[nodiscard]] SheetOrientation SchematicReader::sheet_orientation(const std::string &value) {
     if (const auto parsed = sheet_orientation_from_name(value)) {
         return *parsed;
     }
     throw std::logic_error{"Invalid schematic sheet orientation value"};
 }
+
 [[nodiscard]] RouteIntent SchematicReader::route_intent(const std::string &value) {
     if (const auto parsed = route_intent_from_name(value)) {
         return *parsed;
     }
     throw std::logic_error{"Invalid schematic route intent value"};
 }
+
 [[nodiscard]] PowerPortKind SchematicReader::power_port_kind(const std::string &value) {
     if (const auto parsed = power_port_kind_from_name(value)) {
         return *parsed;
     }
     throw std::logic_error{"Invalid schematic power port kind"};
 }
+
 [[nodiscard]] SheetPortKind SchematicReader::sheet_port_kind(const std::string &value) {
     if (const auto parsed = sheet_port_kind_from_name(value)) {
         return *parsed;
     }
     throw std::logic_error{"Invalid schematic sheet port kind"};
 }
+
 [[nodiscard]] ComponentId SchematicReader::component_id(const std::string &id) const {
     const auto component = decode_local_id<ComponentId>(id);
     require(component.index() < circuit_.component_count(),
             "Component reference points to a missing logical component: " + id);
     return component;
 }
+
 [[nodiscard]] NetId SchematicReader::net_id(const std::string &id) const {
     const auto net = decode_local_id<NetId>(id);
     require(net.index() < circuit_.net_count(),
             "Net reference points to a missing logical net: " + id);
     return net;
 }
+
 [[nodiscard]] PinId SchematicReader::pin_id(const std::string &id) const {
     const auto pin = decode_local_id<PinId>(id);
     require(pin.index() < circuit_.pin_count(),
             "Pin reference points to a missing logical pin: " + id);
     return pin;
 }
+
 [[nodiscard]] std::vector<Point> SchematicReader::point_list(const nlohmann::json &array) {
     require(array.is_array(), "Schematic wire points must be an array");
     auto points = std::vector<Point>{};
@@ -463,6 +492,7 @@ SchematicReader::text_vertical_alignment(const std::string &value) {
     }
     return points;
 }
+
 [[nodiscard]] SymbolPrimitive SchematicReader::primitive(const nlohmann::json &object) {
     require(object.is_object(), "Symbol primitive must be an object");
     const auto type = string_field(object, "type");
@@ -489,11 +519,13 @@ SchematicReader::text_vertical_alignment(const std::string &value) {
     }
     throw std::logic_error{"Invalid symbol primitive type"};
 }
+
 [[nodiscard]] SheetMargins SchematicReader::sheet_margins(const nlohmann::json &object) {
     require(object.is_object(), "Sheet margins must be an object");
     return SheetMargins{number_field(object, "left"), number_field(object, "top"),
                         number_field(object, "right"), number_field(object, "bottom")};
 }
+
 [[nodiscard]] SheetFrame SchematicReader::sheet_frame(const nlohmann::json &metadata_object) {
     const auto frame_it = metadata_object.find("frame");
     if (frame_it == metadata_object.end()) {
@@ -508,6 +540,7 @@ SchematicReader::text_vertical_alignment(const std::string &value) {
     }
     return SheetFrame{optional_bool_field(frame_object, "visible", true), margins};
 }
+
 [[nodiscard]] std::optional<SheetCoordinateZones>
 SchematicReader::sheet_coordinate_zones(const nlohmann::json &metadata_object) {
     const auto zones_it = metadata_object.find("coordinate_zones");
@@ -520,6 +553,7 @@ SchematicReader::sheet_coordinate_zones(const nlohmann::json &metadata_object) {
                                 positive_size_field(zones_object, "rows"),
                                 optional_bool_field(zones_object, "visible", true)};
 }
+
 [[nodiscard]] std::optional<SheetGrid>
 SchematicReader::sheet_grid(const nlohmann::json &metadata_object) {
     const auto grid_it = metadata_object.find("grid");
@@ -531,6 +565,7 @@ SchematicReader::sheet_grid(const nlohmann::json &metadata_object) {
     return SheetGrid{number_field(grid_object, "spacing"),
                      optional_bool_field(grid_object, "visible", true)};
 }
+
 [[nodiscard]] SheetMetadata SchematicReader::sheet_metadata(const nlohmann::json &sheet_object,
                                                             const std::string &fallback_title) {
     const auto metadata_it = sheet_object.find("metadata");
@@ -560,6 +595,7 @@ SchematicReader::sheet_grid(const nlohmann::json &metadata_object) {
         sheet_coordinate_zones(metadata_object),
         sheet_grid(metadata_object)};
 }
+
 [[nodiscard]] std::vector<SheetRegionStyleField>
 SchematicReader::sheet_region_style(const nlohmann::json &region_object) {
     const auto style_it = region_object.find("style");
@@ -576,6 +612,7 @@ SchematicReader::sheet_region_style(const nlohmann::json &region_object) {
     }
     return style;
 }
+
 [[nodiscard]] SheetRegion SchematicReader::sheet_region(const nlohmann::json &region_object) {
     require(region_object.is_object(), "Sheet region must be an object");
     const auto &bounds_object = field(region_object, "bounds");
@@ -587,6 +624,7 @@ SchematicReader::sheet_region_style(const nlohmann::json &region_object) {
                                          number_field(bounds_object, "height")},
                        sheet_region_style(region_object)};
 }
+
 [[nodiscard]] std::optional<std::size_t>
 SchematicReader::authored_region(SheetId sheet, const nlohmann::json &object) const {
     const auto name = optional_string_field(object, "authored_region");
@@ -597,6 +635,7 @@ SchematicReader::authored_region(SheetId sheet, const nlohmann::json &object) co
     require(region.has_value(), "Authored region reference points to a missing sheet region");
     return region.value();
 }
+
 void SchematicReader::append_sheet_references(const nlohmann::json &sheet_object,
                                               const char *field_name,
                                               std::vector<std::string> &references,
@@ -606,6 +645,7 @@ void SchematicReader::append_sheet_references(const nlohmann::json &sheet_object
         references.push_back(reference.get<std::string>());
     }
 }
+
 void SchematicReader::read_symbol_definitions() {
     auto seen = std::set<std::string>{};
     for (const auto &symbol_object : array_field(document_, "symbol_definitions")) {
@@ -623,6 +663,7 @@ void SchematicReader::read_symbol_definitions() {
         symbol_def_ids_.emplace(id, schematic_.add_symbol_definition(std::move(symbol)));
     }
 }
+
 void SchematicReader::read_sheets() {
     auto seen = std::set<std::string>{};
     for (const auto &sheet_object : array_field(document_, "sheets")) {
@@ -669,6 +710,7 @@ void SchematicReader::read_sheets() {
         expected_sheet_symbol_fields_.emplace_back(sheet, std::move(symbol_fields));
     }
 }
+
 void SchematicReader::read_symbol_instances() {
     auto seen = std::set<std::string>{};
     for (const auto &instance_object : array_field(document_, "symbol_instances")) {
@@ -687,6 +729,7 @@ void SchematicReader::read_symbol_instances() {
         symbol_instance_ids_.emplace(id, instance);
     }
 }
+
 void SchematicReader::read_wire_runs() {
     auto seen = std::set<std::string>{};
     for (const auto &wire_object : optional_array_field(document_, "wire_runs")) {
@@ -705,6 +748,7 @@ void SchematicReader::read_wire_runs() {
         wire_run_ids_.emplace(id, wire);
     }
 }
+
 void SchematicReader::read_net_labels() {
     auto seen = std::set<std::string>{};
     for (const auto &label_object : optional_array_field(document_, "net_labels")) {
@@ -722,6 +766,7 @@ void SchematicReader::read_net_labels() {
         net_label_ids_.emplace(id, label);
     }
 }
+
 void SchematicReader::read_junctions() {
     auto seen = std::set<std::string>{};
     for (const auto &junction_object : optional_array_field(document_, "junctions")) {
@@ -734,6 +779,7 @@ void SchematicReader::read_junctions() {
         junction_ids_.emplace(id, junction);
     }
 }
+
 void SchematicReader::read_power_ports() {
     auto seen = std::set<std::string>{};
     for (const auto &port_object : optional_array_field(document_, "power_ports")) {
@@ -750,6 +796,7 @@ void SchematicReader::read_power_ports() {
         power_port_ids_.emplace(id, port);
     }
 }
+
 void SchematicReader::read_no_connect_markers() {
     auto seen = std::set<std::string>{};
     for (const auto &marker_object : optional_array_field(document_, "no_connect_markers")) {
@@ -764,6 +811,7 @@ void SchematicReader::read_no_connect_markers() {
         no_connect_marker_ids_.emplace(id, marker);
     }
 }
+
 void SchematicReader::read_sheet_ports() {
     auto seen = std::set<std::string>{};
     for (const auto &port_object : optional_array_field(document_, "sheet_ports")) {
@@ -779,6 +827,7 @@ void SchematicReader::read_sheet_ports() {
         sheet_port_ids_.emplace(id, port);
     }
 }
+
 void SchematicReader::read_symbol_fields() {
     auto seen = std::set<std::string>{};
     for (const auto &field_object : optional_array_field(document_, "symbol_fields")) {
@@ -796,6 +845,7 @@ void SchematicReader::read_symbol_fields() {
         symbol_field_ids_.emplace(id, field_id);
     }
 }
+
 void SchematicReader::require_sheet_instance_lists_match() const {
     require_sheet_local_id_lists_match(
         expected_sheet_instances_, symbol_instance_ids_,
@@ -804,30 +854,35 @@ void SchematicReader::require_sheet_instance_lists_match() const {
         },
         "Sheet symbol instance list does not match placed instances");
 }
+
 void SchematicReader::require_sheet_wire_run_lists_match() const {
     require_sheet_local_id_lists_match(
         expected_sheet_wire_runs_, wire_run_ids_,
         [](const Sheet &sheet) -> const std::vector<WireRunId> & { return sheet.wire_runs(); },
         "Sheet wire run list does not match placed wires");
 }
+
 void SchematicReader::require_sheet_net_label_lists_match() const {
     require_sheet_local_id_lists_match(
         expected_sheet_net_labels_, net_label_ids_,
         [](const Sheet &sheet) -> const std::vector<NetLabelId> & { return sheet.net_labels(); },
         "Sheet net label list does not match placed labels");
 }
+
 void SchematicReader::require_sheet_junction_lists_match() const {
     require_sheet_local_id_lists_match(
         expected_sheet_junctions_, junction_ids_,
         [](const Sheet &sheet) -> const std::vector<JunctionId> & { return sheet.junctions(); },
         "Sheet junction list does not match placed junctions");
 }
+
 void SchematicReader::require_sheet_power_port_lists_match() const {
     require_sheet_local_id_lists_match(
         expected_sheet_power_ports_, power_port_ids_,
         [](const Sheet &sheet) -> const std::vector<PowerPortId> & { return sheet.power_ports(); },
         "Sheet power port list does not match placed ports");
 }
+
 void SchematicReader::require_sheet_no_connect_marker_lists_match() const {
     require_sheet_local_id_lists_match(
         expected_sheet_no_connect_markers_, no_connect_marker_ids_,
@@ -836,12 +891,14 @@ void SchematicReader::require_sheet_no_connect_marker_lists_match() const {
         },
         "Sheet no-connect marker list does not match placed markers");
 }
+
 void SchematicReader::require_sheet_port_lists_match() const {
     require_sheet_local_id_lists_match(
         expected_sheet_ports_, sheet_port_ids_,
         [](const Sheet &sheet) -> const std::vector<SheetPortId> & { return sheet.sheet_ports(); },
         "Sheet port list does not match placed ports");
 }
+
 void SchematicReader::require_sheet_symbol_field_lists_match() const {
     require_sheet_local_id_lists_match(
         expected_sheet_symbol_fields_, symbol_field_ids_,
@@ -868,15 +925,18 @@ namespace volt::io {
     return read_schematic_projection_document(nlohmann::json::parse(text.begin(), text.end()),
                                               circuit);
 }
+
 [[nodiscard]] Schematic read_schematic(std::istream &input, const Circuit &circuit) {
     auto buffer = std::ostringstream{};
     buffer << input.rdbuf();
     return read_schematic_text(buffer.str(), circuit);
 }
+
 [[nodiscard]] SchematicDocument read_schematic_document_text(std::string_view text,
                                                              const Circuit &circuit) {
     return SchematicDocument{read_schematic_text(text, circuit)};
 }
+
 [[nodiscard]] SchematicDocument read_schematic_document(std::istream &input,
                                                         const Circuit &circuit) {
     return SchematicDocument{read_schematic(input, circuit)};

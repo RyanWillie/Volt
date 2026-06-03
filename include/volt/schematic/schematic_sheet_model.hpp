@@ -12,7 +12,14 @@ namespace volt {
 
 class Schematic;
 
-/** Owns schematic sheets, authored regions, and sheet-local item membership lists. */
+/**
+ * Owns schematic sheets, authored regions, and sheet-local item membership lists.
+ *
+ * Responsibility: stores sheet structure (size, frame, regions) and which items belong to each
+ *   sheet.
+ * Invariants: membership entries reference existing items; sheet geometry is well-formed.
+ * Collaborators: composed by Schematic; tracks membership of SchematicItemsModel items; acyclic.
+ */
 class SchematicSheetModel {
   public:
     /** Add a schematic sheet and return its schematic-local ID. */

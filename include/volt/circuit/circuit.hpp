@@ -22,7 +22,18 @@
 
 namespace volt {
 
-/** Owning database for the canonical logical circuit model. */
+/**
+ * Canonical logical circuit model and aggregate root of the kernel.
+ *
+ * Responsibility: composes and coordinates the connectivity, hierarchy, electrical,
+ *   design-intent, and rule-class subsystems; owns only the structural primitives and the
+ *   cross-subsystem invariants no single subsystem can enforce alone.
+ * Invariants: cross-subsystem references are pre-flighted before any subsystem mutates, so a
+ *   partial operation cannot leave invalid kernel state; structural violations throw.
+ * Collaborators: composes the *Model subsystems; consumed read-only (const Circuit&) by
+ *   validation/ERC, IO, and the Schematic/Board projections. See
+ *   docs/superpowers/specs/2026-06-02-volt-kernel-architecture-design.md.
+ */
 class Circuit {
   public:
     /** Store a reusable pin definition and return its stable ID. */

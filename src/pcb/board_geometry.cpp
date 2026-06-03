@@ -16,11 +16,13 @@ BoardName::BoardName(std::string value) : value_{std::move(value)} {
         throw std::invalid_argument{"Board name must not be empty"};
     }
 }
+
 BoardPoint::BoardPoint(double x_mm, double y_mm) : x_mm_{x_mm}, y_mm_{y_mm} {
     if (!std::isfinite(x_mm_) || !std::isfinite(y_mm_)) {
         throw std::invalid_argument{"Board point coordinates must be finite"};
     }
 }
+
 BoardSize::BoardSize(double width_mm, double height_mm)
     : width_mm_{width_mm}, height_mm_{height_mm} {
     if (!std::isfinite(width_mm_) || !std::isfinite(height_mm_)) {
@@ -30,6 +32,7 @@ BoardSize::BoardSize(double width_mm, double height_mm)
         throw std::invalid_argument{"Board size dimensions must be positive"};
     }
 }
+
 BoardRotation::BoardRotation(double degrees) : degrees_{degrees} {
     if (!std::isfinite(degrees_)) {
         throw std::invalid_argument{"Board rotation must be finite"};
@@ -43,6 +46,7 @@ namespace volt::detail {
 [[nodiscard]] double board_distance(BoardPoint lhs, BoardPoint rhs) noexcept {
     return std::sqrt(square(lhs.x_mm() - rhs.x_mm()) + square(lhs.y_mm() - rhs.y_mm()));
 }
+
 [[nodiscard]] double point_segment_distance(BoardPoint point, BoardPoint a, BoardPoint b) noexcept {
     const auto dx = b.x_mm() - a.x_mm();
     const auto dy = b.y_mm() - a.y_mm();
@@ -56,10 +60,12 @@ namespace volt::detail {
     const auto clamped = std::clamp(projection, 0.0, 1.0);
     return board_distance(point, BoardPoint{a.x_mm() + (clamped * dx), a.y_mm() + (clamped * dy)});
 }
+
 [[nodiscard]] bool drc_point_on_segment(BoardPoint point, BoardPoint a, BoardPoint b) noexcept {
     return std::abs(board_orientation(a, b, point)) <= board_drc_epsilon &&
            point_segment_distance(point, a, b) <= board_drc_epsilon;
 }
+
 [[nodiscard]] bool drc_segments_intersect(BoardPoint a, BoardPoint b, BoardPoint c,
                                           BoardPoint d) noexcept {
     const auto ab_c = board_orientation(a, b, c);
@@ -82,6 +88,7 @@ namespace volt::detail {
 
     return ((ab_c > 0.0) != (ab_d > 0.0)) && ((cd_a > 0.0) != (cd_b > 0.0));
 }
+
 [[nodiscard]] double segment_segment_distance(BoardPoint a, BoardPoint b, BoardPoint c,
                                               BoardPoint d) noexcept {
     if (drc_segments_intersect(a, b, c, d)) {
@@ -93,6 +100,7 @@ namespace volt::detail {
     result = std::min(result, point_segment_distance(d, a, b));
     return result;
 }
+
 [[nodiscard]] bool polygon_contains_point(const std::vector<BoardPoint> &polygon,
                                           BoardPoint point) {
     bool inside = false;
@@ -117,6 +125,7 @@ namespace volt::detail {
     }
     return inside;
 }
+
 [[nodiscard]] double point_polygon_distance(BoardPoint point,
                                             const std::vector<BoardPoint> &polygon) {
     if (polygon_contains_point(polygon, point)) {
@@ -132,6 +141,7 @@ namespace volt::detail {
     }
     return result;
 }
+
 [[nodiscard]] double segment_polygon_distance(BoardPoint a, BoardPoint b,
                                               const std::vector<BoardPoint> &polygon) {
     if (polygon_contains_point(polygon, a) || polygon_contains_point(polygon, b)) {
@@ -147,6 +157,7 @@ namespace volt::detail {
     }
     return result;
 }
+
 [[nodiscard]] double polygon_polygon_distance(const std::vector<BoardPoint> &lhs,
                                               const std::vector<BoardPoint> &rhs) {
     for (const auto point : lhs) {
@@ -171,6 +182,7 @@ namespace volt::detail {
     }
     return result;
 }
+
 [[nodiscard]] double outline_boundary_distance(const BoardOutline &outline, BoardPoint point) {
     const auto &vertices = outline.vertices();
     auto result = std::numeric_limits<double>::infinity();
@@ -182,6 +194,7 @@ namespace volt::detail {
     }
     return result;
 }
+
 [[nodiscard]] double segment_outline_boundary_distance(const BoardOutline &outline, BoardPoint a,
                                                        BoardPoint b) {
     const auto &vertices = outline.vertices();
@@ -194,6 +207,7 @@ namespace volt::detail {
     }
     return result;
 }
+
 [[nodiscard]] double polygon_outline_boundary_distance(const BoardOutline &outline,
                                                        const std::vector<BoardPoint> &polygon) {
     const auto &vertices = outline.vertices();

@@ -45,6 +45,7 @@ namespace volt::io::detail {
     result += '"';
     return result;
 }
+
 [[nodiscard]] std::string pin_role_name(PinRole role) {
     switch (role) {
     case PinRole::Passive:
@@ -70,6 +71,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled pin role"};
 }
+
 [[nodiscard]] std::string connection_requirement_name(ConnectionRequirement requirement) {
     switch (requirement) {
     case ConnectionRequirement::Optional:
@@ -81,6 +83,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled connection requirement"};
 }
+
 [[nodiscard]] std::string electrical_terminal_kind_name(ElectricalTerminalKind kind) {
     switch (kind) {
     case ElectricalTerminalKind::Unspecified:
@@ -98,6 +101,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled electrical terminal kind"};
 }
+
 [[nodiscard]] std::string electrical_direction_name(ElectricalDirection direction) {
     switch (direction) {
     case ElectricalDirection::Unspecified:
@@ -113,6 +117,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled electrical direction"};
 }
+
 [[nodiscard]] std::string electrical_signal_domain_name(ElectricalSignalDomain domain) {
     switch (domain) {
     case ElectricalSignalDomain::Unspecified:
@@ -126,6 +131,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled electrical signal domain"};
 }
+
 [[nodiscard]] std::string electrical_drive_kind_name(ElectricalDriveKind kind) {
     switch (kind) {
     case ElectricalDriveKind::Unspecified:
@@ -143,6 +149,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled electrical drive kind"};
 }
+
 [[nodiscard]] std::string electrical_polarity_name(ElectricalPolarity polarity) {
     switch (polarity) {
     case ElectricalPolarity::None:
@@ -154,6 +161,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled electrical polarity"};
 }
+
 [[nodiscard]] std::string net_kind_name(NetKind kind) {
     switch (kind) {
     case NetKind::Signal:
@@ -171,6 +179,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled net kind"};
 }
+
 [[nodiscard]] std::string port_role_name(PortRole role) {
     switch (role) {
     case PortRole::Passive:
@@ -190,6 +199,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled port role"};
 }
+
 [[nodiscard]] std::string unit_dimension_name(UnitDimension dimension) {
     switch (dimension) {
     case UnitDimension::Resistance:
@@ -215,6 +225,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled unit dimension"};
 }
+
 [[nodiscard]] std::string tolerance_mode_name(ToleranceMode mode) {
     switch (mode) {
     case ToleranceMode::Absolute:
@@ -224,12 +235,14 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled tolerance mode"};
 }
+
 void write_json_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
         throw std::logic_error{"Cannot write non-finite JSON number"};
     }
     out << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
 }
+
 void write_property_value(std::ostream &out, const PropertyValue &value) {
     out << "{ \"type\": ";
     switch (value.kind()) {
@@ -252,6 +265,7 @@ void write_property_value(std::ostream &out, const PropertyValue &value) {
     }
     out << " }";
 }
+
 void write_properties(std::ostream &out, const PropertyMap &properties) {
     out << '{';
     if (!properties.empty()) {
@@ -269,11 +283,13 @@ void write_properties(std::ostream &out, const PropertyMap &properties) {
     }
     out << '}';
 }
+
 void write_quantity_payload(std::ostream &out, const Quantity &quantity) {
     out << "\"dimension\": " << json_string(unit_dimension_name(quantity.dimension()))
         << ", \"value\": ";
     write_json_number(out, quantity.value());
 }
+
 void write_electrical_attribute_value(std::ostream &out, const ElectricalAttributeValue &value) {
     out << "{ \"type\": ";
     switch (value.kind()) {
@@ -305,6 +321,7 @@ void write_electrical_attribute_value(std::ostream &out, const ElectricalAttribu
     }
     out << " }";
 }
+
 void write_electrical_attributes(std::ostream &out, const ElectricalAttributeMap &attributes,
                                  std::string_view entry_indent, std::string_view closing_indent) {
     out << '{';
@@ -323,9 +340,13 @@ void write_electrical_attributes(std::ostream &out, const ElectricalAttributeMap
     }
     out << '}';
 }
+
 [[nodiscard]] std::string module_component_id(ModuleComponentId id) { return encode_local_id(id); }
+
 [[nodiscard]] std::string module_instance_id(ModuleInstanceId id) { return encode_local_id(id); }
+
 [[nodiscard]] std::string rule_class_id(RuleClassId id) { return encode_local_id(id); }
+
 void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
     out << "{\n";
     out << "      \"manufacturer_part\": { \"manufacturer\": "
@@ -353,6 +374,7 @@ void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
     }
     out << "\n    }";
 }
+
 void write_pin_definition_semantics(std::ostream &out, const PinDefinition &pin) {
     if (pin.terminal_kind() != ElectricalTerminalKind::Unspecified) {
         out << ", \"terminal_kind\": "
@@ -372,6 +394,7 @@ void write_pin_definition_semantics(std::ostream &out, const PinDefinition &pin)
         out << ", \"polarity\": " << json_string(electrical_polarity_name(pin.polarity()));
     }
 }
+
 void write_pin_definition_electrical_attributes(std::ostream &out,
                                                 const ElectricalAttributeMap &attributes) {
     if (!attributes.empty()) {
@@ -379,6 +402,7 @@ void write_pin_definition_electrical_attributes(std::ostream &out,
         write_electrical_attributes(out, attributes, "        ", "      ");
     }
 }
+
 void write_rule_classes(std::ostream &out, const Circuit &circuit) {
     out << "  \"rule_classes\": { \"classes\": [\n";
     for (std::size_t index = 0; index < circuit.rule_class_count(); ++index) {
@@ -741,6 +765,7 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
     out << "  ]\n";
     out << "}\n";
 }
+
 [[nodiscard]] std::string write_logical_circuit(const Circuit &circuit) {
     auto out = std::ostringstream{};
     write_logical_circuit(out, circuit);

@@ -9,6 +9,7 @@ namespace volt::detail {
     return definition.connection_requirement() == ConnectionRequirement::MustNotConnect ||
            definition.role() == PinRole::NoConnect;
 }
+
 [[nodiscard]] bool is_output_pin(const PinDefinition &definition) {
     if (definition.direction() == ElectricalDirection::Output) {
         return true;
@@ -17,15 +18,18 @@ namespace volt::detail {
            definition.role() == PinRole::DigitalOutput ||
            definition.role() == PinRole::AnalogOutput;
 }
+
 [[nodiscard]] bool is_power_input(const PinDefinition &definition) {
     return definition.terminal_kind() == ElectricalTerminalKind::Power &&
            definition.direction() == ElectricalDirection::Input;
 }
+
 [[nodiscard]] bool is_power_source(const PinDefinition &definition) {
     return definition.terminal_kind() == ElectricalTerminalKind::Power &&
            (definition.direction() == ElectricalDirection::Output ||
             definition.direction() == ElectricalDirection::Bidirectional);
 }
+
 NetContinuityView::NetContinuityView(const Circuit &circuit) {
     parent_.reserve(circuit.net_count());
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
@@ -37,6 +41,7 @@ NetContinuityView::NetContinuityView(const Circuit &circuit) {
         join(binding.internal_net(), binding.parent_net());
     }
 }
+
 [[nodiscard]] std::vector<PinId> NetContinuityView::pins_for_group(const Circuit &circuit,
                                                                    NetId net) const {
     auto pins = std::vector<PinId>{};
@@ -50,12 +55,14 @@ NetContinuityView::NetContinuityView(const Circuit &circuit) {
     }
     return pins;
 }
+
 [[nodiscard]] std::size_t NetContinuityView::find(std::size_t index) const {
     while (parent_.at(index) != index) {
         index = parent_.at(index);
     }
     return index;
 }
+
 void NetContinuityView::join(NetId first, NetId second) {
     const auto first_root = find(first.index());
     const auto second_root = find(second.index());
@@ -63,6 +70,7 @@ void NetContinuityView::join(NetId first, NetId second) {
         parent_.at(second_root) = first_root;
     }
 }
+
 void validate_pin_connection_requirements(const Circuit &circuit, DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.pin_count(); ++index) {
         const auto pin_id = PinId{index};
@@ -119,6 +127,7 @@ void validate_pin_connection_requirements(const Circuit &circuit, DiagnosticRepo
         }
     }
 }
+
 void validate_net_shape(NetId net_id, const Net &net, const std::vector<PinId> &group_pins,
                         DiagnosticReport &report) {
     if (group_pins.empty()) {
@@ -137,6 +146,7 @@ void validate_net_shape(NetId net_id, const Net &net, const std::vector<PinId> &
         });
     }
 }
+
 void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, const Net &net,
                                          const std::vector<PinId> &group_pins,
                                          DiagnosticReport &report) {
@@ -186,6 +196,7 @@ void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, c
         });
     }
 }
+
 void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id, const Net &,
                                             const std::vector<PinId> &group_pins,
                                             DiagnosticReport &report) {
@@ -224,6 +235,7 @@ void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id
         }
     }
 }
+
 void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net &,
                                  const std::vector<PinId> &group_pins, DiagnosticReport &report) {
     const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
@@ -277,6 +289,7 @@ void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net
         }
     }
 }
+
 void validate_rule_class_voltage_limit(const Circuit &circuit, NetId net_id,
                                        DiagnosticReport &report) {
     const auto rule_class_id = circuit.rule_class_for_net(net_id);
@@ -313,6 +326,7 @@ void validate_rule_class_voltage_limit(const Circuit &circuit, NetId net_id,
         std::vector{EntityRef::net(net_id)},
     });
 }
+
 void validate_output_driver_conflicts(const Circuit &circuit, NetId net_id,
                                       const std::vector<PinId> &group_pins,
                                       DiagnosticReport &report) {
@@ -339,6 +353,7 @@ void validate_output_driver_conflicts(const Circuit &circuit, NetId net_id,
         });
     }
 }
+
 void validate_net_shapes(const Circuit &circuit, const NetContinuityView &continuity,
                          DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
@@ -351,6 +366,7 @@ void validate_net_shapes(const Circuit &circuit, const NetContinuityView &contin
         validate_net_shape(net_id, net, continuity.pins_for_group(circuit, net_id), report);
     }
 }
+
 void validate_net_electrical_rules(const Circuit &circuit, const NetContinuityView &continuity,
                                    DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
@@ -365,6 +381,7 @@ void validate_net_electrical_rules(const Circuit &circuit, const NetContinuityVi
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
     }
 }
+
 void validate_net_semantics(const Circuit &circuit, const NetContinuityView &continuity,
                             DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
@@ -382,6 +399,7 @@ void validate_net_semantics(const Circuit &circuit, const NetContinuityView &con
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
     }
 }
+
 void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &report) {
     for (std::size_t instance_index = 0; instance_index < circuit.module_instance_count();
          ++instance_index) {
@@ -404,6 +422,7 @@ void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &re
         }
     }
 }
+
 void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.component_count(); ++index) {
         const auto component_id = ComponentId{index};
@@ -442,6 +461,7 @@ namespace volt {
 
     return report;
 }
+
 [[nodiscard]] DiagnosticReport validate_electrical_rules(const Circuit &circuit) {
     auto report = DiagnosticReport{};
     auto rules = RuleSet<Circuit>{};
@@ -453,6 +473,7 @@ namespace volt {
 
     return report;
 }
+
 [[nodiscard]] DiagnosticReport validate_circuit(const Circuit &circuit) {
     auto report = DiagnosticReport{};
     auto rules = RuleSet<Circuit>{};
@@ -471,6 +492,7 @@ namespace volt {
 
     return report;
 }
+
 [[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit) {
     auto report = validate_circuit(circuit);
 

@@ -28,6 +28,7 @@ namespace volt::io::detail {
     }
     return result;
 }
+
 void write_svg_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
         throw std::invalid_argument{"SVG numeric values must be finite"};
@@ -40,12 +41,15 @@ void write_svg_number(std::ostream &out, double value) {
     formatted << std::setprecision(15) << value;
     out << formatted.str();
 }
+
 [[nodiscard]] std::string svg_sheet_token(SheetId id) {
     return "sheet-" + std::to_string(id.index());
 }
+
 [[nodiscard]] std::string svg_symbol_instance_id(SymbolInstanceId id) {
     return encode_local_id(id);
 }
+
 [[nodiscard]] std::string power_port_class(PowerPortKind kind) {
     switch (kind) {
     case PowerPortKind::Power:
@@ -55,6 +59,7 @@ void write_svg_number(std::ostream &out, double value) {
     }
     throw std::logic_error{"Unhandled power port kind"};
 }
+
 [[nodiscard]] std::string sheet_port_class(SheetPortKind kind) {
     switch (kind) {
     case SheetPortKind::Input:
@@ -68,6 +73,7 @@ void write_svg_number(std::ostream &out, double value) {
     }
     throw std::logic_error{"Unhandled sheet port kind"};
 }
+
 [[nodiscard]] double orientation_degrees(SchematicOrientation orientation) {
     switch (orientation) {
     case SchematicOrientation::Right:
@@ -81,6 +87,7 @@ void write_svg_number(std::ostream &out, double value) {
     }
     throw std::logic_error{"Unhandled schematic orientation"};
 }
+
 [[nodiscard]] double power_port_glyph_degrees(PowerPortKind kind,
                                               SchematicOrientation orientation) {
     const auto degrees = orientation_degrees(orientation);
@@ -92,6 +99,7 @@ void write_svg_number(std::ostream &out, double value) {
     }
     throw std::logic_error{"Unhandled power port kind"};
 }
+
 void write_upright_text_transform_degrees(std::ostream &out, double parent_degrees, Point anchor) {
     const auto degrees = -parent_degrees;
     if (std::abs(degrees) < 1e-12) {
@@ -106,19 +114,23 @@ void write_upright_text_transform_degrees(std::ostream &out, double parent_degre
     write_svg_number(out, anchor.y());
     out << ")\"";
 }
+
 void write_upright_text_transform(std::ostream &out, SchematicOrientation parent_orientation,
                                   Point anchor) {
     write_upright_text_transform_degrees(out, orientation_degrees(parent_orientation), anchor);
 }
+
 void write_css_stroke_width(std::ostream &out, double width) {
     out << "stroke-width:";
     write_svg_number(out, width);
 }
+
 void write_css_font(std::ostream &out, double size) {
     out << "font:";
     write_svg_number(out, size);
     out << "px sans-serif";
 }
+
 [[nodiscard]] std::string_view svg_text_anchor(TextHorizontalAlignment alignment) {
     switch (alignment) {
     case TextHorizontalAlignment::Start:
@@ -130,6 +142,7 @@ void write_css_font(std::ostream &out, double size) {
     }
     throw std::logic_error{"Unhandled text horizontal alignment"};
 }
+
 [[nodiscard]] std::string_view svg_dominant_baseline(TextVerticalAlignment alignment) {
     switch (alignment) {
     case TextVerticalAlignment::Top:
@@ -143,6 +156,7 @@ void write_css_font(std::ostream &out, double size) {
     }
     throw std::logic_error{"Unhandled text vertical alignment"};
 }
+
 void write_text_presentation_attributes(std::ostream &out, SchematicTextStyle style) {
     out << " text-anchor=\"" << svg_text_anchor(style.horizontal_alignment())
         << "\" dominant-baseline=\"" << svg_dominant_baseline(style.vertical_alignment()) << '"';
@@ -152,6 +166,7 @@ void write_text_presentation_attributes(std::ostream &out, SchematicTextStyle st
         out << "px\"";
     }
 }
+
 [[nodiscard]] std::string abbreviate_middle_to_fit(std::string_view text, double available_width,
                                                    double font_size) {
     const auto character_width = font_size * title_block_text_width_factor;
@@ -178,6 +193,7 @@ void write_text_presentation_attributes(std::ostream &out, SchematicTextStyle st
     }
     return result;
 }
+
 [[nodiscard]] SvgTitleBlockTextFit fit_title_block_text(std::string_view text,
                                                         double available_width) {
     const auto font_size = schematic_svg_visual_scale.title_block_font_size;
@@ -194,12 +210,14 @@ void write_text_presentation_attributes(std::ostream &out, SchematicTextStyle st
     return SvgTitleBlockTextFit{abbreviate_middle_to_fit(text, available_width, font_size), true,
                                 false, 0.0};
 }
+
 [[nodiscard]] SvgRect drawing_area(const SheetMetadata &metadata) {
     const auto margins = metadata.frame().margins();
     const auto width = std::max(0.0, metadata.size().width() - margins.left() - margins.right());
     const auto height = std::max(0.0, metadata.size().height() - margins.top() - margins.bottom());
     return SvgRect{margins.left(), margins.top(), width, height};
 }
+
 [[nodiscard]] SvgRect title_block_rect(const SheetMetadata &metadata) {
     const auto area = drawing_area(metadata);
     const auto rows = 1U + metadata.title_block().size();
@@ -208,6 +226,7 @@ void write_text_presentation_attributes(std::ostream &out, SchematicTextStyle st
     return SvgRect{area.x + std::max(0.0, area.width - width),
                    area.y + std::max(0.0, area.height - height), width, height};
 }
+
 [[nodiscard]] std::string zone_row_label(std::size_t row) {
     auto value = row + 1U;
     auto label = std::string{};
@@ -218,6 +237,7 @@ void write_text_presentation_attributes(std::ostream &out, SchematicTextStyle st
     }
     return label;
 }
+
 void write_xy_attributes(std::ostream &out, Point point, std::string_view x_name,
                          std::string_view y_name) {
     out << ' ' << x_name << "=\"";
@@ -226,6 +246,7 @@ void write_xy_attributes(std::ostream &out, Point point, std::string_view x_name
     write_svg_number(out, point.y());
     out << '"';
 }
+
 [[nodiscard]] Point point_on_arc(const SymbolArc &arc, double degrees) {
     const auto radians = degrees * svg_pi / 180.0;
     return Point{arc.center().x() + (arc.radius() * std::cos(radians)),

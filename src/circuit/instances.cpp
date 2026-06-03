@@ -11,13 +11,16 @@ ReferenceDesignator::ReferenceDesignator(std::string value) : value_{std::move(v
         throw std::invalid_argument{"Reference designator must not be empty"};
     }
 }
+
 ComponentInstance::ComponentInstance(ComponentDefId definition, ReferenceDesignator reference,
                                      PropertyMap properties)
     : definition_{definition}, reference_{std::move(reference)},
       properties_{std::move(properties)} {}
+
 void ComponentInstance::set_property(PropertyKey key, PropertyValue value) {
     properties_.set(std::move(key), std::move(value));
 }
+
 PinInstance::PinInstance(ComponentId component, PinDefId definition)
     : component_{component}, definition_{definition} {}
 
