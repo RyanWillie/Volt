@@ -218,6 +218,11 @@ TEST_CASE("PCB SVG writer renders stable ratsnest selectors for placed multi-pad
     CHECK(svg.find("data-from-pad=\"pcb_pad:0:1\"") != std::string::npos);
     CHECK(svg.find("data-to-pad=\"pcb_pad:1:0\"") != std::string::npos);
     CHECK(svg.find("x1=\"10.75\" y1=\"10\" x2=\"19.25\" y2=\"10\"") != std::string::npos);
+
+    const auto without_ratsnest = volt::io::write_pcb_placement_svg(
+        board, volt::builtin_footprint_library(),
+        volt::io::PcbPlacementSvgOptions{.ratsnest_edges = false});
+    CHECK(without_ratsnest.find("data-ratsnest-edge=") == std::string::npos);
 }
 
 TEST_CASE("PCB SVG writer renders stable selectors for copper tracks and vias") {

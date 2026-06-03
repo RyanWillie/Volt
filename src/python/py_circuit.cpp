@@ -1270,11 +1270,13 @@ std::string PyCircuit::board_to_json() const {
     return volt::io::write_pcb_board(board_projection(), volt::builtin_footprint_library());
 }
 
-std::string PyCircuit::board_to_svg(bool pad_net_overlays, bool diagnostic_overlays) const {
+std::string PyCircuit::board_to_svg(bool pad_net_overlays, bool diagnostic_overlays,
+                                    bool ratsnest_edges) const {
     return volt::io::write_pcb_placement_svg(
         board_projection(), volt::builtin_footprint_library(),
         volt::io::PcbPlacementSvgOptions{.pad_net_overlays = pad_net_overlays,
-                                         .diagnostic_overlays = diagnostic_overlays});
+                                         .diagnostic_overlays = diagnostic_overlays,
+                                         .ratsnest_edges = ratsnest_edges});
 }
 
 std::vector<volt::PinId> PyCircuit::pins_by_name(volt::ComponentId component,

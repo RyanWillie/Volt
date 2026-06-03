@@ -383,6 +383,8 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     assert 'data-net="net:0"' in svg
     assert 'data-track="board_track:0"' in svg
     assert 'data-via="board_via:0"' in svg
+    assert "data-ratsnest-edge=" in svg
+    assert "data-ratsnest-edge=" not in board.to_svg(ratsnest_edges=False)
 
     json_path = tmp_path / "board.voltpcb.json"
     svg_path = tmp_path / "board.svg"

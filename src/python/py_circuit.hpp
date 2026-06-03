@@ -324,7 +324,8 @@ class PyCircuit {
 
     [[nodiscard]] std::string board_to_json() const;
 
-    [[nodiscard]] std::string board_to_svg(bool pad_net_overlays, bool diagnostic_overlays) const;
+    [[nodiscard]] std::string board_to_svg(bool pad_net_overlays, bool diagnostic_overlays,
+                                           bool ratsnest_edges) const;
 
     [[nodiscard]] py::dict board_to_kicad_pcb() const;
 

@@ -943,7 +943,9 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
     detail::write_keepouts(out, board);
     detail::write_texts(out, board);
     detail::write_placements(out, board, preview_footprints, resolutions);
-    detail::write_ratsnest(out, ratsnest_edges);
+    if (options.ratsnest_edges) {
+        detail::write_ratsnest(out, ratsnest_edges);
+    }
     detail::write_pad_overlays(out, board, resolutions, options);
     detail::write_diagnostics(out, board, diagnostics, bounds, options);
     out << "  </g>\n";

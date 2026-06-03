@@ -610,10 +610,20 @@ class Board:
         self._sync_object_footprints()
         return self._design._circuit.board_to_json()
 
-    def to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True) -> str:
+    def to_svg(
+        self,
+        *,
+        pad_net_overlays: bool = True,
+        diagnostic_overlays: bool = True,
+        ratsnest_edges: bool = True,
+    ) -> str:
         """Render the PCB projection as SVG."""
         self._sync_object_footprints()
-        return self._design._circuit.board_to_svg(pad_net_overlays, diagnostic_overlays)
+        return self._design._circuit.board_to_svg(
+            pad_net_overlays,
+            diagnostic_overlays,
+            ratsnest_edges,
+        )
 
     def to_kicad_pcb(self) -> KiCadPcbExport:
         """Export the PCB projection to a KiCad `.kicad_pcb` adapter document."""
