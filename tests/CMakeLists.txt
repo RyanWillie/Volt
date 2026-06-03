@@ -56,6 +56,7 @@ add_executable(
     pcb/footprints_test.cpp
     adapters/kicad_boundary_test.cpp
     adapters/kicad_loss_report_test.cpp
+    adapters/kicad_pcb_writer_test.cpp
     adapters/kicad_schematic_writer_test.cpp
     schematic/schematic_geometry_test.cpp
     schematic/schematic_readability_labeling_test.cpp

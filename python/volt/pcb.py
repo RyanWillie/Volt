@@ -142,6 +142,24 @@ class PadResolution:
     status: str
 
 
+@dataclass(frozen=True)
+class KiCadLossWarning:
+    """Structured warning for an unsupported or lossy KiCad adapter construct."""
+
+    kind: str
+    construct: str
+    message: str
+    severity: str
+
+
+@dataclass(frozen=True)
+class KiCadPcbExport:
+    """Result of exporting a board projection to a KiCad PCB file."""
+
+    text: str
+    warnings: tuple[KiCadLossWarning, ...]
+
+
 class Board:
     """Python handle to one kernel-owned PCB projection."""
 
@@ -412,6 +430,15 @@ class Board:
         self._sync_object_footprints()
         return self._design._circuit.board_to_svg(pad_net_overlays, diagnostic_overlays)
 
+    def to_kicad_pcb(self) -> KiCadPcbExport:
+        """Export the PCB projection to a KiCad `.kicad_pcb` adapter document."""
+        self._sync_object_footprints()
+        result = self._design._circuit.board_to_kicad_pcb()
+        return KiCadPcbExport(
+            text=result["text"],
+            warnings=tuple(KiCadLossWarning(**warning) for warning in result["warnings"]),
+        )
+
     def _sync_component_object_footprint(self, component: int) -> None:
         footprint = self._design._object_footprint_for_component(component)
         if footprint is not None:
@@ -428,3 +455,9 @@ class Board:
     def write_svg(self, path: str | Path) -> None:
         """Write the PCB projection SVG to a file."""
         Path(path).write_text(self.to_svg(), encoding="utf-8")
+
+    def write_kicad_pcb(self, path: str | Path) -> KiCadPcbExport:
+        """Write the KiCad PCB adapter document and return its loss report."""
+        export = self.to_kicad_pcb()
+        Path(path).write_text(export.text, encoding="utf-8")
+        return export

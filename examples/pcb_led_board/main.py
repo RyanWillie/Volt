@@ -21,6 +21,7 @@ class ExampleArtifacts:
     schematic_svg_pages: tuple[Path, ...]
     pcb_json: Path
     pcb_svg: Path
+    kicad_pcb: Path
     validation_report: Path
 
 
@@ -265,6 +266,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
     schematic_svg_pages_dir = output_path / f"{EXAMPLE_SLUG}.pages"
     pcb_json = output_path / f"{EXAMPLE_SLUG}.volt.pcb.json"
     pcb_svg = output_path / f"{EXAMPLE_SLUG}.pcb.svg"
+    kicad_pcb = output_path / f"{EXAMPLE_SLUG}.kicad_pcb"
     validation_report = output_path / f"{EXAMPLE_SLUG}.validation.json"
 
     if schematic_svg_pages_dir.exists():
@@ -280,6 +282,12 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
     )
     board.write_json(pcb_json)
     board.write_svg(pcb_svg)
+    kicad_export = board.write_kicad_pcb(kicad_pcb)
+    if kicad_export.warnings:
+        raise RuntimeError(
+            "PCB LED board KiCad export reported loss: "
+            + ", ".join(warning.construct for warning in kicad_export.warnings)
+        )
     validation_report.write_text(validation_report_json(reports), encoding="utf-8")
     return ExampleArtifacts(
         logical_json=logical_json,
@@ -289,6 +297,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
         schematic_svg_pages=schematic_svg_pages,
         pcb_json=pcb_json,
         pcb_svg=pcb_svg,
+        kicad_pcb=kicad_pcb,
         validation_report=validation_report,
     )
 
