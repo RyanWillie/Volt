@@ -8,7 +8,15 @@
 
 namespace volt {
 
-/** Runs a typed set of validation rules over one model and one diagnostic report. */
+/**
+ * Runs a typed set of read-only validation rules over one model into one diagnostic report.
+ *
+ * Responsibility: the generic registry behind every checker; a rule is a function
+ *   (const Model&, DiagnosticReport&), so adding a check is "write a function, register it."
+ * Invariants: rules never mutate the model; they run in registration order.
+ * Collaborators: instantiated per domain — RuleSet<Circuit> (ERC), RuleSet<Board> (DRC),
+ *   RuleSet<Schematic>. See docs/superpowers/specs/2026-06-02-volt-kernel-architecture-design.md.
+ */
 template <class Model> class RuleSet {
   public:
     /** Callable validation rule for the model type. */

@@ -7,56 +7,68 @@ namespace volt::detail {
 [[nodiscard]] SchematicBounds bounds_from_point(Point point) noexcept {
     return SchematicBounds{point.x(), point.y(), point.x(), point.y()};
 }
+
 void include_point(SchematicBounds &bounds, Point point) noexcept {
     bounds.min_x = std::min(bounds.min_x, point.x());
     bounds.min_y = std::min(bounds.min_y, point.y());
     bounds.max_x = std::max(bounds.max_x, point.x());
     bounds.max_y = std::max(bounds.max_y, point.y());
 }
+
 void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexcept {
     bounds.min_x = std::min(bounds.min_x, other.min_x);
     bounds.min_y = std::min(bounds.min_y, other.min_y);
     bounds.max_x = std::max(bounds.max_x, other.max_x);
     bounds.max_y = std::max(bounds.max_y, other.max_y);
 }
+
 [[nodiscard]] SchematicBounds padded_bounds(SchematicBounds bounds, double padding) noexcept {
     return SchematicBounds{bounds.min_x - padding, bounds.min_y - padding, bounds.max_x + padding,
                            bounds.max_y + padding};
 }
+
 [[nodiscard]] SchematicBounds rect_bounds(double x, double y, double width,
                                           double height) noexcept {
     return SchematicBounds{x, y, x + width, y + height};
 }
+
 [[nodiscard]] bool contains_bounds(SchematicBounds outer, SchematicBounds inner) noexcept {
     return inner.min_x >= outer.min_x - schematic_geometry_tolerance &&
            inner.min_y >= outer.min_y - schematic_geometry_tolerance &&
            inner.max_x <= outer.max_x + schematic_geometry_tolerance &&
            inner.max_y <= outer.max_y + schematic_geometry_tolerance;
 }
+
 [[nodiscard]] bool intersects_bounds(SchematicBounds first, SchematicBounds second) noexcept {
     return first.min_x <= second.max_x + schematic_geometry_tolerance &&
            first.max_x + schematic_geometry_tolerance >= second.min_x &&
            first.min_y <= second.max_y + schematic_geometry_tolerance &&
            first.max_y + schematic_geometry_tolerance >= second.min_y;
 }
+
 [[nodiscard]] bool overlaps_bounds_area(SchematicBounds first, SchematicBounds second) noexcept {
     return first.min_x < second.max_x - schematic_geometry_tolerance &&
            first.max_x > second.min_x + schematic_geometry_tolerance &&
            first.min_y < second.max_y - schematic_geometry_tolerance &&
            first.max_y > second.min_y + schematic_geometry_tolerance;
 }
+
 [[nodiscard]] double bounds_overlap_width(SchematicBounds first, SchematicBounds second) noexcept {
     return std::min(first.max_x, second.max_x) - std::max(first.min_x, second.min_x);
 }
+
 [[nodiscard]] double bounds_overlap_height(SchematicBounds first, SchematicBounds second) noexcept {
     return std::min(first.max_y, second.max_y) - std::max(first.min_y, second.min_y);
 }
+
 [[nodiscard]] double bounds_width(SchematicBounds bounds) noexcept {
     return bounds.max_x - bounds.min_x;
 }
+
 [[nodiscard]] double bounds_height(SchematicBounds bounds) noexcept {
     return bounds.max_y - bounds.min_y;
 }
+
 [[nodiscard]] double bounds_gap(SchematicBounds first, SchematicBounds second) noexcept {
     auto dx = 0.0;
     if (first.max_x < second.min_x) {
@@ -74,20 +86,24 @@ void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexcept {
 
     return std::sqrt((dx * dx) + (dy * dy));
 }
+
 [[nodiscard]] Point bounds_center(SchematicBounds bounds) {
     return Point{(bounds.min_x + bounds.max_x) / 2.0, (bounds.min_y + bounds.max_y) / 2.0};
 }
+
 [[nodiscard]] double point_distance(Point first, Point second) noexcept {
     const auto dx = first.x() - second.x();
     const auto dy = first.y() - second.y();
     return std::sqrt((dx * dx) + (dy * dy));
 }
+
 [[nodiscard]] bool point_inside_bounds(Point point, SchematicBounds bounds) noexcept {
     return point.x() >= bounds.min_x - schematic_geometry_tolerance &&
            point.x() <= bounds.max_x + schematic_geometry_tolerance &&
            point.y() >= bounds.min_y - schematic_geometry_tolerance &&
            point.y() <= bounds.max_y + schematic_geometry_tolerance;
 }
+
 [[nodiscard]] bool segment_intersects_bounds(SchematicSegment segment, SchematicBounds bounds) {
     if (point_inside_bounds(segment.start(), bounds) ||
         point_inside_bounds(segment.end(), bounds)) {
@@ -109,6 +125,7 @@ void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexcept {
                SchematicSegmentRelationship::Disjoint ||
            classify_segment_relationship(segment, left) != SchematicSegmentRelationship::Disjoint;
 }
+
 [[nodiscard]] SchematicBounds transform_rect_bounds(double min_x, double min_y, double max_x,
                                                     double max_y, Point origin,
                                                     SchematicOrientation orientation) {
@@ -119,6 +136,7 @@ void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexcept {
     include_point(result, transform_schematic_point(Point{max_x, max_y}, origin, orientation));
     return result;
 }
+
 [[nodiscard]] int orientation_quarter_turns(SchematicOrientation orientation) noexcept {
     switch (orientation) {
     case SchematicOrientation::Right:
@@ -132,6 +150,7 @@ void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexcept {
     }
     return 0;
 }
+
 [[nodiscard]] SchematicOrientation orientation_from_quarter_turns(int turns) {
     const auto normalized = ((turns % 4) + 4) % 4;
     switch (normalized) {
@@ -146,21 +165,25 @@ void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexcept {
     }
     throw std::logic_error{"Unhandled schematic orientation"};
 }
+
 [[nodiscard]] SchematicOrientation combined_text_orientation(SchematicOrientation parent,
                                                              SchematicOrientation child) {
     return orientation_from_quarter_turns(orientation_quarter_turns(parent) +
                                           orientation_quarter_turns(child));
 }
+
 [[nodiscard]] SchematicOrientation combine_orientations(SchematicOrientation parent,
                                                         SchematicOrientation child) {
     return combined_text_orientation(parent, child);
 }
+
 [[nodiscard]] SchematicBounds drawing_area_bounds(const SheetMetadata &metadata) noexcept {
     const auto margins = metadata.frame().margins();
     return rect_bounds(margins.left(), margins.top(),
                        std::max(0.0, metadata.size().width() - margins.left() - margins.right()),
                        std::max(0.0, metadata.size().height() - margins.top() - margins.bottom()));
 }
+
 [[nodiscard]] SchematicBounds title_block_bounds(const SheetMetadata &metadata) noexcept {
     const auto area = drawing_area_bounds(metadata);
     const auto rows = 1U + metadata.title_block().size();
@@ -170,18 +193,22 @@ void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexcept {
                        area.min_y + std::max(0.0, (area.max_y - area.min_y) - height), width,
                        height);
 }
+
 [[nodiscard]] SchematicBounds region_bounds(const SheetRegion &region) noexcept {
     const auto bounds = region.bounds();
     return rect_bounds(bounds.x(), bounds.y(), bounds.width(), bounds.height());
 }
+
 [[nodiscard]] double rendered_text_width(std::string_view text, double font_size) noexcept {
     return std::max(font_size * rendered_text_width_factor,
                     font_size * rendered_text_width_factor * static_cast<double>(text.size()));
 }
+
 [[nodiscard]] double title_block_rendered_text_width(std::string_view text,
                                                      double font_size) noexcept {
     return font_size * title_block_text_width_factor * static_cast<double>(text.size());
 }
+
 [[nodiscard]] SchematicBounds text_bounds(Point anchor, SchematicOrientation orientation,
                                           std::string_view text, double font_size,
                                           TextHorizontalAlignment horizontal_alignment,
@@ -212,27 +239,32 @@ void include_bounds(SchematicBounds &bounds, SchematicBounds other) noexcept {
     }
     return transform_rect_bounds(min_x, min_y, max_x, max_y, anchor, orientation);
 }
+
 [[nodiscard]] SchematicBounds text_bounds(Point anchor, SchematicOrientation orientation,
                                           std::string_view text, double font_size, bool centered) {
     return text_bounds(anchor, orientation, text, font_size,
                        centered ? TextHorizontalAlignment::Middle : TextHorizontalAlignment::Start,
                        TextVerticalAlignment::Baseline);
 }
+
 [[nodiscard]] double text_style_font_size(SchematicTextStyle style,
                                           double default_font_size) noexcept {
     return style.font_size().value_or(default_font_size);
 }
+
 [[nodiscard]] SchematicBounds text_bounds(Point anchor, SchematicOrientation orientation,
                                           std::string_view text, SchematicTextStyle style,
                                           double default_font_size) {
     return text_bounds(anchor, orientation, text, text_style_font_size(style, default_font_size),
                        style.horizontal_alignment(), style.vertical_alignment());
 }
+
 [[nodiscard]] SchematicBounds transform_symbol_point_bounds(Point point,
                                                             const SymbolInstance &instance) {
     return bounds_from_point(
         transform_schematic_point(point, instance.position(), instance.orientation()));
 }
+
 [[nodiscard]] SchematicBounds
 symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &instance,
                         double line_padding, double closed_shape_padding, double text_font_size) {
@@ -278,6 +310,7 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
                        combined_text_orientation(instance.orientation(), text.orientation()),
                        text.text(), text.style(), text_font_size);
 }
+
 [[nodiscard]] SchematicBounds symbol_instance_bounds(const Schematic &schematic,
                                                      SymbolInstanceId id, double line_padding,
                                                      double closed_shape_padding,
@@ -294,6 +327,7 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
     }
     return bounds;
 }
+
 [[nodiscard]] std::optional<SchematicBounds> symbol_instance_body_bounds(const Schematic &schematic,
                                                                          SymbolInstanceId id) {
     const auto &instance = schematic.symbol_instance(id);
@@ -331,6 +365,7 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
     }
     return bounds;
 }
+
 [[nodiscard]] bool symbol_instances_share_same_net_pin_point(const Schematic &schematic,
                                                              SymbolInstanceId first_id,
                                                              SymbolInstanceId second_id) {
@@ -370,6 +405,7 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
     }
     return false;
 }
+
 [[nodiscard]] bool symbol_overlap_is_shared_pin_contact(const Schematic &schematic,
                                                         SymbolInstanceId first_id,
                                                         SchematicBounds first_bounds,
@@ -382,6 +418,7 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
     return bounds_overlap_width(first_bounds, second_bounds) <= contact_overlap_tolerance ||
            bounds_overlap_height(first_bounds, second_bounds) <= contact_overlap_tolerance;
 }
+
 [[nodiscard]] SchematicBounds wire_run_bounds(const WireRun &wire, double padding) {
     auto bounds = bounds_from_point(wire.points().front());
     for (const auto point : wire.points()) {
@@ -389,11 +426,13 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
     }
     return padded_bounds(bounds, padding);
 }
+
 [[nodiscard]] SchematicBounds segment_bounds(SchematicSegment segment) {
     auto bounds = bounds_from_point(segment.start());
     include_point(bounds, segment.end());
     return padded_bounds(bounds, 0.5);
 }
+
 [[nodiscard]] SchematicOrientation power_port_glyph_orientation(PowerPortKind kind,
                                                                 SchematicOrientation orientation) {
     switch (kind) {
@@ -424,10 +463,12 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
     }
     throw std::logic_error{"Unhandled power port orientation"};
 }
+
 [[nodiscard]] Point transformed_port_anchor(const PowerPort &port, Point local_anchor) {
     return transform_schematic_point(local_anchor, port.position(),
                                      power_port_glyph_orientation(port.kind(), port.orientation()));
 }
+
 [[nodiscard]] SchematicBounds power_port_label_bounds(const PowerPort &port, std::string_view label,
                                                       double font_size) {
     const auto label_y =
@@ -436,6 +477,7 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
         port.explicit_label_position().value_or(transformed_port_anchor(port, Point{0.0, label_y})),
         SchematicOrientation::Right, label, font_size, true);
 }
+
 [[nodiscard]] SchematicBounds power_port_glyph_bounds(const PowerPort &port,
                                                       double stroke_padding) {
     const auto glyph_orientation = power_port_glyph_orientation(port.kind(), port.orientation());
@@ -446,34 +488,41 @@ symbol_primitive_bounds(const SymbolPrimitive &primitive, const SymbolInstance &
                                     power_port_half_width, 0.0, port.position(), glyph_orientation);
     return padded_bounds(bounds, stroke_padding);
 }
+
 [[nodiscard]] SchematicBounds power_port_bounds(const PowerPort &port, std::string_view label,
                                                 double stroke_padding, double label_font_size) {
     auto bounds = power_port_glyph_bounds(port, stroke_padding);
     include_bounds(bounds, power_port_label_bounds(port, label, label_font_size));
     return bounds;
 }
+
 [[nodiscard]] SchematicBounds no_connect_marker_bounds(const NoConnectMarker &marker,
                                                        double half_size) {
     return transform_rect_bounds(-half_size, -half_size, half_size, half_size, marker.position(),
                                  marker.orientation());
 }
+
 [[nodiscard]] double sheet_port_rendered_body_length(std::string_view label) {
     const auto label_width = static_cast<double>(label.size()) *
                              sheet_port_rendered_label_font_size * rendered_text_width_factor;
     return std::max(sheet_port_rendered_min_body_length,
                     label_width + (sheet_port_rendered_label_padding * 2.0));
 }
+
 [[nodiscard]] double sheet_port_body_length(std::string_view label) {
     return sheet_port_rendered_body_length(label);
 }
+
 [[nodiscard]] Point transformed_port_anchor(const SheetPort &port, Point local_anchor) {
     return transform_schematic_point(local_anchor, port.position(), port.orientation());
 }
+
 [[nodiscard]] SchematicBounds sheet_port_label_bounds(const SheetPort &port, double font_size) {
     const auto body_length = sheet_port_rendered_body_length(port.name());
     return text_bounds(transformed_port_anchor(port, Point{body_length * 0.5, 0.9}),
                        SchematicOrientation::Right, port.name(), font_size, true);
 }
+
 [[nodiscard]] SchematicBounds sheet_port_bounds(const SheetPort &port, double stroke_padding,
                                                 double label_font_size) {
     const auto max_x =

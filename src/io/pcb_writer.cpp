@@ -13,6 +13,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled diagnostic severity"};
 }
+
 [[nodiscard]] std::string entity_ref_id(EntityRef entity) {
     switch (entity.kind()) {
     case EntityKind::ComponentDef:
@@ -74,6 +75,7 @@ namespace volt::io::detail {
     }
     throw std::logic_error{"Unhandled diagnostic entity kind"};
 }
+
 [[nodiscard]] std::optional<FootprintDefId>
 find_footprint_definition(const std::vector<FootprintDefinition> &definitions,
                           const FootprintRef &ref) {
@@ -84,6 +86,7 @@ find_footprint_definition(const std::vector<FootprintDefinition> &definitions,
     }
     return std::nullopt;
 }
+
 [[nodiscard]] std::vector<FootprintDefinition>
 collect_footprint_definitions(const Board &board, const FootprintLibrary &footprints) {
     auto definitions = std::vector<FootprintDefinition>{};
@@ -119,6 +122,7 @@ collect_footprint_definitions(const Board &board, const FootprintLibrary &footpr
 
     return definitions;
 }
+
 [[nodiscard]] FootprintLibrary
 footprint_library_from_definitions(const std::vector<FootprintDefinition> &definitions) {
     auto library = FootprintLibrary{};
@@ -127,7 +131,9 @@ footprint_library_from_definitions(const std::vector<FootprintDefinition> &defin
     }
     return library;
 }
+
 void write_number(std::ostream &out, double value) { write_json_number(out, value); }
+
 void write_board_point(std::ostream &out, BoardPoint point) {
     out << '[';
     write_number(out, point.x_mm());
@@ -135,6 +141,7 @@ void write_board_point(std::ostream &out, BoardPoint point) {
     write_number(out, point.y_mm());
     out << ']';
 }
+
 void write_board_points(std::ostream &out, const std::vector<BoardPoint> &points) {
     out << '[';
     for (std::size_t index = 0; index < points.size(); ++index) {
@@ -145,6 +152,7 @@ void write_board_points(std::ostream &out, const std::vector<BoardPoint> &points
     }
     out << ']';
 }
+
 void write_board_layers(std::ostream &out, const std::vector<BoardLayerId> &layers) {
     out << '[';
     for (std::size_t index = 0; index < layers.size(); ++index) {
@@ -155,6 +163,7 @@ void write_board_layers(std::ostream &out, const std::vector<BoardLayerId> &laye
     }
     out << ']';
 }
+
 void write_footprint_point(std::ostream &out, FootprintPoint point) {
     out << '[';
     write_number(out, point.x_mm());
@@ -162,6 +171,7 @@ void write_footprint_point(std::ostream &out, FootprintPoint point) {
     write_number(out, point.y_mm());
     out << ']';
 }
+
 void write_footprint_size(std::ostream &out, FootprintSize size) {
     out << '[';
     write_number(out, size.width_mm());
@@ -169,10 +179,12 @@ void write_footprint_size(std::ostream &out, FootprintSize size) {
     write_number(out, size.height_mm());
     out << ']';
 }
+
 void write_footprint_ref(std::ostream &out, const FootprintRef &ref) {
     out << "{\"library\": " << json_string(ref.library())
         << ", \"name\": " << json_string(ref.name()) << '}';
 }
+
 void write_footprint_layers(std::ostream &out, const FootprintLayerSet &layers) {
     out << '[';
     for (std::size_t index = 0; index < layers.layers().size(); ++index) {
@@ -183,6 +195,7 @@ void write_footprint_layers(std::ostream &out, const FootprintLayerSet &layers) 
     }
     out << ']';
 }
+
 void write_drill(std::ostream &out, const std::optional<FootprintDrill> &drill) {
     if (!drill.has_value()) {
         out << "null";
@@ -193,6 +206,7 @@ void write_drill(std::ostream &out, const std::optional<FootprintDrill> &drill) 
     write_number(out, drill->diameter_mm());
     out << ", \"plating\": " << json_string(footprint_pad_plating_name(drill->plating())) << '}';
 }
+
 void write_mechanical_role(std::ostream &out,
                            const std::optional<FootprintPadMechanicalRole> &mechanical_role) {
     if (!mechanical_role.has_value()) {
@@ -201,6 +215,7 @@ void write_mechanical_role(std::ostream &out,
     }
     out << json_string(footprint_pad_mechanical_role_name(mechanical_role.value()));
 }
+
 void write_pad_geometry_fields(std::ostream &out, const FootprintPad &pad) {
     out << "\"kind\": " << json_string(footprint_pad_kind_name(pad.kind())) << ",\n";
     out << "          \"shape\": " << json_string(footprint_pad_shape_name(pad.shape())) << ",\n";
@@ -219,6 +234,7 @@ void write_pad_geometry_fields(std::ostream &out, const FootprintPad &pad) {
     out << "          \"mechanical_role\": ";
     write_mechanical_role(out, pad.mechanical_role());
 }
+
 void write_layers(std::ostream &out, const Board &board) {
     out << "    \"layers\": [\n";
     for (std::size_t index = 0; index < board.layer_count(); ++index) {
@@ -238,6 +254,7 @@ void write_layers(std::ostream &out, const Board &board) {
     }
     out << "    ],\n";
 }
+
 void write_layer_stack(std::ostream &out, const Board &board) {
     out << "    \"layer_stack\": ";
     if (!board.layer_stack().has_value()) {
@@ -257,6 +274,7 @@ void write_layer_stack(std::ostream &out, const Board &board) {
     }
     out << "]},\n";
 }
+
 void write_outline(std::ostream &out, const Board &board) {
     out << "    \"outline\": ";
     if (!board.outline().has_value()) {
@@ -274,6 +292,7 @@ void write_outline(std::ostream &out, const Board &board) {
     }
     out << "]},\n";
 }
+
 void write_rules(std::ostream &out, const Board &board) {
     const auto &rules = board.design_rules();
     out << "    \"rules\": {\"copper_clearance_mm\": ";
@@ -288,6 +307,7 @@ void write_rules(std::ostream &out, const Board &board) {
     write_number(out, rules.board_outline_clearance_mm());
     out << "},\n";
 }
+
 void write_footprint_definitions(std::ostream &out,
                                  const std::vector<FootprintDefinition> &definitions) {
     out << "    \"footprint_definitions\": [\n";
@@ -325,6 +345,7 @@ void write_footprint_definitions(std::ostream &out,
     }
     out << "    ],\n";
 }
+
 void write_placements(std::ostream &out, const Board &board,
                       const std::vector<FootprintDefinition> &definitions, bool trailing_comma) {
     out << "    \"placements\": [\n";
@@ -362,6 +383,7 @@ void write_placements(std::ostream &out, const Board &board,
     }
     out << '\n';
 }
+
 void write_tracks(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"tracks\": [\n";
     for (std::size_t index = 0; index < board.track_count(); ++index) {
@@ -390,6 +412,7 @@ void write_tracks(std::ostream &out, const Board &board, bool trailing_comma) {
     }
     out << '\n';
 }
+
 void write_vias(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"vias\": [\n";
     for (std::size_t index = 0; index < board.via_count(); ++index) {
@@ -416,6 +439,7 @@ void write_vias(std::ostream &out, const Board &board, bool trailing_comma) {
     }
     out << '\n';
 }
+
 void write_board_zones(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"zones\": [\n";
     for (std::size_t index = 0; index < board.zone_count(); ++index) {
@@ -444,6 +468,7 @@ void write_board_zones(std::ostream &out, const Board &board, bool trailing_comm
     }
     out << '\n';
 }
+
 void write_board_keepouts(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"keepouts\": [\n";
     for (std::size_t index = 0; index < board.keepout_count(); ++index) {
@@ -474,6 +499,7 @@ void write_board_keepouts(std::ostream &out, const Board &board, bool trailing_c
     }
     out << '\n';
 }
+
 void write_board_texts(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"texts\": [\n";
     for (std::size_t index = 0; index < board.text_count(); ++index) {
@@ -498,6 +524,7 @@ void write_board_texts(std::ostream &out, const Board &board, bool trailing_comm
     }
     out << '\n';
 }
+
 void write_pad_resolution(std::ostream &out, const Board &board,
                           const std::vector<FootprintDefinition> &definitions,
                           const PadResolution &resolution, const FootprintDefinition &definition) {
@@ -555,6 +582,7 @@ void write_pad_resolution(std::ostream &out, const Board &board,
     out << "}\n";
     out << "      }";
 }
+
 void write_diagnostic(std::ostream &out, const Diagnostic &diagnostic) {
     out << "      {\"severity\": " << json_string(severity_name(diagnostic.severity()))
         << ", \"code\": " << json_string(diagnostic.code().value())
@@ -567,6 +595,7 @@ void write_diagnostic(std::ostream &out, const Diagnostic &diagnostic) {
     }
     out << "]}";
 }
+
 void write_viewer(std::ostream &out, const Board &board,
                   const std::vector<FootprintDefinition> &definitions) {
     const auto footprint_library = footprint_library_from_definitions(definitions);
@@ -628,20 +657,33 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
     detail::write_footprint_definitions(out, definitions);
     detail::write_placements(out, board, definitions,
                              board.track_count() != 0U || board.via_count() != 0U ||
-                                 board.zone_count() != 0U);
+                                 board.zone_count() != 0U || board.keepout_count() != 0U ||
+                                 board.text_count() != 0U);
     if (board.track_count() != 0U) {
-        detail::write_tracks(out, board, board.via_count() != 0U || board.zone_count() != 0U);
+        detail::write_tracks(out, board,
+                             board.via_count() != 0U || board.zone_count() != 0U ||
+                                 board.keepout_count() != 0U || board.text_count() != 0U);
     }
     if (board.via_count() != 0U) {
-        detail::write_vias(out, board, board.zone_count() != 0U);
+        detail::write_vias(out, board,
+                           board.zone_count() != 0U || board.keepout_count() != 0U ||
+                               board.text_count() != 0U);
     }
     if (board.zone_count() != 0U) {
-        detail::write_board_zones(out, board, false);
+        detail::write_board_zones(out, board,
+                                  board.keepout_count() != 0U || board.text_count() != 0U);
+    }
+    if (board.keepout_count() != 0U) {
+        detail::write_board_keepouts(out, board, board.text_count() != 0U);
+    }
+    if (board.text_count() != 0U) {
+        detail::write_board_texts(out, board, false);
     }
     out << "  },\n";
     detail::write_viewer(out, board, definitions);
     out << "}\n";
 }
+
 [[nodiscard]] std::string write_pcb_board(const Board &board, const FootprintLibrary &footprints) {
     auto out = std::ostringstream{};
     write_pcb_board(out, board, footprints);

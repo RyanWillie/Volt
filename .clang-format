@@ -3,4 +3,6 @@ ColumnLimit: 100
 IndentWidth: 4
 NamespaceIndentation: None
 SortIncludes: CaseSensitive
+SeparateDefinitionBlocks: Always
+InsertNewlineAtEOF: true
 

@@ -185,17 +185,20 @@ class PcbBoardReader {
     validate_viewer_cache(board);
     return board;
 }
+
 void PcbBoardReader::require(bool condition, const std::string &message) {
     if (!condition) {
         throw std::logic_error{message};
     }
 }
+
 const nlohmann::json &PcbBoardReader::field(const nlohmann::json &object, const char *name) {
     require(object.is_object(), "Expected object while reading PCB projection");
     const auto it = object.find(name);
     require(it != object.end(), std::string{"Missing required field: "} + name);
     return *it;
 }
+
 const nlohmann::json *PcbBoardReader::optional_field(const nlohmann::json &object,
                                                      const char *name) {
     require(object.is_object(), "Expected object while reading PCB projection");
@@ -205,21 +208,25 @@ const nlohmann::json *PcbBoardReader::optional_field(const nlohmann::json &objec
     }
     return &*it;
 }
+
 const nlohmann::json &PcbBoardReader::object_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_object(), std::string{"Expected object field: "} + name);
     return value;
 }
+
 const nlohmann::json &PcbBoardReader::array_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_array(), std::string{"Expected array field: "} + name);
     return value;
 }
+
 std::string PcbBoardReader::string_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_string(), std::string{"Expected string field: "} + name);
     return value.get<std::string>();
 }
+
 std::optional<std::string> PcbBoardReader::nullable_string_field(const nlohmann::json &object,
                                                                  const char *name) {
     const auto &value = field(object, name);
@@ -229,11 +236,13 @@ std::optional<std::string> PcbBoardReader::nullable_string_field(const nlohmann:
     require(value.is_string(), std::string{"Expected string field: "} + name);
     return value.get<std::string>();
 }
+
 bool PcbBoardReader::bool_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_boolean(), std::string{"Expected boolean field: "} + name);
     return value.get<bool>();
 }
+
 double PcbBoardReader::number_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_number(), std::string{"Expected number field: "} + name);
@@ -241,15 +250,18 @@ double PcbBoardReader::number_field(const nlohmann::json &object, const char *na
     require(std::isfinite(result), std::string{"Expected finite number field: "} + name);
     return result;
 }
+
 int PcbBoardReader::int_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_number_integer(), std::string{"Expected integer field: "} + name);
     return value.get<int>();
 }
+
 void PcbBoardReader::require_format(const nlohmann::json &object) {
     const auto actual = string_field(object, "format");
     require(actual == pcb_format_name(), "Unsupported PCB projection format: " + actual);
 }
+
 void PcbBoardReader::require_version(const nlohmann::json &object) {
     const auto &value = field(object, "version");
     require(value.is_number_integer(), "Expected integer field: version");
@@ -257,6 +269,7 @@ void PcbBoardReader::require_version(const nlohmann::json &object) {
     require(actual == static_cast<std::int64_t>(pcb_format_version()),
             "Unsupported PCB projection format version: " + std::to_string(actual));
 }
+
 [[nodiscard]] BoardPoint PcbBoardReader::board_point(const nlohmann::json &value) {
     require(value.is_array(), "PCB point must be an array");
     require(value.size() == 2U, "PCB point must contain two numbers");
@@ -266,6 +279,7 @@ void PcbBoardReader::require_version(const nlohmann::json &object) {
     require(std::isfinite(x) && std::isfinite(y), "PCB point values must be finite");
     return BoardPoint{x, y};
 }
+
 [[nodiscard]] std::vector<BoardPoint> PcbBoardReader::board_points(const nlohmann::json &value) {
     require(value.is_array(), "PCB point list must be an array");
     auto points = std::vector<BoardPoint>{};
@@ -275,10 +289,12 @@ void PcbBoardReader::require_version(const nlohmann::json &object) {
     }
     return points;
 }
+
 [[nodiscard]] FootprintPoint PcbBoardReader::footprint_point(const nlohmann::json &value) {
     const auto point = board_point(value);
     return FootprintPoint{point.x_mm(), point.y_mm()};
 }
+
 [[nodiscard]] FootprintSize PcbBoardReader::footprint_size(const nlohmann::json &value) {
     require(value.is_array(), "PCB footprint size must be an array");
     require(value.size() == 2U, "PCB footprint size must contain two numbers");
@@ -290,10 +306,12 @@ void PcbBoardReader::require_version(const nlohmann::json &object) {
             "PCB footprint size values must be finite");
     return FootprintSize{width, height};
 }
+
 [[nodiscard]] FootprintRef PcbBoardReader::footprint_ref(const nlohmann::json &object) {
     require(object.is_object(), "PCB footprint ref must be an object");
     return FootprintRef{string_field(object, "library"), string_field(object, "name")};
 }
+
 [[nodiscard]] FootprintLayerSet PcbBoardReader::footprint_layers(const nlohmann::json &value) {
     require(value.is_array(), "PCB footprint layers must be an array");
     auto layers = std::vector<FootprintLayer>{};
@@ -304,6 +322,7 @@ void PcbBoardReader::require_version(const nlohmann::json &object) {
     }
     return FootprintLayerSet{std::move(layers)};
 }
+
 [[nodiscard]] std::optional<FootprintDrill>
 PcbBoardReader::drill_value(const nlohmann::json &value) {
     if (value.is_null()) {
@@ -313,10 +332,12 @@ PcbBoardReader::drill_value(const nlohmann::json &value) {
     return FootprintDrill{number_field(value, "diameter_mm"),
                           footprint_pad_plating_from_name(string_field(value, "plating"))};
 }
+
 [[nodiscard]] std::optional<FootprintDrill> PcbBoardReader::drill(const nlohmann::json &object) {
     const auto *value = optional_field(object, "drill");
     return value == nullptr ? std::nullopt : drill_value(*value);
 }
+
 [[nodiscard]] std::optional<FootprintPadMechanicalRole>
 PcbBoardReader::mechanical_role_value(const nlohmann::json &value) {
     if (value.is_null()) {
@@ -325,11 +346,13 @@ PcbBoardReader::mechanical_role_value(const nlohmann::json &value) {
     require(value.is_string(), "PCB footprint mechanical role must be a string");
     return footprint_pad_mechanical_role_from_name(value.get<std::string>());
 }
+
 [[nodiscard]] std::optional<FootprintPadMechanicalRole>
 PcbBoardReader::mechanical_role(const nlohmann::json &object) {
     const auto *value = optional_field(object, "mechanical_role");
     return value == nullptr ? std::nullopt : mechanical_role_value(*value);
 }
+
 [[nodiscard]] FootprintPad PcbBoardReader::footprint_pad(const nlohmann::json &object,
                                                          FootprintPadId expected_id) {
     require_sequential_id(object, "id", expected_id, "PCB footprint pad IDs must be sequential");
@@ -351,6 +374,7 @@ PcbBoardReader::mechanical_role(const nlohmann::json &object) {
     return FootprintPad::through_hole(label, shape, position, size, layers, parsed_drill.value(),
                                       parsed_mechanical_role);
 }
+
 void PcbBoardReader::read_layers(Board &board, const nlohmann::json &board_json) const {
     const auto &layers = array_field(board_json, "layers");
     for (std::size_t index = 0; index < layers.size(); ++index) {
@@ -368,6 +392,7 @@ void PcbBoardReader::read_layers(Board &board, const nlohmann::json &board_json)
         require(id == expected, "PCB board layer IDs must be sequential");
     }
 }
+
 void PcbBoardReader::read_layer_stack(Board &board, const nlohmann::json &board_json) const {
     const auto &stack = field(board_json, "layer_stack");
     if (stack.is_null()) {
@@ -387,6 +412,7 @@ void PcbBoardReader::read_layer_stack(Board &board, const nlohmann::json &board_
     }
     board.set_layer_stack(LayerStack{std::move(layers), number_field(stack, "board_thickness_mm")});
 }
+
 void PcbBoardReader::read_outline(Board &board, const nlohmann::json &board_json) const {
     const auto &outline = field(board_json, "outline");
     if (outline.is_null()) {
@@ -402,6 +428,7 @@ void PcbBoardReader::read_outline(Board &board, const nlohmann::json &board_json
     }
     board.set_outline(BoardOutline{std::move(vertices)});
 }
+
 void PcbBoardReader::read_rules(Board &board, const nlohmann::json &board_json) const {
     const auto *rules = optional_field(board_json, "rules");
     if (rules == nullptr) {
@@ -416,6 +443,7 @@ void PcbBoardReader::read_rules(Board &board, const nlohmann::json &board_json) 
         number_field(*rules, "board_outline_clearance_mm"),
     });
 }
+
 void PcbBoardReader::read_footprint_definitions(Board &board,
                                                 const nlohmann::json &board_json) const {
     const auto &definitions = array_field(board_json, "footprint_definitions");
@@ -439,6 +467,7 @@ void PcbBoardReader::read_footprint_definitions(Board &board,
         require(id == expected, "PCB footprint definition IDs must be sequential");
     }
 }
+
 void PcbBoardReader::read_placements(Board &board, const nlohmann::json &board_json) const {
     const auto &placements = array_field(board_json, "placements");
     for (std::size_t index = 0; index < placements.size(); ++index) {
@@ -462,6 +491,7 @@ void PcbBoardReader::read_placements(Board &board, const nlohmann::json &board_j
         require(id == expected, "PCB component placement IDs must be sequential");
     }
 }
+
 void PcbBoardReader::read_tracks(Board &board, const nlohmann::json &board_json) const {
     const auto *tracks = optional_field(board_json, "tracks");
     if (tracks == nullptr) {
@@ -495,6 +525,7 @@ void PcbBoardReader::read_tracks(Board &board, const nlohmann::json &board_json)
         require(id == expected, "PCB track IDs must be sequential");
     }
 }
+
 void PcbBoardReader::read_vias(Board &board, const nlohmann::json &board_json) const {
     const auto *vias = optional_field(board_json, "vias");
     if (vias == nullptr) {
@@ -529,6 +560,7 @@ void PcbBoardReader::read_vias(Board &board, const nlohmann::json &board_json) c
         require(id == expected, "PCB via IDs must be sequential");
     }
 }
+
 [[nodiscard]] std::vector<BoardLayerId>
 PcbBoardReader::read_board_layers(const Board &board, const nlohmann::json &object,
                                   const char *name, const std::string &missing_message) const {
@@ -545,6 +577,7 @@ PcbBoardReader::read_board_layers(const Board &board, const nlohmann::json &obje
     }
     return layers;
 }
+
 void PcbBoardReader::read_zones(Board &board, const nlohmann::json &board_json) const {
     const auto *zones = optional_field(board_json, "zones");
     if (zones == nullptr) {
@@ -577,6 +610,7 @@ void PcbBoardReader::read_zones(Board &board, const nlohmann::json &board_json) 
         require(id == expected, "PCB zone IDs must be sequential");
     }
 }
+
 void PcbBoardReader::read_keepouts(Board &board, const nlohmann::json &board_json) const {
     const auto *keepouts = optional_field(board_json, "keepouts");
     if (keepouts == nullptr) {
@@ -607,6 +641,7 @@ void PcbBoardReader::read_keepouts(Board &board, const nlohmann::json &board_jso
         require(id == expected, "PCB keepout IDs must be sequential");
     }
 }
+
 void PcbBoardReader::read_texts(Board &board, const nlohmann::json &board_json) const {
     const auto *texts = optional_field(board_json, "texts");
     if (texts == nullptr) {
@@ -634,6 +669,7 @@ void PcbBoardReader::read_texts(Board &board, const nlohmann::json &board_json) 
         require(id == expected, "PCB text IDs must be sequential");
     }
 }
+
 void PcbBoardReader::validate_placement_footprint(const Board &board, ComponentId component,
                                                   const nlohmann::json &placement_json) const {
     const auto footprint = nullable_string_field(placement_json, "footprint");
@@ -649,6 +685,7 @@ void PcbBoardReader::validate_placement_footprint(const Board &board, ComponentI
     require(board.footprint_definition(footprint_id).ref() == selected_part->footprint(),
             "PCB placement footprint does not match selected physical part");
 }
+
 [[nodiscard]] FootprintLibrary PcbBoardReader::cached_footprint_library(const Board &board) const {
     auto library = FootprintLibrary{};
     for (std::size_t index = 0; index < board.footprint_definition_count(); ++index) {
@@ -656,6 +693,7 @@ void PcbBoardReader::validate_placement_footprint(const Board &board, ComponentI
     }
     return library;
 }
+
 void PcbBoardReader::validate_viewer_cache(const Board &board) const {
     const auto *viewer = optional_field(document_, "viewer");
     if (viewer == nullptr) {
@@ -679,6 +717,7 @@ void PcbBoardReader::validate_viewer_cache(const Board &board) const {
         validate_viewer_diagnostics(board, *diagnostics);
     }
 }
+
 void PcbBoardReader::validate_viewer_pad_resolution(const Board &board,
                                                     const PadResolution &expected,
                                                     const nlohmann::json &pad_resolution) const {
@@ -748,6 +787,7 @@ void PcbBoardReader::validate_viewer_pad_resolution(const Board &board,
     validate_viewer_pad_geometry(board.footprint_definition(footprint_id).pad(pad),
                                  object_field(pad_resolution, "geometry"));
 }
+
 void PcbBoardReader::validate_viewer_pad_geometry(const FootprintPad &pad,
                                                   const nlohmann::json &geometry) {
     require(footprint_pad_kind_from_name(string_field(geometry, "kind")) == pad.kind(),
@@ -763,6 +803,7 @@ void PcbBoardReader::validate_viewer_pad_geometry(const FootprintPad &pad,
     require(mechanical_role_value(field(geometry, "mechanical_role")) == pad.mechanical_role(),
             "PCB viewer pad resolution geometry does not match footprint pad");
 }
+
 void PcbBoardReader::validate_viewer_diagnostics(const Board &board,
                                                  const nlohmann::json &diagnostics) const {
     require(diagnostics.is_array(), "PCB viewer diagnostics must be an array");
@@ -793,18 +834,21 @@ void PcbBoardReader::validate_viewer_diagnostics(const Board &board,
         }
     }
 }
+
 [[nodiscard]] bool PcbBoardReader::footprint_pad_exists(
     const Board &board, const std::vector<FootprintDefId> &definitions, FootprintPadId pad) {
     return std::any_of(definitions.begin(), definitions.end(), [&board, pad](auto definition) {
         return pad.index() < board.footprint_definition(definition).pad_count();
     });
 }
+
 void PcbBoardReader::validate_diagnostic_severity(const std::string &severity) {
     if (severity == "info" || severity == "warning" || severity == "error") {
         return;
     }
     throw std::logic_error{"Invalid PCB viewer diagnostic severity"};
 }
+
 void PcbBoardReader::validate_viewer_diagnostic_ref(const Board &board,
                                                     std::string_view ref) const {
     if (const auto id = decode_if_prefixed<ComponentDefId>(ref)) {
@@ -924,6 +968,7 @@ void PcbBoardReader::validate_viewer_diagnostic_ref(const Board &board,
     }
     throw std::logic_error{"PCB viewer diagnostic has unsupported entity reference"};
 }
+
 [[nodiscard]] std::optional<PinId>
 PcbBoardReader::optional_pin(const std::optional<std::string> &id) {
     if (!id.has_value()) {
@@ -931,6 +976,7 @@ PcbBoardReader::optional_pin(const std::optional<std::string> &id) {
     }
     return decode_local_id<PinId>(id.value());
 }
+
 [[nodiscard]] std::optional<NetId>
 PcbBoardReader::optional_net(const std::optional<std::string> &id) {
     if (!id.has_value()) {
@@ -956,6 +1002,7 @@ namespace volt::io {
     const auto document = nlohmann::json::parse(text.begin(), text.end());
     return read_pcb_board_document(circuit, document);
 }
+
 [[nodiscard]] Board read_pcb_board(const Circuit &circuit, std::istream &input) {
     const auto text =
         std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};

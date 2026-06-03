@@ -21,7 +21,18 @@
 
 namespace volt {
 
-/** PCB board projection over a logical circuit. */
+/**
+ * PCB board projection over a logical circuit, and aggregate root of the board model.
+ *
+ * Responsibility: composes the structure, footprint, placement, and copper subsystems into a
+ *   board view; resolves footprint pads back to logical pins/nets.
+ * Invariants: implements existing connectivity only — references existing NetIds and never
+ *   creates, merges, splits, or renames nets; structural violations throw, while design issues
+ *   (missing footprints/placements, unresolved pads, DRC) are reported as diagnostics.
+ * Collaborators: read-only consumer of Circuit (holds const Circuit&); composes the Board*Model
+ *   subsystems; DRC runs as a RuleSet<Board>. See
+ *   docs/superpowers/specs/2026-06-02-volt-kernel-architecture-design.md.
+ */
 class Board {
   public:
     /** Construct a board projection over one logical circuit. */
@@ -178,8 +189,6 @@ class Board {
     BoardFootprintModel footprint_cache_;
     BoardPlacementModel placements_;
     BoardCopperModel copper_;
-    std::vector<BoardFeatureId> keepout_features_;
-    std::vector<BoardFeatureId> text_features_;
 };
 
 namespace detail {

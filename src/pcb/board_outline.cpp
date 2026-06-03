@@ -20,6 +20,7 @@ BoardOutline::BoardOutline(std::vector<BoardPoint> vertices) : vertices_{std::mo
         throw std::invalid_argument{"Board outline must not self-intersect"};
     }
 }
+
 [[nodiscard]] BoardOutline BoardOutline::rectangle(BoardPoint origin, BoardSize size) {
     return BoardOutline{std::vector{
         origin,
@@ -28,6 +29,7 @@ BoardOutline::BoardOutline(std::vector<BoardPoint> vertices) : vertices_{std::mo
         BoardPoint{origin.x_mm(), origin.y_mm() + size.height_mm()},
     }};
 }
+
 [[nodiscard]] bool BoardOutline::contains(BoardPoint point) const noexcept {
     bool inside = false;
     std::size_t previous = vertices_.size() - 1U;
@@ -53,11 +55,13 @@ BoardOutline::BoardOutline(std::vector<BoardPoint> vertices) : vertices_{std::mo
 
     return inside;
 }
+
 void BoardOutline::drop_duplicate_closing_vertex() {
     if (vertices_.size() > 1 && vertices_.front() == vertices_.back()) {
         vertices_.pop_back();
     }
 }
+
 [[nodiscard]] double BoardOutline::signed_area_twice(const std::vector<BoardPoint> &vertices) {
     double area = 0.0;
     std::size_t previous = vertices.size() - 1U;
@@ -68,6 +72,7 @@ void BoardOutline::drop_duplicate_closing_vertex() {
     }
     return area;
 }
+
 [[nodiscard]] bool BoardOutline::point_on_segment(BoardPoint point, BoardPoint a,
                                                   BoardPoint b) noexcept {
     const auto cross = ((point.y_mm() - a.y_mm()) * (b.x_mm() - a.x_mm())) -
@@ -86,10 +91,12 @@ void BoardOutline::drop_duplicate_closing_vertex() {
                                 ((b.y_mm() - a.y_mm()) * (b.y_mm() - a.y_mm()));
     return dot <= length_squared + kGeometryEpsilon;
 }
+
 [[nodiscard]] double BoardOutline::orientation(BoardPoint a, BoardPoint b, BoardPoint c) noexcept {
     return ((b.x_mm() - a.x_mm()) * (c.y_mm() - a.y_mm())) -
            ((b.y_mm() - a.y_mm()) * (c.x_mm() - a.x_mm()));
 }
+
 [[nodiscard]] bool BoardOutline::segments_intersect(BoardPoint a, BoardPoint b, BoardPoint c,
                                                     BoardPoint d) noexcept {
     const auto ab_c = orientation(a, b, c);
@@ -112,6 +119,7 @@ void BoardOutline::drop_duplicate_closing_vertex() {
 
     return ((ab_c > 0.0) != (ab_d > 0.0)) && ((cd_a > 0.0) != (cd_b > 0.0));
 }
+
 [[nodiscard]] bool BoardOutline::has_self_intersection(const std::vector<BoardPoint> &vertices) {
     for (std::size_t first = 0; first < vertices.size(); ++first) {
         const auto first_next = (first + 1U) % vertices.size();
@@ -132,6 +140,7 @@ void BoardOutline::drop_duplicate_closing_vertex() {
 
     return false;
 }
+
 BoardPolygon::BoardPolygon(std::vector<BoardPoint> vertices) : vertices_{std::move(vertices)} {
     drop_duplicate_closing_vertex();
     if (vertices_.size() < 3) {
@@ -144,11 +153,13 @@ BoardPolygon::BoardPolygon(std::vector<BoardPoint> vertices) : vertices_{std::mo
         throw std::invalid_argument{"Board polygon must not self-intersect"};
     }
 }
+
 void BoardPolygon::drop_duplicate_closing_vertex() {
     if (vertices_.size() > 1 && vertices_.front() == vertices_.back()) {
         vertices_.pop_back();
     }
 }
+
 [[nodiscard]] double BoardPolygon::signed_area_twice(const std::vector<BoardPoint> &vertices) {
     double area = 0.0;
     std::size_t previous = vertices.size() - 1U;
@@ -159,6 +170,7 @@ void BoardPolygon::drop_duplicate_closing_vertex() {
     }
     return area;
 }
+
 [[nodiscard]] bool BoardPolygon::point_on_segment(BoardPoint point, BoardPoint a,
                                                   BoardPoint b) noexcept {
     const auto cross = ((point.y_mm() - a.y_mm()) * (b.x_mm() - a.x_mm())) -
@@ -177,10 +189,12 @@ void BoardPolygon::drop_duplicate_closing_vertex() {
                                 ((b.y_mm() - a.y_mm()) * (b.y_mm() - a.y_mm()));
     return dot <= length_squared + kGeometryEpsilon;
 }
+
 [[nodiscard]] double BoardPolygon::orientation(BoardPoint a, BoardPoint b, BoardPoint c) noexcept {
     return ((b.x_mm() - a.x_mm()) * (c.y_mm() - a.y_mm())) -
            ((b.y_mm() - a.y_mm()) * (c.x_mm() - a.x_mm()));
 }
+
 [[nodiscard]] bool BoardPolygon::segments_intersect(BoardPoint a, BoardPoint b, BoardPoint c,
                                                     BoardPoint d) noexcept {
     const auto ab_c = orientation(a, b, c);
@@ -203,6 +217,7 @@ void BoardPolygon::drop_duplicate_closing_vertex() {
 
     return ((ab_c > 0.0) != (ab_d > 0.0)) && ((cd_a > 0.0) != (cd_b > 0.0));
 }
+
 [[nodiscard]] bool BoardPolygon::has_self_intersection(const std::vector<BoardPoint> &vertices) {
     for (std::size_t first = 0; first < vertices.size(); ++first) {
         const auto first_next = (first + 1U) % vertices.size();

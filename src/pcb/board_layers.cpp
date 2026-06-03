@@ -23,6 +23,7 @@ BoardLayer::BoardLayer(std::string name, BoardLayerRole role, BoardLayerSide sid
         throw std::invalid_argument{"Board layer thickness must not be negative"};
     }
 }
+
 LayerStack::LayerStack(std::vector<BoardLayerId> layers, double board_thickness_mm)
     : layers_{std::move(layers)}, board_thickness_mm_{board_thickness_mm} {
     if (layers_.empty()) {

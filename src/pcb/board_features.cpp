@@ -28,6 +28,7 @@ BoardHole::BoardHole(BoardPoint center, double drill_diameter_mm, bool plated,
         throw std::invalid_argument{"Board hole finished diameter must be positive"};
     }
 }
+
 BoardSlot::BoardSlot(BoardPoint start, BoardPoint end, double width_mm, bool plated)
     : start_{start}, end_{end}, width_mm_{width_mm}, plated_{plated} {
     if (start_ == end_) {
@@ -40,10 +41,13 @@ BoardSlot::BoardSlot(BoardPoint start, BoardPoint end, double width_mm, bool pla
         throw std::invalid_argument{"Board slot width must be positive"};
     }
 }
+
 BoardCutout::BoardCutout(std::vector<BoardPoint> outline) : outline_{std::move(outline)} {}
+
 [[nodiscard]] const std::vector<BoardPoint> &BoardCutout::outline() const noexcept {
     return outline_.vertices();
 }
+
 BoardCircle::BoardCircle(BoardPoint center, double diameter_mm, BoardSide side)
     : center_{center}, diameter_mm_{diameter_mm}, side_{side} {
     if (!std::isfinite(diameter_mm_)) {
@@ -51,57 +55,6 @@ BoardCircle::BoardCircle(BoardPoint center, double diameter_mm, BoardSide side)
     }
     if (diameter_mm_ <= 0.0) {
         throw std::invalid_argument{"Board circle diameter must be positive"};
-    }
-}
-BoardKeepout::BoardKeepout(std::vector<BoardPoint> outline, std::vector<BoardLayerId> layers,
-                           std::vector<BoardKeepoutRestriction> restrictions)
-    : outline_{std::move(outline)}, layers_{std::move(layers)},
-      restrictions_{std::move(restrictions)} {
-    validate_layers();
-    validate_restrictions();
-}
-[[nodiscard]] const std::vector<BoardPoint> &BoardKeepout::outline() const noexcept {
-    return outline_.vertices();
-}
-[[nodiscard]] const std::vector<BoardKeepoutRestriction> &
-BoardKeepout::restrictions() const noexcept {
-    return restrictions_;
-}
-void BoardKeepout::validate_layers() const {
-    if (layers_.empty()) {
-        throw std::invalid_argument{"Board keepout layers must not be empty"};
-    }
-    auto sorted = layers_;
-    std::sort(sorted.begin(), sorted.end(),
-              [](BoardLayerId lhs, BoardLayerId rhs) { return lhs.index() < rhs.index(); });
-    const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
-    if (duplicate != sorted.end()) {
-        throw std::invalid_argument{"Board keepout layers must not contain duplicates"};
-    }
-}
-void BoardKeepout::validate_restrictions() const {
-    if (restrictions_.empty()) {
-        throw std::invalid_argument{"Board keepout restrictions must not be empty"};
-    }
-    auto sorted = restrictions_;
-    std::sort(sorted.begin(), sorted.end());
-    const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
-    if (duplicate != sorted.end()) {
-        throw std::invalid_argument{"Board keepout restrictions must not contain duplicates"};
-    }
-}
-BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotation,
-                     BoardLayerId layer, double size_mm, bool locked)
-    : text_{std::move(text)}, position_{position}, rotation_{rotation}, layer_{layer},
-      size_mm_{size_mm}, locked_{locked} {
-    if (text_.empty()) {
-        throw std::invalid_argument{"Board text must not be empty"};
-    }
-    if (!std::isfinite(size_mm_)) {
-        throw std::invalid_argument{"Board text size must be finite"};
-    }
-    if (size_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board text size must be positive"};
     }
 }
 
@@ -112,25 +65,30 @@ BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotati
     return BoardFeature{BoardFeatureKind::Hole, std::move(label), std::move(role),
                         BoardHole{center, drill_diameter_mm, plated, finished_diameter_mm}};
 }
+
 [[nodiscard]] BoardFeature BoardFeature::slot(std::string label, BoardPoint start, BoardPoint end,
                                               double width_mm, bool plated, std::string role) {
     return BoardFeature{BoardFeatureKind::Slot, std::move(label), std::move(role),
                         BoardSlot{start, end, width_mm, plated}};
 }
+
 [[nodiscard]] BoardFeature BoardFeature::cutout(std::string label, std::vector<BoardPoint> outline,
                                                 std::string role) {
     return BoardFeature{BoardFeatureKind::Cutout, std::move(label), std::move(role),
                         BoardCutout{std::move(outline)}};
 }
+
 [[nodiscard]] BoardFeature BoardFeature::circle(std::string label, BoardPoint center,
                                                 double diameter_mm, BoardSide side,
                                                 std::string role) {
     return BoardFeature{BoardFeatureKind::Circle, std::move(label), std::move(role),
                         BoardCircle{center, diameter_mm, side}};
 }
+
 [[nodiscard]] BoardFeature BoardFeature::text(BoardText text) {
     return BoardFeature{BoardFeatureKind::Text, {}, {}, std::move(text)};
 }
+
 [[nodiscard]] BoardFeature BoardFeature::mechanical_keepout(BoardKeepout keepout) {
     return BoardFeature{BoardFeatureKind::MechanicalKeepout, {}, "mechanical", std::move(keepout)};
 }
@@ -148,34 +106,45 @@ BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotati
     }
     return false;
 }
+
 [[nodiscard]] const BoardHole &BoardFeature::hole() const { return std::get<BoardHole>(payload_); }
+
 [[nodiscard]] const BoardSlot &BoardFeature::slot() const { return std::get<BoardSlot>(payload_); }
+
 [[nodiscard]] const BoardCutout &BoardFeature::cutout() const {
     return std::get<BoardCutout>(payload_);
 }
+
 [[nodiscard]] const BoardCircle &BoardFeature::circle() const {
     return std::get<BoardCircle>(payload_);
 }
+
 [[nodiscard]] const BoardText &BoardFeature::text() const { return std::get<BoardText>(payload_); }
+
 [[nodiscard]] const BoardKeepout &BoardFeature::keepout() const {
     return std::get<BoardKeepout>(payload_);
 }
+
 BoardFeature::BoardFeature(BoardFeatureKind kind, std::string label, std::string role,
                            Payload payload)
     : kind_{kind}, label_{std::move(label)}, role_{std::move(role)}, payload_{std::move(payload)} {}
+
 ComponentPlacement::ComponentPlacement(ComponentId component, BoardPoint position,
                                        BoardRotation rotation, BoardSide side, bool locked)
     : component_{component}, position_{position}, rotation_{rotation}, side_{side},
       locked_{locked} {}
+
 PadResolution::PadResolution(ComponentPlacementId placement, ComponentId component,
                              FootprintPadId pad, std::string pad_label, BoardPoint position,
                              std::optional<PinId> pin, std::optional<NetId> net,
                              PadResolutionStatus status)
     : placement_{placement}, component_{component}, pad_{pad}, pad_label_{std::move(pad_label)},
       position_{position}, pin_{pin}, net_{net}, status_{status} {}
+
 RatsnestEndpoint::RatsnestEndpoint(ComponentPlacementId placement, ComponentId component,
                                    FootprintPadId pad, BoardPoint position)
     : placement_{placement}, component_{component}, pad_{pad}, position_{position} {}
+
 RatsnestEdge::RatsnestEdge(NetId net, RatsnestEndpoint from, RatsnestEndpoint to)
     : net_{net}, from_{from}, to_{to} {}
 
@@ -221,6 +190,7 @@ derive_ratsnest_edges(const std::vector<PadResolution> &resolutions) {
         const auto group_size = group_end - group_begin;
         if (group_size >= 2U) {
             const auto edges_before_group = edges.size();
+
             struct CandidateEdge {
                 std::size_t from;
                 std::size_t to;
@@ -295,12 +265,14 @@ namespace volt::detail {
     }
     return lhs.pad().index() < rhs.pad().index();
 }
+
 [[nodiscard]] double ratsnest_distance_squared(const RatsnestEndpoint &lhs,
                                                const RatsnestEndpoint &rhs) noexcept {
     const auto dx = lhs.position().x_mm() - rhs.position().x_mm();
     const auto dy = lhs.position().y_mm() - rhs.position().y_mm();
     return (dx * dx) + (dy * dy);
 }
+
 [[nodiscard]] RatsnestEdge make_ratsnest_edge(NetId net, RatsnestEndpoint lhs,
                                               RatsnestEndpoint rhs) {
     if (ratsnest_endpoint_less(rhs, lhs)) {
@@ -308,6 +280,7 @@ namespace volt::detail {
     }
     return RatsnestEdge{net, lhs, rhs};
 }
+
 [[nodiscard]] std::size_t ratsnest_root(std::vector<std::size_t> &parents, std::size_t index) {
     while (parents[index] != index) {
         parents[index] = parents[parents[index]];
@@ -315,10 +288,12 @@ namespace volt::detail {
     }
     return index;
 }
+
 [[nodiscard]] bool same_ratsnest_endpoint(const RatsnestEndpoint &lhs,
                                           const RatsnestEndpoint &rhs) noexcept {
     return lhs.placement() == rhs.placement() && lhs.pad() == rhs.pad();
 }
+
 [[nodiscard]] BoardPoint transform_footprint_point(const ComponentPlacement &placement,
                                                    FootprintPoint point) {
     constexpr double pi = 3.14159265358979323846264338327950288;
@@ -334,6 +309,7 @@ namespace volt::detail {
     return BoardPoint{placement.position().x_mm() + rotated_x,
                       placement.position().y_mm() + rotated_y};
 }
+
 [[nodiscard]] std::vector<BoardPoint>
 transformed_pad_body_corners(const ComponentPlacement &placement, const FootprintPad &pad) {
     const auto half_width = pad.size().width_mm() / 2.0;
@@ -350,10 +326,12 @@ transformed_pad_body_corners(const ComponentPlacement &placement, const Footprin
             placement, FootprintPoint{center.x_mm() - half_width, center.y_mm() + half_height}),
     };
 }
+
 [[nodiscard]] double board_orientation(BoardPoint a, BoardPoint b, BoardPoint c) noexcept {
     return ((b.x_mm() - a.x_mm()) * (c.y_mm() - a.y_mm())) -
            ((b.y_mm() - a.y_mm()) * (c.x_mm() - a.x_mm()));
 }
+
 [[nodiscard]] bool segments_cross_properly(BoardPoint a, BoardPoint b, BoardPoint c,
                                            BoardPoint d) noexcept {
     constexpr double geometry_epsilon = 1.0e-9;
@@ -369,9 +347,11 @@ transformed_pad_body_corners(const ComponentPlacement &placement, const Footprin
 
     return ((ab_c > 0.0) != (ab_d > 0.0)) && ((cd_a > 0.0) != (cd_b > 0.0));
 }
+
 [[nodiscard]] BoardPoint segment_midpoint(BoardPoint a, BoardPoint b) {
     return BoardPoint{(a.x_mm() + b.x_mm()) / 2.0, (a.y_mm() + b.y_mm()) / 2.0};
 }
+
 [[nodiscard]] bool pad_body_exits_outline(const BoardOutline &outline,
                                           const std::vector<BoardPoint> &pad_corners) {
     for (const auto point : pad_corners) {

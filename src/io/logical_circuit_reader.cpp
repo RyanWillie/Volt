@@ -169,22 +169,26 @@ class LogicalCircuitReader {
 
     return std::move(circuit_);
 }
+
 void LogicalCircuitReader::require(bool condition, const std::string &message) {
     if (!condition) {
         throw std::logic_error{message};
     }
 }
+
 const nlohmann::json &LogicalCircuitReader::field(const nlohmann::json &object, const char *name) {
     require(object.is_object(), "Expected object while reading logical circuit");
     const auto it = object.find(name);
     require(it != object.end(), std::string{"Missing required field: "} + name);
     return *it;
 }
+
 std::string LogicalCircuitReader::string_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_string(), std::string{"Expected string field: "} + name);
     return value.get<std::string>();
 }
+
 std::string LogicalCircuitReader::optional_string_field(const nlohmann::json &object,
                                                         const char *name,
                                                         std::string default_value) {
@@ -195,11 +199,13 @@ std::string LogicalCircuitReader::optional_string_field(const nlohmann::json &ob
     require(it->is_string(), std::string{"Expected string field: "} + name);
     return it->get<std::string>();
 }
+
 void LogicalCircuitReader::require_format(const nlohmann::json &object) {
     const auto actual = string_field(object, "format");
     require(actual == logical_circuit_format_name(),
             "Unsupported logical circuit format: " + actual);
 }
+
 void LogicalCircuitReader::require_version(const nlohmann::json &object) {
     const auto &value = field(object, "version");
     require(value.is_number_integer(), "Expected integer field: version");
@@ -207,12 +213,14 @@ void LogicalCircuitReader::require_version(const nlohmann::json &object) {
     require(actual == static_cast<std::int64_t>(logical_circuit_format_version()),
             "Unsupported logical circuit format version: " + std::to_string(actual));
 }
+
 const nlohmann::json &LogicalCircuitReader::array_field(const nlohmann::json &object,
                                                         const char *name) {
     const auto &value = field(object, name);
     require(value.is_array(), std::string{"Expected array field: "} + name);
     return value;
 }
+
 const nlohmann::json *LogicalCircuitReader::optional_array_field(const nlohmann::json &object,
                                                                  const char *name) {
     const auto it = object.find(name);
@@ -222,6 +230,7 @@ const nlohmann::json *LogicalCircuitReader::optional_array_field(const nlohmann:
     require(it->is_array(), std::string{"Expected array field: "} + name);
     return &*it;
 }
+
 [[nodiscard]] PinRole LogicalCircuitReader::pin_role(const std::string &value) {
     if (value == "Passive")
         return PinRole::Passive;
@@ -245,6 +254,7 @@ const nlohmann::json *LogicalCircuitReader::optional_array_field(const nlohmann:
         return PinRole::NoConnect;
     throw std::logic_error{"Invalid PinRole value"};
 }
+
 [[nodiscard]] ConnectionRequirement
 LogicalCircuitReader::connection_requirement(const std::string &value) {
     if (value == "Optional")
@@ -255,6 +265,7 @@ LogicalCircuitReader::connection_requirement(const std::string &value) {
         return ConnectionRequirement::MustNotConnect;
     throw std::logic_error{"Invalid ConnectionRequirement value"};
 }
+
 [[nodiscard]] ElectricalTerminalKind
 LogicalCircuitReader::electrical_terminal_kind(const std::string &value) {
     if (value == "Unspecified")
@@ -271,6 +282,7 @@ LogicalCircuitReader::electrical_terminal_kind(const std::string &value) {
         return ElectricalTerminalKind::NoConnect;
     throw std::logic_error{"Invalid ElectricalTerminalKind value"};
 }
+
 [[nodiscard]] ElectricalDirection
 LogicalCircuitReader::electrical_direction(const std::string &value) {
     if (value == "Unspecified")
@@ -285,6 +297,7 @@ LogicalCircuitReader::electrical_direction(const std::string &value) {
         return ElectricalDirection::Passive;
     throw std::logic_error{"Invalid ElectricalDirection value"};
 }
+
 [[nodiscard]] ElectricalSignalDomain
 LogicalCircuitReader::electrical_signal_domain(const std::string &value) {
     if (value == "Unspecified")
@@ -297,6 +310,7 @@ LogicalCircuitReader::electrical_signal_domain(const std::string &value) {
         return ElectricalSignalDomain::Mixed;
     throw std::logic_error{"Invalid ElectricalSignalDomain value"};
 }
+
 [[nodiscard]] ElectricalDriveKind
 LogicalCircuitReader::electrical_drive_kind(const std::string &value) {
     if (value == "Unspecified")
@@ -313,6 +327,7 @@ LogicalCircuitReader::electrical_drive_kind(const std::string &value) {
         return ElectricalDriveKind::Passive;
     throw std::logic_error{"Invalid ElectricalDriveKind value"};
 }
+
 [[nodiscard]] ElectricalPolarity
 LogicalCircuitReader::electrical_polarity(const std::string &value) {
     if (value == "None")
@@ -323,6 +338,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
         return ElectricalPolarity::ActiveLow;
     throw std::logic_error{"Invalid ElectricalPolarity value"};
 }
+
 [[nodiscard]] NetKind LogicalCircuitReader::net_kind(const std::string &value) {
     if (value == "Signal")
         return NetKind::Signal;
@@ -338,6 +354,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
         return NetKind::HighCurrent;
     throw std::logic_error{"Invalid NetKind value"};
 }
+
 [[nodiscard]] PortRole LogicalCircuitReader::port_role(const std::string &value) {
     if (value == "Passive")
         return PortRole::Passive;
@@ -355,6 +372,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
         return PortRole::Ground;
     throw std::logic_error{"Invalid PortRole value"};
 }
+
 [[nodiscard]] UnitDimension LogicalCircuitReader::unit_dimension(const std::string &value) {
     if (value == "resistance")
         return UnitDimension::Resistance;
@@ -378,6 +396,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
         return UnitDimension::Ratio;
     throw std::logic_error{"Invalid unit dimension value"};
 }
+
 [[nodiscard]] ToleranceMode LogicalCircuitReader::tolerance_mode(const std::string &value) {
     if (value == "absolute")
         return ToleranceMode::Absolute;
@@ -385,12 +404,14 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
         return ToleranceMode::Percent;
     throw std::logic_error{"Invalid tolerance mode value"};
 }
+
 [[nodiscard]] double LogicalCircuitReader::number_field(const nlohmann::json &object,
                                                         const char *name) {
     const auto &value = field(object, name);
     require(value.is_number(), std::string{"Expected number field: "} + name);
     return value.get<double>();
 }
+
 [[nodiscard]] PropertyValue LogicalCircuitReader::property_value(const nlohmann::json &object) {
     require(object.is_object(), "Property value must be an object");
     const auto type = string_field(object, "type");
@@ -413,6 +434,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
     }
     throw std::logic_error{"Invalid property value type"};
 }
+
 [[nodiscard]] PropertyMap LogicalCircuitReader::properties(const nlohmann::json &object) {
     require(object.is_object(), "Properties must be an object");
     auto result = PropertyMap{};
@@ -421,6 +443,7 @@ LogicalCircuitReader::electrical_polarity(const std::string &value) {
     }
     return result;
 }
+
 [[nodiscard]] ElectricalAttributeValue
 LogicalCircuitReader::electrical_attribute_value(const nlohmann::json &object) {
     require(object.is_object(), "Electrical attribute value must be an object");
@@ -466,6 +489,7 @@ LogicalCircuitReader::electrical_attribute_value(const nlohmann::json &object) {
     }
     throw std::logic_error{"Invalid electrical attribute value type"};
 }
+
 void LogicalCircuitReader::read_component_electrical_attributes(const nlohmann::json &object,
                                                                 ComponentId component,
                                                                 ElectricalAttributeOwner owner) {
@@ -488,6 +512,7 @@ void LogicalCircuitReader::read_component_electrical_attributes(const nlohmann::
         }
     }
 }
+
 void LogicalCircuitReader::read_net_electrical_attributes(const nlohmann::json &object, NetId net) {
     const auto it = object.find("electrical_attributes");
     if (it == object.end()) {
@@ -503,6 +528,7 @@ void LogicalCircuitReader::read_net_electrical_attributes(const nlohmann::json &
             attribute);
     }
 }
+
 void LogicalCircuitReader::read_pin_definition_electrical_attributes(const nlohmann::json &object,
                                                                      PinDefId pin_definition) {
     const auto it = object.find("electrical_attributes");
@@ -520,6 +546,7 @@ void LogicalCircuitReader::read_pin_definition_electrical_attributes(const nlohm
             attribute);
     }
 }
+
 [[nodiscard]] std::optional<DefinitionSource>
 LogicalCircuitReader::definition_source(const nlohmann::json &object) {
     const auto it = object.find("source");
@@ -530,6 +557,7 @@ LogicalCircuitReader::definition_source(const nlohmann::json &object) {
     return DefinitionSource{string_field(*it, "namespace"), string_field(*it, "name"),
                             string_field(*it, "version")};
 }
+
 [[nodiscard]] std::vector<SchematicSymbolReference>
 LogicalCircuitReader::schematic_symbol_references(const nlohmann::json &object) {
     auto result = std::vector<SchematicSymbolReference>{};
@@ -546,6 +574,7 @@ LogicalCircuitReader::schematic_symbol_references(const nlohmann::json &object) 
     }
     return result;
 }
+
 void LogicalCircuitReader::read_pin_definitions() {
     auto seen = std::set<std::string>{};
     for (const auto &pin : array_field(document_, "pin_definitions")) {
@@ -563,6 +592,7 @@ void LogicalCircuitReader::read_pin_definitions() {
         read_pin_definition_electrical_attributes(pin, pin_definition_id);
     }
 }
+
 void LogicalCircuitReader::read_component_definitions() {
     auto seen = std::set<std::string>{};
     for (const auto &definition : array_field(document_, "component_definitions")) {
@@ -579,6 +609,7 @@ void LogicalCircuitReader::read_component_definitions() {
                     schematic_symbol_references(definition)}));
     }
 }
+
 void LogicalCircuitReader::read_components() {
     auto seen = std::set<std::string>{};
     for (const auto &component : array_field(document_, "components")) {
@@ -595,6 +626,7 @@ void LogicalCircuitReader::read_components() {
         }
     }
 }
+
 void LogicalCircuitReader::read_pins() {
     auto seen = std::set<std::string>{};
     for (const auto &pin : array_field(document_, "pins")) {
@@ -609,6 +641,7 @@ void LogicalCircuitReader::read_pins() {
         pin_ids_.emplace(id, circuit_.add_pin(PinInstance{component, definition}));
     }
 }
+
 void LogicalCircuitReader::read_nets() {
     auto seen = std::set<std::string>{};
     for (const auto &net_object : array_field(document_, "nets")) {
@@ -625,6 +658,7 @@ void LogicalCircuitReader::read_nets() {
         read_net_electrical_attributes(net_object, net_id);
     }
 }
+
 void LogicalCircuitReader::read_rule_classes() {
     const auto it = document_.find("rule_classes");
     if (it == document_.end()) {
@@ -670,6 +704,7 @@ void LogicalCircuitReader::read_rule_classes() {
             resolve(rule_class_ids_, string_field(assignment, "rule_class")));
     }
 }
+
 void LogicalCircuitReader::read_design_intent() {
     const auto it = document_.find("design_intent");
     if (it == document_.end()) {
@@ -695,6 +730,7 @@ void LogicalCircuitReader::read_design_intent() {
             circuit_.mark_intentional_no_connect_pin(resolve(pin_ids_, id));
     }
 }
+
 void LogicalCircuitReader::read_module_definitions() {
     const auto modules = optional_array_field(document_, "module_definitions");
     if (modules == nullptr) {
@@ -761,6 +797,7 @@ void LogicalCircuitReader::read_module_definitions() {
         }
     }
 }
+
 void LogicalCircuitReader::read_module_instances() {
     const auto modules = optional_array_field(document_, "module_instances");
     if (modules == nullptr) {
@@ -802,6 +839,7 @@ void LogicalCircuitReader::read_module_instances() {
         }
     }
 }
+
 [[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>>
 LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
                                               const ModuleInstanceName &name) const {
@@ -818,6 +856,7 @@ LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
     }
     return component_origins;
 }
+
 [[nodiscard]] PhysicalPart LogicalCircuitReader::physical_part(const nlohmann::json &object) const {
     require(object.is_object(), "Selected physical part must be an object");
     const auto &manufacturer_part = field(object, "manufacturer_part");
@@ -834,6 +873,7 @@ LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
         FootprintRef{string_field(footprint, "library"), string_field(footprint, "name")},
         std::move(mappings), properties(field(object, "properties"))};
 }
+
 void LogicalCircuitReader::read_selected_physical_parts() {
     for (const auto &[component_id, part] : selected_parts_) {
         const auto component = resolve(component_ids_, component_id);
@@ -858,6 +898,7 @@ namespace volt::io {
 [[nodiscard]] Circuit read_logical_circuit_text(std::string_view text) {
     return read_logical_circuit_document(nlohmann::json::parse(text.begin(), text.end()));
 }
+
 [[nodiscard]] Circuit read_logical_circuit(std::istream &input) {
     auto buffer = std::ostringstream{};
     buffer << input.rdbuf();

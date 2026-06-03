@@ -10,7 +10,14 @@ namespace volt {
 
 class Schematic;
 
-/** Owns schematic presentation items that reference existing logical kernel entities. */
+/**
+ * Owns schematic presentation items that reference existing logical kernel entities.
+ *
+ * Responsibility: stores symbol instances, wires, labels, junctions, and other presentation
+ *   items placed on sheets.
+ * Invariants: every item references existing logical entities; items never create connectivity.
+ * Collaborators: composed by Schematic; membership tracked by SchematicSheetModel; acyclic.
+ */
 class SchematicItemsModel {
   public:
     /** Return a symbol placement by schematic-local ID. */

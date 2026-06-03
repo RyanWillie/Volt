@@ -33,9 +33,11 @@ void write_symbol_arc_svg(std::ostream &out, const SymbolArc &arc) {
 
     out << "\"/>\n";
 }
+
 [[nodiscard]] bool is_symbol_text(const SymbolPrimitive &primitive) {
     return std::holds_alternative<SymbolText>(primitive);
 }
+
 void write_symbol_primitive_svg(std::ostream &out, const SymbolPrimitive &primitive) {
     if (std::holds_alternative<SymbolLine>(primitive)) {
         const auto &line = std::get<SymbolLine>(primitive);
@@ -93,6 +95,7 @@ void write_symbol_primitive_svg(std::ostream &out, const SymbolPrimitive &primit
     write_svg_number(out, text.anchor().y());
     out << ")\">" << svg_escape(text.text()) << "</text>\n";
 }
+
 void write_symbol_pin_svg(std::ostream &out, const SymbolPin &pin) {
     out << "      <circle class=\"pin-anchor\" cx=\"";
     write_svg_number(out, pin.anchor().x());
@@ -107,6 +110,7 @@ void write_symbol_pin_svg(std::ostream &out, const SymbolPin &pin) {
     write_svg_number(out, pin.anchor().y() + debug_pin_label_offset);
     out << "\">" << svg_escape(pin.name()) << "</text>\n";
 }
+
 void write_symbol_instance_svg(std::ostream &out, const Schematic &schematic, SymbolInstanceId id) {
     const auto &instance = schematic.symbol_instance(id);
     const auto &symbol = schematic.symbol_definition(instance.symbol_definition());
@@ -129,6 +133,7 @@ void write_symbol_instance_svg(std::ostream &out, const Schematic &schematic, Sy
     }
     out << "    </g>\n";
 }
+
 void write_symbol_text_instance_svg(std::ostream &out, const Schematic &schematic,
                                     SymbolInstanceId id) {
     const auto &instance = schematic.symbol_instance(id);
@@ -158,6 +163,7 @@ void write_symbol_text_instance_svg(std::ostream &out, const Schematic &schemati
     }
     out << "    </g>\n";
 }
+
 void write_symbol_debug_overlay_svg(std::ostream &out, const Schematic &schematic,
                                     SymbolInstanceId id) {
     const auto &instance = schematic.symbol_instance(id);
@@ -178,6 +184,7 @@ void write_symbol_debug_overlay_svg(std::ostream &out, const Schematic &schemati
     }
     out << "      </g>\n";
 }
+
 void write_wire_run_svg(std::ostream &out, const Schematic &schematic, WireRunId id) {
     const auto &wire = schematic.wire_run(id);
 
@@ -193,6 +200,7 @@ void write_wire_run_svg(std::ostream &out, const Schematic &schematic, WireRunId
     }
     out << "\"/>\n";
 }
+
 void write_net_label_svg(std::ostream &out, const Schematic &schematic, NetLabelId id) {
     const auto &label = schematic.net_label(id);
     const auto &net = schematic.circuit().net(label.net());
@@ -214,6 +222,7 @@ void write_net_label_svg(std::ostream &out, const Schematic &schematic, NetLabel
     write_svg_number(out, text_position.y());
     out << ")\">" << svg_escape(text) << "</text>\n";
 }
+
 void write_junction_svg(std::ostream &out, const Schematic &schematic, JunctionId id) {
     const auto &junction = schematic.junction(id);
 
@@ -226,6 +235,7 @@ void write_junction_svg(std::ostream &out, const Schematic &schematic, JunctionI
     write_svg_number(out, schematic_svg_visual_scale.junction_radius);
     out << "\"/>\n";
 }
+
 void write_power_port_svg(std::ostream &out, const Schematic &schematic, PowerPortId id) {
     const auto &port = schematic.power_port(id);
     const auto &net = schematic.circuit().net(port.net());
@@ -292,6 +302,7 @@ void write_power_port_svg(std::ostream &out, const Schematic &schematic, PowerPo
         out << "\">" << svg_escape(port_label) << "</text>\n";
     }
 }
+
 void write_no_connect_marker_svg(std::ostream &out, const Schematic &schematic,
                                  NoConnectMarkerId id) {
     const auto &marker = schematic.no_connect_marker(id);
@@ -308,6 +319,7 @@ void write_no_connect_marker_svg(std::ostream &out, const Schematic &schematic,
     out << "      <line class=\"no-connect-line\" x1=\"-3\" y1=\"3\" x2=\"3\" y2=\"-3\"/>\n";
     out << "    </g>\n";
 }
+
 void write_sheet_port_svg(std::ostream &out, const Schematic &schematic, SheetPortId id) {
     const auto &port = schematic.sheet_port(id);
     const auto kind_class = sheet_port_class(port.kind());
@@ -348,6 +360,7 @@ void write_sheet_port_svg(std::ostream &out, const Schematic &schematic, SheetPo
     out << ">" << svg_escape(port.name()) << "</text>\n";
     out << "    </g>\n";
 }
+
 void write_symbol_field_svg(std::ostream &out, const Schematic &schematic, SymbolFieldId id) {
     const auto &field = schematic.symbol_field(id);
 

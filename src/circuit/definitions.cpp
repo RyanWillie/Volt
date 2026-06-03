@@ -18,9 +18,11 @@ PinDefinition::PinDefinition(std::string name, std::string number, PinRole role,
         throw std::invalid_argument{"Pin definition number must not be empty"};
     }
 }
+
 [[nodiscard]] ConnectionRequirement PinDefinition::connection_requirement() const noexcept {
     return connection_requirement_;
 }
+
 DefinitionSource::DefinitionSource(std::string namespace_name, std::string name,
                                    std::string version)
     : namespace_{std::move(namespace_name)}, name_{std::move(name)}, version_{std::move(version)} {
@@ -34,6 +36,7 @@ DefinitionSource::DefinitionSource(std::string namespace_name, std::string name,
         throw std::invalid_argument{"Definition source version must not be empty"};
     }
 }
+
 SchematicSymbolReference::SchematicSymbolReference(std::string name, std::string variant)
     : name_{std::move(name)}, variant_{std::move(variant)} {
     if (name_.empty()) {
@@ -43,6 +46,7 @@ SchematicSymbolReference::SchematicSymbolReference(std::string name, std::string
         throw std::invalid_argument{"Schematic symbol variant must not be empty"};
     }
 }
+
 ComponentDefinition::ComponentDefinition(std::string name, std::vector<PinDefId> pins,
                                          PropertyMap properties,
                                          std::optional<DefinitionSource> source,
@@ -57,10 +61,12 @@ ComponentDefinition::ComponentDefinition(std::string name, std::vector<PinDefId>
     }
     require_unique_schematic_symbol_variants();
 }
+
 [[nodiscard]] const std::vector<SchematicSymbolReference> &
 ComponentDefinition::schematic_symbols() const noexcept {
     return schematic_symbols_;
 }
+
 void ComponentDefinition::require_unique_schematic_symbol_variants() const {
     for (std::size_t index = 0; index < schematic_symbols_.size(); ++index) {
         const auto duplicate =

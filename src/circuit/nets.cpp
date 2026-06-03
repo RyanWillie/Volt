@@ -13,10 +13,13 @@ NetName::NetName(std::string value) : value_{std::move(value)} {
         throw std::invalid_argument{"Net name must not be empty"};
     }
 }
+
 Net::Net(NetName name, NetKind kind) : name_{std::move(name)}, kind_{kind} {}
+
 [[nodiscard]] bool Net::contains(PinId pin) const noexcept {
     return std::find(pins_.begin(), pins_.end(), pin) != pins_.end();
 }
+
 bool Net::connect(PinId pin) {
     if (contains(pin)) {
         return false;
@@ -25,6 +28,7 @@ bool Net::connect(PinId pin) {
     pins_.push_back(pin);
     return true;
 }
+
 bool Net::disconnect(PinId pin) {
     const auto it = std::find(pins_.begin(), pins_.end(), pin);
     if (it == pins_.end()) {

@@ -23,12 +23,14 @@ void require(bool condition, const std::string &message) {
         throw std::logic_error{message};
     }
 }
+
 const nlohmann::json &field(const nlohmann::json &object, const char *name) {
     require(object.is_object(), "Expected object while reading PCB projection");
     const auto it = object.find(name);
     require(it != object.end(), std::string{"Missing required field: "} + name);
     return *it;
 }
+
 const nlohmann::json *optional_field(const nlohmann::json &object, const char *name) {
     require(object.is_object(), "Expected object while reading PCB projection");
     const auto it = object.find(name);
@@ -37,39 +39,47 @@ const nlohmann::json *optional_field(const nlohmann::json &object, const char *n
     }
     return &*it;
 }
+
 const nlohmann::json &array_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_array(), std::string{"Expected array field: "} + name);
     return value;
 }
+
 std::string string_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_string(), std::string{"Expected string field: "} + name);
     return value.get<std::string>();
 }
+
 bool bool_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_boolean(), std::string{"Expected boolean field: "} + name);
     return value.get<bool>();
 }
+
 double number_field(const nlohmann::json &object, const char *name) {
     const auto &value = field(object, name);
     require(value.is_number(), std::string{"Expected number field: "} + name);
     return value.get<double>();
 }
+
 template <typename Id> Id typed_id(const nlohmann::json &object, const char *name) {
     return decode_local_id<Id>(string_field(object, name));
 }
+
 void require_sequential_id(const nlohmann::json &object, const char *name, BoardFeatureId expected,
                            const std::string &message) {
     require(typed_id<BoardFeatureId>(object, name) == expected, message);
 }
+
 [[nodiscard]] BoardPoint board_point(const nlohmann::json &value) {
     require(value.is_array(), "PCB point must be an array");
     require(value.size() == 2U, "PCB point must contain two numbers");
     require(value[0].is_number() && value[1].is_number(), "PCB point values must be numbers");
     return BoardPoint{value[0].get<double>(), value[1].get<double>()};
 }
+
 [[nodiscard]] std::vector<BoardPoint> board_points(const nlohmann::json &value) {
     require(value.is_array(), "PCB point list must be an array");
     auto points = std::vector<BoardPoint>{};
@@ -79,6 +89,7 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
     }
     return points;
 }
+
 [[nodiscard]] std::vector<BoardLayerId> read_board_layers(const Board &board,
                                                           const nlohmann::json &object,
                                                           const char *name,
@@ -94,10 +105,12 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
     }
     return result;
 }
+
 [[nodiscard]] std::string optional_string_field(const nlohmann::json &object, const char *name) {
     const auto *value = optional_field(object, name);
     return value == nullptr ? std::string{} : string_field(object, name);
 }
+
 [[nodiscard]] std::optional<double> optional_finished_diameter(const nlohmann::json &feature) {
     const auto *value = optional_field(feature, "finished_diameter_mm");
     if (value == nullptr || value->is_null()) {
@@ -106,14 +119,17 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
     require(value->is_number(), "PCB board hole finished diameter must be a number");
     return value->get<double>();
 }
+
 [[nodiscard]] double drill_diameter(const nlohmann::json &feature) {
     const auto *drill = optional_field(feature, "drill_diameter_mm");
     return drill == nullptr ? number_field(feature, "diameter_mm")
                             : number_field(feature, "drill_diameter_mm");
 }
+
 [[nodiscard]] bool optional_plated(const nlohmann::json &feature) {
     return optional_field(feature, "plated") != nullptr && bool_field(feature, "plated");
 }
+
 [[nodiscard]] BoardFeature read_hole_feature(const nlohmann::json &feature,
                                              const std::string &label, const std::string &role) {
     const auto position = board_point(field(feature, "position"));
@@ -121,6 +137,7 @@ void require_sequential_id(const nlohmann::json &object, const char *name, Board
     const auto finished = optional_finished_diameter(feature);
     return BoardFeature::hole(label, position, drill, optional_plated(feature), role, finished);
 }
+
 [[nodiscard]] BoardFeature read_feature(const Board &board, const nlohmann::json &feature) {
     const auto kind = board_feature_kind_from_name(string_field(feature, "kind"));
     const auto label = optional_string_field(feature, "label");

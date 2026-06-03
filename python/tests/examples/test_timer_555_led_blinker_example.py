@@ -278,9 +278,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert len(pcb["board"]["footprint_definitions"]) == 5
     assert len(pcb["board"]["tracks"]) == 17
     assert len(pcb["board"]["vias"]) == 3
-    assert [
-        feature["text"] for feature in pcb["board"]["features"] if feature["kind"] == "text"
-    ] == [
+    assert [text["text"] for text in pcb["board"]["texts"]] == [
         "555 BLINK"
     ]
     assert len(pcb["viewer"]["pad_resolutions"]) == 22

@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt Project Framework Feature Guide - 2026-06-03</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f7f4;
+      --ink: #17201d;
+      --muted: #5c6863;
+      --line: #cdd5cf;
+      --panel: #ffffff;
+      --code: #ebefe9;
+      --green: #236b4e;
+      --blue: #255f86;
+      --amber: #8c681d;
+      --red: #953c35;
+      --soft-green: #e7f1eb;
+      --soft-blue: #e8f0f7;
+      --soft-amber: #f7edcf;
+      --soft-red: #f4e2df;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 46px 0 76px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.72fr);
+      gap: 38px;
+      align-items: end;
+      padding-bottom: 34px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    section {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 42px;
+      padding: 38px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      max-width: 900px;
+      font-size: clamp(38px, 6.6vw, 78px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: clamp(27px, 3vw, 40px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 18px;
+      line-height: 1.24;
+    }
+
+    aside {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    code,
+    pre {
+      background: var(--code);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    code {
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-size: 0.94em;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 15px;
+      color: #26332e;
+      font-size: 13px;
+      line-height: 1.48;
+      white-space: pre;
+    }
+
+    ul, ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    li + li { margin-top: 7px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    th, td {
+      padding: 12px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    td { color: var(--muted); }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 14px;
+      border-top: 2px solid var(--green);
+      padding-top: 10px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dek {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    .meta {
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .meta strong { color: var(--ink); }
+
+    .stack { display: grid; gap: 18px; }
+    .tight { display: grid; gap: 10px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .panel,
+    .callout,
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 16px;
+    }
+
+    .callout {
+      border-left: 6px solid var(--green);
+      background: var(--soft-green);
+    }
+
+    .callout.blue {
+      border-left-color: var(--blue);
+      background: var(--soft-blue);
+    }
+
+    .callout.amber {
+      border-left-color: var(--amber);
+      background: var(--soft-amber);
+    }
+
+    .callout.red {
+      border-left-color: var(--red);
+      background: var(--soft-red);
+    }
+
+    .label {
+      display: inline-block;
+      width: fit-content;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: #fff;
+      background: var(--green);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .label.blue { background: var(--blue); }
+    .label.amber { background: var(--amber); }
+    .label.red { background: var(--red); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .flow .step {
+      min-height: 124px;
+      position: relative;
+    }
+
+    .flow .step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -10px;
+      width: 10px;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .rule {
+      display: grid;
+      grid-template-columns: 140px minmax(0, 1fr);
+      gap: 13px;
+      align-items: start;
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .rule:first-child { border-top: 0; padding-top: 0; }
+    .rule:last-child { padding-bottom: 0; }
+
+    .rule strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      header,
+      section {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+
+      .grid,
+      .two,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .flow .step:not(:last-child)::after {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <span class="eyebrow">Feature guide</span>
+      <h1>Volt Project Framework</h1>
+    </div>
+    <div class="meta">
+      <p class="dek">A structured, testable, and flexible way to create electronics with Python while keeping EDA meaning in the Volt kernel.</p>
+      <p><strong>Date:</strong> 2026-06-03</p>
+      <p><strong>Status:</strong> Planning guide</p>
+      <p><strong>Audience:</strong> Volt maintainers, future agents, application builders, and component-library authors.</p>
+    </div>
+  </header>
+
+  <section>
+    <aside>
+      <h2>Purpose</h2>
+    </aside>
+    <div class="stack">
+      <div class="callout">
+        <h3>The framework gives Volt Python projects a real shape.</h3>
+        <p>Today a user can define electronics in Python, but a serious product needs more than a script that happens to construct a design. It needs a known build entrypoint, reusable parts, libraries that can be tested, multiple boards, rules, diagnostics, assets, simulation scenarios, and deterministic outputs that an application or agent can load.</p>
+      </div>
+      <p>The Volt Project Framework should be the boring structural layer that turns Python electronics authoring into a repeatable engineering workflow. It should not become a package manager, task runner, application runtime, CAD kernel, or alternate EDA database. It should simply make it obvious where a design is built, which libraries and rules are used, which boards belong to the product, what artifacts were produced, and whether the result is valid.</p>
+      <div class="two">
+        <div class="panel tight">
+          <span class="label">Goal</span>
+          <p>Let users define real electronics in Python with enough structure that the same source can be checked, tested, viewed, simulated, exported, and modified by an agent.</p>
+        </div>
+        <div class="panel tight">
+          <span class="label red">Non-goal</span>
+          <p>Do not make <code>Project</code> the owner of circuit semantics. The kernel remains the source of truth for connectivity, selected parts, PCB data, rules, and diagnostics.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>Principles</h2>
+    </aside>
+    <div class="stack">
+      <div class="rule">
+        <strong>Structured, not heavy</strong>
+        <p><code>Project</code> gives the codebase a known shape. It should feel like a small harness around electronics authoring, not like adopting a platform.</p>
+      </div>
+      <div class="rule">
+        <strong>Kernel-owned truth</strong>
+        <p>Python provides ergonomic construction. The kernel owns EDA meaning: components, pins, nets, schematic presentation, board placement, routing, rules, and validation.</p>
+      </div>
+      <div class="rule">
+        <strong>Parts first</strong>
+        <p>A user should be able to say "here is a part." A part can include pins, symbol, footprint, pad mapping, physical metadata, 3D representation, ratings, and optional simulation behavior.</p>
+      </div>
+      <div class="rule">
+        <strong>Libraries are buildable</strong>
+        <p>A library is a collection of parts that can be imported by projects and tested independently. A library should prove its parts are board-ready before a project depends on them.</p>
+      </div>
+      <div class="rule">
+        <strong>Products can be multi-board</strong>
+        <p>A project should be able to contain one board, many boards, fixtures, harnesses, variants, and system-level relationships without turning those into random Python globals.</p>
+      </div>
+      <div class="rule">
+        <strong>Deterministic outputs</strong>
+        <p>Running the same project should produce stable artifacts: logical JSON, schematic data, PCB JSON, diagnostics, assets, simulation inputs, and manufacturing outputs when available.</p>
+      </div>
+      <div class="rule">
+        <strong>General primitives</strong>
+        <p>Prefer small composable primitives over narrow circuit-specific methods. The framework should orchestrate those primitives rather than grow a large special-case API surface.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>Core Model</h2>
+    </aside>
+    <div class="stack">
+      <div class="flow">
+        <div class="step tight">
+          <span class="label">Part</span>
+          <p>Reusable definition of an electronic part and its usable physical representations.</p>
+        </div>
+        <div class="step tight">
+          <span class="label blue">Library</span>
+          <p>Buildable collection of parts with its own validation and tests.</p>
+        </div>
+        <div class="step tight">
+          <span class="label">Project</span>
+          <p>Known entrypoint that assembles designs, boards, rules, assets, and outputs.</p>
+        </div>
+        <div class="step tight">
+          <span class="label blue">Kernel</span>
+          <p>Owns the actual EDA state and rejects invalid structural mutations.</p>
+        </div>
+        <div class="step tight">
+          <span class="label">Result</span>
+          <p>Deterministic bundle for apps, agents, tests, simulation, and export.</p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Concept</th>
+            <th>Owns</th>
+            <th>Does not own</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Part</code></td>
+            <td>Reusable part definition: logical pins, symbol, footprint, pad mapping, physical metadata, optional 3D and simulation declarations.</td>
+            <td>A placed component instance, board coordinates, or project-specific net connections.</td>
+          </tr>
+          <tr>
+            <td><code>Library</code></td>
+            <td>A named collection of parts plus tests and library-level validation.</td>
+            <td>Project build orchestration, selected product variants, or board layout.</td>
+          </tr>
+          <tr>
+            <td><code>Design</code></td>
+            <td>The logical circuit: component instances, pins, nets, hierarchy, selected parts, and circuit diagnostics.</td>
+            <td>Manufacturing files, viewer bundle shape, or application workflow state.</td>
+          </tr>
+          <tr>
+            <td><code>Board</code></td>
+            <td>The physical PCB implementation of a design: outline, layers, placements, routes, copper, holes, cutouts, text, keepouts, and board rules.</td>
+            <td>The netlist itself. PCB implements logical connectivity; it does not define it.</td>
+          </tr>
+          <tr>
+            <td><code>Project</code></td>
+            <td>The build entrypoint, build context, product-level organization, rule composition, artifact collection, asset collection, and result emission.</td>
+            <td>EDA semantics. It asks the kernel to build, validate, and serialize the source-of-truth models.</td>
+          </tr>
+          <tr>
+            <td><code>ProjectResult</code></td>
+            <td>The output of one run: models, artifacts, diagnostics, assets, metadata, and pass/fail status.</td>
+            <td>Long-lived history, caching policy, package management, or source control.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>User Experience</h2>
+    </aside>
+    <div class="stack">
+      <p>The public API should make the simple case feel almost as direct as plain Python, while giving larger products a natural place to grow. A user should not need to learn a build system before making a circuit. They should only need to name a project and provide a build function.</p>
+      <pre><code>import volt
+from volt_components.passives import R_0603_10K
+from volt_components.indicators import LED_0603_RED
+
+project = volt.Project("status-led")
+
+@project.build
+def build(ctx):
+    design = volt.Design("status-led")
+
+    r1 = design.instantiate(R_0603_10K, ref="R1")
+    d1 = design.instantiate(LED_0603_RED, ref="D1")
+
+    design.connect(r1.pins["2"], d1.pins["A"])
+    design.connect(d1.pins["K"], design.gnd)
+
+    board = volt.Board("status-led-board", design=design)
+    board.place(r1, at=volt.Position(12, 10))
+    board.place(d1, at=r1.position.right(8))
+
+    ctx.add(board)
+    ctx.use_rules(volt.rules.erc.basic())
+    ctx.use_rules(volt.rules.pcb.two_layer_manufacturable())
+
+    return design</code></pre>
+      <div class="callout blue">
+        <h3>The build function is the contract.</h3>
+        <p>The eventual application, CLI, CI job, or agent runner can discover the project, run the build function, and consume the result without guessing how the user's Python is organized.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>Multi-Board Products</h2>
+    </aside>
+    <div class="stack">
+      <p>A real electronics product may have a main board, daughterboard, programming adapter, sensor module, front-panel board, cable harness, or test fixture. Without a project layer, these become loose files or unrelated Python variables. With a project layer, the product can be represented as one coherent build.</p>
+      <pre><code>project = volt.Project("robot-controller")
+
+@project.build
+def build(ctx):
+    controller = make_controller_design()
+    sensor = make_sensor_design()
+    panel = make_panel_design()
+
+    controller_board = make_controller_board(controller)
+    sensor_board = make_sensor_board(sensor)
+    panel_board = make_panel_board(panel)
+
+    system = volt.Assembly("robot-controller")
+    system.add_board(controller_board)
+    system.add_board(sensor_board)
+    system.add_board(panel_board)
+    system.connect(controller_board["J2"], sensor_board["J1"])
+    system.connect(controller_board["J3"], panel_board["J1"])
+
+    ctx.add(system)
+    ctx.use_rules(product_rules())
+
+    return system</code></pre>
+      <div class="two">
+        <div class="panel tight">
+          <span class="label">What this enables</span>
+          <ul>
+            <li>Product-level validation across several boards.</li>
+            <li>Shared libraries and rule sets.</li>
+            <li>Board-specific artifacts grouped under one result.</li>
+            <li>Agent workflows that understand the whole product.</li>
+          </ul>
+        </div>
+        <div class="panel tight">
+          <span class="label amber">Careful boundary</span>
+          <p><code>Assembly</code> may describe product structure, connectors, harnesses, and relationships. It should not bypass the individual logical designs or PCB models owned by the kernel.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>Rules And ERC</h2>
+    </aside>
+    <div class="stack">
+      <p>The project is the right place to select and compose rules because rules are part of the product context. A library can contribute part-level expectations. A design can be checked with ERC. A board can be checked with DRC and manufacturability constraints. A product can add higher-level rules such as "all external connectors require ESD protection" or "this variant must not use unavailable parts."</p>
+      <pre><code>def product_rules():
+    return volt.RuleSet(
+        volt.rules.erc.basic(),
+        volt.rules.erc.power_domains(),
+        volt.rules.parts.require_selected_physical_parts(),
+        volt.rules.pcb.clearance(minimum="0.15mm"),
+        volt.rules.pcb.hole_to_copper(minimum="0.25mm"),
+        volt.rules.product.external_connector_esd(),
+    )
+
+@project.build
+def build(ctx):
+    design = make_design()
+    board = make_board(design)
+
+    ctx.add(board)
+    ctx.use_rules(product_rules())
+
+    return design</code></pre>
+      <table>
+        <thead>
+          <tr>
+            <th>Rule level</th>
+            <th>Examples</th>
+            <th>Selected by</th>
+            <th>Evaluated by</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Library</td>
+            <td>Part has pins, footprint, pad mapping, ratings, model refs, simulation claims.</td>
+            <td><code>Library</code> build/test</td>
+            <td>Kernel validation and library validators.</td>
+          </tr>
+          <tr>
+            <td>Design</td>
+            <td>Unconnected pins, single-pin nets, incompatible electrical roles, power-domain mistakes.</td>
+            <td><code>Project</code> or default profile</td>
+            <td>Kernel diagnostics.</td>
+          </tr>
+          <tr>
+            <td>Board</td>
+            <td>Unplaced components, unresolved footprints, unrouted nets, clearance, holes, copper, stackup.</td>
+            <td><code>Project</code>, board profile, manufacturer profile</td>
+            <td>Kernel diagnostics and PCB validators.</td>
+          </tr>
+          <tr>
+            <td>Product</td>
+            <td>Multi-board connector compatibility, variants, part availability, test-point coverage, safety rules.</td>
+            <td><code>Project</code></td>
+            <td>Kernel-owned constraints where available, project-level orchestration otherwise.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout amber">
+        <h3>Rule ownership matters.</h3>
+        <p>The project chooses rule sets. The kernel should own rule semantics wherever the rule changes what Volt understands about the electronics. This keeps diagnostics inspectable and prevents Python-only correctness rules from becoming invisible to apps and agents.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>Libraries</h2>
+    </aside>
+    <div class="stack">
+      <p>The framework should make official and private component libraries feel like first-class Volt citizens without turning Volt into a package manager. A library is simply a buildable collection of parts. A project imports those parts using normal Python import mechanisms.</p>
+      <pre><code>import volt
+
+library = volt.Library("volt_components.passives")
+
+R_0603_10K = volt.Part(
+    name="R_0603_10K",
+    pins=[volt.Pin("1"), volt.Pin("2")],
+    symbol=volt.Symbol.resistor(),
+    footprint=volt.Footprint.chip_resistor_0603(),
+    pads={"1": "1", "2": "2"},
+    value="10k",
+    manufacturer="Yageo",
+    mpn="RC0603FR-0710KL",
+    model=volt.Model.box(size=(1.6, 0.8, 0.45)),
+)
+
+library.add(R_0603_10K)</code></pre>
+      <div class="grid">
+        <div class="panel tight">
+          <span class="label">Importable</span>
+          <p>A project uses standard Python imports. Volt does not need to solve dependency distribution to structure electronics correctly.</p>
+        </div>
+        <div class="panel tight">
+          <span class="label">Buildable</span>
+          <p>A library can produce a result that proves its parts are constructible, complete, and serializable.</p>
+        </div>
+        <div class="panel tight">
+          <span class="label">Testable</span>
+          <p>Library tests can assert that parts are board-ready, simulation-ready, procurement-ready, or schematic-ready.</p>
+        </div>
+      </div>
+      <pre><code>def test_passives_are_board_ready():
+    result = library.build()
+
+    assert result.ok
+    assert result.part("R_0603_10K").has_footprint
+    assert result.part("R_0603_10K").pad_mapping_complete
+    assert result.part("R_0603_10K").has_physical_model</code></pre>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>Project Result</h2>
+    </aside>
+    <div class="stack">
+      <p>A project run should produce a <code>ProjectResult</code>. This is not a database, cache, history system, or source of truth. It is the result of running the user's project at one point in time.</p>
+      <pre><code>result = project.run()
+
+if not result.ok:
+    for diagnostic in result.diagnostics:
+        print(diagnostic)
+
+result.write("dist/status-led.volt")</code></pre>
+      <p>The result should be usable by the future Volt application, CLI, CI, tests, simulators, viewers, and manufacturing exporters. The app should not need to execute arbitrary Python just to inspect a finished board; it should load the project result bundle.</p>
+      <pre><code>status-led.volt/
+  manifest.volt.json
+  logical/
+    status-led.json
+  schematic/
+    status-led.schematic.json
+    status-led.svg
+  pcb/
+    status-led-board.pcb.json
+    status-led-board.svg
+  diagnostics/
+    diagnostics.json
+  assets/
+    models/
+      led-0603.glb
+      resistor-0603.glb
+  simulation/
+    scenarios.json</code></pre>
+      <div class="callout blue">
+        <h3>The bundle is the application contract.</h3>
+        <p>For the future paid application, the project result is the stable handoff. The application can render the schematic, render the 3D board, select components, show diagnostics, request agent edits, run tests, and compare results without owning the kernel's EDA semantics.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>Testing</h2>
+    </aside>
+    <div class="stack">
+      <p>The framework should make electronics tests feel natural. Users should be able to run small unit tests over parts, integration tests over designs, board-readiness tests over PCBs, regression tests over artifacts, and eventually simulation tests over scenarios.</p>
+      <div class="grid">
+        <div class="panel tight">
+          <span class="label">Part tests</span>
+          <p>Does the part have complete pins, footprint, pad mappings, physical metadata, and optional simulation/model data?</p>
+        </div>
+        <div class="panel tight">
+          <span class="label">Design tests</span>
+          <p>Does swapping a resistor, adding a subcircuit, or changing a variant preserve the intended connectivity and ERC status?</p>
+        </div>
+        <div class="panel tight">
+          <span class="label">Board tests</span>
+          <p>Are all components placed, all footprints resolved, all required nets routed, and all board rules satisfied?</p>
+        </div>
+      </div>
+      <pre><code>def test_status_led_project_builds_cleanly():
+    result = project.run()
+
+    assert result.ok
+    assert result.diagnostics.count(severity="error") == 0
+    assert result.board("status-led-board").all_required_nets_routed()
+
+
+def test_led_current_path_survives_resistor_change():
+    result = project.run(params={"led_resistor": "2.2k"})
+
+    design = result.design("status-led")
+    assert design.net_between("R1.2", "D1.A")
+    assert result.diagnostics.count(code="ERC_FLOATING_INPUT") == 0</code></pre>
+      <div class="callout">
+        <h3>This is where Volt can become unusually strong.</h3>
+        <p>Because electronics are built from Python into kernel-owned models, tests can operate on the actual circuit and board data. They do not need to scrape screenshots, parse generated netlists, or guess what a designer meant.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>Simulation</h2>
+    </aside>
+    <div class="stack">
+      <p>The project framework gives simulation a better home. Simulation should not be a detached tool that asks the user to rebuild the circuit in another language. A project can declare scenarios over the same parts, nets, boards, and variants that define the product.</p>
+      <pre><code>@project.simulation("button-press")
+def button_press(ctx, design):
+    ctx.set_supply("VCC", 3.3)
+    ctx.drive("SW1.1", waveform=volt.waveforms.pulse(width="40ms"))
+    ctx.probe("D1.A")
+    ctx.probe("MCU.PA4")
+
+
+def test_button_turns_led_on():
+    result = project.run()
+    sim = result.simulate("button-press", duration="100ms")
+
+    assert sim.signal("D1.A").goes_high()
+    assert sim.signal("MCU.PA4").observes_high()</code></pre>
+      <p>The exact simulation engine can evolve. The framework's job is simpler: provide a deterministic place to define scenarios, bind them to the built design, collect simulation artifacts, and report diagnostics.</p>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>3D And Assets</h2>
+    </aside>
+    <div class="stack">
+      <p>The visualizer should not need to infer physical models from arbitrary Python code. Parts and boards should lower into assets and references that are written into the project result. The PCB remains primarily 2D/2.5D manufacturing data; the viewer gets enough structured board geometry, placement, stackup, and model references to render a true 3D scene.</p>
+      <pre><code>{
+  "component": "D1",
+  "part": "LED_0603_RED",
+  "placement": {
+    "x_mm": 18.0,
+    "y_mm": 10.0,
+    "rotation_deg": 90.0,
+    "side": "top"
+  },
+  "model": {
+    "asset": "assets/models/led-0603.glb",
+    "origin": "footprint",
+    "transform": {
+      "x_mm": 0.0,
+      "y_mm": 0.0,
+      "z_mm": 0.0,
+      "rotation_deg": 0.0
+    }
+  }
+}</code></pre>
+      <div class="two">
+        <div class="panel tight">
+          <span class="label">Board JSON</span>
+          <p>Contains board outline, holes, cutouts, stackup, placements, footprint geometry, copper, and references to model assets.</p>
+        </div>
+        <div class="panel tight">
+          <span class="label">Asset bundle</span>
+          <p>Contains generated or referenced model files, hashes, metadata, and paths that the viewer can load directly.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>Agent Workflow</h2>
+    </aside>
+    <div class="stack">
+      <p>The framework gives an agent a stable loop. The agent edits Python, runs the project, reads the result, observes diagnostics and artifacts, and edits Python again. The application can provide richer feedback, but the framework makes the loop possible without baking application behavior into Volt core.</p>
+      <div class="flow">
+        <div class="step tight">
+          <span class="label">1</span>
+          <p>Agent edits Volt Python source.</p>
+        </div>
+        <div class="step tight">
+          <span class="label blue">2</span>
+          <p>Project build runs through the known entrypoint.</p>
+        </div>
+        <div class="step tight">
+          <span class="label">3</span>
+          <p>Kernel validates design, board, rules, and diagnostics.</p>
+        </div>
+        <div class="step tight">
+          <span class="label blue">4</span>
+          <p>Project result writes deterministic JSON and assets.</p>
+        </div>
+        <div class="step tight">
+          <span class="label">5</span>
+          <p>App, tests, viewer, or agent inspect the result.</p>
+        </div>
+      </div>
+      <p>This keeps the application free to innovate. It can offer chat, a code editor, a 3D viewer, component search, diagnostics panels, and specialist agents, while Volt remains the open kernel and Python framework underneath.</p>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>API Surface</h2>
+    </aside>
+    <div class="stack">
+      <p>The first API should stay small. It should establish the framework boundaries without committing Volt to every future workflow.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>API</th>
+            <th>Role</th>
+            <th>First behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>volt.Project(name)</code></td>
+            <td>Defines the buildable project.</td>
+            <td>Stores metadata, build function, params, rules, and output preferences.</td>
+          </tr>
+          <tr>
+            <td><code>@project.build</code></td>
+            <td>Marks the canonical build entrypoint.</td>
+            <td>Runs with a <code>BuildContext</code> and returns a design, board, assembly, or project object graph.</td>
+          </tr>
+          <tr>
+            <td><code>BuildContext</code></td>
+            <td>Collects project-owned declarations.</td>
+            <td>Allows <code>ctx.add(...)</code>, <code>ctx.use_rules(...)</code>, <code>ctx.publish(...)</code>, <code>ctx.asset(...)</code>, and diagnostics aggregation.</td>
+          </tr>
+          <tr>
+            <td><code>project.run(...)</code></td>
+            <td>Executes one deterministic build.</td>
+            <td>Builds kernel models, validates, serializes, collects artifacts and returns <code>ProjectResult</code>.</td>
+          </tr>
+          <tr>
+            <td><code>ProjectResult</code></td>
+            <td>Represents the output of one run.</td>
+            <td>Exposes models, artifacts, assets, diagnostics, status, and <code>write(...)</code>.</td>
+          </tr>
+          <tr>
+            <td><code>volt.Library(name)</code></td>
+            <td>Defines a reusable buildable part collection.</td>
+            <td>Registers parts, validates them, and produces a library result for tests.</td>
+          </tr>
+          <tr>
+            <td><code>volt.Part(...)</code></td>
+            <td>Defines a reusable component-level abstraction.</td>
+            <td>Lowers into kernel-owned logical, schematic, PCB, model, ratings, and optional simulation data.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout amber">
+        <h3>Keep the first version disciplined.</h3>
+        <p>The first framework version does not need every future rule type, simulation engine, asset generator, or app hook. It needs the ownership boundaries, deterministic build lifecycle, result object, and enough artifact collection that future features naturally attach to it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>Implementation Plan</h2>
+    </aside>
+    <div class="stack">
+      <div class="step tight">
+        <span class="label">Phase 1</span>
+        <h3>Project and ProjectResult foundation</h3>
+        <p>Add <code>volt.Project</code>, <code>BuildContext</code>, <code>ProjectResult</code>, artifact registration, diagnostics aggregation, deterministic write layout, and tests for single-design/single-board projects.</p>
+      </div>
+      <div class="step tight">
+        <span class="label blue">Phase 2</span>
+        <h3>Buildable libraries and parts</h3>
+        <p>Add the first-class public <code>Part</code> and <code>Library</code> framework shape. Ensure libraries can validate board-ready parts independently and projects can instantiate imported parts without manual footprint registration.</p>
+      </div>
+      <div class="step tight">
+        <span class="label">Phase 3</span>
+        <h3>Rules and diagnostics composition</h3>
+        <p>Let projects select rule sets and emit structured diagnostics across design, schematic, PCB, library, and product-level checks. Keep rule semantics in the kernel or explicit model-owned validators.</p>
+      </div>
+      <div class="step tight">
+        <span class="label blue">Phase 4</span>
+        <h3>Multi-board and product assembly</h3>
+        <p>Add product-level grouping for multiple boards, shared variants, connectors, harnesses, and cross-board checks without weakening design and board ownership boundaries.</p>
+      </div>
+      <div class="step tight">
+        <span class="label">Phase 5</span>
+        <h3>Application, viewer, simulation, and export bundle</h3>
+        <p>Extend project results with viewer-ready PCB JSON, model asset references, simulation scenario artifacts, manufacturing outputs, and app-friendly manifests.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>What This Unlocks</h2>
+    </aside>
+    <div class="grid">
+      <div class="panel tight">
+        <span class="label">For users</span>
+        <p>A consistent way to define electronics in Python, build them, check them, and share the result without turning every project into bespoke script glue.</p>
+      </div>
+      <div class="panel tight">
+        <span class="label blue">For agents</span>
+        <p>A reliable edit-run-inspect loop with deterministic artifacts and diagnostics instead of fragile assumptions about arbitrary source structure.</p>
+      </div>
+      <div class="panel tight">
+        <span class="label">For apps</span>
+        <p>A clean contract for loading circuits, schematics, boards, assets, and diagnostics into a visual editor without owning the EDA model.</p>
+      </div>
+      <div class="panel tight">
+        <span class="label blue">For tests</span>
+        <p>Regression checks over actual circuit and PCB data: part swaps, subcircuits, rules, board readiness, simulation behavior, and artifact stability.</p>
+      </div>
+      <div class="panel tight">
+        <span class="label">For libraries</span>
+        <p>Official and private part libraries can be validated independently, then imported into projects as ordinary Python modules.</p>
+      </div>
+      <div class="panel tight">
+        <span class="label blue">For Volt</span>
+        <p>A stronger foundation for simulation, PCB generation, 3D viewing, manufacturing export, and paid application workflows without compromising the open kernel.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <aside>
+      <h2>Acceptance</h2>
+    </aside>
+    <div class="stack">
+      <p>The first complete version of this framework should meet these criteria:</p>
+      <ul>
+        <li>A project has one discoverable build entrypoint and can be run by CLI, tests, or application code.</li>
+        <li>A project can return or register at least one logical design and one board.</li>
+        <li>A project can select rule sets and emit structured diagnostics.</li>
+        <li>A project run produces a deterministic <code>ProjectResult</code> with manifest, artifacts, diagnostics, and assets.</li>
+        <li>A library can define parts, validate them independently, and be imported by a project.</li>
+        <li>Parts can carry enough data to become schematic-ready, board-ready, viewer-ready, and eventually simulation-ready.</li>
+        <li>The framework does not duplicate kernel-owned EDA semantics in Python-only structures.</li>
+        <li>The result bundle is sufficient for an app or agent to inspect the current electronics state without executing arbitrary project code.</li>
+      </ul>
+      <div class="callout">
+        <h3>North star</h3>
+        <p>A user should be able to build a real electronics product in Python, test it like software, inspect it like CAD, validate it like EDA, simulate it like a system, and hand the result to an application or manufacturing exporter. The Project Framework is the spine that makes those workflows feel like one Volt-native experience.</p>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

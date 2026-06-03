@@ -21,9 +21,11 @@ BoardZone::BoardZone(std::vector<BoardPoint> outline, std::vector<BoardLayerId> 
       priority_{priority} {
     validate_layers();
 }
+
 [[nodiscard]] const std::vector<BoardPoint> &BoardZone::outline() const noexcept {
     return outline_.vertices();
 }
+
 void BoardZone::validate_layers() const {
     if (layers_.empty()) {
         throw std::invalid_argument{"Board zone layers must not be empty"};
@@ -36,6 +38,64 @@ void BoardZone::validate_layers() const {
         throw std::invalid_argument{"Board zone layers must not contain duplicates"};
     }
 }
+
+BoardKeepout::BoardKeepout(std::vector<BoardPoint> outline, std::vector<BoardLayerId> layers,
+                           std::vector<BoardKeepoutRestriction> restrictions)
+    : outline_{std::move(outline)}, layers_{std::move(layers)},
+      restrictions_{std::move(restrictions)} {
+    validate_layers();
+    validate_restrictions();
+}
+
+[[nodiscard]] const std::vector<BoardPoint> &BoardKeepout::outline() const noexcept {
+    return outline_.vertices();
+}
+
+[[nodiscard]] const std::vector<BoardKeepoutRestriction> &
+BoardKeepout::restrictions() const noexcept {
+    return restrictions_;
+}
+
+void BoardKeepout::validate_layers() const {
+    if (layers_.empty()) {
+        throw std::invalid_argument{"Board keepout layers must not be empty"};
+    }
+    auto sorted = layers_;
+    std::sort(sorted.begin(), sorted.end(),
+              [](BoardLayerId lhs, BoardLayerId rhs) { return lhs.index() < rhs.index(); });
+    const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
+    if (duplicate != sorted.end()) {
+        throw std::invalid_argument{"Board keepout layers must not contain duplicates"};
+    }
+}
+
+void BoardKeepout::validate_restrictions() const {
+    if (restrictions_.empty()) {
+        throw std::invalid_argument{"Board keepout restrictions must not be empty"};
+    }
+    auto sorted = restrictions_;
+    std::sort(sorted.begin(), sorted.end());
+    const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
+    if (duplicate != sorted.end()) {
+        throw std::invalid_argument{"Board keepout restrictions must not contain duplicates"};
+    }
+}
+
+BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotation,
+                     BoardLayerId layer, double size_mm, bool locked)
+    : text_{std::move(text)}, position_{position}, rotation_{rotation}, layer_{layer},
+      size_mm_{size_mm}, locked_{locked} {
+    if (text_.empty()) {
+        throw std::invalid_argument{"Board text must not be empty"};
+    }
+    if (!std::isfinite(size_mm_)) {
+        throw std::invalid_argument{"Board text size must be finite"};
+    }
+    if (size_mm_ <= 0.0) {
+        throw std::invalid_argument{"Board text size must be positive"};
+    }
+}
+
 BoardTrack::BoardTrack(NetId net, BoardLayerId layer, std::vector<BoardPoint> points,
                        double width_mm)
     : net_{net}, layer_{layer}, points_{std::move(points)}, width_mm_{width_mm} {
@@ -54,6 +114,7 @@ BoardTrack::BoardTrack(NetId net, BoardLayerId layer, std::vector<BoardPoint> po
         }
     }
 }
+
 BoardVia::BoardVia(NetId net, BoardPoint position, BoardLayerId start_layer, BoardLayerId end_layer,
                    double drill_diameter_mm, double annular_diameter_mm)
     : net_{net}, position_{position}, start_layer_{start_layer}, end_layer_{end_layer},
@@ -72,6 +133,7 @@ BoardVia::BoardVia(NetId net, BoardPoint position, BoardLayerId start_layer, Boa
             "Board via annular diameter must be greater than drill diameter"};
     }
 }
+
 BoardDesignRules::BoardDesignRules(double copper_clearance_mm, double minimum_track_width_mm,
                                    double minimum_via_drill_diameter_mm,
                                    double minimum_via_annular_diameter_mm,
@@ -99,12 +161,15 @@ BoardDesignRules::BoardDesignRules(double copper_clearance_mm, double minimum_tr
             "Board design rule via annular diameter must be greater than drill diameter"};
     }
 }
+
 [[nodiscard]] double BoardDesignRules::minimum_via_drill_diameter_mm() const noexcept {
     return minimum_via_drill_diameter_mm_;
 }
+
 [[nodiscard]] double BoardDesignRules::minimum_via_annular_diameter_mm() const noexcept {
     return minimum_via_annular_diameter_mm_;
 }
+
 [[nodiscard]] double BoardDesignRules::board_outline_clearance_mm() const noexcept {
     return board_outline_clearance_mm_;
 }
@@ -140,6 +205,7 @@ namespace volt::detail {
     }
     return shape_distance(rhs, lhs);
 }
+
 [[nodiscard]] std::optional<BoardLayerId> first_common_layer(const BoardCopperShape &lhs,
                                                              const BoardCopperShape &rhs) {
     for (const auto lhs_layer : lhs.layers) {
@@ -149,14 +215,17 @@ namespace volt::detail {
     }
     return std::nullopt;
 }
+
 [[nodiscard]] bool layers_overlap(const BoardCopperShape &lhs, const BoardCopperShape &rhs) {
     return first_common_layer(lhs, rhs).has_value();
 }
+
 void append_unique_layer(std::vector<BoardLayerId> &layers, BoardLayerId layer) {
     if (std::find(layers.begin(), layers.end(), layer) == layers.end()) {
         layers.push_back(layer);
     }
 }
+
 [[nodiscard]] std::vector<BoardLayerId> via_copper_layers(const Board &board, const BoardVia &via) {
     auto result = std::vector<BoardLayerId>{};
     if (board.layer_stack().has_value()) {
@@ -187,6 +256,7 @@ void append_unique_layer(std::vector<BoardLayerId> &layers, BoardLayerId layer) 
     append_unique_layer(result, via.end_layer());
     return result;
 }
+
 [[nodiscard]] std::vector<BoardLayerId>
 pad_copper_layers(const Board &board, const FootprintPad &pad, BoardSide placement_side) {
     auto result = std::vector<BoardLayerId>{};
@@ -217,6 +287,7 @@ pad_copper_layers(const Board &board, const FootprintPad &pad, BoardSide placeme
     }
     return result;
 }
+
 [[nodiscard]] const PadResolution *
 find_board_pad_resolution(const std::vector<PadResolution> &resolutions,
                           ComponentPlacementId placement, FootprintPadId pad) {
@@ -229,6 +300,7 @@ find_board_pad_resolution(const std::vector<PadResolution> &resolutions,
     }
     return &*match;
 }
+
 void append_track_shapes(const Board &board, std::vector<BoardCopperShape> &shapes) {
     for (std::size_t track_index = 0; track_index < board.track_count(); ++track_index) {
         const auto track_id = BoardTrackId{track_index};
@@ -246,6 +318,7 @@ void append_track_shapes(const Board &board, std::vector<BoardCopperShape> &shap
         }
     }
 }
+
 void append_via_shapes(const Board &board, std::vector<BoardCopperShape> &shapes) {
     for (std::size_t via_index = 0; via_index < board.via_count(); ++via_index) {
         const auto via_id = BoardViaId{via_index};
@@ -261,6 +334,7 @@ void append_via_shapes(const Board &board, std::vector<BoardCopperShape> &shapes
         });
     }
 }
+
 void append_zone_shapes(const Board &board, std::vector<BoardCopperShape> &shapes) {
     for (std::size_t zone_index = 0; zone_index < board.zone_count(); ++zone_index) {
         const auto zone_id = BoardZoneId{zone_index};
@@ -279,6 +353,7 @@ void append_zone_shapes(const Board &board, std::vector<BoardCopperShape> &shape
         });
     }
 }
+
 void append_pad_shapes(const Board &board, const FootprintLibrary &footprints,
                        const std::vector<PadResolution> &resolutions,
                        std::vector<BoardCopperShape> &shapes) {
@@ -336,6 +411,7 @@ void append_pad_shapes(const Board &board, const FootprintLibrary &footprints,
         }
     }
 }
+
 [[nodiscard]] std::vector<BoardCopperShape>
 collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
                       const std::vector<PadResolution> &resolutions) {
@@ -346,6 +422,7 @@ collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
     append_pad_shapes(board, footprints, resolutions, shapes);
     return shapes;
 }
+
 [[nodiscard]] bool polygon_satisfies_outline(const std::vector<BoardPoint> &polygon,
                                              const BoardOutline &outline, double clearance_mm) {
     for (std::size_t index = 0; index < polygon.size(); ++index) {
@@ -357,6 +434,7 @@ collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
     }
     return polygon_outline_boundary_distance(outline, polygon) + board_drc_epsilon >= clearance_mm;
 }
+
 [[nodiscard]] bool shape_satisfies_outline(const BoardCopperShape &shape,
                                            const BoardOutline &outline, double clearance_mm) {
     if (shape.kind == BoardCopperShapeKind::Disc) {
@@ -374,6 +452,7 @@ collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
 
     return polygon_satisfies_outline(shape.points, outline, clearance_mm);
 }
+
 [[nodiscard]] std::vector<EntityRef> copper_shape_entities(const BoardCopperShape &shape, NetId net,
                                                            BoardLayerId layer) {
     auto entities = shape.primary_entities;
@@ -381,6 +460,7 @@ collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
     entities.push_back(EntityRef::board_layer(layer));
     return entities;
 }
+
 void validate_track_widths(const Board &board, DiagnosticReport &report) {
     const auto &rules = board.design_rules();
     for (std::size_t index = 0; index < board.track_count(); ++index) {
@@ -396,6 +476,7 @@ void validate_track_widths(const Board &board, DiagnosticReport &report) {
                                                 EntityRef::board_layer(track.layer())}));
     }
 }
+
 void validate_via_rules(const Board &board, DiagnosticReport &report) {
     const auto &rules = board.design_rules();
     for (std::size_t index = 0; index < board.via_count(); ++index) {
@@ -416,6 +497,7 @@ void validate_via_rules(const Board &board, DiagnosticReport &report) {
         }
     }
 }
+
 void validate_outline_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
                                 DiagnosticReport &report) {
     if (!board.outline().has_value()) {
@@ -437,6 +519,7 @@ void validate_outline_clearance(const Board &board, const std::vector<BoardCoppe
                                     copper_shape_entities(shape, shape.net, layer.value())));
     }
 }
+
 void validate_netless_zone_outline_clearance(const Board &board, DiagnosticReport &report) {
     if (!board.outline().has_value()) {
         return;
@@ -457,6 +540,7 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
                                                 EntityRef::board_layer(zone.layers().front())}));
     }
 }
+
 [[nodiscard]] double net_rule_class_copper_clearance(const Circuit &circuit, NetId net) {
     const auto rule_class_id = circuit.rule_class_for_net(net);
     if (!rule_class_id.has_value()) {
@@ -465,11 +549,13 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
 
     return circuit.rule_class(rule_class_id.value()).copper_clearance_mm().value_or(0.0);
 }
+
 [[nodiscard]] double required_copper_clearance(const Board &board, NetId lhs, NetId rhs) {
     return std::max(board.design_rules().copper_clearance_mm(),
                     std::max(net_rule_class_copper_clearance(board.circuit(), lhs),
                              net_rule_class_copper_clearance(board.circuit(), rhs)));
 }
+
 void validate_copper_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
                                DiagnosticReport &report) {
     for (std::size_t lhs_index = 0; lhs_index < shapes.size(); ++lhs_index) {
@@ -501,6 +587,7 @@ void validate_copper_clearance(const Board &board, const std::vector<BoardCopper
         }
     }
 }
+
 [[nodiscard]] bool keepout_restricts(const BoardKeepout &keepout,
                                      BoardKeepoutRestriction restriction) {
     return std::find(keepout.restrictions().begin(), keepout.restrictions().end(),
@@ -508,10 +595,12 @@ void validate_copper_clearance(const Board &board, const std::vector<BoardCopper
            std::find(keepout.restrictions().begin(), keepout.restrictions().end(), restriction) !=
                keepout.restrictions().end();
 }
+
 [[nodiscard]] bool shape_has_entity_kind(const BoardCopperShape &shape, EntityKind kind) {
     return std::any_of(shape.primary_entities.begin(), shape.primary_entities.end(),
                        [kind](EntityRef entity) { return entity.kind() == kind; });
 }
+
 [[nodiscard]] std::optional<BoardLayerId>
 first_common_keepout_layer(const BoardKeepout &keepout, const std::vector<BoardLayerId> &layers) {
     for (const auto keepout_layer : keepout.layers()) {
@@ -521,6 +610,7 @@ first_common_keepout_layer(const BoardKeepout &keepout, const std::vector<BoardL
     }
     return std::nullopt;
 }
+
 [[nodiscard]] bool shape_violates_keepout(const BoardCopperShape &shape,
                                           const BoardKeepout &keepout) {
     if (shape.kind == BoardCopperShapeKind::Disc) {
@@ -533,6 +623,7 @@ first_common_keepout_layer(const BoardKeepout &keepout, const std::vector<BoardL
     }
     return polygon_polygon_distance(shape.points, keepout.outline()) <= board_drc_epsilon;
 }
+
 [[nodiscard]] std::vector<EntityRef>
 keepout_copper_entities(BoardKeepoutId keepout, const BoardCopperShape &shape, BoardLayerId layer) {
     auto entities = std::vector{EntityRef::board_keepout(keepout)};
@@ -541,6 +632,7 @@ keepout_copper_entities(BoardKeepoutId keepout, const BoardCopperShape &shape, B
     entities.push_back(EntityRef::board_layer(layer));
     return entities;
 }
+
 void validate_keepout_copper_shapes(const Board &board, const std::vector<BoardCopperShape> &shapes,
                                     DiagnosticReport &report) {
     for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
@@ -564,6 +656,7 @@ void validate_keepout_copper_shapes(const Board &board, const std::vector<BoardC
         }
     }
 }
+
 void validate_keepout_zones(const Board &board, DiagnosticReport &report) {
     for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
         const auto keepout_id = BoardKeepoutId{keepout_index};
@@ -591,6 +684,7 @@ void validate_keepout_zones(const Board &board, DiagnosticReport &report) {
         }
     }
 }
+
 void validate_keepout_vias(const Board &board, DiagnosticReport &report) {
     for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
         const auto keepout_id = BoardKeepoutId{keepout_index};
@@ -614,6 +708,7 @@ void validate_keepout_vias(const Board &board, DiagnosticReport &report) {
         }
     }
 }
+
 void validate_keepout_placements(const Board &board, DiagnosticReport &report) {
     for (std::size_t keepout_index = 0; keepout_index < board.keepout_count(); ++keepout_index) {
         const auto keepout_id = BoardKeepoutId{keepout_index};
@@ -637,6 +732,7 @@ void validate_keepout_placements(const Board &board, DiagnosticReport &report) {
         }
     }
 }
+
 [[nodiscard]] std::size_t connectivity_root(std::vector<std::size_t> &parents, std::size_t index) {
     while (parents[index] != index) {
         parents[index] = parents[parents[index]];
@@ -644,6 +740,7 @@ void validate_keepout_placements(const Board &board, DiagnosticReport &report) {
     }
     return index;
 }
+
 [[nodiscard]] std::optional<std::size_t>
 shape_index_for_pad(const std::vector<BoardCopperShape> &shapes, ComponentPlacementId placement,
                     FootprintPadId pad) {
@@ -658,6 +755,7 @@ shape_index_for_pad(const std::vector<BoardCopperShape> &shapes, ComponentPlacem
     }
     return std::nullopt;
 }
+
 void validate_unrouted_nets(const std::vector<PadResolution> &resolutions,
                             const std::vector<BoardCopperShape> &shapes, DiagnosticReport &report) {
     if (shapes.empty()) {
@@ -705,6 +803,7 @@ void validate_unrouted_nets(const std::vector<PadResolution> &resolutions,
                         EntityRef::footprint_pad(edge.to().pad())}));
     }
 }
+
 void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
                         const std::vector<PadResolution> &pad_resolutions,
                         DiagnosticReport &report) {

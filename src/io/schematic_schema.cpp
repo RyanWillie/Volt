@@ -15,6 +15,7 @@ namespace volt::io {
     }
     throw std::logic_error{"Unhandled schematic orientation"};
 }
+
 [[nodiscard]] std::optional<SchematicOrientation>
 schematic_orientation_from_name(std::string_view value) noexcept {
     if (value == "Right") {
@@ -31,6 +32,7 @@ schematic_orientation_from_name(std::string_view value) noexcept {
     }
     return std::nullopt;
 }
+
 [[nodiscard]] std::string_view symbol_line_role_name(SymbolLineRole role) {
     switch (role) {
     case SymbolLineRole::Normal:
@@ -42,6 +44,7 @@ schematic_orientation_from_name(std::string_view value) noexcept {
     }
     throw std::logic_error{"Unhandled symbol line role"};
 }
+
 [[nodiscard]] std::optional<SymbolLineRole>
 symbol_line_role_from_name(std::string_view value) noexcept {
     if (value.empty() || value == "Normal") {
@@ -55,6 +58,7 @@ symbol_line_role_from_name(std::string_view value) noexcept {
     }
     return std::nullopt;
 }
+
 [[nodiscard]] std::string_view text_horizontal_alignment_name(TextHorizontalAlignment alignment) {
     switch (alignment) {
     case TextHorizontalAlignment::Start:
@@ -66,6 +70,7 @@ symbol_line_role_from_name(std::string_view value) noexcept {
     }
     throw std::logic_error{"Unhandled text horizontal alignment"};
 }
+
 [[nodiscard]] std::optional<TextHorizontalAlignment>
 text_horizontal_alignment_from_name(std::string_view value) noexcept {
     if (value == "Start") {
@@ -79,6 +84,7 @@ text_horizontal_alignment_from_name(std::string_view value) noexcept {
     }
     return std::nullopt;
 }
+
 [[nodiscard]] std::string_view text_vertical_alignment_name(TextVerticalAlignment alignment) {
     switch (alignment) {
     case TextVerticalAlignment::Top:
@@ -92,6 +98,7 @@ text_horizontal_alignment_from_name(std::string_view value) noexcept {
     }
     throw std::logic_error{"Unhandled text vertical alignment"};
 }
+
 [[nodiscard]] std::optional<TextVerticalAlignment>
 text_vertical_alignment_from_name(std::string_view value) noexcept {
     if (value == "Top") {
@@ -108,6 +115,7 @@ text_vertical_alignment_from_name(std::string_view value) noexcept {
     }
     return std::nullopt;
 }
+
 [[nodiscard]] std::string_view sheet_orientation_name(SheetOrientation orientation) {
     switch (orientation) {
     case SheetOrientation::Portrait:
@@ -117,6 +125,7 @@ text_vertical_alignment_from_name(std::string_view value) noexcept {
     }
     throw std::logic_error{"Unhandled sheet orientation"};
 }
+
 [[nodiscard]] std::optional<SheetOrientation>
 sheet_orientation_from_name(std::string_view value) noexcept {
     if (value == "Portrait") {
@@ -127,6 +136,7 @@ sheet_orientation_from_name(std::string_view value) noexcept {
     }
     return std::nullopt;
 }
+
 [[nodiscard]] std::string_view route_intent_name(RouteIntent intent) {
     switch (intent) {
     case RouteIntent::Direct:
@@ -136,6 +146,7 @@ sheet_orientation_from_name(std::string_view value) noexcept {
     }
     throw std::logic_error{"Unhandled route intent"};
 }
+
 [[nodiscard]] std::optional<RouteIntent> route_intent_from_name(std::string_view value) noexcept {
     if (value == "Direct") {
         return RouteIntent::Direct;
@@ -145,6 +156,7 @@ sheet_orientation_from_name(std::string_view value) noexcept {
     }
     return std::nullopt;
 }
+
 [[nodiscard]] std::string_view power_port_kind_name(PowerPortKind kind) {
     switch (kind) {
     case PowerPortKind::Power:
@@ -154,6 +166,7 @@ sheet_orientation_from_name(std::string_view value) noexcept {
     }
     throw std::logic_error{"Unhandled power port kind"};
 }
+
 [[nodiscard]] std::optional<PowerPortKind>
 power_port_kind_from_name(std::string_view value) noexcept {
     if (value == "Power") {
@@ -164,6 +177,7 @@ power_port_kind_from_name(std::string_view value) noexcept {
     }
     return std::nullopt;
 }
+
 [[nodiscard]] std::string_view sheet_port_kind_name(SheetPortKind kind) {
     switch (kind) {
     case SheetPortKind::Input:
@@ -177,6 +191,7 @@ power_port_kind_from_name(std::string_view value) noexcept {
     }
     throw std::logic_error{"Unhandled sheet port kind"};
 }
+
 [[nodiscard]] std::optional<SheetPortKind>
 sheet_port_kind_from_name(std::string_view value) noexcept {
     if (value == "Input") {

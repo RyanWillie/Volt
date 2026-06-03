@@ -217,12 +217,11 @@ def test_python_board_authoring_writes_zones_keepouts_and_text():
     assert document["board"]["zones"][0]["net"] == "net:1"
     assert document["board"]["zones"][0]["layers"] == ["board_layer:0"]
     assert document["board"]["zones"][0]["priority"] == 4
-    feature_kinds = [feature["kind"] for feature in document["board"]["features"]]
-    assert feature_kinds == ["mechanical_keepout", "text"]
-    assert document["board"]["features"][0]["restrictions"] == ["copper", "via"]
-    assert document["board"]["features"][1]["text"] == "REV A"
-    assert document["board"]["features"][1]["layer"] == "board_layer:1"
-    assert document["board"]["features"][1]["locked"] is True
+    assert document["board"]["features"] == []
+    assert document["board"]["keepouts"][0]["restrictions"] == ["copper", "via"]
+    assert document["board"]["texts"][0]["text"] == "REV A"
+    assert document["board"]["texts"][0]["layer"] == "board_layer:1"
+    assert document["board"]["texts"][0]["locked"] is True
 
     svg = board.to_svg()
     assert 'data-zone="board_zone:0"' in svg
@@ -270,8 +269,6 @@ def test_python_board_authoring_adds_generic_board_primitives():
         "cutout",
         "circle",
         "hole",
-        "text",
-        "mechanical_keepout",
     ]
     assert features[0]["role"] == "mounting"
     assert features[0]["plated"] is False
@@ -281,8 +278,8 @@ def test_python_board_authoring_adds_generic_board_primitives():
     assert features[4]["side"] == "top"
     assert features[4]["role"] == "fiducial"
     assert features[5]["role"] == "tooling"
-    assert features[6]["text"] == "REV A"
-    assert features[7]["restrictions"] == ["copper", "via"]
+    assert document["board"]["texts"][0]["text"] == "REV A"
+    assert document["board"]["keepouts"][0]["restrictions"] == ["copper", "via"]
     assert {diagnostic.code for diagnostic in board.validate()} == set()
 
     svg = board.to_svg()

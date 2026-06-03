@@ -15,6 +15,7 @@ FootprintPoint::FootprintPoint(double x_mm, double y_mm) : x_mm_{x_mm}, y_mm_{y_
         throw std::invalid_argument{"Footprint point coordinates must be finite"};
     }
 }
+
 FootprintSize::FootprintSize(double width_mm, double height_mm)
     : width_mm_{width_mm}, height_mm_{height_mm} {
     if (!std::isfinite(width_mm_) || !std::isfinite(height_mm_)) {
@@ -24,6 +25,7 @@ FootprintSize::FootprintSize(double width_mm, double height_mm)
         throw std::invalid_argument{"Footprint size dimensions must be positive"};
     }
 }
+
 FootprintLayerSet::FootprintLayerSet(std::vector<FootprintLayer> layers)
     : layers_{std::move(layers)} {
     if (layers_.empty()) {
@@ -36,45 +38,55 @@ FootprintLayerSet::FootprintLayerSet(std::vector<FootprintLayer> layers)
         throw std::invalid_argument{"Footprint layer set must not contain duplicate layers"};
     }
 }
+
 [[nodiscard]] FootprintLayerSet FootprintLayerSet::front_smd() {
     return FootprintLayerSet{std::vector{
         FootprintLayer::FrontCopper, FootprintLayer::FrontSolderMask, FootprintLayer::FrontPaste}};
 }
+
 [[nodiscard]] FootprintLayerSet FootprintLayerSet::back_smd() {
     return FootprintLayerSet{std::vector{FootprintLayer::BackCopper, FootprintLayer::BackSolderMask,
                                          FootprintLayer::BackPaste}};
 }
+
 [[nodiscard]] FootprintLayerSet FootprintLayerSet::through_hole() {
     return FootprintLayerSet{std::vector{FootprintLayer::FrontCopper, FootprintLayer::BackCopper,
                                          FootprintLayer::FrontSolderMask,
                                          FootprintLayer::BackSolderMask}};
 }
+
 [[nodiscard]] FootprintLayerSet FootprintLayerSet::mechanical_hole() {
     return FootprintLayerSet{
         std::vector{FootprintLayer::FrontSolderMask, FootprintLayer::BackSolderMask}};
 }
+
 [[nodiscard]] bool FootprintLayerSet::contains(FootprintLayer layer) const noexcept {
     return std::find(layers_.begin(), layers_.end(), layer) != layers_.end();
 }
+
 [[nodiscard]] bool FootprintLayerSet::is_front_smd() const noexcept {
     return layers_.size() == 3 && layers_[0] == FootprintLayer::FrontCopper &&
            layers_[1] == FootprintLayer::FrontSolderMask &&
            layers_[2] == FootprintLayer::FrontPaste;
 }
+
 [[nodiscard]] bool FootprintLayerSet::is_back_smd() const noexcept {
     return layers_.size() == 3 && layers_[0] == FootprintLayer::BackCopper &&
            layers_[1] == FootprintLayer::BackSolderMask && layers_[2] == FootprintLayer::BackPaste;
 }
+
 [[nodiscard]] bool FootprintLayerSet::is_through_hole() const noexcept {
     return layers_.size() == 4 && layers_[0] == FootprintLayer::FrontCopper &&
            layers_[1] == FootprintLayer::BackCopper &&
            layers_[2] == FootprintLayer::FrontSolderMask &&
            layers_[3] == FootprintLayer::BackSolderMask;
 }
+
 [[nodiscard]] bool FootprintLayerSet::is_mechanical_hole() const noexcept {
     return layers_.size() == 2 && layers_[0] == FootprintLayer::FrontSolderMask &&
            layers_[1] == FootprintLayer::BackSolderMask;
 }
+
 FootprintDrill::FootprintDrill(double diameter_mm, FootprintPadPlating plating)
     : diameter_mm_{diameter_mm}, plating_{plating} {
     if (!std::isfinite(diameter_mm_)) {
@@ -84,6 +96,7 @@ FootprintDrill::FootprintDrill(double diameter_mm, FootprintPadPlating plating)
         throw std::invalid_argument{"Footprint drill diameter must be positive"};
     }
 }
+
 [[nodiscard]] FootprintPad
 FootprintPad::surface_mount(std::string label, FootprintPadShape shape, FootprintPoint position,
                             FootprintSize size, FootprintLayerSet layers,
@@ -97,6 +110,7 @@ FootprintPad::surface_mount(std::string label, FootprintPadShape shape, Footprin
                         std::nullopt,
                         mechanical_role};
 }
+
 [[nodiscard]] FootprintPad
 FootprintPad::through_hole(std::string label, FootprintPadShape shape, FootprintPoint position,
                            FootprintSize size, FootprintLayerSet layers, FootprintDrill drill,
@@ -110,13 +124,16 @@ FootprintPad::through_hole(std::string label, FootprintPadShape shape, Footprint
                         drill,
                         mechanical_role};
 }
+
 [[nodiscard]] const std::optional<FootprintPadMechanicalRole> &
 FootprintPad::mechanical_role() const noexcept {
     return mechanical_role_;
 }
+
 [[nodiscard]] bool FootprintPad::requires_pin_mapping() const noexcept {
     return !mechanical_role_.has_value();
 }
+
 FootprintPad::FootprintPad(std::string label, FootprintPadKind kind, FootprintPadShape shape,
                            FootprintPoint position, FootprintSize size, FootprintLayerSet layers,
                            std::optional<FootprintDrill> drill,
@@ -148,6 +165,7 @@ FootprintPad::FootprintPad(std::string label, FootprintPadKind kind, FootprintPa
         throw std::invalid_argument{"Through-hole footprint pads must use through-hole layers"};
     }
 }
+
 FootprintDefinition::FootprintDefinition(FootprintRef ref, std::vector<FootprintPad> pads)
     : ref_{std::move(ref)}, pads_{std::move(pads)} {
     if (pads_.empty()) {
@@ -164,12 +182,14 @@ FootprintDefinition::FootprintDefinition(FootprintRef ref, std::vector<Footprint
         }
     }
 }
+
 [[nodiscard]] const FootprintPad &FootprintDefinition::pad(FootprintPadId id) const {
     if (id.index() >= pads_.size()) {
         throw std::out_of_range{"Footprint pad id is out of range"};
     }
     return pads_[id.index()];
 }
+
 [[nodiscard]] std::optional<FootprintPadId>
 FootprintDefinition::pad_id(std::string_view label) const noexcept {
     for (std::size_t index = 0; index < pads_.size(); ++index) {
@@ -179,12 +199,14 @@ FootprintDefinition::pad_id(std::string_view label) const noexcept {
     }
     return std::nullopt;
 }
+
 void FootprintLibrary::add(FootprintDefinition definition) {
     if (find(definition.ref()) != nullptr) {
         throw std::invalid_argument{"Footprint library already contains this footprint"};
     }
     definitions_.push_back(std::move(definition));
 }
+
 [[nodiscard]] const FootprintDefinition *
 FootprintLibrary::find(const FootprintRef &ref) const noexcept {
     const auto match = std::find_if(
@@ -195,78 +217,97 @@ FootprintLibrary::find(const FootprintRef &ref) const noexcept {
     }
     return &*match;
 }
+
 [[nodiscard]] const std::vector<FootprintDefinition> &
 FootprintLibrary::definitions() const noexcept {
     return definitions_;
 }
+
 FootprintPadBinding::FootprintPadBinding(FootprintPadId pad, PinDefId pin) : pad_{pad}, pin_{pin} {}
+
 FootprintResolution::FootprintResolution(std::optional<FootprintDefinition> definition,
                                          std::vector<FootprintPadBinding> pad_bindings,
                                          DiagnosticReport diagnostics)
     : definition_{std::move(definition)}, pad_bindings_{std::move(pad_bindings)},
       diagnostics_{std::move(diagnostics)} {}
+
 [[nodiscard]] bool FootprintResolution::ok() const noexcept {
     return definition_.has_value() && !diagnostics_.has_errors();
 }
+
 [[nodiscard]] const FootprintDefinition *FootprintResolution::definition() const noexcept {
     if (!definition_.has_value()) {
         return nullptr;
     }
     return &definition_.value();
 }
+
 [[nodiscard]] const std::vector<FootprintPadBinding> &
 FootprintResolution::pad_bindings() const noexcept {
     return pad_bindings_;
 }
+
 [[nodiscard]] FootprintDefinition passive_0603_footprint() {
     return detail::two_terminal_smd_footprint(FootprintRef{"passives", "R_0603_1608Metric"}, 1.50,
                                               0.80, 0.95);
 }
+
 [[nodiscard]] FootprintDefinition resistor_0402_footprint() {
     return detail::two_terminal_smd_footprint(FootprintRef{"passives", "R_0402_1005Metric"}, 1.00,
                                               0.55, 0.60);
 }
+
 [[nodiscard]] FootprintDefinition resistor_0805_footprint() {
     return detail::two_terminal_smd_footprint(FootprintRef{"passives", "R_0805_2012Metric"}, 2.00,
                                               1.05, 1.20);
 }
+
 [[nodiscard]] FootprintDefinition capacitor_0603_footprint() {
     return detail::two_terminal_smd_footprint(FootprintRef{"passives", "C_0603_1608Metric"}, 1.50,
                                               0.80, 0.95);
 }
+
 [[nodiscard]] FootprintDefinition inductor_0603_footprint() {
     return detail::two_terminal_smd_footprint(FootprintRef{"passives", "L_0603_1608Metric"}, 1.50,
                                               0.80, 0.95);
 }
+
 [[nodiscard]] FootprintDefinition led_0603_footprint() {
     return detail::two_terminal_smd_footprint(FootprintRef{"leds", "LED_0603_1608Metric"}, 1.50,
                                               0.80, 0.95);
 }
+
 [[nodiscard]] FootprintDefinition diode_0603_footprint() {
     return detail::two_terminal_smd_footprint(FootprintRef{"diodes", "D_0603_1608Metric"}, 1.50,
                                               0.80, 0.95);
 }
+
 [[nodiscard]] FootprintDefinition diode_sod_123_footprint() {
     return detail::two_terminal_smd_footprint(FootprintRef{"diodes", "D_SOD-123"}, 3.70, 1.20,
                                               1.35);
 }
+
 [[nodiscard]] FootprintDefinition header_1x02_footprint() {
     return detail::single_row_header_footprint(
         FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"}, 2U, 2.54);
 }
+
 [[nodiscard]] FootprintDefinition header_1x04_footprint() {
     return detail::single_row_header_footprint(
         FootprintRef{"connectors", "PinHeader_1x04_P2.54mm_Vertical"}, 4U, 2.54);
 }
+
 [[nodiscard]] FootprintDefinition header_2x05_127_footprint() {
     return detail::dual_row_header_footprint(
         FootprintRef{"connectors", "PinHeader_2x05_P1.27mm_Vertical"}, 5U, 1.27, 1.27);
 }
+
 [[nodiscard]] FootprintDefinition terminal_block_1x02_footprint() {
     return FootprintDefinition{FootprintRef{"connectors", "TerminalBlock_1x02_P5.08mm"},
                                std::vector{detail::plated_round_pad("1", 0.0, -2.54, 2.20, 1.30),
                                            detail::plated_round_pad("2", 0.0, 2.54, 2.20, 1.30)}};
 }
+
 [[nodiscard]] FootprintDefinition micro_usb_b_footprint() {
     return FootprintDefinition{
         FootprintRef{"connectors", "USB_Micro-B_Receptacle"},
@@ -283,6 +324,7 @@ FootprintResolution::pad_bindings() const noexcept {
                                         FootprintPadMechanicalRole::MechanicalSupport),
         }};
 }
+
 [[nodiscard]] FootprintDefinition sot_23_footprint() {
     return FootprintDefinition{FootprintRef{"Package_TO_SOT_SMD", "SOT-23"},
                                std::vector{
@@ -291,10 +333,12 @@ FootprintResolution::pad_bindings() const noexcept {
                                    detail::front_smd_pad("3", 1.00, 0.0, 0.65, 0.95),
                                }};
 }
+
 [[nodiscard]] FootprintDefinition sot_23_6_footprint() {
     return detail::two_side_smd_package(FootprintRef{"Package_TO_SOT_SMD", "SOT-23-6"}, 6U, 1.25,
                                         0.95, 0.60, 0.80);
 }
+
 [[nodiscard]] FootprintDefinition sot_223_3_footprint() {
     return FootprintDefinition{FootprintRef{"Package_TO_SOT_SMD", "SOT-223-3_TabPin2"},
                                std::vector{
@@ -304,22 +348,27 @@ FootprintResolution::pad_bindings() const noexcept {
                                    detail::front_smd_pad("4", 0.00, 2.05, 3.80, 2.20),
                                }};
 }
+
 [[nodiscard]] FootprintDefinition soic_8_footprint() {
     return detail::two_side_smd_package(FootprintRef{"ics", "SOIC-8_3.9x4.9mm_P1.27mm"}, 8U, 2.70,
                                         1.27, 0.60, 1.55);
 }
+
 [[nodiscard]] FootprintDefinition package_so_soic_8_footprint() {
     return detail::two_side_smd_package(FootprintRef{"Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"}, 8U,
                                         2.70, 1.27, 0.60, 1.55);
 }
+
 [[nodiscard]] FootprintDefinition tssop_14_footprint() {
     return detail::two_side_smd_package(FootprintRef{"Package_SO", "TSSOP-14_4.4x5mm_P0.65mm"}, 14U,
                                         3.05, 0.65, 0.45, 1.10);
 }
+
 [[nodiscard]] FootprintDefinition lqfp_64_footprint() {
     return detail::qfp_footprint(FootprintRef{"Package_QFP", "LQFP-64_10x10mm_P0.5mm"}, 64U, 5.80,
                                  0.50, 1.35, 0.30);
 }
+
 [[nodiscard]] FootprintLibrary builtin_footprint_library() {
     auto library = FootprintLibrary{};
     library.add(resistor_0402_footprint());
@@ -344,6 +393,7 @@ FootprintResolution::pad_bindings() const noexcept {
     library.add(lqfp_64_footprint());
     return library;
 }
+
 [[nodiscard]] FootprintResolution resolve_footprint(const PhysicalPart &part,
                                                     const FootprintLibrary &library) {
     auto diagnostics = DiagnosticReport{};
@@ -414,12 +464,15 @@ namespace volt::detail {
 [[nodiscard]] Diagnostic footprint_diagnostic(DiagnosticCode code, std::string message) {
     return Diagnostic{Severity::Error, std::move(code), std::move(message)};
 }
+
 [[nodiscard]] std::string footprint_ref_label(const FootprintRef &ref) {
     return ref.library() + ":" + ref.name();
 }
+
 [[nodiscard]] std::string pin_def_label(PinDefId pin) {
     return "pin_def:" + std::to_string(pin.index());
 }
+
 [[nodiscard]] FootprintPad front_smd_pad(std::string label, double x_mm, double y_mm,
                                          double width_mm, double height_mm,
                                          FootprintPadShape shape) {
@@ -427,12 +480,14 @@ namespace volt::detail {
                                        FootprintSize{width_mm, height_mm},
                                        FootprintLayerSet::front_smd());
 }
+
 [[nodiscard]] FootprintPad plated_header_pad(std::string label, double x_mm, double y_mm) {
     return FootprintPad::through_hole(std::move(label), FootprintPadShape::Circle,
                                       FootprintPoint{x_mm, y_mm}, FootprintSize{1.70, 1.70},
                                       FootprintLayerSet::through_hole(),
                                       FootprintDrill{1.00, FootprintPadPlating::Plated});
 }
+
 [[nodiscard]] FootprintPad plated_round_pad(std::string label, double x_mm, double y_mm,
                                             double diameter_mm, double drill_mm) {
     return FootprintPad::through_hole(
@@ -440,6 +495,7 @@ namespace volt::detail {
         FootprintSize{diameter_mm, diameter_mm}, FootprintLayerSet::through_hole(),
         FootprintDrill{drill_mm, FootprintPadPlating::Plated});
 }
+
 [[nodiscard]] FootprintPad mechanical_hole_pad(std::string label, double x_mm, double y_mm,
                                                double diameter_mm, double drill_mm,
                                                FootprintPadMechanicalRole role) {
@@ -448,6 +504,7 @@ namespace volt::detail {
         FootprintSize{diameter_mm, diameter_mm}, FootprintLayerSet::mechanical_hole(),
         FootprintDrill{drill_mm, FootprintPadPlating::NonPlated}, role);
 }
+
 [[nodiscard]] FootprintDefinition two_terminal_smd_footprint(FootprintRef ref, double pad_span_mm,
                                                              double pad_width_mm,
                                                              double pad_height_mm) {
@@ -457,6 +514,7 @@ namespace volt::detail {
         std::vector{front_smd_pad("1", -half_span, 0.0, pad_width_mm, pad_height_mm),
                     front_smd_pad("2", half_span, 0.0, pad_width_mm, pad_height_mm)}};
 }
+
 [[nodiscard]] FootprintDefinition
 single_row_header_footprint(FootprintRef ref, std::size_t pin_count, double pitch_mm) {
     auto pads = std::vector<FootprintPad>{};
@@ -468,6 +526,7 @@ single_row_header_footprint(FootprintRef ref, std::size_t pin_count, double pitc
     }
     return FootprintDefinition{std::move(ref), std::move(pads)};
 }
+
 [[nodiscard]] FootprintDefinition dual_row_header_footprint(FootprintRef ref,
                                                             std::size_t pins_per_row,
                                                             double row_spacing_mm,
@@ -484,6 +543,7 @@ single_row_header_footprint(FootprintRef ref, std::size_t pin_count, double pitc
     }
     return FootprintDefinition{std::move(ref), std::move(pads)};
 }
+
 [[nodiscard]] FootprintDefinition two_side_smd_package(FootprintRef ref, std::size_t pin_count,
                                                        double row_center_x_mm, double pitch_mm,
                                                        double pad_width_mm, double pad_height_mm) {
@@ -507,6 +567,7 @@ single_row_header_footprint(FootprintRef ref, std::size_t pin_count, double pitc
     }
     return FootprintDefinition{std::move(ref), std::move(pads)};
 }
+
 [[nodiscard]] FootprintDefinition qfp_footprint(FootprintRef ref, std::size_t pin_count,
                                                 double side_center_mm, double pitch_mm,
                                                 double pad_length_mm, double pad_width_mm) {
