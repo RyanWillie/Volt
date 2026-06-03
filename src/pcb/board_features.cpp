@@ -4,27 +4,202 @@
 #include <cmath>
 #include <cstddef>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace volt {
 
-[[nodiscard]] BoardFeature BoardFeature::mounting_hole(std::string label, BoardPoint center,
-                                                       double drill_diameter_mm) {
-    return BoardFeature{BoardFeatureKind::MountingHole, std::move(label), center,
-                        drill_diameter_mm};
+BoardHole::BoardHole(BoardPoint center, double drill_diameter_mm, bool plated,
+                     std::optional<double> finished_diameter_mm)
+    : center_{center}, drill_diameter_mm_{drill_diameter_mm}, plated_{plated},
+      finished_diameter_mm_{finished_diameter_mm} {
+    if (!std::isfinite(drill_diameter_mm_)) {
+        throw std::invalid_argument{"Board hole drill diameter must be finite"};
+    }
+    if (drill_diameter_mm_ <= 0.0) {
+        throw std::invalid_argument{"Board hole drill diameter must be positive"};
+    }
+    if (finished_diameter_mm_.has_value() && !std::isfinite(finished_diameter_mm_.value())) {
+        throw std::invalid_argument{"Board hole finished diameter must be finite"};
+    }
+    if (finished_diameter_mm_.has_value() && finished_diameter_mm_.value() <= 0.0) {
+        throw std::invalid_argument{"Board hole finished diameter must be positive"};
+    }
 }
-BoardFeature::BoardFeature(BoardFeatureKind kind, std::string label, BoardPoint position,
-                           double diameter_mm)
-    : kind_{kind}, label_{std::move(label)}, position_{position}, diameter_mm_{diameter_mm} {
+BoardSlot::BoardSlot(BoardPoint start, BoardPoint end, double width_mm, bool plated)
+    : start_{start}, end_{end}, width_mm_{width_mm}, plated_{plated} {
+    if (start_ == end_) {
+        throw std::invalid_argument{"Board slot endpoints must be distinct"};
+    }
+    if (!std::isfinite(width_mm_)) {
+        throw std::invalid_argument{"Board slot width must be finite"};
+    }
+    if (width_mm_ <= 0.0) {
+        throw std::invalid_argument{"Board slot width must be positive"};
+    }
+}
+BoardCutout::BoardCutout(std::vector<BoardPoint> outline) : outline_{std::move(outline)} {}
+[[nodiscard]] const std::vector<BoardPoint> &BoardCutout::outline() const noexcept {
+    return outline_.vertices();
+}
+BoardFiducial::BoardFiducial(BoardPoint center, double diameter_mm, BoardSide side)
+    : center_{center}, diameter_mm_{diameter_mm}, side_{side} {
     if (!std::isfinite(diameter_mm_)) {
-        throw std::invalid_argument{"Board feature diameter must be finite"};
+        throw std::invalid_argument{"Board fiducial diameter must be finite"};
     }
     if (diameter_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board feature diameter must be positive"};
+        throw std::invalid_argument{"Board fiducial diameter must be positive"};
     }
 }
+BoardKeepout::BoardKeepout(std::vector<BoardPoint> outline, std::vector<BoardLayerId> layers,
+                           std::vector<BoardKeepoutRestriction> restrictions)
+    : outline_{std::move(outline)}, layers_{std::move(layers)},
+      restrictions_{std::move(restrictions)} {
+    validate_layers();
+    validate_restrictions();
+}
+[[nodiscard]] const std::vector<BoardPoint> &BoardKeepout::outline() const noexcept {
+    return outline_.vertices();
+}
+[[nodiscard]] const std::vector<BoardKeepoutRestriction> &
+BoardKeepout::restrictions() const noexcept {
+    return restrictions_;
+}
+void BoardKeepout::validate_layers() const {
+    if (layers_.empty()) {
+        throw std::invalid_argument{"Board keepout layers must not be empty"};
+    }
+    auto sorted = layers_;
+    std::sort(sorted.begin(), sorted.end(),
+              [](BoardLayerId lhs, BoardLayerId rhs) { return lhs.index() < rhs.index(); });
+    const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
+    if (duplicate != sorted.end()) {
+        throw std::invalid_argument{"Board keepout layers must not contain duplicates"};
+    }
+}
+void BoardKeepout::validate_restrictions() const {
+    if (restrictions_.empty()) {
+        throw std::invalid_argument{"Board keepout restrictions must not be empty"};
+    }
+    auto sorted = restrictions_;
+    std::sort(sorted.begin(), sorted.end());
+    const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
+    if (duplicate != sorted.end()) {
+        throw std::invalid_argument{"Board keepout restrictions must not contain duplicates"};
+    }
+}
+BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotation,
+                     BoardLayerId layer, double size_mm, bool locked)
+    : text_{std::move(text)}, position_{position}, rotation_{rotation}, layer_{layer},
+      size_mm_{size_mm}, locked_{locked} {
+    if (text_.empty()) {
+        throw std::invalid_argument{"Board text must not be empty"};
+    }
+    if (!std::isfinite(size_mm_)) {
+        throw std::invalid_argument{"Board text size must be finite"};
+    }
+    if (size_mm_ <= 0.0) {
+        throw std::invalid_argument{"Board text size must be positive"};
+    }
+}
+
+[[nodiscard]] BoardFeature BoardFeature::hole(std::string label, BoardPoint center,
+                                              double drill_diameter_mm, bool plated,
+                                              std::string role,
+                                              std::optional<double> finished_diameter_mm) {
+    auto kind = BoardFeatureKind::Hole;
+    if (role == "mounting") {
+        kind = BoardFeatureKind::MountingHole;
+    } else if (role == "tooling") {
+        kind = BoardFeatureKind::ToolingHole;
+    }
+    return BoardFeature{kind, std::move(label), std::move(role),
+                        BoardHole{center, drill_diameter_mm, plated, finished_diameter_mm}};
+}
+[[nodiscard]] BoardFeature BoardFeature::mounting_hole(std::string label, BoardPoint center,
+                                                       double drill_diameter_mm) {
+    return BoardFeature::hole(std::move(label), center, drill_diameter_mm, false, "mounting");
+}
+[[nodiscard]] BoardFeature BoardFeature::tooling_hole(std::string label, BoardPoint center,
+                                                      double drill_diameter_mm,
+                                                      std::optional<double> finished_diameter_mm) {
+    return BoardFeature{BoardFeatureKind::ToolingHole, std::move(label), "tooling",
+                        BoardHole{center, drill_diameter_mm, false, finished_diameter_mm}};
+}
+[[nodiscard]] BoardFeature BoardFeature::slot(std::string label, BoardPoint start, BoardPoint end,
+                                              double width_mm, bool plated, std::string role) {
+    return BoardFeature{BoardFeatureKind::Slot, std::move(label), std::move(role),
+                        BoardSlot{start, end, width_mm, plated}};
+}
+[[nodiscard]] BoardFeature BoardFeature::cutout(std::string label, std::vector<BoardPoint> outline,
+                                                std::string role) {
+    return BoardFeature{BoardFeatureKind::Cutout, std::move(label), std::move(role),
+                        BoardCutout{std::move(outline)}};
+}
+[[nodiscard]] BoardFeature BoardFeature::fiducial(std::string label, BoardPoint center,
+                                                  double diameter_mm, BoardSide side) {
+    return BoardFeature{BoardFeatureKind::Fiducial, std::move(label), "fiducial",
+                        BoardFiducial{center, diameter_mm, side}};
+}
+[[nodiscard]] BoardFeature BoardFeature::text(BoardText text) {
+    return BoardFeature{BoardFeatureKind::Text, {}, {}, std::move(text)};
+}
+[[nodiscard]] BoardFeature BoardFeature::mechanical_keepout(BoardKeepout keepout) {
+    return BoardFeature{BoardFeatureKind::MechanicalKeepout, {}, "mechanical", std::move(keepout)};
+}
+[[nodiscard]] BoardPoint BoardFeature::position() const {
+    switch (kind_) {
+    case BoardFeatureKind::Hole:
+    case BoardFeatureKind::MountingHole:
+    case BoardFeatureKind::ToolingHole:
+        return hole().center();
+    case BoardFeatureKind::Slot:
+        return slot().start();
+    case BoardFeatureKind::Cutout:
+        return cutout().outline().front();
+    case BoardFeatureKind::Fiducial:
+        return fiducial().center();
+    case BoardFeatureKind::Text:
+        return text().position();
+    case BoardFeatureKind::MechanicalKeepout:
+        return keepout().outline().front();
+    }
+    throw std::logic_error{"Unhandled board feature kind"};
+}
+[[nodiscard]] double BoardFeature::diameter_mm() const {
+    switch (kind_) {
+    case BoardFeatureKind::Hole:
+    case BoardFeatureKind::MountingHole:
+    case BoardFeatureKind::ToolingHole:
+        return hole().drill_diameter_mm();
+    case BoardFeatureKind::Fiducial:
+        return fiducial().diameter_mm();
+    case BoardFeatureKind::Slot:
+        return slot().width_mm();
+    case BoardFeatureKind::Cutout:
+    case BoardFeatureKind::Text:
+    case BoardFeatureKind::MechanicalKeepout:
+        return 0.0;
+    }
+    throw std::logic_error{"Unhandled board feature kind"};
+}
+[[nodiscard]] const BoardHole &BoardFeature::hole() const { return std::get<BoardHole>(payload_); }
+[[nodiscard]] const BoardSlot &BoardFeature::slot() const { return std::get<BoardSlot>(payload_); }
+[[nodiscard]] const BoardCutout &BoardFeature::cutout() const {
+    return std::get<BoardCutout>(payload_);
+}
+[[nodiscard]] const BoardFiducial &BoardFeature::fiducial() const {
+    return std::get<BoardFiducial>(payload_);
+}
+[[nodiscard]] const BoardText &BoardFeature::text() const { return std::get<BoardText>(payload_); }
+[[nodiscard]] const BoardKeepout &BoardFeature::keepout() const {
+    return std::get<BoardKeepout>(payload_);
+}
+BoardFeature::BoardFeature(BoardFeatureKind kind, std::string label, std::string role,
+                           Payload payload)
+    : kind_{kind}, label_{std::move(label)}, role_{std::move(role)}, payload_{std::move(payload)} {}
 ComponentPlacement::ComponentPlacement(ComponentId component, BoardPoint position,
                                        BoardRotation rotation, BoardSide side, bool locked)
     : component_{component}, position_{position}, rotation_{rotation}, side_{side},

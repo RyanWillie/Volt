@@ -31,18 +31,6 @@ class BoardCopperModel {
     /** Return the number of copper zones owned by this model. */
     [[nodiscard]] std::size_t zone_count() const noexcept;
 
-    /** Return a keepout by board-local ID. */
-    [[nodiscard]] const BoardKeepout &keepout(BoardKeepoutId id) const;
-
-    /** Return the number of keepouts owned by this model. */
-    [[nodiscard]] std::size_t keepout_count() const noexcept;
-
-    /** Return board text by board-local ID. */
-    [[nodiscard]] const BoardText &text(BoardTextId id) const;
-
-    /** Return the number of board text items owned by this model. */
-    [[nodiscard]] std::size_t text_count() const noexcept;
-
   private:
     friend class Board;
 
@@ -55,17 +43,9 @@ class BoardCopperModel {
     /** Add a copper zone and return its stable board-local ID. */
     [[nodiscard]] BoardZoneId add_zone(BoardZone zone);
 
-    /** Add a copper keepout and return its stable board-local ID. */
-    [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout);
-
-    /** Add board text and return its stable board-local ID. */
-    [[nodiscard]] BoardTextId add_text(BoardText text);
-
     EntityTable<BoardTrack, BoardTrackId> tracks_;
     EntityTable<BoardVia, BoardViaId> vias_;
     EntityTable<BoardZone, BoardZoneId> zones_;
-    EntityTable<BoardKeepout, BoardKeepoutId> keepouts_;
-    EntityTable<BoardText, BoardTextId> texts_;
 };
 
 } // namespace volt

@@ -342,24 +342,30 @@ void write_nets(std::ostream &out, const Circuit &circuit) {
     }
 }
 
-void write_mounting_hole(std::ostream &out, const BoardFeature &feature, BoardFeatureId id) {
-    out << "  (footprint \"MountingHole_NPTH\"\n";
+void write_board_hole(std::ostream &out, const BoardFeature &feature, BoardFeatureId id) {
+    const auto &hole = feature.hole();
+    out << "  (footprint \""
+        << (feature.kind() == BoardFeatureKind::ToolingHole
+                ? "ToolingHole_NPTH"
+                : (feature.kind() == BoardFeatureKind::MountingHole ? "MountingHole_NPTH"
+                                                                    : "BoardHole_NPTH"))
+        << "\"\n";
     out << "    (layer \"F.Cu\")\n";
     out << "    (uuid " << sexpr_string(pcb_uuid("board-feature", id.index(), "footprint"))
         << ")\n";
     out << "    ";
-    write_at(out, feature.position());
+    write_at(out, hole.center());
     out << "\n";
     out << "    (attr exclude_from_pos_files exclude_from_bom)\n";
     out << "    (pad \"\" np_thru_hole circle\n";
     out << "      (at 0 0)\n";
     out << "      (size ";
-    write_number(out, feature.diameter_mm());
+    write_number(out, hole.drill_diameter_mm());
     out << ' ';
-    write_number(out, feature.diameter_mm());
+    write_number(out, hole.drill_diameter_mm());
     out << ")\n";
     out << "      (drill ";
-    write_number(out, feature.diameter_mm());
+    write_number(out, hole.drill_diameter_mm());
     out << ")\n";
     out << "      (layers \"*.Cu\" \"*.Mask\")\n";
     out << "      (uuid " << sexpr_string(pcb_uuid("board-feature", id.index(), "pad", 0U))
@@ -372,13 +378,40 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
     for (std::size_t index = 0; index < board.feature_count(); ++index) {
         const auto id = BoardFeatureId{index};
         const auto &feature = board.feature(id);
-        if (feature.kind() != BoardFeatureKind::MountingHole) {
-            loss_report.add_warning(
-                LossKind::UnsupportedConstruct, "board.feature",
-                "The first KiCad PCB writer subset exports only mounting holes");
+        if (feature.kind() == BoardFeatureKind::Hole ||
+            feature.kind() == BoardFeatureKind::MountingHole ||
+            feature.kind() == BoardFeatureKind::ToolingHole) {
+            if (feature.hole().plated()) {
+                loss_report.add_warning(
+                    LossKind::UnsupportedConstruct, "board.feature.hole.plated",
+                    "The first KiCad PCB writer subset does not export plated board-feature holes");
+                continue;
+            }
+            write_board_hole(out, feature, id);
             continue;
         }
-        write_mounting_hole(out, feature, id);
+        if (feature.kind() == BoardFeatureKind::Text ||
+            feature.kind() == BoardFeatureKind::MechanicalKeepout) {
+            continue;
+        }
+        if (feature.kind() == BoardFeatureKind::Slot) {
+            loss_report.add_warning(
+                LossKind::UnsupportedConstruct, "board.feature.slot",
+                "The first KiCad PCB writer subset does not export board slots");
+            continue;
+        }
+        if (feature.kind() == BoardFeatureKind::Cutout) {
+            loss_report.add_warning(
+                LossKind::UnsupportedConstruct, "board.feature.cutout",
+                "The first KiCad PCB writer subset does not export board cutouts");
+            continue;
+        }
+        if (feature.kind() == BoardFeatureKind::Fiducial) {
+            loss_report.add_warning(
+                LossKind::UnsupportedConstruct, "board.feature.fiducial",
+                "The first KiCad PCB writer subset does not export board fiducials");
+            continue;
+        }
     }
 }
 

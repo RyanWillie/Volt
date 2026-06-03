@@ -1037,8 +1037,48 @@ void PyCircuit::board_set_polygon_outline(const std::vector<std::pair<double, do
 
 std::size_t PyCircuit::board_add_mounting_hole(const std::string &label, double x, double y,
                                                double diameter_mm) {
+    return board_add_hole(label, x, y, diameter_mm, false, "mounting", std::nullopt);
+}
+
+std::size_t PyCircuit::board_add_hole(const std::string &label, double x, double y,
+                                      double drill_diameter_mm, bool plated,
+                                      const std::string &role,
+                                      std::optional<double> finished_diameter_mm) {
     return board_projection()
-        .add_feature(volt::BoardFeature::mounting_hole(label, volt::BoardPoint{x, y}, diameter_mm))
+        .add_feature(volt::BoardFeature::hole(label, volt::BoardPoint{x, y}, drill_diameter_mm,
+                                              plated, role, finished_diameter_mm))
+        .index();
+}
+
+std::size_t PyCircuit::board_add_slot(const std::string &label, double start_x, double start_y,
+                                      double end_x, double end_y, double width_mm, bool plated,
+                                      const std::string &role) {
+    return board_projection()
+        .add_feature(volt::BoardFeature::slot(label, volt::BoardPoint{start_x, start_y},
+                                              volt::BoardPoint{end_x, end_y}, width_mm, plated,
+                                              role))
+        .index();
+}
+
+std::size_t PyCircuit::board_add_cutout(const std::string &label,
+                                        const std::vector<std::pair<double, double>> &outline,
+                                        const std::string &role) {
+    auto points = std::vector<volt::BoardPoint>{};
+    points.reserve(outline.size());
+    for (const auto &[x, y] : outline) {
+        points.emplace_back(x, y);
+    }
+
+    return board_projection()
+        .add_feature(volt::BoardFeature::cutout(label, std::move(points), role))
+        .index();
+}
+
+std::size_t PyCircuit::board_add_fiducial(const std::string &label, double x, double y,
+                                          double diameter_mm, const std::string &side) {
+    return board_projection()
+        .add_feature(volt::BoardFeature::fiducial(label, volt::BoardPoint{x, y}, diameter_mm,
+                                                  parse_board_side(side)))
         .index();
 }
 

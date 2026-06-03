@@ -271,6 +271,23 @@ class PyCircuit {
     [[nodiscard]] std::size_t board_add_mounting_hole(const std::string &label, double x, double y,
                                                       double diameter_mm);
 
+    [[nodiscard]] std::size_t board_add_hole(const std::string &label, double x, double y,
+                                             double drill_diameter_mm, bool plated,
+                                             const std::string &role,
+                                             std::optional<double> finished_diameter_mm);
+
+    [[nodiscard]] std::size_t board_add_slot(const std::string &label, double start_x,
+                                             double start_y, double end_x, double end_y,
+                                             double width_mm, bool plated, const std::string &role);
+
+    [[nodiscard]] std::size_t
+    board_add_cutout(const std::string &label,
+                     const std::vector<std::pair<double, double>> &outline,
+                     const std::string &role);
+
+    [[nodiscard]] std::size_t board_add_fiducial(const std::string &label, double x, double y,
+                                                 double diameter_mm, const std::string &side);
+
     [[nodiscard]] std::size_t board_cache_footprint_definition(const py::dict &definition);
 
     [[nodiscard]] std::size_t board_place_component(std::size_t component, double x, double y,

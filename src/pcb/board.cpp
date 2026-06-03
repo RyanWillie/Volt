@@ -20,6 +20,14 @@ void Board::set_layer_stack(LayerStack stack) { structure_.set_layer_stack(std::
 void Board::set_outline(BoardOutline outline) { structure_.set_outline(std::move(outline)); }
 void Board::set_design_rules(BoardDesignRules rules) { structure_.set_design_rules(rules); }
 [[nodiscard]] BoardFeatureId Board::add_feature(BoardFeature feature) {
+    if (feature.kind() == BoardFeatureKind::Text) {
+        require_layer(feature.text().layer());
+    }
+    if (feature.kind() == BoardFeatureKind::MechanicalKeepout) {
+        for (const auto layer : feature.keepout().layers()) {
+            require_layer(layer);
+        }
+    }
     return structure_.add_feature(std::move(feature));
 }
 [[nodiscard]] FootprintDefId Board::cache_footprint_definition(FootprintDefinition footprint) {
@@ -53,14 +61,14 @@ void Board::set_design_rules(BoardDesignRules rules) { structure_.set_design_rul
     return copper_.add_zone(std::move(zone));
 }
 [[nodiscard]] BoardKeepoutId Board::add_keepout(BoardKeepout keepout) {
-    for (const auto layer : keepout.layers()) {
-        require_layer(layer);
-    }
-    return copper_.add_keepout(std::move(keepout));
+    const auto id = BoardKeepoutId{keepout_count()};
+    static_cast<void>(add_feature(BoardFeature::mechanical_keepout(std::move(keepout))));
+    return id;
 }
 [[nodiscard]] BoardTextId Board::add_text(BoardText text) {
-    require_layer(text.layer());
-    return copper_.add_text(std::move(text));
+    const auto id = BoardTextId{text_count()};
+    static_cast<void>(add_feature(BoardFeature::text(std::move(text))));
+    return id;
 }
 [[nodiscard]] const std::optional<LayerStack> &Board::layer_stack() const noexcept {
     return structure_.layer_stack();
@@ -77,6 +85,30 @@ Board::footprint_definition_id(const FootprintRef &ref) const noexcept {
 }
 [[nodiscard]] const ComponentPlacement &Board::placement(ComponentPlacementId id) const {
     return placements_.placement(id);
+}
+[[nodiscard]] const BoardKeepout &Board::keepout(BoardKeepoutId id) const {
+    return feature_by_kind_index(BoardFeatureKind::MechanicalKeepout, id.index()).keepout();
+}
+[[nodiscard]] std::size_t Board::keepout_count() const noexcept {
+    auto count = std::size_t{0};
+    for (std::size_t index = 0; index < feature_count(); ++index) {
+        if (feature(BoardFeatureId{index}).kind() == BoardFeatureKind::MechanicalKeepout) {
+            ++count;
+        }
+    }
+    return count;
+}
+[[nodiscard]] const BoardText &Board::text(BoardTextId id) const {
+    return feature_by_kind_index(BoardFeatureKind::Text, id.index()).text();
+}
+[[nodiscard]] std::size_t Board::text_count() const noexcept {
+    auto count = std::size_t{0};
+    for (std::size_t index = 0; index < feature_count(); ++index) {
+        if (feature(BoardFeatureId{index}).kind() == BoardFeatureKind::Text) {
+            ++count;
+        }
+    }
+    return count;
 }
 [[nodiscard]] std::optional<ComponentPlacementId>
 Board::placement_for_component(ComponentId component) const noexcept {
@@ -119,6 +151,21 @@ void Board::require_copper_layer(BoardLayerId layer_id) const {
     if (layer(layer_id).role() != BoardLayerRole::Copper) {
         throw std::logic_error{"Board copper primitives require copper layers"};
     }
+}
+[[nodiscard]] const BoardFeature &Board::feature_by_kind_index(BoardFeatureKind kind,
+                                                               std::size_t index) const {
+    auto seen = std::size_t{0};
+    for (std::size_t feature_index = 0; feature_index < feature_count(); ++feature_index) {
+        const auto &candidate = feature(BoardFeatureId{feature_index});
+        if (candidate.kind() != kind) {
+            continue;
+        }
+        if (seen == index) {
+            return candidate;
+        }
+        ++seen;
+    }
+    throw std::out_of_range{"Board feature kind ID does not belong to this board"};
 }
 void Board::append_pad_resolutions(ComponentPlacementId placement_id,
                                    const ComponentPlacement &component_placement,
@@ -163,6 +210,42 @@ void Board::append_pad_resolutions(ComponentPlacementId placement_id,
                                  position, pin, net, status);
     }
 }
+namespace {
+
+[[nodiscard]] bool board_points_inside_outline(const BoardOutline &outline,
+                                               const std::vector<BoardPoint> &points) {
+    return std::all_of(points.begin(), points.end(),
+                       [&outline](BoardPoint point) { return outline.contains(point); });
+}
+
+[[nodiscard]] std::vector<BoardPoint> feature_outline_points(const BoardFeature &feature) {
+    switch (feature.kind()) {
+    case BoardFeatureKind::Hole:
+    case BoardFeatureKind::MountingHole:
+    case BoardFeatureKind::ToolingHole:
+        return std::vector{feature.hole().center()};
+    case BoardFeatureKind::Slot:
+        return std::vector{feature.slot().start(), feature.slot().end()};
+    case BoardFeatureKind::Cutout:
+        return feature.cutout().outline();
+    case BoardFeatureKind::Fiducial:
+        return std::vector{feature.fiducial().center()};
+    case BoardFeatureKind::Text:
+        return std::vector{feature.text().position()};
+    case BoardFeatureKind::MechanicalKeepout:
+        return feature.keepout().outline();
+    }
+    throw std::logic_error{"Unhandled board feature kind"};
+}
+
+[[nodiscard]] bool feature_role_expected(BoardFeatureKind kind) noexcept {
+    return kind == BoardFeatureKind::Hole || kind == BoardFeatureKind::MountingHole ||
+           kind == BoardFeatureKind::ToolingHole || kind == BoardFeatureKind::Slot ||
+           kind == BoardFeatureKind::Cutout;
+}
+
+} // namespace
+
 [[nodiscard]] DiagnosticReport validate_board(const Board &board,
                                               const FootprintLibrary &footprints) {
     auto report = DiagnosticReport{};
@@ -172,6 +255,24 @@ void Board::append_pad_resolutions(ComponentPlacementId placement_id,
     if (!board.outline().has_value()) {
         report.add(detail::board_diagnostic(DiagnosticCode{"PCB_BOARD_OUTLINE_MISSING"},
                                             "Board has no outline"));
+    }
+
+    for (std::size_t index = 0; index < board.feature_count(); ++index) {
+        const auto feature_id = BoardFeatureId{index};
+        const auto &feature = board.feature(feature_id);
+        if (feature_role_expected(feature.kind()) && feature.role().empty()) {
+            report.add(detail::board_warning(DiagnosticCode{"PCB_BOARD_FEATURE_ROLE_MISSING"},
+                                             "Board feature is missing mechanical role metadata",
+                                             std::vector{EntityRef::board_feature(feature_id)}));
+        }
+        if (board.outline().has_value() &&
+            !board_points_inside_outline(board.outline().value(),
+                                         feature_outline_points(feature))) {
+            report.add(
+                detail::board_diagnostic(DiagnosticCode{"PCB_BOARD_FEATURE_OUTSIDE_OUTLINE"},
+                                         "Board feature geometry is outside the board outline",
+                                         std::vector{EntityRef::board_feature(feature_id)}));
+        }
     }
 
     for (std::size_t index = 0; index < board.circuit().component_count(); ++index) {

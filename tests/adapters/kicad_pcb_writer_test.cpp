@@ -197,17 +197,29 @@ TEST_CASE("KiCad PCB writer reports unsupported out-of-subset board constructs")
         std::vector{volt::BoardKeepoutRestriction::Copper,
                     volt::BoardKeepoutRestriction::Placement},
     });
+    static_cast<void>(board.add_feature(volt::BoardFeature::slot(
+        "SLOT", volt::BoardPoint{20.0, 2.0}, volt::BoardPoint{24.0, 2.0}, 1.2, false, "mounting")));
+    static_cast<void>(board.add_feature(volt::BoardFeature::cutout(
+        "CUT",
+        std::vector{volt::BoardPoint{30.0, 2.0}, volt::BoardPoint{34.0, 2.0},
+                    volt::BoardPoint{34.0, 6.0}, volt::BoardPoint{30.0, 6.0}},
+        "access")));
+    static_cast<void>(
+        board.add_feature(volt::BoardFeature::fiducial("FID", volt::BoardPoint{42.0, 2.0}, 1.0)));
 
     const auto result =
         volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
 
-    REQUIRE(result.loss_report.warnings().size() == 2);
+    REQUIRE(result.loss_report.warnings().size() == 5);
     CHECK(result.loss_report.warnings().at(0).kind ==
           volt::adapters::kicad::LossKind::UnsupportedConstruct);
     CHECK(result.loss_report.warnings().at(0).construct == "board.zone");
     CHECK(result.loss_report.warnings().at(1).kind ==
           volt::adapters::kicad::LossKind::UnsupportedConstruct);
     CHECK(result.loss_report.warnings().at(1).construct == "board.keepout");
+    CHECK(result.loss_report.warnings().at(2).construct == "board.feature.slot");
+    CHECK(result.loss_report.warnings().at(3).construct == "board.feature.cutout");
+    CHECK(result.loss_report.warnings().at(4).construct == "board.feature.fiducial");
 }
 
 TEST_CASE("KiCad PCB writer keeps generated footprint metadata DRC-neutral") {

@@ -12,12 +12,6 @@ namespace volt {
 [[nodiscard]] BoardZoneId BoardCopperModel::add_zone(BoardZone zone) {
     return zones_.insert(std::move(zone));
 }
-[[nodiscard]] BoardKeepoutId BoardCopperModel::add_keepout(BoardKeepout keepout) {
-    return keepouts_.insert(std::move(keepout));
-}
-[[nodiscard]] BoardTextId BoardCopperModel::add_text(BoardText text) {
-    return texts_.insert(std::move(text));
-}
 [[nodiscard]] const BoardTrack &BoardCopperModel::track(BoardTrackId id) const {
     return tracks_.get(id);
 }
@@ -28,15 +22,5 @@ namespace volt {
     return zones_.get(id);
 }
 [[nodiscard]] std::size_t BoardCopperModel::zone_count() const noexcept { return zones_.size(); }
-[[nodiscard]] const BoardKeepout &BoardCopperModel::keepout(BoardKeepoutId id) const {
-    return keepouts_.get(id);
-}
-[[nodiscard]] std::size_t BoardCopperModel::keepout_count() const noexcept {
-    return keepouts_.size();
-}
-[[nodiscard]] const BoardText &BoardCopperModel::text(BoardTextId id) const {
-    return texts_.get(id);
-}
-[[nodiscard]] std::size_t BoardCopperModel::text_count() const noexcept { return texts_.size(); }
 
 } // namespace volt

@@ -257,7 +257,11 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     ]
     assert pcb["board"]["layer_stack"]["layers"] == ["board_layer:0", "board_layer:1"]
     assert pcb["board"]["outline"]["vertices"] == [[0, 0], [90, 0], [90, 56], [0, 56]]
-    assert [feature["label"] for feature in pcb["board"]["features"]] == [
+    assert [
+        feature["label"]
+        for feature in pcb["board"]["features"]
+        if feature["kind"] == "mounting_hole"
+    ] == [
         "MH1",
         "MH2",
         "MH3",
@@ -274,7 +278,11 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert len(pcb["board"]["footprint_definitions"]) == 5
     assert len(pcb["board"]["tracks"]) == 17
     assert len(pcb["board"]["vias"]) == 3
-    assert len(pcb["board"]["texts"]) == 1
+    assert [
+        feature["text"] for feature in pcb["board"]["features"] if feature["kind"] == "text"
+    ] == [
+        "555 BLINK"
+    ]
     assert len(pcb["viewer"]["pad_resolutions"]) == 22
     assert pcb["viewer"]["diagnostics"] == []
 

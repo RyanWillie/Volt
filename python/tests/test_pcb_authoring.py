@@ -68,7 +68,7 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
-    board.add_mounting_hole("MH1", at=(3.0, 3.0), diameter=3.2)
+    board.add(volt.Hole(center=(3.0, 3.0), diameter=3.2, label="MH1", role="mounting"))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
     board.place(r1, at=(18.0, 15.0), rotation=0.0, side="top", locked=True)
@@ -97,6 +97,7 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     assert document["board"]["layer_stack"]["layers"] == ["board_layer:0", "board_layer:1"]
     assert document["board"]["outline"]["vertices"][2] == [50.0, 30.0]
     assert document["board"]["features"][0]["kind"] == "mounting_hole"
+    assert document["board"]["features"][0]["role"] == "mounting"
     assert [item["component"] for item in document["board"]["placements"]] == [
         "component:0",
         "component:1",
@@ -143,7 +144,7 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     back = board.add_layer("B.Cu", role="copper", side="bottom")
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
-    board.add_mounting_hole("MH1", at=(3.0, 3.0), diameter=3.2)
+    board.add(volt.Hole(center=(3.0, 3.0), diameter=3.2, label="MH1", role="mounting"))
     board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
     board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
     board.place(r1, at=(18.0, 15.0), rotation=0.0, side="top", locked=True)
@@ -198,12 +199,16 @@ def test_python_board_authoring_writes_zones_keepouts_and_text():
         net=led_a,
         priority=4,
     )
-    keepout = board.add_keepout(
-        outline=((12.0, 2.0), (16.0, 2.0), (16.0, 6.0), (12.0, 6.0)),
-        layers=(front,),
-        restrictions=("copper", "via"),
+    keepout = board.add(
+        volt.MechanicalKeepout(
+            outline=((12.0, 2.0), (16.0, 2.0), (16.0, 6.0), (12.0, 6.0)),
+            layers=(front,),
+            restrictions=("copper", "via"),
+        )
     )
-    text = board.add_text("REV A", at=(5.0, 15.0), layer=silk, rotation=90.0, size=1.2, locked=True)
+    text = board.add(
+        volt.Text("REV A", at=(5.0, 15.0), layer=silk, rotation=90.0, size=1.2, locked=True)
+    )
 
     document = json.loads(board.to_json())
     assert zone == 0
@@ -212,15 +217,89 @@ def test_python_board_authoring_writes_zones_keepouts_and_text():
     assert document["board"]["zones"][0]["net"] == "net:1"
     assert document["board"]["zones"][0]["layers"] == ["board_layer:0"]
     assert document["board"]["zones"][0]["priority"] == 4
-    assert document["board"]["keepouts"][0]["restrictions"] == ["copper", "via"]
-    assert document["board"]["texts"][0]["text"] == "REV A"
-    assert document["board"]["texts"][0]["layer"] == "board_layer:1"
-    assert document["board"]["texts"][0]["locked"] is True
+    feature_kinds = [feature["kind"] for feature in document["board"]["features"]]
+    assert feature_kinds == ["mechanical_keepout", "text"]
+    assert document["board"]["features"][0]["restrictions"] == ["copper", "via"]
+    assert document["board"]["features"][1]["text"] == "REV A"
+    assert document["board"]["features"][1]["layer"] == "board_layer:1"
+    assert document["board"]["features"][1]["locked"] is True
 
     svg = board.to_svg()
     assert 'data-zone="board_zone:0"' in svg
     assert 'data-keepout="board_keepout:0"' in svg
     assert 'data-text="board_text:0"' in svg
+
+
+def test_python_board_authoring_adds_generic_board_primitives():
+    design = volt.Design("generic-board-primitives")
+    board = design.board("Primitives")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 24.0))
+
+    board.add(volt.Hole(center=(4.0, 4.0), diameter=3.2, label="MH1", role="mounting"))
+    board.add(volt.Hole(center=(36.0, 4.0), diameter=1.0, label="DRILL1", role="fixture"))
+    board.add(volt.Slot(start=(8.0, 4.0), end=(16.0, 4.0), width=1.5, role="mounting"))
+    board.add(
+        volt.Cutout.polygon(
+            ((20.0, 4.0), (25.0, 4.0), (25.0, 9.0), (20.0, 9.0)),
+            role="access",
+            label="CUT1",
+        )
+    )
+    board.add(volt.Fiducial(center=(34.0, 4.0), diameter=1.0, label="FID1"))
+    board.add(volt.ToolingHole(center=(4.0, 20.0), diameter=2.0, label="TH1"))
+    board.add(volt.Text("REV A", at=(20.0, 20.0), layer=silk, size=1.2))
+    board.add(
+        volt.MechanicalKeepout(
+            outline=((28.0, 14.0), (36.0, 14.0), (36.0, 20.0), (28.0, 20.0)),
+            layers=(front,),
+            restrictions=("copper", "via"),
+        )
+    )
+
+    first_json = board.to_json()
+    assert board.to_json() == first_json
+    document = json.loads(first_json)
+    features = document["board"]["features"]
+
+    assert [feature["kind"] for feature in features] == [
+        "mounting_hole",
+        "hole",
+        "slot",
+        "cutout",
+        "fiducial",
+        "tooling_hole",
+        "text",
+        "mechanical_keepout",
+    ]
+    assert features[0]["role"] == "mounting"
+    assert features[0]["plated"] is False
+    assert features[1]["role"] == "fixture"
+    assert features[2]["width_mm"] == 1.5
+    assert features[3]["outline"][2] == [25.0, 9.0]
+    assert features[4]["side"] == "top"
+    assert features[5]["role"] == "tooling"
+    assert features[6]["text"] == "REV A"
+    assert features[7]["restrictions"] == ["copper", "via"]
+    assert {diagnostic.code for diagnostic in board.validate()} == set()
+
+    svg = board.to_svg()
+    assert 'class="board-feature mounting-hole"' in svg
+    assert 'class="board-feature hole"' in svg
+    assert 'class="board-feature slot"' in svg
+    assert 'class="board-feature cutout"' in svg
+    assert 'class="board-feature fiducial top"' in svg
+    assert 'data-keepout="board_keepout:0"' in svg
+    assert 'data-text="board_text:0"' in svg
+
+    export = board.to_kicad_pcb()
+    assert [warning.construct for warning in export.warnings] == [
+        "board.keepout",
+        "board.feature.slot",
+        "board.feature.cutout",
+        "board.feature.fiducial",
+    ]
 
 
 def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():
@@ -338,6 +417,12 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
         board.add_track(design.net("ROUTE"), layer=front, points=((1.0, 1.0), (2.0, 1.0)), width=0)
     with pytest.raises(ValueError, match="Board via layer span must reference distinct layers"):
         board.add_via(design.net("VIA"), at=(1.0, 1.0), start_layer=front, end_layer=front)
+    with pytest.raises(ValueError, match="Board hole drill diameter must be positive"):
+        board.add(volt.Hole(center=(1.0, 1.0), diameter=-1.0))
+    with pytest.raises(ValueError, match="Board slot endpoints must be distinct"):
+        board.add(volt.Slot(start=(1.0, 1.0), end=(1.0, 1.0), width=1.0))
+    with pytest.raises(ValueError, match="Board polygon must contain at least three vertices"):
+        board.add(volt.Cutout.polygon(()))
     with pytest.raises(IndexError, match="Volt entity id is out of range"):
         board.add_zone(
             outline=((1.0, 1.0), (3.0, 1.0), (3.0, 3.0), (1.0, 3.0)),
@@ -358,7 +443,7 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
             restrictions=(),
         )
     with pytest.raises(ValueError, match="Board text size must be positive"):
-        board.add_text("REV A", at=(1.0, 1.0), layer=front, size=0.0)
+        board.add(volt.Text("REV A", at=(1.0, 1.0), layer=front, size=0.0))
 
 
 def test_python_board_auto_registers_object_owned_library_footprint():

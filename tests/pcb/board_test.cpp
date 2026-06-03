@@ -149,6 +149,15 @@ TEST_CASE("Board stores metadata, layers, outline, features, and placements") {
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
     const auto feature = board.add_feature(
         volt::BoardFeature::mounting_hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2));
+    const auto slot = board.add_feature(volt::BoardFeature::slot(
+        "SLOT1", volt::BoardPoint{8.0, 4.0}, volt::BoardPoint{14.0, 4.0}, 1.5, false, "mounting"));
+    const auto cutout = board.add_feature(volt::BoardFeature::cutout(
+        "CUT1",
+        std::vector{volt::BoardPoint{18.0, 4.0}, volt::BoardPoint{22.0, 4.0},
+                    volt::BoardPoint{22.0, 8.0}, volt::BoardPoint{18.0, 8.0}},
+        "access"));
+    const auto fiducial =
+        board.add_feature(volt::BoardFeature::fiducial("FID1", volt::BoardPoint{45.0, 25.0}, 1.0));
     const auto placement = board.place_component(
         volt::ComponentPlacement{fixture.component, volt::BoardPoint{25.0, 15.0},
                                  volt::BoardRotation::degrees(90.0), volt::BoardSide::Top, true});
@@ -159,6 +168,13 @@ TEST_CASE("Board stores metadata, layers, outline, features, and placements") {
     CHECK(board.layer_stack()->layers() == std::vector{front, back});
     REQUIRE(board.outline().has_value());
     CHECK(board.feature(feature).kind() == volt::BoardFeatureKind::MountingHole);
+    CHECK(board.feature(feature).hole().drill_diameter_mm() == 3.2);
+    CHECK(board.feature(feature).role() == "mounting");
+    CHECK(board.feature(slot).slot().width_mm() == 1.5);
+    CHECK(board.feature(slot).role() == "mounting");
+    CHECK(board.feature(cutout).cutout().outline().size() == 4);
+    CHECK(board.feature(cutout).role() == "access");
+    CHECK(board.feature(fiducial).fiducial().side() == volt::BoardSide::Top);
     CHECK(board.placement(placement).component() == fixture.component);
     CHECK(board.placement(placement).position() == volt::BoardPoint{25.0, 15.0});
     CHECK(board.placement(placement).rotation() == volt::BoardRotation::degrees(90.0));
@@ -343,6 +359,14 @@ TEST_CASE("Board rejects structurally invalid board and placement mutations") {
     CHECK_THROWS_AS(board.cache_footprint_definition(conflicting_passive_0603_footprint()),
                     std::logic_error);
     CHECK_THROWS_AS(board.footprint_definition(volt::FootprintDefId{99}), std::out_of_range);
+    CHECK_THROWS_AS(
+        board.add_feature(volt::BoardFeature::hole("BAD", volt::BoardPoint{1.0, 1.0}, -1.0)),
+        std::invalid_argument);
+    CHECK_THROWS_AS(board.add_feature(volt::BoardFeature::slot("BAD", volt::BoardPoint{1.0, 1.0},
+                                                               volt::BoardPoint{1.0, 1.0}, 1.0)),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(board.add_feature(volt::BoardFeature::cutout("BAD", {})),
+                    std::invalid_argument);
 }
 
 TEST_CASE("Board rejects cached footprint definitions that conflict with resolution libraries") {
@@ -561,6 +585,29 @@ TEST_CASE("Board validation reports design issues without owning connectivity") 
     CHECK(missing_part->severity() == volt::Severity::Error);
     REQUIRE(missing_part->entities().size() == 1);
     CHECK(missing_part->entities()[0] == volt::EntityRef::component(fixture.component));
+}
+
+TEST_CASE("Board validation reports suspicious board primitive intent") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{10.0, 10.0}));
+    const auto missing_role = board.add_feature(volt::BoardFeature::slot(
+        "SLOT", volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{4.0, 1.0}, 1.0));
+    const auto outside =
+        board.add_feature(volt::BoardFeature::tooling_hole("TH", volt::BoardPoint{12.0, 5.0}, 2.0));
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *role = find_diagnostic(report, "PCB_BOARD_FEATURE_ROLE_MISSING");
+    REQUIRE(role != nullptr);
+    CHECK(role->severity() == volt::Severity::Warning);
+    CHECK(role->entities() == std::vector{volt::EntityRef::board_feature(missing_role)});
+
+    const auto *outline = find_diagnostic(report, "PCB_BOARD_FEATURE_OUTSIDE_OUTLINE");
+    REQUIRE(outline != nullptr);
+    CHECK(outline->severity() == volt::Severity::Error);
+    CHECK(outline->entities() == std::vector{volt::EntityRef::board_feature(outside)});
 }
 
 TEST_CASE("Board validation reports logical nets with no placed pads as board diagnostics") {

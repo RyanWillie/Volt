@@ -295,10 +295,80 @@ void write_features(std::ostream &out, const Board &board) {
         const auto &feature = board.feature(id);
         out << "      {\"id\": " << json_string(encode_local_id(id))
             << ", \"kind\": " << json_string(board_feature_kind_name(feature.kind()))
-            << ", \"label\": " << json_string(feature.label()) << ", \"position\": ";
-        write_board_point(out, feature.position());
-        out << ", \"diameter_mm\": ";
-        write_number(out, feature.diameter_mm());
+            << ", \"label\": " << json_string(feature.label());
+        switch (feature.kind()) {
+        case BoardFeatureKind::Hole:
+        case BoardFeatureKind::MountingHole:
+        case BoardFeatureKind::ToolingHole: {
+            const auto &hole = feature.hole();
+            out << ", \"position\": ";
+            write_board_point(out, hole.center());
+            out << ", \"drill_diameter_mm\": ";
+            write_number(out, hole.drill_diameter_mm());
+            out << ", \"finished_diameter_mm\": ";
+            if (hole.finished_diameter_mm().has_value()) {
+                write_number(out, hole.finished_diameter_mm().value());
+            } else {
+                out << "null";
+            }
+            out << ", \"plated\": " << (hole.plated() ? "true" : "false")
+                << ", \"role\": " << json_string(feature.role());
+            break;
+        }
+        case BoardFeatureKind::Slot: {
+            const auto &slot = feature.slot();
+            out << ", \"start\": ";
+            write_board_point(out, slot.start());
+            out << ", \"end\": ";
+            write_board_point(out, slot.end());
+            out << ", \"width_mm\": ";
+            write_number(out, slot.width_mm());
+            out << ", \"plated\": " << (slot.plated() ? "true" : "false")
+                << ", \"role\": " << json_string(feature.role());
+            break;
+        }
+        case BoardFeatureKind::Cutout:
+            out << ", \"outline\": ";
+            write_board_points(out, feature.cutout().outline());
+            out << ", \"role\": " << json_string(feature.role());
+            break;
+        case BoardFeatureKind::Fiducial:
+            out << ", \"position\": ";
+            write_board_point(out, feature.fiducial().center());
+            out << ", \"diameter_mm\": ";
+            write_number(out, feature.fiducial().diameter_mm());
+            out << ", \"side\": " << json_string(board_side_name(feature.fiducial().side()))
+                << ", \"role\": " << json_string(feature.role());
+            break;
+        case BoardFeatureKind::Text:
+            out << ", \"text\": " << json_string(feature.text().text()) << ", \"position\": ";
+            write_board_point(out, feature.text().position());
+            out << ", \"rotation_deg\": ";
+            write_number(out, feature.text().rotation().degrees());
+            out << ", \"layer\": " << json_string(encode_local_id(feature.text().layer()))
+                << ", \"size_mm\": ";
+            write_number(out, feature.text().size_mm());
+            out << ", \"locked\": " << (feature.text().locked() ? "true" : "false");
+            break;
+        case BoardFeatureKind::MechanicalKeepout: {
+            const auto &keepout = feature.keepout();
+            out << ", \"outline\": ";
+            write_board_points(out, keepout.outline());
+            out << ", \"layers\": ";
+            write_board_layers(out, keepout.layers());
+            out << ", \"restrictions\": [";
+            for (std::size_t restriction_index = 0;
+                 restriction_index < keepout.restrictions().size(); ++restriction_index) {
+                if (restriction_index != 0U) {
+                    out << ", ";
+                }
+                out << json_string(
+                    board_keepout_restriction_name(keepout.restrictions()[restriction_index]));
+            }
+            out << ']';
+            break;
+        }
+        }
         out << '}';
         if (index + 1U != board.feature_count()) {
             out << ',';
@@ -647,27 +717,15 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
     detail::write_footprint_definitions(out, definitions);
     detail::write_placements(out, board, definitions,
                              board.track_count() != 0U || board.via_count() != 0U ||
-                                 board.zone_count() != 0U || board.keepout_count() != 0U ||
-                                 board.text_count() != 0U);
+                                 board.zone_count() != 0U);
     if (board.track_count() != 0U) {
-        detail::write_tracks(out, board,
-                             board.via_count() != 0U || board.zone_count() != 0U ||
-                                 board.keepout_count() != 0U || board.text_count() != 0U);
+        detail::write_tracks(out, board, board.via_count() != 0U || board.zone_count() != 0U);
     }
     if (board.via_count() != 0U) {
-        detail::write_vias(out, board,
-                           board.zone_count() != 0U || board.keepout_count() != 0U ||
-                               board.text_count() != 0U);
+        detail::write_vias(out, board, board.zone_count() != 0U);
     }
     if (board.zone_count() != 0U) {
-        detail::write_board_zones(out, board,
-                                  board.keepout_count() != 0U || board.text_count() != 0U);
-    }
-    if (board.keepout_count() != 0U) {
-        detail::write_board_keepouts(out, board, board.text_count() != 0U);
-    }
-    if (board.text_count() != 0U) {
-        detail::write_board_texts(out, board);
+        detail::write_board_zones(out, board, false);
     }
     out << "  },\n";
     detail::write_viewer(out, board, definitions);

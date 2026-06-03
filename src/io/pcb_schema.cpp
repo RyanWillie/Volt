@@ -133,6 +133,8 @@ namespace volt::io::detail {
 }
 [[nodiscard]] std::string board_feature_kind_name(BoardFeatureKind kind) {
     switch (kind) {
+    case BoardFeatureKind::Hole:
+        return "hole";
     case BoardFeatureKind::MountingHole:
         return "mounting_hole";
     case BoardFeatureKind::Slot:
@@ -151,6 +153,9 @@ namespace volt::io::detail {
     throw std::logic_error{"Unhandled PCB board feature kind"};
 }
 [[nodiscard]] BoardFeatureKind board_feature_kind_from_name(const std::string &value) {
+    if (value == "hole") {
+        return BoardFeatureKind::Hole;
+    }
     if (value == "mounting_hole") {
         return BoardFeatureKind::MountingHole;
     }

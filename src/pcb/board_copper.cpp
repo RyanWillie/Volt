@@ -36,57 +36,6 @@ void BoardZone::validate_layers() const {
         throw std::invalid_argument{"Board zone layers must not contain duplicates"};
     }
 }
-BoardKeepout::BoardKeepout(std::vector<BoardPoint> outline, std::vector<BoardLayerId> layers,
-                           std::vector<BoardKeepoutRestriction> restrictions)
-    : outline_{std::move(outline)}, layers_{std::move(layers)},
-      restrictions_{std::move(restrictions)} {
-    validate_layers();
-    validate_restrictions();
-}
-[[nodiscard]] const std::vector<BoardPoint> &BoardKeepout::outline() const noexcept {
-    return outline_.vertices();
-}
-[[nodiscard]] const std::vector<BoardKeepoutRestriction> &
-BoardKeepout::restrictions() const noexcept {
-    return restrictions_;
-}
-void BoardKeepout::validate_layers() const {
-    if (layers_.empty()) {
-        throw std::invalid_argument{"Board keepout layers must not be empty"};
-    }
-    auto sorted = layers_;
-    std::sort(sorted.begin(), sorted.end(),
-              [](BoardLayerId lhs, BoardLayerId rhs) { return lhs.index() < rhs.index(); });
-    const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
-    if (duplicate != sorted.end()) {
-        throw std::invalid_argument{"Board keepout layers must not contain duplicates"};
-    }
-}
-void BoardKeepout::validate_restrictions() const {
-    if (restrictions_.empty()) {
-        throw std::invalid_argument{"Board keepout restrictions must not be empty"};
-    }
-    auto sorted = restrictions_;
-    std::sort(sorted.begin(), sorted.end());
-    const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
-    if (duplicate != sorted.end()) {
-        throw std::invalid_argument{"Board keepout restrictions must not contain duplicates"};
-    }
-}
-BoardText::BoardText(std::string text, BoardPoint position, BoardRotation rotation,
-                     BoardLayerId layer, double size_mm, bool locked)
-    : text_{std::move(text)}, position_{position}, rotation_{rotation}, layer_{layer},
-      size_mm_{size_mm}, locked_{locked} {
-    if (text_.empty()) {
-        throw std::invalid_argument{"Board text must not be empty"};
-    }
-    if (!std::isfinite(size_mm_)) {
-        throw std::invalid_argument{"Board text size must be finite"};
-    }
-    if (size_mm_ <= 0.0) {
-        throw std::invalid_argument{"Board text size must be positive"};
-    }
-}
 BoardTrack::BoardTrack(NetId net, BoardLayerId layer, std::vector<BoardPoint> points,
                        double width_mm)
     : net_{net}, layer_{layer}, points_{std::move(points)}, width_mm_{width_mm} {

@@ -169,6 +169,37 @@ TEST_CASE("PCB SVG writer exposes stable selectors matching PCB JSON entities") 
     CHECK(svg.find("data-net=\"net:0\"") != std::string::npos);
 }
 
+TEST_CASE("PCB SVG writer renders generic board feature primitives") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit, volt::BoardName{"Features"}};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{40.0, 24.0}));
+    static_cast<void>(board.add_feature(
+        volt::BoardFeature::mounting_hole("MH1", volt::BoardPoint{4.0, 4.0}, 3.2)));
+    static_cast<void>(board.add_feature(volt::BoardFeature::slot(
+        "SLOT", volt::BoardPoint{8.0, 4.0}, volt::BoardPoint{16.0, 4.0}, 1.5, false, "mounting")));
+    static_cast<void>(board.add_feature(volt::BoardFeature::cutout(
+        "CUT",
+        std::vector{volt::BoardPoint{20.0, 4.0}, volt::BoardPoint{25.0, 4.0},
+                    volt::BoardPoint{25.0, 9.0}, volt::BoardPoint{20.0, 9.0}},
+        "access")));
+    static_cast<void>(
+        board.add_feature(volt::BoardFeature::fiducial("FID", volt::BoardPoint{34.0, 4.0}, 1.0)));
+    static_cast<void>(board.add_feature(
+        volt::BoardFeature::tooling_hole("TH", volt::BoardPoint{4.0, 20.0}, 2.0)));
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(svg.find("class=\"board-feature mounting-hole\"") != std::string::npos);
+    CHECK(svg.find("class=\"board-feature slot\"") != std::string::npos);
+    CHECK(svg.find("x1=\"8\" y1=\"4\" x2=\"16\" y2=\"4\" stroke-width=\"1.5\"") !=
+          std::string::npos);
+    CHECK(svg.find("class=\"board-feature cutout\"") != std::string::npos);
+    CHECK(svg.find("points=\"20,4 25,4 25,9 20,9\"") != std::string::npos);
+    CHECK(svg.find("class=\"board-feature fiducial top\"") != std::string::npos);
+    CHECK(svg.find("class=\"board-feature tooling-hole\"") != std::string::npos);
+}
+
 TEST_CASE("PCB SVG writer renders stable ratsnest selectors for placed multi-pad nets") {
     auto fixture = make_multi_component_net(2);
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Ratsnest"}};
