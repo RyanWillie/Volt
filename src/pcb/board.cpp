@@ -200,29 +200,60 @@ void Board::append_pad_resolutions(ComponentPlacementId placement_id,
 
 namespace {
 
-[[nodiscard]] bool board_points_inside_outline(const BoardOutline &outline,
-                                               const std::vector<BoardPoint> &points) {
-    return std::all_of(points.begin(), points.end(),
-                       [&outline](BoardPoint point) { return outline.contains(point); });
+[[nodiscard]] bool feature_role_expected(BoardFeatureKind kind) noexcept {
+    return kind == BoardFeatureKind::Hole || kind == BoardFeatureKind::Slot ||
+           kind == BoardFeatureKind::Cutout || kind == BoardFeatureKind::Circle;
 }
 
-[[nodiscard]] std::vector<BoardPoint> feature_outline_points(const BoardFeature &feature) {
+[[nodiscard]] bool board_feature_fits_outline(const BoardOutline &outline,
+                                              const BoardFeature &feature) {
     switch (feature.kind()) {
     case BoardFeatureKind::Hole:
-        return std::vector{feature.hole().center()};
+        return detail::outline_contains_disc(outline, feature.hole().center(),
+                                             feature.hole().drill_diameter_mm() / 2.0, 0.0);
     case BoardFeatureKind::Slot:
-        return std::vector{feature.slot().start(), feature.slot().end()};
+        return detail::outline_contains_segment(outline, feature.slot().start(),
+                                                feature.slot().end(),
+                                                feature.slot().width_mm() / 2.0, 0.0);
     case BoardFeatureKind::Cutout:
-        return feature.cutout().outline();
+        return detail::outline_contains_polygon(outline, feature.cutout().outline(), 0.0);
     case BoardFeatureKind::Circle:
-        return std::vector{feature.circle().center()};
+        return detail::outline_contains_disc(outline, feature.circle().center(),
+                                             feature.circle().diameter_mm() / 2.0, 0.0);
     }
     throw std::logic_error{"Unhandled board feature kind"};
 }
 
-[[nodiscard]] bool feature_role_expected(BoardFeatureKind kind) noexcept {
-    return kind == BoardFeatureKind::Hole || kind == BoardFeatureKind::Slot ||
-           kind == BoardFeatureKind::Cutout || kind == BoardFeatureKind::Circle;
+[[nodiscard]] std::vector<BoardLayerId> layer_stack_side_order_conflicts(const Board &board) {
+    if (!board.layer_stack().has_value()) {
+        return {};
+    }
+
+    auto conflicts = std::vector<BoardLayerId>{};
+    auto first_bottom = std::optional<BoardLayerId>{};
+    for (const auto layer_id : board.layer_stack()->layers()) {
+        const auto side = board.layer(layer_id).side();
+        if (side == BoardLayerSide::Bottom && !first_bottom.has_value()) {
+            first_bottom = layer_id;
+            continue;
+        }
+        if (side == BoardLayerSide::Top && first_bottom.has_value()) {
+            if (conflicts.empty()) {
+                conflicts.push_back(first_bottom.value());
+            }
+            conflicts.push_back(layer_id);
+        }
+    }
+    return conflicts;
+}
+
+[[nodiscard]] std::vector<EntityRef> layer_entities(const std::vector<BoardLayerId> &layers) {
+    auto entities = std::vector<EntityRef>{};
+    entities.reserve(layers.size());
+    for (const auto layer : layers) {
+        entities.push_back(EntityRef::board_layer(layer));
+    }
+    return entities;
 }
 
 } // namespace
@@ -238,6 +269,13 @@ namespace {
                                             "Board has no outline"));
     }
 
+    if (const auto conflicts = layer_stack_side_order_conflicts(board); !conflicts.empty()) {
+        report.add(detail::board_diagnostic(
+            DiagnosticCode{"PCB_LAYER_STACK_SIDE_ORDER_CONFLICT"},
+            "Layer stack side metadata is inconsistent with top-to-bottom order",
+            layer_entities(conflicts)));
+    }
+
     for (std::size_t index = 0; index < board.feature_count(); ++index) {
         const auto feature_id = BoardFeatureId{index};
         const auto &feature = board.feature(feature_id);
@@ -247,8 +285,7 @@ namespace {
                                              std::vector{EntityRef::board_feature(feature_id)}));
         }
         if (board.outline().has_value() &&
-            !board_points_inside_outline(board.outline().value(),
-                                         feature_outline_points(feature))) {
+            !board_feature_fits_outline(board.outline().value(), feature)) {
             report.add(
                 detail::board_diagnostic(DiagnosticCode{"PCB_BOARD_FEATURE_OUTSIDE_OUTLINE"},
                                          "Board feature geometry is outside the board outline",

@@ -62,6 +62,8 @@ void write_layer_stack(std::ostream &out, const Board &board);
 
 void write_outline(std::ostream &out, const Board &board);
 
+void write_board_geometry(std::ostream &out, const Board &board);
+
 void write_rules(std::ostream &out, const Board &board);
 
 void write_features(std::ostream &out, const Board &board);

@@ -252,6 +252,15 @@
     "layers": [],
     "layer_stack": null,
     "outline": null,
+    "geometry": {
+      "units": "mm",
+      "thickness_mm": null,
+      "outline": null,
+      "stackup": [],
+      "openings": [],
+      "cutouts": [],
+      "surface_features": []
+    },
     "features": [],
     "footprint_definitions": [],
     "placements": []
@@ -279,6 +288,7 @@
             <tr><td><code>board.layers[]</code></td><td>Layer ID, name, role, side, thickness, and enabled state.</td><td>Layer lists, filtering, coloring, and stack views.</td></tr>
             <tr><td><code>board.layer_stack</code></td><td>Optional ordered layer IDs plus total board thickness in millimeters.</td><td>2D ordering and 3D board thickness hints.</td></tr>
             <tr><td><code>board.outline</code></td><td>Optional polygon outline in board coordinates.</td><td>Board shape, bounds, and hit regions.</td></tr>
+            <tr><td><code>board.geometry</code></td><td>Deterministic board-only 3D geometry derived from units, layer stack, outline, and board features.</td><td>Viewer-ready bare-board extrusion, stack Z positions, openings, cutouts, and surface features without executing Python.</td></tr>
             <tr><td><code>board.features[]</code></td><td>Board-owned physical features such as drilled holes with stable IDs, labels, positions, diameter, and role metadata.</td><td>Mechanical overlays and selectable board features.</td></tr>
           </tbody>
         </table>
@@ -286,6 +296,29 @@
           <h2>Layers and features do not define connectivity.</h2>
           <p>They describe board projection geometry and metadata. Logical pins and nets remain owned by the logical circuit and are only referenced by ID.</p>
         </div>
+      </div>
+    </section>
+
+    <section>
+      <aside>Bare Board 3D</aside>
+      <div class="stack">
+        <div class="callout green">
+          <h2><code>board.geometry</code> is a render-ready view of board-owned data.</h2>
+          <p>The section is emitted from a kernel-owned board geometry projection so a 3D viewer can build the bare board without running authoring Python. The reader treats the canonical board fields as the source and the writer recomputes this section, so it does not introduce component bodies, model files, asset hashes, or a viewer-owned netlist.</p>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Path</th><th>Meaning</th><th>3D use</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>geometry.units</code>, <code>thickness_mm</code></td><td>Board units and total board thickness from the layer stack.</td><td>Scene scale and extrusion depth.</td></tr>
+            <tr><td><code>geometry.outline</code></td><td>Polygon outline copied into the geometry section.</td><td>Extrusion profile for the board body.</td></tr>
+            <tr><td><code>geometry.stackup[]</code></td><td>Ordered layer entries with layer ID, name, role, side, enabled state, layer thickness, and deterministic <code>z_mm</code>.</td><td>Place top, bottom, and internal layers relative to board center.</td></tr>
+            <tr><td><code>geometry.openings[]</code></td><td>Through-board holes and slots with stable feature IDs, plated flag, and drill or slot dimensions.</td><td>Subtract drills and slots from the board mesh.</td></tr>
+            <tr><td><code>geometry.cutouts[]</code></td><td>Through-board polygonal cutouts with stable feature IDs.</td><td>Subtract internal board voids from the board mesh.</td></tr>
+            <tr><td><code>geometry.surface_features[]</code></td><td>Board-side surface features such as circles with explicit top or bottom side.</td><td>Render fiducials or other board-owned markings without treating them as component assets.</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -343,15 +376,15 @@
             <tr><th>Renderer primitive</th><th>JSON inputs</th><th>Contract</th></tr>
           </thead>
           <tbody>
-            <tr><td>Board body</td><td><code>board.outline.vertices</code>, <code>board.layer_stack.board_thickness_mm</code>, <code>board.units</code></td><td>Extrude the outline by board thickness in millimeters. The renderer chooses camera and z-origin conventions.</td></tr>
-            <tr><td>Layer controls</td><td><code>board.layers[]</code>, <code>board.layer_stack.layers[]</code></td><td>Use layer IDs, names, roles, sides, enabled state, and stack order for visibility and inspection.</td></tr>
-            <tr><td>Mechanical features</td><td><code>board.features[]</code></td><td>Render board holes and future board features from stable feature IDs and board-space geometry.</td></tr>
+            <tr><td>Board body</td><td><code>board.geometry.outline</code>, <code>board.geometry.thickness_mm</code>, <code>board.geometry.units</code></td><td>Extrude the outline by board thickness in millimeters. The renderer chooses camera and z-origin conventions.</td></tr>
+            <tr><td>Layer controls</td><td><code>board.geometry.stackup[]</code>, <code>board.layers[]</code></td><td>Use layer IDs, names, roles, sides, enabled state, stack order, and <code>z_mm</code> for visibility and inspection.</td></tr>
+            <tr><td>Mechanical features</td><td><code>board.geometry.openings[]</code>, <code>board.geometry.cutouts[]</code>, <code>board.geometry.surface_features[]</code></td><td>Render board holes, slots, cutouts, and board-side primitives from stable feature IDs and board-space geometry.</td></tr>
             <tr><td>Footprint pad bodies</td><td><code>board.footprint_definitions[].pads[]</code></td><td>Render pad shape, size, drill, and layer membership in footprint-local coordinates.</td></tr>
             <tr><td>Placed pads</td><td><code>board.placements[]</code> plus referenced <code>footprint_def</code></td><td>Apply placement side, rotation, and translation to every footprint-local pad. Bottom-side placements mirror local X before rotation.</td></tr>
             <tr><td>Selection identity</td><td><code>viewer.pad_resolutions[]</code>, <code>viewer.diagnostics[]</code></td><td>Use derived pad projection IDs, pin refs, net refs, and diagnostic entity refs for overlays and inspection panels.</td></tr>
           </tbody>
         </table>
-        <p>Routed copper, vias, zones, rich package bodies, component heights, and external 3D model references are intentionally absent from v1. They should be added as kernel-owned PCB projection data when those concepts exist in Volt.</p>
+        <p>Rich package bodies, component heights, external 3D model references, asset bundles, and generated model files are intentionally absent from this board-only 3D readiness slice. They should be added as kernel-owned PCB projection data when those concepts exist in Volt.</p>
       </div>
     </section>
 
@@ -420,9 +453,10 @@
       <div class="stack">
         <ul>
           <li>No product UI, 3D renderer, click payload, editor workflow, or agent feedback protocol is defined here.</li>
+          <li>No component 3D body assets, generated model files, asset hashes, or project viewer bundles are part of <code>board.geometry</code>.</li>
           <li>No <code>source</code> section, source-code location mapping, or viewer-to-agent source trace is part of v1.</li>
           <li>No direct UI mutation of kernel state is authorized by this data.</li>
-          <li>No routing, autorouting, DRC, Gerber, KiCad PCB import/export, or manufacturing output contract is implied.</li>
+          <li>No autorouting, Gerber, or manufacturing output contract is implied.</li>
         </ul>
       </div>
     </section>

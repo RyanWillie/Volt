@@ -225,4 +225,54 @@ namespace volt::detail {
     return result;
 }
 
+namespace {
+
+[[nodiscard]] BoardPoint outline_segment_midpoint(BoardPoint lhs, BoardPoint rhs) {
+    return BoardPoint{(lhs.x_mm() + rhs.x_mm()) / 2.0, (lhs.y_mm() + rhs.y_mm()) / 2.0};
+}
+
+} // namespace
+
+[[nodiscard]] bool outline_contains_disc(const BoardOutline &outline, BoardPoint center,
+                                         double radius_mm, double clearance_mm) {
+    if (!outline.contains(center)) {
+        return false;
+    }
+    return outline_boundary_distance(outline, center) + board_drc_epsilon >=
+           radius_mm + clearance_mm;
+}
+
+[[nodiscard]] bool outline_contains_segment(const BoardOutline &outline, BoardPoint start,
+                                            BoardPoint end, double radius_mm, double clearance_mm) {
+    if (!outline.contains(start) || !outline.contains(end) ||
+        !outline.contains(outline_segment_midpoint(start, end))) {
+        return false;
+    }
+    return segment_outline_boundary_distance(outline, start, end) + board_drc_epsilon >=
+           radius_mm + clearance_mm;
+}
+
+[[nodiscard]] bool outline_contains_polygon(const BoardOutline &outline,
+                                            const std::vector<BoardPoint> &polygon,
+                                            double clearance_mm) {
+    const auto &outline_vertices = outline.vertices();
+    for (std::size_t index = 0; index < polygon.size(); ++index) {
+        const auto next = (index + 1U) % polygon.size();
+        if (!outline.contains(polygon[index]) ||
+            !outline.contains(outline_segment_midpoint(polygon[index], polygon[next]))) {
+            return false;
+        }
+        for (std::size_t outline_index = 0; outline_index < outline_vertices.size();
+             ++outline_index) {
+            const auto outline_next = (outline_index + 1U) % outline_vertices.size();
+            if (segments_cross_properly(polygon[index], polygon[next],
+                                        outline_vertices[outline_index],
+                                        outline_vertices[outline_next])) {
+                return false;
+            }
+        }
+    }
+    return polygon_outline_boundary_distance(outline, polygon) + board_drc_epsilon >= clearance_mm;
+}
+
 } // namespace volt::detail
