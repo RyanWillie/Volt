@@ -473,3 +473,14 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
     assert ".at(led_resistor.end.right(" not in source
     assert "drawing.connect(led_resistor.end, led.start" not in source
     assert "ofst=" not in source
+
+
+def test_timer_555_led_blinker_board_uses_relative_route_authoring():
+    main = importlib.import_module("examples.timer_555_led_blinker.main")
+    source = inspect.getsource(main.build_board)
+
+    assert "layout.route(" in source
+    assert "layout.via(" in source
+    assert "board.add_track(" not in source
+    assert "def track(" not in source
+    assert "def via(" not in source

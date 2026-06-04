@@ -52,20 +52,31 @@ The footprint identity is still serialized as the selected part reference, but t
 ## Placement and routing
 
 ```python
-board.place(r1, at=(15.0, 7.0), rotation=0.0, side="top")
-board.place(d1, at=(24.0, 7.0), rotation=180.0, side="top")
+with board.layout(unit=1.0) as layout:
+    resistor = layout.two_pad(r1).at((15.0, 7.0)).right()
+    led = layout.place(d1, at=resistor.center.right(9.0), orient="left")
 
-board.add_track(
-    led_a,
-    layer=front,
-    points=[(15.75, 7.0), (20.0, 3.0), (24.75, 7.0)],
-    width=0.25,
-)
+    layout.route(led_a, layer=front, width=0.25).at(resistor.end).right(2.0).toy(
+        led.A
+    ).to(led.A)
 
-board.add_via(gnd, at=(10.0, 10.0), start_layer=front, end_layer=back, drill=0.3, annular=0.6)
+    drop = layout.node(led.K.left(2.0))
+    layout.route(gnd, layer=front, width=0.30).at(led.K).to(drop)
+    layout.via(gnd, at=drop, start_layer=front, end_layer=back)
 ```
 
-Tracks and vias reference existing logical nets. Board data implements connectivity; it does not define the netlist.
+Layout routes are hand-placed physical copper: `.at(...)`, `.tox(...)`, `.toy(...)`,
+directional jogs, and `.to(...)` lower to kernel-owned tracks. `layout.via(...)` lowers
+to the same via model as `board.add_via(...)`. Tracks and vias reference existing logical
+nets. Board data implements connectivity; it does not define the netlist.
+
+`board.add_track(...)` remains available when an importer or advanced authoring workflow
+needs to provide exact point lists deliberately.
+
+```python
+# Low-level facade calls remain available for exact imported board geometry.
+board.place(r1, at=(15.0, 7.0), rotation=0.0, side="top")
+```
 
 ## Zones, keepouts, and text
 

@@ -508,72 +508,67 @@ def build_board(
             )
             dled = layout.place(parts["DLED"], at=(12.5, 24.0), orient="right")
 
-    def pt(anchor_or_point):
-        return anchor_or_point.point if hasattr(anchor_or_point, "point") else anchor_or_point
+        board.add_text("555 SMD", at=(28.0, 29.5), layer=silk, size=1.0)
+        board.add_text("+5V", at=(4.8, 10.2), layer=silk, size=0.7)
+        board.add_text("GND", at=(7.5, 10.2), layer=silk, size=0.7)
+        board.add_text("K", at=(10.2, 25.9), layer=silk, size=0.7)
 
-    def track(net: volt.Net, layer: int, *points, width: float = 0.20) -> None:
-        board.add_track(net, layer=layer, points=tuple(pt(point) for point in points), width=width)
-
-    def via(net: volt.Net, at, *, drill: float = 0.30, annular: float = 0.70) -> None:
-        board.add_via(
-            net,
-            at=pt(at),
-            start_layer=front,
-            end_layer=back,
-            drill=drill,
-            annular=annular,
+        gnd_drops = (
+            (header[2], header[2].right(1.8).up(0.05)),
+            (timer.GND, timer.GND.left(2.125).up(0.095)),
+            (cdec.end, cdec.end.right(1.55)),
+            (cctrl.end, cctrl.end.right(1.6)),
+            (ct.end, ct.end.right(1.65)),
+            (dled.K, dled.K.left(1.7625)),
         )
+        for pad, drop in gnd_drops:
+            drop_anchor = layout.node(drop)
+            layout.route(nets["GND"], layer=front, width=0.30).at(pad).to(drop_anchor)
+            layout.via(
+                nets["GND"],
+                at=drop_anchor,
+                start_layer=front,
+                end_layer=back,
+            )
 
-    board.add_text("555 SMD", at=(28.0, 29.5), layer=silk, size=1.0)
-    board.add_text("+5V", at=(4.8, 10.2), layer=silk, size=0.7)
-    board.add_text("GND", at=(7.5, 10.2), layer=silk, size=0.7)
-    board.add_text("K", at=(10.2, 25.9), layer=silk, size=0.7)
+        power_rail = header[1].up(5.15)
+        layout.route(nets["+5V"], layer=front, width=0.30).at(header[1]).toy(
+            power_rail
+        ).tox(cdec.start).to(cdec.start)
+        layout.route(nets["+5V"], layer=front, width=0.30).at(cdec.start).to(timer.VCC)
+        layout.route(nets["+5V"], layer=front, width=0.30).at(cdec.start).toy(
+            power_rail
+        ).tox(ra.start).to(ra.start)
+        layout.route(nets["+5V"], layer=front, width=0.25).at(timer.RESET).tox(
+            timer.RESET.left(3.025)
+        ).toy(timer.VCC.up(2.095)).tox(timer.VCC).to(timer.VCC)
 
-    gnd_drops = (
-        (header[2], (9.8, 13.1)),
-        (timer.GND, (18.4, 13.0)),
-        (cdec.end, (31.5, 10.0)),
-        (cctrl.end, (32.6, 21.95)),
-        (ct.end, (41.6, 20.0)),
-        (dled.K, (9.8, 24.0)),
-    )
-    for pad, drop in gnd_drops:
-        track(nets["GND"], front, pad, drop, width=0.30)
-        via(nets["GND"], drop)
+        disch_escape = timer.DISCH.right(2.525)
+        disch_bus = ra.end.right(1.5875).down(1.8)
+        layout.route(nets["DISCH"], layer=front).at(timer.DISCH).tox(disch_escape).to(
+            rb.start
+        )
+        layout.route(nets["DISCH"], layer=front).at(timer.DISCH).tox(disch_escape).toy(
+            disch_bus
+        ).tox(disch_bus).toy(ra.end).to(ra.end)
 
-    track(nets["+5V"], front, header[1], (6.0, 8.0), (28.05, 8.0), cdec.start, width=0.30)
-    track(nets["+5V"], front, cdec.start, timer.VCC, width=0.30)
-    track(nets["+5V"], front, cdec.start, (28.05, 8.0), (35.0875, 8.0), ra.start, width=0.30)
-    track(
-        nets["+5V"],
-        front,
-        timer.RESET,
-        (17.5, 16.905),
-        (17.5, 11.0),
-        (25.475, 11.0),
-        timer.VCC,
-        width=0.25,
-    )
+        timing_escape = timer.TRIG.right(2.875)
+        timing_bus = rb.end.right(2.5875)
+        layout.route(nets["TIMING"], layer=front).at(timer.TRIG).tox(timing_escape).toy(
+            timer.THRESH
+        ).to(timer.THRESH)
+        layout.route(nets["TIMING"], layer=front).at(timer.THRESH).tox(
+            timer.THRESH.right(3.525)
+        ).tox(timing_bus).toy(rb.end).to(rb.end)
+        layout.route(nets["TIMING"], layer=front).at(rb.end).tox(ct.start).to(ct.start)
 
-    track(nets["DISCH"], front, timer.DISCH, (28.0, 14.365), rb.start)
-    track(
-        nets["DISCH"],
-        front,
-        timer.DISCH,
-        (28.0, 14.365),
-        (28.0, 11.8),
-        (38.5, 11.8),
-        (38.5, 10.0),
-        ra.end,
-    )
-
-    track(nets["TIMING"], front, timer.TRIG, (23.4, 14.365), (23.4, 15.635), timer.THRESH)
-    track(nets["TIMING"], front, timer.THRESH, (29.0, 15.635), (39.5, 15.635), (39.5, 14.0), rb.end)
-    track(nets["TIMING"], front, rb.end, (38.05, 14.0), ct.start)
-
-    track(nets["CTRL"], front, timer.CTRL, (30.0, 16.905), (30.0, 20.05), cctrl.start)
-    track(nets["OUT"], front, timer.OUT, (21.9, 15.635), (21.9, 19.0875), rled.start)
-    track(nets["LED_A"], front, rled.end, (15.5, 24.0), dled.A)
+        layout.route(nets["CTRL"], layer=front).at(timer.CTRL).tox(
+            timer.CTRL.right(4.525)
+        ).toy(cctrl.start).to(cctrl.start)
+        layout.route(nets["OUT"], layer=front).at(timer.OUT).tox(
+            timer.OUT.right(1.375)
+        ).toy(rled.start).to(rled.start)
+        layout.route(nets["LED_A"], layer=front).at(rled.end).toy(dled.A).to(dled.A)
     return board
 
 

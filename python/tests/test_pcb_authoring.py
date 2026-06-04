@@ -234,6 +234,55 @@ def test_pcb_layout_two_pad_builder_does_not_flush_from_layout_operations():
     assert layout.here.point == (6.5, 5.0)
 
 
+def test_pcb_layout_routes_tracks_and_vias_from_relative_anchors():
+    design, r1, d1 = _small_resistor_led_design()
+    led_a = next(net for net in design.nets() if net.name == "LED_A")
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
+
+    with board.layout(unit=1.0) as layout:
+        resistor = layout.two_pad(r1).at((10.0, 10.0)).right()
+        led = layout.place(d1, at=resistor.center.right(12).down(5), orient="left")
+
+        front_track = (
+            layout.route(led_a, layer=front, width=0.25)
+            .at(resistor.end)
+            .right(2.0)
+            .toy(led.A)
+            .to(led.A)
+        )
+        via_anchor = layout.node(led.K.left(2.0))
+        via = layout.via(led_a, at=via_anchor, start_layer=front, end_layer=back)
+        back_track = layout.route(led_a, layer=back, width=0.30).to(
+            via_anchor.right(3.0)
+        )
+
+    document = json.loads(board.to_json())
+    assert isinstance(layout.here, volt.BoardAnchor)
+    assert layout.here.point == (23.0, 15.0)
+    assert front_track == 0
+    assert via == 0
+    assert back_track == 1
+    assert document["board"]["tracks"][0]["points"] == [
+        [11.5, 10.0],
+        [13.5, 10.0],
+        [13.5, 15.0],
+        [23.5, 15.0],
+    ]
+    assert document["board"]["tracks"][0]["width_mm"] == 0.25
+    assert document["board"]["tracks"][1]["points"] == [[20.0, 15.0], [23.0, 15.0]]
+    assert document["board"]["tracks"][1]["layer"] == "board_layer:1"
+    assert document["board"]["tracks"][1]["width_mm"] == 0.30
+    assert document["board"]["vias"][0]["position"] == [20.0, 15.0]
+    assert document["board"]["vias"][0]["start_layer"] == "board_layer:0"
+    assert document["board"]["vias"][0]["end_layer"] == "board_layer:1"
+
+
 def test_pcb_layout_board_anchors_read_outline_without_serializing(monkeypatch):
     design = volt.Design("pcb-layout-outline-query")
     board = design.board("Control")

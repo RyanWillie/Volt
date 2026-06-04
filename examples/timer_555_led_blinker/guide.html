@@ -125,6 +125,14 @@
       <li><code>timer_555_led_blinker.validation.json</code></li>
     </ul>
 
+    <h2>Routing authoring</h2>
+    <p>
+      Hand-placed copper is expressed from board anchors using <code>layout.route()</code>,
+      <code>.tox()</code>, <code>.toy()</code>, directional jogs, and <code>layout.via()</code>.
+      The route builder only describes physical implementation intent; it still lowers
+      through the kernel-owned board track and via APIs.
+    </p>
+
     <h2>Boundary</h2>
     <p>
       The Python example describes author intent and calls kernel-backed mutation APIs.

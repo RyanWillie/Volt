@@ -57,6 +57,7 @@ from ._pcb_layout import (
     BoardAnchor,
     BoardLayout,
     BoardPadAnchor,
+    BoardRoute,
     BoardTwoPadComponent,
     PlacedBoardComponent,
 )
@@ -89,6 +90,7 @@ __all__ = [
     "BoardAnchor",
     "BoardLayout",
     "BoardPadAnchor",
+    "BoardRoute",
     "BoardTwoPadComponent",
     "Circle",
     "Cutout",

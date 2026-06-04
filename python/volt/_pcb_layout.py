@@ -7,7 +7,7 @@ from math import cos, radians, sin
 from typing import TYPE_CHECKING
 
 from ._utils import _coordinate, _positive_coordinate
-from .logical import Component, Pin, _pin_refs_by_name
+from .logical import Component, Net, Pin, _pin_refs_by_name
 
 if TYPE_CHECKING:
     from .pcb import Board, ComponentFootprintPad
@@ -427,6 +427,39 @@ class BoardLayout:
         """Start fluent placement for a two-pad component footprint."""
         return BoardTwoPadComponent(self, component, side=side, locked=locked)
 
+    def route(
+        self,
+        net: Net | int,
+        *,
+        layer: int,
+        width: float = 0.20,
+    ) -> BoardRoute:
+        """Start a schematic-style routed track sequence from the cursor."""
+        return BoardRoute(self, net, layer=layer, width=width)
+
+    def via(
+        self,
+        net: Net | int,
+        *,
+        at: tuple[float, float] | BoardAnchor | None = None,
+        start_layer: int,
+        end_layer: int,
+        drill: float = 0.30,
+        annular: float = 0.70,
+    ) -> int:
+        """Add a via at a board anchor and move the cursor to that anchor."""
+        anchor = self._here if at is None else self._anchor_at(at)
+        via = self._board.add_via(
+            net,
+            at=anchor.point,
+            start_layer=start_layer,
+            end_layer=end_layer,
+            drill=drill,
+            annular=annular,
+        )
+        self._here = anchor
+        return via
+
     def node(
         self,
         at: tuple[float, float] | BoardAnchor | None = None,
@@ -516,6 +549,110 @@ class BoardLayout:
             f"BoardLayout(here={self._here.point!r}, "
             f"direction={self._direction!r}, unit={self._unit!r})"
         )
+
+
+class BoardRoute:
+    """Fluent builder for hand-placed PCB route geometry."""
+
+    def __init__(
+        self,
+        layout: BoardLayout,
+        net: Net | int,
+        *,
+        layer: int,
+        width: float,
+    ):
+        self._layout = layout
+        self._board = layout._board
+        self._net = net
+        self._layer = layer
+        self._width = _positive_coordinate(width, "Board route width")
+        self._points: list[BoardAnchor] = [layout.here]
+        self._track: int | None = None
+
+    def at(self, point: tuple[float, float] | BoardAnchor) -> BoardRoute:
+        """Start this route at an explicit board anchor."""
+        self._require_open("at")
+        self._points = [self._layout._anchor_at(point)]
+        return self
+
+    def to(self, point: tuple[float, float] | BoardAnchor) -> int:
+        """Terminate this route at an anchor and add the track to the board."""
+        self._require_open("to")
+        self._append(self._layout._anchor_at(point))
+        return self._materialize()
+
+    def tox(self, anchor_or_x) -> BoardRoute:
+        """Route horizontally to the target x coordinate."""
+        self._require_open("tox")
+        current = self._current("tox")
+        return self._append(
+            BoardAnchor(
+                (_board_anchor_axis_target(anchor_or_x, self._board, "x"), current.y),
+                board=self._board,
+            )
+        )
+
+    def toy(self, anchor_or_y) -> BoardRoute:
+        """Route vertically to the target y coordinate."""
+        self._require_open("toy")
+        current = self._current("toy")
+        return self._append(
+            BoardAnchor(
+                (current.x, _board_anchor_axis_target(anchor_or_y, self._board, "y")),
+                board=self._board,
+            )
+        )
+
+    def left(self, distance: float) -> BoardRoute:
+        """Route left by a relative distance."""
+        return self._offset("left", dx=-_coordinate(distance))
+
+    def right(self, distance: float) -> BoardRoute:
+        """Route right by a relative distance."""
+        return self._offset("right", dx=_coordinate(distance))
+
+    def up(self, distance: float) -> BoardRoute:
+        """Route up by a relative distance."""
+        return self._offset("up", dy=-_coordinate(distance))
+
+    def down(self, distance: float) -> BoardRoute:
+        """Route down by a relative distance."""
+        return self._offset("down", dy=_coordinate(distance))
+
+    def _offset(self, method: str, *, dx: float = 0, dy: float = 0) -> BoardRoute:
+        self._require_open(method)
+        return self._append(self._current(method).offset(dx=dx, dy=dy))
+
+    def _append(self, anchor: BoardAnchor) -> BoardRoute:
+        self._points.append(anchor)
+        self._points = _distinct_adjacent_points(self._points)
+        return self
+
+    def _current(self, method: str) -> BoardAnchor:
+        if not self._points:
+            raise ValueError(f"Board route requires a start point before {method}()")
+        return self._points[-1]
+
+    def _materialize(self) -> int:
+        points = _distinct_adjacent_points(self._points)
+        if len(points) < 2:
+            raise ValueError("Board route requires at least two distinct points")
+        self._track = self._board.add_track(
+            self._net,
+            layer=self._layer,
+            points=tuple(anchor.point for anchor in points),
+            width=self._width,
+        )
+        self._layout._here = points[-1]
+        return self._track
+
+    def _require_open(self, method: str) -> None:
+        if self._track is not None:
+            raise ValueError(f"Cannot call {method}() after route is materialized")
+
+    def __repr__(self) -> str:
+        return f"BoardRoute(points={[anchor.point for anchor in self._points]!r})"
 
 
 class BoardTwoPadComponent:
@@ -763,6 +900,15 @@ def _board_point_tuple(value) -> tuple[float, float]:
     if not isinstance(value, (tuple, list)) or len(value) != 2:
         raise TypeError("Board points must be anchors or (x, y) pairs")
     return (_coordinate(value[0]), _coordinate(value[1]))
+
+
+def _distinct_adjacent_points(points: list[BoardAnchor]) -> list[BoardAnchor]:
+    result: list[BoardAnchor] = []
+    for point in points:
+        if result and result[-1].point == point.point:
+            continue
+        result.append(point)
+    return result
 
 
 def _board_point(value, *, board: Board) -> tuple[float, float]:
