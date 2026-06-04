@@ -480,7 +480,7 @@ def build_board(
             )
             ct = (
                 layout.two_pad(parts["CT"])
-                .at(rb.end.down(2.4))
+                .at(rb.end.down(3.0))
                 .down()
             )
 
