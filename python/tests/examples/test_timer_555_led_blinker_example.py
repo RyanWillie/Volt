@@ -316,19 +316,32 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     c1_placement = placements_by_component[component_ids["C1"]]
     r2_timing_pad = pad_position("R2", "TIMING")
     c1_timing_pad = pad_position("C1", "TIMING")
-    r2_to_c1_track_lengths = [
-        sum(
-            abs(end[0] - start[0]) + abs(end[1] - start[1])
-            for start, end in zip(track["points"], track["points"][1:])
-        )
+    timing_junctions = [
+        tuple(point)
         for track in timing_tracks
-        if {r2_timing_pad, c1_timing_pad} <= {tuple(point) for point in track["points"]}
+        for point in track["points"]
+        if point[0] > r2_timing_pad[0] + 1.0
+        and abs(point[1] - r2_timing_pad[1]) < 1e-9
     ]
     assert c1_placement["rotation_deg"] == 90
     assert c1_placement["position"][1] - r2_placement["position"][1] >= 3.9
-    assert abs(c1_timing_pad[0] - r2_timing_pad[0]) <= 0.25
+    assert timing_junctions
+    timing_junction = max(timing_junctions)
+    assert abs(c1_timing_pad[0] - timing_junction[0]) < 1e-9
+    assert c1_timing_pad[0] - r2_timing_pad[0] >= 1.5
     assert 2.75 <= c1_timing_pad[1] - r2_timing_pad[1] <= 3.5
-    assert r2_to_c1_track_lengths and max(r2_to_c1_track_lengths) <= 3.5
+    assert any(
+        {r2_timing_pad, timing_junction} <= {tuple(point) for point in track["points"]}
+        for track in timing_tracks
+    )
+    assert any(
+        {timing_junction, c1_timing_pad} <= {tuple(point) for point in track["points"]}
+        for track in timing_tracks
+    )
+    assert not any(
+        {r2_timing_pad, c1_timing_pad} <= {tuple(point) for point in track["points"]}
+        for track in timing_tracks
+    )
     assert pcb["board"]["zones"] == [
         {
             "id": "board_zone:0",
