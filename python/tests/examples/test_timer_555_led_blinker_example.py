@@ -288,6 +288,35 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert len(pcb["board"]["footprint_definitions"]) == 5
     assert len(pcb["board"]["tracks"]) == 18
     assert len(pcb["board"]["vias"]) == 6
+    component_ids = {component["reference"]: component["id"] for component in logical["components"]}
+    net_ids = {net["name"]: net["id"] for net in logical["nets"]}
+
+    def pad_position(component_ref: str, net_name: str) -> tuple[float, float]:
+        matches = [
+            pad["position"]
+            for pad in pcb["viewer"]["pad_resolutions"]
+            if pad["component"] == component_ids[component_ref]
+            and pad["net"] == net_ids[net_name]
+        ]
+        assert len(matches) == 1
+        return tuple(matches[0])
+
+    timing_tracks = [
+        track for track in pcb["board"]["tracks"] if track["net"] == net_ids["TIMING"]
+    ]
+    r2_timing_pad = pad_position("R2", "TIMING")
+    c1_timing_pad = pad_position("C1", "TIMING")
+    r2_to_c1_track_lengths = [
+        sum(
+            abs(end[0] - start[0]) + abs(end[1] - start[1])
+            for start, end in zip(track["points"], track["points"][1:])
+        )
+        for track in timing_tracks
+        if {r2_timing_pad, c1_timing_pad} <= {tuple(point) for point in track["points"]}
+    ]
+    assert abs(c1_timing_pad[0] - r2_timing_pad[0]) <= 0.25
+    assert 1.0 <= c1_timing_pad[1] - r2_timing_pad[1] <= 3.0
+    assert r2_to_c1_track_lengths and max(r2_to_c1_track_lengths) <= 3.0
     assert pcb["board"]["zones"] == [
         {
             "id": "board_zone:0",

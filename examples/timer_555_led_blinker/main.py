@@ -480,9 +480,8 @@ def build_board(
             )
             ct = (
                 layout.two_pad(parts["CT"])
-                .at((39.0, 20.0))
-                .anchor("center")
-                .right()
+                .at(rb.end.down(2.4))
+                .down()
             )
 
         with layout.hold():
@@ -553,14 +552,14 @@ def build_board(
         ).tox(disch_bus).toy(ra.end).to(ra.end)
 
         timing_escape = timer.TRIG.right(2.875)
-        timing_bus = rb.end.right(2.5875)
+        timing_bus = rb.end.right(1.0)
         layout.route(nets["TIMING"], layer=front).at(timer.TRIG).tox(timing_escape).toy(
             timer.THRESH
         ).to(timer.THRESH)
-        layout.route(nets["TIMING"], layer=front).at(timer.THRESH).tox(
-            timer.THRESH.right(3.525)
-        ).tox(timing_bus).toy(rb.end).to(rb.end)
-        layout.route(nets["TIMING"], layer=front).at(rb.end).tox(ct.start).to(ct.start)
+        layout.route(nets["TIMING"], layer=front).at(timer.THRESH).tox(timing_bus).toy(
+            rb.end
+        ).to(rb.end)
+        layout.route(nets["TIMING"], layer=front).at(rb.end).to(ct.start)
 
         layout.route(nets["CTRL"], layer=front).at(timer.CTRL).tox(
             timer.CTRL.right(4.525)
