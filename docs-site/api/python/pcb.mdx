@@ -28,7 +28,7 @@ Source: `python/volt/pcb.py`
 | `set_polygon_outline(self, vertices: Iterable[Point]) -> Board` | Set a polygon board outline from ordered vertices. |
 | `edge(self, name: str)` | Return a mechanical board edge helper. |
 | `corner(self, name: str)` | Return a mechanical board corner anchor. |
-| `layout(self, *, at: Point = (0, 0), direction: str = 'Right', unit: float = 1.0)` | Create a schematic-style PCB placement authoring session. |
+| `layout(self, *, at: Point = (0, 0), direction: str = 'Right', unit: float = 1.0, grid: float \| None = None)` | Create a schematic-style PCB placement authoring session. |
 | `add(self, primitive) -> int` | Add a generic board primitive and return its kernel index. |
 | `cache_footprint(self, footprint: Footprint) -> int` | Cache an explicit board-owned footprint definition for importers and low-level tests. |
 | `place(self, component: Component \| int, *, at: Point, rotation: float = 0.0, side: str = 'top', locked: bool = False) -> int` | Place a component footprint on the board and return the placement index. |
@@ -86,16 +86,20 @@ Source: `python/volt/_pcb_layout.py`
 | `here: BoardAnchor` | Return the layout cursor's current anchor. |
 | `direction: str` | Return the layout cursor's current direction. |
 | `unit: float` | Return the layout unit used by stack spacing defaults. |
+| `grid: float \| None` | Return the placement grid spacing, if explicit coordinates are snapped. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
+| `snap(self, point: tuple[float, float] \| BoardAnchor \| None = None) -> BoardAnchor` | Return an anchor snapped to the layout grid. |
+| `snap_x(self, anchor_or_x) -> float` | Return an x coordinate snapped to the layout grid. |
+| `snap_y(self, anchor_or_y) -> float` | Return a y coordinate snapped to the layout grid. |
 | `move(self, *, dx: float = 0, dy: float = 0) -> BoardLayout` | Move the layout cursor by a relative offset. |
 | `move_from(self, anchor: tuple[float, float] \| BoardAnchor, *, dx: float = 0, dy: float = 0, direction: str \| None = None) -> BoardLayout` | Move the layout cursor to an anchor plus an optional relative offset. |
 | `place(self, component: Component, *, at: tuple[float, float] \| BoardAnchor \| None = None, orient: str \| None = None, side: str = 'top', locked: bool = False) -> PlacedBoardComponent` | Place a component at the cursor or an explicit board anchor. |
 | `two_pad(self, component: Component, *, side: str = 'top', locked: bool = False) -> BoardTwoPadComponent` | Start fluent placement for a two-pad component footprint. |
-| `route(self, net: Net \| int, *, layer: int, width: float = 0.2) -> BoardRoute` | Start a schematic-style routed track sequence from the cursor. |
+| `route(self, net: Net \| int, *, layer: int, width: float = 0.2, mode: str = 'octilinear') -> BoardRoute` | Start a schematic-style routed track sequence from the cursor. |
 | `via(self, net: Net \| int, *, at: tuple[float, float] \| BoardAnchor \| None = None, start_layer: int, end_layer: int, drill: float = 0.3, annular: float = 0.7) -> int` | Add a via at a board anchor and move the cursor to that anchor. |
 | `node(self, at: tuple[float, float] \| BoardAnchor \| None = None, *, dx: float = 0, dy: float = 0) -> BoardAnchor` | Return a reusable board-local geometry anchor without adding objects. |
 | `stack(self, *, count: int, direction: str \| None = None, pitch: float \| None = None, at: tuple[float, float] \| BoardAnchor \| None = None) -> tuple[BoardAnchor, ...]` | Return evenly spaced anchors from the current cursor or an explicit anchor. |
@@ -119,7 +123,7 @@ Source: `python/volt/_pcb_layout.py`
 | Method | Summary |
 | --- | --- |
 | `at(self, point: tuple[float, float] \| BoardAnchor) -> BoardRoute` | Start this route at an explicit board anchor. |
-| `to(self, point: tuple[float, float] \| BoardAnchor) -> int` | Terminate this route at an anchor and add the track to the board. |
+| `to(self, point: tuple[float, float] \| BoardAnchor, *, mode: str \| None = None) -> int` | Terminate this route at an anchor and add the track to the board. |
 | `tox(self, anchor_or_x) -> BoardRoute` | Route horizontally to the target x coordinate. |
 | `toy(self, anchor_or_y) -> BoardRoute` | Route vertically to the target y coordinate. |
 | `left(self, distance: float) -> BoardRoute` | Route left by a relative distance. |

@@ -283,6 +283,107 @@ def test_pcb_layout_routes_tracks_and_vias_from_relative_anchors():
     assert document["board"]["vias"][0]["end_layer"] == "board_layer:1"
 
 
+def test_pcb_layout_grid_snaps_explicit_authoring_coordinates():
+    design, r1, _d1 = _small_resistor_led_design()
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+
+    with board.layout(at=(0.26, 0.74), grid=0.5) as layout:
+        assert layout.grid == 0.5
+        assert layout.here.point == (0.5, 0.5)
+        assert layout.snap((10.26, 5.74)).point == (10.5, 5.5)
+        assert layout.snap_x(10.26) == 10.5
+        assert layout.snap_y(5.74) == 5.5
+        assert layout.snap_x(0.25) == 0.5
+        assert layout.snap_x(-0.25) == -0.5
+
+        resistor = layout.place(r1, at=(10.26, 5.74), orient="right")
+        with layout.frame((2.26, 3.24)):
+            assert layout.node((1.26, 1.26)).point == (4.0, 4.5)
+
+    assert resistor.center.point == (10.5, 5.5)
+    assert _placed_positions(board) == {
+        "component:0": ((10.5, 5.5), 0, False),
+    }
+
+
+def test_pcb_layout_routes_default_to_octilinear_segments():
+    design = volt.Design("pcb-octilinear-routes")
+    net = design.net("SIG")
+    board = design.board("Control")
+    layer = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+
+    with board.layout() as layout:
+        arbitrary = layout.route(net, layer=layer).at((1.0, 1.0)).to((5.0, 2.0))
+        diagonal = layout.route(net, layer=layer).at((1.0, 4.0)).to((3.0, 6.0))
+        direct = (
+            layout.route(net, layer=layer)
+            .at((1.0, 8.0))
+            .to((5.0, 9.0), mode="direct")
+        )
+
+    document = json.loads(board.to_json())
+    assert arbitrary == 0
+    assert diagonal == 1
+    assert direct == 2
+    assert document["board"]["tracks"][0]["points"] == [[1, 1], [5, 1], [5, 2]]
+    assert document["board"]["tracks"][1]["points"] == [[1, 4], [3, 6]]
+    assert document["board"]["tracks"][2]["points"] == [[1, 8], [5, 9]]
+
+
+def test_pcb_layout_grid_snaps_route_numeric_helpers_without_snapping_anchor_targets():
+    design, r1, _d1 = _small_resistor_led_design()
+    net = design.net("SIG")
+    board = design.board("Control")
+    layer = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+
+    with board.layout(grid=0.5) as layout:
+        helper = (
+            layout.route(net, layer=layer)
+            .at((1.1, 1.1))
+            .tox(2.26)
+            .toy(3.24)
+            .to((4.26, 3.24))
+        )
+        jog = (
+            layout.route(net, layer=layer)
+            .at((1.1, 6.1))
+            .right(1.26)
+            .down(1.26)
+            .to((4.26, 7.26))
+        )
+        resistor = layout.two_pad(r1).at((8.0, 5.0)).right()
+        anchor_target = resistor.end.right(1.26)
+        exact_anchor = (
+            layout.route(net, layer=layer)
+            .at(resistor.end)
+            .tox(anchor_target)
+            .to(anchor_target)
+        )
+
+    document = json.loads(board.to_json())
+    assert helper == 0
+    assert jog == 1
+    assert exact_anchor == 2
+    assert document["board"]["tracks"][0]["points"] == [
+        [1, 1],
+        [2.5, 1],
+        [2.5, 3],
+        [4.5, 3],
+    ]
+    assert document["board"]["tracks"][1]["points"] == [
+        [1, 6],
+        [2.5, 6],
+        [2.5, 7.5],
+        [4.5, 7.5],
+    ]
+    assert document["board"]["tracks"][2]["points"] == [[9.5, 5], [10.76, 5]]
+
+
 def test_pcb_layout_board_anchors_read_outline_without_serializing(monkeypatch):
     design = volt.Design("pcb-layout-outline-query")
     board = design.board("Control")

@@ -52,7 +52,7 @@ The footprint identity is still serialized as the selected part reference, but t
 ## Placement and routing
 
 ```python
-with board.layout(unit=1.0) as layout:
+with board.layout(unit=1.0, grid=0.5) as layout:
     resistor = layout.two_pad(r1).at((15.0, 7.0)).right()
     led = layout.place(d1, at=resistor.center.right(9.0), orient="left")
 
@@ -69,6 +69,11 @@ Layout routes are hand-placed physical copper: `.at(...)`, `.tox(...)`, `.toy(..
 directional jogs, and `.to(...)` lower to kernel-owned tracks. `layout.via(...)` lowers
 to the same via model as `board.add_via(...)`. Tracks and vias reference existing logical
 nets. Board data implements connectivity; it does not define the netlist.
+
+When `grid` is set, explicit authoring coordinates snap to that board grid while
+footprint pad anchors stay exact. `.to(...)` routes default to octilinear geometry, so
+arbitrary endpoints become 0/45/90 degree segments. Use `mode="direct"` only when a
+non-octilinear track is deliberate.
 
 `board.add_track(...)` remains available when an importer or advanced authoring workflow
 needs to provide exact point lists deliberately.

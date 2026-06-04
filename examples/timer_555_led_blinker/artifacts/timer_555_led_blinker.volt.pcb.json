@@ -261,32 +261,32 @@
       {"id": "component_placement:8", "component": "component:8", "footprint": "footprint_def:4", "position": [12.5, 24], "rotation_deg": 0, "side": "top", "locked": false}
     ],
     "tracks": [
-      {"id": "board_track:0", "net": "net:1", "layer": "board_layer:0", "points": [[8, 13.15], [9.8000000000000007, 13.1]], "width_mm": 0.29999999999999999},
-      {"id": "board_track:1", "net": "net:1", "layer": "board_layer:0", "points": [[20.524999999999999, 13.095000000000001], [18.399999999999999, 13]], "width_mm": 0.29999999999999999},
+      {"id": "board_track:0", "net": "net:1", "layer": "board_layer:0", "points": [[8, 13.15], [10, 13.15]], "width_mm": 0.29999999999999999},
+      {"id": "board_track:1", "net": "net:1", "layer": "board_layer:0", "points": [[20.524999999999999, 13.095000000000001], [18.5, 13.095000000000001]], "width_mm": 0.29999999999999999},
       {"id": "board_track:2", "net": "net:1", "layer": "board_layer:0", "points": [[29.949999999999999, 10], [31.5, 10]], "width_mm": 0.29999999999999999},
-      {"id": "board_track:3", "net": "net:1", "layer": "board_layer:0", "points": [[31, 21.949999999999999], [32.600000000000001, 21.949999999999999]], "width_mm": 0.29999999999999999},
-      {"id": "board_track:4", "net": "net:1", "layer": "board_layer:0", "points": [[36.912500000000001, 18.899999999999999], [38.5625, 18.899999999999999]], "width_mm": 0.29999999999999999},
-      {"id": "board_track:5", "net": "net:1", "layer": "board_layer:0", "points": [[11.5625, 24], [9.8000000000000007, 24]], "width_mm": 0.29999999999999999},
+      {"id": "board_track:3", "net": "net:1", "layer": "board_layer:0", "points": [[31, 21.949999999999999], [32.5, 21.949999999999999]], "width_mm": 0.29999999999999999},
+      {"id": "board_track:4", "net": "net:1", "layer": "board_layer:0", "points": [[36.912500000000001, 18.899999999999999], [38.5, 18.899999999999999]], "width_mm": 0.29999999999999999},
+      {"id": "board_track:5", "net": "net:1", "layer": "board_layer:0", "points": [[11.5625, 24], [10, 24]], "width_mm": 0.29999999999999999},
       {"id": "board_track:6", "net": "net:0", "layer": "board_layer:0", "points": [[6, 13.15], [6, 8], [28.050000000000001, 8], [28.050000000000001, 10]], "width_mm": 0.29999999999999999},
-      {"id": "board_track:7", "net": "net:0", "layer": "board_layer:0", "points": [[28.050000000000001, 10], [25.475000000000001, 13.095000000000001]], "width_mm": 0.29999999999999999},
+      {"id": "board_track:7", "net": "net:0", "layer": "board_layer:0", "points": [[28.050000000000001, 10], [25.475000000000001, 10], [25.475000000000001, 13.095000000000001]], "width_mm": 0.29999999999999999},
       {"id": "board_track:8", "net": "net:0", "layer": "board_layer:0", "points": [[28.050000000000001, 10], [28.050000000000001, 8], [35.087499999999999, 8], [35.087499999999999, 10]], "width_mm": 0.29999999999999999},
       {"id": "board_track:9", "net": "net:0", "layer": "board_layer:0", "points": [[20.524999999999999, 16.905000000000001], [17.5, 16.905000000000001], [17.5, 11], [25.475000000000001, 11], [25.475000000000001, 13.095000000000001]], "width_mm": 0.25},
-      {"id": "board_track:10", "net": "net:2", "layer": "board_layer:0", "points": [[25.475000000000001, 14.365], [28, 14.365], [35.087499999999999, 14]], "width_mm": 0.20000000000000001},
-      {"id": "board_track:11", "net": "net:2", "layer": "board_layer:0", "points": [[25.475000000000001, 14.365], [28, 14.365], [28, 11.800000000000001], [38.5, 11.800000000000001], [38.5, 10], [36.912500000000001, 10]], "width_mm": 0.20000000000000001},
-      {"id": "board_track:12", "net": "net:3", "layer": "board_layer:0", "points": [[20.524999999999999, 14.365], [23.399999999999999, 14.365], [23.399999999999999, 15.635], [25.475000000000001, 15.635]], "width_mm": 0.20000000000000001},
-      {"id": "board_track:13", "net": "net:3", "layer": "board_layer:0", "points": [[25.475000000000001, 15.635], [37.912500000000001, 15.635], [37.912500000000001, 14], [36.912500000000001, 14]], "width_mm": 0.20000000000000001},
+      {"id": "board_track:10", "net": "net:2", "layer": "board_layer:0", "points": [[25.475000000000001, 14.365], [28, 14.365], [35.087499999999999, 14.365], [35.087499999999999, 14]], "width_mm": 0.20000000000000001},
+      {"id": "board_track:11", "net": "net:2", "layer": "board_layer:0", "points": [[25.475000000000001, 14.365], [28, 14.365], [28, 12], [38.5, 12], [38.5, 10], [36.912500000000001, 10]], "width_mm": 0.20000000000000001},
+      {"id": "board_track:12", "net": "net:3", "layer": "board_layer:0", "points": [[20.524999999999999, 14.365], [23.5, 14.365], [23.5, 15.635], [25.475000000000001, 15.635]], "width_mm": 0.20000000000000001},
+      {"id": "board_track:13", "net": "net:3", "layer": "board_layer:0", "points": [[25.475000000000001, 15.635], [38, 15.635], [38, 14], [36.912500000000001, 14]], "width_mm": 0.20000000000000001},
       {"id": "board_track:14", "net": "net:3", "layer": "board_layer:0", "points": [[36.912500000000001, 14], [36.912500000000001, 17]], "width_mm": 0.20000000000000001},
       {"id": "board_track:15", "net": "net:4", "layer": "board_layer:0", "points": [[25.475000000000001, 16.905000000000001], [30, 16.905000000000001], [30, 20.050000000000001], [31, 20.050000000000001]], "width_mm": 0.20000000000000001},
-      {"id": "board_track:16", "net": "net:5", "layer": "board_layer:0", "points": [[20.524999999999999, 15.635], [21.899999999999999, 15.635], [21.899999999999999, 19.087499999999999], [15.5, 19.087499999999999]], "width_mm": 0.20000000000000001},
+      {"id": "board_track:16", "net": "net:5", "layer": "board_layer:0", "points": [[20.524999999999999, 15.635], [22, 15.635], [22, 19.087499999999999], [15.5, 19.087499999999999]], "width_mm": 0.20000000000000001},
       {"id": "board_track:17", "net": "net:6", "layer": "board_layer:0", "points": [[15.5, 20.912500000000001], [15.5, 24], [13.4375, 24]], "width_mm": 0.20000000000000001}
     ],
     "vias": [
-      {"id": "board_via:0", "net": "net:1", "position": [9.8000000000000007, 13.1], "start_layer": "board_layer:0", "end_layer": "board_layer:1", "drill_diameter_mm": 0.29999999999999999, "annular_diameter_mm": 0.69999999999999996},
-      {"id": "board_via:1", "net": "net:1", "position": [18.399999999999999, 13], "start_layer": "board_layer:0", "end_layer": "board_layer:1", "drill_diameter_mm": 0.29999999999999999, "annular_diameter_mm": 0.69999999999999996},
+      {"id": "board_via:0", "net": "net:1", "position": [10, 13.15], "start_layer": "board_layer:0", "end_layer": "board_layer:1", "drill_diameter_mm": 0.29999999999999999, "annular_diameter_mm": 0.69999999999999996},
+      {"id": "board_via:1", "net": "net:1", "position": [18.5, 13.095000000000001], "start_layer": "board_layer:0", "end_layer": "board_layer:1", "drill_diameter_mm": 0.29999999999999999, "annular_diameter_mm": 0.69999999999999996},
       {"id": "board_via:2", "net": "net:1", "position": [31.5, 10], "start_layer": "board_layer:0", "end_layer": "board_layer:1", "drill_diameter_mm": 0.29999999999999999, "annular_diameter_mm": 0.69999999999999996},
-      {"id": "board_via:3", "net": "net:1", "position": [32.600000000000001, 21.949999999999999], "start_layer": "board_layer:0", "end_layer": "board_layer:1", "drill_diameter_mm": 0.29999999999999999, "annular_diameter_mm": 0.69999999999999996},
-      {"id": "board_via:4", "net": "net:1", "position": [38.5625, 18.899999999999999], "start_layer": "board_layer:0", "end_layer": "board_layer:1", "drill_diameter_mm": 0.29999999999999999, "annular_diameter_mm": 0.69999999999999996},
-      {"id": "board_via:5", "net": "net:1", "position": [9.8000000000000007, 24], "start_layer": "board_layer:0", "end_layer": "board_layer:1", "drill_diameter_mm": 0.29999999999999999, "annular_diameter_mm": 0.69999999999999996}
+      {"id": "board_via:3", "net": "net:1", "position": [32.5, 21.949999999999999], "start_layer": "board_layer:0", "end_layer": "board_layer:1", "drill_diameter_mm": 0.29999999999999999, "annular_diameter_mm": 0.69999999999999996},
+      {"id": "board_via:4", "net": "net:1", "position": [38.5, 18.899999999999999], "start_layer": "board_layer:0", "end_layer": "board_layer:1", "drill_diameter_mm": 0.29999999999999999, "annular_diameter_mm": 0.69999999999999996},
+      {"id": "board_via:5", "net": "net:1", "position": [10, 24], "start_layer": "board_layer:0", "end_layer": "board_layer:1", "drill_diameter_mm": 0.29999999999999999, "annular_diameter_mm": 0.69999999999999996}
     ],
     "zones": [
       {"id": "board_zone:0", "outline": [[1, 1], [47, 1], [47, 31], [1, 31]], "layers": ["board_layer:1"], "net": "net:1", "fill": "solid", "priority": 0}

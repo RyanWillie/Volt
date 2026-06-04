@@ -290,6 +290,11 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert len(pcb["board"]["vias"]) == 6
     component_ids = {component["reference"]: component["id"] for component in logical["components"]}
     net_ids = {net["name"]: net["id"] for net in logical["nets"]}
+    for track in pcb["board"]["tracks"]:
+        for start, end in zip(track["points"], track["points"][1:]):
+            dx = abs(end[0] - start[0])
+            dy = abs(end[1] - start[1])
+            assert dx < 1e-9 or dy < 1e-9 or abs(dx - dy) < 1e-9
 
     def pad_position(component_ref: str, net_name: str) -> tuple[float, float]:
         matches = [

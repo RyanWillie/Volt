@@ -451,7 +451,7 @@ def build_board(
         net=nets["GND"],
     )
 
-    with board.layout(unit=1.0) as layout:
+    with board.layout(unit=1.0, grid=0.5) as layout:
         header = layout.place(
             parts["J1"],
             at=board.edge("left").center().right(7),
@@ -512,16 +512,19 @@ def build_board(
         board.add_text("GND", at=(7.5, 10.2), layer=silk, size=0.7)
         board.add_text("K", at=(10.2, 25.9), layer=silk, size=0.7)
 
+        def horizontal_drop(pad, dx):
+            return pad.tox(layout.snap_x(pad.x + dx))
+
         gnd_drops = (
-            (header[2], header[2].right(1.8).up(0.05)),
-            (timer.GND, timer.GND.left(2.125).up(0.095)),
-            (cdec.end, cdec.end.right(1.55)),
-            (cctrl.end, cctrl.end.right(1.6)),
-            (ct.end, ct.end.right(1.65)),
-            (dled.K, dled.K.left(1.7625)),
+            (header[2], horizontal_drop(header[2], 2.0)),
+            (timer.GND, horizontal_drop(timer.GND, -2.0)),
+            (cdec.end, horizontal_drop(cdec.end, 1.55)),
+            (cctrl.end, horizontal_drop(cctrl.end, 1.6)),
+            (ct.end, horizontal_drop(ct.end, 1.65)),
+            (dled.K, horizontal_drop(dled.K, -1.6)),
         )
         for pad, drop in gnd_drops:
-            drop_anchor = layout.node(drop)
+            drop_anchor = drop
             layout.route(nets["GND"], layer=front, width=0.30).at(pad).to(drop_anchor)
             layout.via(
                 nets["GND"],
@@ -530,7 +533,7 @@ def build_board(
                 end_layer=back,
             )
 
-        power_rail = header[1].up(5.15)
+        power_rail = layout.snap(header[1].up(5.15))
         layout.route(nets["+5V"], layer=front, width=0.30).at(header[1]).toy(
             power_rail
         ).tox(cdec.start).to(cdec.start)
@@ -542,8 +545,8 @@ def build_board(
             timer.RESET.left(3.025)
         ).toy(timer.VCC.up(2.095)).tox(timer.VCC).to(timer.VCC)
 
-        disch_escape = timer.DISCH.right(2.525)
-        disch_bus = ra.end.right(1.5875).down(1.8)
+        disch_escape = layout.snap(timer.DISCH.right(2.5))
+        disch_bus = layout.snap(ra.end.right(1.6).down(2.0))
         layout.route(nets["DISCH"], layer=front).at(timer.DISCH).tox(disch_escape).to(
             rb.start
         )
@@ -551,8 +554,8 @@ def build_board(
             disch_bus
         ).tox(disch_bus).toy(ra.end).to(ra.end)
 
-        timing_escape = timer.TRIG.right(2.875)
-        timing_bus = rb.end.right(1.0)
+        timing_escape = layout.snap(timer.TRIG.right(3.0))
+        timing_bus = layout.snap(rb.end.right(1.0))
         layout.route(nets["TIMING"], layer=front).at(timer.TRIG).tox(timing_escape).toy(
             timer.THRESH
         ).to(timer.THRESH)
@@ -561,12 +564,14 @@ def build_board(
         ).to(rb.end)
         layout.route(nets["TIMING"], layer=front).at(rb.end).to(ct.start)
 
-        layout.route(nets["CTRL"], layer=front).at(timer.CTRL).tox(
-            timer.CTRL.right(4.525)
-        ).toy(cctrl.start).to(cctrl.start)
-        layout.route(nets["OUT"], layer=front).at(timer.OUT).tox(
-            timer.OUT.right(1.375)
-        ).toy(rled.start).to(rled.start)
+        ctrl_escape = layout.snap(timer.CTRL.right(4.5))
+        layout.route(nets["CTRL"], layer=front).at(timer.CTRL).tox(ctrl_escape).toy(
+            cctrl.start
+        ).to(cctrl.start)
+        out_escape = layout.snap(timer.OUT.right(1.5))
+        layout.route(nets["OUT"], layer=front).at(timer.OUT).tox(out_escape).toy(
+            rled.start
+        ).to(rled.start)
         layout.route(nets["LED_A"], layer=front).at(rled.end).toy(dled.A).to(dled.A)
     return board
 

@@ -388,11 +388,12 @@ class Board:
         at: Point = (0, 0),
         direction: str = "Right",
         unit: float = 1.0,
+        grid: float | None = None,
     ):
         """Create a schematic-style PCB placement authoring session."""
         from ._pcb_layout import BoardLayout
 
-        return BoardLayout(self, at=at, direction=direction, unit=unit)
+        return BoardLayout(self, at=at, direction=direction, unit=unit, grid=grid)
 
     def add(self, primitive) -> int:
         """Add a generic board primitive and return its kernel index."""

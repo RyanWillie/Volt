@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from math import cos, radians, sin
+from math import ceil, cos, floor, radians, sin
 from typing import TYPE_CHECKING
 
 from ._utils import _coordinate, _positive_coordinate
@@ -342,10 +342,14 @@ class BoardLayout:
         at: tuple[float, float] | BoardAnchor = (0, 0),
         direction: str = "Right",
         unit: float = 1.0,
+        grid: float | None = None,
         coordinate_origin: tuple[float, float] = (0, 0),
     ):
         self._board = board
         self._coordinate_origin = _board_point_tuple(coordinate_origin)
+        self._grid = (
+            None if grid is None else _positive_coordinate(grid, "Board layout grid")
+        )
         self._here = self._anchor_at(at)
         self._direction = _direction(direction)
         self._unit = _positive_coordinate(unit, "Board layout unit")
@@ -365,9 +369,31 @@ class BoardLayout:
         """Return the layout unit used by stack spacing defaults."""
         return self._unit
 
+    @property
+    def grid(self) -> float | None:
+        """Return the placement grid spacing, if explicit coordinates are snapped."""
+        return self._grid
+
+    def snap(self, point: tuple[float, float] | BoardAnchor | None = None) -> BoardAnchor:
+        """Return an anchor snapped to the layout grid."""
+        anchor = self._here if point is None else self._anchor_at(point)
+        return self._snap_anchor(anchor)
+
+    def snap_x(self, anchor_or_x) -> float:
+        """Return an x coordinate snapped to the layout grid."""
+        return self._snap_coordinate(
+            _board_anchor_axis_target(anchor_or_x, self._board, "x")
+        )
+
+    def snap_y(self, anchor_or_y) -> float:
+        """Return a y coordinate snapped to the layout grid."""
+        return self._snap_coordinate(
+            _board_anchor_axis_target(anchor_or_y, self._board, "y")
+        )
+
     def move(self, *, dx: float = 0, dy: float = 0) -> BoardLayout:
         """Move the layout cursor by a relative offset."""
-        self._here = self._here.offset(dx=dx, dy=dy)
+        self._here = self._snap_anchor(self._here.offset(dx=dx, dy=dy))
         return self
 
     def move_from(
@@ -379,7 +405,7 @@ class BoardLayout:
         direction: str | None = None,
     ) -> BoardLayout:
         """Move the layout cursor to an anchor plus an optional relative offset."""
-        self._here = self._anchor_at(anchor).offset(dx=dx, dy=dy)
+        self._here = self._snap_anchor(self._anchor_at(anchor).offset(dx=dx, dy=dy))
         if direction is not None:
             self._direction = _direction(direction)
         return self
@@ -433,9 +459,10 @@ class BoardLayout:
         *,
         layer: int,
         width: float = 0.20,
+        mode: str = "octilinear",
     ) -> BoardRoute:
         """Start a schematic-style routed track sequence from the cursor."""
-        return BoardRoute(self, net, layer=layer, width=width)
+        return BoardRoute(self, net, layer=layer, width=width, mode=mode)
 
     def via(
         self,
@@ -469,7 +496,7 @@ class BoardLayout:
     ) -> BoardAnchor:
         """Return a reusable board-local geometry anchor without adding objects."""
         base = self._here if at is None else self._anchor_at(at)
-        return base.offset(dx=dx, dy=dy)
+        return self._snap_anchor(base.offset(dx=dx, dy=dy))
 
     def stack(
         self,
@@ -492,7 +519,7 @@ class BoardLayout:
         anchors = []
         for index in range(count):
             dx, dy = _direction_offset(stack_direction, stack_pitch * index)
-            anchors.append(base.offset(dx=dx, dy=dy))
+            anchors.append(self._snap_anchor(base.offset(dx=dx, dy=dy)))
         return tuple(anchors)
 
     @contextmanager
@@ -542,12 +569,38 @@ class BoardLayout:
                 point[0] + self._coordinate_origin[0],
                 point[1] + self._coordinate_origin[1],
             )
+            point = self._snap_point(point)
         return BoardAnchor(point, board=self._board)
+
+    def _snap_anchor(self, anchor: BoardAnchor) -> BoardAnchor:
+        return BoardAnchor(self._snap_point(anchor.point), board=self._board)
+
+    def _snap_point(self, point: tuple[float, float]) -> tuple[float, float]:
+        if self._grid is None:
+            return point
+        return (
+            self._snap_coordinate(point[0]),
+            self._snap_coordinate(point[1]),
+        )
+
+    def _snap_coordinate(self, value: float) -> float:
+        if self._grid is None:
+            return value
+        scaled = value / self._grid
+        rounded = floor(scaled + 0.5) if scaled >= 0 else ceil(scaled - 0.5)
+        return _clean_coordinate(rounded * self._grid)
+
+    def _route_axis_target(self, target, axis: str) -> float:
+        coordinate = _board_anchor_axis_target(target, self._board, axis)
+        if isinstance(target, BoardAnchor):
+            return coordinate
+        return self._snap_coordinate(coordinate)
 
     def __repr__(self) -> str:
         return (
             f"BoardLayout(here={self._here.point!r}, "
-            f"direction={self._direction!r}, unit={self._unit!r})"
+            f"direction={self._direction!r}, unit={self._unit!r}, "
+            f"grid={self._grid!r})"
         )
 
 
@@ -561,12 +614,14 @@ class BoardRoute:
         *,
         layer: int,
         width: float,
+        mode: str,
     ):
         self._layout = layout
         self._board = layout._board
         self._net = net
         self._layer = layer
         self._width = _positive_coordinate(width, "Board route width")
+        self._mode = _route_mode(mode)
         self._points: list[BoardAnchor] = [layout.here]
         self._track: int | None = None
 
@@ -576,10 +631,13 @@ class BoardRoute:
         self._points = [self._layout._anchor_at(point)]
         return self
 
-    def to(self, point: tuple[float, float] | BoardAnchor) -> int:
+    def to(self, point: tuple[float, float] | BoardAnchor, *, mode: str | None = None) -> int:
         """Terminate this route at an anchor and add the track to the board."""
         self._require_open("to")
-        self._append(self._layout._anchor_at(point))
+        target = self._layout._anchor_at(point)
+        route_mode = self._mode if mode is None else _route_mode(mode)
+        for anchor in _route_segment_anchors(self._current("to"), target, route_mode, self._board):
+            self._append(anchor)
         return self._materialize()
 
     def tox(self, anchor_or_x) -> BoardRoute:
@@ -588,7 +646,7 @@ class BoardRoute:
         current = self._current("tox")
         return self._append(
             BoardAnchor(
-                (_board_anchor_axis_target(anchor_or_x, self._board, "x"), current.y),
+                (self._layout._route_axis_target(anchor_or_x, "x"), current.y),
                 board=self._board,
             )
         )
@@ -599,7 +657,7 @@ class BoardRoute:
         current = self._current("toy")
         return self._append(
             BoardAnchor(
-                (current.x, _board_anchor_axis_target(anchor_or_y, self._board, "y")),
+                (current.x, self._layout._route_axis_target(anchor_or_y, "y")),
                 board=self._board,
             )
         )
@@ -622,7 +680,14 @@ class BoardRoute:
 
     def _offset(self, method: str, *, dx: float = 0, dy: float = 0) -> BoardRoute:
         self._require_open(method)
-        return self._append(self._current(method).offset(dx=dx, dy=dy))
+        current = self._current(method)
+        x = current.x + dx
+        y = current.y + dy
+        if dx:
+            x = self._layout._snap_coordinate(x)
+        if dy:
+            y = self._layout._snap_coordinate(y)
+        return self._append(BoardAnchor((x, y), board=self._board))
 
     def _append(self, anchor: BoardAnchor) -> BoardRoute:
         self._points.append(anchor)
@@ -909,6 +974,45 @@ def _distinct_adjacent_points(points: list[BoardAnchor]) -> list[BoardAnchor]:
             continue
         result.append(point)
     return result
+
+
+def _route_mode(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError("Board route mode must be a string")
+    normalized = value.casefold().replace("-", "_")
+    if normalized in {"octilinear", "octi"}:
+        return "octilinear"
+    if normalized in {"orthogonal", "ortho"}:
+        return "orthogonal"
+    if normalized == "direct":
+        return "direct"
+    raise ValueError("Board route mode must be octilinear, orthogonal, or direct")
+
+
+def _route_segment_anchors(
+    start: BoardAnchor,
+    end: BoardAnchor,
+    mode: str,
+    board: Board,
+) -> tuple[BoardAnchor, ...]:
+    if mode == "direct":
+        return (end,)
+    if mode == "octilinear" and _is_axis_or_45(start, end):
+        return (end,)
+    if mode == "orthogonal" and _is_axis(start, end):
+        return (end,)
+    corner = BoardAnchor((end.x, start.y), board=board)
+    return (corner, end)
+
+
+def _is_axis_or_45(start: BoardAnchor, end: BoardAnchor) -> bool:
+    dx = abs(end.x - start.x)
+    dy = abs(end.y - start.y)
+    return dx < 1e-9 or dy < 1e-9 or abs(dx - dy) < 1e-9
+
+
+def _is_axis(start: BoardAnchor, end: BoardAnchor) -> bool:
+    return abs(end.x - start.x) < 1e-9 or abs(end.y - start.y) < 1e-9
 
 
 def _board_point(value, *, board: Board) -> tuple[float, float]:
