@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from math import ceil, cos, floor, radians, sin
+from math import atan2, ceil, cos, degrees, floor, radians, sin
 from typing import TYPE_CHECKING
 
 from ._utils import _coordinate, _positive_coordinate
@@ -831,7 +831,7 @@ class BoardTwoPadComponent:
         if self._placed is not None:
             return self._placed
         center = self._center()
-        rotation = _rotation_from_direction(self._direction)
+        rotation = self._rotation()
         drop = _transform_local_point(
             self._local_anchor(self._drop_ref),
             rotation=rotation,
@@ -863,13 +863,23 @@ class BoardTwoPadComponent:
         aligned = self._at.point
         transformed = _transform_local_point(
             self._local_anchor(self._anchor_ref),
-            rotation=_rotation_from_direction(self._direction),
+            rotation=self._rotation(),
             side=self._side,
         )
         return (
             _clean_coordinate(aligned[0] - transformed[0]),
             _clean_coordinate(aligned[1] - transformed[1]),
         )
+
+    def _rotation(self) -> float:
+        start, end = self._start_end_pads()
+        start_point = _transform_local_point(start.position, rotation=0.0, side=self._side)
+        end_point = _transform_local_point(end.position, rotation=0.0, side=self._side)
+        current_angle = degrees(
+            atan2(end_point[1] - start_point[1], end_point[0] - start_point[0])
+        )
+        rotation = _rotation_from_direction(self._direction) - current_angle
+        return _normalize_rotation(rotation)
 
     def _local_anchor(self, ref: str | int) -> tuple[float, float]:
         start_pad, end_pad = self._start_end_pads()
@@ -1047,6 +1057,13 @@ def _direction(value: str) -> str:
 
 def _rotation_from_direction(direction: str) -> float:
     return {"Right": 0.0, "Down": 90.0, "Left": 180.0, "Up": 270.0}[direction]
+
+
+def _normalize_rotation(rotation: float) -> float:
+    normalized = rotation % 360.0
+    if abs(normalized - 360.0) < 1e-12:
+        return 0.0
+    return _clean_coordinate(normalized)
 
 
 def _direction_offset(direction: str, distance: float) -> tuple[float, float]:

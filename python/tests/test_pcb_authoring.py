@@ -59,6 +59,26 @@ def _passive_0603(ref, *, pad_span=1.5, pad_width=0.8):
     )
 
 
+def _two_pad_footprint(ref, *, start=(0.0, 0.0), end=(1.5, 0.0)):
+    return volt.FootprintDefinition(
+        ref,
+        pads=(
+            volt.FootprintPad.surface_mount(
+                "1",
+                at=start,
+                size=(0.8, 0.95),
+                shape="rounded_rectangle",
+            ),
+            volt.FootprintPad.surface_mount(
+                "2",
+                at=end,
+                size=(0.8, 0.95),
+                shape="rounded_rectangle",
+            ),
+        ),
+    )
+
+
 def _placed_positions(board):
     return {
         item["component"]: (tuple(item["position"]), item["rotation_deg"], item["locked"])
@@ -184,6 +204,52 @@ def test_pcb_layout_two_pad_right_left_up_down_places_resolved_coordinates():
         "component:1": ((6.5, 9.75), 90, False),
         "component:2": ((19.25, 5.0), 180, False),
         "component:3": ((25.0, 14.25), 270, False),
+    }
+
+
+def test_pcb_layout_two_pad_directions_follow_actual_pad_vector():
+    design = volt.Design("pcb-layout-two-pad-vector")
+    parts = [design.R(f"{value}k", ref=f"R{value}") for value in range(1, 5)]
+    footprints = (
+        _two_pad_footprint(("test", "vertical"), end=(0.0, 1.5)),
+        _two_pad_footprint(("test", "reversed"), end=(-1.5, 0.0)),
+        _two_pad_footprint(("test", "vertical-left"), end=(0.0, 1.5)),
+        _two_pad_footprint(("test", "reversed-up"), end=(-1.5, 0.0)),
+    )
+    for index, component in enumerate(parts):
+        net_a = design.net(f"A{index}")
+        net_b = design.net(f"B{index}")
+        net_a += component[1]
+        net_b += component[2]
+        component.select_part(
+            manufacturer="Volt",
+            part_number=f"VECTOR-{index}",
+            package="custom",
+            footprint=footprints[index],
+            pin_pads={1: "1", 2: "2"},
+        )
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 30.0))
+
+    with board.layout(unit=1.0) as layout:
+        vertical_right = layout.two_pad(parts[0]).at((5.0, 5.0)).right()
+        reversed_down = layout.two_pad(parts[1]).at((10.0, 5.0)).down()
+        vertical_left = layout.two_pad(parts[2]).at((20.0, 5.0)).left()
+        reversed_up = layout.two_pad(parts[3]).at((25.0, 15.0)).up()
+
+    assert vertical_right.start.point == (5.0, 5.0)
+    assert vertical_right.end.point == (6.5, 5.0)
+    assert reversed_down.start.point == (10.0, 5.0)
+    assert reversed_down.end.point == (10.0, 6.5)
+    assert vertical_left.start.point == (20.0, 5.0)
+    assert vertical_left.end.point == (18.5, 5.0)
+    assert reversed_up.start.point == (25.0, 15.0)
+    assert reversed_up.end.point == (25.0, 13.5)
+    assert _placed_positions(board) == {
+        "component:0": ((5.0, 5.0), 270, False),
+        "component:1": ((10.0, 5.0), 270, False),
+        "component:2": ((20.0, 5.0), 90, False),
+        "component:3": ((25.0, 15.0), 90, False),
     }
 
 
