@@ -6,6 +6,7 @@ add_library(
     board_features.cpp
     board_footprint_model.cpp
     board_geometry.cpp
+    board_geometry_projection.cpp
     board_layers.cpp
     board_outline.cpp
     board_placement_model.cpp

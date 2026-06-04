@@ -217,6 +217,89 @@ TEST_CASE("PCB projection writer and reader round-trip generic board features") 
     CHECK(restored.feature(volt::BoardFeatureId{5}).hole().drill_diameter_mm() == 2.0);
 }
 
+TEST_CASE("PCB projection JSON emits deterministic bare-board 3D geometry") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_viewer_ready_board(fixture);
+    static_cast<void>(board.add_feature(volt::BoardFeature::slot(
+        "SLOT", volt::BoardPoint{8.0, 4.0}, volt::BoardPoint{16.0, 4.0}, 1.5, true, "mounting")));
+    static_cast<void>(board.add_feature(volt::BoardFeature::cutout(
+        "CUT",
+        std::vector{volt::BoardPoint{20.0, 4.0}, volt::BoardPoint{25.0, 4.0},
+                    volt::BoardPoint{25.0, 9.0}, volt::BoardPoint{20.0, 9.0}},
+        "access")));
+    static_cast<void>(board.add_feature(volt::BoardFeature::circle(
+        "FID", volt::BoardPoint{34.0, 4.0}, 1.0, volt::BoardSide::Top, "fiducial")));
+
+    const auto first = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
+    const auto second = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
+    const auto document = nlohmann::json::parse(first);
+
+    REQUIRE(document["board"].contains("geometry"));
+    const auto &geometry = document["board"]["geometry"];
+
+    CHECK(first == second);
+    CHECK(geometry["units"] == "mm");
+    CHECK(geometry["thickness_mm"] == 1.6);
+    CHECK(geometry["outline"]["kind"] == "polygon");
+    CHECK(geometry["outline"]["vertices"][2] == nlohmann::json::array({50.0, 30.0}));
+
+    REQUIRE(geometry["stackup"].size() == 2);
+    CHECK(geometry["stackup"][0]["layer"] == "board_layer:0");
+    CHECK(geometry["stackup"][0]["name"] == "F.Cu");
+    CHECK(geometry["stackup"][0]["role"] == "copper");
+    CHECK(geometry["stackup"][0]["side"] == "top");
+    CHECK(geometry["stackup"][0]["z_mm"] == 0.8);
+    CHECK(geometry["stackup"][1]["layer"] == "board_layer:1");
+    CHECK(geometry["stackup"][1]["side"] == "bottom");
+    CHECK(geometry["stackup"][1]["z_mm"] == -0.8);
+
+    REQUIRE(geometry["openings"].size() == 2);
+    CHECK(geometry["openings"][0]["id"] == "board_feature:0");
+    CHECK(geometry["openings"][0]["kind"] == "hole");
+    CHECK(geometry["openings"][0]["center"] == nlohmann::json::array({3.0, 3.0}));
+    CHECK(geometry["openings"][0]["drill_diameter_mm"] == 3.2);
+    CHECK(geometry["openings"][0]["finished_diameter_mm"] == nullptr);
+    CHECK(geometry["openings"][0]["plated"] == false);
+    CHECK(geometry["openings"][0]["side"] == "through_board");
+    CHECK(geometry["openings"][1]["kind"] == "slot");
+    CHECK(geometry["openings"][1]["start"] == nlohmann::json::array({8.0, 4.0}));
+    CHECK(geometry["openings"][1]["end"] == nlohmann::json::array({16.0, 4.0}));
+    CHECK(geometry["openings"][1]["width_mm"] == 1.5);
+    CHECK(geometry["openings"][1]["plated"] == true);
+    CHECK(geometry["openings"][1]["side"] == "through_board");
+
+    REQUIRE(geometry["cutouts"].size() == 1);
+    CHECK(geometry["cutouts"][0]["id"] == "board_feature:2");
+    CHECK(geometry["cutouts"][0]["kind"] == "cutout");
+    CHECK(geometry["cutouts"][0]["outline"][2] == nlohmann::json::array({25.0, 9.0}));
+    CHECK(geometry["cutouts"][0]["side"] == "through_board");
+
+    REQUIRE(geometry["surface_features"].size() == 1);
+    CHECK(geometry["surface_features"][0]["id"] == "board_feature:3");
+    CHECK(geometry["surface_features"][0]["kind"] == "circle");
+    CHECK(geometry["surface_features"][0]["center"] == nlohmann::json::array({34.0, 4.0}));
+    CHECK(geometry["surface_features"][0]["diameter_mm"] == 1.0);
+    CHECK(geometry["surface_features"][0]["side"] == "top");
+
+    const auto restored = volt::io::read_pcb_board_text(fixture.circuit, first);
+    CHECK(volt::io::write_pcb_board(restored, volt::builtin_footprint_library()) == first);
+}
+
+TEST_CASE("PCB projection reader recomputes bare-board geometry from canonical fields") {
+    const auto fixture = make_resistor_circuit();
+    auto document = make_board_json(fixture);
+    document["board"].erase("geometry");
+
+    const auto restored = volt::io::read_pcb_board_text(fixture.circuit, document.dump());
+    const auto rewritten = nlohmann::json::parse(
+        volt::io::write_pcb_board(restored, volt::builtin_footprint_library()));
+
+    REQUIRE(rewritten["board"].contains("geometry"));
+    CHECK(rewritten["board"]["geometry"]["thickness_mm"] == 1.6);
+    CHECK(rewritten["board"]["geometry"]["openings"][0]["id"] == "board_feature:0");
+    CHECK(rewritten["board"]["geometry"]["stackup"][0]["z_mm"] == 0.8);
+}
+
 TEST_CASE("PCB projection JSON contains renderer-ready geometry without SVG") {
     const auto fixture = make_resistor_circuit();
     const auto document = make_board_json(fixture);

@@ -423,34 +423,17 @@ collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
     return shapes;
 }
 
-[[nodiscard]] bool polygon_satisfies_outline(const std::vector<BoardPoint> &polygon,
-                                             const BoardOutline &outline, double clearance_mm) {
-    for (std::size_t index = 0; index < polygon.size(); ++index) {
-        const auto next = (index + 1U) % polygon.size();
-        if (!outline.contains(polygon[index]) ||
-            !outline.contains(segment_midpoint(polygon[index], polygon[next]))) {
-            return false;
-        }
-    }
-    return polygon_outline_boundary_distance(outline, polygon) + board_drc_epsilon >= clearance_mm;
-}
-
 [[nodiscard]] bool shape_satisfies_outline(const BoardCopperShape &shape,
                                            const BoardOutline &outline, double clearance_mm) {
     if (shape.kind == BoardCopperShapeKind::Disc) {
-        return outline.contains(shape.points[0]) &&
-               outline_boundary_distance(outline, shape.points[0]) + board_drc_epsilon >=
-                   shape.radius_mm + clearance_mm;
+        return outline_contains_disc(outline, shape.points[0], shape.radius_mm, clearance_mm);
     }
     if (shape.kind == BoardCopperShapeKind::Segment) {
-        return outline.contains(shape.points[0]) && outline.contains(shape.points[1]) &&
-               outline.contains(segment_midpoint(shape.points[0], shape.points[1])) &&
-               segment_outline_boundary_distance(outline, shape.points[0], shape.points[1]) +
-                       board_drc_epsilon >=
-                   shape.radius_mm + clearance_mm;
+        return outline_contains_segment(outline, shape.points[0], shape.points[1], shape.radius_mm,
+                                        clearance_mm);
     }
 
-    return polygon_satisfies_outline(shape.points, outline, clearance_mm);
+    return outline_contains_polygon(outline, shape.points, clearance_mm);
 }
 
 [[nodiscard]] std::vector<EntityRef> copper_shape_entities(const BoardCopperShape &shape, NetId net,
@@ -531,7 +514,7 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
         const auto zone_id = BoardZoneId{zone_index};
         const auto &zone = board.zone(zone_id);
         if (zone.net().has_value() ||
-            polygon_satisfies_outline(zone.outline(), outline, outline_clearance)) {
+            outline_contains_polygon(outline, zone.outline(), outline_clearance)) {
             continue;
         }
         report.add(board_diagnostic(DiagnosticCode{"PCB_COPPER_OUTSIDE_OUTLINE"},

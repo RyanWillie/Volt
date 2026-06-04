@@ -1,5 +1,9 @@
 #include <volt/io/pcb_writer.hpp>
 
+#include <variant>
+
+#include <volt/pcb/board_geometry_projection.hpp>
+
 namespace volt::io::detail {
 
 [[nodiscard]] std::string severity_name(Severity severity) {
@@ -291,6 +295,151 @@ void write_outline(std::ostream &out, const Board &board) {
         write_board_point(out, vertices[index]);
     }
     out << "]},\n";
+}
+
+void write_geometry_outline(std::ostream &out, const BoardGeometryProjection &geometry) {
+    if (!geometry.outline.has_value()) {
+        out << "null";
+        return;
+    }
+
+    out << "{\"kind\": \"polygon\", \"vertices\": ";
+    write_board_points(out, geometry.outline.value());
+    out << '}';
+}
+
+void write_geometry_stackup(std::ostream &out, const BoardGeometryProjection &geometry) {
+    out << '[';
+    for (std::size_t index = 0; index < geometry.stackup.size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        const auto &layer = geometry.stackup[index];
+        out << "{\"layer\": " << json_string(encode_local_id(layer.layer))
+            << ", \"order\": " << layer.order << ", \"name\": " << json_string(layer.name)
+            << ", \"role\": " << json_string(board_layer_role_name(layer.role))
+            << ", \"side\": " << json_string(board_layer_side_name(layer.side)) << ", \"z_mm\": ";
+        write_number(out, layer.z_mm);
+        out << ", \"thickness_mm\": ";
+        write_number(out, layer.thickness_mm);
+        out << ", \"enabled\": " << (layer.enabled ? "true" : "false") << '}';
+    }
+    out << ']';
+}
+
+void write_geometry_feature_common(std::ostream &out, BoardFeatureId id, BoardFeatureKind kind,
+                                   const std::string &label, const std::string &role) {
+    out << "\"id\": " << json_string(encode_local_id(id))
+        << ", \"kind\": " << json_string(board_feature_kind_name(kind))
+        << ", \"label\": " << json_string(label) << ", \"role\": " << json_string(role);
+}
+
+void write_geometry_openings(std::ostream &out, const BoardGeometryProjection &geometry) {
+    out << "      \"openings\": [\n";
+    for (std::size_t index = 0; index < geometry.openings.size(); ++index) {
+        const auto &opening = geometry.openings[index];
+        if (index != 0U) {
+            out << ",\n";
+        }
+        out << "        {";
+        if (std::holds_alternative<BoardGeometryHoleOpening>(opening.shape)) {
+            const auto &hole = std::get<BoardGeometryHoleOpening>(opening.shape);
+            write_geometry_feature_common(out, opening.feature, BoardFeatureKind::Hole,
+                                          opening.label, opening.role);
+            out << ", \"center\": ";
+            write_board_point(out, hole.center);
+            out << ", \"drill_diameter_mm\": ";
+            write_number(out, hole.drill_diameter_mm);
+            out << ", \"finished_diameter_mm\": ";
+            if (hole.finished_diameter_mm.has_value()) {
+                write_number(out, hole.finished_diameter_mm.value());
+            } else {
+                out << "null";
+            }
+            out << ", \"plated\": " << (hole.plated ? "true" : "false");
+        } else {
+            const auto &slot = std::get<BoardGeometrySlotOpening>(opening.shape);
+            write_geometry_feature_common(out, opening.feature, BoardFeatureKind::Slot,
+                                          opening.label, opening.role);
+            out << ", \"start\": ";
+            write_board_point(out, slot.start);
+            out << ", \"end\": ";
+            write_board_point(out, slot.end);
+            out << ", \"width_mm\": ";
+            write_number(out, slot.width_mm);
+            out << ", \"plated\": " << (slot.plated ? "true" : "false");
+        }
+        out << ", \"side\": \"through_board\"}";
+    }
+    if (!geometry.openings.empty()) {
+        out << '\n';
+    }
+    out << "      ],\n";
+}
+
+void write_geometry_cutouts(std::ostream &out, const BoardGeometryProjection &geometry) {
+    out << "      \"cutouts\": [\n";
+    for (std::size_t index = 0; index < geometry.cutouts.size(); ++index) {
+        const auto &cutout = geometry.cutouts[index];
+        if (index != 0U) {
+            out << ",\n";
+        }
+        out << "        {";
+        write_geometry_feature_common(out, cutout.feature, BoardFeatureKind::Cutout, cutout.label,
+                                      cutout.role);
+        out << ", \"outline\": ";
+        write_board_points(out, cutout.outline);
+        out << ", \"side\": \"through_board\"}";
+    }
+    if (!geometry.cutouts.empty()) {
+        out << '\n';
+    }
+    out << "      ],\n";
+}
+
+void write_geometry_surface_features(std::ostream &out, const BoardGeometryProjection &geometry) {
+    out << "      \"surface_features\": [\n";
+    for (std::size_t index = 0; index < geometry.surface_features.size(); ++index) {
+        const auto &feature = geometry.surface_features[index];
+        if (index != 0U) {
+            out << ",\n";
+        }
+        out << "        {";
+        write_geometry_feature_common(out, feature.feature, feature.kind, feature.label,
+                                      feature.role);
+        out << ", \"center\": ";
+        write_board_point(out, feature.center);
+        out << ", \"diameter_mm\": ";
+        write_number(out, feature.diameter_mm);
+        out << ", \"side\": " << json_string(board_side_name(feature.side)) << '}';
+    }
+    if (!geometry.surface_features.empty()) {
+        out << '\n';
+    }
+    out << "      ]\n";
+}
+
+void write_board_geometry(std::ostream &out, const Board &board) {
+    const auto geometry = project_board_geometry(board);
+    out << "    \"geometry\": {\n";
+    out << "      \"units\": " << json_string(board_units_name(geometry.units)) << ",\n";
+    out << "      \"thickness_mm\": ";
+    if (geometry.thickness_mm.has_value()) {
+        write_number(out, geometry.thickness_mm.value());
+    } else {
+        out << "null";
+    }
+    out << ",\n";
+    out << "      \"outline\": ";
+    write_geometry_outline(out, geometry);
+    out << ",\n";
+    out << "      \"stackup\": ";
+    write_geometry_stackup(out, geometry);
+    out << ",\n";
+    write_geometry_openings(out, geometry);
+    write_geometry_cutouts(out, geometry);
+    write_geometry_surface_features(out, geometry);
+    out << "    },\n";
 }
 
 void write_rules(std::ostream &out, const Board &board) {
@@ -653,6 +802,7 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
     detail::write_layers(out, board);
     detail::write_layer_stack(out, board);
     detail::write_outline(out, board);
+    detail::write_board_geometry(out, board);
     detail::write_features(out, board);
     detail::write_footprint_definitions(out, definitions);
     detail::write_placements(out, board, definitions,

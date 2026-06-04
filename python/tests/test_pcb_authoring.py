@@ -569,6 +569,10 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     assert document["board"]["layers"][0]["name"] == "F.Cu"
     assert document["board"]["layer_stack"]["layers"] == ["board_layer:0", "board_layer:1"]
     assert document["board"]["outline"]["vertices"][2] == [50.0, 30.0]
+    assert document["board"]["geometry"]["thickness_mm"] == 1.6
+    assert document["board"]["geometry"]["stackup"][0]["z_mm"] == 0.8
+    assert document["board"]["geometry"]["openings"][0]["kind"] == "hole"
+    assert document["board"]["geometry"]["openings"][0]["side"] == "through_board"
     assert document["board"]["features"][0]["kind"] == "hole"
     assert document["board"]["features"][0]["role"] == "mounting"
     assert [item["component"] for item in document["board"]["placements"]] == [
@@ -736,6 +740,7 @@ def test_python_board_authoring_adds_generic_board_primitives():
     assert board.to_json() == first_json
     document = json.loads(first_json)
     features = document["board"]["features"]
+    geometry = document["board"]["geometry"]
 
     assert [feature["kind"] for feature in features] == [
         "hole",
@@ -753,6 +758,14 @@ def test_python_board_authoring_adds_generic_board_primitives():
     assert features[4]["side"] == "top"
     assert features[4]["role"] == "fiducial"
     assert features[5]["role"] == "tooling"
+    assert [opening["kind"] for opening in geometry["openings"]] == [
+        "hole",
+        "hole",
+        "slot",
+        "hole",
+    ]
+    assert geometry["cutouts"][0]["kind"] == "cutout"
+    assert geometry["surface_features"][0]["kind"] == "circle"
     assert document["board"]["texts"][0]["text"] == "REV A"
     assert document["board"]["keepouts"][0]["restrictions"] == ["copper", "via"]
     assert {diagnostic.code for diagnostic in board.validate()} == set()

@@ -244,6 +244,16 @@ inline constexpr double board_drc_epsilon = 1.0e-9;
 [[nodiscard]] double polygon_outline_boundary_distance(const BoardOutline &outline,
                                                        const std::vector<BoardPoint> &polygon);
 
+[[nodiscard]] bool outline_contains_disc(const BoardOutline &outline, BoardPoint center,
+                                         double radius_mm, double clearance_mm);
+
+[[nodiscard]] bool outline_contains_segment(const BoardOutline &outline, BoardPoint start,
+                                            BoardPoint end, double radius_mm, double clearance_mm);
+
+[[nodiscard]] bool outline_contains_polygon(const BoardOutline &outline,
+                                            const std::vector<BoardPoint> &polygon,
+                                            double clearance_mm);
+
 /** Geometric primitive category used while checking copper spacing. */
 enum class BoardCopperShapeKind {
     /** Circular copper shape. */
@@ -311,9 +321,6 @@ void append_pad_shapes(const Board &board, const FootprintLibrary &footprints,
 [[nodiscard]] std::vector<BoardCopperShape>
 collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
                       const std::vector<PadResolution> &resolutions);
-
-[[nodiscard]] bool polygon_satisfies_outline(const std::vector<BoardPoint> &polygon,
-                                             const BoardOutline &outline, double clearance_mm);
 
 [[nodiscard]] bool shape_satisfies_outline(const BoardCopperShape &shape,
                                            const BoardOutline &outline, double clearance_mm);
