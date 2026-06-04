@@ -143,6 +143,16 @@ class PadResolution:
 
 
 @dataclass(frozen=True)
+class ComponentFootprintPad:
+    """Resolved local footprint pad geometry for a selected component part."""
+
+    pad: int
+    pad_label: str
+    position: Point
+    pin: int | None
+
+
+@dataclass(frozen=True)
 class KiCadLossWarning:
     """Structured warning for an unsupported or lossy KiCad adapter construct."""
 
@@ -352,6 +362,38 @@ class Board:
             [_point(vertex, "Board outline vertex") for vertex in vertices]
         )
         return self
+
+    @property
+    def center(self):
+        """Return the center anchor of the board outline bounding box."""
+        from ._pcb_layout import center_point
+
+        return center_point(self)
+
+    def edge(self, name: str):
+        """Return a mechanical board edge helper."""
+        from ._pcb_layout import BoardEdge
+
+        return BoardEdge(self, name)
+
+    def corner(self, name: str):
+        """Return a mechanical board corner anchor."""
+        from ._pcb_layout import corner_point
+
+        return corner_point(self, name)
+
+    def layout(
+        self,
+        *,
+        at: Point = (0, 0),
+        direction: str = "Right",
+        unit: float = 1.0,
+        grid: float | None = None,
+    ):
+        """Create a schematic-style PCB placement authoring session."""
+        from ._pcb_layout import BoardLayout
+
+        return BoardLayout(self, at=at, direction=direction, unit=unit, grid=grid)
 
     def add(self, primitive) -> int:
         """Add a generic board primitive and return its kernel index."""
@@ -569,10 +611,20 @@ class Board:
         self._sync_object_footprints()
         return self._design._circuit.board_to_json()
 
-    def to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True) -> str:
+    def to_svg(
+        self,
+        *,
+        pad_net_overlays: bool = True,
+        diagnostic_overlays: bool = True,
+        ratsnest_edges: bool = True,
+    ) -> str:
         """Render the PCB projection as SVG."""
         self._sync_object_footprints()
-        return self._design._circuit.board_to_svg(pad_net_overlays, diagnostic_overlays)
+        return self._design._circuit.board_to_svg(
+            pad_net_overlays,
+            diagnostic_overlays,
+            ratsnest_edges,
+        )
 
     def to_kicad_pcb(self) -> KiCadPcbExport:
         """Export the PCB projection to a KiCad `.kicad_pcb` adapter document."""
@@ -591,6 +643,33 @@ class Board:
     def _sync_object_footprints(self) -> None:
         for component in self._design._board_placed_components:
             self._sync_component_object_footprint(component)
+
+    def _component_footprint_pads(self, component: int) -> tuple[ComponentFootprintPad, ...]:
+        self._sync_component_object_footprint(component)
+        return tuple(
+            ComponentFootprintPad(
+                pad=item["pad"],
+                pad_label=item["pad_label"],
+                position=_point(tuple(item["position"]), "Component footprint pad position"),
+                pin=item["pin"],
+            )
+            for item in self._design._circuit.board_component_footprint_pads(component)
+        )
+
+    def _outline_vertices(self) -> tuple[Point, ...]:
+        vertices = self._design._circuit.board_outline_vertices()
+        if not vertices:
+            raise ValueError("Board mechanical anchors require a board outline")
+        return tuple(
+            _point(tuple(vertex), "Board outline vertex")
+            for vertex in vertices
+        )
+
+    def _outline_bbox(self) -> tuple[float, float, float, float]:
+        vertices = self._outline_vertices()
+        xs = tuple(vertex[0] for vertex in vertices)
+        ys = tuple(vertex[1] for vertex in vertices)
+        return (min(xs), min(ys), max(xs), max(ys))
 
     def write_json(self, path: str | Path) -> None:
         """Write the PCB projection JSON to a file."""

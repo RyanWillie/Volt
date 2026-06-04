@@ -167,6 +167,7 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"))
         .def("board_set_polygon_outline", &PyCircuit::board_set_polygon_outline,
              py::arg("vertices"))
+        .def("board_outline_vertices", &PyCircuit::board_outline_vertices)
         .def("board_add_hole", &PyCircuit::board_add_hole, py::arg("label"), py::arg("x"),
              py::arg("y"), py::arg("drill_diameter_mm"), py::arg("plated") = false,
              py::arg("role") = "", py::arg("finished_diameter_mm") = std::nullopt)
@@ -182,6 +183,8 @@ void bind_circuit(pybind11::module_ &module) {
         .def("board_place_component", &PyCircuit::board_place_component, py::arg("component"),
              py::arg("x"), py::arg("y"), py::arg("rotation_degrees") = 0.0, py::arg("side") = "top",
              py::arg("locked") = false)
+        .def("board_component_footprint_pads", &PyCircuit::board_component_footprint_pads,
+             py::arg("component"))
         .def("board_add_track", &PyCircuit::board_add_track, py::arg("net"), py::arg("layer"),
              py::arg("points"), py::arg("width_mm"))
         .def("board_add_via", &PyCircuit::board_add_via, py::arg("net"), py::arg("x"), py::arg("y"),
@@ -198,7 +201,7 @@ void bind_circuit(pybind11::module_ &module) {
         .def("board_validate", &PyCircuit::board_validate)
         .def("board_to_json", &PyCircuit::board_to_json)
         .def("board_to_svg", &PyCircuit::board_to_svg, py::arg("pad_net_overlays") = true,
-             py::arg("diagnostic_overlays") = true)
+             py::arg("diagnostic_overlays") = true, py::arg("ratsnest_edges") = true)
         .def("board_to_kicad_pcb", &PyCircuit::board_to_kicad_pcb)
         .def("to_json", &PyCircuit::to_json);
 }

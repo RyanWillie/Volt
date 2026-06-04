@@ -268,6 +268,8 @@ class PyCircuit {
 
     void board_set_polygon_outline(const std::vector<std::pair<double, double>> &vertices);
 
+    [[nodiscard]] py::list board_outline_vertices() const;
+
     [[nodiscard]] std::size_t board_add_hole(const std::string &label, double x, double y,
                                              double drill_diameter_mm, bool plated,
                                              const std::string &role,
@@ -291,6 +293,8 @@ class PyCircuit {
     [[nodiscard]] std::size_t board_place_component(std::size_t component, double x, double y,
                                                     double rotation_degrees,
                                                     const std::string &side, bool locked);
+
+    [[nodiscard]] py::list board_component_footprint_pads(std::size_t component) const;
 
     [[nodiscard]] std::size_t board_add_track(std::size_t net, std::size_t layer,
                                               const std::vector<std::pair<double, double>> &points,
@@ -320,7 +324,8 @@ class PyCircuit {
 
     [[nodiscard]] std::string board_to_json() const;
 
-    [[nodiscard]] std::string board_to_svg(bool pad_net_overlays, bool diagnostic_overlays) const;
+    [[nodiscard]] std::string board_to_svg(bool pad_net_overlays, bool diagnostic_overlays,
+                                           bool ratsnest_edges) const;
 
     [[nodiscard]] py::dict board_to_kicad_pcb() const;
 

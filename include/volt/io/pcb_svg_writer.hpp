@@ -25,6 +25,8 @@ struct PcbPlacementSvgOptions {
     bool pad_net_overlays = true;
     /** Include board validation diagnostics in the preview. */
     bool diagnostic_overlays = true;
+    /** Include derived ratsnest edges between placed pads. */
+    bool ratsnest_edges = true;
 };
 
 namespace detail {

@@ -59,6 +59,479 @@ def _passive_0603(ref, *, pad_span=1.5, pad_width=0.8):
     )
 
 
+def _two_pad_footprint(ref, *, start=(0.0, 0.0), end=(1.5, 0.0)):
+    return volt.FootprintDefinition(
+        ref,
+        pads=(
+            volt.FootprintPad.surface_mount(
+                "1",
+                at=start,
+                size=(0.8, 0.95),
+                shape="rounded_rectangle",
+            ),
+            volt.FootprintPad.surface_mount(
+                "2",
+                at=end,
+                size=(0.8, 0.95),
+                shape="rounded_rectangle",
+            ),
+        ),
+    )
+
+
+def _placed_positions(board):
+    return {
+        item["component"]: (tuple(item["position"]), item["rotation_deg"], item["locked"])
+        for item in json.loads(board.to_json())["board"]["placements"]
+    }
+
+
+def test_pcb_layout_session_defaults_and_moves():
+    design = volt.Design("pcb-layout-session")
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(2.0, 3.0), size=(30.0, 20.0))
+
+    with board.layout(at=(1, 2), direction="down", unit=2.5) as layout:
+        assert isinstance(layout.here, volt.BoardAnchor)
+        assert layout.here.point == (1.0, 2.0)
+        assert layout.direction == "Down"
+        assert layout.unit == 2.5
+
+        layout.move(dx=3, dy=4)
+        assert layout.here.point == (4.0, 6.0)
+
+        layout.move_from(board.edge("left").center().right(5), dy=-1, direction="right")
+        assert layout.here.point == (7.0, 12.0)
+        assert layout.direction == "Right"
+
+        row = layout.stack(count=3, direction="Right", pitch=4)
+        column = layout.stack(count=2, direction="Down")
+
+        with layout.hold():
+            layout.move_from(row[-1], direction="Left")
+            assert layout.here.point == (15.0, 12.0)
+            assert layout.direction == "Left"
+
+        assert layout.here.point == (7.0, 12.0)
+        assert layout.direction == "Right"
+
+        with layout.frame(board.corner("top-left").right(10).down(5), direction="Down"):
+            assert layout.here.point == (12.0, 8.0)
+            assert layout.node((1, 2)).point == (13.0, 10.0)
+            assert layout.stack(count=2, direction="Down", pitch=3)[1].point == (12.0, 11.0)
+
+        assert [anchor.point for anchor in row] == [
+            (7.0, 12.0),
+            (11.0, 12.0),
+            (15.0, 12.0),
+        ]
+        assert [anchor.point for anchor in column] == [(7.0, 12.0), (7.0, 14.5)]
+
+    assert board.center.point == (17.0, 13.0)
+    assert board.edge("right").center().point == (32.0, 13.0)
+    assert board.corner("bottom-right").point == (32.0, 23.0)
+
+
+def test_pcb_layout_place_returns_placed_component_handle():
+    design, r1, d1 = _small_resistor_led_design()
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
+
+    with board.layout(unit=1.0) as layout:
+        resistor = layout.place(
+            r1,
+            at=board.edge("left").center().right(18),
+            orient="right",
+            locked=True,
+        )
+        led = layout.place(d1, at=resistor.center.right(10), orient="left")
+
+    assert isinstance(resistor, volt.PlacedBoardComponent)
+    assert resistor.index == 0
+    assert resistor.component is r1
+    assert resistor.center.point == (18.0, 15.0)
+    assert resistor.pad("1").point == (17.25, 15.0)
+    assert resistor.pad("2").point == (18.75, 15.0)
+    assert resistor[1].point == resistor.pad("1").point
+    assert resistor[2].point == resistor.pad("2").point
+    assert led.A.point == (28.75, 15.0)
+    assert led.K.point == (27.25, 15.0)
+
+    assert _placed_positions(board) == {
+        "component:0": ((18.0, 15.0), 0, True),
+        "component:1": ((28.0, 15.0), 180, False),
+    }
+    assert board.to_json() == board.to_json()
+
+
+def test_pcb_layout_two_pad_right_left_up_down_places_resolved_coordinates():
+    design = volt.Design("pcb-layout-two-pad")
+    parts = [design.R(f"{value}k", ref=f"R{value}") for value in range(1, 5)]
+    for index, component in enumerate(parts, start=1):
+        left = design.net(f"LEFT{index}")
+        right = design.net(f"RIGHT{index}")
+        left += component[1]
+        right += component[2]
+        component.select_part(
+            manufacturer="Yageo",
+            part_number=f"RC0603-{index}",
+            package="0603",
+            footprint=_passive_0603(("passives", f"R_0603_{index}")),
+            pin_pads={1: "1", 2: "2"},
+        )
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 30.0))
+
+    with board.layout(unit=1.0) as layout:
+        right = layout.two_pad(parts[0]).at((5.0, 5.0)).right()
+        down = layout.two_pad(parts[1]).at(right.end.down(4)).down()
+        left = layout.two_pad(parts[2]).at((20.0, 5.0)).left()
+        up = layout.two_pad(parts[3]).at((25.0, 15.0)).up()
+
+    assert right.start.point == (5.0, 5.0)
+    assert right.end.point == (6.5, 5.0)
+    assert right.center.point == (5.75, 5.0)
+    assert down.start.point == (6.5, 9.0)
+    assert down.end.point == (6.5, 10.5)
+    assert left.start.point == (20.0, 5.0)
+    assert left.end.point == (18.5, 5.0)
+    assert up.start.point == (25.0, 15.0)
+    assert up.end.point == (25.0, 13.5)
+    assert _placed_positions(board) == {
+        "component:0": ((5.75, 5.0), 0, False),
+        "component:1": ((6.5, 9.75), 90, False),
+        "component:2": ((19.25, 5.0), 180, False),
+        "component:3": ((25.0, 14.25), 270, False),
+    }
+
+
+def test_pcb_layout_two_pad_directions_follow_actual_pad_vector():
+    design = volt.Design("pcb-layout-two-pad-vector")
+    parts = [design.R(f"{value}k", ref=f"R{value}") for value in range(1, 5)]
+    footprints = (
+        _two_pad_footprint(("test", "vertical"), end=(0.0, 1.5)),
+        _two_pad_footprint(("test", "reversed"), end=(-1.5, 0.0)),
+        _two_pad_footprint(("test", "vertical-left"), end=(0.0, 1.5)),
+        _two_pad_footprint(("test", "reversed-up"), end=(-1.5, 0.0)),
+    )
+    for index, component in enumerate(parts):
+        net_a = design.net(f"A{index}")
+        net_b = design.net(f"B{index}")
+        net_a += component[1]
+        net_b += component[2]
+        component.select_part(
+            manufacturer="Volt",
+            part_number=f"VECTOR-{index}",
+            package="custom",
+            footprint=footprints[index],
+            pin_pads={1: "1", 2: "2"},
+        )
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 30.0))
+
+    with board.layout(unit=1.0) as layout:
+        vertical_right = layout.two_pad(parts[0]).at((5.0, 5.0)).right()
+        reversed_down = layout.two_pad(parts[1]).at((10.0, 5.0)).down()
+        vertical_left = layout.two_pad(parts[2]).at((20.0, 5.0)).left()
+        reversed_up = layout.two_pad(parts[3]).at((25.0, 15.0)).up()
+
+    assert vertical_right.start.point == (5.0, 5.0)
+    assert vertical_right.end.point == (6.5, 5.0)
+    assert reversed_down.start.point == (10.0, 5.0)
+    assert reversed_down.end.point == (10.0, 6.5)
+    assert vertical_left.start.point == (20.0, 5.0)
+    assert vertical_left.end.point == (18.5, 5.0)
+    assert reversed_up.start.point == (25.0, 15.0)
+    assert reversed_up.end.point == (25.0, 13.5)
+    assert _placed_positions(board) == {
+        "component:0": ((5.0, 5.0), 270, False),
+        "component:1": ((10.0, 5.0), 270, False),
+        "component:2": ((20.0, 5.0), 90, False),
+        "component:3": ((25.0, 15.0), 90, False),
+    }
+
+
+def test_pcb_layout_two_pad_uses_kernel_resolved_builtin_footprints():
+    design, r1, _d1 = _small_resistor_led_design()
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+
+    with board.layout(unit=1.0) as layout:
+        resistor = layout.two_pad(r1).at((5.0, 5.0)).right()
+
+    assert isinstance(resistor, volt.PlacedBoardComponent)
+    assert resistor.start.point == (5.0, 5.0)
+    assert resistor.end.point == (6.5, 5.0)
+    assert _placed_positions(board) == {
+        "component:0": ((5.75, 5.0), 0, False),
+    }
+
+
+def test_pcb_layout_two_pad_builder_does_not_flush_from_layout_operations():
+    design = volt.Design("pcb-layout-two-pad-builder")
+    r1 = design.R("1k", ref="R1")
+    net_a = design.net("A")
+    net_b = design.net("B")
+    net_a += r1[1]
+    net_b += r1[2]
+    r1.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603",
+        package="0603",
+        footprint=_passive_0603(("passives", "R_0603")),
+        pin_pads={1: "1", 2: "2"},
+    )
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+
+    with board.layout(unit=1.0) as layout:
+        builder = layout.two_pad(r1).at((5.0, 5.0))
+        layout.move(dx=4.0)
+        assert board.resolve_pads() == ()
+        placed = builder.right()
+
+    assert placed.start.point == (5.0, 5.0)
+    assert placed.end.point == (6.5, 5.0)
+    assert _placed_positions(board) == {
+        "component:0": ((5.75, 5.0), 0, False),
+    }
+    assert layout.here.point == (6.5, 5.0)
+
+
+def test_pcb_layout_routes_tracks_and_vias_from_relative_anchors():
+    design, r1, d1 = _small_resistor_led_design()
+    led_a = next(net for net in design.nets() if net.name == "LED_A")
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
+
+    with board.layout(unit=1.0) as layout:
+        resistor = layout.two_pad(r1).at((10.0, 10.0)).right()
+        led = layout.place(d1, at=resistor.center.right(12).down(5), orient="left")
+
+        front_track = (
+            layout.route(led_a, layer=front, width=0.25)
+            .at(resistor.end)
+            .right(2.0)
+            .toy(led.A)
+            .to(led.A)
+        )
+        via_anchor = layout.node(led.K.left(2.0))
+        via = layout.via(led_a, at=via_anchor, start_layer=front, end_layer=back)
+        back_track = layout.route(led_a, layer=back, width=0.30).to(
+            via_anchor.right(3.0)
+        )
+
+    document = json.loads(board.to_json())
+    assert isinstance(layout.here, volt.BoardAnchor)
+    assert layout.here.point == (23.0, 15.0)
+    assert front_track == 0
+    assert via == 0
+    assert back_track == 1
+    assert document["board"]["tracks"][0]["points"] == [
+        [11.5, 10.0],
+        [13.5, 10.0],
+        [13.5, 15.0],
+        [23.5, 15.0],
+    ]
+    assert document["board"]["tracks"][0]["width_mm"] == 0.25
+    assert document["board"]["tracks"][1]["points"] == [[20.0, 15.0], [23.0, 15.0]]
+    assert document["board"]["tracks"][1]["layer"] == "board_layer:1"
+    assert document["board"]["tracks"][1]["width_mm"] == 0.30
+    assert document["board"]["vias"][0]["position"] == [20.0, 15.0]
+    assert document["board"]["vias"][0]["start_layer"] == "board_layer:0"
+    assert document["board"]["vias"][0]["end_layer"] == "board_layer:1"
+
+
+def test_pcb_layout_grid_snaps_explicit_authoring_coordinates():
+    design, r1, _d1 = _small_resistor_led_design()
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+
+    with board.layout(at=(0.26, 0.74), grid=0.5) as layout:
+        assert layout.grid == 0.5
+        assert layout.here.point == (0.5, 0.5)
+        assert layout.snap((10.26, 5.74)).point == (10.5, 5.5)
+        assert layout.snap_x(10.26) == 10.5
+        assert layout.snap_y(5.74) == 5.5
+        assert layout.snap_x(0.25) == 0.5
+        assert layout.snap_x(-0.25) == -0.5
+
+        resistor = layout.place(r1, at=(10.26, 5.74), orient="right")
+        with layout.frame((2.26, 3.24)):
+            assert layout.node((1.26, 1.26)).point == (4.0, 4.5)
+
+    assert resistor.center.point == (10.5, 5.5)
+    assert _placed_positions(board) == {
+        "component:0": ((10.5, 5.5), 0, False),
+    }
+
+
+def test_pcb_layout_routes_default_to_octilinear_segments():
+    design = volt.Design("pcb-octilinear-routes")
+    net = design.net("SIG")
+    board = design.board("Control")
+    layer = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+
+    with board.layout() as layout:
+        arbitrary = layout.route(net, layer=layer).at((1.0, 1.0)).to((5.0, 2.0))
+        diagonal = layout.route(net, layer=layer).at((1.0, 4.0)).to((3.0, 6.0))
+        direct = (
+            layout.route(net, layer=layer)
+            .at((1.0, 8.0))
+            .to((5.0, 9.0), mode="direct")
+        )
+
+    document = json.loads(board.to_json())
+    assert arbitrary == 0
+    assert diagonal == 1
+    assert direct == 2
+    assert document["board"]["tracks"][0]["points"] == [[1, 1], [5, 1], [5, 2]]
+    assert document["board"]["tracks"][1]["points"] == [[1, 4], [3, 6]]
+    assert document["board"]["tracks"][2]["points"] == [[1, 8], [5, 9]]
+
+
+def test_pcb_layout_grid_snaps_route_numeric_helpers_without_snapping_anchor_targets():
+    design, r1, _d1 = _small_resistor_led_design()
+    net = design.net("SIG")
+    board = design.board("Control")
+    layer = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+
+    with board.layout(grid=0.5) as layout:
+        helper = (
+            layout.route(net, layer=layer)
+            .at((1.1, 1.1))
+            .tox(2.26)
+            .toy(3.24)
+            .to((4.26, 3.24))
+        )
+        jog = (
+            layout.route(net, layer=layer)
+            .at((1.1, 6.1))
+            .right(1.26)
+            .down(1.26)
+            .to((4.26, 7.26))
+        )
+        resistor = layout.two_pad(r1).at((8.0, 5.0)).right()
+        anchor_target = resistor.end.right(1.26)
+        exact_anchor = (
+            layout.route(net, layer=layer)
+            .at(resistor.end)
+            .tox(anchor_target)
+            .to(anchor_target)
+        )
+
+    document = json.loads(board.to_json())
+    assert helper == 0
+    assert jog == 1
+    assert exact_anchor == 2
+    assert document["board"]["tracks"][0]["points"] == [
+        [1, 1],
+        [2.5, 1],
+        [2.5, 3],
+        [4.5, 3],
+    ]
+    assert document["board"]["tracks"][1]["points"] == [
+        [1, 6],
+        [2.5, 6],
+        [2.5, 7.5],
+        [4.5, 7.5],
+    ]
+    assert document["board"]["tracks"][2]["points"] == [[9.5, 5], [10.76, 5]]
+
+
+def test_pcb_layout_board_anchors_read_outline_without_serializing(monkeypatch):
+    design = volt.Design("pcb-layout-outline-query")
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(2.0, 3.0), size=(30.0, 20.0))
+
+    def fail_to_json():
+        raise AssertionError("board anchors should not serialize PCB JSON")
+
+    monkeypatch.setattr(board, "to_json", fail_to_json)
+
+    assert board.center.point == (17.0, 13.0)
+    assert board.edge("right").center().point == (32.0, 13.0)
+    assert board.corner("bottom-left").point == (2.0, 23.0)
+
+
+def test_pcb_layout_frame_and_json_match_absolute_placement_equivalent():
+    relative_design, relative_r1, relative_d1 = _small_resistor_led_design()
+    relative_board = relative_design.board("Control")
+    relative_board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
+    relative_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    relative_board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
+
+    with relative_board.layout(unit=1.0) as layout:
+        with layout.frame((10.0, 5.0), direction="Right"):
+            anchors = layout.stack(count=2, direction="Right", pitch=10)
+            layout.place(relative_r1, at=anchors[0], orient="right", locked=True)
+            layout.place(relative_d1, at=anchors[1], orient="left")
+
+    absolute_design, absolute_r1, absolute_d1 = _small_resistor_led_design()
+    absolute_board = absolute_design.board("Control")
+    absolute_board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
+    absolute_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    absolute_board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
+    absolute_board.place(absolute_r1, at=(10.0, 5.0), rotation=0.0, locked=True)
+    absolute_board.place(absolute_d1, at=(20.0, 5.0), rotation=180.0)
+
+    assert _placed_positions(relative_board) == _placed_positions(absolute_board)
+
+
+def test_pcb_layout_reports_invalid_components_and_ambiguous_pin_names():
+    design = volt.Design("pcb-layout-errors")
+    duplicate = design.define_component(
+        "DuplicatePins",
+        pins=[volt.PinSpec("IO", 1), volt.PinSpec("IO", 2)],
+    )
+    u1 = design.instantiate(duplicate, ref="U1")
+    u1.select_part(
+        manufacturer="Volt",
+        part_number="DUP",
+        package="0603",
+        footprint=_passive_0603(("volt.test", "DuplicatePins")),
+        pin_pads={1: "1", 2: "2"},
+    )
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+
+    with board.layout() as layout:
+        placed = layout.place(u1, at=(10.0, 6.0))
+
+    with pytest.raises(AttributeError, match="ambiguous"):
+        placed.IO
+    with pytest.raises(ValueError, match="requires exactly two component pins"):
+        layout.two_pad(design.test_point(ref="TP1"))
+
+    other_design = volt.Design("other")
+    other_board = other_design.board("Other")
+    other_board.set_rectangular_outline(origin=(0.0, 0.0), size=(10.0, 10.0))
+    with pytest.raises(ValueError, match="different board"):
+        layout.move_from(other_board.center)
+
+    missing = design.R("1k", ref="R1")
+    missing.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603",
+        package="0603",
+        footprint=("missing", "R_0603_1608Metric"),
+        pin_pads={1: "1", 2: "2"},
+    )
+    with pytest.raises(ValueError, match="resolved footprint pad geometry"):
+        layout.two_pad(missing).right()
+
+
 def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     design, r1, d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")
@@ -126,6 +599,8 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     assert 'data-net="net:0"' in svg
     assert 'data-track="board_track:0"' in svg
     assert 'data-via="board_via:0"' in svg
+    assert "data-ratsnest-edge=" in svg
+    assert "data-ratsnest-edge=" not in board.to_svg(ratsnest_edges=False)
 
     json_path = tmp_path / "board.voltpcb.json"
     svg_path = tmp_path / "board.svg"

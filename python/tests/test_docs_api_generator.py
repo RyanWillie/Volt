@@ -41,6 +41,15 @@ def test_api_generator_emits_mintlify_reference_pages(tmp_path):
     assert "Generated from `python/volt/__init__.py`" in index
     assert "/api/python/design" in index
     assert "/api/python/schematic" in index
+    pcb_row = next(line for line in index.splitlines() if line.startswith("| [PCB]"))
+    logical_row = next(line for line in index.splitlines() if line.startswith("| [Logical]"))
+    assert "`volt.BoardLayout`" in pcb_row
+    assert "`volt.BoardLayout`" not in logical_row
+
+    pcb = (output / "pcb.mdx").read_text(encoding="utf-8")
+    logical = (output / "logical.mdx").read_text(encoding="utf-8")
+    assert "## `volt.BoardLayout`" in pcb
+    assert "## `volt.BoardLayout`" not in logical
 
     navigation_text = navigation.read_text(encoding="utf-8")
     assert '"api/python/index"' in navigation_text

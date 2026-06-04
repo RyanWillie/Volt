@@ -53,6 +53,14 @@ from .pcb import (
     Slot,
     Text,
 )
+from ._pcb_layout import (
+    BoardAnchor,
+    BoardLayout,
+    BoardPadAnchor,
+    BoardRoute,
+    BoardTwoPadComponent,
+    PlacedBoardComponent,
+)
 from .schematic import (
     PlacedSchematicElement,
     Schematic,
@@ -79,6 +87,11 @@ __all__ = [
     "Component",
     "ComponentDefinition",
     "Board",
+    "BoardAnchor",
+    "BoardLayout",
+    "BoardPadAnchor",
+    "BoardRoute",
+    "BoardTwoPadComponent",
     "Circle",
     "Cutout",
     "Design",
@@ -112,6 +125,7 @@ __all__ = [
     "KiCadPcbExport",
     "MechanicalKeepout",
     "PhysicalPartSpec",
+    "PlacedBoardComponent",
     "PlacedSchematicElement",
     "PadResolution",
     "PortBindingInfo",

@@ -100,106 +100,97 @@ def _timer_symbol() -> volt.SchematicSymbolSpec:
     )
 
 
-def _header_1x02() -> volt.FootprintDefinition:
+def _front_smd_pad(
+    label: str,
+    *,
+    at: tuple[float, float],
+    size: tuple[float, float],
+    shape: str = "rounded_rectangle",
+    mechanical_role: str | None = None,
+) -> volt.FootprintPad:
+    return volt.FootprintPad.surface_mount(
+        label,
+        at=at,
+        size=size,
+        shape=shape,
+        mechanical_role=mechanical_role,
+    )
+
+
+def _jst_ph_smd_1x02() -> volt.FootprintDefinition:
     return volt.FootprintDefinition(
-        ("connectors", "PinHeader_1x02_P2.54mm_Vertical"),
+        ("Connector_JST", "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal"),
         pads=(
-            volt.FootprintPad.through_hole(
-                "1",
-                at=(0.0, -1.27),
-                size=(1.70, 1.70),
-                drill=volt.FootprintDrill(1.00),
+            _front_smd_pad("1", at=(-1.0, -2.85), size=(1.0, 3.5)),
+            _front_smd_pad("2", at=(1.0, -2.85), size=(1.0, 3.5)),
+            _front_smd_pad(
+                "MP1",
+                at=(-3.35, 2.9),
+                size=(1.5, 3.4),
+                mechanical_role="mechanical_support",
             ),
-            volt.FootprintPad.through_hole(
-                "2",
-                at=(0.0, 1.27),
-                size=(1.70, 1.70),
-                drill=volt.FootprintDrill(1.00),
+            _front_smd_pad(
+                "MP2",
+                at=(3.35, 2.9),
+                size=(1.5, 3.4),
+                mechanical_role="mechanical_support",
             ),
         ),
     )
 
 
-def _timer_dip_8() -> volt.FootprintDefinition:
+def _timer_soic_8() -> volt.FootprintDefinition:
     return volt.FootprintDefinition(
-        ("packages", "DIP-8_W7.62mm"),
+        ("KiCad_Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"),
         pads=(
-            volt.FootprintPad.through_hole(
-                "1", at=(-3.81, 3.81), size=(1.60, 1.60), drill=volt.FootprintDrill(0.80)
-            ),
-            volt.FootprintPad.through_hole(
-                "2", at=(-3.81, 1.27), size=(1.60, 1.60), drill=volt.FootprintDrill(0.80)
-            ),
-            volt.FootprintPad.through_hole(
-                "3", at=(-3.81, -1.27), size=(1.60, 1.60), drill=volt.FootprintDrill(0.80)
-            ),
-            volt.FootprintPad.through_hole(
-                "4", at=(-3.81, -3.81), size=(1.60, 1.60), drill=volt.FootprintDrill(0.80)
-            ),
-            volt.FootprintPad.through_hole(
-                "5", at=(3.81, -3.81), size=(1.60, 1.60), drill=volt.FootprintDrill(0.80)
-            ),
-            volt.FootprintPad.through_hole(
-                "6", at=(3.81, -1.27), size=(1.60, 1.60), drill=volt.FootprintDrill(0.80)
-            ),
-            volt.FootprintPad.through_hole(
-                "7", at=(3.81, 1.27), size=(1.60, 1.60), drill=volt.FootprintDrill(0.80)
-            ),
-            volt.FootprintPad.through_hole(
-                "8", at=(3.81, 3.81), size=(1.60, 1.60), drill=volt.FootprintDrill(0.80)
-            ),
+            _front_smd_pad("1", at=(-2.475, -1.905), size=(1.95, 0.6)),
+            _front_smd_pad("2", at=(-2.475, -0.635), size=(1.95, 0.6)),
+            _front_smd_pad("3", at=(-2.475, 0.635), size=(1.95, 0.6)),
+            _front_smd_pad("4", at=(-2.475, 1.905), size=(1.95, 0.6)),
+            _front_smd_pad("5", at=(2.475, 1.905), size=(1.95, 0.6)),
+            _front_smd_pad("6", at=(2.475, 0.635), size=(1.95, 0.6)),
+            _front_smd_pad("7", at=(2.475, -0.635), size=(1.95, 0.6)),
+            _front_smd_pad("8", at=(2.475, -1.905), size=(1.95, 0.6)),
         ),
     )
 
 
-def _axial_resistor() -> volt.FootprintDefinition:
+def _resistor_0805() -> volt.FootprintDefinition:
     return volt.FootprintDefinition(
-        ("passives", "R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal"),
+        ("Resistor_SMD", "R_0805_2012Metric"),
         pads=(
-            volt.FootprintPad.through_hole(
-                "1", at=(-3.81, 0.0), size=(1.60, 1.60), drill=volt.FootprintDrill(0.80)
-            ),
-            volt.FootprintPad.through_hole(
-                "2", at=(3.81, 0.0), size=(1.60, 1.60), drill=volt.FootprintDrill(0.80)
-            ),
+            _front_smd_pad("1", at=(-0.9125, 0.0), size=(1.025, 1.4)),
+            _front_smd_pad("2", at=(0.9125, 0.0), size=(1.025, 1.4)),
         ),
     )
 
 
-def _radial_capacitor() -> volt.FootprintDefinition:
+def _capacitor_0805() -> volt.FootprintDefinition:
     return volt.FootprintDefinition(
-        ("passives", "C_Radial_D5.0mm_P2.54mm"),
+        ("Capacitor_SMD", "C_0805_2012Metric"),
         pads=(
-            volt.FootprintPad.through_hole(
-                "1", at=(-1.27, 0.0), size=(1.50, 1.50), drill=volt.FootprintDrill(0.70)
-            ),
-            volt.FootprintPad.through_hole(
-                "2", at=(1.27, 0.0), size=(1.50, 1.50), drill=volt.FootprintDrill(0.70)
-            ),
+            _front_smd_pad("1", at=(-0.95, 0.0), size=(1.0, 1.45)),
+            _front_smd_pad("2", at=(0.95, 0.0), size=(1.0, 1.45)),
         ),
     )
 
 
-def _led_5mm() -> volt.FootprintDefinition:
+def _led_0805() -> volt.FootprintDefinition:
     return volt.FootprintDefinition(
-        ("leds", "LED_D5.0mm"),
+        ("LED_SMD", "LED_0805_2012Metric"),
         pads=(
-            volt.FootprintPad.through_hole(
-                "1", at=(-1.27, 0.0), size=(1.50, 1.50), drill=volt.FootprintDrill(0.70)
-            ),
-            volt.FootprintPad.through_hole(
-                "2", at=(1.27, 0.0), size=(1.50, 1.50), drill=volt.FootprintDrill(0.70)
-            ),
+            _front_smd_pad("1", at=(-0.9375, 0.0), size=(0.975, 1.4)),
+            _front_smd_pad("2", at=(0.9375, 0.0), size=(0.975, 1.4)),
         ),
     )
 
 
 FOOTPRINTS = {
-    "header_1x02": _header_1x02(),
-    "timer_dip_8": _timer_dip_8(),
-    "resistor_axial": _axial_resistor(),
-    "capacitor_radial": _radial_capacitor(),
-    "led_5mm": _led_5mm(),
+    "jst_ph_smd_1x02": _jst_ph_smd_1x02(),
+    "timer_soic_8": _timer_soic_8(),
+    "resistor_0805": _resistor_0805(),
+    "capacitor_0805": _capacitor_0805(),
+    "led_0805": _led_0805(),
 }
 
 
@@ -237,12 +228,19 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
         "RB": design.R("47 kOhm", ref="R2"),
         "CT": design.C("1 uF", ref="C1"),
         "CCTRL": design.C("10 nF", ref="C2"),
+        "CDEC": design.C("100 nF", ref="C3"),
         "RLED": design.R("1 kOhm", ref="R3"),
         "DLED": design.LED(ref="D1"),
     }
 
     timer = parts["U1"]
-    nets["+5V"] += parts["J1"][1], timer["VCC"], timer["RESET"], parts["RA"][1]
+    nets["+5V"] += (
+        parts["J1"][1],
+        timer["VCC"],
+        timer["RESET"],
+        parts["RA"][1],
+        parts["CDEC"][1],
+    )
     nets["DISCH"] += timer["DISCH"], parts["RA"][2], parts["RB"][1]
     nets["TIMING"] += timer["TRIG"], timer["THRESH"], parts["RB"][2], parts["CT"][1]
     nets["CTRL"] += timer["CTRL"], parts["CCTRL"][1]
@@ -253,21 +251,22 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
         timer["GND"],
         parts["CT"][2],
         parts["CCTRL"][2],
+        parts["CDEC"][2],
         parts["DLED"]["K"],
     )
 
     parts["J1"].select_part(
-        manufacturer="Generic",
-        part_number="HDR-1x02-2.54mm",
-        package="2.54mm-1x02",
-        footprint=FOOTPRINTS["header_1x02"],
+        manufacturer="JST",
+        part_number="S2B-PH-SM4-TB(LF)(SN)",
+        package="JST-PH-SMD-1x02",
+        footprint=FOOTPRINTS["jst_ph_smd_1x02"],
         pin_pads={1: "1", 2: "2"},
     )
     timer.select_part(
         manufacturer="Texas Instruments",
-        part_number="NE555P",
-        package="PDIP-8",
-        footprint=FOOTPRINTS["timer_dip_8"],
+        part_number="NE555DR",
+        package="SOIC-8",
+        footprint=FOOTPRINTS["timer_soic_8"],
         pin_pads={
             "GND": "1",
             "TRIG": "2",
@@ -281,36 +280,37 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
         voltage_rating=16.0,
     )
     for component, part_number, power_rating in (
-        (parts["RA"], "RES-0.25W-100K", 0.25),
-        (parts["RB"], "RES-0.25W-47K", 0.25),
-        (parts["RLED"], "RES-0.25W-1K", 0.25),
+        (parts["RA"], "RMCF0805FT100K", 0.125),
+        (parts["RB"], "RMCF0805FT47K0", 0.125),
+        (parts["RLED"], "RMCF0805FT1K00", 0.125),
     ):
         component.select_part(
-            manufacturer="Generic",
+            manufacturer="Stackpole",
             part_number=part_number,
-            package="Axial-7.62mm",
-            footprint=FOOTPRINTS["resistor_axial"],
+            package="0805",
+            footprint=FOOTPRINTS["resistor_0805"],
             pin_pads={1: "1", 2: "2"},
             power_rating=power_rating,
         )
     for component, part_number, voltage_rating in (
-        (parts["CT"], "CAP-RAD-1UF-2.54MM", 16.0),
-        (parts["CCTRL"], "CAP-RAD-10NF-2.54MM", 50.0),
+        (parts["CT"], "CL21B105KBFNNNE", 50.0),
+        (parts["CCTRL"], "CL21B103KBANNNC", 50.0),
+        (parts["CDEC"], "CL21B104KBCNNNC", 50.0),
     ):
         component.select_part(
-            manufacturer="Generic",
+            manufacturer="Samsung Electro-Mechanics",
             part_number=part_number,
-            package="Radial-2.54mm",
-            footprint=FOOTPRINTS["capacitor_radial"],
+            package="0805",
+            footprint=FOOTPRINTS["capacitor_0805"],
             pin_pads={1: "1", 2: "2"},
             voltage_rating=voltage_rating,
         )
     parts["DLED"].select_part(
-        manufacturer="Generic",
-        part_number="LED-5MM-RED",
-        package="5mm",
-        footprint=FOOTPRINTS["led_5mm"],
-        pin_pads={"A": "1", "K": "2"},
+        manufacturer="Lite-On",
+        part_number="LTST-C171KRKT",
+        package="0805",
+        footprint=FOOTPRINTS["led_0805"],
+        pin_pads={"K": "1", "A": "2"},
     )
     return design, nets, parts
 
@@ -381,6 +381,13 @@ def build_schematic(
             .label_value(loc="bottom", offset=8)
             .dot()
         )
+        decoupling_cap = (
+            drawing.two_terminal(parts["CDEC"])
+            .at(timer.VCC.right(80))
+            .down()
+            .label_ref(loc="right", offset=8)
+            .label_value(loc="right", offset=24)
+        )
         led_resistor = (
             drawing.two_terminal(parts["RLED"])
             .at(timer.OUT)
@@ -397,6 +404,8 @@ def build_schematic(
         drawing.power_stub("+5V", at=timer.VCC)
         drawing.connect(timer.RESET, timer.VCC, shape="-").dot()
         drawing.power_stub("+5V", at=ra.start)
+        drawing.power_stub("+5V", at=decoupling_cap.start)
+        drawing.ground_stub("GND", at=decoupling_cap.end)
 
         drawing.connect(timer.THRESH, timer.TRIG, shape="-")
         drawing.wire(nets["GND"]).at(timing_cap.end).tox(ground.pin).direct()
@@ -426,85 +435,144 @@ def build_board(
     board.set_layer_stack((front, back), thickness=1.6)
     board.set_design_rules(
         copper_clearance=0.20,
-        min_track_width=0.25,
+        min_track_width=0.20,
         min_via_drill=0.30,
         min_via_annular=0.70,
         board_outline_clearance=0.25,
     )
-    board.set_rectangular_outline(origin=(0.0, 0.0), size=(90.0, 56.0))
-    board.add(volt.Hole(center=(4.0, 4.0), diameter=2.7, role="mounting", label="MH1"))
-    board.add(volt.Hole(center=(86.0, 4.0), diameter=2.7, role="mounting", label="MH2"))
-    board.add(volt.Hole(center=(4.0, 52.0), diameter=2.7, role="mounting", label="MH3"))
-    board.add(volt.Hole(center=(86.0, 52.0), diameter=2.7, role="mounting", label="MH4"))
-
-    board.place(parts["J1"], at=(8.0, 28.0), rotation=0.0, side="top", locked=True)
-    board.place(parts["U1"], at=(42.0, 28.0), rotation=0.0, side="top", locked=True)
-    board.place(parts["RA"], at=(58.0, 22.0), rotation=0.0, side="top")
-    board.place(parts["RB"], at=(58.0, 30.0), rotation=0.0, side="top")
-    board.place(parts["CT"], at=(68.0, 38.0), rotation=0.0, side="top")
-    board.place(parts["CCTRL"], at=(58.0, 16.0), rotation=0.0, side="top")
-    board.place(parts["RLED"], at=(28.0, 20.0), rotation=180.0, side="top")
-    board.place(parts["DLED"], at=(17.0, 20.0), rotation=0.0, side="top")
-    board.add(volt.Text("555 BLINK", at=(61.0, 51.0), layer=silk, size=1.4))
-
-    board.add_track(nets["+5V"], layer=front, points=((8.0, 26.73), (8.0, 8.0), (12.0, 8.0)), width=0.35)
-    board.add_via(nets["+5V"], at=(12.0, 8.0), start_layer=front, end_layer=back)
-    board.add_track(
-        nets["+5V"],
-        layer=back,
-        points=((12.0, 8.0), (54.19, 8.0), (54.19, 22.0)),
-        width=0.35,
-    )
-    board.add_track(nets["+5V"], layer=back, points=((38.19, 24.19), (38.19, 8.0)), width=0.35)
-    board.add_track(
-        nets["+5V"],
-        layer=back,
-        points=((45.81, 31.81), (50.0, 31.81), (50.0, 8.0)),
-        width=0.35,
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(48.0, 32.0))
+    board.add(volt.Hole(center=(4.0, 4.0), diameter=2.2, role="mounting"))
+    board.add(volt.Hole(center=(44.0, 4.0), diameter=2.2, role="mounting"))
+    board.add(volt.Hole(center=(4.0, 28.0), diameter=2.2, role="mounting"))
+    board.add(volt.Hole(center=(44.0, 28.0), diameter=2.2, role="mounting"))
+    board.add_zone(
+        outline=((1.0, 1.0), (47.0, 1.0), (47.0, 31.0), (1.0, 31.0)),
+        layers=(back,),
+        net=nets["GND"],
     )
 
-    board.add_track(nets["GND"], layer=front, points=((8.0, 29.27), (8.0, 48.0)), width=0.35)
-    board.add_via(nets["GND"], at=(8.0, 48.0), start_layer=front, end_layer=back)
-    board.add_track(
-        nets["GND"],
-        layer=back,
-        points=((8.0, 48.0), (69.27, 48.0), (69.27, 38.0)),
-        width=0.35,
-    )
-    board.add_track(nets["GND"], layer=back, points=((38.19, 31.81), (38.19, 48.0)), width=0.35)
-    board.add_track(nets["GND"], layer=back, points=((18.27, 20.0), (18.27, 48.0)), width=0.35)
-    board.add_track(
-        nets["GND"],
-        layer=back,
-        points=((59.27, 16.0), (59.27, 48.0)),
-        width=0.35,
-    )
+    with board.layout(unit=1.0, grid=0.5) as layout:
+        header = layout.place(
+            parts["J1"],
+            at=board.edge("left").center().right(7),
+            orient="right",
+            locked=True,
+        )
+        timer = layout.place(
+            parts["U1"],
+            at=(23.0, 15.0),
+            orient="right",
+            locked=True,
+        )
 
-    board.add_track(
-        nets["DISCH"],
-        layer=front,
-        points=((45.81, 29.27), (54.19, 30.0), (54.19, 25.0), (66.0, 25.0), (66.0, 22.0), (61.81, 22.0)),
-        width=0.25,
-    )
-    board.add_track(
-        nets["TIMING"],
-        layer=front,
-        points=((38.19, 29.27), (34.0, 29.27), (34.0, 38.0), (66.73, 38.0)),
-        width=0.25,
-    )
-    board.add_track(nets["TIMING"], layer=front, points=((45.81, 26.73), (43.0, 26.73), (43.0, 38.0)), width=0.25)
-    board.add_track(nets["TIMING"], layer=front, points=((61.81, 30.0), (61.81, 38.0)), width=0.25)
+        with layout.hold():
+            ra = (
+                layout.two_pad(parts["RA"])
+                .at((36.0, 10.0))
+                .anchor("center")
+                .right()
+            )
+            rb = (
+                layout.two_pad(parts["RB"])
+                .at((36.0, 14.0))
+                .anchor("center")
+                .right()
+            )
+            timing_junction = layout.snap(rb.end.right(2.0))
+            ct = (
+                layout.two_pad(parts["CT"])
+                .at(timing_junction.down(3.0))
+                .down()
+            )
 
-    board.add_track(nets["CTRL"], layer=front, points=((45.81, 24.19), (56.73, 16.0)), width=0.25)
-    board.add_track(nets["OUT"], layer=front, points=((38.19, 26.73), (34.0, 26.73), (34.0, 20.0), (36.0, 20.0)), width=0.25)
-    board.add_via(nets["OUT"], at=(36.0, 20.0), start_layer=front, end_layer=back)
-    board.add_track(nets["OUT"], layer=back, points=((36.0, 20.0), (31.81, 20.0)), width=0.25)
-    board.add_track(
-        nets["LED_A"],
-        layer=front,
-        points=((24.19, 20.0), (24.19, 15.0), (15.73, 15.0), (15.73, 20.0)),
-        width=0.25,
-    )
+        with layout.hold():
+            cctrl = (
+                layout.two_pad(parts["CCTRL"])
+                .at((31.0, 21.0))
+                .anchor("center")
+                .down()
+            )
+            cdec = (
+                layout.two_pad(parts["CDEC"])
+                .at((29.0, 10.0))
+                .anchor("center")
+                .right()
+            )
+
+        with layout.hold():
+            rled = (
+                layout.two_pad(parts["RLED"])
+                .at((15.5, 20.0))
+                .anchor("center")
+                .down()
+            )
+            dled = layout.place(parts["DLED"], at=(12.5, 24.0), orient="right")
+
+        board.add_text("555 SMD", at=(28.0, 29.5), layer=silk, size=1.0)
+        board.add_text("+5V", at=(4.8, 10.2), layer=silk, size=0.7)
+        board.add_text("GND", at=(7.5, 10.2), layer=silk, size=0.7)
+        board.add_text("K", at=(10.2, 25.9), layer=silk, size=0.7)
+
+        def horizontal_drop(pad, dx):
+            return pad.tox(layout.snap_x(pad.x + dx))
+
+        gnd_drops = (
+            (header[2], horizontal_drop(header[2], 2.0)),
+            (timer.GND, horizontal_drop(timer.GND, -2.0)),
+            (cdec.end, horizontal_drop(cdec.end, 1.55)),
+            (cctrl.end, horizontal_drop(cctrl.end, 1.6)),
+            (ct.end, horizontal_drop(ct.end, 1.65)),
+            (dled.K, horizontal_drop(dled.K, -1.6)),
+        )
+        for pad, drop in gnd_drops:
+            drop_anchor = drop
+            layout.route(nets["GND"], layer=front, width=0.30).at(pad).to(drop_anchor)
+            layout.via(
+                nets["GND"],
+                at=drop_anchor,
+                start_layer=front,
+                end_layer=back,
+            )
+
+        power_rail = layout.snap(header[1].up(5.15))
+        layout.route(nets["+5V"], layer=front, width=0.30).at(header[1]).toy(
+            power_rail
+        ).tox(cdec.start).to(cdec.start)
+        layout.route(nets["+5V"], layer=front, width=0.30).at(cdec.start).to(timer.VCC)
+        layout.route(nets["+5V"], layer=front, width=0.30).at(cdec.start).toy(
+            power_rail
+        ).tox(ra.start).to(ra.start)
+        layout.route(nets["+5V"], layer=front, width=0.25).at(timer.RESET).tox(
+            timer.RESET.left(3.025)
+        ).toy(timer.VCC.up(2.095)).tox(timer.VCC).to(timer.VCC)
+
+        disch_escape = layout.snap(timer.DISCH.right(2.5))
+        disch_bus = layout.snap(ra.end.right(1.6).down(2.0))
+        layout.route(nets["DISCH"], layer=front).at(timer.DISCH).tox(disch_escape).to(
+            rb.start
+        )
+        layout.route(nets["DISCH"], layer=front).at(timer.DISCH).tox(disch_escape).toy(
+            disch_bus
+        ).tox(disch_bus).toy(ra.end).to(ra.end)
+
+        timing_escape = layout.snap(timer.TRIG.right(3.0))
+        layout.route(nets["TIMING"], layer=front).at(timer.TRIG).tox(timing_escape).toy(
+            timer.THRESH
+        ).to(timer.THRESH)
+        layout.route(nets["TIMING"], layer=front).at(timer.THRESH).tox(
+            timing_junction
+        ).toy(timing_junction).to(rb.end)
+        layout.route(nets["TIMING"], layer=front).at(timing_junction).to(ct.start)
+
+        ctrl_escape = layout.snap(timer.CTRL.right(4.5))
+        layout.route(nets["CTRL"], layer=front).at(timer.CTRL).tox(ctrl_escape).toy(
+            cctrl.start
+        ).to(cctrl.start)
+        out_escape = layout.snap(timer.OUT.right(1.5))
+        layout.route(nets["OUT"], layer=front).at(timer.OUT).tox(out_escape).toy(
+            rled.start
+        ).to(rled.start)
+        layout.route(nets["LED_A"], layer=front).at(rled.end).toy(dled.A).to(dled.A)
     return board
 
 
@@ -553,7 +621,10 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
         prefix=EXAMPLE_SLUG,
     )
     board.write_json(pcb_json)
-    board.write_svg(pcb_svg)
+    pcb_svg.write_text(
+        board.to_svg(pad_net_overlays=False, ratsnest_edges=False),
+        encoding="utf-8",
+    )
     validation_report.write_text(validation_report_json(reports), encoding="utf-8")
     return ExampleArtifacts(
         logical_json=logical_json,

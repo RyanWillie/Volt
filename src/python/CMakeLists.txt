@@ -16,6 +16,7 @@ set(
     __init__.py
     _footprint.py
     _library_symbol_builders.py
+    _pcb_layout.py
     _presentation.py
     _schematic_authoring.py
     _schematic_handles.py

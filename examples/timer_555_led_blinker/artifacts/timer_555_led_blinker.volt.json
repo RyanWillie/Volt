@@ -32,9 +32,9 @@
   ],
   "components": [
     { "id": "component:0", "definition": "component_def:1", "reference": "J1", "properties": {}, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Generic", "part_number": "HDR-1x02-2.54mm" },
-      "package": "2.54mm-1x02",
-      "footprint": { "library": "connectors", "name": "PinHeader_1x02_P2.54mm_Vertical" },
+      "manufacturer_part": { "manufacturer": "JST", "part_number": "S2B-PH-SM4-TB(LF)(SN)" },
+      "package": "JST-PH-SMD-1x02",
+      "footprint": { "library": "Connector_JST", "name": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal" },
       "pin_pad_mappings": [
         { "pin": "pin_def:8", "pad": "1" },
         { "pin": "pin_def:9", "pad": "2" }
@@ -44,9 +44,9 @@
     { "id": "component:1", "definition": "component_def:0", "reference": "U1", "properties": {
         "value": { "type": "string", "value": "NE555" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Texas Instruments", "part_number": "NE555P" },
-      "package": "PDIP-8",
-      "footprint": { "library": "packages", "name": "DIP-8_W7.62mm" },
+      "manufacturer_part": { "manufacturer": "Texas Instruments", "part_number": "NE555DR" },
+      "package": "SOIC-8",
+      "footprint": { "library": "KiCad_Package_SO", "name": "SOIC-8_3.9x4.9mm_P1.27mm" },
       "pin_pad_mappings": [
         { "pin": "pin_def:0", "pad": "1" },
         { "pin": "pin_def:1", "pad": "2" },
@@ -65,54 +65,39 @@
     { "id": "component:2", "definition": "component_def:2", "reference": "R1", "properties": {
         "value": { "type": "string", "value": "100 kOhm" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Generic", "part_number": "RES-0.25W-100K" },
-      "package": "Axial-7.62mm",
-      "footprint": { "library": "passives", "name": "R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" },
+      "manufacturer_part": { "manufacturer": "Stackpole", "part_number": "RMCF0805FT100K" },
+      "package": "0805",
+      "footprint": { "library": "Resistor_SMD", "name": "R_0805_2012Metric" },
       "pin_pad_mappings": [
         { "pin": "pin_def:10", "pad": "1" },
         { "pin": "pin_def:11", "pad": "2" }
       ],
       "properties": {},
       "electrical_attributes": {
-        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.25 }
+        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.125 }
       }
     } },
     { "id": "component:3", "definition": "component_def:2", "reference": "R2", "properties": {
         "value": { "type": "string", "value": "47 kOhm" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Generic", "part_number": "RES-0.25W-47K" },
-      "package": "Axial-7.62mm",
-      "footprint": { "library": "passives", "name": "R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" },
+      "manufacturer_part": { "manufacturer": "Stackpole", "part_number": "RMCF0805FT47K0" },
+      "package": "0805",
+      "footprint": { "library": "Resistor_SMD", "name": "R_0805_2012Metric" },
       "pin_pad_mappings": [
         { "pin": "pin_def:10", "pad": "1" },
         { "pin": "pin_def:11", "pad": "2" }
       ],
       "properties": {},
       "electrical_attributes": {
-        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.25 }
+        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.125 }
       }
     } },
     { "id": "component:4", "definition": "component_def:3", "reference": "C1", "properties": {
         "value": { "type": "string", "value": "1 uF" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Generic", "part_number": "CAP-RAD-1UF-2.54MM" },
-      "package": "Radial-2.54mm",
-      "footprint": { "library": "passives", "name": "C_Radial_D5.0mm_P2.54mm" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:12", "pad": "1" },
-        { "pin": "pin_def:13", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
-      }
-    } },
-    { "id": "component:5", "definition": "component_def:3", "reference": "C2", "properties": {
-        "value": { "type": "string", "value": "10 nF" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Generic", "part_number": "CAP-RAD-10NF-2.54MM" },
-      "package": "Radial-2.54mm",
-      "footprint": { "library": "passives", "name": "C_Radial_D5.0mm_P2.54mm" },
+      "manufacturer_part": { "manufacturer": "Samsung Electro-Mechanics", "part_number": "CL21B105KBFNNNE" },
+      "package": "0805",
+      "footprint": { "library": "Capacitor_SMD", "name": "C_0805_2012Metric" },
       "pin_pad_mappings": [
         { "pin": "pin_def:12", "pad": "1" },
         { "pin": "pin_def:13", "pad": "2" }
@@ -122,28 +107,58 @@
         "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 50 }
       }
     } },
-    { "id": "component:6", "definition": "component_def:2", "reference": "R3", "properties": {
+    { "id": "component:5", "definition": "component_def:3", "reference": "C2", "properties": {
+        "value": { "type": "string", "value": "10 nF" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Samsung Electro-Mechanics", "part_number": "CL21B103KBANNNC" },
+      "package": "0805",
+      "footprint": { "library": "Capacitor_SMD", "name": "C_0805_2012Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:12", "pad": "1" },
+        { "pin": "pin_def:13", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 50 }
+      }
+    } },
+    { "id": "component:6", "definition": "component_def:3", "reference": "C3", "properties": {
+        "value": { "type": "string", "value": "100 nF" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Samsung Electro-Mechanics", "part_number": "CL21B104KBCNNNC" },
+      "package": "0805",
+      "footprint": { "library": "Capacitor_SMD", "name": "C_0805_2012Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:12", "pad": "1" },
+        { "pin": "pin_def:13", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 50 }
+      }
+    } },
+    { "id": "component:7", "definition": "component_def:2", "reference": "R3", "properties": {
         "value": { "type": "string", "value": "1 kOhm" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Generic", "part_number": "RES-0.25W-1K" },
-      "package": "Axial-7.62mm",
-      "footprint": { "library": "passives", "name": "R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" },
+      "manufacturer_part": { "manufacturer": "Stackpole", "part_number": "RMCF0805FT1K00" },
+      "package": "0805",
+      "footprint": { "library": "Resistor_SMD", "name": "R_0805_2012Metric" },
       "pin_pad_mappings": [
         { "pin": "pin_def:10", "pad": "1" },
         { "pin": "pin_def:11", "pad": "2" }
       ],
       "properties": {},
       "electrical_attributes": {
-        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.25 }
+        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.125 }
       }
     } },
-    { "id": "component:7", "definition": "component_def:4", "reference": "D1", "properties": {}, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Generic", "part_number": "LED-5MM-RED" },
-      "package": "5mm",
-      "footprint": { "library": "leds", "name": "LED_D5.0mm" },
+    { "id": "component:8", "definition": "component_def:4", "reference": "D1", "properties": {}, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Lite-On", "part_number": "LTST-C171KRKT" },
+      "package": "0805",
+      "footprint": { "library": "LED_SMD", "name": "LED_0805_2012Metric" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:14", "pad": "1" },
-        { "pin": "pin_def:15", "pad": "2" }
+        { "pin": "pin_def:15", "pad": "1" },
+        { "pin": "pin_def:14", "pad": "2" }
       ],
       "properties": {}
     } }
@@ -167,20 +182,22 @@
     { "id": "pin:15", "component": "component:4", "definition": "pin_def:13" },
     { "id": "pin:16", "component": "component:5", "definition": "pin_def:12" },
     { "id": "pin:17", "component": "component:5", "definition": "pin_def:13" },
-    { "id": "pin:18", "component": "component:6", "definition": "pin_def:10" },
-    { "id": "pin:19", "component": "component:6", "definition": "pin_def:11" },
-    { "id": "pin:20", "component": "component:7", "definition": "pin_def:14" },
-    { "id": "pin:21", "component": "component:7", "definition": "pin_def:15" }
+    { "id": "pin:18", "component": "component:6", "definition": "pin_def:12" },
+    { "id": "pin:19", "component": "component:6", "definition": "pin_def:13" },
+    { "id": "pin:20", "component": "component:7", "definition": "pin_def:10" },
+    { "id": "pin:21", "component": "component:7", "definition": "pin_def:11" },
+    { "id": "pin:22", "component": "component:8", "definition": "pin_def:14" },
+    { "id": "pin:23", "component": "component:8", "definition": "pin_def:15" }
   ],
   "nets": [
-    { "id": "net:0", "name": "+5V", "kind": "Power", "pins": ["pin:0", "pin:9", "pin:5", "pin:10"], "electrical_attributes": {
+    { "id": "net:0", "name": "+5V", "kind": "Power", "pins": ["pin:0", "pin:9", "pin:5", "pin:10", "pin:18"], "electrical_attributes": {
         "voltage": { "type": "quantity", "dimension": "voltage", "value": 5 }
       } },
-    { "id": "net:1", "name": "GND", "kind": "Ground", "pins": ["pin:1", "pin:2", "pin:15", "pin:17", "pin:21"] },
+    { "id": "net:1", "name": "GND", "kind": "Ground", "pins": ["pin:1", "pin:2", "pin:15", "pin:17", "pin:19", "pin:23"] },
     { "id": "net:2", "name": "DISCH", "kind": "Signal", "pins": ["pin:8", "pin:11", "pin:12"] },
     { "id": "net:3", "name": "TIMING", "kind": "Signal", "pins": ["pin:3", "pin:7", "pin:13", "pin:14"] },
     { "id": "net:4", "name": "CTRL", "kind": "Signal", "pins": ["pin:6", "pin:16"] },
-    { "id": "net:5", "name": "OUT", "kind": "Signal", "pins": ["pin:4", "pin:18"] },
-    { "id": "net:6", "name": "LED_A", "kind": "Signal", "pins": ["pin:19", "pin:20"] }
+    { "id": "net:5", "name": "OUT", "kind": "Signal", "pins": ["pin:4", "pin:20"] },
+    { "id": "net:6", "name": "LED_A", "kind": "Signal", "pins": ["pin:21", "pin:22"] }
   ]
 }

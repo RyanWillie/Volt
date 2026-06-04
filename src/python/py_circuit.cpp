@@ -1035,6 +1035,18 @@ void PyCircuit::board_set_polygon_outline(const std::vector<std::pair<double, do
     board_projection().set_outline(volt::BoardOutline{std::move(points)});
 }
 
+py::list PyCircuit::board_outline_vertices() const {
+    auto result = py::list{};
+    const auto &outline = board_projection().outline();
+    if (!outline.has_value()) {
+        return result;
+    }
+    for (const auto point : outline->vertices()) {
+        result.append(py::make_tuple(point.x_mm(), point.y_mm()));
+    }
+    return result;
+}
+
 std::size_t PyCircuit::board_add_hole(const std::string &label, double x, double y,
                                       double drill_diameter_mm, bool plated,
                                       const std::string &role,
@@ -1092,6 +1104,51 @@ std::size_t PyCircuit::board_place_component(std::size_t component, double x, do
                                                   volt::BoardRotation::degrees(rotation_degrees),
                                                   parse_board_side(side), locked})
         .index();
+}
+
+py::list PyCircuit::board_component_footprint_pads(std::size_t component) const {
+    const auto component_handle = component_id(component);
+    static_cast<void>(circuit_.component(component_handle));
+
+    auto result = py::list{};
+    const auto &selected_part = circuit_.selected_physical_part(component_handle);
+    if (!selected_part.has_value()) {
+        return result;
+    }
+
+    const auto resolution_footprints = volt::detail::board_resolution_footprints(
+        board_projection(), volt::builtin_footprint_library());
+    const auto footprint_resolution =
+        volt::resolve_footprint(selected_part.value(), resolution_footprints);
+    const auto *definition = footprint_resolution.definition();
+    if (definition == nullptr) {
+        return result;
+    }
+
+    for (std::size_t index = 0; index < definition->pad_count(); ++index) {
+        const auto pad_id = volt::FootprintPadId{index};
+        const auto &pad = definition->pad(pad_id);
+        const auto binding = std::find_if(footprint_resolution.pad_bindings().begin(),
+                                          footprint_resolution.pad_bindings().end(),
+                                          [pad_id](const volt::FootprintPadBinding &candidate) {
+                                              return candidate.pad() == pad_id;
+                                          });
+
+        auto item = py::dict{};
+        item["pad"] = pad_id.index();
+        item["pad_label"] = pad.label();
+        item["position"] = py::make_tuple(pad.position().x_mm(), pad.position().y_mm());
+        item["pin"] = py::none{};
+        if (binding != footprint_resolution.pad_bindings().end()) {
+            const auto pin = queries::pin_by_definition(circuit_, component_handle, binding->pin());
+            if (pin.has_value()) {
+                item["pin"] = pin->index();
+            }
+        }
+        result.append(std::move(item));
+    }
+
+    return result;
 }
 
 std::size_t PyCircuit::board_add_track(std::size_t net, std::size_t layer,
@@ -1213,11 +1270,13 @@ std::string PyCircuit::board_to_json() const {
     return volt::io::write_pcb_board(board_projection(), volt::builtin_footprint_library());
 }
 
-std::string PyCircuit::board_to_svg(bool pad_net_overlays, bool diagnostic_overlays) const {
+std::string PyCircuit::board_to_svg(bool pad_net_overlays, bool diagnostic_overlays,
+                                    bool ratsnest_edges) const {
     return volt::io::write_pcb_placement_svg(
         board_projection(), volt::builtin_footprint_library(),
         volt::io::PcbPlacementSvgOptions{.pad_net_overlays = pad_net_overlays,
-                                         .diagnostic_overlays = diagnostic_overlays});
+                                         .diagnostic_overlays = diagnostic_overlays,
+                                         .ratsnest_edges = ratsnest_edges});
 }
 
 std::vector<volt::PinId> PyCircuit::pins_by_name(volt::ComponentId component,
