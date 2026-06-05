@@ -81,27 +81,79 @@ needs to provide exact point lists deliberately.
 ```python
 # Low-level facade calls remain available for exact imported board geometry.
 board.place(r1, at=(15.0, 7.0), rotation=0.0, side="top")
+board.add_track(
+    led_a,
+    layer=front,
+    points=[(15.75, 7.0), (20.0, 3.0), (24.75, 7.0)],
+    width=0.25,
+)
 ```
+
+The same route can be authored from pad and local anchors instead of a raw point list:
+
+```python
+with board.layout(grid=0.5) as layout:
+    layout.connect(
+        resistor.end,
+        led.A,
+        layer=front,
+        through=(resistor.end.right(2.0),),
+        width=layout.rule("min_track_width"),
+    )
+```
+
+Use `layout.bundle(...)` when several explicit anchor pairs should be authored together.
+Each bundle item is a `(start, end)` or `(start, end, through)` tuple and lowers through
+the same `layout.connect(...)` path. Batch helpers preserve the layout cursor.
 
 ## Zones, keepouts, and text
 
 ```python
-board.add_zone(
-    net=gnd,
-    layers=(front, back),
-    outline=[(2.0, 2.0), (30.0, 2.0), (30.0, 16.0), (2.0, 16.0)],
-    fill="solid",
-    priority=0,
-)
+with board.layout(grid=0.5) as layout:
+    layout.zone(
+        net=gnd,
+        layers=(front, back),
+        at=board.corner("top-left").right(2.0).down(2.0),
+        size=(28.0, 14.0),
+    )
 
-board.add_keepout(
-    layers=(front,),
-    outline=[(4.0, 4.0), (8.0, 4.0), (8.0, 8.0), (4.0, 8.0)],
-    restrictions=("tracks", "vias"),
-)
+    layout.keepout(
+        layers=(front,),
+        at=(4.0, 4.0),
+        size=(4.0, 4.0),
+        restrictions=("copper", "via"),
+    )
 
-board.add_text("Volt", at=(16.0, 15.0), layer=front, size=1.2)
+    layout.text("Volt", at=board.edge("bottom").center().up(1.0), layer=front, size=1.2)
 ```
+
+`layout.rect(...)` and `layout.polygon(...)` return reusable anchor outlines for
+zones, keepouts, cutouts, or board-local construction. These helpers compose geometry
+only; zones, keepouts, text, tracks, and vias still lower through the kernel-owned board
+mutation APIs and serialize as ordinary board data.
+
+## Repeated layout
+
+```python
+with board.layout(grid=0.5) as layout:
+    row = layout.distribute(count=4, start=board.edge("left").center(), end=board.edge("right").center())
+    aligned = layout.align(row, axis="y", target=board.center)
+    mirrored = layout.mirror(aligned, axis="x", about=board.center)
+
+    layout.fanout(
+        aligned,
+        layer=front,
+        direction="up",
+        distance=1.0,
+        net=gnd,
+        via_layers=(front, back),
+    )
+    layout.stitch(gnd, at=mirrored, start_layer=front, end_layer=back)
+```
+
+Placement composition returns anchors and result records; board meaning still appears only
+when the layout lowers to `place`, `connect`, `via`, `zone`, `keepout`, or `text`.
+Batch helpers preserve the cursor so repeated layout does not depend on iteration order.
 
 ## Validate and write
 

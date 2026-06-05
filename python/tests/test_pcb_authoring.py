@@ -450,6 +450,197 @@ def test_pcb_layout_grid_snaps_route_numeric_helpers_without_snapping_anchor_tar
     assert document["board"]["tracks"][2]["points"] == [[9.5, 5], [10.76, 5]]
 
 
+def test_pcb_layout_composes_generic_anchor_sets():
+    design = volt.Design("pcb-layout-anchor-composition")
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
+
+    with board.layout(grid=0.5) as layout:
+        aligned = layout.align(
+            (layout.node((2.1, 3.2)), layout.node((8.2, 6.7))),
+            axis="y",
+            target=board.center,
+        )
+        distributed = layout.distribute(count=3, start=(2.0, 2.0), end=(10.0, 6.0))
+        mirrored = layout.mirror((layout.node((4.0, 5.0)),), axis="x", about=board.center)
+
+    assert [anchor.point for anchor in aligned] == [(2.0, 10.0), (8.0, 10.0)]
+    assert [anchor.point for anchor in distributed] == [
+        (2.0, 2.0),
+        (6.0, 4.0),
+        (10.0, 6.0),
+    ]
+    assert [anchor.point for anchor in mirrored] == [(26.0, 5.0)]
+
+
+def test_pcb_layout_connects_pads_through_intermediate_anchors_with_rule_width():
+    design, r1, d1 = _small_resistor_led_design()
+    led_a = next(net for net in design.nets() if net.name == "LED_A")
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_design_rules(min_track_width=0.25)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(40.0, 24.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
+
+    with board.layout(unit=1.0) as layout:
+        resistor = layout.two_pad(r1).at((10.0, 10.0)).right()
+        led = layout.place(d1, at=resistor.center.right(12).down(5), orient="left")
+        assert layout.rule("min_track_width") == 0.25
+
+        track = layout.connect(
+            resistor.end,
+            led.A,
+            layer=front,
+            width=layout.rule("min_track_width"),
+            through=(resistor.end.right(2.0),),
+        )
+
+    document = json.loads(board.to_json())
+    assert track == 0
+    assert document["board"]["tracks"][0]["net"] == "net:1"
+    assert document["board"]["tracks"][0]["width_mm"] == 0.25
+    assert document["board"]["tracks"][0]["points"] == [
+        [11.5, 10.0],
+        [13.5, 10.0],
+        [23.5, 10.0],
+        [23.5, 15.0],
+    ]
+
+
+def test_pcb_layout_bundles_independent_routes_with_net_inference():
+    design = volt.Design("pcb-layout-route-bundle")
+    net_a = design.net("A")
+    net_b = design.net("B")
+    left_component = design.R("1k", ref="R1")
+    right_component = design.R("1k", ref="R2")
+    net_a += left_component[1], right_component[1]
+    net_b += left_component[2], right_component[2]
+    for component in (left_component, right_component):
+        component.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-071KL",
+            package="0603",
+            footprint=("passives", "R_0603_1608Metric"),
+            pin_pads={1: "1", 2: "2"},
+        )
+
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+
+    with board.layout(unit=1.0) as layout:
+        left = layout.two_pad(left_component).at((10.0, 8.0)).right()
+        right = layout.two_pad(right_component).at((20.0, 12.0)).right()
+        cursor = layout.here.point
+        tracks = layout.bundle(
+            (
+                (left[1], right[1]),
+                (left[2], right[2], (left[2].right(2.0),)),
+            ),
+            layer=front,
+            width=0.25,
+        )
+        assert layout.here.point == cursor
+
+    document = json.loads(board.to_json())
+    assert tracks == (0, 1)
+    assert [track["net"] for track in document["board"]["tracks"]] == ["net:0", "net:1"]
+    assert [track["width_mm"] for track in document["board"]["tracks"]] == [0.25, 0.25]
+    assert document["board"]["tracks"][0]["points"] == [
+        [10.0, 8.0],
+        [20.0, 8.0],
+        [20.0, 12.0],
+    ]
+    assert document["board"]["tracks"][1]["points"] == [
+        [11.5, 8.0],
+        [13.5, 8.0],
+        [21.5, 8.0],
+        [21.5, 12.0],
+    ]
+
+
+def test_pcb_layout_connect_re_resolves_pad_anchor_nets_at_mutation_time():
+    design = volt.Design("pcb-layout-live-net-inference")
+    left_component = design.R("1k", ref="R1")
+    right_component = design.R("1k", ref="R2")
+    for component in (left_component, right_component):
+        component.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-071KL",
+            package="0603",
+            footprint=("passives", "R_0603_1608Metric"),
+            pin_pads={1: "1", 2: "2"},
+        )
+
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+
+    with board.layout(unit=1.0) as layout:
+        left = layout.two_pad(left_component).at((10.0, 8.0)).right()
+        right = layout.two_pad(right_component).at((20.0, 8.0)).right()
+        left_anchor = left[1]
+        right_anchor = right[1]
+
+        late_net = design.net("LATE")
+        late_net += left_component[1], right_component[1]
+
+        track = layout.connect(left_anchor, right_anchor, layer=front, mode="direct")
+
+    document = json.loads(board.to_json())
+    assert track == 0
+    assert document["board"]["tracks"][0]["net"] == "net:0"
+    assert document["board"]["tracks"][0]["points"] == [[10.0, 8.0], [20.0, 8.0]]
+
+
+def test_pcb_layout_fanout_and_stitch_lower_to_tracks_and_vias():
+    design, _r1, d1 = _small_resistor_led_design()
+    gnd = next(net for net in design.nets() if net.name == "GND")
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
+    board.cache_footprint(_passive_0603(("leds", "LED_0603_1608Metric")))
+
+    with board.layout(grid=0.5) as layout:
+        led = layout.place(d1, at=(12.0, 10.0), orient="right")
+        cursor = layout.here.point
+        fanouts = layout.fanout(
+            (led.K,),
+            layer=front,
+            direction="left",
+            distance=2.0,
+            via_layers=(front, back),
+        )
+        stitched = layout.stitch(
+            gnd,
+            at=(
+                board.corner("top-left").right(4).down(4),
+                board.corner("bottom-left").right(4).up(4),
+            ),
+            start_layer=front,
+            end_layer=back,
+        )
+        assert layout.here.point == cursor
+
+    document = json.loads(board.to_json())
+    assert len(fanouts) == 1
+    assert fanouts[0].track == 0
+    assert fanouts[0].via == 0
+    assert fanouts[0].end.point == (10.75, 10.0)
+    assert stitched == (1, 2)
+    assert document["board"]["tracks"][0]["points"] == [[12.75, 10.0], [10.75, 10.0]]
+    assert [via["position"] for via in document["board"]["vias"]] == [
+        [10.75, 10.0],
+        [4.0, 4.0],
+        [4.0, 16.0],
+    ]
+
+
 def test_pcb_layout_board_anchors_read_outline_without_serializing(monkeypatch):
     design = volt.Design("pcb-layout-outline-query")
     board = design.board("Control")
@@ -706,6 +897,57 @@ def test_python_board_authoring_writes_zones_keepouts_and_text():
     assert 'data-zone="board_zone:0"' in svg
     assert 'data-keepout="board_keepout:0"' in svg
     assert 'data-text="board_text:0"' in svg
+
+
+def test_pcb_layout_composes_zones_keepouts_and_text_from_anchors():
+    design = volt.Design("pcb-layout-copper-composition")
+    gnd = design.net("GND", kind="ground")
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
+
+    with board.layout(grid=0.5) as layout:
+        zone_outline = layout.rect(at=(1.24, 1.26), size=(9.01, 5.24))
+        zone = layout.zone(outline=zone_outline, layers=(front,), net=gnd, priority=2)
+        keepout = layout.keepout(
+            layers=(front,),
+            at=(12.26, 2.26),
+            size=(4.24, 3.24),
+            restrictions=("copper", "via"),
+        )
+        text = layout.text(
+            "GND",
+            at=board.edge("bottom").center().up(2.0),
+            layer=silk,
+            size=0.8,
+        )
+
+    document = json.loads(board.to_json())
+    assert [anchor.point for anchor in zone_outline] == [
+        (1.0, 1.5),
+        (10.0, 1.5),
+        (10.0, 6.5),
+        (1.0, 6.5),
+    ]
+    assert zone == 0
+    assert keepout == 0
+    assert text == 0
+    assert document["board"]["zones"][0]["outline"] == [
+        [1.0, 1.5],
+        [10.0, 1.5],
+        [10.0, 6.5],
+        [1.0, 6.5],
+    ]
+    assert document["board"]["zones"][0]["net"] == "net:0"
+    assert document["board"]["zones"][0]["priority"] == 2
+    assert document["board"]["keepouts"][0]["outline"] == [
+        [12.5, 2.5],
+        [16.5, 2.5],
+        [16.5, 5.5],
+        [12.5, 5.5],
+    ]
+    assert document["board"]["texts"][0]["position"] == [15.0, 18.0]
 
 
 def test_python_board_authoring_adds_generic_board_primitives():
