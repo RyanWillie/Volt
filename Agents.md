@@ -22,7 +22,7 @@ When deciding where a check belongs:
 
 ## Kernel-Owned EDA Semantics
 
-Python, UI, importers, schematic tools, and future PCB tools are authoring or projection
+Python, UI, importers, schematic tools, and PCB tools are authoring or projection
 surfaces. They must not become alternate owners of EDA meaning.
 
 Any operation that changes EDA meaning must be represented in the C++ kernel as explicit

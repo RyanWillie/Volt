@@ -101,7 +101,7 @@ Flag mismatches between these categories as Important.
 
 ### Kernel-owned EDA semantics
 
-Python, UI, importers, schematic tools, docs, and future PCB tools are authoring or
+Python, UI, importers, schematic tools, docs, and PCB tools are authoring or
 projection surfaces. They must not become alternate owners of EDA meaning.
 
 Any operation that changes EDA meaning must be represented in the C++ kernel as explicit

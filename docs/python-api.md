@@ -3,8 +3,8 @@
 Volt's Python layer should be an expressive authoring surface over kernel-owned state. It
 should make circuit generation pleasant without becoming the circuit kernel.
 
-The current Python surface covers logical circuit generation plus the first schematic
-projection entry point:
+The current Python surface covers logical circuit generation, schematic projection
+authoring, and PCB layout authoring:
 
 - create component definitions and instances
 - create nets
@@ -18,10 +18,13 @@ projection entry point:
 - place schematic net labels, power/ground ports, junctions, sheet ports, and
   no-connect markers over existing logical nets and pins
 - serialize deterministic schematic projection files
+- author PCB board outline, layers, footprint placement, and copper routing over
+  kernel-owned board state
+- serialize deterministic PCB projection files
 
-PCB design, richer schematic drawing, and richer ERC remain planned layers. The Python API
-should not introduce semantics that those future kernel layers cannot load, validate,
-serialize, or inspect.
+Richer ERC and a simulation foundation remain planned layers. The Python API should not
+introduce semantics that those future kernel layers cannot load, validate, serialize, or
+inspect.
 
 ## Core Rule
 
@@ -86,7 +89,7 @@ clear.
 
 ## Design Root
 
-Python should expose a `Design` root:
+Python exposes a `Design` root:
 
 ```python
 import volt
@@ -94,8 +97,8 @@ import volt
 design = volt.Design("divider")
 ```
 
-`Design` owns one kernel logical circuit and can create kernel-owned schematic projection
-data over that circuit. Future kernel layers may add PCB layouts, constraints, and reports
+`Design` owns one kernel logical circuit and can create kernel-owned schematic and PCB
+projection data over that circuit. Future kernel layers may add constraints and reports
 under the same root.
 
 Python handles should be lightweight views over kernel-owned IDs:
@@ -515,9 +518,9 @@ SPICE should be treated as a possible future backend or export adapter, not the 
 Python API shape. No Python simulation engine, SPICE integration, or solver API should be
 added before the C++ kernel owns the model contracts.
 
-## Future Projection Layers
+## Projection API Boundary
 
-Schematic and PCB Python APIs should follow the same rule:
+Schematic and PCB Python APIs follow the same rule:
 
 ```text
 Python syntax creates or edits kernel-owned projection data.
@@ -525,9 +528,8 @@ Projection data references the circuit.
 Projection data does not mutate circuit connectivity.
 ```
 
-This is an ordering constraint, not only a style preference. Python schematic extensions
-such as wires, labels, and renderer helpers should continue to lower into kernel-owned
-projection data. They should not create, merge, split, or reconnect logical nets. Python
-PCB layout APIs should wait for the same kernel foundation in the board layer: a future
-PCB API may place footprints and route copper for an existing net, but it should not define
-the netlist.
+This remains an ordering constraint, not only a style preference. Python schematic
+helpers such as wires, labels, and renderer helpers lower into kernel-owned projection
+data. Python PCB layout helpers place footprints and route copper for existing components
+and nets. Neither surface should create, merge, split, or reconnect logical nets, and
+future projection APIs should follow the same kernel-first boundary.
