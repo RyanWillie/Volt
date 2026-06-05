@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from types import MappingProxyType
 from typing import Iterable
 
+from ._immutable import _freeze_value, _mutable_value
 from ._library_symbol_builders import (
     _default_two_terminal_symbol_spec,
     _orientation,
@@ -198,14 +198,14 @@ class SchematicSymbolSpec:
         object.__setattr__(
             self,
             "primitives",
-            tuple(MappingProxyType(dict(primitive)) for primitive in self.primitives),
+            tuple(_freeze_value(primitive) for primitive in self.primitives),
         )
 
     def _to_dict(self):
         return {
             "name": self.name,
             "pins": [pin._to_dict() for pin in self.pins],
-            "primitives": [dict(primitive) for primitive in self.primitives],
+            "primitives": [_mutable_value(primitive) for primitive in self.primitives],
         }
 
     @staticmethod

@@ -779,11 +779,20 @@ def test_library_part_collection_fields_are_immutable_snapshots():
     physical_properties = {"assembly": {"feeder": "F1"}}
     ratings = {"voltage": {"max": 50}}
     extensions = {"tags": ["passive"]}
+    symbol_primitive = volt.SchematicSymbolSpec.line((0, 0), (20, 0))
+    symbol = volt.SchematicSymbolSpec(
+        "volt.test:R_0603_10K_nested",
+        pins=(
+            volt.SchematicSymbolSpec.pin("1", 1, (0, 0), "Left"),
+            volt.SchematicSymbolSpec.pin("2", 2, (20, 0), "Right"),
+        ),
+        primitives=(symbol_primitive,),
+    )
     library = volt.Library("volt.test.passives")
     part = volt.Part(
         name="R_0603_10K_nested",
         pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
-        symbol=_two_pin_test_symbol("volt.test:R_0603_10K_nested"),
+        symbol=symbol,
         footprint=_resistor_0603_footprint(),
         pads=pads,
         value="10k",
@@ -802,6 +811,7 @@ def test_library_part_collection_fields_are_immutable_snapshots():
     physical_properties["assembly"]["feeder"] = "F2"
     ratings["voltage"]["max"] = 100
     extensions["tags"].append("changed")
+    symbol_primitive["start"]["x"] = 99
     library.add(part)
 
     def assert_rejects_mutation(callback):
@@ -827,13 +837,14 @@ def test_library_part_collection_fields_are_immutable_snapshots():
         part.extensions["tags"][0] = "changed"
 
     def mutate_symbol_primitive():
-        part.schematic_symbols[0].primitives[0]["type"] = "bad"
+        part.schematic_symbols[0].primitives[0]["start"]["x"] = 99
 
     assert tuple(part.pads[1]) == ("1",)
     assert part.properties["metadata"]["bin"] == "A"
     assert part.physical_properties["assembly"]["feeder"] == "F1"
     assert part.ratings["voltage"]["max"] == 50
     assert part.extensions["tags"] == ("passive",)
+    assert part.schematic_symbols[0].primitives[0]["start"]["x"] == 0.0
 
     for mutation in (
         mutate_pads,
@@ -848,7 +859,9 @@ def test_library_part_collection_fields_are_immutable_snapshots():
     result = library.build()
 
     assert result.part("R_0603_10K_nested").serializable
-    json.dumps(part._to_dict())
+    payload = part._to_dict()
+    assert payload["schematic_symbols"][0]["primitives"][0]["start"]["x"] == 0.0
+    json.dumps(payload)
 
 
 def test_project_instantiates_imported_part_without_manual_footprint_cache():

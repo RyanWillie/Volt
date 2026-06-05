@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Iterable
 
 from ._footprint import Footprint, FootprintInput, footprint_ref
+from ._immutable import _freeze_value, _mutable_value
 from .library import (
     PhysicalPartSpec,
     PinPadValue,
@@ -238,23 +238,3 @@ def _pad_labels(value: PinPadValue) -> tuple[str, ...]:
 def _default_package(footprint: FootprintInput) -> str:
     _library, name = footprint_ref(footprint)
     return name
-
-
-def _freeze_value(value):
-    if isinstance(value, Mapping):
-        return MappingProxyType({key: _freeze_value(item) for key, item in value.items()})
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze_value(item) for item in value)
-    if isinstance(value, set):
-        return frozenset(_freeze_value(item) for item in value)
-    return value
-
-
-def _mutable_value(value):
-    if isinstance(value, Mapping):
-        return {key: _mutable_value(item) for key, item in value.items()}
-    if isinstance(value, tuple):
-        return tuple(_mutable_value(item) for item in value)
-    if isinstance(value, frozenset):
-        return {_mutable_value(item) for item in value}
-    return value

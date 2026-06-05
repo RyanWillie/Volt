@@ -15,6 +15,7 @@ set(
     VOLT_PYTHON_PACKAGE_FILES
     __init__.py
     _footprint.py
+    _immutable.py
     _library_symbol_builders.py
     _pcb_composition.py
     _pcb_layout.py
