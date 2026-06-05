@@ -104,7 +104,7 @@ with board.layout(grid=0.5) as layout:
 
 Use `layout.bundle(...)` when several explicit anchor pairs should be authored together.
 Each bundle item is a `(start, end)` or `(start, end, through)` tuple and lowers through
-the same `layout.connect(...)` path.
+the same `layout.connect(...)` path. Batch helpers preserve the layout cursor.
 
 ## Zones, keepouts, and text
 
@@ -153,6 +153,7 @@ with board.layout(grid=0.5) as layout:
 
 Placement composition returns anchors and result records; board meaning still appears only
 when the layout lowers to `place`, `connect`, `via`, `zone`, `keepout`, or `text`.
+Batch helpers preserve the cursor so repeated layout does not depend on iteration order.
 
 ## Validate and write
 

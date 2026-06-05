@@ -534,6 +534,7 @@ def test_pcb_layout_bundles_independent_routes_with_net_inference():
     with board.layout(unit=1.0) as layout:
         left = layout.two_pad(left_component).at((10.0, 8.0)).right()
         right = layout.two_pad(right_component).at((20.0, 12.0)).right()
+        cursor = layout.here.point
         tracks = layout.bundle(
             (
                 (left[1], right[1]),
@@ -542,6 +543,7 @@ def test_pcb_layout_bundles_independent_routes_with_net_inference():
             layer=front,
             width=0.25,
         )
+        assert layout.here.point == cursor
 
     document = json.loads(board.to_json())
     assert tracks == (0, 1)
@@ -572,6 +574,7 @@ def test_pcb_layout_fanout_and_stitch_lower_to_tracks_and_vias():
 
     with board.layout(grid=0.5) as layout:
         led = layout.place(d1, at=(12.0, 10.0), orient="right")
+        cursor = layout.here.point
         fanouts = layout.fanout(
             (led.K,),
             layer=front,
@@ -588,6 +591,7 @@ def test_pcb_layout_fanout_and_stitch_lower_to_tracks_and_vias():
             start_layer=front,
             end_layer=back,
         )
+        assert layout.here.point == cursor
 
     document = json.loads(board.to_json())
     assert len(fanouts) == 1

@@ -165,21 +165,22 @@ def bundle(
     mode: str = "octilinear",
 ) -> tuple[int, ...]:
     """Route multiple independent anchor pairs as one deterministic bundle."""
-    tracks = []
-    for item in pairs:
-        start, end, through = _bundle_pair(item)
-        tracks.append(
-            layout.connect(
-                start,
-                end,
-                layer=layer,
-                net=net,
-                width=width,
-                through=through,
-                mode=mode,
+    with layout.hold():
+        tracks = []
+        for item in pairs:
+            start, end, through = _bundle_pair(item)
+            tracks.append(
+                layout.connect(
+                    start,
+                    end,
+                    layer=layer,
+                    net=net,
+                    width=width,
+                    through=through,
+                    mode=mode,
+                )
             )
-        )
-    return tuple(tracks)
+        return tuple(tracks)
 
 
 def stitch(
@@ -193,17 +194,18 @@ def stitch(
     annular: float | None = None,
 ) -> tuple[int, ...]:
     """Add a deterministic set of vias for one net."""
-    return tuple(
-        layout.via(
-            net,
-            at=anchor,
-            start_layer=start_layer,
-            end_layer=end_layer,
-            drill=drill,
-            annular=annular,
+    with layout.hold():
+        return tuple(
+            layout.via(
+                net,
+                at=anchor,
+                start_layer=start_layer,
+                end_layer=end_layer,
+                drill=drill,
+                annular=annular,
+            )
+            for anchor in _anchor_collection(at, "Board layout stitch at")
         )
-        for anchor in _anchor_collection(at, "Board layout stitch at")
-    )
 
 
 def fanout(
@@ -223,27 +225,28 @@ def fanout(
     fanout_direction = _direction(direction)
     fanout_distance = _positive_coordinate(distance, "Board fanout distance")
     dx, dy = _direction_offset(fanout_direction, fanout_distance)
-    results = []
-    for source in _anchor_collection(anchors, "Board layout fanout anchors"):
-        source_anchor = layout._anchor_at(source)
-        end = source_anchor.offset(dx=dx, dy=dy)
-        route_net = net if net is not None else _anchor_net(source)
-        if route_net is None:
-            raise ValueError("Board layout fanout requires a net or pad anchors with nets")
-        track = layout.connect(source_anchor, end, layer=layer, net=route_net, width=width)
-        via = None
-        if via_layers is not None:
-            start_layer, end_layer = _via_layer_pair(via_layers)
-            via = layout.via(
-                route_net,
-                at=end,
-                start_layer=start_layer,
-                end_layer=end_layer,
-                drill=drill,
-                annular=annular,
-            )
-        results.append(BoardFanout(source_anchor, end, track, via))
-    return tuple(results)
+    with layout.hold():
+        results = []
+        for source in _anchor_collection(anchors, "Board layout fanout anchors"):
+            source_anchor = layout._anchor_at(source)
+            end = source_anchor.offset(dx=dx, dy=dy)
+            route_net = net if net is not None else _anchor_net(source)
+            if route_net is None:
+                raise ValueError("Board layout fanout requires a net or pad anchors with nets")
+            track = layout.connect(source_anchor, end, layer=layer, net=route_net, width=width)
+            via = None
+            if via_layers is not None:
+                start_layer, end_layer = _via_layer_pair(via_layers)
+                via = layout.via(
+                    route_net,
+                    at=end,
+                    start_layer=start_layer,
+                    end_layer=end_layer,
+                    drill=drill,
+                    annular=annular,
+                )
+            results.append(BoardFanout(source_anchor, end, track, via))
+        return tuple(results)
 
 
 def polygon(layout: BoardLayout, vertices) -> tuple[BoardAnchor, ...]:
