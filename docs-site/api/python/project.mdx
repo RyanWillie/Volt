@@ -1,0 +1,145 @@
+---
+title: Project
+description: Generated reference for staged project workflows, results, diagnostics, and tests.
+---
+This page is generated from the public Python source. Add or improve docstrings in `python/volt` to improve the reference.
+
+## `volt.Project`
+
+Canonical staged entrypoint for a Volt electronics project.
+
+Source: `python/volt/project.py`
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `run(self) -> 'ProjectResult'` | Run the registered project stages and return one result. |
+| `run_through(self, stage: ProjectStage) -> 'ProjectResult'` | Run stages through the given stage handle. |
+
+## `volt.ProjectDiagnostic`
+
+Diagnostic emitted during one project run with project source metadata.
+
+Source: `python/volt/project.py`
+
+### Fields
+
+| Field |
+| --- |
+| `stage: str` |
+| `source: str` |
+| `report: str` |
+| `severity: str` |
+| `code: str` |
+| `message: str` |
+| `entities: tuple[object, ...]` |
+
+## `volt.ProjectDiagnostics`
+
+Ordered project diagnostics collected from model validators.
+
+Source: `python/volt/project.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `has_errors: bool` | Return whether any collected diagnostic has error severity. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `__iter__(self)` | Iterate over diagnostics in deterministic report order. |
+| `__len__(self) -> int` | Return the number of diagnostics. |
+| `errors(self, *, stage: ProjectStage \| str \| None = None) -> tuple[ProjectDiagnostic, ...]` | Return error diagnostics, optionally filtered by stage. |
+
+## `volt.ProjectResult`
+
+Output of one Volt project run.
+
+Source: `python/volt/project.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `ok: bool` | Return whether the project run has no errors. |
+| `diagnostics: ProjectDiagnostics` | Return diagnostics collected from default project checks. |
+| `stages: tuple[StageResult, ...]` | Return executed stage summaries in run order. |
+| `designs: tuple[Design, ...]` | Return logical designs collected by the run. |
+| `schematics: tuple[Schematic, ...]` | Return schematic projections collected by the run. |
+| `boards: tuple[Board, ...]` | Return board projections collected by the run. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `design(self, name: str \| None = None) -> Design` | Return a collected design by name, or the only design. |
+| `schematic(self, name: str \| None = None) -> Schematic` | Return a collected schematic by name, or the only schematic. |
+| `board(self, name: str \| None = None) -> Board` | Return a collected board by name, or the only board. |
+| `stage(self, stage: ProjectStage \| str) -> StageResult` | Return an executed stage summary by stage handle or name. |
+| `test_failures(self) -> tuple[ProjectTestResult, ...]` | Return failed project tests in stage execution order. |
+| `write(self, path: str \| Path) -> None` | Write a deterministic project result bundle to a directory. |
+
+## `volt.ProjectStage`
+
+Named workflow stage used as a decorator and result lookup key.
+
+Source: `python/volt/project.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `registered: bool` | Return whether this stage has a composition function. |
+| `tests: tuple[ProjectTestDefinition, ...]` | Return product-intent tests registered for this stage. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `test(self, function: BuildFunction) -> BuildFunction` | Register a product-intent test for this stage. |
+
+## `volt.ProjectTestDefinition`
+
+Registered product-intent test for one project stage.
+
+Source: `python/volt/project.py`
+
+### Fields
+
+| Field |
+| --- |
+| `name: str` |
+| `function: BuildFunction` |
+
+## `volt.ProjectTestResult`
+
+Result of one product-intent project test.
+
+Source: `python/volt/project.py`
+
+### Fields
+
+| Field |
+| --- |
+| `stage: str` |
+| `name: str` |
+| `ok: bool` |
+| `message: str` |
+
+## `volt.StageResult`
+
+Summary for one executed project stage.
+
+Source: `python/volt/project.py`
+
+### Fields
+
+| Field |
+| --- |
+| `name: str` |
+| `model_count: int` |
+| `tests: tuple['ProjectTestResult', ...]` |

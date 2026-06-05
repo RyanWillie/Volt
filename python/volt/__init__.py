@@ -53,6 +53,16 @@ from .pcb import (
     Slot,
     Text,
 )
+from .project import (
+    Project,
+    ProjectDiagnostic,
+    ProjectDiagnostics,
+    ProjectResult,
+    ProjectStage,
+    ProjectTestDefinition,
+    ProjectTestResult,
+    StageResult,
+)
 from ._pcb_layout import (
     BoardAnchor,
     BoardFanout,
@@ -132,6 +142,14 @@ __all__ = [
     "PadResolution",
     "PortBindingInfo",
     "PortInfo",
+    "Project",
+    "ProjectDiagnostic",
+    "ProjectDiagnostics",
+    "ProjectResult",
+    "ProjectStage",
+    "ProjectTestDefinition",
+    "ProjectTestResult",
+    "StageResult",
     "Schematic",
     "SchematicAnchor",
     "SchematicBlockPinSpec",

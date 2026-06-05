@@ -18,9 +18,19 @@ VOLT_INIT = PYTHON_PACKAGE / "__init__.py"
 DEFAULT_OUTPUT = ROOT / "docs-site" / "api" / "python"
 DEFAULT_NAVIGATION = ROOT / "docs-site" / "api" / "python" / "navigation.json"
 
-PAGE_ORDER = ("index", "design", "logical", "library", "schematic", "pcb", "diagnostics")
+PAGE_ORDER = (
+    "index",
+    "project",
+    "design",
+    "logical",
+    "library",
+    "schematic",
+    "pcb",
+    "diagnostics",
+)
 PAGE_TITLES = {
     "index": "Python API",
+    "project": "Project",
     "design": "Design",
     "logical": "Logical",
     "library": "Library",
@@ -30,6 +40,7 @@ PAGE_TITLES = {
 }
 PAGE_DESCRIPTIONS = {
     "index": "Generated reference for Volt's public Python API.",
+    "project": "Generated reference for staged project workflows, results, diagnostics, and tests.",
     "design": "Generated reference for the design root and top-level authoring helpers.",
     "logical": "Generated reference for logical circuit handles and hierarchy inspection records.",
     "library": "Generated reference for library, component, pin, and schematic symbol specs.",
@@ -88,6 +99,8 @@ def import_map(tree: ast.Module) -> dict[str, str]:
 
 
 def module_page(module: str) -> str:
+    if module == "project":
+        return "project"
     if module == "design":
         return "design"
     if module == "diagnostics":

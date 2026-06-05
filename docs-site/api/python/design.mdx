@@ -16,6 +16,8 @@ Source: `python/volt/design.py`
 | --- | --- |
 | `net(self, name: str, *, kind: str = 'signal', voltage: float \| None = None) -> Net` | Create or return a logical net by name, optionally annotating its voltage. |
 | `nets(self) -> tuple[Net, ...]` | Return handles for every logical net in this design. |
+| `components(self) -> tuple[Component, ...]` | Return handles for every concrete component in this design. |
+| `component(self, reference: str) -> Component` | Return a concrete component handle by reference designator. |
 | `R(self, value: str \| None = None, *, resistance: float \| None = None, tolerance: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic resistor component. |
 | `C(self, value: str \| None = None, *, capacitance: float \| None = None, voltage_rating: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic non-polarized capacitor component. |
 | `CP(self, value: str \| None = None, *, capacitance: float \| None = None, voltage_rating: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic polarized capacitor component. |

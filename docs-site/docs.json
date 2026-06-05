@@ -49,6 +49,7 @@
             "group": "Generated API Reference",
             "pages": [
               "api/python/index",
+              "api/python/project",
               "api/python/design",
               "api/python/logical",
               "api/python/library",

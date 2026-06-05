@@ -1,7 +1,6 @@
 """Design root for the Volt Python authoring facade."""
 
 from __future__ import annotations
-
 from pathlib import Path
 from typing import Iterable
 
@@ -49,6 +48,19 @@ class Design:
     def nets(self) -> tuple[Net, ...]:
         """Return handles for every logical net in this design."""
         return tuple(Net(self, item["index"], item["name"]) for item in self._circuit.net_refs())
+
+    def components(self) -> tuple[Component, ...]:
+        """Return handles for every concrete component in this design."""
+        return tuple(Component(self, item["index"]) for item in self._circuit.component_refs())
+
+    def component(self, reference: str) -> Component:
+        """Return a concrete component handle by reference designator."""
+        if not isinstance(reference, str):
+            raise TypeError("Component references must be strings")
+        for item in self._circuit.component_refs():
+            if item["reference"] == reference:
+                return Component(self, item["index"])
+        raise KeyError(reference)
 
     def R(
         self,

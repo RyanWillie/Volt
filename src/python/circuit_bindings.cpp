@@ -27,6 +27,7 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("schematic_symbols") = py::list{})
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
         .def("net_refs", &PyCircuit::net_refs)
+        .def("component_refs", &PyCircuit::component_refs)
         .def("select_physical_part", &PyCircuit::select_physical_part, py::arg("component"),
              py::arg("manufacturer"), py::arg("part_number"), py::arg("package"),
              py::arg("footprint_library"), py::arg("footprint_name"), py::arg("pin_pads"),

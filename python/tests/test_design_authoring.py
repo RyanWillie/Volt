@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 import volt
 
 
@@ -25,6 +27,22 @@ def test_led_circuit_validates():
     json_text = design.to_json()
     assert '"name": "VCC"' in json_text
     assert '"reference": "R1"' in json_text
+
+def test_design_returns_component_handles_by_reference():
+    design = volt.Design("component-lookup")
+    r1 = design.R("330", ref="R1")
+    d1 = design.LED(ref="D1")
+
+    assert design.component("R1").index == r1.index
+    assert design.component("D1").index == d1.index
+    assert [component.reference for component in design.components()] == ["R1", "D1"]
+    assert r1[1].component.index == r1.index
+    assert r1[1].component_reference == "R1"
+    assert r1[1].name == "1"
+    assert r1[1].number == "1"
+
+    with pytest.raises(KeyError, match="R404"):
+        design.component("R404")
 
 def test_natural_electrical_values_serialize_as_kernel_attributes():
     design = volt.Design("typed")
