@@ -17,10 +17,11 @@ The current canonical source of truth is the logical circuit model:
 A future constraints layer may promote more design intent into first-class constraint
 entities once the model exists.
 
-Future Volt layers should be organized around one project-level design root. That future
-`Design` aggregate may own a logical circuit, schematic projections, PCB layouts,
-constraints, libraries, and reports. The current implementation is intentionally focused
-on the logical circuit portion of that aggregate.
+Volt layers should be organized around project-level design roots. The current kernel
+owns the logical circuit plus schematic and PCB projections over that circuit, while the
+Python `Design` facade gives authors one root for those kernel-owned surfaces. Future
+constraints, libraries, and reports should extend that root without moving EDA meaning out
+of the kernel.
 
 The core design rule is:
 

@@ -6,8 +6,8 @@ planning documents that were exported as self-contained pages.
 They are kept for history and rationale, but they are **not** the canonical documentation
 surface. Living documentation lives as Markdown in [`docs/`](../) (and is consumed by
 Doxygen, which ingests `*.md` and `*.hpp` only) and as the Mintlify site under
-[`docs-site/`](../../docs-site). These HTML files are not referenced by either surface and
-are not part of any generated output.
+[`docs-site/`](../../docs-site). This Markdown index makes the artifacts discoverable, but
+the HTML exports themselves are not part of any generated output.
 
 When the content of one of these notes becomes a stable, maintained contract, prefer
 promoting it into a Markdown document under `docs/` rather than editing the exported HTML.

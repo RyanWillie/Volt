@@ -38,9 +38,9 @@ reported through diagnostics.
 ## Why Volt Exists
 
 Volt is being built for tools that need circuit data they can trust: programmatic
-authoring, validation, import/export pipelines, Python bindings, and eventually
-schematic and PCB views. The project is intentionally starting below UI, routing, and
-manufacturing export so the kernel can establish stable invariants first.
+authoring, validation, import/export pipelines, Python bindings, and schematic and PCB
+projections. The project is intentionally starting below UI and manufacturing export so
+the kernel can establish stable invariants first.
 
 ## What Works Today
 
