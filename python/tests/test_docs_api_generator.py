@@ -39,6 +39,7 @@ def test_api_generator_emits_mintlify_reference_pages(tmp_path):
 
     index = (output / "index.mdx").read_text(encoding="utf-8")
     assert "Generated from `python/volt/__init__.py`" in index
+    assert "/api/python/project" in index
     assert "/api/python/design" in index
     assert "/api/python/schematic" in index
     pcb_row = next(line for line in index.splitlines() if line.startswith("| [PCB]"))
@@ -47,12 +48,17 @@ def test_api_generator_emits_mintlify_reference_pages(tmp_path):
     assert "`volt.BoardLayout`" not in logical_row
 
     pcb = (output / "pcb.mdx").read_text(encoding="utf-8")
+    project = (output / "project.mdx").read_text(encoding="utf-8")
     logical = (output / "logical.mdx").read_text(encoding="utf-8")
+    assert "## `volt.Project`" in project
+    assert "## `volt.ProjectStage`" in project
+    assert "## `volt.ProjectResult`" in project
     assert "## `volt.BoardLayout`" in pcb
     assert "## `volt.BoardLayout`" not in logical
 
     navigation_text = navigation.read_text(encoding="utf-8")
     assert '"api/python/index"' in navigation_text
+    assert '"api/python/project"' in navigation_text
     assert '"api/python/design"' in navigation_text
     assert '"api/python/pcb"' in navigation_text
     for page in output.glob("*.mdx"):

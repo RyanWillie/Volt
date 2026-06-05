@@ -4,7 +4,7 @@ Volt's Python layer should be an expressive authoring surface over kernel-owned 
 should make circuit generation pleasant without becoming the circuit kernel.
 
 The current Python surface covers logical circuit generation, schematic projection
-authoring, and PCB layout authoring:
+authoring, PCB layout authoring, and staged project runs:
 
 - create component definitions and instances
 - create nets
@@ -18,13 +18,14 @@ authoring, and PCB layout authoring:
 - place schematic net labels, power/ground ports, junctions, sheet ports, and
   no-connect markers over existing logical nets and pins
 - serialize deterministic schematic projection files
-- author PCB board outline, layers, footprint placement, and copper routing over
-  kernel-owned board state
+- author PCB board outlines, layers, footprint placement, board primitives, and copper
+  routing over kernel-owned board state
 - serialize deterministic PCB projection files
+- run staged projects with default diagnostics, product-intent tests, and bundle output
 
-Richer ERC and a simulation foundation remain planned layers. The Python API should not
-introduce semantics that those future kernel layers cannot load, validate, serialize, or
-inspect.
+Richer ERC, a simulation foundation, manufacturing outputs, and deeper PCB flows remain
+planned layers. The Python API should not introduce semantics that those future kernel
+layers cannot load, validate, serialize, or inspect.
 
 ## Core Rule
 
@@ -152,9 +153,9 @@ This syntax is intentionally ergonomic, but the operation sequence is still expl
 4. Validate through kernel validation passes.
 5. Serialize kernel-owned data.
 
-## Current MVP
+## Current Logical Authoring
 
-The first implemented Python slice supports logical authoring only:
+Logical authoring starts from ordinary Python handles:
 
 ```python
 import volt
@@ -200,6 +201,93 @@ for diagnostic in design.validate():
 `Design.validate()` runs the default logical validation suite. `Design.validate_for_pcb()`
 adds PCB-readiness checks, including selected physical part requirements, without making
 selected parts mandatory for logical-only designs.
+
+## Project Framework
+
+`Project` is the canonical Python entry point when a design should behave like a product
+workflow instead of a loose script. It keeps the common flow explicit: design first,
+schematic second, PCB third. Stage decorators register the functions that actually author
+those models:
+
+```python
+project = volt.Project("status-led", version="0.1.0")
+
+
+@project.design
+def design():
+    d = volt.Design("status-led")
+    vcc = d.net("VCC", kind="power")
+    led_a = d.net("LED_A")
+    gnd = d.net("GND", kind="ground")
+    j1 = d.connector_1x02(ref="J1")
+    r1 = d.R("330 ohm", ref="R1")
+    d1 = d.LED(ref="D1")
+
+    vcc += j1[1], r1[1]
+    led_a += r1[2], d1["A"]
+    gnd += d1["K"], j1[2]
+    return d
+
+
+@project.schematic
+def schematic(design):
+    sheet = design.schematic("Main")
+    sheet.place(design.component("J1"), at=(45, 60))
+    sheet.place(design.component("R1"), at=(80, 60))
+    sheet.place(design.component("D1"), at=(115, 60))
+    return sheet
+
+
+@project.board
+def board(design):
+    pcb = design.board("Main")
+    pcb.set_rectangular_outline(origin=(0, 0), size=(32, 18))
+    pcb.place(design.component("J1"), at=(5, 9), locked=True)
+    pcb.place(design.component("R1"), at=(15, 7))
+    pcb.place(design.component("D1"), at=(24, 7), rotation=180)
+    return pcb
+
+
+result = project.run()
+result.write("dist/status-led.volt")
+```
+
+The schematic and PCB stages above are intentionally short to show the framework shape.
+A clean `result.ok` also requires normal projection completeness, such as schematic
+visual net coverage and selected physical parts for placed PCB components.
+
+`project.run()` executes registered stages in order and returns `ProjectResult`.
+`result.ok` is false when default diagnostics have errors or stage-attached tests fail.
+`result.write(path)` writes a deterministic directory bundle with logical JSON,
+schematic JSON/SVG, PCB JSON/SVG, diagnostics, test results, and
+`manifest.volt.json`.
+
+Stages can also own product-intent tests. These tests are not a replacement for kernel
+diagnostics; they encode the specific behavior the product must keep while the circuit
+iterates:
+
+```python
+@project.design.test
+def power_path(check):
+    check.net("VCC").connects("J1.1", "R1.1")
+    check.net("GND").connects("J1.2", "D1.K")
+    check.no_connection("VCC", "GND")
+
+
+@project.schematic.test
+def placed_on_sheet(check):
+    check.places("J1", "R1", "D1")
+
+
+@project.board.test
+def board_placement(check):
+    check.has_outline()
+    check.places("J1", "R1", "D1")
+```
+
+Use `project.run_through(project.design)` when iterating on a stage without building the
+later projections. The stage handle is the selector, so callers do not have to use
+stringly stage names.
 
 ## Custom Component Definitions
 

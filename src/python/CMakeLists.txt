@@ -30,6 +30,7 @@ set(
     library.py
     logical.py
     pcb.py
+    project.py
     schematic.py
 )
 foreach(package_file IN LISTS VOLT_PYTHON_PACKAGE_FILES)

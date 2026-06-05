@@ -10,7 +10,7 @@ This page is the human-readable index for the public names exported by `volt.__a
 </Note>
 
 <Card title="Generated Python API Reference" icon="book-open" href="/api/python/index">
-  Browse generated pages for `Design`, logical handles, library specs, schematic authoring, PCB authoring, and diagnostics.
+  Browse generated pages for `Project`, `Design`, logical handles, library specs, schematic authoring, PCB authoring, and diagnostics.
 </Card>
 
 ## Design root
@@ -20,6 +20,19 @@ This page is the human-readable index for the public names exported by `volt.__a
 | `volt.Design` | Root handle for one kernel-owned logical circuit plus schematic and PCB projections. |
 
 Common methods: `net`, `nets`, `R`, `C`, `CP`, `L`, `LED`, `diode`, `switch`, `crystal`, `test_point`, `connector_1x01`, `connector_1x02`, `connector_1x03`, `regulator`, `op_amp`, `define_component`, `define_module`, `instantiate`, `schematic`, `board`, `validate`, `validate_for_pcb`, `to_json`, and `write`.
+
+## Project framework
+
+| Export | Purpose |
+| --- | --- |
+| `volt.Project` | Staged workflow entry point for design, schematic, PCB, diagnostics, tests, and bundle writing. |
+| `volt.ProjectStage` | Stage handle used as a build decorator and result lookup key. |
+| `volt.ProjectResult` | Output of one project run with collected models, diagnostics, tests, and artifact writing. |
+| `volt.ProjectDiagnostics` | Ordered project-level diagnostics across default model validators. |
+| `volt.ProjectDiagnostic` | One diagnostic annotated with project stage, source, and report metadata. |
+| `volt.ProjectTestDefinition` | Registered product-intent test attached to one stage. |
+| `volt.ProjectTestResult` | Pass/fail result for one stage-attached project test. |
+| `volt.StageResult` | Summary of one executed stage and its project-test results. |
 
 ## Logical circuit handles
 

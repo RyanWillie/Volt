@@ -1,5 +1,6 @@
 [
   "api/python/index",
+  "api/python/project",
   "api/python/design",
   "api/python/logical",
   "api/python/library",

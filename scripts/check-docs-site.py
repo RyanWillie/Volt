@@ -32,6 +32,7 @@ REQUIRED_PAGES = {
     "examples/stm32-usb-buck",
     "architecture/kernel-principles",
     "api/python/index",
+    "api/python/project",
     "api/python/design",
     "api/python/logical",
     "api/python/library",

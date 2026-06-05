@@ -406,10 +406,37 @@ class Pin:
         """Return the kernel index for this concrete pin."""
         return self._index
 
+    @property
+    def component(self) -> Component:
+        """Return the component that owns this concrete pin."""
+        return Component(self._design, self._design._circuit.pin_component(self._index))
+
+    @property
+    def component_reference(self) -> str:
+        """Return the reference designator for the component that owns this pin."""
+        return self.component.reference
+
+    @property
+    def name(self) -> str:
+        """Return the logical pin name from its reusable pin definition."""
+        return self._pin_ref()["name"]
+
+    @property
+    def number(self) -> str:
+        """Return the logical pin number from its reusable pin definition."""
+        return self._pin_ref()["number"]
+
     def mark_no_connect(self) -> Pin:
         """Mark this pin as intentionally unconnected for diagnostics."""
         self._design._circuit.mark_intentional_no_connect_pin(self._index)
         return self
+
+    def _pin_ref(self):
+        component = self._design._circuit.pin_component(self._index)
+        for item in self._design._circuit.pin_refs(component):
+            if item["index"] == self._index:
+                return item
+        raise RuntimeError("Pin handle does not belong to its reported component")
 
     def __repr__(self) -> str:
         return f"Pin(index={self._index})"

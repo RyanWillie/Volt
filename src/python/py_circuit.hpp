@@ -47,6 +47,8 @@ class PyCircuit {
 
     [[nodiscard]] py::list net_refs() const;
 
+    [[nodiscard]] py::list component_refs() const;
+
     void select_physical_part(std::size_t component, const std::string &manufacturer,
                               const std::string &part_number, const std::string &package,
                               const std::string &footprint_library,

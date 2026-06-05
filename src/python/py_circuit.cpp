@@ -192,6 +192,19 @@ py::list PyCircuit::net_refs() const {
     return result;
 }
 
+py::list PyCircuit::component_refs() const {
+    auto result = py::list{};
+    for (std::size_t index = 0; index < circuit_.component_count(); ++index) {
+        const auto id = volt::ComponentId{index};
+        const auto &component = circuit_.component(id);
+        auto item = py::dict{};
+        item["index"] = id.index();
+        item["reference"] = component.reference().value();
+        result.append(std::move(item));
+    }
+    return result;
+}
+
 void PyCircuit::select_physical_part(std::size_t component, const std::string &manufacturer,
                                      const std::string &part_number, const std::string &package,
                                      const std::string &footprint_library,
