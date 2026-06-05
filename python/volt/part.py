@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Iterable
 
 from ._footprint import Footprint, FootprintInput, footprint_ref
@@ -107,18 +109,20 @@ class Part:
             schematic_symbol if schematic_symbol is not None else symbol
         )
         self.footprint = footprint
-        self.pads = None if pads is None else dict(pads)
+        self.pads = None if pads is None else _freeze_value(pads)
         self.value = value
         self.manufacturer = manufacturer
         self.mpn = part_number if mpn is None else mpn
         self.package = package
-        self.properties = logical_properties
-        self.physical_properties = None if physical_properties is None else dict(physical_properties)
-        self.ratings = dict(ratings or {})
+        self.properties = _freeze_value(logical_properties)
+        self.physical_properties = None if physical_properties is None else _freeze_value(
+            physical_properties
+        )
+        self.ratings = _freeze_value(ratings or {})
         self.voltage_rating = voltage_rating
         self.power_rating = power_rating
         self.prefix = prefix
-        self.extensions = dict(extensions or {})
+        self.extensions = _freeze_value(extensions or {})
         self.source_name = source_name or name
         self.source_version = source_version
         self._library: Library | None = None
@@ -150,7 +154,7 @@ class Part:
         return _PartDefinition(
             name=self.name,
             pins=self.pins,
-            properties=self.properties,
+            properties=_mutable_value(self.properties),
             source_namespace=self._library.namespace,
             source_name=self.source_name,
             source_version=self.source_version or self._library.version,
@@ -167,8 +171,12 @@ class Part:
             part_number=self.mpn or "",
             package=self.package or _default_package(self.footprint),
             footprint=self.footprint,
-            pin_pads=None if self.pads is None else dict(self.pads),
-            properties=self.physical_properties,
+            pin_pads=None if self.pads is None else _mutable_value(self.pads),
+            properties=(
+                None
+                if self.physical_properties is None
+                else _mutable_value(self.physical_properties)
+            ),
             voltage_rating=self.voltage_rating,
             power_rating=self.power_rating,
         )
@@ -183,15 +191,17 @@ class Part:
             "manufacturer": self.manufacturer,
             "mpn": self.mpn,
             "package": self.package,
-            "properties": dict(self.properties),
+            "properties": _mutable_value(self.properties),
             "physical_properties": (
-                None if self.physical_properties is None else dict(self.physical_properties)
+                None
+                if self.physical_properties is None
+                else _mutable_value(self.physical_properties)
             ),
-            "ratings": dict(self.ratings),
+            "ratings": _mutable_value(self.ratings),
             "voltage_rating": self.voltage_rating,
             "power_rating": self.power_rating,
             "prefix": self.prefix,
-            "extensions": dict(self.extensions),
+            "extensions": _mutable_value(self.extensions),
             "source_name": self.source_name,
             "source_version": self.source_version,
         }
@@ -210,7 +220,7 @@ def _part_footprint_payload(footprint: FootprintInput | None) -> dict | None:
     return result
 
 
-def _part_pads_payload(pads: dict[int | str, PinPadValue] | None) -> list[dict[str, object]]:
+def _part_pads_payload(pads: Mapping[int | str, PinPadValue] | None) -> list[dict[str, object]]:
     if pads is None:
         return []
     return [
@@ -228,3 +238,23 @@ def _pad_labels(value: PinPadValue) -> tuple[str, ...]:
 def _default_package(footprint: FootprintInput) -> str:
     _library, name = footprint_ref(footprint)
     return name
+
+
+def _freeze_value(value):
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _freeze_value(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_value(item) for item in value)
+    if isinstance(value, set):
+        return frozenset(_freeze_value(item) for item in value)
+    return value
+
+
+def _mutable_value(value):
+    if isinstance(value, Mapping):
+        return {key: _mutable_value(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return tuple(_mutable_value(item) for item in value)
+    if isinstance(value, frozenset):
+        return {_mutable_value(item) for item in value}
+    return value

@@ -773,6 +773,84 @@ def test_library_part_is_immutable_after_construction():
     assert part.name == "R_0603_10K"
 
 
+def test_library_part_collection_fields_are_immutable_snapshots():
+    pads = {1: ["1"], 2: "2"}
+    properties = {"metadata": {"bin": "A"}, "aliases": ["R10K"]}
+    physical_properties = {"assembly": {"feeder": "F1"}}
+    ratings = {"voltage": {"max": 50}}
+    extensions = {"tags": ["passive"]}
+    library = volt.Library("volt.test.passives")
+    part = volt.Part(
+        name="R_0603_10K_nested",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        symbol=_two_pin_test_symbol("volt.test:R_0603_10K_nested"),
+        footprint=_resistor_0603_footprint(),
+        pads=pads,
+        value="10k",
+        manufacturer="Yageo",
+        mpn="RC0603FR-0710KL",
+        package="0603",
+        properties=properties,
+        physical_properties=physical_properties,
+        ratings=ratings,
+        prefix="R",
+        extensions=extensions,
+    )
+
+    pads[1].append("9")
+    properties["metadata"]["bin"] = "B"
+    physical_properties["assembly"]["feeder"] = "F2"
+    ratings["voltage"]["max"] = 100
+    extensions["tags"].append("changed")
+    library.add(part)
+
+    def assert_rejects_mutation(callback):
+        try:
+            callback()
+        except (AttributeError, TypeError):
+            return
+        raise AssertionError("part collection mutation should be rejected")
+
+    def mutate_pads():
+        part.pads[1] += ("9",)
+
+    def mutate_properties():
+        part.properties["metadata"]["bin"] = "B"
+
+    def mutate_physical_properties():
+        part.physical_properties["assembly"]["feeder"] = "F2"
+
+    def mutate_ratings():
+        part.ratings["voltage"]["max"] = 100
+
+    def mutate_extensions():
+        part.extensions["tags"][0] = "changed"
+
+    def mutate_symbol_primitive():
+        part.schematic_symbols[0].primitives[0]["type"] = "bad"
+
+    assert tuple(part.pads[1]) == ("1",)
+    assert part.properties["metadata"]["bin"] == "A"
+    assert part.physical_properties["assembly"]["feeder"] == "F1"
+    assert part.ratings["voltage"]["max"] == 50
+    assert part.extensions["tags"] == ("passive",)
+
+    for mutation in (
+        mutate_pads,
+        mutate_properties,
+        mutate_physical_properties,
+        mutate_ratings,
+        mutate_extensions,
+        mutate_symbol_primitive,
+    ):
+        assert_rejects_mutation(mutation)
+
+    result = library.build()
+
+    assert result.part("R_0603_10K_nested").serializable
+    json.dumps(part._to_dict())
+
+
 def test_project_instantiates_imported_part_without_manual_footprint_cache():
     library = volt.Library("volt.test.passives")
     resistor_part = _library_resistor_part()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Iterable
 
 from ._library_symbol_builders import (
@@ -197,7 +198,7 @@ class SchematicSymbolSpec:
         object.__setattr__(
             self,
             "primitives",
-            tuple(dict(primitive) for primitive in self.primitives),
+            tuple(MappingProxyType(dict(primitive)) for primitive in self.primitives),
         )
 
     def _to_dict(self):
