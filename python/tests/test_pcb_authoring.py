@@ -486,14 +486,13 @@ def test_pcb_layout_connects_pads_through_intermediate_anchors_with_rule_width()
     with board.layout(unit=1.0) as layout:
         resistor = layout.two_pad(r1).at((10.0, 10.0)).right()
         led = layout.place(d1, at=resistor.center.right(12).down(5), orient="left")
-        assert resistor.end.net == led_a.index
-        assert led.A.net == led_a.index
         assert layout.rule("min_track_width") == 0.25
 
         track = layout.connect(
             resistor.end,
             led.A,
             layer=front,
+            width=layout.rule("min_track_width"),
             through=(resistor.end.right(2.0),),
         )
 
@@ -560,6 +559,41 @@ def test_pcb_layout_bundles_independent_routes_with_net_inference():
         [21.5, 8.0],
         [21.5, 12.0],
     ]
+
+
+def test_pcb_layout_connect_re_resolves_pad_anchor_nets_at_mutation_time():
+    design = volt.Design("pcb-layout-live-net-inference")
+    left_component = design.R("1k", ref="R1")
+    right_component = design.R("1k", ref="R2")
+    for component in (left_component, right_component):
+        component.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-071KL",
+            package="0603",
+            footprint=("passives", "R_0603_1608Metric"),
+            pin_pads={1: "1", 2: "2"},
+        )
+
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+
+    with board.layout(unit=1.0) as layout:
+        left = layout.two_pad(left_component).at((10.0, 8.0)).right()
+        right = layout.two_pad(right_component).at((20.0, 8.0)).right()
+        left_anchor = left[1]
+        right_anchor = right[1]
+
+        late_net = design.net("LATE")
+        late_net += left_component[1], right_component[1]
+
+        track = layout.connect(left_anchor, right_anchor, layer=front, mode="direct")
+
+    document = json.loads(board.to_json())
+    assert track == 0
+    assert document["board"]["tracks"][0]["net"] == "net:0"
+    assert document["board"]["tracks"][0]["points"] == [[10.0, 8.0], [20.0, 8.0]]
 
 
 def test_pcb_layout_fanout_and_stitch_lower_to_tracks_and_vias():

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from ._pcb_composition import (
     BoardFanout,
+    BoardLayoutComposition,
     _direction,
     _direction_offset,
     align as _compose_align,
@@ -22,9 +23,6 @@ from ._pcb_composition import (
     rule as _compose_rule,
     stitch as _compose_stitch,
     text as _compose_text,
-    track_width as _compose_track_width,
-    via_annular as _compose_via_annular,
-    via_drill as _compose_via_drill,
     zone as _compose_zone,
 )
 from ._utils import _coordinate, _positive_coordinate
@@ -111,17 +109,17 @@ class BoardPadAnchor(BoardAnchor):
         board: Board,
         placement: int,
         component: Component,
+        pad: int,
         pad_label: str,
         pin: Pin | None,
-        net: int | None,
         status: str,
     ):
         super().__init__(point, board=board)
         self.placement = placement
         self.component = component
+        self.pad = pad
         self.pad_label = pad_label
         self.pin = pin
-        self.net = net
         self.status = status
 
     def __repr__(self) -> str:
@@ -309,9 +307,9 @@ class PlacedBoardComponent:
                     board=self._board,
                     placement=self._index,
                     component=self._component,
+                    pad=resolution.pad,
                     pad_label=resolution.pad_label,
                     pin=pin,
-                    net=resolution.net,
                     status=resolution.status,
                 )
             )
@@ -417,7 +415,7 @@ class BoardLayout:
 
     def rule(self, name: str) -> float:
         """Return a board design-rule value by a compact authoring name."""
-        return _compose_rule(self, name)
+        return _compose_rule(self._composition(), name)
 
     def align(
         self,
@@ -427,7 +425,7 @@ class BoardLayout:
         target: tuple[float, float] | BoardAnchor | float | None = None,
     ) -> tuple[BoardAnchor, ...]:
         """Return anchors aligned along one board axis."""
-        return _compose_align(self, anchors, axis=axis, target=target)
+        return _compose_align(self._composition(), anchors, axis=axis, target=target)
 
     def distribute(
         self,
@@ -437,7 +435,7 @@ class BoardLayout:
         end: tuple[float, float] | BoardAnchor,
     ) -> tuple[BoardAnchor, ...]:
         """Return evenly distributed anchors between two endpoints."""
-        return _compose_distribute(self, count=count, start=start, end=end)
+        return _compose_distribute(self._composition(), count=count, start=start, end=end)
 
     def mirror(
         self,
@@ -447,7 +445,7 @@ class BoardLayout:
         about: tuple[float, float] | BoardAnchor | float | None = None,
     ) -> tuple[BoardAnchor, ...]:
         """Return anchors mirrored across a board x or y axis."""
-        return _compose_mirror(self, anchors, axis=axis, about=about)
+        return _compose_mirror(self._composition(), anchors, axis=axis, about=about)
 
     def move(self, *, dx: float = 0, dy: float = 0) -> BoardLayout:
         """Move the layout cursor by a relative offset."""
@@ -516,17 +514,11 @@ class BoardLayout:
         net: Net | int,
         *,
         layer: int,
-        width: float | None = None,
+        width: float = 0.20,
         mode: str = "octilinear",
     ) -> BoardRoute:
         """Start a schematic-style routed track sequence from the cursor."""
-        return BoardRoute(
-            self,
-            net,
-            layer=layer,
-            width=_compose_track_width(self, width),
-            mode=mode,
-        )
+        return BoardRoute(self, net, layer=layer, width=width, mode=mode)
 
     def connect(
         self,
@@ -535,13 +527,13 @@ class BoardLayout:
         *,
         layer: int,
         net: Net | int | None = None,
-        width: float | None = None,
+        width: float = 0.20,
         through=(),
         mode: str = "octilinear",
     ) -> int:
         """Route between two anchors, inferring the net from pad anchors when possible."""
         return _compose_connect(
-            self,
+            self._composition(),
             start,
             end,
             layer=layer,
@@ -557,12 +549,12 @@ class BoardLayout:
         *,
         layer: int,
         net: Net | int | None = None,
-        width: float | None = None,
+        width: float = 0.20,
         mode: str = "octilinear",
     ) -> tuple[int, ...]:
         """Route multiple independent anchor pairs as one deterministic bundle."""
         return _compose_bundle(
-            self,
+            self._composition(),
             pairs,
             layer=layer,
             net=net,
@@ -577,8 +569,8 @@ class BoardLayout:
         at: tuple[float, float] | BoardAnchor | None = None,
         start_layer: int,
         end_layer: int,
-        drill: float | None = None,
-        annular: float | None = None,
+        drill: float = 0.30,
+        annular: float = 0.70,
     ) -> int:
         """Add a via at a board anchor and move the cursor to that anchor."""
         anchor = self._here if at is None else self._anchor_at(at)
@@ -587,8 +579,8 @@ class BoardLayout:
             at=anchor.point,
             start_layer=start_layer,
             end_layer=end_layer,
-            drill=_compose_via_drill(self, drill),
-            annular=_compose_via_annular(self, annular),
+            drill=drill,
+            annular=annular,
         )
         self._here = anchor
         return via
@@ -600,12 +592,12 @@ class BoardLayout:
         at,
         start_layer: int,
         end_layer: int,
-        drill: float | None = None,
-        annular: float | None = None,
+        drill: float = 0.30,
+        annular: float = 0.70,
     ) -> tuple[int, ...]:
         """Add a deterministic set of vias for one net."""
         return _compose_stitch(
-            self,
+            self._composition(),
             net,
             at=at,
             start_layer=start_layer,
@@ -622,14 +614,14 @@ class BoardLayout:
         direction: str,
         distance: float,
         net: Net | int | None = None,
-        width: float | None = None,
+        width: float = 0.20,
         via_layers: tuple[int, int] | None = None,
-        drill: float | None = None,
-        annular: float | None = None,
+        drill: float = 0.30,
+        annular: float = 0.70,
     ) -> tuple[BoardFanout, ...]:
         """Route one or more anchors outward and optionally drop vias at the endpoints."""
         return _compose_fanout(
-            self,
+            self._composition(),
             anchors,
             layer=layer,
             direction=direction,
@@ -654,7 +646,7 @@ class BoardLayout:
 
     def polygon(self, vertices) -> tuple[BoardAnchor, ...]:
         """Return a polygon outline from board anchors or local coordinates."""
-        return _compose_polygon(self, vertices)
+        return _compose_polygon(self._composition(), vertices)
 
     def rect(
         self,
@@ -663,7 +655,7 @@ class BoardLayout:
         size: tuple[float, float],
     ) -> tuple[BoardAnchor, ...]:
         """Return a rectangular outline from a board anchor and size."""
-        return _compose_rect(self, at=at, size=size)
+        return _compose_rect(self._composition(), at=at, size=size)
 
     rectangle = rect
 
@@ -680,7 +672,7 @@ class BoardLayout:
     ) -> int:
         """Add a copper zone from layout-authored geometry."""
         return _compose_zone(
-            self,
+            self._composition(),
             layers=layers,
             net=net,
             outline=outline,
@@ -701,7 +693,7 @@ class BoardLayout:
     ) -> int:
         """Add a keepout from layout-authored geometry."""
         return _compose_keepout(
-            self,
+            self._composition(),
             layers=layers,
             restrictions=restrictions,
             outline=outline,
@@ -721,7 +713,7 @@ class BoardLayout:
     ) -> int:
         """Add board text at a layout anchor."""
         return _compose_text(
-            self,
+            self._composition(),
             text,
             at=at,
             layer=layer,
@@ -827,6 +819,35 @@ class BoardLayout:
         if isinstance(target, BoardAnchor):
             return coordinate
         return self._snap_coordinate(coordinate)
+
+    def _composition(self) -> BoardLayoutComposition:
+        return BoardLayoutComposition(
+            board=self._board,
+            here=lambda: self.here,
+            anchor_at=self._anchor_at,
+            snap_anchor=self._snap_anchor,
+            axis_target=self._composition_axis_target,
+            is_anchor=lambda value: isinstance(value, BoardAnchor),
+            pad_net=self._pad_anchor_net,
+            hold=self.hold,
+            route=self.route,
+            via=self.via,
+            connect=self.connect,
+        )
+
+    def _composition_axis_target(self, target, axis: str) -> float:
+        coordinate = _board_anchor_axis_target(target, self._board, axis)
+        if isinstance(target, BoardAnchor):
+            return coordinate
+        return self._snap_coordinate(coordinate)
+
+    def _pad_anchor_net(self, value) -> int | None:
+        if not isinstance(value, BoardPadAnchor):
+            return None
+        for resolution in self._board.resolve_pads():
+            if resolution.placement == value.placement and resolution.pad == value.pad:
+                return resolution.net
+        return None
 
     def __repr__(self) -> str:
         return (

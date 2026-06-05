@@ -5,11 +5,28 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ._utils import _coordinate, _positive_coordinate
+from ._utils import _positive_coordinate
 
 if TYPE_CHECKING:
-    from ._pcb_layout import BoardAnchor, BoardLayout
+    from ._pcb_layout import BoardAnchor
     from .logical import Net
+
+
+@dataclass(frozen=True)
+class BoardLayoutComposition:
+    """Explicit internal contract used by PCB layout composition algorithms."""
+
+    board: object
+    here: object
+    anchor_at: object
+    snap_anchor: object
+    axis_target: object
+    is_anchor: object
+    pad_net: object
+    hold: object
+    route: object
+    via: object
+    connect: object
 
 
 @dataclass(frozen=True)
@@ -22,7 +39,7 @@ class BoardFanout:
     via: int | None = None
 
 
-def rule(layout: BoardLayout, name: str) -> float:
+def rule(context: BoardLayoutComposition, name: str) -> float:
     """Return a board design-rule value by a compact authoring name."""
     if not isinstance(name, str):
         raise TypeError("Board layout rule names must be strings")
@@ -50,18 +67,18 @@ def rule(layout: BoardLayout, name: str) -> float:
     key = aliases.get(normalized)
     if key is None:
         raise ValueError(f"Unknown board layout rule {name!r}")
-    return float(layout._board.design_rules()[key])
+    return float(context.board.design_rules()[key])
 
 
 def align(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     anchors,
     *,
     axis: str,
     target: tuple[float, float] | BoardAnchor | float | None = None,
 ) -> tuple[BoardAnchor, ...]:
     """Return anchors aligned along one board axis."""
-    items = tuple(layout._anchor_at(anchor) for anchor in anchors)
+    items = tuple(context.anchor_at(anchor) for anchor in anchors)
     if not items:
         return ()
     normalized_axis = _axis(axis)
@@ -70,7 +87,7 @@ def align(
         if normalized_axis == "x" and target is None
         else items[0].y
         if target is None
-        else _axis_target(layout, target, normalized_axis)
+        else context.axis_target(target, normalized_axis)
     )
     return tuple(
         anchor.tox(coordinate) if normalized_axis == "x" else anchor.toy(coordinate)
@@ -79,7 +96,7 @@ def align(
 
 
 def distribute(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     *,
     count: int,
     start: tuple[float, float] | BoardAnchor,
@@ -92,15 +109,15 @@ def distribute(
         raise ValueError("Board layout distribute count must not be negative")
     if count == 0:
         return ()
-    first = layout._anchor_at(start)
-    last = layout._anchor_at(end)
+    first = context.anchor_at(start)
+    last = context.anchor_at(end)
     if count == 1:
         return (first,)
     anchors = []
     for index in range(count):
         fraction = index / (count - 1)
         anchors.append(
-            layout._snap_anchor(
+            context.snap_anchor(
                 first.offset(
                     dx=(last.x - first.x) * fraction,
                     dy=(last.y - first.y) * fraction,
@@ -111,7 +128,7 @@ def distribute(
 
 
 def mirror(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     anchors,
     *,
     axis: str,
@@ -120,57 +137,59 @@ def mirror(
     """Return anchors mirrored across a board x or y axis."""
     normalized_axis = _axis(axis)
     coordinate = (
-        (layout.here.x if normalized_axis == "x" else layout.here.y)
+        (context.here().x if normalized_axis == "x" else context.here().y)
         if about is None
-        else _axis_target(layout, about, normalized_axis)
+        else context.axis_target(about, normalized_axis)
     )
     result = []
     for anchor in anchors:
-        item = layout._anchor_at(anchor)
+        item = context.anchor_at(anchor)
         mirrored = (
             item.tox((2.0 * coordinate) - item.x)
             if normalized_axis == "x"
             else item.toy((2.0 * coordinate) - item.y)
         )
-        result.append(layout._snap_anchor(mirrored))
+        result.append(context.snap_anchor(mirrored))
     return tuple(result)
 
 
 def connect(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     start: tuple[float, float] | BoardAnchor,
     end: tuple[float, float] | BoardAnchor,
     *,
     layer: int,
     net: Net | int | None = None,
-    width: float | None = None,
+    width: float = 0.20,
     through=(),
     mode: str = "octilinear",
 ) -> int:
     """Route between two anchors, inferring the net from pad anchors when possible."""
-    route_net = _route_net(net, start, end)
-    route = layout.route(route_net, layer=layer, width=width, mode=mode).at(start)
-    for anchor in _anchor_collection(through, "Board layout connect through"):
+    route_net = _route_net(context, net, start, end)
+    route = context.route(route_net, layer=layer, width=width, mode=mode).at(start)
+    for anchor in _anchor_collection(
+        through, "Board layout connect through", context.is_anchor
+    ):
         route.through(anchor)
     return route.to(end)
 
 
 def bundle(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     pairs,
     *,
     layer: int,
     net: Net | int | None = None,
-    width: float | None = None,
+    width: float = 0.20,
     mode: str = "octilinear",
 ) -> tuple[int, ...]:
     """Route multiple independent anchor pairs as one deterministic bundle."""
-    with layout.hold():
+    with context.hold():
         tracks = []
         for item in pairs:
             start, end, through = _bundle_pair(item)
             tracks.append(
-                layout.connect(
+                context.connect(
                     start,
                     end,
                     layer=layer,
@@ -184,19 +203,19 @@ def bundle(
 
 
 def stitch(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     net: Net | int,
     *,
     at,
     start_layer: int,
     end_layer: int,
-    drill: float | None = None,
-    annular: float | None = None,
+    drill: float = 0.30,
+    annular: float = 0.70,
 ) -> tuple[int, ...]:
     """Add a deterministic set of vias for one net."""
-    with layout.hold():
+    with context.hold():
         return tuple(
-            layout.via(
+            context.via(
                 net,
                 at=anchor,
                 start_layer=start_layer,
@@ -204,40 +223,42 @@ def stitch(
                 drill=drill,
                 annular=annular,
             )
-            for anchor in _anchor_collection(at, "Board layout stitch at")
+            for anchor in _anchor_collection(at, "Board layout stitch at", context.is_anchor)
         )
 
 
 def fanout(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     anchors,
     *,
     layer: int,
     direction: str,
     distance: float,
     net: Net | int | None = None,
-    width: float | None = None,
+    width: float = 0.20,
     via_layers: tuple[int, int] | None = None,
-    drill: float | None = None,
-    annular: float | None = None,
+    drill: float = 0.30,
+    annular: float = 0.70,
 ) -> tuple[BoardFanout, ...]:
     """Route one or more anchors outward and optionally drop vias at the endpoints."""
     fanout_direction = _direction(direction)
     fanout_distance = _positive_coordinate(distance, "Board fanout distance")
     dx, dy = _direction_offset(fanout_direction, fanout_distance)
-    with layout.hold():
+    with context.hold():
         results = []
-        for source in _anchor_collection(anchors, "Board layout fanout anchors"):
-            source_anchor = layout._anchor_at(source)
+        for source in _anchor_collection(
+            anchors, "Board layout fanout anchors", context.is_anchor
+        ):
+            source_anchor = context.anchor_at(source)
             end = source_anchor.offset(dx=dx, dy=dy)
-            route_net = net if net is not None else _anchor_net(source)
+            route_net = net if net is not None else context.pad_net(source)
             if route_net is None:
                 raise ValueError("Board layout fanout requires a net or pad anchors with nets")
-            track = layout.connect(source_anchor, end, layer=layer, net=route_net, width=width)
+            track = context.connect(source_anchor, end, layer=layer, net=route_net, width=width)
             via = None
             if via_layers is not None:
                 start_layer, end_layer = _via_layer_pair(via_layers)
-                via = layout.via(
+                via = context.via(
                     route_net,
                     at=end,
                     start_layer=start_layer,
@@ -249,24 +270,24 @@ def fanout(
         return tuple(results)
 
 
-def polygon(layout: BoardLayout, vertices) -> tuple[BoardAnchor, ...]:
+def polygon(context: BoardLayoutComposition, vertices) -> tuple[BoardAnchor, ...]:
     """Return a polygon outline from board anchors or local coordinates."""
-    return tuple(layout._anchor_at(vertex) for vertex in vertices)
+    return tuple(context.anchor_at(vertex) for vertex in vertices)
 
 
 def rect(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     *,
     at: tuple[float, float] | BoardAnchor | None = None,
     size: tuple[float, float],
 ) -> tuple[BoardAnchor, ...]:
     """Return a rectangular outline from a board anchor and size."""
-    base = layout.here if at is None else layout._anchor_at(at)
+    base = context.here() if at is None else context.anchor_at(at)
     width, height = _board_size_tuple(size, "Board layout rectangle size")
-    snap_generated = not _is_anchor(at)
+    snap_generated = not context.is_anchor(at)
 
     def make_anchor(anchor: BoardAnchor) -> BoardAnchor:
-        return layout._snap_anchor(anchor) if snap_generated else anchor
+        return context.snap_anchor(anchor) if snap_generated else anchor
 
     return (
         base,
@@ -277,7 +298,7 @@ def rect(
 
 
 def zone(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     *,
     layers,
     net: Net | int | None = None,
@@ -288,8 +309,8 @@ def zone(
     priority: int = 0,
 ) -> int:
     """Add a copper zone from layout-authored geometry."""
-    anchors = _outline_anchors(layout, outline=outline, at=at, size=size)
-    return layout._board.add_zone(
+    anchors = _outline_anchors(context, outline=outline, at=at, size=size)
+    return context.board.add_zone(
         outline=tuple(anchor.point for anchor in anchors),
         layers=layers,
         net=net,
@@ -299,7 +320,7 @@ def zone(
 
 
 def keepout(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     *,
     layers,
     restrictions,
@@ -308,8 +329,8 @@ def keepout(
     size: tuple[float, float] | None = None,
 ) -> int:
     """Add a keepout from layout-authored geometry."""
-    anchors = _outline_anchors(layout, outline=outline, at=at, size=size)
-    return layout._board.add_keepout(
+    anchors = _outline_anchors(context, outline=outline, at=at, size=size)
+    return context.board.add_keepout(
         outline=tuple(anchor.point for anchor in anchors),
         layers=layers,
         restrictions=restrictions,
@@ -317,7 +338,7 @@ def keepout(
 
 
 def text(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     value: str,
     *,
     at: tuple[float, float] | BoardAnchor,
@@ -327,8 +348,8 @@ def text(
     locked: bool = False,
 ) -> int:
     """Add board text at a layout anchor."""
-    anchor = layout._anchor_at(at)
-    return layout._board.add_text(
+    anchor = context.anchor_at(at)
+    return context.board.add_text(
         value,
         at=anchor.point,
         layer=layer,
@@ -338,29 +359,8 @@ def text(
     )
 
 
-def track_width(layout: BoardLayout, width: float | None) -> float:
-    """Resolve an authored track width against board design rules."""
-    if width is not None:
-        return _positive_coordinate(width, "Board route width")
-    return max(0.20, rule(layout, "minimum_track_width_mm"))
-
-
-def via_drill(layout: BoardLayout, drill: float | None) -> float:
-    """Resolve an authored via drill against board design rules."""
-    if drill is not None:
-        return _positive_coordinate(drill, "Board via drill")
-    return max(0.30, rule(layout, "minimum_via_drill_diameter_mm"))
-
-
-def via_annular(layout: BoardLayout, annular: float | None) -> float:
-    """Resolve an authored via annular diameter against board design rules."""
-    if annular is not None:
-        return _positive_coordinate(annular, "Board via annular")
-    return max(0.70, rule(layout, "minimum_via_annular_diameter_mm"))
-
-
 def _outline_anchors(
-    layout: BoardLayout,
+    context: BoardLayoutComposition,
     *,
     outline,
     at: tuple[float, float] | BoardAnchor | None,
@@ -369,25 +369,17 @@ def _outline_anchors(
     if outline is not None:
         if at is not None or size is not None:
             raise ValueError("Board layout outline cannot be combined with at/size")
-        return polygon(layout, outline)
+        return polygon(context, outline)
     if size is None:
         raise ValueError("Board layout outline requires either outline or size")
-    return rect(layout, at=at, size=size)
+    return rect(context, at=at, size=size)
 
 
-def _axis_target(layout: BoardLayout, target, axis: str) -> float:
-    if _is_anchor(target):
-        if target._board is not layout._board:
-            raise ValueError("Board anchor belongs to a different board")
-        return target.x if axis == "x" else target.y
-    return layout._snap_coordinate(_coordinate(target))
-
-
-def _route_net(net: Net | int | None, start, end) -> Net | int:
+def _route_net(context: BoardLayoutComposition, net: Net | int | None, start, end) -> Net | int:
     if net is not None:
         return net
-    start_net = _anchor_net(start)
-    end_net = _anchor_net(end)
+    start_net = context.pad_net(start)
+    end_net = context.pad_net(end)
     if start_net is None or end_net is None:
         raise ValueError("Board layout connect requires a net unless both anchors resolve nets")
     if start_net != end_net:
@@ -411,23 +403,13 @@ def _bundle_pair(value) -> tuple:
     )
 
 
-def _anchor_net(value) -> int | None:
-    if hasattr(value, "pad_label") and hasattr(value, "net"):
-        return value.net
-    return None
-
-
-def _anchor_collection(value, context: str) -> tuple:
-    if _is_anchor(value) or isinstance(value, (str, bytes)):
+def _anchor_collection(value, context: str, is_anchor) -> tuple:
+    if is_anchor(value) or isinstance(value, (str, bytes)):
         raise TypeError(f"{context} must be an iterable of anchors")
     try:
         return tuple(value)
     except TypeError as exc:
         raise TypeError(f"{context} must be an iterable of anchors") from exc
-
-
-def _is_anchor(value) -> bool:
-    return hasattr(value, "point") and hasattr(value, "offset")
 
 
 def _board_size_tuple(value, context: str) -> tuple[float, float]:
