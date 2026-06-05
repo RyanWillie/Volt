@@ -283,4 +283,4 @@ model and serialization are stable.
 - Validation traverses port-binding edges for electrical continuity while preserving both
   `NetId`s.
 - Aliases and ties are explicit future design intent, not first-slice features.
-- Schematic and PCB remain deferred projection layers.
+- Schematic and PCB projection layers are out of scope for this hierarchy slice.

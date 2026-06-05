@@ -41,8 +41,8 @@ User-authored constraints may become stored model data once the constraints laye
 ## Kernel-Owned EDA Semantics
 
 The kernel owns EDA meaning. Python, UI tools, file importers, schematic renderers, and
-future PCB tools may make authoring pleasant, but they must lower meaningful operations
-into kernel-owned data or kernel mutation APIs.
+PCB tools may make authoring pleasant, but they must lower meaningful operations into
+kernel-owned data or kernel mutation APIs.
 
 Layer ownership is strict:
 
@@ -107,10 +107,11 @@ Minimal primitives, progressive disclosure, kernel-owned meaning.
 
 ## Projection Layers
 
-Schematics and PCB design are projection layers. Schematics now have an initial kernel
-model; PCB remains a planned projection layer. Each projection should be designed after
-the logical circuit generation, serialization, validation, and Python logical-authoring
-foundation is stable enough to support it.
+Schematics and PCB design are projection layers. Both now have kernel models: the
+schematic layer owns sheets, symbols, wires, and labels over canonical nets, and the PCB
+layer owns the board outline, layers, footprint placement, copper geometry, and routing.
+Each projection was designed after the logical circuit generation, serialization,
+validation, and Python logical-authoring foundation was stable enough to support it.
 
 Projection-layer workflow is kernel-first:
 
@@ -121,8 +122,10 @@ Projection-layer workflow is kernel-first:
    EDA meaning.
 5. Then add Python bindings and Python syntax over that kernel-owned data.
 
-Do not add Python schematic drawing APIs before the C++ schematic model exists. Likewise,
-do not add Python PCB layout APIs before the C++ board model exists.
+The schematic and PCB Python authoring APIs were added only after their C++ kernel models
+existed. Future projection layers should follow the same kernel-first ordering: no Python
+authoring API before the C++ model, mutation API, validation, and serialization for it
+exist.
 
 The current thinking is:
 
@@ -136,11 +139,12 @@ The current thinking is:
   missing symbol for a component, an unrouted net, or visual geometry that references the
   wrong logical net.
 
-Detailed wire graphs, auto-layout, and PCB geometry are intentionally deferred. The first
-schematic implementation starts with kernel-owned presentation data: typed schematic IDs,
-structured symbol geometry, sheets, symbol instances that reference logical component
-instances, and wire/label projection objects that reference canonical nets. Deterministic
-SVG rendering is an output path over that model, not a source of schematic truth.
+Detailed wire-graph auto-layout is intentionally deferred. The schematic implementation
+starts with kernel-owned presentation data: typed schematic IDs, structured symbol
+geometry, sheets, symbol instances that reference logical component instances, and
+wire/label projection objects that reference canonical nets. The PCB layer follows the
+same pattern with kernel-owned board, footprint, and copper geometry. Deterministic SVG
+rendering is an output path over each model, not a source of projection truth.
 
 ## Initial Layers
 
@@ -158,11 +162,19 @@ volt-authoring
 volt-schematic
   schematic projection data over logical components and canonical nets
 
+volt-pcb
+  board outline, layers, footprint placement, copper geometry, routing, and 3D geometry
+  projection over canonical components and nets
+
 volt-io
-  deterministic save/load formats for logical circuits and schematic projections
+  deterministic save/load formats for logical circuits, schematic projections, and PCB
+  projections
+
+volt-adapters/kicad
+  KiCad schematic and PCB export adapters over the kernel projection models
 
 volt-python
-  planned Python bindings and authoring syntax over kernel-owned state
+  Python bindings and authoring syntax over kernel-owned state
 ```
 
 The CMake targets mirror these boundaries:
@@ -181,16 +193,20 @@ Volt::Authoring
 Volt::Schematic
   schematic projection model; depends on Volt::Circuit
 
+Volt::PCB
+  PCB projection model; depends on Volt::Circuit
+
 Volt::IO
-  deterministic logical circuit and schematic projection persistence; depends on
-  Volt::Circuit, Volt::Schematic, and owns JSON dependencies
+  deterministic logical circuit, schematic, and PCB projection persistence; depends on
+  Volt::Circuit, Volt::Schematic, Volt::PCB, and owns JSON dependencies
 
 Volt::Volt
   umbrella target for applications that want the full public surface
 ```
 
-Future Python, schematic, and PCB layers should be added as new targets that depend on the
-stable kernel layers instead of pushing dependencies back into them.
+The KiCad export adapters and the Python bindings are separate targets that depend on the
+stable kernel layers (`Volt::Circuit`, `Volt::Schematic`, `Volt::PCB`) instead of pushing
+dependencies back into them. Future projection layers should follow the same rule.
 
 ## Identity
 

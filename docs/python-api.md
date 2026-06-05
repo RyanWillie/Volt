@@ -3,8 +3,8 @@
 Volt's Python layer should be an expressive authoring surface over kernel-owned state. It
 should make circuit generation pleasant without becoming the circuit kernel.
 
-The current Python surface covers logical circuit generation plus the first schematic
-projection entry point:
+The current Python surface covers logical circuit generation, schematic projection
+authoring, and PCB layout authoring:
 
 - create component definitions and instances
 - create nets
@@ -18,10 +18,13 @@ projection entry point:
 - place schematic net labels, power/ground ports, junctions, sheet ports, and
   no-connect markers over existing logical nets and pins
 - serialize deterministic schematic projection files
+- author PCB board outline, layers, footprint placement, and copper routing over
+  kernel-owned board state
+- serialize deterministic PCB projection files
 
-PCB design, richer schematic drawing, and richer ERC remain planned layers. The Python API
-should not introduce semantics that those future kernel layers cannot load, validate,
-serialize, or inspect.
+Richer ERC and a simulation foundation remain planned layers. The Python API should not
+introduce semantics that those future kernel layers cannot load, validate, serialize, or
+inspect.
 
 ## Core Rule
 
