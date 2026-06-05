@@ -22,7 +22,18 @@ The current kernel foundation includes:
 - logical pin to physical pad mapping validation
 - selected-part voltage rating diagnostics
 - LED logical circuit example with selected physical parts
-- deterministic logical circuit JSON writer and structural reader
+- logical hierarchy primitives: module definitions, module instances, ports, and template
+  nets
+- rule classes for reusable net design intent
+- schematic projection layer: kernel-owned sheets, symbols, wires, and labels over
+  canonical nets, schematic readability/consistency validation, and deterministic SVG
+  rendering
+- PCB projection layer: board outline, layers, footprint placement, copper geometry and
+  routing, board 3D geometry projection, and deterministic PCB SVG output
+- KiCad export adapters for schematic and PCB projections, with a structured loss report
+- deterministic JSON writers and structural readers for the logical circuit, schematic,
+  and PCB projections
+- Python authoring bindings over kernel-owned logical, schematic, and PCB state
 - golden round-trip fixtures
 - schema versioning policy
 - cross-platform CI for formatting, build, tests, and docs
@@ -44,25 +55,21 @@ Goal: finish the canonical logical circuit foundation before projection or simul
 layers build on it. The next kernel work should add only first-principles primitives that
 make circuits more electrically meaningful without forcing verbosity on simple designs.
 
-Immediate work should refresh the docs and design the next logical primitive before
-starting a large model expansion:
+Completed since the original plan:
 
-1. Update documentation to reflect the typed electrical semantics foundation that has
-   landed.
-2. Write a dedicated hierarchy/scoped-net design page.
-3. Only then implement the smallest hierarchy/scoped-net vertical slice.
+- minimal logical hierarchy: module/block definitions, module instances, ports, and
+  template nets (see [hierarchy-scoped-net-design.md](docs/hierarchy-scoped-net-design.md));
+- netclasses/rule classes: named logical/electrical design intent assigned to nets,
+  initially limited to constraints Volt can validate soon.
 
-Planned logical primitives, after that design step:
+Remaining logical primitives:
 
-- minimal logical hierarchy: module/block definitions, module instances, ports, local
-  nets, and hierarchical paths;
 - scoped net naming: global nets, module-local nets, port-bound nets, and explicit
   aliases/conflicts without making names internal identity;
 - generic net bundles/interfaces: ordered or named groups of existing `NetId`s for buses,
   protocols, connectors, and repeated signal groups;
-- netclasses/rule classes: named logical/electrical design intent assigned to nets or
-  bundles, initially limited to constraints Volt can validate soon such as voltage,
-  source requirement, current limits, and selected-part rating requirements.
+- expand rule-class constraints toward voltage, source requirement, current limits, and
+  selected-part rating requirements.
 
 The authoring facade should remain a convenience layer over `Circuit`; it must not become
 a second source of truth. Protocol-specific helpers such as SPI, I2C, USB, memory buses,
@@ -119,11 +126,15 @@ serialized and inspected.
 
 Goal: keep Python expressive while preserving the C++ kernel as the owner of EDA meaning.
 
-Planned work:
+Completed:
 
-- plan the Python bindings boundary
-- implement and refine the first Python logical-authoring MVP
-- add typed quantity/value authoring once the kernel model exists
+- planned and implemented the Python bindings boundary
+- Python logical, schematic, and PCB authoring over kernel-owned state
+- typed quantity/value authoring over the kernel electrical-semantics model
+
+Remaining work:
+
+- continue refining authoring ergonomics as new kernel primitives land
 - keep Python-authored simulation behavior behind kernel-owned model contracts when that
   layer is eventually designed
 
@@ -132,17 +143,21 @@ Planned work:
 Goal: add schematic views over the canonical logical circuit without making schematic
 wires the source of electrical truth.
 
-Planned work:
+Completed:
 
-- defer implementation until logical hierarchy, scoped nets, and generic bundles/rules
-  have a stable design
-- design the C++ schematic kernel model vocabulary
-- add C++ symbol definition and instance model
-- represent schematic projection data over canonical components, pins, ports, bundles,
-  and nets in the kernel
-- add schematic consistency diagnostics and serialization coverage
-- then add Python schematic drawing bindings/syntax
-- then add a first simple schematic renderer/export
+- C++ schematic kernel model vocabulary, including sheets, symbol definitions, and symbol
+  instances over canonical components, pins, and nets
+- schematic projection data (wires, labels, notes) that references canonical `NetId`s
+  without owning connectivity
+- schematic readability and consistency diagnostics with serialization round-trip coverage
+- Python schematic drawing bindings/syntax over kernel-owned schematic state
+- a deterministic schematic SVG renderer/export
+
+Remaining work:
+
+- represent schematic projection data over future port and bundle primitives once those
+  logical primitives exist
+- richer auto-layout and wire-graph tooling
 
 ### Simulation Foundation
 
@@ -162,13 +177,23 @@ exist.
 
 ### PCB Foundation
 
-Goal: defer board-specific modeling until logical and schematic foundations are stable.
+Goal: physically implement existing logical connectivity without letting the board layer
+define the netlist.
 
-Planned work:
+Completed:
 
-- draft PCB kernel architecture
-- design footprint geometry primitives
-- implement an initial board model
+- PCB kernel architecture and board model: outline, layers, footprint placement, copper
+  geometry, and routing
+- footprint geometry primitives
+- board 3D geometry projection
+- deterministic PCB JSON persistence and PCB SVG output
+- KiCad PCB export adapter with a structured loss report
+- Python PCB layout authoring over kernel-owned board state
+
+Remaining work:
+
+- richer DRC and PCB-readiness validation as the typed-semantics and constraint model grows
+- additional footprint library coverage and conventions
 
 ### Serialization And Round-Trip Loading
 
