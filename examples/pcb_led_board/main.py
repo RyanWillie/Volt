@@ -222,17 +222,26 @@ def build_board(
     board.add(volt.Hole(center=(3.0, 3.0), diameter=2.7, role="mounting", label="MH1"))
     board.add(volt.Hole(center=(29.0, 15.0), diameter=2.7, role="mounting", label="MH2"))
 
-    board.place(parts["J1"], at=(5.0, 9.0), rotation=0.0, side="top", locked=True)
-    board.place(parts["R1"], at=(15.0, 7.0), rotation=0.0, side="top")
-    board.place(parts["D1"], at=(24.0, 7.0), rotation=180.0, side="top")
-    board.add_track(nets["+3V3"], layer=front, points=[(5.0, 7.73), (14.25, 7.0)], width=0.25)
-    board.add_track(
-        nets["LED_A"],
-        layer=front,
-        points=[(15.75, 7.0), (20.0, 3.0), (24.75, 7.0)],
-        width=0.25,
-    )
-    board.add_track(nets["GND"], layer=front, points=[(5.0, 10.27), (23.25, 7.0)], width=0.25)
+    with board.layout(unit=1.0) as layout:
+        header = layout.place(
+            parts["J1"],
+            at=board.edge("left").center().right(5.0),
+            orient="right",
+            locked=True,
+        )
+        resistor = layout.two_pad(parts["R1"]).at((15.0, 7.0)).anchor("center").right()
+        led = layout.two_pad(parts["D1"]).at(resistor.center.right(9.0)).anchor("center").left()
+
+        layout.connect(header[1], resistor[1], layer=front, width=0.25, mode="direct")
+        layout.connect(
+            resistor[2],
+            led.A,
+            layer=front,
+            width=0.25,
+            through=(layout.node((20.0, 3.0)),),
+            mode="direct",
+        )
+        layout.connect(header[2], led.K, layer=front, width=0.25, mode="direct")
     return board
 
 

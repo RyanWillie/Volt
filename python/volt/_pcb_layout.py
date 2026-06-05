@@ -6,6 +6,27 @@ from contextlib import contextmanager
 from math import atan2, ceil, cos, degrees, floor, radians, sin
 from typing import TYPE_CHECKING
 
+from ._pcb_composition import (
+    BoardFanout,
+    _direction,
+    _direction_offset,
+    align as _compose_align,
+    bundle as _compose_bundle,
+    connect as _compose_connect,
+    distribute as _compose_distribute,
+    fanout as _compose_fanout,
+    keepout as _compose_keepout,
+    mirror as _compose_mirror,
+    polygon as _compose_polygon,
+    rect as _compose_rect,
+    rule as _compose_rule,
+    stitch as _compose_stitch,
+    text as _compose_text,
+    track_width as _compose_track_width,
+    via_annular as _compose_via_annular,
+    via_drill as _compose_via_drill,
+    zone as _compose_zone,
+)
 from ._utils import _coordinate, _positive_coordinate
 from .logical import Component, Net, Pin, _pin_refs_by_name
 
@@ -92,6 +113,7 @@ class BoardPadAnchor(BoardAnchor):
         component: Component,
         pad_label: str,
         pin: Pin | None,
+        net: int | None,
         status: str,
     ):
         super().__init__(point, board=board)
@@ -99,6 +121,7 @@ class BoardPadAnchor(BoardAnchor):
         self.component = component
         self.pad_label = pad_label
         self.pin = pin
+        self.net = net
         self.status = status
 
     def __repr__(self) -> str:
@@ -288,6 +311,7 @@ class PlacedBoardComponent:
                     component=self._component,
                     pad_label=resolution.pad_label,
                     pin=pin,
+                    net=resolution.net,
                     status=resolution.status,
                 )
             )
@@ -391,6 +415,40 @@ class BoardLayout:
             _board_anchor_axis_target(anchor_or_y, self._board, "y")
         )
 
+    def rule(self, name: str) -> float:
+        """Return a board design-rule value by a compact authoring name."""
+        return _compose_rule(self, name)
+
+    def align(
+        self,
+        anchors,
+        *,
+        axis: str,
+        target: tuple[float, float] | BoardAnchor | float | None = None,
+    ) -> tuple[BoardAnchor, ...]:
+        """Return anchors aligned along one board axis."""
+        return _compose_align(self, anchors, axis=axis, target=target)
+
+    def distribute(
+        self,
+        *,
+        count: int,
+        start: tuple[float, float] | BoardAnchor,
+        end: tuple[float, float] | BoardAnchor,
+    ) -> tuple[BoardAnchor, ...]:
+        """Return evenly distributed anchors between two endpoints."""
+        return _compose_distribute(self, count=count, start=start, end=end)
+
+    def mirror(
+        self,
+        anchors,
+        *,
+        axis: str,
+        about: tuple[float, float] | BoardAnchor | float | None = None,
+    ) -> tuple[BoardAnchor, ...]:
+        """Return anchors mirrored across a board x or y axis."""
+        return _compose_mirror(self, anchors, axis=axis, about=about)
+
     def move(self, *, dx: float = 0, dy: float = 0) -> BoardLayout:
         """Move the layout cursor by a relative offset."""
         self._here = self._snap_anchor(self._here.offset(dx=dx, dy=dy))
@@ -458,11 +516,59 @@ class BoardLayout:
         net: Net | int,
         *,
         layer: int,
-        width: float = 0.20,
+        width: float | None = None,
         mode: str = "octilinear",
     ) -> BoardRoute:
         """Start a schematic-style routed track sequence from the cursor."""
-        return BoardRoute(self, net, layer=layer, width=width, mode=mode)
+        return BoardRoute(
+            self,
+            net,
+            layer=layer,
+            width=_compose_track_width(self, width),
+            mode=mode,
+        )
+
+    def connect(
+        self,
+        start: tuple[float, float] | BoardAnchor,
+        end: tuple[float, float] | BoardAnchor,
+        *,
+        layer: int,
+        net: Net | int | None = None,
+        width: float | None = None,
+        through=(),
+        mode: str = "octilinear",
+    ) -> int:
+        """Route between two anchors, inferring the net from pad anchors when possible."""
+        return _compose_connect(
+            self,
+            start,
+            end,
+            layer=layer,
+            net=net,
+            width=width,
+            through=through,
+            mode=mode,
+        )
+
+    def bundle(
+        self,
+        pairs,
+        *,
+        layer: int,
+        net: Net | int | None = None,
+        width: float | None = None,
+        mode: str = "octilinear",
+    ) -> tuple[int, ...]:
+        """Route multiple independent anchor pairs as one deterministic bundle."""
+        return _compose_bundle(
+            self,
+            pairs,
+            layer=layer,
+            net=net,
+            width=width,
+            mode=mode,
+        )
 
     def via(
         self,
@@ -471,8 +577,8 @@ class BoardLayout:
         at: tuple[float, float] | BoardAnchor | None = None,
         start_layer: int,
         end_layer: int,
-        drill: float = 0.30,
-        annular: float = 0.70,
+        drill: float | None = None,
+        annular: float | None = None,
     ) -> int:
         """Add a via at a board anchor and move the cursor to that anchor."""
         anchor = self._here if at is None else self._anchor_at(at)
@@ -481,11 +587,59 @@ class BoardLayout:
             at=anchor.point,
             start_layer=start_layer,
             end_layer=end_layer,
-            drill=drill,
-            annular=annular,
+            drill=_compose_via_drill(self, drill),
+            annular=_compose_via_annular(self, annular),
         )
         self._here = anchor
         return via
+
+    def stitch(
+        self,
+        net: Net | int,
+        *,
+        at,
+        start_layer: int,
+        end_layer: int,
+        drill: float | None = None,
+        annular: float | None = None,
+    ) -> tuple[int, ...]:
+        """Add a deterministic set of vias for one net."""
+        return _compose_stitch(
+            self,
+            net,
+            at=at,
+            start_layer=start_layer,
+            end_layer=end_layer,
+            drill=drill,
+            annular=annular,
+        )
+
+    def fanout(
+        self,
+        anchors,
+        *,
+        layer: int,
+        direction: str,
+        distance: float,
+        net: Net | int | None = None,
+        width: float | None = None,
+        via_layers: tuple[int, int] | None = None,
+        drill: float | None = None,
+        annular: float | None = None,
+    ) -> tuple[BoardFanout, ...]:
+        """Route one or more anchors outward and optionally drop vias at the endpoints."""
+        return _compose_fanout(
+            self,
+            anchors,
+            layer=layer,
+            direction=direction,
+            distance=distance,
+            net=net,
+            width=width,
+            via_layers=via_layers,
+            drill=drill,
+            annular=annular,
+        )
 
     def node(
         self,
@@ -497,6 +651,84 @@ class BoardLayout:
         """Return a reusable board-local geometry anchor without adding objects."""
         base = self._here if at is None else self._anchor_at(at)
         return self._snap_anchor(base.offset(dx=dx, dy=dy))
+
+    def polygon(self, vertices) -> tuple[BoardAnchor, ...]:
+        """Return a polygon outline from board anchors or local coordinates."""
+        return _compose_polygon(self, vertices)
+
+    def rect(
+        self,
+        *,
+        at: tuple[float, float] | BoardAnchor | None = None,
+        size: tuple[float, float],
+    ) -> tuple[BoardAnchor, ...]:
+        """Return a rectangular outline from a board anchor and size."""
+        return _compose_rect(self, at=at, size=size)
+
+    rectangle = rect
+
+    def zone(
+        self,
+        *,
+        layers,
+        net: Net | int | None = None,
+        outline=None,
+        at: tuple[float, float] | BoardAnchor | None = None,
+        size: tuple[float, float] | None = None,
+        fill: str = "solid",
+        priority: int = 0,
+    ) -> int:
+        """Add a copper zone from layout-authored geometry."""
+        return _compose_zone(
+            self,
+            layers=layers,
+            net=net,
+            outline=outline,
+            at=at,
+            size=size,
+            fill=fill,
+            priority=priority,
+        )
+
+    def keepout(
+        self,
+        *,
+        layers,
+        restrictions,
+        outline=None,
+        at: tuple[float, float] | BoardAnchor | None = None,
+        size: tuple[float, float] | None = None,
+    ) -> int:
+        """Add a keepout from layout-authored geometry."""
+        return _compose_keepout(
+            self,
+            layers=layers,
+            restrictions=restrictions,
+            outline=outline,
+            at=at,
+            size=size,
+        )
+
+    def text(
+        self,
+        text: str,
+        *,
+        at: tuple[float, float] | BoardAnchor,
+        layer: int,
+        rotation: float = 0.0,
+        size: float = 1.0,
+        locked: bool = False,
+    ) -> int:
+        """Add board text at a layout anchor."""
+        return _compose_text(
+            self,
+            text,
+            at=at,
+            layer=layer,
+            rotation=rotation,
+            size=size,
+            locked=locked,
+        )
 
     def stack(
         self,
@@ -639,6 +871,22 @@ class BoardRoute:
         for anchor in _route_segment_anchors(self._current("to"), target, route_mode, self._board):
             self._append(anchor)
         return self._materialize()
+
+    def through(
+        self,
+        point: tuple[float, float] | BoardAnchor,
+        *,
+        mode: str | None = None,
+    ) -> BoardRoute:
+        """Route through an intermediate anchor without materializing the track."""
+        self._require_open("through")
+        target = self._layout._anchor_at(point)
+        route_mode = self._mode if mode is None else _route_mode(mode)
+        for anchor in _route_segment_anchors(
+            self._current("through"), target, route_mode, self._board
+        ):
+            self._append(anchor)
+        return self
 
     def tox(self, anchor_or_x) -> BoardRoute:
         """Route horizontally to the target x coordinate."""
@@ -1041,20 +1289,6 @@ def _board_anchor_axis_target(target, board: Board, axis: str) -> float:
     return _coordinate(target)
 
 
-def _direction(value: str) -> str:
-    if not isinstance(value, str):
-        raise TypeError("Board layout direction must be a string")
-    normalized = {
-        "right": "Right",
-        "down": "Down",
-        "left": "Left",
-        "up": "Up",
-    }.get(value.casefold())
-    if normalized is None:
-        raise ValueError("Board layout direction must be Right, Down, Left, or Up")
-    return normalized
-
-
 def _rotation_from_direction(direction: str) -> float:
     return {"Right": 0.0, "Down": 90.0, "Left": 180.0, "Up": 270.0}[direction]
 
@@ -1064,16 +1298,6 @@ def _normalize_rotation(rotation: float) -> float:
     if abs(normalized - 360.0) < 1e-12:
         return 0.0
     return _clean_coordinate(normalized)
-
-
-def _direction_offset(direction: str, distance: float) -> tuple[float, float]:
-    if direction == "Right":
-        return (distance, 0.0)
-    if direction == "Left":
-        return (-distance, 0.0)
-    if direction == "Down":
-        return (0.0, distance)
-    return (0.0, -distance)
 
 
 def _transform_local_point(
