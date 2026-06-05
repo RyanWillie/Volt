@@ -598,14 +598,21 @@ library = volt.Library("volt_components.passives")
 
 R_0603_10K = volt.Part(
     name="R_0603_10K",
-    pins=[volt.Pin("1"), volt.Pin("2")],
-    symbol=volt.Symbol.resistor(),
-    footprint=volt.Footprint.chip_resistor_0603(),
-    pads={"1": "1", "2": "2"},
+    pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+    footprint=volt.Footprint(
+        library="Resistor_SMD",
+        name="R_0603_1608Metric",
+        pads=(
+            volt.FootprintPad.surface_mount("1", at=(-0.75, 0), size=(0.8, 0.95)),
+            volt.FootprintPad.surface_mount("2", at=(0.75, 0), size=(0.8, 0.95)),
+        ),
+    ),
+    pads={1: "1", 2: "2"},
     value="10k",
     manufacturer="Yageo",
     mpn="RC0603FR-0710KL",
-    model=volt.Model.box(size=(1.6, 0.8, 0.45)),
+    package="0603",
+    prefix="R",
 )
 
 library.add(R_0603_10K)</code></pre>
@@ -629,7 +636,7 @@ library.add(R_0603_10K)</code></pre>
     assert result.ok
     assert result.part("R_0603_10K").has_footprint
     assert result.part("R_0603_10K").pad_mapping_complete
-    assert result.part("R_0603_10K").has_physical_model</code></pre>
+    assert result.part("R_0603_10K").serializable</code></pre>
     </div>
   </section>
 

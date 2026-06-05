@@ -10,6 +10,7 @@ from ._utils import _number
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
 from .library import (
     LibraryComponent,
+    Part,
     PinSpec,
     SchematicSymbolSpec,
     _normalize_schematic_symbols,
@@ -211,13 +212,16 @@ class Design:
 
     def instantiate(
         self,
-        definition: ComponentDefinition | ModuleDefinition | LibraryComponent,
+        definition: ComponentDefinition | ModuleDefinition | LibraryComponent | Part,
         *,
         ref: str | None = None,
         prefix: str | None = None,
         properties: dict | None = None,
     ) -> Component | ModuleInstance:
-        """Instantiate a component definition, module definition, or library component."""
+        """Instantiate a component definition, module definition, library component, or part."""
+        if isinstance(definition, Part):
+            definition = definition._to_library_component()
+
         if isinstance(definition, LibraryComponent):
             component_definition = self._define_library_component(definition)
             component = self.instantiate(
@@ -256,7 +260,10 @@ class Design:
             return result
 
         if not isinstance(definition, ComponentDefinition):
-            raise TypeError("instantiate expects a ComponentDefinition or ModuleDefinition handle")
+            raise TypeError(
+                "instantiate expects a ComponentDefinition, ModuleDefinition, "
+                "LibraryComponent, or Part handle"
+            )
         if definition._design is not self:
             raise ValueError("Component definition belongs to a different design")
         if prefix is None:

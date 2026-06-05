@@ -24,7 +24,7 @@ Source: `python/volt/design.py`
 | `L(self, value: str \| None = None, *, inductance: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic inductor component. |
 | `define_component(self, name: str, *, pins: Iterable[PinSpec], properties: dict \| None = None, source: tuple[str, str, str] \| None = None, schematic_symbol: SchematicSymbolSpec \| Iterable[SchematicSymbolSpec] \| None = None) -> ComponentDefinition` | Define a reusable component type with pins, properties, and optional symbols. |
 | `define_module(self, name: str) -> ModuleDefinition` | Define a reusable module template inside this design. |
-| `instantiate(self, definition: ComponentDefinition \| ModuleDefinition \| LibraryComponent, *, ref: str \| None = None, prefix: str \| None = None, properties: dict \| None = None) -> Component \| ModuleInstance` | Instantiate a component definition, module definition, or library component. |
+| `instantiate(self, definition: ComponentDefinition \| ModuleDefinition \| LibraryComponent \| Part, *, ref: str \| None = None, prefix: str \| None = None, properties: dict \| None = None) -> Component \| ModuleInstance` | Instantiate a component definition, module definition, library component, or part. |
 | `LED(self, *, ref: str \| None = None) -> Component` | Instantiate a generic LED component. |
 | `diode(self, *, ref: str \| None = None) -> Component` | Instantiate a generic diode component. |
 | `switch(self, *, ref: str \| None = None) -> Component` | Instantiate a generic SPST switch component. |

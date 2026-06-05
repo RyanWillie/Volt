@@ -21,6 +21,9 @@ authoring, PCB layout authoring, and staged project runs:
 - author PCB board outlines, layers, footprint placement, board primitives, and copper
   routing over kernel-owned board state
 - serialize deterministic PCB projection files
+- define reusable `Part` objects in buildable `Library` collections
+- validate library parts for board readiness, pad mapping, footprint geometry, and
+  serializability
 - run staged projects with default diagnostics, product-intent tests, and bundle output
 
 Richer ERC, a simulation foundation, manufacturing outputs, and deeper PCB flows remain

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Iterator
 
 from ._library_symbol_builders import (
     _default_two_terminal_symbol_spec,
@@ -16,7 +17,7 @@ from ._library_symbol_builders import (
     _text_horizontal_alignment,
     _text_vertical_alignment,
 )
-from ._footprint import FootprintInput
+from ._footprint import Footprint, FootprintInput, footprint_ref
 from ._utils import _coordinate, _number, _positive_coordinate
 
 PinPadValue = str | tuple[str, ...] | list[str]
@@ -427,6 +428,150 @@ class SchematicSymbolSpec:
         return primitive
 
 
+class Part:
+    """Reusable public part definition for Python-authored Volt libraries."""
+
+    def __init__(
+        self,
+        *,
+        name: str,
+        pins: Iterable[PinSpec],
+        symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
+        schematic_symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
+        footprint: FootprintInput | None = None,
+        pads: dict[int | str, PinPadValue] | None = None,
+        value: str | None = None,
+        manufacturer: str | None = None,
+        mpn: str | None = None,
+        part_number: str | None = None,
+        package: str | None = None,
+        properties: dict | None = None,
+        physical_properties: dict | None = None,
+        ratings: dict | None = None,
+        voltage_rating: float | None = None,
+        power_rating: float | None = None,
+        prefix: str = "U",
+        extensions: dict | None = None,
+        source_name: str | None = None,
+        source_version: str | None = None,
+    ) -> None:
+        if not isinstance(name, str):
+            raise TypeError("Part name must be a string")
+        if not name:
+            raise ValueError("Part name must not be empty")
+        if not isinstance(prefix, str):
+            raise TypeError("Part prefix must be a string")
+        if not prefix:
+            raise ValueError("Part prefix must not be empty")
+        if symbol is not None and schematic_symbol is not None:
+            raise TypeError("Part accepts either symbol or schematic_symbol")
+        if mpn is not None and part_number is not None and mpn != part_number:
+            raise ValueError("Part mpn and part_number must match when both are provided")
+
+        logical_properties = dict(properties or {})
+        if value is not None:
+            logical_properties["value"] = value
+
+        self.name = name
+        self.pins = tuple(pins)
+        for pin in self.pins:
+            if not isinstance(pin, PinSpec):
+                raise TypeError("Part pins must be PinSpec instances")
+        self.schematic_symbols = _normalize_schematic_symbols(
+            schematic_symbol if schematic_symbol is not None else symbol
+        )
+        self.footprint = footprint
+        self.pads = None if pads is None else dict(pads)
+        self.value = value
+        self.manufacturer = manufacturer
+        self.mpn = part_number if mpn is None else mpn
+        self.package = package
+        self.properties = logical_properties
+        self.physical_properties = None if physical_properties is None else dict(physical_properties)
+        self.ratings = dict(ratings or {})
+        self.voltage_rating = voltage_rating
+        self.power_rating = power_rating
+        self.prefix = prefix
+        self.extensions = dict(extensions or {})
+        self.source_name = source_name or name
+        self.source_version = source_version
+        self._library: Library | None = None
+
+    @property
+    def library(self) -> Library | None:
+        """Return the library this part was added to, if any."""
+        return self._library
+
+    @property
+    def schematic_symbol(self) -> SchematicSymbolSpec | None:
+        """Return this part's default schematic symbol, if one is registered."""
+        return _schematic_symbol_for_variant(self.schematic_symbols, "default")
+
+    @property
+    def part_number(self) -> str | None:
+        """Return the manufacturer part number carried by this part."""
+        return self.mpn
+
+    def _bind_library(self, library: Library) -> None:
+        if self._library is not None and self._library is not library:
+            raise ValueError(f"Part {self.name!r} already belongs to a different library")
+        self._library = library
+
+    def _to_library_component(self, library: Library | None = None) -> LibraryComponent:
+        source = library or self._library or _StandaloneLibrarySource()
+        return LibraryComponent(
+            library=source,
+            name=self.name,
+            pins=self.pins,
+            properties=self.properties,
+            source_name=self.source_name,
+            source_version=self.source_version or source.version,
+            physical_part=self._physical_part_spec(),
+            prefix=self.prefix,
+            schematic_symbols=self.schematic_symbols,
+        )
+
+    def _physical_part_spec(self) -> PhysicalPartSpec | None:
+        if self.footprint is None:
+            return None
+        return PhysicalPartSpec(
+            manufacturer=self.manufacturer or "",
+            part_number=self.mpn or "",
+            package=self.package or _default_package(self.footprint),
+            footprint=self.footprint,
+            pin_pads=None if self.pads is None else dict(self.pads),
+            properties=self.physical_properties,
+            voltage_rating=self.voltage_rating,
+            power_rating=self.power_rating,
+        )
+
+    def _to_dict(self) -> dict:
+        payload = {
+            "name": self.name,
+            "pins": [pin._to_dict() for pin in self.pins],
+            "schematic_symbols": [symbol._to_dict() for symbol in self.schematic_symbols],
+            "footprint": _part_footprint_payload(self.footprint),
+            "pads": _part_pads_payload(self.pads),
+            "manufacturer": self.manufacturer,
+            "mpn": self.mpn,
+            "package": self.package,
+            "properties": dict(self.properties),
+            "physical_properties": (
+                None if self.physical_properties is None else dict(self.physical_properties)
+            ),
+            "ratings": dict(self.ratings),
+            "voltage_rating": self.voltage_rating,
+            "power_rating": self.power_rating,
+            "prefix": self.prefix,
+            "extensions": dict(self.extensions),
+            "source_name": self.source_name,
+            "source_version": self.source_version,
+        }
+        if self.value is not None:
+            payload["value"] = self.value
+        return payload
+
+
 @dataclass(frozen=True)
 class LibraryComponent:
     """Reusable component entry owned by a Python library."""
@@ -463,6 +608,26 @@ class Library:
         self.namespace = namespace
         self.version = version
         self._components: dict[str, LibraryComponent] = {}
+        self._parts: dict[str, Part] = {}
+
+    def add(self, part: Part) -> Part:
+        """Add a reusable public part to this library."""
+        if not isinstance(part, Part):
+            raise TypeError("Library.add expects a Part")
+        if part.name in self._parts or part.name in self._components:
+            raise ValueError(f"Library part {part.name!r} already exists")
+        part._bind_library(self)
+        self._parts[part.name] = part
+        return part
+
+    def build(self) -> LibraryResult:
+        """Validate this library's public parts and return a deterministic result."""
+        return LibraryResult(self)
+
+    @property
+    def parts(self) -> tuple[Part, ...]:
+        """Return public parts registered in this library in deterministic name order."""
+        return tuple(self._parts[name] for name in sorted(self._parts))
 
     def component(
         self,
@@ -481,7 +646,7 @@ class Library:
             raise ValueError("Library component name must not be empty")
         if not prefix:
             raise ValueError("Library component prefix must not be empty")
-        if name in self._components:
+        if name in self._components or name in self._parts:
             raise ValueError(f"Library component {name!r} already exists")
         component = LibraryComponent(
             library=self,
@@ -497,9 +662,126 @@ class Library:
         self._components[name] = component
         return component
 
-    def __getitem__(self, name: str) -> LibraryComponent:
-        """Return a registered library component by name."""
+    def __getitem__(self, name: str) -> Part | LibraryComponent:
+        """Return a registered public part or legacy library component by name."""
+        if name in self._parts:
+            return self._parts[name]
         return self._components[name]
+
+
+@dataclass(frozen=True)
+class LibraryDiagnostic:
+    """Diagnostic emitted while validating one library build."""
+
+    source: str
+    report: str
+    severity: str
+    code: str
+    message: str
+    entities: tuple[object, ...] = ()
+
+
+class LibraryDiagnostics:
+    """Ordered library diagnostics collected from part validation."""
+
+    def __init__(self, diagnostics: Iterable[LibraryDiagnostic]):
+        self._diagnostics = tuple(diagnostics)
+
+    def __iter__(self) -> Iterator[LibraryDiagnostic]:
+        """Iterate over diagnostics in deterministic report order."""
+        return iter(self._diagnostics)
+
+    def __len__(self) -> int:
+        """Return the number of diagnostics."""
+        return len(self._diagnostics)
+
+    def __getitem__(self, index: int) -> LibraryDiagnostic:
+        """Return one diagnostic by positional index."""
+        return self._diagnostics[index]
+
+    def errors(self, *, source: str | None = None) -> tuple[LibraryDiagnostic, ...]:
+        """Return error diagnostics, optionally filtered by source."""
+        return tuple(
+            diagnostic
+            for diagnostic in self._diagnostics
+            if diagnostic.severity == "error"
+            and (source is None or diagnostic.source == source)
+        )
+
+    @property
+    def has_errors(self) -> bool:
+        """Return whether any collected diagnostic has error severity."""
+        return bool(self.errors())
+
+
+@dataclass(frozen=True)
+class LibraryPartResult:
+    """Validation status for one public library part."""
+
+    name: str
+    schematic_ready: bool
+    board_ready: bool
+    serializable: bool
+    has_footprint: bool
+    pad_mapping_complete: bool
+    diagnostics: tuple[LibraryDiagnostic, ...]
+
+
+class LibraryResult:
+    """Output of one deterministic library validation run."""
+
+    def __init__(self, library: Library):
+        self.library = library
+        part_results: list[LibraryPartResult] = []
+        diagnostics: list[LibraryDiagnostic] = []
+        for part in library.parts:
+            part_diagnostics = _validate_part(part)
+            diagnostics.extend(part_diagnostics)
+            part_results.append(_part_result(part, part_diagnostics))
+        self._parts = tuple(part_results)
+        self._diagnostics = LibraryDiagnostics(diagnostics)
+
+    @property
+    def ok(self) -> bool:
+        """Return whether the library build has no error diagnostics."""
+        return not self._diagnostics.has_errors
+
+    @property
+    def diagnostics(self) -> LibraryDiagnostics:
+        """Return diagnostics collected during library validation."""
+        return self._diagnostics
+
+    @property
+    def parts(self) -> tuple[LibraryPartResult, ...]:
+        """Return per-part validation summaries in deterministic name order."""
+        return self._parts
+
+    def part(self, name: str) -> LibraryPartResult:
+        """Return a per-part validation summary by part name."""
+        for part in self._parts:
+            if part.name == name:
+                return part
+        raise LookupError(f"Library result has no part named {name}")
+
+    def to_dict(self) -> dict:
+        """Return a deterministic dictionary payload for this library result."""
+        return {
+            "format": "volt.library_result",
+            "schema_version": 1,
+            "library": {
+                "namespace": self.library.namespace,
+                "version": self.library.version,
+            },
+            "ok": self.ok,
+            "parts": [_part_result_payload(part) for part in self._parts],
+            "diagnostics": _library_diagnostics_payload(self._diagnostics),
+        }
+
+
+@dataclass(frozen=True)
+class _StandaloneLibrarySource:
+    namespace: str = "volt.parts"
+    version: str = "1.0.0"
 
 
 def _normalize_schematic_symbols(
@@ -532,3 +814,257 @@ def _schematic_symbol_for_variant(
         if symbol.variant == variant:
             return symbol
     return None
+
+
+def _validate_part(part: Part) -> tuple[LibraryDiagnostic, ...]:
+    diagnostics: list[LibraryDiagnostic] = []
+    source = f"part:{part.name}"
+
+    if not part.pins:
+        diagnostics.append(
+            _library_diagnostic(
+                source,
+                "LIBRARY_PART_MISSING_PINS",
+                f"Part {part.name} has no logical pins",
+            )
+        )
+
+    if part.footprint is None:
+        diagnostics.append(
+            _library_diagnostic(
+                source,
+                "LIBRARY_PART_MISSING_FOOTPRINT",
+                f"Part {part.name} has no selected footprint",
+            )
+        )
+    elif not isinstance(part.footprint, Footprint):
+        diagnostics.append(
+            _library_diagnostic(
+                source,
+                "LIBRARY_PART_MISSING_FOOTPRINT_GEOMETRY",
+                f"Part {part.name} uses a footprint reference without reusable geometry",
+            )
+        )
+
+    if part.pins and part.footprint is not None:
+        diagnostics.extend(_validate_part_pad_mapping(part, source))
+
+    try:
+        json.dumps(part._to_dict(), sort_keys=True)
+    except (TypeError, ValueError) as error:
+        diagnostics.append(
+            _library_diagnostic(
+                source,
+                "LIBRARY_PART_NON_SERIALIZABLE",
+                f"Part {part.name} contains non-serializable data: {error}",
+            )
+        )
+
+    return tuple(diagnostics)
+
+
+def _validate_part_pad_mapping(part: Part, source: str) -> tuple[LibraryDiagnostic, ...]:
+    diagnostics: list[LibraryDiagnostic] = []
+    pads = part.pads or {}
+    mapped_pin_numbers = _mapped_pin_numbers(part.pins, pads)
+    missing_pin_numbers = [
+        str(pin.number) for pin in part.pins if str(pin.number) not in mapped_pin_numbers
+    ]
+    if missing_pin_numbers:
+        diagnostics.append(
+            _library_diagnostic(
+                source,
+                "LIBRARY_PART_MISSING_PIN_MAPPING",
+                "Part "
+                f"{part.name} has logical pins without pad mappings: "
+                + ", ".join(missing_pin_numbers),
+            )
+        )
+        return tuple(diagnostics)
+
+    if not isinstance(part.footprint, Footprint):
+        return tuple(diagnostics)
+
+    footprint_labels = {str(pad.label) for pad in part.footprint.pads}
+    mapped_labels = _mapped_pad_labels(pads)
+    unknown_labels = sorted(label for label in mapped_labels if label not in footprint_labels)
+    if unknown_labels:
+        diagnostics.append(
+            _library_diagnostic(
+                source,
+                "LIBRARY_PART_UNKNOWN_PAD",
+                f"Part {part.name} maps to unknown footprint pads: "
+                + ", ".join(unknown_labels),
+            )
+        )
+        return tuple(diagnostics)
+
+    missing_electrical_labels = [
+        str(pad.label)
+        for pad in part.footprint.pads
+        if _pad_requires_mapping(pad) and str(pad.label) not in mapped_labels
+    ]
+    if missing_electrical_labels:
+        diagnostics.append(
+            _library_diagnostic(
+                source,
+                "LIBRARY_PART_INCOMPLETE_PAD_MAPPING",
+                f"Part {part.name} has electrical footprint pads without logical "
+                "pin mappings: "
+                + ", ".join(sorted(missing_electrical_labels)),
+            )
+        )
+
+    return tuple(diagnostics)
+
+
+def _part_result(part: Part, diagnostics: tuple[LibraryDiagnostic, ...]) -> LibraryPartResult:
+    diagnostic_codes = {diagnostic.code for diagnostic in diagnostics}
+    pad_mapping_complete = not (
+        {
+            "LIBRARY_PART_MISSING_PIN_MAPPING",
+            "LIBRARY_PART_UNKNOWN_PAD",
+            "LIBRARY_PART_INCOMPLETE_PAD_MAPPING",
+        }
+        & diagnostic_codes
+    )
+    has_footprint = isinstance(part.footprint, Footprint)
+    return LibraryPartResult(
+        name=part.name,
+        schematic_ready=bool(part.pins and part.schematic_symbols),
+        board_ready=bool(part.pins) and has_footprint and pad_mapping_complete,
+        serializable="LIBRARY_PART_NON_SERIALIZABLE" not in diagnostic_codes,
+        has_footprint=has_footprint,
+        pad_mapping_complete=pad_mapping_complete,
+        diagnostics=diagnostics,
+    )
+
+
+def _mapped_pin_numbers(
+    pins: tuple[PinSpec, ...],
+    pads: dict[int | str, PinPadValue],
+) -> set[str]:
+    pin_numbers = {str(pin.number) for pin in pins}
+    names: dict[str, str | None] = {}
+    for pin in pins:
+        existing = names.get(pin.name)
+        if existing is None and pin.name in names:
+            continue
+        if existing is not None:
+            names[pin.name] = None
+        else:
+            names[pin.name] = str(pin.number)
+
+    mapped: set[str] = set()
+    for key in pads:
+        key_text = str(key)
+        if key_text in pin_numbers:
+            mapped.add(key_text)
+            continue
+        named_number = names.get(key_text)
+        if named_number is not None:
+            mapped.add(named_number)
+    return mapped
+
+
+def _mapped_pad_labels(pads: dict[int | str, PinPadValue]) -> set[str]:
+    labels: set[str] = set()
+    for value in pads.values():
+        for label in _pad_labels(value):
+            labels.add(label)
+    return labels
+
+
+def _pad_labels(value: PinPadValue) -> tuple[str, ...]:
+    if isinstance(value, (tuple, list)):
+        return tuple(str(item) for item in value)
+    return (str(value),)
+
+
+def _pad_requires_mapping(pad) -> bool:
+    return getattr(pad, "mechanical_role", None) is None
+
+
+def _library_diagnostic(source: str, code: str, message: str) -> LibraryDiagnostic:
+    return LibraryDiagnostic(
+        source=source,
+        report="library.part",
+        severity="error",
+        code=code,
+        message=message,
+    )
+
+
+def _part_result_payload(part: LibraryPartResult) -> dict:
+    return {
+        "name": part.name,
+        "schematic_ready": part.schematic_ready,
+        "board_ready": part.board_ready,
+        "serializable": part.serializable,
+        "has_footprint": part.has_footprint,
+        "pad_mapping_complete": part.pad_mapping_complete,
+        "diagnostics": [
+            {
+                "source": diagnostic.source,
+                "report": diagnostic.report,
+                "severity": diagnostic.severity,
+                "code": diagnostic.code,
+                "message": diagnostic.message,
+                "entities": list(diagnostic.entities),
+            }
+            for diagnostic in part.diagnostics
+        ],
+    }
+
+
+def _library_diagnostics_payload(diagnostics: LibraryDiagnostics) -> dict:
+    return {
+        "summary": _library_diagnostic_summary(diagnostics),
+        "diagnostics": [
+            {
+                "source": diagnostic.source,
+                "report": diagnostic.report,
+                "severity": diagnostic.severity,
+                "code": diagnostic.code,
+                "message": diagnostic.message,
+                "entities": list(diagnostic.entities),
+            }
+            for diagnostic in diagnostics
+        ],
+    }
+
+
+def _library_diagnostic_summary(diagnostics: LibraryDiagnostics) -> dict[str, int]:
+    summary = {"errors": 0, "infos": 0, "warnings": 0}
+    for diagnostic in diagnostics:
+        if diagnostic.severity == "error":
+            summary["errors"] += 1
+        elif diagnostic.severity == "warning":
+            summary["warnings"] += 1
+        else:
+            summary["infos"] += 1
+    return summary
+
+
+def _part_footprint_payload(footprint: FootprintInput | None) -> dict | None:
+    if footprint is None:
+        return None
+    library, name = footprint_ref(footprint)
+    result = {"library": library, "name": name}
+    if isinstance(footprint, Footprint):
+        result["pads"] = [pad._to_dict() for pad in footprint.pads]
+    return result
+
+
+def _part_pads_payload(pads: dict[int | str, PinPadValue] | None) -> list[dict[str, object]]:
+    if pads is None:
+        return []
+    return [
+        {"pin": str(key), "pads": list(_pad_labels(value))}
+        for key, value in sorted(pads.items(), key=lambda item: str(item[0]))
+    ]
+
+
+def _default_package(footprint: FootprintInput) -> str:
+    _library, name = footprint_ref(footprint)
+    return name
