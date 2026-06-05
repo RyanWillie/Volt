@@ -745,6 +745,34 @@ def test_library_build_validates_board_ready_part():
     assert library["R_0603_10K"] is part
 
 
+def test_part_instantiation_requires_library_identity():
+    part = _library_resistor_part()
+    design = volt.Design("unbound-part")
+
+    try:
+        design.instantiate(part, ref="R1")
+    except ValueError as error:
+        assert "Library" in str(error)
+    else:
+        raise AssertionError("unbound parts should not be directly instantiated")
+
+
+def test_library_part_is_immutable_after_construction():
+    library = volt.Library("volt.test.passives")
+    part = _library_resistor_part()
+    library.add(part)
+
+    try:
+        part.name = "Changed"
+    except AttributeError as error:
+        assert "immutable" in str(error)
+    else:
+        raise AssertionError("part mutation should be rejected")
+
+    assert library["R_0603_10K"] is part
+    assert part.name == "R_0603_10K"
+
+
 def test_project_instantiates_imported_part_without_manual_footprint_cache():
     library = volt.Library("volt.test.passives")
     resistor_part = _library_resistor_part()

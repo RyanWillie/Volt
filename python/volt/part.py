@@ -52,6 +52,11 @@ class _PartDefinition:
 class Part:
     """Reusable public part definition for Python-authored Volt libraries."""
 
+    def __setattr__(self, name: str, value: object) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError("Part definitions are immutable")
+        object.__setattr__(self, name, value)
+
     def __init__(
         self,
         *,
@@ -117,6 +122,7 @@ class Part:
         self.source_name = source_name or name
         self.source_version = source_version
         self._library: Library | None = None
+        object.__setattr__(self, "_frozen", True)
 
     @property
     def library(self) -> Library | None:
@@ -136,21 +142,18 @@ class Part:
     def _bind_library(self, library: Library) -> None:
         if self._library is not None and self._library is not library:
             raise ValueError(f"Part {self.name!r} already belongs to a different library")
-        self._library = library
+        object.__setattr__(self, "_library", library)
 
     def _to_part_definition(self) -> _PartDefinition:
-        source_namespace = "volt.parts"
-        source_version = "1.0.0"
-        if self._library is not None:
-            source_namespace = self._library.namespace
-            source_version = self._library.version
+        if self._library is None:
+            raise ValueError("Part must be added to a Library before instantiation")
         return _PartDefinition(
             name=self.name,
             pins=self.pins,
             properties=self.properties,
-            source_namespace=source_namespace,
+            source_namespace=self._library.namespace,
             source_name=self.source_name,
-            source_version=self.source_version or source_version,
+            source_version=self.source_version or self._library.version,
             physical_part=self._physical_part_spec(),
             prefix=self.prefix,
             schematic_symbols=self.schematic_symbols,
