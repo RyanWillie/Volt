@@ -28,7 +28,9 @@ set(
     design.py
     diagnostics.py
     library.py
+    library_result.py
     logical.py
+    part.py
     pcb.py
     project.py
     schematic.py

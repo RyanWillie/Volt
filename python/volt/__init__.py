@@ -8,11 +8,6 @@ from .diagnostics import Diagnostic, DiagnosticEntity, DiagnosticReport
 from .library import (
     Library,
     LibraryComponent,
-    LibraryDiagnostic,
-    LibraryDiagnostics,
-    LibraryPartResult,
-    LibraryResult,
-    Part,
     PhysicalPartSpec,
     PinSpec,
     SchematicBlockPinSpec,
@@ -20,6 +15,13 @@ from .library import (
     SchematicSymbolPinSpec,
     SchematicSymbolSpec,
 )
+from .library_result import (
+    LibraryDiagnostic,
+    LibraryDiagnostics,
+    LibraryPartResult,
+    LibraryResult,
+)
+from .part import Part
 from .logical import (
     Component,
     ComponentDefinition,

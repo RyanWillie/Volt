@@ -1,0 +1,227 @@
+"""Public reusable part definitions for Volt Python libraries."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Iterable
+
+from ._footprint import Footprint, FootprintInput, footprint_ref
+from .library import (
+    PhysicalPartSpec,
+    PinPadValue,
+    PinSpec,
+    SchematicSymbolSpec,
+    _normalize_schematic_symbols,
+    _schematic_symbol_for_variant,
+)
+
+if TYPE_CHECKING:
+    from .library import Library
+
+
+@dataclass(frozen=True)
+class _PartDefinition:
+    """Normalized part lowering data shared by new parts and compatibility specs."""
+
+    name: str
+    pins: tuple[PinSpec, ...]
+    properties: dict
+    source_namespace: str
+    source_name: str
+    source_version: str
+    physical_part: PhysicalPartSpec | None = None
+    prefix: str = "U"
+    schematic_symbols: tuple[SchematicSymbolSpec, ...] = ()
+
+    @property
+    def cache_key(self) -> tuple[str, str, str, str]:
+        """Return the stable design-local cache key for this part definition."""
+        return (
+            self.source_namespace,
+            self.source_name,
+            self.source_version,
+            self.name,
+        )
+
+    @property
+    def schematic_symbol(self) -> SchematicSymbolSpec | None:
+        """Return this definition's default schematic symbol, if one is registered."""
+        return _schematic_symbol_for_variant(self.schematic_symbols, "default")
+
+
+class Part:
+    """Reusable public part definition for Python-authored Volt libraries."""
+
+    def __init__(
+        self,
+        *,
+        name: str,
+        pins: Iterable[PinSpec],
+        symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
+        schematic_symbol: SchematicSymbolSpec | Iterable[SchematicSymbolSpec] | None = None,
+        footprint: FootprintInput | None = None,
+        pads: dict[int | str, PinPadValue] | None = None,
+        value: str | None = None,
+        manufacturer: str | None = None,
+        mpn: str | None = None,
+        part_number: str | None = None,
+        package: str | None = None,
+        properties: dict | None = None,
+        physical_properties: dict | None = None,
+        ratings: dict | None = None,
+        voltage_rating: float | None = None,
+        power_rating: float | None = None,
+        prefix: str = "U",
+        extensions: dict | None = None,
+        source_name: str | None = None,
+        source_version: str | None = None,
+    ) -> None:
+        if not isinstance(name, str):
+            raise TypeError("Part name must be a string")
+        if not name:
+            raise ValueError("Part name must not be empty")
+        if not isinstance(prefix, str):
+            raise TypeError("Part prefix must be a string")
+        if not prefix:
+            raise ValueError("Part prefix must not be empty")
+        if symbol is not None and schematic_symbol is not None:
+            raise TypeError("Part accepts either symbol or schematic_symbol")
+        if mpn is not None and part_number is not None and mpn != part_number:
+            raise ValueError("Part mpn and part_number must match when both are provided")
+
+        logical_properties = dict(properties or {})
+        if value is not None:
+            logical_properties["value"] = value
+
+        self.name = name
+        self.pins = tuple(pins)
+        for pin in self.pins:
+            if not isinstance(pin, PinSpec):
+                raise TypeError("Part pins must be PinSpec instances")
+        self.schematic_symbols = _normalize_schematic_symbols(
+            schematic_symbol if schematic_symbol is not None else symbol
+        )
+        self.footprint = footprint
+        self.pads = None if pads is None else dict(pads)
+        self.value = value
+        self.manufacturer = manufacturer
+        self.mpn = part_number if mpn is None else mpn
+        self.package = package
+        self.properties = logical_properties
+        self.physical_properties = None if physical_properties is None else dict(physical_properties)
+        self.ratings = dict(ratings or {})
+        self.voltage_rating = voltage_rating
+        self.power_rating = power_rating
+        self.prefix = prefix
+        self.extensions = dict(extensions or {})
+        self.source_name = source_name or name
+        self.source_version = source_version
+        self._library: Library | None = None
+
+    @property
+    def library(self) -> Library | None:
+        """Return the library this part was added to, if any."""
+        return self._library
+
+    @property
+    def schematic_symbol(self) -> SchematicSymbolSpec | None:
+        """Return this part's default schematic symbol, if one is registered."""
+        return _schematic_symbol_for_variant(self.schematic_symbols, "default")
+
+    @property
+    def part_number(self) -> str | None:
+        """Return the manufacturer part number carried by this part."""
+        return self.mpn
+
+    def _bind_library(self, library: Library) -> None:
+        if self._library is not None and self._library is not library:
+            raise ValueError(f"Part {self.name!r} already belongs to a different library")
+        self._library = library
+
+    def _to_part_definition(self) -> _PartDefinition:
+        source_namespace = "volt.parts"
+        source_version = "1.0.0"
+        if self._library is not None:
+            source_namespace = self._library.namespace
+            source_version = self._library.version
+        return _PartDefinition(
+            name=self.name,
+            pins=self.pins,
+            properties=self.properties,
+            source_namespace=source_namespace,
+            source_name=self.source_name,
+            source_version=self.source_version or source_version,
+            physical_part=self._physical_part_spec(),
+            prefix=self.prefix,
+            schematic_symbols=self.schematic_symbols,
+        )
+
+    def _physical_part_spec(self) -> PhysicalPartSpec | None:
+        if self.footprint is None:
+            return None
+        return PhysicalPartSpec(
+            manufacturer=self.manufacturer or "",
+            part_number=self.mpn or "",
+            package=self.package or _default_package(self.footprint),
+            footprint=self.footprint,
+            pin_pads=None if self.pads is None else dict(self.pads),
+            properties=self.physical_properties,
+            voltage_rating=self.voltage_rating,
+            power_rating=self.power_rating,
+        )
+
+    def _to_dict(self) -> dict:
+        payload = {
+            "name": self.name,
+            "pins": [pin._to_dict() for pin in self.pins],
+            "schematic_symbols": [symbol._to_dict() for symbol in self.schematic_symbols],
+            "footprint": _part_footprint_payload(self.footprint),
+            "pads": _part_pads_payload(self.pads),
+            "manufacturer": self.manufacturer,
+            "mpn": self.mpn,
+            "package": self.package,
+            "properties": dict(self.properties),
+            "physical_properties": (
+                None if self.physical_properties is None else dict(self.physical_properties)
+            ),
+            "ratings": dict(self.ratings),
+            "voltage_rating": self.voltage_rating,
+            "power_rating": self.power_rating,
+            "prefix": self.prefix,
+            "extensions": dict(self.extensions),
+            "source_name": self.source_name,
+            "source_version": self.source_version,
+        }
+        if self.value is not None:
+            payload["value"] = self.value
+        return payload
+
+
+def _part_footprint_payload(footprint: FootprintInput | None) -> dict | None:
+    if footprint is None:
+        return None
+    library, name = footprint_ref(footprint)
+    result = {"library": library, "name": name}
+    if isinstance(footprint, Footprint):
+        result["pads"] = [pad._to_dict() for pad in footprint.pads]
+    return result
+
+
+def _part_pads_payload(pads: dict[int | str, PinPadValue] | None) -> list[dict[str, object]]:
+    if pads is None:
+        return []
+    return [
+        {"pin": str(key), "pads": list(_pad_labels(value))}
+        for key, value in sorted(pads.items(), key=lambda item: str(item[0]))
+    ]
+
+
+def _pad_labels(value: PinPadValue) -> tuple[str, ...]:
+    if isinstance(value, (tuple, list)):
+        return tuple(str(item) for item in value)
+    return (str(value),)
+
+
+def _default_package(footprint: FootprintInput) -> str:
+    _library, name = footprint_ref(footprint)
+    return name

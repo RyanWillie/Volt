@@ -830,7 +830,8 @@ def test_part_validation_reports_unknown_pad_label():
 
     assert not result.ok
     assert [diagnostic.code for diagnostic in result.diagnostics] == [
-        "LIBRARY_PART_UNKNOWN_PAD"
+        "LIBRARY_PART_UNKNOWN_PAD",
+        "LIBRARY_PART_INCOMPLETE_PAD_MAPPING",
     ]
     assert result.part("BadPad").board_ready is False
 
@@ -893,6 +894,7 @@ def test_part_validation_reports_incomplete_pad_mapping_and_non_serializable_dat
     assert [(diagnostic.source, diagnostic.code) for diagnostic in result.diagnostics] == [
         ("part:MissingElectricalPad", "LIBRARY_PART_INCOMPLETE_PAD_MAPPING"),
         ("part:MissingPin", "LIBRARY_PART_MISSING_PIN_MAPPING"),
+        ("part:MissingPin", "LIBRARY_PART_INCOMPLETE_PAD_MAPPING"),
         ("part:MissingPin", "LIBRARY_PART_NON_SERIALIZABLE"),
     ]
 
@@ -927,6 +929,7 @@ def test_library_result_is_deterministic():
         ("part:Alpha", "LIBRARY_PART_MISSING_PINS"),
         ("part:Alpha", "LIBRARY_PART_MISSING_FOOTPRINT"),
         ("part:Zeta", "LIBRARY_PART_UNKNOWN_PAD"),
+        ("part:Zeta", "LIBRARY_PART_INCOMPLETE_PAD_MAPPING"),
     ]
 
 
