@@ -162,6 +162,8 @@ class PcbBoardReader {
     void validate_diagnostic_ref_array(const Board &board, const nlohmann::json &object,
                                        const char *name) const;
 
+    void validate_diagnostic_layer_array(const Board &board, const nlohmann::json &object) const;
+
     void validate_viewer_diagnostic_ref(const Board &board, std::string_view ref) const;
 
     [[nodiscard]] static std::optional<PinId> optional_pin(const std::optional<std::string> &id);
@@ -894,7 +896,7 @@ void PcbBoardReader::validate_diagnostic_overlay(const Board &board,
         static_cast<void>(board_point(point));
     }
     validate_diagnostic_ref_array(board, overlay, "entities");
-    validate_diagnostic_ref_array(board, overlay, "layers");
+    validate_diagnostic_layer_array(board, overlay);
 }
 
 void PcbBoardReader::validate_diagnostic_overlay_shape(const std::string &kind,
@@ -920,6 +922,22 @@ void PcbBoardReader::validate_diagnostic_ref_array(const Board &board, const nlo
     for (const auto &ref_json : refs) {
         require(ref_json.is_string(), "PCB viewer diagnostic entity must be a string");
         validate_viewer_diagnostic_ref(board, ref_json.get<std::string>());
+    }
+}
+
+void PcbBoardReader::validate_diagnostic_layer_array(const Board &board,
+                                                     const nlohmann::json &object) const {
+    const auto &layers = array_field(object, "layers");
+    for (const auto &layer_json : layers) {
+        require(layer_json.is_string(), "PCB viewer diagnostic layer must be a string");
+        const auto layer_text = layer_json.get<std::string>();
+        const auto layer = decode_if_prefixed<BoardLayerId>(layer_text);
+        if (!layer.has_value()) {
+            throw std::logic_error{"PCB viewer diagnostic overlay layer must be a board layer"};
+        }
+        if (layer->index() >= board.layer_count()) {
+            throw std::logic_error{"PCB viewer diagnostic references missing board layer"};
+        }
     }
 }
 

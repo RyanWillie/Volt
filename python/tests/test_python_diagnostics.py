@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 import volt
 from volt.diagnostics import _diagnostic_from_dict
 from volt.project import _flat_diagnostic_payload, _report_diagnostics
@@ -296,3 +298,18 @@ def test_project_diagnostics_preserve_pcb_visual_overlay_payloads():
             }
         ],
     }
+
+
+def test_python_diagnostic_overlay_rejects_invalid_layers_and_geometry():
+    with pytest.raises(ValueError, match="board_layer"):
+        volt.DiagnosticOverlay(
+            "point",
+            ((1.0, 2.0),),
+            layers=(volt.DiagnosticEntity("component", 0),),
+        )
+
+    with pytest.raises(ValueError, match="at least three"):
+        volt.DiagnosticOverlay("polygon", ((0.0, 0.0), (1.0, 1.0)))
+
+    with pytest.raises(ValueError, match="finite"):
+        volt.DiagnosticOverlay("point", ((float("inf"), 0.0),))

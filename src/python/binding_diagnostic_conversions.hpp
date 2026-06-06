@@ -111,6 +111,18 @@ diagnostic_points_to_list(const std::vector<volt::DiagnosticPoint> &diagnostic_p
 }
 
 [[nodiscard]] inline py::list
+diagnostic_layers_to_list(const std::vector<volt::BoardLayerId> &diagnostic_layers) {
+    auto layers = py::list{};
+    for (const auto layer : diagnostic_layers) {
+        auto layer_dict = py::dict{};
+        layer_dict["kind"] = "board_layer";
+        layer_dict["index"] = layer.index();
+        layers.append(std::move(layer_dict));
+    }
+    return layers;
+}
+
+[[nodiscard]] inline py::list
 diagnostic_overlays_to_list(const std::vector<volt::DiagnosticOverlay> &diagnostic_overlays) {
     auto overlays = py::list{};
     for (const auto &overlay : diagnostic_overlays) {
@@ -118,7 +130,7 @@ diagnostic_overlays_to_list(const std::vector<volt::DiagnosticOverlay> &diagnost
         overlay_dict["kind"] = diagnostic_overlay_kind_name(overlay.kind());
         overlay_dict["points"] = diagnostic_points_to_list(overlay.points());
         overlay_dict["entities"] = diagnostic_entities_to_list(overlay.entities());
-        overlay_dict["layers"] = diagnostic_entities_to_list(overlay.layers());
+        overlay_dict["layers"] = diagnostic_layers_to_list(overlay.layers());
         overlays.append(std::move(overlay_dict));
     }
     return overlays;

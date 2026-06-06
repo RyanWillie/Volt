@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -303,6 +304,13 @@ class EntityRef {
 
 /** A board-space point in millimeters for diagnostic overlay geometry. */
 struct DiagnosticPoint {
+    /** Construct a finite board-space diagnostic point. */
+    DiagnosticPoint(double x, double y) : x_mm{x}, y_mm{y} {
+        if (!std::isfinite(x_mm) || !std::isfinite(y_mm)) {
+            throw std::invalid_argument{"Diagnostic overlay points must be finite"};
+        }
+    }
+
     double x_mm;
     double y_mm;
 
@@ -324,7 +332,7 @@ class DiagnosticOverlay {
     /** Create a bounding box overlay from minimum and maximum board-space corners. */
     [[nodiscard]] static DiagnosticOverlay bounding_box(DiagnosticPoint min, DiagnosticPoint max,
                                                         std::vector<EntityRef> entities = {},
-                                                        std::vector<EntityRef> layers = {}) {
+                                                        std::vector<BoardLayerId> layers = {}) {
         return DiagnosticOverlay{DiagnosticOverlayKind::BoundingBox, std::vector{min, max},
                                  std::move(entities), std::move(layers)};
     }
@@ -332,7 +340,7 @@ class DiagnosticOverlay {
     /** Create a point overlay in board-space coordinates. */
     [[nodiscard]] static DiagnosticOverlay point(DiagnosticPoint point,
                                                  std::vector<EntityRef> entities = {},
-                                                 std::vector<EntityRef> layers = {}) {
+                                                 std::vector<BoardLayerId> layers = {}) {
         return DiagnosticOverlay{DiagnosticOverlayKind::Point, std::vector{point},
                                  std::move(entities), std::move(layers)};
     }
@@ -340,7 +348,7 @@ class DiagnosticOverlay {
     /** Create a polygon overlay from ordered board-space vertices. */
     [[nodiscard]] static DiagnosticOverlay polygon(std::vector<DiagnosticPoint> points,
                                                    std::vector<EntityRef> entities = {},
-                                                   std::vector<EntityRef> layers = {}) {
+                                                   std::vector<BoardLayerId> layers = {}) {
         return DiagnosticOverlay{DiagnosticOverlayKind::Polygon, std::move(points),
                                  std::move(entities), std::move(layers)};
     }
@@ -348,7 +356,7 @@ class DiagnosticOverlay {
     /** Create a line segment overlay from ordered board-space endpoints. */
     [[nodiscard]] static DiagnosticOverlay segment(DiagnosticPoint start, DiagnosticPoint end,
                                                    std::vector<EntityRef> entities = {},
-                                                   std::vector<EntityRef> layers = {}) {
+                                                   std::vector<BoardLayerId> layers = {}) {
         return DiagnosticOverlay{DiagnosticOverlayKind::Segment, std::vector{start, end},
                                  std::move(entities), std::move(layers)};
     }
@@ -363,18 +371,45 @@ class DiagnosticOverlay {
     [[nodiscard]] const std::vector<EntityRef> &entities() const noexcept { return entities_; }
 
     /** Return board layer references relevant to this overlay. */
-    [[nodiscard]] const std::vector<EntityRef> &layers() const noexcept { return layers_; }
+    [[nodiscard]] const std::vector<BoardLayerId> &layers() const noexcept { return layers_; }
 
   private:
     DiagnosticOverlay(DiagnosticOverlayKind kind, std::vector<DiagnosticPoint> points,
-                      std::vector<EntityRef> entities, std::vector<EntityRef> layers)
+                      std::vector<EntityRef> entities, std::vector<BoardLayerId> layers)
         : kind_{kind}, points_{std::move(points)}, entities_{std::move(entities)},
-          layers_{std::move(layers)} {}
+          layers_{std::move(layers)} {
+        validate_shape(kind_, points_);
+    }
+
+    static void validate_shape(DiagnosticOverlayKind kind,
+                               const std::vector<DiagnosticPoint> &points) {
+        switch (kind) {
+        case DiagnosticOverlayKind::BoundingBox:
+        case DiagnosticOverlayKind::Segment:
+            if (points.size() != 2U) {
+                throw std::invalid_argument{
+                    "Diagnostic overlay bounding boxes and segments require two points"};
+            }
+            return;
+        case DiagnosticOverlayKind::Point:
+            if (points.size() != 1U) {
+                throw std::invalid_argument{"Diagnostic point overlays require one point"};
+            }
+            return;
+        case DiagnosticOverlayKind::Polygon:
+            if (points.size() < 3U) {
+                throw std::invalid_argument{
+                    "Diagnostic polygon overlays require at least three points"};
+            }
+            return;
+        }
+        throw std::logic_error{"Unhandled diagnostic overlay kind"};
+    }
 
     DiagnosticOverlayKind kind_;
     std::vector<DiagnosticPoint> points_;
     std::vector<EntityRef> entities_;
-    std::vector<EntityRef> layers_;
+    std::vector<BoardLayerId> layers_;
 };
 
 /** Human- and machine-readable diagnostic emitted by kernel checks. */

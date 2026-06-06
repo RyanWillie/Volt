@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 
@@ -32,6 +33,17 @@ class DiagnosticOverlay:
     points: tuple[tuple[float, float], ...]
     entities: tuple[DiagnosticEntity, ...] = ()
     layers: tuple[DiagnosticEntity, ...] = ()
+
+    def __post_init__(self) -> None:
+        points = tuple(_diagnostic_overlay_point(point) for point in self.points)
+        _validate_diagnostic_overlay_shape(self.kind, points)
+        layers = tuple(self.layers)
+        for layer in layers:
+            if layer.kind != "board_layer":
+                raise ValueError("Diagnostic overlay layers must be board_layer references")
+        object.__setattr__(self, "points", points)
+        object.__setattr__(self, "entities", tuple(self.entities))
+        object.__setattr__(self, "layers", layers)
 
 
 @dataclass(frozen=True)
@@ -100,3 +112,30 @@ def _diagnostic_overlay_from_dict(item) -> DiagnosticOverlay:
             for entity in item.get("layers", ())
         ),
     )
+
+
+def _diagnostic_overlay_point(point) -> tuple[float, float]:
+    x = float(point[0])
+    y = float(point[1])
+    if not math.isfinite(x) or not math.isfinite(y):
+        raise ValueError("Diagnostic overlay points must be finite")
+    return (x, y)
+
+
+def _validate_diagnostic_overlay_shape(
+    kind: str,
+    points: tuple[tuple[float, float], ...],
+) -> None:
+    if kind in {"bounding_box", "segment"}:
+        if len(points) != 2:
+            raise ValueError("Diagnostic bounding boxes and segments require two points")
+        return
+    if kind == "point":
+        if len(points) != 1:
+            raise ValueError("Diagnostic point overlays require one point")
+        return
+    if kind == "polygon":
+        if len(points) < 3:
+            raise ValueError("Diagnostic polygon overlays require at least three points")
+        return
+    raise ValueError(f"Unsupported diagnostic overlay kind: {kind}")

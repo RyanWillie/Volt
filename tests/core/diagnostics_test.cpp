@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -83,10 +84,10 @@ TEST_CASE("Diagnostic stores category and overlay geometry") {
             volt::DiagnosticOverlay::bounding_box(
                 volt::DiagnosticPoint{10.0, 20.0}, volt::DiagnosticPoint{14.0, 22.0},
                 std::vector{volt::EntityRef::board_text(volt::BoardTextId{2})},
-                std::vector{volt::EntityRef::board_layer(volt::BoardLayerId{0})}),
-            volt::DiagnosticOverlay::segment(
-                volt::DiagnosticPoint{10.0, 21.0}, volt::DiagnosticPoint{14.0, 21.0}, {},
-                std::vector{volt::EntityRef::board_layer(volt::BoardLayerId{0})}),
+                std::vector{volt::BoardLayerId{0}}),
+            volt::DiagnosticOverlay::segment(volt::DiagnosticPoint{10.0, 21.0},
+                                             volt::DiagnosticPoint{14.0, 21.0}, {},
+                                             std::vector{volt::BoardLayerId{0}}),
         },
     };
 
@@ -97,9 +98,16 @@ TEST_CASE("Diagnostic stores category and overlay geometry") {
           std::vector{volt::DiagnosticPoint{10.0, 20.0}, volt::DiagnosticPoint{14.0, 22.0}});
     CHECK(diagnostic.overlays()[0].entities() ==
           std::vector{volt::EntityRef::board_text(volt::BoardTextId{2})});
-    CHECK(diagnostic.overlays()[0].layers() ==
-          std::vector{volt::EntityRef::board_layer(volt::BoardLayerId{0})});
+    CHECK(diagnostic.overlays()[0].layers() == std::vector{volt::BoardLayerId{0}});
     CHECK(diagnostic.overlays()[1].kind() == volt::DiagnosticOverlayKind::Segment);
+}
+
+TEST_CASE("Diagnostic overlay construction rejects malformed geometry") {
+    CHECK_THROWS_AS((volt::DiagnosticPoint{std::numeric_limits<double>::infinity(), 0.0}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::DiagnosticOverlay::polygon(std::vector{volt::DiagnosticPoint{0.0, 0.0},
+                                                                 volt::DiagnosticPoint{1.0, 1.0}}),
+                    std::invalid_argument);
 }
 
 TEST_CASE("PCB visual diagnostic codes are stable constants") {

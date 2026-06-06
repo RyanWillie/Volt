@@ -192,6 +192,17 @@ void write_entity_refs(std::ostream &out, const std::vector<EntityRef> &entities
     out << ']';
 }
 
+void write_board_layer_refs(std::ostream &out, const std::vector<BoardLayerId> &layers) {
+    out << '[';
+    for (std::size_t index = 0; index < layers.size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        out << json_string(encode_local_id(layers[index]));
+    }
+    out << ']';
+}
+
 void write_board_points(std::ostream &out, const std::vector<BoardPoint> &points) {
     out << '[';
     for (std::size_t index = 0; index < points.size(); ++index) {
@@ -795,7 +806,7 @@ void write_diagnostic(std::ostream &out, const Diagnostic &diagnostic) {
         out << ", \"entities\": ";
         write_entity_refs(out, overlay.entities());
         out << ", \"layers\": ";
-        write_entity_refs(out, overlay.layers());
+        write_board_layer_refs(out, overlay.layers());
         out << '}';
     }
     out << "]}";
