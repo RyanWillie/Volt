@@ -461,3 +461,299 @@ def test_project_result_write_cleans_stale_bundle_artifacts(tmp_path):
         "diagnostics/diagnostics.json",
         "diagnostics/tests.json",
     ]
+
+
+def test_project_result_contains_multiple_boards():
+    project = volt.Project("control-panel")
+
+    @project.design
+    def design():
+        return (
+            _board_ready_design("main-controller"),
+            _board_ready_design("front-panel"),
+        )
+
+    @project.board
+    def board(context):
+        return (
+            _stage_board(context.design("main-controller")),
+            _stage_board(context.design("front-panel")),
+        )
+
+    result = project.run()
+
+    assert [board._design.name for board in result.boards] == [
+        "main-controller",
+        "front-panel",
+    ]
+    assert result.board("main-controller:Main")._design.name == "main-controller"
+    assert result.board("front-panel:Main")._design.name == "front-panel"
+
+
+def test_project_result_contains_multiple_designs():
+    project = volt.Project("kit")
+
+    @project.design
+    def design():
+        return (_minimal_design("main-controller"), _minimal_design("debug-adapter"))
+
+    result = project.run_through(project.design)
+
+    assert [design.name for design in result.designs] == [
+        "main-controller",
+        "debug-adapter",
+    ]
+    assert result.design("main-controller").name == "main-controller"
+    assert result.design("debug-adapter").name == "debug-adapter"
+
+
+def test_project_result_disambiguates_schematics_by_design():
+    project = volt.Project("kit")
+
+    @project.design
+    def design():
+        return (_minimal_design("main-controller"), _minimal_design("debug-adapter"))
+
+    @project.schematic
+    def schematic(context):
+        return (
+            context.design("main-controller").schematic("Main"),
+            context.design("debug-adapter").schematic("Main"),
+        )
+
+    result = project.run_through(project.schematic)
+
+    assert result.schematic("main-controller:Main")._design.name == "main-controller"
+    assert result.schematic("debug-adapter:Main")._design.name == "debug-adapter"
+
+
+def test_project_result_artifact_manifest_groups_outputs_by_board(tmp_path):
+    project = volt.Project("control-panel")
+
+    @project.design
+    def design():
+        return (
+            _board_ready_design("main-controller"),
+            _board_ready_design("front-panel"),
+        )
+
+    @project.board
+    def board(context):
+        return (
+            _stage_board(context.design("main-controller")),
+            _stage_board(context.design("front-panel")),
+        )
+
+    project.run().write(tmp_path / "control-panel.volt")
+
+    manifest = json.loads(
+        (tmp_path / "control-panel.volt" / "manifest.volt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    pcb_artifacts = [
+        artifact for artifact in manifest["artifacts"] if artifact["kind"] == "pcb"
+    ]
+
+    assert [
+        (artifact["name"], artifact["group"])
+        for artifact in pcb_artifacts
+    ] == [
+        ("main-controller:Main", {"design": "main-controller", "board": "Main"}),
+        ("front-panel:Main", {"design": "front-panel", "board": "Main"}),
+    ]
+
+
+def test_project_rules_run_in_deterministic_order():
+    project = volt.Project("status-led")
+    calls = []
+
+    @project.design
+    def design():
+        return _minimal_design()
+
+    @project.rule_suite("z-last")
+    def z_last(context):
+        calls.append(("z-last", context.design_names))
+
+    @project.rule_suite("a-first")
+    def a_first(context):
+        calls.append(("a-first", context.design_names))
+
+    result = project.run_through(project.design)
+
+    assert result.rule_suites == ("z-last", "a-first")
+    assert calls == [("z-last", ("status-led",)), ("a-first", ("status-led",))]
+
+
+def test_project_diagnostics_preserve_board_and_design_identity():
+    project = volt.Project("fixture")
+
+    @project.design
+    def design():
+        return _board_ready_design("fixture")
+
+    @project.board
+    def board(design):
+        return design.board("Fixture")
+
+    result = project.run()
+
+    diagnostics = tuple(result.diagnostics)
+    board_diagnostics = [
+        diagnostic for diagnostic in diagnostics if diagnostic.board == "Fixture"
+    ]
+
+    assert board_diagnostics
+    assert {diagnostic.design for diagnostic in board_diagnostics} == {"fixture"}
+    assert {diagnostic.source for diagnostic in board_diagnostics} == {"pcb:Fixture"}
+
+
+def test_project_can_fail_on_rule_diagnostic_without_failing_structural_build():
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    @project.rule_suite("product.identity")
+    def product_identity(context):
+        return context.diagnostic(
+            severity="error",
+            code="PRODUCT_IDENTITY_MISMATCH",
+            message="Configured identity does not match product policy",
+        )
+
+    result = project.run_through(project.design)
+
+    assert not result.ok
+    diagnostic = result.diagnostics.errors(stage="project")[0]
+    assert diagnostic.code == "PRODUCT_IDENTITY_MISMATCH"
+    assert diagnostic.rule == "product.identity"
+    assert result.design("status-led").name == "status-led"
+
+
+def test_project_rule_context_does_not_expose_mutable_models():
+    project = volt.Project("status-led")
+    observed = []
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    @project.rule_suite("product.identity")
+    def product_identity(context):
+        observed.append(hasattr(context, "design"))
+
+    project.run_through(project.design)
+
+    assert observed == [False]
+
+
+def test_project_stage_tests_fail_cleanly_for_multi_model_stages():
+    project = volt.Project("kit")
+
+    @project.design
+    def design():
+        return (_minimal_design("main-controller"), _minimal_design("debug-adapter"))
+
+    @project.design.test
+    def smoke(check):
+        check.ok()
+
+    result = project.run_through(project.design)
+
+    assert not result.ok
+    failure = result.test_failures()[0]
+    assert failure.stage == "design"
+    assert failure.name == "smoke"
+    assert "2 design models" in failure.message
+
+
+def test_project_projection_lookup_escapes_ambiguous_names():
+    project = volt.Project("kit")
+
+    @project.design
+    def design():
+        return (_board_ready_design("main:controller"), _board_ready_design("main"))
+
+    @project.board
+    def board(context):
+        first = _stage_board(context.design("main:controller"))
+        second = context.design("main").board("controller:Main")
+        second.set_rectangular_outline(origin=(0, 0), size=(20, 10))
+        return (first, second)
+
+    result = project.run()
+
+    assert result.board("main~1controller:Main")._design.name == "main:controller"
+    assert result.board("main:controller~1Main").name == "controller:Main"
+
+
+def test_project_diagnostics_include_registered_library_identity():
+    library = volt.Library("volt.test.parts")
+    library.add(volt.Part(name="Empty", pins=()))
+    project = volt.Project("status-led")
+    project.use_library(library)
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    result = project.run_through(project.design)
+
+    diagnostic = result.diagnostics.errors(stage="library")[0]
+    assert diagnostic.source == "part:Empty"
+    assert diagnostic.report == "library:volt.test.parts"
+    assert diagnostic.code == "LIBRARY_PART_MISSING_PINS"
+
+
+def test_two_board_project_fixture_writes_deterministic_bundle(tmp_path):
+    project = volt.Project("control-panel")
+
+    @project.design
+    def design():
+        return (
+            _board_ready_design("main-controller"),
+            _board_ready_design("front-panel"),
+        )
+
+    @project.board
+    def board(context):
+        return (
+            _stage_board(context.design("main-controller")),
+            _stage_board(context.design("front-panel")),
+        )
+
+    first = project.run()
+    second = project.run()
+    first.write(tmp_path / "first.volt")
+    second.write(tmp_path / "second.volt")
+
+    first_texts = {
+        path.relative_to(tmp_path / "first.volt").as_posix(): path.read_text(
+            encoding="utf-8"
+        )
+        for path in sorted((tmp_path / "first.volt").rglob("*"))
+        if path.is_file()
+    }
+    second_texts = {
+        path.relative_to(tmp_path / "second.volt").as_posix(): path.read_text(
+            encoding="utf-8"
+        )
+        for path in sorted((tmp_path / "second.volt").rglob("*"))
+        if path.is_file()
+    }
+
+    assert first_texts == second_texts
+    assert set(first_texts) == {
+        "diagnostics/diagnostics.json",
+        "diagnostics/tests.json",
+        "logical/front-panel.volt.json",
+        "logical/main-controller.volt.json",
+        "manifest.volt.json",
+        "pcb/front-panel-Main.svg",
+        "pcb/front-panel-Main.volt.pcb.json",
+        "pcb/main-controller-Main.svg",
+        "pcb/main-controller-Main.volt.pcb.json",
+    }
