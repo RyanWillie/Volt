@@ -111,11 +111,13 @@ TEST_CASE("Diagnostic overlay construction rejects malformed geometry") {
 }
 
 TEST_CASE("PCB visual diagnostic codes are stable constants") {
-    CHECK(volt::pcb_visual_diagnostic_codes::PlacementOverlap == "PCB_VISUAL_PLACEMENT_OVERLAP");
-    CHECK(volt::pcb_visual_diagnostic_codes::ReferenceDesignatorUnreadable ==
+    CHECK(std::string{volt::pcb_visual_diagnostic_codes::PlacementOverlap} ==
+          "PCB_VISUAL_PLACEMENT_OVERLAP");
+    CHECK(std::string{volt::pcb_visual_diagnostic_codes::ReferenceDesignatorUnreadable} ==
           "PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE");
-    CHECK(volt::pcb_visual_diagnostic_codes::LabelOverlap == "PCB_VISUAL_LABEL_OVERLAP");
-    CHECK(volt::diagnostic_categories::PcbVisual == "pcb.visual");
+    CHECK(std::string{volt::pcb_visual_diagnostic_codes::LabelOverlap} ==
+          "PCB_VISUAL_LABEL_OVERLAP");
+    CHECK(std::string{volt::diagnostic_categories::PcbVisual} == "pcb.visual");
 }
 
 TEST_CASE("Diagnostic stores severity code message and related entities") {
