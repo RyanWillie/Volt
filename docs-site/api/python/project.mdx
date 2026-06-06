@@ -15,12 +15,59 @@ Source: `python/volt/project.py`
 | Property | Summary |
 | --- | --- |
 | `designs: tuple[Design, ...]` | Return designs produced by the project design stage. |
+| `resources: tuple[ProjectResource, ...]` | Return explicit authoring resources produced by prior stages. |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
 | `design(self, name: str \| None = None) -> Design` | Return a design by stable name, or the only design. |
+| `resource(self, name: str, expected_type: type \| tuple[type, ...] \| None = None) -> object` | Return a named authoring resource from an earlier stage. |
+
+## `volt.ExpectedDiagnostic`
+
+Project-local policy for a known diagnostic.
+
+Source: `python/volt/project.py`
+
+### Fields
+
+| Field |
+| --- |
+| `code: str` |
+| `severity: str \| None` |
+| `stage: str \| None` |
+| `source: str \| None` |
+| `report: str \| None` |
+| `design: str \| None` |
+| `board: str \| None` |
+| `rule: str \| None` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `matches(self, diagnostic: ProjectDiagnostic) -> bool` | Return whether this expectation covers a project diagnostic. |
+
+## `volt.ExpectedDiagnosticResult`
+
+Match result for one expected diagnostic policy item.
+
+Source: `python/volt/project.py`
+
+### Fields
+
+| Field |
+| --- |
+| `code: str` |
+| `severity: str \| None` |
+| `stage: str \| None` |
+| `source: str \| None` |
+| `report: str \| None` |
+| `design: str \| None` |
+| `board: str \| None` |
+| `rule: str \| None` |
+| `matched: bool` |
 
 ## `volt.Project`
 
@@ -33,8 +80,29 @@ Source: `python/volt/project.py`
 | Method | Summary |
 | --- | --- |
 | `use_library(self, library: Library) -> Library` | Include a library's validation diagnostics in this project result. |
+| `expect_diagnostic(self, *, code: str, severity: str \| None = None, stage: ProjectStage \| str \| None = None, source: str \| None = None, report: str \| None = None, design: str \| None = None, board: str \| None = None, rule: str \| None = None) -> ExpectedDiagnostic` | Declare a project-local diagnostic that is expected for this run. |
 | `run(self) -> 'ProjectResult'` | Run the registered project stages and return one result. |
 | `run_through(self, stage: ProjectStage) -> 'ProjectResult'` | Run stages through the given stage handle. |
+
+## `volt.ProjectArtifactPaths`
+
+Flat artifact paths written for example and viewer consumers.
+
+Source: `python/volt/project.py`
+
+### Fields
+
+| Field |
+| --- |
+| `logical_json: Path \| None` |
+| `schematic_json: Path \| None` |
+| `schematic_svg: Path \| None` |
+| `schematic_body_svg: Path \| None` |
+| `schematic_svg_pages: tuple[Path, ...]` |
+| `pcb_json: Path \| None` |
+| `pcb_svg: Path \| None` |
+| `kicad_pcb: Path \| None` |
+| `diagnostics_json: Path \| None` |
 
 ## `volt.ProjectDiagnostic`
 
@@ -77,6 +145,19 @@ Source: `python/volt/project.py`
 | `__len__(self) -> int` | Return the number of diagnostics. |
 | `errors(self, *, stage: ProjectStage \| str \| None = None) -> tuple[ProjectDiagnostic, ...]` | Return error diagnostics, optionally filtered by stage. |
 
+## `volt.ProjectResource`
+
+Explicit non-canonical authoring resource produced by a project stage.
+
+Source: `python/volt/project.py`
+
+### Fields
+
+| Field |
+| --- |
+| `name: str` |
+| `value: object` |
+
 ## `volt.ProjectResult`
 
 Output of one Volt project run.
@@ -88,7 +169,14 @@ Source: `python/volt/project.py`
 | Property | Summary |
 | --- | --- |
 | `ok: bool` | Return whether the project run has no errors. |
+| `clean: bool` | Return whether the project run has no diagnostics or test failures. |
+| `status: str` | Return clean, expected-diagnostics, or failed project status. |
 | `diagnostics: ProjectDiagnostics` | Return diagnostics collected from default project checks. |
+| `expected_diagnostics: tuple[ExpectedDiagnosticResult, ...]` | Return declared expected diagnostic policy with match status. |
+| `expected_project_diagnostics: tuple[ProjectDiagnostic, ...]` | Return collected diagnostics covered by expected diagnostic policy. |
+| `unexpected_diagnostics: tuple[ProjectDiagnostic, ...]` | Return collected diagnostics not covered by expected diagnostic policy. |
+| `missing_expected_diagnostics: tuple[ExpectedDiagnosticResult, ...]` | Return expected diagnostics that did not appear in the project run. |
+| `expected_diagnostics_ok: bool` | Return whether all diagnostics are expected and all expectations matched. |
 | `stages: tuple[StageResult, ...]` | Return executed stage summaries in run order. |
 | `designs: tuple[Design, ...]` | Return logical designs collected by the run. |
 | `schematics: tuple[Schematic, ...]` | Return schematic projections collected by the run. |
@@ -104,6 +192,7 @@ Source: `python/volt/project.py`
 | `stage(self, stage: ProjectStage \| str) -> StageResult` | Return an executed stage summary by stage handle or name. |
 | `test_failures(self) -> tuple[ProjectTestResult, ...]` | Return failed project tests in stage execution order. |
 | `write(self, path: str \| Path) -> None` | Write a deterministic project result bundle to a directory. |
+| `write_artifacts(self, path: str \| Path, *, slug: str \| None = None, pcb_svg_options: dict[str, object] \| None = None) -> ProjectArtifactPaths` | Write standard flat example/viewer artifacts and return their paths. |
 
 ## `volt.ProjectStage`
 
