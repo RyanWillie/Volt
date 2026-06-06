@@ -13,7 +13,14 @@ from .design import Design
 from .diagnostics import DiagnosticEntity, DiagnosticOverlay
 from .library import Library
 from .pcb import Board
-from .project_checks import BoardCheck, DesignCheck, SchematicCheck
+from .project_checks import (
+    BoardCheck,
+    BoardStageChecks,
+    DesignCheck,
+    DesignStageChecks,
+    SchematicCheck,
+    SchematicStageChecks,
+)
 from .schematic import Schematic
 
 
@@ -410,17 +417,6 @@ class Project:
     ) -> tuple[ProjectTestResult, ...]:
         if not stage.tests:
             return ()
-        if len(models) != 1:
-            count = len(models)
-            model_name = _expected_model_name(stage).lower()
-            message = (
-                f"Project {stage.name} stage tests do not support {count} "
-                f"{model_name} models"
-            )
-            return tuple(
-                ProjectTestResult(stage.name, test.name, False, message)
-                for test in stage.tests
-            )
         results: list[ProjectTestResult] = []
         for test in stage.tests:
             try:
@@ -1085,11 +1081,17 @@ def _report_diagnostics(
 
 def _check_for_stage(stage: ProjectStage, models: tuple[object, ...]):
     if stage.name == "design":
-        return DesignCheck(_one_or_named(models, None, "design"))
+        if len(models) == 1:
+            return DesignCheck(_one_or_named(models, None, "design"))
+        return DesignStageChecks(models)
     if stage.name == "schematic":
-        return SchematicCheck(_one_or_named(models, None, "schematic"))
+        if len(models) == 1:
+            return SchematicCheck(_one_or_named(models, None, "schematic"))
+        return SchematicStageChecks(models)
     if stage.name == "board":
-        return BoardCheck(_one_or_named(models, None, "board"))
+        if len(models) == 1:
+            return BoardCheck(_one_or_named(models, None, "board"))
+        return BoardStageChecks(models)
     raise RuntimeError(f"Unsupported project stage {stage.name}")
 
 

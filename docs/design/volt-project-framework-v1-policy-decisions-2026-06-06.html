@@ -244,6 +244,12 @@
             outputs.
           </p>
           <div class="callout">
+            Follow-up status: the deferred multi-model test support landed as an explicit
+            collection API. Attached tests now use named lookup and deterministic
+            iteration helpers such as <code>check.designs()</code> or
+            <code>check.boards()</code> instead of implicit per-model fan-out.
+          </div>
+          <div class="callout">
             Use ordinary pytest over <code>ProjectResult</code> for cross-model
             assertions in v1. That keeps policy obvious and avoids baking accidental
             semantics into <code>@stage.test</code>.
@@ -302,8 +308,9 @@
           <h2>Follow-Ups Left Out of This PR</h2>
           <ul>
             <li>
-              If teams want attached multi-model stage tests, add a separate explicit API
-              for that instead of overloading the current single-model helpers.
+              Completed in a follow-up: attached multi-model stage tests now use a
+              separate explicit collection API instead of overloading the single-model
+              helpers.
             </li>
             <li>
               If bundle consumers need richer machine states, add derived manifest fields

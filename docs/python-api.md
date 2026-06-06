@@ -295,6 +295,27 @@ def board_placement(check):
     check.places("J1", "R1", "D1")
 ```
 
+When a stage returns multiple models, attached tests receive an explicit multi-model helper
+instead of the single-model `check` surface. Use `check.names()` for aggregate assertions,
+`check.design(...)` / `check.schematic(...)` / `check.board(...)` to target one model, and
+`check.designs()` / `check.schematics()` / `check.boards()` to iterate deterministically in
+stage return order:
+
+```python
+@project.design.test
+def controller_variants(check):
+    assert check.names() == ("main-controller", "debug-adapter")
+    check.design("main-controller").net("VCC").connects("J1.1", "R1.1")
+    for design in check.designs():
+        design.no_connection("VCC", "GND")
+
+
+@project.board.test
+def all_boards_have_outline(check):
+    for board in check.boards():
+        board.has_outline()
+```
+
 Use `project.run_through(project.design)` when iterating on a stage without building the
 later projections. The stage handle is the selector, so callers do not have to use
 stringly stage names.
