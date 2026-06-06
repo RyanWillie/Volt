@@ -9,11 +9,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
 
+from ._project_model_lookup import model_output_name, one_or_named, one_or_named_projection
 from .design import Design
 from .diagnostics import DiagnosticEntity, DiagnosticOverlay
 from .library import Library
 from .pcb import Board
-from .project_checks import BoardCheck, DesignCheck, SchematicCheck
+from .project_checks import (
+    BoardStageChecks,
+    DesignStageChecks,
+    SchematicStageChecks,
+)
 from .schematic import Schematic
 
 
@@ -179,7 +184,7 @@ class BuildContext:
 
     def design(self, name: str | None = None) -> Design:
         """Return a design by stable name, or the only design for the common case."""
-        return _one_or_named(self._designs, name, "design")
+        return one_or_named(self._designs, name, "design", "Project context")
 
     def resource(self, name: str, expected_type: type | tuple[type, ...] | None = None) -> object:
         """Return a named authoring resource from an earlier stage."""
@@ -410,17 +415,6 @@ class Project:
     ) -> tuple[ProjectTestResult, ...]:
         if not stage.tests:
             return ()
-        if len(models) != 1:
-            count = len(models)
-            model_name = _expected_model_name(stage).lower()
-            message = (
-                f"Project {stage.name} stage tests do not support {count} "
-                f"{model_name} models"
-            )
-            return tuple(
-                ProjectTestResult(stage.name, test.name, False, message)
-                for test in stage.tests
-            )
         results: list[ProjectTestResult] = []
         for test in stage.tests:
             try:
@@ -552,15 +546,17 @@ class ProjectResult:
 
     def design(self, name: str | None = None) -> Design:
         """Return a collected design by name, or the only design."""
-        return _one_or_named(self.designs, name, "design")
+        return one_or_named(self.designs, name, "design", "Project result")
 
     def schematic(self, name: str | None = None) -> Schematic:
         """Return a collected schematic by name, or the only schematic."""
-        return _one_or_named_projection(self.schematics, name, "schematic")
+        return one_or_named_projection(
+            self.schematics, name, "schematic", "Project result"
+        )
 
     def board(self, name: str | None = None) -> Board:
         """Return a collected board by name, or the only board."""
-        return _one_or_named_projection(self.boards, name, "board")
+        return one_or_named_projection(self.boards, name, "board", "Project result")
 
     def stage(self, stage: ProjectStage | str) -> StageResult:
         """Return an executed stage summary by stage handle or name."""
@@ -603,7 +599,7 @@ class ProjectResult:
                     )
                 )
             elif isinstance(model, Schematic):
-                output_name = _model_output_name(model, self.schematics)
+                output_name = model_output_name(model, self.schematics)
                 relative_json = _unique_path(
                     Path("schematic") / f"{_safe_slug(output_name)}.volt.schematic.json",
                     used_paths,
@@ -657,7 +653,7 @@ class ProjectResult:
                     )
                 )
             elif isinstance(model, Board):
-                output_name = _model_output_name(model, self.boards)
+                output_name = model_output_name(model, self.boards)
                 relative_json = _unique_path(
                     Path("pcb") / f"{_safe_slug(output_name)}.volt.pcb.json",
                     used_paths,
@@ -901,45 +897,6 @@ def _expected_model_type(stage: ProjectStage):
 def _expected_model_name(stage: ProjectStage) -> str:
     return _expected_model_type(stage).__name__
 
-
-def _one_or_named(models: tuple[object, ...], name: str | None, kind: str):
-    if name is None:
-        if len(models) != 1:
-            raise LookupError(f"Project result has {len(models)} {kind} models")
-        return models[0]
-    matches = [model for model in models if model.name == name]
-    if len(matches) == 1:
-        return matches[0]
-    if len(matches) > 1:
-        raise LookupError(f"Project result has multiple {kind} models named {name}")
-    raise LookupError(f"Project result has no {kind} named {name}")
-
-
-def _one_or_named_projection(
-    models: tuple[Board, ...] | tuple[Schematic, ...],
-    name: str | None,
-    kind: str,
-):
-    if name is None:
-        if len(models) != 1:
-            raise LookupError(f"Project result has {len(models)} {kind} models")
-        return models[0]
-
-    keyed_matches = [model for model in models if _model_output_name(model, models) == name]
-    if len(keyed_matches) == 1:
-        return keyed_matches[0]
-
-    name_matches = [model for model in models if model.name == name]
-    if len(name_matches) == 1:
-        return name_matches[0]
-    if len(name_matches) > 1:
-        raise LookupError(
-            f"Project result has multiple {kind} models named {name}; "
-            f"use design:{kind}"
-        )
-    raise LookupError(f"Project result has no {kind} named {name}")
-
-
 def _check_unique_model_names(models: tuple[object, ...], kind: str) -> None:
     seen: set[str] = set()
     duplicates: set[str] = set()
@@ -950,18 +907,6 @@ def _check_unique_model_names(models: tuple[object, ...], kind: str) -> None:
     if duplicates:
         names = ", ".join(sorted(duplicates))
         raise RuntimeError(f"Project result has duplicate {kind} model names: {names}")
-
-
-def _model_output_name(model: object, siblings: tuple[object, ...]) -> str:
-    if isinstance(model, (Board, Schematic)):
-        if len(siblings) > 1:
-            return f"{_projection_key_part(model._design.name)}:{_projection_key_part(model.name)}"
-    return model.name
-
-
-def _projection_key_part(name: str) -> str:
-    return name.replace("~", "~0").replace(":", "~1")
-
 
 def _stage_name(stage: ProjectStage | str | None) -> str | None:
     if isinstance(stage, ProjectStage):
@@ -1085,11 +1030,11 @@ def _report_diagnostics(
 
 def _check_for_stage(stage: ProjectStage, models: tuple[object, ...]):
     if stage.name == "design":
-        return DesignCheck(_one_or_named(models, None, "design"))
+        return DesignStageChecks(models)
     if stage.name == "schematic":
-        return SchematicCheck(_one_or_named(models, None, "schematic"))
+        return SchematicStageChecks(models)
     if stage.name == "board":
-        return BoardCheck(_one_or_named(models, None, "board"))
+        return BoardStageChecks(models)
     raise RuntimeError(f"Unsupported project stage {stage.name}")
 
 
