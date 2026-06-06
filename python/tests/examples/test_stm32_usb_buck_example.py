@@ -9,6 +9,27 @@ from tempfile import TemporaryDirectory
 import volt
 
 
+def _project_bundle_texts(bundle):
+    return {
+        path.relative_to(bundle).as_posix(): path.read_text(encoding="utf-8")
+        for path in sorted(bundle.rglob("*"))
+        if path.is_file()
+    }
+
+
+def test_stm32_usb_buck_example_exposes_project_result():
+    main = importlib.import_module("examples.stm32_usb_buck.main")
+
+    result = main.run_project()
+
+    assert isinstance(result, volt.ProjectResult)
+    assert [stage.name for stage in result.stages] == ["design", "schematic"]
+    assert result.design().name == "stm32_usb_buck"
+    assert result.schematic().name == "STM32 USB Buck"
+    assert not result.diagnostics.errors(stage="schematic")
+    assert result.test_failures() == ()
+
+
 def _schematic_authoring_source(schematic_output):
     return "\n".join(
         inspect.getsource(getattr(schematic_output, name))
@@ -38,6 +59,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
             path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages
         )
         first_validation_text = artifacts.validation_report.read_text(encoding="utf-8")
+        first_project_texts = _project_bundle_texts(artifacts.project_bundle)
 
         stale_page = artifacts.schematic_svg_pages[0].parent / "stale.svg"
         stale_page.write_text("<svg></svg>\n", encoding="utf-8")
@@ -63,6 +85,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
             second_artifacts.validation_report.read_text(encoding="utf-8")
             == first_validation_text
         )
+        assert _project_bundle_texts(second_artifacts.project_bundle) == first_project_texts
 
     assert logical["format"] == "volt.logical_circuit"
     assert {item["name"] for item in logical["module_definitions"]} >= {
@@ -437,7 +460,18 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "POWER_INPUT_WITHOUT_SOURCE" in codes
     assert "SINGLE_PIN_NET" not in codes
     assert "UNCONNECTED_REQUIRED_PIN" not in codes
-    assert validation["summary"]["errors"] == len(validation["diagnostics"])
+    assert validation["summary"] == {"errors": 2, "infos": 0, "warnings": 48}
+    assert validation["summary"]["errors"] == sum(
+        diagnostic["severity"] == "error" for diagnostic in validation["diagnostics"]
+    )
+    assert {
+        diagnostic["report"] for diagnostic in validation["diagnostics"]
+    } == {"logical.default", "schematic.readiness", "schematic.readability"}
+
+    project_manifest = json.loads(first_project_texts["manifest.volt.json"])
+    assert project_manifest["format"] == "volt.project_result"
+    assert project_manifest["ok"] is False
+    assert project_manifest["tests"]["summary"] == {"failed": 0, "passed": 1}
 
 
 def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage():

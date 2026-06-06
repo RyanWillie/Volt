@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,6 +13,7 @@ SHEET_FILE = "examples/pcb_led_board/main.py"
 
 @dataclass(frozen=True)
 class ExampleArtifacts:
+    project_bundle: Path
     logical_json: Path
     schematic_json: Path
     schematic_svg: Path
@@ -25,60 +25,18 @@ class ExampleArtifacts:
     validation_report: Path
 
 
-def _validation_report_payload(report: volt.DiagnosticReport) -> dict:
-    counts = {"errors": 0, "warnings": 0, "infos": 0}
-    diagnostics = []
-    for diagnostic in report:
-        if diagnostic.severity == "error":
-            counts["errors"] += 1
-        elif diagnostic.severity == "warning":
-            counts["warnings"] += 1
-        else:
-            counts["infos"] += 1
-        diagnostics.append(
-            {
-                "severity": diagnostic.severity,
-                "code": diagnostic.code,
-                "message": diagnostic.message,
-                "entities": [
-                    {"kind": entity.kind, "index": entity.index}
-                    for entity in diagnostic.entities
-                ],
-            }
-        )
-    return {"summary": counts, "diagnostics": diagnostics}
-
-
-def validation_report_json(reports: dict[str, volt.DiagnosticReport]) -> str:
-    report_payloads = {
-        name: _validation_report_payload(report) for name, report in reports.items()
-    }
-    counts = {"errors": 0, "warnings": 0, "infos": 0}
-    diagnostics = []
-    for name, payload in report_payloads.items():
-        for severity, count in payload["summary"].items():
-            counts[severity] += count
-        for diagnostic in payload["diagnostics"]:
-            diagnostics.append({"source": name, **diagnostic})
-    return json.dumps(
-        {
-            "summary": counts,
-            "diagnostics": diagnostics,
-            "reports": report_payloads,
-        },
-        indent=2,
-        sort_keys=True,
-    ) + "\n"
-
-
-def _require_clean(reports: dict[str, volt.DiagnosticReport]) -> None:
+def _require_clean(result: volt.ProjectResult) -> None:
     diagnostics = [
-        f"{name}:{diagnostic.code}"
-        for name, report in reports.items()
-        for diagnostic in report
+        f"{diagnostic.source}:{diagnostic.code}"
+        for diagnostic in result.diagnostics
     ]
-    if diagnostics:
-        raise RuntimeError("PCB LED board example validation failed: " + ", ".join(diagnostics))
+    failures = [
+        f"{failure.stage}:{failure.name}"
+        for failure in result.test_failures()
+    ]
+    if diagnostics or failures:
+        details = ", ".join((*diagnostics, *failures))
+        raise RuntimeError("PCB LED board example validation failed: " + details)
 
 
 def _passive_0603(ref: tuple[str, str]) -> volt.FootprintDefinition:
@@ -246,10 +204,50 @@ def build_board(
 
 
 def build_example() -> tuple[volt.Design, volt.Schematic, volt.Board]:
-    design, nets, parts = build_design()
-    schematic = author_schematic(design, nets, parts)
-    board = build_board(design, nets, parts)
-    return design, schematic, board
+    result = run_project()
+    return result.design(), result.schematic(), result.board()
+
+
+def build_project() -> volt.Project:
+    project = volt.Project("pcb-led-board", description="First-board LED PCB example")
+    context: dict[str, tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Component]]] = {}
+
+    @project.design
+    def design() -> volt.Design:
+        context["design"] = build_design()
+        return context["design"][0]
+
+    @project.schematic
+    def schematic(design: volt.Design) -> volt.Schematic:
+        _, nets, parts = context["design"]
+        return author_schematic(design, nets, parts)
+
+    @project.board
+    def board(design: volt.Design) -> volt.Board:
+        _, nets, parts = context["design"]
+        return build_board(design, nets, parts)
+
+    @project.design.test
+    def led_path_is_connected(check) -> None:
+        check.net("+3V3").connects("J1.1", "R1.1")
+        check.net("LED_A").connects("R1.2", "D1.A")
+        check.net("GND").connects("D1.K", "J1.2")
+        check.no_connection("+3V3", "GND")
+
+    @project.schematic.test
+    def schematic_places_design_parts(check) -> None:
+        check.places("J1", "R1", "D1")
+
+    @project.board.test
+    def board_places_design_parts(check) -> None:
+        check.has_outline()
+        check.places("J1", "R1", "D1")
+
+    return project
+
+
+def run_project() -> volt.ProjectResult:
+    return build_project().run()
 
 
 def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
@@ -258,16 +256,13 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    design, schematic, board = build_example()
-    reports = {
-        "logical_design": design.validate(),
-        "pcb_readiness": design.validate_for_pcb(),
-        "schematic_readiness": schematic.validate(),
-        "schematic_readability": schematic.validate_readability(),
-        "pcb_board": board.validate(),
-    }
-    _require_clean(reports)
+    result = run_project()
+    _require_clean(result)
+    design = result.design()
+    schematic = result.schematic()
+    board = result.board()
 
+    project_bundle = output_path / f"{EXAMPLE_SLUG}.volt"
     logical_json = output_path / f"{EXAMPLE_SLUG}.volt.json"
     schematic_json = output_path / f"{EXAMPLE_SLUG}.volt.schematic.json"
     schematic_svg = output_path / f"{EXAMPLE_SLUG}.svg"
@@ -278,6 +273,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
     kicad_pcb = output_path / f"{EXAMPLE_SLUG}.kicad_pcb"
     validation_report = output_path / f"{EXAMPLE_SLUG}.validation.json"
 
+    result.write(project_bundle)
     if schematic_svg_pages_dir.exists():
         for page_path in schematic_svg_pages_dir.glob("*.svg"):
             page_path.unlink()
@@ -297,8 +293,12 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
             "PCB LED board KiCad export reported loss: "
             + ", ".join(warning.construct for warning in kicad_export.warnings)
         )
-    validation_report.write_text(validation_report_json(reports), encoding="utf-8")
+    validation_report.write_text(
+        (project_bundle / "diagnostics" / "diagnostics.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
     return ExampleArtifacts(
+        project_bundle=project_bundle,
         logical_json=logical_json,
         schematic_json=schematic_json,
         schematic_svg=schematic_svg,
