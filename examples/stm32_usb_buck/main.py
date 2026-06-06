@@ -7,7 +7,10 @@ from pathlib import Path
 
 import volt
 
-from .schematic_output import build_schematic
+from .schematic_connectors import _author_connectors_region
+from .schematic_mcu import _author_mcu_region
+from .schematic_output import SHEET_FILE, SHEET_OPTIONS, build_schematic
+from .schematic_power import _author_power_region
 from .stm32_board import Stm32UsbBuckBoard, build_board
 
 
@@ -45,7 +48,48 @@ def build_project() -> volt.Project:
 
     @project.schematic
     def schematic(_design: volt.Design) -> volt.Schematic:
-        return build_schematic(context["board"])
+        board = context["board"]
+        nets = {net.name: net for net in board.design.nets()}
+
+        sheet = board.design.schematic(
+            "STM32 USB Buck",
+            title="STM32 USB Buck Reference Schematic",
+            number=1,
+            page_count=1,
+            file=SHEET_FILE,
+            **SHEET_OPTIONS,
+        )
+
+        power_region = sheet.region(
+            "Power Circuitry",
+            x=18,
+            y=18,
+            w=558,
+            h=116,
+            style={"border": "dashed"},
+        )
+        mcu_region = sheet.region(
+            "STM32 Microcontroller",
+            x=18,
+            y=140,
+            w=346,
+            h=266,
+            title="STM32 MCU",
+            style={"border": "dashed"},
+        )
+        connectors_region = sheet.region(
+            "Connectors and USB",
+            x=370,
+            y=140,
+            w=208,
+            h=216,
+            style={"border": "dashed"},
+        )
+
+        _author_power_region(power_region, board, nets)
+        _author_mcu_region(mcu_region, board, nets)
+        _author_connectors_region(connectors_region, board, nets)
+        return sheet
 
     @project.schematic.test
     def schematic_places_primary_components(check) -> None:

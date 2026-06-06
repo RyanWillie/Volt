@@ -1,4 +1,5 @@
 import importlib
+import inspect
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -17,6 +18,15 @@ def test_pcb_led_board_example_exposes_project_result():
     assert result.design().name == "pcb-led-board"
     assert result.schematic().name == "First Board LED"
     assert result.board().name == "First Board LED"
+
+
+def test_pcb_led_board_project_stages_are_primary_authoring_functions():
+    main = importlib.import_module("examples.pcb_led_board.main")
+
+    source = inspect.getsource(main.build_project)
+
+    assert "return author_schematic(" not in source
+    assert "return build_board(" not in source
 
 
 def _artifact_texts(artifacts):

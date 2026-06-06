@@ -73,6 +73,15 @@ def _header_1x02() -> volt.FootprintDefinition:
     )
 
 
+def _design_lookup(
+    design: volt.Design,
+) -> tuple[dict[str, volt.Net], dict[str, volt.Component]]:
+    return (
+        {net.name: net for net in design.nets()},
+        {reference: design.component(reference) for reference in ("J1", "R1", "D1")},
+    )
+
+
 def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Component]]:
     design = volt.Design("pcb-led-board")
 
@@ -118,9 +127,14 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
 
 def author_schematic(
     design: volt.Design,
-    nets: dict[str, volt.Net],
-    parts: dict[str, volt.Component],
+    nets: dict[str, volt.Net] | None = None,
+    parts: dict[str, volt.Component] | None = None,
 ) -> volt.Schematic:
+    if nets is None or parts is None:
+        derived_nets, derived_parts = _design_lookup(design)
+        nets = derived_nets if nets is None else nets
+        parts = derived_parts if parts is None else parts
+
     sheet = design.schematic(
         "First Board LED",
         size=(220, 150),
@@ -169,9 +183,14 @@ def author_schematic(
 
 def build_board(
     design: volt.Design,
-    nets: dict[str, volt.Net],
-    parts: dict[str, volt.Component],
+    nets: dict[str, volt.Net] | None = None,
+    parts: dict[str, volt.Component] | None = None,
 ) -> volt.Board:
+    if nets is None or parts is None:
+        derived_nets, derived_parts = _design_lookup(design)
+        nets = derived_nets if nets is None else nets
+        parts = derived_parts if parts is None else parts
+
     board = design.board("First Board LED")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
@@ -210,22 +229,14 @@ def build_example() -> tuple[volt.Design, volt.Schematic, volt.Board]:
 
 def build_project() -> volt.Project:
     project = volt.Project("pcb-led-board", description="First-board LED PCB example")
-    context: dict[str, tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Component]]] = {}
 
     @project.design
     def design() -> volt.Design:
-        context["design"] = build_design()
-        return context["design"][0]
+        project_design, _, _ = build_design()
+        return project_design
 
-    @project.schematic
-    def schematic(design: volt.Design) -> volt.Schematic:
-        _, nets, parts = context["design"]
-        return author_schematic(design, nets, parts)
-
-    @project.board
-    def board(design: volt.Design) -> volt.Board:
-        _, nets, parts = context["design"]
-        return build_board(design, nets, parts)
+    project.schematic(author_schematic)
+    project.board(build_board)
 
     @project.design.test
     def led_path_is_connected(check) -> None:

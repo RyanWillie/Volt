@@ -30,6 +30,14 @@ def test_stm32_usb_buck_example_exposes_project_result():
     assert result.test_failures() == ()
 
 
+def test_stm32_usb_buck_project_schematic_stage_is_primary_authoring_function():
+    main = importlib.import_module("examples.stm32_usb_buck.main")
+
+    source = inspect.getsource(main.build_project)
+
+    assert "return build_schematic(" not in source
+
+
 def _schematic_authoring_source(schematic_output):
     return "\n".join(
         inspect.getsource(getattr(schematic_output, name))
@@ -477,11 +485,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
 def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage():
     main = importlib.import_module("examples.stm32_usb_buck.main")
 
-    def build_invalid_schematic(board):
-        schematic = board.design.schematic("Main")
+    def author_invalid_power_region(region, board, _nets):
         component = board.components["VIN_SRC"]
         net = board.nets["+12V"]
-        schematic.place(
+        region.place(
             component,
             at=(12, 34),
             symbol=volt.SchematicSymbolSpec(
@@ -490,12 +497,11 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
                 primitives=(volt.SchematicSymbolSpec.line((34, 8), (44, 8)),),
             ),
         )
-        schematic.wire(net, ((0, 0), (10, 0)))
-        schematic.label(net, at=(0, -2))
-        return schematic
+        region.wire(net, ((0, 0), (10, 0)))
+        region.label(net, at=(0, -2))
 
-    original = main.build_schematic
-    main.build_schematic = build_invalid_schematic
+    original = main._author_power_region
+    main._author_power_region = author_invalid_power_region
     try:
         with TemporaryDirectory() as temp_dir:
             output_dir = Path(temp_dir)
@@ -512,7 +518,7 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
             assert not (output_dir / "stm32_usb_buck.body.svg").exists()
             assert not (output_dir / "stm32_usb_buck.pages").exists()
     finally:
-        main.build_schematic = original
+        main._author_power_region = original
 
 
 def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():

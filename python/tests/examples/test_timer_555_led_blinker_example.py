@@ -29,6 +29,15 @@ def test_timer_555_led_blinker_example_exposes_project_result():
     assert result.board().name == "555 LED Blinker"
 
 
+def test_timer_555_led_blinker_project_stages_are_primary_authoring_functions():
+    main = importlib.import_module("examples.timer_555_led_blinker.main")
+
+    source = inspect.getsource(main.build_project)
+
+    assert "return build_schematic(" not in source
+    assert "return build_board(" not in source
+
+
 def test_timer_555_led_blinker_example_writes_stable_artifacts():
     main = importlib.import_module("examples.timer_555_led_blinker.main")
 
