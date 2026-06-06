@@ -144,8 +144,7 @@ TEST_CASE("Logical circuit writer emits selected-part 3D model metadata") {
             volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
             volt::PackageRef{"0603"},
             volt::FootprintRef{"passives", "R_0603_1608Metric"},
-            std::vector{volt::PinPadMapping{first_pin, "1"},
-                        volt::PinPadMapping{second_pin, "2"}},
+            std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
             {},
             volt::PartModel3D{"glb", "resistor-body.glb", {0.5, -0.25, 0.8}, 15.0},
         });

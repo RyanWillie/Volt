@@ -884,7 +884,9 @@ LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
                          string_field(manufacturer_part, "part_number")},
         PackageRef{string_field(object, "package")},
         FootprintRef{string_field(footprint, "library"), string_field(footprint, "name")},
-        std::move(mappings), properties(field(object, "properties")), model_3d};
+        std::move(mappings),
+        properties(field(object, "properties")),
+        model_3d};
 }
 
 void LogicalCircuitReader::read_selected_physical_parts() {

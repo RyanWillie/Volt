@@ -258,12 +258,11 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
     }
 
     circuit_.select_physical_part(
-        component_handle,
-        volt::PhysicalPart{volt::ManufacturerPart{manufacturer, part_number},
-                           volt::PackageRef{package},
-                           volt::FootprintRef{footprint_library, footprint_name},
-                           std::move(mappings), properties_from_dict(properties),
-                           part_model_3d_from_object(model_3d)});
+        component_handle, volt::PhysicalPart{volt::ManufacturerPart{manufacturer, part_number},
+                                             volt::PackageRef{package},
+                                             volt::FootprintRef{footprint_library, footprint_name},
+                                             std::move(mappings), properties_from_dict(properties),
+                                             part_model_3d_from_object(model_3d)});
 }
 
 void PyCircuit::set_component_quantity(std::size_t component, const std::string &name,

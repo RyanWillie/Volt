@@ -38,8 +38,8 @@ PinPadMapping::PinPadMapping(PinDefId pin, std::string pad) : pin_{pin}, pad_{st
 
 PartModel3D::PartModel3D(std::string format, std::string file_name,
                          std::array<double, 3> translation_mm, double rotation_deg)
-    : format_{std::move(format)}, file_name_{std::move(file_name)},
-      translation_mm_{translation_mm}, rotation_deg_{rotation_deg} {
+    : format_{std::move(format)}, file_name_{std::move(file_name)}, translation_mm_{translation_mm},
+      rotation_deg_{rotation_deg} {
     if (format_.empty()) {
         throw std::invalid_argument{"3D model format must not be empty"};
     }

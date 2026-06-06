@@ -1,7 +1,7 @@
 #pragma once
 
-#include <array>
 #include <algorithm>
+#include <array>
 #include <iterator>
 #include <optional>
 #include <stdexcept>
@@ -107,7 +107,8 @@ class PinPadMapping {
 /** Reusable 3D asset metadata attached to a selected physical part. */
 class PartModel3D {
   public:
-    /** Construct a selected-part 3D model reference from a file name and footprint-relative pose. */
+    /** Construct a selected-part 3D model reference from a file name and footprint-relative pose.
+     */
     PartModel3D(std::string format, std::string file_name, std::array<double, 3> translation_mm,
                 double rotation_deg);
 
@@ -126,11 +127,9 @@ class PartModel3D {
     [[nodiscard]] double rotation_deg() const noexcept { return rotation_deg_; }
 
     /** Return whether two selected-part model declarations are identical. */
-    [[nodiscard]] friend bool operator==(const PartModel3D &lhs,
-                                         const PartModel3D &rhs) noexcept {
-        return lhs.format_ == rhs.format_ && lhs.file_name_ == rhs.file_name_
-               && lhs.translation_mm_ == rhs.translation_mm_
-               && lhs.rotation_deg_ == rhs.rotation_deg_;
+    [[nodiscard]] friend bool operator==(const PartModel3D &lhs, const PartModel3D &rhs) noexcept {
+        return lhs.format_ == rhs.format_ && lhs.file_name_ == rhs.file_name_ &&
+               lhs.translation_mm_ == rhs.translation_mm_ && lhs.rotation_deg_ == rhs.rotation_deg_;
     }
 
   private:
@@ -170,9 +169,7 @@ class PhysicalPart {
     [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept;
 
     /** Return optional selected-part 3D model metadata. */
-    [[nodiscard]] const std::optional<PartModel3D> &model_3d() const noexcept {
-        return model_3d_;
-    }
+    [[nodiscard]] const std::optional<PartModel3D> &model_3d() const noexcept { return model_3d_; }
 
   private:
     friend class ElectricalModel;
