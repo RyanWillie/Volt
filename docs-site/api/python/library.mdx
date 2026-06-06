@@ -14,7 +14,7 @@ Source: `python/volt/library.py`
 
 | Property | Summary |
 | --- | --- |
-| `parts: tuple[Part, ...]` | Return public parts registered in this library in deterministic name order. |
+| `parts: tuple[Part, ...]` | Return registered public parts in deterministic order. |
 
 ### Methods
 
@@ -22,6 +22,7 @@ Source: `python/volt/library.py`
 | --- | --- |
 | `add(self, part: Part) -> Part` | Add a reusable public part to this library. |
 | `build(self) -> LibraryResult` | Validate this library's public parts and return a deterministic result. |
+| `part_family(self, **defaults) -> _PartFamily` | Create a helper that registers parts using shared defaults. |
 | `component(self, name: str, *, pins: Iterable[PinSpec], properties: dict \| None = None, source_name: str \| None = None, source_version: str \| None = None, physical_part: PhysicalPartSpec \| None = None, prefix: str = 'U', schematic_symbol: SchematicSymbolSpec \| Iterable[SchematicSymbolSpec] \| None = None) -> LibraryComponent` | Register a reusable component entry in this Python library. |
 | `__getitem__(self, name: str) -> Part \| LibraryComponent` | Return a registered public part or legacy library component by name. |
 
