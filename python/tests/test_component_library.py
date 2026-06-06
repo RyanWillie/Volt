@@ -730,16 +730,16 @@ def _library_resistor_part(name="R_0603_10K"):
 def _resistor_0603_family(library, **overrides):
     defaults = {
         "prefix": "R",
-        "kind": "resistor",
         "package": "0603",
         "pins": [volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
         "symbol": _two_pin_test_symbol("volt.test:R_0603"),
         "footprint": _resistor_0603_footprint(),
         "pads": {1: "1", 2: "2"},
         "manufacturer": "Yageo",
+        "properties": {"kind": "resistor"},
     }
     defaults.update(overrides)
-    return library.parts(**defaults)
+    return library.part_family(**defaults)
 
 
 def test_library_parts_family_registers_repeated_resistor_catalog_parts():
@@ -757,6 +757,8 @@ def test_library_parts_family_registers_repeated_resistor_catalog_parts():
     assert hundred_k.name == "R_0603_100K"
     assert library["R_0603_10K"] is ten_k
     assert library["R_0603_100K"] is hundred_k
+    assert isinstance(library.parts, tuple)
+    assert not callable(library.parts)
     assert [part.name for part in library.parts] == ["R_0603_100K", "R_0603_10K"]
 
     result = library.build()
@@ -768,7 +770,11 @@ def test_library_parts_family_registers_repeated_resistor_catalog_parts():
 
 def test_library_parts_family_overrides_are_isolated_snapshots():
     default_pads = {1: ["1"], 2: "2"}
-    default_properties = {"series": {"name": "RC"}, "tags": ["default"]}
+    default_properties = {
+        "kind": "resistor",
+        "series": {"name": "RC"},
+        "tags": ["default"],
+    }
     default_ratings = {"power": {"max": 0.1}}
     default_extensions = {"lifecycle": {"status": "active"}}
     library = volt.Library("volt.test.passives")
@@ -845,12 +851,24 @@ def test_library_parts_family_duplicate_names_fail_at_library_boundary():
     r0603.part("10K", mpn="RC0603FR-0710KL")
 
     try:
-        library.add(_library_resistor_part())
+        r0603.part("10K", mpn="RC0603FR-0710KL")
     except ValueError as error:
         assert "already exists" in str(error)
         assert "R_0603_10K" in str(error)
     else:
         raise AssertionError("helper-created part names should use Library.add duplicates")
+
+    direct_library = volt.Library("volt.test.direct.passives")
+    direct_library.add(_library_resistor_part())
+    direct_r0603 = _resistor_0603_family(direct_library)
+
+    try:
+        direct_r0603.part("10K", mpn="RC0603FR-0710KL")
+    except ValueError as error:
+        assert "already exists" in str(error)
+        assert "R_0603_10K" in str(error)
+    else:
+        raise AssertionError("direct part names should block helper duplicates")
 
 
 def test_library_result_orders_helper_and_direct_parts_deterministically():

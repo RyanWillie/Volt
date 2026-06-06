@@ -616,15 +616,15 @@ R_0603_10K = volt.Part(
 )
 
 library.add(R_0603_10K)</code></pre>
-      <p>For repeated catalog rows, define shared defaults once with <code>library.parts(...)</code>. The returned helper is only Python ergonomics: every row is still a normal immutable <code>volt.Part</code> registered with the same <code>Library</code> boundary checks.</p>
-      <pre><code>r0603 = library.parts(
+      <p>For repeated catalog rows, define shared defaults once with <code>library.part_family(...)</code>. The returned helper is only Python ergonomics: every row is still a normal immutable <code>volt.Part</code> registered with the same <code>Library</code> boundary checks.</p>
+      <pre><code>r0603 = library.part_family(
     prefix="R",
-    kind="resistor",
     package="0603",
     pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
     footprint=R_0603_FOOTPRINT,
     pads={1: "1", 2: "2"},
     manufacturer="Yageo",
+    properties={"kind": "resistor"},
 )
 
 R_0603_10K = r0603.part("10K", mpn="RC0603FR-0710KL")

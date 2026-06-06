@@ -501,9 +501,13 @@ class Library:
         return LibraryResult(self)
 
     @property
-    def parts(self):
-        """Return registered parts, or call with defaults to create a part family."""
-        return _LibraryParts(self)
+    def parts(self) -> tuple[Part, ...]:
+        """Return registered public parts in deterministic order."""
+        return self._ordered_parts()
+
+    def part_family(self, **defaults) -> _PartFamily:
+        """Create a helper that registers parts using shared defaults."""
+        return _PartFamily(self, defaults)
 
     def component(
         self,
@@ -548,19 +552,6 @@ class Library:
         return tuple(self._parts[name] for name in sorted(self._parts))
 
 
-class _LibraryParts(tuple):
-    """Callable ordered view over a library's public parts."""
-
-    def __new__(cls, library: Library):
-        parts = super().__new__(cls, library._ordered_parts())
-        parts._library = library
-        return parts
-
-    def __call__(self, **defaults) -> _PartFamily:
-        """Create a helper that registers parts using shared defaults."""
-        return _PartFamily(self._library, defaults)
-
-
 class _PartFamily:
     """Small helper that creates and registers normal Part objects."""
 
@@ -569,7 +560,7 @@ class _PartFamily:
         object.__setattr__(
             self,
             "_defaults",
-            _freeze_value(_normalize_part_family_payload(defaults)),
+            _freeze_value(dict(defaults)),
         )
         object.__setattr__(self, "_frozen", True)
 
@@ -589,20 +580,10 @@ class _PartFamily:
 
         payload = _merge_part_family_payload(
             _mutable_value(self._defaults),
-            _normalize_part_family_payload(overrides),
+            overrides,
         )
         payload["name"] = explicit_name or _part_family_name(payload, key)
         return self._library.add(Part(**payload))
-
-
-def _normalize_part_family_payload(payload: Mapping) -> dict:
-    result = dict(payload)
-    kind = result.pop("kind", None)
-    if kind is not None:
-        properties = dict(result.get("properties") or {})
-        properties["kind"] = kind
-        result["properties"] = properties
-    return result
 
 
 def _merge_part_family_payload(defaults: dict, overrides: dict) -> dict:
