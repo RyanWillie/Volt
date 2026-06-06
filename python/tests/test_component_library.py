@@ -727,6 +727,175 @@ def _library_resistor_part(name="R_0603_10K"):
     )
 
 
+def _resistor_0603_family(library, **overrides):
+    defaults = {
+        "prefix": "R",
+        "package": "0603",
+        "pins": [volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        "symbol": _two_pin_test_symbol("volt.test:R_0603"),
+        "footprint": _resistor_0603_footprint(),
+        "pads": {1: "1", 2: "2"},
+        "manufacturer": "Yageo",
+        "properties": {"kind": "resistor"},
+    }
+    defaults.update(overrides)
+    return library.part_family(**defaults)
+
+
+def test_library_parts_family_registers_repeated_resistor_catalog_parts():
+    library = volt.Library("volt.test.passives")
+    r0603 = _resistor_0603_family(library)
+
+    ten_k = r0603.part("10K", mpn="RC0603FR-0710KL")
+    hundred_k = r0603.part("100K", mpn="RC0603FR-07100KL")
+
+    assert isinstance(ten_k, volt.Part)
+    assert ten_k.name == "R_0603_10K"
+    assert ten_k.value == "10K"
+    assert ten_k.properties["kind"] == "resistor"
+    assert ten_k.properties["value"] == "10K"
+    assert hundred_k.name == "R_0603_100K"
+    assert library["R_0603_10K"] is ten_k
+    assert library["R_0603_100K"] is hundred_k
+    assert isinstance(library.parts, tuple)
+    assert not callable(library.parts)
+    assert [part.name for part in library.parts] == ["R_0603_100K", "R_0603_10K"]
+
+    result = library.build()
+
+    assert result.ok
+    assert [part.name for part in result.parts] == ["R_0603_100K", "R_0603_10K"]
+    assert all(part.board_ready for part in result.parts)
+
+
+def test_library_parts_family_overrides_are_isolated_snapshots():
+    default_pads = {1: ["1"], 2: "2"}
+    default_properties = {
+        "kind": "resistor",
+        "series": {"name": "RC"},
+        "tags": ["default"],
+    }
+    default_ratings = {"power": {"max": 0.1}}
+    default_extensions = {"lifecycle": {"status": "active"}}
+    library = volt.Library("volt.test.passives")
+    r0603 = _resistor_0603_family(
+        library,
+        pads=default_pads,
+        properties=default_properties,
+        ratings=default_ratings,
+        extensions=default_extensions,
+        source_version="catalog-v1",
+    )
+
+    default_pads[1].append("9")
+    default_properties["series"]["name"] = "changed"
+    default_properties["tags"].append("changed")
+    default_ratings["power"]["max"] = 0.25
+    default_extensions["lifecycle"]["status"] = "changed"
+
+    override_pads = {1: ["1"], 2: "2"}
+    override_properties = {"tolerance": {"percent": 1}}
+    override_ratings = {"resistance": {"tolerance": "1%"}}
+    override_extensions = {"stock": {"sku": "RC0603-10K"}}
+    ten_k = r0603.part(
+        "10K",
+        mpn="RC0603FR-0710KL",
+        pads=override_pads,
+        properties=override_properties,
+        ratings=override_ratings,
+        extensions=override_extensions,
+        source_name="catalog/R0603/10K",
+        source_version="catalog-v2",
+    )
+
+    override_pads[1].append("9")
+    override_properties["tolerance"]["percent"] = 5
+    override_ratings["resistance"]["tolerance"] = "5%"
+    override_extensions["stock"]["sku"] = "changed"
+
+    hundred_k = r0603.part(
+        "100K",
+        value="100 kohm",
+        part_number="RC0603FR-07100KL",
+        manufacturer="KOA",
+        package="0603",
+        pads={1: "1", 2: "2"},
+        source_name="catalog/R0603/100K",
+    )
+
+    assert ten_k.pads[1] == ("1",)
+    assert ten_k.properties["kind"] == "resistor"
+    assert ten_k.properties["series"]["name"] == "RC"
+    assert ten_k.properties["tags"] == ("default",)
+    assert ten_k.properties["tolerance"]["percent"] == 1
+    assert ten_k.ratings["power"]["max"] == 0.1
+    assert ten_k.ratings["resistance"]["tolerance"] == "1%"
+    assert ten_k.extensions["lifecycle"]["status"] == "active"
+    assert ten_k.extensions["stock"]["sku"] == "RC0603-10K"
+    assert ten_k.source_name == "catalog/R0603/10K"
+    assert ten_k.source_version == "catalog-v2"
+    assert hundred_k.name == "R_0603_100K"
+    assert hundred_k.value == "100 kohm"
+    assert hundred_k.mpn == "RC0603FR-07100KL"
+    assert hundred_k.manufacturer == "KOA"
+    assert hundred_k.package == "0603"
+    assert "tolerance" not in hundred_k.properties
+    assert hundred_k.source_name == "catalog/R0603/100K"
+    assert hundred_k.source_version == "catalog-v1"
+
+
+def test_library_parts_family_duplicate_names_fail_at_library_boundary():
+    library = volt.Library("volt.test.passives")
+    r0603 = _resistor_0603_family(library)
+
+    r0603.part("10K", mpn="RC0603FR-0710KL")
+
+    try:
+        r0603.part("10K", mpn="RC0603FR-0710KL")
+    except ValueError as error:
+        assert "already exists" in str(error)
+        assert "R_0603_10K" in str(error)
+    else:
+        raise AssertionError("helper-created part names should use Library.add duplicates")
+
+    direct_library = volt.Library("volt.test.direct.passives")
+    direct_library.add(_library_resistor_part())
+    direct_r0603 = _resistor_0603_family(direct_library)
+
+    try:
+        direct_r0603.part("10K", mpn="RC0603FR-0710KL")
+    except ValueError as error:
+        assert "already exists" in str(error)
+        assert "R_0603_10K" in str(error)
+    else:
+        raise AssertionError("direct part names should block helper duplicates")
+
+
+def test_library_result_orders_helper_and_direct_parts_deterministically():
+    library = volt.Library("volt.test.passives")
+    r0603 = _resistor_0603_family(library)
+
+    zeta = library.add(_library_resistor_part(name="Z_Direct_1K"))
+    ten_k = r0603.part("10K", mpn="RC0603FR-0710KL")
+    one_k = r0603.part("1K", mpn="RC0603FR-071KL")
+
+    result = library.build()
+
+    assert library["Z_Direct_1K"] is zeta
+    assert library["R_0603_10K"] is ten_k
+    assert library["R_0603_1K"] is one_k
+    assert [part.name for part in library.parts] == [
+        "R_0603_10K",
+        "R_0603_1K",
+        "Z_Direct_1K",
+    ]
+    assert [part.name for part in result.parts] == [
+        "R_0603_10K",
+        "R_0603_1K",
+        "Z_Direct_1K",
+    ]
+
+
 def test_library_build_validates_board_ready_part():
     library = volt.Library("volt.test.passives")
     part = _library_resistor_part()
