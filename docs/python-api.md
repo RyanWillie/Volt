@@ -233,7 +233,8 @@ def design():
 
 
 @project.schematic
-def schematic(design):
+def schematic(context):
+    design = context.design()
     sheet = design.schematic("Main")
     sheet.place(design.component("J1"), at=(45, 60))
     sheet.place(design.component("R1"), at=(80, 60))
@@ -242,7 +243,8 @@ def schematic(design):
 
 
 @project.board
-def board(design):
+def board(context):
+    design = context.design()
     pcb = design.board("Main")
     pcb.set_rectangular_outline(origin=(0, 0), size=(32, 18))
     pcb.place(design.component("J1"), at=(5, 9), locked=True)
@@ -261,9 +263,14 @@ visual net coverage and selected physical parts for placed PCB components.
 
 `project.run()` executes registered stages in order and returns `ProjectResult`.
 `result.ok` is false when default diagnostics have errors or stage-attached tests fail.
+Later stages always receive a `volt.BuildContext`, even for the common single-design case;
+use `context.design()` to reach that design and `context.resource(...)` for explicit
+authoring resources.
 `result.write(path)` writes a deterministic directory bundle with logical JSON,
 schematic JSON/SVG, PCB JSON/SVG, diagnostics, test results, and
-`manifest.volt.json`.
+`manifest.volt.json`. The output path may be missing, empty, or an existing Volt
+project-result bundle. Other pre-existing content is rejected so the write does not
+delete unrelated files.
 
 Stages can also own product-intent tests. These tests are not a replacement for kernel
 diagnostics; they encode the specific behavior the product must keep while the circuit

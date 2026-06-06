@@ -73,9 +73,9 @@ target_link_libraries(
     PRIVATE
         Volt::Authoring
         Volt::IO
+        Volt::NlohmannJson
         Volt::PCB
         Volt::KiCadAdapter
-        nlohmann_json::nlohmann_json
         Catch2::Catch2WithMain
 )
 target_compile_features(volt_core_tests PRIVATE cxx_std_20)
