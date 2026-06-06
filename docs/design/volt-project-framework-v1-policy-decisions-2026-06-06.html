@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Volt Project Framework v1 Policy Decisions</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f1ea;
+        --panel: #fffdf8;
+        --ink: #1f2933;
+        --muted: #5b6773;
+        --line: #d9d1c4;
+        --accent: #9f4f2a;
+        --accent-soft: #f5e4db;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+        background:
+          radial-gradient(circle at top right, #f8ede1 0, transparent 32%),
+          linear-gradient(180deg, #fbf8f2 0%, var(--bg) 100%);
+        color: var(--ink);
+      }
+
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 48px 24px 72px;
+      }
+
+      .hero,
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: 0 18px 40px rgba(31, 41, 51, 0.06);
+      }
+
+      .hero {
+        padding: 32px;
+        margin-bottom: 24px;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        font: 600 0.82rem/1.2 "Helvetica Neue", Arial, sans-serif;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        font-weight: 700;
+      }
+
+      h1 {
+        font-size: clamp(2rem, 4vw, 3.2rem);
+        line-height: 1.05;
+      }
+
+      h2 {
+        font-size: 1.15rem;
+        margin-bottom: 10px;
+      }
+
+      p,
+      li,
+      td,
+      th {
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .lede {
+        margin-top: 18px;
+        color: var(--muted);
+        max-width: 48rem;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .panel {
+        padding: 22px;
+      }
+
+      .summary {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .summary th,
+      .summary td {
+        text-align: left;
+        vertical-align: top;
+        padding: 14px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .summary tr:first-child th,
+      .summary tr:first-child td {
+        border-top: 0;
+      }
+
+      .decision-list {
+        display: grid;
+        gap: 16px;
+      }
+
+      .decision {
+        padding: 22px;
+      }
+
+      .decision strong {
+        color: var(--accent);
+      }
+
+      ul {
+        margin: 10px 0 0 20px;
+        padding: 0;
+      }
+
+      code {
+        font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 0.95em;
+      }
+
+      .callout {
+        margin-top: 16px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: var(--accent-soft);
+        border: 1px solid #ebc8b7;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <p class="eyebrow">Volt Design Note • June 6, 2026</p>
+        <h1>Project Framework v1 Policy Decisions</h1>
+        <p class="lede">
+          This note closes the remaining policy questions for the first staged Project
+          Framework release. The through-line is simple: the framework may help author,
+          test, and package work, but it does not become a second owner of EDA meaning.
+          Returned Volt models stay canonical. <code>BuildContext</code> and the
+          project-result bundle stay authoring and delivery surfaces around those models.
+        </p>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Stable Input Rule</h2>
+          <p>
+            Later stages receive <code>BuildContext</code> every time. Adding a
+            resource or a second design must not silently change the parameter type seen
+            by downstream code.
+          </p>
+        </article>
+        <article class="panel">
+          <h2>Status Boundary</h2>
+          <p>
+            <code>ProjectResult.status</code> and the written bundle summarize one run
+            for tools, CI, and the app. They are not persistent project state and not a
+            kernel database.
+          </p>
+        </article>
+        <article class="panel">
+          <h2>Honest Naming</h2>
+          <p>
+            “Project Framework” is the accurate term. v1 currently ships a staged flow,
+            but the intent is an authoring framework around kernel-owned models, not a
+            permanently fixed pipeline dressed up as one.
+          </p>
+        </article>
+      </section>
+
+      <section class="panel" style="margin-bottom: 24px; padding: 24px;">
+        <h2>Decision Summary</h2>
+        <table class="summary">
+          <tr>
+            <th>Topic</th>
+            <td>Decision</td>
+          </tr>
+          <tr>
+            <th>Multi-model stage tests</th>
+            <td>
+              Attached <code>@stage.test</code> helpers remain a single-model feature in
+              v1. When a stage returns multiple models, the framework reports that those
+              attached tests are unsupported instead of guessing a per-model policy.
+            </td>
+          </tr>
+          <tr>
+            <th>Missing expected diagnostics</th>
+            <td>
+              A declared expected diagnostic that does not appear is a failure. Stale
+              expectations are policy drift, not success.
+            </td>
+          </tr>
+          <tr>
+            <th>Bundle and status ownership</th>
+            <td>
+              Python owns project-result bundling and run status reporting. The bundle is
+              a deterministic handoff artifact, not canonical EDA state.
+            </td>
+          </tr>
+          <tr>
+            <th>Framework naming</th>
+            <td>
+              Use “Project Framework” or “staged Project Framework,” not “fixed
+              pipeline,” when describing v1 behavior and roadmap intent.
+            </td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="decision-list">
+        <article class="panel decision">
+          <h2>1. Multi-Model Stage-Test Policy</h2>
+          <p>
+            v1 keeps the attached test API intentionally narrow. The
+            <code>check</code> helpers are ergonomic because they operate on one design,
+            one schematic, or one board at a time. Once a stage returns multiple models,
+            the framework should not invent implicit iteration, fan-out naming rules, or
+            aggregate pass/fail semantics behind the user’s back. Instead, it should stay
+            explicit and report that attached tests are unsupported for multi-model stage
+            outputs.
+          </p>
+          <div class="callout">
+            Use ordinary pytest over <code>ProjectResult</code> for cross-model
+            assertions in v1. That keeps policy obvious and avoids baking accidental
+            semantics into <code>@stage.test</code>.
+          </div>
+        </article>
+
+        <article class="panel decision">
+          <h2>2. Missing Expected Diagnostics Policy</h2>
+          <p>
+            Expected diagnostics are active product policy, not comments. If a project
+            declares an expected diagnostic and the run no longer emits it, the framework
+            should treat that expectation as missing and keep
+            <code>expected_diagnostics_ok</code> false. This catches stale waivers,
+            renamed reports, and unreviewed intent drift.
+          </p>
+          <p style="margin-top: 12px;">
+            The important distinction is between “the design still has a known issue” and
+            “the policy file still says it should.” v1 keeps that distinction sharp.
+          </p>
+        </article>
+
+        <article class="panel decision">
+          <h2>3. Python-Owned Bundle and Status Boundary</h2>
+          <p>
+            The project-result bundle, manifest, diagnostics JSON, test JSON, and
+            top-level run status belong to the Python framework surface. They package one
+            run so other tools can inspect it without re-executing arbitrary Python. That
+            makes them a delivery contract, not a second source of circuit truth.
+          </p>
+          <p style="margin-top: 12px;">
+            Kernel-owned meaning still lives in the returned Volt models and their
+            serialized logical, schematic, and PCB data. The framework may summarize that
+            output as <code>clean</code>, <code>expected-diagnostics</code>, or
+            <code>failed</code>, but those labels are run reporting, not new EDA
+            semantics.
+          </p>
+        </article>
+
+        <article class="panel decision">
+          <h2>4. Framework vs. Fixed-Pipeline Naming Honesty</h2>
+          <p>
+            v1 happens to execute a fixed set of named stages, but that does not make the
+            concept a “fixed pipeline” in product language. The value being introduced is
+            a framework for staged authoring, validation, and deterministic handoff
+            around kernel-owned models. Calling it a fixed pipeline overstates rigidity
+            and understates the long-term role of project-level authoring structure.
+          </p>
+          <p style="margin-top: 12px;">
+            When describing today’s implementation, say “staged Project Framework” if the
+            execution order matters. When describing the product surface, say “Project
+            Framework.”
+          </p>
+        </article>
+
+        <article class="panel decision">
+          <h2>Follow-Ups Left Out of This PR</h2>
+          <ul>
+            <li>
+              If teams want attached multi-model stage tests, add a separate explicit API
+              for that instead of overloading the current single-model helpers.
+            </li>
+            <li>
+              If bundle consumers need richer machine states, add derived manifest fields
+              rather than widening the core three-state <code>status</code> vocabulary.
+            </li>
+            <li>
+              If future work adds custom stage graphs beyond design, schematic, and
+              board, model that capability directly rather than retroactively naming v1 a
+              pipeline.
+            </li>
+          </ul>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

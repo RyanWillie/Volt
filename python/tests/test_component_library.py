@@ -1050,7 +1050,8 @@ def test_project_instantiates_imported_part_without_manual_footprint_cache():
         return d
 
     @project.board
-    def board(design):
+    def board(context):
+        design = context.design()
         pcb = design.board("Main")
         pcb.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
         pcb.place(design.component("R1"), at=(10.0, 6.0))

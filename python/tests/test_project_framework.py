@@ -197,7 +197,7 @@ def test_project_rejects_wrong_model_type_from_stage():
         return _minimal_design()
 
     @project.schematic
-    def schematic(design):
+    def schematic(context):
         return volt.Design("not-a-schematic")
 
     with pytest.raises(TypeError, match="schematic stage must return Schematic models"):
@@ -214,24 +214,117 @@ def test_project_run_executes_staged_workflow_and_collects_models():
         return _minimal_design()
 
     @project.schematic
-    def schematic(design):
-        calls.append(("schematic", design.name))
-        return design.schematic("Main")
+    def schematic(context):
+        calls.append(("schematic", type(context).__name__, context.design().name))
+        return context.design().schematic("Main")
 
     @project.board
-    def board(design):
-        calls.append(("board", design.name))
-        pcb = design.board("Main")
+    def board(context):
+        calls.append(("board", type(context).__name__, context.design().name))
+        pcb = context.design().board("Main")
         pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
         return pcb
 
     result = project.run()
 
-    assert calls == ["design", ("schematic", "status-led"), ("board", "status-led")]
+    assert calls == [
+        "design",
+        ("schematic", "BuildContext", "status-led"),
+        ("board", "BuildContext", "status-led"),
+    ]
     assert result.design("status-led").name == "status-led"
     assert result.schematic("Main").name == "Main"
     assert result.board("Main").name == "Main"
     assert [stage.name for stage in result.stages] == ["design", "schematic", "board"]
+
+
+def test_project_later_stages_always_receive_build_context_for_single_design():
+    project = volt.Project("status-led")
+    contexts = []
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    def _record_context(context):
+        contexts.append(
+            (
+                type(context).__name__,
+                tuple(design.name for design in context.designs),
+                tuple(resource.name for resource in context.resources),
+            )
+        )
+
+    @project.schematic
+    def schematic(context):
+        _record_context(context)
+        return _stage_schematic(context.design())
+
+    @project.board
+    def board(context):
+        _record_context(context)
+        return _stage_board(context.design())
+
+    result = project.run()
+
+    assert result.ok
+    assert contexts == [
+        ("BuildContext", ("status-led",), ()),
+        ("BuildContext", ("status-led",), ()),
+    ]
+
+
+def test_project_later_stages_keep_same_build_context_signature_with_resources_and_multiple_designs():
+    project = volt.Project("control-panel")
+    contexts = []
+
+    @project.design
+    def design():
+        return (
+            _board_ready_design("main-controller"),
+            _board_ready_design("front-panel"),
+            volt.ProjectResource("variant", "A"),
+        )
+
+    def _record_context(context):
+        contexts.append(
+            (
+                type(context).__name__,
+                tuple(design.name for design in context.designs),
+                tuple(resource.name for resource in context.resources),
+            )
+        )
+
+    @project.schematic
+    def schematic(context):
+        _record_context(context)
+        return (
+            _stage_schematic(context.design("main-controller")),
+            _stage_schematic(context.design("front-panel")),
+            volt.ProjectResource("anchor", (20, 20)),
+        )
+
+    @project.board
+    def board(context):
+        _record_context(context)
+        assert context.resource("variant", str) == "A"
+        assert context.resource("anchor", tuple) == (20, 20)
+        return (
+            _stage_board(context.design("main-controller")),
+            _stage_board(context.design("front-panel")),
+        )
+
+    result = project.run()
+
+    assert result.ok
+    assert contexts == [
+        ("BuildContext", ("main-controller", "front-panel"), ("variant",)),
+        (
+            "BuildContext",
+            ("main-controller", "front-panel"),
+            ("variant", "anchor"),
+        ),
+    ]
 
 
 def test_project_stage_resources_are_available_to_later_stages():
@@ -297,9 +390,9 @@ def test_project_run_through_stops_after_stage_handle():
         return _minimal_design()
 
     @project.board
-    def board(design):
+    def board(context):
         calls.append("board")
-        return design.board("Main")
+        return context.design().board("Main")
 
     result = project.run_through(project.design)
 
@@ -443,12 +536,12 @@ def test_project_stage_tests_include_schematic_and_board_helpers():
         return _board_ready_design()
 
     @project.schematic
-    def schematic(design):
-        return _stage_schematic(design)
+    def schematic(context):
+        return _stage_schematic(context.design())
 
     @project.board
-    def board(design):
-        return _stage_board(design)
+    def board(context):
+        return _stage_board(context.design())
 
     @project.schematic.test
     def schematic_places_parts(check):
@@ -473,12 +566,12 @@ def test_project_result_write_emits_deterministic_bundle(tmp_path):
         return _board_ready_design()
 
     @project.schematic
-    def schematic(design):
-        return _stage_schematic(design)
+    def schematic(context):
+        return _stage_schematic(context.design())
 
     @project.board
-    def board(design):
-        return _stage_board(design)
+    def board(context):
+        return _stage_board(context.design())
 
     first = project.run()
     second = project.run()
@@ -551,12 +644,12 @@ def test_project_result_write_flat_artifacts_emits_legacy_example_outputs(tmp_pa
         return _board_ready_design()
 
     @project.schematic
-    def schematic(design):
-        return _stage_schematic(design)
+    def schematic(context):
+        return _stage_schematic(context.design())
 
     @project.board
-    def board(design):
-        return _stage_board(design)
+    def board(context):
+        return _stage_board(context.design())
 
     artifacts = project.run().write_artifacts(tmp_path, slug="status_led")
 
@@ -584,12 +677,12 @@ def test_project_result_write_cleans_stale_bundle_artifacts(tmp_path):
         return _board_ready_design()
 
     @full.schematic
-    def full_schematic(design):
-        return _stage_schematic(design)
+    def full_schematic(context):
+        return _stage_schematic(context.design())
 
     @full.board
-    def full_board(design):
-        return _stage_board(design)
+    def full_board(context):
+        return _stage_board(context.design())
 
     design_only = volt.Project("status-led")
 
@@ -612,6 +705,38 @@ def test_project_result_write_cleans_stale_bundle_artifacts(tmp_path):
         "diagnostics/diagnostics.json",
         "diagnostics/tests.json",
     ]
+
+
+def test_project_result_write_allows_empty_existing_output_root(tmp_path):
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return _minimal_design()
+
+    output = tmp_path / "status-led.volt"
+    output.mkdir()
+
+    project.run().write(output)
+
+    assert (output / "manifest.volt.json").exists()
+
+
+def test_project_result_write_refuses_non_bundle_output_root(tmp_path):
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return _minimal_design()
+
+    output = tmp_path / "status-led.volt"
+    (output / "logical").mkdir(parents=True)
+    (output / "logical" / "notes.txt").write_text("do not delete\n", encoding="utf-8")
+
+    with pytest.raises(FileExistsError, match="not an existing Volt project-result bundle"):
+        project.run().write(output)
+
+    assert (output / "logical" / "notes.txt").read_text(encoding="utf-8") == "do not delete\n"
 
 
 def test_project_result_contains_multiple_boards():
@@ -723,8 +848,8 @@ def test_project_diagnostics_preserve_board_and_design_identity():
         return _board_ready_design("fixture")
 
     @project.board
-    def board(design):
-        return design.board("Fixture")
+    def board(context):
+        return context.design().board("Fixture")
 
     result = project.run()
 

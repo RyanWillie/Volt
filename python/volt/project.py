@@ -178,7 +178,7 @@ class BuildContext:
         return self._resources
 
     def design(self, name: str | None = None) -> Design:
-        """Return a design by stable name, or the only design."""
+        """Return a design by stable name, or the only design for the common case."""
         return _one_or_named(self._designs, name, "design")
 
     def resource(self, name: str, expected_type: type | tuple[type, ...] | None = None) -> object:
@@ -335,11 +335,7 @@ class Project:
                     raise RuntimeError(
                         f"Project {self.name} {stage.name} stage requires a design stage"
                     )
-                argument = (
-                    designs[0]
-                    if len(designs) == 1 and not resources
-                    else BuildContext(designs=designs, resources=resources)
-                )
+                argument = BuildContext(designs=designs, resources=resources)
                 result = stage._function(argument)
             stage_models, stage_resources = self._collect_stage_return(stage, result)
             for model in stage_models:
@@ -1124,11 +1120,29 @@ def _prepare_bundle_root(root: Path) -> None:
     if root.exists() and not root.is_dir():
         raise NotADirectoryError(root)
     root.mkdir(parents=True, exist_ok=True)
+    if any(root.iterdir()) and not _is_project_result_bundle(root):
+        raise FileExistsError(
+            f"Refusing to overwrite {root}: not an existing Volt project-result bundle"
+        )
     for directory in ("logical", "schematic", "pcb", "diagnostics"):
         shutil.rmtree(root / directory, ignore_errors=True)
     manifest = root / "manifest.volt.json"
     if manifest.exists():
         manifest.unlink()
+
+
+def _is_project_result_bundle(root: Path) -> bool:
+    manifest = root / "manifest.volt.json"
+    if not manifest.exists():
+        return False
+    try:
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return (
+        payload.get("format") == "volt.project_result"
+        and payload.get("schema_version") == 1
+    )
 
 
 def _write_json(path: Path, payload: object) -> None:
