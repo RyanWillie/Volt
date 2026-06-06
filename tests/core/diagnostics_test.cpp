@@ -65,6 +65,51 @@ TEST_CASE("EntityRef preserves PCB copper primitive references") {
     CHECK(text.index() == 10);
 }
 
+TEST_CASE("EntityRef can identify the board projection root") {
+    const auto board = volt::EntityRef::board();
+
+    CHECK(board.kind() == volt::EntityKind::Board);
+    CHECK(board.index() == 0);
+}
+
+TEST_CASE("Diagnostic stores category and overlay geometry") {
+    const auto diagnostic = volt::Diagnostic{
+        volt::Severity::Warning,
+        volt::DiagnosticCode{"PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE"},
+        volt::DiagnosticCategory{"pcb.visual"},
+        "Reference designator is difficult to read",
+        std::vector{volt::EntityRef::board(), volt::EntityRef::board_text(volt::BoardTextId{2})},
+        std::vector{
+            volt::DiagnosticOverlay::bounding_box(
+                volt::DiagnosticPoint{10.0, 20.0}, volt::DiagnosticPoint{14.0, 22.0},
+                std::vector{volt::EntityRef::board_text(volt::BoardTextId{2})},
+                std::vector{volt::EntityRef::board_layer(volt::BoardLayerId{0})}),
+            volt::DiagnosticOverlay::segment(
+                volt::DiagnosticPoint{10.0, 21.0}, volt::DiagnosticPoint{14.0, 21.0}, {},
+                std::vector{volt::EntityRef::board_layer(volt::BoardLayerId{0})}),
+        },
+    };
+
+    CHECK(diagnostic.category() == volt::DiagnosticCategory{"pcb.visual"});
+    REQUIRE(diagnostic.overlays().size() == 2);
+    CHECK(diagnostic.overlays()[0].kind() == volt::DiagnosticOverlayKind::BoundingBox);
+    CHECK(diagnostic.overlays()[0].points() ==
+          std::vector{volt::DiagnosticPoint{10.0, 20.0}, volt::DiagnosticPoint{14.0, 22.0}});
+    CHECK(diagnostic.overlays()[0].entities() ==
+          std::vector{volt::EntityRef::board_text(volt::BoardTextId{2})});
+    CHECK(diagnostic.overlays()[0].layers() ==
+          std::vector{volt::EntityRef::board_layer(volt::BoardLayerId{0})});
+    CHECK(diagnostic.overlays()[1].kind() == volt::DiagnosticOverlayKind::Segment);
+}
+
+TEST_CASE("PCB visual diagnostic codes are stable constants") {
+    CHECK(volt::pcb_visual_diagnostic_codes::PlacementOverlap == "PCB_VISUAL_PLACEMENT_OVERLAP");
+    CHECK(volt::pcb_visual_diagnostic_codes::ReferenceDesignatorUnreadable ==
+          "PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE");
+    CHECK(volt::pcb_visual_diagnostic_codes::LabelOverlap == "PCB_VISUAL_LABEL_OVERLAP");
+    CHECK(volt::diagnostic_categories::PcbVisual == "pcb.visual");
+}
+
 TEST_CASE("Diagnostic stores severity code message and related entities") {
     const auto diagnostic = volt::Diagnostic{
         volt::Severity::Warning,

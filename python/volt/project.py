@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 from .design import Design
-from .diagnostics import DiagnosticEntity
+from .diagnostics import DiagnosticEntity, DiagnosticOverlay
 from .library import Library
 from .pcb import Board
 from .project_checks import BoardCheck, DesignCheck, SchematicCheck
@@ -56,6 +56,8 @@ class ProjectDiagnostic:
     code: str
     message: str
     entities: tuple[DiagnosticEntity, ...]
+    category: str = "general"
+    overlays: tuple[DiagnosticOverlay, ...] = ()
     design: str | None = None
     board: str | None = None
     rule: str | None = None
@@ -1042,6 +1044,8 @@ def _collect_library_diagnostics(libraries: tuple[Library, ...] | list[Library])
                     code=diagnostic.code,
                     message=diagnostic.message,
                     entities=diagnostic.entities,
+                    category=getattr(diagnostic, "category", "general"),
+                    overlays=getattr(diagnostic, "overlays", ()),
                 )
             )
     return tuple(diagnostics)
@@ -1074,6 +1078,8 @@ def _report_diagnostics(
             code=diagnostic.code,
             message=diagnostic.message,
             entities=diagnostic.entities,
+            category=diagnostic.category,
+            overlays=diagnostic.overlays,
             design=design,
             board=board,
         )
@@ -1236,9 +1242,11 @@ def _flat_report_name(diagnostic: ProjectDiagnostic) -> str:
 def _flat_diagnostic_payload(diagnostic: ProjectDiagnostic) -> dict[str, object]:
     return {
         "severity": diagnostic.severity,
+        "category": diagnostic.category,
         "code": diagnostic.code,
         "message": diagnostic.message,
         "entities": [_diagnostic_entity_payload(entity) for entity in diagnostic.entities],
+        "overlays": [_diagnostic_overlay_payload(overlay) for overlay in diagnostic.overlays],
     }
 
 
@@ -1248,9 +1256,11 @@ def _project_diagnostic_payload(diagnostic: ProjectDiagnostic) -> dict[str, obje
         "source": diagnostic.source,
         "report": diagnostic.report,
         "severity": diagnostic.severity,
+        "category": diagnostic.category,
         "code": diagnostic.code,
         "message": diagnostic.message,
         "entities": [_diagnostic_entity_payload(entity) for entity in diagnostic.entities],
+        "overlays": [_diagnostic_overlay_payload(overlay) for overlay in diagnostic.overlays],
         "design": diagnostic.design,
         "board": diagnostic.board,
         "rule": diagnostic.rule,
@@ -1275,6 +1285,17 @@ def _diagnostic_entity_payload(entity: object) -> object:
     if _is_diagnostic_entity(entity):
         return {"kind": entity.kind, "index": entity.index}
     raise TypeError("Project diagnostic entities must be DiagnosticEntity references")
+
+
+def _diagnostic_overlay_payload(overlay: object) -> dict[str, object]:
+    if not isinstance(overlay, DiagnosticOverlay):
+        raise TypeError("Project diagnostic overlays must be DiagnosticOverlay values")
+    return {
+        "kind": overlay.kind,
+        "points": [[point[0], point[1]] for point in overlay.points],
+        "entities": [_diagnostic_entity_payload(entity) for entity in overlay.entities],
+        "layers": [_diagnostic_entity_payload(layer) for layer in overlay.layers],
+    }
 
 
 def _diagnostic_summary(diagnostics: ProjectDiagnostics) -> dict[str, int]:

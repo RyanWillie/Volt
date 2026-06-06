@@ -8,6 +8,8 @@ namespace {
 
 [[nodiscard]] inline std::string entity_kind_name(volt::EntityKind kind) {
     switch (kind) {
+    case volt::EntityKind::Board:
+        return "board";
     case volt::EntityKind::ComponentDef:
         return "component_definition";
     case volt::EntityKind::Component:
@@ -69,20 +71,67 @@ namespace {
     throw std::logic_error{"Unhandled diagnostic entity kind"};
 }
 
-[[nodiscard]] inline py::dict diagnostic_to_dict(const volt::Diagnostic &diagnostic) {
-    auto result = py::dict{};
-    result["severity"] = severity_name(diagnostic.severity());
-    result["code"] = diagnostic.code().value();
-    result["message"] = diagnostic.message();
+[[nodiscard]] inline std::string diagnostic_overlay_kind_name(volt::DiagnosticOverlayKind kind) {
+    switch (kind) {
+    case volt::DiagnosticOverlayKind::BoundingBox:
+        return "bounding_box";
+    case volt::DiagnosticOverlayKind::Point:
+        return "point";
+    case volt::DiagnosticOverlayKind::Polygon:
+        return "polygon";
+    case volt::DiagnosticOverlayKind::Segment:
+        return "segment";
+    }
 
+    throw std::logic_error{"Unhandled diagnostic overlay kind"};
+}
+
+[[nodiscard]] inline py::list
+diagnostic_entities_to_list(const std::vector<volt::EntityRef> &diagnostic_entities) {
     auto entities = py::list{};
-    for (const auto entity : diagnostic.entities()) {
+    for (const auto entity : diagnostic_entities) {
         auto entity_dict = py::dict{};
         entity_dict["kind"] = entity_kind_name(entity.kind());
         entity_dict["index"] = entity.index();
         entities.append(std::move(entity_dict));
     }
-    result["entities"] = std::move(entities);
+    return entities;
+}
+
+[[nodiscard]] inline py::list
+diagnostic_points_to_list(const std::vector<volt::DiagnosticPoint> &diagnostic_points) {
+    auto points = py::list{};
+    for (const auto point : diagnostic_points) {
+        auto point_tuple = py::tuple{2};
+        point_tuple[0] = point.x_mm;
+        point_tuple[1] = point.y_mm;
+        points.append(std::move(point_tuple));
+    }
+    return points;
+}
+
+[[nodiscard]] inline py::list
+diagnostic_overlays_to_list(const std::vector<volt::DiagnosticOverlay> &diagnostic_overlays) {
+    auto overlays = py::list{};
+    for (const auto &overlay : diagnostic_overlays) {
+        auto overlay_dict = py::dict{};
+        overlay_dict["kind"] = diagnostic_overlay_kind_name(overlay.kind());
+        overlay_dict["points"] = diagnostic_points_to_list(overlay.points());
+        overlay_dict["entities"] = diagnostic_entities_to_list(overlay.entities());
+        overlay_dict["layers"] = diagnostic_entities_to_list(overlay.layers());
+        overlays.append(std::move(overlay_dict));
+    }
+    return overlays;
+}
+
+[[nodiscard]] inline py::dict diagnostic_to_dict(const volt::Diagnostic &diagnostic) {
+    auto result = py::dict{};
+    result["severity"] = severity_name(diagnostic.severity());
+    result["category"] = diagnostic.category().value();
+    result["code"] = diagnostic.code().value();
+    result["message"] = diagnostic.message();
+    result["entities"] = diagnostic_entities_to_list(diagnostic.entities());
+    result["overlays"] = diagnostic_overlays_to_list(diagnostic.overlays());
 
     return result;
 }
