@@ -73,6 +73,7 @@
   },
   "format": "volt.project_result",
   "ok": true,
+  "profile": "default",
   "project": {
     "description": "STM32 USB buck reference design",
     "name": "stm32-usb-buck",

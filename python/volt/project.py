@@ -722,8 +722,8 @@ class ProjectResult:
             if not model_diagnostics
             else ProjectDiagnostics((*self._diagnostics, *model_diagnostics))
         )
-        bundle_ok = _bundle_ok(bundle_diagnostics, self._test_results())
-        bundle_status = _bundle_status(bundle_diagnostics, self._test_results())
+        bundle_ok = _bundle_ok(self, bundle_diagnostics, self._test_results())
+        bundle_status = _bundle_status(self, bundle_diagnostics, self._test_results())
         diagnostics_path = _unique_path(Path("diagnostics") / "diagnostics.json", used_paths)
         tests_path = _unique_path(Path("diagnostics") / "tests.json", used_paths)
         _write_json(
@@ -1257,16 +1257,45 @@ def _write_text(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def _bundle_ok(diagnostics: ProjectDiagnostics, tests: tuple[ProjectTestResult, ...]) -> bool:
+def _bundle_ok(
+    result: ProjectResult,
+    diagnostics: ProjectDiagnostics,
+    tests: tuple[ProjectTestResult, ...],
+) -> bool:
+    if result.project._expected_diagnostics:
+        return _expected_diagnostics_ok(
+            result.project._expected_diagnostics,
+            diagnostics,
+        ) and not _test_summary(tests)["failed"]
     return not diagnostics.has_errors and not _test_summary(tests)["failed"]
 
 
-def _bundle_status(diagnostics: ProjectDiagnostics, tests: tuple[ProjectTestResult, ...]) -> str:
+def _bundle_status(
+    result: ProjectResult,
+    diagnostics: ProjectDiagnostics,
+    tests: tuple[ProjectTestResult, ...],
+) -> str:
     if len(diagnostics) == 0 and not _test_summary(tests)["failed"]:
         return "clean"
-    if _bundle_ok(diagnostics, tests):
+    if _bundle_ok(result, diagnostics, tests):
         return "expected-diagnostics"
     return "failed"
+
+
+def _expected_diagnostics_ok(
+    expectations: Iterable[ExpectedDiagnostic],
+    diagnostics: ProjectDiagnostics,
+) -> bool:
+    expected = tuple(expectations)
+    if not expected:
+        return not diagnostics.has_errors
+    unexpected = tuple(
+        diagnostic for diagnostic in diagnostics if not _matches_any_expected(diagnostic, expected)
+    )
+    missing = tuple(
+        result for result in _expected_diagnostic_results(expected, diagnostics) if not result.matched
+    )
+    return not unexpected and not missing
 
 
 def _design_model_3d_components(design_document: dict, design: Design) -> dict[str, dict[str, object]]:

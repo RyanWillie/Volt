@@ -1,6 +1,7 @@
 {
   "diagnostics": [
     {
+      "category": "general",
       "code": "POWER_INPUT_WITHOUT_SOURCE",
       "entities": [
         {
@@ -13,10 +14,12 @@
         }
       ],
       "message": "Power input is connected to a net with no typed supply source",
+      "overlays": [],
       "severity": "error",
       "source": "logical_design"
     },
     {
+      "category": "general",
       "code": "POWER_INPUT_WITHOUT_SOURCE",
       "entities": [
         {
@@ -29,10 +32,12 @@
         }
       ],
       "message": "Power input is connected to a net with no typed supply source",
+      "overlays": [],
       "severity": "error",
       "source": "logical_design"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -49,10 +54,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -69,10 +76,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -89,10 +98,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -109,10 +120,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -129,10 +142,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -149,10 +164,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -169,10 +186,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -189,10 +208,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -209,10 +230,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -229,10 +252,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -249,10 +274,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -269,10 +296,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -289,10 +318,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -309,10 +340,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -329,10 +362,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -349,10 +384,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -369,10 +406,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -389,10 +428,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -409,10 +450,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -429,10 +472,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -449,10 +494,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -469,10 +516,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -489,10 +538,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -509,10 +560,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -529,10 +582,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -549,10 +604,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -569,10 +626,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -589,10 +648,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -609,10 +670,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -629,10 +692,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -649,10 +714,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -669,10 +736,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -689,10 +758,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -709,10 +780,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -729,10 +802,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -749,10 +824,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -769,10 +846,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -789,10 +868,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -809,10 +890,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -829,10 +912,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -849,10 +934,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -869,10 +956,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
         {
@@ -889,10 +978,12 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readiness"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
       "entities": [
         {
@@ -901,10 +992,12 @@
         }
       ],
       "message": "Schematic title-block value text for 'File' exceeds the rendered column width",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readability"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL",
       "entities": [
         {
@@ -921,10 +1014,12 @@
         }
       ],
       "message": "Schematic symbol field is far from its owning symbol",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readability"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_LABEL_CROWDS_SYMBOL",
       "entities": [
         {
@@ -949,10 +1044,12 @@
         }
       ],
       "message": "Schematic tags or net labels crowd a symbol; add spacing or use compact stubs",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readability"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_DENSE_PORT_TAGS",
       "entities": [
         {
@@ -1073,10 +1170,12 @@
         }
       ],
       "message": "Schematic region 'STM32 Microcontroller' contains dense sheet or power tags; prefer compact local labels where possible",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readability"
     },
     {
+      "category": "general",
       "code": "SCHEMATIC_DENSE_PORT_TAGS",
       "entities": [
         {
@@ -1145,6 +1244,7 @@
         }
       ],
       "message": "Schematic region 'Connectors and USB' contains dense sheet or power tags; prefer compact local labels where possible",
+      "overlays": [],
       "severity": "warning",
       "source": "schematic_readability"
     }
@@ -1222,6 +1322,7 @@
     "logical_design": {
       "diagnostics": [
         {
+          "category": "general",
           "code": "POWER_INPUT_WITHOUT_SOURCE",
           "entities": [
             {
@@ -1234,9 +1335,11 @@
             }
           ],
           "message": "Power input is connected to a net with no typed supply source",
+          "overlays": [],
           "severity": "error"
         },
         {
+          "category": "general",
           "code": "POWER_INPUT_WITHOUT_SOURCE",
           "entities": [
             {
@@ -1249,6 +1352,7 @@
             }
           ],
           "message": "Power input is connected to a net with no typed supply source",
+          "overlays": [],
           "severity": "error"
         }
       ],
@@ -1277,6 +1381,7 @@
     "schematic_readability": {
       "diagnostics": [
         {
+          "category": "general",
           "code": "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
           "entities": [
             {
@@ -1285,9 +1390,11 @@
             }
           ],
           "message": "Schematic title-block value text for 'File' exceeds the rendered column width",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL",
           "entities": [
             {
@@ -1304,9 +1411,11 @@
             }
           ],
           "message": "Schematic symbol field is far from its owning symbol",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_LABEL_CROWDS_SYMBOL",
           "entities": [
             {
@@ -1331,9 +1440,11 @@
             }
           ],
           "message": "Schematic tags or net labels crowd a symbol; add spacing or use compact stubs",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_DENSE_PORT_TAGS",
           "entities": [
             {
@@ -1454,9 +1565,11 @@
             }
           ],
           "message": "Schematic region 'STM32 Microcontroller' contains dense sheet or power tags; prefer compact local labels where possible",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_DENSE_PORT_TAGS",
           "entities": [
             {
@@ -1525,6 +1638,7 @@
             }
           ],
           "message": "Schematic region 'Connectors and USB' contains dense sheet or power tags; prefer compact local labels where possible",
+          "overlays": [],
           "severity": "warning"
         }
       ],
@@ -1537,6 +1651,7 @@
     "schematic_readiness": {
       "diagnostics": [
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1553,9 +1668,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1572,9 +1689,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1591,9 +1710,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1610,9 +1731,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1629,9 +1752,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1648,9 +1773,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1667,9 +1794,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1686,9 +1815,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1705,9 +1836,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1724,9 +1857,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1743,9 +1878,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1762,9 +1899,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1781,9 +1920,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1800,9 +1941,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1819,9 +1962,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1838,9 +1983,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1857,9 +2004,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1876,9 +2025,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1895,9 +2046,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1914,9 +2067,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1933,9 +2088,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1952,9 +2109,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1971,9 +2130,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -1990,9 +2151,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2009,9 +2172,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2028,9 +2193,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2047,9 +2214,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2066,9 +2235,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2085,9 +2256,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2104,9 +2277,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2123,9 +2298,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2142,9 +2319,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2161,9 +2340,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2180,9 +2361,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2199,9 +2382,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2218,9 +2403,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2237,9 +2424,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2256,9 +2445,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2275,9 +2466,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2294,9 +2487,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2313,9 +2508,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2332,9 +2529,11 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         },
         {
+          "category": "general",
           "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
           "entities": [
             {
@@ -2351,6 +2550,7 @@
             }
           ],
           "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "overlays": [],
           "severity": "warning"
         }
       ],
