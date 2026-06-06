@@ -468,17 +468,24 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "POWER_INPUT_WITHOUT_SOURCE" in codes
     assert "SINGLE_PIN_NET" not in codes
     assert "UNCONNECTED_REQUIRED_PIN" not in codes
-    assert validation["summary"] == {"errors": 2, "infos": 0, "warnings": 48}
-    assert validation["summary"]["errors"] == sum(
-        diagnostic["severity"] == "error" for diagnostic in validation["diagnostics"]
-    )
-    assert {
-        diagnostic["report"] for diagnostic in validation["diagnostics"]
-    } == {"logical.default", "schematic.readiness", "schematic.readability"}
+    assert validation["status"] == "expected-diagnostics"
+    assert validation["unexpected"] == []
+    assert validation["missing_expected"] == []
+    assert validation["summary"]["errors"] == 2
+    assert validation["summary"]["warnings"] == len(validation["diagnostics"]) - 2
+    assert {item["code"] for item in validation["expected"]} == {
+        "POWER_INPUT_WITHOUT_SOURCE",
+        "SCHEMATIC_DENSE_PORT_TAGS",
+        "SCHEMATIC_LABEL_CROWDS_SYMBOL",
+        "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL",
+        "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
+    }
 
     project_manifest = json.loads(first_project_texts["manifest.volt.json"])
     assert project_manifest["format"] == "volt.project_result"
-    assert project_manifest["ok"] is False
+    assert project_manifest["ok"] is True
+    assert project_manifest["status"] == "expected-diagnostics"
     assert project_manifest["tests"]["summary"] == {"failed": 0, "passed": 1}
 
 

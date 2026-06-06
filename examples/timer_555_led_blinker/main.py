@@ -21,6 +21,7 @@ class ExampleArtifacts:
     schematic_svg_pages: tuple[Path, ...]
     pcb_json: Path
     pcb_svg: Path
+    kicad_pcb: Path
     validation_report: Path
 
 
@@ -150,25 +151,6 @@ FOOTPRINTS = {
 }
 
 
-def _design_lookup(
-    design: volt.Design,
-) -> tuple[dict[str, volt.Net], dict[str, volt.Component]]:
-    return (
-        {net.name: net for net in design.nets()},
-        {
-            "J1": design.component("J1"),
-            "U1": design.component("U1"),
-            "RA": design.component("R1"),
-            "RB": design.component("R2"),
-            "CT": design.component("C1"),
-            "CCTRL": design.component("C2"),
-            "CDEC": design.component("C3"),
-            "RLED": design.component("R3"),
-            "DLED": design.component("D1"),
-        },
-    )
-
-
 def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Component]]:
     design = volt.Design("timer-555-led-blinker")
     timer_definition = design.define_component(
@@ -292,14 +274,9 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
 
 def build_schematic(
     design: volt.Design,
-    nets: dict[str, volt.Net] | None = None,
-    parts: dict[str, volt.Component] | None = None,
+    nets: dict[str, volt.Net],
+    parts: dict[str, volt.Component],
 ) -> volt.Schematic:
-    if nets is None or parts is None:
-        derived_nets, derived_parts = _design_lookup(design)
-        nets = derived_nets if nets is None else nets
-        parts = derived_parts if parts is None else parts
-
     sheet = design.schematic(
         "555 LED Blinker",
         size=(340, 240),
@@ -405,14 +382,9 @@ def build_schematic(
 
 def build_board(
     design: volt.Design,
-    nets: dict[str, volt.Net] | None = None,
-    parts: dict[str, volt.Component] | None = None,
+    nets: dict[str, volt.Net],
+    parts: dict[str, volt.Component],
 ) -> volt.Board:
-    if nets is None or parts is None:
-        derived_nets, derived_parts = _design_lookup(design)
-        nets = derived_nets if nets is None else nets
-        parts = derived_parts if parts is None else parts
-
     board = design.board("555 LED Blinker")
     front = board.add_layer("F.Cu", role="copper", side="top")
     back = board.add_layer("B.Cu", role="copper", side="bottom")
@@ -573,12 +545,31 @@ def build_project() -> volt.Project:
     )
 
     @project.design
-    def design() -> volt.Design:
-        project_design, _, _ = build_design()
-        return project_design
+    def design():
+        project_design, nets, parts = build_design()
+        return (
+            project_design,
+            volt.ProjectResource("nets", nets),
+            volt.ProjectResource("parts", parts),
+        )
 
-    project.schematic(build_schematic)
-    project.board(build_board)
+    @project.schematic
+    def schematic(context: volt.BuildContext) -> volt.Schematic:
+        sheet = build_schematic(
+            context.design(),
+            context.resource("nets", dict),
+            context.resource("parts", dict),
+        )
+        return sheet
+
+    @project.board
+    def board(context: volt.BuildContext) -> volt.Board:
+        pcb = build_board(
+            context.design(),
+            context.resource("nets", dict),
+            context.resource("parts", dict),
+        )
+        return pcb
 
     @project.design.test
     def power_and_ground_are_separate(check) -> None:
@@ -610,52 +601,25 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
 
     result = run_project()
     _require_clean(result)
-    design = result.design()
-    schematic = result.schematic()
-    board = result.board()
 
     project_bundle = output_path / f"{EXAMPLE_SLUG}.volt"
-    logical_json = output_path / f"{EXAMPLE_SLUG}.volt.json"
-    schematic_json = output_path / f"{EXAMPLE_SLUG}.volt.schematic.json"
-    schematic_svg = output_path / f"{EXAMPLE_SLUG}.svg"
-    schematic_body_svg = output_path / f"{EXAMPLE_SLUG}.body.svg"
-    schematic_svg_pages_dir = output_path / f"{EXAMPLE_SLUG}.pages"
-    pcb_json = output_path / f"{EXAMPLE_SLUG}.volt.pcb.json"
-    pcb_svg = output_path / f"{EXAMPLE_SLUG}.pcb.svg"
-    validation_report = output_path / f"{EXAMPLE_SLUG}.validation.json"
-
     result.write(project_bundle)
-    if schematic_svg_pages_dir.exists():
-        for page_path in schematic_svg_pages_dir.glob("*.svg"):
-            page_path.unlink()
-    design.write(logical_json)
-    schematic.write_json(schematic_json)
-    schematic.write_svg(schematic_svg)
-    # Content-tight body SVG is for docs/previews; full sheet/page SVGs remain document artifacts.
-    schematic.write_body_svg(schematic_body_svg)
-    schematic_svg_pages = schematic.write_svg_pages(
-        schematic_svg_pages_dir,
-        prefix=EXAMPLE_SLUG,
-    )
-    board.write_json(pcb_json)
-    pcb_svg.write_text(
-        board.to_svg(pad_net_overlays=False, ratsnest_edges=False),
-        encoding="utf-8",
-    )
-    validation_report.write_text(
-        (project_bundle / "diagnostics" / "diagnostics.json").read_text(encoding="utf-8"),
-        encoding="utf-8",
+    artifacts = result.write_artifacts(
+        output_path,
+        slug=EXAMPLE_SLUG,
+        pcb_svg_options={"pad_net_overlays": False, "ratsnest_edges": False},
     )
     return ExampleArtifacts(
         project_bundle=project_bundle,
-        logical_json=logical_json,
-        schematic_json=schematic_json,
-        schematic_svg=schematic_svg,
-        schematic_body_svg=schematic_body_svg,
-        schematic_svg_pages=schematic_svg_pages,
-        pcb_json=pcb_json,
-        pcb_svg=pcb_svg,
-        validation_report=validation_report,
+        logical_json=artifacts.logical_json,
+        schematic_json=artifacts.schematic_json,
+        schematic_svg=artifacts.schematic_svg,
+        schematic_body_svg=artifacts.schematic_body_svg,
+        schematic_svg_pages=artifacts.schematic_svg_pages,
+        pcb_json=artifacts.pcb_json,
+        pcb_svg=artifacts.pcb_svg,
+        kicad_pcb=artifacts.kicad_pcb,
+        validation_report=artifacts.diagnostics_json,
     )
 
 

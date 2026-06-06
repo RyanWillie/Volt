@@ -31,6 +31,26 @@
     },
     {
       "group": {
+        "design": "pcb-led-board",
+        "schematic": "First Board LED"
+      },
+      "kind": "schematic_body_svg",
+      "media_type": "image/svg+xml",
+      "name": "First Board LED",
+      "path": "schematic/First-Board-LED.body.svg"
+    },
+    {
+      "group": {
+        "design": "pcb-led-board",
+        "schematic": "First Board LED"
+      },
+      "kind": "schematic_page_svg",
+      "media_type": "image/svg+xml",
+      "name": "First Board LED:First Board LED",
+      "path": "schematic/First-Board-LED.pages/First-Board-LED.svg"
+    },
+    {
+      "group": {
         "board": "First Board LED",
         "design": "pcb-led-board"
       },
@@ -50,6 +70,16 @@
       "path": "pcb/First-Board-LED.svg"
     },
     {
+      "group": {
+        "board": "First Board LED",
+        "design": "pcb-led-board"
+      },
+      "kind": "kicad_pcb",
+      "media_type": "application/x-kicad-pcb",
+      "name": "First Board LED",
+      "path": "pcb/First-Board-LED.kicad_pcb"
+    },
+    {
       "kind": "diagnostics",
       "media_type": "application/json",
       "name": "Project diagnostics",
@@ -64,6 +94,7 @@
   ],
   "diagnostics": {
     "path": "diagnostics/diagnostics.json",
+    "status": "clean",
     "summary": {
       "errors": 0,
       "infos": 0,
@@ -116,6 +147,7 @@
       ]
     }
   ],
+  "status": "clean",
   "tests": {
     "path": "diagnostics/tests.json",
     "summary": {

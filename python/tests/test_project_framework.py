@@ -234,6 +234,59 @@ def test_project_run_executes_staged_workflow_and_collects_models():
     assert [stage.name for stage in result.stages] == ["design", "schematic", "board"]
 
 
+def test_project_stage_resources_are_available_to_later_stages():
+    project = volt.Project("status-led")
+    calls = []
+
+    @project.design
+    def design():
+        design = _board_ready_design()
+        nets = {net.name: net for net in design.nets()}
+        return design, volt.ProjectResource("nets", nets)
+
+    @project.schematic
+    def schematic(context):
+        nets = context.resource("nets", dict)
+        calls.append(("schematic", context.design().name, sorted(nets)))
+        return _stage_schematic(context.design()), volt.ProjectResource(
+            "schematic_anchor",
+            (20, 20),
+        )
+
+    @project.board
+    def board(context):
+        calls.append(("board", context.resource("schematic_anchor", tuple)))
+        return _stage_board(context.design())
+
+    result = project.run()
+
+    assert calls == [
+        ("schematic", "status-led", ["GND", "LED_A", "VCC"]),
+        ("board", (20, 20)),
+    ]
+    assert result.ok
+
+
+def test_project_stage_resource_lookup_reports_missing_and_wrong_type():
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return _minimal_design(), volt.ProjectResource("nets", {"VCC": object()})
+
+    @project.schematic
+    def schematic(context):
+        with pytest.raises(LookupError, match="resource named parts"):
+            context.resource("parts")
+        with pytest.raises(TypeError, match="resource nets must be a list"):
+            context.resource("nets", list)
+        return context.design().schematic("Main")
+
+    result = project.run_through(project.schematic)
+
+    assert result.schematic("Main").name == "Main"
+
+
 def test_project_run_through_stops_after_stage_handle():
     project = volt.Project("status-led")
     calls = []
@@ -277,6 +330,65 @@ def test_project_result_reports_diagnostics_and_ok_state():
     }
     assert {diagnostic.stage for diagnostic in diagnostics} == {"design"}
     assert {diagnostic.source for diagnostic in diagnostics} == {"logical:bad-led"}
+
+
+def test_project_expected_diagnostics_distinguish_expected_missing_and_unexpected():
+    project = volt.Project("bad-led")
+    project.expect_diagnostic(code="SINGLE_PIN_NET", severity="warning", stage="design")
+    project.expect_diagnostic(code="STALE_EXPECTATION", severity="warning", stage="design")
+
+    @project.design
+    def design():
+        d = volt.Design("bad-led")
+        lonely = d.net("LONELY")
+        r1 = d.R("1k", ref="R1")
+        lonely += r1[1]
+        return d
+
+    result = project.run()
+
+    assert not result.ok
+    assert not result.clean
+    assert not result.expected_diagnostics_ok
+    assert [(item.code, item.matched) for item in result.expected_diagnostics] == [
+        ("SINGLE_PIN_NET", True),
+        ("STALE_EXPECTATION", False),
+    ]
+    assert [diagnostic.code for diagnostic in result.expected_project_diagnostics] == [
+        "SINGLE_PIN_NET",
+    ]
+    assert [diagnostic.code for diagnostic in result.unexpected_diagnostics] == [
+        "UNCONNECTED_REQUIRED_PIN",
+    ]
+    assert [item.code for item in result.missing_expected_diagnostics] == [
+        "STALE_EXPECTATION",
+    ]
+
+
+def test_project_expected_diagnostics_allow_success_with_expected_diagnostics():
+    project = volt.Project("bad-led")
+    project.expect_diagnostic(code="SINGLE_PIN_NET", severity="warning", stage="design")
+    project.expect_diagnostic(code="UNCONNECTED_REQUIRED_PIN", severity="error", stage="design")
+
+    @project.design
+    def design():
+        d = volt.Design("bad-led")
+        lonely = d.net("LONELY")
+        r1 = d.R("1k", ref="R1")
+        lonely += r1[1]
+        return d
+
+    result = project.run()
+
+    assert result.ok
+    assert not result.clean
+    assert result.expected_diagnostics_ok
+    assert {diagnostic.code for diagnostic in result.expected_project_diagnostics} == {
+        "SINGLE_PIN_NET",
+        "UNCONNECTED_REQUIRED_PIN",
+    }
+    assert result.unexpected_diagnostics == ()
+    assert result.missing_expected_diagnostics == ()
 
 
 def test_project_stage_tests_run_with_product_check_helpers():
@@ -408,8 +520,11 @@ def test_project_result_write_emits_deterministic_bundle(tmp_path):
         "logical/status-led.volt.json",
         "schematic/Main.volt.schematic.json",
         "schematic/Main.svg",
+        "schematic/Main.body.svg",
+        "schematic/Main.pages/Main.svg",
         "pcb/Main.volt.pcb.json",
         "pcb/Main.svg",
+        "pcb/Main.kicad_pcb",
         "diagnostics/diagnostics.json",
         "diagnostics/tests.json",
     ]
@@ -418,11 +533,47 @@ def test_project_result_write_emits_deterministic_bundle(tmp_path):
         "diagnostics/tests.json",
         "logical/status-led.volt.json",
         "manifest.volt.json",
+        "pcb/Main.kicad_pcb",
         "pcb/Main.svg",
         "pcb/Main.volt.pcb.json",
+        "schematic/Main.body.svg",
+        "schematic/Main.pages/Main.svg",
         "schematic/Main.svg",
         "schematic/Main.volt.schematic.json",
     }
+
+
+def test_project_result_write_flat_artifacts_emits_legacy_example_outputs(tmp_path):
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    @project.schematic
+    def schematic(design):
+        return _stage_schematic(design)
+
+    @project.board
+    def board(design):
+        return _stage_board(design)
+
+    artifacts = project.run().write_artifacts(tmp_path, slug="status_led")
+
+    assert artifacts.logical_json == tmp_path / "status_led.volt.json"
+    assert artifacts.schematic_json == tmp_path / "status_led.volt.schematic.json"
+    assert artifacts.schematic_svg == tmp_path / "status_led.svg"
+    assert artifacts.schematic_body_svg == tmp_path / "status_led.body.svg"
+    assert artifacts.schematic_svg_pages == (tmp_path / "status_led.pages" / "status_led_Main.svg",)
+    assert artifacts.pcb_json == tmp_path / "status_led.volt.pcb.json"
+    assert artifacts.pcb_svg == tmp_path / "status_led.pcb.svg"
+    assert artifacts.kicad_pcb == tmp_path / "status_led.kicad_pcb"
+    assert artifacts.diagnostics_json == tmp_path / "status_led.validation.json"
+    assert artifacts.schematic_svg.read_text(encoding="utf-8").startswith("<svg")
+    assert artifacts.kicad_pcb.read_text(encoding="utf-8").startswith("(kicad_pcb\n")
+    diagnostics = json.loads(artifacts.diagnostics_json.read_text(encoding="utf-8"))
+    assert diagnostics["status"] == "clean"
+    assert diagnostics["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
 
 
 def test_project_result_write_cleans_stale_bundle_artifacts(tmp_path):
@@ -689,8 +840,10 @@ def test_two_board_project_fixture_writes_deterministic_bundle(tmp_path):
         "logical/front-panel.volt.json",
         "logical/main-controller.volt.json",
         "manifest.volt.json",
+        "pcb/front-panel-Main.kicad_pcb",
         "pcb/front-panel-Main.svg",
         "pcb/front-panel-Main.volt.pcb.json",
+        "pcb/main-controller-Main.kicad_pcb",
         "pcb/main-controller-Main.svg",
         "pcb/main-controller-Main.volt.pcb.json",
     }

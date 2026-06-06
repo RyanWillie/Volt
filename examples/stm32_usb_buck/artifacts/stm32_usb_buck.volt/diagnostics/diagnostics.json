@@ -1399,9 +1399,80 @@
       "stage": "schematic"
     }
   ],
+  "expected": [
+    {
+      "board": null,
+      "code": "POWER_INPUT_WITHOUT_SOURCE",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "error",
+      "source": null,
+      "stage": null
+    },
+    {
+      "board": null,
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
+    },
+    {
+      "board": null,
+      "code": "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
+    },
+    {
+      "board": null,
+      "code": "SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
+    },
+    {
+      "board": null,
+      "code": "SCHEMATIC_LABEL_CROWDS_SYMBOL",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
+    },
+    {
+      "board": null,
+      "code": "SCHEMATIC_DENSE_PORT_TAGS",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
+    }
+  ],
+  "missing_expected": [],
+  "status": "expected-diagnostics",
   "summary": {
     "errors": 2,
     "infos": 0,
     "warnings": 48
-  }
+  },
+  "unexpected": []
 }
