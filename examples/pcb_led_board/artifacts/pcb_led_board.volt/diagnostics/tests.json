@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "failed": 0,
+    "passed": 3
+  },
+  "tests": [
+    {
+      "message": "",
+      "name": "led_path_is_connected",
+      "ok": true,
+      "stage": "design"
+    },
+    {
+      "message": "",
+      "name": "schematic_places_design_parts",
+      "ok": true,
+      "stage": "schematic"
+    },
+    {
+      "message": "",
+      "name": "board_places_design_parts",
+      "ok": true,
+      "stage": "board"
+    }
+  ]
+}

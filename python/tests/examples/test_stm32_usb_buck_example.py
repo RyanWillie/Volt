@@ -9,6 +9,35 @@ from tempfile import TemporaryDirectory
 import volt
 
 
+def _project_bundle_texts(bundle):
+    return {
+        path.relative_to(bundle).as_posix(): path.read_text(encoding="utf-8")
+        for path in sorted(bundle.rglob("*"))
+        if path.is_file()
+    }
+
+
+def test_stm32_usb_buck_example_exposes_project_result():
+    main = importlib.import_module("examples.stm32_usb_buck.main")
+
+    result = main.run_project()
+
+    assert isinstance(result, volt.ProjectResult)
+    assert [stage.name for stage in result.stages] == ["design", "schematic"]
+    assert result.design().name == "stm32_usb_buck"
+    assert result.schematic().name == "STM32 USB Buck"
+    assert not result.diagnostics.errors(stage="schematic")
+    assert result.test_failures() == ()
+
+
+def test_stm32_usb_buck_project_schematic_stage_is_primary_authoring_function():
+    main = importlib.import_module("examples.stm32_usb_buck.main")
+
+    source = inspect.getsource(main.build_project)
+
+    assert "return build_schematic(" not in source
+
+
 def _schematic_authoring_source(schematic_output):
     return "\n".join(
         inspect.getsource(getattr(schematic_output, name))
@@ -38,6 +67,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
             path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages
         )
         first_validation_text = artifacts.validation_report.read_text(encoding="utf-8")
+        first_project_texts = _project_bundle_texts(artifacts.project_bundle)
 
         stale_page = artifacts.schematic_svg_pages[0].parent / "stale.svg"
         stale_page.write_text("<svg></svg>\n", encoding="utf-8")
@@ -63,6 +93,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
             second_artifacts.validation_report.read_text(encoding="utf-8")
             == first_validation_text
         )
+        assert _project_bundle_texts(second_artifacts.project_bundle) == first_project_texts
 
     assert logical["format"] == "volt.logical_circuit"
     assert {item["name"] for item in logical["module_definitions"]} >= {
@@ -451,15 +482,20 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
     }
 
+    project_manifest = json.loads(first_project_texts["manifest.volt.json"])
+    assert project_manifest["format"] == "volt.project_result"
+    assert project_manifest["ok"] is True
+    assert project_manifest["status"] == "expected-diagnostics"
+    assert project_manifest["tests"]["summary"] == {"failed": 0, "passed": 1}
+
 
 def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage():
     main = importlib.import_module("examples.stm32_usb_buck.main")
 
-    def build_invalid_schematic(board):
-        schematic = board.design.schematic("Main")
+    def author_invalid_power_region(region, board, _nets):
         component = board.components["VIN_SRC"]
         net = board.nets["+12V"]
-        schematic.place(
+        region.place(
             component,
             at=(12, 34),
             symbol=volt.SchematicSymbolSpec(
@@ -468,12 +504,11 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
                 primitives=(volt.SchematicSymbolSpec.line((34, 8), (44, 8)),),
             ),
         )
-        schematic.wire(net, ((0, 0), (10, 0)))
-        schematic.label(net, at=(0, -2))
-        return schematic
+        region.wire(net, ((0, 0), (10, 0)))
+        region.label(net, at=(0, -2))
 
-    original = main.build_schematic
-    main.build_schematic = build_invalid_schematic
+    original = main._author_power_region
+    main._author_power_region = author_invalid_power_region
     try:
         with TemporaryDirectory() as temp_dir:
             output_dir = Path(temp_dir)
@@ -490,7 +525,7 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
             assert not (output_dir / "stm32_usb_buck.body.svg").exists()
             assert not (output_dir / "stm32_usb_buck.pages").exists()
     finally:
-        main.build_schematic = original
+        main._author_power_region = original
 
 
 def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():

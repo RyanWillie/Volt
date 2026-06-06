@@ -1,0 +1,158 @@
+{
+  "artifacts": [
+    {
+      "group": {
+        "design": "timer-555-led-blinker"
+      },
+      "kind": "logical",
+      "media_type": "application/vnd.volt.logical+json",
+      "name": "timer-555-led-blinker",
+      "path": "logical/timer-555-led-blinker.volt.json"
+    },
+    {
+      "group": {
+        "design": "timer-555-led-blinker",
+        "schematic": "555 LED Blinker"
+      },
+      "kind": "schematic",
+      "media_type": "application/vnd.volt.schematic+json",
+      "name": "555 LED Blinker",
+      "path": "schematic/555-LED-Blinker.volt.schematic.json"
+    },
+    {
+      "group": {
+        "design": "timer-555-led-blinker",
+        "schematic": "555 LED Blinker"
+      },
+      "kind": "schematic_svg",
+      "media_type": "image/svg+xml",
+      "name": "555 LED Blinker",
+      "path": "schematic/555-LED-Blinker.svg"
+    },
+    {
+      "group": {
+        "design": "timer-555-led-blinker",
+        "schematic": "555 LED Blinker"
+      },
+      "kind": "schematic_body_svg",
+      "media_type": "image/svg+xml",
+      "name": "555 LED Blinker",
+      "path": "schematic/555-LED-Blinker.body.svg"
+    },
+    {
+      "group": {
+        "design": "timer-555-led-blinker",
+        "schematic": "555 LED Blinker"
+      },
+      "kind": "schematic_page_svg",
+      "media_type": "image/svg+xml",
+      "name": "555 LED Blinker:555 LED Blinker",
+      "path": "schematic/555-LED-Blinker.pages/555-LED-Blinker.svg"
+    },
+    {
+      "group": {
+        "board": "555 LED Blinker",
+        "design": "timer-555-led-blinker"
+      },
+      "kind": "pcb",
+      "media_type": "application/vnd.volt.pcb+json",
+      "name": "555 LED Blinker",
+      "path": "pcb/555-LED-Blinker.volt.pcb.json"
+    },
+    {
+      "group": {
+        "board": "555 LED Blinker",
+        "design": "timer-555-led-blinker"
+      },
+      "kind": "pcb_svg",
+      "media_type": "image/svg+xml",
+      "name": "555 LED Blinker",
+      "path": "pcb/555-LED-Blinker.svg"
+    },
+    {
+      "group": {
+        "board": "555 LED Blinker",
+        "design": "timer-555-led-blinker"
+      },
+      "kind": "kicad_pcb",
+      "media_type": "application/x-kicad-pcb",
+      "name": "555 LED Blinker",
+      "path": "pcb/555-LED-Blinker.kicad_pcb"
+    },
+    {
+      "kind": "diagnostics",
+      "media_type": "application/json",
+      "name": "Project diagnostics",
+      "path": "diagnostics/diagnostics.json"
+    },
+    {
+      "kind": "project_tests",
+      "media_type": "application/json",
+      "name": "Project tests",
+      "path": "diagnostics/tests.json"
+    }
+  ],
+  "diagnostics": {
+    "path": "diagnostics/diagnostics.json",
+    "status": "clean",
+    "summary": {
+      "errors": 0,
+      "infos": 0,
+      "warnings": 0
+    }
+  },
+  "format": "volt.project_result",
+  "ok": true,
+  "project": {
+    "description": "555 LED blinker reference design",
+    "name": "timer-555-led-blinker",
+    "version": null
+  },
+  "schema_version": 1,
+  "stages": [
+    {
+      "model_count": 1,
+      "name": "design",
+      "tests": [
+        {
+          "message": "",
+          "name": "power_and_ground_are_separate",
+          "ok": true,
+          "stage": "design"
+        }
+      ]
+    },
+    {
+      "model_count": 1,
+      "name": "schematic",
+      "tests": [
+        {
+          "message": "",
+          "name": "schematic_places_design_parts",
+          "ok": true,
+          "stage": "schematic"
+        }
+      ]
+    },
+    {
+      "model_count": 1,
+      "name": "board",
+      "tests": [
+        {
+          "message": "",
+          "name": "board_places_design_parts",
+          "ok": true,
+          "stage": "board"
+        }
+      ]
+    }
+  ],
+  "status": "clean",
+  "tests": {
+    "path": "diagnostics/tests.json",
+    "summary": {
+      "failed": 0,
+      "passed": 3
+    }
+  }
+}

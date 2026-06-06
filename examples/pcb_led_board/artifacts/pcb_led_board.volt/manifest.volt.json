@@ -1,0 +1,158 @@
+{
+  "artifacts": [
+    {
+      "group": {
+        "design": "pcb-led-board"
+      },
+      "kind": "logical",
+      "media_type": "application/vnd.volt.logical+json",
+      "name": "pcb-led-board",
+      "path": "logical/pcb-led-board.volt.json"
+    },
+    {
+      "group": {
+        "design": "pcb-led-board",
+        "schematic": "First Board LED"
+      },
+      "kind": "schematic",
+      "media_type": "application/vnd.volt.schematic+json",
+      "name": "First Board LED",
+      "path": "schematic/First-Board-LED.volt.schematic.json"
+    },
+    {
+      "group": {
+        "design": "pcb-led-board",
+        "schematic": "First Board LED"
+      },
+      "kind": "schematic_svg",
+      "media_type": "image/svg+xml",
+      "name": "First Board LED",
+      "path": "schematic/First-Board-LED.svg"
+    },
+    {
+      "group": {
+        "design": "pcb-led-board",
+        "schematic": "First Board LED"
+      },
+      "kind": "schematic_body_svg",
+      "media_type": "image/svg+xml",
+      "name": "First Board LED",
+      "path": "schematic/First-Board-LED.body.svg"
+    },
+    {
+      "group": {
+        "design": "pcb-led-board",
+        "schematic": "First Board LED"
+      },
+      "kind": "schematic_page_svg",
+      "media_type": "image/svg+xml",
+      "name": "First Board LED:First Board LED",
+      "path": "schematic/First-Board-LED.pages/First-Board-LED.svg"
+    },
+    {
+      "group": {
+        "board": "First Board LED",
+        "design": "pcb-led-board"
+      },
+      "kind": "pcb",
+      "media_type": "application/vnd.volt.pcb+json",
+      "name": "First Board LED",
+      "path": "pcb/First-Board-LED.volt.pcb.json"
+    },
+    {
+      "group": {
+        "board": "First Board LED",
+        "design": "pcb-led-board"
+      },
+      "kind": "pcb_svg",
+      "media_type": "image/svg+xml",
+      "name": "First Board LED",
+      "path": "pcb/First-Board-LED.svg"
+    },
+    {
+      "group": {
+        "board": "First Board LED",
+        "design": "pcb-led-board"
+      },
+      "kind": "kicad_pcb",
+      "media_type": "application/x-kicad-pcb",
+      "name": "First Board LED",
+      "path": "pcb/First-Board-LED.kicad_pcb"
+    },
+    {
+      "kind": "diagnostics",
+      "media_type": "application/json",
+      "name": "Project diagnostics",
+      "path": "diagnostics/diagnostics.json"
+    },
+    {
+      "kind": "project_tests",
+      "media_type": "application/json",
+      "name": "Project tests",
+      "path": "diagnostics/tests.json"
+    }
+  ],
+  "diagnostics": {
+    "path": "diagnostics/diagnostics.json",
+    "status": "clean",
+    "summary": {
+      "errors": 0,
+      "infos": 0,
+      "warnings": 0
+    }
+  },
+  "format": "volt.project_result",
+  "ok": true,
+  "project": {
+    "description": "First-board LED PCB example",
+    "name": "pcb-led-board",
+    "version": null
+  },
+  "schema_version": 1,
+  "stages": [
+    {
+      "model_count": 1,
+      "name": "design",
+      "tests": [
+        {
+          "message": "",
+          "name": "led_path_is_connected",
+          "ok": true,
+          "stage": "design"
+        }
+      ]
+    },
+    {
+      "model_count": 1,
+      "name": "schematic",
+      "tests": [
+        {
+          "message": "",
+          "name": "schematic_places_design_parts",
+          "ok": true,
+          "stage": "schematic"
+        }
+      ]
+    },
+    {
+      "model_count": 1,
+      "name": "board",
+      "tests": [
+        {
+          "message": "",
+          "name": "board_places_design_parts",
+          "ok": true,
+          "stage": "board"
+        }
+      ]
+    }
+  ],
+  "status": "clean",
+  "tests": {
+    "path": "diagnostics/tests.json",
+    "summary": {
+      "failed": 0,
+      "passed": 3
+    }
+  }
+}

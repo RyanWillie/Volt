@@ -1,0 +1,14 @@
+{
+  "summary": {
+    "failed": 0,
+    "passed": 1
+  },
+  "tests": [
+    {
+      "message": "",
+      "name": "schematic_places_primary_components",
+      "ok": true,
+      "stage": "schematic"
+    }
+  ]
+}

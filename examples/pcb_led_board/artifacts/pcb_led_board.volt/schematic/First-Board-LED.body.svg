@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="29.6 26.15 116.25 76.6625" width="116.25" height="76.6625">
+  <style>.document-background,.sheet{fill:#fff;stroke:none}.sheet-border{fill:none;stroke:#111;stroke-width:0.45}.drawing-frame{fill:none;stroke:#111;stroke-width:0.35}.sheet-grid{stroke:none}.sheet-grid-dot{fill:#d7d7d7;stroke:none}.coordinate-zone-label{font:3px sans-serif;fill:#444;text-anchor:middle;dominant-baseline:middle}.sheet-title{font-weight:600}.title-block-outline,.title-block-rule{fill:none;stroke:#111;stroke-width:0.3}.title-block-label{font:2.5px sans-serif;fill:#444;text-anchor:start}.title-block-value{font:2.5px sans-serif;fill:#111;text-anchor:start}.sheet-region-frame{fill:#fff;fill-opacity:0;stroke:#78716c;stroke-width:0.35}.sheet-region-frame.dashed{stroke-dasharray:3 2}.sheet-region-title{font:3.2px sans-serif;fill:#57534e;text-anchor:start;font-weight:600}.wire-run{fill:none;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round}.net-label{font:2.8px sans-serif;fill:#111}.junction{fill:#111;stroke:none}.power-port-line,.ground-bar{stroke:#111;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:round}.no-connect-line{stroke:#111;stroke-width:0.55;stroke-linecap:round}.power-port-shape,.sheet-port-shape{fill:#fff;stroke:#111;stroke-width:0.5;stroke-linejoin:round}.power-port-label,.sheet-port-label{font:2.45px sans-serif;fill:#111;text-anchor:middle}.symbol-field{font:2.5px sans-serif;fill:#111}.symbol-line,.symbol-rectangle,.symbol-circle,.symbol-arc{fill:none;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round}.symbol-text{font:3px sans-serif;fill:#111}</style>
+  <g class="schematic-body" data-sheet="sheet:0">
+    <g class="layer layer-symbols">
+    <g class="symbol-instance" data-component="component:0" data-symbol-definition="symbol_def:0" transform="translate(45 60) rotate(0)">
+      <rect class="symbol-rectangle" x="8" y="-4" width="14" height="16"/>
+      <line class="symbol-line" x1="0" y1="0" x2="8" y2="0"/>
+      <line class="symbol-line" x1="0" y1="8" x2="8" y2="8"/>
+    </g>
+    <g class="symbol-instance" data-component="component:1" data-symbol-definition="symbol_def:1" transform="translate(80 60) rotate(0)">
+      <line class="symbol-line" x1="0" y1="0" x2="5" y2="0"/>
+      <line class="symbol-line" x1="5" y1="0" x2="6.5" y2="-3"/>
+      <line class="symbol-line" x1="6.5" y1="-3" x2="8" y2="3"/>
+      <line class="symbol-line" x1="8" y1="3" x2="9.5" y2="-3"/>
+      <line class="symbol-line" x1="9.5" y1="-3" x2="11" y2="3"/>
+      <line class="symbol-line" x1="11" y1="3" x2="12.5" y2="-3"/>
+      <line class="symbol-line" x1="12.5" y1="-3" x2="14" y2="3"/>
+      <line class="symbol-line" x1="14" y1="3" x2="15" y2="0"/>
+      <line class="symbol-line" x1="15" y1="0" x2="20" y2="0"/>
+    </g>
+    <g class="symbol-instance" data-component="component:2" data-symbol-definition="symbol_def:2" transform="translate(118 60) rotate(0)">
+      <line class="symbol-line" x1="20" y1="0" x2="13" y2="0"/>
+      <line class="symbol-line" x1="13" y1="-5" x2="13" y2="5"/>
+      <line class="symbol-line" x1="13" y1="-5" x2="7" y2="0"/>
+      <line class="symbol-line" x1="13" y1="5" x2="7" y2="0"/>
+      <line class="symbol-line" x1="7" y1="0" x2="0" y2="0"/>
+      <line class="symbol-line" x1="7" y1="-6" x2="3" y2="-10"/>
+      <line class="symbol-line" x1="5" y1="-4" x2="1" y2="-8"/>
+    </g>
+    </g>
+    <g class="layer layer-wires">
+    <polyline class="wire-run" data-net="net:0" points="45,42 45,60"/>
+    <polyline class="wire-run" data-net="net:0" points="45,60 80,60"/>
+    <polyline class="wire-run" data-net="net:1" points="100,60 118,60"/>
+    <polyline class="wire-run" data-net="net:2" points="45,68 45,86"/>
+    <polyline class="wire-run" data-net="net:2" points="138,60 138,84"/>
+    </g>
+    <g class="layer layer-junctions">
+    <circle class="junction" data-net="net:0" cx="80" cy="60" r="0.85"/>
+    </g>
+    <g class="layer layer-ports">
+    <g class="power-port power" data-net="net:0" transform="translate(45 42)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="-4.2"/>
+      <path class="power-port-shape" d="M -3 -4.2 L 0 -7.6 L 3 -4.2 Z"/>
+      <text class="power-port-label" x="0" y="-9.4">+3V3</text>
+    </g>
+    <g class="power-port ground" data-net="net:2" transform="translate(45 86)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+    </g>
+    <text class="power-port-label" data-net="net:2" x="45" y="98.2">GND</text>
+    <g class="power-port ground" data-net="net:2" transform="translate(138 84)">
+      <line class="power-port-line" x1="0" y1="0" x2="0" y2="3"/>
+      <line class="ground-bar" x1="-3.6" y1="3" x2="3.6" y2="3"/>
+      <line class="ground-bar" x1="-2.2" y1="4.6" x2="2.2" y2="4.6"/>
+      <line class="ground-bar" x1="-0.9" y1="6" x2="0.9" y2="6"/>
+    </g>
+    <text class="power-port-label" data-net="net:2" x="138" y="96.2">GND</text>
+    </g>
+    <g class="layer layer-labels">
+    <text class="net-label" data-net="net:1" x="100" y="48" text-anchor="start" dominant-baseline="alphabetic" transform="rotate(0 100 48)">LED_A</text>
+    </g>
+    <g class="layer layer-symbol-text">
+    <g class="symbol-text-instance" data-component="component:0" data-symbol-definition="symbol_def:0" transform="translate(45 60) rotate(0)">
+      <text class="symbol-text" x="15" y="-10" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 15 -10)">J</text>
+    </g>
+    </g>
+    <g class="layer layer-fields">
+    <text class="symbol-field" data-symbol-instance="symbol_instance:0" data-field="reference" x="35" y="64" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 35 64)">J1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="reference" x="90" y="54" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 90 54)">R1</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:1" data-field="value" x="90" y="70" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 90 70)">330 ohm</text>
+    <text class="symbol-field" data-symbol-instance="symbol_instance:2" data-field="reference" x="128" y="46" text-anchor="middle" dominant-baseline="alphabetic" transform="rotate(0 128 46)">D1</text>
+    </g>
+  </g>
+</svg>

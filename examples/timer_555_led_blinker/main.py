@@ -13,6 +13,7 @@ SHEET_FILE = "timer_555_led_blinker/main.py"
 
 @dataclass(frozen=True)
 class ExampleArtifacts:
+    project_bundle: Path
     logical_json: Path
     schematic_json: Path
     schematic_svg: Path
@@ -22,6 +23,20 @@ class ExampleArtifacts:
     pcb_svg: Path
     kicad_pcb: Path
     validation_report: Path
+
+
+def _require_clean(result: volt.ProjectResult) -> None:
+    diagnostics = [
+        f"{diagnostic.source}:{diagnostic.code}"
+        for diagnostic in result.diagnostics
+    ]
+    failures = [
+        f"{failure.stage}:{failure.name}"
+        for failure in result.test_failures()
+    ]
+    if diagnostics or failures:
+        details = ", ".join((*diagnostics, *failures))
+        raise RuntimeError("555 LED blinker validation failed: " + details)
 
 
 def _timer_symbol() -> volt.SchematicSymbolSpec:
@@ -518,59 +533,84 @@ def build_board(
     return board
 
 
-PROJECT = volt.Project(EXAMPLE_SLUG)
-
-
-@PROJECT.design
-def project_design():
-    design, nets, parts = build_design()
-    return (
-        design,
-        volt.ProjectResource("nets", nets),
-        volt.ProjectResource("parts", parts),
-    )
-
-
-@PROJECT.schematic
-def project_schematic(context: volt.BuildContext) -> volt.Schematic:
-    return build_schematic(
-        context.design(),
-        context.resource("nets", dict),
-        context.resource("parts", dict),
-    )
-
-
-@PROJECT.board
-def project_board(context: volt.BuildContext) -> volt.Board:
-    return build_board(
-        context.design(),
-        context.resource("nets", dict),
-        context.resource("parts", dict),
-    )
-
-
 def build_example() -> tuple[volt.Design, volt.Schematic, volt.Board]:
-    result = PROJECT.run()
+    result = run_project()
     return result.design(), result.schematic(), result.board()
+
+
+def build_project() -> volt.Project:
+    project = volt.Project(
+        "timer-555-led-blinker",
+        description="555 LED blinker reference design",
+    )
+
+    @project.design
+    def design():
+        project_design, nets, parts = build_design()
+        return (
+            project_design,
+            volt.ProjectResource("nets", nets),
+            volt.ProjectResource("parts", parts),
+        )
+
+    @project.schematic
+    def schematic(context: volt.BuildContext) -> volt.Schematic:
+        sheet = build_schematic(
+            context.design(),
+            context.resource("nets", dict),
+            context.resource("parts", dict),
+        )
+        return sheet
+
+    @project.board
+    def board(context: volt.BuildContext) -> volt.Board:
+        pcb = build_board(
+            context.design(),
+            context.resource("nets", dict),
+            context.resource("parts", dict),
+        )
+        return pcb
+
+    @project.design.test
+    def power_and_ground_are_separate(check) -> None:
+        check.net("+5V").connects("J1.1", "U1.VCC", "U1.RESET")
+        check.net("GND").connects("J1.2", "U1.GND", "D1.K")
+        check.no_connection("+5V", "GND")
+
+    @project.schematic.test
+    def schematic_places_design_parts(check) -> None:
+        check.places("J1", "U1", "R1", "R2", "C1", "C2", "C3", "R3", "D1")
+
+    @project.board.test
+    def board_places_design_parts(check) -> None:
+        check.has_outline()
+        check.places("J1", "U1", "R1", "R2", "C1", "C2", "C3", "R3", "D1")
+
+    return project
+
+
+def run_project() -> volt.ProjectResult:
+    return build_project().run()
 
 
 def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
     if output_dir is None:
         output_dir = Path(__file__).resolve().parent / "artifacts"
     output_path = Path(output_dir)
-    result = PROJECT.run()
-    if not result.ok:
-        diagnostics = [
-            f"{diagnostic.report}:{diagnostic.code}"
-            for diagnostic in result.unexpected_diagnostics
-        ]
-        raise RuntimeError("555 LED blinker validation failed: " + ", ".join(diagnostics))
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    result = run_project()
+    _require_clean(result)
+
+    project_bundle = output_path / f"{EXAMPLE_SLUG}.volt"
+    result.write(project_bundle)
     artifacts = result.write_artifacts(
         output_path,
         slug=EXAMPLE_SLUG,
         pcb_svg_options={"pad_net_overlays": False, "ratsnest_edges": False},
     )
     return ExampleArtifacts(
+        project_bundle=project_bundle,
         logical_json=artifacts.logical_json,
         schematic_json=artifacts.schematic_json,
         schematic_svg=artifacts.schematic_svg,

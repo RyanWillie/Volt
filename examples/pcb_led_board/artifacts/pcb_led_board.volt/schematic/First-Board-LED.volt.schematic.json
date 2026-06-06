@@ -1,0 +1,45 @@
+{
+  "format": "volt.schematic",
+  "version": 1,
+  "symbol_definitions": [
+    { "id": "symbol_def:0", "name": "volt.connectors:connector_1x02", "pins": [{ "name": "+", "number": "1", "anchor": { "x": 0, "y": 0 }, "orientation": "Left" }, { "name": "-", "number": "2", "anchor": { "x": 0, "y": 8 }, "orientation": "Left" }], "primitives": [{ "type": "rectangle", "first_corner": { "x": 8, "y": -4 }, "second_corner": { "x": 22, "y": 12 } }, { "type": "text", "text": "J", "anchor": { "x": 15, "y": -10 }, "orientation": "Right" }, { "type": "line", "start": { "x": 0, "y": 0 }, "end": { "x": 8, "y": 0 } }, { "type": "line", "start": { "x": 0, "y": 8 }, "end": { "x": 8, "y": 8 } }] },
+    { "id": "symbol_def:1", "name": "volt.passives:resistor", "pins": [{ "name": "1", "number": "1", "anchor": { "x": 0, "y": 0 }, "orientation": "Left" }, { "name": "2", "number": "2", "anchor": { "x": 20, "y": 0 }, "orientation": "Right" }], "primitives": [{ "type": "line", "start": { "x": 0, "y": 0 }, "end": { "x": 5, "y": 0 }, "role": "TerminalLeadStart" }, { "type": "line", "start": { "x": 5, "y": 0 }, "end": { "x": 6.5, "y": -3 } }, { "type": "line", "start": { "x": 6.5, "y": -3 }, "end": { "x": 8, "y": 3 } }, { "type": "line", "start": { "x": 8, "y": 3 }, "end": { "x": 9.5, "y": -3 } }, { "type": "line", "start": { "x": 9.5, "y": -3 }, "end": { "x": 11, "y": 3 } }, { "type": "line", "start": { "x": 11, "y": 3 }, "end": { "x": 12.5, "y": -3 } }, { "type": "line", "start": { "x": 12.5, "y": -3 }, "end": { "x": 14, "y": 3 } }, { "type": "line", "start": { "x": 14, "y": 3 }, "end": { "x": 15, "y": 0 } }, { "type": "line", "start": { "x": 15, "y": 0 }, "end": { "x": 20, "y": 0 }, "role": "TerminalLeadEnd" }] },
+    { "id": "symbol_def:2", "name": "volt.optos:led#two-terminal-reverse-20", "pins": [{ "name": "A", "number": "2", "anchor": { "x": 0, "y": 0 }, "orientation": "Left" }, { "name": "K", "number": "1", "anchor": { "x": 20, "y": 0 }, "orientation": "Right" }], "primitives": [{ "type": "line", "start": { "x": 20, "y": 0 }, "end": { "x": 13, "y": 0 }, "role": "TerminalLeadStart" }, { "type": "line", "start": { "x": 13, "y": -5 }, "end": { "x": 13, "y": 5 } }, { "type": "line", "start": { "x": 13, "y": -5 }, "end": { "x": 7, "y": 0 } }, { "type": "line", "start": { "x": 13, "y": 5 }, "end": { "x": 7, "y": 0 } }, { "type": "line", "start": { "x": 7, "y": 0 }, "end": { "x": 0, "y": 0 }, "role": "TerminalLeadEnd" }, { "type": "line", "start": { "x": 7, "y": -6 }, "end": { "x": 3, "y": -10 } }, { "type": "line", "start": { "x": 5, "y": -4 }, "end": { "x": 1, "y": -8 } }] }
+  ],
+  "sheets": [
+    { "id": "sheet:0", "name": "First Board LED", "metadata": { "title": "First Board LED Reference Schematic", "orientation": "Landscape", "size": { "width": 220, "height": 150 }, "title_block": [{ "key": "Number", "value": "1" }, { "key": "Page Count", "value": "1" }, { "key": "Revision", "value": "A" }, { "key": "Date", "value": "2026-05-30" }, { "key": "Project", "value": "Volt PCB LED Board" }, { "key": "File", "value": "examples/pcb_led_board/main.py" }], "frame": { "visible": true, "margins": { "left": 8, "top": 8, "right": 8, "bottom": 8 } }, "coordinate_zones": { "columns": 4, "rows": 3, "visible": true }, "grid": { "spacing": 5, "visible": false } }, "regions": [], "symbol_instances": ["symbol_instance:0", "symbol_instance:1", "symbol_instance:2"], "wire_runs": ["wire_run:0", "wire_run:1", "wire_run:2", "wire_run:3", "wire_run:4"], "net_labels": ["net_label:0"], "junctions": ["junction:0"], "power_ports": ["power_port:0", "power_port:1", "power_port:2"], "no_connect_markers": [], "sheet_ports": [], "symbol_fields": ["symbol_field:0", "symbol_field:1", "symbol_field:2", "symbol_field:3"] }
+  ],
+  "symbol_instances": [
+    { "id": "symbol_instance:0", "sheet": "sheet:0", "symbol_definition": "symbol_def:0", "component": "component:0", "position": { "x": 45, "y": 60 }, "orientation": "Right" },
+    { "id": "symbol_instance:1", "sheet": "sheet:0", "symbol_definition": "symbol_def:1", "component": "component:1", "position": { "x": 80, "y": 60 }, "orientation": "Right" },
+    { "id": "symbol_instance:2", "sheet": "sheet:0", "symbol_definition": "symbol_def:2", "component": "component:2", "position": { "x": 118, "y": 60 }, "orientation": "Right" }
+  ],
+  "wire_runs": [
+    { "id": "wire_run:0", "sheet": "sheet:0", "net": "net:0", "points": [{ "x": 45, "y": 42 }, { "x": 45, "y": 60 }], "route_intent": "Direct" },
+    { "id": "wire_run:1", "sheet": "sheet:0", "net": "net:0", "points": [{ "x": 45, "y": 60 }, { "x": 80, "y": 60 }], "route_intent": "Direct" },
+    { "id": "wire_run:2", "sheet": "sheet:0", "net": "net:1", "points": [{ "x": 100, "y": 60 }, { "x": 118, "y": 60 }], "route_intent": "Direct" },
+    { "id": "wire_run:3", "sheet": "sheet:0", "net": "net:2", "points": [{ "x": 45, "y": 68 }, { "x": 45, "y": 86 }], "route_intent": "Direct" },
+    { "id": "wire_run:4", "sheet": "sheet:0", "net": "net:2", "points": [{ "x": 138, "y": 60 }, { "x": 138, "y": 84 }], "route_intent": "Direct" }
+  ],
+  "net_labels": [
+    { "id": "net_label:0", "sheet": "sheet:0", "net": "net:1", "position": { "x": 100, "y": 48 }, "orientation": "Right" }
+  ],
+  "junctions": [
+    { "id": "junction:0", "sheet": "sheet:0", "net": "net:0", "position": { "x": 80, "y": 60 } }
+  ],
+  "power_ports": [
+    { "id": "power_port:0", "sheet": "sheet:0", "net": "net:0", "kind": "Power", "position": { "x": 45, "y": 42 }, "orientation": "Up" },
+    { "id": "power_port:1", "sheet": "sheet:0", "net": "net:2", "kind": "Ground", "position": { "x": 45, "y": 86 }, "orientation": "Down", "label_position": { "x": 45, "y": 98.200000000000003 } },
+    { "id": "power_port:2", "sheet": "sheet:0", "net": "net:2", "kind": "Ground", "position": { "x": 138, "y": 84 }, "orientation": "Down", "label_position": { "x": 138, "y": 96.200000000000003 } }
+  ],
+  "no_connect_markers": [
+  ],
+  "sheet_ports": [
+  ],
+  "symbol_fields": [
+    { "id": "symbol_field:0", "sheet": "sheet:0", "symbol_instance": "symbol_instance:0", "name": "reference", "value": "J1", "position": { "x": 35, "y": 64 }, "orientation": "Right" },
+    { "id": "symbol_field:1", "sheet": "sheet:0", "symbol_instance": "symbol_instance:1", "name": "reference", "value": "R1", "position": { "x": 90, "y": 54 }, "orientation": "Right" },
+    { "id": "symbol_field:2", "sheet": "sheet:0", "symbol_instance": "symbol_instance:1", "name": "value", "value": "330 ohm", "position": { "x": 90, "y": 70 }, "orientation": "Right" },
+    { "id": "symbol_field:3", "sheet": "sheet:0", "symbol_instance": "symbol_instance:2", "name": "reference", "value": "D1", "position": { "x": 128, "y": 46 }, "orientation": "Right" }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "artifacts": [
+    {
+      "group": {
+        "design": "stm32_usb_buck"
+      },
+      "kind": "logical",
+      "media_type": "application/vnd.volt.logical+json",
+      "name": "stm32_usb_buck",
+      "path": "logical/stm32_usb_buck.volt.json"
+    },
+    {
+      "group": {
+        "design": "stm32_usb_buck",
+        "schematic": "STM32 USB Buck"
+      },
+      "kind": "schematic",
+      "media_type": "application/vnd.volt.schematic+json",
+      "name": "STM32 USB Buck",
+      "path": "schematic/STM32-USB-Buck.volt.schematic.json"
+    },
+    {
+      "group": {
+        "design": "stm32_usb_buck",
+        "schematic": "STM32 USB Buck"
+      },
+      "kind": "schematic_svg",
+      "media_type": "image/svg+xml",
+      "name": "STM32 USB Buck",
+      "path": "schematic/STM32-USB-Buck.svg"
+    },
+    {
+      "group": {
+        "design": "stm32_usb_buck",
+        "schematic": "STM32 USB Buck"
+      },
+      "kind": "schematic_body_svg",
+      "media_type": "image/svg+xml",
+      "name": "STM32 USB Buck",
+      "path": "schematic/STM32-USB-Buck.body.svg"
+    },
+    {
+      "group": {
+        "design": "stm32_usb_buck",
+        "schematic": "STM32 USB Buck"
+      },
+      "kind": "schematic_page_svg",
+      "media_type": "image/svg+xml",
+      "name": "STM32 USB Buck:STM32 USB Buck",
+      "path": "schematic/STM32-USB-Buck.pages/STM32-USB-Buck.svg"
+    },
+    {
+      "kind": "diagnostics",
+      "media_type": "application/json",
+      "name": "Project diagnostics",
+      "path": "diagnostics/diagnostics.json"
+    },
+    {
+      "kind": "project_tests",
+      "media_type": "application/json",
+      "name": "Project tests",
+      "path": "diagnostics/tests.json"
+    }
+  ],
+  "diagnostics": {
+    "path": "diagnostics/diagnostics.json",
+    "status": "expected-diagnostics",
+    "summary": {
+      "errors": 2,
+      "infos": 0,
+      "warnings": 48
+    }
+  },
+  "format": "volt.project_result",
+  "ok": true,
+  "project": {
+    "description": "STM32 USB buck reference design",
+    "name": "stm32-usb-buck",
+    "version": null
+  },
+  "schema_version": 1,
+  "stages": [
+    {
+      "model_count": 1,
+      "name": "design",
+      "tests": []
+    },
+    {
+      "model_count": 1,
+      "name": "schematic",
+      "tests": [
+        {
+          "message": "",
+          "name": "schematic_places_primary_components",
+          "ok": true,
+          "stage": "schematic"
+        }
+      ]
+    }
+  ],
+  "status": "expected-diagnostics",
+  "tests": {
+    "path": "diagnostics/tests.json",
+    "summary": {
+      "failed": 0,
+      "passed": 1
+    }
+  }
+}

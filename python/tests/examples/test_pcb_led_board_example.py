@@ -1,9 +1,32 @@
 import importlib
+import inspect
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import volt
+
+
+def test_pcb_led_board_example_exposes_project_result():
+    main = importlib.import_module("examples.pcb_led_board.main")
+
+    result = main.run_project()
+
+    assert isinstance(result, volt.ProjectResult)
+    assert result.ok
+    assert [stage.name for stage in result.stages] == ["design", "schematic", "board"]
+    assert result.design().name == "pcb-led-board"
+    assert result.schematic().name == "First Board LED"
+    assert result.board().name == "First Board LED"
+
+
+def test_pcb_led_board_project_stages_are_primary_authoring_functions():
+    main = importlib.import_module("examples.pcb_led_board.main")
+
+    source = inspect.getsource(main.build_project)
+
+    assert "return author_schematic(" not in source
+    assert "return build_board(" not in source
 
 
 def _artifact_texts(artifacts):
@@ -16,7 +39,16 @@ def _artifact_texts(artifacts):
         "pcb_svg": artifacts.pcb_svg.read_text(encoding="utf-8"),
         "kicad_pcb": artifacts.kicad_pcb.read_text(encoding="utf-8"),
         "validation": artifacts.validation_report.read_text(encoding="utf-8"),
+        "project": _project_bundle_texts(artifacts.project_bundle),
         "pages": tuple(path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages),
+    }
+
+
+def _project_bundle_texts(bundle):
+    return {
+        path.relative_to(bundle).as_posix(): path.read_text(encoding="utf-8")
+        for path in sorted(bundle.rglob("*"))
+        if path.is_file()
     }
 
 
@@ -49,6 +81,7 @@ def _committed_artifact_texts(main):
         "validation": (artifact_dir / f"{main.EXAMPLE_SLUG}.validation.json").read_text(
             encoding="utf-8"
         ),
+        "project": _project_bundle_texts(artifact_dir / f"{main.EXAMPLE_SLUG}.volt"),
         "pages": tuple(
             path.read_text(encoding="utf-8") for path in sorted(pages_dir.glob("*.svg"))
         ),
@@ -130,6 +163,10 @@ def test_pcb_led_board_example_writes_stable_public_api_artifacts():
 
     assert validation["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
     assert validation["diagnostics"] == []
+    project_manifest = json.loads(first_texts["project"]["manifest.volt.json"])
+    assert project_manifest["format"] == "volt.project_result"
+    assert project_manifest["ok"] is True
+    assert project_manifest["tests"]["summary"] == {"failed": 0, "passed": 3}
     assert 'data-board-name="First Board LED"' in first_texts["pcb_svg"]
     assert 'data-placement="component_placement:0"' in first_texts["pcb_svg"]
     assert 'data-net="net:0"' in first_texts["pcb_svg"]
