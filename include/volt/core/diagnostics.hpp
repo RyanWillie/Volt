@@ -311,9 +311,12 @@ struct DiagnosticPoint {
         }
     }
 
+    /** X coordinate in board-space millimeters. */
     double x_mm;
+    /** Y coordinate in board-space millimeters. */
     double y_mm;
 
+    /** Return whether two points have identical coordinates. */
     [[nodiscard]] friend bool operator==(DiagnosticPoint lhs,
                                          DiagnosticPoint rhs) noexcept = default;
 };
