@@ -5,6 +5,38 @@ import re
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import volt
+
+
+def _project_bundle_texts(bundle):
+    return {
+        path.relative_to(bundle).as_posix(): path.read_text(encoding="utf-8")
+        for path in sorted(bundle.rglob("*"))
+        if path.is_file()
+    }
+
+
+def test_timer_555_led_blinker_example_exposes_project_result():
+    main = importlib.import_module("examples.timer_555_led_blinker.main")
+
+    result = main.run_project()
+
+    assert isinstance(result, volt.ProjectResult)
+    assert result.ok
+    assert [stage.name for stage in result.stages] == ["design", "schematic", "board"]
+    assert result.design().name == "timer-555-led-blinker"
+    assert result.schematic().name == "555 LED Blinker"
+    assert result.board().name == "555 LED Blinker"
+
+
+def test_timer_555_led_blinker_project_stages_are_primary_authoring_functions():
+    main = importlib.import_module("examples.timer_555_led_blinker.main")
+
+    source = inspect.getsource(main.build_project)
+
+    assert "return build_schematic(" not in source
+    assert "return build_board(" not in source
+
 
 def test_timer_555_led_blinker_example_writes_stable_artifacts():
     main = importlib.import_module("examples.timer_555_led_blinker.main")
@@ -22,6 +54,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             "pcb": artifacts.pcb_json.read_text(encoding="utf-8"),
             "pcb_svg": artifacts.pcb_svg.read_text(encoding="utf-8"),
             "validation": artifacts.validation_report.read_text(encoding="utf-8"),
+            "project": _project_bundle_texts(artifacts.project_bundle),
             "pages": tuple(path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages),
         }
 
@@ -50,6 +83,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             second_artifacts.validation_report.read_text(encoding="utf-8")
             == first_texts["validation"]
         )
+        assert _project_bundle_texts(second_artifacts.project_bundle) == first_texts["project"]
         assert (
             tuple(path.read_text(encoding="utf-8") for path in second_artifacts.schematic_svg_pages)
             == first_texts["pages"]
@@ -78,6 +112,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "validation": (artifact_dir / "timer_555_led_blinker.validation.json").read_text(
             encoding="utf-8"
         ),
+        "project": _project_bundle_texts(artifact_dir / "timer_555_led_blinker.volt"),
         "pages": tuple(path.read_text(encoding="utf-8") for path in sorted(pages_dir.glob("*.svg"))),
     } == first_texts
 
@@ -116,17 +151,13 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert validation["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
     assert validation["diagnostics"] == []
     assert {
-        name: report["summary"] for name, report in validation["reports"].items()
-    } == {
-        "logical_design": {"errors": 0, "infos": 0, "warnings": 0},
-        "pcb_board": {"errors": 0, "infos": 0, "warnings": 0},
-        "pcb_readiness": {"errors": 0, "infos": 0, "warnings": 0},
-        "schematic_readability": {"errors": 0, "infos": 0, "warnings": 0},
-        "schematic_readiness": {"errors": 0, "infos": 0, "warnings": 0},
-    }
-    assert {
         (diagnostic["source"], diagnostic["code"]) for diagnostic in validation["diagnostics"]
     } == set()
+
+    project_manifest = json.loads(first_texts["project"]["manifest.volt.json"])
+    assert project_manifest["format"] == "volt.project_result"
+    assert project_manifest["ok"] is True
+    assert project_manifest["tests"]["summary"] == {"failed": 0, "passed": 3}
 
     assert schematic["format"] == "volt.schematic"
     assert [sheet["name"] for sheet in schematic["sheets"]] == ["555 LED Blinker"]
