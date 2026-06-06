@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -500,9 +501,9 @@ class Library:
         return LibraryResult(self)
 
     @property
-    def parts(self) -> tuple[Part, ...]:
-        """Return public parts registered in this library in deterministic name order."""
-        return tuple(self._parts[name] for name in sorted(self._parts))
+    def parts(self):
+        """Return registered parts, or call with defaults to create a part family."""
+        return _LibraryParts(self)
 
     def component(
         self,
@@ -542,6 +543,102 @@ class Library:
         if name in self._parts:
             return self._parts[name]
         return self._components[name]
+
+    def _ordered_parts(self) -> tuple[Part, ...]:
+        return tuple(self._parts[name] for name in sorted(self._parts))
+
+
+class _LibraryParts(tuple):
+    """Callable ordered view over a library's public parts."""
+
+    def __new__(cls, library: Library):
+        parts = super().__new__(cls, library._ordered_parts())
+        parts._library = library
+        return parts
+
+    def __call__(self, **defaults) -> _PartFamily:
+        """Create a helper that registers parts using shared defaults."""
+        return _PartFamily(self._library, defaults)
+
+
+class _PartFamily:
+    """Small helper that creates and registers normal Part objects."""
+
+    def __init__(self, library: Library, defaults: Mapping) -> None:
+        object.__setattr__(self, "_library", library)
+        object.__setattr__(
+            self,
+            "_defaults",
+            _freeze_value(_normalize_part_family_payload(defaults)),
+        )
+        object.__setattr__(self, "_frozen", True)
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError("Part family defaults are immutable")
+        object.__setattr__(self, name, value)
+
+    def part(self, key: str, **overrides) -> Part:
+        """Create a normal Part from this family's defaults and register it."""
+        from .part import Part
+
+        overrides = dict(overrides)
+        explicit_name = overrides.pop("name", None)
+        if "value" not in overrides:
+            overrides["value"] = key
+
+        payload = _merge_part_family_payload(
+            _mutable_value(self._defaults),
+            _normalize_part_family_payload(overrides),
+        )
+        payload["name"] = explicit_name or _part_family_name(payload, key)
+        return self._library.add(Part(**payload))
+
+
+def _normalize_part_family_payload(payload: Mapping) -> dict:
+    result = dict(payload)
+    kind = result.pop("kind", None)
+    if kind is not None:
+        properties = dict(result.get("properties") or {})
+        properties["kind"] = kind
+        result["properties"] = properties
+    return result
+
+
+def _merge_part_family_payload(defaults: dict, overrides: dict) -> dict:
+    result = dict(defaults)
+    for key, value in overrides.items():
+        if key in {"properties", "physical_properties", "ratings", "extensions"}:
+            result[key] = _merge_part_family_mapping(result.get(key), value)
+        else:
+            result[key] = value
+    return result
+
+
+def _merge_part_family_mapping(default, override):
+    if override is None:
+        return None
+    result = dict(default or {})
+    result.update(dict(override))
+    return result
+
+
+def _part_family_name(payload: Mapping, value: object) -> str:
+    return "_".join(
+        segment
+        for segment in (
+            _part_family_name_segment(payload.get("prefix")),
+            _part_family_name_segment(payload.get("package")),
+            _part_family_name_segment(value),
+        )
+        if segment
+    )
+
+
+def _part_family_name_segment(value: object) -> str:
+    if value is None:
+        return ""
+    return str(value).strip().replace(" ", "_")
 
 
 def _normalize_schematic_symbols(
