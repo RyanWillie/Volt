@@ -83,6 +83,26 @@ schematic_endpoints_from_list(const py::list &endpoints) {
     return result;
 }
 
+[[nodiscard]] std::optional<volt::PartModel3D> part_model_3d_from_object(py::handle value) {
+    if (value.is_none()) {
+        return std::nullopt;
+    }
+    const auto data = py::cast<py::dict>(value);
+    auto translation = std::array<double, 3>{};
+    const auto translation_payload = py::cast<py::sequence>(data["translation_mm"]);
+    if (py::len(translation_payload) != 3U) {
+        throw py::value_error{"Selected-part 3D model translation must contain three numbers"};
+    }
+    for (auto index = std::size_t{0}; index < 3; ++index) {
+        translation[index] = py::cast<double>(translation_payload[index]);
+        require_finite(translation[index], "Selected-part 3D model translation must be finite");
+    }
+    const auto rotation = py::cast<double>(data["rotation_deg"]);
+    require_finite(rotation, "Selected-part 3D model rotation must be finite");
+    return volt::PartModel3D{py::cast<std::string>(data["format"]),
+                             py::cast<std::string>(data["file_name"]), translation, rotation};
+}
+
 [[nodiscard]] py::tuple schematic_entity_result(std::size_t index, volt::NetId net) {
     return py::make_tuple(index, net.index());
 }
@@ -209,7 +229,7 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
                                      const std::string &part_number, const std::string &package,
                                      const std::string &footprint_library,
                                      const std::string &footprint_name, const py::dict &pin_pads,
-                                     const py::dict &properties) {
+                                     const py::dict &properties, py::object model_3d) {
     const auto component_handle = component_id(component);
     auto mappings = std::vector<volt::PinPadMapping>{};
     mappings.reserve(static_cast<std::size_t>(py::len(pin_pads)));
@@ -242,7 +262,8 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
         volt::PhysicalPart{volt::ManufacturerPart{manufacturer, part_number},
                            volt::PackageRef{package},
                            volt::FootprintRef{footprint_library, footprint_name},
-                           std::move(mappings), properties_from_dict(properties)});
+                           std::move(mappings), properties_from_dict(properties),
+                           part_model_3d_from_object(model_3d)});
 }
 
 void PyCircuit::set_component_quantity(std::size_t component, const std::string &name,

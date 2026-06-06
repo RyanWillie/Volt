@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <algorithm>
 #include <iterator>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -102,6 +104,42 @@ class PinPadMapping {
     std::string pad_;
 };
 
+/** Reusable 3D asset metadata attached to a selected physical part. */
+class PartModel3D {
+  public:
+    /** Construct a selected-part 3D model reference from a file name and footprint-relative pose. */
+    PartModel3D(std::string format, std::string file_name, std::array<double, 3> translation_mm,
+                double rotation_deg);
+
+    /** Return the normalized asset format, such as glb or step. */
+    [[nodiscard]] const std::string &format() const noexcept { return format_; }
+
+    /** Return the source file name carried in logical model metadata. */
+    [[nodiscard]] const std::string &file_name() const noexcept { return file_name_; }
+
+    /** Return the footprint-relative model translation in millimeters. */
+    [[nodiscard]] const std::array<double, 3> &translation_mm() const noexcept {
+        return translation_mm_;
+    }
+
+    /** Return the footprint-relative model rotation around the board normal in degrees. */
+    [[nodiscard]] double rotation_deg() const noexcept { return rotation_deg_; }
+
+    /** Return whether two selected-part model declarations are identical. */
+    [[nodiscard]] friend bool operator==(const PartModel3D &lhs,
+                                         const PartModel3D &rhs) noexcept {
+        return lhs.format_ == rhs.format_ && lhs.file_name_ == rhs.file_name_
+               && lhs.translation_mm_ == rhs.translation_mm_
+               && lhs.rotation_deg_ == rhs.rotation_deg_;
+    }
+
+  private:
+    std::string format_;
+    std::string file_name_;
+    std::array<double, 3> translation_mm_;
+    double rotation_deg_;
+};
+
 /** Selected physical implementation for a logical component definition. */
 class PhysicalPart {
   public:
@@ -110,7 +148,8 @@ class PhysicalPart {
      * pin/pad mappings, and extensible properties.
      */
     PhysicalPart(ManufacturerPart manufacturer_part, PackageRef package, FootprintRef footprint,
-                 std::vector<PinPadMapping> pin_pad_mappings, PropertyMap properties = {});
+                 std::vector<PinPadMapping> pin_pad_mappings, PropertyMap properties = {},
+                 std::optional<PartModel3D> model_3d = std::nullopt);
 
     /** Return the selected manufacturer part identity. */
     [[nodiscard]] const ManufacturerPart &manufacturer_part() const noexcept;
@@ -130,6 +169,11 @@ class PhysicalPart {
     /** Return typed electrical attributes for this physical part selection. */
     [[nodiscard]] const ElectricalAttributeMap &electrical_attributes() const noexcept;
 
+    /** Return optional selected-part 3D model metadata. */
+    [[nodiscard]] const std::optional<PartModel3D> &model_3d() const noexcept {
+        return model_3d_;
+    }
+
   private:
     friend class ElectricalModel;
 
@@ -142,6 +186,7 @@ class PhysicalPart {
     std::vector<PinPadMapping> pin_pad_mappings_;
     PropertyMap properties_;
     ElectricalAttributeMap electrical_attributes_;
+    std::optional<PartModel3D> model_3d_;
 };
 
 } // namespace volt

@@ -31,7 +31,7 @@ void bind_circuit(pybind11::module_ &module) {
         .def("select_physical_part", &PyCircuit::select_physical_part, py::arg("component"),
              py::arg("manufacturer"), py::arg("part_number"), py::arg("package"),
              py::arg("footprint_library"), py::arg("footprint_name"), py::arg("pin_pads"),
-             py::arg("properties") = py::dict{})
+             py::arg("properties") = py::dict{}, py::arg("model_3d") = py::none())
         .def("set_component_quantity", &PyCircuit::set_component_quantity, py::arg("component"),
              py::arg("name"), py::arg("dimension"), py::arg("value"))
         .def("set_component_percent_tolerance", &PyCircuit::set_component_percent_tolerance,

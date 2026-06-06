@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import volt
 from volt.libraries import stm32_usb_buck
@@ -679,6 +680,42 @@ def test_component_selected_part_serializes():
         "type": "quantity",
         "dimension": "power",
         "value": 0.1,
+    }
+
+
+def test_component_selected_part_model_3d_serializes(tmp_path):
+    design = volt.Design("selected-part-model-3d")
+    r1 = design.R(resistance=330, ref="R1")
+    asset_path = Path(tmp_path) / "resistor-body.glb"
+    asset_path.write_bytes(b"placeholder-glb")
+
+    r1.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603FR-07330RL",
+        package="0603",
+        footprint=("Resistor_SMD", "R_0603_1608Metric"),
+        pin_pads={
+            1: "1",
+            2: "2",
+        },
+        model_3d=volt.PartModel3D(
+            asset_path,
+            offset=(0.5, -0.25, 0.8),
+            rotation=15,
+        ),
+    )
+
+    circuit = json.loads(design.to_json())
+    resistor = next(
+        component for component in circuit["components"] if component["reference"] == "R1"
+    )
+
+    assert resistor["selected_physical_part"]["model_3d"] == {
+        "kind": "asset",
+        "format": "glb",
+        "file_name": "resistor-body.glb",
+        "translation_mm": [0.5, -0.25, 0.8],
+        "rotation_deg": 15.0,
     }
 
 

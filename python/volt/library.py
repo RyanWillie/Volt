@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable
 
 from ._immutable import _freeze_value, _mutable_value
@@ -22,6 +23,75 @@ from ._footprint import FootprintInput
 from ._utils import _coordinate, _number, _positive_coordinate
 
 PinPadValue = str | tuple[str, ...] | list[str]
+
+
+def _point3(value: tuple[float, float, float], context: str) -> tuple[float, float, float]:
+    if not isinstance(value, tuple) or len(value) != 3:
+        raise TypeError(f"{context} must be an (x, y, z) tuple")
+    return (
+        _coordinate(value[0]),
+        _coordinate(value[1]),
+        _coordinate(value[2]),
+    )
+
+
+@dataclass(frozen=True)
+class PartModel3D:
+    """Reusable 3D asset reference and footprint-relative transform for a selected part."""
+
+    source: str | Path
+    offset: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    rotation: float = 0.0
+
+    def __post_init__(self) -> None:
+        path = Path(self.source).expanduser()
+        suffix = path.suffix.casefold()
+        format_name = {
+            ".glb": "glb",
+            ".step": "step",
+            ".stp": "step",
+        }.get(suffix)
+        if format_name is None:
+            raise ValueError("PartModel3D source must end with .glb, .step, or .stp")
+        if not path.name:
+            raise ValueError("PartModel3D source file name must not be empty")
+        object.__setattr__(self, "source", path)
+        object.__setattr__(self, "offset", _point3(self.offset, "PartModel3D offset"))
+        object.__setattr__(self, "rotation", _coordinate(self.rotation))
+        object.__setattr__(self, "_format", format_name)
+
+    @property
+    def source_path(self) -> Path:
+        """Return the authoring-time source path for this model asset."""
+        return Path(self.source)
+
+    @property
+    def file_name(self) -> str:
+        """Return the source file name used for viewer bundle metadata."""
+        return self.source_path.name
+
+    @property
+    def format(self) -> str:
+        """Return the normalized model asset format."""
+        return self._format
+
+    def _selected_part_payload(self) -> dict[str, object]:
+        return {
+            "kind": "asset",
+            "format": self.format,
+            "file_name": self.file_name,
+            "translation_mm": list(self.offset),
+            "rotation_deg": self.rotation,
+        }
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "path": str(self.source_path),
+            "format": self.format,
+            "file_name": self.file_name,
+            "translation_mm": list(self.offset),
+            "rotation_deg": self.rotation,
+        }
 
 
 @dataclass(frozen=True)
@@ -74,6 +144,7 @@ class PhysicalPartSpec:
     properties: dict | None = None
     voltage_rating: float | None = None
     power_rating: float | None = None
+    model_3d: PartModel3D | None = None
     same_numbered_pads: bool = False
 
     @classmethod
@@ -87,6 +158,7 @@ class PhysicalPartSpec:
         properties: dict | None = None,
         voltage_rating: float | None = None,
         power_rating: float | None = None,
+        model_3d: PartModel3D | None = None,
     ) -> PhysicalPartSpec:
         """Create a physical part whose footprint pad labels match pin numbers."""
         return cls(
@@ -97,6 +169,7 @@ class PhysicalPartSpec:
             properties=properties,
             voltage_rating=voltage_rating,
             power_rating=power_rating,
+            model_3d=model_3d,
             same_numbered_pads=True,
         )
 

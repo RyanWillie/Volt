@@ -53,7 +53,7 @@ class PyCircuit {
                               const std::string &part_number, const std::string &package,
                               const std::string &footprint_library,
                               const std::string &footprint_name, const py::dict &pin_pads,
-                              const py::dict &properties);
+                              const py::dict &properties, py::object model_3d);
 
     void set_component_quantity(std::size_t component, const std::string &name,
                                 const std::string &dimension_name, double value);
