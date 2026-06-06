@@ -564,28 +564,6 @@ def test_project_result_artifact_manifest_groups_outputs_by_board(tmp_path):
     ]
 
 
-def test_project_rules_run_in_deterministic_order():
-    project = volt.Project("status-led")
-    calls = []
-
-    @project.design
-    def design():
-        return _minimal_design()
-
-    @project.rule_suite("z-last")
-    def z_last(context):
-        calls.append(("z-last", context.design_names))
-
-    @project.rule_suite("a-first")
-    def a_first(context):
-        calls.append(("a-first", context.design_names))
-
-    result = project.run_through(project.design)
-
-    assert result.rule_suites == ("z-last", "a-first")
-    assert calls == [("z-last", ("status-led",)), ("a-first", ("status-led",))]
-
-
 def test_project_diagnostics_preserve_board_and_design_identity():
     project = volt.Project("fixture")
 
@@ -607,47 +585,6 @@ def test_project_diagnostics_preserve_board_and_design_identity():
     assert board_diagnostics
     assert {diagnostic.design for diagnostic in board_diagnostics} == {"fixture"}
     assert {diagnostic.source for diagnostic in board_diagnostics} == {"pcb:Fixture"}
-
-
-def test_project_can_fail_on_rule_diagnostic_without_failing_structural_build():
-    project = volt.Project("status-led")
-
-    @project.design
-    def design():
-        return _board_ready_design()
-
-    @project.rule_suite("product.identity")
-    def product_identity(context):
-        return context.diagnostic(
-            severity="error",
-            code="PRODUCT_IDENTITY_MISMATCH",
-            message="Configured identity does not match product policy",
-        )
-
-    result = project.run_through(project.design)
-
-    assert not result.ok
-    diagnostic = result.diagnostics.errors(stage="project")[0]
-    assert diagnostic.code == "PRODUCT_IDENTITY_MISMATCH"
-    assert diagnostic.rule == "product.identity"
-    assert result.design("status-led").name == "status-led"
-
-
-def test_project_rule_context_does_not_expose_mutable_models():
-    project = volt.Project("status-led")
-    observed = []
-
-    @project.design
-    def design():
-        return _board_ready_design()
-
-    @project.rule_suite("product.identity")
-    def product_identity(context):
-        observed.append(hasattr(context, "design"))
-
-    project.run_through(project.design)
-
-    assert observed == [False]
 
 
 def test_project_stage_tests_fail_cleanly_for_multi_model_stages():

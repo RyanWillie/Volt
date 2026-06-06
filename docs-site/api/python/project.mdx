@@ -33,7 +33,6 @@ Source: `python/volt/project.py`
 | Method | Summary |
 | --- | --- |
 | `use_library(self, library: Library) -> Library` | Include a library's validation diagnostics in this project result. |
-| `rule_suite(self, name: str) -> Callable[[BuildFunction], BuildFunction]` | Register a project-level diagnostic suite in evaluation order. |
 | `run(self) -> 'ProjectResult'` | Run the registered project stages and return one result. |
 | `run_through(self, stage: ProjectStage) -> 'ProjectResult'` | Run stages through the given stage handle. |
 
@@ -53,7 +52,7 @@ Source: `python/volt/project.py`
 | `severity: str` |
 | `code: str` |
 | `message: str` |
-| `entities: tuple[object, ...]` |
+| `entities: tuple[DiagnosticEntity, ...]` |
 | `design: str \| None` |
 | `board: str \| None` |
 | `rule: str \| None` |
@@ -78,40 +77,6 @@ Source: `python/volt/project.py`
 | `__len__(self) -> int` | Return the number of diagnostics. |
 | `errors(self, *, stage: ProjectStage \| str \| None = None) -> tuple[ProjectDiagnostic, ...]` | Return error diagnostics, optionally filtered by stage. |
 
-## `volt.ProjectRuleContext`
-
-Read-only project summary passed to project-level rule suites.
-
-Source: `python/volt/project.py`
-
-### Properties
-
-| Property | Summary |
-| --- | --- |
-| `project_name: str` | Return the project name for this run. |
-| `design_names: tuple[str, ...]` | Return stable design names in result order. |
-| `schematic_names: tuple[str, ...]` | Return stable schematic result names in result order. |
-| `board_names: tuple[str, ...]` | Return stable board result names in result order. |
-
-### Methods
-
-| Method | Summary |
-| --- | --- |
-| `diagnostic(self, *, severity: str, code: str, message: str, stage: str = 'project', source: str \| None = None, report: str = 'project.rule', entities: tuple[object, ...] = (), design: str \| None = None, board: str \| None = None) -> ProjectDiagnostic` | Create a project-level diagnostic without exposing mutable models. |
-
-## `volt.ProjectRuleSuiteDefinition`
-
-Registered project-level diagnostic suite.
-
-Source: `python/volt/project.py`
-
-### Fields
-
-| Field |
-| --- |
-| `name: str` |
-| `function: BuildFunction` |
-
 ## `volt.ProjectResult`
 
 Output of one Volt project run.
@@ -128,7 +93,6 @@ Source: `python/volt/project.py`
 | `designs: tuple[Design, ...]` | Return logical designs collected by the run. |
 | `schematics: tuple[Schematic, ...]` | Return schematic projections collected by the run. |
 | `boards: tuple[Board, ...]` | Return board projections collected by the run. |
-| `rule_suites: tuple[str, ...]` | Return project-level rule suites in evaluation order. |
 
 ### Methods
 

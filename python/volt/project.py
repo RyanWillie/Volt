@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import re
 import shutil
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
 
 from .design import Design
+from .diagnostics import DiagnosticEntity
 from .library import Library
 from .pcb import Board
 from .project_checks import BoardCheck, DesignCheck, SchematicCheck
@@ -22,14 +23,6 @@ BuildFunction = Callable[..., object]
 @dataclass(frozen=True)
 class ProjectTestDefinition:
     """Registered product-intent test for one project stage."""
-
-    name: str
-    function: BuildFunction
-
-
-@dataclass(frozen=True)
-class ProjectRuleSuiteDefinition:
-    """Registered project-level diagnostic suite."""
 
     name: str
     function: BuildFunction
@@ -54,7 +47,7 @@ class ProjectDiagnostic:
     severity: str
     code: str
     message: str
-    entities: tuple[object, ...]
+    entities: tuple[DiagnosticEntity, ...]
     design: str | None = None
     board: str | None = None
     rule: str | None = None
@@ -114,68 +107,6 @@ class BuildContext:
     def design(self, name: str | None = None) -> Design:
         """Return a design by stable name, or the only design."""
         return _one_or_named(self._designs, name, "design")
-
-
-class ProjectRuleContext:
-    """Read-only project summary passed to project-level rule suites."""
-
-    def __init__(self, result: "ProjectResult"):
-        self._project_name = result.project.name
-        self._design_names = tuple(design.name for design in result.designs)
-        self._schematic_names = tuple(
-            _model_output_name(schematic, result.schematics)
-            for schematic in result.schematics
-        )
-        self._board_names = tuple(
-            _model_output_name(board, result.boards)
-            for board in result.boards
-        )
-
-    @property
-    def project_name(self) -> str:
-        """Return the project name for this run."""
-        return self._project_name
-
-    @property
-    def design_names(self) -> tuple[str, ...]:
-        """Return stable design names in result order."""
-        return self._design_names
-
-    @property
-    def schematic_names(self) -> tuple[str, ...]:
-        """Return stable schematic result names in result order."""
-        return self._schematic_names
-
-    @property
-    def board_names(self) -> tuple[str, ...]:
-        """Return stable board result names in result order."""
-        return self._board_names
-
-    def diagnostic(
-        self,
-        *,
-        severity: str,
-        code: str,
-        message: str,
-        stage: str = "project",
-        source: str | None = None,
-        report: str = "project.rule",
-        entities: tuple[object, ...] = (),
-        design: str | None = None,
-        board: str | None = None,
-    ) -> ProjectDiagnostic:
-        """Create a project-level diagnostic without exposing mutable models."""
-        return ProjectDiagnostic(
-            stage=stage,
-            source=source or f"project:{self._project_name}",
-            report=report,
-            severity=severity,
-            code=code,
-            message=message,
-            entities=entities,
-            design=design,
-            board=board,
-        )
 
 
 class ProjectStage:
@@ -240,7 +171,6 @@ class Project:
         self.schematic = ProjectStage(self, "schematic")
         self.board = ProjectStage(self, "board")
         self._stage_order = (self.design, self.schematic, self.board)
-        self._rule_suites: list[ProjectRuleSuiteDefinition] = []
         self._libraries: list[Library] = []
 
     def use_library(self, library: Library) -> Library:
@@ -250,21 +180,6 @@ class Project:
         if library not in self._libraries:
             self._libraries.append(library)
         return library
-
-    def rule_suite(self, name: str) -> Callable[[BuildFunction], BuildFunction]:
-        """Register a project-level diagnostic suite in evaluation order."""
-        if not isinstance(name, str):
-            raise TypeError("Project rule suite name must be a string")
-        if not name:
-            raise ValueError("Project rule suite name must not be empty")
-        if any(rule.name == name for rule in self._rule_suites):
-            raise RuntimeError(f"Project {self.name} rule suite {name} is already registered")
-
-        def register(function: BuildFunction) -> BuildFunction:
-            self._rule_suites.append(ProjectRuleSuiteDefinition(name, function))
-            return function
-
-        return register
 
     def run(self) -> "ProjectResult":
         """Run the registered project stages and return one result."""
@@ -367,6 +282,17 @@ class Project:
     ) -> tuple[ProjectTestResult, ...]:
         if not stage.tests:
             return ()
+        if len(models) != 1:
+            count = len(models)
+            model_name = _expected_model_name(stage).lower()
+            message = (
+                f"Project {stage.name} stage tests do not support {count} "
+                f"{model_name} models"
+            )
+            return tuple(
+                ProjectTestResult(stage.name, test.name, False, message)
+                for test in stage.tests
+            )
         results: list[ProjectTestResult] = []
         for test in stage.tests:
             try:
@@ -406,7 +332,6 @@ class ProjectResult:
             (
                 *_collect_library_diagnostics(self.project._libraries),
                 *_collect_default_diagnostics(self._runs),
-                *_collect_rule_diagnostics(self.project._rule_suites, self),
             )
         )
 
@@ -439,11 +364,6 @@ class ProjectResult:
     def boards(self) -> tuple[Board, ...]:
         """Return board projections collected by the run."""
         return tuple(model for model in self._models if isinstance(model, Board))
-
-    @property
-    def rule_suites(self) -> tuple[str, ...]:
-        """Return project-level rule suites in evaluation order."""
-        return tuple(rule.name for rule in self.project._rule_suites)
 
     def design(self, name: str | None = None) -> Design:
         """Return a collected design by name, or the only design."""
@@ -780,41 +700,13 @@ def _collect_library_diagnostics(libraries: tuple[Library, ...] | list[Library])
     return tuple(diagnostics)
 
 
-def _collect_rule_diagnostics(
-    rule_suites: tuple[ProjectRuleSuiteDefinition, ...] | list[ProjectRuleSuiteDefinition],
-    result: ProjectResult,
-) -> tuple[ProjectDiagnostic, ...]:
-    diagnostics: list[ProjectDiagnostic] = []
-    context = ProjectRuleContext(result)
-    for rule_suite in rule_suites:
-        diagnostics.extend(
-            _project_rule_diagnostics(rule_suite.name, rule_suite.function(context))
-        )
-    return tuple(diagnostics)
-
-
-def _project_rule_diagnostics(
-    rule_name: str,
-    value: object,
-) -> tuple[ProjectDiagnostic, ...]:
-    if value is None:
-        return ()
-    if isinstance(value, ProjectDiagnostic):
-        return (_rule_diagnostic(rule_name, value),)
-    if isinstance(value, ProjectDiagnostics):
-        return tuple(_rule_diagnostic(rule_name, diagnostic) for diagnostic in value)
-    if isinstance(value, (list, tuple)):
-        diagnostics: list[ProjectDiagnostic] = []
-        for item in value:
-            diagnostics.extend(_project_rule_diagnostics(rule_name, item))
-        return tuple(diagnostics)
-    raise TypeError("Project rule suites must return ProjectDiagnostic objects or sequences")
-
-
-def _rule_diagnostic(rule_name: str, diagnostic: ProjectDiagnostic) -> ProjectDiagnostic:
-    if diagnostic.rule == rule_name:
-        return diagnostic
-    return replace(diagnostic, rule=diagnostic.rule or rule_name)
+def _is_diagnostic_entity(entity: object) -> bool:
+    return (
+        hasattr(entity, "kind")
+        and isinstance(entity.kind, str)
+        and hasattr(entity, "index")
+        and isinstance(entity.index, int)
+    )
 
 
 def _report_diagnostics(
@@ -931,9 +823,9 @@ def _diagnostics_payload(diagnostics: ProjectDiagnostics) -> dict:
 
 
 def _diagnostic_entity_payload(entity: object) -> object:
-    if hasattr(entity, "kind") and hasattr(entity, "index"):
+    if _is_diagnostic_entity(entity):
         return {"kind": entity.kind, "index": entity.index}
-    return entity
+    raise TypeError("Project diagnostic entities must be DiagnosticEntity references")
 
 
 def _diagnostic_summary(diagnostics: ProjectDiagnostics) -> dict[str, int]:
