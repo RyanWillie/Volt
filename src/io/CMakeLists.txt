@@ -12,6 +12,10 @@ if(NOT nlohmann_json_FOUND)
     FetchContent_MakeAvailable(nlohmann_json)
 endif()
 
+add_library(volt_nlohmann_json INTERFACE)
+add_library(Volt::NlohmannJson ALIAS volt_nlohmann_json)
+target_link_libraries(volt_nlohmann_json INTERFACE nlohmann_json::nlohmann_json)
+
 add_library(
     volt_io
     detail_schematic_svg_common.cpp
@@ -42,7 +46,7 @@ target_link_libraries(
         Volt::Schematic
         Volt::PCB
     PRIVATE
-        nlohmann_json::nlohmann_json
+        Volt::NlohmannJson
 )
 target_include_directories(
     volt_io
