@@ -24,7 +24,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build doxygen clang-format
+          sudo apt-get install -y ninja-build doxygen clang-format nlohmann-json3-dev
 
       - name: Install tools on macOS
         if: runner.os == 'macOS'
@@ -84,7 +84,7 @@ jobs:
       - name: Install clang-tidy tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build clang-tidy
+          sudo apt-get install -y ninja-build clang-tidy nlohmann-json3-dev
 
       - name: Run clang-tidy
         run: cmake --workflow --preset clang-tidy
@@ -103,7 +103,7 @@ jobs:
       - name: Install sanitizer tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build
+          sudo apt-get install -y ninja-build nlohmann-json3-dev
 
       - name: Run sanitizer tests
         run: cmake --workflow --preset asan
@@ -119,7 +119,7 @@ jobs:
       - name: Install coverage tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build lcov
+          sudo apt-get install -y ninja-build lcov nlohmann-json3-dev
 
       - name: Install Python dev dependencies
         run: python -m pip install -r requirements-dev.txt
