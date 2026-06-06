@@ -38,6 +38,14 @@ class StageResult:
 
 
 @dataclass(frozen=True)
+class ProjectResource:
+    """Explicit non-canonical authoring resource produced by a project stage."""
+
+    name: str
+    value: object
+
+
+@dataclass(frozen=True)
 class ProjectDiagnostic:
     """Diagnostic emitted during one project run with project source metadata."""
 
@@ -61,6 +69,63 @@ class ProjectTestResult:
     name: str
     ok: bool
     message: str = ""
+
+
+@dataclass(frozen=True)
+class ExpectedDiagnostic:
+    """Project-local policy for a known diagnostic."""
+
+    code: str
+    severity: str | None = None
+    stage: str | None = None
+    source: str | None = None
+    report: str | None = None
+    design: str | None = None
+    board: str | None = None
+    rule: str | None = None
+
+    def matches(self, diagnostic: ProjectDiagnostic) -> bool:
+        """Return whether this expectation covers a project diagnostic."""
+        return (
+            self.code == diagnostic.code
+            and (self.severity is None or self.severity == diagnostic.severity)
+            and (self.stage is None or self.stage == diagnostic.stage)
+            and (self.source is None or self.source == diagnostic.source)
+            and (self.report is None or self.report == diagnostic.report)
+            and (self.design is None or self.design == diagnostic.design)
+            and (self.board is None or self.board == diagnostic.board)
+            and (self.rule is None or self.rule == diagnostic.rule)
+        )
+
+
+@dataclass(frozen=True)
+class ExpectedDiagnosticResult:
+    """Match result for one expected diagnostic policy item."""
+
+    code: str
+    severity: str | None
+    stage: str | None
+    source: str | None
+    report: str | None
+    design: str | None
+    board: str | None
+    rule: str | None
+    matched: bool
+
+
+@dataclass(frozen=True)
+class ProjectArtifactPaths:
+    """Flat artifact paths written for example and viewer consumers."""
+
+    logical_json: Path | None = None
+    schematic_json: Path | None = None
+    schematic_svg: Path | None = None
+    schematic_body_svg: Path | None = None
+    schematic_svg_pages: tuple[Path, ...] = ()
+    pcb_json: Path | None = None
+    pcb_svg: Path | None = None
+    kicad_pcb: Path | None = None
+    diagnostics_json: Path | None = None
 
 
 class ProjectDiagnostics:
@@ -96,17 +161,36 @@ class ProjectDiagnostics:
 class BuildContext:
     """Read-only access to models produced by earlier project stages."""
 
-    def __init__(self, *, designs: Iterable[Design]):
+    def __init__(self, *, designs: Iterable[Design], resources: Iterable[ProjectResource] = ()):
         self._designs = tuple(designs)
+        self._resources = tuple(resources)
 
     @property
     def designs(self) -> tuple[Design, ...]:
         """Return designs produced by the project design stage."""
         return self._designs
 
+    @property
+    def resources(self) -> tuple[ProjectResource, ...]:
+        """Return explicit authoring resources produced by prior stages."""
+        return self._resources
+
     def design(self, name: str | None = None) -> Design:
         """Return a design by stable name, or the only design."""
         return _one_or_named(self._designs, name, "design")
+
+    def resource(self, name: str, expected_type: type | tuple[type, ...] | None = None) -> object:
+        """Return a named authoring resource from an earlier stage."""
+        matches = [resource.value for resource in self._resources if resource.name == name]
+        if len(matches) == 1:
+            value = matches[0]
+            if expected_type is not None and not isinstance(value, expected_type):
+                expected = _type_phrase(expected_type)
+                raise TypeError(f"Project resource {name} must be a {expected}")
+            return value
+        if len(matches) > 1:
+            raise LookupError(f"Project context has multiple resources named {name}")
+        raise LookupError(f"Project context has no resource named {name}")
 
 
 class ProjectStage:
@@ -147,6 +231,7 @@ class ProjectStage:
 class _StageRun:
     stage: ProjectStage
     models: tuple[object, ...]
+    resources: tuple[ProjectResource, ...]
     tests: tuple[ProjectTestResult, ...]
 
 
@@ -172,6 +257,7 @@ class Project:
         self.board = ProjectStage(self, "board")
         self._stage_order = (self.design, self.schematic, self.board)
         self._libraries: list[Library] = []
+        self._expected_diagnostics: list[ExpectedDiagnostic] = []
 
     def use_library(self, library: Library) -> Library:
         """Include a library's validation diagnostics in this project result."""
@@ -180,6 +266,34 @@ class Project:
         if library not in self._libraries:
             self._libraries.append(library)
         return library
+
+    def expect_diagnostic(
+        self,
+        *,
+        code: str,
+        severity: str | None = None,
+        stage: ProjectStage | str | None = None,
+        source: str | None = None,
+        report: str | None = None,
+        design: str | None = None,
+        board: str | None = None,
+        rule: str | None = None,
+    ) -> ExpectedDiagnostic:
+        """Declare a project-local diagnostic that is expected for this run."""
+        if not isinstance(code, str) or not code:
+            raise ValueError("Expected diagnostic code must be a non-empty string")
+        expectation = ExpectedDiagnostic(
+            code=code,
+            severity=severity,
+            stage=_stage_name(stage),
+            source=source,
+            report=report,
+            design=design,
+            board=board,
+            rule=rule,
+        )
+        self._expected_diagnostics.append(expectation)
+        return expectation
 
     def run(self) -> "ProjectResult":
         """Run the registered project stages and return one result."""
@@ -207,6 +321,7 @@ class Project:
         model_ids: set[int] = set()
         runs: list[_StageRun] = []
         designs: tuple[Design, ...] = ()
+        resources: list[ProjectResource] = []
 
         for stage in self._stage_order:
             if not stage.registered:
@@ -218,17 +333,22 @@ class Project:
                     raise RuntimeError(
                         f"Project {self.name} {stage.name} stage requires a design stage"
                     )
-                argument = designs[0] if len(designs) == 1 else BuildContext(designs=designs)
+                argument = (
+                    designs[0]
+                    if len(designs) == 1 and not resources
+                    else BuildContext(designs=designs, resources=resources)
+                )
                 result = stage._function(argument)
-            stage_models = self._collect_stage_return(stage, result)
+            stage_models, stage_resources = self._collect_stage_return(stage, result)
             for model in stage_models:
                 if id(model) not in model_ids:
                     models.append(model)
                     model_ids.add(id(model))
             if stage is self.design:
                 designs = stage_models
+            resources.extend(stage_resources)
             tests = self._run_stage_tests(stage, stage_models)
-            runs.append(_StageRun(stage, stage_models, tests))
+            runs.append(_StageRun(stage, stage_models, stage_resources, tests))
             if stop_stage is stage:
                 break
 
@@ -238,10 +358,11 @@ class Project:
         self,
         stage: ProjectStage,
         value: object,
-    ) -> tuple[object, ...]:
+    ) -> tuple[tuple[object, ...], tuple[ProjectResource, ...]]:
         models: list[object] = []
         model_ids: set[int] = set()
-        self._collect_return(models, model_ids, value)
+        resources: list[ProjectResource] = []
+        self._collect_return(models, model_ids, resources, value)
         if not models:
             raise RuntimeError(
                 f"Project {self.name} {stage.name} stage must return at least one "
@@ -254,12 +375,13 @@ class Project:
                 f"Project {self.name} {stage.name} stage must return "
                 f"{_expected_model_name(stage)} models"
             )
-        return tuple(models)
+        return tuple(models), tuple(resources)
 
     def _collect_return(
         self,
         models: list[object],
         model_ids: set[int],
+        resources: list[ProjectResource],
         value: object,
     ) -> None:
         if value is None:
@@ -269,11 +391,19 @@ class Project:
                 models.append(value)
                 model_ids.add(id(value))
             return
+        if isinstance(value, ProjectResource):
+            if not isinstance(value.name, str) or not value.name:
+                raise ValueError("Project resource names must be non-empty strings")
+            resources.append(value)
+            return
         if isinstance(value, (list, tuple)):
             for item in value:
-                self._collect_return(models, model_ids, item)
+                self._collect_return(models, model_ids, resources, item)
             return
-        raise TypeError("Project build stages must return Volt models or lists/tuples of Volt models")
+        raise TypeError(
+            "Project build stages must return Volt models, ProjectResource values, "
+            "or lists/tuples of those values"
+        )
 
     def _run_stage_tests(
         self,
@@ -334,16 +464,73 @@ class ProjectResult:
                 *_collect_default_diagnostics(self._runs),
             )
         )
+        self._expected_diagnostic_results = _expected_diagnostic_results(
+            self.project._expected_diagnostics,
+            self._diagnostics,
+        )
+        self._expected_project_diagnostics = tuple(
+            diagnostic
+            for diagnostic in self._diagnostics
+            if _matches_any_expected(diagnostic, self.project._expected_diagnostics)
+        )
+        self._unexpected_diagnostics = tuple(
+            diagnostic
+            for diagnostic in self._diagnostics
+            if not _matches_any_expected(diagnostic, self.project._expected_diagnostics)
+        )
 
     @property
     def ok(self) -> bool:
         """Return whether the project run has no errors."""
+        if self.project._expected_diagnostics:
+            return self.expected_diagnostics_ok and not self.test_failures()
         return not self._diagnostics.has_errors and not self.test_failures()
+
+    @property
+    def clean(self) -> bool:
+        """Return whether the project run has no diagnostics or test failures."""
+        return len(self._diagnostics) == 0 and not self.test_failures()
+
+    @property
+    def status(self) -> str:
+        """Return clean, expected-diagnostics, or failed project status."""
+        if self.clean:
+            return "clean"
+        if self.ok:
+            return "expected-diagnostics"
+        return "failed"
 
     @property
     def diagnostics(self) -> ProjectDiagnostics:
         """Return diagnostics collected from default project checks."""
         return self._diagnostics
+
+    @property
+    def expected_diagnostics(self) -> tuple[ExpectedDiagnosticResult, ...]:
+        """Return declared expected diagnostic policy with match status."""
+        return self._expected_diagnostic_results
+
+    @property
+    def expected_project_diagnostics(self) -> tuple[ProjectDiagnostic, ...]:
+        """Return collected diagnostics covered by expected diagnostic policy."""
+        return self._expected_project_diagnostics
+
+    @property
+    def unexpected_diagnostics(self) -> tuple[ProjectDiagnostic, ...]:
+        """Return collected diagnostics not covered by expected diagnostic policy."""
+        return self._unexpected_diagnostics
+
+    @property
+    def missing_expected_diagnostics(self) -> tuple[ExpectedDiagnosticResult, ...]:
+        """Return expected diagnostics that did not appear in the project run."""
+        return tuple(result for result in self._expected_diagnostic_results if not result.matched)
+
+    @property
+    def expected_diagnostics_ok(self) -> bool:
+        """Return whether all diagnostics are expected and all expectations matched."""
+        if not self.project._expected_diagnostics:
+            return not self._diagnostics.has_errors
+        return not self._unexpected_diagnostics and not self.missing_expected_diagnostics
 
     @property
     def stages(self) -> tuple[StageResult, ...]:
@@ -429,6 +616,11 @@ class ProjectResult:
                 )
                 _write_text(root / relative_json, model.to_json())
                 _write_text(root / relative_svg, model.to_svg())
+                relative_body_svg = _unique_path(
+                    Path("schematic") / f"{_safe_slug(output_name)}.body.svg",
+                    used_paths,
+                )
+                _write_text(root / relative_body_svg, model.to_body_svg())
                 group = {"design": model._design.name, "schematic": model.name}
                 artifacts.append(
                     _artifact_record(
@@ -448,6 +640,24 @@ class ProjectResult:
                         group=group,
                     )
                 )
+                artifacts.append(
+                    _artifact_record(
+                        "schematic_body_svg",
+                        output_name,
+                        relative_body_svg,
+                        "image/svg+xml",
+                        group=group,
+                    )
+                )
+                artifacts.extend(
+                    self._write_schematic_page_artifacts(
+                        root=root,
+                        model=model,
+                        output_name=output_name,
+                        used_paths=used_paths,
+                        group=group,
+                    )
+                )
             elif isinstance(model, Board):
                 output_name = _model_output_name(model, self.boards)
                 relative_json = _unique_path(
@@ -460,6 +670,12 @@ class ProjectResult:
                 )
                 _write_text(root / relative_json, model.to_json())
                 _write_text(root / relative_svg, model.to_svg())
+                kicad_export = model.to_kicad_pcb()
+                relative_kicad = _unique_path(
+                    Path("pcb") / f"{_safe_slug(output_name)}.kicad_pcb",
+                    used_paths,
+                )
+                _write_text(root / relative_kicad, kicad_export.text)
                 group = {"design": model._design.name, "board": model.name}
                 artifacts.append(
                     _artifact_record(
@@ -479,10 +695,19 @@ class ProjectResult:
                         group=group,
                     )
                 )
+                artifacts.append(
+                    _artifact_record(
+                        "kicad_pcb",
+                        output_name,
+                        relative_kicad,
+                        "application/x-kicad-pcb",
+                        group=group,
+                    )
+                )
 
         diagnostics_path = _unique_path(Path("diagnostics") / "diagnostics.json", used_paths)
         tests_path = _unique_path(Path("diagnostics") / "tests.json", used_paths)
-        _write_json(root / diagnostics_path, _diagnostics_payload(self._diagnostics))
+        _write_json(root / diagnostics_path, _diagnostics_payload(self))
         _write_json(root / tests_path, _tests_payload(self._test_results()))
         artifacts.append(
             _artifact_record(
@@ -512,6 +737,7 @@ class ProjectResult:
                     "description": self.project.description,
                 },
                 "ok": self.ok,
+                "status": self.status,
                 "stages": [
                     {
                         "name": stage.name,
@@ -527,6 +753,7 @@ class ProjectResult:
                 "diagnostics": {
                     "path": diagnostics_path.as_posix(),
                     "summary": _diagnostic_summary(self._diagnostics),
+                    "status": self.status,
                 },
                 "tests": {
                     "path": tests_path.as_posix(),
@@ -535,12 +762,132 @@ class ProjectResult:
             },
         )
 
+    def write_artifacts(
+        self,
+        path: str | Path,
+        *,
+        slug: str | None = None,
+        pcb_svg_options: dict[str, object] | None = None,
+    ) -> ProjectArtifactPaths:
+        """Write standard flat example/viewer artifacts and return their paths."""
+        root = Path(path)
+        root.mkdir(parents=True, exist_ok=True)
+        base = slug or _safe_slug(self.project.name)
+        design = self.design() if self.designs else None
+        schematic = self.schematic() if self.schematics else None
+        board = self.board() if self.boards else None
+
+        logical_json = root / f"{base}.volt.json" if design is not None else None
+        schematic_json = (
+            root / f"{base}.volt.schematic.json" if schematic is not None else None
+        )
+        schematic_svg = root / f"{base}.svg" if schematic is not None else None
+        schematic_body_svg = root / f"{base}.body.svg" if schematic is not None else None
+        schematic_pages_dir = root / f"{base}.pages"
+        pcb_json = root / f"{base}.volt.pcb.json" if board is not None else None
+        pcb_svg = root / f"{base}.pcb.svg" if board is not None else None
+        kicad_pcb = root / f"{base}.kicad_pcb" if board is not None else None
+        diagnostics_json = root / f"{base}.validation.json"
+
+        if design is not None and logical_json is not None:
+            _write_text(logical_json, design.to_json())
+        schematic_svg_pages: tuple[Path, ...] = ()
+        if schematic is not None:
+            _write_text(schematic_json, schematic.to_json())
+            _write_text(schematic_svg, schematic.to_svg())
+            _write_text(schematic_body_svg, schematic.to_body_svg())
+            shutil.rmtree(schematic_pages_dir, ignore_errors=True)
+            schematic_svg_pages = schematic.write_svg_pages(schematic_pages_dir, prefix=base)
+        if board is not None:
+            _write_text(pcb_json, board.to_json())
+            _write_text(pcb_svg, board.to_svg(**(pcb_svg_options or {})))
+            _write_text(kicad_pcb, board.to_kicad_pcb().text)
+        _write_json(diagnostics_json, _flat_diagnostics_payload(self))
+
+        return ProjectArtifactPaths(
+            logical_json=logical_json,
+            schematic_json=schematic_json,
+            schematic_svg=schematic_svg,
+            schematic_body_svg=schematic_body_svg,
+            schematic_svg_pages=schematic_svg_pages,
+            pcb_json=pcb_json,
+            pcb_svg=pcb_svg,
+            kicad_pcb=kicad_pcb,
+            diagnostics_json=diagnostics_json,
+        )
+
+    def _write_schematic_page_artifacts(
+        self,
+        *,
+        root: Path,
+        model: Schematic,
+        output_name: str,
+        used_paths: set[str],
+        group: dict[str, str],
+    ) -> list[dict[str, object]]:
+        records: list[dict[str, object]] = []
+        used_page_names: set[str] = set()
+        for page in model.to_svg_pages():
+            stem = _safe_slug(str(page["name"]))
+            filename = f"{stem}.svg"
+            if filename in used_page_names:
+                filename = f"{stem}-sheet-{page['sheet']}.svg"
+            used_page_names.add(filename)
+            relative = _unique_path(
+                Path("schematic") / f"{_safe_slug(output_name)}.pages" / filename,
+                used_paths,
+            )
+            _write_text(root / relative, str(page["svg"]))
+            records.append(
+                _artifact_record(
+                    "schematic_page_svg",
+                    f"{output_name}:{page['name']}",
+                    relative,
+                    "image/svg+xml",
+                    group=group,
+                )
+            )
+        return records
+
     def _test_results(self) -> tuple[ProjectTestResult, ...]:
         return tuple(test for stage in self._stages for test in stage.tests)
 
 
 def _is_known_model(value: object) -> bool:
     return isinstance(value, (Design, Schematic, Board))
+
+
+def _type_phrase(expected_type: type | tuple[type, ...]) -> str:
+    if isinstance(expected_type, tuple):
+        return " or ".join(item.__name__ for item in expected_type)
+    return expected_type.__name__
+
+
+def _matches_any_expected(
+    diagnostic: ProjectDiagnostic,
+    expectations: Iterable[ExpectedDiagnostic],
+) -> bool:
+    return any(expectation.matches(diagnostic) for expectation in expectations)
+
+
+def _expected_diagnostic_results(
+    expectations: Iterable[ExpectedDiagnostic],
+    diagnostics: ProjectDiagnostics,
+) -> tuple[ExpectedDiagnosticResult, ...]:
+    return tuple(
+        ExpectedDiagnosticResult(
+            code=expectation.code,
+            severity=expectation.severity,
+            stage=expectation.stage,
+            source=expectation.source,
+            report=expectation.report,
+            design=expectation.design,
+            board=expectation.board,
+            rule=expectation.rule,
+            matched=any(expectation.matches(diagnostic) for diagnostic in diagnostics),
+        )
+        for expectation in expectations
+    )
 
 
 def _expected_model_type(stage: ProjectStage):
@@ -801,24 +1148,126 @@ def _artifact_record(
     return record
 
 
-def _diagnostics_payload(diagnostics: ProjectDiagnostics) -> dict:
+def _diagnostics_payload(result: ProjectResult) -> dict:
     return {
-        "summary": _diagnostic_summary(diagnostics),
+        "status": result.status,
+        "summary": _diagnostic_summary(result.diagnostics),
         "diagnostics": [
-            {
-                "stage": diagnostic.stage,
-                "source": diagnostic.source,
-                "report": diagnostic.report,
-                "severity": diagnostic.severity,
-                "code": diagnostic.code,
-                "message": diagnostic.message,
-                "entities": [_diagnostic_entity_payload(entity) for entity in diagnostic.entities],
-                "design": diagnostic.design,
-                "board": diagnostic.board,
-                "rule": diagnostic.rule,
-            }
+            _project_diagnostic_payload(diagnostic)
+            for diagnostic in result.diagnostics
+        ],
+        "expected": [
+            _expected_diagnostic_result_payload(expectation)
+            for expectation in result.expected_diagnostics
+        ],
+        "unexpected": [
+            _project_diagnostic_payload(diagnostic)
+            for diagnostic in result.unexpected_diagnostics
+        ],
+        "missing_expected": [
+            _expected_diagnostic_result_payload(expectation)
+            for expectation in result.missing_expected_diagnostics
+        ],
+    }
+
+
+def _flat_diagnostics_payload(result: ProjectResult) -> dict:
+    diagnostics = tuple(result.diagnostics)
+    reports: dict[str, dict] = {}
+    for report_name in _flat_report_names(diagnostics):
+        report_diagnostics = tuple(
+            diagnostic for diagnostic in diagnostics if _flat_report_name(diagnostic) == report_name
+        )
+        reports[report_name] = {
+            "summary": _diagnostic_summary(ProjectDiagnostics(report_diagnostics)),
+            "diagnostics": [_flat_diagnostic_payload(diagnostic) for diagnostic in report_diagnostics],
+        }
+    return {
+        "status": result.status,
+        "summary": _diagnostic_summary(result.diagnostics),
+        "diagnostics": [
+            {"source": _flat_report_name(diagnostic), **_flat_diagnostic_payload(diagnostic)}
             for diagnostic in diagnostics
         ],
+        "reports": reports,
+        "expected": [
+            _expected_diagnostic_result_payload(expectation)
+            for expectation in result.expected_diagnostics
+        ],
+        "unexpected": [
+            {"source": _flat_report_name(diagnostic), **_flat_diagnostic_payload(diagnostic)}
+            for diagnostic in result.unexpected_diagnostics
+        ],
+        "missing_expected": [
+            _expected_diagnostic_result_payload(expectation)
+            for expectation in result.missing_expected_diagnostics
+        ],
+    }
+
+
+def _flat_report_names(diagnostics: tuple[ProjectDiagnostic, ...]) -> tuple[str, ...]:
+    names: list[str] = []
+    for diagnostic in diagnostics:
+        name = _flat_report_name(diagnostic)
+        if name not in names:
+            names.append(name)
+    for name in (
+        "logical_design",
+        "pcb_board",
+        "pcb_readiness",
+        "schematic_readability",
+        "schematic_readiness",
+    ):
+        if name not in names:
+            names.append(name)
+    return tuple(names)
+
+
+def _flat_report_name(diagnostic: ProjectDiagnostic) -> str:
+    return {
+        "logical.default": "logical_design",
+        "logical.pcb_ready": "pcb_readiness",
+        "schematic.readability": "schematic_readability",
+        "schematic.readiness": "schematic_readiness",
+        "pcb.board": "pcb_board",
+    }.get(diagnostic.report, diagnostic.report)
+
+
+def _flat_diagnostic_payload(diagnostic: ProjectDiagnostic) -> dict[str, object]:
+    return {
+        "severity": diagnostic.severity,
+        "code": diagnostic.code,
+        "message": diagnostic.message,
+        "entities": [_diagnostic_entity_payload(entity) for entity in diagnostic.entities],
+    }
+
+
+def _project_diagnostic_payload(diagnostic: ProjectDiagnostic) -> dict[str, object]:
+    return {
+        "stage": diagnostic.stage,
+        "source": diagnostic.source,
+        "report": diagnostic.report,
+        "severity": diagnostic.severity,
+        "code": diagnostic.code,
+        "message": diagnostic.message,
+        "entities": [_diagnostic_entity_payload(entity) for entity in diagnostic.entities],
+        "design": diagnostic.design,
+        "board": diagnostic.board,
+        "rule": diagnostic.rule,
+    }
+
+
+def _expected_diagnostic_result_payload(result: ExpectedDiagnosticResult) -> dict[str, object]:
+    return {
+        "code": result.code,
+        "severity": result.severity,
+        "stage": result.stage,
+        "source": result.source,
+        "report": result.report,
+        "design": result.design,
+        "board": result.board,
+        "rule": result.rule,
+        "matched": result.matched,
     }
 
 

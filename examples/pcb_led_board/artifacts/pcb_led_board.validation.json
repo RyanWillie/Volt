@@ -1,5 +1,7 @@
 {
   "diagnostics": [],
+  "expected": [],
+  "missing_expected": [],
   "reports": {
     "logical_design": {
       "diagnostics": [],
@@ -42,9 +44,11 @@
       }
     }
   },
+  "status": "clean",
   "summary": {
     "errors": 0,
     "infos": 0,
     "warnings": 0
-  }
+  },
+  "unexpected": []
 }

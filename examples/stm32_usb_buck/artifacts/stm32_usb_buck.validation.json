@@ -13,7 +13,8 @@
         }
       ],
       "message": "Power input is connected to a net with no typed supply source",
-      "severity": "error"
+      "severity": "error",
+      "source": "logical_design"
     },
     {
       "code": "POWER_INPUT_WITHOUT_SOURCE",
@@ -28,12 +29,2343 @@
         }
       ],
       "message": "Power input is connected to a net with no typed supply source",
-      "severity": "error"
+      "severity": "error",
+      "source": "logical_design"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 73,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 54,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 74,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 55,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 78,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 59,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 79,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 60,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 80,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 61,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 81,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 62,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 84,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 65,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 85,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 66,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 86,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 67,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 87,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 68,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 90,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 71,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 91,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 72,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 92,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 73,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 93,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 74,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 94,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 75,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 95,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 76,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 96,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 77,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 97,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 78,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 98,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 79,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 99,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 80,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 100,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 81,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 103,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 84,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 104,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 85,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 105,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 86,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 106,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 87,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 107,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 88,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 108,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 89,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 109,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 90,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 110,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 91,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 111,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 92,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 112,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 93,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 113,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 94,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 120,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 101,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 121,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 102,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 122,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 103,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 123,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 104,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 124,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 105,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 126,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 107,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 127,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 108,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 128,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 109,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 129,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 110,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 131,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 112,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "entities": [
+        {
+          "index": 132,
+          "kind": "pin"
+        },
+        {
+          "index": 23,
+          "kind": "component"
+        },
+        {
+          "index": 113,
+          "kind": "pin_definition"
+        }
+      ],
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "severity": "warning",
+      "source": "schematic_readiness"
+    },
+    {
+      "code": "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
+      "entities": [
+        {
+          "index": 0,
+          "kind": "sheet"
+        }
+      ],
+      "message": "Schematic title-block value text for 'File' exceeds the rendered column width",
+      "severity": "warning",
+      "source": "schematic_readability"
+    },
+    {
+      "code": "SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL",
+      "entities": [
+        {
+          "index": 0,
+          "kind": "sheet"
+        },
+        {
+          "index": 24,
+          "kind": "symbol_field"
+        },
+        {
+          "index": 8,
+          "kind": "symbol_instance"
+        }
+      ],
+      "message": "Schematic symbol field is far from its owning symbol",
+      "severity": "warning",
+      "source": "schematic_readability"
+    },
+    {
+      "code": "SCHEMATIC_LABEL_CROWDS_SYMBOL",
+      "entities": [
+        {
+          "index": 0,
+          "kind": "sheet"
+        },
+        {
+          "index": 15,
+          "kind": "symbol_instance"
+        },
+        {
+          "index": 9,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 16,
+          "kind": "component"
+        },
+        {
+          "index": 31,
+          "kind": "net"
+        }
+      ],
+      "message": "Schematic tags or net labels crowd a symbol; add spacing or use compact stubs",
+      "severity": "warning",
+      "source": "schematic_readability"
+    },
+    {
+      "code": "SCHEMATIC_DENSE_PORT_TAGS",
+      "entities": [
+        {
+          "index": 0,
+          "kind": "sheet"
+        },
+        {
+          "index": 9,
+          "kind": "power_port"
+        },
+        {
+          "index": 10,
+          "kind": "power_port"
+        },
+        {
+          "index": 11,
+          "kind": "power_port"
+        },
+        {
+          "index": 12,
+          "kind": "power_port"
+        },
+        {
+          "index": 13,
+          "kind": "power_port"
+        },
+        {
+          "index": 14,
+          "kind": "power_port"
+        },
+        {
+          "index": 15,
+          "kind": "power_port"
+        },
+        {
+          "index": 16,
+          "kind": "power_port"
+        },
+        {
+          "index": 17,
+          "kind": "power_port"
+        },
+        {
+          "index": 18,
+          "kind": "power_port"
+        },
+        {
+          "index": 19,
+          "kind": "power_port"
+        },
+        {
+          "index": 20,
+          "kind": "power_port"
+        },
+        {
+          "index": 1,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 2,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 3,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 4,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 5,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 6,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 7,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 8,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 9,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 10,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 11,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 12,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 13,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 14,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 15,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 16,
+          "kind": "sheet_port"
+        }
+      ],
+      "message": "Schematic region 'STM32 Microcontroller' contains dense sheet or power tags; prefer compact local labels where possible",
+      "severity": "warning",
+      "source": "schematic_readability"
+    },
+    {
+      "code": "SCHEMATIC_DENSE_PORT_TAGS",
+      "entities": [
+        {
+          "index": 0,
+          "kind": "sheet"
+        },
+        {
+          "index": 21,
+          "kind": "power_port"
+        },
+        {
+          "index": 22,
+          "kind": "power_port"
+        },
+        {
+          "index": 23,
+          "kind": "power_port"
+        },
+        {
+          "index": 24,
+          "kind": "power_port"
+        },
+        {
+          "index": 25,
+          "kind": "power_port"
+        },
+        {
+          "index": 26,
+          "kind": "power_port"
+        },
+        {
+          "index": 27,
+          "kind": "power_port"
+        },
+        {
+          "index": 17,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 18,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 19,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 20,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 21,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 22,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 23,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 24,
+          "kind": "sheet_port"
+        }
+      ],
+      "message": "Schematic region 'Connectors and USB' contains dense sheet or power tags; prefer compact local labels where possible",
+      "severity": "warning",
+      "source": "schematic_readability"
     }
   ],
+  "expected": [
+    {
+      "board": null,
+      "code": "POWER_INPUT_WITHOUT_SOURCE",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "error",
+      "source": null,
+      "stage": null
+    },
+    {
+      "board": null,
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
+    },
+    {
+      "board": null,
+      "code": "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
+    },
+    {
+      "board": null,
+      "code": "SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
+    },
+    {
+      "board": null,
+      "code": "SCHEMATIC_LABEL_CROWDS_SYMBOL",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
+    },
+    {
+      "board": null,
+      "code": "SCHEMATIC_DENSE_PORT_TAGS",
+      "design": null,
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
+    }
+  ],
+  "missing_expected": [],
+  "reports": {
+    "logical_design": {
+      "diagnostics": [
+        {
+          "code": "POWER_INPUT_WITHOUT_SOURCE",
+          "entities": [
+            {
+              "index": 3,
+              "kind": "net"
+            },
+            {
+              "index": 83,
+              "kind": "pin"
+            }
+          ],
+          "message": "Power input is connected to a net with no typed supply source",
+          "severity": "error"
+        },
+        {
+          "code": "POWER_INPUT_WITHOUT_SOURCE",
+          "entities": [
+            {
+              "index": 8,
+              "kind": "net"
+            },
+            {
+              "index": 83,
+              "kind": "pin"
+            }
+          ],
+          "message": "Power input is connected to a net with no typed supply source",
+          "severity": "error"
+        }
+      ],
+      "summary": {
+        "errors": 2,
+        "infos": 0,
+        "warnings": 0
+      }
+    },
+    "pcb_board": {
+      "diagnostics": [],
+      "summary": {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 0
+      }
+    },
+    "pcb_readiness": {
+      "diagnostics": [],
+      "summary": {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 0
+      }
+    },
+    "schematic_readability": {
+      "diagnostics": [
+        {
+          "code": "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
+          "entities": [
+            {
+              "index": 0,
+              "kind": "sheet"
+            }
+          ],
+          "message": "Schematic title-block value text for 'File' exceeds the rendered column width",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL",
+          "entities": [
+            {
+              "index": 0,
+              "kind": "sheet"
+            },
+            {
+              "index": 24,
+              "kind": "symbol_field"
+            },
+            {
+              "index": 8,
+              "kind": "symbol_instance"
+            }
+          ],
+          "message": "Schematic symbol field is far from its owning symbol",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_LABEL_CROWDS_SYMBOL",
+          "entities": [
+            {
+              "index": 0,
+              "kind": "sheet"
+            },
+            {
+              "index": 15,
+              "kind": "symbol_instance"
+            },
+            {
+              "index": 9,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 16,
+              "kind": "component"
+            },
+            {
+              "index": 31,
+              "kind": "net"
+            }
+          ],
+          "message": "Schematic tags or net labels crowd a symbol; add spacing or use compact stubs",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_DENSE_PORT_TAGS",
+          "entities": [
+            {
+              "index": 0,
+              "kind": "sheet"
+            },
+            {
+              "index": 9,
+              "kind": "power_port"
+            },
+            {
+              "index": 10,
+              "kind": "power_port"
+            },
+            {
+              "index": 11,
+              "kind": "power_port"
+            },
+            {
+              "index": 12,
+              "kind": "power_port"
+            },
+            {
+              "index": 13,
+              "kind": "power_port"
+            },
+            {
+              "index": 14,
+              "kind": "power_port"
+            },
+            {
+              "index": 15,
+              "kind": "power_port"
+            },
+            {
+              "index": 16,
+              "kind": "power_port"
+            },
+            {
+              "index": 17,
+              "kind": "power_port"
+            },
+            {
+              "index": 18,
+              "kind": "power_port"
+            },
+            {
+              "index": 19,
+              "kind": "power_port"
+            },
+            {
+              "index": 20,
+              "kind": "power_port"
+            },
+            {
+              "index": 1,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 2,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 3,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 4,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 5,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 6,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 7,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 8,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 9,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 10,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 11,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 12,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 13,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 14,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 15,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 16,
+              "kind": "sheet_port"
+            }
+          ],
+          "message": "Schematic region 'STM32 Microcontroller' contains dense sheet or power tags; prefer compact local labels where possible",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_DENSE_PORT_TAGS",
+          "entities": [
+            {
+              "index": 0,
+              "kind": "sheet"
+            },
+            {
+              "index": 21,
+              "kind": "power_port"
+            },
+            {
+              "index": 22,
+              "kind": "power_port"
+            },
+            {
+              "index": 23,
+              "kind": "power_port"
+            },
+            {
+              "index": 24,
+              "kind": "power_port"
+            },
+            {
+              "index": 25,
+              "kind": "power_port"
+            },
+            {
+              "index": 26,
+              "kind": "power_port"
+            },
+            {
+              "index": 27,
+              "kind": "power_port"
+            },
+            {
+              "index": 17,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 18,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 19,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 20,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 21,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 22,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 23,
+              "kind": "sheet_port"
+            },
+            {
+              "index": 24,
+              "kind": "sheet_port"
+            }
+          ],
+          "message": "Schematic region 'Connectors and USB' contains dense sheet or power tags; prefer compact local labels where possible",
+          "severity": "warning"
+        }
+      ],
+      "summary": {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 5
+      }
+    },
+    "schematic_readiness": {
+      "diagnostics": [
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 73,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 54,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 74,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 55,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 78,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 59,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 79,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 60,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 80,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 61,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 81,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 62,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 84,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 65,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 85,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 66,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 86,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 67,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 87,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 68,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 90,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 71,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 91,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 72,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 92,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 73,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 93,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 74,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 94,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 75,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 95,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 76,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 96,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 77,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 97,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 78,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 98,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 79,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 99,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 80,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 100,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 81,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 103,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 84,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 104,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 85,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 105,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 86,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 106,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 87,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 107,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 88,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 108,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 89,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 109,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 90,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 110,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 91,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 111,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 92,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 112,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 93,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 113,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 94,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 120,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 101,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 121,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 102,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 122,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 103,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 123,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 104,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 124,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 105,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 126,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 107,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 127,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 108,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 128,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 109,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 129,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 110,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 131,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 112,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        },
+        {
+          "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+          "entities": [
+            {
+              "index": 132,
+              "kind": "pin"
+            },
+            {
+              "index": 23,
+              "kind": "component"
+            },
+            {
+              "index": 113,
+              "kind": "pin_definition"
+            }
+          ],
+          "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+          "severity": "warning"
+        }
+      ],
+      "summary": {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 43
+      }
+    }
+  },
+  "status": "expected-diagnostics",
   "summary": {
     "errors": 2,
     "infos": 0,
-    "warnings": 0
-  }
+    "warnings": 48
+  },
+  "unexpected": []
 }

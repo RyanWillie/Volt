@@ -231,10 +231,38 @@
       } },
     { "id": "component:19", "definition": "component_def:10", "reference": "J2", "properties": {
         "value": { "type": "string", "value": "SWD 10-pin" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Samtec", "part_number": "FTSH-105-01-L-DV-K" },
+      "package": "2x05 1.27mm",
+      "footprint": { "library": "connectors", "name": "PinHeader_2x05_P1.27mm_Vertical" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:34", "pad": "1" },
+        { "pin": "pin_def:35", "pad": "2" },
+        { "pin": "pin_def:36", "pad": "3" },
+        { "pin": "pin_def:37", "pad": "4" },
+        { "pin": "pin_def:38", "pad": "5" },
+        { "pin": "pin_def:39", "pad": "6" },
+        { "pin": "pin_def:40", "pad": "7" },
+        { "pin": "pin_def:41", "pad": "8" },
+        { "pin": "pin_def:42", "pad": "9" },
+        { "pin": "pin_def:43", "pad": "10" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:20", "definition": "component_def:11", "reference": "J3", "properties": {
         "value": { "type": "string", "value": "GPIO 1x4" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Sullins", "part_number": "PEC04SAAN" },
+      "package": "1x04 2.54mm",
+      "footprint": { "library": "connectors", "name": "PinHeader_1x04_P2.54mm_Vertical" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:44", "pad": "1" },
+        { "pin": "pin_def:45", "pad": "2" },
+        { "pin": "pin_def:46", "pad": "3" },
+        { "pin": "pin_def:47", "pad": "4" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:21", "definition": "component_def:12", "reference": "LED_STATUS/R", "properties": {
         "value": { "type": "string", "value": "330 Ohm" }
       } },

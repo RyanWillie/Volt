@@ -437,7 +437,19 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert "POWER_INPUT_WITHOUT_SOURCE" in codes
     assert "SINGLE_PIN_NET" not in codes
     assert "UNCONNECTED_REQUIRED_PIN" not in codes
-    assert validation["summary"]["errors"] == len(validation["diagnostics"])
+    assert validation["status"] == "expected-diagnostics"
+    assert validation["unexpected"] == []
+    assert validation["missing_expected"] == []
+    assert validation["summary"]["errors"] == 2
+    assert validation["summary"]["warnings"] == len(validation["diagnostics"]) - 2
+    assert {item["code"] for item in validation["expected"]} == {
+        "POWER_INPUT_WITHOUT_SOURCE",
+        "SCHEMATIC_DENSE_PORT_TAGS",
+        "SCHEMATIC_LABEL_CROWDS_SYMBOL",
+        "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL",
+        "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
+    }
 
 
 def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage():

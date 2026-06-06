@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 
 import volt
 
 from .schematic_output import build_schematic
-from .stm32_board import build_board
+from .stm32_board import Stm32UsbBuckBoard, build_board
 
 
 @dataclass(frozen=True)
@@ -22,84 +21,46 @@ class BenchmarkArtifacts:
     validation_report: Path
 
 
-def validation_report_json(report: volt.DiagnosticReport) -> str:
-    counts = {"errors": 0, "warnings": 0, "infos": 0}
-    diagnostics = []
-    for diagnostic in report:
-        if diagnostic.severity == "error":
-            counts["errors"] += 1
-        elif diagnostic.severity == "warning":
-            counts["warnings"] += 1
-        else:
-            counts["infos"] += 1
-        diagnostics.append(
-            {
-                "severity": diagnostic.severity,
-                "code": diagnostic.code,
-                "message": diagnostic.message,
-                "entities": [
-                    {"kind": entity.kind, "index": entity.index}
-                    for entity in diagnostic.entities
-                ],
-            }
-        )
-    return json.dumps(
-        {
-            "summary": counts,
-            "diagnostics": diagnostics,
-        },
-        indent=2,
-        sort_keys=True,
-    ) + "\n"
-
-
-def require_schematic_ready(schematic: volt.Schematic) -> None:
-    report = schematic.validate()
-    if not report.has_errors:
-        return
-
-    codes = ", ".join(diagnostic.code for diagnostic in report)
-    raise RuntimeError(f"STM32 USB buck schematic readiness failed: {codes}")
-
-
 def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
     if output_dir is None:
         output_dir = Path(__file__).resolve().parent / "artifacts"
     output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    board = build_board()
-    design = board.design
-    schematic = build_schematic(board)
-    logical_json = output_path / "stm32_usb_buck.volt.json"
-    schematic_json = output_path / "stm32_usb_buck.volt.schematic.json"
-    schematic_svg = output_path / "stm32_usb_buck.svg"
-    schematic_body_svg = output_path / "stm32_usb_buck.body.svg"
-    schematic_svg_pages_dir = output_path / "stm32_usb_buck.pages"
-    validation_report = output_path / "stm32_usb_buck.validation.json"
-
-    require_schematic_ready(schematic)
-    if schematic_svg_pages_dir.exists():
-        for page_path in schematic_svg_pages_dir.glob("*.svg"):
-            page_path.unlink()
-    design.write(logical_json)
-    schematic_json.write_text(schematic.to_json(), encoding="utf-8")
-    schematic.write_svg(schematic_svg)
-    # Content-tight body SVG is for docs/previews; full sheet/page SVGs remain document artifacts.
-    schematic.write_body_svg(schematic_body_svg)
-    schematic_svg_pages = schematic.write_svg_pages(
-        schematic_svg_pages_dir,
-        prefix="stm32_usb_buck",
-    )
-    validation_report.write_text(validation_report_json(design.validate()), encoding="utf-8")
+    result = PROJECT.run()
+    if not result.ok:
+        diagnostics = [
+            f"{diagnostic.report}:{diagnostic.code}"
+            for diagnostic in result.unexpected_diagnostics
+        ]
+        raise RuntimeError("STM32 USB buck validation failed: " + ", ".join(diagnostics))
+    artifacts = result.write_artifacts(output_path, slug="stm32_usb_buck")
     return BenchmarkArtifacts(
-        logical_json=logical_json,
-        schematic_json=schematic_json,
-        schematic_svg=schematic_svg,
-        schematic_body_svg=schematic_body_svg,
-        schematic_svg_pages=schematic_svg_pages,
-        validation_report=validation_report,
+        logical_json=artifacts.logical_json,
+        schematic_json=artifacts.schematic_json,
+        schematic_svg=artifacts.schematic_svg,
+        schematic_body_svg=artifacts.schematic_body_svg,
+        schematic_svg_pages=artifacts.schematic_svg_pages,
+        validation_report=artifacts.diagnostics_json,
     )
+
+
+PROJECT = volt.Project("stm32_usb_buck")
+PROJECT.expect_diagnostic(code="POWER_INPUT_WITHOUT_SOURCE", severity="error")
+PROJECT.expect_diagnostic(code="SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED", severity="warning")
+PROJECT.expect_diagnostic(code="SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW", severity="warning")
+PROJECT.expect_diagnostic(code="SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL", severity="warning")
+PROJECT.expect_diagnostic(code="SCHEMATIC_LABEL_CROWDS_SYMBOL", severity="warning")
+PROJECT.expect_diagnostic(code="SCHEMATIC_DENSE_PORT_TAGS", severity="warning")
+
+
+@PROJECT.design
+def project_design():
+    board = build_board()
+    return board.design, volt.ProjectResource("stm32_board", board)
+
+
+@PROJECT.schematic
+def project_schematic(context: volt.BuildContext) -> volt.Schematic:
+    return build_schematic(context.resource("stm32_board", Stm32UsbBuckBoard))
 
 
 if __name__ == "__main__":

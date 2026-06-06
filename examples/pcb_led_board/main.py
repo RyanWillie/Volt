@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,62 +22,6 @@ class ExampleArtifacts:
     pcb_svg: Path
     kicad_pcb: Path
     validation_report: Path
-
-
-def _validation_report_payload(report: volt.DiagnosticReport) -> dict:
-    counts = {"errors": 0, "warnings": 0, "infos": 0}
-    diagnostics = []
-    for diagnostic in report:
-        if diagnostic.severity == "error":
-            counts["errors"] += 1
-        elif diagnostic.severity == "warning":
-            counts["warnings"] += 1
-        else:
-            counts["infos"] += 1
-        diagnostics.append(
-            {
-                "severity": diagnostic.severity,
-                "code": diagnostic.code,
-                "message": diagnostic.message,
-                "entities": [
-                    {"kind": entity.kind, "index": entity.index}
-                    for entity in diagnostic.entities
-                ],
-            }
-        )
-    return {"summary": counts, "diagnostics": diagnostics}
-
-
-def validation_report_json(reports: dict[str, volt.DiagnosticReport]) -> str:
-    report_payloads = {
-        name: _validation_report_payload(report) for name, report in reports.items()
-    }
-    counts = {"errors": 0, "warnings": 0, "infos": 0}
-    diagnostics = []
-    for name, payload in report_payloads.items():
-        for severity, count in payload["summary"].items():
-            counts[severity] += count
-        for diagnostic in payload["diagnostics"]:
-            diagnostics.append({"source": name, **diagnostic})
-    return json.dumps(
-        {
-            "summary": counts,
-            "diagnostics": diagnostics,
-            "reports": report_payloads,
-        },
-        indent=2,
-        sort_keys=True,
-    ) + "\n"
-
-
-def _require_clean(reports: dict[str, volt.DiagnosticReport]) -> None:
-    diagnostics = [
-        f"{name}:{diagnostic.code}"
-        for name, report in reports.items()
-        for diagnostic in report
-    ]
-    if diagnostics:
-        raise RuntimeError("PCB LED board example validation failed: " + ", ".join(diagnostics))
 
 
 def _passive_0603(ref: tuple[str, str]) -> volt.FootprintDefinition:
@@ -245,69 +188,70 @@ def build_board(
     return board
 
 
-def build_example() -> tuple[volt.Design, volt.Schematic, volt.Board]:
+PROJECT = volt.Project(EXAMPLE_SLUG)
+
+
+@PROJECT.design
+def project_design():
     design, nets, parts = build_design()
-    schematic = author_schematic(design, nets, parts)
-    board = build_board(design, nets, parts)
-    return design, schematic, board
+    return (
+        design,
+        volt.ProjectResource("nets", nets),
+        volt.ProjectResource("parts", parts),
+    )
+
+
+@PROJECT.schematic
+def project_schematic(context: volt.BuildContext) -> volt.Schematic:
+    return author_schematic(
+        context.design(),
+        context.resource("nets", dict),
+        context.resource("parts", dict),
+    )
+
+
+@PROJECT.board
+def project_board(context: volt.BuildContext) -> volt.Board:
+    return build_board(
+        context.design(),
+        context.resource("nets", dict),
+        context.resource("parts", dict),
+    )
+
+
+def build_example() -> tuple[volt.Design, volt.Schematic, volt.Board]:
+    result = PROJECT.run()
+    return result.design(), result.schematic(), result.board()
 
 
 def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
     if output_dir is None:
         output_dir = Path(__file__).resolve().parent / "artifacts"
     output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    design, schematic, board = build_example()
-    reports = {
-        "logical_design": design.validate(),
-        "pcb_readiness": design.validate_for_pcb(),
-        "schematic_readiness": schematic.validate(),
-        "schematic_readability": schematic.validate_readability(),
-        "pcb_board": board.validate(),
-    }
-    _require_clean(reports)
-
-    logical_json = output_path / f"{EXAMPLE_SLUG}.volt.json"
-    schematic_json = output_path / f"{EXAMPLE_SLUG}.volt.schematic.json"
-    schematic_svg = output_path / f"{EXAMPLE_SLUG}.svg"
-    schematic_body_svg = output_path / f"{EXAMPLE_SLUG}.body.svg"
-    schematic_svg_pages_dir = output_path / f"{EXAMPLE_SLUG}.pages"
-    pcb_json = output_path / f"{EXAMPLE_SLUG}.volt.pcb.json"
-    pcb_svg = output_path / f"{EXAMPLE_SLUG}.pcb.svg"
-    kicad_pcb = output_path / f"{EXAMPLE_SLUG}.kicad_pcb"
-    validation_report = output_path / f"{EXAMPLE_SLUG}.validation.json"
-
-    if schematic_svg_pages_dir.exists():
-        for page_path in schematic_svg_pages_dir.glob("*.svg"):
-            page_path.unlink()
-    design.write(logical_json)
-    schematic.write_json(schematic_json)
-    schematic.write_svg(schematic_svg)
-    schematic.write_body_svg(schematic_body_svg)
-    schematic_svg_pages = schematic.write_svg_pages(
-        schematic_svg_pages_dir,
-        prefix=EXAMPLE_SLUG,
-    )
-    board.write_json(pcb_json)
-    board.write_svg(pcb_svg)
-    kicad_export = board.write_kicad_pcb(kicad_pcb)
+    result = PROJECT.run()
+    if not result.ok:
+        diagnostics = [
+            f"{diagnostic.report}:{diagnostic.code}"
+            for diagnostic in result.unexpected_diagnostics
+        ]
+        raise RuntimeError("PCB LED board example validation failed: " + ", ".join(diagnostics))
+    kicad_export = result.board().to_kicad_pcb()
     if kicad_export.warnings:
         raise RuntimeError(
             "PCB LED board KiCad export reported loss: "
             + ", ".join(warning.construct for warning in kicad_export.warnings)
         )
-    validation_report.write_text(validation_report_json(reports), encoding="utf-8")
+    artifacts = result.write_artifacts(output_path, slug=EXAMPLE_SLUG)
     return ExampleArtifacts(
-        logical_json=logical_json,
-        schematic_json=schematic_json,
-        schematic_svg=schematic_svg,
-        schematic_body_svg=schematic_body_svg,
-        schematic_svg_pages=schematic_svg_pages,
-        pcb_json=pcb_json,
-        pcb_svg=pcb_svg,
-        kicad_pcb=kicad_pcb,
-        validation_report=validation_report,
+        logical_json=artifacts.logical_json,
+        schematic_json=artifacts.schematic_json,
+        schematic_svg=artifacts.schematic_svg,
+        schematic_body_svg=artifacts.schematic_body_svg,
+        schematic_svg_pages=artifacts.schematic_svg_pages,
+        pcb_json=artifacts.pcb_json,
+        pcb_svg=artifacts.pcb_svg,
+        kicad_pcb=artifacts.kicad_pcb,
+        validation_report=artifacts.diagnostics_json,
     )
 
 

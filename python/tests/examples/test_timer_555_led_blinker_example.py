@@ -21,6 +21,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             "body_svg": artifacts.schematic_body_svg.read_text(encoding="utf-8"),
             "pcb": artifacts.pcb_json.read_text(encoding="utf-8"),
             "pcb_svg": artifacts.pcb_svg.read_text(encoding="utf-8"),
+            "kicad_pcb": artifacts.kicad_pcb.read_text(encoding="utf-8"),
             "validation": artifacts.validation_report.read_text(encoding="utf-8"),
             "pages": tuple(path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages),
         }
@@ -46,6 +47,10 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         )
         assert second_artifacts.pcb_json.read_text(encoding="utf-8") == first_texts["pcb"]
         assert second_artifacts.pcb_svg.read_text(encoding="utf-8") == first_texts["pcb_svg"]
+        assert (
+            second_artifacts.kicad_pcb.read_text(encoding="utf-8")
+            == first_texts["kicad_pcb"]
+        )
         assert (
             second_artifacts.validation_report.read_text(encoding="utf-8")
             == first_texts["validation"]
@@ -73,6 +78,9 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             encoding="utf-8"
         ),
         "pcb_svg": (artifact_dir / "timer_555_led_blinker.pcb.svg").read_text(
+            encoding="utf-8"
+        ),
+        "kicad_pcb": (artifact_dir / "timer_555_led_blinker.kicad_pcb").read_text(
             encoding="utf-8"
         ),
         "validation": (artifact_dir / "timer_555_led_blinker.validation.json").read_text(
@@ -474,6 +482,8 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert 'data-via="board_via:0"' in first_texts["pcb_svg"]
     assert "data-ratsnest-edge=" not in first_texts["pcb_svg"]
     assert 'class="pad-overlay' not in first_texts["pcb_svg"]
+    assert first_texts["kicad_pcb"].startswith("(kicad_pcb\n")
+    assert '(generator "Volt")' in first_texts["kicad_pcb"]
 
     guide_text = (Path(main.__file__).resolve().parent / "guide.html").read_text(
         encoding="utf-8"
