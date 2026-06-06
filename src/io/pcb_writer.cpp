@@ -20,6 +20,8 @@ namespace volt::io::detail {
 
 [[nodiscard]] std::string entity_ref_id(EntityRef entity) {
     switch (entity.kind()) {
+    case EntityKind::Board:
+        return "board:0";
     case EntityKind::ComponentDef:
         return encode_local_id(ComponentDefId{entity.index()});
     case EntityKind::Component:
@@ -78,6 +80,20 @@ namespace volt::io::detail {
         return encode_local_id(ComponentPlacementId{entity.index()});
     }
     throw std::logic_error{"Unhandled diagnostic entity kind"};
+}
+
+[[nodiscard]] std::string overlay_kind_name(DiagnosticOverlayKind kind) {
+    switch (kind) {
+    case DiagnosticOverlayKind::BoundingBox:
+        return "bounding_box";
+    case DiagnosticOverlayKind::Point:
+        return "point";
+    case DiagnosticOverlayKind::Polygon:
+        return "polygon";
+    case DiagnosticOverlayKind::Segment:
+        return "segment";
+    }
+    throw std::logic_error{"Unhandled diagnostic overlay kind"};
 }
 
 [[nodiscard]] std::optional<FootprintDefId>
@@ -143,6 +159,47 @@ void write_board_point(std::ostream &out, BoardPoint point) {
     write_number(out, point.x_mm());
     out << ", ";
     write_number(out, point.y_mm());
+    out << ']';
+}
+
+void write_diagnostic_point(std::ostream &out, DiagnosticPoint point) {
+    out << '[';
+    write_number(out, point.x_mm);
+    out << ", ";
+    write_number(out, point.y_mm);
+    out << ']';
+}
+
+void write_diagnostic_points(std::ostream &out, const std::vector<DiagnosticPoint> &points) {
+    out << '[';
+    for (std::size_t index = 0; index < points.size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        write_diagnostic_point(out, points[index]);
+    }
+    out << ']';
+}
+
+void write_entity_refs(std::ostream &out, const std::vector<EntityRef> &entities) {
+    out << '[';
+    for (std::size_t index = 0; index < entities.size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        out << json_string(entity_ref_id(entities[index]));
+    }
+    out << ']';
+}
+
+void write_board_layer_refs(std::ostream &out, const std::vector<BoardLayerId> &layers) {
+    out << '[';
+    for (std::size_t index = 0; index < layers.size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        out << json_string(encode_local_id(layers[index]));
+    }
     out << ']';
 }
 
@@ -734,13 +791,23 @@ void write_pad_resolution(std::ostream &out, const Board &board,
 
 void write_diagnostic(std::ostream &out, const Diagnostic &diagnostic) {
     out << "      {\"severity\": " << json_string(severity_name(diagnostic.severity()))
+        << ", \"category\": " << json_string(diagnostic.category().value())
         << ", \"code\": " << json_string(diagnostic.code().value())
-        << ", \"message\": " << json_string(diagnostic.message()) << ", \"entities\": [";
-    for (std::size_t index = 0; index < diagnostic.entities().size(); ++index) {
+        << ", \"message\": " << json_string(diagnostic.message()) << ", \"entities\": ";
+    write_entity_refs(out, diagnostic.entities());
+    out << ", \"overlays\": [";
+    for (std::size_t index = 0; index < diagnostic.overlays().size(); ++index) {
         if (index != 0U) {
             out << ", ";
         }
-        out << json_string(entity_ref_id(diagnostic.entities()[index]));
+        const auto &overlay = diagnostic.overlays()[index];
+        out << "{\"kind\": " << json_string(overlay_kind_name(overlay.kind())) << ", \"points\": ";
+        write_diagnostic_points(out, overlay.points());
+        out << ", \"entities\": ";
+        write_entity_refs(out, overlay.entities());
+        out << ", \"layers\": ";
+        write_board_layer_refs(out, overlay.layers());
+        out << '}';
     }
     out << "]}";
 }

@@ -2,8 +2,19 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Iterable, Iterator
+
+PCB_VISUAL_DIAGNOSTIC_CODES: tuple[str, ...] = (
+    "PCB_VISUAL_PLACEMENT_OVERLAP",
+    "PCB_VISUAL_PLACEMENT_CROWDING",
+    "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+    "PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE",
+    "PCB_VISUAL_LABEL_OVERLAP",
+    "PCB_VISUAL_ROUTE_READABILITY_CONFLICT",
+    "PCB_VISUAL_BOARD_FEATURE_ANNOTATION_MISSING",
+)
 
 
 @dataclass(frozen=True)
@@ -15,6 +26,27 @@ class DiagnosticEntity:
 
 
 @dataclass(frozen=True)
+class DiagnosticOverlay:
+    """Overlay-ready geometry and references attached to a diagnostic."""
+
+    kind: str
+    points: tuple[tuple[float, float], ...]
+    entities: tuple[DiagnosticEntity, ...] = ()
+    layers: tuple[DiagnosticEntity, ...] = ()
+
+    def __post_init__(self) -> None:
+        points = tuple(_diagnostic_overlay_point(point) for point in self.points)
+        _validate_diagnostic_overlay_shape(self.kind, points)
+        layers = tuple(self.layers)
+        for layer in layers:
+            if layer.kind != "board_layer":
+                raise ValueError("Diagnostic overlay layers must be board_layer references")
+        object.__setattr__(self, "points", points)
+        object.__setattr__(self, "entities", tuple(self.entities))
+        object.__setattr__(self, "layers", layers)
+
+
+@dataclass(frozen=True)
 class Diagnostic:
     """Kernel-produced diagnostic exposed through the Python facade."""
 
@@ -22,6 +54,8 @@ class Diagnostic:
     code: str
     message: str
     entities: tuple[DiagnosticEntity, ...]
+    category: str = "general"
+    overlays: tuple[DiagnosticOverlay, ...] = ()
 
 
 class DiagnosticReport:
@@ -57,4 +91,51 @@ def _diagnostic_from_dict(item) -> Diagnostic:
         entities=tuple(
             DiagnosticEntity(entity["kind"], entity["index"]) for entity in item["entities"]
         ),
+        category=item.get("category", "general"),
+        overlays=tuple(
+            _diagnostic_overlay_from_dict(overlay)
+            for overlay in item.get("overlays", ())
+        ),
     )
+
+
+def _diagnostic_overlay_from_dict(item) -> DiagnosticOverlay:
+    return DiagnosticOverlay(
+        kind=item["kind"],
+        points=tuple((float(point[0]), float(point[1])) for point in item["points"]),
+        entities=tuple(
+            DiagnosticEntity(entity["kind"], entity["index"])
+            for entity in item.get("entities", ())
+        ),
+        layers=tuple(
+            DiagnosticEntity(entity["kind"], entity["index"])
+            for entity in item.get("layers", ())
+        ),
+    )
+
+
+def _diagnostic_overlay_point(point) -> tuple[float, float]:
+    x = float(point[0])
+    y = float(point[1])
+    if not math.isfinite(x) or not math.isfinite(y):
+        raise ValueError("Diagnostic overlay points must be finite")
+    return (x, y)
+
+
+def _validate_diagnostic_overlay_shape(
+    kind: str,
+    points: tuple[tuple[float, float], ...],
+) -> None:
+    if kind in {"bounding_box", "segment"}:
+        if len(points) != 2:
+            raise ValueError("Diagnostic bounding boxes and segments require two points")
+        return
+    if kind == "point":
+        if len(points) != 1:
+            raise ValueError("Diagnostic point overlays require one point")
+        return
+    if kind == "polygon":
+        if len(points) < 3:
+            raise ValueError("Diagnostic polygon overlays require at least three points")
+        return
+    raise ValueError(f"Unsupported diagnostic overlay kind: {kind}")

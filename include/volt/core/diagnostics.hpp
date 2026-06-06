@@ -1,15 +1,41 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <volt/core/ids.hpp>
 
 namespace volt {
+
+namespace diagnostic_categories {
+
+inline constexpr auto General = std::string_view{"general"};
+inline constexpr auto PcbBoard = std::string_view{"pcb.board"};
+inline constexpr auto PcbVisual = std::string_view{"pcb.visual"};
+
+} // namespace diagnostic_categories
+
+namespace pcb_visual_diagnostic_codes {
+
+inline constexpr auto PlacementOverlap = std::string_view{"PCB_VISUAL_PLACEMENT_OVERLAP"};
+inline constexpr auto PlacementCrowding = std::string_view{"PCB_VISUAL_PLACEMENT_CROWDING"};
+inline constexpr auto ReferenceDesignatorHidden =
+    std::string_view{"PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN"};
+inline constexpr auto ReferenceDesignatorUnreadable =
+    std::string_view{"PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE"};
+inline constexpr auto LabelOverlap = std::string_view{"PCB_VISUAL_LABEL_OVERLAP"};
+inline constexpr auto RouteReadabilityConflict =
+    std::string_view{"PCB_VISUAL_ROUTE_READABILITY_CONFLICT"};
+inline constexpr auto BoardFeatureAnnotationMissing =
+    std::string_view{"PCB_VISUAL_BOARD_FEATURE_ANNOTATION_MISSING"};
+
+} // namespace pcb_visual_diagnostic_codes
 
 /** Severity level for a diagnostic emitted by the kernel. */
 enum class Severity {
@@ -47,8 +73,38 @@ class DiagnosticCode {
     std::string value_;
 };
 
+/** Stable diagnostic category used by report and viewer surfaces. */
+class DiagnosticCategory {
+  public:
+    /** Construct a non-empty diagnostic category. */
+    explicit DiagnosticCategory(std::string value) : value_{std::move(value)} {
+        if (value_.empty()) {
+            throw std::invalid_argument{"Diagnostic category must not be empty"};
+        }
+    }
+
+    /** Construct a diagnostic category from a stable category constant. */
+    explicit DiagnosticCategory(std::string_view value) : DiagnosticCategory{std::string{value}} {}
+
+    /** Construct a diagnostic category from a string literal. */
+    explicit DiagnosticCategory(const char *value) : DiagnosticCategory{std::string{value}} {}
+
+    /** Return the stored diagnostic category string. */
+    [[nodiscard]] const std::string &value() const noexcept { return value_; }
+
+    /** Return whether two diagnostic categories carry the same value. */
+    [[nodiscard]] friend bool operator==(const DiagnosticCategory &lhs,
+                                         const DiagnosticCategory &rhs) noexcept {
+        return lhs.value_ == rhs.value_;
+    }
+
+  private:
+    std::string value_;
+};
+
 /** Kind of entity referenced by a diagnostic. */
 enum class EntityKind {
+    Board,
     ComponentDef,
     Component,
     PinDef,
@@ -87,6 +143,9 @@ enum class EntityKind {
  */
 class EntityRef {
   public:
+    /** Create a reference to the board projection root. */
+    [[nodiscard]] static EntityRef board() noexcept { return EntityRef{EntityKind::Board, 0U}; }
+
     /** Create a reference to a component definition. */
     [[nodiscard]] static EntityRef component_def(ComponentDefId id) noexcept {
         return EntityRef{EntityKind::ComponentDef, id.index()};
@@ -243,14 +302,139 @@ class EntityRef {
     std::size_t index_;
 };
 
+/** A board-space point in millimeters for diagnostic overlay geometry. */
+struct DiagnosticPoint {
+    /** Construct a finite board-space diagnostic point. */
+    DiagnosticPoint(double x, double y) : x_mm{x}, y_mm{y} {
+        if (!std::isfinite(x_mm) || !std::isfinite(y_mm)) {
+            throw std::invalid_argument{"Diagnostic overlay points must be finite"};
+        }
+    }
+
+    /** X coordinate in board-space millimeters. */
+    double x_mm;
+    /** Y coordinate in board-space millimeters. */
+    double y_mm;
+
+    /** Return whether two points have identical coordinates. */
+    [[nodiscard]] friend bool operator==(DiagnosticPoint lhs,
+                                         DiagnosticPoint rhs) noexcept = default;
+};
+
+/** Shape category for diagnostic overlay geometry. */
+enum class DiagnosticOverlayKind {
+    BoundingBox,
+    Point,
+    Polygon,
+    Segment,
+};
+
+/** Overlay-ready geometry and references attached to one diagnostic. */
+class DiagnosticOverlay {
+  public:
+    /** Create a bounding box overlay from minimum and maximum board-space corners. */
+    [[nodiscard]] static DiagnosticOverlay bounding_box(DiagnosticPoint min, DiagnosticPoint max,
+                                                        std::vector<EntityRef> entities = {},
+                                                        std::vector<BoardLayerId> layers = {}) {
+        return DiagnosticOverlay{DiagnosticOverlayKind::BoundingBox, std::vector{min, max},
+                                 std::move(entities), std::move(layers)};
+    }
+
+    /** Create a point overlay in board-space coordinates. */
+    [[nodiscard]] static DiagnosticOverlay point(DiagnosticPoint point,
+                                                 std::vector<EntityRef> entities = {},
+                                                 std::vector<BoardLayerId> layers = {}) {
+        return DiagnosticOverlay{DiagnosticOverlayKind::Point, std::vector{point},
+                                 std::move(entities), std::move(layers)};
+    }
+
+    /** Create a polygon overlay from ordered board-space vertices. */
+    [[nodiscard]] static DiagnosticOverlay polygon(std::vector<DiagnosticPoint> points,
+                                                   std::vector<EntityRef> entities = {},
+                                                   std::vector<BoardLayerId> layers = {}) {
+        return DiagnosticOverlay{DiagnosticOverlayKind::Polygon, std::move(points),
+                                 std::move(entities), std::move(layers)};
+    }
+
+    /** Create a line segment overlay from ordered board-space endpoints. */
+    [[nodiscard]] static DiagnosticOverlay segment(DiagnosticPoint start, DiagnosticPoint end,
+                                                   std::vector<EntityRef> entities = {},
+                                                   std::vector<BoardLayerId> layers = {}) {
+        return DiagnosticOverlay{DiagnosticOverlayKind::Segment, std::vector{start, end},
+                                 std::move(entities), std::move(layers)};
+    }
+
+    /** Return the overlay shape category. */
+    [[nodiscard]] DiagnosticOverlayKind kind() const noexcept { return kind_; }
+
+    /** Return ordered board-space overlay points. */
+    [[nodiscard]] const std::vector<DiagnosticPoint> &points() const noexcept { return points_; }
+
+    /** Return model entities this overlay highlights. */
+    [[nodiscard]] const std::vector<EntityRef> &entities() const noexcept { return entities_; }
+
+    /** Return board layer references relevant to this overlay. */
+    [[nodiscard]] const std::vector<BoardLayerId> &layers() const noexcept { return layers_; }
+
+  private:
+    DiagnosticOverlay(DiagnosticOverlayKind kind, std::vector<DiagnosticPoint> points,
+                      std::vector<EntityRef> entities, std::vector<BoardLayerId> layers)
+        : kind_{kind}, points_{std::move(points)}, entities_{std::move(entities)},
+          layers_{std::move(layers)} {
+        validate_shape(kind_, points_);
+    }
+
+    static void validate_shape(DiagnosticOverlayKind kind,
+                               const std::vector<DiagnosticPoint> &points) {
+        switch (kind) {
+        case DiagnosticOverlayKind::BoundingBox:
+        case DiagnosticOverlayKind::Segment:
+            if (points.size() != 2U) {
+                throw std::invalid_argument{
+                    "Diagnostic overlay bounding boxes and segments require two points"};
+            }
+            return;
+        case DiagnosticOverlayKind::Point:
+            if (points.size() != 1U) {
+                throw std::invalid_argument{"Diagnostic point overlays require one point"};
+            }
+            return;
+        case DiagnosticOverlayKind::Polygon:
+            if (points.size() < 3U) {
+                throw std::invalid_argument{
+                    "Diagnostic polygon overlays require at least three points"};
+            }
+            return;
+        }
+        throw std::logic_error{"Unhandled diagnostic overlay kind"};
+    }
+
+    DiagnosticOverlayKind kind_;
+    std::vector<DiagnosticPoint> points_;
+    std::vector<EntityRef> entities_;
+    std::vector<BoardLayerId> layers_;
+};
+
 /** Human- and machine-readable diagnostic emitted by kernel checks. */
 class Diagnostic {
   public:
     /** Construct a diagnostic with optional related entities. */
     Diagnostic(Severity severity, DiagnosticCode code, std::string message,
                std::vector<EntityRef> entities = {})
-        : severity_{severity}, code_{std::move(code)}, message_{std::move(message)},
-          entities_{std::move(entities)} {}
+        : Diagnostic{severity,
+                     std::move(code),
+                     DiagnosticCategory{diagnostic_categories::General},
+                     std::move(message),
+                     std::move(entities),
+                     {}} {}
+
+    /** Construct a diagnostic with category, related entities, and optional overlay geometry. */
+    Diagnostic(Severity severity, DiagnosticCode code, DiagnosticCategory category,
+               std::string message, std::vector<EntityRef> entities = {},
+               std::vector<DiagnosticOverlay> overlays = {})
+        : severity_{severity}, code_{std::move(code)}, category_{std::move(category)},
+          message_{std::move(message)}, entities_{std::move(entities)},
+          overlays_{std::move(overlays)} {}
 
     /** Return the diagnostic severity. */
     [[nodiscard]] Severity severity() const noexcept { return severity_; }
@@ -258,17 +442,27 @@ class Diagnostic {
     /** Return the machine-readable code. */
     [[nodiscard]] const DiagnosticCode &code() const noexcept { return code_; }
 
+    /** Return the stable diagnostic category. */
+    [[nodiscard]] const DiagnosticCategory &category() const noexcept { return category_; }
+
     /** Return the human-readable message. */
     [[nodiscard]] const std::string &message() const noexcept { return message_; }
 
     /** Return entities related to this diagnostic. */
     [[nodiscard]] const std::vector<EntityRef> &entities() const noexcept { return entities_; }
 
+    /** Return overlay geometry associated with this diagnostic. */
+    [[nodiscard]] const std::vector<DiagnosticOverlay> &overlays() const noexcept {
+        return overlays_;
+    }
+
   private:
     Severity severity_;
     DiagnosticCode code_;
+    DiagnosticCategory category_;
     std::string message_;
     std::vector<EntityRef> entities_;
+    std::vector<DiagnosticOverlay> overlays_;
 };
 
 /** Ordered collection of diagnostics from one or more kernel checks. */

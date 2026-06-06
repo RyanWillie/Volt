@@ -150,6 +150,20 @@ class PcbBoardReader {
 
     static void validate_diagnostic_severity(const std::string &severity);
 
+    static void validate_diagnostic_category(const nlohmann::json &diagnostic);
+
+    void validate_diagnostic_overlays(const Board &board, const nlohmann::json &diagnostic) const;
+
+    void validate_diagnostic_overlay(const Board &board, const nlohmann::json &overlay) const;
+
+    static void validate_diagnostic_overlay_shape(const std::string &kind,
+                                                  const nlohmann::json &points);
+
+    void validate_diagnostic_ref_array(const Board &board, const nlohmann::json &object,
+                                       const char *name) const;
+
+    void validate_diagnostic_layer_array(const Board &board, const nlohmann::json &object) const;
+
     void validate_viewer_diagnostic_ref(const Board &board, std::string_view ref) const;
 
     [[nodiscard]] static std::optional<PinId> optional_pin(const std::optional<std::string> &id);
@@ -810,6 +824,7 @@ void PcbBoardReader::validate_viewer_diagnostics(const Board &board,
     for (const auto &diagnostic : diagnostics) {
         require(diagnostic.is_object(), "PCB viewer diagnostic must be an object");
         validate_diagnostic_severity(string_field(diagnostic, "severity"));
+        validate_diagnostic_category(diagnostic);
         static_cast<void>(DiagnosticCode{string_field(diagnostic, "code")});
         static_cast<void>(string_field(diagnostic, "message"));
         const auto &entities = array_field(diagnostic, "entities");
@@ -832,6 +847,7 @@ void PcbBoardReader::validate_viewer_diagnostics(const Board &board,
                 throw std::logic_error{"PCB viewer diagnostic references missing footprint pad"};
             }
         }
+        validate_diagnostic_overlays(board, diagnostic);
     }
 }
 
@@ -849,8 +865,90 @@ void PcbBoardReader::validate_diagnostic_severity(const std::string &severity) {
     throw std::logic_error{"Invalid PCB viewer diagnostic severity"};
 }
 
+void PcbBoardReader::validate_diagnostic_category(const nlohmann::json &diagnostic) {
+    const auto *category = optional_field(diagnostic, "category");
+    if (category == nullptr) {
+        return;
+    }
+    require(category->is_string(), "PCB viewer diagnostic category must be a string");
+    static_cast<void>(DiagnosticCategory{category->get<std::string>()});
+}
+
+void PcbBoardReader::validate_diagnostic_overlays(const Board &board,
+                                                  const nlohmann::json &diagnostic) const {
+    const auto *overlays = optional_field(diagnostic, "overlays");
+    if (overlays == nullptr) {
+        return;
+    }
+    require(overlays->is_array(), "PCB viewer diagnostic overlays must be an array");
+    for (const auto &overlay : *overlays) {
+        validate_diagnostic_overlay(board, overlay);
+    }
+}
+
+void PcbBoardReader::validate_diagnostic_overlay(const Board &board,
+                                                 const nlohmann::json &overlay) const {
+    require(overlay.is_object(), "PCB viewer diagnostic overlay must be an object");
+    const auto kind = string_field(overlay, "kind");
+    const auto &points = array_field(overlay, "points");
+    validate_diagnostic_overlay_shape(kind, points);
+    for (const auto &point : points) {
+        static_cast<void>(board_point(point));
+    }
+    validate_diagnostic_ref_array(board, overlay, "entities");
+    validate_diagnostic_layer_array(board, overlay);
+}
+
+void PcbBoardReader::validate_diagnostic_overlay_shape(const std::string &kind,
+                                                       const nlohmann::json &points) {
+    if (kind == "bounding_box" || kind == "segment") {
+        require(points.size() == 2U, "PCB viewer diagnostic overlay point count is invalid");
+        return;
+    }
+    if (kind == "point") {
+        require(points.size() == 1U, "PCB viewer diagnostic overlay point count is invalid");
+        return;
+    }
+    if (kind == "polygon") {
+        require(points.size() >= 3U, "PCB viewer diagnostic overlay point count is invalid");
+        return;
+    }
+    throw std::logic_error{"PCB viewer diagnostic overlay has unsupported kind"};
+}
+
+void PcbBoardReader::validate_diagnostic_ref_array(const Board &board, const nlohmann::json &object,
+                                                   const char *name) const {
+    const auto &refs = array_field(object, name);
+    for (const auto &ref_json : refs) {
+        require(ref_json.is_string(), "PCB viewer diagnostic entity must be a string");
+        validate_viewer_diagnostic_ref(board, ref_json.get<std::string>());
+    }
+}
+
+void PcbBoardReader::validate_diagnostic_layer_array(const Board &board,
+                                                     const nlohmann::json &object) const {
+    const auto &layers = array_field(object, "layers");
+    for (const auto &layer_json : layers) {
+        require(layer_json.is_string(), "PCB viewer diagnostic layer must be a string");
+        const auto layer_text = layer_json.get<std::string>();
+        const auto layer = decode_if_prefixed<BoardLayerId>(layer_text);
+        if (!layer.has_value()) {
+            throw std::logic_error{"PCB viewer diagnostic overlay layer must be a board layer"};
+        }
+        if (layer->index() >= board.layer_count()) {
+            throw std::logic_error{"PCB viewer diagnostic references missing board layer"};
+        }
+    }
+}
+
 void PcbBoardReader::validate_viewer_diagnostic_ref(const Board &board,
                                                     std::string_view ref) const {
+    if (ref == "board:0") {
+        return;
+    }
+    if (ref.rfind("board:", 0) == 0) {
+        throw std::logic_error{"PCB viewer diagnostic references missing board"};
+    }
     if (const auto id = decode_if_prefixed<ComponentDefId>(ref)) {
         if (id->index() >= circuit_.component_definition_count()) {
             throw std::logic_error{"PCB viewer diagnostic references missing component definition"};

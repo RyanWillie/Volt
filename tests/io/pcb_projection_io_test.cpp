@@ -542,6 +542,44 @@ TEST_CASE("PCB projection writer includes highlightable diagnostic references") 
           nlohmann::json::array({"component:0", "component_placement:0"}));
 }
 
+TEST_CASE("PCB projection writer serializes overlay-ready diagnostic geometry") {
+    const auto diagnostic = volt::Diagnostic{
+        volt::Severity::Warning,
+        volt::DiagnosticCode{"PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE"},
+        volt::DiagnosticCategory{"pcb.visual"},
+        "Reference designator is difficult to read",
+        std::vector{volt::EntityRef::board(), volt::EntityRef::board_text(volt::BoardTextId{0})},
+        std::vector{
+            volt::DiagnosticOverlay::bounding_box(
+                volt::DiagnosticPoint{2.0, 3.0}, volt::DiagnosticPoint{6.0, 4.5},
+                std::vector{volt::EntityRef::board_text(volt::BoardTextId{0})},
+                std::vector{volt::BoardLayerId{0}}),
+            volt::DiagnosticOverlay::point(volt::DiagnosticPoint{4.0, 3.75}, {},
+                                           std::vector{volt::BoardLayerId{0}}),
+            volt::DiagnosticOverlay::polygon(std::vector{volt::DiagnosticPoint{1.0, 1.0},
+                                                         volt::DiagnosticPoint{2.0, 1.0},
+                                                         volt::DiagnosticPoint{2.0, 2.0}},
+                                             {}, std::vector{volt::BoardLayerId{0}}),
+        },
+    };
+
+    auto out = std::ostringstream{};
+    volt::io::detail::write_diagnostic(out, diagnostic);
+    const auto payload = nlohmann::json::parse(out.str());
+
+    CHECK(payload["category"] == "pcb.visual");
+    CHECK(payload["entities"] == nlohmann::json::array({"board:0", "board_text:0"}));
+    REQUIRE(payload["overlays"].size() == 3);
+    CHECK(payload["overlays"][0]["kind"] == "bounding_box");
+    CHECK(payload["overlays"][0]["points"] ==
+          nlohmann::json::array(
+              {nlohmann::json::array({2.0, 3.0}), nlohmann::json::array({6.0, 4.5})}));
+    CHECK(payload["overlays"][0]["entities"] == nlohmann::json::array({"board_text:0"}));
+    CHECK(payload["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
+    CHECK(payload["overlays"][1]["kind"] == "point");
+    CHECK(payload["overlays"][2]["kind"] == "polygon");
+}
+
 TEST_CASE("PCB projection reader rejects dangling references") {
     const auto fixture = make_resistor_circuit();
 
@@ -810,5 +848,46 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
         CHECK_THROWS_MATCHES(
             volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic has unsupported entity reference"));
+    }
+
+    SECTION("dangling diagnostic overlay layer refs") {
+        auto document = make_board_json(fixture);
+        document["viewer"]["diagnostics"] = nlohmann::json::array(
+            {{{"severity", "warning"},
+              {"category", "pcb.visual"},
+              {"code", "PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE"},
+              {"message", "fixture"},
+              {"entities", nlohmann::json::array({"board:0"})},
+              {"overlays",
+               nlohmann::json::array(
+                   {{{"kind", "bounding_box"},
+                     {"points", nlohmann::json::array({nlohmann::json::array({0.0, 0.0}),
+                                                       nlohmann::json::array({1.0, 1.0})})},
+                     {"entities", nlohmann::json::array()},
+                     {"layers", nlohmann::json::array({"board_layer:99"})}}})}}});
+
+        CHECK_THROWS_MATCHES(
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            Catch::Matchers::Message("PCB viewer diagnostic references missing board layer"));
+    }
+
+    SECTION("diagnostic overlay layer refs must be board layers") {
+        auto document = make_board_json(fixture);
+        document["viewer"]["diagnostics"] = nlohmann::json::array(
+            {{{"severity", "warning"},
+              {"category", "pcb.visual"},
+              {"code", "PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE"},
+              {"message", "fixture"},
+              {"entities", nlohmann::json::array({"board:0"})},
+              {"overlays",
+               nlohmann::json::array(
+                   {{{"kind", "point"},
+                     {"points", nlohmann::json::array({nlohmann::json::array({0.0, 0.0})})},
+                     {"entities", nlohmann::json::array()},
+                     {"layers", nlohmann::json::array({"component:0"})}}})}}});
+
+        CHECK_THROWS_MATCHES(
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            Catch::Matchers::Message("PCB viewer diagnostic overlay layer must be a board layer"));
     }
 }

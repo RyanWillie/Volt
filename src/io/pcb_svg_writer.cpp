@@ -74,6 +74,8 @@ void write_pcb_svg_number(std::ostream &out, double value) {
 
 [[nodiscard]] std::string entity_ref_svg_id(EntityRef entity) {
     switch (entity.kind()) {
+    case EntityKind::Board:
+        return "board:0";
     case EntityKind::ComponentDef:
         return encode_local_id(ComponentDefId{entity.index()});
     case EntityKind::Component:

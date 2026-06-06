@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from . import _volt
 from .design import Design
-from .diagnostics import Diagnostic, DiagnosticEntity, DiagnosticReport
+from .diagnostics import (
+    PCB_VISUAL_DIAGNOSTIC_CODES,
+    Diagnostic,
+    DiagnosticEntity,
+    DiagnosticOverlay,
+    DiagnosticReport,
+)
 from .library import (
     Library,
     LibraryComponent,
@@ -122,6 +128,7 @@ __all__ = [
     "Design",
     "Diagnostic",
     "DiagnosticEntity",
+    "DiagnosticOverlay",
     "DiagnosticReport",
     "ExpectedDiagnostic",
     "ExpectedDiagnosticResult",
@@ -157,6 +164,7 @@ __all__ = [
     "MechanicalKeepout",
     "PhysicalPartSpec",
     "Part",
+    "PCB_VISUAL_DIAGNOSTIC_CODES",
     "PlacedBoardComponent",
     "PlacedSchematicElement",
     "PadResolution",

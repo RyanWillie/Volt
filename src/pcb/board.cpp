@@ -319,7 +319,9 @@ namespace {
         const auto footprint_resolution =
             resolve_footprint(selected_part.value(), resolution_footprints);
         for (const auto &diagnostic : footprint_resolution.diagnostics().diagnostics()) {
-            report.add(Diagnostic{diagnostic.severity(), diagnostic.code(), diagnostic.message(),
+            report.add(Diagnostic{diagnostic.severity(), diagnostic.code(),
+                                  DiagnosticCategory{diagnostic_categories::PcbBoard},
+                                  diagnostic.message(),
                                   std::vector{EntityRef::component(placement.component()),
                                               EntityRef::component_placement(placement_id)}});
         }
@@ -412,12 +414,16 @@ namespace volt::detail {
 
 [[nodiscard]] Diagnostic board_diagnostic(DiagnosticCode code, std::string message,
                                           std::vector<EntityRef> entities) {
-    return Diagnostic{Severity::Error, std::move(code), std::move(message), std::move(entities)};
+    return Diagnostic{Severity::Error, std::move(code),
+                      DiagnosticCategory{diagnostic_categories::PcbBoard}, std::move(message),
+                      std::move(entities)};
 }
 
 [[nodiscard]] Diagnostic board_warning(DiagnosticCode code, std::string message,
                                        std::vector<EntityRef> entities) {
-    return Diagnostic{Severity::Warning, std::move(code), std::move(message), std::move(entities)};
+    return Diagnostic{Severity::Warning, std::move(code),
+                      DiagnosticCategory{diagnostic_categories::PcbBoard}, std::move(message),
+                      std::move(entities)};
 }
 
 [[nodiscard]] Diagnostic board_component_diagnostic(DiagnosticCode code, std::string message,

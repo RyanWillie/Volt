@@ -1,6 +1,10 @@
 import json
 
+import pytest
+
 import volt
+from volt.diagnostics import _diagnostic_from_dict
+from volt.project import _flat_diagnostic_payload, _report_diagnostics
 
 
 def test_voltage_rating_diagnostic_is_inspectable():
@@ -207,3 +211,105 @@ def test_diagnostics_are_inspectable():
     assert {diagnostic.code for diagnostic in report} == {"UNCONNECTED_REQUIRED_PIN"}
     assert all(diagnostic.severity == "error" for diagnostic in report)
     assert all(diagnostic.entities for diagnostic in report)
+
+
+def test_pcb_visual_diagnostic_overlay_contract_is_inspectable():
+    diagnostic = _diagnostic_from_dict(
+        {
+            "severity": "warning",
+            "category": "pcb.visual",
+            "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE",
+            "message": "Reference designator is difficult to read",
+            "entities": [
+                {"kind": "board", "index": 0},
+                {"kind": "board_text", "index": 2},
+            ],
+            "overlays": [
+                {
+                    "kind": "bounding_box",
+                    "points": [[10.0, 20.0], [14.0, 22.0]],
+                    "entities": [{"kind": "board_text", "index": 2}],
+                    "layers": [{"kind": "board_layer", "index": 0}],
+                },
+                {
+                    "kind": "segment",
+                    "points": [[10.0, 21.0], [14.0, 21.0]],
+                    "entities": [],
+                    "layers": [{"kind": "board_layer", "index": 0}],
+                },
+            ],
+        }
+    )
+
+    assert diagnostic.category == "pcb.visual"
+    assert diagnostic.entities == (
+        volt.DiagnosticEntity("board", 0),
+        volt.DiagnosticEntity("board_text", 2),
+    )
+    assert diagnostic.overlays[0].kind == "bounding_box"
+    assert diagnostic.overlays[0].points == ((10.0, 20.0), (14.0, 22.0))
+    assert diagnostic.overlays[0].entities == (volt.DiagnosticEntity("board_text", 2),)
+    assert diagnostic.overlays[0].layers == (volt.DiagnosticEntity("board_layer", 0),)
+
+
+def test_project_diagnostics_preserve_pcb_visual_overlay_payloads():
+    diagnostics = [
+        volt.Diagnostic(
+            severity="warning",
+            category="pcb.visual",
+            code="PCB_VISUAL_LABEL_OVERLAP",
+            message="Labels overlap",
+            entities=(volt.DiagnosticEntity("board", 0),),
+            overlays=(
+                volt.DiagnosticOverlay(
+                    "polygon",
+                    ((1.0, 1.0), (3.0, 1.0), (3.0, 2.0)),
+                    entities=(volt.DiagnosticEntity("board_text", 0),),
+                    layers=(volt.DiagnosticEntity("board_layer", 0),),
+                ),
+            ),
+        )
+    ]
+
+    [project_diagnostic] = _report_diagnostics(
+        "board",
+        "pcb:Main",
+        "pcb.visual",
+        diagnostics,
+        design="demo",
+        board="Main",
+    )
+
+    payload = _flat_diagnostic_payload(project_diagnostic)
+
+    assert project_diagnostic.category == "pcb.visual"
+    assert payload == {
+        "severity": "warning",
+        "category": "pcb.visual",
+        "code": "PCB_VISUAL_LABEL_OVERLAP",
+        "message": "Labels overlap",
+        "entities": [{"kind": "board", "index": 0}],
+        "overlays": [
+            {
+                "kind": "polygon",
+                "points": [[1.0, 1.0], [3.0, 1.0], [3.0, 2.0]],
+                "entities": [{"kind": "board_text", "index": 0}],
+                "layers": [{"kind": "board_layer", "index": 0}],
+            }
+        ],
+    }
+
+
+def test_python_diagnostic_overlay_rejects_invalid_layers_and_geometry():
+    with pytest.raises(ValueError, match="board_layer"):
+        volt.DiagnosticOverlay(
+            "point",
+            ((1.0, 2.0),),
+            layers=(volt.DiagnosticEntity("component", 0),),
+        )
+
+    with pytest.raises(ValueError, match="at least three"):
+        volt.DiagnosticOverlay("polygon", ((0.0, 0.0), (1.0, 1.0)))
+
+    with pytest.raises(ValueError, match="finite"):
+        volt.DiagnosticOverlay("point", ((float("inf"), 0.0),))
