@@ -693,6 +693,397 @@ def _resistor_0603_footprint():
     )
 
 
+def _tie_and_mechanical_footprint():
+    return volt.Footprint(
+        ("volt.test", "TieAndMechanical"),
+        pads=(
+            volt.FootprintPad.surface_mount("1", at=(-1.0, 0.0), size=(0.6, 0.6)),
+            volt.FootprintPad.surface_mount("2", at=(0.0, 0.0), size=(0.6, 0.6)),
+            volt.FootprintPad.surface_mount("4", at=(1.0, 0.0), size=(0.6, 0.6)),
+            volt.FootprintPad.through_hole(
+                "MH",
+                at=(0.0, 2.0),
+                size=(1.8, 1.8),
+                drill=volt.FootprintDrill(1.0, plating="non_plated"),
+                layers="mechanical_hole",
+                mechanical_role="mounting",
+            ),
+        ),
+    )
+
+
+def _library_resistor_part(name="R_0603_10K"):
+    return volt.Part(
+        name=name,
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        symbol=_two_pin_test_symbol(f"volt.test:{name}"),
+        footprint=_resistor_0603_footprint(),
+        pads={1: "1", 2: "2"},
+        value="10k",
+        manufacturer="Yageo",
+        mpn="RC0603FR-0710KL",
+        package="0603",
+        prefix="R",
+    )
+
+
+def test_library_build_validates_board_ready_part():
+    library = volt.Library("volt.test.passives")
+    part = _library_resistor_part()
+
+    library.add(part)
+    result = library.build()
+
+    assert result.ok
+    assert tuple(result.diagnostics) == ()
+    part_result = result.part("R_0603_10K")
+    assert part_result.schematic_ready
+    assert part_result.board_ready
+    assert part_result.serializable
+    assert part_result.has_footprint
+    assert part_result.pad_mapping_complete
+    assert library["R_0603_10K"] is part
+
+
+def test_part_instantiation_requires_library_identity():
+    part = _library_resistor_part()
+    design = volt.Design("unbound-part")
+
+    try:
+        design.instantiate(part, ref="R1")
+    except ValueError as error:
+        assert "Library" in str(error)
+    else:
+        raise AssertionError("unbound parts should not be directly instantiated")
+
+
+def test_library_part_is_immutable_after_construction():
+    library = volt.Library("volt.test.passives")
+    part = _library_resistor_part()
+    library.add(part)
+
+    try:
+        part.name = "Changed"
+    except AttributeError as error:
+        assert "immutable" in str(error)
+    else:
+        raise AssertionError("part mutation should be rejected")
+
+    assert library["R_0603_10K"] is part
+    assert part.name == "R_0603_10K"
+
+
+def test_library_part_collection_fields_are_immutable_snapshots():
+    pads = {1: ["1"], 2: "2"}
+    properties = {"metadata": {"bin": "A"}, "aliases": ["R10K"]}
+    physical_properties = {"assembly": {"feeder": "F1"}}
+    ratings = {"voltage": {"max": 50}}
+    extensions = {"tags": ["passive"]}
+    symbol_primitive = volt.SchematicSymbolSpec.line((0, 0), (20, 0))
+    symbol = volt.SchematicSymbolSpec(
+        "volt.test:R_0603_10K_nested",
+        pins=(
+            volt.SchematicSymbolSpec.pin("1", 1, (0, 0), "Left"),
+            volt.SchematicSymbolSpec.pin("2", 2, (20, 0), "Right"),
+        ),
+        primitives=(symbol_primitive,),
+    )
+    library = volt.Library("volt.test.passives")
+    part = volt.Part(
+        name="R_0603_10K_nested",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        symbol=symbol,
+        footprint=_resistor_0603_footprint(),
+        pads=pads,
+        value="10k",
+        manufacturer="Yageo",
+        mpn="RC0603FR-0710KL",
+        package="0603",
+        properties=properties,
+        physical_properties=physical_properties,
+        ratings=ratings,
+        prefix="R",
+        extensions=extensions,
+    )
+
+    pads[1].append("9")
+    properties["metadata"]["bin"] = "B"
+    physical_properties["assembly"]["feeder"] = "F2"
+    ratings["voltage"]["max"] = 100
+    extensions["tags"].append("changed")
+    symbol_primitive["start"]["x"] = 99
+    library.add(part)
+
+    def assert_rejects_mutation(callback):
+        try:
+            callback()
+        except (AttributeError, TypeError):
+            return
+        raise AssertionError("part collection mutation should be rejected")
+
+    def mutate_pads():
+        part.pads[1] += ("9",)
+
+    def mutate_properties():
+        part.properties["metadata"]["bin"] = "B"
+
+    def mutate_physical_properties():
+        part.physical_properties["assembly"]["feeder"] = "F2"
+
+    def mutate_ratings():
+        part.ratings["voltage"]["max"] = 100
+
+    def mutate_extensions():
+        part.extensions["tags"][0] = "changed"
+
+    def mutate_symbol_primitive():
+        part.schematic_symbols[0].primitives[0]["start"]["x"] = 99
+
+    assert tuple(part.pads[1]) == ("1",)
+    assert part.properties["metadata"]["bin"] == "A"
+    assert part.physical_properties["assembly"]["feeder"] == "F1"
+    assert part.ratings["voltage"]["max"] == 50
+    assert part.extensions["tags"] == ("passive",)
+    assert part.schematic_symbols[0].primitives[0]["start"]["x"] == 0.0
+
+    for mutation in (
+        mutate_pads,
+        mutate_properties,
+        mutate_physical_properties,
+        mutate_ratings,
+        mutate_extensions,
+        mutate_symbol_primitive,
+    ):
+        assert_rejects_mutation(mutation)
+
+    result = library.build()
+
+    assert result.part("R_0603_10K_nested").serializable
+    payload = part._to_dict()
+    assert payload["schematic_symbols"][0]["primitives"][0]["start"]["x"] == 0.0
+    json.dumps(payload)
+
+
+def test_project_instantiates_imported_part_without_manual_footprint_cache():
+    library = volt.Library("volt.test.passives")
+    resistor_part = _library_resistor_part()
+    library.add(resistor_part)
+    project = volt.Project("part-project")
+
+    @project.design
+    def design():
+        d = volt.Design("part-project")
+        r1 = d.instantiate(resistor_part, ref="R1")
+        left = d.net("LEFT")
+        right = d.net("RIGHT")
+        left += r1[1]
+        right += r1[2]
+        return d
+
+    @project.board
+    def board(design):
+        pcb = design.board("Main")
+        pcb.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+        pcb.place(design.component("R1"), at=(10.0, 6.0))
+        return pcb
+
+    result = project.run()
+
+    assert result.ok
+    document = json.loads(result.board().to_json())
+    definitions = document["board"]["footprint_definitions"]
+    assert [definition["ref"] for definition in definitions] == [
+        {"library": "Resistor_SMD", "name": "R_0603_1608Metric"}
+    ]
+    assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
+
+
+def test_part_pin_pad_mapping_supports_tied_pads():
+    library = volt.Library("volt.test.connectors")
+    connector = volt.Part(
+        name="TieAndMechanical",
+        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        footprint=_tie_and_mechanical_footprint(),
+        pads={1: "1", 2: ("2", "4")},
+        manufacturer="Volt",
+        mpn="TIE-MECH",
+        package="custom",
+        prefix="J",
+    )
+    library.add(connector)
+    design = volt.Design("part-tied-pads")
+    j1 = design.instantiate(connector, ref="J1")
+    a_net = design.net("A")
+    a_net += j1[1]
+    tied_net = design.net("B")
+    tied_net += j1[2]
+    board = design.board()
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+    board.place(j1, at=(10.0, 6.0))
+
+    result = library.build()
+    resolutions = {resolution.pad_label: resolution for resolution in board.resolve_pads()}
+
+    assert result.ok
+    assert resolutions["2"].pin == j1[2].index
+    assert resolutions["4"].pin == j1[2].index
+    assert resolutions["2"].net == tied_net.index
+    assert resolutions["4"].net == tied_net.index
+
+
+def test_part_validation_reports_unknown_pad_label():
+    library = volt.Library("volt.test.bad")
+    library.add(
+        volt.Part(
+            name="BadPad",
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            footprint=_resistor_0603_footprint(),
+            pads={1: "1", 2: "9"},
+            manufacturer="Yageo",
+            mpn="BADPAD",
+            package="0603",
+        )
+    )
+
+    result = library.build()
+
+    assert not result.ok
+    assert [diagnostic.code for diagnostic in result.diagnostics] == [
+        "LIBRARY_PART_UNKNOWN_PAD",
+        "LIBRARY_PART_INCOMPLETE_PAD_MAPPING",
+    ]
+    assert result.part("BadPad").board_ready is False
+
+
+def test_part_validation_allows_mechanical_pads_without_logical_pin_mapping():
+    library = volt.Library("volt.test.mechanical")
+    library.add(
+        volt.Part(
+            name="MechanicalPad",
+            pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+            footprint=_tie_and_mechanical_footprint(),
+            pads={1: "1", 2: ("2", "4")},
+            manufacturer="Volt",
+            mpn="TIE-MECH",
+            package="custom",
+        )
+    )
+
+    result = library.build()
+
+    assert result.ok
+    assert tuple(result.diagnostics) == ()
+
+
+def test_part_validation_reports_incomplete_pad_mapping_and_non_serializable_data():
+    library = volt.Library("volt.test.incomplete")
+    library.add(
+        volt.Part(
+            name="MissingPin",
+            pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+            footprint=_resistor_0603_footprint(),
+            pads={1: "1"},
+            manufacturer="Yageo",
+            mpn="MISSING",
+            package="0603",
+            extensions={"factory": object()},
+        )
+    )
+    library.add(
+        volt.Part(
+            name="MissingElectricalPad",
+            pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+            footprint=volt.Footprint(
+                ("volt.test", "ExtraElectrical"),
+                pads=(
+                    *_resistor_0603_footprint().pads,
+                    volt.FootprintPad.surface_mount("3", at=(1.5, 0.0), size=(0.6, 0.6)),
+                ),
+            ),
+            pads={1: "1", 2: "2"},
+            manufacturer="Yageo",
+            mpn="EXTRA",
+            package="0603",
+        )
+    )
+
+    result = library.build()
+
+    assert not result.ok
+    assert [(diagnostic.source, diagnostic.code) for diagnostic in result.diagnostics] == [
+        ("part:MissingElectricalPad", "LIBRARY_PART_INCOMPLETE_PAD_MAPPING"),
+        ("part:MissingPin", "LIBRARY_PART_MISSING_PIN_MAPPING"),
+        ("part:MissingPin", "LIBRARY_PART_INCOMPLETE_PAD_MAPPING"),
+        ("part:MissingPin", "LIBRARY_PART_NON_SERIALIZABLE"),
+    ]
+
+
+def test_library_result_is_deterministic():
+    library = volt.Library("volt.test.deterministic")
+    library.add(
+        volt.Part(
+            name="Zeta",
+            pins=[volt.PinSpec("1", 1)],
+            footprint=_resistor_0603_footprint(),
+            pads={1: "9"},
+        )
+    )
+    library.add(
+        volt.Part(
+            name="Alpha",
+            pins=[],
+            footprint=None,
+            pads={},
+        )
+    )
+
+    first = library.build().to_dict()
+    second = library.build().to_dict()
+
+    assert first == second
+    assert [
+        (diagnostic["source"], diagnostic["code"])
+        for diagnostic in first["diagnostics"]["diagnostics"]
+    ] == [
+        ("part:Alpha", "LIBRARY_PART_MISSING_PINS"),
+        ("part:Alpha", "LIBRARY_PART_MISSING_FOOTPRINT"),
+        ("part:Zeta", "LIBRARY_PART_UNKNOWN_PAD"),
+        ("part:Zeta", "LIBRARY_PART_INCOMPLETE_PAD_MAPPING"),
+    ]
+
+
+def test_part_ref_only_missing_geometry_still_reports_unresolved_footprint():
+    library = volt.Library("volt.test.missing_geometry")
+    resistor = volt.Part(
+        name="MissingGeometry",
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        footprint=("missing", "NotARealFootprint"),
+        pads={1: "1", 2: "2"},
+        manufacturer="Yageo",
+        mpn="RC0603FR-071KL",
+        package="0603",
+        prefix="R",
+    )
+    library.add(resistor)
+    design = volt.Design("part-missing-footprint")
+    r1 = design.instantiate(resistor, ref="R1")
+    left = design.net("LEFT")
+    right = design.net("RIGHT")
+    left += r1[1]
+    right += r1[2]
+    board = design.board()
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+    board.place(r1, at=(10.0, 6.0))
+
+    result = library.build()
+
+    assert not result.ok
+    assert [diagnostic.code for diagnostic in result.diagnostics] == [
+        "LIBRARY_PART_MISSING_FOOTPRINT_GEOMETRY"
+    ]
+    assert "PCB_FOOTPRINT_UNRESOLVED" in {diagnostic.code for diagnostic in board.validate()}
+
+
 def test_component_select_part_accepts_public_footprint_object():
     design = volt.Design("selected-part-footprint-object")
     r1 = design.R(ref="R1")

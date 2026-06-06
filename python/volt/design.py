@@ -16,6 +16,7 @@ from .library import (
     _schematic_symbol_refs,
 )
 from .logical import Component, ComponentDefinition, ModuleDefinition, ModuleInstance, Net
+from .part import Part, _PartDefinition
 from ._schematic_metadata import _schematic_sheet_metadata
 from .schematic import Schematic
 
@@ -211,15 +212,20 @@ class Design:
 
     def instantiate(
         self,
-        definition: ComponentDefinition | ModuleDefinition | LibraryComponent,
+        definition: ComponentDefinition | ModuleDefinition | LibraryComponent | Part,
         *,
         ref: str | None = None,
         prefix: str | None = None,
         properties: dict | None = None,
     ) -> Component | ModuleInstance:
-        """Instantiate a component definition, module definition, or library component."""
-        if isinstance(definition, LibraryComponent):
-            component_definition = self._define_library_component(definition)
+        """Instantiate a component definition, module definition, library component, or part."""
+        if isinstance(definition, Part):
+            definition = definition._to_part_definition()
+        elif isinstance(definition, LibraryComponent):
+            definition = definition._to_part_definition()
+
+        if isinstance(definition, _PartDefinition):
+            component_definition = self._define_part_definition(definition)
             component = self.instantiate(
                 component_definition,
                 ref=ref,
@@ -256,7 +262,10 @@ class Design:
             return result
 
         if not isinstance(definition, ComponentDefinition):
-            raise TypeError("instantiate expects a ComponentDefinition or ModuleDefinition handle")
+            raise TypeError(
+                "instantiate expects a ComponentDefinition, ModuleDefinition, "
+                "LibraryComponent, or Part handle"
+            )
         if definition._design is not self:
             raise ValueError("Component definition belongs to a different design")
         if prefix is None:
@@ -267,20 +276,23 @@ class Design:
             component = self._circuit.instantiate_ref(definition.index, ref, properties or {})
         return Component(self, component)
 
-    def _define_library_component(self, component: LibraryComponent) -> ComponentDefinition:
-        if component.cache_key not in self._library_definitions:
-            self._library_definitions[component.cache_key] = self.define_component(
-                component.name,
-                pins=component.pins,
-                properties=component.properties,
+    def _define_part_definition(self, part: _PartDefinition) -> ComponentDefinition:
+        if part.cache_key not in self._library_definitions:
+            self._library_definitions[part.cache_key] = self.define_component(
+                part.name,
+                pins=part.pins,
+                properties=part.properties,
                 source=(
-                    component.library.namespace,
-                    component.source_name,
-                    component.source_version,
+                    part.source_namespace,
+                    part.source_name,
+                    part.source_version,
                 ),
-                schematic_symbol=component.schematic_symbols,
+                schematic_symbol=part.schematic_symbols,
             )
-        return self._library_definitions[component.cache_key]
+        return self._library_definitions[part.cache_key]
+
+    def _define_library_component(self, component: LibraryComponent) -> ComponentDefinition:
+        return self._define_part_definition(component._to_part_definition())
 
     def _register_schematic_symbol(self, symbol: SchematicSymbolSpec) -> None:
         self._circuit.register_schematic_symbol(symbol._to_dict())

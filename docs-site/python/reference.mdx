@@ -60,7 +60,12 @@ Inspection records: `volt.TemplateNetInfo`, `volt.PortInfo`, `volt.ModuleCompone
 | --- | --- |
 | `volt.PinSpec` | Data for a component pin definition. |
 | `volt.PhysicalPartSpec` | Reusable selected physical part data. |
-| `volt.Library` | Namespace/versioned collection of reusable `LibraryComponent` specs. |
+| `volt.Part` | Public reusable part definition with logical pins, symbols, footprint geometry, pad mapping, ratings, and manufacturer metadata. |
+| `volt.Library` | Namespace/versioned collection of reusable public parts and compatibility `LibraryComponent` specs. |
+| `volt.LibraryResult` | Output of one deterministic library validation run. |
+| `volt.LibraryDiagnostics` | Ordered diagnostics collected from library part validation. |
+| `volt.LibraryDiagnostic` | One library validation diagnostic with source, report, severity, code, and message. |
+| `volt.LibraryPartResult` | Per-part validation status for schematic readiness, board readiness, serializability, footprint presence, and pad mapping completeness. |
 | `volt.LibraryComponent` | Reusable logical component spec with optional selected part and symbols. |
 | `volt.SchematicSymbolSpec` | Kernel-serializable symbol definition spec. |
 | `volt.SchematicSymbolPinSpec` | Symbol pin geometry and metadata. |

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
+from ._immutable import _freeze_value, _mutable_value
 from ._library_symbol_builders import (
     _default_two_terminal_symbol_spec,
     _orientation,
@@ -197,14 +198,14 @@ class SchematicSymbolSpec:
         object.__setattr__(
             self,
             "primitives",
-            tuple(dict(primitive) for primitive in self.primitives),
+            tuple(_freeze_value(primitive) for primitive in self.primitives),
         )
 
     def _to_dict(self):
         return {
             "name": self.name,
             "pins": [pin._to_dict() for pin in self.pins],
-            "primitives": [dict(primitive) for primitive in self.primitives],
+            "primitives": [_mutable_value(primitive) for primitive in self.primitives],
         }
 
     @staticmethod
@@ -451,6 +452,21 @@ class LibraryComponent:
         """Return this component's default schematic symbol, if one is registered."""
         return _schematic_symbol_for_variant(self.schematic_symbols, "default")
 
+    def _to_part_definition(self):
+        from .part import _PartDefinition
+
+        return _PartDefinition(
+            name=self.name,
+            pins=self.pins,
+            properties=self.properties,
+            source_namespace=self.library.namespace,
+            source_name=self.source_name,
+            source_version=self.source_version,
+            physical_part=self.physical_part,
+            prefix=self.prefix,
+            schematic_symbols=self.schematic_symbols,
+        )
+
 
 class Library:
     """Collection of reusable Python-authored component definitions."""
@@ -463,6 +479,30 @@ class Library:
         self.namespace = namespace
         self.version = version
         self._components: dict[str, LibraryComponent] = {}
+        self._parts: dict[str, Part] = {}
+
+    def add(self, part: Part) -> Part:
+        """Add a reusable public part to this library."""
+        from .part import Part
+
+        if not isinstance(part, Part):
+            raise TypeError("Library.add expects a Part")
+        if part.name in self._parts or part.name in self._components:
+            raise ValueError(f"Library part {part.name!r} already exists")
+        part._bind_library(self)
+        self._parts[part.name] = part
+        return part
+
+    def build(self) -> LibraryResult:
+        """Validate this library's public parts and return a deterministic result."""
+        from .library_result import LibraryResult
+
+        return LibraryResult(self)
+
+    @property
+    def parts(self) -> tuple[Part, ...]:
+        """Return public parts registered in this library in deterministic name order."""
+        return tuple(self._parts[name] for name in sorted(self._parts))
 
     def component(
         self,
@@ -481,7 +521,7 @@ class Library:
             raise ValueError("Library component name must not be empty")
         if not prefix:
             raise ValueError("Library component prefix must not be empty")
-        if name in self._components:
+        if name in self._components or name in self._parts:
             raise ValueError(f"Library component {name!r} already exists")
         component = LibraryComponent(
             library=self,
@@ -497,8 +537,10 @@ class Library:
         self._components[name] = component
         return component
 
-    def __getitem__(self, name: str) -> LibraryComponent:
-        """Return a registered library component by name."""
+    def __getitem__(self, name: str) -> Part | LibraryComponent:
+        """Return a registered public part or legacy library component by name."""
+        if name in self._parts:
+            return self._parts[name]
         return self._components[name]
 
 

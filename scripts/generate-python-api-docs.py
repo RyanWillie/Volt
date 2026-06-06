@@ -105,7 +105,7 @@ def module_page(module: str) -> str:
         return "design"
     if module == "diagnostics":
         return "diagnostics"
-    if module in {"library", "libraries"}:
+    if module in {"library", "libraries", "part", "library_result"}:
         return "library"
     if module in {"pcb", "_footprint", "_pcb_layout"}:
         return "pcb"

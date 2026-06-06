@@ -15,6 +15,13 @@ from .library import (
     SchematicSymbolPinSpec,
     SchematicSymbolSpec,
 )
+from .library_result import (
+    LibraryDiagnostic,
+    LibraryDiagnostics,
+    LibraryPartResult,
+    LibraryResult,
+)
+from .part import Part
 from .logical import (
     Component,
     ComponentDefinition,
@@ -112,6 +119,10 @@ __all__ = [
     "DiagnosticReport",
     "Library",
     "LibraryComponent",
+    "LibraryDiagnostic",
+    "LibraryDiagnostics",
+    "LibraryPartResult",
+    "LibraryResult",
     "ModuleComponent",
     "ModuleComponentInfo",
     "ModuleComponentOriginInfo",
@@ -137,6 +148,7 @@ __all__ = [
     "KiCadPcbExport",
     "MechanicalKeepout",
     "PhysicalPartSpec",
+    "Part",
     "PlacedBoardComponent",
     "PlacedSchematicElement",
     "PadResolution",
