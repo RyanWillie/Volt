@@ -34,6 +34,7 @@ set(
     part.py
     pcb.py
     project.py
+    project_checks.py
     schematic.py
 )
 foreach(package_file IN LISTS VOLT_PYTHON_PACKAGE_FILES)

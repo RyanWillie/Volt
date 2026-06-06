@@ -61,6 +61,7 @@ from .pcb import (
     Text,
 )
 from .project import (
+    BuildContext,
     Project,
     ProjectDiagnostic,
     ProjectDiagnostics,
@@ -111,6 +112,7 @@ __all__ = [
     "BoardPadAnchor",
     "BoardRoute",
     "BoardTwoPadComponent",
+    "BuildContext",
     "Circle",
     "Cutout",
     "Design",

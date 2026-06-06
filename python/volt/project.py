@@ -7,10 +7,13 @@ import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterable
 
 from .design import Design
+from .diagnostics import DiagnosticEntity
+from .library import Library
 from .pcb import Board
+from .project_checks import BoardCheck, DesignCheck, SchematicCheck
 from .schematic import Schematic
 
 
@@ -44,7 +47,10 @@ class ProjectDiagnostic:
     severity: str
     code: str
     message: str
-    entities: tuple[object, ...]
+    entities: tuple[DiagnosticEntity, ...]
+    design: str | None = None
+    board: str | None = None
+    rule: str | None = None
 
 
 @dataclass(frozen=True)
@@ -85,6 +91,22 @@ class ProjectDiagnostics:
     def has_errors(self) -> bool:
         """Return whether any collected diagnostic has error severity."""
         return bool(self.errors())
+
+
+class BuildContext:
+    """Read-only access to models produced by earlier project stages."""
+
+    def __init__(self, *, designs: Iterable[Design]):
+        self._designs = tuple(designs)
+
+    @property
+    def designs(self) -> tuple[Design, ...]:
+        """Return designs produced by the project design stage."""
+        return self._designs
+
+    def design(self, name: str | None = None) -> Design:
+        """Return a design by stable name, or the only design."""
+        return _one_or_named(self._designs, name, "design")
 
 
 class ProjectStage:
@@ -149,6 +171,15 @@ class Project:
         self.schematic = ProjectStage(self, "schematic")
         self.board = ProjectStage(self, "board")
         self._stage_order = (self.design, self.schematic, self.board)
+        self._libraries: list[Library] = []
+
+    def use_library(self, library: Library) -> Library:
+        """Include a library's validation diagnostics in this project result."""
+        if not isinstance(library, Library):
+            raise TypeError("Project.use_library expects a Library")
+        if library not in self._libraries:
+            self._libraries.append(library)
+        return library
 
     def run(self) -> "ProjectResult":
         """Run the registered project stages and return one result."""
@@ -175,7 +206,7 @@ class Project:
         models: list[object] = []
         model_ids: set[int] = set()
         runs: list[_StageRun] = []
-        design: Design | None = None
+        designs: tuple[Design, ...] = ()
 
         for stage in self._stage_order:
             if not stage.registered:
@@ -183,18 +214,19 @@ class Project:
             if stage is self.design:
                 result = stage._function()
             else:
-                if design is None:
+                if not designs:
                     raise RuntimeError(
                         f"Project {self.name} {stage.name} stage requires a design stage"
                     )
-                result = stage._function(design)
+                argument = designs[0] if len(designs) == 1 else BuildContext(designs=designs)
+                result = stage._function(argument)
             stage_models = self._collect_stage_return(stage, result)
             for model in stage_models:
                 if id(model) not in model_ids:
                     models.append(model)
                     model_ids.add(id(model))
             if stage is self.design:
-                design = stage_models[0]
+                designs = stage_models
             tests = self._run_stage_tests(stage, stage_models)
             runs.append(_StageRun(stage, stage_models, tests))
             if stop_stage is stage:
@@ -222,10 +254,6 @@ class Project:
                 f"Project {self.name} {stage.name} stage must return "
                 f"{_expected_model_name(stage)} models"
             )
-        if stage is self.design and len(models) != 1:
-            raise RuntimeError(
-                f"Project {self.name} design stage must return exactly one Design model"
-            )
         return tuple(models)
 
     def _collect_return(
@@ -252,10 +280,23 @@ class Project:
         stage: ProjectStage,
         models: tuple[object, ...],
     ) -> tuple[ProjectTestResult, ...]:
+        if not stage.tests:
+            return ()
+        if len(models) != 1:
+            count = len(models)
+            model_name = _expected_model_name(stage).lower()
+            message = (
+                f"Project {stage.name} stage tests do not support {count} "
+                f"{model_name} models"
+            )
+            return tuple(
+                ProjectTestResult(stage.name, test.name, False, message)
+                for test in stage.tests
+            )
         results: list[ProjectTestResult] = []
-        check = _check_for_stage(stage, models)
         for test in stage.tests:
             try:
+                check = _check_for_stage(stage, models)
                 test.function(check)
             except AssertionError as error:
                 results.append(
@@ -286,7 +327,13 @@ class ProjectResult:
             for run in self._runs
         )
         self._models = tuple(models or ())
-        self._diagnostics = _collect_default_diagnostics(self._runs)
+        _check_unique_model_names(self.designs, "design")
+        self._diagnostics = ProjectDiagnostics(
+            (
+                *_collect_library_diagnostics(self.project._libraries),
+                *_collect_default_diagnostics(self._runs),
+            )
+        )
 
     @property
     def ok(self) -> bool:
@@ -324,11 +371,11 @@ class ProjectResult:
 
     def schematic(self, name: str | None = None) -> Schematic:
         """Return a collected schematic by name, or the only schematic."""
-        return _one_or_named(self.schematics, name, "schematic")
+        return _one_or_named_projection(self.schematics, name, "schematic")
 
     def board(self, name: str | None = None) -> Board:
         """Return a collected board by name, or the only board."""
-        return _one_or_named(self.boards, name, "board")
+        return _one_or_named_projection(self.boards, name, "board")
 
     def stage(self, stage: ProjectStage | str) -> StageResult:
         """Return an executed stage summary by stage handle or name."""
@@ -367,56 +414,70 @@ class ProjectResult:
                         model.name,
                         relative,
                         "application/vnd.volt.logical+json",
+                        group={"design": model.name},
                     )
                 )
             elif isinstance(model, Schematic):
+                output_name = _model_output_name(model, self.schematics)
                 relative_json = _unique_path(
-                    Path("schematic") / f"{_safe_slug(model.name)}.volt.schematic.json",
+                    Path("schematic") / f"{_safe_slug(output_name)}.volt.schematic.json",
                     used_paths,
                 )
                 relative_svg = _unique_path(
-                    Path("schematic") / f"{_safe_slug(model.name)}.svg",
+                    Path("schematic") / f"{_safe_slug(output_name)}.svg",
                     used_paths,
                 )
                 _write_text(root / relative_json, model.to_json())
                 _write_text(root / relative_svg, model.to_svg())
+                group = {"design": model._design.name, "schematic": model.name}
                 artifacts.append(
                     _artifact_record(
                         "schematic",
-                        model.name,
+                        output_name,
                         relative_json,
                         "application/vnd.volt.schematic+json",
+                        group=group,
                     )
                 )
                 artifacts.append(
                     _artifact_record(
                         "schematic_svg",
-                        model.name,
+                        output_name,
                         relative_svg,
                         "image/svg+xml",
+                        group=group,
                     )
                 )
             elif isinstance(model, Board):
+                output_name = _model_output_name(model, self.boards)
                 relative_json = _unique_path(
-                    Path("pcb") / f"{_safe_slug(model.name)}.volt.pcb.json",
+                    Path("pcb") / f"{_safe_slug(output_name)}.volt.pcb.json",
                     used_paths,
                 )
                 relative_svg = _unique_path(
-                    Path("pcb") / f"{_safe_slug(model.name)}.svg",
+                    Path("pcb") / f"{_safe_slug(output_name)}.svg",
                     used_paths,
                 )
                 _write_text(root / relative_json, model.to_json())
                 _write_text(root / relative_svg, model.to_svg())
+                group = {"design": model._design.name, "board": model.name}
                 artifacts.append(
                     _artifact_record(
                         "pcb",
-                        model.name,
+                        output_name,
                         relative_json,
                         "application/vnd.volt.pcb+json",
+                        group=group,
                     )
                 )
                 artifacts.append(
-                    _artifact_record("pcb_svg", model.name, relative_svg, "image/svg+xml")
+                    _artifact_record(
+                        "pcb_svg",
+                        output_name,
+                        relative_svg,
+                        "image/svg+xml",
+                        group=group,
+                    )
                 )
 
         diagnostics_path = _unique_path(Path("diagnostics") / "diagnostics.json", used_paths)
@@ -501,10 +562,60 @@ def _one_or_named(models: tuple[object, ...], name: str | None, kind: str):
         if len(models) != 1:
             raise LookupError(f"Project result has {len(models)} {kind} models")
         return models[0]
-    for model in models:
-        if model.name == name:
-            return model
+    matches = [model for model in models if model.name == name]
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise LookupError(f"Project result has multiple {kind} models named {name}")
     raise LookupError(f"Project result has no {kind} named {name}")
+
+
+def _one_or_named_projection(
+    models: tuple[Board, ...] | tuple[Schematic, ...],
+    name: str | None,
+    kind: str,
+):
+    if name is None:
+        if len(models) != 1:
+            raise LookupError(f"Project result has {len(models)} {kind} models")
+        return models[0]
+
+    keyed_matches = [model for model in models if _model_output_name(model, models) == name]
+    if len(keyed_matches) == 1:
+        return keyed_matches[0]
+
+    name_matches = [model for model in models if model.name == name]
+    if len(name_matches) == 1:
+        return name_matches[0]
+    if len(name_matches) > 1:
+        raise LookupError(
+            f"Project result has multiple {kind} models named {name}; "
+            f"use design:{kind}"
+        )
+    raise LookupError(f"Project result has no {kind} named {name}")
+
+
+def _check_unique_model_names(models: tuple[object, ...], kind: str) -> None:
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for model in models:
+        if model.name in seen:
+            duplicates.add(model.name)
+        seen.add(model.name)
+    if duplicates:
+        names = ", ".join(sorted(duplicates))
+        raise RuntimeError(f"Project result has duplicate {kind} model names: {names}")
+
+
+def _model_output_name(model: object, siblings: tuple[object, ...]) -> str:
+    if isinstance(model, (Board, Schematic)):
+        if len(siblings) > 1:
+            return f"{_projection_key_part(model._design.name)}:{_projection_key_part(model.name)}"
+    return model.name
+
+
+def _projection_key_part(name: str) -> str:
+    return name.replace("~", "~0").replace(":", "~1")
 
 
 def _stage_name(stage: ProjectStage | str | None) -> str | None:
@@ -513,7 +624,7 @@ def _stage_name(stage: ProjectStage | str | None) -> str | None:
     return stage
 
 
-def _collect_default_diagnostics(runs: tuple[_StageRun, ...]) -> ProjectDiagnostics:
+def _collect_default_diagnostics(runs: tuple[_StageRun, ...]) -> tuple[ProjectDiagnostic, ...]:
     diagnostics: list[ProjectDiagnostic] = []
     for run in runs:
         for model in run.models:
@@ -524,6 +635,7 @@ def _collect_default_diagnostics(runs: tuple[_StageRun, ...]) -> ProjectDiagnost
                         f"logical:{model.name}",
                         "logical.default",
                         model.validate(),
+                        design=model.name,
                     )
                 )
             elif isinstance(model, Schematic):
@@ -533,6 +645,7 @@ def _collect_default_diagnostics(runs: tuple[_StageRun, ...]) -> ProjectDiagnost
                         f"schematic:{model.name}",
                         "schematic.readiness",
                         model.validate(),
+                        design=model._design.name,
                     )
                 )
                 diagnostics.extend(
@@ -541,6 +654,7 @@ def _collect_default_diagnostics(runs: tuple[_StageRun, ...]) -> ProjectDiagnost
                         f"schematic:{model.name}",
                         "schematic.readability",
                         model.validate_readability(),
+                        design=model._design.name,
                     )
                 )
             elif isinstance(model, Board):
@@ -550,6 +664,8 @@ def _collect_default_diagnostics(runs: tuple[_StageRun, ...]) -> ProjectDiagnost
                         f"pcb:{model.name}",
                         "pcb.board",
                         model.validate(),
+                        design=model._design.name,
+                        board=model.name,
                     )
                 )
                 diagnostics.extend(
@@ -558,12 +674,50 @@ def _collect_default_diagnostics(runs: tuple[_StageRun, ...]) -> ProjectDiagnost
                         f"pcb:{model.name}",
                         "logical.pcb_ready",
                         model._design.validate_for_pcb(),
+                        design=model._design.name,
+                        board=model.name,
                     )
                 )
-    return ProjectDiagnostics(diagnostics)
+    return tuple(diagnostics)
 
 
-def _report_diagnostics(stage: str, source: str, report: str, diagnostics):
+def _collect_library_diagnostics(libraries: tuple[Library, ...] | list[Library]):
+    diagnostics: list[ProjectDiagnostic] = []
+    for library in libraries:
+        result = library.build()
+        for diagnostic in result.diagnostics:
+            diagnostics.append(
+                ProjectDiagnostic(
+                    stage="library",
+                    source=diagnostic.source,
+                    report=f"library:{library.namespace}",
+                    severity=diagnostic.severity,
+                    code=diagnostic.code,
+                    message=diagnostic.message,
+                    entities=diagnostic.entities,
+                )
+            )
+    return tuple(diagnostics)
+
+
+def _is_diagnostic_entity(entity: object) -> bool:
+    return (
+        hasattr(entity, "kind")
+        and isinstance(entity.kind, str)
+        and hasattr(entity, "index")
+        and isinstance(entity.index, int)
+    )
+
+
+def _report_diagnostics(
+    stage: str,
+    source: str,
+    report: str,
+    diagnostics,
+    *,
+    design: str | None = None,
+    board: str | None = None,
+):
     return [
         ProjectDiagnostic(
             stage=stage,
@@ -573,6 +727,8 @@ def _report_diagnostics(stage: str, source: str, report: str, diagnostics):
             code=diagnostic.code,
             message=diagnostic.message,
             entities=diagnostic.entities,
+            design=design,
+            board=board,
         )
         for diagnostic in diagnostics
     ]
@@ -586,112 +742,6 @@ def _check_for_stage(stage: ProjectStage, models: tuple[object, ...]):
     if stage.name == "board":
         return BoardCheck(_one_or_named(models, None, "board"))
     raise RuntimeError(f"Unsupported project stage {stage.name}")
-
-
-class DesignCheck:
-    """Product-intent assertions over a logical design."""
-
-    def __init__(self, design: Design):
-        self._design = design
-
-    def ok(self, _message: str = "") -> None:
-        """Allow smoke tests that only need to run the stage."""
-        return None
-
-    def net(self, name: str) -> "NetCheck":
-        """Return assertions for one logical net."""
-        return NetCheck(self._design, name)
-
-    def no_connection(self, first: str, second: str) -> None:
-        """Assert two logical nets do not share any connected pin labels."""
-        first_pins = set(self.net(first)._pin_labels())
-        second_pins = set(self.net(second)._pin_labels())
-        shared = sorted(first_pins & second_pins)
-        if shared:
-            raise AssertionError(
-                f"Nets {first} and {second} unexpectedly share pins: {', '.join(shared)}"
-            )
-
-
-class NetCheck:
-    """Product-intent assertions over one logical net."""
-
-    def __init__(self, design: Design, net_name: str):
-        self._design = design
-        self._net_name = net_name
-
-    def connects(self, *pins: str) -> None:
-        """Assert this net connects every requested component pin label."""
-        connected = set(self._pin_labels())
-        missing = [pin for pin in pins if pin not in connected]
-        if missing:
-            raise AssertionError(
-                f"Net {self._net_name} is missing expected pins: {', '.join(missing)}"
-            )
-
-    def _pin_labels(self) -> tuple[str, ...]:
-        net = next((item for item in self._design.nets() if item.name == self._net_name), None)
-        if net is None:
-            raise AssertionError(f"Design has no net named {self._net_name}")
-
-        labels: list[str] = []
-        for pin in net.pins():
-            labels.append(f"{pin.component_reference}.{pin.name}")
-            labels.append(f"{pin.component_reference}.{pin.number}")
-        return tuple(labels)
-
-
-class SchematicCheck:
-    """Product-intent assertions over a schematic projection."""
-
-    def __init__(self, schematic: Schematic):
-        self._schematic = schematic
-
-    def places(self, *references: str) -> None:
-        """Assert this schematic places every requested component reference."""
-        document = json.loads(self._schematic.to_json())
-        placed_components = {item["component"] for item in document["symbol_instances"]}
-        missing = [
-            reference
-            for reference in references
-            if _component_id_by_reference(self._schematic._design, reference)
-            not in placed_components
-        ]
-        if missing:
-            raise AssertionError(
-                f"Schematic {self._schematic.name} is missing placed components: "
-                + ", ".join(missing)
-            )
-
-
-class BoardCheck:
-    """Product-intent assertions over a PCB projection."""
-
-    def __init__(self, board: Board):
-        self._board = board
-
-    def has_outline(self) -> None:
-        """Assert this board has a non-empty mechanical outline."""
-        document = json.loads(self._board.to_json())
-        outline = document["board"].get("outline", {})
-        if not outline.get("vertices"):
-            raise AssertionError(f"Board {self._board.name} has no outline")
-
-    def places(self, *references: str) -> None:
-        """Assert this board places every requested component reference."""
-        document = json.loads(self._board.to_json())
-        placed_components = {item["component"] for item in document["board"]["placements"]}
-        missing = [
-            reference
-            for reference in references
-            if _component_id_by_reference(self._board._design, reference)
-            not in placed_components
-        ]
-        if missing:
-            raise AssertionError(
-                f"Board {self._board.name} is missing placed components: "
-                + ", ".join(missing)
-            )
 
 
 _SAFE_PATH_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
@@ -732,13 +782,23 @@ def _write_json(path: Path, payload: object) -> None:
     _write_text(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
-def _artifact_record(kind: str, name: str, path: Path, media_type: str) -> dict[str, str]:
-    return {
+def _artifact_record(
+    kind: str,
+    name: str,
+    path: Path,
+    media_type: str,
+    *,
+    group: dict[str, str] | None = None,
+) -> dict[str, object]:
+    record: dict[str, object] = {
         "kind": kind,
         "name": name,
         "path": path.as_posix(),
         "media_type": media_type,
     }
+    if group is not None:
+        record["group"] = group
+    return record
 
 
 def _diagnostics_payload(diagnostics: ProjectDiagnostics) -> dict:
@@ -752,14 +812,20 @@ def _diagnostics_payload(diagnostics: ProjectDiagnostics) -> dict:
                 "severity": diagnostic.severity,
                 "code": diagnostic.code,
                 "message": diagnostic.message,
-                "entities": [
-                    {"kind": entity.kind, "index": entity.index}
-                    for entity in diagnostic.entities
-                ],
+                "entities": [_diagnostic_entity_payload(entity) for entity in diagnostic.entities],
+                "design": diagnostic.design,
+                "board": diagnostic.board,
+                "rule": diagnostic.rule,
             }
             for diagnostic in diagnostics
         ],
     }
+
+
+def _diagnostic_entity_payload(entity: object) -> object:
+    if _is_diagnostic_entity(entity):
+        return {"kind": entity.kind, "index": entity.index}
+    raise TypeError("Project diagnostic entities must be DiagnosticEntity references")
 
 
 def _diagnostic_summary(diagnostics: ProjectDiagnostics) -> dict[str, int]:
@@ -795,11 +861,3 @@ def _test_result_payload(test: ProjectTestResult) -> dict[str, object]:
         "ok": test.ok,
         "message": test.message,
     }
-
-
-def _component_id_by_reference(design: Design, reference: str) -> str:
-    try:
-        component = design.component(reference)
-    except KeyError as error:
-        raise AssertionError(f"Design {design.name} has no component {reference}") from error
-    return f"component:{component.index}"

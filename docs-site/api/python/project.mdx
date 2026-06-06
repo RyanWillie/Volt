@@ -4,6 +4,24 @@ description: Generated reference for staged project workflows, results, diagnost
 ---
 This page is generated from the public Python source. Add or improve docstrings in `python/volt` to improve the reference.
 
+## `volt.BuildContext`
+
+Read-only access to models produced by earlier project stages.
+
+Source: `python/volt/project.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `designs: tuple[Design, ...]` | Return designs produced by the project design stage. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `design(self, name: str \| None = None) -> Design` | Return a design by stable name, or the only design. |
+
 ## `volt.Project`
 
 Canonical staged entrypoint for a Volt electronics project.
@@ -14,6 +32,7 @@ Source: `python/volt/project.py`
 
 | Method | Summary |
 | --- | --- |
+| `use_library(self, library: Library) -> Library` | Include a library's validation diagnostics in this project result. |
 | `run(self) -> 'ProjectResult'` | Run the registered project stages and return one result. |
 | `run_through(self, stage: ProjectStage) -> 'ProjectResult'` | Run stages through the given stage handle. |
 
@@ -33,7 +52,10 @@ Source: `python/volt/project.py`
 | `severity: str` |
 | `code: str` |
 | `message: str` |
-| `entities: tuple[object, ...]` |
+| `entities: tuple[DiagnosticEntity, ...]` |
+| `design: str \| None` |
+| `board: str \| None` |
+| `rule: str \| None` |
 
 ## `volt.ProjectDiagnostics`
 
