@@ -1,0 +1,25 @@
+{
+  "assets": [
+    {
+      "format": "step",
+      "id": "part_model_asset:0",
+      "path": "assets/models/4b91321ef3df9390eb915bd133820f68e31cb54c88ce033e9445ceeec00eb8bf.step",
+      "sha256": "4b91321ef3df9390eb915bd133820f68e31cb54c88ce033e9445ceeec00eb8bf"
+    }
+  ],
+  "format": "volt.part_models_3d_registry",
+  "models": [
+    {
+      "asset": "part_model_asset:0",
+      "file_name": "r_0603_body.step",
+      "id": "part_model:0",
+      "rotation_deg": 0.0,
+      "translation_mm": [
+        0.0,
+        0.0,
+        0.35
+      ]
+    }
+  ],
+  "version": 1
+}

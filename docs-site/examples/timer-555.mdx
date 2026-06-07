@@ -3,9 +3,19 @@ title: 555 Timer Blinker
 description: Author a 555 LED blinker with custom component definitions and schematic projection.
 ---
 
-The 555 timer example demonstrates a custom IC definition, typed pins, built-in passive parts, named nets, schematic sheet metadata, and deterministic artifacts.
+The 555 timer example demonstrates a custom IC definition, typed pins, built-in passive parts, named nets, schematic sheet metadata, a small PCB projection, and deterministic project artifacts.
 
 Source: `examples/timer_555_led_blinker/main.py`.
+
+## File shape
+
+| File | Responsibility |
+| --- | --- |
+| `main.py` | Project entrypoint and artifact CLI. |
+| `components.py` | NE555 definition, selected parts, and footprint geometry. |
+| `schematic.py` | Schematic stage over the logical design. |
+| `board.py` | PCB stage over the logical design. |
+| `project_tests.py` | Project-level intent checks. |
 
 ## Logical shape
 
@@ -46,14 +56,46 @@ with sheet.drawing(at=(140, 80), unit=20) as drawing:
 
 The full example uses two-terminal elements, local labels, junction dots, and explicit validation reports.
 
+## Project shape
+
+```python
+def build_project() -> volt.Project:
+    project = volt.Project(
+        "timer-555-led-blinker",
+        description="555 LED blinker reference design",
+    )
+
+    @project.design
+    def design():
+        project_design, nets, parts = build_design()
+        return (
+            project_design,
+            volt.ProjectResource("nets", nets),
+            volt.ProjectResource("parts", parts),
+        )
+
+    project.schematic(build_schematic)
+    project.board(build_board)
+    register_project_tests(project)
+    return project
+```
+
+The design stage owns the logical model and explicit authoring resources. Later stages
+read those resources through `BuildContext`; schematic and PCB code do not recreate or
+reinterpret connectivity.
+
 ## Generated artifacts
 
-`write_artifacts()` produces:
+Running `python -m examples.timer_555_led_blinker.main` calls `run_project()`, checks
+that the result is clean, and then uses `ProjectResult.write()` plus
+`ProjectResult.write_artifacts()` to produce:
 
+- A full `.volt` project-result bundle.
 - Logical JSON.
 - Schematic JSON.
 - Full SVG and body SVG.
 - Per-page SVG output.
+- PCB JSON, PCB SVG, and KiCad PCB output.
 - Validation report JSON.
 
-Use this example when you need a complete reference for logical plus schematic artifact generation.
+Use this example when you need a compact reference for logical, schematic, and board artifact generation.

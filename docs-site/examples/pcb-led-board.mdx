@@ -14,7 +14,7 @@ Source: `examples/pcb_led_board/main.py`.
     Define `+3V3`, `LED_A`, and `GND`, then connect a header, resistor, and LED.
   </Step>
   <Step title="Select physical parts">
-    Attach manufacturer, part number, package label, object-owned footprint geometry, pin-pad mappings, and optional `model_3d` asset metadata.
+    Attach manufacturer, part number, package label, object-owned footprint geometry, pin-pad mappings, and a small `model_3d` asset reference.
   </Step>
   <Step title="Carry footprint geometry">
     Keep the through-hole and 0603 pad geometry on each selected physical part.
@@ -32,11 +32,13 @@ Source: `examples/pcb_led_board/main.py`.
 ```python
 from pathlib import Path
 
+MODEL_DIR = Path(__file__).resolve().parent / "models"
+
 parts["R1"].select_part(
     manufacturer="Yageo",
     part_number="RC0603FR-07330RL",
     package="0603",
-    footprint=volt.Footprint(
+    footprint=volt.FootprintDefinition(
         ("passives", "R_0603_1608Metric"),
         pads=(
             volt.FootprintPad.surface_mount("1", at=(-0.75, 0.0), size=(0.80, 0.95)),
@@ -45,12 +47,16 @@ parts["R1"].select_part(
     ),
     pin_pads={1: "1", 2: "2"},
     model_3d=volt.PartModel3D(
-        Path(__file__).resolve().parent / "models" / "r_0603_body.glb",
-        offset=(0.0, 0.0, 0.8),
+        MODEL_DIR / "r_0603_body.step",
+        offset=(0.0, 0.0, 0.35),
     ),
     power_rating=0.1,
 )
 ```
+
+The full project bundle copies the STEP asset into `assets/models/` and writes
+`assets/part_models_3d.json` plus a board placement map, while the logical JSON stores
+only the selected-part model metadata.
 
 ## Board example
 
@@ -61,14 +67,17 @@ back = board.add_layer("B.Cu", role="copper", side="bottom")
 board.set_layer_stack((front, back), thickness=1.6)
 board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 18.0))
 
-board.place(parts["R1"], at=(15.0, 7.0), rotation=0.0, side="top")
-board.add_track(nets["+3V3"], layer=front, points=[(5.0, 7.73), (14.25, 7.0)], width=0.25)
+with board.layout(unit=1.0) as layout:
+    header = layout.place(parts["J1"], at=board.edge("left").center().right(5.0))
+    resistor = layout.two_pad(parts["R1"]).at((15.0, 7.0)).anchor("center").right()
+    layout.connect(header[1], resistor[1], layer=front, width=0.25, mode="direct")
 ```
 
 ## KiCad handoff
 
 ```python
-export = board.write_kicad_pcb("pcb_led_board.kicad_pcb")
+result = run_project()
+export = result.board().to_kicad_pcb()
 assert export.warnings == ()
 ```
 

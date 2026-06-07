@@ -25,11 +25,14 @@ def test_pcb_led_board_project_stages_are_primary_authoring_functions():
 
     source = inspect.getsource(main.build_project)
 
-    assert "return author_schematic(" not in source
-    assert "return build_board(" not in source
+    assert "return author_schematic(" in source
+    assert "return build_board(" in source
+    assert 'context.resource("nets", dict)' in source
+    assert 'context.resource("parts", dict)' in source
 
 
 def _artifact_texts(artifacts):
+    project_bundle = artifacts.logical_json.parent / "pcb_led_board.volt"
     return {
         "logical": artifacts.logical_json.read_text(encoding="utf-8"),
         "schematic": artifacts.schematic_json.read_text(encoding="utf-8"),
@@ -38,8 +41,8 @@ def _artifact_texts(artifacts):
         "pcb": artifacts.pcb_json.read_text(encoding="utf-8"),
         "pcb_svg": artifacts.pcb_svg.read_text(encoding="utf-8"),
         "kicad_pcb": artifacts.kicad_pcb.read_text(encoding="utf-8"),
-        "validation": artifacts.validation_report.read_text(encoding="utf-8"),
-        "project": _project_bundle_texts(artifacts.project_bundle),
+        "validation": artifacts.diagnostics_json.read_text(encoding="utf-8"),
+        "project": _project_bundle_texts(project_bundle),
         "pages": tuple(path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages),
     }
 
@@ -141,6 +144,15 @@ def test_pcb_led_board_example_writes_stable_public_api_artifacts():
         "R_0603_1608Metric",
         "LED_0603_1608Metric",
     }
+    resistor = next(
+        component for component in logical["components"] if component["reference"] == "R1"
+    )
+    assert resistor["selected_physical_part"]["model_3d"] == {
+        "format": "step",
+        "file_name": "r_0603_body.step",
+        "translation_mm": [0.0, 0.0, 0.35],
+        "rotation_deg": 0,
+    }
 
     assert schematic["format"] == "volt.schematic"
     assert [sheet["name"] for sheet in schematic["sheets"]] == ["First Board LED"]
@@ -167,6 +179,35 @@ def test_pcb_led_board_example_writes_stable_public_api_artifacts():
     assert project_manifest["format"] == "volt.project_result"
     assert project_manifest["ok"] is True
     assert project_manifest["tests"]["summary"] == {"failed": 0, "passed": 3}
+    assert "assets/part_models_3d.json" in first_texts["project"]
+    assert "pcb/First-Board-LED.volt.models3d.json" in first_texts["project"]
+    model_registry = json.loads(first_texts["project"]["assets/part_models_3d.json"])
+    assert model_registry["models"] == [
+        {
+            "id": "part_model:0",
+            "asset": "part_model_asset:0",
+            "file_name": "r_0603_body.step",
+            "translation_mm": [0.0, 0.0, 0.35],
+            "rotation_deg": 0,
+        }
+    ]
+    model_placements = json.loads(
+        first_texts["project"]["pcb/First-Board-LED.volt.models3d.json"]
+    )
+    assert model_placements["placements"] == [
+        {
+            "placement": "component_placement:1",
+            "component": "component:1",
+            "reference": "R1",
+            "model": "part_model:0",
+            "transform_matrix": [
+                [1.0, 0.0, 0.0, 15.0],
+                [0.0, 1.0, 0.0, 7.0],
+                [0.0, 0.0, 1.0, 1.15],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+        }
+    ]
     assert 'data-board-name="First Board LED"' in first_texts["pcb_svg"]
     assert 'data-placement="component_placement:0"' in first_texts["pcb_svg"]
     assert 'data-net="net:0"' in first_texts["pcb_svg"]

@@ -40,6 +40,12 @@
         { "pin": "pin_def:2", "pad": "1" },
         { "pin": "pin_def:3", "pad": "2" }
       ],
+      "model_3d": {
+        "format": "step",
+        "file_name": "r_0603_body.step",
+        "translation_mm": [0, 0, 0.34999999999999998],
+        "rotation_deg": 0
+      },
       "properties": {},
       "electrical_attributes": {
         "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }

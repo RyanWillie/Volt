@@ -2,27 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
 import volt
 
 from .schematic_connectors import _author_connectors_region
 from .schematic_mcu import _author_mcu_region
-from .schematic_output import SHEET_FILE, SHEET_OPTIONS, build_schematic
+from .schematic_output import SHEET_FILE, SHEET_OPTIONS
 from .schematic_power import _author_power_region
 from .stm32_board import Stm32UsbBuckBoard, build_board
-
-
-@dataclass(frozen=True)
-class BenchmarkArtifacts:
-    project_bundle: Path
-    logical_json: Path
-    schematic_json: Path
-    schematic_svg: Path
-    schematic_body_svg: Path
-    schematic_svg_pages: tuple[Path, ...]
-    validation_report: Path
 
 
 def build_project() -> volt.Project:
@@ -95,7 +83,7 @@ def run_project() -> volt.ProjectResult:
     return build_project().run()
 
 
-def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
+def write_artifacts(output_dir: Path | str | None = None) -> volt.ProjectArtifactPaths:
     if output_dir is None:
         output_dir = Path(__file__).resolve().parent / "artifacts"
     output_path = Path(output_dir)
@@ -115,15 +103,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
     project_bundle = output_path / "stm32_usb_buck.volt"
     result.write(project_bundle)
     artifacts = result.write_artifacts(output_path, slug="stm32_usb_buck")
-    return BenchmarkArtifacts(
-        project_bundle=project_bundle,
-        logical_json=artifacts.logical_json,
-        schematic_json=artifacts.schematic_json,
-        schematic_svg=artifacts.schematic_svg,
-        schematic_body_svg=artifacts.schematic_body_svg,
-        schematic_svg_pages=artifacts.schematic_svg_pages,
-        validation_report=artifacts.diagnostics_json,
-    )
+    return artifacts
 
 
 if __name__ == "__main__":

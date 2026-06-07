@@ -24,7 +24,7 @@ Source: `examples/stm32_usb_buck/`.
 | `power_blocks.py` | Power input and regulator module. |
 | `connection_blocks.py` | USB and connector modules. |
 | `utility_blocks.py` | External supply and LED helper modules. |
-| `schematic_output.py` | Sheet metadata and region orchestration. |
+| `schematic_output.py` | Shared sheet metadata. |
 | `schematic_power.py` | Power-region drawing. |
 | `schematic_mcu.py` | MCU-region drawing. |
 | `schematic_connectors.py` | USB and connector-region drawing. |
@@ -34,9 +34,25 @@ Source: `examples/stm32_usb_buck/`.
 Keep logical composition separate from schematic projection:
 
 ```python
-project = build_board()
-design = project.design
-schematic = build_schematic(project)
+@project.design
+def design():
+    stm32 = build_board()
+    return stm32.design, volt.ProjectResource("stm32_board", stm32)
+
+@project.schematic
+def schematic(context: volt.BuildContext) -> volt.Schematic:
+    board = context.resource("stm32_board", Stm32UsbBuckBoard)
+    nets = {net.name: net for net in board.design.nets()}
+    sheet = board.design.schematic("STM32 USB Buck", **SHEET_OPTIONS)
+
+    power_region = sheet.region("Power Circuitry", x=18, y=18, w=558, h=116)
+    mcu_region = sheet.region("STM32 Microcontroller", x=18, y=140, w=346, h=266)
+    connectors_region = sheet.region("Connectors and USB", x=370, y=140, w=208, h=216)
+
+    _author_power_region(power_region, board, nets)
+    _author_mcu_region(mcu_region, board, nets)
+    _author_connectors_region(connectors_region, board, nets)
+    return sheet
 ```
 
-That separation makes it easier to test logical correctness independently from schematic readability.
+That separation makes it easier to test logical correctness independently from schematic readability while still passing stable stage inputs through the Project Framework.

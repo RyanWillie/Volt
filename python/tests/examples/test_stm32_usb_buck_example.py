@@ -35,12 +35,16 @@ def test_stm32_usb_buck_project_schematic_stage_is_primary_authoring_function():
 
     source = inspect.getsource(main.build_project)
 
-    assert "return build_schematic(" not in source
+    assert 'context.resource("stm32_board", Stm32UsbBuckBoard)' in source
+    assert "build_schematic(" not in source
+    assert "_author_power_region(power_region, board, nets)" in source
+    assert "_author_mcu_region(mcu_region, board, nets)" in source
+    assert "_author_connectors_region(connectors_region, board, nets)" in source
 
 
-def _schematic_authoring_source(schematic_output):
+def _schematic_authoring_source(module):
     return "\n".join(
-        inspect.getsource(getattr(schematic_output, name))
+        inspect.getsource(getattr(module, name))
         for name in (
             "_author_power_region",
             "_author_mcu_region",
@@ -51,14 +55,14 @@ def _schematic_authoring_source(schematic_output):
 
 def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     main = importlib.import_module("examples.stm32_usb_buck.main")
-    schematic_output = importlib.import_module("examples.stm32_usb_buck.schematic_output")
+    schematic_symbols = importlib.import_module("examples.stm32_usb_buck.schematic_symbols")
 
     with TemporaryDirectory() as temp_dir:
         artifacts = main.write_artifacts(Path(temp_dir))
 
         logical = json.loads(artifacts.logical_json.read_text(encoding="utf-8"))
         schematic = json.loads(artifacts.schematic_json.read_text(encoding="utf-8"))
-        validation = json.loads(artifacts.validation_report.read_text(encoding="utf-8"))
+        validation = json.loads(artifacts.diagnostics_json.read_text(encoding="utf-8"))
         first_logical_text = artifacts.logical_json.read_text(encoding="utf-8")
         first_schematic_text = artifacts.schematic_json.read_text(encoding="utf-8")
         first_svg_text = artifacts.schematic_svg.read_text(encoding="utf-8")
@@ -66,8 +70,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         first_page_texts = tuple(
             path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages
         )
-        first_validation_text = artifacts.validation_report.read_text(encoding="utf-8")
-        first_project_texts = _project_bundle_texts(artifacts.project_bundle)
+        first_validation_text = artifacts.diagnostics_json.read_text(encoding="utf-8")
+        first_project_texts = _project_bundle_texts(
+            artifacts.logical_json.parent / "stm32_usb_buck.volt"
+        )
 
         stale_page = artifacts.schematic_svg_pages[0].parent / "stale.svg"
         stale_page.write_text("<svg></svg>\n", encoding="utf-8")
@@ -90,10 +96,13 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
             == first_page_texts
         )
         assert (
-            second_artifacts.validation_report.read_text(encoding="utf-8")
+            second_artifacts.diagnostics_json.read_text(encoding="utf-8")
             == first_validation_text
         )
-        assert _project_bundle_texts(second_artifacts.project_bundle) == first_project_texts
+        assert (
+            _project_bundle_texts(second_artifacts.logical_json.parent / "stm32_usb_buck.volt")
+            == first_project_texts
+        )
 
     assert logical["format"] == "volt.logical_circuit"
     assert {item["name"] for item in logical["module_definitions"]} >= {
@@ -198,16 +207,16 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         component_references_by_id[instance["component"]]
         for instance in schematic["symbol_instances"]
     }
-    assert placed_component_references == set(schematic_output.DISPLAY_REFERENCES)
+    assert placed_component_references == set(schematic_symbols.DISPLAY_REFERENCES)
     assert {
         field["value"]
         for field in reference_fields
     } == {
-        schematic_output.DISPLAY_REFERENCES[reference]
+        schematic_symbols.DISPLAY_REFERENCES[reference]
         for reference in placed_component_references
     }
     assert {
-        schematic_output.DISPLAY_REFERENCES[
+        schematic_symbols.DISPLAY_REFERENCES[
             component_references_by_id[
                 symbol_instances_by_id[field["symbol_instance"]]["component"]
             ]
@@ -261,9 +270,8 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         for junction in schematic["junctions"]
     ]
     assert len(junction_keys) == len(set(junction_keys))
-    assert ".to_json(" not in inspect.getsource(schematic_output.build_schematic)
-    composition_source = inspect.getsource(schematic_output)
-    authoring_source = _schematic_authoring_source(schematic_output)
+    composition_source = inspect.getsource(main.build_project)
+    authoring_source = _schematic_authoring_source(main)
     schematic_source = composition_source + "\n" + authoring_source
     assert "class _SchematicAuthor" not in schematic_source
     assert "audit_no_fallback_pin_coverage" not in schematic_source
@@ -397,12 +405,13 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert len(logical["design_intent"]["stub_nets"]) >= 4
     assert len(logical["design_intent"]["no_connect_pins"]) >= 20
 
-    schematic_report = main.build_schematic(main.build_board()).validate()
+    result = main.run_project()
+    schematic_report = result.schematic().validate()
     assert not schematic_report.has_errors
     assert {
         diagnostic.code for diagnostic in schematic_report
     } <= {"SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED"}
-    readability_report = main.build_schematic(main.build_board()).validate_readability()
+    readability_report = result.schematic().validate_readability()
     # This larger reference schematic still has known page-level readability warnings; make sure
     # the generic local signal-stub primitive stays compatible with endpoint readability checks.
     assert not readability_report.has_errors
@@ -420,10 +429,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "SCHEMATIC_TERMINAL_TOUCHES_UNRELATED_WIRE",
         "SCHEMATIC_DIFFERENT_NET_WIRE_CROSSING",
     }.isdisjoint({diagnostic.code for diagnostic in readability_report})
-    board = main.build_board()
-    logical_before_schematic = board.design.to_json()
-    main.build_schematic(board)
-    assert board.design.to_json() == logical_before_schematic
+    assert result.design().to_json() == main.build_board().design.to_json()
 
     assert "<svg xmlns=\"http://www.w3.org/2000/svg\"" in first_svg_text
     assert ".wire-run" in first_svg_text
@@ -528,11 +534,11 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
         main._author_power_region = original
 
 
-def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():
-    schematic_output = importlib.import_module("examples.stm32_usb_buck.schematic_output")
+def test_stm32_usb_buck_project_stage_uses_shared_drawing_session_sugar():
+    main = importlib.import_module("examples.stm32_usb_buck.main")
 
-    composition_source = inspect.getsource(schematic_output)
-    authoring_source = _schematic_authoring_source(schematic_output)
+    composition_source = inspect.getsource(main.build_project)
+    authoring_source = _schematic_authoring_source(main)
     source = composition_source + "\n" + authoring_source
 
     assert "_SchematicAuthor" not in source

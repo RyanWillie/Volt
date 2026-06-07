@@ -1,0 +1,3 @@
+# ProjectResult bundles hash and copy 3D model assets byte-for-byte.
+*.step binary
+*.stp binary
