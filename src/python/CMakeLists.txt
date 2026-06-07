@@ -20,6 +20,7 @@ set(
     _pcb_composition.py
     _pcb_layout.py
     _project_model_lookup.py
+    _project_models3d.py
     _presentation.py
     _schematic_authoring.py
     _schematic_handles.py
