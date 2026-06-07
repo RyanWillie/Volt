@@ -6,52 +6,12 @@ import math
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 
-DIAGNOSTIC_CATEGORIES: tuple[str, ...] = (
-    "general",
-    "erc",
-    "drc",
-    "pcb.board",
-    "pcb.visual",
-)
+from . import _volt
 
-ERC_DIAGNOSTIC_CODES: tuple[str, ...] = (
-    "PIN_MUST_NOT_CONNECT",
-    "PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED",
-    "UNCONNECTED_REQUIRED_PIN",
-    "EMPTY_NET",
-    "SINGLE_PIN_NET",
-    "UNBOUND_REQUIRED_PORT",
-    "PIN_GROUND_ON_NON_GROUND_NET",
-    "PIN_POWER_ON_GROUND_NET",
-    "POWER_INPUT_WITHOUT_SOURCE",
-    "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
-    "PIN_VOLTAGE_RANGE_VIOLATION",
-    "NET_RULE_CLASS_VOLTAGE_EXCEEDED",
-    "MULTIPLE_OUTPUTS_ON_NET",
-)
-
-DRC_DIAGNOSTIC_CODES: tuple[str, ...] = (
-    "PCB_TRACK_WIDTH_BELOW_MINIMUM",
-    "PCB_VIA_DRILL_BELOW_MINIMUM",
-    "PCB_VIA_ANNULAR_BELOW_MINIMUM",
-    "PCB_COPPER_OUTSIDE_OUTLINE",
-    "PCB_COPPER_CLEARANCE_VIOLATION",
-    "PCB_KEEPOUT_COPPER_VIOLATION",
-    "PCB_KEEPOUT_VIA_VIOLATION",
-    "PCB_KEEPOUT_PLACEMENT_VIOLATION",
-    "PCB_NET_UNROUTED",
-)
-
-PCB_VISUAL_DIAGNOSTIC_CODES: tuple[str, ...] = (
-    "PCB_VISUAL_PLACEMENT_OVERLAP",
-    "PCB_VISUAL_PLACEMENT_CROWDING",
-    "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
-    "PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE",
-    "PCB_VISUAL_LABEL_OVERLAP",
-    "PCB_VISUAL_LABEL_OUTSIDE_BOARD",
-    "PCB_VISUAL_ROUTE_READABILITY_CONFLICT",
-    "PCB_VISUAL_BOARD_FEATURE_ANNOTATION_MISSING",
-)
+DIAGNOSTIC_CATEGORIES: tuple[str, ...] = tuple(_volt.diagnostic_categories())
+ERC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.erc_diagnostic_codes())
+DRC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.drc_diagnostic_codes())
+PCB_VISUAL_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.pcb_visual_diagnostic_codes())
 
 
 @dataclass(frozen=True)

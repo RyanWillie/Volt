@@ -24,6 +24,14 @@ inline constexpr auto PcbVisual = std::string_view{"pcb.visual"};
 
 } // namespace diagnostic_categories
 
+namespace diagnostic_category_catalogs {
+
+inline constexpr auto All = std::array{diagnostic_categories::General, diagnostic_categories::Erc,
+                                       diagnostic_categories::Drc, diagnostic_categories::PcbBoard,
+                                       diagnostic_categories::PcbVisual};
+
+} // namespace diagnostic_category_catalogs
+
 namespace erc_diagnostic_codes {
 
 inline constexpr auto PinMustNotConnect = std::string_view{"PIN_MUST_NOT_CONNECT"};
@@ -102,6 +110,16 @@ inline constexpr auto Drc = std::array{drc_diagnostic_codes::TrackWidthBelowMini
                                        drc_diagnostic_codes::KeepoutViaViolation,
                                        drc_diagnostic_codes::KeepoutPlacementViolation,
                                        drc_diagnostic_codes::NetUnrouted};
+
+inline constexpr auto PcbVisual =
+    std::array{pcb_visual_diagnostic_codes::PlacementOverlap,
+               pcb_visual_diagnostic_codes::PlacementCrowding,
+               pcb_visual_diagnostic_codes::ReferenceDesignatorHidden,
+               pcb_visual_diagnostic_codes::ReferenceDesignatorUnreadable,
+               pcb_visual_diagnostic_codes::LabelOverlap,
+               pcb_visual_diagnostic_codes::LabelOutsideBoard,
+               pcb_visual_diagnostic_codes::RouteReadabilityConflict,
+               pcb_visual_diagnostic_codes::BoardFeatureAnnotationMissing};
 
 } // namespace diagnostic_code_catalogs
 

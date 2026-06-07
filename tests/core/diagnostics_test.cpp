@@ -141,17 +141,37 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
     CHECK(std::string{volt::drc_diagnostic_codes::KeepoutPlacementViolation} ==
           "PCB_KEEPOUT_PLACEMENT_VIOLATION");
 
-    REQUIRE(volt::diagnostic_code_catalogs::Erc.size() == 13U);
-    CHECK(std::string{volt::diagnostic_code_catalogs::Erc.front()} ==
-          std::string{volt::erc_diagnostic_codes::PinMustNotConnect});
-    CHECK(std::string{volt::diagnostic_code_catalogs::Erc.back()} ==
-          std::string{volt::erc_diagnostic_codes::MultipleOutputsOnNet});
+    CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::Erc.begin(),
+                                   volt::diagnostic_code_catalogs::Erc.end()} ==
+          std::vector<std::string>{
+              "PIN_MUST_NOT_CONNECT",
+              "PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED",
+              "UNCONNECTED_REQUIRED_PIN",
+              "EMPTY_NET",
+              "SINGLE_PIN_NET",
+              "UNBOUND_REQUIRED_PORT",
+              "PIN_GROUND_ON_NON_GROUND_NET",
+              "PIN_POWER_ON_GROUND_NET",
+              "POWER_INPUT_WITHOUT_SOURCE",
+              "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
+              "PIN_VOLTAGE_RANGE_VIOLATION",
+              "NET_RULE_CLASS_VOLTAGE_EXCEEDED",
+              "MULTIPLE_OUTPUTS_ON_NET",
+          });
 
-    REQUIRE(volt::diagnostic_code_catalogs::Drc.size() == 9U);
-    CHECK(std::string{volt::diagnostic_code_catalogs::Drc.front()} ==
-          std::string{volt::drc_diagnostic_codes::TrackWidthBelowMinimum});
-    CHECK(std::string{volt::diagnostic_code_catalogs::Drc.back()} ==
-          std::string{volt::drc_diagnostic_codes::NetUnrouted});
+    CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::Drc.begin(),
+                                   volt::diagnostic_code_catalogs::Drc.end()} ==
+          std::vector<std::string>{
+              "PCB_TRACK_WIDTH_BELOW_MINIMUM",
+              "PCB_VIA_DRILL_BELOW_MINIMUM",
+              "PCB_VIA_ANNULAR_BELOW_MINIMUM",
+              "PCB_COPPER_OUTSIDE_OUTLINE",
+              "PCB_COPPER_CLEARANCE_VIOLATION",
+              "PCB_KEEPOUT_COPPER_VIOLATION",
+              "PCB_KEEPOUT_VIA_VIOLATION",
+              "PCB_KEEPOUT_PLACEMENT_VIOLATION",
+              "PCB_NET_UNROUTED",
+          });
 }
 
 TEST_CASE("Diagnostic stores severity code message and related entities") {

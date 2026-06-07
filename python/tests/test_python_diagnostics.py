@@ -3,11 +3,13 @@ import json
 import pytest
 
 import volt
+from volt import _volt
 from volt.diagnostics import _diagnostic_from_dict
 from volt.project import _flat_diagnostic_payload, _report_diagnostics
 
 
 def test_pcb_visual_diagnostic_codes_are_exported_in_stable_order():
+    assert volt.PCB_VISUAL_DIAGNOSTIC_CODES == tuple(_volt.pcb_visual_diagnostic_codes())
     assert volt.PCB_VISUAL_DIAGNOSTIC_CODES == (
         "PCB_VISUAL_PLACEMENT_OVERLAP",
         "PCB_VISUAL_PLACEMENT_CROWDING",
@@ -21,6 +23,10 @@ def test_pcb_visual_diagnostic_codes_are_exported_in_stable_order():
 
 
 def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
+    assert volt.DIAGNOSTIC_CATEGORIES == tuple(_volt.diagnostic_categories())
+    assert volt.ERC_DIAGNOSTIC_CODES == tuple(_volt.erc_diagnostic_codes())
+    assert volt.DRC_DIAGNOSTIC_CODES == tuple(_volt.drc_diagnostic_codes())
+
     assert volt.DIAGNOSTIC_CATEGORIES == (
         "general",
         "erc",
