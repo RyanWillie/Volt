@@ -140,6 +140,76 @@ def test_project_result_writes_part_model_assets_and_placement_transforms(tmp_pa
     ]
 
 
+def test_project_result_keeps_distinct_model_assets_with_same_hash(tmp_path):
+    glb_asset = tmp_path / "shared-body.glb"
+    step_asset = tmp_path / "shared-body.step"
+    asset_bytes = b"same-model-payload"
+    glb_asset.write_bytes(asset_bytes)
+    step_asset.write_bytes(asset_bytes)
+    asset_hash = hashlib.sha256(asset_bytes).hexdigest()
+
+    project = volt.Project("model-metadata-collision")
+
+    @project.design
+    def design():
+        design = volt.Design("model-metadata-collision")
+        vcc = design.net("VCC", kind="power")
+        gnd = design.net("GND", kind="ground")
+        r1 = design.R("330", ref="R1")
+        r2 = design.R("1k", ref="R2")
+        vcc += r1[1], r2[1]
+        gnd += r1[2], r2[2]
+        design.component("R1").select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-07330RL",
+            package="0603",
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+            pin_pads={1: "1", 2: "2"},
+            model_3d=volt.PartModel3D(glb_asset),
+        )
+        design.component("R2").select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-071KL",
+            package="0603",
+            footprint=_passive_0603(("passives", "R_0603_1608Metric")),
+            pin_pads={1: "1", 2: "2"},
+            model_3d=volt.PartModel3D(step_asset),
+        )
+        return design
+
+    @project.board
+    def board(context):
+        design = context.design()
+        pcb = design.board("Main")
+        pcb.set_rectangular_outline(origin=(0, 0), size=(20, 10))
+        pcb.place(design.component("R1"), at=(6, 5))
+        pcb.place(design.component("R2"), at=(14, 5))
+        return pcb
+
+    output = tmp_path / "model-metadata-collision.volt"
+    project.run().write(output)
+
+    registry = json.loads((output / "assets" / "part_models_3d.json").read_text(encoding="utf-8"))
+    assert registry["assets"] == [
+        {
+            "id": "part_model_asset:0",
+            "format": "glb",
+            "path": f"assets/models/{asset_hash}.glb",
+            "sha256": asset_hash,
+        },
+        {
+            "id": "part_model_asset:1",
+            "format": "step",
+            "path": f"assets/models/{asset_hash}.step",
+            "sha256": asset_hash,
+        },
+    ]
+    assert [model["asset"] for model in registry["models"]] == [
+        "part_model_asset:0",
+        "part_model_asset:1",
+    ]
+
+
 def test_project_result_viewer_profile_reports_missing_part_model_assets(tmp_path):
     header_asset = tmp_path / "header-body.glb"
     header_asset.write_bytes(b"header-glb")

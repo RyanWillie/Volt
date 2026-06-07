@@ -22,13 +22,13 @@ class MissingPartModel3D:
 
 @dataclass(frozen=True)
 class MaterializedPartModel3DAsset:
-    """Deduplicated copied asset payload for the project bundle."""
+    """Deduplicated copied asset source for the project bundle."""
 
     id: str
     format: str
     suffix: str
     sha256: str
-    payload: bytes
+    source_path: Path
 
 
 @dataclass(frozen=True)
@@ -78,7 +78,7 @@ def collect_project_part_models_3d(
     profile: str,
 ) -> MaterializedPartModel3DBundle:
     """Collect typed 3D model bundle records from authored boards and selected parts."""
-    assets_by_hash: dict[str, MaterializedPartModel3DAsset] = {}
+    assets_by_key: dict[tuple[str, str, str], MaterializedPartModel3DAsset] = {}
     models_by_key: dict[tuple[object, ...], str] = {}
     assets: list[MaterializedPartModel3DAsset] = []
     models: list[MaterializedPartModel3D] = []
@@ -87,26 +87,27 @@ def collect_project_part_models_3d(
 
     for board, output_name in boards:
         placements: list[MaterializedPartModel3DPlacement] = []
-        for placement in board._placements():
-            model_3d = board._design._selected_part_model_3d(placement.component)
+        for placed_model in board._placed_model_3d_refs():
+            placement = placed_model.placement
+            model_3d = placed_model.model
             if model_3d is None:
                 if profile == "viewer":
                     missing.append(
                         MissingPartModel3D(
                             board=board,
-                            reference=board._design._component_reference(placement.component),
+                            reference=placed_model.reference,
                             message="Placed component has no selected-part 3D model declaration",
                         )
                     )
                 continue
 
-            source_path = board._design._component_model_3d_asset_source(placement.component)
+            source_path = placed_model.source_path
             if source_path is None or not source_path.is_file():
                 if profile == "viewer":
                     missing.append(
                         MissingPartModel3D(
                             board=board,
-                            reference=board._design._component_reference(placement.component),
+                            reference=placed_model.reference,
                             message=(
                                 "Placed component 3D model asset is missing from local project "
                                 "materialization"
@@ -115,18 +116,18 @@ def collect_project_part_models_3d(
                     )
                 continue
 
-            asset_bytes = source_path.read_bytes()
-            asset_hash = hashlib.sha256(asset_bytes).hexdigest()
-            asset = assets_by_hash.get(asset_hash)
+            asset_hash = _file_sha256(source_path)
+            asset_key = (asset_hash, model_3d.format, source_path.suffix.lower())
+            asset = assets_by_key.get(asset_key)
             if asset is None:
                 asset = MaterializedPartModel3DAsset(
-                    id=f"part_model_asset:{len(assets_by_hash)}",
+                    id=f"part_model_asset:{len(assets_by_key)}",
                     format=model_3d.format,
                     suffix=source_path.suffix.lower(),
                     sha256=asset_hash,
-                    payload=asset_bytes,
+                    source_path=source_path,
                 )
-                assets_by_hash[asset_hash] = asset
+                assets_by_key[asset_key] = asset
                 assets.append(asset)
 
             model_key = (
@@ -153,13 +154,13 @@ def collect_project_part_models_3d(
                 MaterializedPartModel3DPlacement(
                     placement=placement.index,
                     component=placement.component,
-                    reference=board._design._component_reference(placement.component),
+                    reference=placed_model.reference,
                     model=model_id,
                     transform_matrix=_part_model_3d_transform_matrix(
                         placement=placement,
                         translation_mm=model_3d.translation_mm,
                         rotation_deg=model_3d.rotation_deg,
-                        surface_z=board._surface_z(placement.side),
+                        surface_z=placed_model.surface_z,
                     ),
                 )
             )
@@ -179,6 +180,27 @@ def collect_project_part_models_3d(
         boards=tuple(board_outputs),
         missing=tuple(missing),
     )
+
+
+def copy_part_model_3d_asset(asset: MaterializedPartModel3DAsset, destination: Path) -> None:
+    """Copy one model asset without carrying binary payloads in the collected graph."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256()
+    with asset.source_path.open("rb") as source, destination.open("wb") as target:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+            target.write(chunk)
+    if digest.hexdigest() != asset.sha256:
+        destination.unlink(missing_ok=True)
+        raise OSError(f"3D model asset changed while copying: {asset.source_path}")
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _part_model_3d_transform_matrix(

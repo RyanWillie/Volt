@@ -4,6 +4,20 @@
 
 namespace volt {
 
+namespace {
+
+[[nodiscard]] bool is_supported_part_model_3d_format(const std::string &format) noexcept {
+    return format == "glb" || format == "step";
+}
+
+[[nodiscard]] bool is_part_model_3d_file_name(const std::string &file_name) noexcept {
+    return !file_name.empty() && file_name != "." && file_name != ".." &&
+           file_name.find('/') == std::string::npos &&
+           file_name.find('\\') == std::string::npos;
+}
+
+} // namespace
+
 ManufacturerPart::ManufacturerPart(std::string manufacturer, std::string part_number)
     : manufacturer_{std::move(manufacturer)}, part_number_{std::move(part_number)} {
     if (manufacturer_.empty()) {
@@ -40,11 +54,11 @@ PartModel3D::PartModel3D(std::string format, std::string file_name,
                          std::array<double, 3> translation_mm, double rotation_deg)
     : format_{std::move(format)}, file_name_{std::move(file_name)}, translation_mm_{translation_mm},
       rotation_deg_{rotation_deg} {
-    if (format_.empty()) {
-        throw std::invalid_argument{"3D model format must not be empty"};
+    if (!is_supported_part_model_3d_format(format_)) {
+        throw std::invalid_argument{"3D model format must be glb or step"};
     }
-    if (file_name_.empty()) {
-        throw std::invalid_argument{"3D model file name must not be empty"};
+    if (!is_part_model_3d_file_name(file_name_)) {
+        throw std::invalid_argument{"3D model file name must be a basename"};
     }
     if (!std::isfinite(rotation_deg_)) {
         throw std::invalid_argument{"3D model rotation must be finite"};

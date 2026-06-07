@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <volt/circuit/definitions.hpp>
+#include <volt/circuit/parts.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
@@ -44,6 +45,22 @@ TEST_CASE("PinDefinition can represent explicit connection requirements") {
 
     CHECK(optional.connection_requirement() == volt::ConnectionRequirement::Optional);
     CHECK(must_not_connect.connection_requirement() == volt::ConnectionRequirement::MustNotConnect);
+}
+
+TEST_CASE("PartModel3D enforces normalized asset identity") {
+    CHECK_NOTHROW(volt::PartModel3D{"glb", "resistor-body.glb", {0.0, 0.0, 0.0}, 0.0});
+    CHECK_NOTHROW(volt::PartModel3D{"step", "resistor-body.step", {0.0, 0.0, 0.0}, 0.0});
+
+    CHECK_THROWS_AS((volt::PartModel3D{"GLB", "resistor-body.glb", {0.0, 0.0, 0.0}, 0.0}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS((volt::PartModel3D{"stp", "resistor-body.stp", {0.0, 0.0, 0.0}, 0.0}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS((volt::PartModel3D{"glb", "models/resistor-body.glb", {0.0, 0.0, 0.0},
+                                       0.0}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS((volt::PartModel3D{"glb", R"(models\resistor-body.glb)",
+                                       {0.0, 0.0, 0.0}, 0.0}),
+                    std::invalid_argument);
 }
 
 TEST_CASE("PinDefinition stores fundamental electrical pin semantics") {

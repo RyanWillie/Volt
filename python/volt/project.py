@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 from ._project_model_lookup import model_output_name, one_or_named, one_or_named_projection
-from ._project_models3d import collect_project_part_models_3d
+from ._project_models3d import collect_project_part_models_3d, copy_part_model_3d_asset
 from .design import Design
 from .diagnostics import DiagnosticEntity, DiagnosticOverlay
 from .library import Library
@@ -134,6 +134,16 @@ class ProjectArtifactPaths:
     pcb_svg: Path | None = None
     kicad_pcb: Path | None = None
     diagnostics_json: Path | None = None
+
+
+@dataclass(frozen=True)
+class _BundlePolicySnapshot:
+    """Diagnostic policy snapshot for one profile-specific project-result bundle."""
+
+    diagnostics: "ProjectDiagnostics"
+    tests: tuple[ProjectTestResult, ...]
+    ok: bool
+    status: str
 
 
 class ProjectDiagnostics:
@@ -714,24 +724,18 @@ class ProjectResult:
         )
         artifacts.extend(model_artifacts)
 
-        bundle_diagnostics = (
-            self._diagnostics
-            if not model_diagnostics
-            else ProjectDiagnostics((*self._diagnostics, *model_diagnostics))
-        )
-        bundle_ok = _bundle_ok(self, bundle_diagnostics, self._test_results())
-        bundle_status = _bundle_status(self, bundle_diagnostics, self._test_results())
+        bundle_policy = _bundle_policy_snapshot(self, extra_diagnostics=model_diagnostics)
         diagnostics_path = _unique_path(Path("diagnostics") / "diagnostics.json", used_paths)
         tests_path = _unique_path(Path("diagnostics") / "tests.json", used_paths)
         _write_json(
             root / diagnostics_path,
             _diagnostics_payload(
                 self,
-                diagnostics=bundle_diagnostics,
-                status=bundle_status,
+                diagnostics=bundle_policy.diagnostics,
+                status=bundle_policy.status,
             ),
         )
-        _write_json(root / tests_path, _tests_payload(self._test_results()))
+        _write_json(root / tests_path, _tests_payload(bundle_policy.tests))
         artifacts.append(
             _artifact_record(
                 "diagnostics",
@@ -759,9 +763,9 @@ class ProjectResult:
                     "version": self.project.version,
                     "description": self.project.description,
                 },
-                "ok": bundle_ok,
+                "ok": bundle_policy.ok,
                 "profile": profile,
-                "status": bundle_status,
+                "status": bundle_policy.status,
                 "stages": [
                     {
                         "name": stage.name,
@@ -776,12 +780,12 @@ class ProjectResult:
                 "artifacts": artifacts,
                 "diagnostics": {
                     "path": diagnostics_path.as_posix(),
-                    "summary": _diagnostic_summary(bundle_diagnostics),
-                    "status": bundle_status,
+                    "summary": _diagnostic_summary(bundle_policy.diagnostics),
+                    "status": bundle_policy.status,
                 },
                 "tests": {
                     "path": tests_path.as_posix(),
-                    "summary": _test_summary(self._test_results()),
+                    "summary": _test_summary(bundle_policy.tests),
                 },
             },
         )
@@ -893,8 +897,7 @@ class ProjectResult:
                 Path("assets") / "models" / f"{asset.sha256}{asset.suffix}",
                 used_paths,
             )
-            (root / relative_asset).parent.mkdir(parents=True, exist_ok=True)
-            (root / relative_asset).write_bytes(asset.payload)
+            copy_part_model_3d_asset(asset, root / relative_asset)
             asset_paths[asset.id] = relative_asset.as_posix()
 
         if bundle.assets or bundle.models:
@@ -1203,6 +1206,25 @@ def _unique_path(relative: Path, used_paths: set[str]) -> Path:
 def _write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
+
+
+def _bundle_policy_snapshot(
+    result: ProjectResult,
+    *,
+    extra_diagnostics: tuple[ProjectDiagnostic, ...],
+) -> _BundlePolicySnapshot:
+    diagnostics = (
+        result.diagnostics
+        if not extra_diagnostics
+        else ProjectDiagnostics((*result.diagnostics, *extra_diagnostics))
+    )
+    tests = result._test_results()
+    return _BundlePolicySnapshot(
+        diagnostics=diagnostics,
+        tests=tests,
+        ok=_bundle_ok(result, diagnostics, tests),
+        status=_bundle_status(result, diagnostics, tests),
+    )
 
 
 def _bundle_ok(
