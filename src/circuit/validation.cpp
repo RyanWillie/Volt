@@ -38,11 +38,9 @@ namespace volt::detail {
 }
 
 [[nodiscard]] bool is_input_pin(const PinDefinition &definition) {
-    if (definition.role() == PinRole::DigitalInput || definition.role() == PinRole::AnalogInput) {
-        return true;
-    }
     return definition.terminal_kind() == ElectricalTerminalKind::Signal &&
-           definition.direction() == ElectricalDirection::Input;
+           definition.direction() == ElectricalDirection::Input &&
+           definition.signal_domain() != ElectricalSignalDomain::Unspecified;
 }
 
 [[nodiscard]] bool can_drive_signal_net(const PinDefinition &definition) {
@@ -52,10 +50,7 @@ namespace volt::detail {
     }
 
     return definition.direction() == ElectricalDirection::Output ||
-           definition.direction() == ElectricalDirection::Bidirectional ||
-           definition.role() == PinRole::DigitalOutput ||
-           definition.role() == PinRole::AnalogOutput ||
-           definition.role() == PinRole::Bidirectional;
+           definition.direction() == ElectricalDirection::Bidirectional;
 }
 
 [[nodiscard]] bool is_power_input(const PinDefinition &definition) {
