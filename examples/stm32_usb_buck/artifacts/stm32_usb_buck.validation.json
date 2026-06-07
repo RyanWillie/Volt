@@ -1,7 +1,7 @@
 {
   "diagnostics": [
     {
-      "category": "general",
+      "category": "erc",
       "code": "POWER_INPUT_WITHOUT_SOURCE",
       "entities": [
         {
@@ -19,7 +19,7 @@
       "source": "logical_design"
     },
     {
-      "category": "general",
+      "category": "erc",
       "code": "POWER_INPUT_WITHOUT_SOURCE",
       "entities": [
         {
@@ -1322,7 +1322,7 @@
     "logical_design": {
       "diagnostics": [
         {
-          "category": "general",
+          "category": "erc",
           "code": "POWER_INPUT_WITHOUT_SOURCE",
           "entities": [
             {
@@ -1339,7 +1339,7 @@
           "severity": "error"
         },
         {
-          "category": "general",
+          "category": "erc",
           "code": "POWER_INPUT_WITHOUT_SOURCE",
           "entities": [
             {

@@ -102,10 +102,14 @@ TEST_CASE("Circuit rejects ports with invalid internal nets or duplicate names")
 
 TEST_CASE("Circuit stores module component templates and template pin connectivity") {
     volt::Circuit circuit;
-    const auto left =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto right =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto resistor = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
 
@@ -136,10 +140,14 @@ TEST_CASE("Circuit stores module component templates and template pin connectivi
 
 TEST_CASE("Root module instantiation materializes module component templates") {
     volt::Circuit circuit;
-    const auto left =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto right =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto resistor = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
 
@@ -180,10 +188,14 @@ TEST_CASE("Root module instantiation materializes module component templates") {
 
 TEST_CASE("Circuit exposes hierarchy inspection views") {
     volt::Circuit circuit;
-    const auto left =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto right =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto resistor = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
 
@@ -217,10 +229,14 @@ TEST_CASE("Circuit exposes hierarchy inspection views") {
 
 TEST_CASE("Circuit restore rejects mismatched module connectivity before mutating") {
     volt::Circuit circuit;
-    const auto left =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto right =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto resistor = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
     const auto concrete_component =
@@ -258,12 +274,18 @@ TEST_CASE("Circuit restore rejects mismatched module connectivity before mutatin
 
 TEST_CASE("Circuit rejects structurally invalid module component templates") {
     volt::Circuit circuit;
-    const auto left =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto right =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
-    const auto extra =
-        circuit.add_pin_definition(volt::PinDefinition{"3", "3", volt::PinRole::Passive});
+    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto extra = circuit.add_pin_definition(volt::PinDefinition{
+        "3", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto resistor = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", {left, right}, volt::PropertyMap{}});
     const auto first = circuit.add_module_definition(volt::ModuleDefinition{
@@ -420,8 +442,10 @@ TEST_CASE("Root module instantiation preflights concrete net names before mutati
 
 TEST_CASE("Root module instantiation preflights concrete component references before mutating") {
     volt::Circuit circuit;
-    const auto pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto definition =
         circuit.add_component_definition(volt::ComponentDefinition{"Thing", {pin}});
     [[maybe_unused]] const auto existing =

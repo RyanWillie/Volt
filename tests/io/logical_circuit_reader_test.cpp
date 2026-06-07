@@ -182,6 +182,7 @@ TEST_CASE("Logical circuit reader rejects malformed design intent references") {
 TEST_CASE("Logical circuit reader preserves pin electrical semantics") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     auto &pin = fixture["pin_definitions"][0];
+    pin.erase("role");
     pin["terminal_kind"] = "Signal";
     pin["direction"] = "Output";
     pin["signal_domain"] = "Digital";
@@ -213,18 +214,30 @@ TEST_CASE("Logical circuit reader preserves pin electrical semantics") {
     CHECK(range.maximum().value() == volt::Quantity{volt::UnitDimension::Voltage, 5.5});
 }
 
+TEST_CASE("Logical circuit reader rejects persisted pin definition role fields") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    auto &pin = fixture["pin_definitions"][0];
+    pin["role"] = "DigitalOutput";
+
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);
+}
+
 TEST_CASE("Logical circuit reader preserves hierarchy module scaffold") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["pin_definitions"].push_back({{"id", "pin_def:6"},
                                           {"name", "1"},
                                           {"number", "1"},
-                                          {"role", "Passive"},
-                                          {"connection_requirement", "Required"}});
+                                          {"connection_requirement", "Required"},
+                                          {"terminal_kind", "Passive"},
+                                          {"direction", "Passive"},
+                                          {"drive_kind", "Passive"}});
     fixture["pin_definitions"].push_back({{"id", "pin_def:7"},
                                           {"name", "2"},
                                           {"number", "2"},
-                                          {"role", "Passive"},
-                                          {"connection_requirement", "Required"}});
+                                          {"connection_requirement", "Required"},
+                                          {"terminal_kind", "Passive"},
+                                          {"direction", "Passive"},
+                                          {"drive_kind", "Passive"}});
     fixture["component_definitions"].push_back(
         {{"id", "component_def:3"},
          {"name", "Resistor"},
@@ -325,8 +338,6 @@ TEST_CASE("Logical circuit reader rejects mismatched module component origin con
 TEST_CASE("Logical circuit reader defaults missing typed electrical attributes to empty maps") {
     const auto circuit = volt::io::read_logical_circuit_text(read_fixture("led_circuit.volt.json"));
 
-    CHECK(circuit.pin_definition(volt::PinDefId{0}).terminal_kind() ==
-          volt::ElectricalTerminalKind::Unspecified);
     CHECK(circuit.pin_definition_electrical_attributes(volt::PinDefId{0}).empty());
     CHECK(circuit.component_electrical_attributes(volt::ComponentId{1}).empty());
     CHECK(circuit.net_electrical_attributes(volt::NetId{0}).empty());

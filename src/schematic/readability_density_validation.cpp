@@ -206,7 +206,9 @@ void validate_dense_region_port_tags(const Schematic &schematic, SheetId sheet_i
     }
     return std::all_of(definition.pins().begin(), definition.pins().end(),
                        [&circuit](PinDefId pin_definition) {
-                           return circuit.pin_definition(pin_definition).role() == PinRole::Passive;
+                           const auto &pin = circuit.pin_definition(pin_definition);
+                           return pin.terminal_kind() == ElectricalTerminalKind::Passive &&
+                                  pin.direction() == ElectricalDirection::Passive;
                        });
 }
 

@@ -25,16 +25,11 @@ namespace volt::detail {
 
 [[nodiscard]] bool is_no_connect_pin(const PinDefinition &definition) {
     return definition.connection_requirement() == ConnectionRequirement::MustNotConnect ||
-           definition.role() == PinRole::NoConnect;
+           definition.terminal_kind() == ElectricalTerminalKind::NoConnect;
 }
 
 [[nodiscard]] bool is_output_pin(const PinDefinition &definition) {
-    if (definition.direction() == ElectricalDirection::Output) {
-        return true;
-    }
-    return definition.role() == PinRole::PowerOutput ||
-           definition.role() == PinRole::DigitalOutput ||
-           definition.role() == PinRole::AnalogOutput;
+    return definition.direction() == ElectricalDirection::Output;
 }
 
 [[nodiscard]] bool is_input_pin(const PinDefinition &definition) {

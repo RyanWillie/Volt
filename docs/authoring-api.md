@@ -57,15 +57,20 @@ in `Circuit`. If facade state and kernel state disagree, the kernel wins.
 An authoring session owns or references one `Circuit` and provides convenience methods:
 
 ```cpp
-volt::authoring::Design design;
+volt::Circuit circuit;
+auto led = volt::authoring::define_component(
+    circuit,
+    volt::authoring::ComponentSpec{
+        "LED",
+        std::vector{
+            volt::authoring::passive_pin("A", "1"),
+            volt::authoring::passive_pin("K", "2"),
+        },
+    });
 
-auto led = design.part("LED")
-    .pin("A", "1", PinRole::Passive)
-    .pin("K", "2", PinRole::Passive);
-
-auto d1 = design.instantiate(led, "D1");
-auto gnd = design.net("GND", NetKind::Ground);
-gnd.connect(d1.pin("K"));
+auto d1 = volt::authoring::instantiate(circuit, led, "D");
+auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+circuit.connect(gnd, volt::queries::pin_by_name(circuit, d1, "K").value());
 ```
 
 `Design` can expose `const Circuit &circuit() const` for validation, serialization, and
@@ -75,7 +80,8 @@ inspection. Mutable access to entity tables is not exposed.
 
 A part builder creates reusable logical definitions:
 
-- `pin(name, number, role, requirement)` creates `PinDefinition` values.
+- Pin presets such as `passive_pin`, `power_input_pin`, and `analog_input_pin` create
+  generic `PinDefinition` semantics.
 - `property(key, value)` attaches component-definition metadata.
 - `commit()` or first use stores the definition with `Circuit::add_component_definition`.
 
@@ -150,7 +156,7 @@ Design-quality findings remain diagnostics from validation passes:
 
 - unconnected required pins
 - single-pin nets
-- incompatible driver roles
+- incompatible output drivers
 - future selected-part completeness or metadata compatibility checks
 
 Recommended flow:

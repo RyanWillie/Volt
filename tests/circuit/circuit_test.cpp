@@ -42,10 +42,14 @@ TEST_CASE("Circuit starts with empty entity tables") {
 TEST_CASE("Circuit stores pin definitions in deterministic order") {
     volt::Circuit circuit;
 
-    const auto first =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto second =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto first = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
 
     CHECK(first == volt::PinDefId{0});
     CHECK(second == volt::PinDefId{1});
@@ -56,10 +60,14 @@ TEST_CASE("Circuit stores pin definitions in deterministic order") {
 
 TEST_CASE("Circuit stores component definitions") {
     volt::Circuit circuit;
-    const auto pin_a =
-        circuit.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
-    const auto pin_b =
-        circuit.add_pin_definition(volt::PinDefinition{"B", "2", volt::PinRole::Passive});
+    const auto pin_a = circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto pin_b = circuit.add_pin_definition(volt::PinDefinition{
+        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
 
     const auto resistor = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{pin_a, pin_b}});
@@ -72,8 +80,9 @@ TEST_CASE("Circuit stores component definitions") {
 
 TEST_CASE("Circuit stores component instances and concrete pin instances") {
     volt::Circuit circuit;
-    const auto pin_def =
-        circuit.add_pin_definition(volt::PinDefinition{"VDD", "1", volt::PinRole::PowerInput});
+    const auto pin_def = circuit.add_pin_definition(
+        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
+                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Regulator", std::vector{pin_def}});
 
@@ -100,8 +109,9 @@ TEST_CASE("Circuit rejects component instances that reference missing definition
 
 TEST_CASE("Circuit rejects pin instances with missing component or pin definitions") {
     volt::Circuit circuit;
-    const auto pin_def =
-        circuit.add_pin_definition(volt::PinDefinition{"VDD", "1", volt::PinRole::PowerInput});
+    const auto pin_def = circuit.add_pin_definition(
+        volt::PinDefinition{"VDD", "1", volt::ConnectionRequirement::Required,
+                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Regulator", std::vector{pin_def}});
     const auto component = circuit.add_component(
@@ -115,8 +125,9 @@ TEST_CASE("Circuit rejects pin instances with missing component or pin definitio
 
 TEST_CASE("Circuit stores nets") {
     volt::Circuit circuit;
-    const auto pin_def =
-        circuit.add_pin_definition(volt::PinDefinition{"GND", "1", volt::PinRole::Ground});
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "GND", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Ground,
+        volt::ElectricalDirection::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Connector", std::vector{pin_def}});
     const auto component = circuit.add_component(
@@ -144,8 +155,10 @@ TEST_CASE("Circuit rejects nets that reference missing pins") {
 
 TEST_CASE("Circuit connects existing pins to existing nets") {
     volt::Circuit circuit;
-    const auto pin_def =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
     const auto component = circuit.add_component(
@@ -171,8 +184,10 @@ TEST_CASE("Circuit rejects connect operations with missing IDs") {
 
 TEST_CASE("Circuit enforces one net per concrete pin") {
     volt::Circuit circuit;
-    const auto pin_def =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
     const auto component = circuit.add_component(
@@ -191,8 +206,10 @@ TEST_CASE("Circuit enforces one net per concrete pin") {
 
 TEST_CASE("Circuit disconnects a pin from its current net") {
     volt::Circuit circuit;
-    const auto pin_def =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
     const auto component = circuit.add_component(
@@ -209,10 +226,14 @@ TEST_CASE("Circuit disconnects a pin from its current net") {
 
 TEST_CASE("Circuit assigns and reads a selected physical part for a component") {
     volt::Circuit circuit;
-    const auto first_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto second_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     const auto component =
@@ -232,10 +253,14 @@ TEST_CASE("Circuit assigns and reads a selected physical part for a component") 
 
 TEST_CASE("Circuit sets typed electrical attributes on selected physical parts") {
     volt::Circuit circuit;
-    const auto first_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto second_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     const auto component =
@@ -262,8 +287,10 @@ TEST_CASE("Circuit sets typed electrical attributes on selected physical parts")
 
 TEST_CASE("Circuit sets component instance properties through an explicit mutation API") {
     volt::Circuit circuit;
-    const auto pin_def =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Test point", std::vector{pin_def}});
     const auto component =
@@ -282,8 +309,10 @@ TEST_CASE("Circuit sets component instance properties through an explicit mutati
 
 TEST_CASE("Circuit sets typed electrical attributes on component instances") {
     volt::Circuit circuit;
-    const auto pin_def =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
     const auto component =
@@ -309,7 +338,6 @@ TEST_CASE("Circuit sets typed electrical attributes on pin definitions") {
     const auto pin_definition = circuit.add_pin_definition(volt::PinDefinition{
         "VCC",
         "8",
-        volt::PinRole::PowerInput,
         volt::ConnectionRequirement::Required,
         volt::ElectricalTerminalKind::Power,
         volt::ElectricalDirection::Input,
@@ -366,8 +394,10 @@ TEST_CASE("Circuit rejects component property mutation for missing components") 
 
 TEST_CASE("Circuit rejects incompatible component electrical attributes") {
     volt::Circuit circuit;
-    const auto pin_def =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
     const auto component =
@@ -404,8 +434,9 @@ TEST_CASE("Circuit rejects incompatible component electrical attributes") {
 
 TEST_CASE("Circuit rejects incompatible pin definition electrical attributes") {
     volt::Circuit circuit;
-    const auto pin_definition =
-        circuit.add_pin_definition(volt::PinDefinition{"VCC", "8", volt::PinRole::PowerInput});
+    const auto pin_definition = circuit.add_pin_definition(
+        volt::PinDefinition{"VCC", "8", volt::ConnectionRequirement::Required,
+                            volt::ElectricalTerminalKind::Power, volt::ElectricalDirection::Input});
     const auto voltage_range = volt::ElectricalAttributeSpec{
         volt::ElectricalAttributeName{"voltage_range"},
         volt::ElectricalAttributeOwner::PinSpec,
@@ -472,10 +503,14 @@ TEST_CASE("Circuit rejects incompatible net electrical attributes") {
 
 TEST_CASE("Circuit rejects selected-part operations for missing components") {
     volt::Circuit circuit;
-    const auto first_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto second_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
 
     CHECK_THROWS_AS(circuit.select_physical_part(
                         volt::ComponentId{99}, make_resistor_physical_part(first_pin, second_pin)),
@@ -485,10 +520,14 @@ TEST_CASE("Circuit rejects selected-part operations for missing components") {
 
 TEST_CASE("Circuit rejects incompatible selected part electrical attributes") {
     volt::Circuit circuit;
-    const auto first_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto second_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     const auto component =
@@ -528,12 +567,18 @@ TEST_CASE("Circuit rejects incompatible selected part electrical attributes") {
 
 TEST_CASE("Circuit rejects selected parts with mappings outside the component definition") {
     volt::Circuit circuit;
-    const auto first_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto second_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
-    const auto foreign_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"3", "3", volt::PinRole::Passive});
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto foreign_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "3", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     const auto component =
@@ -547,10 +592,14 @@ TEST_CASE("Circuit rejects selected parts with mappings outside the component de
 
 TEST_CASE("Circuit rejects selected parts that do not map every component-definition pin") {
     volt::Circuit circuit;
-    const auto first_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto second_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     const auto component =

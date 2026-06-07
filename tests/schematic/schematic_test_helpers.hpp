@@ -25,10 +25,14 @@ namespace {
 
 [[maybe_unused]] volt::ComponentId add_resistor(volt::Circuit &circuit,
                                                 const std::string &reference) {
-    const auto first_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto second_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto definition = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     return circuit.instantiate_component(definition, volt::ReferenceDesignator{reference});
@@ -39,12 +43,18 @@ namespace {
 }
 
 [[maybe_unused]] volt::ComponentId add_three_pin_component(volt::Circuit &circuit) {
-    const auto first_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
-    const auto second_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"B", "2", volt::PinRole::Passive});
-    const auto third_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"C", "3", volt::PinRole::Passive});
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto third_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "C", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto definition = circuit.add_component_definition(
         volt::ComponentDefinition{"ThreePin", std::vector{first_pin, second_pin, third_pin}});
     return circuit.instantiate_component(definition, volt::ReferenceDesignator{"U1"});
@@ -52,14 +62,22 @@ namespace {
 
 [[maybe_unused]] volt::ComponentId add_four_pin_component(volt::Circuit &circuit,
                                                           const std::string &reference) {
-    const auto first_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
-    const auto second_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"B", "2", volt::PinRole::Passive});
-    const auto third_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"C", "3", volt::PinRole::Passive});
-    const auto fourth_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"D", "4", volt::PinRole::Passive});
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto third_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "C", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto fourth_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "D", "4", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto definition = circuit.add_component_definition(volt::ComponentDefinition{
         "FourPin", std::vector{first_pin, second_pin, third_pin, fourth_pin}});
     return circuit.instantiate_component(definition, volt::ReferenceDesignator{reference});

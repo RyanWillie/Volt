@@ -2,12 +2,12 @@
 
 namespace volt {
 
-PinDefinition::PinDefinition(std::string name, std::string number, PinRole role,
+PinDefinition::PinDefinition(std::string name, std::string number,
                              ConnectionRequirement connection_requirement,
                              ElectricalTerminalKind terminal_kind, ElectricalDirection direction,
                              ElectricalSignalDomain signal_domain, ElectricalDriveKind drive_kind,
                              ElectricalPolarity polarity)
-    : name_{std::move(name)}, number_{std::move(number)}, role_{role},
+    : name_{std::move(name)}, number_{std::move(number)},
       connection_requirement_{connection_requirement}, terminal_kind_{terminal_kind},
       direction_{direction}, signal_domain_{signal_domain}, drive_kind_{drive_kind},
       polarity_{polarity} {

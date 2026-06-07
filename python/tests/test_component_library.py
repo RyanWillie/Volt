@@ -64,6 +64,36 @@ def test_library_component_instantiates_kernel_owned_definition_once():
         {"pin": "pin_def:1", "pad": "2"},
         {"pin": "pin_def:2", "pad": "3"},
     ]
+    assert "role" not in circuit["pin_definitions"][0]
+    assert circuit["pin_definitions"][0]["terminal_kind"] == "Power"
+    assert circuit["pin_definitions"][0]["direction"] == "Input"
+    assert circuit["pin_definitions"][1]["terminal_kind"] == "Signal"
+    assert circuit["pin_definitions"][1]["direction"] == "Output"
+    assert circuit["pin_definitions"][2]["terminal_kind"] == "Ground"
+
+
+def test_pin_spec_role_preset_rejects_contradictory_explicit_semantics():
+    design = volt.Design("pin-preset-contradiction")
+
+    try:
+        design.define_component(
+            "Broken",
+            pins=[volt.PinSpec("VDD", 1, role="power", terminal="ground")],
+        )
+    except ValueError as exc:
+        assert "PinSpec role preset contradicts explicit terminal kind" in str(exc)
+    else:
+        raise AssertionError("expected contradictory pin preset to be rejected")
+
+    component = design.define_component(
+        "Valid",
+        pins=[volt.PinSpec("VDD", 1, role="power")],
+    )
+    design.instantiate(component, ref="U1")
+    circuit = json.loads(design.to_json())
+    assert "role" not in circuit["pin_definitions"][0]
+    assert circuit["pin_definitions"][0]["terminal_kind"] == "Power"
+    assert circuit["pin_definitions"][0]["direction"] == "Input"
 
 def test_library_component_schematic_symbol_default_is_definition_owned():
     design = volt.Design("library-symbol")

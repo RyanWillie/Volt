@@ -127,8 +127,11 @@ def test_555_led_blinker_example_uses_generic_ic_and_ortho_lines():
     assert len(ortho_line_calls[0][0][0]) >= 12
     assert {wire["route_intent"] for wire in projection["wire_runs"]} == {"Orthogonal"}
 
-    timer_symbol = projection["symbol_definitions"][0]
-    assert timer_symbol["name"] == "examples.schematic_sugar:NE555"
+    timer_symbol = next(
+        definition
+        for definition in projection["symbol_definitions"]
+        if definition["name"] == "examples.schematic_sugar:NE555"
+    )
     assert [pin["name"] for pin in timer_symbol["pins"]] == [
         "DISCH",
         "TRIG",
@@ -143,7 +146,9 @@ def test_555_led_blinker_example_uses_generic_ic_and_ortho_lines():
         primitive["type"] == "text" and primitive["text"] == "555"
         for primitive in timer_symbol["primitives"]
     )
-    assert [field["value"] for field in projection["symbol_fields"][:2]] == ["U1", "NE555"]
+    field_values = [field["value"] for field in projection["symbol_fields"]]
+    assert "U1" in field_values
+    assert "NE555" in field_values
     nets_by_id = {f"net:{net.index}": name for name, net in nets.items()}
     assert {label.get("label") or nets_by_id[label["net"]] for label in projection["net_labels"]} >= {
         "TIMING",
@@ -152,7 +157,7 @@ def test_555_led_blinker_example_uses_generic_ic_and_ortho_lines():
 
     logical, stable_projection, svg = _assert_stable_artifacts(blinker)
     assert stable_projection == projection
-    assert logical["components"][0]["reference"] == "U1"
+    assert any(component["reference"] == "U1" for component in logical["components"])
     assert ">555</text>" in svg
     assert ">timer</text>" in svg
     assert ">TIMING</text>" in svg

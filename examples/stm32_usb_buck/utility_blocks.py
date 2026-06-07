@@ -10,8 +10,8 @@ def define_external_supply(design: volt.Design) -> volt.ComponentDefinition:
     return design.define_component(
         "ExternalSupply",
         pins=[
-            volt.PinSpec("OUT", 1, role="power_output", terminal="power", direction="output"),
-            volt.PinSpec("GND", 2, role="ground", terminal="ground", direction="passive"),
+            volt.PinSpec("OUT", 1, role="power_output"),
+            volt.PinSpec("GND", 2, role="ground"),
         ],
         properties={"category": "validation_source"},
         source=("volt.examples.stm32_usb_buck", "external_supply", "1.0.0"),

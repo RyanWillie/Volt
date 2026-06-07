@@ -46,32 +46,6 @@ namespace volt::io::detail {
     return result;
 }
 
-[[nodiscard]] std::string pin_role_name(PinRole role) {
-    switch (role) {
-    case PinRole::Passive:
-        return "Passive";
-    case PinRole::PowerInput:
-        return "PowerInput";
-    case PinRole::PowerOutput:
-        return "PowerOutput";
-    case PinRole::Ground:
-        return "Ground";
-    case PinRole::DigitalInput:
-        return "DigitalInput";
-    case PinRole::DigitalOutput:
-        return "DigitalOutput";
-    case PinRole::Bidirectional:
-        return "Bidirectional";
-    case PinRole::AnalogInput:
-        return "AnalogInput";
-    case PinRole::AnalogOutput:
-        return "AnalogOutput";
-    case PinRole::NoConnect:
-        return "NoConnect";
-    }
-    throw std::logic_error{"Unhandled pin role"};
-}
-
 [[nodiscard]] std::string connection_requirement_name(ConnectionRequirement requirement) {
     switch (requirement) {
     case ConnectionRequirement::Optional:
@@ -476,7 +450,6 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         out << "    { \"id\": " << detail::json_string(detail::pin_def_id(id))
             << ", \"name\": " << detail::json_string(pin.name())
             << ", \"number\": " << detail::json_string(pin.number())
-            << ", \"role\": " << detail::json_string(detail::pin_role_name(pin.role()))
             << ", \"connection_requirement\": "
             << detail::json_string(
                    detail::connection_requirement_name(pin.connection_requirement()));

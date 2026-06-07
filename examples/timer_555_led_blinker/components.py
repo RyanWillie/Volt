@@ -38,6 +38,20 @@ TIMER_SYMBOL = volt.SchematicSymbolSpec.ic(
     pin_numbers=True,
 )
 
+SUPPLY_SYMBOL = volt.SchematicSymbolSpec(
+    "volt.examples.timer_555_led_blinker:ExternalSupply",
+    pins=(
+        volt.SchematicSymbolSpec.pin("1", 1, (0, 0), "Left"),
+        volt.SchematicSymbolSpec.pin("2", 2, (0, 8), "Left"),
+    ),
+    primitives=(
+        volt.SchematicSymbolSpec.rectangle((8, -4), (22, 12)),
+        volt.SchematicSymbolSpec.text("J", (15, -10)),
+        volt.SchematicSymbolSpec.line((0, 0), (8, 0)),
+        volt.SchematicSymbolSpec.line((0, 8), (8, 8)),
+    ),
+)
+
 FOOTPRINTS = {
     "jst_ph_smd_1x02": volt.FootprintDefinition(
         ("Connector_JST", "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal"),
@@ -97,18 +111,28 @@ FOOTPRINTS = {
 
 def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Component]]:
     design = volt.Design("timer-555-led-blinker")
+    supply_definition = design.define_component(
+        "ExternalSupply",
+        source=("volt.examples.timer_555_led_blinker", "external_supply", "1.0.0"),
+        pins=[
+            volt.PinSpec("1", 1, role="power_output"),
+            volt.PinSpec("2", 2, role="ground"),
+        ],
+        properties={"category": "validation_source"},
+        schematic_symbol=SUPPLY_SYMBOL,
+    )
     timer_definition = design.define_component(
         "NE555",
         source=("volt.examples.timer_555_led_blinker", "ne555", "1.0.0"),
         pins=[
-            volt.PinSpec("GND", 1, role="ground", terminal="ground"),
-            volt.PinSpec("TRIG", 2, role="input", signal="analog"),
+            volt.PinSpec("GND", 1, role="ground"),
+            volt.PinSpec("TRIG", 2, role="analog_input"),
             volt.PinSpec("OUT", 3, role="output", signal="digital"),
             volt.PinSpec("RESET", 4, role="input", signal="digital"),
-            volt.PinSpec("CTRL", 5, role="input", signal="analog"),
-            volt.PinSpec("THRESH", 6, role="input", signal="analog"),
-            volt.PinSpec("DISCH", 7, role="output", signal="analog"),
-            volt.PinSpec("VCC", 8, role="power", terminal="power"),
+            volt.PinSpec("CTRL", 5, role="analog_input"),
+            volt.PinSpec("THRESH", 6, role="analog_input"),
+            volt.PinSpec("DISCH", 7, role="analog_output"),
+            volt.PinSpec("VCC", 8, role="power"),
         ],
         schematic_symbol=TIMER_SYMBOL,
     )
@@ -123,7 +147,7 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
         "LED_A": design.net("LED_A"),
     }
     parts = {
-        "J1": design.connector_1x02(ref="J1"),
+        "J1": design.instantiate(supply_definition, ref="J1"),
         "U1": design.instantiate(timer_definition, ref="U1", properties={"value": "NE555"}),
         "RA": design.R("100 kOhm", ref="R1"),
         "RB": design.R("47 kOhm", ref="R2"),

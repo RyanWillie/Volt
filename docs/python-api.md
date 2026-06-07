@@ -329,16 +329,14 @@ enough:
 opamp = d.define_component(
     "OpAmp",
     pins=[
-        volt.PinSpec("OUT", 1, role="output", terminal="signal", direction="output"),
-        volt.PinSpec("IN-", 2, role="input", terminal="signal", direction="input"),
-        volt.PinSpec("IN+", 3, role="input", terminal="signal", direction="input"),
-        volt.PinSpec("V-", 4, role="ground", terminal="ground", direction="passive"),
+        volt.PinSpec("OUT", 1, role="output"),
+        volt.PinSpec("IN-", 2, role="input"),
+        volt.PinSpec("IN+", 3, role="input"),
+        volt.PinSpec("V-", 4, role="ground"),
         volt.PinSpec(
             "V+",
             8,
             role="power",
-            terminal="power",
-            direction="input",
             voltage_range=(2.7, 5.5),
         ),
     ],
@@ -351,10 +349,11 @@ vout += u1["OUT"]
 
 `PinSpec` data lowers into kernel-owned pin definitions. `ComponentDefinition` and
 `Component` Python objects are handles over kernel IDs; the Python layer does not own the
-component model. Pin roles use the same concepts as the logical format, written naturally
-in lowercase: `passive`, `input`/`digital_input`, `output`/`digital_output`,
-`analog_input`, `analog_output`, `bidirectional`, `power`/`power_input`, `power_output`,
-`ground`, and `no_connect`. Connection requirements are `required`, `optional`, and
+component model. The `role` argument is Python authoring shorthand only. Preset names such
+as `passive`, `input`/`digital_input`, `output`/`digital_output`, `analog_input`,
+`analog_output`, `bidirectional`, broad `power`, directional `power_input`, `power_output`,
+`ground`, and `no_connect` lower immediately into generic pin fields and are not
+persisted to logical JSON. Connection requirements are `required`, `optional`, and
 `must_not_connect`.
 
 `PinSpec` also accepts a small set of fundamental electrical semantics:

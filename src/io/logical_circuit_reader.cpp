@@ -58,8 +58,6 @@ class LogicalCircuitReader {
         return id;
     }
 
-    [[nodiscard]] static PinRole pin_role(const std::string &value);
-
     [[nodiscard]] static ConnectionRequirement connection_requirement(const std::string &value);
 
     [[nodiscard]] static ElectricalTerminalKind electrical_terminal_kind(const std::string &value);
@@ -229,30 +227,6 @@ const nlohmann::json *LogicalCircuitReader::optional_array_field(const nlohmann:
     }
     require(it->is_array(), std::string{"Expected array field: "} + name);
     return &*it;
-}
-
-[[nodiscard]] PinRole LogicalCircuitReader::pin_role(const std::string &value) {
-    if (value == "Passive")
-        return PinRole::Passive;
-    if (value == "PowerInput")
-        return PinRole::PowerInput;
-    if (value == "PowerOutput")
-        return PinRole::PowerOutput;
-    if (value == "Ground")
-        return PinRole::Ground;
-    if (value == "DigitalInput")
-        return PinRole::DigitalInput;
-    if (value == "DigitalOutput")
-        return PinRole::DigitalOutput;
-    if (value == "Bidirectional")
-        return PinRole::Bidirectional;
-    if (value == "AnalogInput")
-        return PinRole::AnalogInput;
-    if (value == "AnalogOutput")
-        return PinRole::AnalogOutput;
-    if (value == "NoConnect")
-        return PinRole::NoConnect;
-    throw std::logic_error{"Invalid PinRole value"};
 }
 
 [[nodiscard]] ConnectionRequirement
@@ -579,15 +553,21 @@ void LogicalCircuitReader::read_pin_definitions() {
     auto seen = std::set<std::string>{};
     for (const auto &pin : array_field(document_, "pin_definitions")) {
         const auto id = local_id<PinDefId>(pin, seen);
-        const auto pin_definition_id = circuit_.add_pin_definition(PinDefinition{
-            string_field(pin, "name"), string_field(pin, "number"),
-            pin_role(string_field(pin, "role")),
-            connection_requirement(string_field(pin, "connection_requirement")),
-            electrical_terminal_kind(optional_string_field(pin, "terminal_kind", "Unspecified")),
-            electrical_direction(optional_string_field(pin, "direction", "Unspecified")),
-            electrical_signal_domain(optional_string_field(pin, "signal_domain", "Unspecified")),
-            electrical_drive_kind(optional_string_field(pin, "drive_kind", "Unspecified")),
-            electrical_polarity(optional_string_field(pin, "polarity", "None"))});
+        require(pin.find("role") == pin.end(),
+                "Pin definition role is not supported; use canonical electrical fields");
+        const auto connection = connection_requirement(string_field(pin, "connection_requirement"));
+        const auto terminal =
+            electrical_terminal_kind(optional_string_field(pin, "terminal_kind", "Unspecified"));
+        const auto direction =
+            electrical_direction(optional_string_field(pin, "direction", "Unspecified"));
+        const auto signal_domain =
+            electrical_signal_domain(optional_string_field(pin, "signal_domain", "Unspecified"));
+        const auto drive =
+            electrical_drive_kind(optional_string_field(pin, "drive_kind", "Unspecified"));
+        const auto polarity = electrical_polarity(optional_string_field(pin, "polarity", "None"));
+        const auto pin_definition_id = circuit_.add_pin_definition(
+            PinDefinition{string_field(pin, "name"), string_field(pin, "number"), connection,
+                          terminal, direction, signal_domain, drive, polarity});
         pin_def_ids_.emplace(id, pin_definition_id);
         read_pin_definition_electrical_attributes(pin, pin_definition_id);
     }

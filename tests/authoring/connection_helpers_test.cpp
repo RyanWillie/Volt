@@ -12,8 +12,10 @@
 namespace {
 
 volt::ComponentDefId add_one_pin_component(volt::Circuit &circuit) {
-    const auto pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     return circuit.add_component_definition(volt::ComponentDefinition{"OnePin", std::vector{pin}});
 }
 
