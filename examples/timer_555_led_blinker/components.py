@@ -5,24 +5,6 @@ from __future__ import annotations
 import volt
 
 
-def _timer_symbol() -> volt.SchematicSymbolSpec:
-    return volt.SchematicSymbolSpec.ic(
-        "volt.examples.timer_555_led_blinker:NE555",
-        pins=(
-            volt.SchematicSymbolSpec.ic_pin("DISCH", 7, side="left", slot=1, label="DIS"),
-            volt.SchematicSymbolSpec.ic_pin("THRESH", 6, side="left", slot=2, label="THR"),
-            volt.SchematicSymbolSpec.ic_pin("TRIG", 2, side="left", slot=3, label="TRG"),
-            volt.SchematicSymbolSpec.ic_pin("OUT", 3, side="right", slot=2),
-            volt.SchematicSymbolSpec.ic_pin("CTRL", 5, side="right", slot=3, label="CTL"),
-            volt.SchematicSymbolSpec.ic_pin("RESET", 4, side="top", slot=2, label="RST"),
-            volt.SchematicSymbolSpec.ic_pin("VCC", 8, side="top", slot=4, label="Vcc"),
-            volt.SchematicSymbolSpec.ic_pin("GND", 1, side="bottom", slot=3),
-        ),
-        center_label="555",
-        pin_numbers=True,
-    )
-
-
 def _front_smd_pad(
     label: str,
     *,
@@ -40,8 +22,24 @@ def _front_smd_pad(
     )
 
 
-def _jst_ph_smd_1x02() -> volt.FootprintDefinition:
-    return volt.FootprintDefinition(
+TIMER_SYMBOL = volt.SchematicSymbolSpec.ic(
+    "volt.examples.timer_555_led_blinker:NE555",
+    pins=(
+        volt.SchematicSymbolSpec.ic_pin("DISCH", 7, side="left", slot=1, label="DIS"),
+        volt.SchematicSymbolSpec.ic_pin("THRESH", 6, side="left", slot=2, label="THR"),
+        volt.SchematicSymbolSpec.ic_pin("TRIG", 2, side="left", slot=3, label="TRG"),
+        volt.SchematicSymbolSpec.ic_pin("OUT", 3, side="right", slot=2),
+        volt.SchematicSymbolSpec.ic_pin("CTRL", 5, side="right", slot=3, label="CTL"),
+        volt.SchematicSymbolSpec.ic_pin("RESET", 4, side="top", slot=2, label="RST"),
+        volt.SchematicSymbolSpec.ic_pin("VCC", 8, side="top", slot=4, label="Vcc"),
+        volt.SchematicSymbolSpec.ic_pin("GND", 1, side="bottom", slot=3),
+    ),
+    center_label="555",
+    pin_numbers=True,
+)
+
+FOOTPRINTS = {
+    "jst_ph_smd_1x02": volt.FootprintDefinition(
         ("Connector_JST", "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal"),
         pads=(
             _front_smd_pad("1", at=(-1.0, -2.85), size=(1.0, 3.5)),
@@ -59,11 +57,8 @@ def _jst_ph_smd_1x02() -> volt.FootprintDefinition:
                 mechanical_role="mechanical_support",
             ),
         ),
-    )
-
-
-def _timer_soic_8() -> volt.FootprintDefinition:
-    return volt.FootprintDefinition(
+    ),
+    "timer_soic_8": volt.FootprintDefinition(
         ("KiCad_Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"),
         pads=(
             _front_smd_pad("1", at=(-2.475, -1.905), size=(1.95, 0.6)),
@@ -75,45 +70,28 @@ def _timer_soic_8() -> volt.FootprintDefinition:
             _front_smd_pad("7", at=(2.475, -0.635), size=(1.95, 0.6)),
             _front_smd_pad("8", at=(2.475, -1.905), size=(1.95, 0.6)),
         ),
-    )
-
-
-def _resistor_0805() -> volt.FootprintDefinition:
-    return volt.FootprintDefinition(
+    ),
+    "resistor_0805": volt.FootprintDefinition(
         ("Resistor_SMD", "R_0805_2012Metric"),
         pads=(
             _front_smd_pad("1", at=(-0.9125, 0.0), size=(1.025, 1.4)),
             _front_smd_pad("2", at=(0.9125, 0.0), size=(1.025, 1.4)),
         ),
-    )
-
-
-def _capacitor_0805() -> volt.FootprintDefinition:
-    return volt.FootprintDefinition(
+    ),
+    "capacitor_0805": volt.FootprintDefinition(
         ("Capacitor_SMD", "C_0805_2012Metric"),
         pads=(
             _front_smd_pad("1", at=(-0.95, 0.0), size=(1.0, 1.45)),
             _front_smd_pad("2", at=(0.95, 0.0), size=(1.0, 1.45)),
         ),
-    )
-
-
-def _led_0805() -> volt.FootprintDefinition:
-    return volt.FootprintDefinition(
+    ),
+    "led_0805": volt.FootprintDefinition(
         ("LED_SMD", "LED_0805_2012Metric"),
         pads=(
             _front_smd_pad("1", at=(-0.9375, 0.0), size=(0.975, 1.4)),
             _front_smd_pad("2", at=(0.9375, 0.0), size=(0.975, 1.4)),
         ),
-    )
-
-
-FOOTPRINTS = {
-    "jst_ph_smd_1x02": _jst_ph_smd_1x02(),
-    "timer_soic_8": _timer_soic_8(),
-    "resistor_0805": _resistor_0805(),
-    "capacitor_0805": _capacitor_0805(),
-    "led_0805": _led_0805(),
+    ),
 }
 
 
@@ -132,7 +110,7 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
             volt.PinSpec("DISCH", 7, role="output", signal="analog"),
             volt.PinSpec("VCC", 8, role="power", terminal="power"),
         ],
-        schematic_symbol=_timer_symbol(),
+        schematic_symbol=TIMER_SYMBOL,
     )
 
     nets = {
