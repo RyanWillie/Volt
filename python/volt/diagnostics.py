@@ -6,16 +6,12 @@ import math
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 
-PCB_VISUAL_DIAGNOSTIC_CODES: tuple[str, ...] = (
-    "PCB_VISUAL_PLACEMENT_OVERLAP",
-    "PCB_VISUAL_PLACEMENT_CROWDING",
-    "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
-    "PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE",
-    "PCB_VISUAL_LABEL_OVERLAP",
-    "PCB_VISUAL_LABEL_OUTSIDE_BOARD",
-    "PCB_VISUAL_ROUTE_READABILITY_CONFLICT",
-    "PCB_VISUAL_BOARD_FEATURE_ANNOTATION_MISSING",
-)
+from . import _volt
+
+DIAGNOSTIC_CATEGORIES: tuple[str, ...] = tuple(_volt.diagnostic_categories())
+ERC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.erc_diagnostic_codes())
+DRC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.drc_diagnostic_codes())
+PCB_VISUAL_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.pcb_visual_diagnostic_codes())
 
 
 @dataclass(frozen=True)

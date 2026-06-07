@@ -69,6 +69,36 @@ Source: `python/volt/diagnostics.py`
 | `__len__(self) -> int` | Return the number of diagnostics in this report. |
 | `__getitem__(self, index: int) -> Diagnostic` | Return one diagnostic by positional index. |
 
+## `volt.DIAGNOSTIC_CATEGORIES`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/diagnostics.py`
+
+```python
+DIAGNOSTIC_CATEGORIES = tuple(_volt.diagnostic_categories())
+```
+
+## `volt.DRC_DIAGNOSTIC_CODES`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/diagnostics.py`
+
+```python
+DRC_DIAGNOSTIC_CODES = tuple(_volt.drc_diagnostic_codes())
+```
+
+## `volt.ERC_DIAGNOSTIC_CODES`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/diagnostics.py`
+
+```python
+ERC_DIAGNOSTIC_CODES = tuple(_volt.erc_diagnostic_codes())
+```
+
 ## `volt.PCB_VISUAL_DIAGNOSTIC_CODES`
 
 Public value or alias exported by `volt`.
@@ -76,5 +106,5 @@ Public value or alias exported by `volt`.
 Source: `python/volt/diagnostics.py`
 
 ```python
-PCB_VISUAL_DIAGNOSTIC_CODES = ('PCB_VISUAL_PLACEMENT_OVERLAP', 'PCB_VISUAL_PLACEMENT_CROWDING', 'PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN', 'PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE', 'PCB_VISUAL_LABEL_OVERLAP', 'PCB_VISUAL_LABEL_OUTSIDE_BOARD', 'PCB_VISUAL_ROUTE_READABILITY_CONFLICT', 'PCB_VISUAL_BOARD_FEATURE_ANNOTATION_MISSING')
+PCB_VISUAL_DIAGNOSTIC_CODES = tuple(_volt.pcb_visual_diagnostic_codes())
 ```

@@ -1,9 +1,27 @@
 #include <volt/circuit/validation.hpp>
 
+#include <string>
+#include <string_view>
+#include <utility>
+
 #include <volt/circuit/queries.hpp>
 #include <volt/core/rule_set.hpp>
 
 namespace volt::detail {
+
+[[nodiscard]] Diagnostic erc_error(std::string_view code, std::string message,
+                                   std::vector<EntityRef> entities = {}) {
+    return Diagnostic{Severity::Error, DiagnosticCode{std::string{code}},
+                      DiagnosticCategory{diagnostic_categories::Erc}, std::move(message),
+                      std::move(entities)};
+}
+
+[[nodiscard]] Diagnostic erc_warning(std::string_view code, std::string message,
+                                     std::vector<EntityRef> entities = {}) {
+    return Diagnostic{Severity::Warning, DiagnosticCode{std::string{code}},
+                      DiagnosticCategory{diagnostic_categories::Erc}, std::move(message),
+                      std::move(entities)};
+}
 
 [[nodiscard]] bool is_no_connect_pin(const PinDefinition &definition) {
     return definition.connection_requirement() == ConnectionRequirement::MustNotConnect ||
@@ -80,50 +98,41 @@ void validate_pin_connection_requirements(const Circuit &circuit, DiagnosticRepo
 
         if (is_no_connect_pin(definition)) {
             if (connected_net.has_value()) {
-                report.add(Diagnostic{
-                    Severity::Error,
-                    DiagnosticCode{"PIN_MUST_NOT_CONNECT"},
-                    "Pin must not be connected",
-                    std::vector{
-                        EntityRef::pin(pin_id),
-                        EntityRef::component(pin.component()),
-                        EntityRef::pin_def(pin.definition()),
-                        EntityRef::net(connected_net.value()),
-                    },
-                });
+                report.add(erc_error(erc_diagnostic_codes::PinMustNotConnect,
+                                     "Pin must not be connected",
+                                     std::vector{
+                                         EntityRef::pin(pin_id),
+                                         EntityRef::component(pin.component()),
+                                         EntityRef::pin_def(pin.definition()),
+                                         EntityRef::net(connected_net.value()),
+                                     }));
             }
             continue;
         }
 
         if (circuit.is_intentional_no_connect_pin(pin_id)) {
             if (connected_net.has_value()) {
-                report.add(Diagnostic{
-                    Severity::Error,
-                    DiagnosticCode{"PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED"},
-                    "Intentional no-connect pin is connected",
-                    std::vector{
-                        EntityRef::pin(pin_id),
-                        EntityRef::component(pin.component()),
-                        EntityRef::pin_def(pin.definition()),
-                        EntityRef::net(connected_net.value()),
-                    },
-                });
+                report.add(erc_error(erc_diagnostic_codes::PinIntentionalNoConnectIsConnected,
+                                     "Intentional no-connect pin is connected",
+                                     std::vector{
+                                         EntityRef::pin(pin_id),
+                                         EntityRef::component(pin.component()),
+                                         EntityRef::pin_def(pin.definition()),
+                                         EntityRef::net(connected_net.value()),
+                                     }));
             }
             continue;
         }
 
         if (definition.connection_requirement() == ConnectionRequirement::Required &&
             !connected_net.has_value()) {
-            report.add(Diagnostic{
-                Severity::Error,
-                DiagnosticCode{"UNCONNECTED_REQUIRED_PIN"},
-                "Required pin is not connected",
-                std::vector{
-                    EntityRef::pin(pin_id),
-                    EntityRef::component(pin.component()),
-                    EntityRef::pin_def(pin.definition()),
-                },
-            });
+            report.add(erc_error(erc_diagnostic_codes::UnconnectedRequiredPin,
+                                 "Required pin is not connected",
+                                 std::vector{
+                                     EntityRef::pin(pin_id),
+                                     EntityRef::component(pin.component()),
+                                     EntityRef::pin_def(pin.definition()),
+                                 }));
         }
     }
 }
@@ -131,19 +140,12 @@ void validate_pin_connection_requirements(const Circuit &circuit, DiagnosticRepo
 void validate_net_shape(NetId net_id, const Net &net, const std::vector<PinId> &group_pins,
                         DiagnosticReport &report) {
     if (group_pins.empty()) {
-        report.add(Diagnostic{
-            Severity::Warning,
-            DiagnosticCode{"EMPTY_NET"},
-            "Net has no connected pins",
-            std::vector{EntityRef::net(net_id)},
-        });
+        report.add(erc_warning(erc_diagnostic_codes::EmptyNet, "Net has no connected pins",
+                               std::vector{EntityRef::net(net_id)}));
     } else if (group_pins.size() == 1 && net.contains(group_pins.front())) {
-        report.add(Diagnostic{
-            Severity::Warning,
-            DiagnosticCode{"SINGLE_PIN_NET"},
-            "Net has only one connected pin",
-            std::vector{EntityRef::net(net_id), EntityRef::pin(group_pins.front())},
-        });
+        report.add(
+            erc_warning(erc_diagnostic_codes::SinglePinNet, "Net has only one connected pin",
+                        std::vector{EntityRef::net(net_id), EntityRef::pin(group_pins.front())}));
     }
 }
 
@@ -163,23 +165,17 @@ void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, c
         }
         if (definition.terminal_kind() == ElectricalTerminalKind::Ground &&
             net.kind() != NetKind::Ground) {
-            report.add(Diagnostic{
-                Severity::Error,
-                DiagnosticCode{"PIN_GROUND_ON_NON_GROUND_NET"},
-                "Ground pin is connected to a non-ground net",
-                std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
-                            EntityRef::pin_def(pin.definition())},
-            });
+            report.add(erc_error(erc_diagnostic_codes::PinGroundOnNonGroundNet,
+                                 "Ground pin is connected to a non-ground net",
+                                 std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
+                                             EntityRef::pin_def(pin.definition())}));
         }
         if (definition.terminal_kind() == ElectricalTerminalKind::Power &&
             net.kind() == NetKind::Ground) {
-            report.add(Diagnostic{
-                Severity::Error,
-                DiagnosticCode{"PIN_POWER_ON_GROUND_NET"},
-                "Power pin is connected to a ground net",
-                std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
-                            EntityRef::pin_def(pin.definition())},
-            });
+            report.add(erc_error(erc_diagnostic_codes::PinPowerOnGroundNet,
+                                 "Power pin is connected to a ground net",
+                                 std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
+                                             EntityRef::pin_def(pin.definition())}));
         }
     }
 
@@ -188,12 +184,9 @@ void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, c
         for (const auto pin_id : power_input_pins) {
             entities.push_back(EntityRef::pin(pin_id));
         }
-        report.add(Diagnostic{
-            Severity::Error,
-            DiagnosticCode{"POWER_INPUT_WITHOUT_SOURCE"},
-            "Power input is connected to a net with no typed supply source",
-            std::move(entities),
-        });
+        report.add(erc_error(erc_diagnostic_codes::PowerInputWithoutSource,
+                             "Power input is connected to a net with no typed supply source",
+                             std::move(entities)));
     }
 }
 
@@ -223,13 +216,10 @@ void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id
 
                 const auto voltage_rating = voltage_rating_attribute.as_quantity().value();
                 if (net_voltage > voltage_rating) {
-                    report.add(Diagnostic{
-                        Severity::Error,
-                        DiagnosticCode{"SELECTED_PART_VOLTAGE_RATING_EXCEEDED"},
-                        "Net voltage exceeds selected part voltage rating",
-                        std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
-                                    EntityRef::component(pin.component())},
-                    });
+                    report.add(erc_error(erc_diagnostic_codes::SelectedPartVoltageRatingExceeded,
+                                         "Net voltage exceeds selected part voltage rating",
+                                         std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
+                                                     EntityRef::component(pin.component())}));
                 }
             }
         }
@@ -279,13 +269,10 @@ void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net
         const auto above_maximum =
             range.maximum().has_value() && net_voltage > range.maximum()->value();
         if (below_minimum || above_maximum) {
-            report.add(Diagnostic{
-                Severity::Error,
-                DiagnosticCode{"PIN_VOLTAGE_RANGE_VIOLATION"},
-                "Net voltage is outside pin voltage range",
-                std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
-                            EntityRef::pin_def(pin.definition())},
-            });
+            report.add(erc_error(erc_diagnostic_codes::PinVoltageRangeViolation,
+                                 "Net voltage is outside pin voltage range",
+                                 std::vector{EntityRef::net(net_id), EntityRef::pin(pin_id),
+                                             EntityRef::pin_def(pin.definition())}));
         }
     }
 }
@@ -319,12 +306,9 @@ void validate_rule_class_voltage_limit(const Circuit &circuit, NetId net_id,
         return;
     }
 
-    report.add(Diagnostic{
-        Severity::Error,
-        DiagnosticCode{"NET_RULE_CLASS_VOLTAGE_EXCEEDED"},
-        "Net voltage exceeds assigned rule class limit",
-        std::vector{EntityRef::net(net_id)},
-    });
+    report.add(erc_error(erc_diagnostic_codes::NetRuleClassVoltageExceeded,
+                         "Net voltage exceeds assigned rule class limit",
+                         std::vector{EntityRef::net(net_id)}));
 }
 
 void validate_output_driver_conflicts(const Circuit &circuit, NetId net_id,
@@ -345,12 +329,8 @@ void validate_output_driver_conflicts(const Circuit &circuit, NetId net_id,
             entities.push_back(EntityRef::pin(pin_id));
         }
 
-        report.add(Diagnostic{
-            Severity::Error,
-            DiagnosticCode{"MULTIPLE_OUTPUTS_ON_NET"},
-            "Net has multiple output drivers",
-            std::move(entities),
-        });
+        report.add(erc_error(erc_diagnostic_codes::MultipleOutputsOnNet,
+                             "Net has multiple output drivers", std::move(entities)));
     }
 }
 
@@ -410,14 +390,11 @@ void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &re
             const auto &port = circuit.port_definition(port_id);
             if (port.required() &&
                 !queries::port_binding_for(circuit, instance_id, port_id).has_value()) {
-                report.add(Diagnostic{
-                    Severity::Error,
-                    DiagnosticCode{"UNBOUND_REQUIRED_PORT"},
-                    "Required module port is not bound",
-                    std::vector{EntityRef::module_instance(instance_id),
-                                EntityRef::module_def(instance.definition()),
-                                EntityRef::port_def(port_id)},
-                });
+                report.add(erc_error(erc_diagnostic_codes::UnboundRequiredPort,
+                                     "Required module port is not bound",
+                                     std::vector{EntityRef::module_instance(instance_id),
+                                                 EntityRef::module_def(instance.definition()),
+                                                 EntityRef::port_def(port_id)}));
             }
         }
     }

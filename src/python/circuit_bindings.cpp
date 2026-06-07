@@ -2,9 +2,35 @@
 
 #include "py_circuit.hpp"
 
+#include <array>
+#include <cstddef>
+#include <string_view>
+
 namespace volt::python {
+namespace {
+
+template <std::size_t Size>
+[[nodiscard]] py::tuple
+string_view_catalog_to_tuple(const std::array<std::string_view, Size> &catalog) {
+    auto result = py::tuple{Size};
+    for (std::size_t index = 0; index < Size; ++index) {
+        result[index] = py::str{catalog[index]};
+    }
+    return result;
+}
+
+} // namespace
 
 void bind_circuit(pybind11::module_ &module) {
+    module.def("diagnostic_categories",
+               []() { return string_view_catalog_to_tuple(diagnostic_category_catalogs::All); });
+    module.def("erc_diagnostic_codes",
+               []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::Erc); });
+    module.def("drc_diagnostic_codes",
+               []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::Drc); });
+    module.def("pcb_visual_diagnostic_codes",
+               []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::PcbVisual); });
+
     py::class_<PyCircuit>(module, "Circuit")
         .def(py::init<>())
         .def("define_resistor", &PyCircuit::define_resistor)

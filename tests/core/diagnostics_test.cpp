@@ -122,6 +122,58 @@ TEST_CASE("PCB visual diagnostic codes are stable constants") {
     CHECK(std::string{volt::diagnostic_categories::PcbVisual} == "pcb.visual");
 }
 
+TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
+    CHECK(std::string{volt::diagnostic_categories::Erc} == "erc");
+    CHECK(std::string{volt::diagnostic_categories::Drc} == "drc");
+
+    CHECK(std::string{volt::erc_diagnostic_codes::UnconnectedRequiredPin} ==
+          "UNCONNECTED_REQUIRED_PIN");
+    CHECK(std::string{volt::erc_diagnostic_codes::SinglePinNet} == "SINGLE_PIN_NET");
+    CHECK(std::string{volt::erc_diagnostic_codes::PowerInputWithoutSource} ==
+          "POWER_INPUT_WITHOUT_SOURCE");
+    CHECK(std::string{volt::erc_diagnostic_codes::MultipleOutputsOnNet} ==
+          "MULTIPLE_OUTPUTS_ON_NET");
+
+    CHECK(std::string{volt::drc_diagnostic_codes::TrackWidthBelowMinimum} ==
+          "PCB_TRACK_WIDTH_BELOW_MINIMUM");
+    CHECK(std::string{volt::drc_diagnostic_codes::CopperClearanceViolation} ==
+          "PCB_COPPER_CLEARANCE_VIOLATION");
+    CHECK(std::string{volt::drc_diagnostic_codes::KeepoutPlacementViolation} ==
+          "PCB_KEEPOUT_PLACEMENT_VIOLATION");
+
+    CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::Erc.begin(),
+                                   volt::diagnostic_code_catalogs::Erc.end()} ==
+          std::vector<std::string>{
+              "PIN_MUST_NOT_CONNECT",
+              "PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED",
+              "UNCONNECTED_REQUIRED_PIN",
+              "EMPTY_NET",
+              "SINGLE_PIN_NET",
+              "UNBOUND_REQUIRED_PORT",
+              "PIN_GROUND_ON_NON_GROUND_NET",
+              "PIN_POWER_ON_GROUND_NET",
+              "POWER_INPUT_WITHOUT_SOURCE",
+              "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
+              "PIN_VOLTAGE_RANGE_VIOLATION",
+              "NET_RULE_CLASS_VOLTAGE_EXCEEDED",
+              "MULTIPLE_OUTPUTS_ON_NET",
+          });
+
+    CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::Drc.begin(),
+                                   volt::diagnostic_code_catalogs::Drc.end()} ==
+          std::vector<std::string>{
+              "PCB_TRACK_WIDTH_BELOW_MINIMUM",
+              "PCB_VIA_DRILL_BELOW_MINIMUM",
+              "PCB_VIA_ANNULAR_BELOW_MINIMUM",
+              "PCB_COPPER_OUTSIDE_OUTLINE",
+              "PCB_COPPER_CLEARANCE_VIOLATION",
+              "PCB_KEEPOUT_COPPER_VIOLATION",
+              "PCB_KEEPOUT_VIA_VIOLATION",
+              "PCB_KEEPOUT_PLACEMENT_VIOLATION",
+              "PCB_NET_UNROUTED",
+          });
+}
+
 TEST_CASE("Diagnostic stores severity code message and related entities") {
     const auto diagnostic = volt::Diagnostic{
         volt::Severity::Warning,

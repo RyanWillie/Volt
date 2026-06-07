@@ -51,6 +51,7 @@ TEST_CASE("Circuit validation reports required pins that are not connected") {
     const auto &diagnostic = report.diagnostics().front();
     CHECK(diagnostic.severity() == volt::Severity::Error);
     CHECK(diagnostic.code() == volt::DiagnosticCode{"UNCONNECTED_REQUIRED_PIN"});
+    CHECK(diagnostic.category() == volt::DiagnosticCategory{volt::diagnostic_categories::Erc});
     REQUIRE(diagnostic.entities().size() == 3);
     CHECK(diagnostic.entities()[0] == volt::EntityRef::pin(pin));
     CHECK(diagnostic.entities()[1] == volt::EntityRef::component(component));
@@ -391,6 +392,9 @@ TEST_CASE("Full circuit validation preserves connectivity before electrical rule
     CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
     CHECK(report.diagnostics()[2].code() == volt::DiagnosticCode{"POWER_INPUT_WITHOUT_SOURCE"});
     CHECK(report.diagnostics()[3].code() == volt::DiagnosticCode{"PIN_VOLTAGE_RANGE_VIOLATION"});
+    for (const auto &diagnostic : report.diagnostics()) {
+        CHECK(diagnostic.category() == volt::DiagnosticCategory{volt::diagnostic_categories::Erc});
+    }
 }
 
 TEST_CASE("PCB readiness validation reports components without selected physical parts") {

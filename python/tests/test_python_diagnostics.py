@@ -3,11 +3,13 @@ import json
 import pytest
 
 import volt
+from volt import _volt
 from volt.diagnostics import _diagnostic_from_dict
 from volt.project import _flat_diagnostic_payload, _report_diagnostics
 
 
 def test_pcb_visual_diagnostic_codes_are_exported_in_stable_order():
+    assert volt.PCB_VISUAL_DIAGNOSTIC_CODES == tuple(_volt.pcb_visual_diagnostic_codes())
     assert volt.PCB_VISUAL_DIAGNOSTIC_CODES == (
         "PCB_VISUAL_PLACEMENT_OVERLAP",
         "PCB_VISUAL_PLACEMENT_CROWDING",
@@ -17,6 +19,46 @@ def test_pcb_visual_diagnostic_codes_are_exported_in_stable_order():
         "PCB_VISUAL_LABEL_OUTSIDE_BOARD",
         "PCB_VISUAL_ROUTE_READABILITY_CONFLICT",
         "PCB_VISUAL_BOARD_FEATURE_ANNOTATION_MISSING",
+    )
+
+
+def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
+    assert volt.DIAGNOSTIC_CATEGORIES == tuple(_volt.diagnostic_categories())
+    assert volt.ERC_DIAGNOSTIC_CODES == tuple(_volt.erc_diagnostic_codes())
+    assert volt.DRC_DIAGNOSTIC_CODES == tuple(_volt.drc_diagnostic_codes())
+
+    assert volt.DIAGNOSTIC_CATEGORIES == (
+        "general",
+        "erc",
+        "drc",
+        "pcb.board",
+        "pcb.visual",
+    )
+    assert volt.ERC_DIAGNOSTIC_CODES == (
+        "PIN_MUST_NOT_CONNECT",
+        "PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED",
+        "UNCONNECTED_REQUIRED_PIN",
+        "EMPTY_NET",
+        "SINGLE_PIN_NET",
+        "UNBOUND_REQUIRED_PORT",
+        "PIN_GROUND_ON_NON_GROUND_NET",
+        "PIN_POWER_ON_GROUND_NET",
+        "POWER_INPUT_WITHOUT_SOURCE",
+        "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
+        "PIN_VOLTAGE_RANGE_VIOLATION",
+        "NET_RULE_CLASS_VOLTAGE_EXCEEDED",
+        "MULTIPLE_OUTPUTS_ON_NET",
+    )
+    assert volt.DRC_DIAGNOSTIC_CODES == (
+        "PCB_TRACK_WIDTH_BELOW_MINIMUM",
+        "PCB_VIA_DRILL_BELOW_MINIMUM",
+        "PCB_VIA_ANNULAR_BELOW_MINIMUM",
+        "PCB_COPPER_OUTSIDE_OUTLINE",
+        "PCB_COPPER_CLEARANCE_VIOLATION",
+        "PCB_KEEPOUT_COPPER_VIOLATION",
+        "PCB_KEEPOUT_VIA_VIOLATION",
+        "PCB_KEEPOUT_PLACEMENT_VIOLATION",
+        "PCB_NET_UNROUTED",
     )
 
 
@@ -263,6 +305,52 @@ def test_pcb_visual_diagnostic_overlay_contract_is_inspectable():
     assert diagnostic.overlays[0].points == ((10.0, 20.0), (14.0, 22.0))
     assert diagnostic.overlays[0].entities == (volt.DiagnosticEntity("board_text", 2),)
     assert diagnostic.overlays[0].layers == (volt.DiagnosticEntity("board_layer", 0),)
+
+
+def test_erc_and_drc_diagnostic_payload_categories_and_references_are_preserved():
+    erc = _diagnostic_from_dict(
+        {
+            "severity": "error",
+            "category": "erc",
+            "code": "MULTIPLE_OUTPUTS_ON_NET",
+            "message": "Net has multiple output drivers",
+            "entities": [
+                {"kind": "net", "index": 3},
+                {"kind": "pin", "index": 4},
+                {"kind": "pin", "index": 7},
+            ],
+        }
+    )
+    drc = _diagnostic_from_dict(
+        {
+            "severity": "error",
+            "category": "drc",
+            "code": "PCB_COPPER_CLEARANCE_VIOLATION",
+            "message": "Copper on different nets violates required clearance",
+            "entities": [
+                {"kind": "board_track", "index": 0},
+                {"kind": "board_via", "index": 1},
+                {"kind": "net", "index": 2},
+                {"kind": "net", "index": 5},
+                {"kind": "board_layer", "index": 0},
+            ],
+        }
+    )
+
+    assert erc.category == "erc"
+    assert erc.entities == (
+        volt.DiagnosticEntity("net", 3),
+        volt.DiagnosticEntity("pin", 4),
+        volt.DiagnosticEntity("pin", 7),
+    )
+    assert drc.category == "drc"
+    assert drc.entities == (
+        volt.DiagnosticEntity("board_track", 0),
+        volt.DiagnosticEntity("board_via", 1),
+        volt.DiagnosticEntity("net", 2),
+        volt.DiagnosticEntity("net", 5),
+        volt.DiagnosticEntity("board_layer", 0),
+    )
 
 
 def test_project_diagnostics_preserve_pcb_visual_overlay_payloads():
