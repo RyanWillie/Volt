@@ -143,6 +143,18 @@ class PadResolution:
 
 
 @dataclass(frozen=True)
+class _BoardPlacementRef:
+    """Internal typed view of one board component placement."""
+
+    index: int
+    component: int
+    position: Point
+    rotation_deg: float
+    side: str
+    locked: bool
+
+
+@dataclass(frozen=True)
 class ComponentFootprintPad:
     """Resolved local footprint pad geometry for a selected component part."""
 
@@ -478,6 +490,25 @@ class Board:
         )
         self._design._record_board_placement(component_index)
         return placement
+
+    def _placements(self) -> tuple[_BoardPlacementRef, ...]:
+        return tuple(
+            _BoardPlacementRef(
+                index=item["index"],
+                component=item["component"],
+                position=_point(tuple(item["position"]), "Board placement position"),
+                rotation_deg=float(item["rotation_deg"]),
+                side=item["side"],
+                locked=bool(item["locked"]),
+            )
+            for item in self._design._circuit.board_placement_refs()
+        )
+
+    def _surface_z(self, side: str) -> float:
+        for layer in self._design._circuit.board_stackup():
+            if layer["side"] == side:
+                return float(layer["z_mm"])
+        return 0.0
 
     def add_track(
         self,

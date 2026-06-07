@@ -711,7 +711,6 @@ def test_component_selected_part_model_3d_serializes(tmp_path):
     )
 
     assert resistor["selected_physical_part"]["model_3d"] == {
-        "kind": "asset",
         "format": "glb",
         "file_name": "resistor-body.glb",
         "translation_mm": [0.5, -0.25, 0.8],

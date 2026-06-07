@@ -6,11 +6,11 @@ import json
 import re
 import shutil
 from dataclasses import dataclass
-from math import cos, radians, sin
 from pathlib import Path
 from typing import Callable, Iterable
 
 from ._project_model_lookup import model_output_name, one_or_named, one_or_named_projection
+from ._project_models3d import collect_project_part_models_3d
 from .design import Design
 from .diagnostics import DiagnosticEntity, DiagnosticOverlay
 from .library import Library
@@ -585,8 +585,7 @@ class ProjectResult:
 
         used_paths: set[str] = set()
         artifacts: list[dict[str, object]] = []
-        design_documents: dict[str, dict] = {}
-        board_documents: list[tuple[Board, str, dict]] = []
+        board_documents: list[tuple[Board, str]] = []
         for model in self._models:
             if isinstance(model, Design):
                 design_text = model.to_json()
@@ -595,7 +594,6 @@ class ProjectResult:
                     used_paths,
                 )
                 _write_text(root / relative, design_text)
-                design_documents[model.name] = json.loads(design_text)
                 artifacts.append(
                     _artifact_record(
                         "logical",
@@ -706,12 +704,11 @@ class ProjectResult:
                         group=group,
                     )
                 )
-                board_documents.append((model, output_name, json.loads(board_text)))
+                board_documents.append((model, output_name))
 
         model_artifacts, model_diagnostics = self._write_part_model_3d_artifacts(
             root=root,
             boards=board_documents,
-            design_documents=design_documents,
             used_paths=used_paths,
             profile=profile,
         )
@@ -732,7 +729,6 @@ class ProjectResult:
                 self,
                 diagnostics=bundle_diagnostics,
                 status=bundle_status,
-                extra_unexpected=model_diagnostics,
             ),
         )
         _write_json(root / tests_path, _tests_payload(self._test_results()))
@@ -884,131 +880,49 @@ class ProjectResult:
         self,
         *,
         root: Path,
-        boards: list[tuple[Board, str, dict]],
-        design_documents: dict[str, dict],
+        boards: list[tuple[Board, str]],
         used_paths: set[str],
         profile: str,
     ) -> tuple[list[dict[str, object]], tuple[ProjectDiagnostic, ...]]:
         artifacts: list[dict[str, object]] = []
-        diagnostics: list[ProjectDiagnostic] = []
-        assets_by_hash: dict[str, dict[str, object]] = {}
-        models_by_key: dict[tuple[object, ...], str] = {}
-        model_records: list[dict[str, object]] = []
-        board_records: list[tuple[str, dict[str, str], Path, dict[str, object]]] = []
+        bundle = collect_project_part_models_3d(boards, profile=profile)
+        asset_paths: dict[str, str] = {}
 
-        for board, output_name, board_document in boards:
-            components = _design_model_3d_components(
-                design_documents[board._design.name],
-                board._design,
+        for asset in bundle.assets:
+            relative_asset = _unique_path(
+                Path("assets") / "models" / f"{asset.sha256}{asset.suffix}",
+                used_paths,
             )
-            placements: list[dict[str, object]] = []
-            for placement in board_document["board"]["placements"]:
-                component = components.get(placement["component"])
-                if component is None:
-                    continue
-                selected_part = component["selected_part"]
-                model_3d = selected_part.get("model_3d")
-                if model_3d is None:
-                    if profile == "viewer":
-                        diagnostics.append(
-                            _part_model_3d_diagnostic(
-                                board=board,
-                                profile=profile,
-                                reference=component["reference"],
-                                message="Placed component has no selected-part 3D model declaration",
-                            )
-                        )
-                    continue
-                source_path = component["source_path"]
-                if source_path is None or not source_path.is_file():
-                    if profile == "viewer":
-                        diagnostics.append(
-                            _part_model_3d_diagnostic(
-                                board=board,
-                                profile=profile,
-                                reference=component["reference"],
-                                message="Placed component 3D model asset is missing from local project materialization",
-                            )
-                        )
-                    continue
+            (root / relative_asset).parent.mkdir(parents=True, exist_ok=True)
+            (root / relative_asset).write_bytes(asset.payload)
+            asset_paths[asset.id] = relative_asset.as_posix()
 
-                asset_bytes = source_path.read_bytes()
-                asset_hash = _sha256_hex(asset_bytes)
-                asset_path = assets_by_hash.get(asset_hash)
-                if asset_path is None:
-                    relative_asset = _unique_path(
-                        Path("assets") / "models" / f"{asset_hash}{source_path.suffix.lower()}",
-                        used_paths,
-                    )
-                    (root / relative_asset).parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(source_path, root / relative_asset)
-                    asset_id = f"part_model_asset:{len(assets_by_hash)}"
-                    asset_path = {
-                        "id": asset_id,
-                        "format": model_3d["format"],
-                        "path": relative_asset.as_posix(),
-                        "sha256": asset_hash,
-                    }
-                    assets_by_hash[asset_hash] = asset_path
-
-                model_key = (
-                    asset_path["id"],
-                    model_3d["file_name"],
-                    tuple(model_3d["translation_mm"]),
-                    float(model_3d["rotation_deg"]),
-                )
-                model_id = models_by_key.get(model_key)
-                if model_id is None:
-                    model_id = f"part_model:{len(models_by_key)}"
-                    models_by_key[model_key] = model_id
-                    model_records.append(
-                        {
-                            "id": model_id,
-                            "asset": asset_path["id"],
-                            "file_name": model_3d["file_name"],
-                            "translation_mm": model_3d["translation_mm"],
-                            "rotation_deg": float(model_3d["rotation_deg"]),
-                        }
-                    )
-
-                placements.append(
-                    {
-                        "placement": placement["id"],
-                        "component": placement["component"],
-                        "reference": component["reference"],
-                        "model": model_id,
-                        "transform_matrix": _part_model_3d_transform_matrix(
-                            placement=placement,
-                            model_3d=model_3d,
-                            board_document=board_document,
-                        ),
-                    }
-                )
-
-            if placements:
-                group = {"design": board._design.name, "board": board.name}
-                relative = _unique_path(
-                    Path("pcb") / f"{_safe_slug(output_name)}.volt.models3d.json",
-                    used_paths,
-                )
-                payload = {
-                    "format": "volt.part_models_3d",
-                    "version": 1,
-                    "board": {"design": board._design.name, "name": board.name},
-                    "placements": placements,
-                }
-                _write_json(root / relative, payload)
-                board_records.append((output_name, group, relative, payload))
-
-        if assets_by_hash or model_records:
+        if bundle.assets or bundle.models:
             registry_path = _unique_path(Path("assets") / "part_models_3d.json", used_paths)
             _write_json(
                 root / registry_path,
                 {
                     "format": "volt.part_models_3d_registry",
                     "version": 1,
-                    "assets": list(assets_by_hash.values()),
-                    "models": model_records,
+                    "assets": [
+                        {
+                            "id": asset.id,
+                            "format": asset.format,
+                            "path": asset_paths[asset.id],
+                            "sha256": asset.sha256,
+                        }
+                        for asset in bundle.assets
+                    ],
+                    "models": [
+                        {
+                            "id": model.id,
+                            "asset": model.asset,
+                            "file_name": model.file_name,
+                            "translation_mm": list(model.translation_mm),
+                            "rotation_deg": model.rotation_deg,
+                        }
+                        for model in bundle.models
+                    ],
                 },
             )
             artifacts.append(
@@ -1019,28 +933,62 @@ class ProjectResult:
                     "application/json",
                 )
             )
-            for asset in assets_by_hash.values():
+            for asset in bundle.assets:
                 artifacts.append(
                     _artifact_record(
                         "part_model_asset",
-                        asset["id"],
-                        Path(asset["path"]),
+                        asset.id,
+                        Path(asset_paths[asset.id]),
                         "application/octet-stream",
-                        sha256=asset["sha256"],
+                        sha256=asset.sha256,
                     )
                 )
-        for output_name, group, relative, _payload in board_records:
+        for board_record in bundle.boards:
+            group = {"design": board_record.board._design.name, "board": board_record.board.name}
+            relative = _unique_path(
+                Path("pcb") / f"{_safe_slug(board_record.output_name)}.volt.models3d.json",
+                used_paths,
+            )
+            _write_json(
+                root / relative,
+                {
+                    "format": "volt.part_models_3d",
+                    "version": 1,
+                    "board": {
+                        "design": board_record.board._design.name,
+                        "name": board_record.board.name,
+                    },
+                    "placements": [
+                        {
+                            "placement": f"component_placement:{placement.placement}",
+                            "component": f"component:{placement.component}",
+                            "reference": placement.reference,
+                            "model": placement.model,
+                            "transform_matrix": placement.transform_matrix,
+                        }
+                        for placement in board_record.placements
+                    ],
+                },
+            )
             artifacts.append(
                 _artifact_record(
                     "pcb_models_3d",
-                    output_name,
+                    board_record.output_name,
                     relative,
                     "application/json",
                     group=group,
                 )
             )
 
-        return artifacts, tuple(diagnostics)
+        return artifacts, tuple(
+            _part_model_3d_diagnostic(
+                board=item.board,
+                profile=profile,
+                reference=item.reference,
+                message=item.message,
+            )
+            for item in bundle.missing
+        )
 
 
 def _is_known_model(value: object) -> bool:
@@ -1289,34 +1237,8 @@ def _expected_diagnostics_ok(
     expected = tuple(expectations)
     if not expected:
         return not diagnostics.has_errors
-    unexpected = tuple(
-        diagnostic for diagnostic in diagnostics if not _matches_any_expected(diagnostic, expected)
-    )
-    missing = tuple(
-        result for result in _expected_diagnostic_results(expected, diagnostics) if not result.matched
-    )
+    _matches, unexpected, missing = _diagnostic_policy_snapshot(expected, diagnostics)
     return not unexpected and not missing
-
-
-def _design_model_3d_components(design_document: dict, design: Design) -> dict[str, dict[str, object]]:
-    result: dict[str, dict[str, object]] = {}
-    for component in design_document["components"]:
-        component_id = str(component["id"])
-        index = _component_index_from_local_id(component_id)
-        selected_part = component.get("selected_physical_part")
-        if not isinstance(selected_part, dict):
-            continue
-        result[component_id] = {
-            "reference": component["reference"],
-            "selected_part": selected_part,
-            "source_path": design._model_3d_source_for_component(index),
-        }
-    return result
-
-
-def _component_index_from_local_id(value: str) -> int:
-    _prefix, index = value.split(":", 1)
-    return int(index)
 
 
 def _part_model_3d_diagnostic(
@@ -1338,88 +1260,6 @@ def _part_model_3d_diagnostic(
         design=board._design.name,
         board=board.name,
     )
-
-
-def _sha256_hex(payload: bytes) -> str:
-    import hashlib
-
-    return hashlib.sha256(payload).hexdigest()
-
-
-def _part_model_3d_transform_matrix(
-    *,
-    placement: dict[str, object],
-    model_3d: dict[str, object],
-    board_document: dict[str, object],
-) -> list[list[float]]:
-    surface_z = _board_surface_z(board_document, str(placement["side"]))
-    px, py = (float(value) for value in placement["position"])
-    tx, ty, tz = (float(value) for value in model_3d["translation_mm"])
-    board_rotation = float(placement["rotation_deg"])
-    local_rotation = float(model_3d["rotation_deg"])
-    transform = _matrix_translate(px, py, surface_z)
-    transform = _matrix_multiply(transform, _matrix_rotate_z(board_rotation))
-    if placement["side"] == "bottom":
-        transform = _matrix_multiply(transform, _matrix_scale(-1.0, 1.0, -1.0))
-    transform = _matrix_multiply(transform, _matrix_translate(tx, ty, tz))
-    transform = _matrix_multiply(transform, _matrix_rotate_z(local_rotation))
-    return [[_normalized_matrix_value(value) for value in row] for row in transform]
-
-
-def _board_surface_z(board_document: dict[str, object], side: str) -> float:
-    geometry = board_document["board"].get("geometry")
-    if isinstance(geometry, dict):
-        for layer in geometry.get("stackup", ()):
-            if layer.get("side") == side:
-                return float(layer["z_mm"])
-    return 0.0
-
-
-def _matrix_translate(x: float, y: float, z: float) -> list[list[float]]:
-    return [
-        [1.0, 0.0, 0.0, x],
-        [0.0, 1.0, 0.0, y],
-        [0.0, 0.0, 1.0, z],
-        [0.0, 0.0, 0.0, 1.0],
-    ]
-
-
-def _matrix_rotate_z(angle_deg: float) -> list[list[float]]:
-    angle = radians(angle_deg)
-    return [
-        [cos(angle), -sin(angle), 0.0, 0.0],
-        [sin(angle), cos(angle), 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ]
-
-
-def _matrix_scale(x: float, y: float, z: float) -> list[list[float]]:
-    return [
-        [x, 0.0, 0.0, 0.0],
-        [0.0, y, 0.0, 0.0],
-        [0.0, 0.0, z, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ]
-
-
-def _matrix_multiply(left: list[list[float]], right: list[list[float]]) -> list[list[float]]:
-    return [
-        [
-            sum(left[row][index] * right[index][column] for index in range(4))
-            for column in range(4)
-        ]
-        for row in range(4)
-    ]
-
-
-def _normalized_matrix_value(value: float) -> float:
-    if abs(value) < 1e-12:
-        return 0.0
-    half_step = round(value * 2.0) / 2.0
-    if abs(value - half_step) < 1e-12:
-        return half_step
-    return round(value, 16)
 
 
 def _prepare_bundle_root(root: Path) -> None:
@@ -1482,10 +1322,13 @@ def _diagnostics_payload(
     *,
     diagnostics: ProjectDiagnostics | None = None,
     status: str | None = None,
-    extra_unexpected: tuple[ProjectDiagnostic, ...] = (),
 ) -> dict:
     diagnostics = result.diagnostics if diagnostics is None else diagnostics
     status = result.status if status is None else status
+    expected, unexpected, missing = _diagnostic_policy_snapshot(
+        result.project._expected_diagnostics,
+        diagnostics,
+    )
     return {
         "status": status,
         "summary": _diagnostic_summary(diagnostics),
@@ -1495,15 +1338,15 @@ def _diagnostics_payload(
         ],
         "expected": [
             _expected_diagnostic_result_payload(expectation)
-            for expectation in result.expected_diagnostics
+            for expectation in expected
         ],
         "unexpected": [
             _project_diagnostic_payload(diagnostic)
-            for diagnostic in (*result.unexpected_diagnostics, *extra_unexpected)
+            for diagnostic in unexpected
         ],
         "missing_expected": [
             _expected_diagnostic_result_payload(expectation)
-            for expectation in result.missing_expected_diagnostics
+            for expectation in missing
         ],
     }
 
@@ -1513,10 +1356,13 @@ def _flat_diagnostics_payload(
     *,
     diagnostics: ProjectDiagnostics | None = None,
     status: str | None = None,
-    extra_unexpected: tuple[ProjectDiagnostic, ...] = (),
 ) -> dict:
     diagnostics = tuple(result.diagnostics if diagnostics is None else diagnostics)
     status = result.status if status is None else status
+    expected, unexpected, missing = _diagnostic_policy_snapshot(
+        result.project._expected_diagnostics,
+        ProjectDiagnostics(diagnostics),
+    )
     reports: dict[str, dict] = {}
     for report_name in _flat_report_names(diagnostics):
         report_diagnostics = tuple(
@@ -1536,17 +1382,34 @@ def _flat_diagnostics_payload(
         "reports": reports,
         "expected": [
             _expected_diagnostic_result_payload(expectation)
-            for expectation in result.expected_diagnostics
+            for expectation in expected
         ],
         "unexpected": [
             {"source": _flat_report_name(diagnostic), **_flat_diagnostic_payload(diagnostic)}
-            for diagnostic in (*result.unexpected_diagnostics, *extra_unexpected)
+            for diagnostic in unexpected
         ],
         "missing_expected": [
             _expected_diagnostic_result_payload(expectation)
-            for expectation in result.missing_expected_diagnostics
+            for expectation in missing
         ],
     }
+
+
+def _diagnostic_policy_snapshot(
+    expectations: Iterable[ExpectedDiagnostic],
+    diagnostics: ProjectDiagnostics,
+) -> tuple[
+    tuple[ExpectedDiagnosticResult, ...],
+    tuple[ProjectDiagnostic, ...],
+    tuple[ExpectedDiagnosticResult, ...],
+]:
+    expected = tuple(expectations)
+    matches = _expected_diagnostic_results(expected, diagnostics)
+    unexpected = tuple(
+        diagnostic for diagnostic in diagnostics if not _matches_any_expected(diagnostic, expected)
+    )
+    missing = tuple(result for result in matches if not result.matched)
+    return matches, unexpected, missing
 
 
 def _flat_report_names(diagnostics: tuple[ProjectDiagnostic, ...]) -> tuple[str, ...]:

@@ -152,7 +152,6 @@ TEST_CASE("Logical circuit writer emits selected-part 3D model metadata") {
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
     const auto &model = output["components"][0]["selected_physical_part"]["model_3d"];
 
-    CHECK(model["kind"] == "asset");
     CHECK(model["format"] == "glb");
     CHECK(model["file_name"] == "resistor-body.glb");
     CHECK(model["translation_mm"] == nlohmann::json::array({0.5, -0.25, 0.8}));

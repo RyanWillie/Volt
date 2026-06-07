@@ -89,6 +89,7 @@ TEST_CASE("Logical circuit reader preserves selected-part 3D model metadata") {
     CHECK(selected_part.model_3d()->file_name() == "resistor-body.glb");
     CHECK(selected_part.model_3d()->translation_mm() == std::array<double, 3>{0.5, -0.25, 0.8});
     CHECK(selected_part.model_3d()->rotation_deg() == 15.0);
+    fixture["components"][1]["selected_physical_part"]["model_3d"].erase("kind");
     CHECK(nlohmann::json::parse(volt::io::write_logical_circuit(
               circuit))["components"][1]["selected_physical_part"]["model_3d"] ==
           fixture["components"][1]["selected_physical_part"]["model_3d"]);

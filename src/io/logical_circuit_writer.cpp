@@ -369,7 +369,6 @@ void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
     if (part.model_3d().has_value()) {
         const auto &model_3d = part.model_3d().value();
         out << "      \"model_3d\": {\n";
-        out << "        \"kind\": \"asset\",\n";
         out << "        \"format\": " << json_string(model_3d.format()) << ",\n";
         out << "        \"file_name\": " << json_string(model_3d.file_name()) << ",\n";
         out << "        \"translation_mm\": [";

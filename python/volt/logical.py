@@ -576,9 +576,9 @@ class Component:
         else:
             self._design._clear_component_object_footprint(self._index)
         if model_3d is not None:
-            self._design._register_component_model_3d(self._index, model_3d.source_path)
+            self._design._register_component_model_3d_asset_source(self._index, model_3d)
         else:
-            self._design._clear_component_model_3d(self._index)
+            self._design._clear_component_model_3d_asset_source(self._index)
         return self
 
     def __repr__(self) -> str:

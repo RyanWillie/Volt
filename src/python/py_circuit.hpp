@@ -49,6 +49,8 @@ class PyCircuit {
 
     [[nodiscard]] py::list component_refs() const;
 
+    [[nodiscard]] py::object component_selected_part_model_3d(std::size_t component) const;
+
     void select_physical_part(std::size_t component, const std::string &manufacturer,
                               const std::string &part_number, const std::string &package,
                               const std::string &footprint_library,
@@ -295,6 +297,10 @@ class PyCircuit {
     [[nodiscard]] std::size_t board_place_component(std::size_t component, double x, double y,
                                                     double rotation_degrees,
                                                     const std::string &side, bool locked);
+
+    [[nodiscard]] py::list board_placement_refs() const;
+
+    [[nodiscard]] py::list board_stackup() const;
 
     [[nodiscard]] py::list board_component_footprint_pads(std::size_t component) const;
 

@@ -36,6 +36,36 @@ def _point3(value: tuple[float, float, float], context: str) -> tuple[float, flo
 
 
 @dataclass(frozen=True)
+class _SelectedPartModel3D:
+    """Kernel-owned selected-part 3D metadata without authoring-only source paths."""
+
+    format: str
+    file_name: str
+    translation_mm: tuple[float, float, float]
+    rotation_deg: float
+
+    @classmethod
+    def from_payload(cls, payload: Mapping[str, object]) -> "_SelectedPartModel3D":
+        """Build typed metadata from a selected-part payload."""
+        return cls(
+            format=str(payload["format"]),
+            file_name=str(payload["file_name"]),
+            translation_mm=_point3(
+                tuple(payload["translation_mm"]), "Selected-part 3D model translation"
+            ),
+            rotation_deg=_coordinate(payload["rotation_deg"]),
+        )
+
+    def _to_dict(self) -> dict[str, object]:
+        return {
+            "format": self.format,
+            "file_name": self.file_name,
+            "translation_mm": list(self.translation_mm),
+            "rotation_deg": self.rotation_deg,
+        }
+
+
+@dataclass(frozen=True)
 class PartModel3D:
     """Reusable 3D asset reference and footprint-relative transform for a selected part."""
 
@@ -45,6 +75,8 @@ class PartModel3D:
 
     def __post_init__(self) -> None:
         path = Path(self.source).expanduser()
+        if not path.is_absolute():
+            raise ValueError("PartModel3D source path must be absolute")
         suffix = path.suffix.casefold()
         format_name = {
             ".glb": "glb",
@@ -55,7 +87,7 @@ class PartModel3D:
             raise ValueError("PartModel3D source must end with .glb, .step, or .stp")
         if not path.name:
             raise ValueError("PartModel3D source file name must not be empty")
-        object.__setattr__(self, "source", path)
+        object.__setattr__(self, "source", path.resolve(strict=False))
         object.__setattr__(self, "offset", _point3(self.offset, "PartModel3D offset"))
         object.__setattr__(self, "rotation", _coordinate(self.rotation))
         object.__setattr__(self, "_format", format_name)
@@ -75,14 +107,16 @@ class PartModel3D:
         """Return the normalized model asset format."""
         return self._format
 
+    def _selected_part_model(self) -> _SelectedPartModel3D:
+        return _SelectedPartModel3D(
+            format=self.format,
+            file_name=self.file_name,
+            translation_mm=self.offset,
+            rotation_deg=self.rotation,
+        )
+
     def _selected_part_payload(self) -> dict[str, object]:
-        return {
-            "kind": "asset",
-            "format": self.format,
-            "file_name": self.file_name,
-            "translation_mm": list(self.offset),
-            "rotation_deg": self.rotation,
-        }
+        return self._selected_part_model()._to_dict()
 
     def _to_dict(self) -> dict[str, object]:
         return {
