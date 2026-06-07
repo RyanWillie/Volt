@@ -48,6 +48,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "PIN_VOLTAGE_RANGE_VIOLATION",
         "NET_RULE_CLASS_VOLTAGE_EXCEEDED",
         "MULTIPLE_OUTPUTS_ON_NET",
+        "INPUT_SIGNAL_DOMAIN_MISMATCH",
     )
     assert volt.DRC_DIAGNOSTIC_CODES == (
         "PCB_TRACK_WIDTH_BELOW_MINIMUM",
@@ -148,6 +149,53 @@ def test_power_pin_semantics_drive_diagnostics():
     report = design.validate()
 
     assert "POWER_INPUT_WITHOUT_SOURCE" in {diagnostic.code for diagnostic in report}
+
+def test_input_signal_domain_mismatch_diagnostic_is_inspectable():
+    design = volt.Design("input-only")
+    left = design.define_component(
+        "LeftReceiver",
+        pins=[
+            volt.PinSpec(
+                "IN",
+                1,
+                role="digital_input",
+                terminal="signal",
+                direction="input",
+                signal="digital",
+            ),
+        ],
+    )
+    right = design.define_component(
+        "RightReceiver",
+        pins=[
+            volt.PinSpec(
+                "IN",
+                1,
+                role="analog_input",
+                terminal="signal",
+                direction="input",
+                signal="analog",
+            ),
+        ],
+    )
+    u1 = design.instantiate(left, ref="U1")
+    u2 = design.instantiate(right, ref="U2")
+
+    sense = design.net("SENSE")
+    sense += u1["IN"], u2["IN"]
+
+    report = design.validate()
+
+    diagnostic = next(
+        item for item in report if item.code == "INPUT_SIGNAL_DOMAIN_MISMATCH"
+    )
+    assert diagnostic.category == "erc"
+    assert diagnostic.severity == "error"
+    assert [(entity.kind, entity.index) for entity in diagnostic.entities] == [
+        ("net", sense.index),
+        ("pin", u1["IN"].index),
+        ("pin", u2["IN"].index),
+    ]
 
 def test_python_schematic_readiness_reports_detached_net_stubs():
     design = volt.Design("schematic-readiness")

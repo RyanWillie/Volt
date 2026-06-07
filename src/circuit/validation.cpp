@@ -37,6 +37,22 @@ namespace volt::detail {
            definition.role() == PinRole::AnalogOutput;
 }
 
+[[nodiscard]] bool is_input_pin(const PinDefinition &definition) {
+    if (definition.role() == PinRole::DigitalInput || definition.role() == PinRole::AnalogInput) {
+        return true;
+    }
+    return definition.terminal_kind() == ElectricalTerminalKind::Signal &&
+           definition.direction() == ElectricalDirection::Input;
+}
+
+[[nodiscard]] bool can_drive_signal_net(const PinDefinition &definition) {
+    if (is_output_pin(definition)) {
+        return true;
+    }
+    return definition.direction() == ElectricalDirection::Bidirectional ||
+           definition.role() == PinRole::Bidirectional;
+}
+
 [[nodiscard]] bool is_power_input(const PinDefinition &definition) {
     return definition.terminal_kind() == ElectricalTerminalKind::Power &&
            definition.direction() == ElectricalDirection::Input;
@@ -334,6 +350,49 @@ void validate_output_driver_conflicts(const Circuit &circuit, NetId net_id,
     }
 }
 
+void validate_input_signal_domains(const Circuit &circuit, NetId net_id,
+                                   const std::vector<PinId> &group_pins, DiagnosticReport &report) {
+    if (group_pins.size() <= 1) {
+        return;
+    }
+
+    auto input_pins = std::vector<PinId>{};
+    auto first_domain = ElectricalSignalDomain::Unspecified;
+    auto has_domain = false;
+    auto has_mismatched_domain = false;
+    auto has_driver = false;
+    for (const auto pin_id : group_pins) {
+        const auto &pin = circuit.pin(pin_id);
+        const auto &definition = circuit.pin_definition(pin.definition());
+        if (is_input_pin(definition)) {
+            input_pins.push_back(pin_id);
+            if (definition.signal_domain() != ElectricalSignalDomain::Unspecified) {
+                if (!has_domain) {
+                    first_domain = definition.signal_domain();
+                    has_domain = true;
+                } else if (definition.signal_domain() != first_domain) {
+                    has_mismatched_domain = true;
+                }
+            }
+        }
+        if (can_drive_signal_net(definition)) {
+            has_driver = true;
+        }
+    }
+
+    if (input_pins.size() > 1 && has_mismatched_domain && !has_driver) {
+        auto entities = std::vector<EntityRef>{EntityRef::net(net_id)};
+        for (const auto pin_id : input_pins) {
+            entities.push_back(EntityRef::pin(pin_id));
+        }
+
+        report.add(erc_error(erc_diagnostic_codes::InputSignalDomainMismatch,
+                             "Input pins with incompatible signal domains share a net with no "
+                             "typed driver",
+                             std::move(entities)));
+    }
+}
+
 void validate_net_shapes(const Circuit &circuit, const NetContinuityView &continuity,
                          DiagnosticReport &report) {
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
@@ -359,6 +418,7 @@ void validate_net_electrical_rules(const Circuit &circuit, const NetContinuityVi
         validate_pin_voltage_ranges(circuit, net_id, net, group_pins, report);
         validate_rule_class_voltage_limit(circuit, net_id, report);
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
+        validate_input_signal_domains(circuit, net_id, group_pins, report);
     }
 }
 
@@ -377,6 +437,7 @@ void validate_net_semantics(const Circuit &circuit, const NetContinuityView &con
         validate_pin_voltage_ranges(circuit, net_id, net, group_pins, report);
         validate_rule_class_voltage_limit(circuit, net_id, report);
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
+        validate_input_signal_domains(circuit, net_id, group_pins, report);
     }
 }
 

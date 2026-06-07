@@ -133,6 +133,8 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
           "POWER_INPUT_WITHOUT_SOURCE");
     CHECK(std::string{volt::erc_diagnostic_codes::MultipleOutputsOnNet} ==
           "MULTIPLE_OUTPUTS_ON_NET");
+    CHECK(std::string{volt::erc_diagnostic_codes::InputSignalDomainMismatch} ==
+          "INPUT_SIGNAL_DOMAIN_MISMATCH");
 
     CHECK(std::string{volt::drc_diagnostic_codes::TrackWidthBelowMinimum} ==
           "PCB_TRACK_WIDTH_BELOW_MINIMUM");
@@ -157,6 +159,7 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
               "PIN_VOLTAGE_RANGE_VIOLATION",
               "NET_RULE_CLASS_VOLTAGE_EXCEEDED",
               "MULTIPLE_OUTPUTS_ON_NET",
+              "INPUT_SIGNAL_DOMAIN_MISMATCH",
           });
 
     CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::Drc.begin(),
