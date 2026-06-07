@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_exception.hpp>
 
+#include <algorithm>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -18,6 +19,7 @@ namespace {
 
 struct ResistorCircuit {
     volt::Circuit circuit;
+    volt::ComponentDefId component_definition;
     volt::ComponentId component;
     volt::PinDefId first_pin_definition;
     volt::PinDefId second_pin_definition;
@@ -57,6 +59,7 @@ struct ResistorCircuit {
                                  });
 
     return ResistorCircuit{std::move(circuit),
+                           component_definition,
                            component,
                            first_pin_definition,
                            second_pin_definition,
@@ -578,6 +581,103 @@ TEST_CASE("PCB projection writer serializes overlay-ready diagnostic geometry") 
     CHECK(payload["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
     CHECK(payload["overlays"][1]["kind"] == "point");
     CHECK(payload["overlays"][2]["kind"] == "polygon");
+}
+
+TEST_CASE("PCB projection writer serializes emitted PCB visual placement diagnostics") {
+    auto fixture = make_resistor_circuit();
+    const auto second_component = fixture.circuit.instantiate_component(
+        fixture.component_definition, volt::ReferenceDesignator{"R2"});
+    fixture.circuit.select_physical_part(
+        second_component,
+        volt::PhysicalPart{volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                           volt::PackageRef{"0603"},
+                           volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                           std::vector{
+                               volt::PinPadMapping{fixture.first_pin_definition, "1"},
+                               volt::PinPadMapping{fixture.second_pin_definition, "2"},
+                           }});
+
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
+    [[maybe_unused]] const auto first = board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    [[maybe_unused]] const auto second = board.place_component(volt::ComponentPlacement{
+        second_component, volt::BoardPoint{10.5, 10.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto document =
+        nlohmann::json::parse(volt::io::write_pcb_board(board, volt::builtin_footprint_library()));
+
+    const auto diagnostic = std::find_if(
+        document["viewer"]["diagnostics"].begin(), document["viewer"]["diagnostics"].end(),
+        [](const nlohmann::json &item) { return item["code"] == "PCB_VISUAL_PLACEMENT_OVERLAP"; });
+    REQUIRE(diagnostic != document["viewer"]["diagnostics"].end());
+    CHECK((*diagnostic)["severity"] == "warning");
+    CHECK((*diagnostic)["category"] == "pcb.visual");
+    CHECK((*diagnostic)["code"] == "PCB_VISUAL_PLACEMENT_OVERLAP");
+    CHECK((*diagnostic)["message"] == "Placed footprint extents for R1 and R2 overlap");
+    CHECK((*diagnostic)["entities"] ==
+          nlohmann::json::array(
+              {"component:0", "component_placement:0", "component:1", "component_placement:1"}));
+    REQUIRE((*diagnostic)["overlays"].size() == 2);
+    CHECK((*diagnostic)["overlays"][0]["kind"] == "bounding_box");
+    CHECK((*diagnostic)["overlays"][0]["points"] ==
+          nlohmann::json::array(
+              {nlohmann::json::array({8.85, 9.525}), nlohmann::json::array({11.15, 10.475})}));
+    CHECK((*diagnostic)["overlays"][0]["entities"] ==
+          nlohmann::json::array({"component:0", "component_placement:0"}));
+    CHECK((*diagnostic)["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
+    CHECK((*diagnostic)["overlays"][1]["kind"] == "bounding_box");
+    CHECK((*diagnostic)["overlays"][1]["points"] ==
+          nlohmann::json::array(
+              {nlohmann::json::array({9.35, 9.525}), nlohmann::json::array({11.65, 10.475})}));
+    CHECK((*diagnostic)["overlays"][1]["entities"] ==
+          nlohmann::json::array({"component:1", "component_placement:1"}));
+    CHECK((*diagnostic)["overlays"][1]["layers"] == nlohmann::json::array({"board_layer:0"}));
+}
+
+TEST_CASE("PCB projection reader and writer preserve emitted PCB visual text diagnostics") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_viewer_ready_board(fixture);
+    static_cast<void>(board.add_text(volt::BoardText{"REV A", volt::BoardPoint{-1.0, 5.0},
+                                                     volt::BoardRotation::degrees(0.0),
+                                                     volt::BoardLayerId{0}, 1.0}));
+
+    const auto text = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
+    const auto document = nlohmann::json::parse(text);
+    const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
+    const auto rewritten = nlohmann::json::parse(
+        volt::io::write_pcb_board(restored, volt::builtin_footprint_library()));
+
+    const auto diagnostic =
+        std::find_if(document["viewer"]["diagnostics"].begin(),
+                     document["viewer"]["diagnostics"].end(), [](const nlohmann::json &item) {
+                         return item["code"] == "PCB_VISUAL_LABEL_OUTSIDE_BOARD";
+                     });
+    const auto rewritten_diagnostic =
+        std::find_if(rewritten["viewer"]["diagnostics"].begin(),
+                     rewritten["viewer"]["diagnostics"].end(), [](const nlohmann::json &item) {
+                         return item["code"] == "PCB_VISUAL_LABEL_OUTSIDE_BOARD";
+                     });
+    REQUIRE(diagnostic != document["viewer"]["diagnostics"].end());
+    REQUIRE(rewritten_diagnostic != rewritten["viewer"]["diagnostics"].end());
+    CHECK(*rewritten_diagnostic == *diagnostic);
+    CHECK((*diagnostic)["severity"] == "warning");
+    CHECK((*diagnostic)["category"] == "pcb.visual");
+    CHECK((*diagnostic)["message"] == "Board text 'REV A' is outside the board outline");
+    CHECK((*diagnostic)["entities"] == nlohmann::json::array({"board_text:0"}));
+    REQUIRE((*diagnostic)["overlays"].size() == 1);
+    CHECK((*diagnostic)["overlays"][0]["kind"] == "bounding_box");
+    CHECK((*diagnostic)["overlays"][0]["points"] ==
+          nlohmann::json::array(
+              {nlohmann::json::array({-1.0, 4.0}), nlohmann::json::array({2.0, 5.0})}));
+    CHECK((*diagnostic)["overlays"][0]["entities"] == nlohmann::json::array({"board_text:0"}));
+    CHECK((*diagnostic)["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
 }
 
 TEST_CASE("PCB projection reader rejects dangling references") {

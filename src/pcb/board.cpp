@@ -383,6 +383,7 @@ namespace {
                                   std::vector{EntityRef::net(net_id)}));
     }
 
+    detail::validate_board_visual(board, resolution_footprints, report);
     detail::validate_board_drc(board, resolution_footprints, pad_resolutions, report);
 
     return report;

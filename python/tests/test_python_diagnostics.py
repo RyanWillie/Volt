@@ -7,6 +7,19 @@ from volt.diagnostics import _diagnostic_from_dict
 from volt.project import _flat_diagnostic_payload, _report_diagnostics
 
 
+def test_pcb_visual_diagnostic_codes_are_exported_in_stable_order():
+    assert volt.PCB_VISUAL_DIAGNOSTIC_CODES == (
+        "PCB_VISUAL_PLACEMENT_OVERLAP",
+        "PCB_VISUAL_PLACEMENT_CROWDING",
+        "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+        "PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE",
+        "PCB_VISUAL_LABEL_OVERLAP",
+        "PCB_VISUAL_LABEL_OUTSIDE_BOARD",
+        "PCB_VISUAL_ROUTE_READABILITY_CONFLICT",
+        "PCB_VISUAL_BOARD_FEATURE_ANNOTATION_MISSING",
+    )
+
+
 def test_voltage_rating_diagnostic_is_inspectable():
     design = volt.Design("rating")
     vdd = design.net("VDD", kind="power", voltage=5.0)
