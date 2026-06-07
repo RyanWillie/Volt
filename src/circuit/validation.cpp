@@ -46,10 +46,15 @@ namespace volt::detail {
 }
 
 [[nodiscard]] bool can_drive_signal_net(const PinDefinition &definition) {
-    if (is_output_pin(definition)) {
-        return true;
+    if (definition.terminal_kind() != ElectricalTerminalKind::Signal ||
+        definition.signal_domain() == ElectricalSignalDomain::Unspecified) {
+        return false;
     }
-    return definition.direction() == ElectricalDirection::Bidirectional ||
+
+    return definition.direction() == ElectricalDirection::Output ||
+           definition.direction() == ElectricalDirection::Bidirectional ||
+           definition.role() == PinRole::DigitalOutput ||
+           definition.role() == PinRole::AnalogOutput ||
            definition.role() == PinRole::Bidirectional;
 }
 
