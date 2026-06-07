@@ -11,6 +11,7 @@ add_library(
     board_outline.cpp
     board_placement_model.cpp
     board_structure_model.cpp
+    board_visual_validation.cpp
     footprints.cpp
 )
 add_library(Volt::PCB ALIAS volt_pcb)

@@ -30,6 +30,7 @@ inline constexpr auto ReferenceDesignatorHidden =
 inline constexpr auto ReferenceDesignatorUnreadable =
     std::string_view{"PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE"};
 inline constexpr auto LabelOverlap = std::string_view{"PCB_VISUAL_LABEL_OVERLAP"};
+inline constexpr auto LabelOutsideBoard = std::string_view{"PCB_VISUAL_LABEL_OUTSIDE_BOARD"};
 inline constexpr auto RouteReadabilityConflict =
     std::string_view{"PCB_VISUAL_ROUTE_READABILITY_CONFLICT"};
 inline constexpr auto BoardFeatureAnnotationMissing =

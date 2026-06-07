@@ -117,6 +117,8 @@ TEST_CASE("PCB visual diagnostic codes are stable constants") {
           "PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE");
     CHECK(std::string{volt::pcb_visual_diagnostic_codes::LabelOverlap} ==
           "PCB_VISUAL_LABEL_OVERLAP");
+    CHECK(std::string{volt::pcb_visual_diagnostic_codes::LabelOutsideBoard} ==
+          "PCB_VISUAL_LABEL_OUTSIDE_BOARD");
     CHECK(std::string{volt::diagnostic_categories::PcbVisual} == "pcb.visual");
 }
 

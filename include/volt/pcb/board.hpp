@@ -363,6 +363,9 @@ void validate_keepout_vias(const Board &board, DiagnosticReport &report);
 
 void validate_keepout_placements(const Board &board, DiagnosticReport &report);
 
+void validate_board_visual(const Board &board, const FootprintLibrary &footprints,
+                           DiagnosticReport &report);
+
 [[nodiscard]] std::size_t connectivity_root(std::vector<std::size_t> &parents, std::size_t index);
 
 [[nodiscard]] std::optional<std::size_t>
