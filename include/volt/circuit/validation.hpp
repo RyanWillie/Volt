@@ -19,6 +19,10 @@ namespace detail {
 
 [[nodiscard]] bool is_output_pin(const PinDefinition &definition);
 
+[[nodiscard]] bool is_input_pin(const PinDefinition &definition);
+
+[[nodiscard]] bool can_drive_signal_net(const PinDefinition &definition);
+
 [[nodiscard]] bool is_power_input(const PinDefinition &definition);
 
 [[nodiscard]] bool is_power_source(const PinDefinition &definition);
@@ -59,6 +63,9 @@ void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net
 void validate_output_driver_conflicts(const Circuit &circuit, NetId net_id,
                                       const std::vector<PinId> &group_pins,
                                       DiagnosticReport &report);
+
+void validate_input_signal_domains(const Circuit &circuit, NetId net_id,
+                                   const std::vector<PinId> &group_pins, DiagnosticReport &report);
 
 void validate_net_shapes(const Circuit &circuit, const NetContinuityView &continuity,
                          DiagnosticReport &report);

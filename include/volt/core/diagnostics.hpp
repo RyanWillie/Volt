@@ -50,6 +50,7 @@ inline constexpr auto PinVoltageRangeViolation = std::string_view{"PIN_VOLTAGE_R
 inline constexpr auto NetRuleClassVoltageExceeded =
     std::string_view{"NET_RULE_CLASS_VOLTAGE_EXCEEDED"};
 inline constexpr auto MultipleOutputsOnNet = std::string_view{"MULTIPLE_OUTPUTS_ON_NET"};
+inline constexpr auto InputSignalDomainMismatch = std::string_view{"INPUT_SIGNAL_DOMAIN_MISMATCH"};
 
 } // namespace erc_diagnostic_codes
 
@@ -99,7 +100,8 @@ inline constexpr auto Erc = std::array{erc_diagnostic_codes::PinMustNotConnect,
                                        erc_diagnostic_codes::SelectedPartVoltageRatingExceeded,
                                        erc_diagnostic_codes::PinVoltageRangeViolation,
                                        erc_diagnostic_codes::NetRuleClassVoltageExceeded,
-                                       erc_diagnostic_codes::MultipleOutputsOnNet};
+                                       erc_diagnostic_codes::MultipleOutputsOnNet,
+                                       erc_diagnostic_codes::InputSignalDomainMismatch};
 
 inline constexpr auto Drc = std::array{drc_diagnostic_codes::TrackWidthBelowMinimum,
                                        drc_diagnostic_codes::ViaDrillBelowMinimum,

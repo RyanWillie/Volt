@@ -27,12 +27,13 @@ TEST_CASE("Circuit validation diagnostic code catalog remains stable") {
         "POWER_INPUT_WITHOUT_SOURCE",
         "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
         "SINGLE_PIN_NET",
+        "INPUT_SIGNAL_DOMAIN_MISMATCH",
         "PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED",
         "UNBOUND_REQUIRED_PORT",
         "UNCONNECTED_REQUIRED_PIN",
     };
 
-    CHECK(codes.size() == 14);
+    CHECK(codes.size() == 15);
 }
 
 TEST_CASE("Circuit validation reports required pins that are not connected") {
