@@ -114,7 +114,7 @@ schematic_endpoints_from_list(const py::list &endpoints) {
         py::make_tuple(model_3d->translation_mm()[0], model_3d->translation_mm()[1],
                        model_3d->translation_mm()[2]);
     payload["rotation_deg"] = model_3d->rotation_deg();
-    return std::move(payload);
+    return payload;
 }
 
 [[nodiscard]] std::string board_side_name(volt::BoardSide side) {
