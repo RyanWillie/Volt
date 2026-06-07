@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <stdexcept>
@@ -16,10 +17,48 @@ namespace volt {
 namespace diagnostic_categories {
 
 inline constexpr auto General = std::string_view{"general"};
+inline constexpr auto Erc = std::string_view{"erc"};
+inline constexpr auto Drc = std::string_view{"drc"};
 inline constexpr auto PcbBoard = std::string_view{"pcb.board"};
 inline constexpr auto PcbVisual = std::string_view{"pcb.visual"};
 
 } // namespace diagnostic_categories
+
+namespace erc_diagnostic_codes {
+
+inline constexpr auto PinMustNotConnect = std::string_view{"PIN_MUST_NOT_CONNECT"};
+inline constexpr auto PinIntentionalNoConnectIsConnected =
+    std::string_view{"PIN_INTENTIONAL_NO_CONNECT_IS_CONNECTED"};
+inline constexpr auto UnconnectedRequiredPin = std::string_view{"UNCONNECTED_REQUIRED_PIN"};
+inline constexpr auto EmptyNet = std::string_view{"EMPTY_NET"};
+inline constexpr auto SinglePinNet = std::string_view{"SINGLE_PIN_NET"};
+inline constexpr auto UnboundRequiredPort = std::string_view{"UNBOUND_REQUIRED_PORT"};
+inline constexpr auto PinGroundOnNonGroundNet = std::string_view{"PIN_GROUND_ON_NON_GROUND_NET"};
+inline constexpr auto PinPowerOnGroundNet = std::string_view{"PIN_POWER_ON_GROUND_NET"};
+inline constexpr auto PowerInputWithoutSource = std::string_view{"POWER_INPUT_WITHOUT_SOURCE"};
+inline constexpr auto SelectedPartVoltageRatingExceeded =
+    std::string_view{"SELECTED_PART_VOLTAGE_RATING_EXCEEDED"};
+inline constexpr auto PinVoltageRangeViolation = std::string_view{"PIN_VOLTAGE_RANGE_VIOLATION"};
+inline constexpr auto NetRuleClassVoltageExceeded =
+    std::string_view{"NET_RULE_CLASS_VOLTAGE_EXCEEDED"};
+inline constexpr auto MultipleOutputsOnNet = std::string_view{"MULTIPLE_OUTPUTS_ON_NET"};
+
+} // namespace erc_diagnostic_codes
+
+namespace drc_diagnostic_codes {
+
+inline constexpr auto TrackWidthBelowMinimum = std::string_view{"PCB_TRACK_WIDTH_BELOW_MINIMUM"};
+inline constexpr auto ViaDrillBelowMinimum = std::string_view{"PCB_VIA_DRILL_BELOW_MINIMUM"};
+inline constexpr auto ViaAnnularBelowMinimum = std::string_view{"PCB_VIA_ANNULAR_BELOW_MINIMUM"};
+inline constexpr auto CopperOutsideOutline = std::string_view{"PCB_COPPER_OUTSIDE_OUTLINE"};
+inline constexpr auto CopperClearanceViolation = std::string_view{"PCB_COPPER_CLEARANCE_VIOLATION"};
+inline constexpr auto KeepoutCopperViolation = std::string_view{"PCB_KEEPOUT_COPPER_VIOLATION"};
+inline constexpr auto KeepoutViaViolation = std::string_view{"PCB_KEEPOUT_VIA_VIOLATION"};
+inline constexpr auto KeepoutPlacementViolation =
+    std::string_view{"PCB_KEEPOUT_PLACEMENT_VIOLATION"};
+inline constexpr auto NetUnrouted = std::string_view{"PCB_NET_UNROUTED"};
+
+} // namespace drc_diagnostic_codes
 
 namespace pcb_visual_diagnostic_codes {
 
@@ -37,6 +76,34 @@ inline constexpr auto BoardFeatureAnnotationMissing =
     std::string_view{"PCB_VISUAL_BOARD_FEATURE_ANNOTATION_MISSING"};
 
 } // namespace pcb_visual_diagnostic_codes
+
+namespace diagnostic_code_catalogs {
+
+inline constexpr auto Erc = std::array{erc_diagnostic_codes::PinMustNotConnect,
+                                       erc_diagnostic_codes::PinIntentionalNoConnectIsConnected,
+                                       erc_diagnostic_codes::UnconnectedRequiredPin,
+                                       erc_diagnostic_codes::EmptyNet,
+                                       erc_diagnostic_codes::SinglePinNet,
+                                       erc_diagnostic_codes::UnboundRequiredPort,
+                                       erc_diagnostic_codes::PinGroundOnNonGroundNet,
+                                       erc_diagnostic_codes::PinPowerOnGroundNet,
+                                       erc_diagnostic_codes::PowerInputWithoutSource,
+                                       erc_diagnostic_codes::SelectedPartVoltageRatingExceeded,
+                                       erc_diagnostic_codes::PinVoltageRangeViolation,
+                                       erc_diagnostic_codes::NetRuleClassVoltageExceeded,
+                                       erc_diagnostic_codes::MultipleOutputsOnNet};
+
+inline constexpr auto Drc = std::array{drc_diagnostic_codes::TrackWidthBelowMinimum,
+                                       drc_diagnostic_codes::ViaDrillBelowMinimum,
+                                       drc_diagnostic_codes::ViaAnnularBelowMinimum,
+                                       drc_diagnostic_codes::CopperOutsideOutline,
+                                       drc_diagnostic_codes::CopperClearanceViolation,
+                                       drc_diagnostic_codes::KeepoutCopperViolation,
+                                       drc_diagnostic_codes::KeepoutViaViolation,
+                                       drc_diagnostic_codes::KeepoutPlacementViolation,
+                                       drc_diagnostic_codes::NetUnrouted};
+
+} // namespace diagnostic_code_catalogs
 
 /** Severity level for a diagnostic emitted by the kernel. */
 enum class Severity {

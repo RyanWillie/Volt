@@ -8,6 +8,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -224,6 +225,20 @@ void append_unique_layer(std::vector<BoardLayerId> &layers, BoardLayerId layer) 
     if (std::find(layers.begin(), layers.end(), layer) == layers.end()) {
         layers.push_back(layer);
     }
+}
+
+[[nodiscard]] Diagnostic drc_diagnostic(std::string_view code, std::string message,
+                                        std::vector<EntityRef> entities = {}) {
+    return Diagnostic{Severity::Error, DiagnosticCode{std::string{code}},
+                      DiagnosticCategory{diagnostic_categories::Drc}, std::move(message),
+                      std::move(entities)};
+}
+
+[[nodiscard]] Diagnostic drc_warning(std::string_view code, std::string message,
+                                     std::vector<EntityRef> entities = {}) {
+    return Diagnostic{Severity::Warning, DiagnosticCode{std::string{code}},
+                      DiagnosticCategory{diagnostic_categories::Drc}, std::move(message),
+                      std::move(entities)};
 }
 
 [[nodiscard]] std::vector<BoardLayerId> via_copper_layers(const Board &board, const BoardVia &via) {
@@ -452,11 +467,10 @@ void validate_track_widths(const Board &board, DiagnosticReport &report) {
         if (track.width_mm() + board_drc_epsilon >= rules.minimum_track_width_mm()) {
             continue;
         }
-        report.add(board_diagnostic(DiagnosticCode{"PCB_TRACK_WIDTH_BELOW_MINIMUM"},
-                                    "Track width is below the board minimum",
-                                    std::vector{EntityRef::board_track(track_id),
-                                                EntityRef::net(track.net()),
-                                                EntityRef::board_layer(track.layer())}));
+        report.add(drc_diagnostic(
+            drc_diagnostic_codes::TrackWidthBelowMinimum, "Track width is below the board minimum",
+            std::vector{EntityRef::board_track(track_id), EntityRef::net(track.net()),
+                        EntityRef::board_layer(track.layer())}));
     }
 }
 
@@ -466,15 +480,15 @@ void validate_via_rules(const Board &board, DiagnosticReport &report) {
         const auto via_id = BoardViaId{index};
         const auto &via = board.via(via_id);
         if (via.drill_diameter_mm() + board_drc_epsilon < rules.minimum_via_drill_diameter_mm()) {
-            report.add(board_diagnostic(
-                DiagnosticCode{"PCB_VIA_DRILL_BELOW_MINIMUM"},
+            report.add(drc_diagnostic(
+                drc_diagnostic_codes::ViaDrillBelowMinimum,
                 "Via drill diameter is below the board minimum",
                 std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())}));
         }
         if (via.annular_diameter_mm() + board_drc_epsilon <
             rules.minimum_via_annular_diameter_mm()) {
-            report.add(board_diagnostic(
-                DiagnosticCode{"PCB_VIA_ANNULAR_BELOW_MINIMUM"},
+            report.add(drc_diagnostic(
+                drc_diagnostic_codes::ViaAnnularBelowMinimum,
                 "Via annular copper diameter is below the board minimum",
                 std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())}));
         }
@@ -497,9 +511,9 @@ void validate_outline_clearance(const Board &board, const std::vector<BoardCoppe
         if (!layer.has_value()) {
             continue;
         }
-        report.add(board_diagnostic(DiagnosticCode{"PCB_COPPER_OUTSIDE_OUTLINE"},
-                                    "Copper does not satisfy the board outline clearance",
-                                    copper_shape_entities(shape, shape.net, layer.value())));
+        report.add(drc_diagnostic(drc_diagnostic_codes::CopperOutsideOutline,
+                                  "Copper does not satisfy the board outline clearance",
+                                  copper_shape_entities(shape, shape.net, layer.value())));
     }
 }
 
@@ -517,10 +531,10 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
             outline_contains_polygon(outline, zone.outline(), outline_clearance)) {
             continue;
         }
-        report.add(board_diagnostic(DiagnosticCode{"PCB_COPPER_OUTSIDE_OUTLINE"},
-                                    "Copper does not satisfy the board outline clearance",
-                                    std::vector{EntityRef::board_zone(zone_id),
-                                                EntityRef::board_layer(zone.layers().front())}));
+        report.add(drc_diagnostic(drc_diagnostic_codes::CopperOutsideOutline,
+                                  "Copper does not satisfy the board outline clearance",
+                                  std::vector{EntityRef::board_zone(zone_id),
+                                              EntityRef::board_layer(zone.layers().front())}));
     }
 }
 
@@ -564,9 +578,9 @@ void validate_copper_clearance(const Board &board, const std::vector<BoardCopper
             entities.push_back(EntityRef::net(lhs.net));
             entities.push_back(EntityRef::net(rhs.net));
             entities.push_back(EntityRef::board_layer(layer.value()));
-            report.add(board_diagnostic(DiagnosticCode{"PCB_COPPER_CLEARANCE_VIOLATION"},
-                                        "Copper on different nets violates required clearance",
-                                        std::move(entities)));
+            report.add(drc_diagnostic(drc_diagnostic_codes::CopperClearanceViolation,
+                                      "Copper on different nets violates required clearance",
+                                      std::move(entities)));
         }
     }
 }
@@ -633,9 +647,9 @@ void validate_keepout_copper_shapes(const Board &board, const std::vector<BoardC
             if (!layer.has_value() || !shape_violates_keepout(shape, keepout)) {
                 continue;
             }
-            report.add(board_diagnostic(DiagnosticCode{"PCB_KEEPOUT_COPPER_VIOLATION"},
-                                        "Copper violates a board keepout",
-                                        keepout_copper_entities(keepout_id, shape, layer.value())));
+            report.add(drc_diagnostic(drc_diagnostic_codes::KeepoutCopperViolation,
+                                      "Copper violates a board keepout",
+                                      keepout_copper_entities(keepout_id, shape, layer.value())));
         }
     }
 }
@@ -661,9 +675,8 @@ void validate_keepout_zones(const Board &board, DiagnosticReport &report) {
                 entities.push_back(EntityRef::net(zone.net().value()));
             }
             entities.push_back(EntityRef::board_layer(layer.value()));
-            report.add(board_diagnostic(DiagnosticCode{"PCB_KEEPOUT_COPPER_VIOLATION"},
-                                        "Copper zone violates a board keepout",
-                                        std::move(entities)));
+            report.add(drc_diagnostic(drc_diagnostic_codes::KeepoutCopperViolation,
+                                      "Copper zone violates a board keepout", std::move(entities)));
         }
     }
 }
@@ -684,8 +697,8 @@ void validate_keepout_vias(const Board &board, DiagnosticReport &report) {
                                           (via.annular_diameter_mm() / 2.0) + board_drc_epsilon) {
                 continue;
             }
-            report.add(board_diagnostic(
-                DiagnosticCode{"PCB_KEEPOUT_VIA_VIOLATION"}, "Via violates a board keepout",
+            report.add(drc_diagnostic(
+                drc_diagnostic_codes::KeepoutViaViolation, "Via violates a board keepout",
                 std::vector{EntityRef::board_keepout(keepout_id), EntityRef::board_via(via_id),
                             EntityRef::net(via.net()), EntityRef::board_layer(layer.value())}));
         }
@@ -707,11 +720,11 @@ void validate_keepout_placements(const Board &board, DiagnosticReport &report) {
                 board_drc_epsilon) {
                 continue;
             }
-            report.add(board_diagnostic(DiagnosticCode{"PCB_KEEPOUT_PLACEMENT_VIOLATION"},
-                                        "Component placement violates a board keepout",
-                                        std::vector{EntityRef::board_keepout(keepout_id),
-                                                    EntityRef::component_placement(placement_id),
-                                                    EntityRef::component(placement.component())}));
+            report.add(drc_diagnostic(drc_diagnostic_codes::KeepoutPlacementViolation,
+                                      "Component placement violates a board keepout",
+                                      std::vector{EntityRef::board_keepout(keepout_id),
+                                                  EntityRef::component_placement(placement_id),
+                                                  EntityRef::component(placement.component())}));
         }
     }
 }
@@ -777,13 +790,13 @@ void validate_unrouted_nets(const std::vector<PadResolution> &resolutions,
             continue;
         }
 
-        report.add(board_warning(
-            DiagnosticCode{"PCB_NET_UNROUTED"}, "Logical net still has unrouted placed pads",
-            std::vector{EntityRef::net(edge.net()),
-                        EntityRef::component_placement(edge.from().placement()),
-                        EntityRef::footprint_pad(edge.from().pad()),
-                        EntityRef::component_placement(edge.to().placement()),
-                        EntityRef::footprint_pad(edge.to().pad())}));
+        report.add(drc_warning(drc_diagnostic_codes::NetUnrouted,
+                               "Logical net still has unrouted placed pads",
+                               std::vector{EntityRef::net(edge.net()),
+                                           EntityRef::component_placement(edge.from().placement()),
+                                           EntityRef::footprint_pad(edge.from().pad()),
+                                           EntityRef::component_placement(edge.to().placement()),
+                                           EntityRef::footprint_pad(edge.to().pad())}));
     }
 }
 

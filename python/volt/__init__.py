@@ -5,6 +5,9 @@ from __future__ import annotations
 from . import _volt
 from .design import Design
 from .diagnostics import (
+    DIAGNOSTIC_CATEGORIES,
+    DRC_DIAGNOSTIC_CODES,
+    ERC_DIAGNOSTIC_CODES,
     PCB_VISUAL_DIAGNOSTIC_CODES,
     Diagnostic,
     DiagnosticEntity,
@@ -131,6 +134,9 @@ __all__ = [
     "DiagnosticEntity",
     "DiagnosticOverlay",
     "DiagnosticReport",
+    "DIAGNOSTIC_CATEGORIES",
+    "DRC_DIAGNOSTIC_CODES",
+    "ERC_DIAGNOSTIC_CODES",
     "ExpectedDiagnostic",
     "ExpectedDiagnosticResult",
     "Library",

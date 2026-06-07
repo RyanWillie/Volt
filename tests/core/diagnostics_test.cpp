@@ -122,6 +122,38 @@ TEST_CASE("PCB visual diagnostic codes are stable constants") {
     CHECK(std::string{volt::diagnostic_categories::PcbVisual} == "pcb.visual");
 }
 
+TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
+    CHECK(std::string{volt::diagnostic_categories::Erc} == "erc");
+    CHECK(std::string{volt::diagnostic_categories::Drc} == "drc");
+
+    CHECK(std::string{volt::erc_diagnostic_codes::UnconnectedRequiredPin} ==
+          "UNCONNECTED_REQUIRED_PIN");
+    CHECK(std::string{volt::erc_diagnostic_codes::SinglePinNet} == "SINGLE_PIN_NET");
+    CHECK(std::string{volt::erc_diagnostic_codes::PowerInputWithoutSource} ==
+          "POWER_INPUT_WITHOUT_SOURCE");
+    CHECK(std::string{volt::erc_diagnostic_codes::MultipleOutputsOnNet} ==
+          "MULTIPLE_OUTPUTS_ON_NET");
+
+    CHECK(std::string{volt::drc_diagnostic_codes::TrackWidthBelowMinimum} ==
+          "PCB_TRACK_WIDTH_BELOW_MINIMUM");
+    CHECK(std::string{volt::drc_diagnostic_codes::CopperClearanceViolation} ==
+          "PCB_COPPER_CLEARANCE_VIOLATION");
+    CHECK(std::string{volt::drc_diagnostic_codes::KeepoutPlacementViolation} ==
+          "PCB_KEEPOUT_PLACEMENT_VIOLATION");
+
+    REQUIRE(volt::diagnostic_code_catalogs::Erc.size() == 13U);
+    CHECK(std::string{volt::diagnostic_code_catalogs::Erc.front()} ==
+          std::string{volt::erc_diagnostic_codes::PinMustNotConnect});
+    CHECK(std::string{volt::diagnostic_code_catalogs::Erc.back()} ==
+          std::string{volt::erc_diagnostic_codes::MultipleOutputsOnNet});
+
+    REQUIRE(volt::diagnostic_code_catalogs::Drc.size() == 9U);
+    CHECK(std::string{volt::diagnostic_code_catalogs::Drc.front()} ==
+          std::string{volt::drc_diagnostic_codes::TrackWidthBelowMinimum});
+    CHECK(std::string{volt::diagnostic_code_catalogs::Drc.back()} ==
+          std::string{volt::drc_diagnostic_codes::NetUnrouted});
+}
+
 TEST_CASE("Diagnostic stores severity code message and related entities") {
     const auto diagnostic = volt::Diagnostic{
         volt::Severity::Warning,

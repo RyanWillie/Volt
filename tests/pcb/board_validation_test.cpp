@@ -175,6 +175,8 @@ TEST_CASE("Board validation rejects zero-clearance polygon edges crossing concav
     const auto *outside_outline = find_diagnostic(report, "PCB_COPPER_OUTSIDE_OUTLINE");
     REQUIRE(outside_outline != nullptr);
     CHECK(outside_outline->severity() == volt::Severity::Error);
+    CHECK(outside_outline->category() ==
+          volt::DiagnosticCategory{volt::diagnostic_categories::Drc});
     CHECK(outside_outline->entities() ==
           std::vector{volt::EntityRef::board_zone(zone), volt::EntityRef::board_layer(front)});
 }
