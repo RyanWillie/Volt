@@ -34,9 +34,15 @@ Source: `examples/stm32_usb_buck/`.
 Keep logical composition separate from schematic projection:
 
 ```python
-project = build_board()
-design = project.design
-schematic = build_schematic(project)
+@project.design
+def design():
+    stm32 = build_board()
+    return stm32.design, volt.ProjectResource("stm32_board", stm32)
+
+@project.schematic
+def schematic(context: volt.BuildContext) -> volt.Schematic:
+    board = context.resource("stm32_board", Stm32UsbBuckBoard)
+    return build_schematic(board)
 ```
 
-That separation makes it easier to test logical correctness independently from schematic readability.
+That separation makes it easier to test logical correctness independently from schematic readability while still passing stable stage inputs through the Project Framework.

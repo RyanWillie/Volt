@@ -3,7 +3,7 @@ title: 555 Timer Blinker
 description: Author a 555 LED blinker with custom component definitions and schematic projection.
 ---
 
-The 555 timer example demonstrates a custom IC definition, typed pins, built-in passive parts, named nets, schematic sheet metadata, and deterministic artifacts.
+The 555 timer example demonstrates a custom IC definition, typed pins, built-in passive parts, named nets, schematic sheet metadata, a small PCB projection, and deterministic project artifacts.
 
 Source: `examples/timer_555_led_blinker/main.py`.
 
@@ -46,14 +46,57 @@ with sheet.drawing(at=(140, 80), unit=20) as drawing:
 
 The full example uses two-terminal elements, local labels, junction dots, and explicit validation reports.
 
+## Project shape
+
+```python
+def build_project() -> volt.Project:
+    project = volt.Project(
+        "timer-555-led-blinker",
+        description="555 LED blinker reference design",
+    )
+
+    @project.design
+    def design():
+        project_design, nets, parts = build_design()
+        return (
+            project_design,
+            volt.ProjectResource("nets", nets),
+            volt.ProjectResource("parts", parts),
+        )
+
+    @project.schematic
+    def schematic(context: volt.BuildContext) -> volt.Schematic:
+        return build_schematic(
+            context.design(),
+            context.resource("nets", dict),
+            context.resource("parts", dict),
+        )
+
+    @project.board
+    def board(context: volt.BuildContext) -> volt.Board:
+        return build_board(
+            context.design(),
+            context.resource("nets", dict),
+            context.resource("parts", dict),
+        )
+
+    return project
+```
+
+The design stage owns the logical model and explicit authoring resources. Later stages
+read those resources through `BuildContext`; schematic and PCB code do not recreate or
+reinterpret connectivity.
+
 ## Generated artifacts
 
 `write_artifacts()` produces:
 
+- A full `.volt` project-result bundle.
 - Logical JSON.
 - Schematic JSON.
 - Full SVG and body SVG.
 - Per-page SVG output.
+- PCB JSON, PCB SVG, and KiCad PCB output.
 - Validation report JSON.
 
-Use this example when you need a complete reference for logical plus schematic artifact generation.
+Use this example when you need a compact reference for logical, schematic, and board artifact generation.

@@ -1,0 +1,42 @@
+{
+  "board": {
+    "design": "pcb-led-board",
+    "name": "First Board LED"
+  },
+  "format": "volt.part_models_3d",
+  "placements": [
+    {
+      "component": "component:1",
+      "model": "part_model:0",
+      "placement": "component_placement:1",
+      "reference": "R1",
+      "transform_matrix": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          15.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          7.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          1.15
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    }
+  ],
+  "version": 1
+}

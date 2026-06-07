@@ -34,8 +34,10 @@ def test_timer_555_led_blinker_project_stages_are_primary_authoring_functions():
 
     source = inspect.getsource(main.build_project)
 
-    assert "return build_schematic(" not in source
-    assert "return build_board(" not in source
+    assert "return build_schematic(" in source
+    assert "return build_board(" in source
+    assert 'context.resource("nets", dict)' in source
+    assert 'context.resource("parts", dict)' in source
 
 
 def test_timer_555_led_blinker_example_writes_stable_artifacts():
@@ -45,7 +47,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         artifacts = main.write_artifacts(Path(temp_dir))
         logical = json.loads(artifacts.logical_json.read_text(encoding="utf-8"))
         schematic = json.loads(artifacts.schematic_json.read_text(encoding="utf-8"))
-        validation = json.loads(artifacts.validation_report.read_text(encoding="utf-8"))
+        validation = json.loads(artifacts.diagnostics_json.read_text(encoding="utf-8"))
         first_texts = {
             "logical": artifacts.logical_json.read_text(encoding="utf-8"),
             "schematic": artifacts.schematic_json.read_text(encoding="utf-8"),
@@ -54,8 +56,10 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             "pcb": artifacts.pcb_json.read_text(encoding="utf-8"),
             "pcb_svg": artifacts.pcb_svg.read_text(encoding="utf-8"),
             "kicad_pcb": artifacts.kicad_pcb.read_text(encoding="utf-8"),
-            "validation": artifacts.validation_report.read_text(encoding="utf-8"),
-            "project": _project_bundle_texts(artifacts.project_bundle),
+            "validation": artifacts.diagnostics_json.read_text(encoding="utf-8"),
+            "project": _project_bundle_texts(
+                artifacts.logical_json.parent / "timer_555_led_blinker.volt"
+            ),
             "pages": tuple(path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages),
         }
 
@@ -85,10 +89,15 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             == first_texts["kicad_pcb"]
         )
         assert (
-            second_artifacts.validation_report.read_text(encoding="utf-8")
+            second_artifacts.diagnostics_json.read_text(encoding="utf-8")
             == first_texts["validation"]
         )
-        assert _project_bundle_texts(second_artifacts.project_bundle) == first_texts["project"]
+        assert (
+            _project_bundle_texts(
+                second_artifacts.logical_json.parent / "timer_555_led_blinker.volt"
+            )
+            == first_texts["project"]
+        )
         assert (
             tuple(path.read_text(encoding="utf-8") for path in second_artifacts.schematic_svg_pages)
             == first_texts["pages"]

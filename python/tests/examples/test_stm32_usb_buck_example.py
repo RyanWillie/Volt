@@ -35,7 +35,8 @@ def test_stm32_usb_buck_project_schematic_stage_is_primary_authoring_function():
 
     source = inspect.getsource(main.build_project)
 
-    assert "return build_schematic(" not in source
+    assert 'context.resource("stm32_board", Stm32UsbBuckBoard)' in source
+    assert "return build_schematic(board)" in source
 
 
 def _schematic_authoring_source(schematic_output):
@@ -58,7 +59,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
 
         logical = json.loads(artifacts.logical_json.read_text(encoding="utf-8"))
         schematic = json.loads(artifacts.schematic_json.read_text(encoding="utf-8"))
-        validation = json.loads(artifacts.validation_report.read_text(encoding="utf-8"))
+        validation = json.loads(artifacts.diagnostics_json.read_text(encoding="utf-8"))
         first_logical_text = artifacts.logical_json.read_text(encoding="utf-8")
         first_schematic_text = artifacts.schematic_json.read_text(encoding="utf-8")
         first_svg_text = artifacts.schematic_svg.read_text(encoding="utf-8")
@@ -66,8 +67,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         first_page_texts = tuple(
             path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages
         )
-        first_validation_text = artifacts.validation_report.read_text(encoding="utf-8")
-        first_project_texts = _project_bundle_texts(artifacts.project_bundle)
+        first_validation_text = artifacts.diagnostics_json.read_text(encoding="utf-8")
+        first_project_texts = _project_bundle_texts(
+            artifacts.logical_json.parent / "stm32_usb_buck.volt"
+        )
 
         stale_page = artifacts.schematic_svg_pages[0].parent / "stale.svg"
         stale_page.write_text("<svg></svg>\n", encoding="utf-8")
@@ -90,10 +93,13 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
             == first_page_texts
         )
         assert (
-            second_artifacts.validation_report.read_text(encoding="utf-8")
+            second_artifacts.diagnostics_json.read_text(encoding="utf-8")
             == first_validation_text
         )
-        assert _project_bundle_texts(second_artifacts.project_bundle) == first_project_texts
+        assert (
+            _project_bundle_texts(second_artifacts.logical_json.parent / "stm32_usb_buck.volt")
+            == first_project_texts
+        )
 
     assert logical["format"] == "volt.logical_circuit"
     assert {item["name"] for item in logical["module_definitions"]} >= {
@@ -491,6 +497,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
 
 def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage():
     main = importlib.import_module("examples.stm32_usb_buck.main")
+    schematic_output = importlib.import_module("examples.stm32_usb_buck.schematic_output")
 
     def author_invalid_power_region(region, board, _nets):
         component = board.components["VIN_SRC"]
@@ -507,8 +514,8 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
         region.wire(net, ((0, 0), (10, 0)))
         region.label(net, at=(0, -2))
 
-    original = main._author_power_region
-    main._author_power_region = author_invalid_power_region
+    original = schematic_output._author_power_region
+    schematic_output._author_power_region = author_invalid_power_region
     try:
         with TemporaryDirectory() as temp_dir:
             output_dir = Path(temp_dir)
@@ -525,7 +532,7 @@ def test_stm32_usb_buck_example_rejects_schematic_artifacts_without_pin_coverage
             assert not (output_dir / "stm32_usb_buck.body.svg").exists()
             assert not (output_dir / "stm32_usb_buck.pages").exists()
     finally:
-        main._author_power_region = original
+        schematic_output._author_power_region = original
 
 
 def test_stm32_usb_buck_build_schematic_uses_shared_drawing_session_sugar():

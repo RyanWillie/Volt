@@ -2,27 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
 import volt
 
-from .schematic_connectors import _author_connectors_region
-from .schematic_mcu import _author_mcu_region
-from .schematic_output import SHEET_FILE, SHEET_OPTIONS, build_schematic
-from .schematic_power import _author_power_region
+from .schematic_output import build_schematic
 from .stm32_board import Stm32UsbBuckBoard, build_board
-
-
-@dataclass(frozen=True)
-class BenchmarkArtifacts:
-    project_bundle: Path
-    logical_json: Path
-    schematic_json: Path
-    schematic_svg: Path
-    schematic_body_svg: Path
-    schematic_svg_pages: tuple[Path, ...]
-    validation_report: Path
 
 
 def build_project() -> volt.Project:
@@ -42,47 +27,7 @@ def build_project() -> volt.Project:
     @project.schematic
     def schematic(context: volt.BuildContext) -> volt.Schematic:
         board = context.resource("stm32_board", Stm32UsbBuckBoard)
-        nets = {net.name: net for net in board.design.nets()}
-
-        sheet = board.design.schematic(
-            "STM32 USB Buck",
-            title="STM32 USB Buck Reference Schematic",
-            number=1,
-            page_count=1,
-            file=SHEET_FILE,
-            **SHEET_OPTIONS,
-        )
-
-        power_region = sheet.region(
-            "Power Circuitry",
-            x=18,
-            y=18,
-            w=558,
-            h=116,
-            style={"border": "dashed"},
-        )
-        mcu_region = sheet.region(
-            "STM32 Microcontroller",
-            x=18,
-            y=140,
-            w=346,
-            h=266,
-            title="STM32 MCU",
-            style={"border": "dashed"},
-        )
-        connectors_region = sheet.region(
-            "Connectors and USB",
-            x=370,
-            y=140,
-            w=208,
-            h=216,
-            style={"border": "dashed"},
-        )
-
-        _author_power_region(power_region, board, nets)
-        _author_mcu_region(mcu_region, board, nets)
-        _author_connectors_region(connectors_region, board, nets)
-        return sheet
+        return build_schematic(board)
 
     @project.schematic.test
     def schematic_places_primary_components(check) -> None:
@@ -95,7 +40,7 @@ def run_project() -> volt.ProjectResult:
     return build_project().run()
 
 
-def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
+def write_artifacts(output_dir: Path | str | None = None) -> volt.ProjectArtifactPaths:
     if output_dir is None:
         output_dir = Path(__file__).resolve().parent / "artifacts"
     output_path = Path(output_dir)
@@ -115,15 +60,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> BenchmarkArtifacts:
     project_bundle = output_path / "stm32_usb_buck.volt"
     result.write(project_bundle)
     artifacts = result.write_artifacts(output_path, slug="stm32_usb_buck")
-    return BenchmarkArtifacts(
-        project_bundle=project_bundle,
-        logical_json=artifacts.logical_json,
-        schematic_json=artifacts.schematic_json,
-        schematic_svg=artifacts.schematic_svg,
-        schematic_body_svg=artifacts.schematic_body_svg,
-        schematic_svg_pages=artifacts.schematic_svg_pages,
-        validation_report=artifacts.diagnostics_json,
-    )
+    return artifacts
 
 
 if __name__ == "__main__":

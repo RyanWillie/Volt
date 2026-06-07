@@ -2,27 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
 import volt
 
 EXAMPLE_SLUG = "pcb_led_board"
 SHEET_FILE = "examples/pcb_led_board/main.py"
-
-
-@dataclass(frozen=True)
-class ExampleArtifacts:
-    project_bundle: Path
-    logical_json: Path
-    schematic_json: Path
-    schematic_svg: Path
-    schematic_body_svg: Path
-    schematic_svg_pages: tuple[Path, ...]
-    pcb_json: Path
-    pcb_svg: Path
-    kicad_pcb: Path
-    validation_report: Path
+MODEL_DIR = Path(__file__).resolve().parent / "models"
 
 
 def _require_clean(result: volt.ProjectResult) -> None:
@@ -104,6 +90,10 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
         package="0603",
         footprint=_passive_0603(("passives", "R_0603_1608Metric")),
         pin_pads={1: "1", 2: "2"},
+        model_3d=volt.PartModel3D(
+            MODEL_DIR / "r_0603_body.step",
+            offset=(0.0, 0.0, 0.35),
+        ),
         power_rating=0.1,
     )
     parts["D1"].select_part(
@@ -222,21 +212,19 @@ def build_project() -> volt.Project:
 
     @project.schematic
     def schematic(context: volt.BuildContext) -> volt.Schematic:
-        sheet = author_schematic(
+        return author_schematic(
             context.design(),
             context.resource("nets", dict),
             context.resource("parts", dict),
         )
-        return sheet
 
     @project.board
     def board(context: volt.BuildContext) -> volt.Board:
-        pcb = build_board(
+        return build_board(
             context.design(),
             context.resource("nets", dict),
             context.resource("parts", dict),
         )
-        return pcb
 
     @project.design.test
     def led_path_is_connected(check) -> None:
@@ -261,7 +249,7 @@ def run_project() -> volt.ProjectResult:
     return build_project().run()
 
 
-def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
+def write_artifacts(output_dir: Path | str | None = None) -> volt.ProjectArtifactPaths:
     if output_dir is None:
         output_dir = Path(__file__).resolve().parent / "artifacts"
     output_path = Path(output_dir)
@@ -279,18 +267,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
             + ", ".join(warning.construct for warning in kicad_export.warnings)
         )
     artifacts = result.write_artifacts(output_path, slug=EXAMPLE_SLUG)
-    return ExampleArtifacts(
-        project_bundle=project_bundle,
-        logical_json=artifacts.logical_json,
-        schematic_json=artifacts.schematic_json,
-        schematic_svg=artifacts.schematic_svg,
-        schematic_body_svg=artifacts.schematic_body_svg,
-        schematic_svg_pages=artifacts.schematic_svg_pages,
-        pcb_json=artifacts.pcb_json,
-        pcb_svg=artifacts.pcb_svg,
-        kicad_pcb=artifacts.kicad_pcb,
-        validation_report=artifacts.diagnostics_json,
-    )
+    return artifacts
 
 
 if __name__ == "__main__":

@@ -1,0 +1,9 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('Volt example 0603 resistor body placeholder'),'2;1');
+FILE_NAME('r_0603_body.step','2026-06-07T00:00:00',('Volt'),('Volt'),'Volt','Volt','');
+FILE_SCHEMA(('AP214'));
+ENDSEC;
+DATA;
+ENDSEC;
+END-ISO-10303-21;

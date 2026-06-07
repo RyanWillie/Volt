@@ -80,6 +80,29 @@
       "path": "pcb/First-Board-LED.kicad_pcb"
     },
     {
+      "kind": "part_models_3d",
+      "media_type": "application/json",
+      "name": "Project part models",
+      "path": "assets/part_models_3d.json"
+    },
+    {
+      "kind": "part_model_asset",
+      "media_type": "application/octet-stream",
+      "name": "part_model_asset:0",
+      "path": "assets/models/4b91321ef3df9390eb915bd133820f68e31cb54c88ce033e9445ceeec00eb8bf.step",
+      "sha256": "4b91321ef3df9390eb915bd133820f68e31cb54c88ce033e9445ceeec00eb8bf"
+    },
+    {
+      "group": {
+        "board": "First Board LED",
+        "design": "pcb-led-board"
+      },
+      "kind": "pcb_models_3d",
+      "media_type": "application/json",
+      "name": "First Board LED",
+      "path": "pcb/First-Board-LED.volt.models3d.json"
+    },
+    {
       "kind": "diagnostics",
       "media_type": "application/json",
       "name": "Project diagnostics",

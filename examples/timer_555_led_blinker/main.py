@@ -2,27 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
 import volt
 
 EXAMPLE_SLUG = "timer_555_led_blinker"
 SHEET_FILE = "timer_555_led_blinker/main.py"
-
-
-@dataclass(frozen=True)
-class ExampleArtifacts:
-    project_bundle: Path
-    logical_json: Path
-    schematic_json: Path
-    schematic_svg: Path
-    schematic_body_svg: Path
-    schematic_svg_pages: tuple[Path, ...]
-    pcb_json: Path
-    pcb_svg: Path
-    kicad_pcb: Path
-    validation_report: Path
 
 
 def _require_clean(result: volt.ProjectResult) -> None:
@@ -555,21 +540,19 @@ def build_project() -> volt.Project:
 
     @project.schematic
     def schematic(context: volt.BuildContext) -> volt.Schematic:
-        sheet = build_schematic(
+        return build_schematic(
             context.design(),
             context.resource("nets", dict),
             context.resource("parts", dict),
         )
-        return sheet
 
     @project.board
     def board(context: volt.BuildContext) -> volt.Board:
-        pcb = build_board(
+        return build_board(
             context.design(),
             context.resource("nets", dict),
             context.resource("parts", dict),
         )
-        return pcb
 
     @project.design.test
     def power_and_ground_are_separate(check) -> None:
@@ -593,7 +576,7 @@ def run_project() -> volt.ProjectResult:
     return build_project().run()
 
 
-def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
+def write_artifacts(output_dir: Path | str | None = None) -> volt.ProjectArtifactPaths:
     if output_dir is None:
         output_dir = Path(__file__).resolve().parent / "artifacts"
     output_path = Path(output_dir)
@@ -609,18 +592,7 @@ def write_artifacts(output_dir: Path | str | None = None) -> ExampleArtifacts:
         slug=EXAMPLE_SLUG,
         pcb_svg_options={"pad_net_overlays": False, "ratsnest_edges": False},
     )
-    return ExampleArtifacts(
-        project_bundle=project_bundle,
-        logical_json=artifacts.logical_json,
-        schematic_json=artifacts.schematic_json,
-        schematic_svg=artifacts.schematic_svg,
-        schematic_body_svg=artifacts.schematic_body_svg,
-        schematic_svg_pages=artifacts.schematic_svg_pages,
-        pcb_json=artifacts.pcb_json,
-        pcb_svg=artifacts.pcb_svg,
-        kicad_pcb=artifacts.kicad_pcb,
-        validation_report=artifacts.diagnostics_json,
-    )
+    return artifacts
 
 
 if __name__ == "__main__":
