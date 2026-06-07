@@ -55,11 +55,9 @@ TEST_CASE("PartModel3D enforces normalized asset identity") {
                     std::invalid_argument);
     CHECK_THROWS_AS((volt::PartModel3D{"stp", "resistor-body.stp", {0.0, 0.0, 0.0}, 0.0}),
                     std::invalid_argument);
-    CHECK_THROWS_AS((volt::PartModel3D{"glb", "models/resistor-body.glb", {0.0, 0.0, 0.0},
-                                       0.0}),
+    CHECK_THROWS_AS((volt::PartModel3D{"glb", "models/resistor-body.glb", {0.0, 0.0, 0.0}, 0.0}),
                     std::invalid_argument);
-    CHECK_THROWS_AS((volt::PartModel3D{"glb", R"(models\resistor-body.glb)",
-                                       {0.0, 0.0, 0.0}, 0.0}),
+    CHECK_THROWS_AS((volt::PartModel3D{"glb", R"(models\resistor-body.glb)", {0.0, 0.0, 0.0}, 0.0}),
                     std::invalid_argument);
 }
 

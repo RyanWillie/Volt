@@ -12,8 +12,7 @@ namespace {
 
 [[nodiscard]] bool is_part_model_3d_file_name(const std::string &file_name) noexcept {
     return !file_name.empty() && file_name != "." && file_name != ".." &&
-           file_name.find('/') == std::string::npos &&
-           file_name.find('\\') == std::string::npos;
+           file_name.find('/') == std::string::npos && file_name.find('\\') == std::string::npos;
 }
 
 } // namespace
