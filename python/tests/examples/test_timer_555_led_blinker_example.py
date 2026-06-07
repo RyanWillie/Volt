@@ -16,6 +16,30 @@ def _project_bundle_texts(bundle):
     }
 
 
+def _write_timer_artifacts(main, output_dir: Path):
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    result = main.run_project()
+    assert result.clean
+    result.write(output_path / f"{main.EXAMPLE_SLUG}.volt")
+    return result.write_artifacts(
+        output_path,
+        slug=main.EXAMPLE_SLUG,
+        pcb_svg_options={"pad_net_overlays": False, "ratsnest_edges": False},
+    )
+
+
+def _context(design, nets, parts):
+    return volt.BuildContext(
+        designs=(design,),
+        resources=(
+            volt.ProjectResource("nets", nets),
+            volt.ProjectResource("parts", parts),
+        ),
+    )
+
+
 def test_timer_555_led_blinker_example_exposes_project_result():
     main = importlib.import_module("examples.timer_555_led_blinker.main")
 
@@ -34,17 +58,17 @@ def test_timer_555_led_blinker_project_stages_are_primary_authoring_functions():
 
     source = inspect.getsource(main.build_project)
 
-    assert "return build_schematic(" in source
-    assert "return build_board(" in source
-    assert 'context.resource("nets", dict)' in source
-    assert 'context.resource("parts", dict)' in source
+    assert "project.schematic(build_schematic)" in source
+    assert "project.board(build_board)" in source
+    assert "register_project_tests(project)" in source
+    assert not hasattr(main, "write_artifacts")
 
 
 def test_timer_555_led_blinker_example_writes_stable_artifacts():
     main = importlib.import_module("examples.timer_555_led_blinker.main")
 
     with TemporaryDirectory() as temp_dir:
-        artifacts = main.write_artifacts(Path(temp_dir))
+        artifacts = _write_timer_artifacts(main, Path(temp_dir))
         logical = json.loads(artifacts.logical_json.read_text(encoding="utf-8"))
         schematic = json.loads(artifacts.schematic_json.read_text(encoding="utf-8"))
         validation = json.loads(artifacts.diagnostics_json.read_text(encoding="utf-8"))
@@ -65,13 +89,13 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
 
         stale_page = artifacts.schematic_svg_pages[0].parent / "stale.svg"
         stale_page.write_text("<svg></svg>\n", encoding="utf-8")
-        repeated_artifacts = main.write_artifacts(Path(temp_dir))
+        repeated_artifacts = _write_timer_artifacts(main, Path(temp_dir))
         assert not stale_page.exists()
         assert [path.name for path in repeated_artifacts.schematic_svg_pages] == [
             "timer_555_led_blinker_555_LED_Blinker.svg"
         ]
 
-        second_artifacts = main.write_artifacts(Path(temp_dir) / "second")
+        second_artifacts = _write_timer_artifacts(main, Path(temp_dir) / "second")
         assert second_artifacts.logical_json.read_text(encoding="utf-8") == first_texts["logical"]
         assert (
             second_artifacts.schematic_json.read_text(encoding="utf-8")
@@ -186,7 +210,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         {"key": "Revision", "value": "A"},
         {"key": "Date", "value": "2026-05-19"},
         {"key": "Project", "value": "Volt 555 LED Blinker"},
-        {"key": "File", "value": "timer_555_led_blinker/main.py"},
+        {"key": "File", "value": "timer_555_led_blinker/schematic.py"},
     ]
     assert {definition["name"] for definition in schematic["symbol_definitions"]} >= {
         "volt.examples.timer_555_led_blinker:NE555"
@@ -476,8 +500,8 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     assert 'class="power-port ground"' in svg_text
     assert "pin-anchor" not in svg_text
     assert "pin-label" not in svg_text
-    assert "examples/timer_555_led_blinker/main.py" not in svg_text
-    assert ">timer_555_led_blinker/main.py</text>" in svg_text
+    assert "examples/timer_555_led_blinker/schematic.py" not in svg_text
+    assert ">timer_555_led_blinker/schematic.py</text>" in svg_text
     assert {
         "555",
         "U1",
@@ -535,11 +559,12 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
 
 
 def test_timer_555_led_blinker_schematic_is_readable_without_mutating_logical_design():
-    main = importlib.import_module("examples.timer_555_led_blinker.main")
-    design, nets, parts = main.build_design()
+    components = importlib.import_module("examples.timer_555_led_blinker.components")
+    schematic_module = importlib.import_module("examples.timer_555_led_blinker.schematic")
+    design, nets, parts = components.build_design()
     logical_before = design.to_json()
 
-    schematic = main.build_schematic(design, nets, parts)
+    schematic = schematic_module.build_schematic(_context(design, nets, parts))
     readiness = schematic.validate()
     readability = schematic.validate_readability()
     readability_codes = {diagnostic.code for diagnostic in readability}
@@ -551,8 +576,8 @@ def test_timer_555_led_blinker_schematic_is_readable_without_mutating_logical_de
 
 
 def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
-    main = importlib.import_module("examples.timer_555_led_blinker.main")
-    source = inspect.getsource(main.build_schematic)
+    schematic_module = importlib.import_module("examples.timer_555_led_blinker.schematic")
+    source = inspect.getsource(schematic_module.build_schematic)
 
     assert ".two_terminal(" in source
     assert "drawing.connect(" in source
@@ -580,8 +605,8 @@ def test_timer_555_led_blinker_schematic_uses_generic_anchor_composition():
 
 
 def test_timer_555_led_blinker_board_uses_relative_route_authoring():
-    main = importlib.import_module("examples.timer_555_led_blinker.main")
-    source = inspect.getsource(main.build_board)
+    board_module = importlib.import_module("examples.timer_555_led_blinker.board")
+    source = inspect.getsource(board_module.build_board)
 
     assert "layout.route(" in source
     assert "layout.via(" in source

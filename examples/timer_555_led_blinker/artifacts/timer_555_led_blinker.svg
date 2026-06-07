@@ -54,7 +54,7 @@
       <text class="title-block-label" x="2" y="34.2">Project</text>
       <text class="title-block-value" x="24" y="34.2">Volt 555 LED Blinker</text>
       <text class="title-block-label" x="2" y="40.2">File</text>
-      <text class="title-block-value" x="24" y="40.2">timer_555_led_blinker/main.py</text>
+      <text class="title-block-value" x="24" y="40.2">timer_555_led_blinker/schematic.py</text>
     </g>
     <g class="layer layer-regions">
     </g>

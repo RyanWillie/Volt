@@ -7,6 +7,16 @@ The 555 timer example demonstrates a custom IC definition, typed pins, built-in 
 
 Source: `examples/timer_555_led_blinker/main.py`.
 
+## File shape
+
+| File | Responsibility |
+| --- | --- |
+| `main.py` | Project entrypoint and artifact CLI. |
+| `components.py` | NE555 definition, selected parts, and footprint geometry. |
+| `schematic.py` | Schematic stage over the logical design. |
+| `board.py` | PCB stage over the logical design. |
+| `project_tests.py` | Project-level intent checks. |
+
 ## Logical shape
 
 ```python
@@ -64,22 +74,9 @@ def build_project() -> volt.Project:
             volt.ProjectResource("parts", parts),
         )
 
-    @project.schematic
-    def schematic(context: volt.BuildContext) -> volt.Schematic:
-        return build_schematic(
-            context.design(),
-            context.resource("nets", dict),
-            context.resource("parts", dict),
-        )
-
-    @project.board
-    def board(context: volt.BuildContext) -> volt.Board:
-        return build_board(
-            context.design(),
-            context.resource("nets", dict),
-            context.resource("parts", dict),
-        )
-
+    project.schematic(build_schematic)
+    project.board(build_board)
+    register_project_tests(project)
     return project
 ```
 
@@ -89,7 +86,9 @@ reinterpret connectivity.
 
 ## Generated artifacts
 
-`write_artifacts()` produces:
+Running `python -m examples.timer_555_led_blinker.main` calls `run_project()`, checks
+that the result is clean, and then uses `ProjectResult.write()` plus
+`ProjectResult.write_artifacts()` to produce:
 
 - A full `.volt` project-result bundle.
 - Logical JSON.
