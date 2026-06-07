@@ -10,8 +10,10 @@ from ._utils import _number
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
 from .library import (
     LibraryComponent,
+    PartModel3D,
     PinSpec,
     SchematicSymbolSpec,
+    _SelectedPartModel3D,
     _normalize_schematic_symbols,
     _schematic_symbol_refs,
 )
@@ -34,6 +36,7 @@ class Design:
         self._library_definitions: dict[tuple[str, str, str], ComponentDefinition] = {}
         self._object_footprints: dict[FootprintRef, Footprint] = {}
         self._component_object_footprints: dict[int, FootprintRef] = {}
+        self._component_model_3d_asset_sources: dict[int, Path] = {}
         self._board_cached_footprints: dict[FootprintRef, tuple[int, Footprint]] = {}
         self._board_placed_components: list[int] = []
         self._schematic_symbols: dict[str, SchematicSymbolSpec] = {}
@@ -243,6 +246,7 @@ class Design:
                     properties=part.properties,
                     voltage_rating=part.voltage_rating,
                     power_rating=part.power_rating,
+                    model_3d=part.model_3d,
                 )
             return component
 
@@ -313,6 +317,28 @@ class Design:
 
     def _clear_component_object_footprint(self, component: int) -> None:
         self._component_object_footprints.pop(component, None)
+
+    def _register_component_model_3d_asset_source(
+        self,
+        component: int,
+        model_3d: PartModel3D,
+    ) -> None:
+        self._component_model_3d_asset_sources[component] = model_3d.source_path
+
+    def _clear_component_model_3d_asset_source(self, component: int) -> None:
+        self._component_model_3d_asset_sources.pop(component, None)
+
+    def _component_model_3d_asset_source(self, component: int) -> Path | None:
+        return self._component_model_3d_asset_sources.get(component)
+
+    def _selected_part_model_3d(self, component: int) -> _SelectedPartModel3D | None:
+        payload = self._circuit.component_selected_part_model_3d(component)
+        if payload is None:
+            return None
+        return _SelectedPartModel3D.from_payload(payload)
+
+    def _component_reference(self, component: int) -> str:
+        return self._circuit.component_reference(component)
 
     def _object_footprint_for_component(self, component: int) -> Footprint | None:
         ref = self._component_object_footprints.get(component)

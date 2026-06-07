@@ -866,12 +866,27 @@ LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
         mappings.emplace_back(resolve(pin_def_ids_, string_field(mapping, "pin")),
                               string_field(mapping, "pad"));
     }
+    auto model_3d = std::optional<PartModel3D>{};
+    const auto model_it = object.find("model_3d");
+    if (model_it != object.end()) {
+        require(model_it->is_object(), "Selected physical part model_3d must be an object");
+        const auto &translation = array_field(*model_it, "translation_mm");
+        require(translation.size() == 3U,
+                "Selected physical part model_3d translation must contain three numbers");
+        model_3d = PartModel3D{
+            string_field(*model_it, "format"), string_field(*model_it, "file_name"),
+            std::array<double, 3>{translation[0].get<double>(), translation[1].get<double>(),
+                                  translation[2].get<double>()},
+            number_field(*model_it, "rotation_deg")};
+    }
     return PhysicalPart{
         ManufacturerPart{string_field(manufacturer_part, "manufacturer"),
                          string_field(manufacturer_part, "part_number")},
         PackageRef{string_field(object, "package")},
         FootprintRef{string_field(footprint, "library"), string_field(footprint, "name")},
-        std::move(mappings), properties(field(object, "properties"))};
+        std::move(mappings),
+        properties(field(object, "properties")),
+        model_3d};
 }
 
 void LogicalCircuitReader::read_selected_physical_parts() {

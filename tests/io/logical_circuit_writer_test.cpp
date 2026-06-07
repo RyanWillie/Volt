@@ -128,6 +128,36 @@ TEST_CASE("Logical circuit writer emits typed electrical attributes") {
     CHECK(part_attributes["voltage_rating"]["value"] == 75.0);
 }
 
+TEST_CASE("Logical circuit writer emits selected-part 3D model metadata") {
+    volt::Circuit circuit;
+    const auto first_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto second_pin =
+        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    circuit.select_physical_part(
+        component,
+        volt::PhysicalPart{
+            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+            volt::PackageRef{"0603"},
+            volt::FootprintRef{"passives", "R_0603_1608Metric"},
+            std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
+            {},
+            volt::PartModel3D{"glb", "resistor-body.glb", {0.5, -0.25, 0.8}, 15.0},
+        });
+
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+    const auto &model = output["components"][0]["selected_physical_part"]["model_3d"];
+
+    CHECK(model["format"] == "glb");
+    CHECK(model["file_name"] == "resistor-body.glb");
+    CHECK(model["translation_mm"] == nlohmann::json::array({0.5, -0.25, 0.8}));
+    CHECK(model["rotation_deg"] == 15.0);
+}
+
 TEST_CASE("Logical circuit writer emits net typed electrical attributes") {
     volt::Circuit circuit;
     const auto net = circuit.add_net(volt::Net{volt::NetName{"3V3"}, volt::NetKind::Power});

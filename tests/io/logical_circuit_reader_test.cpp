@@ -71,6 +71,30 @@ TEST_CASE("Logical circuit reader preserves typed electrical attributes") {
               .as_quantity() == volt::Quantity{volt::UnitDimension::Voltage, 75.0});
 }
 
+TEST_CASE("Logical circuit reader preserves selected-part 3D model metadata") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["components"][1]["selected_physical_part"]["model_3d"] = {
+        {"kind", "asset"},
+        {"format", "glb"},
+        {"file_name", "resistor-body.glb"},
+        {"translation_mm", nlohmann::json::array({0.5, -0.25, 0.8})},
+        {"rotation_deg", 15.0},
+    };
+
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
+    const auto &selected_part = circuit.selected_physical_part(volt::ComponentId{1}).value();
+
+    REQUIRE(selected_part.model_3d().has_value());
+    CHECK(selected_part.model_3d()->format() == "glb");
+    CHECK(selected_part.model_3d()->file_name() == "resistor-body.glb");
+    CHECK(selected_part.model_3d()->translation_mm() == std::array<double, 3>{0.5, -0.25, 0.8});
+    CHECK(selected_part.model_3d()->rotation_deg() == 15.0);
+    fixture["components"][1]["selected_physical_part"]["model_3d"].erase("kind");
+    CHECK(nlohmann::json::parse(volt::io::write_logical_circuit(
+              circuit))["components"][1]["selected_physical_part"]["model_3d"] ==
+          fixture["components"][1]["selected_physical_part"]["model_3d"]);
+}
+
 TEST_CASE("Logical circuit reader preserves net typed electrical attributes") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["nets"][0]["electrical_attributes"] = {

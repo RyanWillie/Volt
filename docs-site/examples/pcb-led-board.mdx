@@ -14,7 +14,7 @@ Source: `examples/pcb_led_board/main.py`.
     Define `+3V3`, `LED_A`, and `GND`, then connect a header, resistor, and LED.
   </Step>
   <Step title="Select physical parts">
-    Attach manufacturer, part number, package label, object-owned footprint geometry, and pin-pad mappings.
+    Attach manufacturer, part number, package label, object-owned footprint geometry, pin-pad mappings, and optional `model_3d` asset metadata.
   </Step>
   <Step title="Carry footprint geometry">
     Keep the through-hole and 0603 pad geometry on each selected physical part.
@@ -30,6 +30,8 @@ Source: `examples/pcb_led_board/main.py`.
 ## Selected part example
 
 ```python
+from pathlib import Path
+
 parts["R1"].select_part(
     manufacturer="Yageo",
     part_number="RC0603FR-07330RL",
@@ -42,6 +44,10 @@ parts["R1"].select_part(
         ),
     ),
     pin_pads={1: "1", 2: "2"},
+    model_3d=volt.PartModel3D(
+        Path(__file__).resolve().parent / "models" / "r_0603_body.glb",
+        offset=(0.0, 0.0, 0.8),
+    ),
     power_rating=0.1,
 )
 ```

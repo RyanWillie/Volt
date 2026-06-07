@@ -8,6 +8,7 @@ from typing import Iterable
 
 from ._footprint import Footprint
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
+from .library import _SelectedPartModel3D
 from .logical import Component, Net
 
 
@@ -140,6 +141,29 @@ class PadResolution:
     pin: int | None
     net: int | None
     status: str
+
+
+@dataclass(frozen=True)
+class _BoardPlacementRef:
+    """Internal typed view of one board component placement."""
+
+    index: int
+    component: int
+    position: Point
+    rotation_deg: float
+    side: str
+    locked: bool
+
+
+@dataclass(frozen=True)
+class _BoardPlacedModel3DRef:
+    """Internal typed view of one board placement with selected-part 3D metadata."""
+
+    placement: _BoardPlacementRef
+    reference: str
+    model: _SelectedPartModel3D | None
+    source_path: Path | None
+    surface_z: float
 
 
 @dataclass(frozen=True)
@@ -478,6 +502,37 @@ class Board:
         )
         self._design._record_board_placement(component_index)
         return placement
+
+    def _placements(self) -> tuple[_BoardPlacementRef, ...]:
+        return tuple(
+            _BoardPlacementRef(
+                index=item["index"],
+                component=item["component"],
+                position=_point(tuple(item["position"]), "Board placement position"),
+                rotation_deg=float(item["rotation_deg"]),
+                side=item["side"],
+                locked=bool(item["locked"]),
+            )
+            for item in self._design._circuit.board_placement_refs()
+        )
+
+    def _surface_z(self, side: str) -> float:
+        for layer in self._design._circuit.board_stackup():
+            if layer["side"] == side:
+                return float(layer["z_mm"])
+        return 0.0
+
+    def _placed_model_3d_refs(self) -> tuple[_BoardPlacedModel3DRef, ...]:
+        return tuple(
+            _BoardPlacedModel3DRef(
+                placement=placement,
+                reference=self._design._component_reference(placement.component),
+                model=self._design._selected_part_model_3d(placement.component),
+                source_path=self._design._component_model_3d_asset_source(placement.component),
+                surface_z=self._surface_z(placement.side),
+            )
+            for placement in self._placements()
+        )
 
     def add_track(
         self,

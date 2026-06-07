@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Iterable
 from ._footprint import Footprint, FootprintInput, footprint_ref
 from ._immutable import _freeze_value, _mutable_value
 from .library import (
+    PartModel3D,
     PhysicalPartSpec,
     PinPadValue,
     PinSpec,
@@ -78,6 +79,7 @@ class Part:
         ratings: dict | None = None,
         voltage_rating: float | None = None,
         power_rating: float | None = None,
+        model_3d: PartModel3D | None = None,
         prefix: str = "U",
         extensions: dict | None = None,
         source_name: str | None = None,
@@ -121,6 +123,7 @@ class Part:
         self.ratings = _freeze_value(ratings or {})
         self.voltage_rating = voltage_rating
         self.power_rating = power_rating
+        self.model_3d = model_3d
         self.prefix = prefix
         self.extensions = _freeze_value(extensions or {})
         self.source_name = source_name or name
@@ -179,6 +182,7 @@ class Part:
             ),
             voltage_rating=self.voltage_rating,
             power_rating=self.power_rating,
+            model_3d=self.model_3d,
         )
 
     def _to_dict(self) -> dict:
@@ -200,6 +204,7 @@ class Part:
             "ratings": _mutable_value(self.ratings),
             "voltage_rating": self.voltage_rating,
             "power_rating": self.power_rating,
+            "model_3d": None if self.model_3d is None else self.model_3d._to_dict(),
             "prefix": self.prefix,
             "extensions": _mutable_value(self.extensions),
             "source_name": self.source_name,

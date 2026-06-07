@@ -1,6 +1,21 @@
 #include <volt/circuit/parts.hpp>
 
+#include <cmath>
+
 namespace volt {
+
+namespace {
+
+[[nodiscard]] bool is_supported_part_model_3d_format(const std::string &format) noexcept {
+    return format == "glb" || format == "step";
+}
+
+[[nodiscard]] bool is_part_model_3d_file_name(const std::string &file_name) noexcept {
+    return !file_name.empty() && file_name != "." && file_name != ".." &&
+           file_name.find('/') == std::string::npos && file_name.find('\\') == std::string::npos;
+}
+
+} // namespace
 
 ManufacturerPart::ManufacturerPart(std::string manufacturer, std::string part_number)
     : manufacturer_{std::move(manufacturer)}, part_number_{std::move(part_number)} {
@@ -34,12 +49,32 @@ PinPadMapping::PinPadMapping(PinDefId pin, std::string pad) : pin_{pin}, pad_{st
     }
 }
 
+PartModel3D::PartModel3D(std::string format, std::string file_name,
+                         std::array<double, 3> translation_mm, double rotation_deg)
+    : format_{std::move(format)}, file_name_{std::move(file_name)}, translation_mm_{translation_mm},
+      rotation_deg_{rotation_deg} {
+    if (!is_supported_part_model_3d_format(format_)) {
+        throw std::invalid_argument{"3D model format must be glb or step"};
+    }
+    if (!is_part_model_3d_file_name(file_name_)) {
+        throw std::invalid_argument{"3D model file name must be a basename"};
+    }
+    if (!std::isfinite(rotation_deg_)) {
+        throw std::invalid_argument{"3D model rotation must be finite"};
+    }
+    for (const auto value : translation_mm_) {
+        if (!std::isfinite(value)) {
+            throw std::invalid_argument{"3D model translation must be finite"};
+        }
+    }
+}
+
 PhysicalPart::PhysicalPart(ManufacturerPart manufacturer_part, PackageRef package,
                            FootprintRef footprint, std::vector<PinPadMapping> pin_pad_mappings,
-                           PropertyMap properties)
+                           PropertyMap properties, std::optional<PartModel3D> model_3d)
     : manufacturer_part_{std::move(manufacturer_part)}, package_{std::move(package)},
       footprint_{std::move(footprint)}, pin_pad_mappings_{std::move(pin_pad_mappings)},
-      properties_{std::move(properties)} {
+      properties_{std::move(properties)}, model_3d_{std::move(model_3d)} {
     if (pin_pad_mappings_.empty()) {
         throw std::invalid_argument{"Physical part must contain at least one pin-pad mapping"};
     }

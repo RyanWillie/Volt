@@ -28,10 +28,12 @@ void bind_circuit(pybind11::module_ &module) {
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
         .def("net_refs", &PyCircuit::net_refs)
         .def("component_refs", &PyCircuit::component_refs)
+        .def("component_selected_part_model_3d", &PyCircuit::component_selected_part_model_3d,
+             py::arg("component"))
         .def("select_physical_part", &PyCircuit::select_physical_part, py::arg("component"),
              py::arg("manufacturer"), py::arg("part_number"), py::arg("package"),
              py::arg("footprint_library"), py::arg("footprint_name"), py::arg("pin_pads"),
-             py::arg("properties") = py::dict{})
+             py::arg("properties") = py::dict{}, py::arg("model_3d") = py::none())
         .def("set_component_quantity", &PyCircuit::set_component_quantity, py::arg("component"),
              py::arg("name"), py::arg("dimension"), py::arg("value"))
         .def("set_component_percent_tolerance", &PyCircuit::set_component_percent_tolerance,
@@ -184,6 +186,8 @@ void bind_circuit(pybind11::module_ &module) {
         .def("board_place_component", &PyCircuit::board_place_component, py::arg("component"),
              py::arg("x"), py::arg("y"), py::arg("rotation_degrees") = 0.0, py::arg("side") = "top",
              py::arg("locked") = false)
+        .def("board_placement_refs", &PyCircuit::board_placement_refs)
+        .def("board_stackup", &PyCircuit::board_stackup)
         .def("board_component_footprint_pads", &PyCircuit::board_component_footprint_pads,
              py::arg("component"))
         .def("board_add_track", &PyCircuit::board_add_track, py::arg("net"), py::arg("layer"),

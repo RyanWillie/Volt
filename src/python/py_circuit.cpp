@@ -83,6 +83,88 @@ schematic_endpoints_from_list(const py::list &endpoints) {
     return result;
 }
 
+[[nodiscard]] std::optional<volt::PartModel3D> part_model_3d_from_object(py::handle value) {
+    if (value.is_none()) {
+        return std::nullopt;
+    }
+    const auto data = py::cast<py::dict>(value);
+    auto translation = std::array<double, 3>{};
+    const auto translation_payload = py::cast<py::sequence>(data["translation_mm"]);
+    if (py::len(translation_payload) != 3U) {
+        throw py::value_error{"Selected-part 3D model translation must contain three numbers"};
+    }
+    for (auto index = std::size_t{0}; index < 3; ++index) {
+        translation[index] = py::cast<double>(translation_payload[index]);
+        require_finite(translation[index], "Selected-part 3D model translation must be finite");
+    }
+    const auto rotation = py::cast<double>(data["rotation_deg"]);
+    require_finite(rotation, "Selected-part 3D model rotation must be finite");
+    return volt::PartModel3D{py::cast<std::string>(data["format"]),
+                             py::cast<std::string>(data["file_name"]), translation, rotation};
+}
+
+[[nodiscard]] py::object part_model_3d_to_object(const std::optional<volt::PartModel3D> &model_3d) {
+    if (!model_3d.has_value()) {
+        return py::none{};
+    }
+    auto payload = py::dict{};
+    payload["format"] = model_3d->format();
+    payload["file_name"] = model_3d->file_name();
+    payload["translation_mm"] =
+        py::make_tuple(model_3d->translation_mm()[0], model_3d->translation_mm()[1],
+                       model_3d->translation_mm()[2]);
+    payload["rotation_deg"] = model_3d->rotation_deg();
+    return payload;
+}
+
+[[nodiscard]] std::string board_side_name(volt::BoardSide side) {
+    switch (side) {
+    case volt::BoardSide::Top:
+        return "top";
+    case volt::BoardSide::Bottom:
+        return "bottom";
+    }
+    throw std::logic_error{"Unhandled board side"};
+}
+
+[[nodiscard]] std::string board_layer_side_name(volt::BoardLayerSide side) {
+    switch (side) {
+    case volt::BoardLayerSide::Top:
+        return "top";
+    case volt::BoardLayerSide::Bottom:
+        return "bottom";
+    case volt::BoardLayerSide::Inner:
+        return "inner";
+    case volt::BoardLayerSide::Both:
+        return "both";
+    case volt::BoardLayerSide::None:
+        return "none";
+    }
+    throw std::logic_error{"Unhandled board layer side"};
+}
+
+[[nodiscard]] double layer_z_mm(const volt::Board &board, const volt::LayerStack &stack,
+                                std::size_t stack_index) {
+    const auto layer_id = stack.layers()[stack_index];
+    const auto &layer = board.layer(layer_id);
+    const auto half_thickness = stack.board_thickness_mm() / 2.0;
+    switch (layer.side()) {
+    case volt::BoardLayerSide::Top:
+        return half_thickness;
+    case volt::BoardLayerSide::Bottom:
+        return -half_thickness;
+    case volt::BoardLayerSide::Inner:
+    case volt::BoardLayerSide::Both:
+    case volt::BoardLayerSide::None:
+        break;
+    }
+    if (stack.layers().size() == 1U) {
+        return 0.0;
+    }
+    return half_thickness - ((stack.board_thickness_mm() * static_cast<double>(stack_index)) /
+                             static_cast<double>(stack.layers().size() - 1U));
+}
+
 [[nodiscard]] py::tuple schematic_entity_result(std::size_t index, volt::NetId net) {
     return py::make_tuple(index, net.index());
 }
@@ -205,11 +287,21 @@ py::list PyCircuit::component_refs() const {
     return result;
 }
 
+py::object PyCircuit::component_selected_part_model_3d(std::size_t component) const {
+    const auto component_handle = component_id(component);
+    static_cast<void>(circuit_.component(component_handle));
+    const auto &selected_part = circuit_.selected_physical_part(component_handle);
+    if (!selected_part.has_value()) {
+        return py::none{};
+    }
+    return part_model_3d_to_object(selected_part->model_3d());
+}
+
 void PyCircuit::select_physical_part(std::size_t component, const std::string &manufacturer,
                                      const std::string &part_number, const std::string &package,
                                      const std::string &footprint_library,
                                      const std::string &footprint_name, const py::dict &pin_pads,
-                                     const py::dict &properties) {
+                                     const py::dict &properties, py::object model_3d) {
     const auto component_handle = component_id(component);
     auto mappings = std::vector<volt::PinPadMapping>{};
     mappings.reserve(static_cast<std::size_t>(py::len(pin_pads)));
@@ -238,11 +330,11 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
     }
 
     circuit_.select_physical_part(
-        component_handle,
-        volt::PhysicalPart{volt::ManufacturerPart{manufacturer, part_number},
-                           volt::PackageRef{package},
-                           volt::FootprintRef{footprint_library, footprint_name},
-                           std::move(mappings), properties_from_dict(properties)});
+        component_handle, volt::PhysicalPart{volt::ManufacturerPart{manufacturer, part_number},
+                                             volt::PackageRef{package},
+                                             volt::FootprintRef{footprint_library, footprint_name},
+                                             std::move(mappings), properties_from_dict(properties),
+                                             part_model_3d_from_object(model_3d)});
 }
 
 void PyCircuit::set_component_quantity(std::size_t component, const std::string &name,
@@ -1117,6 +1209,44 @@ std::size_t PyCircuit::board_place_component(std::size_t component, double x, do
                                                   volt::BoardRotation::degrees(rotation_degrees),
                                                   parse_board_side(side), locked})
         .index();
+}
+
+py::list PyCircuit::board_placement_refs() const {
+    auto result = py::list{};
+    const auto &board = board_projection();
+    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+        const auto placement_id = volt::ComponentPlacementId{index};
+        const auto &placement = board.placement(placement_id);
+        auto item = py::dict{};
+        item["index"] = placement_id.index();
+        item["component"] = placement.component().index();
+        item["position"] = py::make_tuple(placement.position().x_mm(), placement.position().y_mm());
+        item["rotation_deg"] = placement.rotation().degrees();
+        item["side"] = board_side_name(placement.side());
+        item["locked"] = placement.locked();
+        result.append(std::move(item));
+    }
+    return result;
+}
+
+py::list PyCircuit::board_stackup() const {
+    auto result = py::list{};
+    const auto &board = board_projection();
+    if (!board.layer_stack().has_value()) {
+        return result;
+    }
+    const auto &stack = board.layer_stack().value();
+    for (std::size_t index = 0; index < stack.layers().size(); ++index) {
+        const auto layer_id = stack.layers()[index];
+        const auto &layer = board.layer(layer_id);
+        auto item = py::dict{};
+        item["index"] = layer_id.index();
+        item["name"] = layer.name();
+        item["side"] = board_layer_side_name(layer.side());
+        item["z_mm"] = layer_z_mm(board, stack, index);
+        result.append(std::move(item));
+    }
+    return result;
 }
 
 py::list PyCircuit::board_component_footprint_pads(std::size_t component) const {

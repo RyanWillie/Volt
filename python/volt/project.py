@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 from ._project_model_lookup import model_output_name, one_or_named, one_or_named_projection
+from ._project_models3d import collect_project_part_models_3d, copy_part_model_3d_asset
 from .design import Design
 from .diagnostics import DiagnosticEntity, DiagnosticOverlay
 from .library import Library
@@ -133,6 +134,16 @@ class ProjectArtifactPaths:
     pcb_svg: Path | None = None
     kicad_pcb: Path | None = None
     diagnostics_json: Path | None = None
+
+
+@dataclass(frozen=True)
+class _BundlePolicySnapshot:
+    """Diagnostic policy snapshot for one profile-specific project-result bundle."""
+
+    diagnostics: "ProjectDiagnostics"
+    tests: tuple[ProjectTestResult, ...]
+    ok: bool
+    status: str
 
 
 class ProjectDiagnostics:
@@ -575,20 +586,24 @@ class ProjectResult:
             if not test.ok
         )
 
-    def write(self, path: str | Path) -> None:
-        """Write a deterministic project result bundle to a directory."""
+    def write(self, path: str | Path, *, profile: str = "default") -> None:
+        """Write a deterministic project result bundle, optionally with viewer-profile checks."""
+        if profile not in {"default", "viewer"}:
+            raise ValueError("ProjectResult.write profile must be 'default' or 'viewer'")
         root = Path(path)
         _prepare_bundle_root(root)
 
         used_paths: set[str] = set()
-        artifacts: list[dict[str, str]] = []
+        artifacts: list[dict[str, object]] = []
+        board_documents: list[tuple[Board, str]] = []
         for model in self._models:
             if isinstance(model, Design):
+                design_text = model.to_json()
                 relative = _unique_path(
                     Path("logical") / f"{_safe_slug(model.name)}.volt.json",
                     used_paths,
                 )
-                _write_text(root / relative, model.to_json())
+                _write_text(root / relative, design_text)
                 artifacts.append(
                     _artifact_record(
                         "logical",
@@ -654,6 +669,7 @@ class ProjectResult:
                 )
             elif isinstance(model, Board):
                 output_name = model_output_name(model, self.boards)
+                board_text = model.to_json()
                 relative_json = _unique_path(
                     Path("pcb") / f"{_safe_slug(output_name)}.volt.pcb.json",
                     used_paths,
@@ -662,7 +678,7 @@ class ProjectResult:
                     Path("pcb") / f"{_safe_slug(output_name)}.svg",
                     used_paths,
                 )
-                _write_text(root / relative_json, model.to_json())
+                _write_text(root / relative_json, board_text)
                 _write_text(root / relative_svg, model.to_svg())
                 kicad_export = model.to_kicad_pcb()
                 relative_kicad = _unique_path(
@@ -698,11 +714,28 @@ class ProjectResult:
                         group=group,
                     )
                 )
+                board_documents.append((model, output_name))
 
+        model_artifacts, model_diagnostics = self._write_part_model_3d_artifacts(
+            root=root,
+            boards=board_documents,
+            used_paths=used_paths,
+            profile=profile,
+        )
+        artifacts.extend(model_artifacts)
+
+        bundle_policy = _bundle_policy_snapshot(self, extra_diagnostics=model_diagnostics)
         diagnostics_path = _unique_path(Path("diagnostics") / "diagnostics.json", used_paths)
         tests_path = _unique_path(Path("diagnostics") / "tests.json", used_paths)
-        _write_json(root / diagnostics_path, _diagnostics_payload(self))
-        _write_json(root / tests_path, _tests_payload(self._test_results()))
+        _write_json(
+            root / diagnostics_path,
+            _diagnostics_payload(
+                self,
+                diagnostics=bundle_policy.diagnostics,
+                status=bundle_policy.status,
+            ),
+        )
+        _write_json(root / tests_path, _tests_payload(bundle_policy.tests))
         artifacts.append(
             _artifact_record(
                 "diagnostics",
@@ -730,8 +763,9 @@ class ProjectResult:
                     "version": self.project.version,
                     "description": self.project.description,
                 },
-                "ok": self.ok,
-                "status": self.status,
+                "ok": bundle_policy.ok,
+                "profile": profile,
+                "status": bundle_policy.status,
                 "stages": [
                     {
                         "name": stage.name,
@@ -746,12 +780,12 @@ class ProjectResult:
                 "artifacts": artifacts,
                 "diagnostics": {
                     "path": diagnostics_path.as_posix(),
-                    "summary": _diagnostic_summary(self._diagnostics),
-                    "status": self.status,
+                    "summary": _diagnostic_summary(bundle_policy.diagnostics),
+                    "status": bundle_policy.status,
                 },
                 "tests": {
                     "path": tests_path.as_posix(),
-                    "summary": _test_summary(self._test_results()),
+                    "summary": _test_summary(bundle_policy.tests),
                 },
             },
         )
@@ -845,6 +879,119 @@ class ProjectResult:
 
     def _test_results(self) -> tuple[ProjectTestResult, ...]:
         return tuple(test for stage in self._stages for test in stage.tests)
+
+    def _write_part_model_3d_artifacts(
+        self,
+        *,
+        root: Path,
+        boards: list[tuple[Board, str]],
+        used_paths: set[str],
+        profile: str,
+    ) -> tuple[list[dict[str, object]], tuple[ProjectDiagnostic, ...]]:
+        artifacts: list[dict[str, object]] = []
+        bundle = collect_project_part_models_3d(boards, profile=profile)
+        asset_paths: dict[str, str] = {}
+
+        for asset in bundle.assets:
+            relative_asset = _unique_path(
+                Path("assets") / "models" / f"{asset.sha256}{asset.suffix}",
+                used_paths,
+            )
+            copy_part_model_3d_asset(asset, root / relative_asset)
+            asset_paths[asset.id] = relative_asset.as_posix()
+
+        if bundle.assets or bundle.models:
+            registry_path = _unique_path(Path("assets") / "part_models_3d.json", used_paths)
+            _write_json(
+                root / registry_path,
+                {
+                    "format": "volt.part_models_3d_registry",
+                    "version": 1,
+                    "assets": [
+                        {
+                            "id": asset.id,
+                            "format": asset.format,
+                            "path": asset_paths[asset.id],
+                            "sha256": asset.sha256,
+                        }
+                        for asset in bundle.assets
+                    ],
+                    "models": [
+                        {
+                            "id": model.id,
+                            "asset": model.asset,
+                            "file_name": model.file_name,
+                            "translation_mm": list(model.translation_mm),
+                            "rotation_deg": model.rotation_deg,
+                        }
+                        for model in bundle.models
+                    ],
+                },
+            )
+            artifacts.append(
+                _artifact_record(
+                    "part_models_3d",
+                    "Project part models",
+                    registry_path,
+                    "application/json",
+                )
+            )
+            for asset in bundle.assets:
+                artifacts.append(
+                    _artifact_record(
+                        "part_model_asset",
+                        asset.id,
+                        Path(asset_paths[asset.id]),
+                        "application/octet-stream",
+                        sha256=asset.sha256,
+                    )
+                )
+        for board_record in bundle.boards:
+            group = {"design": board_record.board._design.name, "board": board_record.board.name}
+            relative = _unique_path(
+                Path("pcb") / f"{_safe_slug(board_record.output_name)}.volt.models3d.json",
+                used_paths,
+            )
+            _write_json(
+                root / relative,
+                {
+                    "format": "volt.part_models_3d",
+                    "version": 1,
+                    "board": {
+                        "design": board_record.board._design.name,
+                        "name": board_record.board.name,
+                    },
+                    "placements": [
+                        {
+                            "placement": f"component_placement:{placement.placement}",
+                            "component": f"component:{placement.component}",
+                            "reference": placement.reference,
+                            "model": placement.model,
+                            "transform_matrix": placement.transform_matrix,
+                        }
+                        for placement in board_record.placements
+                    ],
+                },
+            )
+            artifacts.append(
+                _artifact_record(
+                    "pcb_models_3d",
+                    board_record.output_name,
+                    relative,
+                    "application/json",
+                    group=group,
+                )
+            )
+
+        return artifacts, tuple(
+            _part_model_3d_diagnostic(
+                board=item.board,
+                profile=profile,
+                reference=item.reference,
+                message=item.message,
+            )
+            for item in bundle.missing
+        )
 
 
 def _is_known_model(value: object) -> bool:
@@ -1061,6 +1208,82 @@ def _write_text(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def _bundle_policy_snapshot(
+    result: ProjectResult,
+    *,
+    extra_diagnostics: tuple[ProjectDiagnostic, ...],
+) -> _BundlePolicySnapshot:
+    diagnostics = (
+        result.diagnostics
+        if not extra_diagnostics
+        else ProjectDiagnostics((*result.diagnostics, *extra_diagnostics))
+    )
+    tests = result._test_results()
+    return _BundlePolicySnapshot(
+        diagnostics=diagnostics,
+        tests=tests,
+        ok=_bundle_ok(result, diagnostics, tests),
+        status=_bundle_status(result, diagnostics, tests),
+    )
+
+
+def _bundle_ok(
+    result: ProjectResult,
+    diagnostics: ProjectDiagnostics,
+    tests: tuple[ProjectTestResult, ...],
+) -> bool:
+    if result.project._expected_diagnostics:
+        return _expected_diagnostics_ok(
+            result.project._expected_diagnostics,
+            diagnostics,
+        ) and not _test_summary(tests)["failed"]
+    return not diagnostics.has_errors and not _test_summary(tests)["failed"]
+
+
+def _bundle_status(
+    result: ProjectResult,
+    diagnostics: ProjectDiagnostics,
+    tests: tuple[ProjectTestResult, ...],
+) -> str:
+    if len(diagnostics) == 0 and not _test_summary(tests)["failed"]:
+        return "clean"
+    if _bundle_ok(result, diagnostics, tests):
+        return "expected-diagnostics"
+    return "failed"
+
+
+def _expected_diagnostics_ok(
+    expectations: Iterable[ExpectedDiagnostic],
+    diagnostics: ProjectDiagnostics,
+) -> bool:
+    expected = tuple(expectations)
+    if not expected:
+        return not diagnostics.has_errors
+    _matches, unexpected, missing = _diagnostic_policy_snapshot(expected, diagnostics)
+    return not unexpected and not missing
+
+
+def _part_model_3d_diagnostic(
+    *,
+    board: Board,
+    profile: str,
+    reference: str,
+    message: str,
+) -> ProjectDiagnostic:
+    return ProjectDiagnostic(
+        stage="bundle",
+        source=f"pcb:{board.name}",
+        report=f"project.bundle:{profile}",
+        severity="error",
+        code="PROJECT_PART_MODEL_3D_MISSING",
+        message=f"{reference}: {message}",
+        entities=(),
+        category="viewer",
+        design=board._design.name,
+        board=board.name,
+    )
+
+
 def _prepare_bundle_root(root: Path) -> None:
     if root.exists() and not root.is_dir():
         raise NotADirectoryError(root)
@@ -1069,7 +1292,7 @@ def _prepare_bundle_root(root: Path) -> None:
         raise FileExistsError(
             f"Refusing to overwrite {root}: not an existing Volt project-result bundle"
         )
-    for directory in ("logical", "schematic", "pcb", "diagnostics"):
+    for directory in ("logical", "schematic", "pcb", "diagnostics", "assets"):
         shutil.rmtree(root / directory, ignore_errors=True)
     manifest = root / "manifest.volt.json"
     if manifest.exists():
@@ -1101,6 +1324,7 @@ def _artifact_record(
     media_type: str,
     *,
     group: dict[str, str] | None = None,
+    sha256: str | None = None,
 ) -> dict[str, object]:
     record: dict[str, object] = {
         "kind": kind,
@@ -1110,34 +1334,57 @@ def _artifact_record(
     }
     if group is not None:
         record["group"] = group
+    if sha256 is not None:
+        record["sha256"] = sha256
     return record
 
 
-def _diagnostics_payload(result: ProjectResult) -> dict:
+def _diagnostics_payload(
+    result: ProjectResult,
+    *,
+    diagnostics: ProjectDiagnostics | None = None,
+    status: str | None = None,
+) -> dict:
+    diagnostics = result.diagnostics if diagnostics is None else diagnostics
+    status = result.status if status is None else status
+    expected, unexpected, missing = _diagnostic_policy_snapshot(
+        result.project._expected_diagnostics,
+        diagnostics,
+    )
     return {
-        "status": result.status,
-        "summary": _diagnostic_summary(result.diagnostics),
+        "status": status,
+        "summary": _diagnostic_summary(diagnostics),
         "diagnostics": [
             _project_diagnostic_payload(diagnostic)
-            for diagnostic in result.diagnostics
+            for diagnostic in diagnostics
         ],
         "expected": [
             _expected_diagnostic_result_payload(expectation)
-            for expectation in result.expected_diagnostics
+            for expectation in expected
         ],
         "unexpected": [
             _project_diagnostic_payload(diagnostic)
-            for diagnostic in result.unexpected_diagnostics
+            for diagnostic in unexpected
         ],
         "missing_expected": [
             _expected_diagnostic_result_payload(expectation)
-            for expectation in result.missing_expected_diagnostics
+            for expectation in missing
         ],
     }
 
 
-def _flat_diagnostics_payload(result: ProjectResult) -> dict:
-    diagnostics = tuple(result.diagnostics)
+def _flat_diagnostics_payload(
+    result: ProjectResult,
+    *,
+    diagnostics: ProjectDiagnostics | None = None,
+    status: str | None = None,
+) -> dict:
+    diagnostics = tuple(result.diagnostics if diagnostics is None else diagnostics)
+    status = result.status if status is None else status
+    expected, unexpected, missing = _diagnostic_policy_snapshot(
+        result.project._expected_diagnostics,
+        ProjectDiagnostics(diagnostics),
+    )
     reports: dict[str, dict] = {}
     for report_name in _flat_report_names(diagnostics):
         report_diagnostics = tuple(
@@ -1148,8 +1395,8 @@ def _flat_diagnostics_payload(result: ProjectResult) -> dict:
             "diagnostics": [_flat_diagnostic_payload(diagnostic) for diagnostic in report_diagnostics],
         }
     return {
-        "status": result.status,
-        "summary": _diagnostic_summary(result.diagnostics),
+        "status": status,
+        "summary": _diagnostic_summary(ProjectDiagnostics(diagnostics)),
         "diagnostics": [
             {"source": _flat_report_name(diagnostic), **_flat_diagnostic_payload(diagnostic)}
             for diagnostic in diagnostics
@@ -1157,17 +1404,34 @@ def _flat_diagnostics_payload(result: ProjectResult) -> dict:
         "reports": reports,
         "expected": [
             _expected_diagnostic_result_payload(expectation)
-            for expectation in result.expected_diagnostics
+            for expectation in expected
         ],
         "unexpected": [
             {"source": _flat_report_name(diagnostic), **_flat_diagnostic_payload(diagnostic)}
-            for diagnostic in result.unexpected_diagnostics
+            for diagnostic in unexpected
         ],
         "missing_expected": [
             _expected_diagnostic_result_payload(expectation)
-            for expectation in result.missing_expected_diagnostics
+            for expectation in missing
         ],
     }
+
+
+def _diagnostic_policy_snapshot(
+    expectations: Iterable[ExpectedDiagnostic],
+    diagnostics: ProjectDiagnostics,
+) -> tuple[
+    tuple[ExpectedDiagnosticResult, ...],
+    tuple[ProjectDiagnostic, ...],
+    tuple[ExpectedDiagnosticResult, ...],
+]:
+    expected = tuple(expectations)
+    matches = _expected_diagnostic_results(expected, diagnostics)
+    unexpected = tuple(
+        diagnostic for diagnostic in diagnostics if not _matches_any_expected(diagnostic, expected)
+    )
+    missing = tuple(result for result in matches if not result.matched)
+    return matches, unexpected, missing
 
 
 def _flat_report_names(diagnostics: tuple[ProjectDiagnostic, ...]) -> tuple[str, ...]:

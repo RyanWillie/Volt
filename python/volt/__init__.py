@@ -14,6 +14,7 @@ from .diagnostics import (
 from .library import (
     Library,
     LibraryComponent,
+    PartModel3D,
     PhysicalPartSpec,
     PinSpec,
     SchematicBlockPinSpec,
@@ -168,6 +169,7 @@ __all__ = [
     "PlacedBoardComponent",
     "PlacedSchematicElement",
     "PadResolution",
+    "PartModel3D",
     "PortBindingInfo",
     "PortInfo",
     "Project",

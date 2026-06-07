@@ -103,6 +103,7 @@
   },
   "format": "volt.project_result",
   "ok": true,
+  "profile": "default",
   "project": {
     "description": "555 LED blinker reference design",
     "name": "timer-555-led-blinker",

@@ -512,6 +512,31 @@ def test_project_result_write_emits_deterministic_bundle(tmp_path):
     }
 
 
+def test_project_result_write_preserves_expected_diagnostic_status(tmp_path):
+    project = volt.Project("bad-led")
+    project.expect_diagnostic(code="SINGLE_PIN_NET", severity="warning", stage="design")
+    project.expect_diagnostic(code="UNCONNECTED_REQUIRED_PIN", severity="error", stage="design")
+
+    @project.design
+    def design():
+        d = volt.Design("bad-led")
+        lonely = d.net("LONELY")
+        r1 = d.R("1k", ref="R1")
+        lonely += r1[1]
+        return d
+
+    result = project.run()
+    output = tmp_path / "bundle.volt"
+    result.write(output)
+
+    manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
+
+    assert result.ok
+    assert manifest["ok"] is True
+    assert manifest["status"] == "expected-diagnostics"
+    assert manifest["profile"] == "default"
+
+
 def test_project_result_write_flat_artifacts_emits_legacy_example_outputs(tmp_path):
     project = volt.Project("status-led")
 

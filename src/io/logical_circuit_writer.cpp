@@ -366,6 +366,24 @@ void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
         out << '\n';
     }
     out << "      ],\n";
+    if (part.model_3d().has_value()) {
+        const auto &model_3d = part.model_3d().value();
+        out << "      \"model_3d\": {\n";
+        out << "        \"format\": " << json_string(model_3d.format()) << ",\n";
+        out << "        \"file_name\": " << json_string(model_3d.file_name()) << ",\n";
+        out << "        \"translation_mm\": [";
+        for (std::size_t index = 0; index < model_3d.translation_mm().size(); ++index) {
+            write_json_number(out, model_3d.translation_mm()[index]);
+            if (index + 1 != model_3d.translation_mm().size()) {
+                out << ", ";
+            }
+        }
+        out << "],\n";
+        out << "        \"rotation_deg\": ";
+        write_json_number(out, model_3d.rotation_deg());
+        out << "\n";
+        out << "      },\n";
+    }
     out << "      \"properties\": ";
     write_properties(out, part.properties());
     if (!part.electrical_attributes().empty()) {

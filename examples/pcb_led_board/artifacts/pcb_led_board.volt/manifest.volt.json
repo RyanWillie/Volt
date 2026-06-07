@@ -103,6 +103,7 @@
   },
   "format": "volt.project_result",
   "ok": true,
+  "profile": "default",
   "project": {
     "description": "First-board LED PCB example",
     "name": "pcb-led-board",

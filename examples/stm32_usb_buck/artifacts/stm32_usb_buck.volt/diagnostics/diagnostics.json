@@ -2,6 +2,7 @@
   "diagnostics": [
     {
       "board": null,
+      "category": "general",
       "code": "POWER_INPUT_WITHOUT_SOURCE",
       "design": "stm32_usb_buck",
       "entities": [
@@ -15,6 +16,7 @@
         }
       ],
       "message": "Power input is connected to a net with no typed supply source",
+      "overlays": [],
       "report": "logical.default",
       "rule": null,
       "severity": "error",
@@ -23,6 +25,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "POWER_INPUT_WITHOUT_SOURCE",
       "design": "stm32_usb_buck",
       "entities": [
@@ -36,6 +39,7 @@
         }
       ],
       "message": "Power input is connected to a net with no typed supply source",
+      "overlays": [],
       "report": "logical.default",
       "rule": null,
       "severity": "error",
@@ -44,6 +48,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -61,6 +66,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -69,6 +75,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -86,6 +93,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -94,6 +102,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -111,6 +120,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -119,6 +129,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -136,6 +147,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -144,6 +156,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -161,6 +174,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -169,6 +183,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -186,6 +201,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -194,6 +210,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -211,6 +228,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -219,6 +237,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -236,6 +255,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -244,6 +264,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -261,6 +282,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -269,6 +291,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -286,6 +309,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -294,6 +318,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -311,6 +336,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -319,6 +345,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -336,6 +363,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -344,6 +372,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -361,6 +390,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -369,6 +399,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -386,6 +417,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -394,6 +426,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -411,6 +444,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -419,6 +453,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -436,6 +471,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -444,6 +480,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -461,6 +498,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -469,6 +507,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -486,6 +525,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -494,6 +534,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -511,6 +552,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -519,6 +561,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -536,6 +579,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -544,6 +588,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -561,6 +606,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -569,6 +615,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -586,6 +633,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -594,6 +642,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -611,6 +660,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -619,6 +669,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -636,6 +687,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -644,6 +696,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -661,6 +714,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -669,6 +723,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -686,6 +741,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -694,6 +750,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -711,6 +768,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -719,6 +777,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -736,6 +795,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -744,6 +804,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -761,6 +822,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -769,6 +831,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -786,6 +849,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -794,6 +858,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -811,6 +876,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -819,6 +885,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -836,6 +903,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -844,6 +912,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -861,6 +930,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -869,6 +939,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -886,6 +957,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -894,6 +966,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -911,6 +984,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -919,6 +993,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -936,6 +1011,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -944,6 +1020,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -961,6 +1038,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -969,6 +1047,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -986,6 +1065,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -994,6 +1074,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -1011,6 +1092,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -1019,6 +1101,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -1036,6 +1119,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -1044,6 +1128,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -1061,6 +1146,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -1069,6 +1155,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -1086,6 +1173,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -1094,6 +1182,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": "stm32_usb_buck",
       "entities": [
@@ -1111,6 +1200,7 @@
         }
       ],
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
       "report": "schematic.readiness",
       "rule": null,
       "severity": "warning",
@@ -1119,6 +1209,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW",
       "design": "stm32_usb_buck",
       "entities": [
@@ -1128,6 +1219,7 @@
         }
       ],
       "message": "Schematic title-block value text for 'File' exceeds the rendered column width",
+      "overlays": [],
       "report": "schematic.readability",
       "rule": null,
       "severity": "warning",
@@ -1136,6 +1228,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL",
       "design": "stm32_usb_buck",
       "entities": [
@@ -1153,6 +1246,7 @@
         }
       ],
       "message": "Schematic symbol field is far from its owning symbol",
+      "overlays": [],
       "report": "schematic.readability",
       "rule": null,
       "severity": "warning",
@@ -1161,6 +1255,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_LABEL_CROWDS_SYMBOL",
       "design": "stm32_usb_buck",
       "entities": [
@@ -1186,6 +1281,7 @@
         }
       ],
       "message": "Schematic tags or net labels crowd a symbol; add spacing or use compact stubs",
+      "overlays": [],
       "report": "schematic.readability",
       "rule": null,
       "severity": "warning",
@@ -1194,6 +1290,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_DENSE_PORT_TAGS",
       "design": "stm32_usb_buck",
       "entities": [
@@ -1315,6 +1412,7 @@
         }
       ],
       "message": "Schematic region 'STM32 Microcontroller' contains dense sheet or power tags; prefer compact local labels where possible",
+      "overlays": [],
       "report": "schematic.readability",
       "rule": null,
       "severity": "warning",
@@ -1323,6 +1421,7 @@
     },
     {
       "board": null,
+      "category": "general",
       "code": "SCHEMATIC_DENSE_PORT_TAGS",
       "design": "stm32_usb_buck",
       "entities": [
@@ -1392,6 +1491,7 @@
         }
       ],
       "message": "Schematic region 'Connectors and USB' contains dense sheet or power tags; prefer compact local labels where possible",
+      "overlays": [],
       "report": "schematic.readability",
       "rule": null,
       "severity": "warning",
