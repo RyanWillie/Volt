@@ -97,8 +97,8 @@ def test_custom_component_definitions_are_kernel_owned():
             volt.PinSpec("OUT", 1, role="output"),
             volt.PinSpec("IN-", 2, role="input"),
             volt.PinSpec("IN+", 3, role="input"),
-            volt.PinSpec("V-", 4, role="power"),
-            volt.PinSpec("V+", 8, role="power"),
+            volt.PinSpec("V-", 4, role="power_input"),
+            volt.PinSpec("V+", 8, role="power_input"),
         ],
         properties={"category": "analog"},
     )
@@ -115,8 +115,12 @@ def test_custom_component_definitions_are_kernel_owned():
     assert definition["name"] == "OpAmp"
     assert definition["properties"]["category"] == {"type": "string", "value": "analog"}
     assert component["reference"] == "U1"
-    assert pin_definitions["OUT"]["role"] == "DigitalOutput"
-    assert pin_definitions["V+"]["role"] == "PowerInput"
+    assert "role" not in pin_definitions["OUT"]
+    assert pin_definitions["OUT"]["terminal_kind"] == "Signal"
+    assert pin_definitions["OUT"]["direction"] == "Output"
+    assert pin_definitions["OUT"]["signal_domain"] == "Digital"
+    assert pin_definitions["V+"]["terminal_kind"] == "Power"
+    assert pin_definitions["V+"]["direction"] == "Input"
     assert len(circuit["pins"]) == 5
     assert circuit["nets"][0]["pins"] == ["pin:0"]
 

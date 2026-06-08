@@ -294,14 +294,18 @@ TEST_CASE("Schematic readability accepts compact labels and spaced tag ports") {
 TEST_CASE("Schematic readability accepts a clean local oscillator reset boot fixture") {
     volt::Circuit circuit;
     auto pin_definitions = std::vector<volt::PinDefId>{};
-    pin_definitions.push_back(circuit.add_pin_definition(
-        volt::PinDefinition{"OSC_IN", "1", volt::PinRole::DigitalInput}));
-    pin_definitions.push_back(
-        circuit.add_pin_definition(volt::PinDefinition{"NRST", "2", volt::PinRole::DigitalInput}));
-    pin_definitions.push_back(
-        circuit.add_pin_definition(volt::PinDefinition{"BOOT0", "3", volt::PinRole::DigitalInput}));
-    pin_definitions.push_back(
-        circuit.add_pin_definition(volt::PinDefinition{"VSS", "4", volt::PinRole::Ground}));
+    pin_definitions.push_back(circuit.add_pin_definition(volt::PinDefinition{
+        "OSC_IN", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital}));
+    pin_definitions.push_back(circuit.add_pin_definition(volt::PinDefinition{
+        "NRST", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital}));
+    pin_definitions.push_back(circuit.add_pin_definition(volt::PinDefinition{
+        "BOOT0", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital}));
+    pin_definitions.push_back(circuit.add_pin_definition(volt::PinDefinition{
+        "VSS", "4", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Ground,
+        volt::ElectricalDirection::Passive}));
     const auto mcu_definition =
         circuit.add_component_definition(volt::ComponentDefinition{"MCU", pin_definitions});
     const auto mcu = circuit.instantiate_component(mcu_definition, volt::ReferenceDesignator{"U1"});

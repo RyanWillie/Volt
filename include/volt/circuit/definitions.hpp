@@ -13,20 +13,6 @@
 
 namespace volt {
 
-/** Electrical role declared by a reusable pin definition. */
-enum class PinRole {
-    Passive,
-    PowerInput,
-    PowerOutput,
-    Ground,
-    DigitalInput,
-    DigitalOutput,
-    Bidirectional,
-    AnalogInput,
-    AnalogOutput,
-    NoConnect,
-};
-
 /** Whether a pin is expected, allowed, or forbidden to connect in normal use. */
 enum class ConnectionRequirement {
     Optional,
@@ -82,10 +68,10 @@ enum class ElectricalPolarity {
 class PinDefinition {
   public:
     /**
-     * Construct a pin definition with a name, package/symbol number, role, and connection
-     * requirement.
+     * Construct a pin definition with a name, package/symbol number, connection requirement, and
+     * generic electrical semantics.
      */
-    PinDefinition(std::string name, std::string number, PinRole role,
+    PinDefinition(std::string name, std::string number,
                   ConnectionRequirement connection_requirement = ConnectionRequirement::Required,
                   ElectricalTerminalKind terminal_kind = ElectricalTerminalKind::Unspecified,
                   ElectricalDirection direction = ElectricalDirection::Unspecified,
@@ -98,9 +84,6 @@ class PinDefinition {
 
     /** Return the physical/logical pin number, such as 1 or 17. */
     [[nodiscard]] const std::string &number() const noexcept { return number_; }
-
-    /** Return the pin's declared electrical role. */
-    [[nodiscard]] PinRole role() const noexcept { return role_; }
 
     /** Return whether this pin is expected, allowed, or forbidden to connect. */
     [[nodiscard]] ConnectionRequirement connection_requirement() const noexcept;
@@ -123,7 +106,6 @@ class PinDefinition {
   private:
     std::string name_;
     std::string number_;
-    PinRole role_;
     ConnectionRequirement connection_requirement_;
     ElectricalTerminalKind terminal_kind_;
     ElectricalDirection direction_;

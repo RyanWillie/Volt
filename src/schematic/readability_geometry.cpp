@@ -88,8 +88,8 @@ namespace volt::detail {
 [[nodiscard]] bool schematic_readiness_exempts_pin(const Circuit &circuit, PinId pin_id,
                                                    PinDefId pin_def_id) {
     const auto &definition = circuit.pin_definition(pin_def_id);
-    return definition.role() == PinRole::NoConnect ||
-           definition.connection_requirement() == ConnectionRequirement::MustNotConnect ||
+    return definition.connection_requirement() == ConnectionRequirement::MustNotConnect ||
+           definition.terminal_kind() == ElectricalTerminalKind::NoConnect ||
            circuit.is_intentional_no_connect_pin(pin_id);
 }
 

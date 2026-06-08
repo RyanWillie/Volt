@@ -20,8 +20,6 @@ struct PinSpec {
     std::string name;
     /** Logical or package pin number, such as 1, 2, or 17. */
     std::string number;
-    /** Electrical role to assign to the created pin definition. */
-    PinRole role = PinRole::Passive;
     /** Expected connection requirement for normal use. */
     ConnectionRequirement requirement = ConnectionRequirement::Required;
     /** Broad terminal behavior. */

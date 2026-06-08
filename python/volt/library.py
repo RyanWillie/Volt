@@ -134,7 +134,7 @@ class PinSpec:
 
     name: str
     number: int | str
-    role: str = "passive"
+    role: str | None = "passive"
     requirement: str = "required"
     terminal: str = "unspecified"
     direction: str = "unspecified"
@@ -147,7 +147,6 @@ class PinSpec:
         result = {
             "name": self.name,
             "number": str(self.number),
-            "role": self.role,
             "requirement": self.requirement,
             "terminal": self.terminal,
             "direction": self.direction,
@@ -155,6 +154,8 @@ class PinSpec:
             "drive": self.drive,
             "polarity": self.polarity,
         }
+        if self.role is not None:
+            result["role"] = self.role
         if self.voltage_range is not None:
             if not isinstance(self.voltage_range, tuple) or len(self.voltage_range) != 2:
                 raise TypeError("voltage_range must be a (minimum, maximum) tuple")

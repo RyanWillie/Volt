@@ -168,23 +168,15 @@ Pin definitions describe reusable logical pins:
   "id": "pin_def:0",
   "name": "A",
   "number": "1",
-  "role": "Passive",
-  "connection_requirement": "Required"
+  "connection_requirement": "Required",
+  "terminal_kind": "Passive",
+  "direction": "Passive",
+  "drive_kind": "Passive"
 }
 ```
 
-`role` values are the public `PinRole` spellings:
-
-- `Passive`
-- `PowerInput`
-- `PowerOutput`
-- `Ground`
-- `DigitalInput`
-- `DigitalOutput`
-- `Bidirectional`
-- `AnalogInput`
-- `AnalogOutput`
-- `NoConnect`
+Pin electrical semantics are canonicalized as generic primitive fields. Logical JSON does
+not persist Python authoring preset or role names.
 
 `connection_requirement` values are:
 
@@ -450,12 +442,12 @@ A compact LED circuit may be represented as:
   "format": "volt.logical_circuit",
   "version": 1,
   "pin_definitions": [
-    { "id": "pin_def:0", "name": "+", "number": "1", "role": "Passive", "connection_requirement": "Required" },
-    { "id": "pin_def:1", "name": "-", "number": "2", "role": "Passive", "connection_requirement": "Required" },
-    { "id": "pin_def:2", "name": "1", "number": "1", "role": "Passive", "connection_requirement": "Required" },
-    { "id": "pin_def:3", "name": "2", "number": "2", "role": "Passive", "connection_requirement": "Required" },
-    { "id": "pin_def:4", "name": "A", "number": "1", "role": "Passive", "connection_requirement": "Required" },
-    { "id": "pin_def:5", "name": "K", "number": "2", "role": "Passive", "connection_requirement": "Required" }
+    { "id": "pin_def:0", "name": "+", "number": "1", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional" },
+    { "id": "pin_def:1", "name": "-", "number": "2", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional" },
+    { "id": "pin_def:2", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:3", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:4", "name": "A", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:5", "name": "K", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" }
   ],
   "component_definitions": [
     { "id": "component_def:0", "name": "Two-pin connector", "pins": ["pin_def:0", "pin_def:1"], "properties": {} },

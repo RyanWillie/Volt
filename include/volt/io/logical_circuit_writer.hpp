@@ -27,8 +27,6 @@ namespace detail {
 
 [[nodiscard]] std::string json_string(std::string_view value);
 
-[[nodiscard]] std::string pin_role_name(PinRole role);
-
 [[nodiscard]] std::string connection_requirement_name(ConnectionRequirement requirement);
 
 [[nodiscard]] std::string electrical_terminal_kind_name(ElectricalTerminalKind kind);

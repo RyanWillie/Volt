@@ -258,7 +258,10 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "1",
     ]
     for definition_name, texts in symbol_texts_by_definition.items():
-        if definition_name == "volt.connectors:connector_1x02":
+        if definition_name in {
+            "volt.connectors:connector_1x02",
+            "volt.examples.timer_555_led_blinker:ExternalSupply",
+        }:
             assert texts == ["J"]
         elif definition_name != "volt.examples.timer_555_led_blinker:NE555":
             assert texts == []

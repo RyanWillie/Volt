@@ -21,10 +21,14 @@ ConnectivityFixture make_connectivity_fixture() {
         .second_pin = volt::PinDefId{0},
         .component_definition = volt::ComponentDefId{0},
     };
-    fixture.first_pin =
-        fixture.model.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
-    fixture.second_pin =
-        fixture.model.add_pin_definition(volt::PinDefinition{"B", "2", volt::PinRole::Passive});
+    fixture.first_pin = fixture.model.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    fixture.second_pin = fixture.model.add_pin_definition(volt::PinDefinition{
+        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     fixture.component_definition = fixture.model.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{fixture.first_pin, fixture.second_pin}});
     return fixture;
@@ -35,10 +39,14 @@ ConnectivityFixture make_connectivity_fixture() {
 TEST_CASE("ConnectivityModel stores reusable definitions in deterministic order") {
     volt::ConnectivityModel model;
 
-    const auto first =
-        model.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
-    const auto second =
-        model.add_pin_definition(volt::PinDefinition{"B", "2", volt::PinRole::Passive});
+    const auto first = model.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second = model.add_pin_definition(volt::PinDefinition{
+        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto resistor = model.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first, second}});
 
@@ -85,8 +93,10 @@ TEST_CASE("ConnectivityModel rejects pin instances outside their component defin
     auto fixture = make_connectivity_fixture();
     const auto component = fixture.model.add_component(
         volt::ComponentInstance{fixture.component_definition, volt::ReferenceDesignator{"R1"}});
-    const auto unrelated_pin =
-        fixture.model.add_pin_definition(volt::PinDefinition{"C", "3", volt::PinRole::Passive});
+    const auto unrelated_pin = fixture.model.add_pin_definition(volt::PinDefinition{
+        "C", "3", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
 
     CHECK_THROWS_AS(fixture.model.add_pin(volt::PinInstance{component, unrelated_pin}),
                     std::logic_error);

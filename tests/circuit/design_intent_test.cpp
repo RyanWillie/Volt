@@ -39,12 +39,15 @@ TEST_CASE("Circuit records intentional stub nets idempotently in deterministic o
 
 TEST_CASE("Circuit records intentional no-connect pins idempotently in deterministic order") {
     volt::Circuit circuit;
-    const auto first_definition =
-        circuit.add_pin_definition(volt::PinDefinition{"NC1", "1", volt::PinRole::NoConnect});
-    const auto second_definition =
-        circuit.add_pin_definition(volt::PinDefinition{"NC2", "2", volt::PinRole::NoConnect});
-    const auto unmarked_definition =
-        circuit.add_pin_definition(volt::PinDefinition{"NC3", "3", volt::PinRole::NoConnect});
+    const auto first_definition = circuit.add_pin_definition(volt::PinDefinition{
+        "NC1", "1", volt::ConnectionRequirement::MustNotConnect,
+        volt::ElectricalTerminalKind::NoConnect, volt::ElectricalDirection::Unspecified});
+    const auto second_definition = circuit.add_pin_definition(volt::PinDefinition{
+        "NC2", "2", volt::ConnectionRequirement::MustNotConnect,
+        volt::ElectricalTerminalKind::NoConnect, volt::ElectricalDirection::Unspecified});
+    const auto unmarked_definition = circuit.add_pin_definition(volt::PinDefinition{
+        "NC3", "3", volt::ConnectionRequirement::MustNotConnect,
+        volt::ElectricalTerminalKind::NoConnect, volt::ElectricalDirection::Unspecified});
     const auto component_definition = circuit.add_component_definition(volt::ComponentDefinition{
         "Connector", std::vector{first_definition, second_definition, unmarked_definition}});
     const auto component = circuit.add_component(

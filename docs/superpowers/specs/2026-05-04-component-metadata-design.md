@@ -31,7 +31,7 @@ A logical device definition describes the reusable electrical shape of a thing:
 
 - name, such as `Resistor`, `LED`, or `STM32G0`
 - logical pin definitions
-- pin roles
+- generic pin electrical semantics
 - connection requirements
 - definition-level properties, such as category or default value metadata
 

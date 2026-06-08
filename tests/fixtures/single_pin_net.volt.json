@@ -2,7 +2,7 @@
   "format": "volt.logical_circuit",
   "version": 1,
   "pin_definitions": [
-    { "id": "pin_def:0", "name": "OUT", "number": "1", "role": "DigitalOutput", "connection_requirement": "Required" }
+    { "id": "pin_def:0", "name": "OUT", "number": "1", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Output", "signal_domain": "Digital" }
   ],
   "component_definitions": [
     { "id": "component_def:0", "name": "OutputDriver", "pins": ["pin_def:0"], "properties": {} }

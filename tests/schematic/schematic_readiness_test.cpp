@@ -156,8 +156,9 @@ TEST_CASE("Schematic validation reports duplicate placements and unplaced connec
 
 TEST_CASE("Schematic validation does not require unplaced mechanical components") {
     volt::Circuit circuit;
-    const auto pin_def =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Ground});
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Ground,
+        volt::ElectricalDirection::Passive});
     auto properties = volt::PropertyMap{};
     properties.set(volt::PropertyKey{"category"}, volt::PropertyValue{"mechanical"});
     const auto definition = circuit.add_component_definition(
@@ -315,8 +316,9 @@ TEST_CASE("Schematic validation reports no-connect markers without kernel-owned 
 
 TEST_CASE("Schematic validation accepts no-connect markers on no-connect pin definitions") {
     volt::Circuit circuit;
-    const auto pin_definition = circuit.add_pin_definition(volt::PinDefinition{
-        "NC", "1", volt::PinRole::NoConnect, volt::ConnectionRequirement::Optional});
+    const auto pin_definition = circuit.add_pin_definition(
+        volt::PinDefinition{"NC", "1", volt::ConnectionRequirement::MustNotConnect,
+                            volt::ElectricalTerminalKind::NoConnect});
     const auto component_definition = circuit.add_component_definition(
         volt::ComponentDefinition{"NoConnectPad", std::vector{pin_definition}});
     const auto component =

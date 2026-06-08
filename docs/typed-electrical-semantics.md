@@ -155,7 +155,7 @@ loaded circuit structurally invalid.
 
 ## Pin Semantics
 
-Volt should not grow hundreds of narrow pin roles such as `threshold_input`,
+Volt should not grow hundreds of narrow pin preset names such as `threshold_input`,
 `reset_input`, or `discharge_output`. Those names are useful datasheet vocabulary, but
 they are not the fundamental model.
 
@@ -166,7 +166,6 @@ first-principles fields:
 PinDefinition
   name
   number
-  role
   connection_requirement
   terminal_kind
   direction
@@ -176,34 +175,32 @@ PinDefinition
   electrical_attributes
 ```
 
+Python `PinSpec(role=...)` remains an authoring preset interface, but role or preset names
+lower immediately into these fields and do not persist as logical model semantics.
+
 This lets authoring stay compact while preserving behavior:
 
 ```python
 ne555 = d.define_component(
     "NE555 timer",
     pins=[
-        volt.PinSpec("GND", 1, role="ground", terminal="ground"),
+        volt.PinSpec("GND", 1, role="ground"),
         volt.PinSpec(
-            "TRIG", 2, role="analog_input", terminal="signal",
-            direction="input", signal="analog", voltage_range=(0, 5.5)
+            "TRIG", 2, role="analog_input", voltage_range=(0, 5.5)
         ),
         volt.PinSpec(
-            "OUT", 3, role="output", terminal="signal",
-            direction="output", signal="digital", drive="push_pull"
+            "OUT", 3, role="output", drive="push_pull"
         ),
         volt.PinSpec(
-            "RESET", 4, role="input", terminal="signal",
-            direction="input", signal="digital", polarity="active_low"
+            "RESET", 4, role="input", polarity="active_low"
         ),
-        volt.PinSpec("CTRL", 5, role="analog_input", terminal="signal"),
-        volt.PinSpec("THRESH", 6, role="analog_input", terminal="signal"),
+        volt.PinSpec("CTRL", 5, role="analog_input"),
+        volt.PinSpec("THRESH", 6, role="analog_input"),
         volt.PinSpec(
-            "DISCH", 7, role="output", terminal="signal",
-            direction="output", signal="digital", drive="open_drain"
+            "DISCH", 7, role="output", drive="open_drain"
         ),
         volt.PinSpec(
-            "VCC", 8, role="power", terminal="power",
-            direction="input", voltage_range=(4.5, 16)
+            "VCC", 8, role="power", voltage_range=(4.5, 16)
         ),
     ],
     properties={"category": "timer"},
@@ -256,7 +253,7 @@ Current typed checks include:
 Remaining validation work should build on explicit data:
 
 - current limits and power capability checks
-- no-connect assertions as stored design intent, distinct from pin roles
+- no-connect assertions as stored design intent, distinct from generic pin semantics
 - selected-part compatibility beyond voltage rating
 - drive and domain compatibility once the constraint model is clearer
 - hierarchy and scoped-net validation after those primitives exist

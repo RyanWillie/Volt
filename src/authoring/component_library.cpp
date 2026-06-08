@@ -2,6 +2,17 @@
 
 namespace volt::authoring {
 
+namespace {
+
+[[nodiscard]] PinSpec connector_pin(std::string name, std::string number) {
+    auto pin = PinSpec{std::move(name), std::move(number)};
+    pin.terminal_kind = ElectricalTerminalKind::Signal;
+    pin.direction = ElectricalDirection::Bidirectional;
+    return pin;
+}
+
+} // namespace
+
 [[nodiscard]] PinSpec passive_pin(std::string name, std::string number) {
     auto pin = PinSpec{std::move(name), std::move(number)};
     pin.terminal_kind = ElectricalTerminalKind::Passive;
@@ -11,7 +22,7 @@ namespace volt::authoring {
 }
 
 [[nodiscard]] PinSpec bidirectional_pin(std::string name, std::string number) {
-    auto pin = PinSpec{std::move(name), std::move(number), PinRole::Bidirectional};
+    auto pin = PinSpec{std::move(name), std::move(number)};
     pin.terminal_kind = ElectricalTerminalKind::Signal;
     pin.direction = ElectricalDirection::Bidirectional;
     pin.signal_domain = ElectricalSignalDomain::Mixed;
@@ -19,7 +30,7 @@ namespace volt::authoring {
 }
 
 [[nodiscard]] PinSpec analog_input_pin(std::string name, std::string number) {
-    auto pin = PinSpec{std::move(name), std::move(number), PinRole::AnalogInput};
+    auto pin = PinSpec{std::move(name), std::move(number)};
     pin.terminal_kind = ElectricalTerminalKind::Signal;
     pin.direction = ElectricalDirection::Input;
     pin.signal_domain = ElectricalSignalDomain::Analog;
@@ -27,7 +38,7 @@ namespace volt::authoring {
 }
 
 [[nodiscard]] PinSpec analog_output_pin(std::string name, std::string number) {
-    auto pin = PinSpec{std::move(name), std::move(number), PinRole::AnalogOutput};
+    auto pin = PinSpec{std::move(name), std::move(number)};
     pin.terminal_kind = ElectricalTerminalKind::Signal;
     pin.direction = ElectricalDirection::Output;
     pin.signal_domain = ElectricalSignalDomain::Analog;
@@ -35,21 +46,21 @@ namespace volt::authoring {
 }
 
 [[nodiscard]] PinSpec power_input_pin(std::string name, std::string number) {
-    auto pin = PinSpec{std::move(name), std::move(number), PinRole::PowerInput};
+    auto pin = PinSpec{std::move(name), std::move(number)};
     pin.terminal_kind = ElectricalTerminalKind::Power;
     pin.direction = ElectricalDirection::Input;
     return pin;
 }
 
 [[nodiscard]] PinSpec power_output_pin(std::string name, std::string number) {
-    auto pin = PinSpec{std::move(name), std::move(number), PinRole::PowerOutput};
+    auto pin = PinSpec{std::move(name), std::move(number)};
     pin.terminal_kind = ElectricalTerminalKind::Power;
     pin.direction = ElectricalDirection::Output;
     return pin;
 }
 
 [[nodiscard]] PinSpec ground_pin(std::string name, std::string number) {
-    auto pin = PinSpec{std::move(name), std::move(number), PinRole::Ground};
+    auto pin = PinSpec{std::move(name), std::move(number)};
     pin.terminal_kind = ElectricalTerminalKind::Ground;
     pin.direction = ElectricalDirection::Passive;
     return pin;
@@ -61,8 +72,8 @@ namespace volt::authoring {
 
     for (const auto &pin : spec.pins) {
         const auto pin_definition = circuit.add_pin_definition(
-            PinDefinition{pin.name, pin.number, pin.role, pin.requirement, pin.terminal_kind,
-                          pin.direction, pin.signal_domain, pin.drive_kind, pin.polarity});
+            PinDefinition{pin.name, pin.number, pin.requirement, pin.terminal_kind, pin.direction,
+                          pin.signal_domain, pin.drive_kind, pin.polarity});
         if (pin.voltage_range.has_value()) {
             circuit.set_pin_definition_electrical_attribute(
                 pin_definition,
@@ -173,7 +184,7 @@ namespace volt::authoring {
 [[nodiscard]] ComponentSpec connector_1x01() {
     return ComponentSpec{
         "One-pin connector",
-        std::vector{PinSpec{"1", "1", PinRole::Bidirectional}},
+        std::vector{connector_pin("1", "1")},
         PropertyMap{},
         DefinitionSource{"volt.connectors", "connector_1x01", "1.0.0"},
         std::vector{SchematicSymbolReference{"volt.connectors:connector_1x01"}},
@@ -183,8 +194,7 @@ namespace volt::authoring {
 [[nodiscard]] ComponentSpec connector_1x02() {
     return ComponentSpec{
         "Two-pin connector",
-        std::vector{PinSpec{"+", "1", PinRole::Bidirectional},
-                    PinSpec{"-", "2", PinRole::Bidirectional}},
+        std::vector{connector_pin("+", "1"), connector_pin("-", "2")},
         PropertyMap{},
         DefinitionSource{"volt.connectors", "connector_1x02", "1.0.0"},
         std::vector{SchematicSymbolReference{"volt.connectors:connector_1x02"}},
@@ -194,9 +204,7 @@ namespace volt::authoring {
 [[nodiscard]] ComponentSpec connector_1x03() {
     return ComponentSpec{
         "Three-pin connector",
-        std::vector{PinSpec{"1", "1", PinRole::Bidirectional},
-                    PinSpec{"2", "2", PinRole::Bidirectional},
-                    PinSpec{"3", "3", PinRole::Bidirectional}},
+        std::vector{connector_pin("1", "1"), connector_pin("2", "2"), connector_pin("3", "3")},
         PropertyMap{},
         DefinitionSource{"volt.connectors", "connector_1x03", "1.0.0"},
         std::vector{SchematicSymbolReference{"volt.connectors:connector_1x03"}},

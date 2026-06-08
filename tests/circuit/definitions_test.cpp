@@ -14,16 +14,16 @@ TEST_CASE("PinDefinition stores logical pin metadata") {
     const auto pin = volt::PinDefinition{
         "VDD",
         "17",
-        volt::PinRole::PowerInput,
         volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Power,
+        volt::ElectricalDirection::Input,
     };
 
     CHECK(pin.name() == "VDD");
     CHECK(pin.number() == "17");
-    CHECK(pin.role() == volt::PinRole::PowerInput);
     CHECK(pin.connection_requirement() == volt::ConnectionRequirement::Required);
-    CHECK(pin.terminal_kind() == volt::ElectricalTerminalKind::Unspecified);
-    CHECK(pin.direction() == volt::ElectricalDirection::Unspecified);
+    CHECK(pin.terminal_kind() == volt::ElectricalTerminalKind::Power);
+    CHECK(pin.direction() == volt::ElectricalDirection::Input);
     CHECK(pin.signal_domain() == volt::ElectricalSignalDomain::Unspecified);
     CHECK(pin.drive_kind() == volt::ElectricalDriveKind::Unspecified);
     CHECK(pin.polarity() == volt::ElectricalPolarity::None);
@@ -33,18 +33,21 @@ TEST_CASE("PinDefinition can represent explicit connection requirements") {
     const auto optional = volt::PinDefinition{
         "GPIO0",
         "4",
-        volt::PinRole::Bidirectional,
         volt::ConnectionRequirement::Optional,
+        volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Bidirectional,
     };
     const auto must_not_connect = volt::PinDefinition{
         "NC",
         "5",
-        volt::PinRole::NoConnect,
         volt::ConnectionRequirement::MustNotConnect,
+        volt::ElectricalTerminalKind::NoConnect,
+        volt::ElectricalDirection::Unspecified,
     };
 
     CHECK(optional.connection_requirement() == volt::ConnectionRequirement::Optional);
     CHECK(must_not_connect.connection_requirement() == volt::ConnectionRequirement::MustNotConnect);
+    CHECK(must_not_connect.terminal_kind() == volt::ElectricalTerminalKind::NoConnect);
 }
 
 TEST_CASE("PartModel3D enforces normalized asset identity") {
@@ -65,7 +68,6 @@ TEST_CASE("PinDefinition stores fundamental electrical pin semantics") {
     const auto power = volt::PinDefinition{
         "VCC",
         "8",
-        volt::PinRole::PowerInput,
         volt::ConnectionRequirement::Required,
         volt::ElectricalTerminalKind::Power,
         volt::ElectricalDirection::Input,
@@ -73,7 +75,6 @@ TEST_CASE("PinDefinition stores fundamental electrical pin semantics") {
     const auto reset = volt::PinDefinition{
         "RESET",
         "4",
-        volt::PinRole::DigitalInput,
         volt::ConnectionRequirement::Required,
         volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input,
@@ -84,7 +85,6 @@ TEST_CASE("PinDefinition stores fundamental electrical pin semantics") {
     const auto output = volt::PinDefinition{
         "OUT",
         "3",
-        volt::PinRole::DigitalOutput,
         volt::ConnectionRequirement::Required,
         volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Output,
@@ -94,7 +94,6 @@ TEST_CASE("PinDefinition stores fundamental electrical pin semantics") {
     const auto no_connect = volt::PinDefinition{
         "NC",
         "5",
-        volt::PinRole::NoConnect,
         volt::ConnectionRequirement::MustNotConnect,
         volt::ElectricalTerminalKind::NoConnect,
     };
@@ -113,8 +112,8 @@ TEST_CASE("PinDefinition stores fundamental electrical pin semantics") {
 }
 
 TEST_CASE("PinDefinition rejects empty names and numbers") {
-    CHECK_THROWS_AS(volt::PinDefinition("", "1", volt::PinRole::Passive), std::invalid_argument);
-    CHECK_THROWS_AS(volt::PinDefinition("A", "", volt::PinRole::Passive), std::invalid_argument);
+    CHECK_THROWS_AS(volt::PinDefinition("", "1"), std::invalid_argument);
+    CHECK_THROWS_AS(volt::PinDefinition("A", ""), std::invalid_argument);
 }
 
 TEST_CASE("ComponentDefinition stores reusable component metadata and pin definitions") {

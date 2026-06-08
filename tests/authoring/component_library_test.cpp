@@ -17,10 +17,13 @@ TEST_CASE("Component library defines a component from a data-driven spec") {
         volt::authoring::ComponentSpec{
             "Sensor",
             std::vector{
-                volt::authoring::PinSpec{"VDD", "1", volt::PinRole::PowerInput,
-                                         volt::ConnectionRequirement::Required},
-                volt::authoring::PinSpec{"OUT", "2", volt::PinRole::AnalogOutput,
-                                         volt::ConnectionRequirement::Optional},
+                volt::authoring::PinSpec{"VDD", "1", volt::ConnectionRequirement::Required,
+                                         volt::ElectricalTerminalKind::Power,
+                                         volt::ElectricalDirection::Input},
+                volt::authoring::PinSpec{"OUT", "2", volt::ConnectionRequirement::Optional,
+                                         volt::ElectricalTerminalKind::Signal,
+                                         volt::ElectricalDirection::Output,
+                                         volt::ElectricalSignalDomain::Analog},
             },
             volt::PropertyMap{{volt::PropertyKey{"category"}, volt::PropertyValue{"sensor"}}},
             volt::DefinitionSource{"volt.sensors", "analog_sensor", "1.0.0"},
@@ -41,14 +44,17 @@ TEST_CASE("Component library defines a component from a data-driven spec") {
     const auto &power = circuit.pin_definition(definition.pins()[0]);
     CHECK(power.name() == "VDD");
     CHECK(power.number() == "1");
-    CHECK(power.role() == volt::PinRole::PowerInput);
     CHECK(power.connection_requirement() == volt::ConnectionRequirement::Required);
+    CHECK(power.terminal_kind() == volt::ElectricalTerminalKind::Power);
+    CHECK(power.direction() == volt::ElectricalDirection::Input);
 
     const auto &output = circuit.pin_definition(definition.pins()[1]);
     CHECK(output.name() == "OUT");
     CHECK(output.number() == "2");
-    CHECK(output.role() == volt::PinRole::AnalogOutput);
     CHECK(output.connection_requirement() == volt::ConnectionRequirement::Optional);
+    CHECK(output.terminal_kind() == volt::ElectricalTerminalKind::Signal);
+    CHECK(output.direction() == volt::ElectricalDirection::Output);
+    CHECK(output.signal_domain() == volt::ElectricalSignalDomain::Analog);
 }
 
 TEST_CASE("Passive component catalog specs define two required passive pins") {
@@ -61,7 +67,6 @@ TEST_CASE("Passive component catalog specs define two required passive pins") {
     REQUIRE(resistor_definition.pins().size() == 2);
     CHECK(circuit.pin_definition(resistor_definition.pins()[0]).name() == "1");
     CHECK(circuit.pin_definition(resistor_definition.pins()[0]).number() == "1");
-    CHECK(circuit.pin_definition(resistor_definition.pins()[0]).role() == volt::PinRole::Passive);
     CHECK(circuit.pin_definition(resistor_definition.pins()[0]).connection_requirement() ==
           volt::ConnectionRequirement::Required);
     CHECK(circuit.pin_definition(resistor_definition.pins()[0]).terminal_kind() ==
@@ -105,11 +110,15 @@ TEST_CASE("LED and connector catalog specs preserve expected logical pin convent
 
     const auto &connector_definition = circuit.component_definition(connector);
     REQUIRE(connector_definition.pins().size() == 2);
-    CHECK(circuit.pin_definition(connector_definition.pins()[0]).role() ==
-          volt::PinRole::Bidirectional);
+    CHECK(circuit.pin_definition(connector_definition.pins()[0]).terminal_kind() ==
+          volt::ElectricalTerminalKind::Signal);
+    CHECK(circuit.pin_definition(connector_definition.pins()[0]).direction() ==
+          volt::ElectricalDirection::Bidirectional);
     CHECK(circuit.pin_definition(connector_definition.pins()[0]).number() == "1");
-    CHECK(circuit.pin_definition(connector_definition.pins()[1]).role() ==
-          volt::PinRole::Bidirectional);
+    CHECK(circuit.pin_definition(connector_definition.pins()[1]).terminal_kind() ==
+          volt::ElectricalTerminalKind::Signal);
+    CHECK(circuit.pin_definition(connector_definition.pins()[1]).direction() ==
+          volt::ElectricalDirection::Bidirectional);
     CHECK(circuit.pin_definition(connector_definition.pins()[1]).number() == "2");
 }
 
@@ -178,12 +187,10 @@ TEST_CASE("Op amp catalog spec models both supply rails as power inputs") {
     const auto *negative_supply = find_pin("V-");
 
     REQUIRE(positive_supply != nullptr);
-    CHECK(positive_supply->role() == volt::PinRole::PowerInput);
     CHECK(positive_supply->terminal_kind() == volt::ElectricalTerminalKind::Power);
     CHECK(positive_supply->direction() == volt::ElectricalDirection::Input);
 
     REQUIRE(negative_supply != nullptr);
-    CHECK(negative_supply->role() == volt::PinRole::PowerInput);
     CHECK(negative_supply->terminal_kind() == volt::ElectricalTerminalKind::Power);
     CHECK(negative_supply->direction() == volt::ElectricalDirection::Input);
 }

@@ -91,7 +91,7 @@
       (uuid "33780fd7-3ead-5a57-88a4-bba10a9627c6")
       (effects (font (size 1 1)) (justify left))
     )
-    (property "Value" "Two-pin connector"
+    (property "Value" "ExternalSupply"
       (at 0 1.5 0)
       (layer "F.Fab")
       (uuid "d6effe4c-21cb-536b-bfae-959537077c56")

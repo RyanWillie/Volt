@@ -298,7 +298,7 @@ toward typed fields owned by the C++ kernel:
 
 - quantities and units such as `330 ohm`, `3.3 V`, `100 nF`, and `0.1 W`
 - design-defining component values and physical-part ratings
-- richer pin electrical specs beyond the current broad `PinRole`
+- pin terminal kind, direction, signal domain, drive, polarity, and connection requirement
 - declared voltage domains, accepted/produced ranges, and drive behavior
 
 Do not store every electrical value that can be derived or simulated. Runtime quantities
@@ -306,7 +306,7 @@ such as calculated current, node voltage, charge, temperature, or power dissipat
 in future analysis results unless they are explicit design constraints.
 
 Future ERC should consume those typed semantics instead of accumulating ad hoc checks over
-labels or broad pin roles. The detailed trajectory is captured in
+labels or Python authoring preset names. The detailed trajectory is captured in
 [typed-electrical-semantics.md](typed-electrical-semantics.md).
 
 ## Physical Part Selection
@@ -370,8 +370,12 @@ definition payload stores electronics meaning:
 PinDefinition
   name: "VDD"
   number: "17"
-  role: PowerInput
   connection_requirement: Required
+  terminal_kind: Power
+  direction: Input
+  signal_domain: Unspecified
+  drive_kind: Unspecified
+  polarity: None
 
 ComponentDefinition
   name: "Resistor"
@@ -441,7 +445,7 @@ unknown pins, and attempts to connect IDs that do not belong to the circuit.
 
 `Circuit` also enforces the core connectivity invariant that a concrete pin belongs to
 zero or one net. Deeper design-quality checks are reported by validation layers. Examples
-include unconnected pins, single-pin nets, incompatible pin roles, and power-domain
+include unconnected pins, single-pin nets, incompatible pin electrical semantics, and power-domain
 issues.
 
 ## Authoring Helpers

@@ -252,9 +252,9 @@ TEST_CASE("Schematic readability reports missing passive values and dense no-con
 
     auto pin_definitions = std::vector<volt::PinDefId>{};
     for (auto index = 1; index <= 6; ++index) {
-        pin_definitions.push_back(circuit.add_pin_definition(
-            volt::PinDefinition{"NC" + std::to_string(index), std::to_string(index),
-                                volt::PinRole::NoConnect, volt::ConnectionRequirement::Optional}));
+        pin_definitions.push_back(circuit.add_pin_definition(volt::PinDefinition{
+            "NC" + std::to_string(index), std::to_string(index),
+            volt::ConnectionRequirement::MustNotConnect, volt::ElectricalTerminalKind::NoConnect}));
     }
     const auto connector_definition =
         circuit.add_component_definition(volt::ComponentDefinition{"Header", pin_definitions});

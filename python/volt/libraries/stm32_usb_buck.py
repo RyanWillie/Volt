@@ -20,8 +20,6 @@ def _bidirectional(name: str, number: int | str) -> PinSpec:
         name,
         number,
         role="bidirectional",
-        terminal="signal",
-        direction="bidirectional",
         signal="digital",
     )
 
@@ -31,26 +29,24 @@ def _digital_input(name: str, number: int | str) -> PinSpec:
         name,
         number,
         role="input",
-        terminal="signal",
-        direction="input",
         signal="digital",
     )
 
 
 def _power_input(name: str, number: int | str) -> PinSpec:
-    return PinSpec(name, number, role="power", terminal="power", direction="input")
+    return PinSpec(name, number, role="power")
 
 
 def _power_output(name: str, number: int | str) -> PinSpec:
-    return PinSpec(name, number, role="power_output", terminal="power", direction="output")
+    return PinSpec(name, number, role="power_output")
 
 
 def _ground(name: str, number: int | str) -> PinSpec:
-    return PinSpec(name, number, role="ground", terminal="ground", direction="passive")
+    return PinSpec(name, number, role="ground")
 
 
 def _passive(name: str, number: int | str) -> PinSpec:
-    return PinSpec(name, number, role="passive", terminal="passive", direction="passive")
+    return PinSpec(name, number, role="passive")
 
 
 def _symbol_name(name: str) -> str:
@@ -562,7 +558,7 @@ USB_B_MICRO = LIB.component(
         _power_input("VBUS", 1),
         _bidirectional("D-", 2),
         _bidirectional("D+", 3),
-        PinSpec("ID", 4, role="no_connect", requirement="optional", terminal="signal"),
+        PinSpec("ID", 4, role="no_connect"),
         _ground("GND", 5),
         _ground("Shield", 6),
     ],
@@ -580,7 +576,7 @@ USB_B_MICRO = LIB.component(
             _power_input("VBUS", 1),
             _bidirectional("D-", 2),
             _bidirectional("D+", 3),
-            PinSpec("ID", 4, role="no_connect", requirement="optional", terminal="signal"),
+            PinSpec("ID", 4, role="no_connect"),
             _ground("GND", 5),
             _ground("Shield", 6),
         ),
@@ -680,7 +676,7 @@ JTAG_SWD_10 = LIB.component(
         _digital_input("SWCLK", 4),
         _ground("GND", 5),
         _bidirectional("SWO", 6),
-        PinSpec("NC", 7, role="no_connect", requirement="optional", terminal="no_connect"),
+        PinSpec("NC", 7, role="no_connect"),
         _digital_input("TDI", 8),
         _ground("GNDDetect", 9),
         _digital_input("nRESET", 10),
@@ -702,7 +698,7 @@ JTAG_SWD_10 = LIB.component(
             _digital_input("SWCLK", 4),
             _ground("GND", 5),
             _bidirectional("SWO", 6),
-            PinSpec("NC", 7, role="no_connect", requirement="optional", terminal="no_connect"),
+            PinSpec("NC", 7, role="no_connect"),
             _digital_input("TDI", 8),
             _ground("GNDDetect", 9),
             _digital_input("nRESET", 10),

@@ -2,8 +2,8 @@
   "format": "volt.logical_circuit",
   "version": 1,
   "pin_definitions": [
-    { "id": "pin_def:0", "name": "1", "number": "1", "role": "Passive", "connection_requirement": "Required" },
-    { "id": "pin_def:1", "name": "2", "number": "2", "role": "Passive", "connection_requirement": "Required" }
+    { "id": "pin_def:0", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:1", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" }
   ],
   "component_definitions": [
     { "id": "component_def:0", "name": "Resistor", "pins": ["pin_def:0", "pin_def:1"], "properties": {} }

@@ -6,41 +6,6 @@ namespace volt::python {
 
 namespace {
 
-[[nodiscard]] inline volt::PinRole parse_pin_role(const std::string &value) {
-    if (value == "passive" || value == "Passive") {
-        return volt::PinRole::Passive;
-    }
-    if (value == "input" || value == "digital_input" || value == "DigitalInput") {
-        return volt::PinRole::DigitalInput;
-    }
-    if (value == "output" || value == "digital_output" || value == "DigitalOutput") {
-        return volt::PinRole::DigitalOutput;
-    }
-    if (value == "analog_input" || value == "AnalogInput") {
-        return volt::PinRole::AnalogInput;
-    }
-    if (value == "analog_output" || value == "AnalogOutput") {
-        return volt::PinRole::AnalogOutput;
-    }
-    if (value == "bidirectional" || value == "Bidirectional") {
-        return volt::PinRole::Bidirectional;
-    }
-    if (value == "power" || value == "power_input" || value == "PowerInput") {
-        return volt::PinRole::PowerInput;
-    }
-    if (value == "power_output" || value == "PowerOutput") {
-        return volt::PinRole::PowerOutput;
-    }
-    if (value == "ground" || value == "Ground") {
-        return volt::PinRole::Ground;
-    }
-    if (value == "no_connect" || value == "no-connect" || value == "NoConnect") {
-        return volt::PinRole::NoConnect;
-    }
-
-    throw std::invalid_argument{"Unknown pin role"};
-}
-
 [[nodiscard]] inline volt::ConnectionRequirement
 parse_connection_requirement(const std::string &value) {
     if (value == "required" || value == "Required") {

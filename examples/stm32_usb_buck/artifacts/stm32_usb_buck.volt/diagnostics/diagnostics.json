@@ -2,7 +2,7 @@
   "diagnostics": [
     {
       "board": null,
-      "category": "general",
+      "category": "erc",
       "code": "POWER_INPUT_WITHOUT_SOURCE",
       "design": "stm32_usb_buck",
       "entities": [
@@ -25,7 +25,7 @@
     },
     {
       "board": null,
-      "category": "general",
+      "category": "erc",
       "code": "POWER_INPUT_WITHOUT_SOURCE",
       "design": "stm32_usb_buck",
       "entities": [

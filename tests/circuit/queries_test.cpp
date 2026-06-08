@@ -26,10 +26,14 @@ QueryFixture make_query_fixture() {
         .component = volt::ComponentId{0},
         .net = volt::NetId{0},
     };
-    fixture.first_pin =
-        fixture.circuit.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
-    fixture.second_pin =
-        fixture.circuit.add_pin_definition(volt::PinDefinition{"K", "2", volt::PinRole::Passive});
+    fixture.first_pin = fixture.circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    fixture.second_pin = fixture.circuit.add_pin_definition(volt::PinDefinition{
+        "K", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     fixture.component_definition = fixture.circuit.add_component_definition(
         volt::ComponentDefinition{"Diode", std::vector{fixture.first_pin, fixture.second_pin}});
     fixture.component = fixture.circuit.instantiate_component(fixture.component_definition,
@@ -66,10 +70,14 @@ TEST_CASE("Circuit queries find connectivity entities through the const read sur
 
 TEST_CASE("Circuit queries inspect hierarchy views through const Circuit") {
     volt::Circuit circuit;
-    const auto left =
-        circuit.add_pin_definition(volt::PinDefinition{"L", "1", volt::PinRole::Passive});
-    const auto right =
-        circuit.add_pin_definition(volt::PinDefinition{"R", "2", volt::PinRole::Passive});
+    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+        "L", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+        "R", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto resistor = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{left, right}});
     const auto module =
@@ -112,8 +120,10 @@ TEST_CASE("Circuit queries inspect hierarchy views through const Circuit") {
 
 TEST_CASE("Circuit hierarchy queries preserve model-owned validation contracts") {
     volt::Circuit circuit;
-    const auto pin =
-        circuit.add_pin_definition(volt::PinDefinition{"A", "1", volt::PinRole::Passive});
+    const auto pin = circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_definition =
         circuit.add_component_definition(volt::ComponentDefinition{"Thing", std::vector{pin}});
 

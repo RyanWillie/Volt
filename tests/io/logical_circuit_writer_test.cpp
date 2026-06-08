@@ -32,8 +32,10 @@ TEST_CASE("Logical circuit writer emits deterministic output") {
 
 TEST_CASE("Logical circuit writer escapes JSON control characters") {
     volt::Circuit circuit;
-    const auto pin = circuit.add_pin_definition(
-        volt::PinDefinition{"CTRL\x01\x1f", "1", volt::PinRole::Passive});
+    const auto pin = circuit.add_pin_definition(volt::PinDefinition{
+        "CTRL\x01\x1f", "1", volt::ConnectionRequirement::Required,
+        volt::ElectricalTerminalKind::Passive, volt::ElectricalDirection::Passive,
+        volt::ElectricalSignalDomain::Unspecified, volt::ElectricalDriveKind::Passive});
     const auto component_def =
         circuit.add_component_definition(volt::ComponentDefinition{"Escaped", std::vector{pin}});
     const auto component =
@@ -49,8 +51,10 @@ TEST_CASE("Logical circuit writer escapes JSON control characters") {
 
 TEST_CASE("Logical circuit writer preserves double precision and rejects non-finite numbers") {
     volt::Circuit circuit;
-    const auto pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
+    const auto pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def =
         circuit.add_component_definition(volt::ComponentDefinition{"Precise", std::vector{pin}});
     const auto component =
@@ -70,10 +74,14 @@ TEST_CASE("Logical circuit writer preserves double precision and rejects non-fin
 
 TEST_CASE("Logical circuit writer emits typed electrical attributes") {
     volt::Circuit circuit;
-    const auto first_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto second_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     const auto component =
@@ -130,10 +138,14 @@ TEST_CASE("Logical circuit writer emits typed electrical attributes") {
 
 TEST_CASE("Logical circuit writer emits selected-part 3D model metadata") {
     volt::Circuit circuit;
-    const auto first_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto second_pin =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto component_def = circuit.add_component_definition(
         volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
     const auto component =
@@ -180,7 +192,8 @@ TEST_CASE("Logical circuit writer emits net typed electrical attributes") {
 TEST_CASE("Logical circuit writer emits design intent") {
     volt::Circuit circuit;
     const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
-        "BOOT0", "1", volt::PinRole::DigitalInput, volt::ConnectionRequirement::Required});
+        "BOOT0", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Input, volt::ElectricalSignalDomain::Digital});
     const auto component_def =
         circuit.add_component_definition(volt::ComponentDefinition{"MCU", std::vector{pin_def}});
     const auto component =
@@ -227,7 +240,6 @@ TEST_CASE("Logical circuit writer emits pin electrical semantics") {
     const auto pin = circuit.add_pin_definition(volt::PinDefinition{
         "RESET",
         "4",
-        volt::PinRole::DigitalInput,
         volt::ConnectionRequirement::Required,
         volt::ElectricalTerminalKind::Signal,
         volt::ElectricalDirection::Input,
@@ -249,6 +261,7 @@ TEST_CASE("Logical circuit writer emits pin electrical semantics") {
     const auto &pin_json = output["pin_definitions"][0];
     const auto &attributes = pin_json["electrical_attributes"];
 
+    CHECK_FALSE(pin_json.contains("role"));
     CHECK(pin_json["terminal_kind"] == "Signal");
     CHECK(pin_json["direction"] == "Input");
     CHECK(pin_json["signal_domain"] == "Digital");
@@ -262,10 +275,14 @@ TEST_CASE("Logical circuit writer emits pin electrical semantics") {
 
 TEST_CASE("Logical circuit writer emits hierarchy module scaffold") {
     volt::Circuit circuit;
-    const auto left =
-        circuit.add_pin_definition(volt::PinDefinition{"1", "1", volt::PinRole::Passive});
-    const auto right =
-        circuit.add_pin_definition(volt::PinDefinition{"2", "2", volt::PinRole::Passive});
+    const auto left = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto right = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
     const auto resistor =
         circuit.add_component_definition(volt::ComponentDefinition{"Resistor", {left, right}});
     const auto module =
