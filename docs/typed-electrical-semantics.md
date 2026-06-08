@@ -80,7 +80,8 @@ The landed foundation includes:
 - logical JSON read/write support for typed electrical attributes
 - validation entry points for general, connectivity, ERC, and PCB-readiness checks
 - typed diagnostics for power/ground sanity, pin voltage range, selected-part voltage
-  rating, and missing selected physical parts for PCB readiness
+  rating, assigned net-class voltage limits, and missing selected physical parts for PCB
+  readiness
 - Python authoring helpers over kernel-owned state
 
 The important architectural result is that Python and JSON are no longer the only places
@@ -232,7 +233,7 @@ Net
   name: human-facing label such as +12V, +5V, +3V3, VDDA, VCC, or GND
   electrical_attributes:
     voltage = authored nominal voltage, when ERC needs a concrete domain
-  existing assigned RuleClass:
+  existing assigned NetClass:
     maximum_net_voltage = optional reusable voltage limit
 
 PinDefinition
@@ -300,10 +301,13 @@ rejecting the circuit at mutation time:
 - power pins connected to ground nets are errors today
 - net voltage outside a connected pin voltage range is an error today
 - net voltage above a selected-part voltage rating is an error today
+- net voltage above an assigned net class maximum voltage is an error today
+- multiple typed output drivers on one net are errors today through the broad output
+  conflict check
 - power nets that need voltage-aware checks but have no `voltage` attribute are planned
   ambiguity diagnostics
-- multiple supply sources on one net are planned diagnostics unless the pins are modeled
-  as passive, bidirectional, ideal-OR, or otherwise explicitly compatible
+- supply-specific compatibility diagnostics for multiple sources on one power net are
+  planned once the compatible-source constraints exist
 - regulator input/output voltage relationship checks are planned diagnostics once the
   relevant kernel-owned constraints exist
 
@@ -324,7 +328,7 @@ VOL-183 can now implement power/source/load diagnostics from existing kernel dat
 - report ambiguous voltage intent when a voltage-aware check needs a missing typed
   `voltage` attribute
 
-No new value type or attribute is required for this VOL-44 contract; the rule-class
+No new value type or attribute is required for this VOL-44 contract; the net-class
 voltage limit above is already kernel-owned data. The implementation follow-ups that need
 new kernel-owned constraints or additional typed attributes are:
 
@@ -367,13 +371,14 @@ Current typed checks include:
 - power/ground sanity checks
 - net voltage against connected pin voltage ranges
 - selected-part voltage rating against authored net voltage
+- assigned net-class maximum voltage against authored net voltage
 - missing selected physical parts when validating for PCB output
 
 Remaining validation work should build on explicit data:
 
 - ambiguous power intent diagnostics for power nets whose topology needs a voltage but
   lacks a typed `voltage` attribute
-- multiple-source diagnostics for incompatible typed supply sources sharing a power net
+- source-specific compatibility diagnostics for typed supply sources sharing a power net
 - regulator input/output checks after the necessary kernel-owned constraints are defined
 - current limits and power capability checks
 - no-connect assertions as stored design intent, distinct from generic pin semantics
@@ -472,7 +477,7 @@ dependency-aware:
 4. Add no-connect assertions as explicit stored design intent.
 5. Add selected-part compatibility checks beyond voltage rating.
 6. Add current and power capability checks once the relevant constraints are explicit.
-7. Design net classes only after the reusable constraint vocabulary is clear.
+7. Extend net classes only after the reusable constraint vocabulary is clear.
 
 Each slice should have tests that prove structural invalid data is rejected at the
 mutation or load boundary, while bad design intent is reported through diagnostics.
