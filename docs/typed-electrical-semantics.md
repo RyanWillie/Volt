@@ -232,7 +232,7 @@ Net
   name: human-facing label such as +12V, +5V, +3V3, VDDA, VCC, or GND
   electrical_attributes:
     voltage = authored nominal voltage, when ERC needs a concrete domain
-  assigned rule class:
+  existing assigned RuleClass:
     maximum_net_voltage = optional reusable voltage limit
 
 PinDefinition
@@ -324,11 +324,11 @@ VOL-183 can now implement power/source/load diagnostics from existing kernel dat
 - report ambiguous voltage intent when a voltage-aware check needs a missing typed
   `voltage` attribute
 
-No new value type or attribute is required for this VOL-44 contract. The implementation
-follow-ups that need new kernel-owned data are:
+No new value type or attribute is required for this VOL-44 contract; the rule-class
+voltage limit above is already kernel-owned data. The implementation follow-ups that need
+new kernel-owned constraints or additional typed attributes are:
 
-- selected-part `current_rating` and `power_rating` checks beyond the already-planned
-  rating attributes
+- selected-part current and power capability checks beyond the current voltage-rating ERC
 - explicit source/load current or power requirements before current-budget ERC
 - regulator input/output relationship constraints before regulator behavior diagnostics
 - source compatibility constraints before diagnosing multiple supply sources as unsafe
