@@ -24,8 +24,31 @@ BoardLayer::BoardLayer(std::string name, BoardLayerRole role, BoardLayerSide sid
     }
 }
 
-LayerStack::LayerStack(std::vector<BoardLayerId> layers, double board_thickness_mm)
-    : layers_{std::move(layers)}, board_thickness_mm_{board_thickness_mm} {
+void BoardLayer::set_copper_weight_oz(double weight_oz) {
+    if (role_ != BoardLayerRole::Copper) {
+        throw std::invalid_argument{"Copper weight applies only to copper layers"};
+    }
+    if (!std::isfinite(weight_oz) || weight_oz <= 0.0) {
+        throw std::invalid_argument{"Copper weight must be finite and positive"};
+    }
+
+    copper_weight_oz_ = weight_oz;
+}
+
+BoardDielectric::BoardDielectric(double thickness_mm, double relative_permittivity)
+    : thickness_mm_{thickness_mm}, relative_permittivity_{relative_permittivity} {
+    if (!std::isfinite(thickness_mm_) || thickness_mm_ <= 0.0) {
+        throw std::invalid_argument{"Dielectric thickness must be finite and positive"};
+    }
+    if (!std::isfinite(relative_permittivity_) || relative_permittivity_ < 1.0) {
+        throw std::invalid_argument{"Dielectric relative permittivity must be at least 1"};
+    }
+}
+
+LayerStack::LayerStack(std::vector<BoardLayerId> layers, double board_thickness_mm,
+                       std::vector<BoardDielectric> dielectrics)
+    : layers_{std::move(layers)}, board_thickness_mm_{board_thickness_mm},
+      dielectrics_{std::move(dielectrics)} {
     if (layers_.empty()) {
         throw std::invalid_argument{"Layer stack must contain at least one layer"};
     }

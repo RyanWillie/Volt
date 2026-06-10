@@ -396,13 +396,19 @@ void PcbBoardReader::read_layers(Board &board, const nlohmann::json &board_json)
         require(layer.is_object(), "PCB board layer must be an object");
         const auto expected = BoardLayerId{index};
         require_sequential_id(layer, "id", expected, "PCB board layer IDs must be sequential");
-        const auto id = board.add_layer(BoardLayer{
+        auto board_layer = BoardLayer{
             string_field(layer, "name"),
             board_layer_role_from_name(string_field(layer, "role")),
             board_layer_side_from_name(string_field(layer, "side")),
             number_field(layer, "thickness_mm"),
             bool_field(layer, "enabled"),
-        });
+        };
+        if (const auto copper_weight = layer.find("copper_weight_oz");
+            copper_weight != layer.end()) {
+            require(copper_weight->is_number(), "PCB layer copper weight must be a number");
+            board_layer.set_copper_weight_oz(copper_weight->get<double>());
+        }
+        const auto id = board.add_layer(std::move(board_layer));
         require(id == expected, "PCB board layer IDs must be sequential");
     }
 }
@@ -424,7 +430,17 @@ void PcbBoardReader::read_layer_stack(Board &board, const nlohmann::json &board_
         }
         layers.push_back(layer);
     }
-    board.set_layer_stack(LayerStack{std::move(layers), number_field(stack, "board_thickness_mm")});
+    auto dielectrics = std::vector<BoardDielectric>{};
+    if (const auto dielectrics_json = stack.find("dielectrics"); dielectrics_json != stack.end()) {
+        require(dielectrics_json->is_array(), "PCB layer stack dielectrics must be an array");
+        for (const auto &dielectric : *dielectrics_json) {
+            require(dielectric.is_object(), "PCB layer stack dielectric must be an object");
+            dielectrics.emplace_back(number_field(dielectric, "thickness_mm"),
+                                     number_field(dielectric, "relative_permittivity"));
+        }
+    }
+    board.set_layer_stack(LayerStack{std::move(layers), number_field(stack, "board_thickness_mm"),
+                                     std::move(dielectrics)});
 }
 
 void PcbBoardReader::read_outline(Board &board, const nlohmann::json &board_json) const {

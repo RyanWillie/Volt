@@ -307,7 +307,12 @@ void write_layers(std::ostream &out, const Board &board) {
             << ", \"side\": " << json_string(board_layer_side_name(layer.side()))
             << ", \"thickness_mm\": ";
         write_number(out, layer.thickness_mm());
-        out << ", \"enabled\": " << (layer.enabled() ? "true" : "false") << '}';
+        out << ", \"enabled\": " << (layer.enabled() ? "true" : "false");
+        if (layer.copper_weight_oz().has_value()) {
+            out << ", \"copper_weight_oz\": ";
+            write_number(out, layer.copper_weight_oz().value());
+        }
+        out << '}';
         if (index + 1U != board.layer_count()) {
             out << ',';
         }
@@ -333,7 +338,23 @@ void write_layer_stack(std::ostream &out, const Board &board) {
         }
         out << json_string(encode_local_id(layers[index]));
     }
-    out << "]},\n";
+    out << ']';
+    const auto &dielectrics = board.layer_stack()->dielectrics();
+    if (!dielectrics.empty()) {
+        out << ", \"dielectrics\": [";
+        for (std::size_t index = 0; index < dielectrics.size(); ++index) {
+            if (index != 0U) {
+                out << ", ";
+            }
+            out << "{\"thickness_mm\": ";
+            write_number(out, dielectrics[index].thickness_mm());
+            out << ", \"relative_permittivity\": ";
+            write_number(out, dielectrics[index].relative_permittivity());
+            out << '}';
+        }
+        out << ']';
+    }
+    out << "},\n";
 }
 
 void write_outline(std::ostream &out, const Board &board) {

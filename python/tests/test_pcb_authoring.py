@@ -1436,3 +1436,30 @@ def test_python_board_rejects_object_owned_footprint_conflicting_with_builtin():
     for export_or_resolution in (board.resolve_pads, board.validate, board.to_json, board.to_svg):
         with pytest.raises(RuntimeError, match="conflicts with footprint library definition"):
             export_or_resolution()
+
+
+def test_python_board_stackup_authors_copper_weight_and_dielectrics():
+    design, _r1, _d1 = _small_resistor_led_design()
+    board = design.board("Stackup")
+
+    front = board.add_layer(
+        "F.Cu", role="copper", side="top", thickness=0.035, copper_weight=1.0
+    )
+    back = board.add_layer(
+        "B.Cu", role="copper", side="bottom", thickness=0.035, copper_weight=2.0
+    )
+    board.set_layer_stack(
+        (front, back), thickness=1.6, dielectrics=[(1.51, 4.6)]
+    )
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
+
+    document = json.loads(board.to_json())
+
+    assert document["board"]["layers"][0]["copper_weight_oz"] == 1.0
+    assert document["board"]["layers"][1]["copper_weight_oz"] == 2.0
+    assert document["board"]["layer_stack"]["dielectrics"] == [
+        {"thickness_mm": 1.51, "relative_permittivity": 4.6}
+    ]
+
+    with pytest.raises(ValueError):
+        board.add_layer("F.SilkS", role="silkscreen", side="top", copper_weight=1.0)

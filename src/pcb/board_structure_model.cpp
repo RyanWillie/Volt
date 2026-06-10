@@ -16,8 +16,16 @@ namespace volt {
 }
 
 void BoardStructureModel::set_layer_stack(LayerStack stack) {
+    auto copper_count = std::size_t{0};
     for (const auto layer : stack.layers()) {
         require_layer(layer);
+        if (layers_.get(layer).role() == BoardLayerRole::Copper) {
+            ++copper_count;
+        }
+    }
+    if (!stack.dielectrics().empty() && stack.dielectrics().size() + 1 != copper_count) {
+        throw std::invalid_argument{
+            "Layer stack dielectrics must sit between adjacent copper layers"};
     }
     layer_stack_ = std::move(stack);
 }

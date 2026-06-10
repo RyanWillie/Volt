@@ -995,3 +995,52 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
             Catch::Matchers::Message("PCB viewer diagnostic overlay layer must be a board layer"));
     }
 }
+
+TEST_CASE("PCB projection round-trips stackup copper weight and dielectrics") {
+    const auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Stackup"}};
+    auto front_layer =
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top, 0.035};
+    front_layer.set_copper_weight_oz(1.0);
+    const auto front = board.add_layer(std::move(front_layer));
+    auto back_layer =
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom, 0.035};
+    back_layer.set_copper_weight_oz(2.0);
+    const auto back = board.add_layer(std::move(back_layer));
+    board.set_layer_stack(
+        volt::LayerStack{{front, back}, 1.6, std::vector{volt::BoardDielectric{1.51, 4.6}}});
+
+    const auto text = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
+    const auto document = nlohmann::json::parse(text);
+
+    CHECK(document["board"]["layers"][0]["copper_weight_oz"] == 1.0);
+    CHECK(document["board"]["layers"][1]["copper_weight_oz"] == 2.0);
+    CHECK(document["board"]["layer_stack"]["dielectrics"] ==
+          nlohmann::json::array({{{"thickness_mm", 1.51}, {"relative_permittivity", 4.6}}}));
+
+    const auto loaded = volt::io::read_pcb_board_text(fixture.circuit, text);
+    CHECK(loaded.layer(front).copper_weight_oz() == 1.0);
+    CHECK(loaded.layer(back).copper_weight_oz() == 2.0);
+    REQUIRE(loaded.layer_stack().has_value());
+    REQUIRE(loaded.layer_stack()->dielectrics().size() == 1);
+    CHECK(loaded.layer_stack()->dielectrics().front().thickness_mm() == 1.51);
+    CHECK(loaded.layer_stack()->dielectrics().front().relative_permittivity() == 4.6);
+    CHECK(volt::io::write_pcb_board(loaded, volt::builtin_footprint_library()) == text);
+}
+
+TEST_CASE("PCB projection reader rejects malformed stackup data") {
+    const auto fixture = make_resistor_circuit();
+    const auto board = make_viewer_ready_board(fixture);
+    const auto text = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
+
+    auto bad_weight = nlohmann::json::parse(text);
+    bad_weight["board"]["layers"][0]["copper_weight_oz"] = "heavy";
+    CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, bad_weight.dump()),
+                    std::logic_error);
+
+    auto bad_dielectric = nlohmann::json::parse(text);
+    bad_dielectric["board"]["layer_stack"]["dielectrics"] =
+        nlohmann::json::array({{{"thickness_mm", 0.7}, {"relative_permittivity", 0.5}}});
+    CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, bad_dielectric.dump()),
+                    std::logic_error);
+}

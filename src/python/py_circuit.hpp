@@ -264,9 +264,10 @@ class PyCircuit {
 
     [[nodiscard]] std::size_t board_add_layer(const std::string &name, const std::string &role,
                                               const std::string &side, double thickness_mm,
-                                              bool enabled);
+                                              bool enabled, std::optional<double> copper_weight_oz);
 
-    void board_set_layer_stack(const std::vector<std::size_t> &layers, double board_thickness_mm);
+    void board_set_layer_stack(const std::vector<std::size_t> &layers, double board_thickness_mm,
+                               const std::vector<std::pair<double, double>> &dielectrics);
 
     void board_set_rectangular_outline(double x, double y, double width, double height);
 
