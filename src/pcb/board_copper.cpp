@@ -197,7 +197,9 @@ void BoardDesignRules::set_clearance_mm(BoardClearanceKind first, BoardClearance
         throw std::invalid_argument{"Clearance matrix values must be finite and non-negative"};
     }
 
-    const auto [low, high] = canonical_clearance_pair(first, second);
+    const auto pair = canonical_clearance_pair(first, second);
+    const auto low = pair.first;
+    const auto high = pair.second;
     const auto position = std::find_if(
         clearance_matrix_.begin(), clearance_matrix_.end(),
         [low, high](const auto &entry) { return entry.first == low && entry.second == high; });
