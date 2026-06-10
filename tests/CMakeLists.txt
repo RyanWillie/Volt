@@ -30,7 +30,7 @@ add_executable(
     circuit/nets_test.cpp
     circuit/parts_test.cpp
     circuit/queries_test.cpp
-    circuit/rule_classes_test.cpp
+    circuit/net_classes_test.cpp
     circuit/validation_signal_domain_test.cpp
     circuit/validation_test.cpp
     core/diagnostics_test.cpp

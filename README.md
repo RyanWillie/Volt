@@ -51,7 +51,7 @@ the kernel can establish stable invariants first.
 - Typed electrical semantics: quantities/units, electrical attributes, pin voltage
   ranges, net voltages, and selected-part voltage-rating diagnostics
 - Logical hierarchy primitives: module definitions, module instances, ports, and
-  template nets, plus rule classes for reusable net design intent
+  template nets, plus net classes for reusable net design intent
 - Kernel-enforced connectivity invariants, including prevention of dangling references
   and pins connected to multiple nets
 - Logical validation diagnostics for design-quality issues, with named entry points for

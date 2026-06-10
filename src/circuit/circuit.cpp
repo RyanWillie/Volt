@@ -279,14 +279,14 @@ bool Circuit::mark_intentional_no_connect_pin(PinId pin) {
     return intent_.mark_intentional_no_connect_pin(pin);
 }
 
-[[nodiscard]] RuleClassId Circuit::add_rule_class(RuleClass rule_class) {
-    return rule_classes_.add_rule_class(std::move(rule_class));
+[[nodiscard]] NetClassId Circuit::add_net_class(NetClass net_class) {
+    return net_classes_.add_net_class(std::move(net_class));
 }
 
-bool Circuit::assign_net_rule_class(NetId net, RuleClassId rule_class) {
+bool Circuit::assign_net_class(NetId net, NetClassId net_class) {
     require_net(net);
-    require_rule_class(rule_class);
-    return rule_classes_.assign_net_rule_class(net, rule_class);
+    require_net_class(net_class);
+    return net_classes_.assign_net_class(net, net_class);
 }
 
 [[nodiscard]] const std::optional<PhysicalPart> &
@@ -345,23 +345,22 @@ Circuit::module_component_origins(ModuleInstanceId instance) const {
     return intent_.intentional_no_connect_pins();
 }
 
-[[nodiscard]] const RuleClass &Circuit::rule_class(RuleClassId id) const {
-    return rule_classes_.rule_class(id);
+[[nodiscard]] const NetClass &Circuit::net_class(NetClassId id) const {
+    return net_classes_.net_class(id);
 }
 
-[[nodiscard]] std::optional<RuleClassId>
-Circuit::rule_class_by_name(const RuleClassName &name) const {
-    return rule_classes_.rule_class_by_name(name);
+[[nodiscard]] std::optional<NetClassId> Circuit::net_class_by_name(const NetClassName &name) const {
+    return net_classes_.net_class_by_name(name);
 }
 
-[[nodiscard]] std::optional<RuleClassId> Circuit::rule_class_for_net(NetId net) const {
+[[nodiscard]] std::optional<NetClassId> Circuit::net_class_for_net(NetId net) const {
     require_net(net);
-    return rule_classes_.rule_class_for_net(net);
+    return net_classes_.net_class_for_net(net);
 }
 
-[[nodiscard]] const std::vector<std::pair<NetId, RuleClassId>> &
-Circuit::net_rule_class_assignments() const noexcept {
-    return rule_classes_.net_rule_class_assignments();
+[[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &
+Circuit::net_class_assignments() const noexcept {
+    return net_classes_.net_class_assignments();
 }
 
 [[nodiscard]] const PinDefinition &Circuit::pin_definition(PinDefId id) const {
@@ -512,8 +511,8 @@ void Circuit::require_pin(PinId pin) const { connectivity_.require_pin(pin); }
 
 void Circuit::require_net(NetId net) const { connectivity_.require_net(net); }
 
-void Circuit::require_rule_class(RuleClassId rule_class) const {
-    rule_classes_.require_rule_class(rule_class);
+void Circuit::require_net_class(NetClassId net_class) const {
+    net_classes_.require_net_class(net_class);
 }
 
 [[nodiscard]] std::optional<NetId> Circuit::net_of_existing_pin(PinId pin) const {

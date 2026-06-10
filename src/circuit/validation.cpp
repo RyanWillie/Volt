@@ -288,15 +288,15 @@ void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net
     }
 }
 
-void validate_rule_class_voltage_limit(const Circuit &circuit, NetId net_id,
-                                       DiagnosticReport &report) {
-    const auto rule_class_id = circuit.rule_class_for_net(net_id);
-    if (!rule_class_id.has_value()) {
+void validate_net_class_voltage_limit(const Circuit &circuit, NetId net_id,
+                                      DiagnosticReport &report) {
+    const auto net_class_id = circuit.net_class_for_net(net_id);
+    if (!net_class_id.has_value()) {
         return;
     }
 
-    const auto &rule_class = circuit.rule_class(rule_class_id.value());
-    if (!rule_class.maximum_net_voltage().has_value()) {
+    const auto &net_class = circuit.net_class(net_class_id.value());
+    if (!net_class.maximum_net_voltage().has_value()) {
         return;
     }
 
@@ -313,12 +313,12 @@ void validate_rule_class_voltage_limit(const Circuit &circuit, NetId net_id,
     }
 
     const auto net_voltage = std::abs(net_voltage_attribute.as_quantity().value());
-    if (net_voltage <= rule_class.maximum_net_voltage()->value()) {
+    if (net_voltage <= net_class.maximum_net_voltage()->value()) {
         return;
     }
 
-    report.add(erc_error(erc_diagnostic_codes::NetRuleClassVoltageExceeded,
-                         "Net voltage exceeds assigned rule class limit",
+    report.add(erc_error(erc_diagnostic_codes::NetClassVoltageExceeded,
+                         "Net voltage exceeds assigned net class limit",
                          std::vector{EntityRef::net(net_id)}));
 }
 
@@ -411,7 +411,7 @@ void validate_net_electrical_rules(const Circuit &circuit, const NetContinuityVi
         validate_power_and_ground_semantics(circuit, net_id, net, group_pins, report);
         validate_selected_part_voltage_ratings(circuit, net_id, net, group_pins, report);
         validate_pin_voltage_ranges(circuit, net_id, net, group_pins, report);
-        validate_rule_class_voltage_limit(circuit, net_id, report);
+        validate_net_class_voltage_limit(circuit, net_id, report);
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
         validate_input_signal_domains(circuit, net_id, group_pins, report);
     }
@@ -430,7 +430,7 @@ void validate_net_semantics(const Circuit &circuit, const NetContinuityView &con
         validate_power_and_ground_semantics(circuit, net_id, net, group_pins, report);
         validate_selected_part_voltage_ratings(circuit, net_id, net, group_pins, report);
         validate_pin_voltage_ranges(circuit, net_id, net, group_pins, report);
-        validate_rule_class_voltage_limit(circuit, net_id, report);
+        validate_net_class_voltage_limit(circuit, net_id, report);
         validate_output_driver_conflicts(circuit, net_id, group_pins, report);
         validate_input_signal_domains(circuit, net_id, group_pins, report);
     }

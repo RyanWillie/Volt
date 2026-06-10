@@ -46,7 +46,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "POWER_INPUT_WITHOUT_SOURCE",
         "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
         "PIN_VOLTAGE_RANGE_VIOLATION",
-        "NET_RULE_CLASS_VOLTAGE_EXCEEDED",
+        "NET_CLASS_VOLTAGE_EXCEEDED",
         "MULTIPLE_OUTPUTS_ON_NET",
         "INPUT_SIGNAL_DOMAIN_MISMATCH",
     )

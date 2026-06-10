@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/net_classes.hpp>
 #include <volt/circuit/nets.hpp>
-#include <volt/circuit/rule_classes.hpp>
 #include <volt/circuit/validation.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
@@ -21,11 +21,11 @@
 namespace {
 
 template <typename Model>
-concept CanAssignNetRuleClass = requires(Model model, volt::NetId net, volt::RuleClassId rule) {
-    model.assign_net_rule_class(net, rule);
+concept CanAssignNetClass = requires(Model model, volt::NetId net, volt::NetClassId rule) {
+    model.assign_net_class(net, rule);
 };
 
-static_assert(!CanAssignNetRuleClass<volt::RuleClasses>);
+static_assert(!CanAssignNetClass<volt::NetClasses>);
 
 [[nodiscard]] const volt::Diagnostic *find_diagnostic(const volt::DiagnosticReport &report,
                                                       const std::string &code) {
@@ -48,89 +48,88 @@ static_assert(!CanAssignNetRuleClass<volt::RuleClasses>);
 
 } // namespace
 
-TEST_CASE("RuleClasses stores rule classes by stable ID and name") {
-    auto high_voltage = volt::RuleClass{volt::RuleClassName{"HighVoltage"}};
+TEST_CASE("NetClasses stores net classes by stable ID and name") {
+    auto high_voltage = volt::NetClass{volt::NetClassName{"HighVoltage"}};
     high_voltage.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 60.0});
     high_voltage.set_copper_clearance_mm(0.6);
 
-    auto model = volt::RuleClasses{};
-    const auto high_voltage_id = model.add_rule_class(std::move(high_voltage));
-    const auto logic_id = model.add_rule_class(volt::RuleClass{volt::RuleClassName{"Logic"}});
+    auto model = volt::NetClasses{};
+    const auto high_voltage_id = model.add_net_class(std::move(high_voltage));
+    const auto logic_id = model.add_net_class(volt::NetClass{volt::NetClassName{"Logic"}});
 
-    REQUIRE(model.rule_class_count() == 2);
-    CHECK(model.rule_class(high_voltage_id).name() == volt::RuleClassName{"HighVoltage"});
-    REQUIRE(model.rule_class(high_voltage_id).maximum_net_voltage().has_value());
-    CHECK(model.rule_class(high_voltage_id).maximum_net_voltage()->value() == 60.0);
-    REQUIRE(model.rule_class(high_voltage_id).copper_clearance_mm().has_value());
-    CHECK(model.rule_class(high_voltage_id).copper_clearance_mm().value() == 0.6);
-    CHECK(model.rule_class_by_name(volt::RuleClassName{"HighVoltage"}) == high_voltage_id);
-    CHECK(model.rule_class_by_name(volt::RuleClassName{"Logic"}) == logic_id);
-    CHECK_THROWS_AS(model.add_rule_class(volt::RuleClass{volt::RuleClassName{"Logic"}}),
+    REQUIRE(model.net_class_count() == 2);
+    CHECK(model.net_class(high_voltage_id).name() == volt::NetClassName{"HighVoltage"});
+    REQUIRE(model.net_class(high_voltage_id).maximum_net_voltage().has_value());
+    CHECK(model.net_class(high_voltage_id).maximum_net_voltage()->value() == 60.0);
+    REQUIRE(model.net_class(high_voltage_id).copper_clearance_mm().has_value());
+    CHECK(model.net_class(high_voltage_id).copper_clearance_mm().value() == 0.6);
+    CHECK(model.net_class_by_name(volt::NetClassName{"HighVoltage"}) == high_voltage_id);
+    CHECK(model.net_class_by_name(volt::NetClassName{"Logic"}) == logic_id);
+    CHECK_THROWS_AS(model.add_net_class(volt::NetClass{volt::NetClassName{"Logic"}}),
                     std::logic_error);
 
-    CHECK_FALSE(model.rule_class_for_net(volt::NetId{7}).has_value());
-    CHECK(model.net_rule_class_assignments().empty());
+    CHECK_FALSE(model.net_class_for_net(volt::NetId{7}).has_value());
+    CHECK(model.net_class_assignments().empty());
 }
 
-TEST_CASE("RuleClass rejects malformed local constraints") {
-    CHECK_THROWS_AS(volt::RuleClassName{""}, std::invalid_argument);
+TEST_CASE("NetClass rejects malformed local constraints") {
+    CHECK_THROWS_AS(volt::NetClassName{""}, std::invalid_argument);
 
-    auto rule_class = volt::RuleClass{volt::RuleClassName{"Power"}};
+    auto net_class = volt::NetClass{volt::NetClassName{"Power"}};
     CHECK_THROWS_AS(
-        rule_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Current, 1.0}),
+        net_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Current, 1.0}),
         std::invalid_argument);
     CHECK_THROWS_AS(
-        rule_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, -1.0}),
+        net_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, -1.0}),
         std::invalid_argument);
-    CHECK_THROWS_AS(rule_class.set_copper_clearance_mm(-0.1), std::invalid_argument);
-    CHECK_THROWS_AS(rule_class.set_copper_clearance_mm(std::numeric_limits<double>::infinity()),
+    CHECK_THROWS_AS(net_class.set_copper_clearance_mm(-0.1), std::invalid_argument);
+    CHECK_THROWS_AS(net_class.set_copper_clearance_mm(std::numeric_limits<double>::infinity()),
                     std::invalid_argument);
 }
 
-TEST_CASE("Circuit owns rule-class intent and rejects dangling assignments") {
+TEST_CASE("Circuit owns net-class intent and rejects dangling assignments") {
     auto circuit = volt::Circuit{};
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
-    const auto rule_class =
-        circuit.add_rule_class(volt::RuleClass{volt::RuleClassName{"PowerRails"}});
+    const auto net_class = circuit.add_net_class(volt::NetClass{volt::NetClassName{"PowerRails"}});
 
-    CHECK(circuit.assign_net_rule_class(net, rule_class));
-    CHECK_FALSE(circuit.assign_net_rule_class(net, rule_class));
-    CHECK(circuit.rule_class_for_net(net) == rule_class);
-    CHECK(circuit.net_rule_class_assignments() ==
-          std::vector<std::pair<volt::NetId, volt::RuleClassId>>{{net, rule_class}});
+    CHECK(circuit.assign_net_class(net, net_class));
+    CHECK_FALSE(circuit.assign_net_class(net, net_class));
+    CHECK(circuit.net_class_for_net(net) == net_class);
+    CHECK(circuit.net_class_assignments() ==
+          std::vector<std::pair<volt::NetId, volt::NetClassId>>{{net, net_class}});
 
-    CHECK_THROWS_AS(circuit.assign_net_rule_class(volt::NetId{99}, rule_class), std::out_of_range);
-    CHECK_THROWS_AS(circuit.assign_net_rule_class(net, volt::RuleClassId{99}), std::out_of_range);
+    CHECK_THROWS_AS(circuit.assign_net_class(volt::NetId{99}, net_class), std::out_of_range);
+    CHECK_THROWS_AS(circuit.assign_net_class(net, volt::NetClassId{99}), std::out_of_range);
 }
 
-TEST_CASE("Circuit electrical validation applies assigned rule-class voltage limits") {
+TEST_CASE("Circuit electrical validation applies assigned net-class voltage limits") {
     auto circuit = volt::Circuit{};
     const auto net = circuit.add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
-    auto rule_class = volt::RuleClass{volt::RuleClassName{"Logic"}};
-    rule_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 3.6});
-    const auto rule_class_id = circuit.add_rule_class(std::move(rule_class));
-    circuit.assign_net_rule_class(net, rule_class_id);
+    auto net_class = volt::NetClass{volt::NetClassName{"Logic"}};
+    net_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 3.6});
+    const auto net_class_id = circuit.add_net_class(std::move(net_class));
+    circuit.assign_net_class(net, net_class_id);
     circuit.set_net_electrical_attribute(
         net, net_voltage_spec(),
         volt::ElectricalAttributeValue{volt::Quantity{volt::UnitDimension::Voltage, 5.0}});
 
     const auto report = volt::validate_electrical_rules(circuit);
 
-    const auto *violation = find_diagnostic(report, "NET_RULE_CLASS_VOLTAGE_EXCEEDED");
+    const auto *violation = find_diagnostic(report, "NET_CLASS_VOLTAGE_EXCEEDED");
     REQUIRE(violation != nullptr);
     CHECK(violation->severity() == volt::Severity::Error);
     CHECK(violation->entities() == std::vector{volt::EntityRef::net(net)});
 }
 
-TEST_CASE("Board validation applies assigned rule-class copper clearance") {
+TEST_CASE("Board validation applies assigned net-class copper clearance") {
     auto circuit = volt::Circuit{};
     const auto first_net = circuit.add_net(volt::Net{volt::NetName{"HV"}, volt::NetKind::Power});
     const auto second_net =
         circuit.add_net(volt::Net{volt::NetName{"LOGIC"}, volt::NetKind::Signal});
-    auto rule_class = volt::RuleClass{volt::RuleClassName{"HighVoltage"}};
-    rule_class.set_copper_clearance_mm(0.5);
-    const auto rule_class_id = circuit.add_rule_class(std::move(rule_class));
-    circuit.assign_net_rule_class(first_net, rule_class_id);
+    auto net_class = volt::NetClass{volt::NetClassName{"HighVoltage"}};
+    net_class.set_copper_clearance_mm(0.5);
+    const auto net_class_id = circuit.add_net_class(std::move(net_class));
+    circuit.assign_net_class(first_net, net_class_id);
 
     auto board = volt::Board{circuit};
     const auto front = board.add_layer(

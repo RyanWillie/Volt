@@ -118,7 +118,7 @@ class LogicalCircuitReader {
 
     void read_nets();
 
-    void read_rule_classes();
+    void read_net_classes();
 
     void read_design_intent();
 
@@ -140,7 +140,7 @@ class LogicalCircuitReader {
     std::map<std::string, ComponentId> component_ids_;
     std::map<std::string, PinId> pin_ids_;
     std::map<std::string, NetId> net_ids_;
-    std::map<std::string, RuleClassId> rule_class_ids_;
+    std::map<std::string, NetClassId> net_class_ids_;
     std::map<std::string, ModuleDefId> module_def_ids_;
     std::map<std::string, TemplateNetDefId> template_net_ids_;
     std::map<std::string, ModuleComponentId> module_component_ids_;
@@ -159,7 +159,7 @@ class LogicalCircuitReader {
     read_components();
     read_pins();
     read_nets();
-    read_rule_classes();
+    read_net_classes();
     read_design_intent();
     read_module_definitions();
     read_module_instances();
@@ -639,34 +639,34 @@ void LogicalCircuitReader::read_nets() {
     }
 }
 
-void LogicalCircuitReader::read_rule_classes() {
-    const auto it = document_.find("rule_classes");
+void LogicalCircuitReader::read_net_classes() {
+    const auto it = document_.find("net_classes");
     if (it == document_.end()) {
         return;
     }
-    require(it->is_object(), "Rule classes must be an object");
+    require(it->is_object(), "Net classes must be an object");
 
-    auto seen_rule_classes = std::set<std::string>{};
-    for (const auto &rule_class_object : array_field(*it, "classes")) {
-        require(rule_class_object.is_object(), "Rule class must be an object");
-        const auto id = local_id<RuleClassId>(rule_class_object, seen_rule_classes);
-        auto rule_class = RuleClass{RuleClassName{string_field(rule_class_object, "name")}};
+    auto seen_net_classes = std::set<std::string>{};
+    for (const auto &net_class_object : array_field(*it, "classes")) {
+        require(net_class_object.is_object(), "Net class must be an object");
+        const auto id = local_id<NetClassId>(net_class_object, seen_net_classes);
+        auto net_class = NetClass{NetClassName{string_field(net_class_object, "name")}};
 
-        if (const auto maximum_voltage = rule_class_object.find("maximum_net_voltage");
-            maximum_voltage != rule_class_object.end()) {
+        if (const auto maximum_voltage = net_class_object.find("maximum_net_voltage");
+            maximum_voltage != net_class_object.end()) {
             require(maximum_voltage->is_object(),
-                    "Rule class maximum net voltage must be an object");
-            rule_class.set_maximum_net_voltage(
+                    "Net class maximum net voltage must be an object");
+            net_class.set_maximum_net_voltage(
                 Quantity{unit_dimension(string_field(*maximum_voltage, "dimension")),
                          number_field(*maximum_voltage, "value")});
         }
-        if (const auto copper_clearance = rule_class_object.find("copper_clearance_mm");
-            copper_clearance != rule_class_object.end()) {
-            require(copper_clearance->is_number(), "Rule class copper clearance must be a number");
-            rule_class.set_copper_clearance_mm(copper_clearance->get<double>());
+        if (const auto copper_clearance = net_class_object.find("copper_clearance_mm");
+            copper_clearance != net_class_object.end()) {
+            require(copper_clearance->is_number(), "Net class copper clearance must be a number");
+            net_class.set_copper_clearance_mm(copper_clearance->get<double>());
         }
 
-        rule_class_ids_.emplace(id, circuit_.add_rule_class(std::move(rule_class)));
+        net_class_ids_.emplace(id, circuit_.add_net_class(std::move(net_class)));
     }
 
     const auto assignments = optional_array_field(*it, "net_assignments");
@@ -676,12 +676,11 @@ void LogicalCircuitReader::read_rule_classes() {
 
     auto seen_assignment_nets = std::set<std::string>{};
     for (const auto &assignment : *assignments) {
-        require(assignment.is_object(), "Rule class net assignment must be an object");
+        require(assignment.is_object(), "Net class net assignment must be an object");
         const auto net = string_field(assignment, "net");
-        require(seen_assignment_nets.insert(net).second, "Duplicate rule-class net assignment");
-        [[maybe_unused]] const auto changed = circuit_.assign_net_rule_class(
-            resolve(net_ids_, net),
-            resolve(rule_class_ids_, string_field(assignment, "rule_class")));
+        require(seen_assignment_nets.insert(net).second, "Duplicate net-class net assignment");
+        [[maybe_unused]] const auto changed = circuit_.assign_net_class(
+            resolve(net_ids_, net), resolve(net_class_ids_, string_field(assignment, "net_class")));
     }
 }
 

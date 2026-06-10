@@ -41,7 +41,7 @@ struct TemplateNetDefIdTag;
 struct ModuleComponentIdTag;
 struct PortDefIdTag;
 struct PortBindingIdTag;
-struct RuleClassIdTag;
+struct NetClassIdTag;
 struct SymbolDefIdTag;
 struct SheetIdTag;
 struct SymbolInstanceIdTag;
@@ -87,8 +87,8 @@ using ModuleComponentId = EntityId<detail::ModuleComponentIdTag>;
 using PortDefId = EntityId<detail::PortDefIdTag>;
 /** ID for an explicit module port binding edge. */
 using PortBindingId = EntityId<detail::PortBindingIdTag>;
-/** ID for a reusable rule class intent definition. */
-using RuleClassId = EntityId<detail::RuleClassIdTag>;
+/** ID for a reusable net class intent definition. */
+using NetClassId = EntityId<detail::NetClassIdTag>;
 /** ID for a reusable schematic symbol definition. */
 using SymbolDefId = EntityId<detail::SymbolDefIdTag>;
 /** ID for a schematic sheet projection. */

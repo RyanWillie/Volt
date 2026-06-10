@@ -24,7 +24,7 @@ The current kernel foundation includes:
 - LED logical circuit example with selected physical parts
 - logical hierarchy primitives: module definitions, module instances, ports, and template
   nets
-- rule classes for reusable net design intent
+- net classes for reusable net design intent
 - schematic projection layer: kernel-owned sheets, symbols, wires, and labels over
   canonical nets, schematic readability/consistency validation, and deterministic SVG
   rendering
@@ -59,7 +59,7 @@ Completed since the original plan:
 
 - minimal logical hierarchy: module/block definitions, module instances, ports, and
   template nets (see [hierarchy-scoped-net-design.md](docs/hierarchy-scoped-net-design.md));
-- netclasses/rule classes: named logical/electrical design intent assigned to nets,
+- net classes: named logical/electrical design intent assigned to nets,
   initially limited to constraints Volt can validate soon.
 
 Remaining logical primitives:
@@ -68,7 +68,7 @@ Remaining logical primitives:
   aliases/conflicts without making names internal identity;
 - generic net bundles/interfaces: ordered or named groups of existing `NetId`s for buses,
   protocols, connectors, and repeated signal groups;
-- expand rule-class constraints toward voltage, source requirement, current limits, and
+- expand net-class constraints toward voltage, source requirement, current limits, and
   selected-part rating requirements.
 
 The authoring facade should remain a convenience layer over `Circuit`; it must not become
@@ -96,7 +96,7 @@ Remaining work:
 - current limits and power capability attributes/checks
 - no-connect assertions as explicit stored design intent
 - selected-part compatibility diagnostics beyond voltage-rating checks
-- netclasses/rule classes for reusable logical/electrical constraints
+- net classes for reusable logical/electrical constraints
 - richer drive/domain compatibility after the general constraint model is clearer
 
 This is the foundation for richer ERC and future simulation readiness. See
@@ -115,11 +115,11 @@ Planned work:
   appropriate
 - validate scoped-net and hierarchy issues once those primitives exist
 - add typed-semantics-aware current, power, domain, and drive-compatibility checks
-- add netclass/rule-class validation once rule classes exist, limited at first to
+- add net-class validation, limited at first to
   logical/electrical constraints Volt can validate without PCB architecture
 
 Do not expand ERC as ad hoc checks over today's broad `PinRole` model. Prefer typed
-attributes, netclasses, constraints, and explicit design-intent entities that can be
+attributes, net classes, constraints, and explicit design-intent entities that can be
 serialized and inspected.
 
 ### Python Authoring Refinements

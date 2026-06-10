@@ -123,47 +123,47 @@ TEST_CASE("Logical circuit reader preserves design intent") {
     CHECK(output["design_intent"] == fixture["design_intent"]);
 }
 
-TEST_CASE("Logical circuit reader preserves rule classes and net assignments") {
+TEST_CASE("Logical circuit reader preserves net classes and net assignments") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
     fixture["nets"][0]["electrical_attributes"] = {
         {"voltage", {{"type", "quantity"}, {"dimension", "voltage"}, {"value", 5.0}}},
     };
-    fixture["rule_classes"] = {
+    fixture["net_classes"] = {
         {"classes", nlohmann::json::array(
-                        {{{"id", "rule_class:0"},
+                        {{{"id", "net_class:0"},
                           {"name", "Logic"},
                           {"maximum_net_voltage", {{"dimension", "voltage"}, {"value", 3.6}}},
                           {"copper_clearance_mm", 0.25}}})},
         {"net_assignments",
-         nlohmann::json::array({{{"net", "net:0"}, {"rule_class", "rule_class:0"}}})},
+         nlohmann::json::array({{{"net", "net:0"}, {"net_class", "net_class:0"}}})},
     };
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
 
-    CHECK(circuit.rule_class_count() == 1);
-    REQUIRE(circuit.rule_class_for_net(volt::NetId{0}).has_value());
-    CHECK(circuit.rule_class_for_net(volt::NetId{0}).value() == volt::RuleClassId{0});
-    CHECK(circuit.rule_class(volt::RuleClassId{0}).name() == volt::RuleClassName{"Logic"});
-    REQUIRE(circuit.rule_class(volt::RuleClassId{0}).maximum_net_voltage().has_value());
-    CHECK(circuit.rule_class(volt::RuleClassId{0}).maximum_net_voltage()->value() == 3.6);
-    REQUIRE(circuit.rule_class(volt::RuleClassId{0}).copper_clearance_mm().has_value());
-    CHECK(circuit.rule_class(volt::RuleClassId{0}).copper_clearance_mm().value() == 0.25);
+    CHECK(circuit.net_class_count() == 1);
+    REQUIRE(circuit.net_class_for_net(volt::NetId{0}).has_value());
+    CHECK(circuit.net_class_for_net(volt::NetId{0}).value() == volt::NetClassId{0});
+    CHECK(circuit.net_class(volt::NetClassId{0}).name() == volt::NetClassName{"Logic"});
+    REQUIRE(circuit.net_class(volt::NetClassId{0}).maximum_net_voltage().has_value());
+    CHECK(circuit.net_class(volt::NetClassId{0}).maximum_net_voltage()->value() == 3.6);
+    REQUIRE(circuit.net_class(volt::NetClassId{0}).copper_clearance_mm().has_value());
+    CHECK(circuit.net_class(volt::NetClassId{0}).copper_clearance_mm().value() == 0.25);
 
     const auto report = volt::validate_electrical_rules(circuit);
     REQUIRE(report.count() == 1);
     CHECK(report.diagnostics().front().code() ==
-          volt::DiagnosticCode{"NET_RULE_CLASS_VOLTAGE_EXCEEDED"});
+          volt::DiagnosticCode{"NET_CLASS_VOLTAGE_EXCEEDED"});
 
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
-    CHECK(output["rule_classes"] == fixture["rule_classes"]);
+    CHECK(output["net_classes"] == fixture["net_classes"]);
 }
 
-TEST_CASE("Logical circuit reader rejects malformed rule-class references") {
+TEST_CASE("Logical circuit reader rejects malformed net-class references") {
     auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
-    fixture["rule_classes"] = {
-        {"classes", nlohmann::json::array({{{"id", "rule_class:0"}, {"name", "Logic"}}})},
+    fixture["net_classes"] = {
+        {"classes", nlohmann::json::array({{{"id", "net_class:0"}, {"name", "Logic"}}})},
         {"net_assignments",
-         nlohmann::json::array({{{"net", "net:99"}, {"rule_class", "rule_class:0"}}})},
+         nlohmann::json::array({{{"net", "net:99"}, {"net_class", "net_class:0"}}})},
     };
 
     CHECK_THROWS_AS(volt::io::read_logical_circuit_text(fixture.dump()), std::logic_error);

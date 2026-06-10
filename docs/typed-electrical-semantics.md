@@ -257,7 +257,7 @@ Remaining validation work should build on explicit data:
 - selected-part compatibility beyond voltage rating
 - drive and domain compatibility once the constraint model is clearer
 - hierarchy and scoped-net validation after those primitives exist
-- netclass/rule-class validation once reusable rule classes exist
+- net-class validation over reusable net classes
 
 These are design-quality findings. They remain diagnostics unless they reveal a
 structurally invalid mutation such as a pin connected to more than one net.
@@ -349,7 +349,7 @@ dependency-aware:
 4. Add no-connect assertions as explicit stored design intent.
 5. Add selected-part compatibility checks beyond voltage rating.
 6. Add current and power capability checks once the relevant constraints are explicit.
-7. Design netclasses/rule classes only after the reusable constraint vocabulary is clear.
+7. Design net classes only after the reusable constraint vocabulary is clear.
 
 Each slice should have tests that prove structural invalid data is rejected at the
 mutation or load boundary, while bad design intent is reported through diagnostics.
