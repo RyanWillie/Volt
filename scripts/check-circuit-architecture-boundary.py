@@ -164,7 +164,7 @@ def subsystem_root_name(path: Path) -> str | None:
     if path.match("include/volt/circuit/*"):
         if name in {"circuit.hpp", "validation.hpp", "queries.hpp"}:
             return None
-        if "_model" in name or name in {"design_intent.hpp", "rule_classes.hpp"}:
+        if "_model" in name or name in {"design_intent.hpp", "net_classes.hpp"}:
             return "Circuit"
     if path.match("include/volt/pcb/*"):
         if name == "board.hpp":
@@ -204,7 +204,7 @@ def check_subsystem_sources_have_real_logic(failures: list[str]) -> None:
             name = path.name
             if "_model" not in name and name not in {
                 "design_intent.cpp",
-                "rule_classes.cpp",
+                "net_classes.cpp",
             }:
                 continue
             text = strip_comments(read(path))

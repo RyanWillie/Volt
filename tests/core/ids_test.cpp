@@ -18,7 +18,7 @@ TEST_CASE("logical entity IDs are distinct typed storage indexes") {
     const auto board_zone = volt::BoardZoneId{10};
     const auto board_keepout = volt::BoardKeepoutId{11};
     const auto board_text = volt::BoardTextId{12};
-    const auto rule_class = volt::RuleClassId{13};
+    const auto net_class = volt::NetClassId{13};
 
     CHECK(component_def.index() == 0);
     CHECK(component.index() == 1);
@@ -33,7 +33,7 @@ TEST_CASE("logical entity IDs are distinct typed storage indexes") {
     CHECK(board_zone.index() == 10);
     CHECK(board_keepout.index() == 11);
     CHECK(board_text.index() == 12);
-    CHECK(rule_class.index() == 13);
+    CHECK(net_class.index() == 13);
 
     static_assert(!std::is_same_v<volt::ComponentId, volt::NetId>);
     static_assert(!std::is_same_v<volt::PinDefId, volt::PinId>);
@@ -48,6 +48,6 @@ TEST_CASE("logical entity IDs are distinct typed storage indexes") {
     static_assert(!std::is_same_v<volt::BoardZoneId, volt::BoardKeepoutId>);
     static_assert(!std::is_same_v<volt::BoardZoneId, volt::BoardTextId>);
     static_assert(!std::is_constructible_v<volt::BoardZoneId, volt::BoardLayerId>);
-    static_assert(!std::is_same_v<volt::RuleClassId, volt::NetId>);
-    static_assert(!std::is_constructible_v<volt::RuleClassId, volt::NetId>);
+    static_assert(!std::is_same_v<volt::NetClassId, volt::NetId>);
+    static_assert(!std::is_constructible_v<volt::NetClassId, volt::NetId>);
 }

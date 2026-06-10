@@ -319,7 +319,7 @@ void write_electrical_attributes(std::ostream &out, const ElectricalAttributeMap
 
 [[nodiscard]] std::string module_instance_id(ModuleInstanceId id) { return encode_local_id(id); }
 
-[[nodiscard]] std::string rule_class_id(RuleClassId id) { return encode_local_id(id); }
+[[nodiscard]] std::string net_class_id(NetClassId id) { return encode_local_id(id); }
 
 void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
     out << "{\n";
@@ -395,36 +395,36 @@ void write_pin_definition_electrical_attributes(std::ostream &out,
     }
 }
 
-void write_rule_classes(std::ostream &out, const Circuit &circuit) {
-    out << "  \"rule_classes\": { \"classes\": [\n";
-    for (std::size_t index = 0; index < circuit.rule_class_count(); ++index) {
-        const auto id = RuleClassId{index};
-        const auto &rule_class = circuit.rule_class(id);
-        out << "    { \"id\": " << json_string(rule_class_id(id))
-            << ", \"name\": " << json_string(rule_class.name().value());
-        if (rule_class.maximum_net_voltage().has_value()) {
+void write_net_classes(std::ostream &out, const Circuit &circuit) {
+    out << "  \"net_classes\": { \"classes\": [\n";
+    for (std::size_t index = 0; index < circuit.net_class_count(); ++index) {
+        const auto id = NetClassId{index};
+        const auto &net_class = circuit.net_class(id);
+        out << "    { \"id\": " << json_string(net_class_id(id))
+            << ", \"name\": " << json_string(net_class.name().value());
+        if (net_class.maximum_net_voltage().has_value()) {
             out << ", \"maximum_net_voltage\": { ";
-            write_quantity_payload(out, rule_class.maximum_net_voltage().value());
+            write_quantity_payload(out, net_class.maximum_net_voltage().value());
             out << " }";
         }
-        if (rule_class.copper_clearance_mm().has_value()) {
+        if (net_class.copper_clearance_mm().has_value()) {
             out << ", \"copper_clearance_mm\": ";
-            write_json_number(out, rule_class.copper_clearance_mm().value());
+            write_json_number(out, net_class.copper_clearance_mm().value());
         }
         out << " }";
-        if (index + 1 != circuit.rule_class_count()) {
+        if (index + 1 != circuit.net_class_count()) {
             out << ',';
         }
         out << '\n';
     }
     out << "  ], \"net_assignments\": [";
-    if (!circuit.net_rule_class_assignments().empty()) {
+    if (!circuit.net_class_assignments().empty()) {
         out << '\n';
-        for (std::size_t index = 0; index < circuit.net_rule_class_assignments().size(); ++index) {
-            const auto [net, rule_class] = circuit.net_rule_class_assignments()[index];
+        for (std::size_t index = 0; index < circuit.net_class_assignments().size(); ++index) {
+            const auto [net, net_class] = circuit.net_class_assignments()[index];
             out << "    { \"net\": " << json_string(net_id(net))
-                << ", \"rule_class\": " << json_string(rule_class_id(rule_class)) << " }";
-            if (index + 1 != circuit.net_rule_class_assignments().size()) {
+                << ", \"net_class\": " << json_string(net_class_id(net_class)) << " }";
+            if (index + 1 != circuit.net_class_assignments().size()) {
                 out << ',';
             }
             out << '\n';
@@ -576,14 +576,14 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
     }
     const auto has_design_intent =
         !circuit.intentional_stub_nets().empty() || !circuit.intentional_no_connect_pins().empty();
-    const auto has_rule_classes =
-        circuit.rule_class_count() != 0 || !circuit.net_rule_class_assignments().empty();
+    const auto has_net_classes =
+        circuit.net_class_count() != 0 || !circuit.net_class_assignments().empty();
     const auto has_hierarchy =
         circuit.module_definition_count() != 0 || circuit.module_instance_count() != 0;
-    out << ((has_rule_classes || has_design_intent || has_hierarchy) ? "  ],\n" : "  ]\n");
+    out << ((has_net_classes || has_design_intent || has_hierarchy) ? "  ],\n" : "  ]\n");
 
-    if (has_rule_classes) {
-        detail::write_rule_classes(out, circuit);
+    if (has_net_classes) {
+        detail::write_net_classes(out, circuit);
         out << ((has_design_intent || has_hierarchy) ? ",\n" : "\n");
     }
 

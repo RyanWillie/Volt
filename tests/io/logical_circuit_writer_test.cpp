@@ -211,28 +211,27 @@ TEST_CASE("Logical circuit writer emits design intent") {
     CHECK(output["design_intent"]["no_connect_pins"] == nlohmann::json::array({"pin:0"}));
 }
 
-TEST_CASE("Logical circuit writer emits rule classes and net assignments") {
+TEST_CASE("Logical circuit writer emits net classes and net assignments") {
     volt::Circuit circuit;
     const auto net = circuit.add_net(volt::Net{volt::NetName{"HV"}, volt::NetKind::Power});
-    auto rule_class = volt::RuleClass{volt::RuleClassName{"HighVoltage"}};
-    rule_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 60.0});
-    rule_class.set_copper_clearance_mm(0.5);
-    const auto rule_class_id = circuit.add_rule_class(std::move(rule_class));
-    circuit.assign_net_rule_class(net, rule_class_id);
+    auto net_class = volt::NetClass{volt::NetClassName{"HighVoltage"}};
+    net_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 60.0});
+    net_class.set_copper_clearance_mm(0.5);
+    const auto net_class_id = circuit.add_net_class(std::move(net_class));
+    circuit.assign_net_class(net, net_class_id);
 
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
 
-    REQUIRE(output.contains("rule_classes"));
-    const auto &classes = output["rule_classes"]["classes"];
-    const auto &assignments = output["rule_classes"]["net_assignments"];
+    REQUIRE(output.contains("net_classes"));
+    const auto &classes = output["net_classes"]["classes"];
+    const auto &assignments = output["net_classes"]["net_assignments"];
     REQUIRE(classes.size() == 1);
-    CHECK(classes[0]["id"] == "rule_class:0");
+    CHECK(classes[0]["id"] == "net_class:0");
     CHECK(classes[0]["name"] == "HighVoltage");
     CHECK(classes[0]["maximum_net_voltage"]["dimension"] == "voltage");
     CHECK(classes[0]["maximum_net_voltage"]["value"] == 60.0);
     CHECK(classes[0]["copper_clearance_mm"] == 0.5);
-    CHECK(assignments ==
-          nlohmann::json::array({{{"net", "net:0"}, {"rule_class", "rule_class:0"}}}));
+    CHECK(assignments == nlohmann::json::array({{{"net", "net:0"}, {"net_class", "net_class:0"}}}));
 }
 
 TEST_CASE("Logical circuit writer emits pin electrical semantics") {

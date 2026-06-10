@@ -538,19 +538,19 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
     }
 }
 
-[[nodiscard]] double net_rule_class_copper_clearance(const Circuit &circuit, NetId net) {
-    const auto rule_class_id = circuit.rule_class_for_net(net);
-    if (!rule_class_id.has_value()) {
+[[nodiscard]] double net_class_copper_clearance(const Circuit &circuit, NetId net) {
+    const auto net_class_id = circuit.net_class_for_net(net);
+    if (!net_class_id.has_value()) {
         return 0.0;
     }
 
-    return circuit.rule_class(rule_class_id.value()).copper_clearance_mm().value_or(0.0);
+    return circuit.net_class(net_class_id.value()).copper_clearance_mm().value_or(0.0);
 }
 
 [[nodiscard]] double required_copper_clearance(const Board &board, NetId lhs, NetId rhs) {
     return std::max(board.design_rules().copper_clearance_mm(),
-                    std::max(net_rule_class_copper_clearance(board.circuit(), lhs),
-                             net_rule_class_copper_clearance(board.circuit(), rhs)));
+                    std::max(net_class_copper_clearance(board.circuit(), lhs),
+                             net_class_copper_clearance(board.circuit(), rhs)));
 }
 
 void validate_copper_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,

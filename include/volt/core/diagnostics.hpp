@@ -47,8 +47,7 @@ inline constexpr auto PowerInputWithoutSource = std::string_view{"POWER_INPUT_WI
 inline constexpr auto SelectedPartVoltageRatingExceeded =
     std::string_view{"SELECTED_PART_VOLTAGE_RATING_EXCEEDED"};
 inline constexpr auto PinVoltageRangeViolation = std::string_view{"PIN_VOLTAGE_RANGE_VIOLATION"};
-inline constexpr auto NetRuleClassVoltageExceeded =
-    std::string_view{"NET_RULE_CLASS_VOLTAGE_EXCEEDED"};
+inline constexpr auto NetClassVoltageExceeded = std::string_view{"NET_CLASS_VOLTAGE_EXCEEDED"};
 inline constexpr auto MultipleOutputsOnNet = std::string_view{"MULTIPLE_OUTPUTS_ON_NET"};
 inline constexpr auto InputSignalDomainMismatch = std::string_view{"INPUT_SIGNAL_DOMAIN_MISMATCH"};
 
@@ -99,7 +98,7 @@ inline constexpr auto Erc = std::array{erc_diagnostic_codes::PinMustNotConnect,
                                        erc_diagnostic_codes::PowerInputWithoutSource,
                                        erc_diagnostic_codes::SelectedPartVoltageRatingExceeded,
                                        erc_diagnostic_codes::PinVoltageRangeViolation,
-                                       erc_diagnostic_codes::NetRuleClassVoltageExceeded,
+                                       erc_diagnostic_codes::NetClassVoltageExceeded,
                                        erc_diagnostic_codes::MultipleOutputsOnNet,
                                        erc_diagnostic_codes::InputSignalDomainMismatch};
 

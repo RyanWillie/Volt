@@ -18,7 +18,7 @@ TEST_CASE("Circuit validation diagnostic code catalog remains stable") {
     const auto codes = std::set<std::string>{
         "EMPTY_NET",
         "MULTIPLE_OUTPUTS_ON_NET",
-        "NET_RULE_CLASS_VOLTAGE_EXCEEDED",
+        "NET_CLASS_VOLTAGE_EXCEEDED",
         "PHYSICAL_PART_REQUIRED",
         "PIN_GROUND_ON_NON_GROUND_NET",
         "PIN_MUST_NOT_CONNECT",

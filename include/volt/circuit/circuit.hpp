@@ -15,9 +15,9 @@
 #include <volt/circuit/hierarchy.hpp>
 #include <volt/circuit/hierarchy_model.hpp>
 #include <volt/circuit/instances.hpp>
+#include <volt/circuit/net_classes.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/circuit/parts.hpp>
-#include <volt/circuit/rule_classes.hpp>
 #include <volt/core/ids.hpp>
 
 namespace volt {
@@ -26,7 +26,7 @@ namespace volt {
  * Canonical logical circuit model and aggregate root of the kernel.
  *
  * Responsibility: composes and coordinates the connectivity, hierarchy, electrical,
- *   design-intent, and rule-class subsystems; owns only the structural primitives and the
+ *   design-intent, and net-class subsystems; owns only the structural primitives and the
  *   cross-subsystem invariants no single subsystem can enforce alone.
  * Invariants: cross-subsystem references are pre-flighted before any subsystem mutates, so a
  *   partial operation cannot leave invalid kernel state; structural violations throw.
@@ -127,11 +127,11 @@ class Circuit {
     /** Record that an otherwise connectable concrete pin is intentionally left open. */
     bool mark_intentional_no_connect_pin(PinId pin);
 
-    /** Store a reusable rule class intent definition. */
-    [[nodiscard]] RuleClassId add_rule_class(RuleClass rule_class);
+    /** Store a reusable net class intent definition. */
+    [[nodiscard]] NetClassId add_net_class(NetClass net_class);
 
-    /** Assign an existing rule class to an existing logical net. */
-    bool assign_net_rule_class(NetId net, RuleClassId rule_class);
+    /** Assign an existing net class to an existing logical net. */
+    bool assign_net_class(NetId net, NetClassId net_class);
 
     /** Return the selected physical implementation for a component, if one has been assigned. */
     [[nodiscard]] const std::optional<PhysicalPart> &
@@ -179,18 +179,18 @@ class Circuit {
     /** Return intentional no-connect pin assertions in deterministic insertion order. */
     [[nodiscard]] const std::vector<PinId> &intentional_no_connect_pins() const noexcept;
 
-    /** Return a reusable rule class intent definition by ID. */
-    [[nodiscard]] const RuleClass &rule_class(RuleClassId id) const;
+    /** Return a reusable net class intent definition by ID. */
+    [[nodiscard]] const NetClass &net_class(NetClassId id) const;
 
-    /** Return a rule class by stable name, if one exists. */
-    [[nodiscard]] std::optional<RuleClassId> rule_class_by_name(const RuleClassName &name) const;
+    /** Return a net class by stable name, if one exists. */
+    [[nodiscard]] std::optional<NetClassId> net_class_by_name(const NetClassName &name) const;
 
-    /** Return the assigned rule class for a net, if one exists. */
-    [[nodiscard]] std::optional<RuleClassId> rule_class_for_net(NetId net) const;
+    /** Return the assigned net class for a net, if one exists. */
+    [[nodiscard]] std::optional<NetClassId> net_class_for_net(NetId net) const;
 
-    /** Return rule-class net assignments in deterministic insertion order. */
-    [[nodiscard]] const std::vector<std::pair<NetId, RuleClassId>> &
-    net_rule_class_assignments() const noexcept;
+    /** Return net-class net assignments in deterministic insertion order. */
+    [[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &
+    net_class_assignments() const noexcept;
 
     /** Return a reusable pin definition by ID. */
     [[nodiscard]] const PinDefinition &pin_definition(PinDefId id) const;
@@ -272,9 +272,9 @@ class Circuit {
         return hierarchy_.port_binding_count();
     }
 
-    /** Return the number of reusable rule class intent definitions. */
-    [[nodiscard]] std::size_t rule_class_count() const noexcept {
-        return rule_classes_.rule_class_count();
+    /** Return the number of reusable net class intent definitions. */
+    [[nodiscard]] std::size_t net_class_count() const noexcept {
+        return net_classes_.net_class_count();
     }
 
   private:
@@ -319,7 +319,7 @@ class Circuit {
 
     void require_net(NetId net) const;
 
-    void require_rule_class(RuleClassId rule_class) const;
+    void require_net_class(NetClassId net_class) const;
 
     [[nodiscard]] std::optional<NetId> net_of_existing_pin(PinId pin) const;
 
@@ -327,7 +327,7 @@ class Circuit {
     HierarchyModel hierarchy_;
     ElectricalModel electrical_;
     DesignIntent intent_;
-    RuleClasses rule_classes_;
+    NetClasses net_classes_;
 };
 
 } // namespace volt

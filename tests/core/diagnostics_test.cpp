@@ -157,7 +157,7 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
               "POWER_INPUT_WITHOUT_SOURCE",
               "SELECTED_PART_VOLTAGE_RATING_EXCEEDED",
               "PIN_VOLTAGE_RANGE_VIOLATION",
-              "NET_RULE_CLASS_VOLTAGE_EXCEEDED",
+              "NET_CLASS_VOLTAGE_EXCEEDED",
               "MULTIPLE_OUTPUTS_ON_NET",
               "INPUT_SIGNAL_DOMAIN_MISMATCH",
           });

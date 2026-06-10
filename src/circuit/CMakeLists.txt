@@ -11,7 +11,7 @@ add_library(
     nets.cpp
     parts.cpp
     queries.cpp
-    rule_classes.cpp
+    net_classes.cpp
     validation.cpp
 )
 add_library(Volt::Circuit ALIAS volt_circuit)

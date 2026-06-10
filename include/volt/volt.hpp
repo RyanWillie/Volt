@@ -9,10 +9,10 @@
 #include <volt/circuit/electrical_model.hpp>
 #include <volt/circuit/hierarchy.hpp>
 #include <volt/circuit/instances.hpp>
+#include <volt/circuit/net_classes.hpp>
 #include <volt/circuit/nets.hpp>
 #include <volt/circuit/parts.hpp>
 #include <volt/circuit/queries.hpp>
-#include <volt/circuit/rule_classes.hpp>
 #include <volt/circuit/validation.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/electrical_attributes.hpp>
