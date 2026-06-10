@@ -80,7 +80,8 @@ The landed foundation includes:
 - logical JSON read/write support for typed electrical attributes
 - validation entry points for general, connectivity, ERC, and PCB-readiness checks
 - typed diagnostics for power/ground sanity, pin voltage range, selected-part voltage
-  rating, and missing selected physical parts for PCB readiness
+  rating, assigned net-class voltage limits, and missing selected physical parts for PCB
+  readiness
 - Python authoring helpers over kernel-owned state
 
 The important architectural result is that Python and JSON are no longer the only places
@@ -216,6 +217,128 @@ general electrical concept that validation, serialization, import/export, PCB, o
 simulation layers need. Otherwise prefer typed attributes, metadata, or higher-level
 authoring helpers that lower into the existing fields.
 
+## Power Intent For ERC
+
+Power intent is the small set of kernel-owned facts that lets ERC distinguish ordinary
+connectivity from supply connectivity. Volt should not add a dedicated `PowerRail` object
+yet. A rail-like concept does not have a separate structural invariant today: it is a net
+with typed net semantics, typed pin participants, optional typed voltage intent, selected
+part ratings, and validation diagnostics.
+
+The minimal ERC contract is:
+
+```text
+Net
+  kind: Power | Ground | Signal | Analog | Clock | HighCurrent
+  name: human-facing label such as +12V, +5V, +3V3, VDDA, VCC, or GND
+  electrical_attributes:
+    voltage = authored nominal voltage, when ERC needs a concrete domain
+  existing assigned NetClass:
+    maximum_net_voltage = optional reusable voltage limit
+
+PinDefinition
+  terminal_kind: Power | Ground | Signal | Passive | NoConnect | Unspecified
+  direction: Input | Output | Bidirectional | Passive | Unspecified
+  electrical_attributes:
+    voltage_range = accepted pin voltage range, when the part contract is known
+
+SelectedPhysicalPart
+  electrical_attributes:
+    voltage_rating = selected-part rating used by current ERC checks
+    current_rating, power_rating, and related limits = planned follow-ups
+
+DesignIntent
+  intentional no-connect pins
+  intentional stub nets
+```
+
+Named supply nets such as `+12V`, `+5V`, `+3V3`, `VDDA`, and `VCC` are represented as
+ordinary logical nets with `NetKind::Power`. `GND`, `AGND`, `PGND`, and chassis-style
+references are represented as ordinary logical nets with `NetKind::Ground` unless a later
+slice adds more specific ground-domain attributes. The net name is display and identity;
+ERC must not infer voltage or ground behavior from a string label alone. If a check needs
+a concrete voltage domain, the net carries the typed `voltage` electrical attribute. This
+keeps importers and Python helpers ergonomic while ensuring the kernel can load,
+serialize, validate, and inspect the meaning directly.
+
+Supply participation comes from pin semantics:
+
+- A supply source is a pin with `terminal_kind = Power` and `direction = Output` or
+  `Bidirectional`. Regulator outputs, connector-provided rails, battery outputs, and
+  module ports that source a rail lower into this shape.
+- A supply load is a pin with `terminal_kind = Power` and `direction = Input`. IC supply
+  pins and regulator inputs lower into this shape.
+- A voltage regulator is not a special kernel object for ERC. It is a component whose
+  input and output pins participate in different power nets. Direction plus typed voltage
+  attributes let ERC reason about each side independently.
+- A reference or ground participant is a pin with `terminal_kind = Ground` connected to a
+  `NetKind::Ground` net. Ground pins on non-ground nets and power pins on ground nets are
+  diagnosable design errors.
+- A passive participant has `terminal_kind = Passive` or `direction = Passive`. Decoupling
+  capacitors, pull resistors, ferrites, jumpers, and sense dividers may sit on a power net
+  without being counted as supply sources or loads unless their pin definitions say so.
+
+Voltage domains are authored, not guessed. A `NetKind::Power` net without a `voltage`
+attribute still has power topology, so ERC can report missing sources and ground/power
+mismatches. Voltage-range and selected-part-rating checks only run when the relevant
+typed values are present. Missing voltage on a power net is therefore ambiguity, not
+invalid kernel state. VOL-183 can choose whether that ambiguity is an informational or
+warning diagnostic for workflows that require voltage-aware ERC.
+
+Selected-part ratings remain selected-part data rather than component-definition data
+because two physical choices for the same logical symbol may have different limits. The
+current `voltage_rating` check compares the absolute authored net voltage against the
+selected physical part's rating for connected components. Future current and power
+checks should follow the same ownership rule: add typed selected-part capability fields
+and explicit load/source constraints before emitting diagnostics. Do not infer current
+draw, power dissipation, or regulator behavior from a component category string.
+
+Ambiguous or incomplete power intent should be reported through ERC diagnostics, not by
+rejecting the circuit at mutation time:
+
+- power inputs on a non-ground net with no typed source are errors today
+- ground pins connected to non-ground nets are errors today
+- power pins connected to ground nets are errors today
+- net voltage outside a connected pin voltage range is an error today
+- net voltage above a selected-part voltage rating is an error today
+- net voltage above an assigned net class maximum voltage is an error today
+- multiple typed output drivers on one net are errors today through the broad output
+  conflict check
+- power nets that need voltage-aware checks but have no `voltage` attribute are planned
+  ambiguity diagnostics
+- supply-specific compatibility diagnostics for multiple sources on one power net are
+  planned once the compatible-source constraints exist
+- regulator input/output voltage relationship checks are planned diagnostics once the
+  relevant kernel-owned constraints exist
+
+This contract is compatible with future simulation because it stores design intent and
+component contracts, not solved node state. A simulator may later consume the same nets,
+pin directions, voltage attributes, ratings, and constraints, but simulation results
+should live in analysis-specific state rather than replacing authored ERC semantics.
+
+VOL-183 can now implement power/source/load diagnostics from existing kernel data:
+
+- classify supply nets from `NetKind::Power` and `NetKind::Ground`, not net-name parsing
+- classify supply sources from power output or bidirectional pins
+- classify supply loads from power input pins
+- ignore passive participants for source/load counting unless their pin semantics say
+  otherwise
+- compare authored net `voltage` against connected pin `voltage_range`
+- compare authored net `voltage` against selected-part `voltage_rating`
+- report ambiguous voltage intent when a voltage-aware check needs a missing typed
+  `voltage` attribute
+
+No new value type or attribute is required for this VOL-44 contract; the net-class
+voltage limit above is already kernel-owned data. The implementation follow-ups that need
+new kernel-owned constraints or additional typed attributes are:
+
+- selected-part current and power capability checks beyond the current voltage-rating ERC
+- explicit source/load current or power requirements before current-budget ERC
+- regulator input/output relationship constraints before regulator behavior diagnostics
+- source compatibility constraints before diagnosing multiple supply sources as unsafe
+- optional ground-domain attributes if `AGND`, `DGND`, `PGND`, chassis, and earth need
+  stricter checks than `NetKind::Ground`
+
 ## Validation Consumption
 
 Validation should run over canonical kernel-owned model data and produce diagnostics. It
@@ -248,10 +371,15 @@ Current typed checks include:
 - power/ground sanity checks
 - net voltage against connected pin voltage ranges
 - selected-part voltage rating against authored net voltage
+- assigned net-class maximum voltage against authored net voltage
 - missing selected physical parts when validating for PCB output
 
 Remaining validation work should build on explicit data:
 
+- ambiguous power intent diagnostics for power nets whose topology needs a voltage but
+  lacks a typed `voltage` attribute
+- source-specific compatibility diagnostics for typed supply sources sharing a power net
+- regulator input/output checks after the necessary kernel-owned constraints are defined
 - current limits and power capability checks
 - no-connect assertions as stored design intent, distinct from generic pin semantics
 - selected-part compatibility beyond voltage rating
@@ -349,7 +477,7 @@ dependency-aware:
 4. Add no-connect assertions as explicit stored design intent.
 5. Add selected-part compatibility checks beyond voltage rating.
 6. Add current and power capability checks once the relevant constraints are explicit.
-7. Design net classes only after the reusable constraint vocabulary is clear.
+7. Extend net classes only after the reusable constraint vocabulary is clear.
 
 Each slice should have tests that prove structural invalid data is rejected at the
 mutation or load boundary, while bad design intent is reported through diagnostics.
