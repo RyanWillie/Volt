@@ -109,6 +109,25 @@ class BoardVia {
     double annular_diameter_mm_;
 };
 
+/** Object kind participating in clearance-matrix lookups. */
+enum class BoardClearanceKind {
+    Track,
+    Pad,
+    Via,
+    Zone,
+    BoardEdge,
+};
+
+/** One unordered object-kind pair clearance entry in the board clearance matrix. */
+struct BoardClearancePair {
+    /** Canonically smaller object kind of the pair. */
+    BoardClearanceKind first;
+    /** Canonically larger object kind of the pair. */
+    BoardClearanceKind second;
+    /** Required clearance for the pair in millimeters. */
+    double clearance_mm;
+};
+
 /** Kernel-owned first PCB design-rule values, expressed in board millimeters. */
 class BoardDesignRules {
   public:
@@ -117,6 +136,18 @@ class BoardDesignRules {
                      double minimum_via_drill_diameter_mm = 0.20,
                      double minimum_via_annular_diameter_mm = 0.45,
                      double board_outline_clearance_mm = 0.0);
+
+    /** Set the required clearance for one unordered object-kind pair. */
+    void set_clearance_mm(BoardClearanceKind first, BoardClearanceKind second, double clearance_mm);
+
+    /** Return the pair clearance: a matrix entry, or the scalar defaults. */
+    [[nodiscard]] double clearance_mm(BoardClearanceKind first,
+                                      BoardClearanceKind second) const noexcept;
+
+    /** Return clearance-matrix entries in canonical deterministic order. */
+    [[nodiscard]] const std::vector<BoardClearancePair> &clearance_matrix() const noexcept {
+        return clearance_matrix_;
+    }
 
     /** Return required copper-to-copper clearance between different nets. */
     [[nodiscard]] double copper_clearance_mm() const noexcept { return copper_clearance_mm_; }
@@ -139,6 +170,7 @@ class BoardDesignRules {
     double minimum_via_drill_diameter_mm_;
     double minimum_via_annular_diameter_mm_;
     double board_outline_clearance_mm_;
+    std::vector<BoardClearancePair> clearance_matrix_;
 };
 
 } // namespace volt

@@ -176,6 +176,58 @@ BoardDesignRules::BoardDesignRules(double copper_clearance_mm, double minimum_tr
     return board_outline_clearance_mm_;
 }
 
+namespace {
+
+[[nodiscard]] std::pair<BoardClearanceKind, BoardClearanceKind>
+canonical_clearance_pair(BoardClearanceKind first, BoardClearanceKind second) {
+    if (static_cast<int>(first) > static_cast<int>(second)) {
+        return {second, first};
+    }
+    return {first, second};
+}
+
+} // namespace
+
+void BoardDesignRules::set_clearance_mm(BoardClearanceKind first, BoardClearanceKind second,
+                                        double clearance_mm) {
+    if (first == BoardClearanceKind::BoardEdge && second == BoardClearanceKind::BoardEdge) {
+        throw std::invalid_argument{"Clearance matrix cannot pair the board edge with itself"};
+    }
+    if (!std::isfinite(clearance_mm) || clearance_mm < 0.0) {
+        throw std::invalid_argument{"Clearance matrix values must be finite and non-negative"};
+    }
+
+    const auto [low, high] = canonical_clearance_pair(first, second);
+    const auto position = std::find_if(
+        clearance_matrix_.begin(), clearance_matrix_.end(),
+        [low, high](const auto &entry) { return entry.first == low && entry.second == high; });
+    if (position != clearance_matrix_.end()) {
+        position->clearance_mm = clearance_mm;
+        return;
+    }
+
+    const auto insert_before = std::find_if(
+        clearance_matrix_.begin(), clearance_matrix_.end(), [low, high](const auto &entry) {
+            return static_cast<int>(entry.first) > static_cast<int>(low) ||
+                   (entry.first == low && static_cast<int>(entry.second) > static_cast<int>(high));
+        });
+    clearance_matrix_.insert(insert_before, BoardClearancePair{low, high, clearance_mm});
+}
+
+[[nodiscard]] double BoardDesignRules::clearance_mm(BoardClearanceKind first,
+                                                    BoardClearanceKind second) const noexcept {
+    const auto [low, high] = canonical_clearance_pair(first, second);
+    for (const auto &entry : clearance_matrix_) {
+        if (entry.first == low && entry.second == high) {
+            return entry.clearance_mm;
+        }
+    }
+    if (low == BoardClearanceKind::BoardEdge || high == BoardClearanceKind::BoardEdge) {
+        return board_outline_clearance_mm_;
+    }
+    return copper_clearance_mm_;
+}
+
 } // namespace volt
 
 namespace volt::detail {
@@ -583,6 +635,53 @@ void validate_net_class_layers(const Board &board, DiagnosticReport &report) {
     }
 }
 
+[[nodiscard]] BoardClearanceKind shape_clearance_kind(const BoardCopperShape &shape) {
+    if (shape.pad.has_value() || shape_has_entity_kind(shape, EntityKind::FootprintPad)) {
+        return BoardClearanceKind::Pad;
+    }
+    if (shape_has_entity_kind(shape, EntityKind::BoardVia)) {
+        return BoardClearanceKind::Via;
+    }
+    if (shape_has_entity_kind(shape, EntityKind::BoardZone)) {
+        return BoardClearanceKind::Zone;
+    }
+    return BoardClearanceKind::Track;
+}
+
+[[nodiscard]] std::string_view clearance_kind_name(BoardClearanceKind kind) {
+    switch (kind) {
+    case BoardClearanceKind::Track:
+        return "track";
+    case BoardClearanceKind::Pad:
+        return "pad";
+    case BoardClearanceKind::Via:
+        return "via";
+    case BoardClearanceKind::Zone:
+        return "zone";
+    case BoardClearanceKind::BoardEdge:
+        return "board-edge";
+    }
+    return "track";
+}
+
+[[nodiscard]] std::string clearance_pair_message(BoardClearanceKind lhs, BoardClearanceKind rhs) {
+    auto low = lhs;
+    auto high = rhs;
+    if (static_cast<int>(low) > static_cast<int>(high)) {
+        std::swap(low, high);
+    }
+    return std::string{"Copper on different nets violates required "} +
+           std::string{clearance_kind_name(low)} + "-to-" + std::string{clearance_kind_name(high)} +
+           " clearance";
+}
+
+[[nodiscard]] double required_copper_clearance(const Board &board, const BoardCopperShape &lhs,
+                                               const BoardCopperShape &rhs) {
+    const auto pair_floor =
+        board.design_rules().clearance_mm(shape_clearance_kind(lhs), shape_clearance_kind(rhs));
+    return resolve_copper_clearance_mm(board.circuit(), lhs.net, rhs.net, pair_floor);
+}
+
 void validate_outline_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
                                 DiagnosticReport &report) {
     if (!board.outline().has_value()) {
@@ -590,8 +689,9 @@ void validate_outline_clearance(const Board &board, const std::vector<BoardCoppe
     }
 
     const auto &outline = board.outline().value();
-    const auto outline_clearance = board.design_rules().board_outline_clearance_mm();
     for (const auto &shape : shapes) {
+        const auto outline_clearance = board.design_rules().clearance_mm(
+            shape_clearance_kind(shape), BoardClearanceKind::BoardEdge);
         if (shape_satisfies_outline(shape, outline, outline_clearance)) {
             continue;
         }
@@ -611,7 +711,8 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
     }
 
     const auto &outline = board.outline().value();
-    const auto outline_clearance = board.design_rules().board_outline_clearance_mm();
+    const auto outline_clearance =
+        board.design_rules().clearance_mm(BoardClearanceKind::Zone, BoardClearanceKind::BoardEdge);
     for (std::size_t zone_index = 0; zone_index < board.zone_count(); ++zone_index) {
         const auto zone_id = BoardZoneId{zone_index};
         const auto &zone = board.zone(zone_id);
@@ -624,11 +725,6 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
                                   std::vector{EntityRef::board_zone(zone_id),
                                               EntityRef::board_layer(zone.layers().front())}));
     }
-}
-
-[[nodiscard]] double required_copper_clearance(const Board &board, NetId lhs, NetId rhs) {
-    return resolve_copper_clearance_mm(board.circuit(), lhs, rhs,
-                                       board.design_rules().copper_clearance_mm());
 }
 
 void validate_copper_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
@@ -645,7 +741,7 @@ void validate_copper_clearance(const Board &board, const std::vector<BoardCopper
                 continue;
             }
             const auto clearance = shape_distance(lhs, rhs) - lhs.radius_mm - rhs.radius_mm;
-            const auto required = required_copper_clearance(board, lhs.net, rhs.net);
+            const auto required = required_copper_clearance(board, lhs, rhs);
             if (clearance + board_drc_epsilon >= required) {
                 continue;
             }
@@ -656,9 +752,10 @@ void validate_copper_clearance(const Board &board, const std::vector<BoardCopper
             entities.push_back(EntityRef::net(lhs.net));
             entities.push_back(EntityRef::net(rhs.net));
             entities.push_back(EntityRef::board_layer(layer.value()));
-            report.add(drc_diagnostic(drc_diagnostic_codes::CopperClearanceViolation,
-                                      "Copper on different nets violates required clearance",
-                                      std::move(entities)));
+            report.add(drc_diagnostic(
+                drc_diagnostic_codes::CopperClearanceViolation,
+                clearance_pair_message(shape_clearance_kind(lhs), shape_clearance_kind(rhs)),
+                std::move(entities)));
         }
     }
 }
