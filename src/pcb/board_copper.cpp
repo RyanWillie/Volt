@@ -522,18 +522,38 @@ void validate_via_rules(const Board &board, DiagnosticReport &report) {
     }
 }
 
+[[nodiscard]] bool layer_scope_allows(NetClassLayerScope scope, BoardLayerSide side) {
+    switch (scope) {
+    case NetClassLayerScope::AnyCopper:
+        return true;
+    case NetClassLayerScope::OuterOnly:
+        return side == BoardLayerSide::Top || side == BoardLayerSide::Bottom;
+    case NetClassLayerScope::InnerOnly:
+        return side == BoardLayerSide::Inner;
+    case NetClassLayerScope::TopOnly:
+        return side == BoardLayerSide::Top;
+    case NetClassLayerScope::BottomOnly:
+        return side == BoardLayerSide::Bottom;
+    }
+    return true;
+}
+
 void validate_net_class_layers(const Board &board, DiagnosticReport &report) {
-    const auto layer_allowed = [&board](const std::vector<std::string> &allowed,
+    const auto layer_allowed = [&board](const ResolvedNetClassRules &net_rules,
                                         BoardLayerId layer) {
-        return allowed.empty() || std::find(allowed.begin(), allowed.end(),
-                                            board.layer(layer).name()) != allowed.end();
+        if (!net_rules.allowed_layer_names.empty()) {
+            return std::find(net_rules.allowed_layer_names.begin(),
+                             net_rules.allowed_layer_names.end(),
+                             board.layer(layer).name()) != net_rules.allowed_layer_names.end();
+        }
+        return layer_scope_allows(net_rules.layer_scope, board.layer(layer).side());
     };
 
     for (std::size_t index = 0; index < board.track_count(); ++index) {
         const auto track_id = BoardTrackId{index};
         const auto &track = board.track(track_id);
         const auto net_rules = resolve_net_class_rules(board.circuit(), track.net());
-        if (layer_allowed(net_rules.allowed_layer_names, track.layer())) {
+        if (layer_allowed(net_rules, track.layer())) {
             continue;
         }
         report.add(drc_diagnostic(drc_diagnostic_codes::NetClassDisallowedLayer,
@@ -551,7 +571,7 @@ void validate_net_class_layers(const Board &board, DiagnosticReport &report) {
         }
         const auto net_rules = resolve_net_class_rules(board.circuit(), zone.net().value());
         for (const auto layer : zone.layers()) {
-            if (layer_allowed(net_rules.allowed_layer_names, layer)) {
+            if (layer_allowed(net_rules, layer)) {
                 continue;
             }
             report.add(drc_diagnostic(drc_diagnostic_codes::NetClassDisallowedLayer,

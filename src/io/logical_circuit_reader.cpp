@@ -639,6 +639,25 @@ void LogicalCircuitReader::read_nets() {
     }
 }
 
+[[nodiscard]] NetClassLayerScope net_class_layer_scope(const std::string &value) {
+    if (value == "AnyCopper") {
+        return NetClassLayerScope::AnyCopper;
+    }
+    if (value == "OuterOnly") {
+        return NetClassLayerScope::OuterOnly;
+    }
+    if (value == "InnerOnly") {
+        return NetClassLayerScope::InnerOnly;
+    }
+    if (value == "TopOnly") {
+        return NetClassLayerScope::TopOnly;
+    }
+    if (value == "BottomOnly") {
+        return NetClassLayerScope::BottomOnly;
+    }
+    throw std::logic_error{"Unknown net class layer scope: " + value};
+}
+
 void LogicalCircuitReader::read_net_classes() {
     const auto it = document_.find("net_classes");
     if (it == document_.end()) {
@@ -678,6 +697,11 @@ void LogicalCircuitReader::read_net_classes() {
             require(via_drill->is_number() && via_diameter->is_number(),
                     "Net class via sizes must be numbers");
             net_class.set_via_size_mm(via_drill->get<double>(), via_diameter->get<double>());
+        }
+        if (const auto layer_scope = net_class_object.find("layer_scope");
+            layer_scope != net_class_object.end()) {
+            require(layer_scope->is_string(), "Net class layer scope must be a string");
+            net_class.set_layer_scope(net_class_layer_scope(layer_scope->get<std::string>()));
         }
         if (const auto allowed_layers = net_class_object.find("allowed_layers");
             allowed_layers != net_class_object.end()) {

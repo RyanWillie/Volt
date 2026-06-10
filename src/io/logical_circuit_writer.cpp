@@ -395,6 +395,22 @@ void write_pin_definition_electrical_attributes(std::ostream &out,
     }
 }
 
+[[nodiscard]] std::string layer_scope_name(NetClassLayerScope scope) {
+    switch (scope) {
+    case NetClassLayerScope::AnyCopper:
+        return "AnyCopper";
+    case NetClassLayerScope::OuterOnly:
+        return "OuterOnly";
+    case NetClassLayerScope::InnerOnly:
+        return "InnerOnly";
+    case NetClassLayerScope::TopOnly:
+        return "TopOnly";
+    case NetClassLayerScope::BottomOnly:
+        return "BottomOnly";
+    }
+    return "AnyCopper";
+}
+
 void write_net_classes(std::ostream &out, const Circuit &circuit) {
     out << "  \"net_classes\": { \"classes\": [\n";
     for (std::size_t index = 0; index < circuit.net_class_count(); ++index) {
@@ -420,6 +436,9 @@ void write_net_classes(std::ostream &out, const Circuit &circuit) {
             write_json_number(out, net_class.via_drill_mm().value());
             out << ", \"via_diameter_mm\": ";
             write_json_number(out, net_class.via_diameter_mm().value());
+        }
+        if (net_class.layer_scope() != NetClassLayerScope::AnyCopper) {
+            out << ", \"layer_scope\": " << json_string(layer_scope_name(net_class.layer_scope()));
         }
         if (!net_class.allowed_layer_names().empty()) {
             out << ", \"allowed_layers\": [";

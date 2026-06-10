@@ -15,6 +15,15 @@ namespace volt {
 
 class Circuit;
 
+/** Semantic copper-layer restriction that scales with any board layer count. */
+enum class NetClassLayerScope {
+    AnyCopper,
+    OuterOnly,
+    InnerOnly,
+    TopOnly,
+    BottomOnly,
+};
+
 /** Stable name for a kernel-owned net class. */
 class NetClassName {
   public:
@@ -55,7 +64,10 @@ class NetClass {
     /** Set the via drill and finished copper diameters required for assigned nets. */
     void set_via_size_mm(double drill_mm, double diameter_mm);
 
-    /** Restrict assigned nets to copper layers with the given board-local names. */
+    /** Restrict assigned nets to a semantic copper-layer scope; exclusive with names. */
+    void set_layer_scope(NetClassLayerScope scope);
+
+    /** Restrict assigned nets to exact board-local layer names; exclusive with a scope. */
     void set_allowed_layer_names(std::vector<std::string> names);
 
     /** Set the resolution priority used when intent-derived defaults compete. */
@@ -85,7 +97,10 @@ class NetClass {
         return via_diameter_mm_;
     }
 
-    /** Return allowed copper layer names; empty means unrestricted. */
+    /** Return the semantic copper-layer scope; AnyCopper means unrestricted. */
+    [[nodiscard]] NetClassLayerScope layer_scope() const noexcept { return layer_scope_; }
+
+    /** Return allowed copper layer names; empty means no exact-name restriction. */
     [[nodiscard]] const std::vector<std::string> &allowed_layer_names() const noexcept {
         return allowed_layer_names_;
     }
@@ -105,6 +120,7 @@ class NetClass {
     std::optional<double> track_width_mm_;
     std::optional<double> via_drill_mm_;
     std::optional<double> via_diameter_mm_;
+    NetClassLayerScope layer_scope_ = NetClassLayerScope::AnyCopper;
     std::vector<std::string> allowed_layer_names_;
     int priority_ = 0;
     std::optional<NetKind> default_for_net_kind_;

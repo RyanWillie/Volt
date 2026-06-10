@@ -62,7 +62,18 @@ void NetClass::set_via_size_mm(double drill_mm, double diameter_mm) {
     via_diameter_mm_ = diameter_mm;
 }
 
+void NetClass::set_layer_scope(NetClassLayerScope scope) {
+    if (scope != NetClassLayerScope::AnyCopper && !allowed_layer_names_.empty()) {
+        throw std::logic_error{"Net class layer scope conflicts with explicit layer names"};
+    }
+
+    layer_scope_ = scope;
+}
+
 void NetClass::set_allowed_layer_names(std::vector<std::string> names) {
+    if (layer_scope_ != NetClassLayerScope::AnyCopper) {
+        throw std::logic_error{"Net class layer names conflict with a semantic layer scope"};
+    }
     if (names.empty()) {
         throw std::invalid_argument{"Net class allowed layers must not be empty"};
     }

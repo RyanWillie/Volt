@@ -49,6 +49,7 @@ namespace {
     rules.track_width_mm = net_class.track_width_mm();
     rules.via_drill_mm = net_class.via_drill_mm();
     rules.via_diameter_mm = net_class.via_diameter_mm();
+    rules.layer_scope = net_class.layer_scope();
     rules.allowed_layer_names = net_class.allowed_layer_names();
     return rules;
 }

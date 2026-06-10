@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
+#include <volt/circuit/net_classes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/quantities.hpp>
 
@@ -33,7 +34,9 @@ struct ResolvedNetClassRules {
     std::optional<double> via_drill_mm;
     /** Required via finished copper diameter from the resolved class. */
     std::optional<double> via_diameter_mm;
-    /** Allowed copper layer names from the resolved class; empty means unrestricted. */
+    /** Semantic copper-layer scope from the resolved class. */
+    NetClassLayerScope layer_scope = NetClassLayerScope::AnyCopper;
+    /** Allowed copper layer names from the resolved class; empty means no name restriction. */
     std::vector<std::string> allowed_layer_names;
 };
 

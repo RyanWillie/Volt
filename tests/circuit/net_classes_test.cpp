@@ -330,3 +330,65 @@ TEST_CASE("Board validation applies net-class track width, via size, and layer r
                                            volt::EntityRef::net(net),
                                            volt::EntityRef::board_layer(back)});
 }
+
+TEST_CASE("Net class layer scope and explicit layer names are mutually exclusive") {
+    auto scoped = volt::NetClass{volt::NetClassName{"Scoped"}};
+    scoped.set_layer_scope(volt::NetClassLayerScope::OuterOnly);
+    CHECK(scoped.layer_scope() == volt::NetClassLayerScope::OuterOnly);
+    CHECK_THROWS_AS(scoped.set_allowed_layer_names({"F.Cu"}), std::logic_error);
+
+    auto named = volt::NetClass{volt::NetClassName{"Named"}};
+    named.set_allowed_layer_names({"In2.Cu"});
+    CHECK_THROWS_AS(named.set_layer_scope(volt::NetClassLayerScope::InnerOnly), std::logic_error);
+    named.set_layer_scope(volt::NetClassLayerScope::AnyCopper);
+}
+
+TEST_CASE("Board validation applies semantic layer scopes on a four-layer board") {
+    auto circuit = volt::Circuit{};
+    const auto outer_net = circuit.add_net(volt::Net{volt::NetName{"RF"}, volt::NetKind::Signal});
+    const auto inner_net =
+        circuit.add_net(volt::Net{volt::NetName{"QUIET"}, volt::NetKind::Signal});
+
+    auto outer_class = volt::NetClass{volt::NetClassName{"OuterOnly"}};
+    outer_class.set_layer_scope(volt::NetClassLayerScope::OuterOnly);
+    circuit.assign_net_class(outer_net, circuit.add_net_class(std::move(outer_class)));
+
+    auto inner_class = volt::NetClass{volt::NetClassName{"InnerOnly"}};
+    inner_class.set_layer_scope(volt::NetClassLayerScope::InnerOnly);
+    circuit.assign_net_class(inner_net, circuit.add_net_class(std::move(inner_class)));
+
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto in1 = board.add_layer(
+        volt::BoardLayer{"In1.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Inner});
+    const auto in2 = board.add_layer(
+        volt::BoardLayer{"In2.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Inner});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+
+    const auto outer_ok = board.add_track(volt::BoardTrack{
+        outer_net, back, std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.2});
+    const auto outer_bad = board.add_track(volt::BoardTrack{
+        outer_net, in1, std::vector{volt::BoardPoint{1.0, 4.0}, volt::BoardPoint{8.0, 4.0}}, 0.2});
+    const auto inner_ok = board.add_track(volt::BoardTrack{
+        inner_net, in2, std::vector{volt::BoardPoint{1.0, 8.0}, volt::BoardPoint{8.0, 8.0}}, 0.2});
+    const auto inner_bad = board.add_track(volt::BoardTrack{
+        inner_net, front, std::vector{volt::BoardPoint{1.0, 12.0}, volt::BoardPoint{8.0, 12.0}},
+        0.2});
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    auto disallowed = std::vector<volt::EntityRef>{};
+    for (const auto &diagnostic : report.diagnostics()) {
+        if (diagnostic.code() == volt::DiagnosticCode{"PCB_COPPER_ON_DISALLOWED_LAYER"}) {
+            disallowed.push_back(diagnostic.entities().front());
+        }
+    }
+    CHECK(disallowed == std::vector{volt::EntityRef::board_track(outer_bad),
+                                    volt::EntityRef::board_track(inner_bad)});
+    CHECK(outer_ok != outer_bad);
+    CHECK(inner_ok != inner_bad);
+}

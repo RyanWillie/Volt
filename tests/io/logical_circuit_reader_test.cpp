@@ -196,6 +196,39 @@ TEST_CASE("Logical circuit reader rejects malformed net-class physical rules") {
              {{{"id", "net_class:0"}, {"name", "Logic"}, {"default_for_net_kind", "Sideways"}}})},
     };
     CHECK_THROWS_AS(volt::io::read_logical_circuit_text(bad_kind.dump()), std::logic_error);
+
+    auto bad_scope = base;
+    bad_scope["net_classes"] = {
+        {"classes", nlohmann::json::array(
+                        {{{"id", "net_class:0"}, {"name", "Logic"}, {"layer_scope", "Sideways"}}})},
+    };
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(bad_scope.dump()), std::logic_error);
+
+    auto conflicting_layers = base;
+    conflicting_layers["net_classes"] = {
+        {"classes", nlohmann::json::array({{{"id", "net_class:0"},
+                                            {"name", "Logic"},
+                                            {"layer_scope", "OuterOnly"},
+                                            {"allowed_layers", nlohmann::json::array({"F.Cu"})}}})},
+    };
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(conflicting_layers.dump()),
+                    std::logic_error);
+}
+
+TEST_CASE("Logical circuit reader round-trips net-class layer scopes") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["net_classes"] = {
+        {"classes", nlohmann::json::array(
+                        {{{"id", "net_class:0"}, {"name", "RF"}, {"layer_scope", "OuterOnly"}}})},
+        {"net_assignments", nlohmann::json::array()},
+    };
+
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
+
+    CHECK(circuit.net_class(volt::NetClassId{0}).layer_scope() ==
+          volt::NetClassLayerScope::OuterOnly);
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+    CHECK(output["net_classes"] == fixture["net_classes"]);
 }
 
 TEST_CASE("Logical circuit reader rejects malformed net-class references") {
