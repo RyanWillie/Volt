@@ -665,6 +665,40 @@ void LogicalCircuitReader::read_net_classes() {
             require(copper_clearance->is_number(), "Net class copper clearance must be a number");
             net_class.set_copper_clearance_mm(copper_clearance->get<double>());
         }
+        if (const auto track_width = net_class_object.find("track_width_mm");
+            track_width != net_class_object.end()) {
+            require(track_width->is_number(), "Net class track width must be a number");
+            net_class.set_track_width_mm(track_width->get<double>());
+        }
+        const auto via_drill = net_class_object.find("via_drill_mm");
+        const auto via_diameter = net_class_object.find("via_diameter_mm");
+        require((via_drill == net_class_object.end()) == (via_diameter == net_class_object.end()),
+                "Net class via size requires both drill and diameter");
+        if (via_drill != net_class_object.end()) {
+            require(via_drill->is_number() && via_diameter->is_number(),
+                    "Net class via sizes must be numbers");
+            net_class.set_via_size_mm(via_drill->get<double>(), via_diameter->get<double>());
+        }
+        if (const auto allowed_layers = net_class_object.find("allowed_layers");
+            allowed_layers != net_class_object.end()) {
+            require(allowed_layers->is_array(), "Net class allowed layers must be an array");
+            auto names = std::vector<std::string>{};
+            for (const auto &layer : *allowed_layers) {
+                require(layer.is_string(), "Net class allowed layer must be a string");
+                names.push_back(layer.get<std::string>());
+            }
+            net_class.set_allowed_layer_names(std::move(names));
+        }
+        if (const auto priority = net_class_object.find("priority");
+            priority != net_class_object.end()) {
+            require(priority->is_number_integer(), "Net class priority must be an integer");
+            net_class.set_priority(priority->get<int>());
+        }
+        if (const auto default_kind = net_class_object.find("default_for_net_kind");
+            default_kind != net_class_object.end()) {
+            require(default_kind->is_string(), "Net class default net kind must be a string");
+            net_class.set_default_for_net_kind(net_kind(default_kind->get<std::string>()));
+        }
 
         net_class_ids_.emplace(id, circuit_.add_net_class(std::move(net_class)));
     }

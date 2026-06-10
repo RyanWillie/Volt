@@ -65,6 +65,12 @@ inline constexpr auto KeepoutViaViolation = std::string_view{"PCB_KEEPOUT_VIA_VI
 inline constexpr auto KeepoutPlacementViolation =
     std::string_view{"PCB_KEEPOUT_PLACEMENT_VIOLATION"};
 inline constexpr auto NetUnrouted = std::string_view{"PCB_NET_UNROUTED"};
+inline constexpr auto NetClassTrackWidthViolation =
+    std::string_view{"PCB_TRACK_WIDTH_BELOW_NET_CLASS"};
+inline constexpr auto NetClassViaDrillViolation = std::string_view{"PCB_VIA_DRILL_BELOW_NET_CLASS"};
+inline constexpr auto NetClassViaDiameterViolation =
+    std::string_view{"PCB_VIA_DIAMETER_BELOW_NET_CLASS"};
+inline constexpr auto NetClassDisallowedLayer = std::string_view{"PCB_COPPER_ON_DISALLOWED_LAYER"};
 
 } // namespace drc_diagnostic_codes
 
@@ -110,7 +116,11 @@ inline constexpr auto Drc = std::array{drc_diagnostic_codes::TrackWidthBelowMini
                                        drc_diagnostic_codes::KeepoutCopperViolation,
                                        drc_diagnostic_codes::KeepoutViaViolation,
                                        drc_diagnostic_codes::KeepoutPlacementViolation,
-                                       drc_diagnostic_codes::NetUnrouted};
+                                       drc_diagnostic_codes::NetUnrouted,
+                                       drc_diagnostic_codes::NetClassTrackWidthViolation,
+                                       drc_diagnostic_codes::NetClassViaDrillViolation,
+                                       drc_diagnostic_codes::NetClassViaDiameterViolation,
+                                       drc_diagnostic_codes::NetClassDisallowedLayer};
 
 inline constexpr auto PcbVisual =
     std::array{pcb_visual_diagnostic_codes::PlacementOverlap,

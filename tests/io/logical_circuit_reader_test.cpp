@@ -133,7 +133,13 @@ TEST_CASE("Logical circuit reader preserves net classes and net assignments") {
                         {{{"id", "net_class:0"},
                           {"name", "Logic"},
                           {"maximum_net_voltage", {{"dimension", "voltage"}, {"value", 3.6}}},
-                          {"copper_clearance_mm", 0.25}}})},
+                          {"copper_clearance_mm", 0.25},
+                          {"track_width_mm", 0.3},
+                          {"via_drill_mm", 0.3},
+                          {"via_diameter_mm", 0.6},
+                          {"allowed_layers", nlohmann::json::array({"F.Cu", "B.Cu"})},
+                          {"priority", 5},
+                          {"default_for_net_kind", "Power"}}})},
         {"net_assignments",
          nlohmann::json::array({{{"net", "net:0"}, {"net_class", "net_class:0"}}})},
     };
@@ -148,6 +154,13 @@ TEST_CASE("Logical circuit reader preserves net classes and net assignments") {
     CHECK(circuit.net_class(volt::NetClassId{0}).maximum_net_voltage()->value() == 3.6);
     REQUIRE(circuit.net_class(volt::NetClassId{0}).copper_clearance_mm().has_value());
     CHECK(circuit.net_class(volt::NetClassId{0}).copper_clearance_mm().value() == 0.25);
+    CHECK(circuit.net_class(volt::NetClassId{0}).track_width_mm() == 0.3);
+    CHECK(circuit.net_class(volt::NetClassId{0}).via_drill_mm() == 0.3);
+    CHECK(circuit.net_class(volt::NetClassId{0}).via_diameter_mm() == 0.6);
+    CHECK(circuit.net_class(volt::NetClassId{0}).allowed_layer_names() ==
+          std::vector<std::string>{"F.Cu", "B.Cu"});
+    CHECK(circuit.net_class(volt::NetClassId{0}).priority() == 5);
+    CHECK(circuit.net_class(volt::NetClassId{0}).default_for_net_kind() == volt::NetKind::Power);
 
     const auto report = volt::validate_electrical_rules(circuit);
     REQUIRE(report.count() == 1);
@@ -156,6 +169,33 @@ TEST_CASE("Logical circuit reader preserves net classes and net assignments") {
 
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
     CHECK(output["net_classes"] == fixture["net_classes"]);
+}
+
+TEST_CASE("Logical circuit reader rejects malformed net-class physical rules") {
+    auto base = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+
+    auto half_via = base;
+    half_via["net_classes"] = {
+        {"classes", nlohmann::json::array(
+                        {{{"id", "net_class:0"}, {"name", "Logic"}, {"via_drill_mm", 0.3}}})},
+    };
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(half_via.dump()), std::logic_error);
+
+    auto bad_layer = base;
+    bad_layer["net_classes"] = {
+        {"classes", nlohmann::json::array({{{"id", "net_class:0"},
+                                            {"name", "Logic"},
+                                            {"allowed_layers", nlohmann::json::array({1})}}})},
+    };
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(bad_layer.dump()), std::logic_error);
+
+    auto bad_kind = base;
+    bad_kind["net_classes"] = {
+        {"classes",
+         nlohmann::json::array(
+             {{{"id", "net_class:0"}, {"name", "Logic"}, {"default_for_net_kind", "Sideways"}}})},
+    };
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(bad_kind.dump()), std::logic_error);
 }
 
 TEST_CASE("Logical circuit reader rejects malformed net-class references") {

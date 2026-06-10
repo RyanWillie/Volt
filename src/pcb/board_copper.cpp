@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/net_class_resolution.hpp>
 #include <volt/core/rule_set.hpp>
 
 namespace volt {
@@ -464,13 +465,23 @@ void validate_track_widths(const Board &board, DiagnosticReport &report) {
     for (std::size_t index = 0; index < board.track_count(); ++index) {
         const auto track_id = BoardTrackId{index};
         const auto &track = board.track(track_id);
-        if (track.width_mm() + board_drc_epsilon >= rules.minimum_track_width_mm()) {
-            continue;
+        if (track.width_mm() + board_drc_epsilon < rules.minimum_track_width_mm()) {
+            report.add(drc_diagnostic(drc_diagnostic_codes::TrackWidthBelowMinimum,
+                                      "Track width is below the board minimum",
+                                      std::vector{EntityRef::board_track(track_id),
+                                                  EntityRef::net(track.net()),
+                                                  EntityRef::board_layer(track.layer())}));
         }
-        report.add(drc_diagnostic(
-            drc_diagnostic_codes::TrackWidthBelowMinimum, "Track width is below the board minimum",
-            std::vector{EntityRef::board_track(track_id), EntityRef::net(track.net()),
-                        EntityRef::board_layer(track.layer())}));
+
+        const auto net_rules = resolve_net_class_rules(board.circuit(), track.net());
+        if (net_rules.track_width_mm.has_value() &&
+            track.width_mm() + board_drc_epsilon < net_rules.track_width_mm.value()) {
+            report.add(drc_diagnostic(drc_diagnostic_codes::NetClassTrackWidthViolation,
+                                      "Track width is below the resolved net class width",
+                                      std::vector{EntityRef::board_track(track_id),
+                                                  EntityRef::net(track.net()),
+                                                  EntityRef::board_layer(track.layer())}));
+        }
     }
 }
 
@@ -491,6 +502,63 @@ void validate_via_rules(const Board &board, DiagnosticReport &report) {
                 drc_diagnostic_codes::ViaAnnularBelowMinimum,
                 "Via annular copper diameter is below the board minimum",
                 std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())}));
+        }
+
+        const auto net_rules = resolve_net_class_rules(board.circuit(), via.net());
+        if (net_rules.via_drill_mm.has_value() &&
+            via.drill_diameter_mm() + board_drc_epsilon < net_rules.via_drill_mm.value()) {
+            report.add(drc_diagnostic(
+                drc_diagnostic_codes::NetClassViaDrillViolation,
+                "Via drill diameter is below the resolved net class drill",
+                std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())}));
+        }
+        if (net_rules.via_diameter_mm.has_value() &&
+            via.annular_diameter_mm() + board_drc_epsilon < net_rules.via_diameter_mm.value()) {
+            report.add(drc_diagnostic(
+                drc_diagnostic_codes::NetClassViaDiameterViolation,
+                "Via copper diameter is below the resolved net class diameter",
+                std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())}));
+        }
+    }
+}
+
+void validate_net_class_layers(const Board &board, DiagnosticReport &report) {
+    const auto layer_allowed = [&board](const std::vector<std::string> &allowed,
+                                        BoardLayerId layer) {
+        return allowed.empty() || std::find(allowed.begin(), allowed.end(),
+                                            board.layer(layer).name()) != allowed.end();
+    };
+
+    for (std::size_t index = 0; index < board.track_count(); ++index) {
+        const auto track_id = BoardTrackId{index};
+        const auto &track = board.track(track_id);
+        const auto net_rules = resolve_net_class_rules(board.circuit(), track.net());
+        if (layer_allowed(net_rules.allowed_layer_names, track.layer())) {
+            continue;
+        }
+        report.add(drc_diagnostic(drc_diagnostic_codes::NetClassDisallowedLayer,
+                                  "Track is on a layer the resolved net class does not allow",
+                                  std::vector{EntityRef::board_track(track_id),
+                                              EntityRef::net(track.net()),
+                                              EntityRef::board_layer(track.layer())}));
+    }
+
+    for (std::size_t index = 0; index < board.zone_count(); ++index) {
+        const auto zone_id = BoardZoneId{index};
+        const auto &zone = board.zone(zone_id);
+        if (!zone.net().has_value()) {
+            continue;
+        }
+        const auto net_rules = resolve_net_class_rules(board.circuit(), zone.net().value());
+        for (const auto layer : zone.layers()) {
+            if (layer_allowed(net_rules.allowed_layer_names, layer)) {
+                continue;
+            }
+            report.add(drc_diagnostic(drc_diagnostic_codes::NetClassDisallowedLayer,
+                                      "Zone is on a layer the resolved net class does not allow",
+                                      std::vector{EntityRef::board_zone(zone_id),
+                                                  EntityRef::net(zone.net().value()),
+                                                  EntityRef::board_layer(layer)}));
         }
     }
 }
@@ -538,19 +606,9 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
     }
 }
 
-[[nodiscard]] double net_class_copper_clearance(const Circuit &circuit, NetId net) {
-    const auto net_class_id = circuit.net_class_for_net(net);
-    if (!net_class_id.has_value()) {
-        return 0.0;
-    }
-
-    return circuit.net_class(net_class_id.value()).copper_clearance_mm().value_or(0.0);
-}
-
 [[nodiscard]] double required_copper_clearance(const Board &board, NetId lhs, NetId rhs) {
-    return std::max(board.design_rules().copper_clearance_mm(),
-                    std::max(net_class_copper_clearance(board.circuit(), lhs),
-                             net_class_copper_clearance(board.circuit(), rhs)));
+    return resolve_copper_clearance_mm(board.circuit(), lhs, rhs,
+                                       board.design_rules().copper_clearance_mm());
 }
 
 void validate_copper_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
@@ -811,6 +869,9 @@ void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
         })
         .add([](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_via_rules(rule_board, rule_report);
+        })
+        .add([](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_net_class_layers(rule_board, rule_report);
         })
         .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_outline_clearance(rule_board, shapes, rule_report);

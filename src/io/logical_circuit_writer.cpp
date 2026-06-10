@@ -411,6 +411,33 @@ void write_net_classes(std::ostream &out, const Circuit &circuit) {
             out << ", \"copper_clearance_mm\": ";
             write_json_number(out, net_class.copper_clearance_mm().value());
         }
+        if (net_class.track_width_mm().has_value()) {
+            out << ", \"track_width_mm\": ";
+            write_json_number(out, net_class.track_width_mm().value());
+        }
+        if (net_class.via_drill_mm().has_value()) {
+            out << ", \"via_drill_mm\": ";
+            write_json_number(out, net_class.via_drill_mm().value());
+            out << ", \"via_diameter_mm\": ";
+            write_json_number(out, net_class.via_diameter_mm().value());
+        }
+        if (!net_class.allowed_layer_names().empty()) {
+            out << ", \"allowed_layers\": [";
+            for (std::size_t layer = 0; layer < net_class.allowed_layer_names().size(); ++layer) {
+                if (layer != 0) {
+                    out << ", ";
+                }
+                out << json_string(net_class.allowed_layer_names()[layer]);
+            }
+            out << ']';
+        }
+        if (net_class.priority() != 0) {
+            out << ", \"priority\": " << net_class.priority();
+        }
+        if (net_class.default_for_net_kind().has_value()) {
+            out << ", \"default_for_net_kind\": "
+                << json_string(net_kind_name(net_class.default_for_net_kind().value()));
+        }
         out << " }";
         if (index + 1 != circuit.net_class_count()) {
             out << ',';

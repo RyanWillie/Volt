@@ -4,6 +4,7 @@
 #include <string_view>
 #include <utility>
 
+#include <volt/circuit/net_class_resolution.hpp>
 #include <volt/circuit/queries.hpp>
 #include <volt/core/rule_set.hpp>
 
@@ -290,13 +291,8 @@ void validate_pin_voltage_ranges(const Circuit &circuit, NetId net_id, const Net
 
 void validate_net_class_voltage_limit(const Circuit &circuit, NetId net_id,
                                       DiagnosticReport &report) {
-    const auto net_class_id = circuit.net_class_for_net(net_id);
-    if (!net_class_id.has_value()) {
-        return;
-    }
-
-    const auto &net_class = circuit.net_class(net_class_id.value());
-    if (!net_class.maximum_net_voltage().has_value()) {
+    const auto rules = resolve_net_class_rules(circuit, net_id);
+    if (!rules.maximum_net_voltage.has_value()) {
         return;
     }
 
@@ -313,7 +309,7 @@ void validate_net_class_voltage_limit(const Circuit &circuit, NetId net_id,
     }
 
     const auto net_voltage = std::abs(net_voltage_attribute.as_quantity().value());
-    if (net_voltage <= net_class.maximum_net_voltage()->value()) {
+    if (net_voltage <= rules.maximum_net_voltage->value()) {
         return;
     }
 

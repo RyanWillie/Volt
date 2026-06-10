@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include <volt/circuit/nets.hpp>
 #include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/quantities.hpp>
@@ -48,6 +49,21 @@ class NetClass {
     /** Set the copper clearance required for assigned nets. */
     void set_copper_clearance_mm(double clearance_mm);
 
+    /** Set the track width required for assigned nets. */
+    void set_track_width_mm(double width_mm);
+
+    /** Set the via drill and finished copper diameters required for assigned nets. */
+    void set_via_size_mm(double drill_mm, double diameter_mm);
+
+    /** Restrict assigned nets to copper layers with the given board-local names. */
+    void set_allowed_layer_names(std::vector<std::string> names);
+
+    /** Set the resolution priority used when intent-derived defaults compete. */
+    void set_priority(int priority) noexcept { priority_ = priority; }
+
+    /** Mark this class as the intent-derived default for nets of one kind. */
+    void set_default_for_net_kind(NetKind kind) noexcept { default_for_net_kind_ = kind; }
+
     /** Return the maximum net voltage constraint, if present. */
     [[nodiscard]] const std::optional<Quantity> &maximum_net_voltage() const noexcept {
         return maximum_net_voltage_;
@@ -58,10 +74,40 @@ class NetClass {
         return copper_clearance_mm_;
     }
 
+    /** Return the track width constraint, if present. */
+    [[nodiscard]] std::optional<double> track_width_mm() const noexcept { return track_width_mm_; }
+
+    /** Return the via drill diameter constraint, if present. */
+    [[nodiscard]] std::optional<double> via_drill_mm() const noexcept { return via_drill_mm_; }
+
+    /** Return the via finished copper diameter constraint, if present. */
+    [[nodiscard]] std::optional<double> via_diameter_mm() const noexcept {
+        return via_diameter_mm_;
+    }
+
+    /** Return allowed copper layer names; empty means unrestricted. */
+    [[nodiscard]] const std::vector<std::string> &allowed_layer_names() const noexcept {
+        return allowed_layer_names_;
+    }
+
+    /** Return the resolution priority for intent-derived defaults. */
+    [[nodiscard]] int priority() const noexcept { return priority_; }
+
+    /** Return the net kind this class is the intent-derived default for, if any. */
+    [[nodiscard]] std::optional<NetKind> default_for_net_kind() const noexcept {
+        return default_for_net_kind_;
+    }
+
   private:
     NetClassName name_;
     std::optional<Quantity> maximum_net_voltage_;
     std::optional<double> copper_clearance_mm_;
+    std::optional<double> track_width_mm_;
+    std::optional<double> via_drill_mm_;
+    std::optional<double> via_diameter_mm_;
+    std::vector<std::string> allowed_layer_names_;
+    int priority_ = 0;
+    std::optional<NetKind> default_for_net_kind_;
 };
 
 /**
