@@ -88,3 +88,47 @@ TEST_CASE("BoardFootprintModel dedupes identical cached definitions and rejects 
     };
     CHECK_THROWS_AS(model.cache_footprint_definition(std::move(conflict)), std::logic_error);
 }
+
+TEST_CASE("Board stackup stores copper weight and dielectric properties") {
+    auto front = volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top};
+    front.set_copper_weight_oz(1.0);
+    CHECK(front.copper_weight_oz() == 1.0);
+    CHECK_THROWS_AS(front.set_copper_weight_oz(0.0), std::invalid_argument);
+    CHECK_THROWS_AS(front.set_copper_weight_oz(-1.0), std::invalid_argument);
+
+    auto silk =
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top};
+    CHECK_THROWS_AS(silk.set_copper_weight_oz(1.0), std::invalid_argument);
+
+    CHECK_THROWS_AS(volt::BoardDielectric(0.0, 4.5), std::invalid_argument);
+    CHECK_THROWS_AS(volt::BoardDielectric(1.0, 0.9), std::invalid_argument);
+    const auto core = volt::BoardDielectric{1.51, 4.6};
+    CHECK(core.thickness_mm() == 1.51);
+    CHECK(core.relative_permittivity() == 4.6);
+}
+
+TEST_CASE("Board stackup requires dielectrics to match copper layer pairs") {
+    auto model = volt::BoardStructureModel{};
+    const auto front = model.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = model.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    const auto silk = model.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+
+    model.set_layer_stack(
+        volt::LayerStack{{front, silk, back}, 1.6, std::vector{volt::BoardDielectric{1.51, 4.6}}});
+    REQUIRE(model.layer_stack().has_value());
+    REQUIRE(model.layer_stack()->dielectrics().size() == 1);
+    CHECK(model.layer_stack()->dielectrics().front().relative_permittivity() == 4.6);
+
+    CHECK_THROWS_AS(
+        model.set_layer_stack(volt::LayerStack{
+            {front, back},
+            1.6,
+            std::vector{volt::BoardDielectric{0.7, 4.6}, volt::BoardDielectric{0.7, 4.6}}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(model.set_layer_stack(volt::LayerStack{
+                        {front, silk}, 1.6, std::vector{volt::BoardDielectric{1.51, 4.6}}}),
+                    std::invalid_argument);
+}

@@ -189,9 +189,11 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("minimum_via_drill_diameter_mm"), py::arg("minimum_via_annular_diameter_mm"),
              py::arg("board_outline_clearance_mm"))
         .def("board_add_layer", &PyCircuit::board_add_layer, py::arg("name"), py::arg("role"),
-             py::arg("side"), py::arg("thickness_mm") = 0.0, py::arg("enabled") = true)
+             py::arg("side"), py::arg("thickness_mm") = 0.0, py::arg("enabled") = true,
+             py::arg("copper_weight_oz") = std::nullopt)
         .def("board_set_layer_stack", &PyCircuit::board_set_layer_stack, py::arg("layers"),
-             py::arg("board_thickness_mm"))
+             py::arg("board_thickness_mm"),
+             py::arg("dielectrics") = std::vector<std::pair<double, double>>{})
         .def("board_set_rectangular_outline", &PyCircuit::board_set_rectangular_outline,
              py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"))
         .def("board_set_polygon_outline", &PyCircuit::board_set_polygon_outline,

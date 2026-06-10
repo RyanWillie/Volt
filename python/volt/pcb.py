@@ -362,14 +362,33 @@ class Board:
         side: str,
         thickness: float = 0.0,
         enabled: bool = True,
+        copper_weight: float | None = None,
     ) -> int:
         """Add a physical or logical board layer and return its kernel index."""
-        return self._design._circuit.board_add_layer(name, role, side, float(thickness), enabled)
+        return self._design._circuit.board_add_layer(
+            name,
+            role,
+            side,
+            float(thickness),
+            enabled,
+            None if copper_weight is None else float(copper_weight),
+        )
 
-    def set_layer_stack(self, layers: Iterable[int], *, thickness: float) -> Board:
-        """Set the board layer stack order and total thickness."""
+    def set_layer_stack(
+        self,
+        layers: Iterable[int],
+        *,
+        thickness: float,
+        dielectrics: Iterable[tuple[float, float]] | None = None,
+    ) -> Board:
+        """Set the stack order, total thickness, and copper-to-copper dielectrics."""
         self._design._circuit.board_set_layer_stack(
-            [_layer_index(layer) for layer in layers], float(thickness)
+            [_layer_index(layer) for layer in layers],
+            float(thickness),
+            [
+                (float(thickness_mm), float(permittivity))
+                for thickness_mm, permittivity in (dielectrics or [])
+            ],
         )
         return self
 

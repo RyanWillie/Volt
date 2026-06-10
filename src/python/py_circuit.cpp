@@ -1109,21 +1109,31 @@ void PyCircuit::board_set_design_rules(double copper_clearance_mm, double minimu
 }
 
 std::size_t PyCircuit::board_add_layer(const std::string &name, const std::string &role,
-                                       const std::string &side, double thickness_mm, bool enabled) {
-    return board_projection()
-        .add_layer(volt::BoardLayer{name, parse_board_layer_role(role),
-                                    parse_board_layer_side(side), thickness_mm, enabled})
-        .index();
+                                       const std::string &side, double thickness_mm, bool enabled,
+                                       std::optional<double> copper_weight_oz) {
+    auto layer = volt::BoardLayer{name, parse_board_layer_role(role), parse_board_layer_side(side),
+                                  thickness_mm, enabled};
+    if (copper_weight_oz.has_value()) {
+        layer.set_copper_weight_oz(copper_weight_oz.value());
+    }
+    return board_projection().add_layer(std::move(layer)).index();
 }
 
 void PyCircuit::board_set_layer_stack(const std::vector<std::size_t> &layers,
-                                      double board_thickness_mm) {
+                                      double board_thickness_mm,
+                                      const std::vector<std::pair<double, double>> &dielectrics) {
     auto layer_ids = std::vector<volt::BoardLayerId>{};
     layer_ids.reserve(layers.size());
     for (const auto layer : layers) {
         layer_ids.emplace_back(layer);
     }
-    board_projection().set_layer_stack(volt::LayerStack{std::move(layer_ids), board_thickness_mm});
+    auto dielectric_specs = std::vector<volt::BoardDielectric>{};
+    dielectric_specs.reserve(dielectrics.size());
+    for (const auto &[thickness_mm, relative_permittivity] : dielectrics) {
+        dielectric_specs.emplace_back(thickness_mm, relative_permittivity);
+    }
+    board_projection().set_layer_stack(
+        volt::LayerStack{std::move(layer_ids), board_thickness_mm, std::move(dielectric_specs)});
 }
 
 void PyCircuit::board_set_rectangular_outline(double x, double y, double width, double height) {
