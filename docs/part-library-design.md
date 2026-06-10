@@ -95,18 +95,27 @@ exist before any of them.
 
 ### Projections must line up, and the kernel checks it
 
-Symbol and footprint are validated against the pin map at the mutation boundary where a
-part is assembled, and again as diagnostics on loaded artifacts:
+Symbol and footprint are validated against the pin map. Following the kernel rule that
+structural integrity belongs at mutation and load boundaries while design quality belongs
+in diagnostics, the lineup rules split into two fixed categories that do not depend on
+which path exercised them:
 
-- every pin appears in the symbol exactly once; no symbol pins outside the pin map;
-- every pin maps to at least one pad; multi-pad pins (for example a tab plus a leg) are
-  explicit in the pin-to-pad map;
-- every pad is either mapped to a pin or declares a mechanical/thermal role;
-- pad geometry is self-consistent: no undeclared overlaps, consistent pitch within a row;
+Structural — rejected both when a part is assembled and when an artifact is loaded:
+
+- no symbol pin outside the pin map, and every pin map entry appears in the symbol
+  exactly once;
+- every pin-to-pad map entry references a real pin and a real pad; multi-pad pins (for
+  example a tab plus a leg) are explicit in the pin-to-pad map;
 - repeated pin names resolve to distinct pin numbers.
 
-These are cheap structural diagnostics in the existing ERC style. They are the mechanical
-check that catches AI-authored drift that human review reliably misses.
+Design-quality — reported as diagnostics over assembled and loaded parts:
+
+- a pin with no mapped pad;
+- a pad neither mapped to a pin nor declaring a mechanical/thermal role;
+- pad geometry consistency: undeclared overlaps, inconsistent pitch within a row.
+
+These are cheap checks in the existing ERC style. They are the mechanical check that
+catches AI-authored drift that human review reliably misses.
 
 ### Shrink the surface AI is trusted with
 
@@ -189,10 +198,18 @@ A `BOM readiness` validation entry point joins the existing general, connectivit
 and PCB-readiness entry points: every populated instance resolves to an orderable part,
 DNP intent is explicit, alternates are structurally compatible.
 
+This slice overlaps the assembly-handoff scope of VOL-188 (BOM and component placement
+artifacts in the manufacturability epic). When this design is ticketed, VOL-188 should be
+re-scoped to consume the BOM projection defined here rather than specifying a second one;
+the placement (CPL) artifact remains VOL-188 scope.
+
 ## Authoring shape
 
 Library authoring stays close to today's `Library.component(...)`, with the pin map as
-the single pin source and projections referencing it:
+the single pin source and projections referencing it. `PinSpec` role strings are Python
+authoring sugar only: they lower into the kernel's canonical typed pin semantics
+(`terminal_kind`, `direction`, and related fields), and the part artifact stores only the
+typed form — the persisted format has no role field:
 
 ```python
 LIB = volt.Library("acme.parts", version="1.2.0")
@@ -266,7 +283,7 @@ elsewhere. Steps 3 and 5 are layered conveniences that can iterate.
 - How does a design-local library relate to project structure: a `Library` declared
   inline in project code, a sibling package, or both?
 - What is the minimum dimensional-sanity rule set for footprints that is useful without
-  guessing fabrication capabilities (which belong to DRC and rule classes)?
+  guessing fabrication capabilities (which belong to DRC and net classes)?
 - Where do part-level typed ratings stop and selected-part attributes begin when the same
   fact (for example voltage rating) exists today on the selected part?
 - Does the verification tier belong in the part artifact itself or in the library
