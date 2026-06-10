@@ -122,6 +122,23 @@ Do not expand ERC as ad hoc checks over today's broad `PinRole` model. Prefer ty
 attributes, net classes, constraints, and explicit design-intent entities that can be
 serialized and inspected.
 
+### Part Libraries And BOM
+
+Goal: make parts declarative, trustworthy, and reusable across designs, with the kernel
+owning part meaning (see [part-library-design.md](docs/part-library-design.md)).
+
+Planned work:
+
+- kernel-owned part artifact: canonical serialization, loader, and content hashing
+- lineup-contract diagnostics validating symbol and footprint projections against the
+  part pin map
+- library build lifecycle: standalone `.voltlib` bundles, in-project source builds
+  through the same pipeline, and design-manifest lock entries
+- BOM projection over selected parts with DNP, per-instance overrides, and approved
+  alternates, plus a BOM-readiness validation entry point
+- reviewed package generators, part provenance, verification tiers, and design-side
+  sourcing snapshots
+
 ### Python Authoring Refinements
 
 Goal: keep Python expressive while preserving the C++ kernel as the owner of EDA meaning.
