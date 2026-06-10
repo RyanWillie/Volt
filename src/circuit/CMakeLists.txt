@@ -11,6 +11,7 @@ add_library(
     nets.cpp
     parts.cpp
     queries.cpp
+    net_class_resolution.cpp
     net_classes.cpp
     validation.cpp
 )

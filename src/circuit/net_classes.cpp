@@ -2,7 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace volt {
 
@@ -34,6 +38,56 @@ void NetClass::set_copper_clearance_mm(double clearance_mm) {
     }
 
     copper_clearance_mm_ = clearance_mm;
+}
+
+void NetClass::set_track_width_mm(double width_mm) {
+    if (!std::isfinite(width_mm) || width_mm <= 0.0) {
+        throw std::invalid_argument{"Net class track width must be finite and positive"};
+    }
+
+    track_width_mm_ = width_mm;
+}
+
+void NetClass::set_via_size_mm(double drill_mm, double diameter_mm) {
+    if (!std::isfinite(drill_mm) || drill_mm <= 0.0 || !std::isfinite(diameter_mm) ||
+        diameter_mm <= 0.0) {
+        throw std::invalid_argument{"Net class via sizes must be finite and positive"};
+    }
+    if (diameter_mm <= drill_mm) {
+        throw std::invalid_argument{
+            "Net class via diameter must be larger than the drill diameter"};
+    }
+
+    via_drill_mm_ = drill_mm;
+    via_diameter_mm_ = diameter_mm;
+}
+
+void NetClass::set_layer_scope(NetClassLayerScope scope) {
+    if (scope != NetClassLayerScope::AnyCopper && !allowed_layer_names_.empty()) {
+        throw std::logic_error{"Net class layer scope conflicts with explicit layer names"};
+    }
+
+    layer_scope_ = scope;
+}
+
+void NetClass::set_allowed_layer_names(std::vector<std::string> names) {
+    if (layer_scope_ != NetClassLayerScope::AnyCopper) {
+        throw std::logic_error{"Net class layer names conflict with a semantic layer scope"};
+    }
+    if (names.empty()) {
+        throw std::invalid_argument{"Net class allowed layers must not be empty"};
+    }
+    for (std::size_t index = 0; index < names.size(); ++index) {
+        if (names[index].empty()) {
+            throw std::invalid_argument{"Net class allowed layer names must not be empty"};
+        }
+        if (std::find(names.begin(), names.begin() + static_cast<std::ptrdiff_t>(index),
+                      names[index]) != names.begin() + static_cast<std::ptrdiff_t>(index)) {
+            throw std::invalid_argument{"Net class allowed layer names must be unique"};
+        }
+    }
+
+    allowed_layer_names_ = std::move(names);
 }
 
 [[nodiscard]] NetClassId NetClasses::add_net_class(NetClass net_class) {
