@@ -226,6 +226,7 @@ enum class EntityKind {
     BoardVia,
     BoardZone,
     BoardKeepout,
+    BoardRoom,
     BoardText,
     FootprintDef,
     FootprintPad,
@@ -361,6 +362,11 @@ class EntityRef {
     /** Create a reference to a PCB keepout. */
     [[nodiscard]] static EntityRef board_keepout(BoardKeepoutId id) noexcept {
         return EntityRef{EntityKind::BoardKeepout, id.index()};
+    }
+
+    /** Create a reference to a PCB room. */
+    [[nodiscard]] static EntityRef board_room(BoardRoomId id) noexcept {
+        return EntityRef{EntityKind::BoardRoom, id.index()};
     }
 
     /** Create a reference to PCB board text. */

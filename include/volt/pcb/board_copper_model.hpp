@@ -45,6 +45,12 @@ class BoardCopperModel {
     /** Return the number of keepouts owned by this model. */
     [[nodiscard]] std::size_t keepout_count() const noexcept;
 
+    /** Return a room by board-local ID. */
+    [[nodiscard]] const BoardRoom &room(BoardRoomId id) const;
+
+    /** Return the number of rooms owned by this model. */
+    [[nodiscard]] std::size_t room_count() const noexcept;
+
     /** Return board text by board-local ID. */
     [[nodiscard]] const BoardText &text(BoardTextId id) const;
 
@@ -66,6 +72,9 @@ class BoardCopperModel {
     /** Add a copper keepout and return its stable board-local ID. */
     [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout);
 
+    /** Add a board room and return its stable board-local ID. */
+    [[nodiscard]] BoardRoomId add_room(BoardRoom room);
+
     /** Add board text and return its stable board-local ID. */
     [[nodiscard]] BoardTextId add_text(BoardText text);
 
@@ -73,6 +82,7 @@ class BoardCopperModel {
     EntityTable<BoardVia, BoardViaId> vias_;
     EntityTable<BoardZone, BoardZoneId> zones_;
     EntityTable<BoardKeepout, BoardKeepoutId> keepouts_;
+    EntityTable<BoardRoom, BoardRoomId> rooms_;
     EntityTable<BoardText, BoardTextId> texts_;
 };
 

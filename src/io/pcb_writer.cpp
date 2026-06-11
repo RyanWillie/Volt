@@ -70,6 +70,8 @@ namespace volt::io::detail {
         return encode_local_id(BoardZoneId{entity.index()});
     case EntityKind::BoardKeepout:
         return encode_local_id(BoardKeepoutId{entity.index()});
+    case EntityKind::BoardRoom:
+        return encode_local_id(BoardRoomId{entity.index()});
     case EntityKind::BoardText:
         return encode_local_id(BoardTextId{entity.index()});
     case EntityKind::FootprintDef:
@@ -758,6 +760,40 @@ void write_board_keepouts(std::ostream &out, const Board &board, bool trailing_c
     out << '\n';
 }
 
+void write_board_rooms(std::ostream &out, const Board &board, bool trailing_comma) {
+    out << "    \"rooms\": [\n";
+    for (std::size_t index = 0; index < board.room_count(); ++index) {
+        const auto id = BoardRoomId{index};
+        const auto &room = board.room(id);
+        out << "      {\"id\": " << json_string(encode_local_id(id))
+            << ", \"name\": " << json_string(room.name()) << ", \"outline\": ";
+        write_board_points(out, room.outline().vertices());
+        out << ", \"layers\": ";
+        write_board_layers(out, room.layers());
+        if (room.priority() != 0) {
+            out << ", \"priority\": " << room.priority();
+        }
+        if (room.copper_clearance_mm().has_value()) {
+            out << ", \"copper_clearance_mm\": ";
+            write_number(out, room.copper_clearance_mm().value());
+        }
+        if (room.track_width_mm().has_value()) {
+            out << ", \"track_width_mm\": ";
+            write_number(out, room.track_width_mm().value());
+        }
+        out << '}';
+        if (index + 1U != board.room_count()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "    ]";
+    if (trailing_comma) {
+        out << ',';
+    }
+    out << '\n';
+}
+
 void write_board_texts(std::ostream &out, const Board &board, bool trailing_comma) {
     out << "    \"texts\": [\n";
     for (std::size_t index = 0; index < board.text_count(); ++index) {
@@ -927,23 +963,29 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
     detail::write_placements(out, board, definitions,
                              board.track_count() != 0U || board.via_count() != 0U ||
                                  board.zone_count() != 0U || board.keepout_count() != 0U ||
-                                 board.text_count() != 0U);
+                                 board.room_count() != 0U || board.text_count() != 0U);
     if (board.track_count() != 0U) {
         detail::write_tracks(out, board,
                              board.via_count() != 0U || board.zone_count() != 0U ||
-                                 board.keepout_count() != 0U || board.text_count() != 0U);
+                                 board.keepout_count() != 0U || board.room_count() != 0U ||
+                                 board.text_count() != 0U);
     }
     if (board.via_count() != 0U) {
         detail::write_vias(out, board,
                            board.zone_count() != 0U || board.keepout_count() != 0U ||
-                               board.text_count() != 0U);
+                               board.room_count() != 0U || board.text_count() != 0U);
     }
     if (board.zone_count() != 0U) {
         detail::write_board_zones(out, board,
-                                  board.keepout_count() != 0U || board.text_count() != 0U);
+                                  board.keepout_count() != 0U || board.room_count() != 0U ||
+                                      board.text_count() != 0U);
     }
     if (board.keepout_count() != 0U) {
-        detail::write_board_keepouts(out, board, board.text_count() != 0U);
+        detail::write_board_keepouts(out, board,
+                                     board.room_count() != 0U || board.text_count() != 0U);
+    }
+    if (board.room_count() != 0U) {
+        detail::write_board_rooms(out, board, board.text_count() != 0U);
     }
     if (board.text_count() != 0U) {
         detail::write_board_texts(out, board, false);

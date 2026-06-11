@@ -323,6 +323,12 @@ class PyCircuit {
                       const std::vector<std::pair<double, double>> &outline,
                       const std::vector<std::string> &restrictions);
 
+    [[nodiscard]] std::size_t board_add_room(const std::string &name,
+                                             const std::vector<std::pair<double, double>> &outline,
+                                             const std::vector<std::size_t> &layers,
+                                             std::optional<double> copper_clearance_mm,
+                                             std::optional<double> track_width_mm, int priority);
+
     [[nodiscard]] std::size_t board_add_text(const std::string &text, double x, double y,
                                              std::size_t layer, double rotation_degrees,
                                              double size_mm, bool locked);

@@ -122,6 +122,10 @@ template <> struct LocalIdPrefix<BoardKeepoutId> {
     static constexpr auto value = std::string_view{"board_keepout:"};
 };
 
+template <> struct LocalIdPrefix<BoardRoomId> {
+    static constexpr auto value = std::string_view{"board_room:"};
+};
+
 template <> struct LocalIdPrefix<BoardTextId> {
     static constexpr auto value = std::string_view{"board_text:"};
 };

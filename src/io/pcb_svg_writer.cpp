@@ -124,6 +124,8 @@ void write_pcb_svg_number(std::ostream &out, double value) {
         return encode_local_id(BoardZoneId{entity.index()});
     case EntityKind::BoardKeepout:
         return encode_local_id(BoardKeepoutId{entity.index()});
+    case EntityKind::BoardRoom:
+        return encode_local_id(BoardRoomId{entity.index()});
     case EntityKind::BoardText:
         return encode_local_id(BoardTextId{entity.index()});
     case EntityKind::FootprintDef:

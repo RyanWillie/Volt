@@ -41,6 +41,49 @@ void BoardZone::validate_layers() const {
     }
 }
 
+BoardRoom::BoardRoom(std::string name, BoardOutline outline, std::vector<BoardLayerId> layers,
+                     int priority)
+    : name_{std::move(name)}, outline_{std::move(outline)}, layers_{std::move(layers)},
+      priority_{priority} {
+    if (name_.empty()) {
+        throw std::invalid_argument{"Board room name must not be empty"};
+    }
+    validate_layers();
+}
+
+void BoardRoom::set_copper_clearance_mm(double value) {
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument{"Board room copper clearance must be finite"};
+    }
+    if (value < 0.0) {
+        throw std::invalid_argument{"Board room copper clearance must not be negative"};
+    }
+    copper_clearance_mm_ = value;
+}
+
+void BoardRoom::set_track_width_mm(double value) {
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument{"Board room track width must be finite"};
+    }
+    if (value <= 0.0) {
+        throw std::invalid_argument{"Board room track width must be positive"};
+    }
+    track_width_mm_ = value;
+}
+
+void BoardRoom::validate_layers() const {
+    if (layers_.empty()) {
+        throw std::invalid_argument{"Board room layers must not be empty"};
+    }
+    auto sorted = layers_;
+    std::sort(sorted.begin(), sorted.end(),
+              [](BoardLayerId lhs, BoardLayerId rhs) { return lhs.index() < rhs.index(); });
+    const auto duplicate = std::adjacent_find(sorted.begin(), sorted.end());
+    if (duplicate != sorted.end()) {
+        throw std::invalid_argument{"Board room layers must not contain duplicates"};
+    }
+}
+
 BoardKeepout::BoardKeepout(std::vector<BoardPoint> outline, std::vector<BoardLayerId> layers,
                            std::vector<BoardKeepoutRestriction> restrictions)
     : outline_{std::move(outline)}, layers_{std::move(layers)},
@@ -506,6 +549,72 @@ collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
     return outline_contains_polygon(outline, shape.points, clearance_mm);
 }
 
+[[nodiscard]] bool room_layers_intersect(const BoardRoom &room,
+                                         const std::vector<BoardLayerId> &layers) {
+    for (const auto room_layer : room.layers()) {
+        if (std::find(layers.begin(), layers.end(), room_layer) != layers.end()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] bool room_has_higher_precedence(const Board &board, BoardRoomId candidate,
+                                              BoardRoomId current) {
+    const auto candidate_priority = board.room(candidate).priority();
+    const auto current_priority = board.room(current).priority();
+    return candidate_priority > current_priority ||
+           (candidate_priority == current_priority && candidate.index() < current.index());
+}
+
+[[nodiscard]] std::optional<BoardRoomId> room_for_shape(const Board &board,
+                                                        const BoardCopperShape &shape) {
+    auto result = std::optional<BoardRoomId>{};
+    for (std::size_t index = 0; index < board.room_count(); ++index) {
+        const auto room_id = BoardRoomId{index};
+        const auto &room = board.room(room_id);
+        if (!room_layers_intersect(room, shape.layers) ||
+            !shape_satisfies_outline(shape, room.outline(), 0.0)) {
+            continue;
+        }
+        if (!result.has_value() || room_has_higher_precedence(board, room_id, result.value())) {
+            result = room_id;
+        }
+    }
+    return result;
+}
+
+[[nodiscard]] bool track_satisfies_room(const BoardTrack &track, const BoardRoom &room) {
+    if (std::find(room.layers().begin(), room.layers().end(), track.layer()) ==
+        room.layers().end()) {
+        return false;
+    }
+    const auto radius = track.width_mm() / 2.0;
+    for (std::size_t index = 1; index < track.points().size(); ++index) {
+        if (!outline_contains_segment(room.outline(), track.points()[index - 1U],
+                                      track.points()[index], radius, 0.0)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] std::optional<BoardRoomId> room_for_track(const Board &board,
+                                                        const BoardTrack &track) {
+    auto result = std::optional<BoardRoomId>{};
+    for (std::size_t index = 0; index < board.room_count(); ++index) {
+        const auto room_id = BoardRoomId{index};
+        const auto &room = board.room(room_id);
+        if (!track_satisfies_room(track, room)) {
+            continue;
+        }
+        if (!result.has_value() || room_has_higher_precedence(board, room_id, result.value())) {
+            result = room_id;
+        }
+    }
+    return result;
+}
+
 [[nodiscard]] std::vector<EntityRef> copper_shape_entities(const BoardCopperShape &shape, NetId net,
                                                            BoardLayerId layer) {
     auto entities = shape.primary_entities;
@@ -528,13 +637,24 @@ void validate_track_widths(const Board &board, DiagnosticReport &report) {
         }
 
         const auto net_rules = resolve_net_class_rules(board.circuit(), track.net());
-        if (net_rules.track_width_mm.has_value() &&
-            track.width_mm() + board_drc_epsilon < net_rules.track_width_mm.value()) {
+        auto width_requirement = net_rules.track_width_mm;
+        auto room_requirement = std::optional<BoardRoomId>{};
+        const auto track_room = room_for_track(board, track);
+        if (track_room.has_value() && board.room(track_room.value()).track_width_mm().has_value()) {
+            width_requirement = board.room(track_room.value()).track_width_mm();
+            room_requirement = track_room.value();
+        }
+        if (width_requirement.has_value() &&
+            track.width_mm() + board_drc_epsilon < width_requirement.value()) {
+            auto entities =
+                std::vector{EntityRef::board_track(track_id), EntityRef::net(track.net()),
+                            EntityRef::board_layer(track.layer())};
+            if (room_requirement.has_value()) {
+                entities.push_back(EntityRef::board_room(room_requirement.value()));
+            }
             report.add(drc_diagnostic(drc_diagnostic_codes::NetClassTrackWidthViolation,
                                       "Track width is below the resolved net class width",
-                                      std::vector{EntityRef::board_track(track_id),
-                                                  EntityRef::net(track.net()),
-                                                  EntityRef::board_layer(track.layer())}));
+                                      std::move(entities)));
         }
     }
 }
@@ -677,11 +797,29 @@ void validate_net_class_layers(const Board &board, DiagnosticReport &report) {
            " clearance";
 }
 
-[[nodiscard]] double required_copper_clearance(const Board &board, const BoardCopperShape &lhs,
-                                               const BoardCopperShape &rhs) {
+struct RequiredCopperClearance {
+    double clearance_mm;
+    std::optional<BoardRoomId> room;
+};
+
+[[nodiscard]] RequiredCopperClearance required_copper_clearance(const Board &board,
+                                                                const BoardCopperShape &lhs,
+                                                                const BoardCopperShape &rhs) {
+    const auto lhs_room = room_for_shape(board, lhs);
+    const auto rhs_room = room_for_shape(board, rhs);
+    if (lhs_room.has_value() && rhs_room.has_value() && lhs_room.value() == rhs_room.value()) {
+        const auto room_clearance = board.room(lhs_room.value()).copper_clearance_mm();
+        if (room_clearance.has_value()) {
+            return RequiredCopperClearance{room_clearance.value(), lhs_room.value()};
+        }
+    }
+
     const auto pair_floor =
         board.design_rules().clearance_mm(shape_clearance_kind(lhs), shape_clearance_kind(rhs));
-    return resolve_copper_clearance_mm(board.circuit(), lhs.net, rhs.net, pair_floor);
+    return RequiredCopperClearance{
+        resolve_copper_clearance_mm(board.circuit(), lhs.net, rhs.net, pair_floor),
+        std::nullopt,
+    };
 }
 
 void validate_outline_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
@@ -744,7 +882,7 @@ void validate_copper_clearance(const Board &board, const std::vector<BoardCopper
             }
             const auto clearance = shape_distance(lhs, rhs) - lhs.radius_mm - rhs.radius_mm;
             const auto required = required_copper_clearance(board, lhs, rhs);
-            if (clearance + board_drc_epsilon >= required) {
+            if (clearance + board_drc_epsilon >= required.clearance_mm) {
                 continue;
             }
 
@@ -754,6 +892,9 @@ void validate_copper_clearance(const Board &board, const std::vector<BoardCopper
             entities.push_back(EntityRef::net(lhs.net));
             entities.push_back(EntityRef::net(rhs.net));
             entities.push_back(EntityRef::board_layer(layer.value()));
+            if (required.room.has_value()) {
+                entities.push_back(EntityRef::board_room(required.room.value()));
+            }
             report.add(drc_diagnostic(
                 drc_diagnostic_codes::CopperClearanceViolation,
                 clearance_pair_message(shape_clearance_kind(lhs), shape_clearance_kind(rhs)),

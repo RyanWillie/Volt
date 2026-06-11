@@ -31,6 +31,7 @@ void set_design_rules(BoardDesignRules rules)
 [[nodiscard]] BoardViaId add_via(BoardVia via)
 [[nodiscard]] BoardZoneId add_zone(BoardZone zone)
 [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout)
+[[nodiscard]] BoardRoomId add_room(BoardRoom room)
 [[nodiscard]] BoardTextId add_text(BoardText text)
 [[nodiscard]] const BoardLayer &layer(BoardLayerId id) const
 [[nodiscard]] std::size_t layer_count() const noexcept
@@ -52,6 +53,8 @@ void set_design_rules(BoardDesignRules rules)
 [[nodiscard]] std::size_t zone_count() const noexcept
 [[nodiscard]] const BoardKeepout &keepout(BoardKeepoutId id) const
 [[nodiscard]] std::size_t keepout_count() const noexcept
+[[nodiscard]] const BoardRoom &room(BoardRoomId id) const
+[[nodiscard]] std::size_t room_count() const noexcept
 [[nodiscard]] const BoardText &text(BoardTextId id) const
 [[nodiscard]] std::size_t text_count() const noexcept
 [[nodiscard]] std::optional<ComponentPlacementId> placement_for_component(ComponentId component) const noexcept

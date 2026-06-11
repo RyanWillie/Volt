@@ -83,6 +83,8 @@ void write_board_zones(std::ostream &out, const Board &board, bool trailing_comm
 
 void write_board_keepouts(std::ostream &out, const Board &board, bool trailing_comma = false);
 
+void write_board_rooms(std::ostream &out, const Board &board, bool trailing_comma = false);
+
 void write_board_texts(std::ostream &out, const Board &board, bool trailing_comma = false);
 
 void write_pad_resolution(std::ostream &out, const Board &board,

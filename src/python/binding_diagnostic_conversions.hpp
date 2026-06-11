@@ -58,6 +58,8 @@ namespace {
         return "board_zone";
     case volt::EntityKind::BoardKeepout:
         return "board_keepout";
+    case volt::EntityKind::BoardRoom:
+        return "board_room";
     case volt::EntityKind::BoardText:
         return "board_text";
     case volt::EntityKind::FootprintDef:

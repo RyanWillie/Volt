@@ -1,6 +1,7 @@
 #include <volt/pcb/board_copper_model.hpp>
 
 #include <cstddef>
+#include <stdexcept>
 #include <utility>
 
 namespace volt {
@@ -17,6 +18,15 @@ namespace volt {
 
 [[nodiscard]] BoardKeepoutId BoardCopperModel::add_keepout(BoardKeepout keepout) {
     return keepouts_.insert(std::move(keepout));
+}
+
+[[nodiscard]] BoardRoomId BoardCopperModel::add_room(BoardRoom room) {
+    for (std::size_t index = 0; index < rooms_.size(); ++index) {
+        if (rooms_.get(BoardRoomId{index}).name() == room.name()) {
+            throw std::logic_error{"Board room name already exists"};
+        }
+    }
+    return rooms_.insert(std::move(room));
 }
 
 [[nodiscard]] BoardTextId BoardCopperModel::add_text(BoardText text) {
@@ -46,6 +56,12 @@ namespace volt {
 [[nodiscard]] std::size_t BoardCopperModel::keepout_count() const noexcept {
     return keepouts_.size();
 }
+
+[[nodiscard]] const BoardRoom &BoardCopperModel::room(BoardRoomId id) const {
+    return rooms_.get(id);
+}
+
+[[nodiscard]] std::size_t BoardCopperModel::room_count() const noexcept { return rooms_.size(); }
 
 [[nodiscard]] const BoardText &BoardCopperModel::text(BoardTextId id) const {
     return texts_.get(id);

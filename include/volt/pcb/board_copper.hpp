@@ -50,6 +50,50 @@ class BoardZone {
     int priority_;
 };
 
+/** Kernel-owned board area where local routing rule overrides may apply. */
+class BoardRoom {
+  public:
+    /** Construct a board room over one or more board layers. */
+    BoardRoom(std::string name, BoardOutline outline, std::vector<BoardLayerId> layers,
+              int priority = 0);
+
+    /** Return the non-empty room name. */
+    [[nodiscard]] const std::string &name() const noexcept { return name_; }
+
+    /** Return the room outline. */
+    [[nodiscard]] const BoardOutline &outline() const noexcept { return outline_; }
+
+    /** Return board layers this room applies to. */
+    [[nodiscard]] const std::vector<BoardLayerId> &layers() const noexcept { return layers_; }
+
+    /** Return deterministic priority/order metadata. */
+    [[nodiscard]] int priority() const noexcept { return priority_; }
+
+    /** Return the room copper clearance override, if present. */
+    [[nodiscard]] std::optional<double> copper_clearance_mm() const noexcept {
+        return copper_clearance_mm_;
+    }
+
+    /** Return the room track width override, if present. */
+    [[nodiscard]] std::optional<double> track_width_mm() const noexcept { return track_width_mm_; }
+
+    /** Set the room copper clearance override in millimeters. */
+    void set_copper_clearance_mm(double value);
+
+    /** Set the room track width override in millimeters. */
+    void set_track_width_mm(double value);
+
+  private:
+    void validate_layers() const;
+
+    std::string name_;
+    BoardOutline outline_;
+    std::vector<BoardLayerId> layers_;
+    int priority_;
+    std::optional<double> copper_clearance_mm_;
+    std::optional<double> track_width_mm_;
+};
+
 /** Routed copper track that physically implements an existing logical net. */
 class BoardTrack {
   public:
