@@ -172,6 +172,83 @@ struct BoardClearancePair {
     double clearance_mm;
 };
 
+/** Required provenance attached to an ingested manufacturer capability profile. */
+struct BoardCapabilityProvenance {
+    /** Free-text source for the capability data. */
+    std::string source;
+    /** Date string describing when the source data was current. */
+    std::string as_of;
+};
+
+/** Copper-weight-specific capability refinement for etching-dependent limits. */
+struct BoardCapabilityCopperWeightRefinement {
+    /** Finished copper weight in ounces per square foot. */
+    double copper_weight_oz;
+    /** Minimum track width in millimeters for this copper weight. */
+    double minimum_track_width_mm;
+    /** Minimum copper clearance in millimeters for this copper weight. */
+    double minimum_clearance_mm;
+};
+
+/** Kernel-owned manufacturer capability data loaded from project or profile documents. */
+class BoardCapabilityProfile {
+  public:
+    /** Construct a validated capability profile with required provenance and limits. */
+    BoardCapabilityProfile(
+        std::string name, BoardCapabilityProvenance provenance, double minimum_track_width_mm,
+        double minimum_via_drill_mm, double minimum_via_annular_mm,
+        std::vector<BoardClearancePair> minimum_clearances,
+        std::vector<BoardCapabilityCopperWeightRefinement> copper_weight_refinements = {});
+
+    /** Return a clearly named conservative fallback profile that callers must apply explicitly. */
+    [[nodiscard]] static BoardCapabilityProfile conservative_default();
+
+    /** Return the non-empty profile name. */
+    [[nodiscard]] const std::string &name() const noexcept { return name_; }
+
+    /** Return source and as-of provenance for auditability. */
+    [[nodiscard]] const BoardCapabilityProvenance &provenance() const noexcept {
+        return provenance_;
+    }
+
+    /** Return the base minimum routed track width in millimeters. */
+    [[nodiscard]] double minimum_track_width_mm() const noexcept { return minimum_track_width_mm_; }
+
+    /** Return the base minimum via drill diameter in millimeters. */
+    [[nodiscard]] double minimum_via_drill_mm() const noexcept { return minimum_via_drill_mm_; }
+
+    /** Return the base minimum via outer annular copper diameter in millimeters. */
+    [[nodiscard]] double minimum_via_annular_mm() const noexcept { return minimum_via_annular_mm_; }
+
+    /** Return the minimum clearance for a canonical object-kind pair, if specified. */
+    [[nodiscard]] std::optional<double> minimum_clearance(BoardClearanceKind first,
+                                                          BoardClearanceKind second) const noexcept;
+
+    /** Return the minimum clearance for a canonical object-kind pair, or zero if unspecified. */
+    [[nodiscard]] double minimum_clearance_mm(BoardClearanceKind first,
+                                              BoardClearanceKind second) const noexcept;
+
+    /** Return canonical minimum clearance entries in deterministic order. */
+    [[nodiscard]] const std::vector<BoardClearancePair> &minimum_clearances() const noexcept {
+        return minimum_clearances_;
+    }
+
+    /** Return copper-weight refinements in strictly ascending copper-weight order. */
+    [[nodiscard]] const std::vector<BoardCapabilityCopperWeightRefinement> &
+    copper_weight_refinements() const noexcept {
+        return copper_weight_refinements_;
+    }
+
+  private:
+    std::string name_;
+    BoardCapabilityProvenance provenance_;
+    double minimum_track_width_mm_;
+    double minimum_via_drill_mm_;
+    double minimum_via_annular_mm_;
+    std::vector<BoardClearancePair> minimum_clearances_;
+    std::vector<BoardCapabilityCopperWeightRefinement> copper_weight_refinements_;
+};
+
 /** Kernel-owned first PCB design-rule values, expressed in board millimeters. */
 class BoardDesignRules {
   public:

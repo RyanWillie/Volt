@@ -64,6 +64,8 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "PCB_VIA_DRILL_BELOW_NET_CLASS",
         "PCB_VIA_DIAMETER_BELOW_NET_CLASS",
         "PCB_COPPER_ON_DISALLOWED_LAYER",
+        "PCB_RULE_BELOW_CAPABILITY",
+        "PCB_RULE_AT_CAPABILITY_MINIMUM",
     )
 
 

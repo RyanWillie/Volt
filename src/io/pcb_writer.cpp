@@ -1,5 +1,7 @@
 #include <volt/io/pcb_writer.hpp>
 
+#include "board_capability_profile_io.hpp"
+
 #include <variant>
 
 #include <volt/pcb/board_geometry_projection.hpp>
@@ -920,6 +922,11 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
     out << "    \"units\": " << detail::json_string(detail::board_units_name(board.units()))
         << ",\n";
     detail::write_rules(out, board);
+    if (board.capability_profile().has_value()) {
+        out << "    \"capability_profile\": ";
+        detail::write_capability_profile_payload(out, board.capability_profile().value());
+        out << ",\n";
+    }
     detail::write_layers(out, board);
     detail::write_layer_stack(out, board);
     detail::write_outline(out, board);

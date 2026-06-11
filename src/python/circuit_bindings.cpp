@@ -1,6 +1,9 @@
 #include "circuit_bindings.hpp"
 
+#include "binding_pcb_conversions.hpp"
 #include "py_circuit.hpp"
+
+#include <volt/io/board_capability_profile.hpp>
 
 #include <array>
 #include <cstddef>
@@ -30,6 +33,12 @@ void bind_circuit(pybind11::module_ &module) {
                []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::Drc); });
     module.def("pcb_visual_diagnostic_codes",
                []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::PcbVisual); });
+    module.def("read_capability_profile_text", [](const std::string &text) {
+        return board_capability_profile_to_dict(volt::io::read_capability_profile_text(text));
+    });
+    module.def("normalize_capability_profile", [](const py::dict &profile) {
+        return board_capability_profile_to_dict(board_capability_profile_from_dict(profile));
+    });
 
     py::class_<PyCircuit>(module, "Circuit")
         .def(py::init<>())
@@ -188,6 +197,8 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("copper_clearance_mm"), py::arg("minimum_track_width_mm"),
              py::arg("minimum_via_drill_diameter_mm"), py::arg("minimum_via_annular_diameter_mm"),
              py::arg("board_outline_clearance_mm"))
+        .def("board_set_capability_profile", &PyCircuit::board_set_capability_profile,
+             py::arg("profile"))
         .def("board_add_layer", &PyCircuit::board_add_layer, py::arg("name"), py::arg("role"),
              py::arg("side"), py::arg("thickness_mm") = 0.0, py::arg("enabled") = true,
              py::arg("copper_weight_oz") = std::nullopt)

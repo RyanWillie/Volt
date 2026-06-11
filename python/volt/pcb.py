@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
+from . import _volt
 from ._footprint import Footprint
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
 from .library import _SelectedPartModel3D
@@ -41,6 +42,154 @@ def _net_index(value: int) -> int:
 
 def _layer_indices(values: Iterable[int]) -> list[int]:
     return [_layer_index(value) for value in values]
+
+
+def _capability_clearance_payload(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return dict(value)
+    if not isinstance(value, (tuple, list)) or len(value) != 3:
+        raise ValueError("Capability profile clearances must be (first, second, clearance)")
+    first, second, clearance = value
+    return {"first": first, "second": second, "clearance_mm": clearance}
+
+
+def _capability_refinement_payload(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return dict(value)
+    if not isinstance(value, (tuple, list)) or len(value) != 3:
+        raise ValueError(
+            "Capability profile refinements must be (copper_weight, track_width, clearance)"
+        )
+    copper_weight, track_width, clearance = value
+    return {
+        "copper_weight_oz": copper_weight,
+        "minimum_track_width_mm": track_width,
+        "minimum_clearance_mm": clearance,
+    }
+
+
+def _capability_payload_to_args(payload: dict[str, Any]) -> dict[str, Any]:
+    provenance = payload["provenance"]
+    return {
+        "name": payload["name"],
+        "source": provenance["source"],
+        "as_of": provenance["as_of"],
+        "minimum_track_width": payload["minimum_track_width_mm"],
+        "minimum_via_drill": payload["minimum_via_drill_mm"],
+        "minimum_via_annular": payload["minimum_via_annular_mm"],
+        "minimum_clearances": tuple(
+            (entry["first"], entry["second"], entry["clearance_mm"])
+            for entry in payload["minimum_clearances"]
+        ),
+        "copper_weight_refinements": tuple(
+            (
+                entry["copper_weight_oz"],
+                entry["minimum_track_width_mm"],
+                entry["minimum_clearance_mm"],
+            )
+            for entry in payload.get("copper_weight_refinements", ())
+        ),
+    }
+
+
+def _canonical_capability_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return dict(_volt.normalize_capability_profile(payload))
+    except ValueError:
+        raise
+    except Exception as error:
+        raise ValueError("Invalid capability profile") from error
+
+
+def _capability_payload(
+    *,
+    name: str,
+    source: str,
+    as_of: str,
+    minimum_track_width: float,
+    minimum_via_drill: float,
+    minimum_via_annular: float,
+    minimum_clearances: Iterable[Any],
+    copper_weight_refinements: Iterable[Any],
+) -> dict[str, Any]:
+    return {
+        "name": name,
+        "provenance": {"source": source, "as_of": as_of},
+        "minimum_track_width_mm": minimum_track_width,
+        "minimum_via_drill_mm": minimum_via_drill,
+        "minimum_via_annular_mm": minimum_via_annular,
+        "minimum_clearances": [
+            _capability_clearance_payload(entry) for entry in minimum_clearances
+        ],
+        "copper_weight_refinements": [
+            _capability_refinement_payload(entry) for entry in copper_weight_refinements
+        ],
+    }
+
+
+def _set_capability_attributes(instance, payload: dict[str, Any]) -> None:
+    args = _capability_payload_to_args(payload)
+    for name, value in args.items():
+        object.__setattr__(instance, name, value)
+
+
+def _capability_profile_from_payload(payload: dict[str, Any]) -> "CapabilityProfile":
+    canonical = _canonical_capability_payload(payload)
+    profile = object.__new__(CapabilityProfile)
+    _set_capability_attributes(profile, canonical)
+    return profile
+
+
+@dataclass(frozen=True)
+class CapabilityProfile:
+    """Manufacturer capability profile snapshot with required provenance."""
+
+    name: str
+    source: str
+    as_of: str
+    minimum_track_width: float
+    minimum_via_drill: float
+    minimum_via_annular: float
+    minimum_clearances: tuple[tuple[str, str, float], ...] = ()
+    copper_weight_refinements: tuple[tuple[float, float, float], ...] = ()
+
+    def __post_init__(self) -> None:
+        canonical = _canonical_capability_payload(
+            _capability_payload(
+                name=self.name,
+                source=self.source,
+                as_of=self.as_of,
+                minimum_track_width=self.minimum_track_width,
+                minimum_via_drill=self.minimum_via_drill,
+                minimum_via_annular=self.minimum_via_annular,
+                minimum_clearances=self.minimum_clearances,
+                copper_weight_refinements=self.copper_weight_refinements,
+            )
+        )
+        _set_capability_attributes(self, canonical)
+
+    @classmethod
+    def from_file(cls, path: str | Path) -> "CapabilityProfile":
+        """Load a standalone Volt capability profile document."""
+        try:
+            payload = dict(_volt.read_capability_profile_text(Path(path).read_text(encoding="utf-8")))
+        except ValueError:
+            raise
+        except Exception as error:
+            raise ValueError("Invalid capability profile document") from error
+        return _capability_profile_from_payload(payload)
+
+    def _to_dict(self) -> dict[str, Any]:
+        return _capability_payload(
+            name=self.name,
+            source=self.source,
+            as_of=self.as_of,
+            minimum_track_width=self.minimum_track_width,
+            minimum_via_drill=self.minimum_via_drill,
+            minimum_via_annular=self.minimum_via_annular,
+            minimum_clearances=self.minimum_clearances,
+            copper_weight_refinements=self.copper_weight_refinements,
+        )
 
 
 @dataclass(frozen=True)
@@ -352,6 +501,13 @@ class Board:
             float(min_via_annular_value),
             float(board_outline_clearance_value),
         )
+        return self
+
+    def set_capability_profile(self, profile: CapabilityProfile) -> Board:
+        """Set the board's pinned manufacturer capability profile snapshot."""
+        if not isinstance(profile, CapabilityProfile):
+            raise TypeError("set_capability_profile expects a CapabilityProfile")
+        self._design._circuit.board_set_capability_profile(profile._to_dict())
         return self
 
     def add_layer(

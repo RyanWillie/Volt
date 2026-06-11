@@ -22,6 +22,7 @@
 #include <volt/core/quantities.hpp>
 #include <volt/core/rule_set.hpp>
 #include <volt/core/version.hpp>
+#include <volt/io/board_capability_profile.hpp>
 #include <volt/io/logical_circuit_reader.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 #include <volt/io/pcb_reader.hpp>

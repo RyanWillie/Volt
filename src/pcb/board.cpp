@@ -24,6 +24,10 @@ void Board::set_outline(BoardOutline outline) { structure_.set_outline(std::move
 
 void Board::set_design_rules(BoardDesignRules rules) { structure_.set_design_rules(rules); }
 
+void Board::set_capability_profile(BoardCapabilityProfile profile) {
+    structure_.set_capability_profile(std::move(profile));
+}
+
 [[nodiscard]] BoardFeatureId Board::add_feature(BoardFeature feature) {
     return structure_.add_feature(std::move(feature));
 }

@@ -146,6 +146,10 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
           "PCB_COPPER_CLEARANCE_VIOLATION");
     CHECK(std::string{volt::drc_diagnostic_codes::KeepoutPlacementViolation} ==
           "PCB_KEEPOUT_PLACEMENT_VIOLATION");
+    CHECK(std::string{volt::drc_diagnostic_codes::RuleBelowCapability} ==
+          "PCB_RULE_BELOW_CAPABILITY");
+    CHECK(std::string{volt::drc_diagnostic_codes::RuleAtCapabilityMinimum} ==
+          "PCB_RULE_AT_CAPABILITY_MINIMUM");
 
     CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::Erc.begin(),
                                    volt::diagnostic_code_catalogs::Erc.end()} ==
@@ -182,6 +186,8 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
               "PCB_VIA_DRILL_BELOW_NET_CLASS",
               "PCB_VIA_DIAMETER_BELOW_NET_CLASS",
               "PCB_COPPER_ON_DISALLOWED_LAYER",
+              "PCB_RULE_BELOW_CAPABILITY",
+              "PCB_RULE_AT_CAPABILITY_MINIMUM",
           });
 }
 

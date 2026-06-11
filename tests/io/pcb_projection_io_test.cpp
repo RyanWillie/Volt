@@ -120,6 +120,7 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["rules"]["minimum_via_drill_diameter_mm"] == 0.20);
     CHECK(document["board"]["rules"]["minimum_via_annular_diameter_mm"] == 0.45);
     CHECK(document["board"]["rules"]["board_outline_clearance_mm"] == 0.0);
+    CHECK_FALSE(document["board"].contains("capability_profile"));
 
     REQUIRE(document["board"]["layers"].size() == 2);
     CHECK(document["board"]["layers"][0]["id"] == "board_layer:0");
@@ -552,6 +553,45 @@ TEST_CASE("PCB projection writer and reader round-trip board design rules") {
     CHECK(volt::io::write_pcb_board(restored, volt::builtin_footprint_library()) == text);
 }
 
+TEST_CASE("PCB projection writer and reader round-trip embedded capability profiles") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_viewer_ready_board(fixture);
+    board.set_capability_profile(volt::BoardCapabilityProfile::conservative_default());
+
+    const auto text = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
+    const auto document = nlohmann::json::parse(text);
+
+    REQUIRE(document["board"].contains("capability_profile"));
+    const auto &profile = document["board"]["capability_profile"];
+    CHECK(profile["name"] == "volt.conservative");
+    CHECK(profile["provenance"]["source"] == "Volt built-in conservative fallback");
+    CHECK(profile["provenance"]["as_of"] == "2026-06-11");
+    CHECK(profile["minimum_track_width_mm"] == 0.20);
+    CHECK(profile["minimum_via_drill_mm"] == 0.30);
+    CHECK(profile["minimum_via_annular_mm"] == 0.60);
+    CHECK(profile["minimum_clearances"] ==
+          nlohmann::json::array(
+              {{{"first", "track"}, {"second", "track"}, {"clearance_mm", 0.2}},
+               {{"first", "track"}, {"second", "pad"}, {"clearance_mm", 0.2}},
+               {{"first", "track"}, {"second", "via"}, {"clearance_mm", 0.2}},
+               {{"first", "track"}, {"second", "zone"}, {"clearance_mm", 0.2}},
+               {{"first", "track"}, {"second", "board_edge"}, {"clearance_mm", 0.3}},
+               {{"first", "pad"}, {"second", "pad"}, {"clearance_mm", 0.2}},
+               {{"first", "pad"}, {"second", "via"}, {"clearance_mm", 0.2}},
+               {{"first", "pad"}, {"second", "zone"}, {"clearance_mm", 0.2}},
+               {{"first", "pad"}, {"second", "board_edge"}, {"clearance_mm", 0.3}},
+               {{"first", "via"}, {"second", "via"}, {"clearance_mm", 0.2}},
+               {{"first", "via"}, {"second", "zone"}, {"clearance_mm", 0.2}},
+               {{"first", "via"}, {"second", "board_edge"}, {"clearance_mm", 0.3}},
+               {{"first", "zone"}, {"second", "zone"}, {"clearance_mm", 0.2}},
+               {{"first", "zone"}, {"second", "board_edge"}, {"clearance_mm", 0.3}}}));
+
+    const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
+    REQUIRE(restored.capability_profile().has_value());
+    CHECK(restored.capability_profile()->name() == "volt.conservative");
+    CHECK(volt::io::write_pcb_board(restored, volt::builtin_footprint_library()) == text);
+}
+
 TEST_CASE("PCB projection reader defaults missing legacy board design rules") {
     const auto fixture = make_resistor_circuit();
     auto document = make_board_json(fixture);
@@ -564,6 +604,23 @@ TEST_CASE("PCB projection reader defaults missing legacy board design rules") {
     CHECK(restored.design_rules().minimum_via_drill_diameter_mm() == 0.20);
     CHECK(restored.design_rules().minimum_via_annular_diameter_mm() == 0.45);
     CHECK(restored.design_rules().board_outline_clearance_mm() == 0.0);
+}
+
+TEST_CASE("PCB projection reader rejects malformed embedded capability profiles") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_viewer_ready_board(fixture);
+    board.set_capability_profile(volt::BoardCapabilityProfile::conservative_default());
+    const auto text = volt::io::write_pcb_board(board, volt::builtin_footprint_library());
+
+    auto missing_provenance = nlohmann::json::parse(text);
+    missing_provenance["board"]["capability_profile"].erase("provenance");
+    CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, missing_provenance.dump()),
+                    std::logic_error);
+
+    auto negative_value = nlohmann::json::parse(text);
+    negative_value["board"]["capability_profile"]["minimum_via_drill_mm"] = -0.1;
+    CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, negative_value.dump()),
+                    std::invalid_argument);
 }
 
 TEST_CASE("PCB projection writer includes highlightable diagnostic references") {

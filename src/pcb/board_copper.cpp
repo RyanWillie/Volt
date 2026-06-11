@@ -1,5 +1,7 @@
 #include <volt/pcb/board.hpp>
 
+#include "board_capability_validation.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -1165,6 +1167,9 @@ void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
         })
         .add([](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_net_class_layers(rule_board, rule_report);
+        })
+        .add([](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_capability_profile_rules(rule_board, rule_report);
         })
         .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_outline_clearance(rule_board, shapes, rule_report);

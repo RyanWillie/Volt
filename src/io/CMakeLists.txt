@@ -22,6 +22,7 @@ add_library(
     detail_schematic_svg_elements.cpp
     detail_schematic_svg_layers.cpp
     detail_schematic_svg_page_chrome.cpp
+    board_capability_profile.cpp
     logical_circuit_reader.cpp
     logical_circuit_writer.cpp
     pcb_feature_io.cpp
