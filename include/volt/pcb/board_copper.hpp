@@ -220,6 +220,10 @@ class BoardCapabilityProfile {
     /** Return the base minimum via outer annular copper diameter in millimeters. */
     [[nodiscard]] double minimum_via_annular_mm() const noexcept { return minimum_via_annular_mm_; }
 
+    /** Return the minimum clearance for a canonical object-kind pair, if specified. */
+    [[nodiscard]] std::optional<double> minimum_clearance(BoardClearanceKind first,
+                                                          BoardClearanceKind second) const noexcept;
+
     /** Return the minimum clearance for a canonical object-kind pair, or zero if unspecified. */
     [[nodiscard]] double minimum_clearance_mm(BoardClearanceKind first,
                                               BoardClearanceKind second) const noexcept;

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
-import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from . import _volt
 from ._footprint import Footprint
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
 from .library import _SelectedPartModel3D
@@ -45,81 +44,100 @@ def _layer_indices(values: Iterable[int]) -> list[int]:
     return [_layer_index(value) for value in values]
 
 
-_CLEARANCE_KIND_ORDER = {
-    "track": 0,
-    "pad": 1,
-    "via": 2,
-    "zone": 3,
-    "board_edge": 4,
-}
-
-
-def _capability_string(value: Any, context: str) -> str:
-    if not isinstance(value, str) or not value:
-        raise ValueError(f"{context} must be a non-empty string")
-    return value
-
-
-def _capability_number(value: Any, context: str, *, positive: bool) -> float:
-    if isinstance(value, bool):
-        raise ValueError(f"{context} must be a number")
-    result = float(value)
-    if not math.isfinite(result):
-        raise ValueError(f"{context} must be finite")
-    if positive and result <= 0.0:
-        raise ValueError(f"{context} must be positive")
-    if not positive and result < 0.0:
-        raise ValueError(f"{context} must be non-negative")
-    return result
-
-
-def _capability_clearance_kind(value: Any) -> str:
-    if value == "board-edge":
-        value = "board_edge"
-    if not isinstance(value, str) or value not in _CLEARANCE_KIND_ORDER:
-        raise ValueError("Capability profile clearance kind is unknown")
-    return value
-
-
-def _capability_clearance_entry(value: Any) -> tuple[str, str, float]:
+def _capability_clearance_payload(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
-        first = value["first"]
-        second = value["second"]
-        clearance = value["clearance_mm"]
-    else:
-        if not isinstance(value, (tuple, list)) or len(value) != 3:
-            raise ValueError("Capability profile clearances must be (first, second, clearance)")
-        first, second, clearance = value
-    first_kind = _capability_clearance_kind(first)
-    second_kind = _capability_clearance_kind(second)
-    if _CLEARANCE_KIND_ORDER[first_kind] > _CLEARANCE_KIND_ORDER[second_kind]:
-        first_kind, second_kind = second_kind, first_kind
-    if first_kind == "board_edge" and second_kind == "board_edge":
-        raise ValueError("Capability profile cannot clear the board edge from itself")
-    return (
-        first_kind,
-        second_kind,
-        _capability_number(clearance, "Capability profile clearance", positive=False),
-    )
+        return dict(value)
+    if not isinstance(value, (tuple, list)) or len(value) != 3:
+        raise ValueError("Capability profile clearances must be (first, second, clearance)")
+    first, second, clearance = value
+    return {"first": first, "second": second, "clearance_mm": clearance}
 
 
-def _capability_refinement_entry(value: Any) -> tuple[float, float, float]:
+def _capability_refinement_payload(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
-        copper_weight = value["copper_weight_oz"]
-        track_width = value["minimum_track_width_mm"]
-        clearance = value["minimum_clearance_mm"]
-    else:
-        if not isinstance(value, (tuple, list)) or len(value) != 3:
-            raise ValueError(
-                "Capability profile refinements must be "
-                "(copper_weight, track_width, clearance)"
+        return dict(value)
+    if not isinstance(value, (tuple, list)) or len(value) != 3:
+        raise ValueError(
+            "Capability profile refinements must be (copper_weight, track_width, clearance)"
+        )
+    copper_weight, track_width, clearance = value
+    return {
+        "copper_weight_oz": copper_weight,
+        "minimum_track_width_mm": track_width,
+        "minimum_clearance_mm": clearance,
+    }
+
+
+def _capability_payload_to_args(payload: dict[str, Any]) -> dict[str, Any]:
+    provenance = payload["provenance"]
+    return {
+        "name": payload["name"],
+        "source": provenance["source"],
+        "as_of": provenance["as_of"],
+        "minimum_track_width": payload["minimum_track_width_mm"],
+        "minimum_via_drill": payload["minimum_via_drill_mm"],
+        "minimum_via_annular": payload["minimum_via_annular_mm"],
+        "minimum_clearances": tuple(
+            (entry["first"], entry["second"], entry["clearance_mm"])
+            for entry in payload["minimum_clearances"]
+        ),
+        "copper_weight_refinements": tuple(
+            (
+                entry["copper_weight_oz"],
+                entry["minimum_track_width_mm"],
+                entry["minimum_clearance_mm"],
             )
-        copper_weight, track_width, clearance = value
-    return (
-        _capability_number(copper_weight, "Capability profile copper weight", positive=True),
-        _capability_number(track_width, "Capability profile refined track width", positive=True),
-        _capability_number(clearance, "Capability profile refined clearance", positive=False),
-    )
+            for entry in payload.get("copper_weight_refinements", ())
+        ),
+    }
+
+
+def _canonical_capability_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return dict(_volt.normalize_capability_profile(payload))
+    except ValueError:
+        raise
+    except Exception as error:
+        raise ValueError("Invalid capability profile") from error
+
+
+def _capability_payload(
+    *,
+    name: str,
+    source: str,
+    as_of: str,
+    minimum_track_width: float,
+    minimum_via_drill: float,
+    minimum_via_annular: float,
+    minimum_clearances: Iterable[Any],
+    copper_weight_refinements: Iterable[Any],
+) -> dict[str, Any]:
+    return {
+        "name": name,
+        "provenance": {"source": source, "as_of": as_of},
+        "minimum_track_width_mm": minimum_track_width,
+        "minimum_via_drill_mm": minimum_via_drill,
+        "minimum_via_annular_mm": minimum_via_annular,
+        "minimum_clearances": [
+            _capability_clearance_payload(entry) for entry in minimum_clearances
+        ],
+        "copper_weight_refinements": [
+            _capability_refinement_payload(entry) for entry in copper_weight_refinements
+        ],
+    }
+
+
+def _set_capability_attributes(instance, payload: dict[str, Any]) -> None:
+    args = _capability_payload_to_args(payload)
+    for name, value in args.items():
+        object.__setattr__(instance, name, value)
+
+
+def _capability_profile_from_payload(payload: dict[str, Any]) -> "CapabilityProfile":
+    canonical = _canonical_capability_payload(payload)
+    profile = object.__new__(CapabilityProfile)
+    _set_capability_attributes(profile, canonical)
+    return profile
 
 
 @dataclass(frozen=True)
@@ -136,100 +154,42 @@ class CapabilityProfile:
     copper_weight_refinements: tuple[tuple[float, float, float], ...] = ()
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "name", _capability_string(self.name, "Capability profile name"))
-        object.__setattr__(
-            self, "source", _capability_string(self.source, "Capability profile source")
-        )
-        object.__setattr__(
-            self, "as_of", _capability_string(self.as_of, "Capability profile as-of date")
-        )
-        minimum_track_width = _capability_number(
-            self.minimum_track_width, "Capability profile minimum track width", positive=True
-        )
-        minimum_via_drill = _capability_number(
-            self.minimum_via_drill, "Capability profile minimum via drill", positive=True
-        )
-        minimum_via_annular = _capability_number(
-            self.minimum_via_annular, "Capability profile minimum via annular", positive=True
-        )
-        if minimum_via_annular <= minimum_via_drill:
-            raise ValueError("Capability profile via annular minimum must exceed drill minimum")
-        object.__setattr__(self, "minimum_track_width", minimum_track_width)
-        object.__setattr__(self, "minimum_via_drill", minimum_via_drill)
-        object.__setattr__(self, "minimum_via_annular", minimum_via_annular)
-
-        clearances = tuple(
-            sorted(
-                (_capability_clearance_entry(entry) for entry in self.minimum_clearances),
-                key=lambda entry: (
-                    _CLEARANCE_KIND_ORDER[entry[0]],
-                    _CLEARANCE_KIND_ORDER[entry[1]],
-                ),
+        canonical = _canonical_capability_payload(
+            _capability_payload(
+                name=self.name,
+                source=self.source,
+                as_of=self.as_of,
+                minimum_track_width=self.minimum_track_width,
+                minimum_via_drill=self.minimum_via_drill,
+                minimum_via_annular=self.minimum_via_annular,
+                minimum_clearances=self.minimum_clearances,
+                copper_weight_refinements=self.copper_weight_refinements,
             )
         )
-        seen_clearances = {(entry[0], entry[1]) for entry in clearances}
-        if len(seen_clearances) != len(clearances):
-            raise ValueError("Capability profile minimum clearances must not duplicate pairs")
-        object.__setattr__(self, "minimum_clearances", clearances)
-
-        refinements = tuple(
-            _capability_refinement_entry(entry) for entry in self.copper_weight_refinements
-        )
-        previous_weight = None
-        for copper_weight, _track_width, _clearance in refinements:
-            if previous_weight is not None and copper_weight <= previous_weight:
-                raise ValueError("Capability profile copper weights must be unique and ascending")
-            previous_weight = copper_weight
-        object.__setattr__(self, "copper_weight_refinements", refinements)
+        _set_capability_attributes(self, canonical)
 
     @classmethod
-    def from_file(cls, path: str | Path) -> CapabilityProfile:
+    def from_file(cls, path: str | Path) -> "CapabilityProfile":
         """Load a standalone Volt capability profile document."""
         try:
-            document = json.loads(Path(path).read_text(encoding="utf-8"))
-            if document["format"] != "volt.capability_profile":
-                raise ValueError("Unsupported capability profile format")
-            if document["version"] != 1:
-                raise ValueError("Unsupported capability profile version")
-            profile = document["profile"]
-            provenance = profile["provenance"]
-            return cls(
-                name=profile["name"],
-                source=provenance["source"],
-                as_of=provenance["as_of"],
-                minimum_track_width=profile["minimum_track_width_mm"],
-                minimum_via_drill=profile["minimum_via_drill_mm"],
-                minimum_via_annular=profile["minimum_via_annular_mm"],
-                minimum_clearances=tuple(profile["minimum_clearances"]),
-                copper_weight_refinements=tuple(
-                    profile.get("copper_weight_refinements", ())
-                ),
-            )
-        except (KeyError, TypeError, json.JSONDecodeError) as error:
+            payload = dict(_volt.read_capability_profile_text(Path(path).read_text(encoding="utf-8")))
+        except ValueError:
+            raise
+        except Exception as error:
             raise ValueError("Invalid capability profile document") from error
+        return _capability_profile_from_payload(payload)
 
     def _to_dict(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "name": self.name,
-            "provenance": {"source": self.source, "as_of": self.as_of},
-            "minimum_track_width_mm": self.minimum_track_width,
-            "minimum_via_drill_mm": self.minimum_via_drill,
-            "minimum_via_annular_mm": self.minimum_via_annular,
-            "minimum_clearances": [
-                {"first": first, "second": second, "clearance_mm": clearance}
-                for first, second, clearance in self.minimum_clearances
-            ],
-        }
-        if self.copper_weight_refinements:
-            payload["copper_weight_refinements"] = [
-                {
-                    "copper_weight_oz": copper_weight,
-                    "minimum_track_width_mm": track_width,
-                    "minimum_clearance_mm": clearance,
-                }
-                for copper_weight, track_width, clearance in self.copper_weight_refinements
-            ]
-        return payload
+        return _capability_payload(
+            name=self.name,
+            source=self.source,
+            as_of=self.as_of,
+            minimum_track_width=self.minimum_track_width,
+            minimum_via_drill=self.minimum_via_drill,
+            minimum_via_annular=self.minimum_via_annular,
+            minimum_clearances=self.minimum_clearances,
+            copper_weight_refinements=self.copper_weight_refinements,
+        )
 
 
 @dataclass(frozen=True)

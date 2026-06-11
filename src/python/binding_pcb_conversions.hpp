@@ -115,6 +115,22 @@ parse_board_keepout_restriction(const std::string &value) {
     throw std::invalid_argument{"Unknown board clearance kind"};
 }
 
+[[nodiscard]] inline std::string board_clearance_kind_name(volt::BoardClearanceKind kind) {
+    switch (kind) {
+    case volt::BoardClearanceKind::Track:
+        return "track";
+    case volt::BoardClearanceKind::Pad:
+        return "pad";
+    case volt::BoardClearanceKind::Via:
+        return "via";
+    case volt::BoardClearanceKind::Zone:
+        return "zone";
+    case volt::BoardClearanceKind::BoardEdge:
+        return "board_edge";
+    }
+    throw std::logic_error{"Unhandled board clearance kind"};
+}
+
 [[nodiscard]] inline volt::FootprintPadShape parse_footprint_pad_shape(const std::string &value) {
     if (value == "rectangle" || value == "Rectangle") {
         return volt::FootprintPadShape::Rectangle;
@@ -259,6 +275,40 @@ board_capability_profile_from_dict(const py::dict &data) {
         std::move(clearances),
         std::move(refinements),
     };
+}
+
+[[nodiscard]] inline py::dict
+board_capability_profile_to_dict(const volt::BoardCapabilityProfile &profile) {
+    auto payload = py::dict{};
+    payload["name"] = profile.name();
+    auto provenance = py::dict{};
+    provenance["source"] = profile.provenance().source;
+    provenance["as_of"] = profile.provenance().as_of;
+    payload["provenance"] = std::move(provenance);
+    payload["minimum_track_width_mm"] = profile.minimum_track_width_mm();
+    payload["minimum_via_drill_mm"] = profile.minimum_via_drill_mm();
+    payload["minimum_via_annular_mm"] = profile.minimum_via_annular_mm();
+
+    auto clearances = py::list{};
+    for (const auto &entry : profile.minimum_clearances()) {
+        auto clearance = py::dict{};
+        clearance["first"] = board_clearance_kind_name(entry.first);
+        clearance["second"] = board_clearance_kind_name(entry.second);
+        clearance["clearance_mm"] = entry.clearance_mm;
+        clearances.append(std::move(clearance));
+    }
+    payload["minimum_clearances"] = std::move(clearances);
+
+    auto refinements = py::list{};
+    for (const auto &entry : profile.copper_weight_refinements()) {
+        auto refinement = py::dict{};
+        refinement["copper_weight_oz"] = entry.copper_weight_oz;
+        refinement["minimum_track_width_mm"] = entry.minimum_track_width_mm;
+        refinement["minimum_clearance_mm"] = entry.minimum_clearance_mm;
+        refinements.append(std::move(refinement));
+    }
+    payload["copper_weight_refinements"] = std::move(refinements);
+    return payload;
 }
 
 [[nodiscard]] inline std::string pad_resolution_status_name(volt::PadResolutionStatus status) {
