@@ -392,3 +392,39 @@ TEST_CASE("Board validation applies semantic layer scopes on a four-layer board"
     CHECK(outer_ok != outer_bad);
     CHECK(inner_ok != inner_bad);
 }
+
+TEST_CASE("Board validation applies clearance-matrix pair rules") {
+    auto circuit = volt::Circuit{};
+    const auto first_net = circuit.add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+    const auto second_net = circuit.add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    auto rules = volt::BoardDesignRules{0.10, 0.05, 0.10, 0.20, 0.0};
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Track, 0.5);
+    board.set_design_rules(rules);
+
+    const auto first_track = board.add_track(volt::BoardTrack{
+        first_net, front, std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}},
+        0.10});
+    const auto second_track = board.add_track(volt::BoardTrack{
+        second_net, front, std::vector{volt::BoardPoint{1.0, 1.4}, volt::BoardPoint{8.0, 1.4}},
+        0.10});
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *violation = find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION");
+    REQUIRE(violation != nullptr);
+    CHECK(violation->message() == "Copper on different nets violates required "
+                                  "track-to-track clearance");
+    CHECK(violation->entities() == std::vector{
+                                       volt::EntityRef::board_track(first_track),
+                                       volt::EntityRef::board_track(second_track),
+                                       volt::EntityRef::net(first_net),
+                                       volt::EntityRef::net(second_net),
+                                       volt::EntityRef::board_layer(front),
+                                   });
+}

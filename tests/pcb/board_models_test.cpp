@@ -132,3 +132,44 @@ TEST_CASE("Board stackup requires dielectrics to match copper layer pairs") {
                         {front, silk}, 1.6, std::vector{volt::BoardDielectric{1.51, 4.6}}}),
                     std::invalid_argument);
 }
+
+TEST_CASE("Board design rules store a canonical clearance matrix") {
+    auto rules = volt::BoardDesignRules{0.15, 0.15, 0.20, 0.45, 0.10};
+
+    CHECK(rules.clearance_mm(volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Pad) ==
+          0.15);
+    CHECK(rules.clearance_mm(volt::BoardClearanceKind::Via, volt::BoardClearanceKind::BoardEdge) ==
+          0.10);
+
+    rules.set_clearance_mm(volt::BoardClearanceKind::Pad, volt::BoardClearanceKind::Track, 0.30);
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Track, 0.20);
+    rules.set_clearance_mm(volt::BoardClearanceKind::Zone, volt::BoardClearanceKind::BoardEdge,
+                           0.50);
+
+    CHECK(rules.clearance_mm(volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Pad) ==
+          0.30);
+    CHECK(rules.clearance_mm(volt::BoardClearanceKind::Pad, volt::BoardClearanceKind::Track) ==
+          0.30);
+    CHECK(rules.clearance_mm(volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Track) ==
+          0.20);
+    CHECK(rules.clearance_mm(volt::BoardClearanceKind::BoardEdge, volt::BoardClearanceKind::Zone) ==
+          0.50);
+    CHECK(rules.clearance_mm(volt::BoardClearanceKind::Via, volt::BoardClearanceKind::Zone) ==
+          0.15);
+
+    rules.set_clearance_mm(volt::BoardClearanceKind::Pad, volt::BoardClearanceKind::Track, 0.35);
+    REQUIRE(rules.clearance_matrix().size() == 3);
+    CHECK(rules.clearance_matrix()[0].first == volt::BoardClearanceKind::Track);
+    CHECK(rules.clearance_matrix()[0].second == volt::BoardClearanceKind::Track);
+    CHECK(rules.clearance_matrix()[1].first == volt::BoardClearanceKind::Track);
+    CHECK(rules.clearance_matrix()[1].second == volt::BoardClearanceKind::Pad);
+    CHECK(rules.clearance_matrix()[1].clearance_mm == 0.35);
+    CHECK(rules.clearance_matrix()[2].second == volt::BoardClearanceKind::BoardEdge);
+
+    CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::BoardEdge,
+                                           volt::BoardClearanceKind::BoardEdge, 0.2),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::Track,
+                                           volt::BoardClearanceKind::Pad, -0.1),
+                    std::invalid_argument);
+}

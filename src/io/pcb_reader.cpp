@@ -7,6 +7,7 @@
 #include <istream>
 #include <iterator>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -459,19 +460,52 @@ void PcbBoardReader::read_outline(Board &board, const nlohmann::json &board_json
     board.set_outline(BoardOutline{std::move(vertices)});
 }
 
+[[nodiscard]] BoardClearanceKind clearance_kind(const std::string &value) {
+    if (value == "track") {
+        return BoardClearanceKind::Track;
+    }
+    if (value == "pad") {
+        return BoardClearanceKind::Pad;
+    }
+    if (value == "via") {
+        return BoardClearanceKind::Via;
+    }
+    if (value == "zone") {
+        return BoardClearanceKind::Zone;
+    }
+    if (value == "board_edge") {
+        return BoardClearanceKind::BoardEdge;
+    }
+    throw std::logic_error{"Unknown PCB clearance kind: " + value};
+}
+
 void PcbBoardReader::read_rules(Board &board, const nlohmann::json &board_json) const {
     const auto *rules = optional_field(board_json, "rules");
     if (rules == nullptr) {
         return;
     }
     require(rules->is_object(), "PCB board rules must be an object");
-    board.set_design_rules(BoardDesignRules{
+    auto design_rules = BoardDesignRules{
         number_field(*rules, "copper_clearance_mm"),
         number_field(*rules, "minimum_track_width_mm"),
         number_field(*rules, "minimum_via_drill_diameter_mm"),
         number_field(*rules, "minimum_via_annular_diameter_mm"),
         number_field(*rules, "board_outline_clearance_mm"),
-    });
+    };
+    if (const auto matrix = rules->find("clearance_matrix"); matrix != rules->end()) {
+        require(matrix->is_array(), "PCB clearance matrix must be an array");
+        auto seen_pairs = std::set<std::pair<int, int>>{};
+        for (const auto &entry : *matrix) {
+            require(entry.is_object(), "PCB clearance matrix entry must be an object");
+            const auto first = clearance_kind(string_field(entry, "first"));
+            const auto second = clearance_kind(string_field(entry, "second"));
+            const auto low = std::min(static_cast<int>(first), static_cast<int>(second));
+            const auto high = std::max(static_cast<int>(first), static_cast<int>(second));
+            require(seen_pairs.emplace(low, high).second, "Duplicate PCB clearance matrix pair");
+            design_rules.set_clearance_mm(first, second, number_field(entry, "clearance_mm"));
+        }
+    }
+    board.set_design_rules(design_rules);
 }
 
 void PcbBoardReader::read_footprint_definitions(Board &board,

@@ -520,6 +520,22 @@ void write_board_geometry(std::ostream &out, const Board &board) {
     out << "    },\n";
 }
 
+[[nodiscard]] std::string clearance_kind_name(BoardClearanceKind kind) {
+    switch (kind) {
+    case BoardClearanceKind::Track:
+        return "track";
+    case BoardClearanceKind::Pad:
+        return "pad";
+    case BoardClearanceKind::Via:
+        return "via";
+    case BoardClearanceKind::Zone:
+        return "zone";
+    case BoardClearanceKind::BoardEdge:
+        return "board_edge";
+    }
+    return "track";
+}
+
 void write_rules(std::ostream &out, const Board &board) {
     const auto &rules = board.design_rules();
     out << "    \"rules\": {\"copper_clearance_mm\": ";
@@ -532,6 +548,21 @@ void write_rules(std::ostream &out, const Board &board) {
     write_number(out, rules.minimum_via_annular_diameter_mm());
     out << ", \"board_outline_clearance_mm\": ";
     write_number(out, rules.board_outline_clearance_mm());
+    if (!rules.clearance_matrix().empty()) {
+        out << ", \"clearance_matrix\": [";
+        for (std::size_t index = 0; index < rules.clearance_matrix().size(); ++index) {
+            const auto &entry = rules.clearance_matrix()[index];
+            if (index != 0U) {
+                out << ", ";
+            }
+            out << "{\"first\": " << json_string(clearance_kind_name(entry.first))
+                << ", \"second\": " << json_string(clearance_kind_name(entry.second))
+                << ", \"clearance_mm\": ";
+            write_number(out, entry.clearance_mm);
+            out << '}';
+        }
+        out << ']';
+    }
     out << "},\n";
 }
 
