@@ -35,6 +35,9 @@ class BoardStructureModel {
     /** Replace the board design rules. */
     void set_design_rules(BoardDesignRules rules);
 
+    /** Store the board capability profile snapshot used by manufacturability lint. */
+    void set_capability_profile(BoardCapabilityProfile profile);
+
     /** Add a non-copper board feature and return its stable board-local ID. */
     [[nodiscard]] BoardFeatureId add_feature(BoardFeature feature);
 
@@ -53,6 +56,9 @@ class BoardStructureModel {
     /** Return the active board design rules. */
     [[nodiscard]] const BoardDesignRules &design_rules() const noexcept;
 
+    /** Return the optional board capability profile snapshot. */
+    [[nodiscard]] const std::optional<BoardCapabilityProfile> &capability_profile() const noexcept;
+
     /** Return a board feature by board-local ID. */
     [[nodiscard]] const BoardFeature &feature(BoardFeatureId id) const;
 
@@ -70,6 +76,7 @@ class BoardStructureModel {
     std::optional<LayerStack> layer_stack_;
     std::optional<BoardOutline> outline_;
     BoardDesignRules design_rules_;
+    std::optional<BoardCapabilityProfile> capability_profile_;
     EntityTable<BoardFeature, BoardFeatureId> features_;
 };
 

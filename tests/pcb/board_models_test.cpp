@@ -183,6 +183,125 @@ TEST_CASE("Board design rules store a canonical clearance matrix") {
                     std::invalid_argument);
 }
 
+TEST_CASE("BoardCapabilityProfile validates ingestible manufacturing limits") {
+    const auto provenance =
+        volt::BoardCapabilityProvenance{"Example fab published capability table", "2026-06-11"};
+    const auto profile = volt::BoardCapabilityProfile{
+        "Example Fab 2-layer",
+        provenance,
+        0.20,
+        0.30,
+        0.60,
+        std::vector{
+            volt::BoardClearancePair{volt::BoardClearanceKind::Pad, volt::BoardClearanceKind::Track,
+                                     0.20},
+            volt::BoardClearancePair{volt::BoardClearanceKind::Track,
+                                     volt::BoardClearanceKind::BoardEdge, 0.30},
+        },
+        std::vector{
+            volt::BoardCapabilityCopperWeightRefinement{1.0, 0.20, 0.20},
+            volt::BoardCapabilityCopperWeightRefinement{2.0, 0.30, 0.28},
+        }};
+
+    CHECK(profile.name() == "Example Fab 2-layer");
+    CHECK(profile.provenance().source == "Example fab published capability table");
+    CHECK(profile.provenance().as_of == "2026-06-11");
+    CHECK(profile.minimum_track_width_mm() == 0.20);
+    CHECK(profile.minimum_via_drill_mm() == 0.30);
+    CHECK(profile.minimum_via_annular_mm() == 0.60);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Track,
+                                       volt::BoardClearanceKind::Pad) == 0.20);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Pad,
+                                       volt::BoardClearanceKind::Track) == 0.20);
+    REQUIRE(profile.minimum_clearances().size() == 2);
+    CHECK(profile.minimum_clearances()[0].first == volt::BoardClearanceKind::Track);
+    CHECK(profile.minimum_clearances()[0].second == volt::BoardClearanceKind::Pad);
+    REQUIRE(profile.copper_weight_refinements().size() == 2);
+    CHECK(profile.copper_weight_refinements()[1].copper_weight_oz == 2.0);
+
+    CHECK_THROWS_AS((volt::BoardCapabilityProfile{"", provenance, 0.20, 0.30, 0.60, {}}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::BoardCapabilityProfile{
+            "Example", volt::BoardCapabilityProvenance{"", "2026-06-11"}, 0.20, 0.30, 0.60, {}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        (volt::BoardCapabilityProfile{"Example",
+                                      volt::BoardCapabilityProvenance{"Example source", ""},
+                                      0.20,
+                                      0.30,
+                                      0.60,
+                                      {}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardCapabilityProfile{"Example", provenance, 0.0, 0.30, 0.60, {}}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardCapabilityProfile{"Example", provenance, 0.20, 0.30, 0.30, {}}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardCapabilityProfile{
+                        "Example", provenance, 0.20, 0.30, 0.60,
+                        std::vector{
+                            volt::BoardClearancePair{volt::BoardClearanceKind::Track,
+                                                     volt::BoardClearanceKind::Pad, 0.20},
+                            volt::BoardClearancePair{volt::BoardClearanceKind::Pad,
+                                                     volt::BoardClearanceKind::Track, 0.25},
+                        }}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardCapabilityProfile{
+                        "Example",
+                        provenance,
+                        0.20,
+                        0.30,
+                        0.60,
+                        {},
+                        std::vector{volt::BoardCapabilityCopperWeightRefinement{2.0, 0.30, 0.28},
+                                    volt::BoardCapabilityCopperWeightRefinement{1.0, 0.20, 0.20}}}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardCapabilityProfile{
+                        "Example",
+                        provenance,
+                        0.20,
+                        0.30,
+                        0.60,
+                        {},
+                        std::vector{volt::BoardCapabilityCopperWeightRefinement{1.0, 0.20, 0.20},
+                                    volt::BoardCapabilityCopperWeightRefinement{1.0, 0.25, 0.25}}}),
+                    std::invalid_argument);
+}
+
+TEST_CASE("BoardCapabilityProfile exposes a conservative explicit fallback") {
+    const auto profile = volt::BoardCapabilityProfile::conservative_default();
+
+    CHECK(profile.name() == "volt.conservative");
+    CHECK(profile.provenance().source == "Volt built-in conservative fallback");
+    CHECK(profile.provenance().as_of == "2026-06-11");
+    CHECK(profile.minimum_track_width_mm() == 0.20);
+    CHECK(profile.minimum_via_drill_mm() == 0.30);
+    CHECK(profile.minimum_via_annular_mm() == 0.60);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Track,
+                                       volt::BoardClearanceKind::Track) == 0.20);
+    CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Pad,
+                                       volt::BoardClearanceKind::BoardEdge) == 0.30);
+    CHECK(profile.copper_weight_refinements().empty());
+}
+
+TEST_CASE("Board stores capability profiles without mutating design rules") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    board.set_design_rules(volt::BoardDesignRules{0.11, 0.12, 0.21, 0.46, 0.07});
+
+    CHECK_FALSE(board.capability_profile().has_value());
+
+    board.set_capability_profile(volt::BoardCapabilityProfile::conservative_default());
+
+    REQUIRE(board.capability_profile().has_value());
+    CHECK(board.capability_profile()->name() == "volt.conservative");
+    CHECK(board.design_rules().copper_clearance_mm() == 0.11);
+    CHECK(board.design_rules().minimum_track_width_mm() == 0.12);
+    CHECK(board.design_rules().minimum_via_drill_diameter_mm() == 0.21);
+    CHECK(board.design_rules().minimum_via_annular_diameter_mm() == 0.46);
+    CHECK(board.design_rules().board_outline_clearance_mm() == 0.07);
+}
+
 TEST_CASE("BoardRoom validates scope and optional rule overrides") {
     const auto front = volt::BoardLayerId{0};
     const auto back = volt::BoardLayerId{1};

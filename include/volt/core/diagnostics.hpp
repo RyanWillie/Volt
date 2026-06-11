@@ -71,6 +71,8 @@ inline constexpr auto NetClassViaDrillViolation = std::string_view{"PCB_VIA_DRIL
 inline constexpr auto NetClassViaDiameterViolation =
     std::string_view{"PCB_VIA_DIAMETER_BELOW_NET_CLASS"};
 inline constexpr auto NetClassDisallowedLayer = std::string_view{"PCB_COPPER_ON_DISALLOWED_LAYER"};
+inline constexpr auto RuleBelowCapability = std::string_view{"PCB_RULE_BELOW_CAPABILITY"};
+inline constexpr auto RuleAtCapabilityMinimum = std::string_view{"PCB_RULE_AT_CAPABILITY_MINIMUM"};
 
 } // namespace drc_diagnostic_codes
 
@@ -120,7 +122,9 @@ inline constexpr auto Drc = std::array{drc_diagnostic_codes::TrackWidthBelowMini
                                        drc_diagnostic_codes::NetClassTrackWidthViolation,
                                        drc_diagnostic_codes::NetClassViaDrillViolation,
                                        drc_diagnostic_codes::NetClassViaDiameterViolation,
-                                       drc_diagnostic_codes::NetClassDisallowedLayer};
+                                       drc_diagnostic_codes::NetClassDisallowedLayer,
+                                       drc_diagnostic_codes::RuleBelowCapability,
+                                       drc_diagnostic_codes::RuleAtCapabilityMinimum};
 
 inline constexpr auto PcbVisual =
     std::array{pcb_visual_diagnostic_codes::PlacementOverlap,

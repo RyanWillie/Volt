@@ -262,6 +262,8 @@ class PyCircuit {
                                 double minimum_via_annular_diameter_mm,
                                 double board_outline_clearance_mm);
 
+    void board_set_capability_profile(const py::dict &profile);
+
     [[nodiscard]] std::size_t board_add_layer(const std::string &name, const std::string &role,
                                               const std::string &side, double thickness_mm,
                                               bool enabled, std::optional<double> copper_weight_oz);

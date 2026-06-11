@@ -22,6 +22,7 @@ Source: `python/volt/pcb.py`
 | --- | --- |
 | `design_rules(self) -> dict[str, float]` | Return the board design-rule values currently stored in the kernel. |
 | `set_design_rules(self, *, copper_clearance: float \| None = None, min_track_width: float \| None = None, min_via_drill: float \| None = None, min_via_annular: float \| None = None, board_outline_clearance: float \| None = None) -> Board` | Update board design rules, preserving unspecified rule values. |
+| `set_capability_profile(self, profile: CapabilityProfile) -> Board` | Set the board's pinned manufacturer capability profile snapshot. |
 | `add_layer(self, name: str, *, role: str, side: str, thickness: float = 0.0, enabled: bool = True, copper_weight: float \| None = None) -> int` | Add a physical or logical board layer and return its kernel index. |
 | `set_layer_stack(self, layers: Iterable[int], *, thickness: float, dielectrics: Iterable[tuple[float, float]] \| None = None) -> Board` | Set the stack order, total thickness, and copper-to-copper dielectrics. |
 | `set_rectangular_outline(self, *, origin: Point, size: Point) -> Board` | Set a rectangular board outline from an origin and size. |
@@ -191,6 +192,31 @@ Source: `python/volt/_pcb_layout.py`
 | `pad(self, label: str) -> BoardPadAnchor` | Materialize and return a pad anchor by footprint pad label. |
 | `pin(self, key: int \| str) -> BoardPadAnchor` | Materialize and return a pin anchor by logical pin number or name. |
 | `__getitem__(self, key: int \| str) -> BoardPadAnchor` | Materialize and return a pin anchor by logical pin number or name. |
+
+## `volt.CapabilityProfile`
+
+Manufacturer capability profile snapshot with required provenance.
+
+Source: `python/volt/pcb.py`
+
+### Fields
+
+| Field |
+| --- |
+| `name: str` |
+| `source: str` |
+| `as_of: str` |
+| `minimum_track_width: float` |
+| `minimum_via_drill: float` |
+| `minimum_via_annular: float` |
+| `minimum_clearances: tuple[tuple[str, str, float], ...]` |
+| `copper_weight_refinements: tuple[tuple[float, float, float], ...]` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `from_file(cls, path: str \| Path) -> CapabilityProfile` | Load a standalone Volt capability profile document. |
 
 ## `volt.Circle`
 

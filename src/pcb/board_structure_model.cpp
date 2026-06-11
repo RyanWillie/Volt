@@ -34,6 +34,10 @@ void BoardStructureModel::set_outline(BoardOutline outline) { outline_ = std::mo
 
 void BoardStructureModel::set_design_rules(BoardDesignRules rules) { design_rules_ = rules; }
 
+void BoardStructureModel::set_capability_profile(BoardCapabilityProfile profile) {
+    capability_profile_ = std::move(profile);
+}
+
 [[nodiscard]] BoardFeatureId BoardStructureModel::add_feature(BoardFeature feature) {
     return features_.insert(std::move(feature));
 }
@@ -56,6 +60,11 @@ void BoardStructureModel::set_design_rules(BoardDesignRules rules) { design_rule
 
 [[nodiscard]] const BoardDesignRules &BoardStructureModel::design_rules() const noexcept {
     return design_rules_;
+}
+
+[[nodiscard]] const std::optional<BoardCapabilityProfile> &
+BoardStructureModel::capability_profile() const noexcept {
+    return capability_profile_;
 }
 
 [[nodiscard]] const BoardFeature &BoardStructureModel::feature(BoardFeatureId id) const {

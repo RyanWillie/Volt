@@ -142,6 +142,34 @@ struct MultiComponentNetCircuit {
         }};
 }
 
+[[nodiscard]] std::vector<volt::BoardClearancePair>
+capability_clearances(double copper_clearance_mm = 0.20, double board_edge_clearance_mm = 0.30) {
+    return std::vector{
+        volt::BoardClearancePair{volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Track,
+                                 copper_clearance_mm},
+        volt::BoardClearancePair{volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Pad,
+                                 copper_clearance_mm},
+        volt::BoardClearancePair{volt::BoardClearanceKind::Track,
+                                 volt::BoardClearanceKind::BoardEdge, board_edge_clearance_mm},
+        volt::BoardClearancePair{volt::BoardClearanceKind::Pad, volt::BoardClearanceKind::BoardEdge,
+                                 board_edge_clearance_mm},
+    };
+}
+
+[[nodiscard]] volt::BoardCapabilityProfile
+make_capability_profile(std::vector<volt::BoardClearancePair> clearances = capability_clearances(),
+                        std::vector<volt::BoardCapabilityCopperWeightRefinement> refinements = {}) {
+    return volt::BoardCapabilityProfile{
+        "Example Fab 2-layer",
+        volt::BoardCapabilityProvenance{"Example fab published capability table", "2026-06-11"},
+        0.20,
+        0.30,
+        0.60,
+        std::move(clearances),
+        std::move(refinements),
+    };
+}
+
 } // namespace
 
 TEST_CASE("Board stores metadata, layers, outline, features, and placements") {
@@ -717,6 +745,133 @@ TEST_CASE("Board validation reports first PCB DRC rule violations") {
     CHECK(outside_outline->entities() == std::vector{volt::EntityRef::board_track(outside_track),
                                                      volt::EntityRef::net(fixture.first_net),
                                                      volt::EntityRef::board_layer(front)});
+}
+
+TEST_CASE("Board validation emits no capability diagnostics without an explicit profile") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.01, 0.02, 0.03, 0.04, 0.0});
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    CHECK(find_diagnostic(report, "PCB_RULE_BELOW_CAPABILITY") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_RULE_AT_CAPABILITY_MINIMUM") == nullptr);
+}
+
+TEST_CASE("Board validation reports board scalar rules below capability") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_capability_profile(make_capability_profile());
+    board.set_design_rules(volt::BoardDesignRules{0.30, 0.19, 0.35, 0.70, 0.35});
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *diagnostic = find_diagnostic(report, "PCB_RULE_BELOW_CAPABILITY");
+    REQUIRE(diagnostic != nullptr);
+    CHECK(diagnostic->severity() == volt::Severity::Error);
+    CHECK(diagnostic->entities() == std::vector{volt::EntityRef::board()});
+    CHECK(diagnostic->message().find("minimum track width") != std::string::npos);
+}
+
+TEST_CASE("Board validation reports clearance matrix entries below capability") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_capability_profile(make_capability_profile(capability_clearances(0.20, 0.30)));
+    auto rules = volt::BoardDesignRules{0.30, 0.30, 0.40, 0.80, 0.40};
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Pad, 0.19);
+    board.set_design_rules(rules);
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *diagnostic = find_diagnostic(report, "PCB_RULE_BELOW_CAPABILITY");
+    REQUIRE(diagnostic != nullptr);
+    CHECK(diagnostic->severity() == volt::Severity::Error);
+    CHECK(diagnostic->entities() == std::vector{volt::EntityRef::board()});
+    CHECK(diagnostic->message().find("track-to-pad clearance") != std::string::npos);
+}
+
+TEST_CASE("Board validation reports room overrides below capability") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_capability_profile(make_capability_profile());
+    board.set_design_rules(volt::BoardDesignRules{0.30, 0.30, 0.40, 0.80, 0.40});
+    auto room = volt::BoardRoom{
+        "Fine pitch escape",
+        volt::BoardOutline::rectangle(volt::BoardPoint{1.0, 1.0}, volt::BoardSize{4.0, 4.0}),
+        std::vector{front},
+    };
+    room.set_copper_clearance_mm(0.10);
+    room.set_track_width_mm(0.10);
+    const auto room_id = board.add_room(std::move(room));
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *diagnostic = find_diagnostic(report, "PCB_RULE_BELOW_CAPABILITY");
+    REQUIRE(diagnostic != nullptr);
+    CHECK(diagnostic->severity() == volt::Severity::Error);
+    CHECK(diagnostic->entities() == std::vector{volt::EntityRef::board_room(room_id)});
+    CHECK(diagnostic->message().find("Fine pitch escape") != std::string::npos);
+}
+
+TEST_CASE("Board validation warns when net class rules sit at capability minimum") {
+    auto circuit = volt::Circuit{};
+    auto net_class = volt::NetClass{volt::NetClassName{"Signal"}};
+    net_class.set_track_width_mm(0.20);
+    static_cast<void>(circuit.add_net_class(std::move(net_class)));
+
+    auto board = volt::Board{circuit};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_capability_profile(make_capability_profile());
+    board.set_design_rules(volt::BoardDesignRules{0.30, 0.30, 0.40, 0.80, 0.40});
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *diagnostic = find_diagnostic(report, "PCB_RULE_AT_CAPABILITY_MINIMUM");
+    REQUIRE(diagnostic != nullptr);
+    CHECK(diagnostic->severity() == volt::Severity::Warning);
+    CHECK(diagnostic->message().find("Signal") != std::string::npos);
+    CHECK(diagnostic->message().find("at manufacturing minimum") != std::string::npos);
+}
+
+TEST_CASE("Board validation applies copper-weight refinements to room overrides") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    auto front_layer =
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top};
+    front_layer.set_copper_weight_oz(2.0);
+    const auto front = board.add_layer(std::move(front_layer));
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_capability_profile(make_capability_profile(
+        capability_clearances(0.10, 0.30),
+        std::vector{volt::BoardCapabilityCopperWeightRefinement{2.0, 0.30, 0.25}}));
+    board.set_design_rules(volt::BoardDesignRules{0.30, 0.30, 0.40, 0.80, 0.40});
+    auto room = volt::BoardRoom{
+        "Heavy copper",
+        volt::BoardOutline::rectangle(volt::BoardPoint{1.0, 1.0}, volt::BoardSize{4.0, 4.0}),
+        std::vector{front},
+    };
+    room.set_track_width_mm(0.20);
+    room.set_copper_clearance_mm(0.20);
+    const auto room_id = board.add_room(std::move(room));
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *diagnostic = find_diagnostic(report, "PCB_RULE_BELOW_CAPABILITY");
+    REQUIRE(diagnostic != nullptr);
+    CHECK(diagnostic->entities() == std::vector{volt::EntityRef::board_room(room_id)});
+    CHECK(diagnostic->message().find("Heavy copper") != std::string::npos);
 }
 
 TEST_CASE("Board validation reports netless zones outside the board outline") {

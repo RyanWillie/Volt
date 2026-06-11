@@ -17,6 +17,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "board_capability_profile_io.hpp"
 #include "pcb_feature_io.hpp"
 
 #include <volt/io/detail/typed_id.hpp>
@@ -112,6 +113,8 @@ class PcbBoardReader {
 
     void read_rules(Board &board, const nlohmann::json &board_json) const;
 
+    void read_capability_profile(Board &board, const nlohmann::json &board_json) const;
+
     void read_footprint_definitions(Board &board, const nlohmann::json &board_json) const;
 
     void read_placements(Board &board, const nlohmann::json &board_json) const;
@@ -188,6 +191,7 @@ class PcbBoardReader {
     static_cast<void>(board_units_from_name(string_field(board_json, "units")));
     auto board = Board{circuit_, BoardName{string_field(board_json, "name")}};
     read_rules(board, board_json);
+    read_capability_profile(board, board_json);
     read_layers(board, board_json);
     read_layer_stack(board, board_json);
     read_outline(board, board_json);
@@ -509,6 +513,14 @@ void PcbBoardReader::read_rules(Board &board, const nlohmann::json &board_json) 
         }
     }
     board.set_design_rules(design_rules);
+}
+
+void PcbBoardReader::read_capability_profile(Board &board, const nlohmann::json &board_json) const {
+    const auto *profile = optional_field(board_json, "capability_profile");
+    if (profile == nullptr) {
+        return;
+    }
+    board.set_capability_profile(detail::read_capability_profile_payload(*profile));
 }
 
 void PcbBoardReader::read_footprint_definitions(Board &board,

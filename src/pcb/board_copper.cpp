@@ -229,7 +229,123 @@ canonical_clearance_pair(BoardClearanceKind first, BoardClearanceKind second) {
     return {first, second};
 }
 
+[[nodiscard]] bool finite_positive(double value) noexcept {
+    return std::isfinite(value) && value > 0.0;
+}
+
+[[nodiscard]] bool finite_non_negative(double value) noexcept {
+    return std::isfinite(value) && value >= 0.0;
+}
+
+[[nodiscard]] bool clearance_pair_less(const BoardClearancePair &lhs,
+                                       const BoardClearancePair &rhs) noexcept {
+    return static_cast<int>(lhs.first) < static_cast<int>(rhs.first) ||
+           (lhs.first == rhs.first && static_cast<int>(lhs.second) < static_cast<int>(rhs.second));
+}
+
 } // namespace
+
+BoardCapabilityProfile::BoardCapabilityProfile(
+    std::string name, BoardCapabilityProvenance provenance, double minimum_track_width_mm,
+    double minimum_via_drill_mm, double minimum_via_annular_mm,
+    std::vector<BoardClearancePair> minimum_clearances,
+    std::vector<BoardCapabilityCopperWeightRefinement> copper_weight_refinements)
+    : name_{std::move(name)}, provenance_{std::move(provenance)},
+      minimum_track_width_mm_{minimum_track_width_mm}, minimum_via_drill_mm_{minimum_via_drill_mm},
+      minimum_via_annular_mm_{minimum_via_annular_mm},
+      minimum_clearances_{std::move(minimum_clearances)},
+      copper_weight_refinements_{std::move(copper_weight_refinements)} {
+    if (name_.empty()) {
+        throw std::invalid_argument{"Board capability profile name must not be empty"};
+    }
+    if (provenance_.source.empty() || provenance_.as_of.empty()) {
+        throw std::invalid_argument{"Board capability profile provenance must be complete"};
+    }
+    if (!finite_positive(minimum_track_width_mm_) || !finite_positive(minimum_via_drill_mm_) ||
+        !finite_positive(minimum_via_annular_mm_)) {
+        throw std::invalid_argument{"Board capability profile minimum dimensions must be positive"};
+    }
+    if (minimum_via_annular_mm_ <= minimum_via_drill_mm_) {
+        throw std::invalid_argument{
+            "Board capability profile via annular minimum must exceed drill minimum"};
+    }
+
+    for (auto &entry : minimum_clearances_) {
+        if (entry.first == BoardClearanceKind::BoardEdge &&
+            entry.second == BoardClearanceKind::BoardEdge) {
+            throw std::invalid_argument{
+                "Board capability profile cannot pair the board edge with itself"};
+        }
+        if (!finite_non_negative(entry.clearance_mm)) {
+            throw std::invalid_argument{
+                "Board capability profile clearances must be finite and non-negative"};
+        }
+        const auto pair = canonical_clearance_pair(entry.first, entry.second);
+        entry.first = pair.first;
+        entry.second = pair.second;
+    }
+    std::sort(minimum_clearances_.begin(), minimum_clearances_.end(), clearance_pair_less);
+    const auto duplicate_clearance =
+        std::adjacent_find(minimum_clearances_.begin(), minimum_clearances_.end(),
+                           [](const BoardClearancePair &lhs, const BoardClearancePair &rhs) {
+                               return lhs.first == rhs.first && lhs.second == rhs.second;
+                           });
+    if (duplicate_clearance != minimum_clearances_.end()) {
+        throw std::invalid_argument{
+            "Board capability profile minimum clearances must not duplicate pairs"};
+    }
+
+    auto previous_weight = std::optional<double>{};
+    for (const auto &refinement : copper_weight_refinements_) {
+        if (!finite_positive(refinement.copper_weight_oz) ||
+            !finite_positive(refinement.minimum_track_width_mm) ||
+            !finite_non_negative(refinement.minimum_clearance_mm)) {
+            throw std::invalid_argument{
+                "Board capability profile copper-weight refinements must be finite and positive"};
+        }
+        if (previous_weight.has_value() && refinement.copper_weight_oz <= previous_weight.value()) {
+            throw std::invalid_argument{
+                "Board capability profile copper weights must be unique and ascending"};
+        }
+        previous_weight = refinement.copper_weight_oz;
+    }
+}
+
+[[nodiscard]] BoardCapabilityProfile BoardCapabilityProfile::conservative_default() {
+    auto clearances = std::vector<BoardClearancePair>{};
+    constexpr auto board_edge_index = static_cast<int>(BoardClearanceKind::BoardEdge);
+    for (auto first = 0; first <= board_edge_index; ++first) {
+        for (auto second = first; second <= board_edge_index; ++second) {
+            const auto low = static_cast<BoardClearanceKind>(first);
+            const auto high = static_cast<BoardClearanceKind>(second);
+            if (low == BoardClearanceKind::BoardEdge && high == BoardClearanceKind::BoardEdge) {
+                continue;
+            }
+            const auto clearance = high == BoardClearanceKind::BoardEdge ? 0.30 : 0.20;
+            clearances.push_back(BoardClearancePair{low, high, clearance});
+        }
+    }
+    return BoardCapabilityProfile{
+        "volt.conservative",
+        BoardCapabilityProvenance{"Volt built-in conservative fallback", "2026-06-11"},
+        0.20,
+        0.30,
+        0.60,
+        std::move(clearances),
+    };
+}
+
+[[nodiscard]] double
+BoardCapabilityProfile::minimum_clearance_mm(BoardClearanceKind first,
+                                             BoardClearanceKind second) const noexcept {
+    const auto pair = canonical_clearance_pair(first, second);
+    for (const auto &entry : minimum_clearances_) {
+        if (entry.first == pair.first && entry.second == pair.second) {
+            return entry.clearance_mm;
+        }
+    }
+    return 0.0;
+}
 
 void BoardDesignRules::set_clearance_mm(BoardClearanceKind first, BoardClearanceKind second,
                                         double clearance_mm) {
@@ -1151,6 +1267,189 @@ void validate_unrouted_nets(const std::vector<PadResolution> &resolutions,
     }
 }
 
+[[nodiscard]] std::string capability_clearance_label(BoardClearanceKind first,
+                                                     BoardClearanceKind second) {
+    auto low = first;
+    auto high = second;
+    if (static_cast<int>(low) > static_cast<int>(high)) {
+        std::swap(low, high);
+    }
+    return std::string{clearance_kind_name(low)} + "-to-" + std::string{clearance_kind_name(high)} +
+           " clearance";
+}
+
+[[nodiscard]] std::optional<double> profile_clearance_minimum(const BoardCapabilityProfile &profile,
+                                                              BoardClearanceKind first,
+                                                              BoardClearanceKind second) {
+    const auto pair = canonical_clearance_pair(first, second);
+    for (const auto &entry : profile.minimum_clearances()) {
+        if (entry.first == pair.first && entry.second == pair.second) {
+            return entry.clearance_mm;
+        }
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<double>
+profile_max_clearance_minimum(const BoardCapabilityProfile &profile, bool board_edge) {
+    auto result = std::optional<double>{};
+    for (const auto &entry : profile.minimum_clearances()) {
+        const auto touches_edge = entry.first == BoardClearanceKind::BoardEdge ||
+                                  entry.second == BoardClearanceKind::BoardEdge;
+        if (touches_edge != board_edge) {
+            continue;
+        }
+        if (!result.has_value() || entry.clearance_mm > result.value()) {
+            result = entry.clearance_mm;
+        }
+    }
+    return result;
+}
+
+void report_capability_rule(DiagnosticReport &report, double value, double minimum,
+                            const std::string &label, std::vector<EntityRef> entities) {
+    if (value + board_drc_epsilon < minimum) {
+        report.add(drc_diagnostic(drc_diagnostic_codes::RuleBelowCapability,
+                                  label + " is below capability profile minimum",
+                                  std::move(entities)));
+        return;
+    }
+    if (std::abs(value - minimum) <= board_drc_epsilon) {
+        report.add(drc_warning(drc_diagnostic_codes::RuleAtCapabilityMinimum,
+                               label + " is at manufacturing minimum", std::move(entities)));
+    }
+}
+
+void validate_board_rule_capability(const Board &board, const BoardCapabilityProfile &profile,
+                                    DiagnosticReport &report) {
+    const auto &rules = board.design_rules();
+    if (const auto minimum = profile_max_clearance_minimum(profile, false); minimum.has_value()) {
+        report_capability_rule(report, rules.copper_clearance_mm(), minimum.value(),
+                               "Board copper clearance", std::vector{EntityRef::board()});
+    }
+    report_capability_rule(report, rules.minimum_track_width_mm(), profile.minimum_track_width_mm(),
+                           "Board minimum track width", std::vector{EntityRef::board()});
+    report_capability_rule(report, rules.minimum_via_drill_diameter_mm(),
+                           profile.minimum_via_drill_mm(), "Board minimum via drill",
+                           std::vector{EntityRef::board()});
+    report_capability_rule(report, rules.minimum_via_annular_diameter_mm(),
+                           profile.minimum_via_annular_mm(), "Board minimum via annular diameter",
+                           std::vector{EntityRef::board()});
+    if (const auto minimum = profile_max_clearance_minimum(profile, true); minimum.has_value()) {
+        report_capability_rule(report, rules.board_outline_clearance_mm(), minimum.value(),
+                               "Board outline clearance", std::vector{EntityRef::board()});
+    }
+
+    for (const auto &entry : rules.clearance_matrix()) {
+        const auto minimum = profile_clearance_minimum(profile, entry.first, entry.second);
+        if (!minimum.has_value()) {
+            continue;
+        }
+        report_capability_rule(report, entry.clearance_mm, minimum.value(),
+                               "Board " + capability_clearance_label(entry.first, entry.second) +
+                                   " matrix entry",
+                               std::vector{EntityRef::board()});
+    }
+}
+
+void validate_net_class_capability(const Board &board, const BoardCapabilityProfile &profile,
+                                   DiagnosticReport &report) {
+    const auto copper_clearance_minimum = profile_max_clearance_minimum(profile, false);
+    for (std::size_t index = 0; index < board.circuit().net_class_count(); ++index) {
+        const auto net_class_id = NetClassId{index};
+        const auto &net_class = board.circuit().net_class(net_class_id);
+        const auto prefix = std::string{"Net class '"} + net_class.name().value() + "' ";
+        if (net_class.copper_clearance_mm().has_value() && copper_clearance_minimum.has_value()) {
+            report_capability_rule(report, net_class.copper_clearance_mm().value(),
+                                   copper_clearance_minimum.value(), prefix + "copper clearance",
+                                   {});
+        }
+        if (net_class.track_width_mm().has_value()) {
+            report_capability_rule(report, net_class.track_width_mm().value(),
+                                   profile.minimum_track_width_mm(), prefix + "track width", {});
+        }
+        if (net_class.via_drill_mm().has_value()) {
+            report_capability_rule(report, net_class.via_drill_mm().value(),
+                                   profile.minimum_via_drill_mm(), prefix + "via drill", {});
+        }
+        if (net_class.via_diameter_mm().has_value()) {
+            report_capability_rule(report, net_class.via_diameter_mm().value(),
+                                   profile.minimum_via_annular_mm(), prefix + "via diameter", {});
+        }
+    }
+}
+
+struct RoomCapabilityMinimums {
+    double track_width_mm;
+    double copper_clearance_mm;
+};
+
+[[nodiscard]] RoomCapabilityMinimums room_capability_minimums(const Board &board,
+                                                              const BoardCapabilityProfile &profile,
+                                                              const BoardRoom &room) {
+    auto result = RoomCapabilityMinimums{
+        profile.minimum_track_width_mm(),
+        profile_max_clearance_minimum(profile, false).value_or(0.0),
+    };
+    if (profile.copper_weight_refinements().empty()) {
+        return result;
+    }
+
+    for (const auto layer_id : room.layers()) {
+        const auto &layer = board.layer(layer_id);
+        if (!layer.copper_weight_oz().has_value()) {
+            return result;
+        }
+    }
+
+    for (const auto layer_id : room.layers()) {
+        const auto weight = board.layer(layer_id).copper_weight_oz().value();
+        auto applicable = std::optional<BoardCapabilityCopperWeightRefinement>{};
+        for (const auto &refinement : profile.copper_weight_refinements()) {
+            if (refinement.copper_weight_oz <= weight + board_drc_epsilon) {
+                applicable = refinement;
+            }
+        }
+        if (!applicable.has_value()) {
+            continue;
+        }
+        result.track_width_mm = std::max(result.track_width_mm, applicable->minimum_track_width_mm);
+        result.copper_clearance_mm =
+            std::max(result.copper_clearance_mm, applicable->minimum_clearance_mm);
+    }
+    return result;
+}
+
+void validate_room_capability(const Board &board, const BoardCapabilityProfile &profile,
+                              DiagnosticReport &report) {
+    for (std::size_t index = 0; index < board.room_count(); ++index) {
+        const auto room_id = BoardRoomId{index};
+        const auto &room = board.room(room_id);
+        const auto minimums = room_capability_minimums(board, profile, room);
+        const auto entities = std::vector{EntityRef::board_room(room_id)};
+        const auto prefix = std::string{"Room '"} + room.name() + "' ";
+        if (room.copper_clearance_mm().has_value()) {
+            report_capability_rule(report, room.copper_clearance_mm().value(),
+                                   minimums.copper_clearance_mm, prefix + "copper clearance",
+                                   entities);
+        }
+        if (room.track_width_mm().has_value()) {
+            report_capability_rule(report, room.track_width_mm().value(), minimums.track_width_mm,
+                                   prefix + "track width", entities);
+        }
+    }
+}
+
+void validate_capability_profile_rules(const Board &board, DiagnosticReport &report) {
+    if (!board.capability_profile().has_value()) {
+        return;
+    }
+    const auto &profile = board.capability_profile().value();
+    validate_board_rule_capability(board, profile, report);
+    validate_net_class_capability(board, profile, report);
+    validate_room_capability(board, profile, report);
+}
+
 void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
                         const std::vector<PadResolution> &pad_resolutions,
                         DiagnosticReport &report) {
@@ -1165,6 +1464,9 @@ void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
         })
         .add([](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_net_class_layers(rule_board, rule_report);
+        })
+        .add([](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_capability_profile_rules(rule_board, rule_report);
         })
         .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_outline_clearance(rule_board, shapes, rule_report);

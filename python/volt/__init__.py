@@ -56,6 +56,7 @@ from .logical import (
 )
 from .pcb import (
     Board,
+    CapabilityProfile,
     Circle,
     Cutout,
     Footprint,
@@ -127,6 +128,7 @@ __all__ = [
     "BoardRoute",
     "BoardTwoPadComponent",
     "BuildContext",
+    "CapabilityProfile",
     "Circle",
     "Cutout",
     "Design",

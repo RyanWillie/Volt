@@ -1108,6 +1108,10 @@ void PyCircuit::board_set_design_rules(double copper_clearance_mm, double minimu
     });
 }
 
+void PyCircuit::board_set_capability_profile(const py::dict &profile) {
+    board_projection().set_capability_profile(board_capability_profile_from_dict(profile));
+}
+
 std::size_t PyCircuit::board_add_layer(const std::string &name, const std::string &role,
                                        const std::string &side, double thickness_mm, bool enabled,
                                        std::optional<double> copper_weight_oz) {

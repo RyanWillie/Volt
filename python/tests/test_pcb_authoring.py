@@ -1,9 +1,12 @@
 import json
 import math
+from pathlib import Path
 
 import pytest
 
 import volt
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def _small_resistor_led_design():
@@ -84,6 +87,10 @@ def _placed_positions(board):
         item["component"]: (tuple(item["position"]), item["rotation_deg"], item["locked"])
         for item in json.loads(board.to_json())["board"]["placements"]
     }
+
+
+def _fixture_path(name: str) -> Path:
+    return ROOT / "tests" / "fixtures" / name
 
 
 def test_pcb_layout_session_defaults_and_moves():
@@ -1095,6 +1102,65 @@ def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():
         for diagnostic in report
         for entity in diagnostic.entities
     )
+
+
+def test_python_board_authoring_sets_capability_profile_from_file_and_inline():
+    design = volt.Design("capability-profile")
+    board = design.board("Control")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(30.0, 20.0))
+
+    profile = volt.CapabilityProfile.from_file(
+        _fixture_path("example_fab_2layer.voltcap.json")
+    )
+    assert profile.name == "Example Fab 2-layer capability snapshot"
+
+    board.set_capability_profile(profile)
+    document = json.loads(board.to_json())
+    assert document["board"]["capability_profile"]["name"] == (
+        "Example Fab 2-layer capability snapshot"
+    )
+    assert document["board"]["capability_profile"]["provenance"] == {
+        "source": "Example fixture derived from a public fabrication capability table for tests only",
+        "as_of": "2026-06-11",
+    }
+    assert document["board"]["capability_profile"]["minimum_track_width_mm"] == 0.2
+    assert document["board"]["capability_profile"]["minimum_clearances"][0] == {
+        "first": "track",
+        "second": "track",
+        "clearance_mm": 0.2,
+    }
+
+    inline = volt.CapabilityProfile(
+        name="Inline capability",
+        source="Inline project data",
+        as_of="2026-06-11",
+        minimum_track_width=0.2,
+        minimum_via_drill=0.3,
+        minimum_via_annular=0.6,
+        minimum_clearances=(("track", "track", 0.2),),
+    )
+    board.set_capability_profile(inline)
+    assert json.loads(board.to_json())["board"]["capability_profile"]["name"] == (
+        "Inline capability"
+    )
+
+
+def test_python_capability_profile_invalid_values_raise_value_error():
+    design = volt.Design("invalid-capability-profile")
+    board = design.board("Control")
+
+    with pytest.raises(ValueError):
+        board.set_capability_profile(
+            volt.CapabilityProfile(
+                name="Invalid capability",
+                source="Inline project data",
+                as_of="2026-06-11",
+                minimum_track_width=0.0,
+                minimum_via_drill=0.3,
+                minimum_via_annular=0.6,
+                minimum_clearances=(("track", "track", 0.2),),
+            )
+        )
 
 
 def test_python_board_authoring_exposes_pad_resolution_and_validation_diagnostics():

@@ -59,6 +59,9 @@ class Board {
     /** Set board-owned design rules used by DRC validation. */
     void set_design_rules(BoardDesignRules rules);
 
+    /** Store the board capability profile snapshot used by manufacturability lint. */
+    void set_capability_profile(BoardCapabilityProfile profile);
+
     /** Add a physical board feature. */
     [[nodiscard]] BoardFeatureId add_feature(BoardFeature feature);
 
@@ -103,6 +106,11 @@ class Board {
     /** Return board-owned design rules used by DRC validation. */
     [[nodiscard]] const BoardDesignRules &design_rules() const noexcept {
         return structure_.design_rules();
+    }
+
+    /** Return the optional capability profile snapshot set on this board. */
+    [[nodiscard]] const std::optional<BoardCapabilityProfile> &capability_profile() const noexcept {
+        return structure_.capability_profile();
     }
 
     /** Return a board feature by ID. */
