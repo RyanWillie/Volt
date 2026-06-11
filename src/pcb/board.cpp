@@ -70,6 +70,13 @@ void Board::set_design_rules(BoardDesignRules rules) { structure_.set_design_rul
     return copper_.add_keepout(std::move(keepout));
 }
 
+[[nodiscard]] BoardRoomId Board::add_room(BoardRoom room) {
+    for (const auto layer : room.layers()) {
+        require_layer(layer);
+    }
+    return copper_.add_room(std::move(room));
+}
+
 [[nodiscard]] BoardTextId Board::add_text(BoardText text) {
     require_layer(text.layer());
     return copper_.add_text(std::move(text));
@@ -101,6 +108,10 @@ Board::footprint_definition_id(const FootprintRef &ref) const noexcept {
 }
 
 [[nodiscard]] std::size_t Board::keepout_count() const noexcept { return copper_.keepout_count(); }
+
+[[nodiscard]] const BoardRoom &Board::room(BoardRoomId id) const { return copper_.room(id); }
+
+[[nodiscard]] std::size_t Board::room_count() const noexcept { return copper_.room_count(); }
 
 [[nodiscard]] const BoardText &Board::text(BoardTextId id) const { return copper_.text(id); }
 

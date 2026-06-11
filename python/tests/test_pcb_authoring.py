@@ -854,7 +854,7 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     assert with_loss.warnings[0].severity == "warning"
 
 
-def test_python_board_authoring_writes_zones_keepouts_and_text():
+def test_python_board_authoring_writes_zones_keepouts_rooms_and_text():
     design, r1, _d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")
     board = design.board("Control")
@@ -876,6 +876,14 @@ def test_python_board_authoring_writes_zones_keepouts_and_text():
             restrictions=("copper", "via"),
         )
     )
+    room = board.add_room(
+        "BGA escape",
+        outline=((18.0, 2.0), (24.0, 2.0), (24.0, 8.0), (18.0, 8.0)),
+        layers=(front,),
+        clearance=0.075,
+        track_width=0.10,
+        priority=3,
+    )
     text = board.add(
         volt.Text("REV A", at=(5.0, 15.0), layer=silk, rotation=90.0, size=1.2, locked=True)
     )
@@ -883,12 +891,19 @@ def test_python_board_authoring_writes_zones_keepouts_and_text():
     document = json.loads(board.to_json())
     assert zone == 0
     assert keepout == 0
+    assert room == 0
     assert text == 0
     assert document["board"]["zones"][0]["net"] == "net:1"
     assert document["board"]["zones"][0]["layers"] == ["board_layer:0"]
     assert document["board"]["zones"][0]["priority"] == 4
     assert document["board"]["features"] == []
     assert document["board"]["keepouts"][0]["restrictions"] == ["copper", "via"]
+    assert document["board"]["rooms"][0]["id"] == "board_room:0"
+    assert document["board"]["rooms"][0]["name"] == "BGA escape"
+    assert document["board"]["rooms"][0]["layers"] == ["board_layer:0"]
+    assert document["board"]["rooms"][0]["priority"] == 3
+    assert document["board"]["rooms"][0]["copper_clearance_mm"] == 0.075
+    assert document["board"]["rooms"][0]["track_width_mm"] == 0.10
     assert document["board"]["texts"][0]["text"] == "REV A"
     assert document["board"]["texts"][0]["layer"] == "board_layer:1"
     assert document["board"]["texts"][0]["locked"] is True
@@ -1162,6 +1177,20 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
             outline=((1.0, 1.0), (3.0, 1.0), (3.0, 3.0), (1.0, 3.0)),
             layers=(silk,),
             net=design.net("ZONE"),
+        )
+    with pytest.raises(ValueError, match="Board room copper clearance must not be negative"):
+        board.add_room(
+            "BGA escape",
+            outline=((1.0, 1.0), (3.0, 1.0), (3.0, 3.0), (1.0, 3.0)),
+            layers=(front,),
+            clearance=-0.1,
+        )
+    with pytest.raises(ValueError, match="Board room track width must be positive"):
+        board.add_room(
+            "BGA escape",
+            outline=((1.0, 1.0), (3.0, 1.0), (3.0, 3.0), (1.0, 3.0)),
+            layers=(front,),
+            track_width=0.0,
         )
     with pytest.raises(ValueError, match="Board keepout restrictions must not be empty"):
         board.add_keepout(

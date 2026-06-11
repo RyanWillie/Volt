@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <nlohmann/json.hpp>
@@ -412,7 +413,7 @@ TEST_CASE("PCB projection writer and reader round-trip copper tracks and vias") 
     CHECK(restored.via(volt::BoardViaId{0}).end_layer() == volt::BoardLayerId{1});
 }
 
-TEST_CASE("PCB projection writer and reader round-trip zones, keepouts, and board text") {
+TEST_CASE("PCB projection writer and reader round-trip zones, keepouts, rooms, and board text") {
     const auto fixture = make_resistor_circuit();
     auto board = make_viewer_ready_board(fixture);
 
@@ -438,6 +439,20 @@ TEST_CASE("PCB projection writer and reader round-trip zones, keepouts, and boar
         std::vector{volt::BoardLayerId{0}, volt::BoardLayerId{1}},
         std::vector{volt::BoardKeepoutRestriction::Copper,
                     volt::BoardKeepoutRestriction::Placement},
+    });
+    auto escape_room = volt::BoardRoom{
+        "BGA escape",
+        volt::BoardOutline::rectangle(volt::BoardPoint{3.0, 10.0}, volt::BoardSize{8.0, 5.0}),
+        std::vector{volt::BoardLayerId{0}},
+        4,
+    };
+    escape_room.set_copper_clearance_mm(0.075);
+    escape_room.set_track_width_mm(0.10);
+    [[maybe_unused]] const auto room = board.add_room(std::move(escape_room));
+    [[maybe_unused]] const auto room_without_overrides = board.add_room(volt::BoardRoom{
+        "Mechanical moat",
+        volt::BoardOutline::rectangle(volt::BoardPoint{20.0, 10.0}, volt::BoardSize{4.0, 4.0}),
+        std::vector{volt::BoardLayerId{0}, volt::BoardLayerId{1}},
     });
     [[maybe_unused]] const auto text = board.add_text(
         volt::BoardText{"REV A", volt::BoardPoint{5.0, 24.0}, volt::BoardRotation::degrees(90.0),
@@ -465,6 +480,23 @@ TEST_CASE("PCB projection writer and reader round-trip zones, keepouts, and boar
     CHECK(document["board"]["keepouts"][0]["restrictions"] ==
           nlohmann::json::array({"copper", "placement"}));
 
+    REQUIRE(document["board"]["rooms"].size() == 2);
+    CHECK(document["board"]["rooms"][0]["id"] == "board_room:0");
+    CHECK(document["board"]["rooms"][0]["name"] == "BGA escape");
+    CHECK(document["board"]["rooms"][0]["outline"] ==
+          nlohmann::json::array(
+              {nlohmann::json::array({3.0, 10.0}), nlohmann::json::array({11.0, 10.0}),
+               nlohmann::json::array({11.0, 15.0}), nlohmann::json::array({3.0, 15.0})}));
+    CHECK(document["board"]["rooms"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
+    CHECK(document["board"]["rooms"][0]["priority"] == 4);
+    CHECK(document["board"]["rooms"][0]["copper_clearance_mm"] == 0.075);
+    CHECK(document["board"]["rooms"][0]["track_width_mm"] == 0.10);
+    CHECK(document["board"]["rooms"][1]["id"] == "board_room:1");
+    CHECK(document["board"]["rooms"][1]["name"] == "Mechanical moat");
+    CHECK(document["board"]["rooms"][1].contains("priority") == false);
+    CHECK(document["board"]["rooms"][1].contains("copper_clearance_mm") == false);
+    CHECK(document["board"]["rooms"][1].contains("track_width_mm") == false);
+
     REQUIRE(document["board"]["texts"].size() == 1);
     CHECK(document["board"]["texts"][0]["id"] == "board_text:0");
     CHECK(document["board"]["texts"][0]["text"] == "REV A");
@@ -480,6 +512,13 @@ TEST_CASE("PCB projection writer and reader round-trip zones, keepouts, and boar
     CHECK(restored.keepout(volt::BoardKeepoutId{0}).restrictions() ==
           std::vector{volt::BoardKeepoutRestriction::Copper,
                       volt::BoardKeepoutRestriction::Placement});
+    CHECK(restored.room(volt::BoardRoomId{0}).name() == "BGA escape");
+    REQUIRE(restored.room(volt::BoardRoomId{0}).copper_clearance_mm().has_value());
+    REQUIRE(restored.room(volt::BoardRoomId{0}).track_width_mm().has_value());
+    CHECK(restored.room(volt::BoardRoomId{0}).copper_clearance_mm().value() == 0.075);
+    CHECK(restored.room(volt::BoardRoomId{0}).track_width_mm().value() == 0.10);
+    CHECK(restored.room(volt::BoardRoomId{1}).priority() == 0);
+    CHECK_FALSE(restored.room(volt::BoardRoomId{1}).track_width_mm().has_value());
     CHECK(restored.text(volt::BoardTextId{0}).text() == "REV A");
 }
 
@@ -555,7 +594,8 @@ TEST_CASE("PCB projection writer serializes overlay-ready diagnostic geometry") 
         volt::DiagnosticCode{"PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE"},
         volt::DiagnosticCategory{"pcb.visual"},
         "Reference designator is difficult to read",
-        std::vector{volt::EntityRef::board(), volt::EntityRef::board_text(volt::BoardTextId{0})},
+        std::vector{volt::EntityRef::board(), volt::EntityRef::board_room(volt::BoardRoomId{1}),
+                    volt::EntityRef::board_text(volt::BoardTextId{0})},
         std::vector{
             volt::DiagnosticOverlay::bounding_box(
                 volt::DiagnosticPoint{2.0, 3.0}, volt::DiagnosticPoint{6.0, 4.5},
@@ -575,7 +615,8 @@ TEST_CASE("PCB projection writer serializes overlay-ready diagnostic geometry") 
     const auto payload = nlohmann::json::parse(out.str());
 
     CHECK(payload["category"] == "pcb.visual");
-    CHECK(payload["entities"] == nlohmann::json::array({"board:0", "board_text:0"}));
+    CHECK(payload["entities"] ==
+          nlohmann::json::array({"board:0", "board_room:1", "board_text:0"}));
     REQUIRE(payload["overlays"].size() == 3);
     CHECK(payload["overlays"][0]["kind"] == "bounding_box");
     CHECK(payload["overlays"][0]["points"] ==
@@ -797,6 +838,22 @@ TEST_CASE("PCB projection reader rejects dangling references") {
             Catch::Matchers::Message("PCB keepout references missing board layer"));
     }
 
+    SECTION("room layer references") {
+        auto document = make_board_json(fixture);
+        document["board"]["rooms"] = nlohmann::json::array(
+            {{{"id", "board_room:0"},
+              {"name", "BGA escape"},
+              {"outline",
+               nlohmann::json::array(
+                   {nlohmann::json::array({1.0, 1.0}), nlohmann::json::array({3.0, 1.0}),
+                    nlohmann::json::array({3.0, 3.0}), nlohmann::json::array({1.0, 3.0})})},
+              {"layers", nlohmann::json::array({"board_layer:99"})}}});
+
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::logic_error,
+                             Catch::Matchers::Message("PCB room references missing board layer"));
+    }
+
     SECTION("text layer references") {
         auto document = make_board_json(fixture);
         document["board"]["texts"] =
@@ -820,6 +877,62 @@ TEST_CASE("PCB projection reader rejects dangling references") {
         CHECK_THROWS_MATCHES(
             volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::invalid_argument,
             Catch::Matchers::Message("Board design rule clearances must not be negative"));
+    }
+
+    SECTION("room outline geometry") {
+        auto document = make_board_json(fixture);
+        document["board"]["rooms"] = nlohmann::json::array(
+            {{{"id", "board_room:0"},
+              {"name", "BGA escape"},
+              {"outline", nlohmann::json::array({nlohmann::json::array({1.0, 1.0}),
+                                                 nlohmann::json::array({3.0, 1.0})})},
+              {"layers", nlohmann::json::array({"board_layer:0"})}}});
+
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::invalid_argument,
+                             Catch::Matchers::Message("Board outline must contain at least three "
+                                                      "vertices"));
+    }
+
+    SECTION("room override types") {
+        auto document = make_board_json(fixture);
+        document["board"]["rooms"] = nlohmann::json::array(
+            {{{"id", "board_room:0"},
+              {"name", "BGA escape"},
+              {"outline",
+               nlohmann::json::array(
+                   {nlohmann::json::array({1.0, 1.0}), nlohmann::json::array({3.0, 1.0}),
+                    nlohmann::json::array({3.0, 3.0}), nlohmann::json::array({1.0, 3.0})})},
+              {"layers", nlohmann::json::array({"board_layer:0"})},
+              {"copper_clearance_mm", "tight"}}});
+
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::logic_error,
+                             Catch::Matchers::Message("Expected number field: "
+                                                      "copper_clearance_mm"));
+    }
+
+    SECTION("duplicate room names") {
+        auto document = make_board_json(fixture);
+        document["board"]["rooms"] = nlohmann::json::array(
+            {{{"id", "board_room:0"},
+              {"name", "BGA escape"},
+              {"outline",
+               nlohmann::json::array(
+                   {nlohmann::json::array({1.0, 1.0}), nlohmann::json::array({3.0, 1.0}),
+                    nlohmann::json::array({3.0, 3.0}), nlohmann::json::array({1.0, 3.0})})},
+              {"layers", nlohmann::json::array({"board_layer:0"})}},
+             {{"id", "board_room:1"},
+              {"name", "BGA escape"},
+              {"outline",
+               nlohmann::json::array(
+                   {nlohmann::json::array({4.0, 1.0}), nlohmann::json::array({6.0, 1.0}),
+                    nlohmann::json::array({6.0, 3.0}), nlohmann::json::array({4.0, 3.0})})},
+              {"layers", nlohmann::json::array({"board_layer:0"})}}});
+
+        CHECK_THROWS_MATCHES(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                             std::logic_error,
+                             Catch::Matchers::Message("Board room name already exists"));
     }
 }
 

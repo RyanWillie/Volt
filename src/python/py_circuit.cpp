@@ -1383,6 +1383,35 @@ std::size_t PyCircuit::board_add_keepout(const std::vector<std::size_t> &layers,
         .index();
 }
 
+std::size_t PyCircuit::board_add_room(const std::string &name,
+                                      const std::vector<std::pair<double, double>> &outline,
+                                      const std::vector<std::size_t> &layers,
+                                      std::optional<double> copper_clearance_mm,
+                                      std::optional<double> track_width_mm, int priority) {
+    auto board_layers = std::vector<volt::BoardLayerId>{};
+    board_layers.reserve(layers.size());
+    for (const auto layer : layers) {
+        board_layers.emplace_back(layer);
+    }
+
+    auto points = std::vector<volt::BoardPoint>{};
+    points.reserve(outline.size());
+    for (const auto &[x, y] : outline) {
+        points.emplace_back(x, y);
+    }
+
+    auto room = volt::BoardRoom{name, volt::BoardOutline{std::move(points)},
+                                std::move(board_layers), priority};
+    if (copper_clearance_mm.has_value()) {
+        room.set_copper_clearance_mm(copper_clearance_mm.value());
+    }
+    if (track_width_mm.has_value()) {
+        room.set_track_width_mm(track_width_mm.value());
+    }
+
+    return board_projection().add_room(std::move(room)).index();
+}
+
 std::size_t PyCircuit::board_add_text(const std::string &text, double x, double y,
                                       std::size_t layer, double rotation_degrees, double size_mm,
                                       bool locked) {

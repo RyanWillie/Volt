@@ -629,6 +629,26 @@ class Board:
             int(priority),
         )
 
+    def add_room(
+        self,
+        name: str,
+        *,
+        outline: Iterable[Point],
+        layers: Iterable[int],
+        clearance: float | None = None,
+        track_width: float | None = None,
+        priority: int = 0,
+    ) -> int:
+        """Add a named board room with optional local routing rule overrides."""
+        return self._design._circuit.board_add_room(
+            name,
+            [_point(point, "Board room outline point") for point in outline],
+            _layer_indices(layers),
+            None if clearance is None else float(clearance),
+            None if track_width is None else float(track_width),
+            int(priority),
+        )
+
     def add_keepout(
         self,
         *,

@@ -227,6 +227,9 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("outline"), py::arg("fill"), py::arg("priority"))
         .def("board_add_keepout", &PyCircuit::board_add_keepout, py::arg("layers"),
              py::arg("outline"), py::arg("restrictions"))
+        .def("board_add_room", &PyCircuit::board_add_room, py::arg("name"), py::arg("outline"),
+             py::arg("layers"), py::arg("copper_clearance_mm") = std::nullopt,
+             py::arg("track_width_mm") = std::nullopt, py::arg("priority") = 0)
         .def("board_add_text", &PyCircuit::board_add_text, py::arg("text"), py::arg("x"),
              py::arg("y"), py::arg("layer"), py::arg("rotation_degrees"), py::arg("size_mm"),
              py::arg("locked"))

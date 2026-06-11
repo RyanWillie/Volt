@@ -1,9 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <concepts>
+#include <limits>
+#include <optional>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
+#include <volt/circuit/circuit.hpp>
+#include <volt/pcb/board.hpp>
 #include <volt/pcb/board_copper_model.hpp>
 #include <volt/pcb/board_footprint_model.hpp>
 #include <volt/pcb/board_placement_model.hpp>
@@ -30,6 +35,9 @@ concept CanAddKeepout =
     requires(Model model, volt::BoardKeepout keepout) { model.add_keepout(keepout); };
 
 template <typename Model>
+concept CanAddRoom = requires(Model model, volt::BoardRoom room) { model.add_room(room); };
+
+template <typename Model>
 concept CanAddText = requires(Model model, volt::BoardText text) { model.add_text(text); };
 
 static_assert(!CanPlaceComponent<volt::BoardPlacementModel>);
@@ -37,6 +45,7 @@ static_assert(!CanAddTrack<volt::BoardCopperModel>);
 static_assert(!CanAddVia<volt::BoardCopperModel>);
 static_assert(!CanAddZone<volt::BoardCopperModel>);
 static_assert(!CanAddKeepout<volt::BoardCopperModel>);
+static_assert(!CanAddRoom<volt::BoardCopperModel>);
 static_assert(!CanAddText<volt::BoardCopperModel>);
 
 } // namespace
@@ -172,4 +181,57 @@ TEST_CASE("Board design rules store a canonical clearance matrix") {
     CHECK_THROWS_AS(rules.set_clearance_mm(volt::BoardClearanceKind::Track,
                                            volt::BoardClearanceKind::Pad, -0.1),
                     std::invalid_argument);
+}
+
+TEST_CASE("BoardRoom validates scope and optional rule overrides") {
+    const auto front = volt::BoardLayerId{0};
+    const auto back = volt::BoardLayerId{1};
+    const auto outline =
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{5.0, 5.0});
+
+    auto room = volt::BoardRoom{"BGA escape", outline, std::vector{front, back}, 7};
+    CHECK(room.name() == "BGA escape");
+    CHECK(room.outline().vertices() == outline.vertices());
+    CHECK(room.layers() == std::vector{front, back});
+    CHECK(room.priority() == 7);
+    CHECK_FALSE(room.copper_clearance_mm().has_value());
+    CHECK_FALSE(room.track_width_mm().has_value());
+
+    room.set_copper_clearance_mm(0.075);
+    room.set_track_width_mm(0.10);
+    REQUIRE(room.copper_clearance_mm().has_value());
+    REQUIRE(room.track_width_mm().has_value());
+    CHECK(room.copper_clearance_mm().value() == 0.075);
+    CHECK(room.track_width_mm().value() == 0.10);
+
+    CHECK_THROWS_AS((volt::BoardRoom{"", outline, std::vector{front}}), std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardRoom{"Empty", outline, {}}), std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardRoom{"Duplicate", outline, std::vector{front, front}}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(room.set_copper_clearance_mm(-0.1), std::invalid_argument);
+    CHECK_THROWS_AS(room.set_copper_clearance_mm(std::numeric_limits<double>::infinity()),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(room.set_track_width_mm(0.0), std::invalid_argument);
+    CHECK_THROWS_AS(room.set_track_width_mm(std::numeric_limits<double>::infinity()),
+                    std::invalid_argument);
+}
+
+TEST_CASE("Board rejects duplicate room names and missing room layers") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto outline =
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{5.0, 5.0});
+
+    const auto room = board.add_room(volt::BoardRoom{"BGA escape", outline, std::vector{front}});
+    CHECK(room == volt::BoardRoomId{0});
+    CHECK(board.room_count() == 1);
+    CHECK(board.room(room).name() == "BGA escape");
+
+    CHECK_THROWS_AS(board.add_room(volt::BoardRoom{"BGA escape", outline, std::vector{front}}),
+                    std::logic_error);
+    CHECK_THROWS_AS(
+        board.add_room(volt::BoardRoom{"Missing", outline, std::vector{volt::BoardLayerId{99}}}),
+        std::out_of_range);
 }

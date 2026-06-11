@@ -58,6 +58,7 @@ struct BoardTrackIdTag;
 struct BoardViaIdTag;
 struct BoardZoneIdTag;
 struct BoardKeepoutIdTag;
+struct BoardRoomIdTag;
 struct BoardTextIdTag;
 struct FootprintDefIdTag;
 struct FootprintPadIdTag;
@@ -121,6 +122,8 @@ using BoardViaId = EntityId<detail::BoardViaIdTag>;
 using BoardZoneId = EntityId<detail::BoardZoneIdTag>;
 /** ID for a PCB keepout owned by a board projection. */
 using BoardKeepoutId = EntityId<detail::BoardKeepoutIdTag>;
+/** ID for a PCB room owned by a board projection. */
+using BoardRoomId = EntityId<detail::BoardRoomIdTag>;
 /** ID for PCB board text owned by a board projection. */
 using BoardTextId = EntityId<detail::BoardTextIdTag>;
 /** ID for a cached PCB footprint definition owned by a board projection. */

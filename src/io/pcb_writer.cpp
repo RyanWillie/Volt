@@ -70,6 +70,8 @@ namespace volt::io::detail {
         return encode_local_id(BoardZoneId{entity.index()});
     case EntityKind::BoardKeepout:
         return encode_local_id(BoardKeepoutId{entity.index()});
+    case EntityKind::BoardRoom:
+        return encode_local_id(BoardRoomId{entity.index()});
     case EntityKind::BoardText:
         return encode_local_id(BoardTextId{entity.index()});
     case EntityKind::FootprintDef:
@@ -927,23 +929,29 @@ void write_pcb_board(std::ostream &out, const Board &board, const FootprintLibra
     detail::write_placements(out, board, definitions,
                              board.track_count() != 0U || board.via_count() != 0U ||
                                  board.zone_count() != 0U || board.keepout_count() != 0U ||
-                                 board.text_count() != 0U);
+                                 board.room_count() != 0U || board.text_count() != 0U);
     if (board.track_count() != 0U) {
         detail::write_tracks(out, board,
                              board.via_count() != 0U || board.zone_count() != 0U ||
-                                 board.keepout_count() != 0U || board.text_count() != 0U);
+                                 board.keepout_count() != 0U || board.room_count() != 0U ||
+                                 board.text_count() != 0U);
     }
     if (board.via_count() != 0U) {
         detail::write_vias(out, board,
                            board.zone_count() != 0U || board.keepout_count() != 0U ||
-                               board.text_count() != 0U);
+                               board.room_count() != 0U || board.text_count() != 0U);
     }
     if (board.zone_count() != 0U) {
         detail::write_board_zones(out, board,
-                                  board.keepout_count() != 0U || board.text_count() != 0U);
+                                  board.keepout_count() != 0U || board.room_count() != 0U ||
+                                      board.text_count() != 0U);
     }
     if (board.keepout_count() != 0U) {
-        detail::write_board_keepouts(out, board, board.text_count() != 0U);
+        detail::write_board_keepouts(out, board,
+                                     board.room_count() != 0U || board.text_count() != 0U);
+    }
+    if (board.room_count() != 0U) {
+        detail::write_board_rooms(out, board, board.text_count() != 0U);
     }
     if (board.text_count() != 0U) {
         detail::write_board_texts(out, board, false);

@@ -80,6 +80,9 @@ class Board {
     /** Add a board keepout over existing board layers. */
     [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout);
 
+    /** Add a board room over existing board layers. */
+    [[nodiscard]] BoardRoomId add_room(BoardRoom room);
+
     /** Add board text on an existing board layer. */
     [[nodiscard]] BoardTextId add_text(BoardText text);
 
@@ -151,6 +154,12 @@ class Board {
 
     /** Return the number of keepouts. */
     [[nodiscard]] std::size_t keepout_count() const noexcept;
+
+    /** Return a board room by board-local ID. */
+    [[nodiscard]] const BoardRoom &room(BoardRoomId id) const;
+
+    /** Return the number of board rooms. */
+    [[nodiscard]] std::size_t room_count() const noexcept;
 
     /** Return board text by board-local ID. */
     [[nodiscard]] const BoardText &text(BoardTextId id) const;

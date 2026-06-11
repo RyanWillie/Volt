@@ -128,6 +128,8 @@ class PcbBoardReader {
 
     void read_keepouts(Board &board, const nlohmann::json &board_json) const;
 
+    void read_rooms(Board &board, const nlohmann::json &board_json) const;
+
     void read_texts(Board &board, const nlohmann::json &board_json) const;
 
     void validate_placement_footprint(const Board &board, ComponentId component,
@@ -196,6 +198,7 @@ class PcbBoardReader {
     read_vias(board, board_json);
     read_zones(board, board_json);
     read_keepouts(board, board_json);
+    read_rooms(board, board_json);
     read_texts(board, board_json);
     validate_viewer_cache(board);
     return board;
@@ -706,6 +709,42 @@ void PcbBoardReader::read_keepouts(Board &board, const nlohmann::json &board_jso
     }
 }
 
+void PcbBoardReader::read_rooms(Board &board, const nlohmann::json &board_json) const {
+    const auto *rooms = optional_field(board_json, "rooms");
+    if (rooms == nullptr) {
+        return;
+    }
+    require(rooms->is_array(), "Expected array field: rooms");
+    for (std::size_t index = 0; index < rooms->size(); ++index) {
+        const auto &room_json = (*rooms)[index];
+        require(room_json.is_object(), "PCB room must be an object");
+        const auto expected = BoardRoomId{index};
+        require_sequential_id(room_json, "id", expected, "PCB room IDs must be sequential");
+
+        auto priority = 0;
+        if (optional_field(room_json, "priority") != nullptr) {
+            priority = int_field(room_json, "priority");
+        }
+
+        auto room = BoardRoom{
+            string_field(room_json, "name"),
+            BoardOutline{board_points(field(room_json, "outline"))},
+            read_board_layers(board, room_json, "layers",
+                              "PCB room references missing board layer"),
+            priority,
+        };
+        if (optional_field(room_json, "copper_clearance_mm") != nullptr) {
+            room.set_copper_clearance_mm(number_field(room_json, "copper_clearance_mm"));
+        }
+        if (optional_field(room_json, "track_width_mm") != nullptr) {
+            room.set_track_width_mm(number_field(room_json, "track_width_mm"));
+        }
+
+        const auto id = board.add_room(std::move(room));
+        require(id == expected, "PCB room IDs must be sequential");
+    }
+}
+
 void PcbBoardReader::read_texts(Board &board, const nlohmann::json &board_json) const {
     const auto *texts = optional_field(board_json, "texts");
     if (texts == nullptr) {
@@ -1080,6 +1119,12 @@ void PcbBoardReader::validate_viewer_diagnostic_ref(const Board &board,
     if (const auto id = decode_if_prefixed<BoardKeepoutId>(ref)) {
         if (id->index() >= board.keepout_count()) {
             throw std::logic_error{"PCB viewer diagnostic references missing keepout"};
+        }
+        return;
+    }
+    if (const auto id = decode_if_prefixed<BoardRoomId>(ref)) {
+        if (id->index() >= board.room_count()) {
+            throw std::logic_error{"PCB viewer diagnostic references missing room"};
         }
         return;
     }

@@ -35,6 +35,7 @@ Source: `python/volt/pcb.py`
 | `add_track(self, net: Net \| int, *, layer: int, points: Iterable[Point], width: float) -> int` | Add a routed track segment sequence for a logical net. |
 | `add_via(self, net: Net \| int, *, at: Point, start_layer: int, end_layer: int, drill: float = 0.3, annular: float = 0.7) -> int` | Add a via connecting a net between two board layers. |
 | `add_zone(self, *, outline: Iterable[Point], layers: Iterable[int], net: Net \| int \| None = None, fill: str = 'solid', priority: int = 0) -> int` | Add a copper zone, optionally bound to a logical net. |
+| `add_room(self, name: str, *, outline: Iterable[Point], layers: Iterable[int], clearance: float \| None = None, track_width: float \| None = None, priority: int = 0) -> int` | Add a named board room with optional local routing rule overrides. |
 | `add_keepout(self, *, outline: Iterable[Point], layers: Iterable[int], restrictions: Iterable[str]) -> int` | Add a keepout region with layer and feature restrictions. |
 | `add_text(self, text: str, *, at: Point, layer: int, rotation: float = 0.0, size: float = 1.0, locked: bool = False) -> int` | Add a board text item and return its kernel index. |
 | `resolve_pads(self) -> tuple[PadResolution, ...]` | Resolve placed footprint pads to component pins and logical nets. |
