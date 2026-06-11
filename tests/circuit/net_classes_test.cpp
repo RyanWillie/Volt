@@ -478,6 +478,66 @@ TEST_CASE("Board validation lets same-room clearance replace net-class and matri
                                    });
 }
 
+TEST_CASE("Board validation lets lower same-room clearance suppress net-class clearance") {
+    auto circuit = volt::Circuit{};
+    const auto first_net = circuit.add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+    const auto second_net = circuit.add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+
+    auto net_class = volt::NetClass{volt::NetClassName{"Local"}};
+    net_class.set_copper_clearance_mm(0.50);
+    circuit.assign_net_class(first_net, circuit.add_net_class(std::move(net_class)));
+
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    auto rules = volt::BoardDesignRules{0.10, 0.05, 0.10, 0.20, 0.0};
+    rules.set_clearance_mm(volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Track, 0.10);
+    board.set_design_rules(rules);
+
+    auto room = volt::BoardRoom{
+        "BGA escape",
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.5, 0.5}, volt::BoardSize{8.0, 2.0}),
+        std::vector{front},
+    };
+    room.set_copper_clearance_mm(0.10);
+    [[maybe_unused]] const auto room_id = board.add_room(std::move(room));
+
+    [[maybe_unused]] const auto first_track = board.add_track(volt::BoardTrack{
+        first_net, front, std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}},
+        0.10});
+    [[maybe_unused]] const auto second_track = board.add_track(volt::BoardTrack{
+        second_net, front, std::vector{volt::BoardPoint{1.0, 1.4}, volt::BoardPoint{8.0, 1.4}},
+        0.10});
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    CHECK(find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION") == nullptr);
+
+    auto no_room_board = volt::Board{circuit};
+    const auto no_room_front = no_room_board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    no_room_board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    auto no_room_rules = volt::BoardDesignRules{0.10, 0.05, 0.10, 0.20, 0.0};
+    no_room_rules.set_clearance_mm(volt::BoardClearanceKind::Track, volt::BoardClearanceKind::Track,
+                                   0.10);
+    no_room_board.set_design_rules(no_room_rules);
+
+    [[maybe_unused]] const auto no_room_first_track = no_room_board.add_track(volt::BoardTrack{
+        first_net, no_room_front,
+        std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.10});
+    [[maybe_unused]] const auto no_room_second_track = no_room_board.add_track(volt::BoardTrack{
+        second_net, no_room_front,
+        std::vector{volt::BoardPoint{1.0, 1.4}, volt::BoardPoint{8.0, 1.4}}, 0.10});
+
+    const auto no_room_report =
+        volt::validate_board(no_room_board, volt::builtin_footprint_library());
+
+    CHECK(find_diagnostic(no_room_report, "PCB_COPPER_CLEARANCE_VIOLATION") != nullptr);
+}
+
 TEST_CASE("Board validation ignores room clearance when only one shape is inside") {
     auto circuit = volt::Circuit{};
     const auto first_net = circuit.add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
