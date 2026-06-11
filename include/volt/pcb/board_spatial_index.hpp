@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <optional>
-#include <string>
 #include <vector>
 
 #include <volt/core/ids.hpp>
@@ -13,33 +12,30 @@
 
 namespace volt {
 
-namespace detail {
-
-/** Axis-aligned board-space box used by the copper spatial index. */
-struct BoardSpatialIndexBox {
-    /** Minimum X coordinate in millimeters. */
-    double min_x_mm = 0.0;
-    /** Minimum Y coordinate in millimeters. */
-    double min_y_mm = 0.0;
-    /** Maximum X coordinate in millimeters. */
-    double max_x_mm = 0.0;
-    /** Maximum Y coordinate in millimeters. */
-    double max_y_mm = 0.0;
+/** Geometric primitive category for routing-facing spatial query candidates. */
+enum class BoardSpatialQueryShapeKind {
+    Disc,
+    Segment,
+    Polygon,
 };
 
-/** Deterministic uniform-grid cell used by the copper spatial index. */
-struct BoardSpatialIndexCell {
-    /** Board copper layer bucket. */
-    BoardLayerId layer;
-    /** Integer X cell coordinate. */
-    long long x = 0;
-    /** Integer Y cell coordinate. */
-    long long y = 0;
-    /** Shape indices stored in insertion order within this cell. */
-    std::vector<std::size_t> shape_indices;
+/** Stable public copper shape used by routing-facing spatial queries. */
+struct BoardSpatialQueryShape {
+    /** Candidate geometry category. */
+    BoardSpatialQueryShapeKind kind = BoardSpatialQueryShapeKind::Segment;
+    /** Logical net the candidate would implement. */
+    NetId net;
+    /** Copper layers the candidate would occupy. */
+    std::vector<BoardLayerId> layers;
+    /** Shape points: center, segment endpoints, or polygon vertices. */
+    std::vector<BoardPoint> points;
+    /** Radius used for circular and segment candidates. */
+    double radius_mm = 0.0;
+    /** Clearance matrix kind to use for copper and board-edge checks. */
+    BoardClearanceKind clearance_kind = BoardClearanceKind::Track;
+    /** Keepout restriction kind to apply to this candidate. */
+    BoardKeepoutRestriction keepout_restriction = BoardKeepoutRestriction::Copper;
 };
-
-} // namespace detail
 
 /** Kind of object that makes a transient copper candidate illegal. */
 enum class BoardSpatialBlockerKind {
@@ -95,21 +91,17 @@ struct BoardSpatialQueryResult {
  *
  * Responsibility: accelerates copper-clearance candidate discovery for DRC and routing while
  *   delegating the exact legality decision to the shared board rule predicate.
- * Invariants: stores derived geometry only; shapes reference existing board nets and copper
- *   layers; no serialization or authoring semantics are owned here.
+ * Invariants: stores a snapshot of board geometry and the conservative clearance bound at
+ *   construction; callers must rebuild after board geometry/rule mutations except for
+ *   insertions made through this index; no serialization or authoring semantics are owned here.
  */
 class BoardSpatialIndex {
   public:
+    /** Build an empty index over the board's current rules for incremental routing. */
+    explicit BoardSpatialIndex(const Board &board);
+
     /** Build an index from board copper and placed footprint pads. */
     BoardSpatialIndex(const Board &board, const FootprintLibrary &footprints);
-
-    /** Build an index from already-normalized board copper shapes. */
-    BoardSpatialIndex(const Board &board, std::vector<detail::BoardCopperShape> shapes);
-
-    /** Return normalized shapes in deterministic insertion order. */
-    [[nodiscard]] const std::vector<detail::BoardCopperShape> &shapes() const noexcept {
-        return shapes_;
-    }
 
     /** Return the conservative board-wide copper-clearance bound used for pruning. */
     [[nodiscard]] double conservative_clearance_mm() const noexcept {
@@ -117,74 +109,82 @@ class BoardSpatialIndex {
     }
 
     /** Insert one accepted transient shape so later queries see it. */
-    void insert(detail::BoardCopperShape shape);
+    void insert(BoardSpatialQueryShape shape);
 
     /** Return candidate copper-clearance pairs in ascending shape-index order. */
     [[nodiscard]] std::vector<BoardSpatialCandidatePair> copper_clearance_candidates() const;
 
     /** Return existing candidate obstacle indices for a transient shape. */
     [[nodiscard]] std::vector<std::size_t>
+    candidate_obstacles(const BoardSpatialQueryShape &candidate) const;
+
+    /** Query whether a transient copper shape may exist at its candidate location. */
+    [[nodiscard]] BoardSpatialQueryResult
+    query_legality(const BoardSpatialQueryShape &candidate) const;
+
+  private:
+    friend void
+    detail::validate_copper_clearance(const Board &board,
+                                      const std::vector<detail::BoardCopperShape> &shapes,
+                                      DiagnosticReport &report);
+
+    struct Box {
+        double min_x_mm = 0.0;
+        double min_y_mm = 0.0;
+        double max_x_mm = 0.0;
+        double max_y_mm = 0.0;
+    };
+
+    struct Cell {
+        BoardLayerId layer;
+        long long x = 0;
+        long long y = 0;
+        std::vector<std::size_t> shape_indices;
+    };
+
+    BoardSpatialIndex(const Board &board, std::vector<detail::BoardCopperShape> shapes);
+
+    const Board *board_;
+    std::vector<detail::BoardCopperShape> shapes_;
+    std::vector<Box> boxes_;
+    std::vector<Cell> cells_;
+    double conservative_clearance_mm_;
+    double cell_size_mm_;
+
+    [[nodiscard]] static bool cell_less(const Cell &lhs, const Cell &rhs);
+
+    [[nodiscard]] static bool same_cell_key(const Cell &lhs, const Cell &rhs);
+
+    [[nodiscard]] static Box shape_box(const detail::BoardCopperShape &shape);
+
+    [[nodiscard]] static Box outline_box(const BoardOutline &outline);
+
+    [[nodiscard]] static Box merge_box(Box lhs, Box rhs);
+
+    [[nodiscard]] static Box expanded_box(Box box, double expansion_mm);
+
+    [[nodiscard]] static bool boxes_intersect(Box lhs, Box rhs);
+
+    [[nodiscard]] static long long cell_key(double value, double cell_size_mm);
+
+    [[nodiscard]] static double extent_cell_size(const Board &board, const std::vector<Box> &boxes);
+
+    [[nodiscard]] static detail::BoardCopperShape to_copper_shape(BoardSpatialQueryShape candidate);
+
+    void ensure_conservative_bound_current() const;
+
+    void validate_shape(const detail::BoardCopperShape &shape) const;
+
+    void insert(detail::BoardCopperShape shape);
+
+    [[nodiscard]] std::vector<std::size_t>
     candidate_obstacles(const detail::BoardCopperShape &candidate) const;
 
-    /** Query whether a transient copper shape may exist with inferred object kind. */
-    [[nodiscard]] BoardSpatialQueryResult
-    query_legality(const detail::BoardCopperShape &candidate) const;
-
-    /** Query whether a transient copper shape may exist with explicit routing object kind. */
     [[nodiscard]] BoardSpatialQueryResult
     query_legality(const detail::BoardCopperShape &candidate, BoardClearanceKind candidate_kind,
                    BoardKeepoutRestriction keepout_restriction) const;
 
-  private:
-    const Board *board_;
-    std::vector<detail::BoardCopperShape> shapes_;
-    std::vector<detail::BoardSpatialIndexBox> boxes_;
-    std::vector<detail::BoardSpatialIndexCell> cells_;
-    double conservative_clearance_mm_;
-    double cell_size_mm_;
-
-    void validate_shape(const detail::BoardCopperShape &shape) const;
-
     void index_shape(std::size_t shape_index);
 };
-
-namespace detail {
-
-/** Exact shared copper-clearance predicate result. */
-struct BoardCopperClearanceCheck {
-    /** Whether the pair participates in copper-clearance checking. */
-    bool participates = false;
-    /** Whether the pair violates the required clearance. */
-    bool violates = false;
-    /** First common copper layer used for diagnostics, when participating. */
-    std::optional<BoardLayerId> layer;
-    /** Measured copper-to-copper clearance in millimeters. */
-    double actual_clearance_mm = 0.0;
-    /** Required copper clearance in millimeters after rooms, classes, and matrix rules. */
-    double required_clearance_mm = 0.0;
-    /** Room that supplied an override, if any. */
-    std::optional<BoardRoomId> room;
-};
-
-/** Return the clearance kind represented by a normalized copper shape. */
-[[nodiscard]] BoardClearanceKind shape_clearance_kind(const BoardCopperShape &shape);
-
-/** Return the diagnostic message suffix for an unordered copper-clearance kind pair. */
-[[nodiscard]] std::string clearance_pair_message(BoardClearanceKind lhs, BoardClearanceKind rhs);
-
-/** Return the board-wide conservative pruning clearance for copper-to-copper queries. */
-[[nodiscard]] double maximum_required_copper_clearance(const Board &board);
-
-/** Check copper clearance using object kinds inferred from the shapes. */
-[[nodiscard]] BoardCopperClearanceCheck check_copper_clearance(const Board &board,
-                                                               const BoardCopperShape &lhs,
-                                                               const BoardCopperShape &rhs);
-
-/** Check copper clearance using explicit object kinds for transient routing candidates. */
-[[nodiscard]] BoardCopperClearanceCheck
-check_copper_clearance(const Board &board, const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
-                       const BoardCopperShape &rhs, BoardClearanceKind rhs_kind);
-
-} // namespace detail
 
 } // namespace volt

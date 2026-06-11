@@ -1,0 +1,16 @@
+include <cstddef>
+include <optional>
+include <vector>
+include <volt/core/ids.hpp>
+include <volt/pcb/board.hpp>
+include <volt/pcb/board_copper.hpp>
+include <volt/pcb/board_features.hpp>
+include <volt/pcb/footprints.hpp>
+
+explicit BoardSpatialIndex(const Board &board)
+BoardSpatialIndex(const Board &board, const FootprintLibrary &footprints)
+[[nodiscard]] double conservative_clearance_mm() const noexcept
+void insert(BoardSpatialQueryShape shape)
+[[nodiscard]] std::vector<BoardSpatialCandidatePair> copper_clearance_candidates() const
+[[nodiscard]] std::vector<std::size_t> candidate_obstacles(const BoardSpatialQueryShape &candidate) const
+[[nodiscard]] BoardSpatialQueryResult query_legality(const BoardSpatialQueryShape &candidate) const

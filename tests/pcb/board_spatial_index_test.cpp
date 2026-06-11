@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -50,31 +51,31 @@ struct ClearanceDiagnosticSignature {
     return board;
 }
 
-[[nodiscard]] volt::detail::BoardCopperShape
+[[nodiscard]] volt::BoardSpatialQueryShape
 track_candidate(volt::NetId net, volt::BoardLayerId layer, double y_mm, double radius_mm = 0.05) {
-    return volt::detail::BoardCopperShape{
-        volt::detail::BoardCopperShapeKind::Segment,
+    return volt::BoardSpatialQueryShape{
+        volt::BoardSpatialQueryShapeKind::Segment,
         net,
         std::vector{layer},
-        {},
         std::vector{volt::BoardPoint{1.0, y_mm}, volt::BoardPoint{8.0, y_mm}},
         radius_mm,
-        std::nullopt,
+        volt::BoardClearanceKind::Track,
+        volt::BoardKeepoutRestriction::Copper,
     };
 }
 
-[[nodiscard]] volt::detail::BoardCopperShape via_candidate(volt::NetId net,
-                                                           std::vector<volt::BoardLayerId> layers,
-                                                           volt::BoardPoint position,
-                                                           double radius_mm = 0.20) {
-    return volt::detail::BoardCopperShape{
-        volt::detail::BoardCopperShapeKind::Disc,
+[[nodiscard]] volt::BoardSpatialQueryShape via_candidate(volt::NetId net,
+                                                         std::vector<volt::BoardLayerId> layers,
+                                                         volt::BoardPoint position,
+                                                         double radius_mm = 0.20) {
+    return volt::BoardSpatialQueryShape{
+        volt::BoardSpatialQueryShapeKind::Disc,
         net,
         std::move(layers),
-        {},
         std::vector{position},
         radius_mm,
-        std::nullopt,
+        volt::BoardClearanceKind::Via,
+        volt::BoardKeepoutRestriction::Via,
     };
 }
 
@@ -155,9 +156,7 @@ TEST_CASE("BoardSpatialIndex reports net-class pair clearance using the larger c
         std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.10});
 
     const auto index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
-    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 1.50),
-                                             volt::BoardClearanceKind::Track,
-                                             volt::BoardKeepoutRestriction::Copper);
+    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 1.50));
 
     REQUIRE_FALSE(result.legal);
     REQUIRE(result.blockers.size() == 1);
@@ -191,9 +190,7 @@ TEST_CASE("BoardSpatialIndex lets a room override replace larger class and matri
         std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.10});
 
     const auto index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
-    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 1.30),
-                                             volt::BoardClearanceKind::Track,
-                                             volt::BoardKeepoutRestriction::Copper);
+    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 1.30));
 
     CHECK(result.legal);
     CHECK(result.blockers.empty());
@@ -211,9 +208,7 @@ TEST_CASE("BoardSpatialIndex applies clearance-matrix kind pairs to transient ca
         volt::BoardVia{fixture.first_net, volt::BoardPoint{4.0, 1.0}, front, back, 0.10, 0.40});
 
     const auto index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
-    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 1.50),
-                                             volt::BoardClearanceKind::Track,
-                                             volt::BoardKeepoutRestriction::Copper);
+    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 1.50));
 
     REQUIRE_FALSE(result.legal);
     REQUIRE(result.blockers.size() == 1);
@@ -232,9 +227,7 @@ TEST_CASE("BoardSpatialIndex ignores shapes on disjoint layers") {
         std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.10});
 
     const auto index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
-    const auto result = index.query_legality(track_candidate(fixture.second_net, back, 1.0),
-                                             volt::BoardClearanceKind::Track,
-                                             volt::BoardKeepoutRestriction::Copper);
+    const auto result = index.query_legality(track_candidate(fixture.second_net, back, 1.0));
 
     CHECK(result.legal);
 }
@@ -249,9 +242,7 @@ TEST_CASE("BoardSpatialIndex detects multi-layer via collisions on any shared la
         volt::BoardVia{fixture.first_net, volt::BoardPoint{4.0, 1.0}, front, back, 0.10, 0.40});
 
     const auto index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
-    const auto result = index.query_legality(track_candidate(fixture.second_net, back, 1.20),
-                                             volt::BoardClearanceKind::Track,
-                                             volt::BoardKeepoutRestriction::Copper);
+    const auto result = index.query_legality(track_candidate(fixture.second_net, back, 1.20));
 
     REQUIRE_FALSE(result.legal);
     REQUIRE(result.blockers.size() == 1);
@@ -268,9 +259,7 @@ TEST_CASE("BoardSpatialIndex uses the conservative bound when configured clearan
         std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.10});
 
     const auto index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
-    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 2.95),
-                                             volt::BoardClearanceKind::Track,
-                                             volt::BoardKeepoutRestriction::Copper);
+    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 2.95));
 
     REQUIRE_FALSE(result.legal);
     REQUIRE(result.blockers.size() == 1);
@@ -293,9 +282,7 @@ TEST_CASE("BoardSpatialIndex includes derived net-class clearances in the conser
         std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.10});
 
     const auto index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
-    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 2.39),
-                                             volt::BoardClearanceKind::Track,
-                                             volt::BoardKeepoutRestriction::Copper);
+    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 2.39));
 
     CHECK(index.conservative_clearance_mm() == Catch::Approx(1.30));
     REQUIRE_FALSE(result.legal);
@@ -304,23 +291,33 @@ TEST_CASE("BoardSpatialIndex includes derived net-class clearances in the conser
     CHECK(result.blockers[0].actual_clearance_mm == Catch::Approx(1.29));
 }
 
+TEST_CASE("BoardSpatialIndex rejects queries after the board clearance bound grows") {
+    auto fixture = make_board_fixture();
+    auto board = make_two_layer_board(fixture);
+    const auto front = volt::BoardLayerId{0};
+    board.set_design_rules(volt::BoardDesignRules{0.10, 0.05, 0.10, 0.20, 0.0});
+    [[maybe_unused]] const auto obstacle = board.add_track(volt::BoardTrack{
+        fixture.first_net, front,
+        std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.10});
+
+    const auto index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
+    board.set_design_rules(volt::BoardDesignRules{0.50, 0.05, 0.10, 0.20, 0.0});
+
+    CHECK_THROWS_AS(index.query_legality(track_candidate(fixture.second_net, front, 1.40)),
+                    std::logic_error);
+}
+
 TEST_CASE("BoardSpatialIndex incremental insert is visible to subsequent queries") {
     auto fixture = make_board_fixture();
     auto board = make_two_layer_board(fixture);
     const auto front = volt::BoardLayerId{0};
     board.set_design_rules(volt::BoardDesignRules{0.30, 0.05, 0.10, 0.20, 0.0});
 
-    auto index = volt::BoardSpatialIndex{board, std::vector<volt::detail::BoardCopperShape>{}};
-    CHECK(index
-              .query_legality(track_candidate(fixture.second_net, front, 1.20),
-                              volt::BoardClearanceKind::Track,
-                              volt::BoardKeepoutRestriction::Copper)
-              .legal);
+    auto index = volt::BoardSpatialIndex{board};
+    CHECK(index.query_legality(track_candidate(fixture.second_net, front, 1.20)).legal);
 
     index.insert(track_candidate(fixture.first_net, front, 1.0));
-    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 1.20),
-                                             volt::BoardClearanceKind::Track,
-                                             volt::BoardKeepoutRestriction::Copper);
+    const auto result = index.query_legality(track_candidate(fixture.second_net, front, 1.20));
 
     REQUIRE_FALSE(result.legal);
     REQUIRE(result.blockers.size() == 1);
@@ -342,12 +339,10 @@ TEST_CASE("BoardSpatialIndex query output is deterministic across equivalent bui
     const auto first_index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
     const auto second_index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
 
-    const auto first_result = first_index.query_legality(
-        track_candidate(fixture.second_net, front, 1.20), volt::BoardClearanceKind::Track,
-        volt::BoardKeepoutRestriction::Copper);
-    const auto second_result = second_index.query_legality(
-        track_candidate(fixture.second_net, front, 1.20), volt::BoardClearanceKind::Track,
-        volt::BoardKeepoutRestriction::Copper);
+    const auto first_result =
+        first_index.query_legality(track_candidate(fixture.second_net, front, 1.20));
+    const auto second_result =
+        second_index.query_legality(track_candidate(fixture.second_net, front, 1.20));
 
     CHECK(first_result == second_result);
 }
@@ -368,15 +363,12 @@ TEST_CASE("BoardSpatialIndex routing query rejects outline and keepout violation
     });
 
     const auto index = volt::BoardSpatialIndex{board, volt::builtin_footprint_library()};
-    const auto outline_result = index.query_legality(
-        track_candidate(fixture.first_net, front, 0.20), volt::BoardClearanceKind::Track,
-        volt::BoardKeepoutRestriction::Copper);
-    const auto keepout_result = index.query_legality(track_candidate(fixture.first_net, front, 4.0),
-                                                     volt::BoardClearanceKind::Track,
-                                                     volt::BoardKeepoutRestriction::Copper);
+    const auto outline_result =
+        index.query_legality(track_candidate(fixture.first_net, front, 0.20));
+    const auto keepout_result =
+        index.query_legality(track_candidate(fixture.first_net, front, 4.0));
     const auto via_keepout_result =
-        index.query_legality(via_candidate(fixture.first_net, std::vector{front}, {4.0, 4.0}),
-                             volt::BoardClearanceKind::Via, volt::BoardKeepoutRestriction::Via);
+        index.query_legality(via_candidate(fixture.first_net, std::vector{front}, {4.0, 4.0}));
 
     REQUIRE_FALSE(outline_result.legal);
     REQUIRE(outline_result.blockers.size() == 1);

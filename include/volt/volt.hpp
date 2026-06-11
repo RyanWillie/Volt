@@ -38,6 +38,7 @@
 #include <volt/pcb/board_footprint_model.hpp>
 #include <volt/pcb/board_geometry_projection.hpp>
 #include <volt/pcb/board_placement_model.hpp>
+#include <volt/pcb/board_spatial_index.hpp>
 #include <volt/pcb/board_structure_model.hpp>
 #include <volt/pcb/footprints.hpp>
 #include <volt/schematic/default_symbols.hpp>

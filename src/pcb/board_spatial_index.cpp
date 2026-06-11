@@ -13,102 +13,16 @@ namespace volt {
 
 namespace {
 
-[[nodiscard]] bool cell_less(const detail::BoardSpatialIndexCell &lhs,
-                             const detail::BoardSpatialIndexCell &rhs) {
-    if (lhs.layer.index() != rhs.layer.index()) {
-        return lhs.layer.index() < rhs.layer.index();
+[[nodiscard]] detail::BoardCopperShapeKind copper_shape_kind(BoardSpatialQueryShapeKind kind) {
+    switch (kind) {
+    case BoardSpatialQueryShapeKind::Disc:
+        return detail::BoardCopperShapeKind::Disc;
+    case BoardSpatialQueryShapeKind::Segment:
+        return detail::BoardCopperShapeKind::Segment;
+    case BoardSpatialQueryShapeKind::Polygon:
+        return detail::BoardCopperShapeKind::Polygon;
     }
-    if (lhs.x != rhs.x) {
-        return lhs.x < rhs.x;
-    }
-    return lhs.y < rhs.y;
-}
-
-[[nodiscard]] bool same_cell_key(const detail::BoardSpatialIndexCell &lhs,
-                                 const detail::BoardSpatialIndexCell &rhs) {
-    return lhs.layer == rhs.layer && lhs.x == rhs.x && lhs.y == rhs.y;
-}
-
-[[nodiscard]] detail::BoardSpatialIndexBox shape_box(const detail::BoardCopperShape &shape) {
-    auto box = detail::BoardSpatialIndexBox{
-        std::numeric_limits<double>::infinity(),
-        std::numeric_limits<double>::infinity(),
-        -std::numeric_limits<double>::infinity(),
-        -std::numeric_limits<double>::infinity(),
-    };
-    for (const auto point : shape.points) {
-        box.min_x_mm = std::min(box.min_x_mm, point.x_mm() - shape.radius_mm);
-        box.min_y_mm = std::min(box.min_y_mm, point.y_mm() - shape.radius_mm);
-        box.max_x_mm = std::max(box.max_x_mm, point.x_mm() + shape.radius_mm);
-        box.max_y_mm = std::max(box.max_y_mm, point.y_mm() + shape.radius_mm);
-    }
-    return box;
-}
-
-[[nodiscard]] detail::BoardSpatialIndexBox outline_box(const BoardOutline &outline) {
-    auto box = detail::BoardSpatialIndexBox{
-        std::numeric_limits<double>::infinity(),
-        std::numeric_limits<double>::infinity(),
-        -std::numeric_limits<double>::infinity(),
-        -std::numeric_limits<double>::infinity(),
-    };
-    for (const auto point : outline.vertices()) {
-        box.min_x_mm = std::min(box.min_x_mm, point.x_mm());
-        box.min_y_mm = std::min(box.min_y_mm, point.y_mm());
-        box.max_x_mm = std::max(box.max_x_mm, point.x_mm());
-        box.max_y_mm = std::max(box.max_y_mm, point.y_mm());
-    }
-    return box;
-}
-
-[[nodiscard]] detail::BoardSpatialIndexBox merge_box(detail::BoardSpatialIndexBox lhs,
-                                                     detail::BoardSpatialIndexBox rhs) {
-    lhs.min_x_mm = std::min(lhs.min_x_mm, rhs.min_x_mm);
-    lhs.min_y_mm = std::min(lhs.min_y_mm, rhs.min_y_mm);
-    lhs.max_x_mm = std::max(lhs.max_x_mm, rhs.max_x_mm);
-    lhs.max_y_mm = std::max(lhs.max_y_mm, rhs.max_y_mm);
-    return lhs;
-}
-
-[[nodiscard]] detail::BoardSpatialIndexBox expanded_box(detail::BoardSpatialIndexBox box,
-                                                        double expansion_mm) {
-    box.min_x_mm -= expansion_mm;
-    box.min_y_mm -= expansion_mm;
-    box.max_x_mm += expansion_mm;
-    box.max_y_mm += expansion_mm;
-    return box;
-}
-
-[[nodiscard]] bool boxes_intersect(detail::BoardSpatialIndexBox lhs,
-                                   detail::BoardSpatialIndexBox rhs) {
-    return lhs.min_x_mm <= rhs.max_x_mm && lhs.max_x_mm >= rhs.min_x_mm &&
-           lhs.min_y_mm <= rhs.max_y_mm && lhs.max_y_mm >= rhs.min_y_mm;
-}
-
-[[nodiscard]] long long cell_key(double value, double cell_size_mm) {
-    return static_cast<long long>(std::floor(value / cell_size_mm));
-}
-
-[[nodiscard]] double extent_cell_size(const Board &board,
-                                      const std::vector<detail::BoardSpatialIndexBox> &boxes) {
-    auto extent = std::optional<detail::BoardSpatialIndexBox>{};
-    if (board.outline().has_value()) {
-        extent = outline_box(board.outline().value());
-    }
-    for (const auto box : boxes) {
-        extent = extent.has_value() ? merge_box(extent.value(), box) : box;
-    }
-    if (!extent.has_value()) {
-        return 1.0;
-    }
-
-    const auto width = extent->max_x_mm - extent->min_x_mm;
-    const auto height = extent->max_y_mm - extent->min_y_mm;
-    const auto span = std::max(width, height);
-    if (!std::isfinite(span) || span <= detail::board_drc_epsilon) {
-        return 1.0;
-    }
-    return std::max(span / 32.0, 0.25);
+    return detail::BoardCopperShapeKind::Segment;
 }
 
 [[nodiscard]] std::optional<double>
@@ -139,6 +53,116 @@ shape_outline_actual_clearance(const detail::BoardCopperShape &shape, const Boar
 
 } // namespace
 
+[[nodiscard]] bool BoardSpatialIndex::cell_less(const Cell &lhs, const Cell &rhs) {
+    if (lhs.layer.index() != rhs.layer.index()) {
+        return lhs.layer.index() < rhs.layer.index();
+    }
+    if (lhs.x != rhs.x) {
+        return lhs.x < rhs.x;
+    }
+    return lhs.y < rhs.y;
+}
+
+[[nodiscard]] bool BoardSpatialIndex::same_cell_key(const Cell &lhs, const Cell &rhs) {
+    return lhs.layer == rhs.layer && lhs.x == rhs.x && lhs.y == rhs.y;
+}
+
+[[nodiscard]] BoardSpatialIndex::Box
+BoardSpatialIndex::shape_box(const detail::BoardCopperShape &shape) {
+    auto box = Box{
+        std::numeric_limits<double>::infinity(),
+        std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity(),
+    };
+    for (const auto point : shape.points) {
+        box.min_x_mm = std::min(box.min_x_mm, point.x_mm() - shape.radius_mm);
+        box.min_y_mm = std::min(box.min_y_mm, point.y_mm() - shape.radius_mm);
+        box.max_x_mm = std::max(box.max_x_mm, point.x_mm() + shape.radius_mm);
+        box.max_y_mm = std::max(box.max_y_mm, point.y_mm() + shape.radius_mm);
+    }
+    return box;
+}
+
+[[nodiscard]] BoardSpatialIndex::Box BoardSpatialIndex::outline_box(const BoardOutline &outline) {
+    auto box = Box{
+        std::numeric_limits<double>::infinity(),
+        std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity(),
+    };
+    for (const auto point : outline.vertices()) {
+        box.min_x_mm = std::min(box.min_x_mm, point.x_mm());
+        box.min_y_mm = std::min(box.min_y_mm, point.y_mm());
+        box.max_x_mm = std::max(box.max_x_mm, point.x_mm());
+        box.max_y_mm = std::max(box.max_y_mm, point.y_mm());
+    }
+    return box;
+}
+
+[[nodiscard]] BoardSpatialIndex::Box BoardSpatialIndex::merge_box(Box lhs, Box rhs) {
+    lhs.min_x_mm = std::min(lhs.min_x_mm, rhs.min_x_mm);
+    lhs.min_y_mm = std::min(lhs.min_y_mm, rhs.min_y_mm);
+    lhs.max_x_mm = std::max(lhs.max_x_mm, rhs.max_x_mm);
+    lhs.max_y_mm = std::max(lhs.max_y_mm, rhs.max_y_mm);
+    return lhs;
+}
+
+[[nodiscard]] BoardSpatialIndex::Box BoardSpatialIndex::expanded_box(Box box, double expansion_mm) {
+    box.min_x_mm -= expansion_mm;
+    box.min_y_mm -= expansion_mm;
+    box.max_x_mm += expansion_mm;
+    box.max_y_mm += expansion_mm;
+    return box;
+}
+
+[[nodiscard]] bool BoardSpatialIndex::boxes_intersect(Box lhs, Box rhs) {
+    return lhs.min_x_mm <= rhs.max_x_mm && lhs.max_x_mm >= rhs.min_x_mm &&
+           lhs.min_y_mm <= rhs.max_y_mm && lhs.max_y_mm >= rhs.min_y_mm;
+}
+
+[[nodiscard]] long long BoardSpatialIndex::cell_key(double value, double cell_size_mm) {
+    return static_cast<long long>(std::floor(value / cell_size_mm));
+}
+
+[[nodiscard]] double BoardSpatialIndex::extent_cell_size(const Board &board,
+                                                         const std::vector<Box> &boxes) {
+    auto extent = std::optional<Box>{};
+    if (board.outline().has_value()) {
+        extent = outline_box(board.outline().value());
+    }
+    for (const auto box : boxes) {
+        extent = extent.has_value() ? merge_box(extent.value(), box) : box;
+    }
+    if (!extent.has_value()) {
+        return 1.0;
+    }
+
+    const auto width = extent->max_x_mm - extent->min_x_mm;
+    const auto height = extent->max_y_mm - extent->min_y_mm;
+    const auto span = std::max(width, height);
+    if (!std::isfinite(span) || span <= detail::board_drc_epsilon) {
+        return 1.0;
+    }
+    return std::max(span / 32.0, 0.25);
+}
+
+[[nodiscard]] detail::BoardCopperShape
+BoardSpatialIndex::to_copper_shape(BoardSpatialQueryShape candidate) {
+    return detail::BoardCopperShape{
+        copper_shape_kind(candidate.kind),
+        candidate.net,
+        std::move(candidate.layers),
+        {},
+        std::move(candidate.points),
+        candidate.radius_mm,
+        std::nullopt,
+    };
+}
+
+BoardSpatialIndex::BoardSpatialIndex(const Board &board)
+    : BoardSpatialIndex{board, std::vector<detail::BoardCopperShape>{}} {}
+
 BoardSpatialIndex::BoardSpatialIndex(const Board &board, const FootprintLibrary &footprints)
     : BoardSpatialIndex{board, [&board, &footprints]() {
                             const auto resolution_footprints =
@@ -161,6 +185,14 @@ BoardSpatialIndex::BoardSpatialIndex(const Board &board,
     cell_size_mm_ = extent_cell_size(board, boxes_);
     for (std::size_t index = 0; index < shapes_.size(); ++index) {
         index_shape(index);
+    }
+}
+
+void BoardSpatialIndex::ensure_conservative_bound_current() const {
+    const auto current = detail::maximum_required_copper_clearance(*board_);
+    if (current > conservative_clearance_mm_ + detail::board_drc_epsilon) {
+        throw std::logic_error{
+            "Board spatial index clearance bound is stale; rebuild after board rule changes"};
     }
 }
 
@@ -207,7 +239,7 @@ void BoardSpatialIndex::index_shape(std::size_t shape_index) {
     for (const auto layer : shape.layers) {
         for (auto x = min_x; x <= max_x; ++x) {
             for (auto y = min_y; y <= max_y; ++y) {
-                auto key = detail::BoardSpatialIndexCell{layer, x, y, {}};
+                auto key = Cell{layer, x, y, {}};
                 auto position = std::lower_bound(cells_.begin(), cells_.end(), key, cell_less);
                 if (position == cells_.end() || !same_cell_key(*position, key)) {
                     position = cells_.insert(position, std::move(key));
@@ -218,7 +250,12 @@ void BoardSpatialIndex::index_shape(std::size_t shape_index) {
     }
 }
 
+void BoardSpatialIndex::insert(BoardSpatialQueryShape shape) {
+    insert(to_copper_shape(std::move(shape)));
+}
+
 void BoardSpatialIndex::insert(detail::BoardCopperShape shape) {
+    ensure_conservative_bound_current();
     validate_shape(shape);
     const auto shape_index = shapes_.size();
     boxes_.push_back(shape_box(shape));
@@ -227,7 +264,13 @@ void BoardSpatialIndex::insert(detail::BoardCopperShape shape) {
 }
 
 [[nodiscard]] std::vector<std::size_t>
+BoardSpatialIndex::candidate_obstacles(const BoardSpatialQueryShape &candidate) const {
+    return candidate_obstacles(to_copper_shape(candidate));
+}
+
+[[nodiscard]] std::vector<std::size_t>
 BoardSpatialIndex::candidate_obstacles(const detail::BoardCopperShape &candidate) const {
+    ensure_conservative_bound_current();
     validate_shape(candidate);
     const auto query_box = expanded_box(shape_box(candidate), conservative_clearance_mm_);
     const auto min_x = cell_key(query_box.min_x_mm, cell_size_mm_);
@@ -239,7 +282,7 @@ BoardSpatialIndex::candidate_obstacles(const detail::BoardCopperShape &candidate
     for (const auto layer : candidate.layers) {
         for (auto x = min_x; x <= max_x; ++x) {
             for (auto y = min_y; y <= max_y; ++y) {
-                const auto key = detail::BoardSpatialIndexCell{layer, x, y, {}};
+                const auto key = Cell{layer, x, y, {}};
                 const auto position =
                     std::lower_bound(cells_.begin(), cells_.end(), key, cell_less);
                 if (position == cells_.end() || !same_cell_key(*position, key)) {
@@ -291,9 +334,10 @@ BoardSpatialIndex::copper_clearance_candidates() const {
 }
 
 [[nodiscard]] BoardSpatialQueryResult
-BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate) const {
-    return query_legality(candidate, detail::shape_clearance_kind(candidate),
-                          BoardKeepoutRestriction::Copper);
+BoardSpatialIndex::query_legality(const BoardSpatialQueryShape &candidate) const {
+    const auto clearance_kind = candidate.clearance_kind;
+    const auto keepout_restriction = candidate.keepout_restriction;
+    return query_legality(to_copper_shape(candidate), clearance_kind, keepout_restriction);
 }
 
 [[nodiscard]] BoardSpatialQueryResult
