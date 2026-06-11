@@ -11,6 +11,7 @@
 
 #include <volt/circuit/queries.hpp>
 #include <volt/core/electrical_attributes.hpp>
+#include <volt/io/logical_circuit_reader.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 
 #include "led_circuit.hpp"
@@ -217,6 +218,8 @@ TEST_CASE("Logical circuit writer emits net classes and net assignments") {
     auto net_class = volt::NetClass{volt::NetClassName{"HighVoltage"}};
     net_class.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 60.0});
     net_class.set_copper_clearance_mm(0.5);
+    net_class.derive_track_width(volt::ipc2221_trace_width_from_current_mm(
+        1.0, 10.0, 1.0, volt::NetClassTraceEnvironment::External));
     const auto net_class_id = circuit.add_net_class(std::move(net_class));
     circuit.assign_net_class(net, net_class_id);
 
@@ -231,7 +234,22 @@ TEST_CASE("Logical circuit writer emits net classes and net assignments") {
     CHECK(classes[0]["maximum_net_voltage"]["dimension"] == "voltage");
     CHECK(classes[0]["maximum_net_voltage"]["value"] == 60.0);
     CHECK(classes[0]["copper_clearance_mm"] == 0.5);
+    CHECK_FALSE(classes[0].contains("track_width_mm"));
+    CHECK(classes[0]["derived_track_width"]["value_mm"] == 0.3003762222199717);
+    CHECK(classes[0]["derived_track_width"]["calculator"]["id"] == "ipc-2221.trace-width.current");
+    CHECK(classes[0]["derived_track_width"]["calculator"]["standard"] == "IPC-2221");
+    CHECK(classes[0]["derived_track_width"]["inputs"][0]["name"] == "current");
+    CHECK(classes[0]["derived_track_width"]["inputs"][0]["value"] == 1.0);
+    CHECK(classes[0]["derived_track_width"]["inputs"][0]["unit"] == "A");
     CHECK(assignments == nlohmann::json::array({{{"net", "net:0"}, {"net_class", "net_class:0"}}}));
+
+    const auto reloaded = volt::io::read_logical_circuit_text(output.dump());
+    const auto &reloaded_class = reloaded.net_class(volt::NetClassId{0});
+    CHECK_FALSE(reloaded_class.has_explicit_track_width_mm());
+    CHECK(reloaded_class.track_width_mm() == 0.3003762222199717);
+    REQUIRE(reloaded_class.derived_track_width().has_value());
+    CHECK(reloaded_class.derived_track_width()->derivation.calculator_id ==
+          "ipc-2221.trace-width.current");
 }
 
 TEST_CASE("Logical circuit writer emits pin electrical semantics") {

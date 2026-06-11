@@ -2,6 +2,8 @@
 
 #include <volt/circuit/queries.hpp>
 
+#include "logical_net_class_format.hpp"
+
 namespace volt::io::detail {
 
 [[nodiscard]] std::string json_string(std::string_view value) {
@@ -423,13 +425,21 @@ void write_net_classes(std::ostream &out, const Circuit &circuit) {
             write_quantity_payload(out, net_class.maximum_net_voltage().value());
             out << " }";
         }
-        if (net_class.copper_clearance_mm().has_value()) {
+        if (net_class.has_explicit_copper_clearance_mm()) {
             out << ", \"copper_clearance_mm\": ";
             write_json_number(out, net_class.copper_clearance_mm().value());
         }
-        if (net_class.track_width_mm().has_value()) {
+        if (net_class.derived_copper_clearance().has_value()) {
+            out << ", \"derived_copper_clearance\": ";
+            write_derived_net_class_rule_value(out, net_class.derived_copper_clearance().value());
+        }
+        if (net_class.has_explicit_track_width_mm()) {
             out << ", \"track_width_mm\": ";
             write_json_number(out, net_class.track_width_mm().value());
+        }
+        if (net_class.derived_track_width().has_value()) {
+            out << ", \"derived_track_width\": ";
+            write_derived_net_class_rule_value(out, net_class.derived_track_width().value());
         }
         if (net_class.via_drill_mm().has_value()) {
             out << ", \"via_drill_mm\": ";

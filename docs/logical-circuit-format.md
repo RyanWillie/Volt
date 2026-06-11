@@ -292,6 +292,67 @@ Net `electrical_attributes` use the same typed payload encoding described above 
 for design-bearing net facts such as nominal voltage. Empty net electrical attribute maps
 are omitted from canonical output and load as empty maps.
 
+## Net Classes
+
+Net classes store reusable kernel-owned rule intent for logical nets. Physical rule
+values may be hand-set or derived by a kernel calculator. When a value is derived, the
+writer emits a provenance object so diagnostics, authoring tools, and reviewers can
+inspect which calculator and inputs produced it. Existing millimeter fields such as
+`track_width_mm` and `copper_clearance_mm` represent hand-set explicit values.
+
+```json
+{
+  "net_classes": {
+    "classes": [
+      {
+        "id": "net_class:0",
+        "name": "Power",
+        "derived_track_width": {
+          "value_mm": 0.3003762222199717,
+          "calculator": {
+            "id": "ipc-2221.trace-width.current",
+            "name": "Trace width from current and temperature rise",
+            "standard": "IPC-2221",
+            "reference": "I = k * dT^0.44 * A^0.725; width = A / copper_thickness"
+          },
+          "inputs": [
+            { "name": "current", "value": 1, "unit": "A" },
+            { "name": "temperature_rise", "value": 10, "unit": "C" },
+            { "name": "copper_weight", "value": 1, "unit": "oz/ft^2" },
+            { "name": "environment", "value": "external", "unit": "enum" }
+          ]
+        }
+      }
+    ],
+    "net_assignments": [
+      { "net": "net:0", "net_class": "net_class:0" }
+    ]
+  }
+}
+```
+
+Hand-set values always win over derived values during rule resolution. If both
+`track_width_mm` and `derived_track_width` are present, `track_width_mm` is an explicit
+override and the derived object is retained as visible provenance. The same precedence
+applies to `copper_clearance_mm` and `derived_copper_clearance`.
+
+Derived rule provenance objects require:
+
+- `value_mm`: finite result in millimeters
+- `calculator.id`: stable calculator identifier
+- `calculator.name`: human-readable calculator name
+- `calculator.standard`: standard or reference family used by the calculator
+- `calculator.reference`: formula or fixture description
+- `inputs`: ordered name/value/unit records; `value` may be a JSON number or string
+
+The closed-form current sizing calculator uses the IPC-2221 equation
+`I = k * dT^0.44 * A^0.725`, with `k = 0.048` for external conductors and `k = 0.024` for
+internal conductors. The stored trace width divides the resulting area by the finished
+copper thickness derived from copper weight. Dielectric spacing derives 1H stripline or
+2H microstrip clearance from dielectric height. Voltage clearance uses a deterministic
+IPC-2221 external-conductor fixture; replace it with an authoritative table update if
+Volt adds licensed standards data.
+
 ## Hierarchy Modules
 
 Hierarchy is optional in v1 files. When present, `module_definitions` define reusable

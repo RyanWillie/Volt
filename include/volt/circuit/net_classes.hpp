@@ -24,6 +24,64 @@ enum class NetClassLayerScope {
     BottomOnly,
 };
 
+/** Copper environment used by IPC current-capacity trace-width calculators. */
+enum class NetClassTraceEnvironment {
+    External,
+    Internal,
+};
+
+/** Dielectric-height spacing rule used by intent-derived clearance calculators. */
+enum class NetClassDielectricSpacingRule {
+    Stripline1H,
+    Microstrip2H,
+};
+
+/** One named calculator input captured for derived design-rule provenance. */
+struct NetClassDerivationInput {
+    /** Stable input name used in serialized provenance. */
+    std::string name;
+    /** Numeric input value when the input is not textual. */
+    double value = 0.0;
+    /** Textual input value; empty means the numeric value is active. */
+    std::string text_value;
+    /** Unit label for the input value, or enum for symbolic inputs. */
+    std::string unit;
+};
+
+/** Calculator identity and inputs for a derived net-class value. */
+struct NetClassRuleDerivation {
+    /** Stable calculator identifier used by diagnostics and serialization. */
+    std::string calculator_id;
+    /** Human-readable calculator name. */
+    std::string calculator_name;
+    /** Standard or fixture family the calculator is documented against. */
+    std::string standard;
+    /** Formula or fixture reference used by the calculator. */
+    std::string reference;
+    /** Ordered calculator inputs captured for explainable diagnostics. */
+    std::vector<NetClassDerivationInput> inputs;
+};
+
+/** Millimeter-valued rule result plus the provenance that produced it. */
+struct DerivedNetClassRuleValue {
+    /** Derived rule value in millimeters. */
+    double value_mm = 0.0;
+    /** Calculator provenance that produced the derived value. */
+    NetClassRuleDerivation derivation;
+};
+
+/** Derive trace width from current, temperature rise, and copper weight. */
+[[nodiscard]] DerivedNetClassRuleValue
+ipc2221_trace_width_from_current_mm(double current_a, double temperature_rise_c,
+                                    double copper_weight_oz, NetClassTraceEnvironment environment);
+
+/** Derive clearance from dielectric height using 1H stripline or 2H microstrip rules. */
+[[nodiscard]] DerivedNetClassRuleValue
+dielectric_height_spacing_mm(double dielectric_height_mm, NetClassDielectricSpacingRule rule);
+
+/** Derive external-conductor voltage clearance from the IPC-2221 tabulated fixture. */
+[[nodiscard]] DerivedNetClassRuleValue ipc2221_external_voltage_clearance_mm(double voltage_v);
+
 /** Stable name for a kernel-owned net class. */
 class NetClassName {
   public:
@@ -58,8 +116,14 @@ class NetClass {
     /** Set the copper clearance required for assigned nets. */
     void set_copper_clearance_mm(double clearance_mm);
 
+    /** Store a kernel-derived copper clearance; an explicit clearance still wins. */
+    void derive_copper_clearance(DerivedNetClassRuleValue clearance);
+
     /** Set the track width required for assigned nets. */
     void set_track_width_mm(double width_mm);
+
+    /** Store a kernel-derived track width; an explicit width still wins. */
+    void derive_track_width(DerivedNetClassRuleValue width);
 
     /** Set the via drill and finished copper diameters required for assigned nets. */
     void set_via_size_mm(double drill_mm, double diameter_mm);
@@ -82,12 +146,32 @@ class NetClass {
     }
 
     /** Return the copper clearance constraint, if present. */
-    [[nodiscard]] std::optional<double> copper_clearance_mm() const noexcept {
-        return copper_clearance_mm_;
+    [[nodiscard]] std::optional<double> copper_clearance_mm() const noexcept;
+
+    /** Return whether a hand-set copper clearance overrides any derived clearance. */
+    [[nodiscard]] bool has_explicit_copper_clearance_mm() const noexcept {
+        return copper_clearance_mm_.has_value();
+    }
+
+    /** Return the derived copper clearance and provenance, if present. */
+    [[nodiscard]] const std::optional<DerivedNetClassRuleValue> &
+    derived_copper_clearance() const noexcept {
+        return derived_copper_clearance_;
     }
 
     /** Return the track width constraint, if present. */
-    [[nodiscard]] std::optional<double> track_width_mm() const noexcept { return track_width_mm_; }
+    [[nodiscard]] std::optional<double> track_width_mm() const noexcept;
+
+    /** Return whether a hand-set track width overrides any derived width. */
+    [[nodiscard]] bool has_explicit_track_width_mm() const noexcept {
+        return track_width_mm_.has_value();
+    }
+
+    /** Return the derived track width and provenance, if present. */
+    [[nodiscard]] const std::optional<DerivedNetClassRuleValue> &
+    derived_track_width() const noexcept {
+        return derived_track_width_;
+    }
 
     /** Return the via drill diameter constraint, if present. */
     [[nodiscard]] std::optional<double> via_drill_mm() const noexcept { return via_drill_mm_; }
@@ -117,7 +201,9 @@ class NetClass {
     NetClassName name_;
     std::optional<Quantity> maximum_net_voltage_;
     std::optional<double> copper_clearance_mm_;
+    std::optional<DerivedNetClassRuleValue> derived_copper_clearance_;
     std::optional<double> track_width_mm_;
+    std::optional<DerivedNetClassRuleValue> derived_track_width_;
     std::optional<double> via_drill_mm_;
     std::optional<double> via_diameter_mm_;
     NetClassLayerScope layer_scope_ = NetClassLayerScope::AnyCopper;

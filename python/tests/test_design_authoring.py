@@ -88,6 +88,30 @@ def test_natural_electrical_values_serialize_as_kernel_attributes():
         "value": 3.3,
     }
 
+def test_net_class_ipc_current_sizing_is_kernel_owned_and_serialized():
+    design = volt.Design("net-class")
+    vdd = design.net("VDD", kind="power")
+
+    power = design.net_class("Power", current=1.0, temp_rise=10.0, copper_weight=1.0)
+    power.assign(vdd)
+
+    info = power.info()
+    assert info["track_width_mm"] == pytest.approx(0.3003762222)
+    assert info["derived_track_width"]["calculator"]["id"] == "ipc-2221.trace-width.current"
+
+    circuit = json.loads(design.to_json())
+    rule = circuit["net_classes"]["classes"][0]
+    assert "track_width_mm" not in rule
+    assert rule["derived_track_width"]["value_mm"] == pytest.approx(0.3003762222)
+    assert rule["derived_track_width"]["inputs"][0] == {
+        "name": "current",
+        "value": 1.0,
+        "unit": "A",
+    }
+    assert circuit["net_classes"]["net_assignments"] == [
+        {"net": "net:0", "net_class": "net_class:0"}
+    ]
+
 def test_custom_component_definitions_are_kernel_owned():
     design = volt.Design("custom")
 

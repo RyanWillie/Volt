@@ -632,6 +632,45 @@ class Net:
         return f"Net(name={self.name!r}, index={self._index})"
 
 
+class NetClass:
+    """Handle to a kernel-owned net class and its rule provenance."""
+
+    def __init__(self, design: Design, index: int, name: str):
+        self._design = design
+        self._index = index
+        self.name = name
+
+    @property
+    def index(self) -> int:
+        """Return the kernel index for this net class."""
+        return self._index
+
+    def assign(self, *nets: Net | Iterable[Net]) -> NetClass:
+        """Assign this net class to one or more logical nets."""
+        for net in _flatten_nets(nets):
+            if net._design is not self._design:
+                raise ValueError("Net belongs to a different design")
+            self._design._circuit.assign_net_class(net.index, self._index)
+        return self
+
+    def info(self) -> dict:
+        """Return the kernel-owned rule values and derivation provenance."""
+        return dict(self._design._circuit.net_class_info(self._index))
+
+    def __repr__(self) -> str:
+        return f"NetClass(name={self.name!r}, index={self._index})"
+
+
+def _flatten_nets(values) -> tuple[Net, ...]:
+    result = []
+    for value in values:
+        if isinstance(value, Net):
+            result.append(value)
+        else:
+            result.extend(value)
+    return tuple(result)
+
+
 
 def _pin_refs_by_name(pin_refs, name: str):
     return tuple(item for item in pin_refs if item["name"] == name)
