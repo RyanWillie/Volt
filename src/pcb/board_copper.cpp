@@ -1,4 +1,5 @@
 #include <volt/pcb/board.hpp>
+#include <volt/pcb/board_spatial_index.hpp>
 
 #include "board_capability_validation.hpp"
 
@@ -839,21 +840,58 @@ struct RequiredCopperClearance {
     std::optional<BoardRoomId> room;
 };
 
-[[nodiscard]] RequiredCopperClearance required_copper_clearance(const Board &board,
-                                                                const BoardRoomRuleResolver &rooms,
-                                                                const BoardCopperShape &lhs,
-                                                                const BoardCopperShape &rhs) {
+[[nodiscard]] RequiredCopperClearance
+required_copper_clearance(const Board &board, const BoardRoomRuleResolver &rooms,
+                          const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
+                          const BoardCopperShape &rhs, BoardClearanceKind rhs_kind) {
     const auto room_override = rooms.copper_clearance_override(lhs, rhs);
     if (room_override.has_value()) {
         return RequiredCopperClearance{room_override->value_mm, room_override->room};
     }
 
-    const auto pair_floor =
-        board.design_rules().clearance_mm(shape_clearance_kind(lhs), shape_clearance_kind(rhs));
+    const auto pair_floor = board.design_rules().clearance_mm(lhs_kind, rhs_kind);
     return RequiredCopperClearance{
         resolve_copper_clearance_mm(board.circuit(), lhs.net, rhs.net, pair_floor),
         std::nullopt,
     };
+}
+
+[[nodiscard]] RequiredCopperClearance required_copper_clearance(const Board &board,
+                                                                const BoardRoomRuleResolver &rooms,
+                                                                const BoardCopperShape &lhs,
+                                                                const BoardCopperShape &rhs) {
+    return required_copper_clearance(board, rooms, lhs, shape_clearance_kind(lhs), rhs,
+                                     shape_clearance_kind(rhs));
+}
+
+[[nodiscard]] BoardCopperClearanceCheck
+check_copper_clearance(const Board &board, const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
+                       const BoardCopperShape &rhs, BoardClearanceKind rhs_kind) {
+    auto result = BoardCopperClearanceCheck{};
+    if (lhs.net == rhs.net) {
+        return result;
+    }
+    const auto layer = first_common_layer(lhs, rhs);
+    if (!layer.has_value()) {
+        return result;
+    }
+
+    const auto rooms = BoardRoomRuleResolver{board};
+    const auto required = required_copper_clearance(board, rooms, lhs, lhs_kind, rhs, rhs_kind);
+    result.participates = true;
+    result.layer = layer;
+    result.actual_clearance_mm = shape_distance(lhs, rhs) - lhs.radius_mm - rhs.radius_mm;
+    result.required_clearance_mm = required.clearance_mm;
+    result.room = required.room;
+    result.violates = result.actual_clearance_mm + board_drc_epsilon < result.required_clearance_mm;
+    return result;
+}
+
+[[nodiscard]] BoardCopperClearanceCheck check_copper_clearance(const Board &board,
+                                                               const BoardCopperShape &lhs,
+                                                               const BoardCopperShape &rhs) {
+    return check_copper_clearance(board, lhs, shape_clearance_kind(lhs), rhs,
+                                  shape_clearance_kind(rhs));
 }
 
 void validate_outline_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
@@ -903,38 +941,27 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
 
 void validate_copper_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
                                DiagnosticReport &report) {
-    const auto rooms = BoardRoomRuleResolver{board};
-    for (std::size_t lhs_index = 0; lhs_index < shapes.size(); ++lhs_index) {
-        for (std::size_t rhs_index = lhs_index + 1U; rhs_index < shapes.size(); ++rhs_index) {
-            const auto &lhs = shapes[lhs_index];
-            const auto &rhs = shapes[rhs_index];
-            if (lhs.net == rhs.net) {
-                continue;
-            }
-            const auto layer = first_common_layer(lhs, rhs);
-            if (!layer.has_value()) {
-                continue;
-            }
-            const auto clearance = shape_distance(lhs, rhs) - lhs.radius_mm - rhs.radius_mm;
-            const auto required = required_copper_clearance(board, rooms, lhs, rhs);
-            if (clearance + board_drc_epsilon >= required.clearance_mm) {
-                continue;
-            }
-
-            auto entities = lhs.primary_entities;
-            entities.insert(entities.end(), rhs.primary_entities.begin(),
-                            rhs.primary_entities.end());
-            entities.push_back(EntityRef::net(lhs.net));
-            entities.push_back(EntityRef::net(rhs.net));
-            entities.push_back(EntityRef::board_layer(layer.value()));
-            if (required.room.has_value()) {
-                entities.push_back(EntityRef::board_room(required.room.value()));
-            }
-            report.add(drc_diagnostic(
-                drc_diagnostic_codes::CopperClearanceViolation,
-                clearance_pair_message(shape_clearance_kind(lhs), shape_clearance_kind(rhs)),
-                std::move(entities)));
+    const auto index = BoardSpatialIndex{board, shapes};
+    for (const auto pair : index.copper_clearance_candidates()) {
+        const auto &lhs = shapes[pair.lhs_index];
+        const auto &rhs = shapes[pair.rhs_index];
+        const auto check = check_copper_clearance(board, lhs, rhs);
+        if (!check.violates) {
+            continue;
         }
+
+        auto entities = lhs.primary_entities;
+        entities.insert(entities.end(), rhs.primary_entities.begin(), rhs.primary_entities.end());
+        entities.push_back(EntityRef::net(lhs.net));
+        entities.push_back(EntityRef::net(rhs.net));
+        entities.push_back(EntityRef::board_layer(check.layer.value()));
+        if (check.room.has_value()) {
+            entities.push_back(EntityRef::board_room(check.room.value()));
+        }
+        report.add(drc_diagnostic(
+            drc_diagnostic_codes::CopperClearanceViolation,
+            clearance_pair_message(shape_clearance_kind(lhs), shape_clearance_kind(rhs)),
+            std::move(entities)));
     }
 }
 

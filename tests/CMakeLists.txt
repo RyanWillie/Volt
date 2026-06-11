@@ -54,6 +54,7 @@ add_executable(
     io/schematic_svg_writer_test.cpp
     io/schematic_writer_test.cpp
     pcb/board_geometry_projection_test.cpp
+    pcb/board_spatial_index_test.cpp
     pcb/board_test.cpp
     pcb/board_models_test.cpp
     pcb/board_validation_test.cpp
