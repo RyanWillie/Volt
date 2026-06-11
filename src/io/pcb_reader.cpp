@@ -7,6 +7,7 @@
 #include <istream>
 #include <iterator>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -493,11 +494,15 @@ void PcbBoardReader::read_rules(Board &board, const nlohmann::json &board_json) 
     };
     if (const auto matrix = rules->find("clearance_matrix"); matrix != rules->end()) {
         require(matrix->is_array(), "PCB clearance matrix must be an array");
+        auto seen_pairs = std::set<std::pair<int, int>>{};
         for (const auto &entry : *matrix) {
             require(entry.is_object(), "PCB clearance matrix entry must be an object");
-            design_rules.set_clearance_mm(clearance_kind(string_field(entry, "first")),
-                                          clearance_kind(string_field(entry, "second")),
-                                          number_field(entry, "clearance_mm"));
+            const auto first = clearance_kind(string_field(entry, "first"));
+            const auto second = clearance_kind(string_field(entry, "second"));
+            const auto low = std::min(static_cast<int>(first), static_cast<int>(second));
+            const auto high = std::max(static_cast<int>(first), static_cast<int>(second));
+            require(seen_pairs.emplace(low, high).second, "Duplicate PCB clearance matrix pair");
+            design_rules.set_clearance_mm(first, second, number_field(entry, "clearance_mm"));
         }
     }
     board.set_design_rules(design_rules);

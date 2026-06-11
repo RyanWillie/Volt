@@ -1040,6 +1040,20 @@ TEST_CASE("PCB projection reader rejects malformed clearance matrices") {
         nlohmann::json::array({{{"first", "track"}, {"second", "pad"}, {"clearance_mm", -1.0}}});
     CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, bad_value.dump()),
                     std::logic_error);
+
+    auto duplicate_pair = nlohmann::json::parse(text);
+    duplicate_pair["board"]["rules"]["clearance_matrix"] =
+        nlohmann::json::array({{{"first", "track"}, {"second", "pad"}, {"clearance_mm", 0.25}},
+                               {{"first", "track"}, {"second", "pad"}, {"clearance_mm", 0.30}}});
+    CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, duplicate_pair.dump()),
+                    std::logic_error);
+
+    auto reversed_pair = nlohmann::json::parse(text);
+    reversed_pair["board"]["rules"]["clearance_matrix"] =
+        nlohmann::json::array({{{"first", "track"}, {"second", "pad"}, {"clearance_mm", 0.25}},
+                               {{"first", "pad"}, {"second", "track"}, {"clearance_mm", 0.30}}});
+    CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, reversed_pair.dump()),
+                    std::logic_error);
 }
 
 TEST_CASE("PCB projection round-trips stackup copper weight and dielectrics") {
