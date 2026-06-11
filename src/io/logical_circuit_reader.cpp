@@ -20,6 +20,8 @@
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 
+#include "logical_net_class_format.hpp"
+
 namespace volt::io::detail {
 
 /** Internal implementation for loading the v1 logical circuit JSON format. */
@@ -684,10 +686,19 @@ void LogicalCircuitReader::read_net_classes() {
             require(copper_clearance->is_number(), "Net class copper clearance must be a number");
             net_class.set_copper_clearance_mm(copper_clearance->get<double>());
         }
+        if (const auto derived_copper_clearance = net_class_object.find("derived_copper_clearance");
+            derived_copper_clearance != net_class_object.end()) {
+            net_class.derive_copper_clearance(
+                read_derived_net_class_rule_value(*derived_copper_clearance));
+        }
         if (const auto track_width = net_class_object.find("track_width_mm");
             track_width != net_class_object.end()) {
             require(track_width->is_number(), "Net class track width must be a number");
             net_class.set_track_width_mm(track_width->get<double>());
+        }
+        if (const auto derived_track_width = net_class_object.find("derived_track_width");
+            derived_track_width != net_class_object.end()) {
+            net_class.derive_track_width(read_derived_net_class_rule_value(*derived_track_width));
         }
         const auto via_drill = net_class_object.find("via_drill_mm");
         const auto via_diameter = net_class_object.find("via_diameter_mm");

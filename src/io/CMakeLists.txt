@@ -25,6 +25,7 @@ add_library(
     board_capability_profile.cpp
     logical_circuit_reader.cpp
     logical_circuit_writer.cpp
+    logical_net_class_format.cpp
     pcb_feature_io.cpp
     pcb_feature_svg.cpp
     pcb_reader.cpp

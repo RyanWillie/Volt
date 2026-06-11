@@ -17,7 +17,7 @@ from .library import (
     _normalize_schematic_symbols,
     _schematic_symbol_refs,
 )
-from .logical import Component, ComponentDefinition, ModuleDefinition, ModuleInstance, Net
+from .logical import Component, ComponentDefinition, ModuleDefinition, ModuleInstance, Net, NetClass
 from .part import Part, _PartDefinition
 from ._schematic_metadata import _schematic_sheet_metadata
 from .schematic import Schematic
@@ -39,6 +39,7 @@ class Design:
         self._component_model_3d_asset_sources: dict[int, Path] = {}
         self._board_cached_footprints: dict[FootprintRef, tuple[int, Footprint]] = {}
         self._board_placed_components: list[int] = []
+        self._net_class_counter = 0
         self._schematic_symbols: dict[str, SchematicSymbolSpec] = {}
         self._schematic_sheets: dict[str, int] = {}
 
@@ -52,6 +53,42 @@ class Design:
     def nets(self) -> tuple[Net, ...]:
         """Return handles for every logical net in this design."""
         return tuple(Net(self, item["index"], item["name"]) for item in self._circuit.net_refs())
+
+    def net_class(
+        self,
+        name: str | None = None,
+        *,
+        current: float | None = None,
+        temp_rise: float = 10.0,
+        copper_weight: float = 1.0,
+        environment: str = "external",
+        track_width: float | None = None,
+        clearance: float | None = None,
+        voltage: float | None = None,
+        dielectric_height: float | None = None,
+        spacing_rule: str = "microstrip_2h",
+        default_for: str | None = None,
+        priority: int = 0,
+    ) -> NetClass:
+        """Create a kernel-owned net class, deriving IPC rule values when requested."""
+        if name is None:
+            name = f"net_class_{self._net_class_counter}"
+            self._net_class_counter += 1
+        options = {
+            "current": None if current is None else _number(current),
+            "temp_rise": _number(temp_rise),
+            "copper_weight": _number(copper_weight),
+            "environment": environment,
+            "track_width": None if track_width is None else _number(track_width),
+            "clearance": None if clearance is None else _number(clearance),
+            "voltage": None if voltage is None else _number(voltage),
+            "dielectric_height": None if dielectric_height is None else _number(dielectric_height),
+            "spacing_rule": spacing_rule,
+            "default_for": default_for,
+            "priority": int(priority),
+        }
+        net_class = self._circuit.add_net_class(name, options)
+        return NetClass(self, net_class, name)
 
     def components(self) -> tuple[Component, ...]:
         """Return handles for every concrete component in this design."""

@@ -187,6 +187,11 @@ design.write("led.volt.json")
 IDs. The Python package does not own component definitions, net membership, validation
 rules, or serialization semantics.
 
+Net-class authoring follows the same boundary. For example,
+`design.net_class(current=1.0, temp_rise=10)` is Python syntax over a kernel-owned
+`NetClass`; the IPC calculator, resulting rule value, and provenance are stored,
+validated, and serialized by the C++ kernel.
+
 Catalog helpers such as `Design.R()`, `Design.C()`, `Design.LED()`, and
 `Design.connector_1x02()` define reusable kernel component definitions lazily per design
 and instantiate concrete components through the C++ mutation API. In the current MVP,

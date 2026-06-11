@@ -61,6 +61,10 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("source_name") = "", py::arg("source_version") = "",
              py::arg("schematic_symbols") = py::list{})
         .def("add_net", &PyCircuit::add_net, py::arg("name"), py::arg("kind") = "signal")
+        .def("add_net_class", &PyCircuit::add_net_class, py::arg("name"),
+             py::arg("options") = py::dict{})
+        .def("assign_net_class", &PyCircuit::assign_net_class, py::arg("net"), py::arg("net_class"))
+        .def("net_class_info", &PyCircuit::net_class_info, py::arg("net_class"))
         .def("net_refs", &PyCircuit::net_refs)
         .def("component_refs", &PyCircuit::component_refs)
         .def("component_selected_part_model_3d", &PyCircuit::component_selected_part_model_3d,

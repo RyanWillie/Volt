@@ -16,6 +16,7 @@ Source: `python/volt/design.py`
 | --- | --- |
 | `net(self, name: str, *, kind: str = 'signal', voltage: float \| None = None) -> Net` | Create or return a logical net by name, optionally annotating its voltage. |
 | `nets(self) -> tuple[Net, ...]` | Return handles for every logical net in this design. |
+| `net_class(self, name: str \| None = None, *, current: float \| None = None, temp_rise: float = 10.0, copper_weight: float = 1.0, environment: str = 'external', track_width: float \| None = None, clearance: float \| None = None, voltage: float \| None = None, dielectric_height: float \| None = None, spacing_rule: str = 'microstrip_2h', default_for: str \| None = None, priority: int = 0) -> NetClass` | Create a kernel-owned net class, deriving IPC rule values when requested. |
 | `components(self) -> tuple[Component, ...]` | Return handles for every concrete component in this design. |
 | `component(self, reference: str) -> Component` | Return a concrete component handle by reference designator. |
 | `R(self, value: str \| None = None, *, resistance: float \| None = None, tolerance: float \| None = None, ref: str \| None = None) -> Component` | Instantiate a generic resistor component. |

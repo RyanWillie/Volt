@@ -45,6 +45,12 @@ class PyCircuit {
 
     [[nodiscard]] std::size_t add_net(const std::string &name, const std::string &kind);
 
+    [[nodiscard]] std::size_t add_net_class(const std::string &name, const py::dict &options);
+
+    void assign_net_class(std::size_t net, std::size_t net_class);
+
+    [[nodiscard]] py::dict net_class_info(std::size_t net_class) const;
+
     [[nodiscard]] py::list net_refs() const;
 
     [[nodiscard]] py::list component_refs() const;

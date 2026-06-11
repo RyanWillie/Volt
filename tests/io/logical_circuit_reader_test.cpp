@@ -129,17 +129,31 @@ TEST_CASE("Logical circuit reader preserves net classes and net assignments") {
         {"voltage", {{"type", "quantity"}, {"dimension", "voltage"}, {"value", 5.0}}},
     };
     fixture["net_classes"] = {
-        {"classes", nlohmann::json::array(
-                        {{{"id", "net_class:0"},
-                          {"name", "Logic"},
-                          {"maximum_net_voltage", {{"dimension", "voltage"}, {"value", 3.6}}},
-                          {"copper_clearance_mm", 0.25},
-                          {"track_width_mm", 0.3},
-                          {"via_drill_mm", 0.3},
-                          {"via_diameter_mm", 0.6},
-                          {"allowed_layers", nlohmann::json::array({"F.Cu", "B.Cu"})},
-                          {"priority", 5},
-                          {"default_for_net_kind", "Power"}}})},
+        {"classes",
+         nlohmann::json::array(
+             {{{"id", "net_class:0"},
+               {"name", "Logic"},
+               {"maximum_net_voltage", {{"dimension", "voltage"}, {"value", 3.6}}},
+               {"copper_clearance_mm", 0.25},
+               {"track_width_mm", 0.3},
+               {"derived_track_width",
+                {{"value_mm", 0.3003762222199717},
+                 {"calculator",
+                  {{"id", "ipc-2221.trace-width.current"},
+                   {"name", "Trace width from current and temperature rise"},
+                   {"standard", "IPC-2221"},
+                   {"reference", "I = k * dT^0.44 * A^0.725; width = A / copper_thickness"}}},
+                 {"inputs",
+                  nlohmann::json::array(
+                      {{{"name", "current"}, {"value", 1.0}, {"unit", "A"}},
+                       {{"name", "temperature_rise"}, {"value", 10.0}, {"unit", "C"}},
+                       {{"name", "copper_weight"}, {"value", 1.0}, {"unit", "oz/ft^2"}},
+                       {{"name", "environment"}, {"value", "external"}, {"unit", "enum"}}})}}},
+               {"via_drill_mm", 0.3},
+               {"via_diameter_mm", 0.6},
+               {"allowed_layers", nlohmann::json::array({"F.Cu", "B.Cu"})},
+               {"priority", 5},
+               {"default_for_net_kind", "Power"}}})},
         {"net_assignments",
          nlohmann::json::array({{{"net", "net:0"}, {"net_class", "net_class:0"}}})},
     };
@@ -155,6 +169,9 @@ TEST_CASE("Logical circuit reader preserves net classes and net assignments") {
     REQUIRE(circuit.net_class(volt::NetClassId{0}).copper_clearance_mm().has_value());
     CHECK(circuit.net_class(volt::NetClassId{0}).copper_clearance_mm().value() == 0.25);
     CHECK(circuit.net_class(volt::NetClassId{0}).track_width_mm() == 0.3);
+    REQUIRE(circuit.net_class(volt::NetClassId{0}).derived_track_width().has_value());
+    CHECK(circuit.net_class(volt::NetClassId{0}).derived_track_width()->value_mm ==
+          0.3003762222199717);
     CHECK(circuit.net_class(volt::NetClassId{0}).via_drill_mm() == 0.3);
     CHECK(circuit.net_class(volt::NetClassId{0}).via_diameter_mm() == 0.6);
     CHECK(circuit.net_class(volt::NetClassId{0}).allowed_layer_names() ==
@@ -212,6 +229,38 @@ TEST_CASE("Logical circuit reader rejects malformed net-class physical rules") {
                                             {"allowed_layers", nlohmann::json::array({"F.Cu"})}}})},
     };
     CHECK_THROWS_AS(volt::io::read_logical_circuit_text(conflicting_layers.dump()),
+                    std::logic_error);
+
+    auto incomplete_derivation = base;
+    incomplete_derivation["net_classes"] = {
+        {"classes",
+         nlohmann::json::array({{{"id", "net_class:0"},
+                                 {"name", "Logic"},
+                                 {"derived_track_width",
+                                  {{"value_mm", 0.3},
+                                   {"calculator", {{"id", "ipc-2221.trace-width.current"}}},
+                                   {"inputs", nlohmann::json::array()}}}}})},
+    };
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(incomplete_derivation.dump()),
+                    std::logic_error);
+
+    auto empty_string_input = base;
+    empty_string_input["net_classes"] = {
+        {"classes",
+         nlohmann::json::array({{{"id", "net_class:0"},
+                                 {"name", "Logic"},
+                                 {"derived_track_width",
+                                  {{"value_mm", 0.3},
+                                   {"calculator",
+                                    {{"id", "ipc-2221.trace-width.current"},
+                                     {"name", "Trace width from current and temperature rise"},
+                                     {"standard", "IPC-2221"},
+                                     {"reference", "fixture"}}},
+                                   {"inputs", nlohmann::json::array({{{"name", "environment"},
+                                                                      {"value", ""},
+                                                                      {"unit", "enum"}}})}}}}})},
+    };
+    CHECK_THROWS_AS(volt::io::read_logical_circuit_text(empty_string_input.dump()),
                     std::logic_error);
 }
 

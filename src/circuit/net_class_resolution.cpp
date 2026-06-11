@@ -46,7 +46,16 @@ namespace {
     const auto &net_class = circuit.net_class(rules.net_class.value());
     rules.maximum_net_voltage = net_class.maximum_net_voltage();
     rules.copper_clearance_mm = net_class.copper_clearance_mm();
+    rules.derived_copper_clearance = net_class.derived_copper_clearance();
+    if (!net_class.has_explicit_copper_clearance_mm() &&
+        rules.derived_copper_clearance.has_value()) {
+        rules.copper_clearance_derivation = rules.derived_copper_clearance->derivation;
+    }
     rules.track_width_mm = net_class.track_width_mm();
+    rules.derived_track_width = net_class.derived_track_width();
+    if (!net_class.has_explicit_track_width_mm() && rules.derived_track_width.has_value()) {
+        rules.track_width_derivation = rules.derived_track_width->derivation;
+    }
     rules.via_drill_mm = net_class.via_drill_mm();
     rules.via_diameter_mm = net_class.via_diameter_mm();
     rules.layer_scope = net_class.layer_scope();

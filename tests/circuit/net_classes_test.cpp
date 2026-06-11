@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <concepts>
@@ -191,6 +192,75 @@ TEST_CASE("NetClass rejects malformed physical constraints") {
     CHECK(net_class.allowed_layer_names() == std::vector<std::string>{"F.Cu", "B.Cu"});
     CHECK(net_class.priority() == 5);
     CHECK(net_class.default_for_net_kind() == volt::NetKind::Power);
+}
+
+TEST_CASE("IPC calculators derive deterministic net-class rule values with provenance") {
+    const auto width = volt::ipc2221_trace_width_from_current_mm(
+        1.0, 10.0, 1.0, volt::NetClassTraceEnvironment::External);
+    CHECK(width.value_mm == Catch::Approx(0.3003762222));
+    CHECK(width.derivation.calculator_id == "ipc-2221.trace-width.current");
+    CHECK(width.derivation.standard == "IPC-2221");
+    REQUIRE(width.derivation.inputs.size() == 4);
+    CHECK(width.derivation.inputs[0].name == "current");
+    CHECK(width.derivation.inputs[0].value == 1.0);
+    CHECK(width.derivation.inputs[0].unit == "A");
+
+    const auto inner_width = volt::ipc2221_trace_width_from_current_mm(
+        1.0, 10.0, 1.0, volt::NetClassTraceEnvironment::Internal);
+    CHECK(inner_width.value_mm == Catch::Approx(0.7814106717));
+
+    const auto stripline =
+        volt::dielectric_height_spacing_mm(0.18, volt::NetClassDielectricSpacingRule::Stripline1H);
+    CHECK(stripline.value_mm == Catch::Approx(0.18));
+    CHECK(stripline.derivation.calculator_id == "volt.spacing.stripline-1h");
+
+    const auto microstrip =
+        volt::dielectric_height_spacing_mm(0.18, volt::NetClassDielectricSpacingRule::Microstrip2H);
+    CHECK(microstrip.value_mm == Catch::Approx(0.36));
+
+    const auto voltage_clearance = volt::ipc2221_external_voltage_clearance_mm(600.0);
+    CHECK(voltage_clearance.value_mm == Catch::Approx(1.3));
+    CHECK(voltage_clearance.derivation.calculator_id == "ipc-2221.clearance.external-voltage");
+}
+
+TEST_CASE("NetClass resolves hand-set rule values before derived values") {
+    auto net_class = volt::NetClass{volt::NetClassName{"Power"}};
+    net_class.derive_track_width(volt::ipc2221_trace_width_from_current_mm(
+        1.0, 10.0, 1.0, volt::NetClassTraceEnvironment::External));
+    REQUIRE(net_class.track_width_mm().has_value());
+    CHECK(net_class.track_width_mm().value() == Catch::Approx(0.3003762222));
+    REQUIRE(net_class.derived_track_width().has_value());
+    CHECK(net_class.derived_track_width()->value_mm == Catch::Approx(0.3003762222));
+
+    net_class.set_track_width_mm(0.5);
+    CHECK(net_class.track_width_mm() == 0.5);
+    REQUIRE(net_class.derived_track_width().has_value());
+    CHECK(net_class.derived_track_width()->value_mm == Catch::Approx(0.3003762222));
+
+    auto circuit = volt::Circuit{};
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+    circuit.assign_net_class(net, circuit.add_net_class(std::move(net_class)));
+
+    const auto rules = volt::resolve_net_class_rules(circuit, net);
+    CHECK(rules.track_width_mm == 0.5);
+    CHECK_FALSE(rules.track_width_derivation.has_value());
+    REQUIRE(rules.derived_track_width.has_value());
+    CHECK(rules.derived_track_width->value_mm == Catch::Approx(0.3003762222));
+}
+
+TEST_CASE("Net class resolution exposes provenance for effective derived rule values") {
+    auto circuit = volt::Circuit{};
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"VDD"}, volt::NetKind::Power});
+    auto net_class = volt::NetClass{volt::NetClassName{"DerivedPower"}};
+    net_class.derive_track_width(volt::ipc2221_trace_width_from_current_mm(
+        1.0, 10.0, 1.0, volt::NetClassTraceEnvironment::External));
+    circuit.assign_net_class(net, circuit.add_net_class(std::move(net_class)));
+
+    const auto rules = volt::resolve_net_class_rules(circuit, net);
+
+    CHECK(rules.track_width_mm == Catch::Approx(0.3003762222));
+    REQUIRE(rules.track_width_derivation.has_value());
+    CHECK(rules.track_width_derivation->calculator_id == "ipc-2221.trace-width.current");
 }
 
 TEST_CASE("Net class resolution prefers explicit assignment over intent defaults") {

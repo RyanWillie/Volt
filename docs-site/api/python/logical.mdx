@@ -249,6 +249,25 @@ Source: `python/volt/logical.py`
 | `connect(self, *pins: Pin \| ModuleInstancePort \| Iterable[Pin \| ModuleInstancePort]) -> Net` | Connect concrete pins or module instance ports to this logical net. |
 | `__iadd__(self, pins: Pin \| ModuleInstancePort \| Iterable[Pin \| ModuleInstancePort]) -> Net` | Connect pins or module instance ports to this net with ``+=`` syntax. |
 
+## `volt.NetClass`
+
+Handle to a kernel-owned net class and its rule provenance.
+
+Source: `python/volt/logical.py`
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `index: int` | Return the kernel index for this net class. |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `assign(self, *nets: Net \| Iterable[Net]) -> NetClass` | Assign this net class to one or more logical nets. |
+| `info(self) -> dict` | Return the kernel-owned rule values and derivation provenance. |
+
 ## `volt.Pin`
 
 Handle to a kernel-owned concrete pin.

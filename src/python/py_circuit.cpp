@@ -169,6 +169,75 @@ schematic_endpoints_from_list(const py::list &endpoints) {
     return py::make_tuple(index, net.index());
 }
 
+[[nodiscard]] bool dict_contains(const py::dict &dict, const char *key) {
+    return dict.contains(py::str{key});
+}
+
+[[nodiscard]] std::optional<double> optional_double_field(const py::dict &dict, const char *key) {
+    if (!dict_contains(dict, key) || dict[py::str{key}].is_none()) {
+        return std::nullopt;
+    }
+    return py::cast<double>(dict[py::str{key}]);
+}
+
+[[nodiscard]] std::optional<std::string> optional_string_field(const py::dict &dict,
+                                                               const char *key) {
+    if (!dict_contains(dict, key) || dict[py::str{key}].is_none()) {
+        return std::nullopt;
+    }
+    return py::cast<std::string>(dict[py::str{key}]);
+}
+
+[[nodiscard]] volt::NetClassTraceEnvironment parse_trace_environment(const std::string &value) {
+    if (value == "external" || value == "External") {
+        return volt::NetClassTraceEnvironment::External;
+    }
+    if (value == "internal" || value == "Internal") {
+        return volt::NetClassTraceEnvironment::Internal;
+    }
+    throw std::invalid_argument{"Unknown net-class trace environment"};
+}
+
+[[nodiscard]] volt::NetClassDielectricSpacingRule
+parse_dielectric_spacing_rule(const std::string &value) {
+    if (value == "stripline_1h" || value == "stripline-1h" || value == "Stripline1H") {
+        return volt::NetClassDielectricSpacingRule::Stripline1H;
+    }
+    if (value == "microstrip_2h" || value == "microstrip-2h" || value == "Microstrip2H") {
+        return volt::NetClassDielectricSpacingRule::Microstrip2H;
+    }
+    throw std::invalid_argument{"Unknown net-class dielectric spacing rule"};
+}
+
+[[nodiscard]] py::dict derivation_input_to_dict(const volt::NetClassDerivationInput &input) {
+    auto result = py::dict{};
+    result["name"] = input.name;
+    if (input.text_value.empty()) {
+        result["value"] = input.value;
+    } else {
+        result["value"] = input.text_value;
+    }
+    result["unit"] = input.unit;
+    return result;
+}
+
+[[nodiscard]] py::dict derived_rule_to_dict(const volt::DerivedNetClassRuleValue &value) {
+    auto result = py::dict{};
+    result["value_mm"] = value.value_mm;
+    auto calculator = py::dict{};
+    calculator["id"] = value.derivation.calculator_id;
+    calculator["name"] = value.derivation.calculator_name;
+    calculator["standard"] = value.derivation.standard;
+    calculator["reference"] = value.derivation.reference;
+    result["calculator"] = std::move(calculator);
+    auto inputs = py::list{};
+    for (const auto &input : value.derivation.inputs) {
+        inputs.append(derivation_input_to_dict(input));
+    }
+    result["inputs"] = std::move(inputs);
+    return result;
+}
+
 [[noreturn]] void raise_schematic_authoring_error(const std::invalid_argument &error) {
     throw py::value_error{error.what()};
 }
@@ -259,6 +328,79 @@ std::size_t PyCircuit::define_component(const std::string &name, const py::list 
 
 std::size_t PyCircuit::add_net(const std::string &name, const std::string &kind) {
     return circuit_.add_net(volt::Net{volt::NetName{name}, parse_net_kind(kind)}).index();
+}
+
+std::size_t PyCircuit::add_net_class(const std::string &name, const py::dict &options) {
+    auto net_class = volt::NetClass{volt::NetClassName{name}};
+
+    const auto current = optional_double_field(options, "current");
+    if (current.has_value()) {
+        const auto temperature_rise = optional_double_field(options, "temp_rise").value_or(10.0);
+        const auto copper_weight = optional_double_field(options, "copper_weight").value_or(1.0);
+        const auto environment = optional_string_field(options, "environment").value_or("external");
+        net_class.derive_track_width(volt::ipc2221_trace_width_from_current_mm(
+            current.value(), temperature_rise, copper_weight,
+            parse_trace_environment(environment)));
+    }
+
+    const auto voltage = optional_double_field(options, "voltage");
+    const auto dielectric_height = optional_double_field(options, "dielectric_height");
+    if (voltage.has_value() && dielectric_height.has_value()) {
+        throw py::value_error{"Specify only one derived net-class clearance source per net class"};
+    }
+    if (voltage.has_value()) {
+        net_class.derive_copper_clearance(
+            volt::ipc2221_external_voltage_clearance_mm(voltage.value()));
+    }
+    if (dielectric_height.has_value()) {
+        const auto rule = optional_string_field(options, "spacing_rule").value_or("microstrip_2h");
+        net_class.derive_copper_clearance(volt::dielectric_height_spacing_mm(
+            dielectric_height.value(), parse_dielectric_spacing_rule(rule)));
+    }
+
+    if (const auto track_width = optional_double_field(options, "track_width")) {
+        net_class.set_track_width_mm(track_width.value());
+    }
+    if (const auto clearance = optional_double_field(options, "clearance")) {
+        net_class.set_copper_clearance_mm(clearance.value());
+    }
+    if (const auto priority = optional_double_field(options, "priority")) {
+        net_class.set_priority(static_cast<int>(priority.value()));
+    }
+    if (const auto default_kind = optional_string_field(options, "default_for")) {
+        net_class.set_default_for_net_kind(parse_net_kind(default_kind.value()));
+    }
+
+    return circuit_.add_net_class(std::move(net_class)).index();
+}
+
+void PyCircuit::assign_net_class(std::size_t net, std::size_t net_class) {
+    static_cast<void>(circuit_.assign_net_class(net_id(net), volt::NetClassId{net_class}));
+}
+
+py::dict PyCircuit::net_class_info(std::size_t net_class) const {
+    const auto id = volt::NetClassId{net_class};
+    const auto &rule = circuit_.net_class(id);
+    auto result = py::dict{};
+    result["index"] = id.index();
+    result["name"] = rule.name().value();
+    result["track_width_mm"] =
+        rule.track_width_mm().has_value() ? py::cast(rule.track_width_mm().value()) : py::none{};
+    result["copper_clearance_mm"] = rule.copper_clearance_mm().has_value()
+                                        ? py::cast(rule.copper_clearance_mm().value())
+                                        : py::none{};
+    if (rule.derived_track_width().has_value()) {
+        result["derived_track_width"] = derived_rule_to_dict(rule.derived_track_width().value());
+    } else {
+        result["derived_track_width"] = py::none{};
+    }
+    if (rule.derived_copper_clearance().has_value()) {
+        result["derived_copper_clearance"] =
+            derived_rule_to_dict(rule.derived_copper_clearance().value());
+    } else {
+        result["derived_copper_clearance"] = py::none{};
+    }
+    return result;
 }
 
 py::list PyCircuit::net_refs() const {
