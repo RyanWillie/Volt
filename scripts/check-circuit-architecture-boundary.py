@@ -15,6 +15,7 @@ ALLOWLIST_DIR = ROOT / "tests" / "architecture"
 ROOT_TYPES = {
     "Circuit": ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
     "Board": ROOT / "include" / "volt" / "pcb" / "board.hpp",
+    "BoardSpatialIndex": ROOT / "include" / "volt" / "pcb" / "board_spatial_index.hpp",
     "Schematic": ROOT / "include" / "volt" / "schematic" / "schematic.hpp",
 }
 

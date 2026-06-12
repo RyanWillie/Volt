@@ -307,12 +307,42 @@ struct BoardCopperShape {
     std::optional<BoardPadShapeKey> pad;
 };
 
+/** Exact shared copper-clearance predicate result. */
+struct BoardCopperClearanceCheck {
+    /** Whether the pair participates in copper-clearance checking. */
+    bool participates = false;
+    /** Whether the pair violates the required clearance. */
+    bool violates = false;
+    /** First common copper layer used for diagnostics, when participating. */
+    std::optional<BoardLayerId> layer;
+    /** Measured copper-to-copper clearance in millimeters. */
+    double actual_clearance_mm = 0.0;
+    /** Required copper clearance in millimeters after rooms, classes, and matrix rules. */
+    double required_clearance_mm = 0.0;
+    /** Room that supplied an override, if any. */
+    std::optional<BoardRoomId> room;
+};
+
 [[nodiscard]] double shape_distance(const BoardCopperShape &lhs, const BoardCopperShape &rhs);
 
 [[nodiscard]] std::optional<BoardLayerId> first_common_layer(const BoardCopperShape &lhs,
                                                              const BoardCopperShape &rhs);
 
 [[nodiscard]] bool layers_overlap(const BoardCopperShape &lhs, const BoardCopperShape &rhs);
+
+[[nodiscard]] BoardClearanceKind shape_clearance_kind(const BoardCopperShape &shape);
+
+[[nodiscard]] std::string clearance_pair_message(BoardClearanceKind lhs, BoardClearanceKind rhs);
+
+[[nodiscard]] double maximum_required_copper_clearance(const Board &board);
+
+[[nodiscard]] BoardCopperClearanceCheck check_copper_clearance(const Board &board,
+                                                               const BoardCopperShape &lhs,
+                                                               const BoardCopperShape &rhs);
+
+[[nodiscard]] BoardCopperClearanceCheck
+check_copper_clearance(const Board &board, const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
+                       const BoardCopperShape &rhs, BoardClearanceKind rhs_kind);
 
 void append_unique_layer(std::vector<BoardLayerId> &layers, BoardLayerId layer);
 
