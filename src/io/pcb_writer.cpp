@@ -865,7 +865,17 @@ void write_diagnostic(std::ostream &out, const Diagnostic &diagnostic) {
         write_board_layer_refs(out, overlay.layers());
         out << '}';
     }
-    out << "]}";
+    out << "], \"measurement\": ";
+    if (diagnostic.measurement().has_value()) {
+        out << "{\"actual_mm\": ";
+        write_number(out, diagnostic.measurement()->actual_mm);
+        out << ", \"required_mm\": ";
+        write_number(out, diagnostic.measurement()->required_mm);
+        out << '}';
+    } else {
+        out << "null";
+    }
+    out << '}';
 }
 
 void write_viewer(std::ostream &out, const Board &board,

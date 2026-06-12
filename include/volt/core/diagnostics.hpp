@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -428,6 +429,18 @@ struct DiagnosticPoint {
                                          DiagnosticPoint rhs) noexcept = default;
 };
 
+/** Typed actual-versus-required measurement attached to one diagnostic. */
+struct DiagnosticMeasurement {
+    /** Measured value that triggered the diagnostic, in millimeters. */
+    double actual_mm;
+    /** Required value the measured value must satisfy, in millimeters. */
+    double required_mm;
+
+    /** Return whether two measurements report identical actual and required values. */
+    [[nodiscard]] friend bool operator==(DiagnosticMeasurement lhs,
+                                         DiagnosticMeasurement rhs) noexcept = default;
+};
+
 /** Shape category for diagnostic overlay geometry. */
 enum class DiagnosticOverlayKind {
     BoundingBox,
@@ -535,13 +548,17 @@ class Diagnostic {
                      std::move(entities),
                      {}} {}
 
-    /** Construct a diagnostic with category, related entities, and optional overlay geometry. */
+    /**
+     * Construct a diagnostic with category, related entities, optional overlay geometry, and an
+     * optional typed measurement.
+     */
     Diagnostic(Severity severity, DiagnosticCode code, DiagnosticCategory category,
                std::string message, std::vector<EntityRef> entities = {},
-               std::vector<DiagnosticOverlay> overlays = {})
+               std::vector<DiagnosticOverlay> overlays = {},
+               std::optional<DiagnosticMeasurement> measurement = std::nullopt)
         : severity_{severity}, code_{std::move(code)}, category_{std::move(category)},
           message_{std::move(message)}, entities_{std::move(entities)},
-          overlays_{std::move(overlays)} {}
+          overlays_{std::move(overlays)}, measurement_{measurement} {}
 
     /** Return the diagnostic severity. */
     [[nodiscard]] Severity severity() const noexcept { return severity_; }
@@ -563,6 +580,11 @@ class Diagnostic {
         return overlays_;
     }
 
+    /** Return the typed actual-versus-required measurement, when one is meaningful. */
+    [[nodiscard]] const std::optional<DiagnosticMeasurement> &measurement() const noexcept {
+        return measurement_;
+    }
+
   private:
     Severity severity_;
     DiagnosticCode code_;
@@ -570,6 +592,7 @@ class Diagnostic {
     std::string message_;
     std::vector<EntityRef> entities_;
     std::vector<DiagnosticOverlay> overlays_;
+    std::optional<DiagnosticMeasurement> measurement_;
 };
 
 /** Ordered collection of diagnostics from one or more kernel checks. */

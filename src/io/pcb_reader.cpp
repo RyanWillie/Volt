@@ -170,6 +170,8 @@ class PcbBoardReader {
 
     void validate_diagnostic_layer_array(const Board &board, const nlohmann::json &object) const;
 
+    static void validate_diagnostic_measurement(const nlohmann::json &diagnostic);
+
     void validate_viewer_diagnostic_ref(const Board &board, std::string_view ref) const;
 
     [[nodiscard]] static std::optional<PinId> optional_pin(const std::optional<std::string> &id);
@@ -949,6 +951,7 @@ void PcbBoardReader::validate_viewer_diagnostics(const Board &board,
             }
         }
         validate_diagnostic_overlays(board, diagnostic);
+        validate_diagnostic_measurement(diagnostic);
     }
 }
 
@@ -1040,6 +1043,16 @@ void PcbBoardReader::validate_diagnostic_layer_array(const Board &board,
             throw std::logic_error{"PCB viewer diagnostic references missing board layer"};
         }
     }
+}
+
+void PcbBoardReader::validate_diagnostic_measurement(const nlohmann::json &diagnostic) {
+    const auto *measurement = optional_field(diagnostic, "measurement");
+    if (measurement == nullptr || measurement->is_null()) {
+        return;
+    }
+    require(measurement->is_object(), "PCB viewer diagnostic measurement must be an object");
+    static_cast<void>(number_field(*measurement, "actual_mm"));
+    static_cast<void>(number_field(*measurement, "required_mm"));
 }
 
 void PcbBoardReader::validate_viewer_diagnostic_ref(const Board &board,

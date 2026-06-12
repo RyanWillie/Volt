@@ -543,9 +543,19 @@ TEST_CASE("PCB projection writer and reader round-trip board design rules") {
     CHECK(document["board"]["rules"]["minimum_via_annular_diameter_mm"] == 0.70);
     CHECK(document["board"]["rules"]["board_outline_clearance_mm"] == 0.10);
     REQUIRE_FALSE(document["viewer"]["diagnostics"].empty());
-    CHECK(document["viewer"]["diagnostics"][0]["code"] == "PCB_TRACK_WIDTH_BELOW_MINIMUM");
-    CHECK(document["viewer"]["diagnostics"][0]["entities"] ==
+    const auto &track_width = document["viewer"]["diagnostics"][0];
+    CHECK(track_width["code"] == "PCB_TRACK_WIDTH_BELOW_MINIMUM");
+    CHECK(track_width["entities"] ==
           nlohmann::json::array({"board_track:0", "net:0", "board_layer:0"}));
+    REQUIRE(track_width["overlays"].size() == 1);
+    CHECK(track_width["overlays"][0]["kind"] == "segment");
+    CHECK(track_width["overlays"][0]["points"] ==
+          nlohmann::json::array(
+              {nlohmann::json::array({5.0, 5.0}), nlohmann::json::array({12.0, 5.0})}));
+    CHECK(track_width["overlays"][0]["entities"] == nlohmann::json::array({"board_track:0"}));
+    CHECK(track_width["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
+    CHECK(track_width["measurement"] ==
+          nlohmann::json::object({{"actual_mm", 0.10}, {"required_mm", 0.25}}));
 
     const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
     CHECK(restored.design_rules().copper_clearance_mm() == 0.20);
@@ -1163,6 +1173,35 @@ TEST_CASE("PCB projection reader rejects malformed viewer diagnostics") {
         CHECK_THROWS_MATCHES(
             volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
             Catch::Matchers::Message("PCB viewer diagnostic overlay layer must be a board layer"));
+    }
+
+    SECTION("non-object diagnostic measurement") {
+        auto document = make_board_json(fixture);
+        document["viewer"]["diagnostics"] =
+            nlohmann::json::array({{{"severity", "error"},
+                                    {"category", "drc"},
+                                    {"code", "PCB_FIXTURE"},
+                                    {"message", "fixture"},
+                                    {"entities", nlohmann::json::array({"board:0"})},
+                                    {"measurement", 1.5}}});
+
+        CHECK_THROWS_MATCHES(
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::logic_error,
+            Catch::Matchers::Message("PCB viewer diagnostic measurement must be an object"));
+    }
+
+    SECTION("diagnostic measurement missing required fields") {
+        auto document = make_board_json(fixture);
+        document["viewer"]["diagnostics"] =
+            nlohmann::json::array({{{"severity", "error"},
+                                    {"category", "drc"},
+                                    {"code", "PCB_FIXTURE"},
+                                    {"message", "fixture"},
+                                    {"entities", nlohmann::json::array({"board:0"})},
+                                    {"measurement", {{"actual_mm", 0.1}}}}});
+
+        CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, document.dump()),
+                        std::logic_error);
     }
 }
 

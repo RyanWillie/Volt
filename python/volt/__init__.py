@@ -11,6 +11,7 @@ from .diagnostics import (
     PCB_VISUAL_DIAGNOSTIC_CODES,
     Diagnostic,
     DiagnosticEntity,
+    DiagnosticMeasurement,
     DiagnosticOverlay,
     DiagnosticReport,
 )
@@ -135,6 +136,7 @@ __all__ = [
     "Design",
     "Diagnostic",
     "DiagnosticEntity",
+    "DiagnosticMeasurement",
     "DiagnosticOverlay",
     "DiagnosticReport",
     "DIAGNOSTIC_CATEGORIES",

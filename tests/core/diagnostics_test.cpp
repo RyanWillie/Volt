@@ -106,6 +106,25 @@ TEST_CASE("Diagnostic stores category and overlay geometry") {
     CHECK(diagnostic.overlays()[1].kind() == volt::DiagnosticOverlayKind::Segment);
 }
 
+TEST_CASE("Diagnostic carries an optional typed measurement") {
+    const auto without = volt::Diagnostic{
+        volt::Severity::Error, volt::DiagnosticCode{"PCB_NET_UNROUTED"},
+        volt::DiagnosticCategory{"drc"}, "Logical net still has unrouted placed pads"};
+    CHECK_FALSE(without.measurement().has_value());
+
+    const auto with = volt::Diagnostic{
+        volt::Severity::Error,
+        volt::DiagnosticCode{"PCB_TRACK_WIDTH_BELOW_MINIMUM"},
+        volt::DiagnosticCategory{"drc"},
+        "Track width is below the board minimum",
+        std::vector{volt::EntityRef::board_track(volt::BoardTrackId{0})},
+        {},
+        volt::DiagnosticMeasurement{0.15, 0.2},
+    };
+    REQUIRE(with.measurement().has_value());
+    CHECK(with.measurement().value() == volt::DiagnosticMeasurement{0.15, 0.2});
+}
+
 TEST_CASE("Diagnostic overlay construction rejects malformed geometry") {
     CHECK_THROWS_AS((volt::DiagnosticPoint{std::numeric_limits<double>::infinity(), 0.0}),
                     std::invalid_argument);

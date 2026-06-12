@@ -44,6 +44,14 @@ class DiagnosticOverlay:
 
 
 @dataclass(frozen=True)
+class DiagnosticMeasurement:
+    """Typed actual-versus-required measurement attached to a diagnostic."""
+
+    actual_mm: float
+    required_mm: float
+
+
+@dataclass(frozen=True)
 class Diagnostic:
     """Kernel-produced diagnostic exposed through the Python facade."""
 
@@ -53,6 +61,7 @@ class Diagnostic:
     entities: tuple[DiagnosticEntity, ...]
     category: str = "general"
     overlays: tuple[DiagnosticOverlay, ...] = ()
+    measurement: DiagnosticMeasurement | None = None
 
 
 class DiagnosticReport:
@@ -93,6 +102,16 @@ def _diagnostic_from_dict(item) -> Diagnostic:
             _diagnostic_overlay_from_dict(overlay)
             for overlay in item.get("overlays", ())
         ),
+        measurement=_diagnostic_measurement_from_dict(item.get("measurement")),
+    )
+
+
+def _diagnostic_measurement_from_dict(item) -> DiagnosticMeasurement | None:
+    if item is None:
+        return None
+    return DiagnosticMeasurement(
+        actual_mm=float(item["actual_mm"]),
+        required_mm=float(item["required_mm"]),
     )
 
 

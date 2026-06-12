@@ -20,6 +20,7 @@ Source: `python/volt/diagnostics.py`
 | `entities: tuple[DiagnosticEntity, ...]` |
 | `category: str` |
 | `overlays: tuple[DiagnosticOverlay, ...]` |
+| `measurement: DiagnosticMeasurement \| None` |
 
 ## `volt.DiagnosticEntity`
 
@@ -33,6 +34,19 @@ Source: `python/volt/diagnostics.py`
 | --- |
 | `kind: str` |
 | `index: int` |
+
+## `volt.DiagnosticMeasurement`
+
+Typed actual-versus-required measurement attached to a diagnostic.
+
+Source: `python/volt/diagnostics.py`
+
+### Fields
+
+| Field |
+| --- |
+| `actual_mm: float` |
+| `required_mm: float` |
 
 ## `volt.DiagnosticOverlay`
 

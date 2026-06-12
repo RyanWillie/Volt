@@ -407,6 +407,48 @@ def test_erc_and_drc_diagnostic_payload_categories_and_references_are_preserved(
     )
 
 
+def test_drc_diagnostic_measurement_is_parsed_and_flattened():
+    drc = _diagnostic_from_dict(
+        {
+            "severity": "error",
+            "category": "drc",
+            "code": "PCB_COPPER_CLEARANCE_VIOLATION",
+            "message": "Copper on different nets violates required track-to-track clearance",
+            "entities": [{"kind": "board_track", "index": 0}],
+            "overlays": [],
+            "measurement": {"actual_mm": 0.12, "required_mm": 0.2},
+        }
+    )
+
+    assert drc.measurement == volt.DiagnosticMeasurement(actual_mm=0.12, required_mm=0.2)
+
+    [project_diagnostic] = _report_diagnostics(
+        "board",
+        "pcb:Main",
+        "drc",
+        [drc],
+        design="demo",
+        board="Main",
+    )
+
+    payload = _flat_diagnostic_payload(project_diagnostic)
+    assert payload["measurement"] == {"actual_mm": 0.12, "required_mm": 0.2}
+
+
+def test_diagnostic_without_measurement_defaults_to_none():
+    diagnostic = _diagnostic_from_dict(
+        {
+            "severity": "warning",
+            "category": "drc",
+            "code": "PCB_NET_UNROUTED",
+            "message": "Logical net still has unrouted placed pads",
+            "entities": [{"kind": "net", "index": 0}],
+        }
+    )
+
+    assert diagnostic.measurement is None
+
+
 def test_project_diagnostics_preserve_pcb_visual_overlay_payloads():
     diagnostics = [
         volt.Diagnostic(
@@ -452,6 +494,7 @@ def test_project_diagnostics_preserve_pcb_visual_overlay_payloads():
                 "layers": [{"kind": "board_layer", "index": 0}],
             }
         ],
+        "measurement": None,
     }
 
 

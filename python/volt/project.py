@@ -12,7 +12,7 @@ from typing import Callable, Iterable
 from ._project_model_lookup import model_output_name, one_or_named, one_or_named_projection
 from ._project_models3d import collect_project_part_models_3d, copy_part_model_3d_asset
 from .design import Design
-from .diagnostics import DiagnosticEntity, DiagnosticOverlay
+from .diagnostics import DiagnosticEntity, DiagnosticMeasurement, DiagnosticOverlay
 from .library import Library
 from .pcb import Board
 from .project_checks import (
@@ -64,6 +64,7 @@ class ProjectDiagnostic:
     entities: tuple[DiagnosticEntity, ...]
     category: str = "general"
     overlays: tuple[DiagnosticOverlay, ...] = ()
+    measurement: DiagnosticMeasurement | None = None
     design: str | None = None
     board: str | None = None
     rule: str | None = None
@@ -1134,6 +1135,7 @@ def _collect_library_diagnostics(libraries: tuple[Library, ...] | list[Library])
                     entities=diagnostic.entities,
                     category=getattr(diagnostic, "category", "general"),
                     overlays=getattr(diagnostic, "overlays", ()),
+                    measurement=getattr(diagnostic, "measurement", None),
                 )
             )
     return tuple(diagnostics)
@@ -1168,6 +1170,7 @@ def _report_diagnostics(
             entities=diagnostic.entities,
             category=diagnostic.category,
             overlays=diagnostic.overlays,
+            measurement=getattr(diagnostic, "measurement", None),
             design=design,
             board=board,
         )
@@ -1470,6 +1473,7 @@ def _flat_diagnostic_payload(diagnostic: ProjectDiagnostic) -> dict[str, object]
         "message": diagnostic.message,
         "entities": [_diagnostic_entity_payload(entity) for entity in diagnostic.entities],
         "overlays": [_diagnostic_overlay_payload(overlay) for overlay in diagnostic.overlays],
+        "measurement": _diagnostic_measurement_payload(diagnostic.measurement),
     }
 
 
@@ -1484,6 +1488,7 @@ def _project_diagnostic_payload(diagnostic: ProjectDiagnostic) -> dict[str, obje
         "message": diagnostic.message,
         "entities": [_diagnostic_entity_payload(entity) for entity in diagnostic.entities],
         "overlays": [_diagnostic_overlay_payload(overlay) for overlay in diagnostic.overlays],
+        "measurement": _diagnostic_measurement_payload(diagnostic.measurement),
         "design": diagnostic.design,
         "board": diagnostic.board,
         "rule": diagnostic.rule,
@@ -1518,6 +1523,17 @@ def _diagnostic_overlay_payload(overlay: object) -> dict[str, object]:
         "points": [[point[0], point[1]] for point in overlay.points],
         "entities": [_diagnostic_entity_payload(entity) for entity in overlay.entities],
         "layers": [_diagnostic_entity_payload(layer) for layer in overlay.layers],
+    }
+
+
+def _diagnostic_measurement_payload(measurement: object) -> dict[str, object] | None:
+    if measurement is None:
+        return None
+    if not isinstance(measurement, DiagnosticMeasurement):
+        raise TypeError("Project diagnostic measurement must be a DiagnosticMeasurement value")
+    return {
+        "actual_mm": measurement.actual_mm,
+        "required_mm": measurement.required_mm,
     }
 
 
