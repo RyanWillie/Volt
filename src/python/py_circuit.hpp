@@ -325,6 +325,8 @@ class PyCircuit {
                                                   std::size_t start_layer, double end_x,
                                                   double end_y, std::size_t end_layer);
 
+    [[nodiscard]] py::dict board_escape(std::size_t component);
+
     [[nodiscard]] std::size_t board_add_zone(std::optional<std::size_t> net,
                                              const std::vector<std::size_t> &layers,
                                              const std::vector<std::pair<double, double>> &outline,

@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <volt/core/ids.hpp>
@@ -50,6 +51,61 @@ struct BoardRouteResult {
     std::vector<BoardSpatialBlocker> blockers;
 };
 
+/** Broad reason one pad could not be escaped. */
+enum class BoardEscapeFailureReason {
+    /** The pad escaped successfully. */
+    None,
+    /** The footprint pad is not connected to a logical net. */
+    PadUnconnected,
+    /** The pad has no copper layer on this board. */
+    NoCopperLayer,
+    /** The pad's net class does not permit the pad layer. */
+    DisallowedLayer,
+    /** Every deterministic escape candidate was rejected by the spatial index. */
+    NoLegalCandidate,
+};
+
+/** Per-pad outcome of an escape/fanout attempt. */
+struct BoardEscapePadResult {
+    /** Footprint-local pad label, stable within the selected footprint. */
+    std::string pad_label;
+    /** Footprint-local pad ID. */
+    FootprintPadId pad = FootprintPadId{0};
+    /** Board-space pad center used as the stub start. */
+    BoardPoint pad_position = BoardPoint{0.0, 0.0};
+    /** Existing logical pin resolved for this pad, if any. */
+    std::optional<PinId> pin;
+    /** Existing logical net resolved for this pad, if any. */
+    std::optional<NetId> net;
+    /** Connectable endpoint created by a successful escape. */
+    BoardPoint endpoint = BoardPoint{0.0, 0.0};
+    /** Whether this pad escaped successfully. */
+    bool escaped = false;
+    /** Failure reason when escaped is false. */
+    BoardEscapeFailureReason failure_reason = BoardEscapeFailureReason::None;
+    /** Board tracks created for this pad, in commit order. */
+    std::vector<BoardTrackId> tracks;
+    /** Board vias created for this pad, in commit order. */
+    std::vector<BoardViaId> vias;
+    /** Blockers from the primary rejected candidate when this pad failed. */
+    std::vector<BoardSpatialBlocker> blockers;
+};
+
+/** Typed outcome of an escape/fanout attempt for one component. */
+struct BoardEscapeResult {
+    /** Component requested for escape routing. */
+    ComponentId component = ComponentId{0};
+    /** Placement escaped for the component, if one exists. */
+    std::optional<ComponentPlacementId> placement;
+    /** Explicit board room created for the escape envelope, when applicable. */
+    std::optional<BoardRoomId> room;
+    /** Per-pad outcomes in selected-footprint pad order. */
+    std::vector<BoardEscapePadResult> pads;
+
+    /** Return true only when every reported pad escaped successfully. */
+    [[nodiscard]] bool complete() const noexcept;
+};
+
 /**
  * Authoring-time assisted connection solver over the board copper spatial index.
  *
@@ -74,6 +130,9 @@ class BoardRouter {
 
     /** Attempt to connect two points on a net, committing tracks/vias on success. */
     [[nodiscard]] BoardRouteResult connect(const BoardRouteRequest &request);
+
+    /** Escape one placed component by committing deterministic short pad fanout stubs. */
+    [[nodiscard]] BoardEscapeResult escape(ComponentId component);
 
   private:
     /** One copper segment a candidate route would commit on a single layer. */
@@ -123,6 +182,7 @@ class BoardRouter {
                 const BoardRouteParameters &params, BoardRouteResult &result);
 
     Board *board_;
+    FootprintLibrary footprints_;
     BoardSpatialIndex index_;
 };
 

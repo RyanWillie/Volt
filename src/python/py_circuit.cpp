@@ -157,6 +157,22 @@ template <typename Id>
     return result;
 }
 
+[[nodiscard]] std::string board_escape_failure_reason_name(volt::BoardEscapeFailureReason reason) {
+    switch (reason) {
+    case volt::BoardEscapeFailureReason::None:
+        return "none";
+    case volt::BoardEscapeFailureReason::PadUnconnected:
+        return "pad_unconnected";
+    case volt::BoardEscapeFailureReason::NoCopperLayer:
+        return "no_copper_layer";
+    case volt::BoardEscapeFailureReason::DisallowedLayer:
+        return "disallowed_layer";
+    case volt::BoardEscapeFailureReason::NoLegalCandidate:
+        return "no_legal_candidate";
+    }
+    throw std::logic_error{"Unhandled board escape failure reason"};
+}
+
 [[nodiscard]] std::string board_side_name(volt::BoardSide side) {
     switch (side) {
     case volt::BoardSide::Top:
@@ -1541,6 +1557,49 @@ py::dict PyCircuit::board_assisted_connect(std::size_t net, double start_x, doub
     lowered["tracks"] = std::move(tracks);
     lowered["vias"] = std::move(vias);
     lowered["blockers"] = std::move(blockers);
+    return lowered;
+}
+
+py::dict PyCircuit::board_escape(std::size_t component) {
+    auto router = volt::BoardRouter{board_projection(), volt::builtin_footprint_library()};
+    const auto result = router.escape(component_id(component));
+
+    auto pads = py::list{};
+    for (const auto &pad : result.pads) {
+        auto tracks = py::list{};
+        for (const auto track : pad.tracks) {
+            tracks.append(track.index());
+        }
+        auto vias = py::list{};
+        for (const auto via : pad.vias) {
+            vias.append(via.index());
+        }
+        auto blockers = py::list{};
+        for (const auto &blocker : pad.blockers) {
+            blockers.append(board_spatial_blocker_to_dict(blocker));
+        }
+
+        auto item = py::dict{};
+        item["pad"] = pad.pad.index();
+        item["pad_label"] = pad.pad_label;
+        item["pin"] = optional_id_to_object(pad.pin);
+        item["net"] = optional_id_to_object(pad.net);
+        item["pad_position"] = py::make_tuple(pad.pad_position.x_mm(), pad.pad_position.y_mm());
+        item["endpoint"] = py::make_tuple(pad.endpoint.x_mm(), pad.endpoint.y_mm());
+        item["escaped"] = pad.escaped;
+        item["failure_reason"] = board_escape_failure_reason_name(pad.failure_reason);
+        item["tracks"] = std::move(tracks);
+        item["vias"] = std::move(vias);
+        item["blockers"] = std::move(blockers);
+        pads.append(std::move(item));
+    }
+
+    auto lowered = py::dict{};
+    lowered["complete"] = result.complete();
+    lowered["component"] = result.component.index();
+    lowered["placement"] = optional_id_to_object(result.placement);
+    lowered["room"] = optional_id_to_object(result.room);
+    lowered["pads"] = std::move(pads);
     return lowered;
 }
 

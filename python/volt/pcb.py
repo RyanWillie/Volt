@@ -792,6 +792,17 @@ class Board:
             _layer_index(end_layer),
         )
 
+    def escape(self, component: Component | int) -> dict:
+        """Fan out a placed component using the kernel escape router."""
+        if isinstance(component, Component):
+            if component._design is not self._design:
+                raise ValueError("Component belongs to a different design")
+            component_index = component.index
+        else:
+            component_index = _component_index(component)
+        self._sync_object_footprints()
+        return self._design._circuit.board_escape(component_index)
+
     def add_zone(
         self,
         *,
