@@ -373,6 +373,12 @@ TEST_CASE("Board validation applies net-class track width, via size, and layer r
         std::vector{volt::BoardPoint{1.0, 5.0}, volt::BoardPoint{8.0, 5.0}},
         0.50,
     });
+    const auto wrong_layer_zone = board.add_zone(volt::BoardZone{
+        std::vector{volt::BoardPoint{10.0, 2.0}, volt::BoardPoint{14.0, 2.0},
+                    volt::BoardPoint{14.0, 6.0}, volt::BoardPoint{10.0, 6.0}},
+        std::vector{back},
+        net,
+    });
     const auto small_via =
         board.add_via(volt::BoardVia{net, volt::BoardPoint{12.0, 12.0}, front, back, 0.20, 0.40});
 
@@ -384,14 +390,36 @@ TEST_CASE("Board validation applies net-class track width, via size, and layer r
     CHECK(width->entities() == std::vector{volt::EntityRef::board_track(thin_track),
                                            volt::EntityRef::net(net),
                                            volt::EntityRef::board_layer(front)});
+    REQUIRE(width->overlays().size() == 1);
+    CHECK(width->overlays()[0].kind() == volt::DiagnosticOverlayKind::Segment);
+    CHECK(width->overlays()[0].points() ==
+          std::vector{volt::DiagnosticPoint{1.0, 1.0}, volt::DiagnosticPoint{8.0, 1.0}});
+    CHECK(width->overlays()[0].entities() == std::vector{volt::EntityRef::board_track(thin_track)});
+    CHECK(width->overlays()[0].layers() == std::vector{front});
+    REQUIRE(width->measurement().has_value());
+    CHECK(width->measurement().value() == volt::DiagnosticMeasurement{0.20, 0.50});
 
     const auto *drill = find_diagnostic(report, "PCB_VIA_DRILL_BELOW_NET_CLASS");
     REQUIRE(drill != nullptr);
     CHECK(drill->entities() ==
           std::vector{volt::EntityRef::board_via(small_via), volt::EntityRef::net(net)});
+    REQUIRE(drill->overlays().size() == 1);
+    CHECK(drill->overlays()[0].kind() == volt::DiagnosticOverlayKind::Point);
+    CHECK(drill->overlays()[0].points() == std::vector{volt::DiagnosticPoint{12.0, 12.0}});
+    CHECK(drill->overlays()[0].entities() == std::vector{volt::EntityRef::board_via(small_via)});
+    CHECK(drill->overlays()[0].layers() == std::vector{front, back});
+    REQUIRE(drill->measurement().has_value());
+    CHECK(drill->measurement().value() == volt::DiagnosticMeasurement{0.20, 0.40});
 
     const auto *diameter = find_diagnostic(report, "PCB_VIA_DIAMETER_BELOW_NET_CLASS");
     REQUIRE(diameter != nullptr);
+    REQUIRE(diameter->overlays().size() == 1);
+    CHECK(diameter->overlays()[0].kind() == volt::DiagnosticOverlayKind::Point);
+    CHECK(diameter->overlays()[0].points() == std::vector{volt::DiagnosticPoint{12.0, 12.0}});
+    CHECK(diameter->overlays()[0].entities() == std::vector{volt::EntityRef::board_via(small_via)});
+    CHECK(diameter->overlays()[0].layers() == std::vector{front, back});
+    REQUIRE(diameter->measurement().has_value());
+    CHECK(diameter->measurement().value() == volt::DiagnosticMeasurement{0.40, 0.80});
 
     const auto *layer = find_diagnostic(report, "PCB_COPPER_ON_DISALLOWED_LAYER");
     REQUIRE(layer != nullptr);
@@ -399,6 +427,35 @@ TEST_CASE("Board validation applies net-class track width, via size, and layer r
     CHECK(layer->entities() == std::vector{volt::EntityRef::board_track(wrong_layer_track),
                                            volt::EntityRef::net(net),
                                            volt::EntityRef::board_layer(back)});
+    REQUIRE(layer->overlays().size() == 1);
+    CHECK(layer->overlays()[0].kind() == volt::DiagnosticOverlayKind::Segment);
+    CHECK(layer->overlays()[0].points() ==
+          std::vector{volt::DiagnosticPoint{1.0, 5.0}, volt::DiagnosticPoint{8.0, 5.0}});
+    CHECK(layer->overlays()[0].entities() ==
+          std::vector{volt::EntityRef::board_track(wrong_layer_track)});
+    CHECK(layer->overlays()[0].layers() == std::vector{back});
+    CHECK_FALSE(layer->measurement().has_value());
+
+    auto zone_layers = std::vector<const volt::Diagnostic *>{};
+    for (const auto &diagnostic : report.diagnostics()) {
+        if (diagnostic.code() == volt::DiagnosticCode{"PCB_COPPER_ON_DISALLOWED_LAYER"} &&
+            diagnostic.entities().front() == volt::EntityRef::board_zone(wrong_layer_zone)) {
+            zone_layers.push_back(&diagnostic);
+        }
+    }
+    REQUIRE(zone_layers.size() == 1);
+    CHECK(zone_layers[0]->entities() == std::vector{volt::EntityRef::board_zone(wrong_layer_zone),
+                                                    volt::EntityRef::net(net),
+                                                    volt::EntityRef::board_layer(back)});
+    REQUIRE(zone_layers[0]->overlays().size() == 1);
+    CHECK(zone_layers[0]->overlays()[0].kind() == volt::DiagnosticOverlayKind::Polygon);
+    CHECK(zone_layers[0]->overlays()[0].points() ==
+          std::vector{volt::DiagnosticPoint{10.0, 2.0}, volt::DiagnosticPoint{14.0, 2.0},
+                      volt::DiagnosticPoint{14.0, 6.0}, volt::DiagnosticPoint{10.0, 6.0}});
+    CHECK(zone_layers[0]->overlays()[0].entities() ==
+          std::vector{volt::EntityRef::board_zone(wrong_layer_zone)});
+    CHECK(zone_layers[0]->overlays()[0].layers() == std::vector{back});
+    CHECK_FALSE(zone_layers[0]->measurement().has_value());
 }
 
 TEST_CASE("Net class layer scope and explicit layer names are mutually exclusive") {
@@ -673,6 +730,14 @@ TEST_CASE("Board validation lets room track width replace resolved net-class wid
     CHECK(width->entities() ==
           std::vector{volt::EntityRef::board_track(track), volt::EntityRef::net(net),
                       volt::EntityRef::board_layer(front), volt::EntityRef::board_room(room_id)});
+    REQUIRE(width->overlays().size() == 1);
+    CHECK(width->overlays()[0].kind() == volt::DiagnosticOverlayKind::Segment);
+    CHECK(width->overlays()[0].points() ==
+          std::vector{volt::DiagnosticPoint{1.0, 1.0}, volt::DiagnosticPoint{8.0, 1.0}});
+    CHECK(width->overlays()[0].entities() == std::vector{volt::EntityRef::board_track(track)});
+    CHECK(width->overlays()[0].layers() == std::vector{front});
+    REQUIRE(width->measurement().has_value());
+    CHECK(width->measurement().value() == volt::DiagnosticMeasurement{0.15, 0.20});
     CHECK(find_diagnostic(report, "PCB_TRACK_WIDTH_BELOW_MINIMUM") == nullptr);
 }
 

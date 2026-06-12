@@ -721,16 +721,36 @@ TEST_CASE("Board validation reports first PCB DRC rule violations") {
     CHECK(track_width->entities() == std::vector{volt::EntityRef::board_track(narrow_track),
                                                  volt::EntityRef::net(fixture.first_net),
                                                  volt::EntityRef::board_layer(front)});
+    REQUIRE(track_width->overlays().size() == 1);
+    CHECK(track_width->overlays()[0].kind() == volt::DiagnosticOverlayKind::Segment);
+    CHECK(track_width->overlays()[0].points() ==
+          std::vector{volt::DiagnosticPoint{1.0, 1.0}, volt::DiagnosticPoint{8.0, 1.0}});
+    CHECK(track_width->overlays()[0].entities() ==
+          std::vector{volt::EntityRef::board_track(narrow_track)});
+    CHECK(track_width->overlays()[0].layers() == std::vector{front});
+    REQUIRE(track_width->measurement().has_value());
+    CHECK(track_width->measurement().value() == volt::DiagnosticMeasurement{0.10, 0.25});
 
     const auto *via_drill = find_diagnostic(report, "PCB_VIA_DRILL_BELOW_MINIMUM");
     REQUIRE(via_drill != nullptr);
     CHECK(via_drill->entities() == std::vector{volt::EntityRef::board_via(small_via),
                                                volt::EntityRef::net(fixture.first_net)});
+    REQUIRE(via_drill->overlays().size() == 1);
+    CHECK(via_drill->overlays()[0].kind() == volt::DiagnosticOverlayKind::Point);
+    CHECK(via_drill->overlays()[0].points() == std::vector{volt::DiagnosticPoint{10.0, 10.0}});
+    CHECK(via_drill->overlays()[0].entities() ==
+          std::vector{volt::EntityRef::board_via(small_via)});
+    REQUIRE(via_drill->measurement().has_value());
+    CHECK(via_drill->measurement().value() == volt::DiagnosticMeasurement{0.20, 0.30});
 
     const auto *via_annular = find_diagnostic(report, "PCB_VIA_ANNULAR_BELOW_MINIMUM");
     REQUIRE(via_annular != nullptr);
     CHECK(via_annular->entities() == std::vector{volt::EntityRef::board_via(small_via),
                                                  volt::EntityRef::net(fixture.first_net)});
+    REQUIRE(via_annular->overlays().size() == 1);
+    CHECK(via_annular->overlays()[0].kind() == volt::DiagnosticOverlayKind::Point);
+    REQUIRE(via_annular->measurement().has_value());
+    CHECK(via_annular->measurement().value() == volt::DiagnosticMeasurement{0.50, 0.70});
 
     const auto *clearance = find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION");
     REQUIRE(clearance != nullptr);
@@ -739,12 +759,28 @@ TEST_CASE("Board validation reports first PCB DRC rule violations") {
                                                volt::EntityRef::net(fixture.first_net),
                                                volt::EntityRef::net(fixture.second_net),
                                                volt::EntityRef::board_layer(front)});
+    REQUIRE(clearance->overlays().size() == 2);
+    CHECK(clearance->overlays()[0].kind() == volt::DiagnosticOverlayKind::Segment);
+    CHECK(clearance->overlays()[0].entities() ==
+          std::vector{volt::EntityRef::board_track(narrow_track)});
+    CHECK(clearance->overlays()[0].layers() == std::vector{front});
+    CHECK(clearance->overlays()[1].kind() == volt::DiagnosticOverlayKind::Segment);
+    CHECK(clearance->overlays()[1].entities() ==
+          std::vector{volt::EntityRef::board_track(close_track)});
+    REQUIRE(clearance->measurement().has_value());
+    CHECK(clearance->measurement()->required_mm == 0.20);
+    CHECK(clearance->measurement()->actual_mm < clearance->measurement()->required_mm);
 
     const auto *outside_outline = find_diagnostic(report, "PCB_COPPER_OUTSIDE_OUTLINE");
     REQUIRE(outside_outline != nullptr);
     CHECK(outside_outline->entities() == std::vector{volt::EntityRef::board_track(outside_track),
                                                      volt::EntityRef::net(fixture.first_net),
                                                      volt::EntityRef::board_layer(front)});
+    REQUIRE(outside_outline->overlays().size() == 1);
+    CHECK(outside_outline->overlays()[0].kind() == volt::DiagnosticOverlayKind::Segment);
+    CHECK(outside_outline->overlays()[0].entities() ==
+          std::vector{volt::EntityRef::board_track(outside_track)});
+    CHECK_FALSE(outside_outline->measurement().has_value());
 }
 
 TEST_CASE("Board validation emits no capability diagnostics without an explicit profile") {

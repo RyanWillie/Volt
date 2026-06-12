@@ -134,9 +134,10 @@ Inspection records: `volt.TemplateNetInfo`, `volt.PortInfo`, `volt.ModuleCompone
 | Export | Purpose |
 | --- | --- |
 | `volt.DiagnosticReport` | Iterable validation report with `has_errors`. |
-| `volt.Diagnostic` | One diagnostic severity, category, code, message, entity list, and optional overlays. |
+| `volt.Diagnostic` | One diagnostic severity, category, code, message, entity list, optional overlays, and optional measurement. |
 | `volt.DiagnosticEntity` | Reference to an entity involved in a diagnostic. |
 | `volt.DiagnosticOverlay` | Overlay-ready diagnostic geometry with highlight entities and board-layer references. |
+| `volt.DiagnosticMeasurement` | Typed actual-versus-required measurement in millimeters attached to a diagnostic. |
 | `volt.DIAGNOSTIC_CATEGORIES` | Stable diagnostic category strings, including `erc`, `drc`, `pcb.board`, and `pcb.visual`. |
 | `volt.ERC_DIAGNOSTIC_CODES` | Stable electrical rule diagnostic code strings exported for project-facing checks. |
 | `volt.DRC_DIAGNOSTIC_CODES` | Stable design rule diagnostic code strings exported for project-facing checks. |

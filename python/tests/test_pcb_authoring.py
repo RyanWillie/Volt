@@ -1092,6 +1092,16 @@ def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():
     assert "PCB_TRACK_WIDTH_BELOW_MINIMUM" in codes
     assert "PCB_VIA_DRILL_BELOW_MINIMUM" in codes
     assert "PCB_VIA_ANNULAR_BELOW_MINIMUM" in codes
+    diagnostics_by_code = {diagnostic.code: diagnostic for diagnostic in report}
+    assert diagnostics_by_code["PCB_TRACK_WIDTH_BELOW_MINIMUM"].measurement == (
+        volt.DiagnosticMeasurement(actual_mm=0.10, required_mm=0.25)
+    )
+    assert diagnostics_by_code["PCB_VIA_DRILL_BELOW_MINIMUM"].measurement == (
+        volt.DiagnosticMeasurement(actual_mm=0.20, required_mm=0.30)
+    )
+    assert diagnostics_by_code["PCB_VIA_ANNULAR_BELOW_MINIMUM"].measurement == (
+        volt.DiagnosticMeasurement(actual_mm=0.50, required_mm=0.70)
+    )
     assert any(
         entity.kind == "board_track"
         for diagnostic in report

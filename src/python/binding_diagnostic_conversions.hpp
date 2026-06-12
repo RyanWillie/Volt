@@ -138,6 +138,17 @@ diagnostic_overlays_to_list(const std::vector<volt::DiagnosticOverlay> &diagnost
     return overlays;
 }
 
+[[nodiscard]] inline py::object
+diagnostic_measurement_to_object(const std::optional<volt::DiagnosticMeasurement> &measurement) {
+    if (!measurement.has_value()) {
+        return py::none();
+    }
+    auto measurement_dict = py::dict{};
+    measurement_dict["actual_mm"] = measurement->actual_mm;
+    measurement_dict["required_mm"] = measurement->required_mm;
+    return measurement_dict;
+}
+
 [[nodiscard]] inline py::dict diagnostic_to_dict(const volt::Diagnostic &diagnostic) {
     auto result = py::dict{};
     result["severity"] = severity_name(diagnostic.severity());
@@ -146,6 +157,7 @@ diagnostic_overlays_to_list(const std::vector<volt::DiagnosticOverlay> &diagnost
     result["message"] = diagnostic.message();
     result["entities"] = diagnostic_entities_to_list(diagnostic.entities());
     result["overlays"] = diagnostic_overlays_to_list(diagnostic.overlays());
+    result["measurement"] = diagnostic_measurement_to_object(diagnostic.measurement());
 
     return result;
 }

@@ -328,18 +328,57 @@ void append_unique_layer(std::vector<BoardLayerId> &layers, BoardLayerId layer) 
     }
 }
 
-[[nodiscard]] Diagnostic drc_diagnostic(std::string_view code, std::string message,
-                                        std::vector<EntityRef> entities = {}) {
-    return Diagnostic{Severity::Error, DiagnosticCode{std::string{code}},
-                      DiagnosticCategory{diagnostic_categories::Drc}, std::move(message),
-                      std::move(entities)};
+[[nodiscard]] Diagnostic
+drc_diagnostic(std::string_view code, std::string message, std::vector<EntityRef> entities = {},
+               std::vector<DiagnosticOverlay> overlays = {},
+               std::optional<DiagnosticMeasurement> measurement = std::nullopt) {
+    return Diagnostic{Severity::Error,
+                      DiagnosticCode{std::string{code}},
+                      DiagnosticCategory{diagnostic_categories::Drc},
+                      std::move(message),
+                      std::move(entities),
+                      std::move(overlays),
+                      measurement};
 }
 
 [[nodiscard]] Diagnostic drc_warning(std::string_view code, std::string message,
-                                     std::vector<EntityRef> entities = {}) {
-    return Diagnostic{Severity::Warning, DiagnosticCode{std::string{code}},
-                      DiagnosticCategory{diagnostic_categories::Drc}, std::move(message),
-                      std::move(entities)};
+                                     std::vector<EntityRef> entities = {},
+                                     std::vector<DiagnosticOverlay> overlays = {}) {
+    return Diagnostic{Severity::Warning,
+                      DiagnosticCode{std::string{code}},
+                      DiagnosticCategory{diagnostic_categories::Drc},
+                      std::move(message),
+                      std::move(entities),
+                      std::move(overlays)};
+}
+
+/** Build a board-space overlay point from a board point. */
+[[nodiscard]] DiagnosticPoint to_diagnostic_point(const BoardPoint &point) {
+    return DiagnosticPoint{point.x_mm(), point.y_mm()};
+}
+
+/**
+ * Build one overlay describing a copper shape's geometry on a single layer:
+ * segment overlays for tracks, point overlays for vias and circular pads, and polygon overlays
+ * for zones and rectangular pads.
+ */
+[[nodiscard]] DiagnosticOverlay shape_overlay(const BoardCopperShape &shape, BoardLayerId layer) {
+    const auto layers = std::vector{layer};
+    if (shape.kind == BoardCopperShapeKind::Segment) {
+        return DiagnosticOverlay::segment(to_diagnostic_point(shape.points[0]),
+                                          to_diagnostic_point(shape.points[1]),
+                                          shape.primary_entities, layers);
+    }
+    if (shape.kind == BoardCopperShapeKind::Disc) {
+        return DiagnosticOverlay::point(to_diagnostic_point(shape.points[0]),
+                                        shape.primary_entities, layers);
+    }
+    auto vertices = std::vector<DiagnosticPoint>{};
+    vertices.reserve(shape.points.size());
+    for (const auto &point : shape.points) {
+        vertices.push_back(to_diagnostic_point(point));
+    }
+    return DiagnosticOverlay::polygon(std::move(vertices), shape.primary_entities, layers);
 }
 
 [[nodiscard]] std::vector<BoardLayerId> via_copper_layers(const Board &board, const BoardVia &via) {
@@ -660,6 +699,26 @@ class BoardRoomRuleResolver {
     return entities;
 }
 
+[[nodiscard]] std::vector<DiagnosticOverlay> track_overlays(const BoardTrack &track,
+                                                            BoardTrackId track_id) {
+    auto overlays = std::vector<DiagnosticOverlay>{};
+    const auto entities = std::vector{EntityRef::board_track(track_id)};
+    const auto layers = std::vector{track.layer()};
+    for (std::size_t point_index = 1; point_index < track.points().size(); ++point_index) {
+        overlays.push_back(DiagnosticOverlay::segment(
+            to_diagnostic_point(track.points()[point_index - 1U]),
+            to_diagnostic_point(track.points()[point_index]), entities, layers));
+    }
+    return overlays;
+}
+
+[[nodiscard]] DiagnosticOverlay via_overlay(const Board &board, const BoardVia &via,
+                                            BoardViaId via_id) {
+    return DiagnosticOverlay::point(to_diagnostic_point(via.position()),
+                                    std::vector{EntityRef::board_via(via_id)},
+                                    via_copper_layers(board, via));
+}
+
 void validate_track_widths(const Board &board, DiagnosticReport &report) {
     const auto &rules = board.design_rules();
     const auto rooms = BoardRoomRuleResolver{board};
@@ -667,11 +726,13 @@ void validate_track_widths(const Board &board, DiagnosticReport &report) {
         const auto track_id = BoardTrackId{index};
         const auto &track = board.track(track_id);
         if (track.width_mm() + board_drc_epsilon < rules.minimum_track_width_mm()) {
-            report.add(drc_diagnostic(drc_diagnostic_codes::TrackWidthBelowMinimum,
-                                      "Track width is below the board minimum",
-                                      std::vector{EntityRef::board_track(track_id),
-                                                  EntityRef::net(track.net()),
-                                                  EntityRef::board_layer(track.layer())}));
+            report.add(drc_diagnostic(
+                drc_diagnostic_codes::TrackWidthBelowMinimum,
+                "Track width is below the board minimum",
+                std::vector{EntityRef::board_track(track_id), EntityRef::net(track.net()),
+                            EntityRef::board_layer(track.layer())},
+                track_overlays(track, track_id),
+                DiagnosticMeasurement{track.width_mm(), rules.minimum_track_width_mm()}));
         }
 
         const auto net_rules = resolve_net_class_rules(board.circuit(), track.net());
@@ -690,9 +751,11 @@ void validate_track_widths(const Board &board, DiagnosticReport &report) {
             if (room_requirement.has_value()) {
                 entities.push_back(EntityRef::board_room(room_requirement.value()));
             }
-            report.add(drc_diagnostic(drc_diagnostic_codes::NetClassTrackWidthViolation,
-                                      "Track width is below the resolved net class width",
-                                      std::move(entities)));
+            report.add(
+                drc_diagnostic(drc_diagnostic_codes::NetClassTrackWidthViolation,
+                               "Track width is below the resolved net class width",
+                               std::move(entities), track_overlays(track, track_id),
+                               DiagnosticMeasurement{track.width_mm(), width_requirement.value()}));
         }
     }
 }
@@ -703,17 +766,23 @@ void validate_via_rules(const Board &board, DiagnosticReport &report) {
         const auto via_id = BoardViaId{index};
         const auto &via = board.via(via_id);
         if (via.drill_diameter_mm() + board_drc_epsilon < rules.minimum_via_drill_diameter_mm()) {
-            report.add(drc_diagnostic(
-                drc_diagnostic_codes::ViaDrillBelowMinimum,
-                "Via drill diameter is below the board minimum",
-                std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())}));
+            report.add(
+                drc_diagnostic(drc_diagnostic_codes::ViaDrillBelowMinimum,
+                               "Via drill diameter is below the board minimum",
+                               std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())},
+                               std::vector{via_overlay(board, via, via_id)},
+                               DiagnosticMeasurement{via.drill_diameter_mm(),
+                                                     rules.minimum_via_drill_diameter_mm()}));
         }
         if (via.annular_diameter_mm() + board_drc_epsilon <
             rules.minimum_via_annular_diameter_mm()) {
-            report.add(drc_diagnostic(
-                drc_diagnostic_codes::ViaAnnularBelowMinimum,
-                "Via annular copper diameter is below the board minimum",
-                std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())}));
+            report.add(
+                drc_diagnostic(drc_diagnostic_codes::ViaAnnularBelowMinimum,
+                               "Via annular copper diameter is below the board minimum",
+                               std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())},
+                               std::vector{via_overlay(board, via, via_id)},
+                               DiagnosticMeasurement{via.annular_diameter_mm(),
+                                                     rules.minimum_via_annular_diameter_mm()}));
         }
 
         const auto net_rules = resolve_net_class_rules(board.circuit(), via.net());
@@ -722,14 +791,19 @@ void validate_via_rules(const Board &board, DiagnosticReport &report) {
             report.add(drc_diagnostic(
                 drc_diagnostic_codes::NetClassViaDrillViolation,
                 "Via drill diameter is below the resolved net class drill",
-                std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())}));
+                std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())},
+                std::vector{via_overlay(board, via, via_id)},
+                DiagnosticMeasurement{via.drill_diameter_mm(), net_rules.via_drill_mm.value()}));
         }
         if (net_rules.via_diameter_mm.has_value() &&
             via.annular_diameter_mm() + board_drc_epsilon < net_rules.via_diameter_mm.value()) {
-            report.add(drc_diagnostic(
-                drc_diagnostic_codes::NetClassViaDiameterViolation,
-                "Via copper diameter is below the resolved net class diameter",
-                std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())}));
+            report.add(
+                drc_diagnostic(drc_diagnostic_codes::NetClassViaDiameterViolation,
+                               "Via copper diameter is below the resolved net class diameter",
+                               std::vector{EntityRef::board_via(via_id), EntityRef::net(via.net())},
+                               std::vector{via_overlay(board, via, via_id)},
+                               DiagnosticMeasurement{via.annular_diameter_mm(),
+                                                     net_rules.via_diameter_mm.value()}));
         }
     }
 }
@@ -772,7 +846,8 @@ void validate_net_class_layers(const Board &board, DiagnosticReport &report) {
                                   "Track is on a layer the resolved net class does not allow",
                                   std::vector{EntityRef::board_track(track_id),
                                               EntityRef::net(track.net()),
-                                              EntityRef::board_layer(track.layer())}));
+                                              EntityRef::board_layer(track.layer())},
+                                  track_overlays(track, track_id)));
     }
 
     for (std::size_t index = 0; index < board.zone_count(); ++index) {
@@ -786,11 +861,19 @@ void validate_net_class_layers(const Board &board, DiagnosticReport &report) {
             if (layer_allowed(net_rules, layer)) {
                 continue;
             }
-            report.add(drc_diagnostic(drc_diagnostic_codes::NetClassDisallowedLayer,
-                                      "Zone is on a layer the resolved net class does not allow",
-                                      std::vector{EntityRef::board_zone(zone_id),
-                                                  EntityRef::net(zone.net().value()),
-                                                  EntityRef::board_layer(layer)}));
+            auto vertices = std::vector<DiagnosticPoint>{};
+            vertices.reserve(zone.outline().size());
+            for (const auto &point : zone.outline()) {
+                vertices.push_back(to_diagnostic_point(point));
+            }
+            report.add(drc_diagnostic(
+                drc_diagnostic_codes::NetClassDisallowedLayer,
+                "Zone is on a layer the resolved net class does not allow",
+                std::vector{EntityRef::board_zone(zone_id), EntityRef::net(zone.net().value()),
+                            EntityRef::board_layer(layer)},
+                std::vector{DiagnosticOverlay::polygon(std::move(vertices),
+                                                       std::vector{EntityRef::board_zone(zone_id)},
+                                                       std::vector{layer})}));
         }
     }
 }
@@ -913,7 +996,8 @@ void validate_outline_clearance(const Board &board, const std::vector<BoardCoppe
         }
         report.add(drc_diagnostic(drc_diagnostic_codes::CopperOutsideOutline,
                                   "Copper does not satisfy the board outline clearance",
-                                  copper_shape_entities(shape, shape.net, layer.value())));
+                                  copper_shape_entities(shape, shape.net, layer.value()),
+                                  std::vector{shape_overlay(shape, layer.value())}));
     }
 }
 
@@ -932,10 +1016,19 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
             outline_contains_polygon(outline, zone.outline(), outline_clearance)) {
             continue;
         }
-        report.add(drc_diagnostic(drc_diagnostic_codes::CopperOutsideOutline,
-                                  "Copper does not satisfy the board outline clearance",
-                                  std::vector{EntityRef::board_zone(zone_id),
-                                              EntityRef::board_layer(zone.layers().front())}));
+        auto vertices = std::vector<DiagnosticPoint>{};
+        vertices.reserve(zone.outline().size());
+        for (const auto &point : zone.outline()) {
+            vertices.push_back(to_diagnostic_point(point));
+        }
+        const auto zone_layer = zone.layers().front();
+        report.add(drc_diagnostic(
+            drc_diagnostic_codes::CopperOutsideOutline,
+            "Copper does not satisfy the board outline clearance",
+            std::vector{EntityRef::board_zone(zone_id), EntityRef::board_layer(zone_layer)},
+            std::vector{DiagnosticOverlay::polygon(std::move(vertices),
+                                                   std::vector{EntityRef::board_zone(zone_id)},
+                                                   std::vector{zone_layer})}));
     }
 }
 
@@ -958,10 +1051,13 @@ void validate_copper_clearance(const Board &board, const std::vector<BoardCopper
         if (check.room.has_value()) {
             entities.push_back(EntityRef::board_room(check.room.value()));
         }
+        const auto layer = check.layer.value();
+        auto overlays = std::vector{shape_overlay(lhs, layer), shape_overlay(rhs, layer)};
         report.add(drc_diagnostic(
             drc_diagnostic_codes::CopperClearanceViolation,
             clearance_pair_message(shape_clearance_kind(lhs), shape_clearance_kind(rhs)),
-            std::move(entities)));
+            std::move(entities), std::move(overlays),
+            DiagnosticMeasurement{check.actual_clearance_mm, check.required_clearance_mm}));
     }
 }
 
