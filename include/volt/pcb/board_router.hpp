@@ -46,7 +46,7 @@ struct BoardRouteResult {
     std::vector<BoardTrackId> tracks;
     /** Board vias created for a successful route, in commit order. */
     std::vector<BoardViaId> vias;
-    /** Blockers from the final rejected candidate when no route was found. */
+    /** Blockers from the primary rejected candidate when no route was found. */
     std::vector<BoardSpatialBlocker> blockers;
 };
 
@@ -105,6 +105,8 @@ class BoardRouter {
     };
 
     [[nodiscard]] bool layer_allowed(NetId net, BoardLayerId layer) const;
+
+    void require_routable_layer(BoardLayerId layer) const;
 
     [[nodiscard]] std::vector<Candidate>
     pattern_candidates(const BoardRouteRequest &request, const BoardRouteParameters &params) const;

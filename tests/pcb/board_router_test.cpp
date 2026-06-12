@@ -234,6 +234,25 @@ TEST_CASE("Router reports blockers and leaves the board unchanged on failure", "
     CHECK(layout.board.via_count() == via_count_before);
 }
 
+TEST_CASE("Router rejects structurally invalid endpoint layers", "[pcb][router]") {
+    auto fixture = make_router_fixture();
+    auto layout = make_two_layer_board(fixture.circuit);
+    const auto silkscreen = layout.board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+    auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
+
+    CHECK_THROWS_AS(router.connect(volt::BoardRouteRequest{
+                        fixture.signal_net, volt::BoardPoint{10.0, 20.0},
+                        volt::BoardPoint{40.0, 20.0}, volt::BoardLayerId{99}, layout.front}),
+                    std::out_of_range);
+    CHECK_THROWS_AS(router.connect(volt::BoardRouteRequest{
+                        fixture.signal_net, volt::BoardPoint{10.0, 20.0},
+                        volt::BoardPoint{40.0, 20.0}, silkscreen, layout.front}),
+                    std::invalid_argument);
+    CHECK(layout.board.track_count() == 0U);
+    CHECK(layout.board.via_count() == 0U);
+}
+
 TEST_CASE("Router respects net-class width, via size, and allowed layers", "[pcb][router]") {
     auto fixture = make_router_fixture();
 
@@ -325,6 +344,28 @@ TEST_CASE("Router floors net-class sizes at board design minima", "[pcb][router]
     CHECK(layout.board.track(result.tracks.front()).width_mm() == Catch::Approx(0.35));
     CHECK(layout.board.via(result.vias.front()).drill_diameter_mm() == Catch::Approx(0.30));
     CHECK(layout.board.via(result.vias.front()).annular_diameter_mm() == Catch::Approx(0.70));
+    const auto report = volt::validate_board(layout.board, volt::builtin_footprint_library());
+    CHECK(copper_drc_codes(report).empty());
+}
+
+TEST_CASE("Router respects room-local track width overrides", "[pcb][router]") {
+    auto fixture = make_router_fixture();
+    auto layout = make_two_layer_board(fixture.circuit);
+    auto room = volt::BoardRoom{
+        "Timing",
+        volt::BoardOutline::rectangle(volt::BoardPoint{5.0, 10.0}, volt::BoardSize{45.0, 20.0}),
+        std::vector{layout.front}, 0};
+    room.set_track_width_mm(0.70);
+    static_cast<void>(layout.board.add_room(std::move(room)));
+
+    auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
+    const auto result = router.connect(
+        volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{10.0, 20.0},
+                                volt::BoardPoint{40.0, 20.0}, layout.front, layout.front});
+
+    REQUIRE(result.routed);
+    REQUIRE(result.tracks.size() == 1U);
+    CHECK(layout.board.track(result.tracks.front()).width_mm() == Catch::Approx(0.70));
     const auto report = volt::validate_board(layout.board, volt::builtin_footprint_library());
     CHECK(copper_drc_codes(report).empty());
 }

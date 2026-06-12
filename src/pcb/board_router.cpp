@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <optional>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -64,6 +65,53 @@ via_candidate_layers(const Board &board, NetId net, BoardPoint position, BoardLa
     });
 }
 
+[[nodiscard]] bool room_contains_layer(const BoardRoom &room, BoardLayerId layer) {
+    return std::find(room.layers().begin(), room.layers().end(), layer) != room.layers().end();
+}
+
+[[nodiscard]] bool room_has_higher_precedence(const Board &board, BoardRoomId candidate,
+                                              BoardRoomId current) {
+    const auto candidate_priority = board.room(candidate).priority();
+    const auto current_priority = board.room(current).priority();
+    return candidate_priority > current_priority ||
+           (candidate_priority == current_priority && candidate.index() < current.index());
+}
+
+[[nodiscard]] std::optional<BoardRoomId> track_width_room(const Board &board, BoardLayerId layer,
+                                                          BoardPoint start, BoardPoint end,
+                                                          double width_mm) {
+    auto result = std::optional<BoardRoomId>{};
+    for (std::size_t index = 0; index < board.room_count(); ++index) {
+        const auto room_id = BoardRoomId{index};
+        const auto &room = board.room(room_id);
+        if (!room.track_width_mm().has_value() || !room_contains_layer(room, layer) ||
+            !detail::outline_contains_segment(room.outline(), start, end, width_mm / 2.0, 0.0)) {
+            continue;
+        }
+        if (!result.has_value() || room_has_higher_precedence(board, room_id, result.value())) {
+            result = room_id;
+        }
+    }
+    return result;
+}
+
+[[nodiscard]] double track_width_for_segment(const Board &board, BoardLayerId layer,
+                                             BoardPoint start, BoardPoint end,
+                                             const BoardRouteParameters &params) {
+    auto width_mm = params.track_width_mm;
+    while (true) {
+        const auto room = track_width_room(board, layer, start, end, width_mm);
+        if (!room.has_value()) {
+            return width_mm;
+        }
+        const auto room_width_mm = board.room(room.value()).track_width_mm().value();
+        if (room_width_mm <= width_mm + detail::board_drc_epsilon) {
+            return width_mm;
+        }
+        width_mm = room_width_mm;
+    }
+}
+
 } // namespace
 
 BoardRouter::BoardRouter(Board &board, const FootprintLibrary &footprints)
@@ -79,6 +127,12 @@ BoardRouter::BoardRouter(Board &board, const FootprintLibrary &footprints)
                          board_->layer(layer).name()) != rules.allowed_layer_names.end();
     }
     return layer_scope_permits(rules.layer_scope, layer_side(*board_, layer));
+}
+
+void BoardRouter::require_routable_layer(BoardLayerId layer) const {
+    if (board_->layer(layer).role() != BoardLayerRole::Copper) {
+        throw std::invalid_argument{"Board router endpoint layer must be a copper layer"};
+    }
 }
 
 [[nodiscard]] BoardRouteParameters BoardRouter::resolve_parameters(NetId net) const {
@@ -222,10 +276,11 @@ BoardRouter::evaluate(const Candidate &candidate, const BoardRouteRequest &reque
         if (!layer_in_allowed_parameters(segment.layer, params)) {
             return blockers;
         }
+        const auto width_mm =
+            track_width_for_segment(*board_, segment.layer, segment.start, segment.end, params);
         const auto shape = BoardSpatialQueryShape{
-            BoardSpatialQueryShapeKind::Segment, request.net,
-            std::vector{segment.layer},          std::vector{segment.start, segment.end},
-            params.track_width_mm / 2.0,         BoardClearanceKind::Track,
+            BoardSpatialQueryShapeKind::Segment,     request.net,    std::vector{segment.layer},
+            std::vector{segment.start, segment.end}, width_mm / 2.0, BoardClearanceKind::Track,
             BoardKeepoutRestriction::Copper,
         };
         const auto result = index_.query_legality(shape);
@@ -263,39 +318,48 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         if (same_point(segment.start, segment.end)) {
             continue;
         }
-        const auto track_id = board_->add_track(BoardTrack{request.net, segment.layer,
-                                                           std::vector{segment.start, segment.end},
-                                                           params.track_width_mm});
-        index_.insert(BoardSpatialQueryShape{
-            BoardSpatialQueryShapeKind::Segment,
-            request.net,
-            std::vector{segment.layer},
-            std::vector{segment.start, segment.end},
-            params.track_width_mm / 2.0,
-            BoardClearanceKind::Track,
-            BoardKeepoutRestriction::Copper,
-        });
+        const auto width_mm =
+            track_width_for_segment(*board_, segment.layer, segment.start, segment.end, params);
+        const auto previous_geometry_mutation_count = board_->geometry_mutation_count();
+        const auto track_id = board_->add_track(BoardTrack{
+            request.net, segment.layer, std::vector{segment.start, segment.end}, width_mm});
+        index_.insert_after_board_mutation(
+            BoardSpatialQueryShape{
+                BoardSpatialQueryShapeKind::Segment,
+                request.net,
+                std::vector{segment.layer},
+                std::vector{segment.start, segment.end},
+                width_mm / 2.0,
+                BoardClearanceKind::Track,
+                BoardKeepoutRestriction::Copper,
+            },
+            previous_geometry_mutation_count);
         result.tracks.push_back(track_id);
     }
 
     for (const auto &via : candidate.vias) {
+        const auto previous_geometry_mutation_count = board_->geometry_mutation_count();
         const auto via_id =
             board_->add_via(BoardVia{request.net, via.position, via.start_layer, via.end_layer,
                                      params.via_drill_mm, params.via_diameter_mm});
-        index_.insert(BoardSpatialQueryShape{
-            BoardSpatialQueryShapeKind::Disc,
-            request.net,
-            detail::via_copper_layers(*board_, board_->via(via_id)),
-            std::vector{via.position},
-            params.via_diameter_mm / 2.0,
-            BoardClearanceKind::Via,
-            BoardKeepoutRestriction::Via,
-        });
+        index_.insert_after_board_mutation(
+            BoardSpatialQueryShape{
+                BoardSpatialQueryShapeKind::Disc,
+                request.net,
+                detail::via_copper_layers(*board_, board_->via(via_id)),
+                std::vector{via.position},
+                params.via_diameter_mm / 2.0,
+                BoardClearanceKind::Via,
+                BoardKeepoutRestriction::Via,
+            },
+            previous_geometry_mutation_count);
         result.vias.push_back(via_id);
     }
 }
 
 [[nodiscard]] BoardRouteResult BoardRouter::connect(const BoardRouteRequest &request) {
+    require_routable_layer(request.start_layer);
+    require_routable_layer(request.end_layer);
     const auto params = resolve_parameters(request.net);
 
     auto result = BoardRouteResult{};
@@ -314,9 +378,6 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
     candidates.insert(candidates.end(), std::make_move_iterator(walk_around.begin()),
                       std::make_move_iterator(walk_around.end()));
 
-    // Report the primary (straight / direct) candidate's blockers on failure: they describe
-    // the obstacle directly in the connection's way, rather than an arbitrary far jog that
-    // merely ran off the board outline.
     auto primary_blockers = std::optional<std::vector<BoardSpatialBlocker>>{};
     for (const auto &candidate : candidates) {
         auto rejected = evaluate(candidate, request, params);

@@ -261,13 +261,34 @@ void BoardSpatialIndex::insert(BoardSpatialQueryShape shape) {
     insert(to_copper_shape(std::move(shape)));
 }
 
-void BoardSpatialIndex::insert(detail::BoardCopperShape shape) {
+void BoardSpatialIndex::append_shape(detail::BoardCopperShape shape) {
     ensure_conservative_bound_current();
     validate_shape(shape);
     const auto shape_index = shapes_.size();
     boxes_.push_back(shape_box(shape));
     shapes_.push_back(std::move(shape));
     index_shape(shape_index);
+}
+
+void BoardSpatialIndex::insert(detail::BoardCopperShape shape) {
+    ensure_geometry_current();
+    append_shape(std::move(shape));
+}
+
+void BoardSpatialIndex::insert_after_board_mutation(BoardSpatialQueryShape shape,
+                                                    std::size_t previous_geometry_mutation_count) {
+    insert_after_board_mutation(to_copper_shape(std::move(shape)),
+                                previous_geometry_mutation_count);
+}
+
+void BoardSpatialIndex::insert_after_board_mutation(detail::BoardCopperShape shape,
+                                                    std::size_t previous_geometry_mutation_count) {
+    if (expected_geometry_mutation_count_ != previous_geometry_mutation_count ||
+        board_->geometry_mutation_count() != previous_geometry_mutation_count + 1U) {
+        throw std::logic_error{
+            "Board spatial index mirror insert must follow exactly one board geometry mutation"};
+    }
+    append_shape(std::move(shape));
     expected_geometry_mutation_count_ = board_->geometry_mutation_count();
 }
 
