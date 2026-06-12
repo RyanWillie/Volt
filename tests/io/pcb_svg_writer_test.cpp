@@ -291,6 +291,43 @@ TEST_CASE("PCB SVG writer filters layer-owned content for a selected layer") {
     CHECK(silk_svg.find("data-pad-projection=") == std::string::npos);
 }
 
+TEST_CASE("PCB SVG writer preserves through-hole pad copper on non-placement-side layers") {
+    auto fixture = make_resistor_circuit(false);
+    fixture.circuit.select_physical_part(
+        fixture.component, volt::PhysicalPart{
+                               volt::ManufacturerPart{"Generic", "PinHeader_1x02"},
+                               volt::PackageRef{"1x02"},
+                               volt::FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
+                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
+                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+                           });
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Through Hole Layers"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto inner = board.add_layer(
+        volt::BoardLayer{"In1.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Inner});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, inner, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto placement = board.place_component(
+        volt::ComponentPlacement{fixture.component, volt::BoardPoint{15.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top});
+
+    const auto inner_svg =
+        volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library(),
+                                          volt::io::PcbPlacementSvgOptions{.layer_filter = inner});
+    const auto back_svg =
+        volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library(),
+                                          volt::io::PcbPlacementSvgOptions{.layer_filter = back});
+
+    CHECK(inner_svg.find("data-pad-projection=\"pcb_pad:0:0\"") != std::string::npos);
+    CHECK(back_svg.find("data-pad-projection=\"pcb_pad:0:0\"") != std::string::npos);
+    CHECK(inner_svg.find("class=\"footprint-body\"") == std::string::npos);
+    CHECK(back_svg.find("class=\"footprint-body\"") == std::string::npos);
+}
+
 TEST_CASE("PCB SVG writer keeps repeated layer object IDs unique") {
     auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Repeated Layer Objects"}};
@@ -561,6 +598,8 @@ TEST_CASE("PCB SVG writer filters board layer diagnostics by selected layer") {
 
     CHECK(back_svg.find("PCB_LAYER_STACK_SIDE_ORDER_CONFLICT") != std::string::npos);
     CHECK(silk_svg.find("PCB_LAYER_STACK_SIDE_ORDER_CONFLICT") == std::string::npos);
+    CHECK(back_svg.find("viewBox=\"0 0 18 21\"") != std::string::npos);
+    CHECK(silk_svg.find("viewBox=\"0 0 18 18\"") != std::string::npos);
 }
 
 TEST_CASE("PCB SVG writer exposes copper entity references for DRC diagnostics") {

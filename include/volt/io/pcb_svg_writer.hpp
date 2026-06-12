@@ -61,7 +61,8 @@ void write_pcb_svg_number(std::ostream &out, double value);
 
 [[nodiscard]] double preview_width(const PcbSvgBounds &bounds);
 
-[[nodiscard]] double preview_height(const PcbSvgBounds &bounds, const DiagnosticReport &diagnostics,
+[[nodiscard]] double preview_height(const PcbSvgBounds &bounds, const Board &board,
+                                    const DiagnosticReport &diagnostics,
                                     PcbPlacementSvgOptions options);
 
 [[nodiscard]] std::string entity_ref_svg_id(EntityRef entity);

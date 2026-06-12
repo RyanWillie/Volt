@@ -63,11 +63,18 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     return (bounds.max_x - bounds.min_x) + (pcb_svg_margin_mm * 2.0);
 }
 
-[[nodiscard]] double preview_height(const PcbSvgBounds &bounds, const DiagnosticReport &diagnostics,
+[[nodiscard]] double preview_height(const PcbSvgBounds &bounds, const Board &board,
+                                    const DiagnosticReport &diagnostics,
                                     PcbPlacementSvgOptions options) {
     auto height = (bounds.max_y - bounds.min_y) + (pcb_svg_margin_mm * 2.0);
     if (options.diagnostic_overlays && !diagnostics.diagnostics().empty()) {
-        height += 3.0 * static_cast<double>(diagnostics.diagnostics().size());
+        auto selected_count = std::size_t{0};
+        for (const auto &diagnostic : diagnostics.diagnostics()) {
+            if (diagnostic_selected(board, diagnostic, options)) {
+                ++selected_count;
+            }
+        }
+        height += 3.0 * static_cast<double>(selected_count);
     }
     return height;
 }
@@ -535,11 +542,22 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
         const auto &placement = board.placement(placement_id);
-        if (!placement_selected(board, placement, options)) {
-            continue;
-        }
         const auto *definition = resolve_definition_for_placement(board, placement, footprints);
         if (definition == nullptr) {
+            continue;
+        }
+        const auto placement_context_selected = placement_selected(board, placement, options);
+        auto has_selected_pad = !options.layer_filter.has_value();
+        if (options.layer_filter.has_value()) {
+            for (std::size_t pad_index = 0; pad_index < definition->pad_count(); ++pad_index) {
+                if (pad_selected_for_layer(board, definition->pad(FootprintPadId{pad_index}),
+                                           placement.side(), options.layer_filter.value())) {
+                    has_selected_pad = true;
+                    break;
+                }
+            }
+        }
+        if (!placement_context_selected && !has_selected_pad) {
             continue;
         }
 
@@ -569,15 +587,17 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
             out << " scale(-1 1)";
         }
         out << "\">\n";
-        out << "        <rect class=\"footprint-body\" x=\"";
-        write_pcb_svg_number(out, local_bounds.min_x);
-        out << "\" y=\"";
-        write_pcb_svg_number(out, local_bounds.min_y);
-        out << "\" width=\"";
-        write_pcb_svg_number(out, local_bounds.max_x - local_bounds.min_x);
-        out << "\" height=\"";
-        write_pcb_svg_number(out, local_bounds.max_y - local_bounds.min_y);
-        out << "\"/>\n";
+        if (placement_context_selected) {
+            out << "        <rect class=\"footprint-body\" x=\"";
+            write_pcb_svg_number(out, local_bounds.min_x);
+            out << "\" y=\"";
+            write_pcb_svg_number(out, local_bounds.min_y);
+            out << "\" width=\"";
+            write_pcb_svg_number(out, local_bounds.max_x - local_bounds.min_x);
+            out << "\" height=\"";
+            write_pcb_svg_number(out, local_bounds.max_y - local_bounds.min_y);
+            out << "\"/>\n";
+        }
         for (std::size_t pad_index = 0; pad_index < definition->pad_count(); ++pad_index) {
             const auto pad_id = FootprintPadId{pad_index};
             if (options.layer_filter.has_value() &&
@@ -588,11 +608,13 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
             write_pad(out, definition->pad(pad_id), pad_id,
                       find_pad_resolution(resolutions, placement_id, pad_id));
         }
-        out << "        <text class=\"reference-designator\" data-component=\""
-            << encode_local_id(placement.component()) << "\" x=\"0\" y=\"";
-        write_pcb_svg_number(out, local_bounds.min_y - 1.0);
-        out << "\" text-anchor=\"middle\">" << pcb_svg_escape(component.reference().value())
-            << "</text>\n";
+        if (placement_context_selected) {
+            out << "        <text class=\"reference-designator\" data-component=\""
+                << encode_local_id(placement.component()) << "\" x=\"0\" y=\"";
+            write_pcb_svg_number(out, local_bounds.min_y - 1.0);
+            out << "\" text-anchor=\"middle\">" << pcb_svg_escape(component.reference().value())
+                << "</text>\n";
+        }
         out << "      </g>\n";
     }
     out << "    </g>\n";
@@ -681,6 +703,7 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
                        const PcbSvgBounds &bounds, PcbPlacementSvgOptions options) {
     out << "    <g class=\"layer layer-diagnostics\">\n";
     if (options.diagnostic_overlays) {
+        auto selected_index = std::size_t{0};
         for (std::size_t index = 0; index < diagnostics.diagnostics().size(); ++index) {
             const auto &diagnostic = diagnostics.diagnostics()[index];
             if (!diagnostic_selected(board, diagnostic, options)) {
@@ -688,7 +711,8 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
             }
             const auto severity = severity_class(diagnostic.severity());
             const auto entities = entity_ref_list(diagnostic);
-            const auto y = bounds.max_y + 2.8 + (static_cast<double>(index) * 3.0);
+            const auto y = bounds.max_y + 2.8 + (static_cast<double>(selected_index) * 3.0);
+            ++selected_index;
             out << "      <text class=\"diagnostic-label " << severity
                 << "\" data-diagnostic-code=\"" << pcb_svg_escape(diagnostic.code().value())
                 << "\" data-entities=\"" << pcb_svg_escape(entities) << "\" x=\"";
@@ -825,7 +849,7 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
     const auto diagnostics = validate_board(board, preview_footprints);
     const auto bounds = detail::bounds_from_board(board, preview_footprints);
     const auto width = detail::preview_width(bounds);
-    const auto height = detail::preview_height(bounds, diagnostics, options);
+    const auto height = detail::preview_height(bounds, board, diagnostics, options);
     const auto translate_x = detail::pcb_svg_margin_mm - bounds.min_x;
     const auto translate_y = detail::pcb_svg_margin_mm - bounds.min_y;
     const auto resolutions = board.resolve_pads(preview_footprints);
