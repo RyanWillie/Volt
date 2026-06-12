@@ -1,8 +1,10 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_exception.hpp>
 
 #include <algorithm>
 #include <cstddef>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -28,7 +30,7 @@ struct EscapeBoard {
     volt::BoardLayerId back;
 };
 
-[[nodiscard]] SoicFixture make_soic_fixture() {
+[[nodiscard]] SoicFixture make_soic_fixture(bool leave_first_pin_unconnected = false) {
     auto circuit = volt::Circuit{};
     auto pins = std::vector<volt::PinDefId>{};
     auto nets = std::vector<volt::NetId>{};
@@ -54,7 +56,9 @@ struct EscapeBoard {
     for (std::size_t index = 0; index < pins.size(); ++index) {
         mappings.emplace_back(pins[index], std::to_string(index + 1U));
         const auto pin = volt::queries::pin_by_definition(circuit, component, pins[index]).value();
-        circuit.connect(nets[index], pin);
+        if (!leave_first_pin_unconnected || index != 0U) {
+            circuit.connect(nets[index], pin);
+        }
     }
 
     circuit.select_physical_part(component,
@@ -327,6 +331,165 @@ TEST_CASE("Escape router reports blocked pads without hiding partial success", "
                       [](const volt::BoardEscapePadResult &pad) { return pad.escaped; }));
     CHECK(escaped_count == 7U);
     CHECK(layout.board.track_count() == escaped_count);
+}
+
+TEST_CASE("Escape router reports per-pad unconnected pins without hiding partial success",
+          "[pcb][escape]") {
+    auto fixture = make_soic_fixture(true);
+    auto layout = make_escape_board(fixture);
+
+    auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
+    const auto result = router.escape(fixture.component);
+
+    CHECK_FALSE(result.complete());
+    REQUIRE(result.room.has_value());
+    REQUIRE(result.pads.size() == 8U);
+    const auto *unconnected = find_pad(result, "1");
+    REQUIRE(unconnected != nullptr);
+    CHECK_FALSE(unconnected->escaped);
+    CHECK(unconnected->failure_reason == volt::BoardEscapeFailureReason::PadUnconnected);
+    CHECK(unconnected->tracks.empty());
+    CHECK(unconnected->blockers.empty());
+
+    const auto escaped_count = static_cast<std::size_t>(
+        std::count_if(result.pads.begin(), result.pads.end(),
+                      [](const volt::BoardEscapePadResult &pad) { return pad.escaped; }));
+    CHECK(escaped_count == 7U);
+    CHECK(layout.board.track_count() == escaped_count);
+}
+
+TEST_CASE("Escape router reports pads with no copper layer while escaping other pads",
+          "[pcb][escape]") {
+    auto circuit = volt::Circuit{};
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Bidirectional, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Bidirectional, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto first_net = circuit.add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+    const auto second_net = circuit.add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+    const auto definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"MixedSide", {first_pin, second_pin}});
+    const auto component =
+        circuit.instantiate_component(definition, volt::ReferenceDesignator{"U1"});
+    circuit.connect(first_net,
+                    volt::queries::pin_by_definition(circuit, component, first_pin).value());
+    circuit.connect(second_net,
+                    volt::queries::pin_by_definition(circuit, component, second_pin).value());
+    circuit.select_physical_part(component, volt::PhysicalPart{
+                                                volt::ManufacturerPart{"Volt", "MixedSide"},
+                                                volt::PackageRef{"MixedSide"},
+                                                volt::FootprintRef{"tests", "MixedSide"},
+                                                std::vector{volt::PinPadMapping{first_pin, "1"},
+                                                            volt::PinPadMapping{second_pin, "2"}},
+                                            });
+
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 30.0}));
+    static_cast<void>(board.cache_footprint_definition(volt::FootprintDefinition{
+        volt::FootprintRef{"tests", "MixedSide"},
+        std::vector{
+            volt::FootprintPad::surface_mount(
+                "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{-1.0, 0.0},
+                volt::FootprintSize{0.8, 0.6}, volt::FootprintLayerSet::front_smd()),
+            volt::FootprintPad::surface_mount(
+                "2", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{1.0, 0.0},
+                volt::FootprintSize{0.8, 0.6}, volt::FootprintLayerSet::back_smd()),
+        }}));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        component, volt::BoardPoint{15.0, 15.0}, volt::BoardRotation::degrees(0.0)}));
+
+    auto router = volt::BoardRouter{board, volt::builtin_footprint_library()};
+    const auto result = router.escape(component);
+
+    CHECK_FALSE(result.complete());
+    REQUIRE(result.room.has_value());
+    const auto *escaped = find_pad(result, "1");
+    REQUIRE(escaped != nullptr);
+    CHECK(escaped->escaped);
+    CHECK(escaped->failure_reason == volt::BoardEscapeFailureReason::None);
+    const auto *no_copper = find_pad(result, "2");
+    REQUIRE(no_copper != nullptr);
+    CHECK_FALSE(no_copper->escaped);
+    CHECK(no_copper->failure_reason == volt::BoardEscapeFailureReason::NoCopperLayer);
+    CHECK(no_copper->tracks.empty());
+    CHECK(board.track_count() == 1U);
+    CHECK(board.track(escaped->tracks.front()).layer() == front);
+}
+
+TEST_CASE("Escape router reports pads disallowed by net-class layer scope", "[pcb][escape]") {
+    auto fixture = make_soic_fixture();
+    auto bottom_only = volt::NetClass{volt::NetClassName{"BottomOnly"}};
+    bottom_only.set_layer_scope(volt::NetClassLayerScope::BottomOnly);
+    const auto class_id = fixture.circuit.add_net_class(std::move(bottom_only));
+    REQUIRE(fixture.circuit.assign_net_class(fixture.nets.front(), class_id));
+    auto layout = make_escape_board(fixture);
+
+    auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
+    const auto result = router.escape(fixture.component);
+
+    CHECK_FALSE(result.complete());
+    REQUIRE(result.room.has_value());
+    const auto *disallowed = find_pad(result, "1");
+    REQUIRE(disallowed != nullptr);
+    CHECK_FALSE(disallowed->escaped);
+    CHECK(disallowed->failure_reason == volt::BoardEscapeFailureReason::DisallowedLayer);
+    CHECK(disallowed->tracks.empty());
+
+    const auto escaped_count = static_cast<std::size_t>(
+        std::count_if(result.pads.begin(), result.pads.end(),
+                      [](const volt::BoardEscapePadResult &pad) { return pad.escaped; }));
+    CHECK(escaped_count == 7U);
+    CHECK(layout.board.track_count() == escaped_count);
+}
+
+TEST_CASE("Escape router rejects component requests that cannot be attempted", "[pcb][escape]") {
+    auto fixture = make_soic_fixture();
+    auto layout = make_escape_board(fixture);
+    auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
+    const auto other = fixture.circuit.instantiate_component(
+        fixture.circuit.component(fixture.component).definition(), volt::ReferenceDesignator{"U2"});
+
+    CHECK_THROWS_MATCHES(
+        router.escape(other), std::invalid_argument,
+        Catch::Matchers::Message("Cannot escape component without a board placement"));
+
+    auto no_part_circuit = volt::Circuit{};
+    const auto pin = no_part_circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Bidirectional, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto no_part_definition =
+        no_part_circuit.add_component_definition(volt::ComponentDefinition{"NoPart", {pin}});
+    const auto no_part_component =
+        no_part_circuit.instantiate_component(no_part_definition, volt::ReferenceDesignator{"U1"});
+    auto no_part_board = volt::Board{no_part_circuit};
+    static_cast<void>(no_part_board.place_component(volt::ComponentPlacement{
+        no_part_component, volt::BoardPoint{0.0, 0.0}, volt::BoardRotation::degrees(0.0)}));
+    auto no_part_router = volt::BoardRouter{no_part_board, volt::builtin_footprint_library()};
+    CHECK_THROWS_MATCHES(
+        no_part_router.escape(no_part_component), std::invalid_argument,
+        Catch::Matchers::Message("Cannot escape component without a selected physical part"));
+
+    no_part_circuit.select_physical_part(
+        no_part_component,
+        volt::PhysicalPart{volt::ManufacturerPart{"Volt", "MissingFootprint"},
+                           volt::PackageRef{"Missing"}, volt::FootprintRef{"tests", "Missing"},
+                           std::vector{volt::PinPadMapping{pin, "1"}}});
+    auto missing_footprint_board = volt::Board{no_part_circuit};
+    static_cast<void>(missing_footprint_board.place_component(volt::ComponentPlacement{
+        no_part_component, volt::BoardPoint{0.0, 0.0}, volt::BoardRotation::degrees(0.0)}));
+    auto missing_footprint_router =
+        volt::BoardRouter{missing_footprint_board, volt::builtin_footprint_library()};
+    CHECK_THROWS_MATCHES(
+        missing_footprint_router.escape(no_part_component), std::invalid_argument,
+        Catch::Matchers::Message("Cannot escape component with an unresolved footprint"));
 }
 
 TEST_CASE("Escape room and stubs serialize deterministically and round-trip byte-stable",

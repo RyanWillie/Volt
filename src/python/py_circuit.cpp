@@ -47,6 +47,25 @@ namespace {
     throw py::type_error{"Pin-pad mapping values must be pad labels or sequences of pad labels"};
 }
 
+[[nodiscard]] volt::NetClassLayerScope parse_net_class_layer_scope(const std::string &scope) {
+    if (scope == "any_copper") {
+        return volt::NetClassLayerScope::AnyCopper;
+    }
+    if (scope == "outer_only") {
+        return volt::NetClassLayerScope::OuterOnly;
+    }
+    if (scope == "inner_only") {
+        return volt::NetClassLayerScope::InnerOnly;
+    }
+    if (scope == "top_only") {
+        return volt::NetClassLayerScope::TopOnly;
+    }
+    if (scope == "bottom_only") {
+        return volt::NetClassLayerScope::BottomOnly;
+    }
+    throw py::value_error{"Unknown net-class layer scope: " + scope};
+}
+
 [[nodiscard]] volt::SchematicEndpoint schematic_endpoint_from_tuple(const py::tuple &endpoint) {
     if (py::len(endpoint) != 4U) {
         throw py::value_error{"Schematic endpoint payloads must contain x, y, pin, and port net"};
@@ -425,6 +444,9 @@ std::size_t PyCircuit::add_net_class(const std::string &name, const py::dict &op
     }
     if (const auto default_kind = optional_string_field(options, "default_for")) {
         net_class.set_default_for_net_kind(parse_net_kind(default_kind.value()));
+    }
+    if (const auto layer_scope = optional_string_field(options, "layer_scope")) {
+        net_class.set_layer_scope(parse_net_class_layer_scope(layer_scope.value()));
     }
 
     return circuit_.add_net_class(std::move(net_class)).index();

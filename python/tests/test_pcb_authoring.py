@@ -41,7 +41,7 @@ def _small_resistor_led_design():
     return design, r1, d1
 
 
-def _passive_0603(ref, *, pad_span=1.5, pad_width=0.8):
+def _passive_0603(ref, *, pad_span=1.5, pad_width=0.8, second_pad_layers="front_smd"):
     half_span = pad_span / 2
     return volt.FootprintDefinition(
         ref,
@@ -57,6 +57,7 @@ def _passive_0603(ref, *, pad_span=1.5, pad_width=0.8):
                 at=(half_span, 0.0),
                 size=(pad_width, 0.95),
                 shape="rounded_rectangle",
+                layers=second_pad_layers,
             ),
         ),
     )
@@ -978,6 +979,131 @@ def test_python_board_authoring_escape_surfaces_kernel_result():
         [10.75, 10.0],
         [11.75, 10.0],
     ]
+
+
+def test_python_board_authoring_escape_surfaces_failure_reason_strings():
+    unconnected = volt.Design("unconnected-escape")
+    net_b = unconnected.net("B")
+    unconnected_r = unconnected.R("1k", ref="R1")
+    net_b += unconnected_r[2]
+    unconnected_r.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603FR-071KL",
+        package="0603",
+        footprint=("passives", "R_0603_1608Metric"),
+        pin_pads={1: "1", 2: "2"},
+    )
+    unconnected_board = unconnected.board("Control")
+    front = unconnected_board.add_layer("F.Cu", role="copper", side="top")
+    unconnected_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
+    unconnected_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    unconnected_board.place(unconnected_r, at=(10.0, 10.0))
+
+    unconnected_result = unconnected_board.escape(unconnected_r)
+
+    assert unconnected_result["pads"][0]["failure_reason"] == "pad_unconnected"
+    assert unconnected_result["pads"][0]["tracks"] == []
+    assert unconnected_result["pads"][1]["escaped"] is True
+
+    no_copper = volt.Design("no-copper-escape")
+    first = no_copper.net("A")
+    second = no_copper.net("B")
+    no_copper_r = no_copper.R("1k", ref="R1")
+    first += no_copper_r[1]
+    second += no_copper_r[2]
+    no_copper_r.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603FR-071KL",
+        package="0603",
+        footprint=("tests", "MixedSide"),
+        pin_pads={1: "1", 2: "2"},
+    )
+    no_copper_board = no_copper.board("Control")
+    no_copper_front = no_copper_board.add_layer("F.Cu", role="copper", side="top")
+    no_copper_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
+    no_copper_board.cache_footprint(
+        _passive_0603(("tests", "MixedSide"), second_pad_layers="back_smd")
+    )
+    no_copper_board.place(no_copper_r, at=(10.0, 10.0))
+
+    no_copper_result = no_copper_board.escape(no_copper_r)
+
+    assert no_copper_result["pads"][0]["escaped"] is True
+    assert no_copper_result["pads"][1]["failure_reason"] == "no_copper_layer"
+    assert no_copper_result["pads"][1]["tracks"] == []
+    assert json.loads(no_copper_board.to_json())["board"]["tracks"][0]["layer"] == (
+        f"board_layer:{no_copper_front}"
+    )
+
+    disallowed = volt.Design("disallowed-escape")
+    allowed = disallowed.net("A")
+    blocked = disallowed.net("B")
+    disallowed_class = disallowed.net_class("BottomOnly", layer_scope="bottom_only")
+    disallowed_class.assign(blocked)
+    disallowed_r = disallowed.R("1k", ref="R1")
+    allowed += disallowed_r[1]
+    blocked += disallowed_r[2]
+    disallowed_r.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603FR-071KL",
+        package="0603",
+        footprint=("passives", "R_0603_1608Metric"),
+        pin_pads={1: "1", 2: "2"},
+    )
+    disallowed_board = disallowed.board("Control")
+    disallowed_board.add_layer("F.Cu", role="copper", side="top")
+    disallowed_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
+    disallowed_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    disallowed_board.place(disallowed_r, at=(10.0, 10.0))
+
+    disallowed_result = disallowed_board.escape(disallowed_r)
+
+    assert disallowed_result["pads"][0]["escaped"] is True
+    assert disallowed_result["pads"][1]["failure_reason"] == "disallowed_layer"
+    assert disallowed_result["pads"][1]["tracks"] == []
+
+
+def test_python_board_authoring_escape_rejects_unattemptable_requests():
+    design, r1, d1 = _small_resistor_led_design()
+    board = design.board("Control")
+    board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    board.place(r1, at=(10.0, 10.0))
+
+    with pytest.raises(ValueError, match="without a board placement"):
+        board.escape(d1)
+
+    no_part = volt.Design("no-part-escape")
+    no_part_net = no_part.net("N")
+    no_part_r = no_part.R("1k", ref="R1")
+    no_part_net += no_part_r[1], no_part_r[2]
+    no_part_board = no_part.board("Control")
+    no_part_board.add_layer("F.Cu", role="copper", side="top")
+    no_part_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
+    no_part_board.place(no_part_r, at=(10.0, 10.0))
+
+    with pytest.raises(ValueError, match="without a selected physical part"):
+        no_part_board.escape(no_part_r)
+
+    missing = volt.Design("missing-footprint-escape")
+    missing_net = missing.net("N")
+    missing_r = missing.R("1k", ref="R1")
+    missing_net += missing_r[1], missing_r[2]
+    missing_r.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603FR-071KL",
+        package="0603",
+        footprint=("tests", "Missing"),
+        pin_pads={1: "1", 2: "2"},
+    )
+    missing_board = missing.board("Control")
+    missing_board.add_layer("F.Cu", role="copper", side="top")
+    missing_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
+    missing_board.place(missing_r, at=(10.0, 10.0))
+
+    with pytest.raises(ValueError, match="with an unresolved footprint"):
+        missing_board.escape(missing_r)
 
 
 def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):

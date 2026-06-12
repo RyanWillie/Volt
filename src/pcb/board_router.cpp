@@ -489,14 +489,14 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
     result.component = component;
     const auto placement_id = board_->placement_for_component(component);
     if (!placement_id.has_value()) {
-        return result;
+        throw std::invalid_argument{"Cannot escape component without a board placement"};
     }
     result.placement = placement_id;
     const auto &placement = board_->placement(placement_id.value());
 
     const auto &selected_part = board_->circuit().selected_physical_part(component);
     if (!selected_part.has_value()) {
-        return result;
+        throw std::invalid_argument{"Cannot escape component without a selected physical part"};
     }
 
     const auto resolution_footprints = detail::board_resolution_footprints(*board_, footprints_);
@@ -504,7 +504,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         resolve_footprint(selected_part.value(), resolution_footprints);
     const auto *definition = footprint_resolution.definition();
     if (definition == nullptr) {
-        return result;
+        throw std::invalid_argument{"Cannot escape component with an unresolved footprint"};
     }
 
     const auto pad_resolutions = board_->resolve_pads(resolution_footprints);

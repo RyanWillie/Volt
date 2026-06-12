@@ -36,6 +36,10 @@ class Schematic {
     /** Construct a schematic projection for one logical circuit context. */
     explicit Schematic(const Circuit &circuit);
 
+    /** Reject temporary circuit bindings because Schematic stores a caller-owned circuit reference.
+     */
+    explicit Schematic(const Circuit &&circuit) = delete;
+
     /** Replace projection contents with another schematic over the same logical circuit. */
     void replace_with(Schematic replacement);
 
