@@ -322,8 +322,10 @@ TEST_CASE("PCB SVG writer preserves through-hole pad copper on non-placement-sid
         volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library(),
                                           volt::io::PcbPlacementSvgOptions{.layer_filter = back});
 
-    CHECK(inner_svg.find("data-pad-projection=\"pcb_pad:0:0\"") != std::string::npos);
-    CHECK(back_svg.find("data-pad-projection=\"pcb_pad:0:0\"") != std::string::npos);
+    CHECK(inner_svg.find("<circle class=\"footprint-pad circle connected\" "
+                         "data-pad-projection=\"pcb_pad:0:0\"") != std::string::npos);
+    CHECK(back_svg.find("<circle class=\"footprint-pad circle connected\" "
+                        "data-pad-projection=\"pcb_pad:0:0\"") != std::string::npos);
     CHECK(inner_svg.find("class=\"footprint-body\"") == std::string::npos);
     CHECK(back_svg.find("class=\"footprint-body\"") == std::string::npos);
 }
