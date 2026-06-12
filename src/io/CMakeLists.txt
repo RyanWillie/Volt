@@ -30,6 +30,7 @@ add_library(
     pcb_feature_svg.cpp
     pcb_reader.cpp
     pcb_schema.cpp
+    pcb_svg_layers.cpp
     pcb_svg_writer.cpp
     pcb_writer.cpp
     pcb_writer_rooms.cpp

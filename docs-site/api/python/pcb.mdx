@@ -44,7 +44,7 @@ Source: `python/volt/pcb.py`
 | `resolve_pads(self) -> tuple[PadResolution, ...]` | Resolve placed footprint pads to component pins and logical nets. |
 | `validate(self) -> DiagnosticReport` | Run PCB projection validation and return the diagnostic report. |
 | `to_json(self) -> str` | Serialize the PCB projection to Volt board JSON. |
-| `to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True, ratsnest_edges: bool = True) -> str` | Render the PCB projection as SVG. |
+| `to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True, ratsnest_edges: bool = True, layer: int \| None = None) -> str` | Render the PCB projection as SVG. |
 | `to_kicad_pcb(self) -> KiCadPcbExport` | Export the PCB projection to a KiCad `.kicad_pcb` adapter document. |
 | `write_json(self, path: str \| Path) -> None` | Write the PCB projection JSON to a file. |
 | `write_svg(self, path: str \| Path) -> None` | Write the PCB projection SVG to a file. |

@@ -133,6 +133,7 @@ class ProjectArtifactPaths:
     schematic_svg_pages: tuple[Path, ...] = ()
     pcb_json: Path | None = None
     pcb_svg: Path | None = None
+    pcb_layer_svgs: tuple[Path, ...] = ()
     kicad_pcb: Path | None = None
     diagnostics_json: Path | None = None
 
@@ -817,6 +818,14 @@ class ProjectResult:
         pcb_svg = root / f"{base}.pcb.svg" if board is not None else None
         kicad_pcb = root / f"{base}.kicad_pcb" if board is not None else None
         diagnostics_json = root / f"{base}.validation.json"
+        svg_options = dict(pcb_svg_options or {})
+        separate_layers = svg_options.pop("separate_layers", False)
+        if not isinstance(separate_layers, bool):
+            raise TypeError("pcb_svg_options['separate_layers'] must be a boolean")
+        if separate_layers and "layer" in svg_options:
+            raise ValueError(
+                "pcb_svg_options cannot include 'layer' when separate_layers is enabled"
+            )
 
         if design is not None and logical_json is not None:
             _write_text(logical_json, design.to_json())
@@ -827,9 +836,21 @@ class ProjectResult:
             _write_text(schematic_body_svg, schematic.to_body_svg())
             shutil.rmtree(schematic_pages_dir, ignore_errors=True)
             schematic_svg_pages = schematic.write_svg_pages(schematic_pages_dir, prefix=base)
+        pcb_layer_svgs: tuple[Path, ...] = ()
         if board is not None:
-            _write_text(pcb_json, board.to_json())
-            _write_text(pcb_svg, board.to_svg(**(pcb_svg_options or {})))
+            pcb_json_text = board.to_json()
+            _write_text(pcb_json, pcb_json_text)
+            _write_text(pcb_svg, board.to_svg(**svg_options))
+            if separate_layers:
+                layer_paths: list[Path] = []
+                layers = json.loads(pcb_json_text)["board"]["layers"]
+                tokens = _pcb_svg_layer_filename_tokens([str(layer["name"]) for layer in layers])
+                for layer, token in zip(layers, tokens):
+                    layer_index = int(str(layer["id"]).removeprefix("board_layer:"))
+                    layer_svg = root / f"{base}.pcb.{token}.svg"
+                    _write_text(layer_svg, board.to_svg(**svg_options, layer=layer_index))
+                    layer_paths.append(layer_svg)
+                pcb_layer_svgs = tuple(layer_paths)
             _write_text(kicad_pcb, board.to_kicad_pcb().text)
         _write_json(diagnostics_json, _flat_diagnostics_payload(self))
 
@@ -841,6 +862,7 @@ class ProjectResult:
             schematic_svg_pages=schematic_svg_pages,
             pcb_json=pcb_json,
             pcb_svg=pcb_svg,
+            pcb_layer_svgs=pcb_layer_svgs,
             kicad_pcb=kicad_pcb,
             diagnostics_json=diagnostics_json,
         )
@@ -1189,11 +1211,28 @@ def _check_for_stage(stage: ProjectStage, models: tuple[object, ...]):
 
 
 _SAFE_PATH_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
+_PCB_SVG_LAYER_TOKEN_CHARS = re.compile(r"[^A-Za-z0-9]+")
 
 
 def _safe_slug(name: str) -> str:
     cleaned = _SAFE_PATH_CHARS.sub("-", name.strip()).strip("-._")
     return cleaned or "model"
+
+
+def _pcb_svg_layer_filename_token(layer_name: str) -> str:
+    cleaned = _PCB_SVG_LAYER_TOKEN_CHARS.sub("_", layer_name.strip()).strip("_")
+    return cleaned or "layer"
+
+
+def _pcb_svg_layer_filename_tokens(layer_names: list[str]) -> list[str]:
+    seen: dict[str, int] = {}
+    tokens: list[str] = []
+    for name in layer_names:
+        token = _pcb_svg_layer_filename_token(name)
+        count = seen.get(token, 0) + 1
+        seen[token] = count
+        tokens.append(token if count == 1 else f"{token}_{count}")
+    return tokens
 
 
 def _unique_path(relative: Path, used_paths: set[str]) -> Path:

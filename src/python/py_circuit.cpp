@@ -1727,12 +1727,16 @@ std::string PyCircuit::board_to_json() const {
 }
 
 std::string PyCircuit::board_to_svg(bool pad_net_overlays, bool diagnostic_overlays,
-                                    bool ratsnest_edges) const {
-    return volt::io::write_pcb_placement_svg(
-        board_projection(), volt::builtin_footprint_library(),
-        volt::io::PcbPlacementSvgOptions{.pad_net_overlays = pad_net_overlays,
-                                         .diagnostic_overlays = diagnostic_overlays,
-                                         .ratsnest_edges = ratsnest_edges});
+                                    bool ratsnest_edges,
+                                    std::optional<std::size_t> layer_filter) const {
+    auto options = volt::io::PcbPlacementSvgOptions{.pad_net_overlays = pad_net_overlays,
+                                                    .diagnostic_overlays = diagnostic_overlays,
+                                                    .ratsnest_edges = ratsnest_edges};
+    if (layer_filter.has_value()) {
+        options.layer_filter = volt::BoardLayerId{layer_filter.value()};
+    }
+    return volt::io::write_pcb_placement_svg(board_projection(), volt::builtin_footprint_library(),
+                                             options);
 }
 
 std::vector<volt::PinId> PyCircuit::pins_by_name(volt::ComponentId component,

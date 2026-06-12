@@ -461,132 +461,6 @@ keepout_restriction_list_attr(const std::vector<BoardKeepoutRestriction> &restri
     return result;
 }
 
-void write_zones(std::ostream &out, const Board &board) {
-    if (board.zone_count() == 0U) {
-        return;
-    }
-
-    out << "    <g class=\"layer layer-zones\">\n";
-    for (std::size_t index = 0; index < board.zone_count(); ++index) {
-        const auto id = BoardZoneId{index};
-        const auto &zone = board.zone(id);
-        out << "      <polygon id=\"pcb-zone-" << index << "\" class=\"pcb-zone fill-"
-            << board_zone_fill_name(zone.fill()) << "\" data-zone=\"" << encode_local_id(id)
-            << "\" data-layer=\"" << encode_local_id(zone.layers().front()) << "\" data-layers=\""
-            << pcb_svg_escape(board_layer_list_attr(zone.layers())) << "\"";
-        if (zone.net().has_value()) {
-            out << " data-net=\"" << encode_local_id(zone.net().value()) << "\"";
-        }
-        out << " data-priority=\"" << zone.priority() << "\" points=\"";
-        write_pcb_point_list(out, zone.outline());
-        out << "\"/>\n";
-    }
-    out << "    </g>\n";
-}
-
-void write_keepouts(std::ostream &out, const Board &board) {
-    if (board.keepout_count() == 0U) {
-        return;
-    }
-
-    out << "    <g class=\"layer layer-keepouts\">\n";
-    for (std::size_t index = 0; index < board.keepout_count(); ++index) {
-        const auto id = BoardKeepoutId{index};
-        const auto &keepout = board.keepout(id);
-        const auto restrictions = keepout_restriction_list_attr(keepout.restrictions());
-        out << "      <polygon id=\"pcb-keepout-" << index << "\" class=\"pcb-keepout "
-            << pcb_svg_escape(restrictions) << "\" data-keepout=\"" << encode_local_id(id)
-            << "\" data-layer=\"" << encode_local_id(keepout.layers().front())
-            << "\" data-layers=\"" << pcb_svg_escape(board_layer_list_attr(keepout.layers()))
-            << "\" data-restrictions=\"" << pcb_svg_escape(restrictions) << "\" points=\"";
-        write_pcb_point_list(out, keepout.outline());
-        out << "\"/>\n";
-    }
-    out << "    </g>\n";
-}
-
-void write_texts(std::ostream &out, const Board &board) {
-    if (board.text_count() == 0U) {
-        return;
-    }
-
-    out << "    <g class=\"layer layer-board-text\">\n";
-    for (std::size_t index = 0; index < board.text_count(); ++index) {
-        const auto id = BoardTextId{index};
-        const auto &text = board.text(id);
-        out << "      <text id=\"pcb-text-" << index << "\" class=\"board-text";
-        if (text.locked()) {
-            out << " locked";
-        }
-        out << "\" data-text=\"" << encode_local_id(id) << "\" data-layer=\""
-            << encode_local_id(text.layer()) << "\" x=\"";
-        write_pcb_svg_number(out, text.position().x_mm());
-        out << "\" y=\"";
-        write_pcb_svg_number(out, text.position().y_mm());
-        out << "\" font-size=\"";
-        write_pcb_svg_number(out, text.size_mm());
-        out << "\" transform=\"rotate(";
-        write_pcb_svg_number(out, text.rotation().degrees());
-        out << ' ';
-        write_pcb_svg_number(out, text.position().x_mm());
-        out << ' ';
-        write_pcb_svg_number(out, text.position().y_mm());
-        out << ")\">" << pcb_svg_escape(text.text()) << "</text>\n";
-    }
-    out << "    </g>\n";
-}
-
-void write_copper(std::ostream &out, const Board &board) {
-    if (board.track_count() == 0U && board.via_count() == 0U) {
-        return;
-    }
-
-    out << "    <g class=\"layer layer-copper\">\n";
-    for (std::size_t index = 0; index < board.track_count(); ++index) {
-        const auto id = BoardTrackId{index};
-        const auto &track = board.track(id);
-        out << "      <polyline id=\"pcb-track-" << index << "\" class=\"pcb-track\" data-track=\""
-            << encode_local_id(id) << "\" data-layer=\"" << encode_local_id(track.layer())
-            << "\" data-net=\"" << encode_local_id(track.net()) << "\" points=\"";
-        for (std::size_t point_index = 0; point_index < track.points().size(); ++point_index) {
-            if (point_index != 0U) {
-                out << ' ';
-            }
-            write_pcb_svg_number(out, track.points()[point_index].x_mm());
-            out << ',';
-            write_pcb_svg_number(out, track.points()[point_index].y_mm());
-        }
-        out << "\" stroke-width=\"";
-        write_pcb_svg_number(out, track.width_mm());
-        out << "\"/>\n";
-    }
-
-    for (std::size_t index = 0; index < board.via_count(); ++index) {
-        const auto id = BoardViaId{index};
-        const auto &via = board.via(id);
-        out << "      <g id=\"pcb-via-" << index << "\" class=\"pcb-via\" data-via=\""
-            << encode_local_id(id) << "\" data-net=\"" << encode_local_id(via.net())
-            << "\" data-start-layer=\"" << encode_local_id(via.start_layer())
-            << "\" data-end-layer=\"" << encode_local_id(via.end_layer()) << "\">\n";
-        out << "        <circle class=\"pcb-via-annular\" cx=\"";
-        write_pcb_svg_number(out, via.position().x_mm());
-        out << "\" cy=\"";
-        write_pcb_svg_number(out, via.position().y_mm());
-        out << "\" r=\"";
-        write_pcb_svg_number(out, via.annular_diameter_mm() / 2.0);
-        out << "\"/>\n";
-        out << "        <circle class=\"pcb-via-drill\" cx=\"";
-        write_pcb_svg_number(out, via.position().x_mm());
-        out << "\" cy=\"";
-        write_pcb_svg_number(out, via.position().y_mm());
-        out << "\" r=\"";
-        write_pcb_svg_number(out, via.drill_diameter_mm() / 2.0);
-        out << "\"/>\n";
-        out << "      </g>\n";
-    }
-    out << "    </g>\n";
-}
-
 void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id,
                const PadResolution *resolution) {
     const auto status = resolution == nullptr ? std::string{"invalid"}
@@ -655,11 +529,15 @@ void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id
 }
 
 void write_placements(std::ostream &out, const Board &board, const FootprintLibrary &footprints,
-                      const std::vector<PadResolution> &resolutions) {
+                      const std::vector<PadResolution> &resolutions,
+                      PcbPlacementSvgOptions options) {
     out << "    <g class=\"layer layer-footprints\">\n";
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
         const auto &placement = board.placement(placement_id);
+        if (!placement_selected(board, placement, options)) {
+            continue;
+        }
         const auto *definition = resolve_definition_for_placement(board, placement, footprints);
         if (definition == nullptr) {
             continue;
@@ -702,6 +580,11 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
         out << "\"/>\n";
         for (std::size_t pad_index = 0; pad_index < definition->pad_count(); ++pad_index) {
             const auto pad_id = FootprintPadId{pad_index};
+            if (options.layer_filter.has_value() &&
+                !pad_selected_for_layer(board, definition->pad(pad_id), placement.side(),
+                                        options.layer_filter.value())) {
+                continue;
+            }
             write_pad(out, definition->pad(pad_id), pad_id,
                       find_pad_resolution(resolutions, placement_id, pad_id));
         }
@@ -717,10 +600,13 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
 
 void write_pad_overlays(std::ostream &out, const Board &board,
                         const std::vector<PadResolution> &resolutions,
-                        PcbPlacementSvgOptions options) {
+                        const FootprintLibrary &footprints, PcbPlacementSvgOptions options) {
     out << "    <g class=\"layer layer-pad-overlays\">\n";
     if (options.pad_net_overlays) {
         for (const auto &resolution : resolutions) {
+            if (!pad_resolution_selected(board, resolution, footprints, options)) {
+                continue;
+            }
             const auto status = pad_resolution_status_name(resolution.status());
             out << "      <circle class=\"pad-overlay " << status << "\" data-pad-projection=\""
                 << pcb_pad_projection_id(resolution.placement(), resolution.pad()) << "\"";
@@ -750,11 +636,22 @@ void write_pad_overlays(std::ostream &out, const Board &board,
     out << "    </g>\n";
 }
 
-void write_ratsnest(std::ostream &out, const std::vector<RatsnestEdge> &edges) {
+void write_ratsnest(std::ostream &out, const Board &board, const std::vector<RatsnestEdge> &edges,
+                    const FootprintLibrary &footprints, PcbPlacementSvgOptions options) {
     out << "    <g class=\"layer layer-ratsnest\">\n";
     auto current_net = std::optional<NetId>{};
     std::size_t net_edge_index = 0;
     for (const auto &edge : edges) {
+        if (options.layer_filter.has_value()) {
+            const auto layer = options.layer_filter.value();
+            const auto from_selected = placement_pad_selected_for_layer(
+                board, footprints, edge.from().placement(), edge.from().pad(), layer);
+            const auto to_selected = placement_pad_selected_for_layer(
+                board, footprints, edge.to().placement(), edge.to().pad(), layer);
+            if (!from_selected || !to_selected) {
+                continue;
+            }
+        }
         if (!current_net.has_value() || current_net.value() != edge.net()) {
             current_net = edge.net();
             net_edge_index = 0;
@@ -786,6 +683,9 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
     if (options.diagnostic_overlays) {
         for (std::size_t index = 0; index < diagnostics.diagnostics().size(); ++index) {
             const auto &diagnostic = diagnostics.diagnostics()[index];
+            if (!diagnostic_selected(board, diagnostic, options)) {
+                continue;
+            }
             const auto severity = severity_class(diagnostic.severity());
             const auto entities = entity_ref_list(diagnostic);
             const auto y = bounds.max_y + 2.8 + (static_cast<double>(index) * 3.0);
@@ -804,6 +704,9 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
                         continue;
                     }
                     const auto &track = board.track(track_id);
+                    if (!layer_selected(options, track.layer())) {
+                        continue;
+                    }
                     out << "      <polyline class=\"diagnostic-marker " << severity
                         << "\" data-diagnostic-code=\"" << pcb_svg_escape(diagnostic.code().value())
                         << "\" data-entities=\"" << pcb_svg_escape(entities) << "\" data-track=\""
@@ -828,6 +731,10 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
                         continue;
                     }
                     const auto &via = board.via(via_id);
+                    if (options.layer_filter.has_value() &&
+                        !via_intersects_layer(board, via, options.layer_filter.value())) {
+                        continue;
+                    }
                     out << "      <circle class=\"diagnostic-marker " << severity
                         << "\" data-diagnostic-code=\"" << pcb_svg_escape(diagnostic.code().value())
                         << "\" data-entities=\"" << pcb_svg_escape(entities) << "\" data-via=\""
@@ -846,6 +753,10 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
                         continue;
                     }
                     const auto &keepout = board.keepout(keepout_id);
+                    if (options.layer_filter.has_value() &&
+                        !layer_list_contains(keepout.layers(), options.layer_filter.value())) {
+                        continue;
+                    }
                     out << "      <polygon class=\"diagnostic-marker " << severity
                         << "\" data-diagnostic-code=\"" << pcb_svg_escape(diagnostic.code().value())
                         << "\" data-entities=\"" << pcb_svg_escape(entities) << "\" data-keepout=\""
@@ -860,6 +771,10 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
                         continue;
                     }
                     const auto &zone = board.zone(zone_id);
+                    if (options.layer_filter.has_value() &&
+                        !layer_list_contains(zone.layers(), options.layer_filter.value())) {
+                        continue;
+                    }
                     out << "      <polygon class=\"diagnostic-marker " << severity
                         << "\" data-diagnostic-code=\"" << pcb_svg_escape(diagnostic.code().value())
                         << "\" data-entities=\"" << pcb_svg_escape(entities) << "\" data-zone=\""
@@ -884,6 +799,9 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
                 }
 
                 const auto &placement = board.placement(placement_id.value());
+                if (!placement_selected(board, placement, options)) {
+                    continue;
+                }
                 out << "      <circle class=\"diagnostic-marker " << severity
                     << "\" data-diagnostic-code=\"" << pcb_svg_escape(diagnostic.code().value())
                     << "\" data-entities=\"" << pcb_svg_escape(entities) << "\" cx=\"";
@@ -942,15 +860,23 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
     out << ")\">\n";
     detail::write_pcb_svg_outline(out, board);
     detail::write_pcb_svg_features(out, board);
-    detail::write_zones(out, board);
-    detail::write_copper(out, board);
-    detail::write_keepouts(out, board);
-    detail::write_texts(out, board);
-    detail::write_placements(out, board, preview_footprints, resolutions);
-    if (options.ratsnest_edges) {
-        detail::write_ratsnest(out, ratsnest_edges);
+    for (std::size_t index = 0; index < board.layer_count(); ++index) {
+        const auto layer = BoardLayerId{index};
+        if (!detail::layer_selected(options, layer)) {
+            continue;
+        }
+        detail::write_board_layer_group_open(out, board, layer);
+        detail::write_zones(out, board, layer);
+        detail::write_copper(out, board, layer);
+        detail::write_keepouts(out, board, layer);
+        detail::write_texts(out, board, layer);
+        out << "    </g>\n";
     }
-    detail::write_pad_overlays(out, board, resolutions, options);
+    detail::write_placements(out, board, preview_footprints, resolutions, options);
+    if (options.ratsnest_edges) {
+        detail::write_ratsnest(out, board, ratsnest_edges, preview_footprints, options);
+    }
+    detail::write_pad_overlays(out, board, resolutions, preview_footprints, options);
     detail::write_diagnostics(out, board, diagnostics, bounds, options);
     out << "  </g>\n";
     out << "</svg>\n";

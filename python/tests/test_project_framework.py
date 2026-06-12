@@ -570,6 +570,82 @@ def test_project_result_write_flat_artifacts_emits_legacy_example_outputs(tmp_pa
     assert diagnostics["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
 
 
+def test_project_result_write_flat_artifacts_can_emit_layer_svgs(tmp_path):
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    @project.board
+    def board(context):
+        pcb = _stage_board(context.design())
+        front = pcb.add_layer("F.Cu", role="copper", side="top")
+        back = pcb.add_layer("B.Cu", role="copper", side="bottom")
+        silk = pcb.add_layer("F.SilkS", role="silkscreen", side="top")
+        pcb.set_layer_stack((front, back), thickness=1.6)
+        nets = {net.name: net for net in context.design().nets()}
+        pcb.add_track(nets["VCC"], layer=front, points=((2, 2), (8, 2)), width=0.25)
+        pcb.add_track(nets["GND"], layer=back, points=((2, 8), (8, 8)), width=0.25)
+        pcb.add_text("REV A", at=(5, 5), layer=silk)
+        return pcb
+
+    artifacts = project.run().write_artifacts(
+        tmp_path,
+        slug="status_led",
+        pcb_svg_options={"separate_layers": True, "ratsnest_edges": False},
+    )
+
+    assert artifacts.pcb_svg == tmp_path / "status_led.pcb.svg"
+    assert artifacts.pcb_layer_svgs == (
+        tmp_path / "status_led.pcb.F_Cu.svg",
+        tmp_path / "status_led.pcb.B_Cu.svg",
+        tmp_path / "status_led.pcb.F_SilkS.svg",
+    )
+    assert artifacts.pcb_svg.read_text(encoding="utf-8").count("class=\"pcb-layer") == 3
+    front_svg = artifacts.pcb_layer_svgs[0].read_text(encoding="utf-8")
+    back_svg = artifacts.pcb_layer_svgs[1].read_text(encoding="utf-8")
+    silk_svg = artifacts.pcb_layer_svgs[2].read_text(encoding="utf-8")
+    assert 'id="pcb-layer-F_Cu"' in front_svg
+    assert 'data-track="board_track:0"' in front_svg
+    assert 'data-track="board_track:1"' not in front_svg
+    assert 'id="pcb-layer-B_Cu"' in back_svg
+    assert 'data-track="board_track:1"' in back_svg
+    assert 'data-track="board_track:0"' not in back_svg
+    assert 'id="pcb-layer-F_SilkS"' in silk_svg
+    assert 'data-text="board_text:0"' in silk_svg
+    assert "data-pad-projection=" not in silk_svg
+    assert "data-ratsnest-edge=" not in front_svg
+
+
+def test_project_result_write_artifacts_disambiguates_layer_svg_filenames(tmp_path):
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    @project.board
+    def board(context):
+        pcb = _stage_board(context.design())
+        pcb.add_layer("F.Cu", role="copper", side="top")
+        pcb.add_layer("F Cu", role="copper", side="top")
+        return pcb
+
+    artifacts = project.run().write_artifacts(
+        tmp_path,
+        slug="status_led",
+        pcb_svg_options={"separate_layers": True, "ratsnest_edges": False},
+    )
+
+    assert artifacts.pcb_layer_svgs == (
+        tmp_path / "status_led.pcb.F_Cu.svg",
+        tmp_path / "status_led.pcb.F_Cu_2.svg",
+    )
+    assert 'id="pcb-layer-F_Cu"' in artifacts.pcb_layer_svgs[0].read_text(encoding="utf-8")
+    assert 'id="pcb-layer-F_Cu_2"' in artifacts.pcb_layer_svgs[1].read_text(encoding="utf-8")
+
+
 def test_project_result_write_cleans_stale_bundle_artifacts(tmp_path):
     full = volt.Project("status-led")
 

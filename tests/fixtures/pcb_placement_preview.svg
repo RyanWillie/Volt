@@ -18,6 +18,10 @@
       <circle class="board-feature hole" data-board-feature="board_feature:0" cx="3" cy="3" r="1.6"/>
       <text class="board-feature-label" data-board-feature="board_feature:0" x="3" y="6.6" text-anchor="middle">MH1</text>
     </g>
+    <g id="pcb-layer-F_Cu" class="pcb-layer board-layer layer-F_Cu" data-layer="board_layer:0" data-layer-name="F.Cu" data-layer-role="copper" data-layer-side="top">
+    </g>
+    <g id="pcb-layer-B_Cu" class="pcb-layer board-layer layer-B_Cu" data-layer="board_layer:1" data-layer-name="B.Cu" data-layer-role="copper" data-layer-side="bottom">
+    </g>
     <g class="layer layer-footprints">
       <g class="component-placement top locked" data-placement="component_placement:0" data-component="component:0" data-footprint-def="footprint_def:0" data-footprint="passives:R_0603_1608Metric" transform="translate(25 15) rotate(90)">
         <rect class="footprint-body" x="-1.65" y="-0.975" width="3.3" height="1.95"/>

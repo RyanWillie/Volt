@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cstddef>
+#include <optional>
 #include <string_view>
 
 namespace volt::python {
@@ -256,7 +257,8 @@ void bind_circuit(pybind11::module_ &module) {
         .def("board_validate", &PyCircuit::board_validate)
         .def("board_to_json", &PyCircuit::board_to_json)
         .def("board_to_svg", &PyCircuit::board_to_svg, py::arg("pad_net_overlays") = true,
-             py::arg("diagnostic_overlays") = true, py::arg("ratsnest_edges") = true)
+             py::arg("diagnostic_overlays") = true, py::arg("ratsnest_edges") = true,
+             py::arg("layer_filter") = std::nullopt)
         .def("board_to_kicad_pcb", &PyCircuit::board_to_kicad_pcb)
         .def("to_json", &PyCircuit::to_json);
 }

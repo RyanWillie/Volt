@@ -911,6 +911,7 @@ class Board:
         pad_net_overlays: bool = True,
         diagnostic_overlays: bool = True,
         ratsnest_edges: bool = True,
+        layer: int | None = None,
     ) -> str:
         """Render the PCB projection as SVG."""
         self._sync_object_footprints()
@@ -918,6 +919,7 @@ class Board:
             pad_net_overlays,
             diagnostic_overlays,
             ratsnest_edges,
+            None if layer is None else _layer_index(layer),
         )
 
     def to_kicad_pcb(self) -> KiCadPcbExport:
