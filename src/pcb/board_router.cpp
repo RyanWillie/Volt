@@ -74,6 +74,17 @@ via_candidate_layers(const Board &board, NetId net, BoardPoint position, BoardLa
     });
 }
 
+[[nodiscard]] std::optional<BoardLayerId>
+first_allowed_layer(const std::vector<BoardLayerId> &layers, const BoardRouteParameters &params) {
+    const auto match = std::find_if(layers.begin(), layers.end(), [&params](BoardLayerId layer) {
+        return layer_in_allowed_parameters(layer, params);
+    });
+    if (match == layers.end()) {
+        return std::nullopt;
+    }
+    return *match;
+}
+
 [[nodiscard]] double track_width_for_segment(const Board &board, BoardLayerId layer,
                                              BoardPoint start, BoardPoint end,
                                              const BoardRouteParameters &params) {
@@ -524,8 +535,8 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         }
 
         const auto params = resolve_parameters(resolution->net().value());
-        const auto layer = layers.front();
-        if (!layer_in_allowed_parameters(layer, params)) {
+        const auto layer = first_allowed_layer(layers, params);
+        if (!layer.has_value()) {
             pad_result.failure_reason = BoardEscapeFailureReason::DisallowedLayer;
             result.pads.push_back(std::move(pad_result));
             continue;
@@ -535,12 +546,12 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         result.pads.push_back(std::move(pad_result));
         candidates.push_back(EscapePadCandidate{
             result_index,
-            layer,
+            layer.value(),
             escape_direction_points(result.pads[result_index].pad_position, placement.position()),
             detail::transformed_pad_body_corners(placement, pad),
             params,
         });
-        detail::append_unique_layer(room_layers, layer);
+        detail::append_unique_layer(room_layers, layer.value());
     }
 
     if (!candidates.empty()) {

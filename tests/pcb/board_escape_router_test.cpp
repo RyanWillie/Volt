@@ -190,6 +190,64 @@ TEST_CASE("Escape router resolves stub width from net-class rules", "[pcb][escap
     CHECK(layout.board.track(pad_one->tracks.front()).width_mm() == Catch::Approx(0.30));
 }
 
+TEST_CASE("Escape router selects an allowed layer for multi-layer pads", "[pcb][escape]") {
+    auto circuit = volt::Circuit{};
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Bidirectional, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Signal,
+        volt::ElectricalDirection::Bidirectional, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto first_net = circuit.add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+    const auto second_net = circuit.add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+    const auto definition =
+        circuit.add_component_definition(volt::ComponentDefinition{"J2", {first_pin, second_pin}});
+    const auto component =
+        circuit.instantiate_component(definition, volt::ReferenceDesignator{"J1"});
+    circuit.connect(first_net,
+                    volt::queries::pin_by_definition(circuit, component, first_pin).value());
+    circuit.connect(second_net,
+                    volt::queries::pin_by_definition(circuit, component, second_pin).value());
+    circuit.select_physical_part(
+        component,
+        volt::PhysicalPart{
+            volt::ManufacturerPart{"Generic", "PinHeader_1x02"},
+            volt::PackageRef{"1x02"},
+            volt::FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
+            std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
+        });
+
+    auto bottom_only = volt::NetClass{volt::NetClassName{"BottomOnly"}};
+    bottom_only.set_layer_scope(volt::NetClassLayerScope::BottomOnly);
+    const auto class_id = circuit.add_net_class(std::move(bottom_only));
+    REQUIRE(circuit.assign_net_class(first_net, class_id));
+    REQUIRE(circuit.assign_net_class(second_net, class_id));
+
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 30.0}));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        component, volt::BoardPoint{15.0, 15.0}, volt::BoardRotation::degrees(0.0)}));
+
+    auto router = volt::BoardRouter{board, volt::builtin_footprint_library()};
+    const auto result = router.escape(component);
+
+    REQUIRE(result.complete());
+    REQUIRE(result.pads.size() == 2U);
+    for (const auto &pad : result.pads) {
+        INFO("pad " << pad.pad_label);
+        REQUIRE(pad.tracks.size() == 1U);
+        CHECK(board.track(pad.tracks.front()).layer() == back);
+    }
+}
+
 TEST_CASE("Escape router reports blocked pads without hiding partial success", "[pcb][escape]") {
     auto fixture = make_soic_fixture();
     auto layout = make_escape_board(fixture);
