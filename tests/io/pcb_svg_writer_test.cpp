@@ -194,7 +194,8 @@ TEST_CASE("PCB SVG writer exposes deterministic layer filename tokens") {
     CHECK(volt::io::detail::pcb_svg_layer_filename_token("user mask+paste") == "user_mask_paste");
     CHECK(volt::io::detail::pcb_svg_layer_filename_token("***") == "layer");
 
-    auto board = volt::Board{volt::Circuit{}, volt::BoardName{"Token Collisions"}};
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit, volt::BoardName{"Token Collisions"}};
     const auto front = board.add_layer(
         volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
     const auto duplicate = board.add_layer(
@@ -580,7 +581,8 @@ TEST_CASE("PCB SVG writer exposes placement entity references for board diagnost
 }
 
 TEST_CASE("PCB SVG writer filters board layer diagnostics by selected layer") {
-    auto board = volt::Board{volt::Circuit{}, volt::BoardName{"Layer Diagnostic"}};
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit, volt::BoardName{"Layer Diagnostic"}};
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{10.0, 10.0}));
     const auto back = board.add_layer(
