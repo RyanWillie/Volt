@@ -8,7 +8,9 @@ include <volt/pcb/board_features.hpp>
 include <volt/pcb/footprints.hpp>
 
 explicit BoardSpatialIndex(const Board &board)
+explicit BoardSpatialIndex(const Board &&board) = delete
 BoardSpatialIndex(const Board &board, const FootprintLibrary &footprints)
+BoardSpatialIndex(const Board &&board, const FootprintLibrary &footprints) = delete
 [[nodiscard]] double conservative_clearance_mm() const noexcept
 void insert(BoardSpatialQueryShape shape)
 [[nodiscard]] std::vector<BoardSpatialCandidatePair> copper_clearance_candidates() const

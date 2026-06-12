@@ -68,6 +68,7 @@ class Design:
         dielectric_height: float | None = None,
         spacing_rule: str = "microstrip_2h",
         default_for: str | None = None,
+        layer_scope: str = "any_copper",
         priority: int = 0,
     ) -> NetClass:
         """Create a kernel-owned net class, deriving IPC rule values when requested."""
@@ -85,6 +86,7 @@ class Design:
             "dielectric_height": None if dielectric_height is None else _number(dielectric_height),
             "spacing_rule": spacing_rule,
             "default_for": default_for,
+            "layer_scope": layer_scope,
             "priority": int(priority),
         }
         net_class = self._circuit.add_net_class(name, options)

@@ -15,6 +15,7 @@ include <volt/schematic/symbols.hpp>
 include <volt/schematic/wire_topology.hpp>
 
 explicit Schematic(const Circuit &circuit)
+explicit Schematic(const Circuit &&circuit) = delete
 void replace_with(Schematic replacement)
 [[nodiscard]] SymbolDefId add_symbol_definition(SymbolDefinition definition)
 [[nodiscard]] SheetId add_sheet(Sheet sheet)

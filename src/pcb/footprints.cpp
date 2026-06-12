@@ -336,7 +336,7 @@ FootprintResolution::pad_bindings() const noexcept {
 
 [[nodiscard]] FootprintDefinition sot_23_6_footprint() {
     return detail::two_side_smd_package(FootprintRef{"Package_TO_SOT_SMD", "SOT-23-6"}, 6U, 1.25,
-                                        0.95, 0.60, 0.80);
+                                        0.95, 0.80, 0.60);
 }
 
 [[nodiscard]] FootprintDefinition sot_223_3_footprint() {

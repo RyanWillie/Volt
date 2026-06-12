@@ -271,8 +271,8 @@ SOT_23_6_FOOTPRINT = _two_side_smd_package(
     pin_count=6,
     row_center_x=1.25,
     pitch=0.95,
-    pad_width=0.60,
-    pad_height=0.80,
+    pad_width=0.80,
+    pad_height=0.60,
 )
 SOT_223_3_FOOTPRINT = _sot_223_3_footprint()
 FERRITE_0603_FOOTPRINT = _two_terminal_smd_footprint(

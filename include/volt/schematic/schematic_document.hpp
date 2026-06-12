@@ -12,6 +12,9 @@ class SchematicDocument {
     /** Construct an empty schematic document for a logical circuit. */
     explicit SchematicDocument(const Circuit &circuit);
 
+    /** Reject temporary circuit bindings because the owned schematic stores a circuit reference. */
+    explicit SchematicDocument(const Circuit &&circuit) = delete;
+
     /** Construct a schematic document from loaded projection data. */
     explicit SchematicDocument(Schematic schematic);
 

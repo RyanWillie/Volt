@@ -102,20 +102,21 @@ struct BoardEscapeResult {
     /** Per-pad outcomes in selected-footprint pad order. */
     std::vector<BoardEscapePadResult> pads;
 
-    /** Return true only when every reported pad escaped successfully. */
+    /** Return true only when at least one pad was reported and every reported pad escaped. */
     [[nodiscard]] bool complete() const noexcept;
 };
 
 /**
  * Authoring-time assisted connection solver over the board copper spatial index.
  *
- * Responsibility: finds a DRC-clean copper path between two points on one net using pattern
- *   routing (straight / L / Z) with a bounded deterministic walk-around fallback, committing
- *   ordinary kernel-owned tracks and vias only when every candidate primitive was accepted by
- *   the spatial index legality query.
- * Invariants: legality remains a DRC concern; a route that cannot be found is a result value,
- *   never an exception; on any failure the board is left unchanged; output is deterministic for
- *   a given board state because candidate ordering and effort caps are fixed.
+ * Responsibility: finds DRC-clean copper for explicit point-to-point routes and deterministic
+ *   short escape/fanout stubs, committing ordinary kernel-owned tracks/vias only after the
+ *   spatial index legality query accepts each candidate primitive.
+ * Invariants: legality remains a DRC concern. connect() is all-or-nothing: an unroutable request
+ *   is a result value and leaves the board unchanged. escape() rejects unattemptable component
+ *   requests at the boundary, then reports per-pad failures while preserving successful stubs and
+ *   the escape room. Output is deterministic for a given board state because candidate ordering
+ *   and effort caps are fixed.
  * Collaborators: mutates the Board through its public track/via APIs and mirrors each committed
  *   primitive into its own BoardSpatialIndex in the same step; resolves sizing through
  *   resolve_net_class_rules with BoardDesignRules minimums as the floor.
@@ -131,7 +132,12 @@ class BoardRouter {
     /** Attempt to connect two points on a net, committing tracks/vias on success. */
     [[nodiscard]] BoardRouteResult connect(const BoardRouteRequest &request);
 
-    /** Escape one placed component by committing deterministic short pad fanout stubs. */
+    /**
+     * Escape one placed component by committing deterministic single-layer short pad fanout stubs.
+     *
+     * Throws std::invalid_argument when the component is not placed, has no selected physical
+     * part, or the selected part cannot resolve to a footprint. Escape vias are deferred for v1.
+     */
     [[nodiscard]] BoardEscapeResult escape(ComponentId component);
 
   private:

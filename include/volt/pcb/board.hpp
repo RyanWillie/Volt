@@ -38,6 +38,9 @@ class Board {
     /** Construct a board projection over one logical circuit. */
     explicit Board(const Circuit &circuit, BoardName name = BoardName{"Main"});
 
+    /** Reject temporary circuit bindings because Board stores a caller-owned circuit pointer. */
+    Board(const Circuit &&circuit, BoardName name = BoardName{"Main"}) = delete;
+
     /** Return the board name. */
     [[nodiscard]] const BoardName &name() const noexcept { return name_; }
 

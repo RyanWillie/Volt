@@ -100,8 +100,14 @@ class BoardSpatialIndex {
     /** Build an empty index over the board's current rules for incremental routing. */
     explicit BoardSpatialIndex(const Board &board);
 
+    /** Reject temporary board bindings because the index stores a caller-owned board pointer. */
+    explicit BoardSpatialIndex(const Board &&board) = delete;
+
     /** Build an index from board copper and placed footprint pads. */
     BoardSpatialIndex(const Board &board, const FootprintLibrary &footprints);
+
+    /** Reject temporary board bindings because the index stores a caller-owned board pointer. */
+    BoardSpatialIndex(const Board &&board, const FootprintLibrary &footprints) = delete;
 
     /** Return the conservative board-wide copper-clearance bound used for pruning. */
     [[nodiscard]] double conservative_clearance_mm() const noexcept {
@@ -145,6 +151,7 @@ class BoardSpatialIndex {
     };
 
     BoardSpatialIndex(const Board &board, std::vector<detail::BoardCopperShape> shapes);
+    BoardSpatialIndex(const Board &&board, std::vector<detail::BoardCopperShape> shapes) = delete;
 
     const Board *board_;
     std::vector<detail::BoardCopperShape> shapes_;

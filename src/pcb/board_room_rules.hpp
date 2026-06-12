@@ -16,6 +16,8 @@ class BoardRoomRuleResolver {
   public:
     explicit BoardRoomRuleResolver(const Board &board);
 
+    BoardRoomRuleResolver(const Board &&board) = delete;
+
     [[nodiscard]] std::optional<RoomRuleValue> track_width_override(const BoardTrack &track) const;
 
     [[nodiscard]] std::optional<RoomRuleValue>
