@@ -150,6 +150,7 @@ class BoardSpatialIndex {
     std::vector<Cell> cells_;
     double conservative_clearance_mm_;
     double cell_size_mm_;
+    std::size_t expected_geometry_mutation_count_;
 
     [[nodiscard]] static bool cell_less(const Cell &lhs, const Cell &rhs);
 
@@ -172,6 +173,8 @@ class BoardSpatialIndex {
     [[nodiscard]] static detail::BoardCopperShape to_copper_shape(BoardSpatialQueryShape candidate);
 
     void ensure_conservative_bound_current() const;
+
+    void ensure_geometry_current() const;
 
     void validate_shape(const detail::BoardCopperShape &shape) const;
 

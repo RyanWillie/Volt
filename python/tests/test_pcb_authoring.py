@@ -812,6 +812,65 @@ def test_python_board_authoring_writes_deterministic_json_and_svg(tmp_path):
     assert svg_path.read_text(encoding="utf-8") == svg
 
 
+def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
+    design = volt.Design("assisted-connect")
+    route = design.net("ROUTE")
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+
+    result = board.assisted_connect(
+        route,
+        start=(2.0, 6.0),
+        start_layer=front,
+        end=(18.0, 6.0),
+        end_layer=front,
+    )
+
+    assert result == {"routed": True, "tracks": [0], "vias": [], "blockers": []}
+    document = json.loads(board.to_json())
+    assert document["board"]["tracks"][0]["net"] == "net:0"
+    assert document["board"]["tracks"][0]["layer"] == "board_layer:0"
+    assert document["board"]["tracks"][0]["points"] == [[2.0, 6.0], [18.0, 6.0]]
+
+    blocked = volt.Design("blocked-assisted-connect")
+    blocked_net = blocked.net("ROUTE")
+    blocked_board = blocked.board("Control")
+    blocked_front = blocked_board.add_layer("F.Cu", role="copper", side="top")
+    blocked_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+    keepout = blocked_board.add(
+        volt.MechanicalKeepout(
+            outline=((1.0, 1.0), (19.0, 1.0), (19.0, 11.0), (1.0, 11.0)),
+            layers=(blocked_front,),
+            restrictions=("copper",),
+        )
+    )
+
+    failure = blocked_board.assisted_connect(
+        blocked_net,
+        start=(2.0, 6.0),
+        start_layer=blocked_front,
+        end=(18.0, 6.0),
+        end_layer=blocked_front,
+    )
+
+    assert failure["routed"] is False
+    assert failure["tracks"] == []
+    assert failure["vias"] == []
+    assert failure["blockers"] == [
+        {
+            "kind": "keepout",
+            "shape_index": None,
+            "keepout": keepout,
+            "layer": blocked_front,
+            "required_clearance_mm": 0.0,
+            "actual_clearance_mm": 0.0,
+            "room": None,
+        }
+    ]
+    assert json.loads(blocked_board.to_json())["board"].get("tracks", []) == []
+
+
 def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     design, r1, d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")

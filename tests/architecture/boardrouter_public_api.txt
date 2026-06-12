@@ -1,0 +1,12 @@
+include <cstddef>
+include <optional>
+include <vector>
+include <volt/core/ids.hpp>
+include <volt/pcb/board.hpp>
+include <volt/pcb/board_geometry.hpp>
+include <volt/pcb/board_spatial_index.hpp>
+include <volt/pcb/footprints.hpp>
+
+BoardRouter(Board &board, const FootprintLibrary &footprints)
+[[nodiscard]] BoardRouteParameters resolve_parameters(NetId net) const
+[[nodiscard]] BoardRouteResult connect(const BoardRouteRequest &request)

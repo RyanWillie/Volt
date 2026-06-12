@@ -176,7 +176,7 @@ BoardSpatialIndex::BoardSpatialIndex(const Board &board,
                                      std::vector<detail::BoardCopperShape> shapes)
     : board_{&board}, shapes_{std::move(shapes)},
       conservative_clearance_mm_{detail::maximum_required_copper_clearance(board)},
-      cell_size_mm_{1.0} {
+      cell_size_mm_{1.0}, expected_geometry_mutation_count_{board.geometry_mutation_count()} {
     boxes_.reserve(shapes_.size());
     for (const auto &shape : shapes_) {
         validate_shape(shape);
@@ -193,6 +193,13 @@ void BoardSpatialIndex::ensure_conservative_bound_current() const {
     if (current > conservative_clearance_mm_ + detail::board_drc_epsilon) {
         throw std::logic_error{
             "Board spatial index clearance bound is stale; rebuild after board rule changes"};
+    }
+}
+
+void BoardSpatialIndex::ensure_geometry_current() const {
+    if (board_->geometry_mutation_count() != expected_geometry_mutation_count_) {
+        throw std::logic_error{
+            "Board spatial index is stale; board geometry changed outside the index"};
     }
 }
 
@@ -261,6 +268,7 @@ void BoardSpatialIndex::insert(detail::BoardCopperShape shape) {
     boxes_.push_back(shape_box(shape));
     shapes_.push_back(std::move(shape));
     index_shape(shape_index);
+    expected_geometry_mutation_count_ = board_->geometry_mutation_count();
 }
 
 [[nodiscard]] std::vector<std::size_t>
@@ -271,6 +279,7 @@ BoardSpatialIndex::candidate_obstacles(const BoardSpatialQueryShape &candidate) 
 [[nodiscard]] std::vector<std::size_t>
 BoardSpatialIndex::candidate_obstacles(const detail::BoardCopperShape &candidate) const {
     ensure_conservative_bound_current();
+    ensure_geometry_current();
     validate_shape(candidate);
     const auto query_box = expanded_box(shape_box(candidate), conservative_clearance_mm_);
     const auto min_x = cell_key(query_box.min_x_mm, cell_size_mm_);
@@ -307,6 +316,7 @@ BoardSpatialIndex::candidate_obstacles(const detail::BoardCopperShape &candidate
 
 [[nodiscard]] std::vector<BoardSpatialCandidatePair>
 BoardSpatialIndex::copper_clearance_candidates() const {
+    ensure_geometry_current();
     auto pairs = std::vector<BoardSpatialCandidatePair>{};
     for (std::size_t lhs_index = 0; lhs_index < shapes_.size(); ++lhs_index) {
         const auto obstacles = candidate_obstacles(shapes_[lhs_index]);
@@ -344,6 +354,7 @@ BoardSpatialIndex::query_legality(const BoardSpatialQueryShape &candidate) const
 BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
                                   BoardClearanceKind candidate_kind,
                                   BoardKeepoutRestriction keepout_restriction) const {
+    ensure_geometry_current();
     validate_shape(candidate);
     auto result = BoardSpatialQueryResult{};
     result.legal = true;

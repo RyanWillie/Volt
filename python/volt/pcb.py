@@ -759,6 +759,39 @@ class Board:
             float(annular),
         )
 
+    def assisted_connect(
+        self,
+        net: Net | int,
+        *,
+        start: Point,
+        start_layer: int,
+        end: Point,
+        end_layer: int,
+    ) -> dict:
+        """Route a net between two points using the kernel assisted-connection solver.
+
+        Returns the kernel solver result: a dict with a ``routed`` flag, created
+        ``tracks`` and ``vias`` ids, and failure ``blockers``. All routing geometry is
+        decided by the kernel.
+        """
+        if isinstance(net, Net):
+            if net._design is not self._design:
+                raise ValueError("Net belongs to a different design")
+            net_index = net.index
+        else:
+            net_index = _net_index(net)
+        start_x, start_y = _point(start, "Assisted connection start")
+        end_x, end_y = _point(end, "Assisted connection end")
+        return self._design._circuit.board_assisted_connect(
+            net_index,
+            start_x,
+            start_y,
+            _layer_index(start_layer),
+            end_x,
+            end_y,
+            _layer_index(end_layer),
+        )
+
     def add_zone(
         self,
         *,

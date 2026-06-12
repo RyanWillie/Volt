@@ -47,6 +47,11 @@ class Board {
     /** Return the logical circuit this board projects. */
     [[nodiscard]] const Circuit &circuit() const noexcept { return *circuit_; }
 
+    /** Return a monotonically increasing counter bumped on every board geometry mutation. */
+    [[nodiscard]] std::size_t geometry_mutation_count() const noexcept {
+        return geometry_mutation_count_;
+    }
+
     /** Add a board layer, rejecting duplicate board-local layer names. */
     [[nodiscard]] BoardLayerId add_layer(BoardLayer layer);
 
@@ -202,6 +207,7 @@ class Board {
     const Circuit *circuit_;
     BoardName name_;
     BoardUnits units_{BoardUnits::Millimeters};
+    std::size_t geometry_mutation_count_ = 0;
     BoardStructureModel structure_;
     BoardFootprintModel footprint_cache_;
     BoardPlacementModel placements_;

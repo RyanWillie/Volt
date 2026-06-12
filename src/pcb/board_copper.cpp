@@ -562,45 +562,30 @@ class BoardRoomRuleResolver {
     explicit BoardRoomRuleResolver(const Board &board) : board_{board} {}
 
     [[nodiscard]] std::optional<RoomRuleValue> track_width_override(const BoardTrack &track) const {
-        const auto room_id = room_for_track(track);
+        const auto room_id = highest_precedence_room([&track](const BoardRoom &room) {
+            return room.track_width_mm().has_value() && track_satisfies_room(track, room);
+        });
         if (!room_id.has_value()) {
             return std::nullopt;
         }
-        const auto width = board_.room(room_id.value()).track_width_mm();
-        if (!width.has_value()) {
-            return std::nullopt;
-        }
-        return RoomRuleValue{width.value(), room_id.value()};
+        return RoomRuleValue{board_.room(room_id.value()).track_width_mm().value(),
+                             room_id.value()};
     }
 
     [[nodiscard]] std::optional<RoomRuleValue>
     copper_clearance_override(const BoardCopperShape &lhs, const BoardCopperShape &rhs) const {
-        const auto lhs_room = room_for_shape(lhs);
-        const auto rhs_room = room_for_shape(rhs);
-        if (!lhs_room.has_value() || !rhs_room.has_value() ||
-            lhs_room.value() != rhs_room.value()) {
+        const auto room_id = highest_precedence_room([&lhs, &rhs](const BoardRoom &room) {
+            return room.copper_clearance_mm().has_value() && shape_satisfies_room(lhs, room) &&
+                   shape_satisfies_room(rhs, room);
+        });
+        if (!room_id.has_value()) {
             return std::nullopt;
         }
-        const auto clearance = board_.room(lhs_room.value()).copper_clearance_mm();
-        if (!clearance.has_value()) {
-            return std::nullopt;
-        }
-        return RoomRuleValue{clearance.value(), lhs_room.value()};
+        return RoomRuleValue{board_.room(room_id.value()).copper_clearance_mm().value(),
+                             room_id.value()};
     }
 
   private:
-    [[nodiscard]] std::optional<BoardRoomId> room_for_shape(const BoardCopperShape &shape) const {
-        return highest_precedence_room([&shape](const BoardRoom &room) {
-            return room_layers_intersect(room, shape.layers) &&
-                   shape_satisfies_outline(shape, room.outline(), 0.0);
-        });
-    }
-
-    [[nodiscard]] std::optional<BoardRoomId> room_for_track(const BoardTrack &track) const {
-        return highest_precedence_room(
-            [&track](const BoardRoom &room) { return track_satisfies_room(track, room); });
-    }
-
     template <typename Predicate>
     [[nodiscard]] std::optional<BoardRoomId> highest_precedence_room(Predicate applies) const {
         auto result = std::optional<BoardRoomId>{};
@@ -624,6 +609,12 @@ class BoardRoomRuleResolver {
             }
         }
         return false;
+    }
+
+    [[nodiscard]] static bool shape_satisfies_room(const BoardCopperShape &shape,
+                                                   const BoardRoom &room) {
+        return room_layers_intersect(room, shape.layers) &&
+               shape_satisfies_outline(shape, room.outline(), 0.0);
     }
 
     [[nodiscard]] static bool track_satisfies_room(const BoardTrack &track, const BoardRoom &room) {
