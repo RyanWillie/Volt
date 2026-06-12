@@ -170,6 +170,14 @@ struct EscapePadCandidate {
         BoardSize{(max_x - min_x) + (2.0 * expansion), (max_y - min_y) + (2.0 * expansion)});
 }
 
+void apply_escape_room_overrides(const Board &board, BoardRoom &room) {
+    const auto board_clearance = board.design_rules().copper_clearance_mm();
+    if (detail::maximum_required_copper_clearance(board) <=
+        board_clearance + detail::board_drc_epsilon) {
+        room.set_copper_clearance_mm(board_clearance);
+    }
+}
+
 [[nodiscard]] BoardSpatialQueryShape escape_segment_shape(NetId net, BoardLayerId layer,
                                                           BoardPoint start, BoardPoint end,
                                                           double width_mm) {
@@ -561,8 +569,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
             room_layers,
             0,
         };
-        room.set_copper_clearance_mm(board_->design_rules().copper_clearance_mm());
-        room.set_track_width_mm(board_->design_rules().minimum_track_width_mm());
+        apply_escape_room_overrides(*board_, room);
         result.room = board_->add_room(std::move(room));
         index_ = BoardSpatialIndex{*board_, footprints_};
     }

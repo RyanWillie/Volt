@@ -131,7 +131,11 @@ TEST_CASE("Escape router fans out SOIC pads into deterministic room-backed stubs
     REQUIRE(result.complete());
     REQUIRE(result.room.has_value());
     REQUIRE(result.pads.size() == 8U);
-    CHECK(layout.board.room(result.room.value()).name() == "escape-U1-at-20.000-20.000");
+    const auto &room = layout.board.room(result.room.value());
+    CHECK(room.name() == "escape-U1-at-20.000-20.000");
+    REQUIRE(room.copper_clearance_mm().has_value());
+    CHECK(room.copper_clearance_mm().value() == Catch::Approx(0.21));
+    CHECK_FALSE(room.track_width_mm().has_value());
     CHECK(layout.board.track_count() == 8U);
     CHECK(layout.board.via_count() == 0U);
 
@@ -188,6 +192,46 @@ TEST_CASE("Escape router resolves stub width from net-class rules", "[pcb][escap
     REQUIRE(pad_one != nullptr);
     REQUIRE(pad_one->tracks.size() == 1U);
     CHECK(layout.board.track(pad_one->tracks.front()).width_mm() == Catch::Approx(0.30));
+}
+
+TEST_CASE("Generated escape room does not relax stricter net-class clearance", "[pcb][escape]") {
+    auto fixture = make_soic_fixture();
+    auto strict = volt::NetClass{volt::NetClassName{"Strict"}};
+    strict.set_copper_clearance_mm(0.50);
+    const auto strict_class = fixture.circuit.add_net_class(std::move(strict));
+    REQUIRE(fixture.circuit.assign_net_class(fixture.nets[0], strict_class));
+
+    auto layout = make_escape_board(fixture);
+    auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
+    const auto result = router.escape(fixture.component);
+
+    REQUIRE(result.complete());
+    REQUIRE(result.room.has_value());
+    CHECK_FALSE(layout.board.room(result.room.value()).copper_clearance_mm().has_value());
+
+    static_cast<void>(layout.board.add_track(volt::BoardTrack{
+        fixture.nets[0], layout.front,
+        std::vector{volt::BoardPoint{19.4, 20.00}, volt::BoardPoint{20.6, 20.00}}, 0.21}));
+    static_cast<void>(layout.board.add_track(volt::BoardTrack{
+        fixture.nets[1], layout.front,
+        std::vector{volt::BoardPoint{19.4, 20.25}, volt::BoardPoint{20.6, 20.25}}, 0.21}));
+
+    const auto report = volt::validate_board(layout.board, volt::builtin_footprint_library());
+    auto found_strict_clearance = false;
+    for (const auto &diagnostic : report.diagnostics()) {
+        if (diagnostic.code() != volt::DiagnosticCode{"PCB_COPPER_CLEARANCE_VIOLATION"} ||
+            !diagnostic.measurement().has_value()) {
+            continue;
+        }
+        if (diagnostic.measurement()->required_mm != Catch::Approx(0.50)) {
+            continue;
+        }
+        CHECK(std::find(diagnostic.entities().begin(), diagnostic.entities().end(),
+                        volt::EntityRef::board_room(result.room.value())) ==
+              diagnostic.entities().end());
+        found_strict_clearance = true;
+    }
+    CHECK(found_strict_clearance);
 }
 
 TEST_CASE("Escape router selects an allowed layer for multi-layer pads", "[pcb][escape]") {
