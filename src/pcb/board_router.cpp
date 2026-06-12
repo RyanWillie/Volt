@@ -3,8 +3,12 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <iomanip>
+#include <limits>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -22,6 +26,9 @@ constexpr int board_router_walk_around_steps = 16;
 
 /** Board-space epsilon below which a segment is treated as degenerate and dropped. */
 constexpr double board_router_min_segment_mm = 1.0e-6;
+
+/** Deterministic first escape-leg length for one pad. */
+constexpr double board_escape_stub_length_mm = 1.0;
 
 [[nodiscard]] bool same_point(BoardPoint lhs, BoardPoint rhs) {
     return detail::board_distance(lhs, rhs) < board_router_min_segment_mm;
@@ -67,6 +74,17 @@ via_candidate_layers(const Board &board, NetId net, BoardPoint position, BoardLa
     });
 }
 
+[[nodiscard]] std::optional<BoardLayerId>
+first_allowed_layer(const std::vector<BoardLayerId> &layers, const BoardRouteParameters &params) {
+    const auto match = std::find_if(layers.begin(), layers.end(), [&params](BoardLayerId layer) {
+        return layer_in_allowed_parameters(layer, params);
+    });
+    if (match == layers.end()) {
+        return std::nullopt;
+    }
+    return *match;
+}
+
 [[nodiscard]] double track_width_for_segment(const Board &board, BoardLayerId layer,
                                              BoardPoint start, BoardPoint end,
                                              const BoardRouteParameters &params) {
@@ -74,10 +92,116 @@ via_candidate_layers(const Board &board, NetId net, BoardPoint position, BoardLa
         layer, std::vector{start, end}, params.track_width_mm);
 }
 
+[[nodiscard]] std::string fixed_millimeters(double value) {
+    auto stream = std::ostringstream{};
+    stream << std::fixed << std::setprecision(3) << value;
+    return stream.str();
+}
+
+[[nodiscard]] std::string escape_room_name(const Board &board, ComponentId component,
+                                           const ComponentPlacement &placement) {
+    const auto &reference = board.circuit().component(component).reference().value();
+    return "escape-" + reference + "-at-" + fixed_millimeters(placement.position().x_mm()) + "-" +
+           fixed_millimeters(placement.position().y_mm());
+}
+
+[[nodiscard]] std::vector<BoardPoint> escape_direction_points(BoardPoint pad,
+                                                              BoardPoint placement_origin) {
+    const auto dx = pad.x_mm() - placement_origin.x_mm();
+    const auto dy = pad.y_mm() - placement_origin.y_mm();
+    const auto horizontal = std::abs(dx) >= std::abs(dy);
+    const auto primary_x = horizontal ? (dx < 0.0 ? -1.0 : 1.0) : 0.0;
+    const auto primary_y = horizontal ? 0.0 : (dy < 0.0 ? -1.0 : 1.0);
+    const auto secondary_x = horizontal ? 0.0 : (dx < 0.0 ? -1.0 : 1.0);
+    const auto secondary_y = horizontal ? (dy < 0.0 ? -1.0 : 1.0) : 0.0;
+
+    return std::vector{
+        BoardPoint{pad.x_mm() + (primary_x * board_escape_stub_length_mm),
+                   pad.y_mm() + (primary_y * board_escape_stub_length_mm)},
+        BoardPoint{pad.x_mm() - (primary_x * board_escape_stub_length_mm),
+                   pad.y_mm() - (primary_y * board_escape_stub_length_mm)},
+        BoardPoint{pad.x_mm() + (secondary_x * board_escape_stub_length_mm),
+                   pad.y_mm() + (secondary_y * board_escape_stub_length_mm)},
+        BoardPoint{pad.x_mm() - (secondary_x * board_escape_stub_length_mm),
+                   pad.y_mm() - (secondary_y * board_escape_stub_length_mm)},
+    };
+}
+
+struct EscapePadCandidate {
+    std::size_t result_index = 0;
+    BoardLayerId layer;
+    std::vector<BoardPoint> endpoints;
+    std::vector<BoardPoint> room_points;
+    BoardRouteParameters params;
+};
+
+[[nodiscard]] BoardOutline escape_room_outline(const std::vector<BoardEscapePadResult> &pads,
+                                               const std::vector<EscapePadCandidate> &candidates,
+                                               const BoardDesignRules &rules) {
+    auto min_x = std::numeric_limits<double>::infinity();
+    auto min_y = std::numeric_limits<double>::infinity();
+    auto max_x = -std::numeric_limits<double>::infinity();
+    auto max_y = -std::numeric_limits<double>::infinity();
+
+    const auto include = [&](BoardPoint point) {
+        min_x = std::min(min_x, point.x_mm());
+        min_y = std::min(min_y, point.y_mm());
+        max_x = std::max(max_x, point.x_mm());
+        max_y = std::max(max_y, point.y_mm());
+    };
+
+    for (const auto &candidate : candidates) {
+        include(pads[candidate.result_index].pad_position);
+        for (const auto endpoint : candidate.endpoints) {
+            include(endpoint);
+        }
+        for (const auto point : candidate.room_points) {
+            include(point);
+        }
+    }
+
+    auto expansion_basis = std::max(rules.minimum_track_width_mm(), rules.copper_clearance_mm());
+    for (const auto &candidate : candidates) {
+        expansion_basis = std::max(expansion_basis, candidate.params.track_width_mm);
+    }
+    const auto expansion = expansion_basis / 2.0;
+    return BoardOutline::rectangle(
+        BoardPoint{min_x - expansion, min_y - expansion},
+        BoardSize{(max_x - min_x) + (2.0 * expansion), (max_y - min_y) + (2.0 * expansion)});
+}
+
+void apply_escape_room_overrides(const Board &board, BoardRoom &room) {
+    const auto board_clearance = board.design_rules().copper_clearance_mm();
+    if (detail::maximum_required_copper_clearance(board) <=
+        board_clearance + detail::board_drc_epsilon) {
+        room.set_copper_clearance_mm(board_clearance);
+    }
+}
+
+[[nodiscard]] BoardSpatialQueryShape escape_segment_shape(NetId net, BoardLayerId layer,
+                                                          BoardPoint start, BoardPoint end,
+                                                          double width_mm) {
+    return BoardSpatialQueryShape{
+        BoardSpatialQueryShapeKind::Segment,
+        net,
+        std::vector{layer},
+        std::vector{start, end},
+        width_mm / 2.0,
+        BoardClearanceKind::Track,
+        BoardKeepoutRestriction::Copper,
+    };
+}
+
 } // namespace
 
 BoardRouter::BoardRouter(Board &board, const FootprintLibrary &footprints)
-    : board_{&board}, index_{board, footprints} {}
+    : board_{&board}, footprints_{footprints}, index_{board, footprints_} {}
+
+[[nodiscard]] bool BoardEscapeResult::complete() const noexcept {
+    return !pads.empty() &&
+           std::all_of(pads.begin(), pads.end(),
+                       [](const BoardEscapePadResult &pad) { return pad.escaped; });
+}
 
 [[nodiscard]] bool BoardRouter::layer_allowed(NetId net, BoardLayerId layer) const {
     if (board_->layer(layer).role() != BoardLayerRole::Copper) {
@@ -355,6 +479,136 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
 
     result.routed = false;
     result.blockers = std::move(primary_blockers).value_or(std::vector<BoardSpatialBlocker>{});
+    return result;
+}
+
+[[nodiscard]] BoardEscapeResult BoardRouter::escape(ComponentId component) {
+    static_cast<void>(board_->circuit().component(component));
+
+    auto result = BoardEscapeResult{};
+    result.component = component;
+    const auto placement_id = board_->placement_for_component(component);
+    if (!placement_id.has_value()) {
+        return result;
+    }
+    result.placement = placement_id;
+    const auto &placement = board_->placement(placement_id.value());
+
+    const auto &selected_part = board_->circuit().selected_physical_part(component);
+    if (!selected_part.has_value()) {
+        return result;
+    }
+
+    const auto resolution_footprints = detail::board_resolution_footprints(*board_, footprints_);
+    const auto footprint_resolution =
+        resolve_footprint(selected_part.value(), resolution_footprints);
+    const auto *definition = footprint_resolution.definition();
+    if (definition == nullptr) {
+        return result;
+    }
+
+    const auto pad_resolutions = board_->resolve_pads(resolution_footprints);
+    auto candidates = std::vector<EscapePadCandidate>{};
+    auto room_layers = std::vector<BoardLayerId>{};
+
+    for (std::size_t pad_index = 0; pad_index < definition->pad_count(); ++pad_index) {
+        const auto pad_id = FootprintPadId{pad_index};
+        const auto &pad = definition->pad(pad_id);
+        const auto *resolution =
+            detail::find_board_pad_resolution(pad_resolutions, placement_id.value(), pad_id);
+
+        auto pad_result = BoardEscapePadResult{};
+        pad_result.pad_label = pad.label();
+        pad_result.pad = pad_id;
+        if (resolution != nullptr) {
+            pad_result.pad_position = resolution->position();
+            pad_result.pin = resolution->pin();
+            pad_result.net = resolution->net();
+        } else {
+            pad_result.pad_position = detail::transform_footprint_point(placement, pad.position());
+        }
+
+        if (resolution == nullptr || resolution->status() != PadResolutionStatus::Connected ||
+            !resolution->net().has_value()) {
+            pad_result.failure_reason = BoardEscapeFailureReason::PadUnconnected;
+            result.pads.push_back(std::move(pad_result));
+            continue;
+        }
+
+        const auto layers = detail::pad_copper_layers(*board_, pad, placement.side());
+        if (layers.empty()) {
+            pad_result.failure_reason = BoardEscapeFailureReason::NoCopperLayer;
+            result.pads.push_back(std::move(pad_result));
+            continue;
+        }
+
+        const auto params = resolve_parameters(resolution->net().value());
+        const auto layer = first_allowed_layer(layers, params);
+        if (!layer.has_value()) {
+            pad_result.failure_reason = BoardEscapeFailureReason::DisallowedLayer;
+            result.pads.push_back(std::move(pad_result));
+            continue;
+        }
+
+        const auto result_index = result.pads.size();
+        result.pads.push_back(std::move(pad_result));
+        candidates.push_back(EscapePadCandidate{
+            result_index,
+            layer.value(),
+            escape_direction_points(result.pads[result_index].pad_position, placement.position()),
+            detail::transformed_pad_body_corners(placement, pad),
+            params,
+        });
+        detail::append_unique_layer(room_layers, layer.value());
+    }
+
+    if (!candidates.empty()) {
+        auto room = BoardRoom{
+            escape_room_name(*board_, component, placement),
+            escape_room_outline(result.pads, candidates, board_->design_rules()),
+            room_layers,
+            0,
+        };
+        apply_escape_room_overrides(*board_, room);
+        result.room = board_->add_room(std::move(room));
+        index_ = BoardSpatialIndex{*board_, footprints_};
+    }
+
+    for (const auto &candidate : candidates) {
+        auto &pad = result.pads[candidate.result_index];
+        auto primary_blockers = std::optional<std::vector<BoardSpatialBlocker>>{};
+
+        for (const auto endpoint : candidate.endpoints) {
+            const auto width_mm = track_width_for_segment(
+                *board_, candidate.layer, pad.pad_position, endpoint, candidate.params);
+            const auto shape = escape_segment_shape(pad.net.value(), candidate.layer,
+                                                    pad.pad_position, endpoint, width_mm);
+            const auto legality = index_.query_legality(shape);
+            if (!legality.legal) {
+                if (!primary_blockers.has_value()) {
+                    primary_blockers = legality.blockers;
+                }
+                continue;
+            }
+
+            const auto previous_geometry_mutation_count = board_->geometry_mutation_count();
+            const auto track_id =
+                board_->add_track(BoardTrack{pad.net.value(), candidate.layer,
+                                             std::vector{pad.pad_position, endpoint}, width_mm});
+            index_.insert_after_board_mutation(shape, previous_geometry_mutation_count);
+            pad.endpoint = endpoint;
+            pad.escaped = true;
+            pad.failure_reason = BoardEscapeFailureReason::None;
+            pad.tracks.push_back(track_id);
+            break;
+        }
+
+        if (!pad.escaped) {
+            pad.failure_reason = BoardEscapeFailureReason::NoLegalCandidate;
+            pad.blockers = std::move(primary_blockers).value_or(std::vector<BoardSpatialBlocker>{});
+        }
+    }
+
     return result;
 }
 

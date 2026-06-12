@@ -351,17 +351,17 @@ FootprintResolution::pad_bindings() const noexcept {
 
 [[nodiscard]] FootprintDefinition soic_8_footprint() {
     return detail::two_side_smd_package(FootprintRef{"ics", "SOIC-8_3.9x4.9mm_P1.27mm"}, 8U, 2.70,
-                                        1.27, 0.60, 1.55);
+                                        1.27, 1.55, 0.60);
 }
 
 [[nodiscard]] FootprintDefinition package_so_soic_8_footprint() {
     return detail::two_side_smd_package(FootprintRef{"Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"}, 8U,
-                                        2.70, 1.27, 0.60, 1.55);
+                                        2.70, 1.27, 1.55, 0.60);
 }
 
 [[nodiscard]] FootprintDefinition tssop_14_footprint() {
     return detail::two_side_smd_package(FootprintRef{"Package_SO", "TSSOP-14_4.4x5mm_P0.65mm"}, 14U,
-                                        3.05, 0.65, 0.45, 1.10);
+                                        3.05, 0.65, 1.10, 0.45);
 }
 
 [[nodiscard]] FootprintDefinition lqfp_64_footprint() {

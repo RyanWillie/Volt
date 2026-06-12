@@ -204,6 +204,18 @@ TEST_CASE("Built-in footprint library keeps unique references and stable pad lab
     expect_pad_labels(*regulator, {"1", "2", "3", "4"});
     CHECK(regulator->pad(volt::FootprintPadId{3}).position() == volt::FootprintPoint{0.00, 2.05});
 
+    const auto *badge_soic = library.find(volt::FootprintRef{"ics", "SOIC-8_3.9x4.9mm_P1.27mm"});
+    REQUIRE(badge_soic != nullptr);
+    CHECK(badge_soic->pad(volt::FootprintPadId{0}).size() == volt::FootprintSize{1.55, 0.60});
+
+    const auto *soic = library.find(volt::FootprintRef{"Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"});
+    REQUIRE(soic != nullptr);
+    CHECK(soic->pad(volt::FootprintPadId{0}).size() == volt::FootprintSize{1.55, 0.60});
+
+    const auto *tssop = library.find(volt::FootprintRef{"Package_SO", "TSSOP-14_4.4x5mm_P0.65mm"});
+    REQUIRE(tssop != nullptr);
+    CHECK(tssop->pad(volt::FootprintPadId{0}).size() == volt::FootprintSize{1.10, 0.45});
+
     const auto *mcu = library.find(volt::FootprintRef{"Package_QFP", "LQFP-64_10x10mm_P0.5mm"});
     REQUIRE(mcu != nullptr);
     REQUIRE(mcu->pad_count() == 64);

@@ -871,6 +871,108 @@ def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
     assert json.loads(blocked_board.to_json())["board"].get("tracks", []) == []
 
 
+def test_python_board_authoring_escape_surfaces_kernel_result():
+    design, r1, _ = _small_resistor_led_design()
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
+    board.set_design_rules(copper_clearance=0.20, min_track_width=0.20)
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    board.place(r1, at=(10.0, 10.0))
+
+    result = board.escape(r1)
+
+    assert result["complete"] is True
+    assert result["component"] == r1.index
+    assert result["placement"] == 0
+    assert result["room"] == 0
+    assert result["pads"] == [
+        {
+            "pad": 0,
+            "pad_label": "1",
+            "pin": r1[1].index,
+            "net": 0,
+            "pad_position": (9.25, 10.0),
+            "endpoint": (8.25, 10.0),
+            "escaped": True,
+            "failure_reason": "none",
+            "tracks": [0],
+            "vias": [],
+            "blockers": [],
+        },
+        {
+            "pad": 1,
+            "pad_label": "2",
+            "pin": r1[2].index,
+            "net": 1,
+            "pad_position": (10.75, 10.0),
+            "endpoint": (11.75, 10.0),
+            "escaped": True,
+            "failure_reason": "none",
+            "tracks": [1],
+            "vias": [],
+            "blockers": [],
+        },
+    ]
+
+    first_json = board.to_json()
+    assert board.to_json() == first_json
+    document = json.loads(first_json)
+    assert document["board"]["rooms"][0]["name"] == "escape-R1-at-10.000-10.000"
+    assert document["board"]["rooms"][0]["layers"] == ["board_layer:0"]
+    assert document["board"]["tracks"][0]["points"] == [[9.25, 10.0], [8.25, 10.0]]
+    assert document["board"]["tracks"][1]["points"] == [[10.75, 10.0], [11.75, 10.0]]
+
+    blocked = volt.Design("blocked-escape")
+    blocked_route = blocked.net("ROUTE")
+    blocked_r = blocked.R("1k", ref="R1")
+    blocked_route += blocked_r[1], blocked_r[2]
+    blocked_r.select_part(
+        manufacturer="Yageo",
+        part_number="RC0603FR-071KL",
+        package="0603",
+        footprint=("passives", "R_0603_1608Metric"),
+        pin_pads={1: "1", 2: "2"},
+    )
+    blocked_board = blocked.board("Control")
+    blocked_front = blocked_board.add_layer("F.Cu", role="copper", side="top")
+    blocked_board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 20.0))
+    blocked_board.set_design_rules(copper_clearance=0.20, min_track_width=0.20)
+    blocked_board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    blocked_board.place(blocked_r, at=(10.0, 10.0))
+    keepout = blocked_board.add_keepout(
+        outline=((8.6, 9.5), (9.6, 9.5), (9.6, 10.5), (8.6, 10.5)),
+        layers=(blocked_front,),
+        restrictions=("copper",),
+    )
+
+    failure = blocked_board.escape(blocked_r)
+
+    assert failure["complete"] is False
+    assert failure["room"] == 0
+    assert failure["pads"][0]["escaped"] is False
+    assert failure["pads"][0]["failure_reason"] == "no_legal_candidate"
+    assert failure["pads"][0]["tracks"] == []
+    assert failure["pads"][0]["blockers"] == [
+        {
+            "kind": "keepout",
+            "shape_index": None,
+            "keepout": keepout,
+            "layer": blocked_front,
+            "required_clearance_mm": 0.0,
+            "actual_clearance_mm": 0.0,
+            "room": None,
+        }
+    ]
+    assert failure["pads"][1]["escaped"] is True
+    assert json.loads(blocked_board.to_json())["board"]["tracks"][0]["points"] == [
+        [10.75, 10.0],
+        [11.75, 10.0],
+    ]
+
+
 def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     design, r1, d1 = _small_resistor_led_design()
     led_a = next(net for net in design.nets() if net.name == "LED_A")

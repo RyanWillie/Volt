@@ -1,5 +1,6 @@
 include <cstddef>
 include <optional>
+include <string>
 include <vector>
 include <volt/core/ids.hpp>
 include <volt/pcb/board.hpp>
@@ -10,3 +11,4 @@ include <volt/pcb/footprints.hpp>
 BoardRouter(Board &board, const FootprintLibrary &footprints)
 [[nodiscard]] BoardRouteParameters resolve_parameters(NetId net) const
 [[nodiscard]] BoardRouteResult connect(const BoardRouteRequest &request)
+[[nodiscard]] BoardEscapeResult escape(ComponentId component)
