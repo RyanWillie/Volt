@@ -15,12 +15,20 @@ namespace volt {
 Board::Board(const Circuit &circuit, BoardName name) : circuit_{&circuit}, name_{std::move(name)} {}
 
 [[nodiscard]] BoardLayerId Board::add_layer(BoardLayer layer) {
-    return structure_.add_layer(std::move(layer));
+    const auto id = structure_.add_layer(std::move(layer));
+    ++geometry_mutation_count_;
+    return id;
 }
 
-void Board::set_layer_stack(LayerStack stack) { structure_.set_layer_stack(std::move(stack)); }
+void Board::set_layer_stack(LayerStack stack) {
+    structure_.set_layer_stack(std::move(stack));
+    ++geometry_mutation_count_;
+}
 
-void Board::set_outline(BoardOutline outline) { structure_.set_outline(std::move(outline)); }
+void Board::set_outline(BoardOutline outline) {
+    structure_.set_outline(std::move(outline));
+    ++geometry_mutation_count_;
+}
 
 void Board::set_design_rules(BoardDesignRules rules) { structure_.set_design_rules(rules); }
 
@@ -29,29 +37,42 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
 }
 
 [[nodiscard]] BoardFeatureId Board::add_feature(BoardFeature feature) {
-    return structure_.add_feature(std::move(feature));
+    const auto id = structure_.add_feature(std::move(feature));
+    ++geometry_mutation_count_;
+    return id;
 }
 
 [[nodiscard]] FootprintDefId Board::cache_footprint_definition(FootprintDefinition footprint) {
-    return footprint_cache_.cache_footprint_definition(std::move(footprint));
+    const auto count_before = footprint_cache_.footprint_definition_count();
+    const auto id = footprint_cache_.cache_footprint_definition(std::move(footprint));
+    if (footprint_cache_.footprint_definition_count() != count_before) {
+        ++geometry_mutation_count_;
+    }
+    return id;
 }
 
 [[nodiscard]] ComponentPlacementId Board::place_component(ComponentPlacement placement) {
     static_cast<void>(circuit().component(placement.component()));
-    return placements_.place_component(placement);
+    const auto id = placements_.place_component(placement);
+    ++geometry_mutation_count_;
+    return id;
 }
 
 [[nodiscard]] BoardTrackId Board::add_track(BoardTrack track) {
     require_net(track.net());
     require_copper_layer(track.layer());
-    return copper_.add_track(std::move(track));
+    const auto id = copper_.add_track(std::move(track));
+    ++geometry_mutation_count_;
+    return id;
 }
 
 [[nodiscard]] BoardViaId Board::add_via(BoardVia via) {
     require_net(via.net());
     require_copper_layer(via.start_layer());
     require_copper_layer(via.end_layer());
-    return copper_.add_via(via);
+    const auto id = copper_.add_via(via);
+    ++geometry_mutation_count_;
+    return id;
 }
 
 [[nodiscard]] BoardZoneId Board::add_zone(BoardZone zone) {
@@ -64,26 +85,34 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
             throw std::logic_error{"Board copper zones require copper layers"};
         }
     }
-    return copper_.add_zone(std::move(zone));
+    const auto id = copper_.add_zone(std::move(zone));
+    ++geometry_mutation_count_;
+    return id;
 }
 
 [[nodiscard]] BoardKeepoutId Board::add_keepout(BoardKeepout keepout) {
     for (const auto layer : keepout.layers()) {
         require_layer(layer);
     }
-    return copper_.add_keepout(std::move(keepout));
+    const auto id = copper_.add_keepout(std::move(keepout));
+    ++geometry_mutation_count_;
+    return id;
 }
 
 [[nodiscard]] BoardRoomId Board::add_room(BoardRoom room) {
     for (const auto layer : room.layers()) {
         require_layer(layer);
     }
-    return copper_.add_room(std::move(room));
+    const auto id = copper_.add_room(std::move(room));
+    ++geometry_mutation_count_;
+    return id;
 }
 
 [[nodiscard]] BoardTextId Board::add_text(BoardText text) {
     require_layer(text.layer());
-    return copper_.add_text(std::move(text));
+    const auto id = copper_.add_text(std::move(text));
+    ++geometry_mutation_count_;
+    return id;
 }
 
 [[nodiscard]] const std::optional<LayerStack> &Board::layer_stack() const noexcept {

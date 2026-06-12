@@ -5,6 +5,7 @@
 #include <volt/circuit/queries.hpp>
 #include <volt/io/pcb_svg_writer.hpp>
 #include <volt/io/pcb_writer.hpp>
+#include <volt/pcb/board_router.hpp>
 
 namespace volt::python {
 
@@ -115,6 +116,45 @@ schematic_endpoints_from_list(const py::list &endpoints) {
                        model_3d->translation_mm()[2]);
     payload["rotation_deg"] = model_3d->rotation_deg();
     return payload;
+}
+
+[[nodiscard]] std::string board_spatial_blocker_kind_name(volt::BoardSpatialBlockerKind kind) {
+    switch (kind) {
+    case volt::BoardSpatialBlockerKind::CopperClearance:
+        return "copper_clearance";
+    case volt::BoardSpatialBlockerKind::BoardOutline:
+        return "board_outline";
+    case volt::BoardSpatialBlockerKind::Keepout:
+        return "keepout";
+    }
+    throw std::logic_error{"Unhandled board spatial blocker kind"};
+}
+
+[[nodiscard]] py::object optional_size_to_object(const std::optional<std::size_t> &value) {
+    if (!value.has_value()) {
+        return py::none{};
+    }
+    return py::cast(value.value());
+}
+
+template <typename Id>
+[[nodiscard]] py::object optional_id_to_object(const std::optional<Id> &value) {
+    if (!value.has_value()) {
+        return py::none{};
+    }
+    return py::cast(value->index());
+}
+
+[[nodiscard]] py::dict board_spatial_blocker_to_dict(const volt::BoardSpatialBlocker &blocker) {
+    auto result = py::dict{};
+    result["kind"] = board_spatial_blocker_kind_name(blocker.kind);
+    result["shape_index"] = optional_size_to_object(blocker.shape_index);
+    result["keepout"] = optional_id_to_object(blocker.keepout);
+    result["layer"] = optional_id_to_object(blocker.layer);
+    result["required_clearance_mm"] = blocker.required_clearance_mm;
+    result["actual_clearance_mm"] = blocker.actual_clearance_mm;
+    result["room"] = optional_id_to_object(blocker.room);
+    return result;
 }
 
 [[nodiscard]] std::string board_side_name(volt::BoardSide side) {
@@ -1473,6 +1513,35 @@ std::size_t PyCircuit::board_add_via(std::size_t net, double x, double y, std::s
                                 volt::BoardLayerId{start_layer}, volt::BoardLayerId{end_layer},
                                 drill_diameter_mm, annular_diameter_mm})
         .index();
+}
+
+py::dict PyCircuit::board_assisted_connect(std::size_t net, double start_x, double start_y,
+                                           std::size_t start_layer, double end_x, double end_y,
+                                           std::size_t end_layer) {
+    auto router = volt::BoardRouter{board_projection(), volt::builtin_footprint_library()};
+    const auto result = router.connect(volt::BoardRouteRequest{
+        net_id(net), volt::BoardPoint{start_x, start_y}, volt::BoardPoint{end_x, end_y},
+        volt::BoardLayerId{start_layer}, volt::BoardLayerId{end_layer}});
+
+    auto tracks = py::list{};
+    for (const auto track : result.tracks) {
+        tracks.append(track.index());
+    }
+    auto vias = py::list{};
+    for (const auto via : result.vias) {
+        vias.append(via.index());
+    }
+    auto blockers = py::list{};
+    for (const auto &blocker : result.blockers) {
+        blockers.append(board_spatial_blocker_to_dict(blocker));
+    }
+
+    auto lowered = py::dict{};
+    lowered["routed"] = result.routed;
+    lowered["tracks"] = std::move(tracks);
+    lowered["vias"] = std::move(vias);
+    lowered["blockers"] = std::move(blockers);
+    return lowered;
 }
 
 std::size_t PyCircuit::board_add_zone(std::optional<std::size_t> net,

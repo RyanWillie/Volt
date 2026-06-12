@@ -321,6 +321,10 @@ class PyCircuit {
                                             std::size_t start_layer, std::size_t end_layer,
                                             double drill_diameter_mm, double annular_diameter_mm);
 
+    [[nodiscard]] py::dict board_assisted_connect(std::size_t net, double start_x, double start_y,
+                                                  std::size_t start_layer, double end_x,
+                                                  double end_y, std::size_t end_layer);
+
     [[nodiscard]] std::size_t board_add_zone(std::optional<std::size_t> net,
                                              const std::vector<std::size_t> &layers,
                                              const std::vector<std::pair<double, double>> &outline,

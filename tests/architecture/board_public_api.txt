@@ -20,6 +20,7 @@ explicit Board(const Circuit &circuit, BoardName name = BoardName{"Main"})
 [[nodiscard]] const BoardName &name() const noexcept
 [[nodiscard]] BoardUnits units() const noexcept
 [[nodiscard]] const Circuit &circuit() const noexcept
+[[nodiscard]] std::size_t geometry_mutation_count() const noexcept
 [[nodiscard]] BoardLayerId add_layer(BoardLayer layer)
 void set_layer_stack(LayerStack stack)
 void set_outline(BoardOutline outline)

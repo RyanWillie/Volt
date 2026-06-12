@@ -307,6 +307,19 @@ TEST_CASE("BoardSpatialIndex rejects queries after the board clearance bound gro
                     std::logic_error);
 }
 
+TEST_CASE("BoardSpatialIndex clearance pair queries reject stale board geometry") {
+    auto fixture = make_board_fixture();
+    auto board = make_two_layer_board(fixture);
+    const auto front = volt::BoardLayerId{0};
+
+    const auto index = volt::BoardSpatialIndex{board};
+    static_cast<void>(board.add_track(volt::BoardTrack{
+        fixture.first_net, front,
+        std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.10}));
+
+    CHECK_THROWS_AS(index.copper_clearance_candidates(), std::logic_error);
+}
+
 TEST_CASE("BoardSpatialIndex incremental insert is visible to subsequent queries") {
     auto fixture = make_board_fixture();
     auto board = make_two_layer_board(fixture);
@@ -322,6 +335,22 @@ TEST_CASE("BoardSpatialIndex incremental insert is visible to subsequent queries
     REQUIRE_FALSE(result.legal);
     REQUIRE(result.blockers.size() == 1);
     CHECK(result.blockers[0].shape_index == 0U);
+}
+
+TEST_CASE("BoardSpatialIndex insert rejects stale board geometry") {
+    auto fixture = make_board_fixture();
+    auto board = make_two_layer_board(fixture);
+    const auto front = volt::BoardLayerId{0};
+
+    auto index = volt::BoardSpatialIndex{board};
+    static_cast<void>(board.add_track(volt::BoardTrack{
+        fixture.first_net, front,
+        std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.10}));
+
+    CHECK_THROWS_AS(index.insert(track_candidate(fixture.second_net, front, 1.20)),
+                    std::logic_error);
+    CHECK_THROWS_AS(index.query_legality(track_candidate(fixture.second_net, front, 1.20)),
+                    std::logic_error);
 }
 
 TEST_CASE("BoardSpatialIndex query output is deterministic across equivalent builds") {

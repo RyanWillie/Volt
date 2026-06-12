@@ -123,6 +123,8 @@ class BoardSpatialIndex {
     query_legality(const BoardSpatialQueryShape &candidate) const;
 
   private:
+    friend class BoardRouter;
+
     friend void
     detail::validate_copper_clearance(const Board &board,
                                       const std::vector<detail::BoardCopperShape> &shapes,
@@ -150,6 +152,7 @@ class BoardSpatialIndex {
     std::vector<Cell> cells_;
     double conservative_clearance_mm_;
     double cell_size_mm_;
+    std::size_t expected_geometry_mutation_count_;
 
     [[nodiscard]] static bool cell_less(const Cell &lhs, const Cell &rhs);
 
@@ -173,9 +176,19 @@ class BoardSpatialIndex {
 
     void ensure_conservative_bound_current() const;
 
+    void ensure_geometry_current() const;
+
     void validate_shape(const detail::BoardCopperShape &shape) const;
 
+    void append_shape(detail::BoardCopperShape shape);
+
     void insert(detail::BoardCopperShape shape);
+
+    void insert_after_board_mutation(BoardSpatialQueryShape shape,
+                                     std::size_t previous_geometry_mutation_count);
+
+    void insert_after_board_mutation(detail::BoardCopperShape shape,
+                                     std::size_t previous_geometry_mutation_count);
 
     [[nodiscard]] std::vector<std::size_t>
     candidate_obstacles(const detail::BoardCopperShape &candidate) const;

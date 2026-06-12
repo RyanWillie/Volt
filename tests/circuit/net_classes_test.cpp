@@ -787,3 +787,78 @@ TEST_CASE("Board validation resolves overlapping rooms by priority then lowest I
                                        volt::EntityRef::board_room(high),
                                    });
 }
+
+TEST_CASE("Board validation ignores overlapping rooms without clearance overrides") {
+    auto circuit = volt::Circuit{};
+    const auto first_net = circuit.add_net(volt::Net{volt::NetName{"A"}, volt::NetKind::Signal});
+    const auto second_net = circuit.add_net(volt::Net{volt::NetName{"B"}, volt::NetKind::Signal});
+
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.10, 0.05, 0.10, 0.20, 0.0});
+    const auto outline =
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.5, 0.5}, volt::BoardSize{8.0, 2.0});
+
+    auto low_priority = volt::BoardRoom{"Low", outline, std::vector{front}, 1};
+    low_priority.set_copper_clearance_mm(0.50);
+    const auto low = board.add_room(std::move(low_priority));
+
+    [[maybe_unused]] const auto high =
+        board.add_room(volt::BoardRoom{"High", outline, std::vector{front}, 5});
+
+    const auto first_track = board.add_track(volt::BoardTrack{
+        first_net, front, std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}},
+        0.10});
+    const auto second_track = board.add_track(volt::BoardTrack{
+        second_net, front, std::vector{volt::BoardPoint{1.0, 1.4}, volt::BoardPoint{8.0, 1.4}},
+        0.10});
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *violation = find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION");
+    REQUIRE(violation != nullptr);
+    CHECK(violation->entities() == std::vector{
+                                       volt::EntityRef::board_track(first_track),
+                                       volt::EntityRef::board_track(second_track),
+                                       volt::EntityRef::net(first_net),
+                                       volt::EntityRef::net(second_net),
+                                       volt::EntityRef::board_layer(front),
+                                       volt::EntityRef::board_room(low),
+                                   });
+}
+
+TEST_CASE("Board validation ignores overlapping rooms without track-width overrides") {
+    auto circuit = volt::Circuit{};
+    const auto net = circuit.add_net(volt::Net{volt::NetName{"DATA"}, volt::NetKind::Signal});
+
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.10, 0.05, 0.10, 0.20, 0.0});
+    const auto outline =
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.5, 0.5}, volt::BoardSize{8.0, 2.0});
+
+    auto low_priority = volt::BoardRoom{"Low", outline, std::vector{front}, 1};
+    low_priority.set_track_width_mm(0.20);
+    const auto low = board.add_room(std::move(low_priority));
+
+    [[maybe_unused]] const auto high =
+        board.add_room(volt::BoardRoom{"High", outline, std::vector{front}, 5});
+
+    const auto track = board.add_track(volt::BoardTrack{
+        net, front, std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{8.0, 1.0}}, 0.15});
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *width = find_diagnostic(report, "PCB_TRACK_WIDTH_BELOW_NET_CLASS");
+    REQUIRE(width != nullptr);
+    CHECK(width->entities() ==
+          std::vector{volt::EntityRef::board_track(track), volt::EntityRef::net(net),
+                      volt::EntityRef::board_layer(front), volt::EntityRef::board_room(low)});
+    CHECK(find_diagnostic(report, "PCB_TRACK_WIDTH_BELOW_MINIMUM") == nullptr);
+}
