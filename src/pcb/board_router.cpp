@@ -11,6 +11,8 @@
 #include <volt/circuit/net_class_resolution.hpp>
 #include <volt/pcb/board_copper.hpp>
 
+#include "board_room_rules.hpp"
+
 namespace volt {
 
 namespace {
@@ -65,51 +67,11 @@ via_candidate_layers(const Board &board, NetId net, BoardPoint position, BoardLa
     });
 }
 
-[[nodiscard]] bool room_contains_layer(const BoardRoom &room, BoardLayerId layer) {
-    return std::find(room.layers().begin(), room.layers().end(), layer) != room.layers().end();
-}
-
-[[nodiscard]] bool room_has_higher_precedence(const Board &board, BoardRoomId candidate,
-                                              BoardRoomId current) {
-    const auto candidate_priority = board.room(candidate).priority();
-    const auto current_priority = board.room(current).priority();
-    return candidate_priority > current_priority ||
-           (candidate_priority == current_priority && candidate.index() < current.index());
-}
-
-[[nodiscard]] std::optional<BoardRoomId> track_width_room(const Board &board, BoardLayerId layer,
-                                                          BoardPoint start, BoardPoint end,
-                                                          double width_mm) {
-    auto result = std::optional<BoardRoomId>{};
-    for (std::size_t index = 0; index < board.room_count(); ++index) {
-        const auto room_id = BoardRoomId{index};
-        const auto &room = board.room(room_id);
-        if (!room.track_width_mm().has_value() || !room_contains_layer(room, layer) ||
-            !detail::outline_contains_segment(room.outline(), start, end, width_mm / 2.0, 0.0)) {
-            continue;
-        }
-        if (!result.has_value() || room_has_higher_precedence(board, room_id, result.value())) {
-            result = room_id;
-        }
-    }
-    return result;
-}
-
 [[nodiscard]] double track_width_for_segment(const Board &board, BoardLayerId layer,
                                              BoardPoint start, BoardPoint end,
                                              const BoardRouteParameters &params) {
-    auto width_mm = params.track_width_mm;
-    while (true) {
-        const auto room = track_width_room(board, layer, start, end, width_mm);
-        if (!room.has_value()) {
-            return width_mm;
-        }
-        const auto room_width_mm = board.room(room.value()).track_width_mm().value();
-        if (room_width_mm <= width_mm + detail::board_drc_epsilon) {
-            return width_mm;
-        }
-        width_mm = room_width_mm;
-    }
+    return detail::BoardRoomRuleResolver{board}.effective_track_width_mm(
+        layer, std::vector{start, end}, params.track_width_mm);
 }
 
 } // namespace

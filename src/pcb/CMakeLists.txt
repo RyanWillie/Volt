@@ -12,6 +12,7 @@ add_library(
     board_layers.cpp
     board_outline.cpp
     board_placement_model.cpp
+    board_room_rules.cpp
     board_router.cpp
     board_spatial_index.cpp
     board_structure_model.cpp

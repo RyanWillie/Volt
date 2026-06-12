@@ -2,6 +2,7 @@
 #include <volt/pcb/board_spatial_index.hpp>
 
 #include "board_capability_validation.hpp"
+#include "board_room_rules.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -551,97 +552,6 @@ collect_copper_shapes(const Board &board, const FootprintLibrary &footprints,
 
     return outline_contains_polygon(outline, shape.points, clearance_mm);
 }
-
-struct RoomRuleValue {
-    double value_mm;
-    BoardRoomId room;
-};
-
-class BoardRoomRuleResolver {
-  public:
-    explicit BoardRoomRuleResolver(const Board &board) : board_{board} {}
-
-    [[nodiscard]] std::optional<RoomRuleValue> track_width_override(const BoardTrack &track) const {
-        const auto room_id = highest_precedence_room([&track](const BoardRoom &room) {
-            return room.track_width_mm().has_value() && track_satisfies_room(track, room);
-        });
-        if (!room_id.has_value()) {
-            return std::nullopt;
-        }
-        return RoomRuleValue{board_.room(room_id.value()).track_width_mm().value(),
-                             room_id.value()};
-    }
-
-    [[nodiscard]] std::optional<RoomRuleValue>
-    copper_clearance_override(const BoardCopperShape &lhs, const BoardCopperShape &rhs) const {
-        const auto room_id = highest_precedence_room([&lhs, &rhs](const BoardRoom &room) {
-            return room.copper_clearance_mm().has_value() && shape_satisfies_room(lhs, room) &&
-                   shape_satisfies_room(rhs, room);
-        });
-        if (!room_id.has_value()) {
-            return std::nullopt;
-        }
-        return RoomRuleValue{board_.room(room_id.value()).copper_clearance_mm().value(),
-                             room_id.value()};
-    }
-
-  private:
-    template <typename Predicate>
-    [[nodiscard]] std::optional<BoardRoomId> highest_precedence_room(Predicate applies) const {
-        auto result = std::optional<BoardRoomId>{};
-        for (std::size_t index = 0; index < board_.room_count(); ++index) {
-            const auto room_id = BoardRoomId{index};
-            if (!applies(board_.room(room_id))) {
-                continue;
-            }
-            if (!result.has_value() || room_has_higher_precedence(room_id, result.value())) {
-                result = room_id;
-            }
-        }
-        return result;
-    }
-
-    [[nodiscard]] static bool room_layers_intersect(const BoardRoom &room,
-                                                    const std::vector<BoardLayerId> &layers) {
-        for (const auto room_layer : room.layers()) {
-            if (std::find(layers.begin(), layers.end(), room_layer) != layers.end()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    [[nodiscard]] static bool shape_satisfies_room(const BoardCopperShape &shape,
-                                                   const BoardRoom &room) {
-        return room_layers_intersect(room, shape.layers) &&
-               shape_satisfies_outline(shape, room.outline(), 0.0);
-    }
-
-    [[nodiscard]] static bool track_satisfies_room(const BoardTrack &track, const BoardRoom &room) {
-        if (std::find(room.layers().begin(), room.layers().end(), track.layer()) ==
-            room.layers().end()) {
-            return false;
-        }
-        const auto radius = track.width_mm() / 2.0;
-        for (std::size_t index = 1; index < track.points().size(); ++index) {
-            if (!outline_contains_segment(room.outline(), track.points()[index - 1U],
-                                          track.points()[index], radius, 0.0)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    [[nodiscard]] bool room_has_higher_precedence(BoardRoomId candidate,
-                                                  BoardRoomId current) const {
-        const auto candidate_priority = board_.room(candidate).priority();
-        const auto current_priority = board_.room(current).priority();
-        return candidate_priority > current_priority ||
-               (candidate_priority == current_priority && candidate.index() < current.index());
-    }
-
-    const Board &board_;
-};
 
 [[nodiscard]] std::vector<EntityRef> copper_shape_entities(const BoardCopperShape &shape, NetId net,
                                                            BoardLayerId layer) {
