@@ -27,6 +27,8 @@ struct PcbPlacementSvgOptions {
     bool diagnostic_overlays = true;
     /** Include derived ratsnest edges between placed pads. */
     bool ratsnest_edges = true;
+    /** When set, render only content that belongs to or usefully annotates this board layer. */
+    std::optional<BoardLayerId> layer_filter = std::nullopt;
 };
 
 namespace detail {
@@ -49,13 +51,18 @@ struct PcbSvgBounds {
 
 [[nodiscard]] std::string pcb_svg_escape(std::string_view value);
 
+[[nodiscard]] std::string pcb_svg_layer_filename_token(std::string_view layer_name);
+
+[[nodiscard]] std::string pcb_svg_layer_token(const Board &board, BoardLayerId layer_id);
+
 void write_pcb_svg_number(std::ostream &out, double value);
 
 [[nodiscard]] PcbSvgBounds bounds_from_outline(const Board &board);
 
 [[nodiscard]] double preview_width(const PcbSvgBounds &bounds);
 
-[[nodiscard]] double preview_height(const PcbSvgBounds &bounds, const DiagnosticReport &diagnostics,
+[[nodiscard]] double preview_height(const PcbSvgBounds &bounds, const Board &board,
+                                    const DiagnosticReport &diagnostics,
                                     PcbPlacementSvgOptions options);
 
 [[nodiscard]] std::string entity_ref_svg_id(EntityRef entity);
@@ -111,25 +118,54 @@ void write_pcb_point_list(std::ostream &out, const std::vector<BoardPoint> &poin
 [[nodiscard]] std::string
 keepout_restriction_list_attr(const std::vector<BoardKeepoutRestriction> &restrictions);
 
-void write_zones(std::ostream &out, const Board &board);
+[[nodiscard]] bool layer_list_contains(const std::vector<BoardLayerId> &layers, BoardLayerId layer);
 
-void write_keepouts(std::ostream &out, const Board &board);
+[[nodiscard]] bool layer_selected(PcbPlacementSvgOptions options, BoardLayerId layer);
 
-void write_texts(std::ostream &out, const Board &board);
+[[nodiscard]] bool placement_selected(const Board &board, const ComponentPlacement &placement,
+                                      PcbPlacementSvgOptions options);
 
-void write_copper(std::ostream &out, const Board &board);
+[[nodiscard]] bool pad_selected_for_layer(const Board &board, const FootprintPad &pad,
+                                          BoardSide placement_side, BoardLayerId layer_id);
+
+[[nodiscard]] bool placement_pad_selected_for_layer(const Board &board,
+                                                    const FootprintLibrary &footprints,
+                                                    ComponentPlacementId placement_id,
+                                                    FootprintPadId pad_id, BoardLayerId layer_id);
+
+[[nodiscard]] bool pad_resolution_selected(const Board &board, const PadResolution &resolution,
+                                           const FootprintLibrary &footprints,
+                                           PcbPlacementSvgOptions options);
+
+[[nodiscard]] bool via_intersects_layer(const Board &board, const BoardVia &via,
+                                        BoardLayerId layer);
+
+[[nodiscard]] bool diagnostic_selected(const Board &board, const Diagnostic &diagnostic,
+                                       PcbPlacementSvgOptions options);
+
+void write_board_layer_group_open(std::ostream &out, const Board &board, BoardLayerId layer_id);
+
+void write_zones(std::ostream &out, const Board &board, BoardLayerId layer);
+
+void write_keepouts(std::ostream &out, const Board &board, BoardLayerId layer);
+
+void write_texts(std::ostream &out, const Board &board, BoardLayerId layer);
+
+void write_copper(std::ostream &out, const Board &board, BoardLayerId layer);
 
 void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id,
                const PadResolution *resolution);
 
 void write_placements(std::ostream &out, const Board &board, const FootprintLibrary &footprints,
-                      const std::vector<PadResolution> &resolutions);
+                      const std::vector<PadResolution> &resolutions,
+                      PcbPlacementSvgOptions options);
 
 void write_pad_overlays(std::ostream &out, const Board &board,
                         const std::vector<PadResolution> &resolutions,
-                        PcbPlacementSvgOptions options);
+                        const FootprintLibrary &footprints, PcbPlacementSvgOptions options);
 
-void write_ratsnest(std::ostream &out, const std::vector<RatsnestEdge> &edges);
+void write_ratsnest(std::ostream &out, const Board &board, const std::vector<RatsnestEdge> &edges,
+                    const FootprintLibrary &footprints, PcbPlacementSvgOptions options);
 
 void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticReport &diagnostics,
                        const PcbSvgBounds &bounds, PcbPlacementSvgOptions options);

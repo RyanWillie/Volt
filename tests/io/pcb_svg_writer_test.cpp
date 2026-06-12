@@ -144,6 +144,16 @@ struct MultiComponentNetCircuit {
     return buffer.str();
 }
 
+[[nodiscard]] std::size_t count_occurrences(const std::string &text, const std::string &needle) {
+    auto count = std::size_t{0};
+    auto position = std::size_t{0};
+    while ((position = text.find(needle, position)) != std::string::npos) {
+        ++count;
+        position += needle.size();
+    }
+    return count;
+}
+
 } // namespace
 
 TEST_CASE("PCB SVG writer renders a deterministic placement preview") {
@@ -175,6 +185,221 @@ TEST_CASE("PCB SVG writer exposes stable selectors matching PCB JSON entities") 
     CHECK(svg.find("data-pad=\"footprint_pad:0\"") != std::string::npos);
     CHECK(svg.find("data-pin=\"pin:0\"") != std::string::npos);
     CHECK(svg.find("data-net=\"net:0\"") != std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer exposes deterministic layer filename tokens") {
+    CHECK(volt::io::detail::pcb_svg_layer_filename_token("F.Cu") == "F_Cu");
+    CHECK(volt::io::detail::pcb_svg_layer_filename_token("B.Cu") == "B_Cu");
+    CHECK(volt::io::detail::pcb_svg_layer_filename_token("F.SilkS") == "F_SilkS");
+    CHECK(volt::io::detail::pcb_svg_layer_filename_token("user mask+paste") == "user_mask_paste");
+    CHECK(volt::io::detail::pcb_svg_layer_filename_token("***") == "layer");
+
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit, volt::BoardName{"Token Collisions"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto duplicate = board.add_layer(
+        volt::BoardLayer{"F Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto empty = board.add_layer(
+        volt::BoardLayer{"***", volt::BoardLayerRole::Mechanical, volt::BoardLayerSide::None});
+    const auto duplicate_empty = board.add_layer(
+        volt::BoardLayer{"___", volt::BoardLayerRole::Mechanical, volt::BoardLayerSide::None});
+
+    CHECK(volt::io::detail::pcb_svg_layer_token(board, front) == "F_Cu");
+    CHECK(volt::io::detail::pcb_svg_layer_token(board, duplicate) == "F_Cu_2");
+    CHECK(volt::io::detail::pcb_svg_layer_token(board, empty) == "layer");
+    CHECK(volt::io::detail::pcb_svg_layer_token(board, duplicate_empty) == "layer_2");
+}
+
+TEST_CASE("PCB SVG writer groups composite output by board layer") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Layer Groups"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    const auto silk = board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto front_track = board.add_track(volt::BoardTrack{
+        fixture.first_net, front,
+        std::vector{volt::BoardPoint{4.0, 5.0}, volt::BoardPoint{10.0, 5.0}}, 0.25});
+    [[maybe_unused]] const auto back_track = board.add_track(volt::BoardTrack{
+        fixture.second_net, back,
+        std::vector{volt::BoardPoint{4.0, 10.0}, volt::BoardPoint{10.0, 10.0}}, 0.25});
+    [[maybe_unused]] const auto text = board.add_text(volt::BoardText{
+        "REV A", volt::BoardPoint{5.0, 15.0}, volt::BoardRotation::degrees(0.0), silk, 1.2});
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(svg.find("id=\"pcb-layer-F_Cu\"") != std::string::npos);
+    CHECK(svg.find("class=\"pcb-layer board-layer layer-F_Cu\"") != std::string::npos);
+    CHECK(svg.find("data-layer=\"board_layer:0\"") != std::string::npos);
+    CHECK(svg.find("data-layer-name=\"F.Cu\"") != std::string::npos);
+    CHECK(svg.find("id=\"pcb-layer-B_Cu\"") != std::string::npos);
+    CHECK(svg.find("id=\"pcb-layer-F_SilkS\"") != std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer filters layer-owned content for a selected layer") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Layer Filter"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    const auto silk = board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto front_track = board.add_track(volt::BoardTrack{
+        fixture.first_net, front,
+        std::vector{volt::BoardPoint{4.0, 5.0}, volt::BoardPoint{10.0, 5.0}}, 0.25});
+    [[maybe_unused]] const auto back_track = board.add_track(volt::BoardTrack{
+        fixture.second_net, back,
+        std::vector{volt::BoardPoint{4.0, 10.0}, volt::BoardPoint{10.0, 10.0}}, 0.25});
+    [[maybe_unused]] const auto via = board.add_via(
+        volt::BoardVia{fixture.first_net, volt::BoardPoint{10.0, 5.0}, front, back, 0.30, 0.70});
+    [[maybe_unused]] const auto text = board.add_text(volt::BoardText{
+        "REV A", volt::BoardPoint{5.0, 15.0}, volt::BoardRotation::degrees(0.0), silk, 1.2});
+    [[maybe_unused]] const auto placement = board.place_component(
+        volt::ComponentPlacement{fixture.component, volt::BoardPoint{18.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top});
+
+    const auto front_svg =
+        volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library(),
+                                          volt::io::PcbPlacementSvgOptions{.layer_filter = front});
+    const auto silk_svg =
+        volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library(),
+                                          volt::io::PcbPlacementSvgOptions{.layer_filter = silk});
+
+    CHECK(front_svg.find("id=\"pcb-layer-F_Cu\"") != std::string::npos);
+    CHECK(front_svg.find("id=\"pcb-layer-B_Cu\"") == std::string::npos);
+    CHECK(front_svg.find("id=\"pcb-layer-F_SilkS\"") == std::string::npos);
+    CHECK(front_svg.find("data-track=\"board_track:0\"") != std::string::npos);
+    CHECK(front_svg.find("data-track=\"board_track:1\"") == std::string::npos);
+    CHECK(front_svg.find("data-via=\"board_via:0\"") != std::string::npos);
+    CHECK(front_svg.find("data-text=\"board_text:0\"") == std::string::npos);
+    CHECK(front_svg.find("data-pad-projection=\"pcb_pad:0:0\"") != std::string::npos);
+
+    CHECK(silk_svg.find("id=\"pcb-layer-F_SilkS\"") != std::string::npos);
+    CHECK(silk_svg.find("data-track=\"board_track:0\"") == std::string::npos);
+    CHECK(silk_svg.find("data-track=\"board_track:1\"") == std::string::npos);
+    CHECK(silk_svg.find("data-via=\"board_via:0\"") == std::string::npos);
+    CHECK(silk_svg.find("data-text=\"board_text:0\"") != std::string::npos);
+    CHECK(silk_svg.find("data-pad-projection=") == std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer preserves through-hole pad copper on non-placement-side layers") {
+    auto fixture = make_resistor_circuit(false);
+    fixture.circuit.select_physical_part(
+        fixture.component, volt::PhysicalPart{
+                               volt::ManufacturerPart{"Generic", "PinHeader_1x02"},
+                               volt::PackageRef{"1x02"},
+                               volt::FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
+                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
+                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+                           });
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Through Hole Layers"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto inner = board.add_layer(
+        volt::BoardLayer{"In1.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Inner});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, inner, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto placement = board.place_component(
+        volt::ComponentPlacement{fixture.component, volt::BoardPoint{15.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top});
+
+    const auto inner_svg =
+        volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library(),
+                                          volt::io::PcbPlacementSvgOptions{.layer_filter = inner});
+    const auto back_svg =
+        volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library(),
+                                          volt::io::PcbPlacementSvgOptions{.layer_filter = back});
+
+    CHECK(inner_svg.find("<circle class=\"footprint-pad circle connected\" "
+                         "data-pad-projection=\"pcb_pad:0:0\"") != std::string::npos);
+    CHECK(back_svg.find("<circle class=\"footprint-pad circle connected\" "
+                        "data-pad-projection=\"pcb_pad:0:0\"") != std::string::npos);
+    CHECK(inner_svg.find("class=\"footprint-body\"") == std::string::npos);
+    CHECK(back_svg.find("class=\"footprint-body\"") == std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer keeps repeated layer object IDs unique") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Repeated Layer Objects"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto via = board.add_via(
+        volt::BoardVia{fixture.first_net, volt::BoardPoint{10.0, 5.0}, front, back, 0.30, 0.70});
+    [[maybe_unused]] const auto zone = board.add_zone(volt::BoardZone{
+        std::vector{
+            volt::BoardPoint{2.0, 2.0},
+            volt::BoardPoint{10.0, 2.0},
+            volt::BoardPoint{10.0, 7.0},
+            volt::BoardPoint{2.0, 7.0},
+        },
+        std::vector{front, back},
+        fixture.first_net,
+    });
+    [[maybe_unused]] const auto keepout = board.add_keepout(volt::BoardKeepout{
+        std::vector{
+            volt::BoardPoint{12.0, 2.0},
+            volt::BoardPoint{16.0, 2.0},
+            volt::BoardPoint{16.0, 6.0},
+            volt::BoardPoint{12.0, 6.0},
+        },
+        std::vector{front, back},
+        std::vector{volt::BoardKeepoutRestriction::Copper},
+    });
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(count_occurrences(svg, "id=\"pcb-via-0-layer-F_Cu\"") == 1U);
+    CHECK(count_occurrences(svg, "id=\"pcb-via-0-layer-B_Cu\"") == 1U);
+    CHECK(count_occurrences(svg, "id=\"pcb-zone-0-layer-F_Cu\"") == 1U);
+    CHECK(count_occurrences(svg, "id=\"pcb-zone-0-layer-B_Cu\"") == 1U);
+    CHECK(count_occurrences(svg, "id=\"pcb-keepout-0-layer-F_Cu\"") == 1U);
+    CHECK(count_occurrences(svg, "id=\"pcb-keepout-0-layer-B_Cu\"") == 1U);
+    CHECK(svg.find("id=\"pcb-via-0\"") == std::string::npos);
+    CHECK(svg.find("id=\"pcb-zone-0\"") == std::string::npos);
+    CHECK(svg.find("id=\"pcb-keepout-0\"") == std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer projects through-stack vias onto inner copper layers") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Inner Via"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto inner = board.add_layer(
+        volt::BoardLayer{"In1.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Inner});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, inner, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto via = board.add_via(
+        volt::BoardVia{fixture.first_net, volt::BoardPoint{10.0, 5.0}, front, back, 0.30, 0.70});
+
+    const auto inner_svg =
+        volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library(),
+                                          volt::io::PcbPlacementSvgOptions{.layer_filter = inner});
+
+    CHECK(inner_svg.find("id=\"pcb-layer-In1_Cu\"") != std::string::npos);
+    CHECK(inner_svg.find("id=\"pcb-layer-F_Cu\"") == std::string::npos);
+    CHECK(inner_svg.find("data-via=\"board_via:0\"") != std::string::npos);
+    CHECK(inner_svg.find("id=\"pcb-via-0-layer-In1_Cu\"") != std::string::npos);
 }
 
 TEST_CASE("PCB SVG writer renders generic board feature primitives") {
@@ -264,7 +489,9 @@ TEST_CASE("PCB SVG writer renders stable selectors for copper tracks and vias") 
     CHECK(svg.find("data-net=\"net:0\"") != std::string::npos);
     CHECK(svg.find("points=\"5,5 12,5 12,8\"") != std::string::npos);
     CHECK(svg.find("stroke-width=\"0.25\"") != std::string::npos);
-    CHECK(svg.find("<g id=\"pcb-via-0\" class=\"pcb-via\" data-via=\"board_via:0\"") !=
+    CHECK(svg.find("<g id=\"pcb-via-0-layer-F_Cu\" class=\"pcb-via\" data-via=\"board_via:0\"") !=
+          std::string::npos);
+    CHECK(svg.find("<g id=\"pcb-via-0-layer-B_Cu\" class=\"pcb-via\" data-via=\"board_via:0\"") !=
           std::string::npos);
     CHECK(svg.find("data-start-layer=\"board_layer:0\"") != std::string::npos);
     CHECK(svg.find("data-end-layer=\"board_layer:1\"") != std::string::npos);
@@ -351,6 +578,32 @@ TEST_CASE("PCB SVG writer exposes placement entity references for board diagnost
     CHECK(svg.find("data-diagnostic-code=\"PCB_PLACEMENT_OUTSIDE_OUTLINE\"") != std::string::npos);
     CHECK(svg.find("data-entities=\"component:0 component_placement:0\"") != std::string::npos);
     CHECK(svg.find("class=\"diagnostic-marker error\"") != std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer filters board layer diagnostics by selected layer") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit, volt::BoardName{"Layer Diagnostic"}};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{10.0, 10.0}));
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto silk = board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+    board.set_layer_stack(volt::LayerStack{{back, front}, 1.6});
+
+    const auto back_svg =
+        volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library(),
+                                          volt::io::PcbPlacementSvgOptions{.layer_filter = back});
+    const auto silk_svg =
+        volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library(),
+                                          volt::io::PcbPlacementSvgOptions{.layer_filter = silk});
+
+    CHECK(back_svg.find("PCB_LAYER_STACK_SIDE_ORDER_CONFLICT") != std::string::npos);
+    CHECK(silk_svg.find("PCB_LAYER_STACK_SIDE_ORDER_CONFLICT") == std::string::npos);
+    CHECK(back_svg.find("viewBox=\"0 0 18 21\"") != std::string::npos);
+    CHECK(silk_svg.find("viewBox=\"0 0 18 18\"") != std::string::npos);
 }
 
 TEST_CASE("PCB SVG writer exposes copper entity references for DRC diagnostics") {

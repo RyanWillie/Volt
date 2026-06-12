@@ -25,8 +25,8 @@
       <circle class="board-feature hole" data-board-feature="board_feature:2" cx="4" cy="28" r="1.1"/>
       <circle class="board-feature hole" data-board-feature="board_feature:3" cx="44" cy="28" r="1.1"/>
     </g>
+    <g id="pcb-layer-F_Cu" class="pcb-layer board-layer layer-F_Cu" data-layer="board_layer:0" data-layer-name="F.Cu" data-layer-role="copper" data-layer-side="top">
     <g class="layer layer-zones">
-      <polygon id="pcb-zone-0" class="pcb-zone fill-solid" data-zone="board_zone:0" data-layer="board_layer:1" data-layers="board_layer:1" data-net="net:1" data-priority="0" points="1,1 47,1 47,31 1,31"/>
     </g>
     <g class="layer layer-copper">
       <polyline id="pcb-track-0" class="pcb-track" data-track="board_track:0" data-layer="board_layer:0" data-net="net:1" points="8,13.15 10,13.15" stroke-width="0.3"/>
@@ -47,36 +47,78 @@
       <polyline id="pcb-track-15" class="pcb-track" data-track="board_track:15" data-layer="board_layer:0" data-net="net:4" points="25.475,16.905 30,16.905 30,20.05 31,20.05" stroke-width="0.2"/>
       <polyline id="pcb-track-16" class="pcb-track" data-track="board_track:16" data-layer="board_layer:0" data-net="net:5" points="20.525,15.635 22,15.635 22,19.0875 15.5,19.0875" stroke-width="0.2"/>
       <polyline id="pcb-track-17" class="pcb-track" data-track="board_track:17" data-layer="board_layer:0" data-net="net:6" points="15.5,20.9125 15.5,24 13.4375,24" stroke-width="0.2"/>
-      <g id="pcb-via-0" class="pcb-via" data-via="board_via:0" data-net="net:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+      <g id="pcb-via-0-layer-F_Cu" class="pcb-via" data-via="board_via:0" data-net="net:1" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
         <circle class="pcb-via-annular" cx="10" cy="13.15" r="0.35"/>
         <circle class="pcb-via-drill" cx="10" cy="13.15" r="0.15"/>
       </g>
-      <g id="pcb-via-1" class="pcb-via" data-via="board_via:1" data-net="net:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+      <g id="pcb-via-1-layer-F_Cu" class="pcb-via" data-via="board_via:1" data-net="net:1" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
         <circle class="pcb-via-annular" cx="18.5" cy="13.095" r="0.35"/>
         <circle class="pcb-via-drill" cx="18.5" cy="13.095" r="0.15"/>
       </g>
-      <g id="pcb-via-2" class="pcb-via" data-via="board_via:2" data-net="net:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+      <g id="pcb-via-2-layer-F_Cu" class="pcb-via" data-via="board_via:2" data-net="net:1" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
         <circle class="pcb-via-annular" cx="31.5" cy="10" r="0.35"/>
         <circle class="pcb-via-drill" cx="31.5" cy="10" r="0.15"/>
       </g>
-      <g id="pcb-via-3" class="pcb-via" data-via="board_via:3" data-net="net:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+      <g id="pcb-via-3-layer-F_Cu" class="pcb-via" data-via="board_via:3" data-net="net:1" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
         <circle class="pcb-via-annular" cx="32.5" cy="21.95" r="0.35"/>
         <circle class="pcb-via-drill" cx="32.5" cy="21.95" r="0.15"/>
       </g>
-      <g id="pcb-via-4" class="pcb-via" data-via="board_via:4" data-net="net:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+      <g id="pcb-via-4-layer-F_Cu" class="pcb-via" data-via="board_via:4" data-net="net:1" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
         <circle class="pcb-via-annular" cx="40.5" cy="18.9" r="0.35"/>
         <circle class="pcb-via-drill" cx="40.5" cy="18.9" r="0.15"/>
       </g>
-      <g id="pcb-via-5" class="pcb-via" data-via="board_via:5" data-net="net:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+      <g id="pcb-via-5-layer-F_Cu" class="pcb-via" data-via="board_via:5" data-net="net:1" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
         <circle class="pcb-via-annular" cx="10" cy="24" r="0.35"/>
         <circle class="pcb-via-drill" cx="10" cy="24" r="0.15"/>
       </g>
+    </g>
+    <g class="layer layer-board-text">
+    </g>
+    </g>
+    <g id="pcb-layer-B_Cu" class="pcb-layer board-layer layer-B_Cu" data-layer="board_layer:1" data-layer-name="B.Cu" data-layer-role="copper" data-layer-side="bottom">
+    <g class="layer layer-zones">
+      <polygon id="pcb-zone-0" class="pcb-zone fill-solid" data-zone="board_zone:0" data-layer="board_layer:1" data-layers="board_layer:1" data-net="net:1" data-priority="0" points="1,1 47,1 47,31 1,31"/>
+    </g>
+    <g class="layer layer-copper">
+      <g id="pcb-via-0-layer-B_Cu" class="pcb-via" data-via="board_via:0" data-net="net:1" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="10" cy="13.15" r="0.35"/>
+        <circle class="pcb-via-drill" cx="10" cy="13.15" r="0.15"/>
+      </g>
+      <g id="pcb-via-1-layer-B_Cu" class="pcb-via" data-via="board_via:1" data-net="net:1" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="18.5" cy="13.095" r="0.35"/>
+        <circle class="pcb-via-drill" cx="18.5" cy="13.095" r="0.15"/>
+      </g>
+      <g id="pcb-via-2-layer-B_Cu" class="pcb-via" data-via="board_via:2" data-net="net:1" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="31.5" cy="10" r="0.35"/>
+        <circle class="pcb-via-drill" cx="31.5" cy="10" r="0.15"/>
+      </g>
+      <g id="pcb-via-3-layer-B_Cu" class="pcb-via" data-via="board_via:3" data-net="net:1" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="32.5" cy="21.95" r="0.35"/>
+        <circle class="pcb-via-drill" cx="32.5" cy="21.95" r="0.15"/>
+      </g>
+      <g id="pcb-via-4-layer-B_Cu" class="pcb-via" data-via="board_via:4" data-net="net:1" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="40.5" cy="18.9" r="0.35"/>
+        <circle class="pcb-via-drill" cx="40.5" cy="18.9" r="0.15"/>
+      </g>
+      <g id="pcb-via-5-layer-B_Cu" class="pcb-via" data-via="board_via:5" data-net="net:1" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="10" cy="24" r="0.35"/>
+        <circle class="pcb-via-drill" cx="10" cy="24" r="0.15"/>
+      </g>
+    </g>
+    <g class="layer layer-board-text">
+    </g>
+    </g>
+    <g id="pcb-layer-F_SilkS" class="pcb-layer board-layer layer-F_SilkS" data-layer="board_layer:2" data-layer-name="F.SilkS" data-layer-role="silkscreen" data-layer-side="top">
+    <g class="layer layer-zones">
+    </g>
+    <g class="layer layer-copper">
     </g>
     <g class="layer layer-board-text">
       <text id="pcb-text-0" class="board-text" data-text="board_text:0" data-layer="board_layer:2" x="28" y="29.5" font-size="1" transform="rotate(0 28 29.5)">555 SMD</text>
       <text id="pcb-text-1" class="board-text" data-text="board_text:1" data-layer="board_layer:2" x="4.8" y="10.2" font-size="0.7" transform="rotate(0 4.8 10.2)">+5V</text>
       <text id="pcb-text-2" class="board-text" data-text="board_text:2" data-layer="board_layer:2" x="7.5" y="10.2" font-size="0.7" transform="rotate(0 7.5 10.2)">GND</text>
       <text id="pcb-text-3" class="board-text" data-text="board_text:3" data-layer="board_layer:2" x="10.2" y="25.9" font-size="0.7" transform="rotate(0 10.2 25.9)">K</text>
+    </g>
     </g>
     <g class="layer layer-footprints">
       <g class="component-placement top locked" data-placement="component_placement:0" data-component="component:0" data-footprint-def="footprint_def:0" data-footprint="Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal" transform="translate(7 16) rotate(0)">
