@@ -118,6 +118,7 @@ def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
     document = json.loads(artifact.bytes)
 
     assert artifact.sha256 == "sha256:" + hashlib.sha256(artifact.bytes).hexdigest()
+    assert volt._volt.content_hash(artifact.bytes) == artifact.sha256
     assert artifact.bytes == library.build().part("AP1117-15").artifact.bytes
     assert document["format"] == "volt.part"
     assert document["identity"] == {

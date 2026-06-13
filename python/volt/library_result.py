@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -467,7 +466,7 @@ def _content_hash(payload: object) -> str:
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
-    return "sha256:" + hashlib.sha256(canonical).hexdigest()
+    return str(_volt.content_hash(canonical))
 
 
 def _mapped_pin_numbers(
