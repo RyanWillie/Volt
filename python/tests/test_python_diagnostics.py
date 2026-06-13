@@ -93,7 +93,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
     assert volt.BOM_DIAGNOSTIC_CODES == (
         "BOM_COMPONENT_MISSING_SELECTED_PART",
         "BOM_COMPONENT_IMPLICIT_DNP",
-        "BOM_APPROVED_ALTERNATE_INCOMPATIBLE",
+        "BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY",
     )
 
 

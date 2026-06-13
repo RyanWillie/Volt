@@ -286,6 +286,7 @@ def test_project_result_reports_diagnostics_and_ok_state():
         d = volt.Design("bad-led")
         lonely = d.net("LONELY")
         r1 = d.R("1k", ref="R1")
+        r1.dnp(True)
         lonely += r1[1]
         return d
 
@@ -311,6 +312,7 @@ def test_project_expected_diagnostics_distinguish_expected_missing_and_unexpecte
         d = volt.Design("bad-led")
         lonely = d.net("LONELY")
         r1 = d.R("1k", ref="R1")
+        r1.dnp(True)
         lonely += r1[1]
         return d
 
@@ -344,6 +346,7 @@ def test_project_expected_diagnostics_allow_success_with_expected_diagnostics():
         d = volt.Design("bad-led")
         lonely = d.net("LONELY")
         r1 = d.R("1k", ref="R1")
+        r1.dnp(True)
         lonely += r1[1]
         return d
 
@@ -673,6 +676,7 @@ def test_project_result_write_preserves_expected_diagnostic_status(tmp_path):
         d = volt.Design("bad-led")
         lonely = d.net("LONELY")
         r1 = d.R("1k", ref="R1")
+        r1.dnp(True)
         lonely += r1[1]
         return d
 

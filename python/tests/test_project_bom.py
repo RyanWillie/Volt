@@ -82,7 +82,7 @@ def test_bom_readiness_diagnostics_reference_offending_instances():
     assert [diagnostic.code for diagnostic in report] == [
         "BOM_COMPONENT_MISSING_SELECTED_PART",
         "BOM_COMPONENT_IMPLICIT_DNP",
-        "BOM_APPROVED_ALTERNATE_INCOMPATIBLE",
+        "BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY",
     ]
     assert all(diagnostic.category == "bom" for diagnostic in report)
     assert [diagnostic.entities[0].kind for diagnostic in report] == [
@@ -114,10 +114,24 @@ def test_project_bundle_emits_bom_json_and_csv(tmp_path):
 
     bom_json = json.loads((bundle / "bom" / "bom.json").read_text(encoding="utf-8"))
     bom_csv = (bundle / "bom" / "bom.csv").read_text(encoding="utf-8")
+    sourcing_json = json.loads((bundle / "bom" / "sourcing.json").read_text(encoding="utf-8"))
     manifest = json.loads((bundle / "manifest.volt.json").read_text(encoding="utf-8"))
 
     assert bom_json["lines"][0]["mpn"] == "RC0603FR-07330RL"
     assert "RC0603FR-07330RLA" in bom_csv
+    assert sourcing_json == {
+        "format": "volt.bom_sourcing_snapshot",
+        "version": 1,
+        "entries": [
+            {
+                "mpn": "RC0603FR-07330RL",
+                "sourcing": {
+                    "sku": "311-330HRCT-ND",
+                    "supplier": "Digi-Key",
+                },
+            }
+        ],
+    }
     assert {
         (artifact["kind"], artifact["path"])
         for artifact in manifest["artifacts"]
@@ -125,4 +139,41 @@ def test_project_bundle_emits_bom_json_and_csv(tmp_path):
     } == {
         ("bom", "bom/bom.json"),
         ("bom_csv", "bom/bom.csv"),
+        ("bom_sourcing_snapshot", "bom/sourcing.json"),
     }
+
+
+def test_project_bundle_reports_bom_readiness_failures(tmp_path):
+    project = volt.Project("not-bom-ready")
+
+    @project.design
+    def design():
+        result = volt.Design("not-bom-ready")
+        vcc = result.net("VCC").mark_stub()
+        mid = result.net("MID")
+        gnd = result.net("GND").mark_stub()
+        r1 = result.R("330", ref="R1").dnp(False)
+        r2 = result.R("1k", ref="R2")
+        vcc += r1[1]
+        mid += r1[2], r2[1]
+        gnd += r2[2]
+        return result
+
+    bundle = tmp_path / "bundle"
+    project.run().write(bundle)
+
+    manifest = json.loads((bundle / "manifest.volt.json").read_text(encoding="utf-8"))
+    diagnostics = json.loads((bundle / "diagnostics" / "diagnostics.json").read_text(encoding="utf-8"))
+
+    assert manifest["ok"] is False
+    assert manifest["status"] == "failed"
+    assert [item["report"] for item in diagnostics["diagnostics"]] == [
+        "logical.bom_ready",
+        "logical.bom_ready",
+        "logical.bom_ready",
+    ]
+    assert [item["code"] for item in diagnostics["diagnostics"]] == [
+        "BOM_COMPONENT_MISSING_SELECTED_PART",
+        "BOM_COMPONENT_IMPLICIT_DNP",
+        "BOM_COMPONENT_MISSING_SELECTED_PART",
+    ]

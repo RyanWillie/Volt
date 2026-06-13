@@ -3,7 +3,7 @@
     {
       "component": "component:4",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "C1",
       "selected_part": {
         "approved_alternate_mpns": [],
@@ -16,7 +16,7 @@
     {
       "component": "component:5",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "C2",
       "selected_part": {
         "approved_alternate_mpns": [],
@@ -29,7 +29,7 @@
     {
       "component": "component:6",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "C3",
       "selected_part": {
         "approved_alternate_mpns": [],
@@ -42,7 +42,7 @@
     {
       "component": "component:8",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "D1",
       "selected_part": {
         "approved_alternate_mpns": [],
@@ -55,7 +55,7 @@
     {
       "component": "component:0",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "J1",
       "selected_part": {
         "approved_alternate_mpns": [],
@@ -68,7 +68,7 @@
     {
       "component": "component:2",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "R1",
       "selected_part": {
         "approved_alternate_mpns": [],
@@ -81,7 +81,7 @@
     {
       "component": "component:3",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "R2",
       "selected_part": {
         "approved_alternate_mpns": [],
@@ -94,7 +94,7 @@
     {
       "component": "component:7",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "R3",
       "selected_part": {
         "approved_alternate_mpns": [],
@@ -107,7 +107,7 @@
     {
       "component": "component:1",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "U1",
       "selected_part": {
         "approved_alternate_mpns": [],

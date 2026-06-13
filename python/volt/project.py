@@ -638,6 +638,21 @@ class ProjectResult:
                         group={"design": model.name},
                     )
                 )
+                if model._has_sourcing_snapshot():
+                    relative_sourcing = _unique_path(
+                        _bom_sourcing_artifact_path(model, self.designs),
+                        used_paths,
+                    )
+                    _write_text(root / relative_sourcing, model._bom_sourcing_snapshot_json())
+                    artifacts.append(
+                        _artifact_record(
+                            "bom_sourcing_snapshot",
+                            model.name,
+                            relative_sourcing,
+                            "application/vnd.volt.bom-sourcing-snapshot+json",
+                            group={"design": model.name},
+                        )
+                    )
             elif isinstance(model, Schematic):
                 output_name = model_output_name(model, self.schematics)
                 relative_json = _unique_path(
@@ -1121,6 +1136,15 @@ def _collect_default_diagnostics(runs: tuple[_StageRun, ...]) -> tuple[ProjectDi
                         design=model.name,
                     )
                 )
+                diagnostics.extend(
+                    _report_diagnostics(
+                        run.stage.name,
+                        f"logical:{model.name}",
+                        "logical.bom_ready",
+                        model.validate_bom_readiness(),
+                        design=model.name,
+                    )
+                )
             elif isinstance(model, Schematic):
                 diagnostics.extend(
                     _report_diagnostics(
@@ -1259,6 +1283,12 @@ def _bom_artifact_paths(model: Design, designs: tuple[Design, ...]) -> tuple[Pat
         return Path("bom") / "bom.json", Path("bom") / "bom.csv"
     slug = _safe_slug(model.name)
     return Path("bom") / f"{slug}.bom.json", Path("bom") / f"{slug}.bom.csv"
+
+
+def _bom_sourcing_artifact_path(model: Design, designs: tuple[Design, ...]) -> Path:
+    if len(designs) == 1:
+        return Path("bom") / "sourcing.json"
+    return Path("bom") / f"{_safe_slug(model.name)}.sourcing.json"
 
 
 def _pcb_svg_layer_filename_token(layer_name: str) -> str:

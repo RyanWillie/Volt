@@ -1241,6 +1241,7 @@ def test_project_instantiates_imported_part_without_manual_footprint_cache():
         r1 = d.instantiate(resistor_part, ref="R1")
         left = d.net("LEFT")
         right = d.net("RIGHT")
+        r1.dnp(False)
         left += r1[1]
         right += r1[2]
         return d

@@ -557,6 +557,12 @@ class Design:
         """Return the deterministic kernel BOM projection as CSV text."""
         return self._circuit.bom_csv(self._sourcing_snapshot)
 
+    def _has_sourcing_snapshot(self) -> bool:
+        return bool(self._sourcing_snapshot)
+
+    def _bom_sourcing_snapshot_json(self) -> str:
+        return self._circuit.bom_sourcing_snapshot_json(self._sourcing_snapshot)
+
     def to_json(self) -> str:
         """Serialize the logical design to Volt JSON."""
         return self._circuit.to_json()

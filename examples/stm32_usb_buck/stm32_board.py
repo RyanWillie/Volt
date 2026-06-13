@@ -158,6 +158,9 @@ def build_board() -> Stm32UsbBuckBoard:
         power.ground += hole[1]
         components[f"H{index}"] = hole
 
+    for component in design.components():
+        component.dnp(True)
+
     return Stm32UsbBuckBoard(
         design=design,
         power=power,

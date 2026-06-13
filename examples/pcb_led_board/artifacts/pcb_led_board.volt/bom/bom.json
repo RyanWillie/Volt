@@ -3,7 +3,7 @@
     {
       "component": "component:2",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "D1",
       "selected_part": {
         "approved_alternate_mpns": [],
@@ -16,7 +16,7 @@
     {
       "component": "component:0",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "J1",
       "selected_part": {
         "approved_alternate_mpns": [],
@@ -29,7 +29,7 @@
     {
       "component": "component:1",
       "dnp": false,
-      "dnp_explicit": false,
+      "dnp_explicit": true,
       "reference": "R1",
       "selected_part": {
         "approved_alternate_mpns": [],

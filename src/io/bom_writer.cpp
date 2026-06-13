@@ -110,15 +110,21 @@ void write_sourcing_property_value(std::ostream &out, const PropertyValue &value
     throw std::logic_error{"Unhandled property value kind"};
 }
 
+[[nodiscard]] std::vector<std::pair<PropertyKey, PropertyValue>>
+sorted_property_entries(const PropertyMap &properties) {
+    return {properties.entries().begin(), properties.entries().end()};
+}
+
 void write_sourcing_properties(std::ostream &out, const PropertyMap &properties) {
     out << '{';
     if (!properties.empty()) {
         out << '\n';
+        const auto entries = sorted_property_entries(properties);
         auto index = std::size_t{0};
-        for (const auto &[key, value] : properties.entries()) {
+        for (const auto &[key, value] : entries) {
             out << "        " << detail::json_string(key.value()) << ": ";
             write_sourcing_property_value(out, value);
-            if (++index != properties.size()) {
+            if (++index != entries.size()) {
                 out << ',';
             }
             out << '\n';
@@ -169,6 +175,14 @@ void write_csv_field(std::ostream &out, std::string_view value) {
     return columns;
 }
 
+[[nodiscard]] std::vector<std::pair<std::string, PropertyMap>>
+sorted_sourcing_entries(const BomSourcingSnapshot &snapshot) {
+    auto entries = snapshot.entries();
+    std::sort(entries.begin(), entries.end(),
+              [](const auto &lhs, const auto &rhs) { return lhs.first < rhs.first; });
+    return entries;
+}
+
 } // namespace
 
 void write_bom_json(std::ostream &out, const Bom &bom) {
@@ -204,10 +218,25 @@ void write_bom_json(std::ostream &out, const Bom &bom) {
 
 void write_bom_csv(std::ostream &out, const Bom &bom) {
     const auto columns = sourcing_columns(bom);
-    out << "manufacturer,mpn,package,quantity,references,dnp,approved_alternate_mpns,"
-           "selection_override_references";
+    const auto base_columns = std::vector<std::string>{
+        "manufacturer",
+        "mpn",
+        "package",
+        "quantity",
+        "references",
+        "dnp",
+        "approved_alternate_mpns",
+        "selection_override_references",
+    };
+    for (std::size_t index = 0; index < base_columns.size(); ++index) {
+        if (index != 0U) {
+            out << ',';
+        }
+        write_csv_field(out, base_columns[index]);
+    }
     for (const auto &column : columns) {
-        out << ",sourcing." << column;
+        out << ',';
+        write_csv_field(out, "sourcing." + column);
     }
     out << '\n';
 
@@ -237,6 +266,35 @@ void write_bom_csv(std::ostream &out, const Bom &bom) {
 [[nodiscard]] std::string write_bom_csv(const Bom &bom) {
     auto out = std::ostringstream{};
     write_bom_csv(out, bom);
+    return out.str();
+}
+
+void write_bom_sourcing_snapshot_json(std::ostream &out, const BomSourcingSnapshot &snapshot) {
+    const auto entries = sorted_sourcing_entries(snapshot);
+    out << "{\n";
+    out << "  \"format\": " << detail::json_string(bom_sourcing_snapshot_format_name()) << ",\n";
+    out << "  \"version\": " << bom_sourcing_snapshot_format_version() << ",\n";
+    out << "  \"entries\": [\n";
+    for (std::size_t index = 0; index < entries.size(); ++index) {
+        const auto &[mpn, properties] = entries[index];
+        out << "    {\n";
+        out << "      \"mpn\": " << detail::json_string(mpn) << ",\n";
+        out << "      \"sourcing\": ";
+        write_sourcing_properties(out, properties);
+        out << "\n";
+        out << "    }";
+        if (index + 1U != entries.size()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "  ]\n";
+    out << "}\n";
+}
+
+[[nodiscard]] std::string write_bom_sourcing_snapshot_json(const BomSourcingSnapshot &snapshot) {
+    auto out = std::ostringstream{};
+    write_bom_sourcing_snapshot_json(out, snapshot);
     return out.str();
 }
 

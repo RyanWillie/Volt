@@ -11,6 +11,24 @@
     },
     {
       "group": {
+        "design": "stm32_usb_buck"
+      },
+      "kind": "bom",
+      "media_type": "application/vnd.volt.bom+json",
+      "name": "stm32_usb_buck",
+      "path": "bom/bom.json"
+    },
+    {
+      "group": {
+        "design": "stm32_usb_buck"
+      },
+      "kind": "bom_csv",
+      "media_type": "text/csv",
+      "name": "stm32_usb_buck",
+      "path": "bom/bom.csv"
+    },
+    {
+      "group": {
         "design": "stm32_usb_buck",
         "schematic": "STM32 USB Buck"
       },

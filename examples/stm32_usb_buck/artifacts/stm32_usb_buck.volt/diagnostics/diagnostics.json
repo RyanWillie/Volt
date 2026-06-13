@@ -15,6 +15,7 @@
           "kind": "pin"
         }
       ],
+      "measurement": null,
       "message": "Power input is connected to a net with no typed supply source",
       "overlays": [],
       "report": "logical.default",
@@ -38,6 +39,7 @@
           "kind": "pin"
         }
       ],
+      "measurement": null,
       "message": "Power input is connected to a net with no typed supply source",
       "overlays": [],
       "report": "logical.default",
@@ -65,6 +67,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -92,6 +95,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -119,6 +123,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -146,6 +151,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -173,6 +179,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -200,6 +207,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -227,6 +235,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -254,6 +263,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -281,6 +291,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -308,6 +319,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -335,6 +347,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -362,6 +375,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -389,6 +403,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -416,6 +431,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -443,6 +459,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -470,6 +487,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -497,6 +515,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -524,6 +543,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -551,6 +571,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -578,6 +599,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -605,6 +627,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -632,6 +655,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -659,6 +683,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -686,6 +711,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -713,6 +739,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -740,6 +767,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -767,6 +795,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -794,6 +823,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -821,6 +851,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -848,6 +879,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -875,6 +907,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -902,6 +935,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -929,6 +963,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -956,6 +991,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -983,6 +1019,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -1010,6 +1047,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -1037,6 +1075,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -1064,6 +1103,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -1091,6 +1131,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -1118,6 +1159,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -1145,6 +1187,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -1172,6 +1215,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -1199,6 +1243,7 @@
           "kind": "pin_definition"
         }
       ],
+      "measurement": null,
       "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
       "overlays": [],
       "report": "schematic.readiness",
@@ -1218,6 +1263,7 @@
           "kind": "sheet"
         }
       ],
+      "measurement": null,
       "message": "Schematic title-block value text for 'File' exceeds the rendered column width",
       "overlays": [],
       "report": "schematic.readability",
@@ -1245,6 +1291,7 @@
           "kind": "symbol_instance"
         }
       ],
+      "measurement": null,
       "message": "Schematic symbol field is far from its owning symbol",
       "overlays": [],
       "report": "schematic.readability",
@@ -1280,6 +1327,7 @@
           "kind": "net"
         }
       ],
+      "measurement": null,
       "message": "Schematic tags or net labels crowd a symbol; add spacing or use compact stubs",
       "overlays": [],
       "report": "schematic.readability",
@@ -1411,6 +1459,7 @@
           "kind": "sheet_port"
         }
       ],
+      "measurement": null,
       "message": "Schematic region 'STM32 Microcontroller' contains dense sheet or power tags; prefer compact local labels where possible",
       "overlays": [],
       "report": "schematic.readability",
@@ -1490,6 +1539,7 @@
           "kind": "sheet_port"
         }
       ],
+      "measurement": null,
       "message": "Schematic region 'Connectors and USB' contains dense sheet or power tags; prefer compact local labels where possible",
       "overlays": [],
       "report": "schematic.readability",

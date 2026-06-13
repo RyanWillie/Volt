@@ -1342,6 +1342,11 @@ std::string PyCircuit::bom_csv(const py::dict &sourcing_snapshot) const {
         volt::project_bom(circuit_, sourcing_snapshot_from_dict(sourcing_snapshot)));
 }
 
+std::string PyCircuit::bom_sourcing_snapshot_json(const py::dict &sourcing_snapshot) const {
+    return volt::io::write_bom_sourcing_snapshot_json(
+        sourcing_snapshot_from_dict(sourcing_snapshot));
+}
+
 std::string PyCircuit::to_json() const {
     auto out = std::ostringstream{};
     volt::io::write_logical_circuit(out, circuit_);

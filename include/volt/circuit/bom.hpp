@@ -20,6 +20,11 @@ class BomSourcingSnapshot {
     /** Return sourcing fields for an MPN, if present. */
     [[nodiscard]] const PropertyMap *properties_for_mpn(const std::string &mpn) const noexcept;
 
+    /** Return sourcing entries in insertion order. */
+    [[nodiscard]] const std::vector<std::pair<std::string, PropertyMap>> &entries() const noexcept {
+        return entries_;
+    }
+
   private:
     std::vector<std::pair<std::string, PropertyMap>> entries_;
 };

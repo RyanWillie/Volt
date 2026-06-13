@@ -503,9 +503,9 @@ void validate_bom_component_readiness(const Circuit &circuit, DiagnosticReport &
         const auto &primary = selected_part->manufacturer_part().part_number();
         for (const auto &alternate : selected_part->approved_alternate_mpns()) {
             if (alternate == primary) {
-                report.add(bom_error(
-                    bom_diagnostic_codes::ApprovedAlternateIncompatible,
-                    "Approved alternate MPN must differ from the selected primary MPN", entities));
+                report.add(bom_error(bom_diagnostic_codes::ApprovedAlternateDuplicatesPrimary,
+                                     "Approved alternate MPN duplicates the selected primary MPN",
+                                     entities));
             }
         }
     }

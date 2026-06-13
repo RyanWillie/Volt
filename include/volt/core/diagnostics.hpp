@@ -131,8 +131,8 @@ namespace bom_diagnostic_codes {
 inline constexpr auto ComponentMissingSelectedPart =
     std::string_view{"BOM_COMPONENT_MISSING_SELECTED_PART"};
 inline constexpr auto ComponentImplicitDnp = std::string_view{"BOM_COMPONENT_IMPLICIT_DNP"};
-inline constexpr auto ApprovedAlternateIncompatible =
-    std::string_view{"BOM_APPROVED_ALTERNATE_INCOMPATIBLE"};
+inline constexpr auto ApprovedAlternateDuplicatesPrimary =
+    std::string_view{"BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY"};
 
 } // namespace bom_diagnostic_codes
 
@@ -195,7 +195,7 @@ inline constexpr auto PartLineup = std::array{
 
 inline constexpr auto Bom = std::array{bom_diagnostic_codes::ComponentMissingSelectedPart,
                                        bom_diagnostic_codes::ComponentImplicitDnp,
-                                       bom_diagnostic_codes::ApprovedAlternateIncompatible};
+                                       bom_diagnostic_codes::ApprovedAlternateDuplicatesPrimary};
 
 } // namespace diagnostic_code_catalogs
 

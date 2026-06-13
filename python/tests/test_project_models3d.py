@@ -7,6 +7,11 @@ import volt
 from project_framework_helpers import _header_1x02, _passive_0603
 
 
+def _mark_populated(design, *references):
+    for reference in references:
+        design.component(reference).dnp(False)
+
+
 def test_part_model_3d_requires_absolute_source_path():
     with pytest.raises(ValueError, match="absolute"):
         volt.PartModel3D("models/r_0603_body.glb")
@@ -56,6 +61,7 @@ def test_project_result_writes_part_model_assets_and_placement_transforms(tmp_pa
                     rotation=30,
                 ),
             )
+        _mark_populated(design, "J1", "R1", "R2")
         return design
 
     @project.board
@@ -177,6 +183,7 @@ def test_project_result_keeps_distinct_model_assets_with_same_hash(tmp_path):
             pin_pads={1: "1", 2: "2"},
             model_3d=volt.PartModel3D(step_asset),
         )
+        _mark_populated(design, "R1", "R2")
         return design
 
     @project.board
@@ -246,6 +253,7 @@ def test_project_result_viewer_profile_reports_missing_part_model_assets(tmp_pat
                 offset=(0.0, 0.0, 0.3),
             ),
         )
+        _mark_populated(design, "J1", "R1")
         return design
 
     @project.board
@@ -295,6 +303,7 @@ def test_project_result_viewer_profile_honors_expected_model_diagnostics(tmp_pat
             pin_pads={1: "1", 2: "2"},
             model_3d=volt.PartModel3D(tmp_path / "missing-body.glb"),
         )
+        _mark_populated(design, "J1", "R1")
         return design
 
     @project.board
@@ -354,6 +363,7 @@ def test_project_result_default_profile_keeps_part_models_optional(tmp_path):
                 offset=(0.0, 0.0, 0.3),
             ),
         )
+        _mark_populated(design, "J1", "R1")
         return design
 
     @project.board

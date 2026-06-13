@@ -268,6 +268,8 @@ class PyCircuit {
 
     [[nodiscard]] std::string bom_csv(const py::dict &sourcing_snapshot) const;
 
+    [[nodiscard]] std::string bom_sourcing_snapshot_json(const py::dict &sourcing_snapshot) const;
+
     [[nodiscard]] std::string to_json() const;
 
     [[nodiscard]] py::dict board(const std::string &name);

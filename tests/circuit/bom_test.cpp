@@ -2,6 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -114,6 +115,48 @@ TEST_CASE("BOM CSV output is deterministic and includes alternates and sourcing"
                  "311-330HRCT-ND,Digi-Key\n");
 }
 
+TEST_CASE("BOM CSV escapes dynamic sourcing headers") {
+    auto circuit = volt::Circuit{};
+    const auto component = add_resistor(circuit, "R1", "RC0603FR-07330RL");
+    circuit.set_component_dnp(component, false);
+    auto sourcing = volt::BomSourcingSnapshot{};
+    sourcing.set_mpn_properties(
+        "RC0603FR-07330RL",
+        volt::PropertyMap{
+            {volt::PropertyKey{"unit,price"}, volt::PropertyValue{std::int64_t{123}}},
+            {volt::PropertyKey{"quote\"key"}, volt::PropertyValue{"quoted value"}},
+        });
+
+    const auto csv = volt::io::write_bom_csv(volt::project_bom(circuit, sourcing));
+
+    CHECK(csv == "manufacturer,mpn,package,quantity,references,dnp,approved_alternate_mpns,"
+                 "selection_override_references,\"sourcing.quote\"\"key\",\"sourcing.unit,"
+                 "price\"\n"
+                 "Yageo,RC0603FR-07330RL,0603,1,R1,false,,,quoted value,123\n");
+}
+
+TEST_CASE("BOM sourcing snapshot output is deterministic") {
+    auto sourcing = volt::BomSourcingSnapshot{};
+    sourcing.set_mpn_properties(
+        "ZZZ", volt::PropertyMap{{volt::PropertyKey{"supplier"}, volt::PropertyValue{"Vendor B"}}});
+    sourcing.set_mpn_properties(
+        "AAA", volt::PropertyMap{
+                   {volt::PropertyKey{"unit_price"}, volt::PropertyValue{std::int64_t{123}}},
+                   {volt::PropertyKey{"supplier"}, volt::PropertyValue{"Vendor A"}},
+               });
+
+    const auto payload =
+        nlohmann::json::parse(volt::io::write_bom_sourcing_snapshot_json(sourcing));
+
+    CHECK(payload["format"] == "volt.bom_sourcing_snapshot");
+    CHECK(payload["version"] == 1);
+    REQUIRE(payload["entries"].size() == 2);
+    CHECK(payload["entries"][0]["mpn"] == "AAA");
+    CHECK(payload["entries"][0]["sourcing"] ==
+          nlohmann::json({{"supplier", "Vendor A"}, {"unit_price", 123}}));
+    CHECK(payload["entries"][1]["mpn"] == "ZZZ");
+}
+
 TEST_CASE("BOM readiness reports stable diagnostics on offending instances") {
     volt::Circuit circuit;
     const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
@@ -164,7 +207,7 @@ TEST_CASE("BOM readiness reports stable diagnostics on offending instances") {
     CHECK(report.diagnostics()[1].entities() ==
           std::vector{volt::EntityRef::component(missing_dnp),
                       volt::EntityRef::component_def(component_def)});
-    CHECK(report.diagnostics()[2].code().value() == "BOM_APPROVED_ALTERNATE_INCOMPATIBLE");
+    CHECK(report.diagnostics()[2].code().value() == "BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY");
     CHECK(report.diagnostics()[2].entities() ==
           std::vector{volt::EntityRef::component(bad_alternate),
                       volt::EntityRef::component_def(component_def)});

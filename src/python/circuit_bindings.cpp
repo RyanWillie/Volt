@@ -220,6 +220,8 @@ void bind_circuit(pybind11::module_ &module) {
         .def("validate_bom_readiness", &PyCircuit::validate_bom_readiness)
         .def("bom_json", &PyCircuit::bom_json, py::arg("sourcing_snapshot") = py::dict{})
         .def("bom_csv", &PyCircuit::bom_csv, py::arg("sourcing_snapshot") = py::dict{})
+        .def("bom_sourcing_snapshot_json", &PyCircuit::bom_sourcing_snapshot_json,
+             py::arg("sourcing_snapshot") = py::dict{})
         .def("board", &PyCircuit::board, py::arg("name") = "Main")
         .def("board_design_rules", &PyCircuit::board_design_rules)
         .def("board_set_design_rules", &PyCircuit::board_set_design_rules,
