@@ -26,6 +26,11 @@ canonical_clearance_pair(BoardClearanceKind first, BoardClearanceKind second) {
     return std::isfinite(value) && value >= 0.0;
 }
 
+[[nodiscard]] bool valid_range(BoardCapabilityRange range) noexcept {
+    return finite_positive(range.minimum_mm) && finite_positive(range.maximum_mm) &&
+           range.minimum_mm <= range.maximum_mm;
+}
+
 [[nodiscard]] bool clearance_pair_less(const BoardClearancePair &lhs,
                                        const BoardClearancePair &rhs) noexcept {
     return static_cast<int>(lhs.first) < static_cast<int>(rhs.first) ||
@@ -38,12 +43,20 @@ BoardCapabilityProfile::BoardCapabilityProfile(
     std::string name, BoardCapabilityProvenance provenance, double minimum_track_width_mm,
     double minimum_via_drill_mm, double minimum_via_annular_mm,
     std::vector<BoardClearancePair> minimum_clearances,
-    std::vector<BoardCapabilityCopperWeightRefinement> copper_weight_refinements)
+    std::vector<BoardCapabilityCopperWeightRefinement> copper_weight_refinements,
+    std::vector<int> supported_copper_layer_counts,
+    std::optional<BoardCapabilityRange> board_thickness_range_mm,
+    std::vector<double> available_copper_weights_oz,
+    std::optional<BoardCapabilityRange> drill_diameter_range_mm)
     : name_{std::move(name)}, provenance_{std::move(provenance)},
       minimum_track_width_mm_{minimum_track_width_mm}, minimum_via_drill_mm_{minimum_via_drill_mm},
       minimum_via_annular_mm_{minimum_via_annular_mm},
       minimum_clearances_{std::move(minimum_clearances)},
-      copper_weight_refinements_{std::move(copper_weight_refinements)} {
+      copper_weight_refinements_{std::move(copper_weight_refinements)},
+      supported_copper_layer_counts_{std::move(supported_copper_layer_counts)},
+      board_thickness_range_mm_{board_thickness_range_mm},
+      available_copper_weights_oz_{std::move(available_copper_weights_oz)},
+      drill_diameter_range_mm_{drill_diameter_range_mm} {
     if (name_.empty()) {
         throw std::invalid_argument{"Board capability profile name must not be empty"};
     }
@@ -97,6 +110,43 @@ BoardCapabilityProfile::BoardCapabilityProfile(
                 "Board capability profile copper weights must be unique and ascending"};
         }
         previous_weight = refinement.copper_weight_oz;
+    }
+
+    auto previous_layer_count = std::optional<int>{};
+    for (const auto count : supported_copper_layer_counts_) {
+        if (count <= 0) {
+            throw std::invalid_argument{
+                "Board capability profile supported copper layer counts must be positive"};
+        }
+        if (previous_layer_count.has_value() && count <= previous_layer_count.value()) {
+            throw std::invalid_argument{
+                "Board capability profile supported copper layer counts must be unique and "
+                "ascending"};
+        }
+        previous_layer_count = count;
+    }
+
+    if (board_thickness_range_mm_.has_value() && !valid_range(board_thickness_range_mm_.value())) {
+        throw std::invalid_argument{
+            "Board capability profile board thickness range must be positive and ordered"};
+    }
+
+    auto previous_available_weight = std::optional<double>{};
+    for (const auto weight : available_copper_weights_oz_) {
+        if (!finite_positive(weight)) {
+            throw std::invalid_argument{
+                "Board capability profile available copper weights must be positive"};
+        }
+        if (previous_available_weight.has_value() && weight <= previous_available_weight.value()) {
+            throw std::invalid_argument{
+                "Board capability profile available copper weights must be unique and ascending"};
+        }
+        previous_available_weight = weight;
+    }
+
+    if (drill_diameter_range_mm_.has_value() && !valid_range(drill_diameter_range_mm_.value())) {
+        throw std::invalid_argument{
+            "Board capability profile drill diameter range must be positive and ordered"};
     }
 }
 

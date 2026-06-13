@@ -74,6 +74,18 @@ inline constexpr auto NetClassViaDiameterViolation =
 inline constexpr auto NetClassDisallowedLayer = std::string_view{"PCB_COPPER_ON_DISALLOWED_LAYER"};
 inline constexpr auto RuleBelowCapability = std::string_view{"PCB_RULE_BELOW_CAPABILITY"};
 inline constexpr auto RuleAtCapabilityMinimum = std::string_view{"PCB_RULE_AT_CAPABILITY_MINIMUM"};
+inline constexpr auto CopperLayerCountOutsideCapability =
+    std::string_view{"PCB_COPPER_LAYER_COUNT_OUTSIDE_CAPABILITY"};
+inline constexpr auto BoardThicknessOutsideCapability =
+    std::string_view{"PCB_BOARD_THICKNESS_OUTSIDE_CAPABILITY"};
+inline constexpr auto BoardThicknessAtCapabilityLimit =
+    std::string_view{"PCB_BOARD_THICKNESS_AT_CAPABILITY_LIMIT"};
+inline constexpr auto CopperWeightOutsideCapability =
+    std::string_view{"PCB_COPPER_WEIGHT_OUTSIDE_CAPABILITY"};
+inline constexpr auto DrillDiameterOutsideCapability =
+    std::string_view{"PCB_DRILL_DIAMETER_OUTSIDE_CAPABILITY"};
+inline constexpr auto DrillDiameterAtCapabilityLimit =
+    std::string_view{"PCB_DRILL_DIAMETER_AT_CAPABILITY_LIMIT"};
 
 } // namespace drc_diagnostic_codes
 
@@ -125,7 +137,13 @@ inline constexpr auto Drc = std::array{drc_diagnostic_codes::TrackWidthBelowMini
                                        drc_diagnostic_codes::NetClassViaDiameterViolation,
                                        drc_diagnostic_codes::NetClassDisallowedLayer,
                                        drc_diagnostic_codes::RuleBelowCapability,
-                                       drc_diagnostic_codes::RuleAtCapabilityMinimum};
+                                       drc_diagnostic_codes::RuleAtCapabilityMinimum,
+                                       drc_diagnostic_codes::CopperLayerCountOutsideCapability,
+                                       drc_diagnostic_codes::BoardThicknessOutsideCapability,
+                                       drc_diagnostic_codes::BoardThicknessAtCapabilityLimit,
+                                       drc_diagnostic_codes::CopperWeightOutsideCapability,
+                                       drc_diagnostic_codes::DrillDiameterOutsideCapability,
+                                       drc_diagnostic_codes::DrillDiameterAtCapabilityLimit};
 
 inline constexpr auto PcbVisual =
     std::array{pcb_visual_diagnostic_codes::PlacementOverlap,

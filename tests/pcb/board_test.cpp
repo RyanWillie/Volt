@@ -129,6 +129,17 @@ struct MultiComponentNetCircuit {
     return nullptr;
 }
 
+[[nodiscard]] std::vector<const volt::Diagnostic *>
+find_diagnostics(const volt::DiagnosticReport &report, const std::string &code) {
+    auto matches = std::vector<const volt::Diagnostic *>{};
+    for (const auto &diagnostic : report.diagnostics()) {
+        if (diagnostic.code() == volt::DiagnosticCode{code}) {
+            matches.push_back(&diagnostic);
+        }
+    }
+    return matches;
+}
+
 [[nodiscard]] volt::FootprintDefinition conflicting_passive_0603_footprint() {
     return volt::FootprintDefinition{
         volt::FootprintRef{"passives", "R_0603_1608Metric"},
@@ -167,6 +178,22 @@ make_capability_profile(std::vector<volt::BoardClearancePair> clearances = capab
         0.60,
         std::move(clearances),
         std::move(refinements),
+    };
+}
+
+[[nodiscard]] volt::BoardCapabilityProfile make_physical_capability_profile() {
+    return volt::BoardCapabilityProfile{
+        "Physical Fab",
+        volt::BoardCapabilityProvenance{"Physical fab published capability table", "2026-06-13"},
+        0.10,
+        0.15,
+        0.25,
+        capability_clearances(0.10, 0.20),
+        {},
+        std::vector{2},
+        volt::BoardCapabilityRange{0.4, 2.0},
+        std::vector{1.0, 2.0},
+        volt::BoardCapabilityRange{0.15, 6.3},
     };
 }
 
@@ -908,6 +935,147 @@ TEST_CASE("Board validation applies copper-weight refinements to room overrides"
     REQUIRE(diagnostic != nullptr);
     CHECK(diagnostic->entities() == std::vector{volt::EntityRef::board_room(room_id)});
     CHECK(diagnostic->message().find("Heavy copper") != std::string::npos);
+}
+
+TEST_CASE("Board validation reports fabrication physical facts outside capability") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    auto front_layer =
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top};
+    front_layer.set_copper_weight_oz(0.5);
+    const auto front = board.add_layer(std::move(front_layer));
+    const auto inner = board.add_layer(
+        volt::BoardLayer{"In1.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Inner});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, inner, back}, 0.3});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_capability_profile(make_physical_capability_profile());
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *layer_count = find_diagnostic(report, "PCB_COPPER_LAYER_COUNT_OUTSIDE_CAPABILITY");
+    REQUIRE(layer_count != nullptr);
+    CHECK(layer_count->severity() == volt::Severity::Error);
+    CHECK(layer_count->entities() == std::vector{volt::EntityRef::board()});
+
+    const auto *thickness = find_diagnostic(report, "PCB_BOARD_THICKNESS_OUTSIDE_CAPABILITY");
+    REQUIRE(thickness != nullptr);
+    CHECK(thickness->severity() == volt::Severity::Error);
+    CHECK(thickness->entities() == std::vector{volt::EntityRef::board()});
+
+    const auto *copper_weight = find_diagnostic(report, "PCB_COPPER_WEIGHT_OUTSIDE_CAPABILITY");
+    REQUIRE(copper_weight != nullptr);
+    CHECK(copper_weight->severity() == volt::Severity::Error);
+    CHECK(copper_weight->entities() == std::vector{volt::EntityRef::board_layer(front)});
+}
+
+TEST_CASE("Board validation warns when physical facts sit at capability boundaries") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    auto front_layer =
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top};
+    front_layer.set_copper_weight_oz(1.0);
+    const auto front = board.add_layer(std::move(front_layer));
+    auto back_layer =
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom};
+    back_layer.set_copper_weight_oz(1.0);
+    const auto back = board.add_layer(std::move(back_layer));
+    board.set_layer_stack(volt::LayerStack{{front, back}, 0.4});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.20, 0.15, 0.25, 0.20});
+    board.set_capability_profile(make_physical_capability_profile());
+    static_cast<void>(board.add_via(
+        volt::BoardVia{fixture.first_net, volt::BoardPoint{5.0, 5.0}, front, back, 0.15, 0.25}));
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto *thickness = find_diagnostic(report, "PCB_BOARD_THICKNESS_AT_CAPABILITY_LIMIT");
+    REQUIRE(thickness != nullptr);
+    CHECK(thickness->severity() == volt::Severity::Warning);
+
+    const auto *drill = find_diagnostic(report, "PCB_DRILL_DIAMETER_AT_CAPABILITY_LIMIT");
+    REQUIRE(drill != nullptr);
+    CHECK(drill->severity() == volt::Severity::Warning);
+}
+
+TEST_CASE("Board validation reports via and pad drills outside capability") {
+    auto fixture = make_resistor_circuit(false);
+    fixture.circuit.select_physical_part(
+        fixture.component, volt::PhysicalPart{
+                               volt::ManufacturerPart{"Example", "TH-2"},
+                               volt::PackageRef{"TH"},
+                               volt::FootprintRef{"test", "TH_2"},
+                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
+                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+                           });
+    auto library = volt::FootprintLibrary{};
+    library.add(volt::FootprintDefinition{
+        volt::FootprintRef{"test", "TH_2"},
+        std::vector{
+            volt::FootprintPad::through_hole(
+                "1", volt::FootprintPadShape::Circle, volt::FootprintPoint{-1.0, 0.0},
+                volt::FootprintSize{1.0, 1.0}, volt::FootprintLayerSet::through_hole(),
+                volt::FootprintDrill{6.4, volt::FootprintPadPlating::Plated}),
+            volt::FootprintPad::through_hole(
+                "2", volt::FootprintPadShape::Circle, volt::FootprintPoint{1.0, 0.0},
+                volt::FootprintSize{1.0, 1.0}, volt::FootprintLayerSet::through_hole(),
+                volt::FootprintDrill{0.20, volt::FootprintPadPlating::Plated}),
+        }});
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.20, 0.15, 0.25, 0.20});
+    board.set_capability_profile(make_physical_capability_profile());
+    const auto placement = board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{5.0, 5.0}, volt::BoardRotation::degrees(0.0)});
+    const auto via = board.add_via(
+        volt::BoardVia{fixture.first_net, volt::BoardPoint{8.0, 8.0}, front, back, 6.4, 6.6});
+
+    const auto report = volt::validate_board(board, library);
+
+    const auto drills = find_diagnostics(report, "PCB_DRILL_DIAMETER_OUTSIDE_CAPABILITY");
+    REQUIRE(drills.size() == 2);
+    CHECK(drills[0]->severity() == volt::Severity::Error);
+    CHECK(drills[0]->entities() == std::vector{volt::EntityRef::board_via(via)});
+    CHECK(drills[1]->severity() == volt::Severity::Error);
+    CHECK(drills[1]->entities() ==
+          std::vector{volt::EntityRef::component_placement(placement),
+                      volt::EntityRef::footprint_pad(volt::FootprintPadId{0})});
+}
+
+TEST_CASE("Board validation ignores absent fabrication physical capability limits") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    auto front_layer =
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top};
+    front_layer.set_copper_weight_oz(0.5);
+    const auto front = board.add_layer(std::move(front_layer));
+    const auto inner = board.add_layer(
+        volt::BoardLayer{"In1.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Inner});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, inner, back}, 0.3});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{20.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.20, 0.10, 0.20, 0.20});
+    board.set_capability_profile(make_capability_profile());
+    static_cast<void>(board.add_via(
+        volt::BoardVia{fixture.first_net, volt::BoardPoint{8.0, 8.0}, front, back, 6.4, 6.6}));
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    CHECK(find_diagnostic(report, "PCB_COPPER_LAYER_COUNT_OUTSIDE_CAPABILITY") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_BOARD_THICKNESS_OUTSIDE_CAPABILITY") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_COPPER_WEIGHT_OUTSIDE_CAPABILITY") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_DRILL_DIAMETER_OUTSIDE_CAPABILITY") == nullptr);
 }
 
 TEST_CASE("Board validation reports netless zones outside the board outline") {

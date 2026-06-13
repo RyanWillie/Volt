@@ -68,6 +68,23 @@ def _capability_refinement_payload(value: Any) -> dict[str, Any]:
     }
 
 
+def _capability_range_payload(value: Any, context: str) -> dict[str, float] | None:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return dict(value)
+    if not isinstance(value, (tuple, list)) or len(value) != 2:
+        raise ValueError(f"{context} must be (minimum_mm, maximum_mm)")
+    return {"minimum_mm": float(value[0]), "maximum_mm": float(value[1])}
+
+
+def _capability_range_args(payload: dict[str, Any], name: str) -> tuple[float, float] | None:
+    value = payload.get(name)
+    if value is None:
+        return None
+    return (value["minimum_mm"], value["maximum_mm"])
+
+
 def _capability_payload_to_args(payload: dict[str, Any]) -> dict[str, Any]:
     provenance = payload["provenance"]
     return {
@@ -89,6 +106,12 @@ def _capability_payload_to_args(payload: dict[str, Any]) -> dict[str, Any]:
             )
             for entry in payload.get("copper_weight_refinements", ())
         ),
+        "supported_copper_layer_counts": tuple(
+            payload.get("supported_copper_layer_counts", ())
+        ),
+        "board_thickness_range": _capability_range_args(payload, "board_thickness_range_mm"),
+        "available_copper_weights": tuple(payload.get("available_copper_weights_oz", ())),
+        "drill_diameter_range": _capability_range_args(payload, "drill_diameter_range_mm"),
     }
 
 
@@ -111,8 +134,12 @@ def _capability_payload(
     minimum_via_annular: float,
     minimum_clearances: Iterable[Any],
     copper_weight_refinements: Iterable[Any],
+    supported_copper_layer_counts: Iterable[int],
+    board_thickness_range: Any,
+    available_copper_weights: Iterable[float],
+    drill_diameter_range: Any,
 ) -> dict[str, Any]:
-    return {
+    payload = {
         "name": name,
         "provenance": {"source": source, "as_of": as_of},
         "minimum_track_width_mm": minimum_track_width,
@@ -125,6 +152,23 @@ def _capability_payload(
             _capability_refinement_payload(entry) for entry in copper_weight_refinements
         ],
     }
+    supported_counts = tuple(supported_copper_layer_counts)
+    if supported_counts:
+        payload["supported_copper_layer_counts"] = list(supported_counts)
+    board_thickness_payload = _capability_range_payload(
+        board_thickness_range, "Capability profile board_thickness_range"
+    )
+    if board_thickness_payload is not None:
+        payload["board_thickness_range_mm"] = board_thickness_payload
+    weights = tuple(available_copper_weights)
+    if weights:
+        payload["available_copper_weights_oz"] = list(weights)
+    drill_range_payload = _capability_range_payload(
+        drill_diameter_range, "Capability profile drill_diameter_range"
+    )
+    if drill_range_payload is not None:
+        payload["drill_diameter_range_mm"] = drill_range_payload
+    return payload
 
 
 def _set_capability_attributes(instance, payload: dict[str, Any]) -> None:
@@ -152,6 +196,10 @@ class CapabilityProfile:
     minimum_via_annular: float
     minimum_clearances: tuple[tuple[str, str, float], ...] = ()
     copper_weight_refinements: tuple[tuple[float, float, float], ...] = ()
+    supported_copper_layer_counts: tuple[int, ...] = ()
+    board_thickness_range: tuple[float, float] | None = None
+    available_copper_weights: tuple[float, ...] = ()
+    drill_diameter_range: tuple[float, float] | None = None
 
     def __post_init__(self) -> None:
         canonical = _canonical_capability_payload(
@@ -164,6 +212,10 @@ class CapabilityProfile:
                 minimum_via_annular=self.minimum_via_annular,
                 minimum_clearances=self.minimum_clearances,
                 copper_weight_refinements=self.copper_weight_refinements,
+                supported_copper_layer_counts=self.supported_copper_layer_counts,
+                board_thickness_range=self.board_thickness_range,
+                available_copper_weights=self.available_copper_weights,
+                drill_diameter_range=self.drill_diameter_range,
             )
         )
         _set_capability_attributes(self, canonical)
@@ -189,6 +241,10 @@ class CapabilityProfile:
             minimum_via_annular=self.minimum_via_annular,
             minimum_clearances=self.minimum_clearances,
             copper_weight_refinements=self.copper_weight_refinements,
+            supported_copper_layer_counts=self.supported_copper_layer_counts,
+            board_thickness_range=self.board_thickness_range,
+            available_copper_weights=self.available_copper_weights,
+            drill_diameter_range=self.drill_diameter_range,
         )
 
 

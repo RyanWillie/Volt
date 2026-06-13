@@ -1192,8 +1192,8 @@ void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
         .add([](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_net_class_layers(rule_board, rule_report);
         })
-        .add([](const Board &rule_board, DiagnosticReport &rule_report) {
-            validate_capability_profile_rules(rule_board, rule_report);
+        .add([&footprints](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_capability_profile_rules(rule_board, footprints, rule_report);
         })
         .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_outline_clearance(rule_board, shapes, rule_report);

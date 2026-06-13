@@ -169,6 +169,18 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
           "PCB_RULE_BELOW_CAPABILITY");
     CHECK(std::string{volt::drc_diagnostic_codes::RuleAtCapabilityMinimum} ==
           "PCB_RULE_AT_CAPABILITY_MINIMUM");
+    CHECK(std::string{volt::drc_diagnostic_codes::CopperLayerCountOutsideCapability} ==
+          "PCB_COPPER_LAYER_COUNT_OUTSIDE_CAPABILITY");
+    CHECK(std::string{volt::drc_diagnostic_codes::BoardThicknessOutsideCapability} ==
+          "PCB_BOARD_THICKNESS_OUTSIDE_CAPABILITY");
+    CHECK(std::string{volt::drc_diagnostic_codes::BoardThicknessAtCapabilityLimit} ==
+          "PCB_BOARD_THICKNESS_AT_CAPABILITY_LIMIT");
+    CHECK(std::string{volt::drc_diagnostic_codes::CopperWeightOutsideCapability} ==
+          "PCB_COPPER_WEIGHT_OUTSIDE_CAPABILITY");
+    CHECK(std::string{volt::drc_diagnostic_codes::DrillDiameterOutsideCapability} ==
+          "PCB_DRILL_DIAMETER_OUTSIDE_CAPABILITY");
+    CHECK(std::string{volt::drc_diagnostic_codes::DrillDiameterAtCapabilityLimit} ==
+          "PCB_DRILL_DIAMETER_AT_CAPABILITY_LIMIT");
 
     CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::Erc.begin(),
                                    volt::diagnostic_code_catalogs::Erc.end()} ==
@@ -207,6 +219,12 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
               "PCB_COPPER_ON_DISALLOWED_LAYER",
               "PCB_RULE_BELOW_CAPABILITY",
               "PCB_RULE_AT_CAPABILITY_MINIMUM",
+              "PCB_COPPER_LAYER_COUNT_OUTSIDE_CAPABILITY",
+              "PCB_BOARD_THICKNESS_OUTSIDE_CAPABILITY",
+              "PCB_BOARD_THICKNESS_AT_CAPABILITY_LIMIT",
+              "PCB_COPPER_WEIGHT_OUTSIDE_CAPABILITY",
+              "PCB_DRILL_DIAMETER_OUTSIDE_CAPABILITY",
+              "PCB_DRILL_DIAMETER_AT_CAPABILITY_LIMIT",
           });
 }
 

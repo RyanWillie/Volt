@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -85,6 +86,37 @@ void report_capability_rule(DiagnosticReport &report, double value, double minim
     }
 }
 
+[[nodiscard]] bool value_in_range(double value, BoardCapabilityRange range) noexcept {
+    return value + board_drc_epsilon >= range.minimum_mm &&
+           value <= range.maximum_mm + board_drc_epsilon;
+}
+
+[[nodiscard]] bool value_at_range_limit(double value, BoardCapabilityRange range) noexcept {
+    return std::abs(value - range.minimum_mm) <= board_drc_epsilon ||
+           std::abs(value - range.maximum_mm) <= board_drc_epsilon;
+}
+
+[[nodiscard]] bool profile_contains_value(const std::vector<double> &values,
+                                          double value) noexcept {
+    return std::any_of(values.begin(), values.end(), [value](double candidate) {
+        return std::abs(candidate - value) <= board_drc_epsilon;
+    });
+}
+
+void report_capability_range(DiagnosticReport &report, double value, BoardCapabilityRange range,
+                             std::string_view outside_code, std::string_view boundary_code,
+                             const std::string &label, std::vector<EntityRef> entities) {
+    if (!value_in_range(value, range)) {
+        report.add(drc_diagnostic(outside_code, label + " is outside capability profile limits",
+                                  std::move(entities)));
+        return;
+    }
+    if (value_at_range_limit(value, range)) {
+        report.add(drc_warning(boundary_code, label + " is at capability profile limit",
+                               std::move(entities)));
+    }
+}
+
 void validate_board_rule_capability(const Board &board, const BoardCapabilityProfile &profile,
                                     DiagnosticReport &report) {
     const auto &rules = board.design_rules();
@@ -140,6 +172,101 @@ void validate_net_class_capability(const Board &board, const BoardCapabilityProf
         if (net_class.via_diameter_mm().has_value()) {
             report_capability_rule(report, net_class.via_diameter_mm().value(),
                                    profile.minimum_via_annular_mm(), prefix + "via diameter", {});
+        }
+    }
+}
+
+void validate_stackup_capability(const Board &board, const BoardCapabilityProfile &profile,
+                                 DiagnosticReport &report) {
+    if (!board.layer_stack().has_value()) {
+        return;
+    }
+
+    const auto &stack = board.layer_stack().value();
+    auto copper_layer_count = 0;
+    for (const auto layer_id : stack.layers()) {
+        if (board.layer(layer_id).role() == BoardLayerRole::Copper) {
+            ++copper_layer_count;
+        }
+    }
+
+    const auto &supported_counts = profile.supported_copper_layer_counts();
+    if (!supported_counts.empty() && std::find(supported_counts.begin(), supported_counts.end(),
+                                               copper_layer_count) == supported_counts.end()) {
+        report.add(drc_diagnostic(drc_diagnostic_codes::CopperLayerCountOutsideCapability,
+                                  "Board copper layer count is outside capability profile limits",
+                                  std::vector{EntityRef::board()}));
+    }
+
+    if (profile.board_thickness_range_mm().has_value()) {
+        report_capability_range(report, stack.board_thickness_mm(),
+                                profile.board_thickness_range_mm().value(),
+                                drc_diagnostic_codes::BoardThicknessOutsideCapability,
+                                drc_diagnostic_codes::BoardThicknessAtCapabilityLimit,
+                                "Board thickness", std::vector{EntityRef::board()});
+    }
+
+    if (profile.available_copper_weights_oz().empty()) {
+        return;
+    }
+
+    for (const auto layer_id : stack.layers()) {
+        const auto &layer = board.layer(layer_id);
+        if (layer.role() != BoardLayerRole::Copper || !layer.copper_weight_oz().has_value()) {
+            continue;
+        }
+        if (profile_contains_value(profile.available_copper_weights_oz(),
+                                   layer.copper_weight_oz().value())) {
+            continue;
+        }
+        report.add(
+            drc_diagnostic(drc_diagnostic_codes::CopperWeightOutsideCapability,
+                           "Board copper layer weight is outside capability profile availability",
+                           std::vector{EntityRef::board_layer(layer_id)}));
+    }
+}
+
+void validate_drill_capability(const Board &board, const BoardCapabilityProfile &profile,
+                               const FootprintLibrary &footprints, DiagnosticReport &report) {
+    if (!profile.drill_diameter_range_mm().has_value()) {
+        return;
+    }
+    const auto range = profile.drill_diameter_range_mm().value();
+
+    for (std::size_t index = 0; index < board.via_count(); ++index) {
+        const auto via_id = BoardViaId{index};
+        report_capability_range(report, board.via(via_id).drill_diameter_mm(), range,
+                                drc_diagnostic_codes::DrillDiameterOutsideCapability,
+                                drc_diagnostic_codes::DrillDiameterAtCapabilityLimit,
+                                "Via drill diameter", std::vector{EntityRef::board_via(via_id)});
+    }
+
+    for (std::size_t placement_index = 0; placement_index < board.placement_count();
+         ++placement_index) {
+        const auto placement_id = ComponentPlacementId{placement_index};
+        const auto &placement = board.placement(placement_id);
+        const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+        if (!selected_part.has_value()) {
+            continue;
+        }
+
+        const auto footprint_resolution = resolve_footprint(selected_part.value(), footprints);
+        const auto *definition = footprint_resolution.definition();
+        if (definition == nullptr) {
+            continue;
+        }
+        for (std::size_t pad_index = 0; pad_index < definition->pad_count(); ++pad_index) {
+            const auto pad_id = FootprintPadId{pad_index};
+            const auto &pad = definition->pad(pad_id);
+            if (!pad.drill().has_value()) {
+                continue;
+            }
+            report_capability_range(report, pad.drill()->diameter_mm(), range,
+                                    drc_diagnostic_codes::DrillDiameterOutsideCapability,
+                                    drc_diagnostic_codes::DrillDiameterAtCapabilityLimit,
+                                    "Footprint pad drill diameter",
+                                    std::vector{EntityRef::component_placement(placement_id),
+                                                EntityRef::footprint_pad(pad_id)});
         }
     }
 }
@@ -207,7 +334,8 @@ void validate_room_capability(const Board &board, const BoardCapabilityProfile &
 
 } // namespace
 
-void validate_capability_profile_rules(const Board &board, DiagnosticReport &report) {
+void validate_capability_profile_rules(const Board &board, const FootprintLibrary &footprints,
+                                       DiagnosticReport &report) {
     if (!board.capability_profile().has_value()) {
         return;
     }
@@ -215,6 +343,8 @@ void validate_capability_profile_rules(const Board &board, DiagnosticReport &rep
     validate_board_rule_capability(board, profile, report);
     validate_net_class_capability(board, profile, report);
     validate_room_capability(board, profile, report);
+    validate_stackup_capability(board, profile, report);
+    validate_drill_capability(board, profile, footprints, report);
 }
 
 } // namespace volt::detail
