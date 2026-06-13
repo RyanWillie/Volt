@@ -5,10 +5,10 @@
 
 namespace volt {
 
-/** Canonical content-address label, currently limited to lowercase sha256:<hex>. */
+/** Canonical content-address label, currently limited to lowercase `sha256:<hex>`. */
 class ContentHash {
   public:
-    /** Construct a canonical content hash label such as sha256:<64 lowercase hex digits>. */
+    /** Construct a canonical content hash label such as `sha256:<64 lowercase hex digits>`. */
     explicit ContentHash(std::string value);
 
     /** Return the canonical hash label. */
@@ -23,7 +23,7 @@ class ContentHash {
     std::string value_;
 };
 
-/** Hash bytes with SHA-256 and return the canonical sha256:<hex> content label. */
+/** Hash bytes with SHA-256 and return the canonical `sha256:<hex>` content label. */
 [[nodiscard]] ContentHash sha256_content_hash(std::string_view bytes);
 
 } // namespace volt
