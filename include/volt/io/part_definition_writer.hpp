@@ -8,13 +8,13 @@
 
 namespace volt::io {
 
-/** Return the canonical v1 part definition artifact format name. */
+/** Return the canonical part definition artifact format name. */
 [[nodiscard]] inline constexpr std::string_view part_definition_format_name() noexcept {
     return "volt.part";
 }
 
 /** Return the canonical part definition artifact schema version. */
-[[nodiscard]] inline constexpr int part_definition_format_version() noexcept { return 1; }
+[[nodiscard]] inline constexpr int part_definition_format_version() noexcept { return 2; }
 
 /** Write a deterministic JSON representation of a part definition artifact. */
 void write_part_definition(std::ostream &out, const PartDefinition &part);

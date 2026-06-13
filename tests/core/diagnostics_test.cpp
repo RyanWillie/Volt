@@ -184,6 +184,23 @@ TEST_CASE("PCB fabrication diagnostic codes are stable constants") {
           std::vector<std::string>{"PCB_KICAD_FAB_EXPORT_LOSS"});
 }
 
+TEST_CASE("Part lineup diagnostic codes are stable constants") {
+    CHECK(std::string{volt::diagnostic_categories::PartLineup} == "part.lineup");
+    CHECK(std::string{volt::part_lineup_diagnostic_codes::PinWithoutPad} == "PART_PIN_WITHOUT_PAD");
+    CHECK(std::string{volt::part_lineup_diagnostic_codes::PadWithoutPin} == "PART_PAD_WITHOUT_PIN");
+    CHECK(std::string{volt::part_lineup_diagnostic_codes::PadOverlap} == "PART_PAD_OVERLAP");
+    CHECK(std::string{volt::part_lineup_diagnostic_codes::PadRowPitchInconsistent} ==
+          "PART_PAD_ROW_PITCH_INCONSISTENT");
+    CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::PartLineup.begin(),
+                                   volt::diagnostic_code_catalogs::PartLineup.end()} ==
+          std::vector<std::string>{
+              "PART_PIN_WITHOUT_PAD",
+              "PART_PAD_WITHOUT_PIN",
+              "PART_PAD_OVERLAP",
+              "PART_PAD_ROW_PITCH_INCONSISTENT",
+          });
+}
+
 TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
     CHECK(std::string{volt::diagnostic_categories::Erc} == "erc");
     CHECK(std::string{volt::diagnostic_categories::Drc} == "drc");

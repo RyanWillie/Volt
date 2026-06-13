@@ -1,6 +1,7 @@
 #pragma once
 
 #include "binding_component_conversions.hpp"
+#include "binding_diagnostic_conversions.hpp"
 
 #include <volt/circuit/part_definition.hpp>
 #include <volt/io/part_definition_writer.hpp>
@@ -75,9 +76,51 @@ part_symbols_from_list(const py::list &symbols) {
     result.reserve(static_cast<std::size_t>(py::len(symbols)));
     for (const auto item : symbols) {
         const auto symbol = py::cast<py::dict>(item);
+        auto pins = std::vector<volt::PartSymbolPin>{};
+        const auto pin_list = required_list_field(symbol, "pins");
+        pins.reserve(static_cast<std::size_t>(py::len(pin_list)));
+        for (const auto pin_item : pin_list) {
+            const auto pin = py::cast<py::dict>(pin_item);
+            pins.emplace_back(required_string_field(pin, "name"),
+                              required_string_field(pin, "number"));
+        }
         result.emplace_back(required_string_field(symbol, "name"),
                             optional_part_string_field(symbol, "variant", "default"),
-                            volt::ContentHash{required_string_field(symbol, "hash")});
+                            volt::ContentHash{required_string_field(symbol, "hash")},
+                            std::move(pins));
+    }
+    return result;
+}
+
+[[nodiscard]] inline volt::PartFootprintPadRole
+part_footprint_pad_role_from_string(const std::string &role) {
+    if (role == "mechanical") {
+        return volt::PartFootprintPadRole::Mechanical;
+    }
+    if (role == "thermal") {
+        return volt::PartFootprintPadRole::Thermal;
+    }
+    throw std::invalid_argument{"Part artifact footprint pad role must be mechanical or thermal"};
+}
+
+[[nodiscard]] inline std::vector<volt::PartFootprintPad>
+part_footprint_pads_from_list(const py::list &pads) {
+    auto result = std::vector<volt::PartFootprintPad>{};
+    result.reserve(static_cast<std::size_t>(py::len(pads)));
+    for (const auto item : pads) {
+        const auto pad = py::cast<py::dict>(item);
+        const auto label = required_string_field(pad, "label");
+        const auto x = py::cast<double>(pad["x_mm"]);
+        const auto y = py::cast<double>(pad["y_mm"]);
+        const auto width = py::cast<double>(pad["width_mm"]);
+        const auto height = py::cast<double>(pad["height_mm"]);
+        if (pad.contains("role") && !py::isinstance<py::none>(pad["role"])) {
+            result.emplace_back(
+                label, x, y, width, height,
+                part_footprint_pad_role_from_string(py::cast<std::string>(pad["role"])));
+        } else {
+            result.emplace_back(label, x, y, width, height);
+        }
     }
     return result;
 }
@@ -120,6 +163,7 @@ part_model_3d_reference_from_object(py::handle value) {
             volt::FootprintRef{required_string_field(dict, "footprint_library"),
                                required_string_field(dict, "footprint_name")},
             volt::ContentHash{required_string_field(dict, "footprint_hash")}},
+        part_footprint_pads_from_list(required_list_field(dict, "footprint_pads")),
         part_pin_pad_mappings_from_list(required_list_field(dict, "pin_pad_mappings")),
         string_vector_from_list(required_list_field(dict, "approved_alternate_mpns")),
         part_model_3d_reference_from_object(dict.contains("model_3d") ? dict["model_3d"]
@@ -148,6 +192,7 @@ part_model_3d_reference_from_object(py::handle value) {
     auto result = py::dict{};
     result["bytes"] = py::bytes{bytes};
     result["sha256"] = volt::io::part_definition_content_hash(part).value();
+    result["diagnostics"] = diagnostics_to_list(volt::validate_part_lineup(part));
     return result;
 }
 

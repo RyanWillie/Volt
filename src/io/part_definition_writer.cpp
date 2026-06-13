@@ -1,6 +1,7 @@
 #include <volt/io/part_definition_writer.hpp>
 
 #include <sstream>
+#include <stdexcept>
 
 #include <volt/io/logical_circuit_writer.hpp>
 
@@ -68,13 +69,59 @@ void write_symbols(std::ostream &out, const std::vector<HashedSchematicSymbolRef
         const auto &symbol = symbols[index];
         out << "    { \"name\": " << detail::json_string(symbol.name())
             << ", \"variant\": " << detail::json_string(symbol.variant())
-            << ", \"hash\": " << detail::json_string(symbol.hash().value()) << " }";
+            << ", \"hash\": " << detail::json_string(symbol.hash().value()) << ", \"pins\": [";
+        for (std::size_t pin_index = 0; pin_index < symbol.pins().size(); ++pin_index) {
+            const auto &pin = symbol.pins()[pin_index];
+            if (pin_index != 0U) {
+                out << ", ";
+            }
+            out << "{ \"name\": " << detail::json_string(pin.name())
+                << ", \"number\": " << detail::json_string(pin.number()) << " }";
+        }
+        out << "] }";
         if (index + 1U != symbols.size()) {
             out << ',';
         }
         out << '\n';
     }
     out << "  ]";
+}
+
+[[nodiscard]] std::string_view part_footprint_pad_role_name(PartFootprintPadRole role) {
+    switch (role) {
+    case PartFootprintPadRole::Mechanical:
+        return "mechanical";
+    case PartFootprintPadRole::Thermal:
+        return "thermal";
+    }
+    throw std::logic_error{"Unhandled part footprint pad role"};
+}
+
+void write_footprint_pad(std::ostream &out, const PartFootprintPad &pad) {
+    out << "      { \"label\": " << detail::json_string(pad.label()) << ", \"x_mm\": ";
+    detail::write_json_number(out, pad.x_mm());
+    out << ", \"y_mm\": ";
+    detail::write_json_number(out, pad.y_mm());
+    out << ", \"width_mm\": ";
+    detail::write_json_number(out, pad.width_mm());
+    out << ", \"height_mm\": ";
+    detail::write_json_number(out, pad.height_mm());
+    if (pad.role().has_value()) {
+        out << ", \"role\": " << detail::json_string(part_footprint_pad_role_name(*pad.role()));
+    }
+    out << " }";
+}
+
+void write_footprint_pads(std::ostream &out, const std::vector<PartFootprintPad> &pads) {
+    out << "      \"pads\": [\n";
+    for (std::size_t index = 0; index < pads.size(); ++index) {
+        write_footprint_pad(out, pads[index]);
+        if (index + 1U != pads.size()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "      ]\n";
 }
 
 void write_model_3d(std::ostream &out, const PartModel3DReference &model) {
@@ -102,10 +149,13 @@ void write_orderable_part(std::ostream &out, const OrderablePart &part) {
         << ",\n";
     out << "    \"mpn\": " << detail::json_string(part.manufacturer_part().part_number()) << ",\n";
     out << "    \"package\": " << detail::json_string(part.package().value()) << ",\n";
-    out << "    \"footprint\": { \"library\": "
-        << detail::json_string(part.footprint().footprint().library())
-        << ", \"name\": " << detail::json_string(part.footprint().footprint().name())
-        << ", \"hash\": " << detail::json_string(part.footprint().hash().value()) << " },\n";
+    out << "    \"footprint\": {\n";
+    out << "      \"library\": " << detail::json_string(part.footprint().footprint().library())
+        << ",\n";
+    out << "      \"name\": " << detail::json_string(part.footprint().footprint().name()) << ",\n";
+    out << "      \"hash\": " << detail::json_string(part.footprint().hash().value()) << ",\n";
+    write_footprint_pads(out, part.footprint_pads());
+    out << "    },\n";
     out << "    \"pin_pad_mappings\": [\n";
     for (std::size_t index = 0; index < part.pin_pad_mappings().size(); ++index) {
         const auto &mapping = part.pin_pad_mappings()[index];

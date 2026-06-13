@@ -11,6 +11,9 @@ from . import _volt
 DIAGNOSTIC_CATEGORIES: tuple[str, ...] = tuple(_volt.diagnostic_categories())
 ERC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.erc_diagnostic_codes())
 DRC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.drc_diagnostic_codes())
+PART_LINEUP_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(
+    _volt.part_lineup_diagnostic_codes()
+)
 PCB_VISUAL_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.pcb_visual_diagnostic_codes())
 PCB_FABRICATION_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(
     _volt.pcb_fabrication_diagnostic_codes()

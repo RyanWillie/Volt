@@ -10,6 +10,8 @@ namespace {
     switch (kind) {
     case volt::EntityKind::Board:
         return "board";
+    case volt::EntityKind::PartDefinition:
+        return "part_definition";
     case volt::EntityKind::ComponentDef:
         return "component_definition";
     case volt::EntityKind::Component:

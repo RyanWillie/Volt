@@ -106,10 +106,27 @@ def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
             volt.PinSpec("VO", 2, role="power_output", voltage_range=(1.5, 1.5)),
             volt.PinSpec("VI", 3, role="power_input", voltage_range=(2.5, 18.0)),
         ],
+        symbol=volt.SchematicSymbolSpec(
+            "volt.power:regulator_3pin",
+            pins=(
+                volt.SchematicSymbolSpec.pin("GND", 1, (0, 0)),
+                volt.SchematicSymbolSpec.pin("VO", 2, (10, -5)),
+                volt.SchematicSymbolSpec.pin("VI", 3, (10, 5)),
+            ),
+            primitives=(),
+        ),
         manufacturer="Diodes Incorporated",
         mpn="AP1117E15G-13",
         package="SOT-223-3",
-        footprint=("Package_TO_SOT_SMD", "SOT-223-3_TabPin2"),
+        footprint=volt.Footprint(
+            ("Package_TO_SOT_SMD", "SOT-223-3_TabPin2"),
+            pads=(
+                volt.FootprintPad.surface_mount("1", at=(-1.0, 0.0), size=(0.6, 0.6)),
+                volt.FootprintPad.surface_mount("2", at=(0.0, 0.0), size=(0.6, 0.6)),
+                volt.FootprintPad.surface_mount("3", at=(1.0, 0.0), size=(0.6, 0.6)),
+                volt.FootprintPad.surface_mount("4", at=(0.0, 2.0), size=(1.8, 1.8)),
+            ),
+        ),
         pads={1: "1", 2: ("2", "4"), 3: "3"},
     )
 
@@ -140,6 +157,17 @@ def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
         {"pin_number": "2", "pad": "4"},
         {"pin_number": "3", "pad": "3"},
     ]
+    assert document["symbols"][0]["pins"] == [
+        {"name": "GND", "number": "1"},
+        {"name": "VO", "number": "2"},
+        {"name": "VI", "number": "3"},
+    ]
+    assert [pad["label"] for pad in document["orderable_part"]["footprint"]["pads"]] == [
+        "1",
+        "2",
+        "3",
+        "4",
+    ]
 
 
 def test_library_part_build_reports_pin_role_contradictions():
@@ -150,7 +178,10 @@ def test_library_part_build_reports_pin_role_contradictions():
         manufacturer="Example",
         mpn="BROKEN-1",
         package="SOT-23",
-        footprint=("Package_TO_SOT_SMD", "SOT-23"),
+        footprint=volt.Footprint(
+            ("Package_TO_SOT_SMD", "SOT-23"),
+            pads=(volt.FootprintPad.surface_mount("1", at=(0.0, 0.0), size=(0.6, 0.6)),),
+        ),
         pads={1: "1"},
     )
 
@@ -1048,6 +1079,37 @@ def test_library_build_validates_board_ready_part():
     assert library["R_0603_10K"] is part
 
 
+def test_part_orderable_same_numbered_preserves_artifact_pin_pad_mappings():
+    library = volt.Library("volt.test.passives")
+    library.add(
+        volt.Part(
+            name="SameNumbered",
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            symbol=_two_pin_test_symbol("volt.test:SameNumbered"),
+            orderable_part=volt.OrderablePart.same_numbered(
+                manufacturer="Yageo",
+                part_number="RC0603FR-0710KL",
+                package="0603",
+                footprint=_resistor_0603_footprint(),
+            ),
+            prefix="R",
+        )
+    )
+
+    result = library.build()
+    part_result = result.part("SameNumbered")
+    artifact = part_result.artifact
+
+    assert result.ok
+    assert part_result.board_ready
+    assert part_result.pad_mapping_complete
+    assert artifact is not None
+    assert json.loads(artifact.bytes)["orderable_part"]["pin_pad_mappings"] == [
+        {"pin_number": "1", "pad": "1"},
+        {"pin_number": "2", "pad": "2"},
+    ]
+
+
 def test_part_instantiation_requires_library_identity():
     part = _library_resistor_part()
     design = volt.Design("unbound-part")
@@ -1206,7 +1268,8 @@ def test_part_pin_pad_mapping_supports_tied_pads():
     library = volt.Library("volt.test.connectors")
     connector = volt.Part(
         name="TieAndMechanical",
-        pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+        pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+        symbol=_two_pin_test_symbol("volt.test:TieAndMechanical"),
         footprint=_tie_and_mechanical_footprint(),
         pads={1: "1", 2: ("2", "4")},
         manufacturer="Volt",
@@ -1241,6 +1304,7 @@ def test_part_validation_reports_unknown_pad_label():
         volt.Part(
             name="BadPad",
             pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            symbol=_two_pin_test_symbol("volt.test:BadPad"),
             footprint=_resistor_0603_footprint(),
             pads={1: "1", 2: "9"},
             manufacturer="Yageo",
@@ -1253,10 +1317,64 @@ def test_part_validation_reports_unknown_pad_label():
 
     assert not result.ok
     assert [diagnostic.code for diagnostic in result.diagnostics] == [
-        "LIBRARY_PART_UNKNOWN_PAD",
-        "LIBRARY_PART_INCOMPLETE_PAD_MAPPING",
+        "LIBRARY_PART_ARTIFACT_INVALID",
     ]
     assert result.part("BadPad").board_ready is False
+
+
+def test_part_validation_reports_unresolvable_pad_mapping_key_not_board_ready():
+    library = volt.Library("volt.test.bad")
+    library.add(
+        volt.Part(
+            name="BadPadKey",
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            symbol=_two_pin_test_symbol("volt.test:BadPadKey"),
+            footprint=volt.Footprint(
+                ("volt.test", "BadPadKey"),
+                pads=(
+                    volt.FootprintPad.surface_mount("1", at=(-1.0, 0.0), size=(0.6, 0.6)),
+                    volt.FootprintPad.surface_mount("2", at=(0.0, 0.0), size=(0.6, 0.6)),
+                    volt.FootprintPad.surface_mount("3", at=(1.0, 0.0), size=(0.6, 0.6)),
+                ),
+            ),
+            pads={1: "1", 2: "2", 99: "3"},
+            manufacturer="Yageo",
+            mpn="BADPADKEY",
+            package="0603",
+        )
+    )
+
+    result = library.build()
+
+    assert not result.ok
+    assert [diagnostic.code for diagnostic in result.diagnostics] == [
+        "LIBRARY_PART_ARTIFACT_INVALID",
+    ]
+    assert result.part("BadPadKey").board_ready is False
+
+
+def test_part_validation_rejects_missing_symbol_projection_at_artifact_boundary():
+    library = volt.Library("volt.test.bad")
+    library.add(
+        volt.Part(
+            name="NoSymbol",
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            footprint=_resistor_0603_footprint(),
+            pads={1: "1", 2: "2"},
+            manufacturer="Yageo",
+            mpn="NOSYMBOL",
+            package="0603",
+        )
+    )
+
+    result = library.build()
+
+    assert not result.ok
+    assert [diagnostic.code for diagnostic in result.diagnostics] == [
+        "LIBRARY_PART_ARTIFACT_INVALID",
+    ]
+    assert "at least one schematic symbol projection" in result.diagnostics[0].message
+    assert result.part("NoSymbol").schematic_ready is False
 
 
 def test_part_validation_allows_mechanical_pads_without_logical_pin_mapping():
@@ -1264,7 +1382,8 @@ def test_part_validation_allows_mechanical_pads_without_logical_pin_mapping():
     library.add(
         volt.Part(
             name="MechanicalPad",
-            pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            symbol=_two_pin_test_symbol("volt.test:MechanicalPad"),
             footprint=_tie_and_mechanical_footprint(),
             pads={1: "1", 2: ("2", "4")},
             manufacturer="Volt",
@@ -1279,29 +1398,67 @@ def test_part_validation_allows_mechanical_pads_without_logical_pin_mapping():
     assert tuple(result.diagnostics) == ()
 
 
-def test_part_validation_reports_incomplete_pad_mapping_and_non_serializable_data():
+def test_part_validation_rejects_unknown_mechanical_pad_role():
+    library = volt.Library("volt.test.mechanical")
+    library.add(
+        volt.Part(
+            name="TypoMechanicalPad",
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            symbol=_two_pin_test_symbol("volt.test:TypoMechanicalPad"),
+            footprint=volt.Footprint(
+                ("volt.test", "TypoMechanicalPad"),
+                pads=(
+                    volt.FootprintPad.surface_mount("1", at=(-1.0, 0.0), size=(0.6, 0.6)),
+                    volt.FootprintPad.surface_mount("2", at=(0.0, 0.0), size=(0.6, 0.6)),
+                    volt.FootprintPad.surface_mount(
+                        "MP",
+                        at=(1.0, 0.0),
+                        size=(0.6, 0.6),
+                        mechanical_role="mountng",
+                    ),
+                ),
+            ),
+            pads={1: "1", 2: "2"},
+            manufacturer="Volt",
+            mpn="TYPO-MECH",
+            package="custom",
+        )
+    )
+
+    result = library.build()
+
+    assert not result.ok
+    assert [(diagnostic.code, diagnostic.severity) for diagnostic in result.diagnostics] == [
+        ("LIBRARY_PART_ARTIFACT_INVALID", "error")
+    ]
+    assert "Unknown footprint pad mechanical role" in result.diagnostics[0].message
+    assert result.part("TypoMechanicalPad").board_ready is False
+
+
+def test_part_validation_reports_lineup_diagnostics_and_non_serializable_data():
     library = volt.Library("volt.test.incomplete")
     library.add(
         volt.Part(
             name="MissingPin",
-            pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            symbol=_two_pin_test_symbol("volt.test:MissingPin"),
             footprint=_resistor_0603_footprint(),
             pads={1: "1"},
             manufacturer="Yageo",
             mpn="MISSING",
             package="0603",
-            extensions={"factory": object()},
         )
     )
     library.add(
         volt.Part(
             name="MissingElectricalPad",
-            pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            symbol=_two_pin_test_symbol("volt.test:MissingElectricalPad"),
             footprint=volt.Footprint(
                 ("volt.test", "ExtraElectrical"),
                 pads=(
                     *_resistor_0603_footprint().pads,
-                    volt.FootprintPad.surface_mount("3", at=(1.5, 0.0), size=(0.6, 0.6)),
+                    volt.FootprintPad.surface_mount("3", at=(2.25, 0.0), size=(0.6, 0.6)),
                 ),
             ),
             pads={1: "1", 2: "2"},
@@ -1310,15 +1467,37 @@ def test_part_validation_reports_incomplete_pad_mapping_and_non_serializable_dat
             package="0603",
         )
     )
+    library.add(
+        volt.Part(
+            name="NonSerializable",
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            symbol=_two_pin_test_symbol("volt.test:NonSerializable"),
+            footprint=_resistor_0603_footprint(),
+            pads={1: "1", 2: "2"},
+            manufacturer="Yageo",
+            mpn="NON-SERIAL",
+            package="0603",
+            extensions={"factory": object()},
+        )
+    )
 
     result = library.build()
 
     assert not result.ok
     assert [(diagnostic.source, diagnostic.code) for diagnostic in result.diagnostics] == [
-        ("part:MissingElectricalPad", "LIBRARY_PART_INCOMPLETE_PAD_MAPPING"),
-        ("part:MissingPin", "LIBRARY_PART_MISSING_PIN_MAPPING"),
-        ("part:MissingPin", "LIBRARY_PART_INCOMPLETE_PAD_MAPPING"),
-        ("part:MissingPin", "LIBRARY_PART_NON_SERIALIZABLE"),
+        ("part:MissingElectricalPad", "PART_PAD_WITHOUT_PIN"),
+        ("part:MissingPin", "PART_PIN_WITHOUT_PAD"),
+        ("part:MissingPin", "PART_PAD_WITHOUT_PIN"),
+        ("part:NonSerializable", "LIBRARY_PART_NON_SERIALIZABLE"),
+    ]
+    assert [
+        (diagnostic.category, diagnostic.severity)
+        for diagnostic in result.diagnostics
+        if diagnostic.code.startswith("PART_")
+    ] == [
+        ("part.lineup", "warning"),
+        ("part.lineup", "warning"),
+        ("part.lineup", "warning"),
     ]
 
 
@@ -1330,6 +1509,9 @@ def test_library_result_is_deterministic():
             pins=[volt.PinSpec("1", 1)],
             footprint=_resistor_0603_footprint(),
             pads={1: "9"},
+            manufacturer="Yageo",
+            mpn="ZETA",
+            package="0603",
         )
     )
     library.add(
@@ -1351,8 +1533,7 @@ def test_library_result_is_deterministic():
     ] == [
         ("part:Alpha", "LIBRARY_PART_MISSING_PINS"),
         ("part:Alpha", "LIBRARY_PART_MISSING_FOOTPRINT"),
-        ("part:Zeta", "LIBRARY_PART_UNKNOWN_PAD"),
-        ("part:Zeta", "LIBRARY_PART_INCOMPLETE_PAD_MAPPING"),
+        ("part:Zeta", "LIBRARY_PART_ARTIFACT_INVALID"),
     ]
 
 

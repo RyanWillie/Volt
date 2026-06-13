@@ -104,6 +104,7 @@ class Part:
             if orderable_part is not None:
                 raise TypeError("Part accepts either orderable or orderable_part")
             orderable_part = orderable
+        normalized_orderable_part = orderable_part
         alternate_mpns = tuple(str(mpn) for mpn in approved_alternate_mpns)
         if orderable_part is not None:
             if (
@@ -160,6 +161,7 @@ class Part:
         self.power_rating = power_rating
         self.model_3d = model_3d
         self.approved_alternate_mpns = alternate_mpns
+        self._orderable_part = normalized_orderable_part
         self.prefix = prefix
         self.extensions = _freeze_value(extensions or {})
         self.source_name = source_name or name
@@ -203,6 +205,8 @@ class Part:
         )
 
     def _physical_part_spec(self) -> PhysicalPartSpec | None:
+        if self._orderable_part is not None:
+            return self._orderable_part
         if self.footprint is None:
             return None
         return PhysicalPartSpec(

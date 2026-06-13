@@ -8,6 +8,7 @@
 #include <volt/circuit/definitions.hpp>
 #include <volt/circuit/parts.hpp>
 #include <volt/core/content_hash.hpp>
+#include <volt/core/diagnostics.hpp>
 #include <volt/core/electrical_attributes.hpp>
 
 namespace volt {
@@ -77,11 +78,29 @@ class PartProvenance {
     std::string derived_from_;
 };
 
+/** One pin occurrence in a schematic symbol projection for a part. */
+class PartSymbolPin {
+  public:
+    /** Construct a symbol pin occurrence from non-empty pin name and number labels. */
+    PartSymbolPin(std::string name, std::string number);
+
+    /** Return the projected pin name. */
+    [[nodiscard]] const std::string &name() const noexcept { return name_; }
+
+    /** Return the projected pin number. */
+    [[nodiscard]] const std::string &number() const noexcept { return number_; }
+
+  private:
+    std::string name_;
+    std::string number_;
+};
+
 /** Hash-addressed schematic symbol projection for a part. */
 class HashedSchematicSymbolReference {
   public:
     /** Construct a hashed symbol projection reference. */
-    HashedSchematicSymbolReference(std::string name, std::string variant, ContentHash hash);
+    HashedSchematicSymbolReference(std::string name, std::string variant, ContentHash hash,
+                                   std::vector<PartSymbolPin> pins);
 
     /** Return the symbol name. */
     [[nodiscard]] const std::string &name() const noexcept { return name_; }
@@ -92,10 +111,64 @@ class HashedSchematicSymbolReference {
     /** Return the content hash for the referenced symbol projection. */
     [[nodiscard]] const ContentHash &hash() const noexcept { return hash_; }
 
+    /** Return the schematic pin occurrences carried by this symbol projection. */
+    [[nodiscard]] const std::vector<PartSymbolPin> &pins() const noexcept { return pins_; }
+
   private:
     std::string name_;
     std::string variant_;
     ContentHash hash_;
+    std::vector<PartSymbolPin> pins_;
+};
+
+/** Optional non-logical role that lets an unmapped footprint pad stay intentional. */
+enum class PartFootprintPadRole {
+    Mechanical,
+    Thermal,
+};
+
+/** Minimal footprint pad summary carried by the part artifact for lineup checks. */
+class PartFootprintPad {
+  public:
+    /** Construct an electrical footprint pad with finite center and positive size. */
+    PartFootprintPad(std::string label, double x_mm, double y_mm, double width_mm,
+                     double height_mm);
+
+    /** Construct a footprint pad with an explicit non-logical role. */
+    PartFootprintPad(std::string label, double x_mm, double y_mm, double width_mm, double height_mm,
+                     PartFootprintPadRole role);
+
+    /** Return the stable pad label inside the footprint projection. */
+    [[nodiscard]] const std::string &label() const noexcept { return label_; }
+
+    /** Return the footprint-local X center in millimeters. */
+    [[nodiscard]] double x_mm() const noexcept { return x_mm_; }
+
+    /** Return the footprint-local Y center in millimeters. */
+    [[nodiscard]] double y_mm() const noexcept { return y_mm_; }
+
+    /** Return the pad width in millimeters. */
+    [[nodiscard]] double width_mm() const noexcept { return width_mm_; }
+
+    /** Return the pad height in millimeters. */
+    [[nodiscard]] double height_mm() const noexcept { return height_mm_; }
+
+    /** Return the optional non-logical role. */
+    [[nodiscard]] const std::optional<PartFootprintPadRole> &role() const noexcept { return role_; }
+
+    /** Return whether this pad should normally be mapped to a pin. */
+    [[nodiscard]] bool requires_pin_mapping() const noexcept { return !role_.has_value(); }
+
+  private:
+    PartFootprintPad(std::string label, double x_mm, double y_mm, double width_mm, double height_mm,
+                     std::optional<PartFootprintPadRole> role);
+
+    std::string label_;
+    double x_mm_;
+    double y_mm_;
+    double width_mm_;
+    double height_mm_;
+    std::optional<PartFootprintPadRole> role_;
 };
 
 /** Hash-addressed footprint projection for an orderable part. */
@@ -169,7 +242,7 @@ class OrderablePart {
   public:
     /** Construct an orderable part with stable physical identity and mappings. */
     OrderablePart(ManufacturerPart manufacturer_part, PackageRef package,
-                  HashedFootprintReference footprint,
+                  HashedFootprintReference footprint, std::vector<PartFootprintPad> footprint_pads,
                   std::vector<OrderablePinPadMapping> pin_pad_mappings,
                   std::vector<std::string> approved_alternate_mpns = {},
                   std::optional<PartModel3DReference> model_3d = std::nullopt);
@@ -184,6 +257,11 @@ class OrderablePart {
 
     /** Return the hash-addressed footprint reference. */
     [[nodiscard]] const HashedFootprintReference &footprint() const noexcept { return footprint_; }
+
+    /** Return footprint pad summaries in projection order. */
+    [[nodiscard]] const std::vector<PartFootprintPad> &footprint_pads() const noexcept {
+        return footprint_pads_;
+    }
 
     /** Return pin-number to pad mappings in deterministic insertion order. */
     [[nodiscard]] const std::vector<OrderablePinPadMapping> &pin_pad_mappings() const noexcept {
@@ -204,6 +282,7 @@ class OrderablePart {
     ManufacturerPart manufacturer_part_;
     PackageRef package_;
     HashedFootprintReference footprint_;
+    std::vector<PartFootprintPad> footprint_pads_;
     std::vector<OrderablePinPadMapping> pin_pad_mappings_;
     std::vector<std::string> approved_alternate_mpns_;
     std::optional<PartModel3DReference> model_3d_;
@@ -241,6 +320,7 @@ class PartDefinition {
     [[nodiscard]] const OrderablePart &orderable_part() const noexcept { return orderable_part_; }
 
   private:
+    void require_symbol_lineup_matches_pins() const;
     void require_orderable_mappings_match_pins() const;
 
     PartIdentity identity_;
@@ -250,5 +330,8 @@ class PartDefinition {
     std::vector<HashedSchematicSymbolReference> symbols_;
     OrderablePart orderable_part_;
 };
+
+/** Validate design-quality lineup concerns for an assembled or loaded part artifact. */
+[[nodiscard]] DiagnosticReport validate_part_lineup(const PartDefinition &part);
 
 } // namespace volt

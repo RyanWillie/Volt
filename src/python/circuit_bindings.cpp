@@ -35,6 +35,8 @@ void bind_circuit(pybind11::module_ &module) {
                []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::Erc); });
     module.def("drc_diagnostic_codes",
                []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::Drc); });
+    module.def("part_lineup_diagnostic_codes",
+               []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::PartLineup); });
     module.def("pcb_visual_diagnostic_codes",
                []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::PcbVisual); });
     module.def("pcb_fabrication_diagnostic_codes", []() {
