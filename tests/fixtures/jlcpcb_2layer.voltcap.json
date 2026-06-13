@@ -1,0 +1,5 @@
+{
+  "format": "volt.capability_profile",
+  "version": 1,
+  "profile": {"name": "JLCPCB 2-layer FR-4 capability snapshot", "provenance": {"source": "https://jlcpcb.com/capabilities/pcb-capabilities", "as_of": "2026-06-13"}, "minimum_track_width_mm": 0.10000000000000001, "minimum_via_drill_mm": 0.14999999999999999, "minimum_via_annular_mm": 0.25, "supported_copper_layer_counts": [2], "board_thickness_range_mm": {"minimum_mm": 0.40000000000000002, "maximum_mm": 2}, "available_copper_weights_oz": [1, 2, 2.5, 3.5, 4.5], "drill_diameter_range_mm": {"minimum_mm": 0.14999999999999999, "maximum_mm": 6.2999999999999998}, "minimum_clearances": [{"first": "track", "second": "track", "clearance_mm": 0.10000000000000001}, {"first": "track", "second": "pad", "clearance_mm": 0.14999999999999999}, {"first": "track", "second": "via", "clearance_mm": 0.20000000000000001}], "copper_weight_refinements": [{"copper_weight_oz": 1, "minimum_track_width_mm": 0.10000000000000001, "minimum_clearance_mm": 0.10000000000000001}, {"copper_weight_oz": 2, "minimum_track_width_mm": 0.16, "minimum_clearance_mm": 0.16}]}
+}

@@ -1434,6 +1434,14 @@ def test_python_board_authoring_sets_capability_profile_from_file_and_inline():
         "clearance_mm": 0.2,
     }
 
+    jlcpcb = volt.CapabilityProfile.from_file(
+        _fixture_path("jlcpcb_2layer.voltcap.json")
+    )
+    assert jlcpcb.supported_copper_layer_counts == (2,)
+    assert jlcpcb.board_thickness_range == (0.4, 2.0)
+    assert jlcpcb.available_copper_weights == (1.0, 2.0, 2.5, 3.5, 4.5)
+    assert jlcpcb.drill_diameter_range == (0.15, 6.3)
+
     inline = volt.CapabilityProfile(
         name="Inline capability",
         source="Inline project data",
@@ -1442,11 +1450,24 @@ def test_python_board_authoring_sets_capability_profile_from_file_and_inline():
         minimum_via_drill=0.3,
         minimum_via_annular=0.6,
         minimum_clearances=(("track", "track", 0.2),),
+        supported_copper_layer_counts=(2,),
+        board_thickness_range=(0.4, 2.0),
+        available_copper_weights=(1.0, 2.0),
+        drill_diameter_range=(0.15, 6.3),
     )
     board.set_capability_profile(inline)
-    assert json.loads(board.to_json())["board"]["capability_profile"]["name"] == (
-        "Inline capability"
-    )
+    inline_profile = json.loads(board.to_json())["board"]["capability_profile"]
+    assert inline_profile["name"] == "Inline capability"
+    assert inline_profile["supported_copper_layer_counts"] == [2]
+    assert inline_profile["board_thickness_range_mm"] == {
+        "minimum_mm": 0.4,
+        "maximum_mm": 2.0,
+    }
+    assert inline_profile["available_copper_weights_oz"] == [1.0, 2.0]
+    assert inline_profile["drill_diameter_range_mm"] == {
+        "minimum_mm": 0.15,
+        "maximum_mm": 6.3,
+    }
 
 
 def test_python_capability_profile_invalid_values_raise_value_error():

@@ -201,7 +201,11 @@ TEST_CASE("BoardCapabilityProfile validates ingestible manufacturing limits") {
         std::vector{
             volt::BoardCapabilityCopperWeightRefinement{1.0, 0.20, 0.20},
             volt::BoardCapabilityCopperWeightRefinement{2.0, 0.30, 0.28},
-        }};
+        },
+        std::vector{2},
+        volt::BoardCapabilityRange{0.4, 2.0},
+        std::vector{1.0, 2.0, 2.5},
+        volt::BoardCapabilityRange{0.15, 6.3}};
 
     CHECK(profile.name() == "Example Fab 2-layer");
     CHECK(profile.provenance().source == "Example fab published capability table");
@@ -218,6 +222,14 @@ TEST_CASE("BoardCapabilityProfile validates ingestible manufacturing limits") {
     CHECK(profile.minimum_clearances()[0].second == volt::BoardClearanceKind::Pad);
     REQUIRE(profile.copper_weight_refinements().size() == 2);
     CHECK(profile.copper_weight_refinements()[1].copper_weight_oz == 2.0);
+    CHECK(profile.supported_copper_layer_counts() == std::vector<int>{2});
+    REQUIRE(profile.board_thickness_range_mm().has_value());
+    CHECK(profile.board_thickness_range_mm()->minimum_mm == 0.4);
+    CHECK(profile.board_thickness_range_mm()->maximum_mm == 2.0);
+    CHECK(profile.available_copper_weights_oz() == std::vector<double>{1.0, 2.0, 2.5});
+    REQUIRE(profile.drill_diameter_range_mm().has_value());
+    CHECK(profile.drill_diameter_range_mm()->minimum_mm == 0.15);
+    CHECK(profile.drill_diameter_range_mm()->maximum_mm == 6.3);
 
     CHECK_THROWS_AS((volt::BoardCapabilityProfile{"", provenance, 0.20, 0.30, 0.60, {}}),
                     std::invalid_argument);
@@ -266,6 +278,30 @@ TEST_CASE("BoardCapabilityProfile validates ingestible manufacturing limits") {
                         std::vector{volt::BoardCapabilityCopperWeightRefinement{1.0, 0.20, 0.20},
                                     volt::BoardCapabilityCopperWeightRefinement{1.0, 0.25, 0.25}}}),
                     std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardCapabilityProfile{
+                        "Example", provenance, 0.20, 0.30, 0.60, {}, {}, std::vector{2, 2}}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardCapabilityProfile{"Example",
+                                                  provenance,
+                                                  0.20,
+                                                  0.30,
+                                                  0.60,
+                                                  {},
+                                                  {},
+                                                  {},
+                                                  volt::BoardCapabilityRange{2.0, 0.4}}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS((volt::BoardCapabilityProfile{"Example",
+                                                  provenance,
+                                                  0.20,
+                                                  0.30,
+                                                  0.60,
+                                                  {},
+                                                  {},
+                                                  {},
+                                                  std::nullopt,
+                                                  std::vector{2.0, 1.0}}),
+                    std::invalid_argument);
 }
 
 TEST_CASE("BoardCapabilityProfile exposes a conservative explicit fallback") {
@@ -282,6 +318,10 @@ TEST_CASE("BoardCapabilityProfile exposes a conservative explicit fallback") {
     CHECK(profile.minimum_clearance_mm(volt::BoardClearanceKind::Pad,
                                        volt::BoardClearanceKind::BoardEdge) == 0.30);
     CHECK(profile.copper_weight_refinements().empty());
+    CHECK(profile.supported_copper_layer_counts().empty());
+    CHECK_FALSE(profile.board_thickness_range_mm().has_value());
+    CHECK(profile.available_copper_weights_oz().empty());
+    CHECK_FALSE(profile.drill_diameter_range_mm().has_value());
 }
 
 TEST_CASE("Board stores capability profiles without mutating design rules") {

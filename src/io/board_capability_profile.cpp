@@ -115,6 +115,86 @@ void write_copper_weight_refinements(
     out << ']';
 }
 
+void write_supported_layer_counts(std::ostream &out, const std::vector<int> &counts) {
+    out << '[';
+    for (std::size_t index = 0; index < counts.size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        out << counts[index];
+    }
+    out << ']';
+}
+
+void write_double_array(std::ostream &out, const std::vector<double> &values) {
+    out << '[';
+    for (std::size_t index = 0; index < values.size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        write_json_number(out, values[index]);
+    }
+    out << ']';
+}
+
+void write_range(std::ostream &out, BoardCapabilityRange range) {
+    out << "{\"minimum_mm\": ";
+    write_json_number(out, range.minimum_mm);
+    out << ", \"maximum_mm\": ";
+    write_json_number(out, range.maximum_mm);
+    out << '}';
+}
+
+[[nodiscard]] std::vector<int> read_supported_layer_counts(const nlohmann::json &profile_json) {
+    const auto it = profile_json.find("supported_copper_layer_counts");
+    if (it == profile_json.end()) {
+        return {};
+    }
+    require(it->is_array(), "Capability profile supported copper layer counts must be an array");
+    auto counts = std::vector<int>{};
+    counts.reserve(it->size());
+    for (const auto &entry : *it) {
+        require(entry.is_number_integer(),
+                "Capability profile supported copper layer count must be an integer");
+        counts.push_back(entry.get<int>());
+    }
+    return counts;
+}
+
+[[nodiscard]] std::vector<double> read_double_array(const nlohmann::json &profile_json,
+                                                    const char *field_name) {
+    const auto it = profile_json.find(field_name);
+    if (it == profile_json.end()) {
+        return {};
+    }
+    require(it->is_array(), std::string{"Capability profile "} + field_name + " must be an array");
+    auto values = std::vector<double>{};
+    values.reserve(it->size());
+    for (const auto &entry : *it) {
+        require(entry.is_number(), std::string{"Capability profile "} + field_name +
+                                       " entries must be finite numbers");
+        const auto value = entry.get<double>();
+        require(std::isfinite(value), std::string{"Capability profile "} + field_name +
+                                          " entries must be finite numbers");
+        values.push_back(value);
+    }
+    return values;
+}
+
+[[nodiscard]] std::optional<BoardCapabilityRange>
+read_optional_range(const nlohmann::json &profile_json, const char *field_name) {
+    const auto it = profile_json.find(field_name);
+    if (it == profile_json.end()) {
+        return std::nullopt;
+    }
+    require(it->is_object(),
+            std::string{"Capability profile "} + field_name + " must be an object");
+    return BoardCapabilityRange{
+        number_field(*it, "minimum_mm"),
+        number_field(*it, "maximum_mm"),
+    };
+}
+
 [[nodiscard]] std::vector<BoardClearancePair>
 read_clearance_entries(const nlohmann::json &profile_json) {
     const auto &clearance_json = array_field(profile_json, "minimum_clearances");
@@ -202,6 +282,22 @@ void write_capability_profile_payload(std::ostream &out, const BoardCapabilityPr
     write_json_number(out, profile.minimum_via_drill_mm());
     out << ", \"minimum_via_annular_mm\": ";
     write_json_number(out, profile.minimum_via_annular_mm());
+    if (!profile.supported_copper_layer_counts().empty()) {
+        out << ", \"supported_copper_layer_counts\": ";
+        write_supported_layer_counts(out, profile.supported_copper_layer_counts());
+    }
+    if (profile.board_thickness_range_mm().has_value()) {
+        out << ", \"board_thickness_range_mm\": ";
+        write_range(out, profile.board_thickness_range_mm().value());
+    }
+    if (!profile.available_copper_weights_oz().empty()) {
+        out << ", \"available_copper_weights_oz\": ";
+        write_double_array(out, profile.available_copper_weights_oz());
+    }
+    if (profile.drill_diameter_range_mm().has_value()) {
+        out << ", \"drill_diameter_range_mm\": ";
+        write_range(out, profile.drill_diameter_range_mm().value());
+    }
     out << ", \"minimum_clearances\": ";
     write_clearance_entries(out, profile.minimum_clearances());
     if (!profile.copper_weight_refinements().empty()) {
@@ -226,6 +322,10 @@ read_capability_profile_payload(const nlohmann::json &profile_json) {
         number_field(profile_json, "minimum_via_annular_mm"),
         read_clearance_entries(profile_json),
         read_copper_weight_refinements(profile_json),
+        read_supported_layer_counts(profile_json),
+        read_optional_range(profile_json, "board_thickness_range_mm"),
+        read_double_array(profile_json, "available_copper_weights_oz"),
+        read_optional_range(profile_json, "drill_diameter_range_mm"),
     };
 }
 

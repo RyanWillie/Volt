@@ -236,6 +236,44 @@ footprint_definition_from_dict(const py::dict &data) {
     return volt::FootprintDefinition{volt::FootprintRef{ref.first, ref.second}, std::move(pads)};
 }
 
+[[nodiscard]] inline std::vector<int> optional_int_vector_from_dict(const py::dict &data,
+                                                                    const char *name) {
+    auto values = std::vector<int>{};
+    if (!data.contains(name)) {
+        return values;
+    }
+    const auto items = py::cast<py::iterable>(data[name]);
+    for (const auto item : items) {
+        values.push_back(py::cast<int>(item));
+    }
+    return values;
+}
+
+[[nodiscard]] inline std::vector<double> optional_double_vector_from_dict(const py::dict &data,
+                                                                          const char *name) {
+    auto values = std::vector<double>{};
+    if (!data.contains(name)) {
+        return values;
+    }
+    const auto items = py::cast<py::iterable>(data[name]);
+    for (const auto item : items) {
+        values.push_back(py::cast<double>(item));
+    }
+    return values;
+}
+
+[[nodiscard]] inline std::optional<volt::BoardCapabilityRange>
+optional_capability_range_from_dict(const py::dict &data, const char *name) {
+    if (!data.contains(name)) {
+        return std::nullopt;
+    }
+    const auto range = py::cast<py::dict>(data[name]);
+    return volt::BoardCapabilityRange{
+        py::cast<double>(range["minimum_mm"]),
+        py::cast<double>(range["maximum_mm"]),
+    };
+}
+
 [[nodiscard]] inline volt::BoardCapabilityProfile
 board_capability_profile_from_dict(const py::dict &data) {
     const auto provenance = py::cast<py::dict>(data["provenance"]);
@@ -274,7 +312,19 @@ board_capability_profile_from_dict(const py::dict &data) {
         py::cast<double>(data["minimum_via_annular_mm"]),
         std::move(clearances),
         std::move(refinements),
+        optional_int_vector_from_dict(data, "supported_copper_layer_counts"),
+        optional_capability_range_from_dict(data, "board_thickness_range_mm"),
+        optional_double_vector_from_dict(data, "available_copper_weights_oz"),
+        optional_capability_range_from_dict(data, "drill_diameter_range_mm"),
     };
+}
+
+inline void set_range_payload(py::dict &payload, const char *name,
+                              volt::BoardCapabilityRange range) {
+    auto item = py::dict{};
+    item["minimum_mm"] = range.minimum_mm;
+    item["maximum_mm"] = range.maximum_mm;
+    payload[name] = std::move(item);
 }
 
 [[nodiscard]] inline py::dict
@@ -308,6 +358,29 @@ board_capability_profile_to_dict(const volt::BoardCapabilityProfile &profile) {
         refinements.append(std::move(refinement));
     }
     payload["copper_weight_refinements"] = std::move(refinements);
+
+    if (!profile.supported_copper_layer_counts().empty()) {
+        auto counts = py::list{};
+        for (const auto count : profile.supported_copper_layer_counts()) {
+            counts.append(count);
+        }
+        payload["supported_copper_layer_counts"] = std::move(counts);
+    }
+    if (profile.board_thickness_range_mm().has_value()) {
+        set_range_payload(payload, "board_thickness_range_mm",
+                          profile.board_thickness_range_mm().value());
+    }
+    if (!profile.available_copper_weights_oz().empty()) {
+        auto weights = py::list{};
+        for (const auto weight : profile.available_copper_weights_oz()) {
+            weights.append(weight);
+        }
+        payload["available_copper_weights_oz"] = std::move(weights);
+    }
+    if (profile.drill_diameter_range_mm().has_value()) {
+        set_range_payload(payload, "drill_diameter_range_mm",
+                          profile.drill_diameter_range_mm().value());
+    }
     return payload;
 }
 

@@ -190,6 +190,14 @@ struct BoardCapabilityCopperWeightRefinement {
     double minimum_clearance_mm;
 };
 
+/** Inclusive millimeter range used by fabrication capability profile limits. */
+struct BoardCapabilityRange {
+    /** Minimum allowed value in millimeters. */
+    double minimum_mm;
+    /** Maximum allowed value in millimeters. */
+    double maximum_mm;
+};
+
 /** Kernel-owned manufacturer capability data loaded from project or profile documents. */
 class BoardCapabilityProfile {
   public:
@@ -198,7 +206,11 @@ class BoardCapabilityProfile {
         std::string name, BoardCapabilityProvenance provenance, double minimum_track_width_mm,
         double minimum_via_drill_mm, double minimum_via_annular_mm,
         std::vector<BoardClearancePair> minimum_clearances,
-        std::vector<BoardCapabilityCopperWeightRefinement> copper_weight_refinements = {});
+        std::vector<BoardCapabilityCopperWeightRefinement> copper_weight_refinements = {},
+        std::vector<int> supported_copper_layer_counts = {},
+        std::optional<BoardCapabilityRange> board_thickness_range_mm = std::nullopt,
+        std::vector<double> available_copper_weights_oz = {},
+        std::optional<BoardCapabilityRange> drill_diameter_range_mm = std::nullopt);
 
     /** Return a clearly named conservative fallback profile that callers must apply explicitly. */
     [[nodiscard]] static BoardCapabilityProfile conservative_default();
@@ -239,6 +251,28 @@ class BoardCapabilityProfile {
         return copper_weight_refinements_;
     }
 
+    /** Return supported copper layer counts; empty means unconstrained by this profile. */
+    [[nodiscard]] const std::vector<int> &supported_copper_layer_counts() const noexcept {
+        return supported_copper_layer_counts_;
+    }
+
+    /** Return inclusive finished board thickness range, if constrained by this profile. */
+    [[nodiscard]] const std::optional<BoardCapabilityRange> &
+    board_thickness_range_mm() const noexcept {
+        return board_thickness_range_mm_;
+    }
+
+    /** Return available finished copper weights; empty means unconstrained by this profile. */
+    [[nodiscard]] const std::vector<double> &available_copper_weights_oz() const noexcept {
+        return available_copper_weights_oz_;
+    }
+
+    /** Return inclusive drill diameter range, if constrained by this profile. */
+    [[nodiscard]] const std::optional<BoardCapabilityRange> &
+    drill_diameter_range_mm() const noexcept {
+        return drill_diameter_range_mm_;
+    }
+
   private:
     std::string name_;
     BoardCapabilityProvenance provenance_;
@@ -247,6 +281,10 @@ class BoardCapabilityProfile {
     double minimum_via_annular_mm_;
     std::vector<BoardClearancePair> minimum_clearances_;
     std::vector<BoardCapabilityCopperWeightRefinement> copper_weight_refinements_;
+    std::vector<int> supported_copper_layer_counts_;
+    std::optional<BoardCapabilityRange> board_thickness_range_mm_;
+    std::vector<double> available_copper_weights_oz_;
+    std::optional<BoardCapabilityRange> drill_diameter_range_mm_;
 };
 
 /** Kernel-owned first PCB design-rule values, expressed in board millimeters. */

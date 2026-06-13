@@ -434,6 +434,22 @@
     </section>
 
     <section>
+      <aside>Capability Lint</aside>
+      <div class="stack">
+        <div class="callout">
+          <h2>DRC and capability lint answer different questions.</h2>
+          <p>DRC checks whether board geometry and resolved design rules are internally valid: copper widths, clearances, vias, outlines, keepouts, and unrouted nets. Capability lint compares those resolved rules plus stackup and fabrication facts against the selected manufacturer capability profile snapshot.</p>
+        </div>
+        <ul>
+          <li>A capability profile is audit data with provenance, not a fab-house preset compiled into Volt.</li>
+          <li>Capability lint must not mutate design rules, repair stackups, or silently choose alternate fabrication values.</li>
+          <li>Absent optional profile limits mean the profile does not constrain that physical fact.</li>
+          <li>Boards store embedded capability snapshots so validation can be repeated against the same audited limits later.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
       <aside>Load Checks</aside>
       <div class="stack">
         <div class="callout red">

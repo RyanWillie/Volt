@@ -38,6 +38,25 @@ TEST_CASE("Capability profile document round-trips byte-stable") {
     CHECK(volt::io::write_capability_profile(stream_profile) == text);
 }
 
+TEST_CASE("JLCPCB 2-layer capability profile round-trips physical limits byte-stable") {
+    const auto text = read_fixture("jlcpcb_2layer.voltcap.json");
+
+    const auto profile = volt::io::read_capability_profile_text(text);
+
+    CHECK(profile.name() == "JLCPCB 2-layer FR-4 capability snapshot");
+    CHECK(profile.provenance().source == "https://jlcpcb.com/capabilities/pcb-capabilities");
+    CHECK(profile.provenance().as_of == "2026-06-13");
+    CHECK(profile.supported_copper_layer_counts() == std::vector<int>{2});
+    REQUIRE(profile.board_thickness_range_mm().has_value());
+    CHECK(profile.board_thickness_range_mm()->minimum_mm == 0.4);
+    CHECK(profile.board_thickness_range_mm()->maximum_mm == 2.0);
+    CHECK(profile.available_copper_weights_oz() == std::vector<double>{1.0, 2.0, 2.5, 3.5, 4.5});
+    REQUIRE(profile.drill_diameter_range_mm().has_value());
+    CHECK(profile.drill_diameter_range_mm()->minimum_mm == 0.15);
+    CHECK(profile.drill_diameter_range_mm()->maximum_mm == 6.3);
+    CHECK(volt::io::write_capability_profile(profile) == text);
+}
+
 TEST_CASE("Capability profile reader rejects malformed documents") {
     const auto text = read_fixture("example_fab_2layer.voltcap.json");
 
@@ -68,4 +87,10 @@ TEST_CASE("Capability profile reader rejects malformed documents") {
     duplicate_pair["profile"]["minimum_clearances"].push_back(
         {{"first", "pad"}, {"second", "track"}, {"clearance_mm", 0.25}});
     CHECK_THROWS(volt::io::read_capability_profile_text(duplicate_pair.dump()));
+
+    auto reversed_range = nlohmann::json::parse(text);
+    reversed_range["profile"]["drill_diameter_range_mm"] =
+        nlohmann::json{{"minimum_mm", 6.3}, {"maximum_mm", 0.15}};
+    CHECK_THROWS_AS(volt::io::read_capability_profile_text(reversed_range.dump()),
+                    std::invalid_argument);
 }
