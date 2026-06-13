@@ -1153,6 +1153,7 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     assert [warning.construct for warning in with_loss.warnings] == ["board.zone"]
     assert with_loss.warnings[0].kind == "unsupported"
     assert with_loss.warnings[0].severity == "warning"
+    assert with_loss.warnings[0].fabrication_impact == "fab-critical"
 
 
 def test_python_board_authoring_writes_zones_keepouts_rooms_and_text():
@@ -1343,6 +1344,7 @@ def test_python_board_authoring_adds_generic_board_primitives():
         "board.feature.cutout",
         "board.feature.circle",
     ]
+    assert {warning.fabrication_impact for warning in export.warnings} == {"fab-critical"}
 
 
 def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():

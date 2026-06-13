@@ -235,7 +235,7 @@
             <tr>
               <td>Zones and keepouts</td>
               <td>Loss report only</td>
-              <td>Not exported in the first subset. They are explicitly reported so users know the handoff is incomplete.</td>
+              <td>Not exported in the first subset. They are fab-critical losses because copper pours and constraints can change the manufacturable board.</td>
             </tr>
             <tr>
               <td>Nets</td>
@@ -254,12 +254,46 @@
         <pre><code>export = board.write_kicad_pcb("artifacts/pcb_led_board.kicad_pcb")
 if export.warnings:
     for warning in export.warnings:
-        print(warning.kind, warning.construct, warning.message)</code></pre>
+        print(warning.fabrication_impact, warning.construct, warning.message)</code></pre>
         <p>
           The example board at <code>examples/pcb_led_board</code> commits a generated
           <code>pcb_led_board.kicad_pcb</code> artifact alongside Volt JSON and SVG output.
-          Its test fails if the KiCad export reports any loss.
+          Project runs collect fab-critical KiCad export losses as
+          <code>PCB_KICAD_FAB_EXPORT_LOSS</code> diagnostics under <code>pcb.kicad_export</code>.
         </p>
+      </div>
+    </section>
+
+    <section>
+      <aside>Loss gating</aside>
+      <div class="stack">
+        <h2>Losses are classified before Python sees them.</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Impact</th>
+              <th>Examples</th>
+              <th>Project behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>fab-critical</code></td>
+              <td>Unsupported copper zones, keepouts, slots, cutouts, plated board holes, omitted component placements, missing footprints, invalid pin-pad mappings, tracks or vias on unmapped copper, and text on fabrication-facing unmapped layers.</td>
+              <td>Converted to an error diagnostic with code <code>PCB_KICAD_FAB_EXPORT_LOSS</code>. The diagnostic rule identity is the KiCad loss construct, such as <code>board.zone</code> or <code>board.feature.slot</code>, so expected-diagnostics policy can explicitly allow only the known loss.</td>
+            </tr>
+            <tr>
+              <td><code>informational</code></td>
+              <td>Annotation text on a mechanical/documentation Volt layer that has no KiCad PCB layer mapping.</td>
+              <td>Remains in <code>KiCadPcbExport.warnings</code> for visibility, but does not enter the standard project diagnostics gate.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          A clean badge-class routed board should export with no fab-critical losses. The
+          <code>kicad_routed_badge.kicad_pcb</code> golden fixture pins byte-stable ordering,
+          units, coordinates, pad counts, track segments, vias, and net-table output.
+        </div>
       </div>
     </section>
 
@@ -273,10 +307,16 @@ if export.warnings:
           <li>Run KiCad DRC for fabrication-facing checks that are outside Volt's current subset.</li>
           <li>Use KiCad's plotting tools to generate Gerber and Excellon files for a fabricator.</li>
         </ol>
+        <pre><code>python3 scripts/verify-kicad-fab-export.py artifacts/pcb_led_board.kicad_pcb --output-dir artifacts/kicad-fab --drc</code></pre>
+        <p>
+          The script runs <code>kicad-cli pcb export gerbers</code>, drill export, and optional
+          <code>kicad-cli pcb drc</code> when KiCad is installed. It exits successfully with a
+          clear skip message when <code>kicad-cli</code> is absent, so CI does not depend on KiCad.
+        </p>
         <div class="callout warning">
-          Treat adapter warnings as part of the artifact. If zones, keepouts, unsupported layers,
-          or unsupported placement sides are reported, inspect or resolve those constructs before
-          manufacturing from the KiCad file.
+          Treat adapter warnings as part of the artifact. Fab-critical warnings mean the KiCad
+          handoff omitted board meaning that can affect fabrication; resolve the construct or
+          explicitly accept the diagnostic before manufacturing from the KiCad file.
         </div>
       </div>
     </section>

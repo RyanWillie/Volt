@@ -360,6 +360,153 @@ def test_project_expected_diagnostics_allow_success_with_expected_diagnostics():
     assert result.missing_expected_diagnostics == ()
 
 
+def test_project_kicad_fab_critical_loss_fails_until_expected():
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    @project.board
+    def board(context):
+        pcb = _stage_board(context.design())
+        pcb.add(volt.Slot(start=(2.0, 2.0), end=(5.0, 2.0), width=1.0, role="mounting"))
+        return pcb
+
+    result = project.run()
+
+    assert not result.ok
+    diagnostic = next(
+        diagnostic
+        for diagnostic in result.diagnostics
+        if diagnostic.code == "PCB_KICAD_FAB_EXPORT_LOSS"
+    )
+    assert diagnostic.severity == "error"
+    assert diagnostic.category == "pcb.fabrication"
+    assert diagnostic.stage == "board"
+    assert diagnostic.source == "pcb:Main"
+    assert diagnostic.report == "pcb.kicad_export"
+    assert diagnostic.board == "Main"
+    assert diagnostic.rule == "board.feature.slot"
+    assert "board.feature.slot" in diagnostic.message
+
+    project.expect_diagnostic(
+        code="PCB_KICAD_FAB_EXPORT_LOSS",
+        severity="error",
+        stage="board",
+        report="pcb.kicad_export",
+        board="Main",
+        rule="board.feature.slot",
+    )
+    expected = project.run()
+
+    assert expected.ok
+    assert expected.expected_diagnostics_ok
+    assert expected.unexpected_diagnostics == ()
+
+
+def test_project_expected_kicad_loss_construct_does_not_cover_another_loss():
+    project = volt.Project("status-led")
+    project.expect_diagnostic(
+        code="PCB_KICAD_FAB_EXPORT_LOSS",
+        severity="error",
+        stage="board",
+        report="pcb.kicad_export",
+        board="Main",
+        rule="board.feature.slot",
+    )
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    @project.board
+    def board(context):
+        pcb = _stage_board(context.design())
+        front = pcb.add_layer("F.Cu", role="copper", side="top")
+        nets = {net.name: net for net in context.design().nets()}
+        pcb.add(volt.Slot(start=(2.0, 2.0), end=(5.0, 2.0), width=1.0, role="mounting"))
+        pcb.add_zone(
+            outline=((1.0, 1.0), (6.0, 1.0), (6.0, 4.0), (1.0, 4.0)),
+            layers=(front,),
+            net=nets["VCC"],
+        )
+        return pcb
+
+    result = project.run()
+
+    assert not result.ok
+    assert [(item.code, item.matched) for item in result.expected_diagnostics] == [
+        ("PCB_KICAD_FAB_EXPORT_LOSS", True)
+    ]
+    assert [diagnostic.rule for diagnostic in result.expected_project_diagnostics] == [
+        "board.feature.slot"
+    ]
+    unexpected_kicad = [
+        diagnostic
+        for diagnostic in result.unexpected_diagnostics
+        if diagnostic.code == "PCB_KICAD_FAB_EXPORT_LOSS"
+    ]
+    assert [diagnostic.rule for diagnostic in unexpected_kicad] == [
+        "board.zone"
+    ]
+
+
+def test_project_informational_kicad_loss_does_not_fail():
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    @project.board
+    def board(context):
+        pcb = _stage_board(context.design())
+        docs = pcb.add_layer("Documentation", role="mechanical", side="none")
+        pcb.add_text("Assembly note", at=(2.0, 8.0), layer=docs)
+        return pcb
+
+    result = project.run()
+
+    assert result.ok
+    assert "PCB_KICAD_FAB_EXPORT_LOSS" not in {
+        diagnostic.code for diagnostic in result.diagnostics
+    }
+    export = result.board("Main").to_kicad_pcb()
+    assert [warning.fabrication_impact for warning in export.warnings] == [
+        "informational"
+    ]
+
+
+def test_project_fabrication_layer_kicad_text_loss_fails():
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return _board_ready_design()
+
+    @project.board
+    def board(context):
+        pcb = _stage_board(context.design())
+        fabrication = pcb.add_layer("FabNotes", role="fabrication", side="top")
+        pcb.add_text("Fab note", at=(2.0, 8.0), layer=fabrication)
+        return pcb
+
+    result = project.run()
+
+    assert not result.ok
+    diagnostic = next(
+        diagnostic
+        for diagnostic in result.diagnostics
+        if diagnostic.code == "PCB_KICAD_FAB_EXPORT_LOSS"
+    )
+    assert diagnostic.rule == "board.text.layer"
+    export = result.board("Main").to_kicad_pcb()
+    assert [warning.fabrication_impact for warning in export.warnings] == [
+        "fab-critical"
+    ]
+
+
 def test_project_stage_tests_run_with_product_check_helpers():
     project = volt.Project("status-led")
 

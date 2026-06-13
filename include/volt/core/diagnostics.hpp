@@ -22,14 +22,16 @@ inline constexpr auto Erc = std::string_view{"erc"};
 inline constexpr auto Drc = std::string_view{"drc"};
 inline constexpr auto PcbBoard = std::string_view{"pcb.board"};
 inline constexpr auto PcbVisual = std::string_view{"pcb.visual"};
+inline constexpr auto PcbFabrication = std::string_view{"pcb.fabrication"};
 
 } // namespace diagnostic_categories
 
 namespace diagnostic_category_catalogs {
 
-inline constexpr auto All = std::array{diagnostic_categories::General, diagnostic_categories::Erc,
-                                       diagnostic_categories::Drc, diagnostic_categories::PcbBoard,
-                                       diagnostic_categories::PcbVisual};
+inline constexpr auto All =
+    std::array{diagnostic_categories::General,   diagnostic_categories::Erc,
+               diagnostic_categories::Drc,       diagnostic_categories::PcbBoard,
+               diagnostic_categories::PcbVisual, diagnostic_categories::PcbFabrication};
 
 } // namespace diagnostic_category_catalogs
 
@@ -106,6 +108,12 @@ inline constexpr auto BoardFeatureAnnotationMissing =
 
 } // namespace pcb_visual_diagnostic_codes
 
+namespace pcb_fabrication_diagnostic_codes {
+
+inline constexpr auto KiCadFabExportLoss = std::string_view{"PCB_KICAD_FAB_EXPORT_LOSS"};
+
+} // namespace pcb_fabrication_diagnostic_codes
+
 namespace diagnostic_code_catalogs {
 
 inline constexpr auto Erc = std::array{erc_diagnostic_codes::PinMustNotConnect,
@@ -154,6 +162,9 @@ inline constexpr auto PcbVisual =
                pcb_visual_diagnostic_codes::LabelOutsideBoard,
                pcb_visual_diagnostic_codes::RouteReadabilityConflict,
                pcb_visual_diagnostic_codes::BoardFeatureAnnotationMissing};
+
+inline constexpr auto PcbFabrication =
+    std::array{pcb_fabrication_diagnostic_codes::KiCadFabExportLoss};
 
 } // namespace diagnostic_code_catalogs
 
@@ -573,10 +584,15 @@ class Diagnostic {
     Diagnostic(Severity severity, DiagnosticCode code, DiagnosticCategory category,
                std::string message, std::vector<EntityRef> entities = {},
                std::vector<DiagnosticOverlay> overlays = {},
-               std::optional<DiagnosticMeasurement> measurement = std::nullopt)
+               std::optional<DiagnosticMeasurement> measurement = std::nullopt,
+               std::optional<std::string> rule = std::nullopt)
         : severity_{severity}, code_{std::move(code)}, category_{std::move(category)},
           message_{std::move(message)}, entities_{std::move(entities)},
-          overlays_{std::move(overlays)}, measurement_{measurement} {}
+          overlays_{std::move(overlays)}, measurement_{measurement}, rule_{std::move(rule)} {
+        if (rule_.has_value() && rule_->empty()) {
+            throw std::invalid_argument{"Diagnostic rule identity must not be empty"};
+        }
+    }
 
     /** Return the diagnostic severity. */
     [[nodiscard]] Severity severity() const noexcept { return severity_; }
@@ -603,6 +619,9 @@ class Diagnostic {
         return measurement_;
     }
 
+    /** Return the stable rule or adapter construct identity, when one is meaningful. */
+    [[nodiscard]] const std::optional<std::string> &rule() const noexcept { return rule_; }
+
   private:
     Severity severity_;
     DiagnosticCode code_;
@@ -611,6 +630,7 @@ class Diagnostic {
     std::vector<EntityRef> entities_;
     std::vector<DiagnosticOverlay> overlays_;
     std::optional<DiagnosticMeasurement> measurement_;
+    std::optional<std::string> rule_;
 };
 
 /** Ordered collection of diagnostics from one or more kernel checks. */

@@ -34,6 +34,9 @@ void bind_circuit(pybind11::module_ &module) {
                []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::Drc); });
     module.def("pcb_visual_diagnostic_codes",
                []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::PcbVisual); });
+    module.def("pcb_fabrication_diagnostic_codes", []() {
+        return string_view_catalog_to_tuple(diagnostic_code_catalogs::PcbFabrication);
+    });
     module.def("read_capability_profile_text", [](const std::string &text) {
         return board_capability_profile_to_dict(volt::io::read_capability_profile_text(text));
     });

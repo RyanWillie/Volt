@@ -26,6 +26,9 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
     assert volt.DIAGNOSTIC_CATEGORIES == tuple(_volt.diagnostic_categories())
     assert volt.ERC_DIAGNOSTIC_CODES == tuple(_volt.erc_diagnostic_codes())
     assert volt.DRC_DIAGNOSTIC_CODES == tuple(_volt.drc_diagnostic_codes())
+    assert volt.PCB_FABRICATION_DIAGNOSTIC_CODES == tuple(
+        _volt.pcb_fabrication_diagnostic_codes()
+    )
 
     assert volt.DIAGNOSTIC_CATEGORIES == (
         "general",
@@ -33,6 +36,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "drc",
         "pcb.board",
         "pcb.visual",
+        "pcb.fabrication",
     )
     assert volt.ERC_DIAGNOSTIC_CODES == (
         "PIN_MUST_NOT_CONNECT",
@@ -73,6 +77,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "PCB_DRILL_DIAMETER_OUTSIDE_CAPABILITY",
         "PCB_DRILL_DIAMETER_AT_CAPABILITY_LIMIT",
     )
+    assert volt.PCB_FABRICATION_DIAGNOSTIC_CODES == ("PCB_KICAD_FAB_EXPORT_LOSS",)
 
 
 def test_voltage_rating_diagnostic_is_inspectable():
@@ -455,6 +460,31 @@ def test_diagnostic_without_measurement_defaults_to_none():
     assert diagnostic.measurement is None
 
 
+def test_diagnostic_rule_identity_is_preserved_into_project_diagnostics():
+    diagnostic = _diagnostic_from_dict(
+        {
+            "severity": "error",
+            "category": "pcb.fabrication",
+            "code": "PCB_KICAD_FAB_EXPORT_LOSS",
+            "message": "KiCad PCB export lost board.zone",
+            "entities": [{"kind": "board", "index": 0}],
+            "rule": "board.zone",
+        }
+    )
+
+    [project_diagnostic] = _report_diagnostics(
+        "board",
+        "pcb:Main",
+        "pcb.kicad_export",
+        [diagnostic],
+        design="demo",
+        board="Main",
+    )
+
+    assert diagnostic.rule == "board.zone"
+    assert project_diagnostic.rule == "board.zone"
+
+
 def test_project_diagnostics_preserve_pcb_visual_overlay_payloads():
     diagnostics = [
         volt.Diagnostic(
@@ -501,6 +531,7 @@ def test_project_diagnostics_preserve_pcb_visual_overlay_payloads():
             }
         ],
         "measurement": None,
+        "rule": None,
     }
 
 

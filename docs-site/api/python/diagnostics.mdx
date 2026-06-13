@@ -21,6 +21,7 @@ Source: `python/volt/diagnostics.py`
 | `category: str` |
 | `overlays: tuple[DiagnosticOverlay, ...]` |
 | `measurement: DiagnosticMeasurement \| None` |
+| `rule: str \| None` |
 
 ## `volt.DiagnosticEntity`
 
@@ -111,6 +112,16 @@ Source: `python/volt/diagnostics.py`
 
 ```python
 ERC_DIAGNOSTIC_CODES = tuple(_volt.erc_diagnostic_codes())
+```
+
+## `volt.PCB_FABRICATION_DIAGNOSTIC_CODES`
+
+Public value or alias exported by `volt`.
+
+Source: `python/volt/diagnostics.py`
+
+```python
+PCB_FABRICATION_DIAGNOSTIC_CODES = tuple(_volt.pcb_fabrication_diagnostic_codes())
 ```
 
 ## `volt.PCB_VISUAL_DIAGNOSTIC_CODES`

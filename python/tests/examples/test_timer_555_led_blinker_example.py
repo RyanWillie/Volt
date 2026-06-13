@@ -361,7 +361,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
     }
     assert len(pcb["board"]["placements"]) == 9
     assert len(pcb["board"]["footprint_definitions"]) == 5
-    assert len(pcb["board"]["tracks"]) == 18
+    assert len(pcb["board"]["tracks"]) == 23
     assert len(pcb["board"]["vias"]) == 6
     component_ids = {component["reference"]: component["id"] for component in logical["components"]}
     net_ids = {net["name"]: net["id"] for net in logical["nets"]}
@@ -417,16 +417,13 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         {r2_timing_pad, c1_timing_pad} <= {tuple(point) for point in track["points"]}
         for track in timing_tracks
     )
-    assert pcb["board"]["zones"] == [
-        {
-            "id": "board_zone:0",
-            "net": "net:1",
-            "layers": ["board_layer:1"],
-            "outline": [[1, 1], [47, 1], [47, 31], [1, 31]],
-            "fill": "solid",
-            "priority": 0,
-        }
+    assert pcb["board"].get("zones", []) == []
+    gnd_back_tracks = [
+        track
+        for track in pcb["board"]["tracks"]
+        if track["net"] == net_ids["GND"] and track["layer"] == "board_layer:1"
     ]
+    assert len(gnd_back_tracks) == 5
     assert {
         footprint["ref"]["name"]: [pad["kind"] for pad in footprint["pads"]]
         for footprint in pcb["board"]["footprint_definitions"]

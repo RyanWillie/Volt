@@ -1138,6 +1138,16 @@ def _collect_default_diagnostics(runs: tuple[_StageRun, ...]) -> tuple[ProjectDi
                         board=model.name,
                     )
                 )
+                diagnostics.extend(
+                    _report_diagnostics(
+                        run.stage.name,
+                        f"pcb:{model.name}",
+                        "pcb.kicad_export",
+                        model.to_kicad_pcb().diagnostics,
+                        design=model._design.name,
+                        board=model.name,
+                    )
+                )
     return tuple(diagnostics)
 
 
@@ -1180,6 +1190,7 @@ def _report_diagnostics(
     *,
     design: str | None = None,
     board: str | None = None,
+    rule: str | None = None,
 ):
     return [
         ProjectDiagnostic(
@@ -1195,6 +1206,7 @@ def _report_diagnostics(
             measurement=getattr(diagnostic, "measurement", None),
             design=design,
             board=board,
+            rule=rule if rule is not None else getattr(diagnostic, "rule", None),
         )
         for diagnostic in diagnostics
     ]
@@ -1513,6 +1525,7 @@ def _flat_diagnostic_payload(diagnostic: ProjectDiagnostic) -> dict[str, object]
         "entities": [_diagnostic_entity_payload(entity) for entity in diagnostic.entities],
         "overlays": [_diagnostic_overlay_payload(overlay) for overlay in diagnostic.overlays],
         "measurement": _diagnostic_measurement_payload(diagnostic.measurement),
+        "rule": diagnostic.rule,
     }
 
 

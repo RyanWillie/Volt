@@ -125,6 +125,169 @@ struct ResistorCircuit {
     return board;
 }
 
+struct LedBadgeCircuit {
+    volt::Circuit circuit;
+    volt::ComponentId header;
+    volt::ComponentId resistor;
+    volt::ComponentId led;
+    volt::NetId vcc;
+    volt::NetId led_a;
+    volt::NetId gnd;
+};
+
+[[nodiscard]] LedBadgeCircuit make_led_badge_circuit() {
+    auto circuit = volt::Circuit{};
+    const auto header_one = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto header_two = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto passive_one = circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto passive_two = circuit.add_pin_definition(volt::PinDefinition{
+        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto led_anode = circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto led_cathode = circuit.add_pin_definition(volt::PinDefinition{
+        "K", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+
+    const auto header_definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"Header", {header_one, header_two}});
+    const auto passive_definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", {passive_one, passive_two}});
+    const auto led_definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"LED", {led_anode, led_cathode}});
+
+    const auto header =
+        circuit.instantiate_component(header_definition, volt::ReferenceDesignator{"J1"});
+    const auto resistor =
+        circuit.instantiate_component(passive_definition, volt::ReferenceDesignator{"R1"});
+    const auto led = circuit.instantiate_component(led_definition, volt::ReferenceDesignator{"D1"});
+    circuit.set_component_property(resistor, volt::PropertyKey{"Value"},
+                                   volt::PropertyValue{"330R"});
+    circuit.set_component_property(led, volt::PropertyKey{"Value"}, volt::PropertyValue{"RED"});
+
+    const auto vcc = circuit.add_net(volt::Net{volt::NetName{"VCC"}, volt::NetKind::Power});
+    const auto led_a = circuit.add_net(volt::Net{volt::NetName{"LED_A"}, volt::NetKind::Signal});
+    const auto gnd = circuit.add_net(volt::Net{volt::NetName{"GND"}, volt::NetKind::Ground});
+
+    circuit.connect(vcc, volt::queries::pin_by_definition(circuit, header, header_one).value());
+    circuit.connect(vcc, volt::queries::pin_by_definition(circuit, resistor, passive_one).value());
+    circuit.connect(led_a,
+                    volt::queries::pin_by_definition(circuit, resistor, passive_two).value());
+    circuit.connect(led_a, volt::queries::pin_by_definition(circuit, led, led_anode).value());
+    circuit.connect(gnd, volt::queries::pin_by_definition(circuit, led, led_cathode).value());
+    circuit.connect(gnd, volt::queries::pin_by_definition(circuit, header, header_two).value());
+
+    circuit.select_physical_part(
+        header,
+        volt::PhysicalPart{
+            volt::ManufacturerPart{"Generic", "HDR-1x02"},
+            volt::PackageRef{"2.54mm-1x02"},
+            volt::FootprintRef{"connectors", "PinHeader_1x02_P2.54mm_Vertical"},
+            std::vector{volt::PinPadMapping{header_one, "1"}, volt::PinPadMapping{header_two, "2"}},
+        });
+    circuit.select_physical_part(resistor, volt::PhysicalPart{
+                                               volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                                               volt::PackageRef{"0603"},
+                                               volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                                               std::vector{volt::PinPadMapping{passive_one, "1"},
+                                                           volt::PinPadMapping{passive_two, "2"}},
+                                           });
+    circuit.select_physical_part(led, volt::PhysicalPart{
+                                          volt::ManufacturerPart{"Lite-On", "LTST-C190KRKT"},
+                                          volt::PackageRef{"0603"},
+                                          volt::FootprintRef{"leds", "LED_0603_1608Metric"},
+                                          std::vector{volt::PinPadMapping{led_anode, "1"},
+                                                      volt::PinPadMapping{led_cathode, "2"}},
+                                      });
+
+    return LedBadgeCircuit{std::move(circuit), header, resistor, led, vcc, led_a, gnd};
+}
+
+[[nodiscard]] volt::Board make_led_badge_board(const LedBadgeCircuit &fixture) {
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Badge"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    const auto silk = board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{36.0, 18.0}));
+    static_cast<void>(board.add_feature(
+        volt::BoardFeature::hole("MH1", volt::BoardPoint{4.0, 4.0}, 2.4, false, "mounting")));
+    static_cast<void>(board.place_component(
+        volt::ComponentPlacement{fixture.header, volt::BoardPoint{6.0, 9.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top, true}));
+    static_cast<void>(board.place_component(
+        volt::ComponentPlacement{fixture.resistor, volt::BoardPoint{18.0, 9.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top, true}));
+    static_cast<void>(board.place_component(
+        volt::ComponentPlacement{fixture.led, volt::BoardPoint{28.0, 9.0},
+                                 volt::BoardRotation::degrees(180.0), volt::BoardSide::Top, true}));
+    static_cast<void>(board.add_track(volt::BoardTrack{
+        fixture.vcc,
+        front,
+        std::vector{volt::BoardPoint{6.0, 7.73}, volt::BoardPoint{12.0, 7.73},
+                    volt::BoardPoint{17.25, 9.0}},
+        0.25,
+    }));
+    static_cast<void>(board.add_track(volt::BoardTrack{
+        fixture.led_a,
+        front,
+        std::vector{volt::BoardPoint{18.75, 9.0}, volt::BoardPoint{23.0, 5.5},
+                    volt::BoardPoint{28.75, 9.0}},
+        0.25,
+    }));
+    static_cast<void>(board.add_via(
+        volt::BoardVia{fixture.gnd, volt::BoardPoint{27.25, 9.0}, front, back, 0.35, 0.75}));
+    static_cast<void>(board.add_track(volt::BoardTrack{
+        fixture.gnd,
+        back,
+        std::vector{volt::BoardPoint{27.25, 9.0}, volt::BoardPoint{18.0, 14.0},
+                    volt::BoardPoint{6.0, 10.27}},
+        0.30,
+    }));
+    static_cast<void>(
+        board.add_text(volt::BoardText{"VOL-187", volt::BoardPoint{18.0, 15.5},
+                                       volt::BoardRotation::degrees(0.0), silk, 1.0, true}));
+    return board;
+}
+
+[[nodiscard]] std::size_t exported_segment_count(const volt::Board &board) {
+    auto count = std::size_t{0};
+    for (std::size_t index = 0; index < board.track_count(); ++index) {
+        count += board.track(volt::BoardTrackId{index}).points().size() - 1U;
+    }
+    return count;
+}
+
+[[nodiscard]] std::size_t exported_pad_count(const volt::Board &board) {
+    auto count = board.feature_count();
+    const auto library = volt::builtin_footprint_library();
+    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+        const auto &placement = board.placement(volt::ComponentPlacementId{index});
+        const auto &part = board.circuit().selected_physical_part(placement.component()).value();
+        const auto *definition = library.find(part.footprint());
+        REQUIRE(definition != nullptr);
+        count += definition->pad_count();
+    }
+    return count;
+}
+
 [[nodiscard]] volt::FootprintDefinition make_large_footprint(std::size_t pad_count) {
     auto pads = std::vector<volt::FootprintPad>{};
     pads.reserve(pad_count);
@@ -189,6 +352,30 @@ TEST_CASE("KiCad PCB writer exports a deterministic manufacturable board subset"
           volt::adapters::kicad::write_board(board, volt::builtin_footprint_library()).text);
 }
 
+TEST_CASE("KiCad PCB writer pins a routed multi-net golden board") {
+    const auto fixture = make_led_badge_circuit();
+    const auto board = make_led_badge_board(fixture);
+
+    const auto result =
+        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+
+    CHECK_FALSE(result.loss_report.has_fab_critical_warnings());
+    CHECK(result.text == read_fixture("kicad_routed_badge.kicad_pcb"));
+    CHECK(result.text ==
+          volt::adapters::kicad::write_board(board, volt::builtin_footprint_library()).text);
+    CHECK(count_occurrences(result.text, "(footprint ") ==
+          board.placement_count() + board.feature_count());
+    CHECK(count_occurrences(result.text, "(pad ") == exported_pad_count(board));
+    CHECK(count_occurrences(result.text, "(segment\n") == exported_segment_count(board));
+    CHECK(count_occurrences(result.text, "(via\n") == board.via_count());
+    CHECK(count_occurrences(result.text, "\n  (net ") == board.circuit().net_count() + 1U);
+    CHECK(result.text.find("(net 1 \"VCC\")") != std::string::npos);
+    CHECK(result.text.find("(net 2 \"LED_A\")") != std::string::npos);
+    CHECK(result.text.find("(net 3 \"GND\")") != std::string::npos);
+    CHECK(result.text.find("(layer \"F.Cu\")") != std::string::npos);
+    CHECK(result.text.find("(layer \"B.Cu\")") != std::string::npos);
+}
+
 TEST_CASE("KiCad PCB writer reports unsupported out-of-subset board constructs") {
     const auto fixture = make_resistor_circuit();
     auto board = make_routed_board(fixture);
@@ -228,6 +415,46 @@ TEST_CASE("KiCad PCB writer reports unsupported out-of-subset board constructs")
     CHECK(result.loss_report.warnings().at(2).construct == "board.feature.slot");
     CHECK(result.loss_report.warnings().at(3).construct == "board.feature.cutout");
     CHECK(result.loss_report.warnings().at(4).construct == "board.feature.circle");
+}
+
+TEST_CASE("KiCad PCB writer classifies fab-critical and informational losses") {
+    const auto fixture = make_resistor_circuit();
+    auto board = make_routed_board(fixture);
+    [[maybe_unused]] const auto zone = board.add_zone(volt::BoardZone{
+        std::vector{volt::BoardPoint{2.0, 2.0}, volt::BoardPoint{12.0, 2.0},
+                    volt::BoardPoint{12.0, 8.0}, volt::BoardPoint{2.0, 8.0}},
+        std::vector{volt::BoardLayerId{0}},
+        fixture.left_net,
+    });
+    const auto documentation_layer = board.add_layer(volt::BoardLayer{
+        "Documentation", volt::BoardLayerRole::Mechanical, volt::BoardLayerSide::None});
+    [[maybe_unused]] const auto text = board.add_text(
+        volt::BoardText{"ASSEMBLY NOTE", volt::BoardPoint{2.0, 20.0},
+                        volt::BoardRotation::degrees(0.0), documentation_layer, 1.0, true});
+    const auto fabrication_layer = board.add_layer(
+        volt::BoardLayer{"FabNotes", volt::BoardLayerRole::Fabrication, volt::BoardLayerSide::Top});
+    [[maybe_unused]] const auto fab_text = board.add_text(
+        volt::BoardText{"FAB NOTE", volt::BoardPoint{2.0, 22.0}, volt::BoardRotation::degrees(0.0),
+                        fabrication_layer, 1.0, true});
+
+    const auto result =
+        volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
+
+    REQUIRE(result.loss_report.warnings().size() == 3);
+    CHECK(result.loss_report.warnings().at(0).construct == "board.zone");
+    CHECK(result.loss_report.warnings().at(0).fabrication_impact ==
+          volt::adapters::kicad::LossFabricationImpact::FabCritical);
+    CHECK(result.loss_report.warnings().at(1).construct == "board.text.layer");
+    CHECK(result.loss_report.warnings().at(1).severity ==
+          volt::adapters::kicad::LossSeverity::Info);
+    CHECK(result.loss_report.warnings().at(1).fabrication_impact ==
+          volt::adapters::kicad::LossFabricationImpact::Informational);
+    CHECK(result.loss_report.warnings().at(2).construct == "board.text.layer");
+    CHECK(result.loss_report.warnings().at(2).severity ==
+          volt::adapters::kicad::LossSeverity::Warning);
+    CHECK(result.loss_report.warnings().at(2).fabrication_impact ==
+          volt::adapters::kicad::LossFabricationImpact::FabCritical);
+    CHECK(result.loss_report.has_fab_critical_warnings());
 }
 
 TEST_CASE("KiCad PCB writer keeps generated footprint metadata DRC-neutral") {

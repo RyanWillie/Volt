@@ -27,11 +27,6 @@ def build_board(context: volt.BuildContext) -> volt.Board:
     board.add(volt.Hole(center=(44.0, 4.0), diameter=2.2, role="mounting"))
     board.add(volt.Hole(center=(4.0, 28.0), diameter=2.2, role="mounting"))
     board.add(volt.Hole(center=(44.0, 28.0), diameter=2.2, role="mounting"))
-    board.add_zone(
-        outline=((1.0, 1.0), (47.0, 1.0), (47.0, 31.0), (1.0, 31.0)),
-        layers=(back,),
-        net=nets["GND"],
-    )
 
     with board.layout(unit=1.0, grid=0.5) as layout:
         header = layout.place(
@@ -114,6 +109,9 @@ def build_board(context: volt.BuildContext) -> volt.Board:
                 start_layer=front,
                 end_layer=back,
             )
+        gnd_backbone = tuple(drop for _pad, drop in gnd_drops)
+        for start, end in zip(gnd_backbone, gnd_backbone[1:]):
+            layout.route(nets["GND"], layer=back, width=0.30).at(start).to(end)
 
         power_rail = layout.snap(header[1].up(5.15))
         layout.route(nets["+5V"], layer=front, width=0.30).at(header[1]).toy(
