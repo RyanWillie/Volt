@@ -15,7 +15,6 @@ from .stm32_board import Stm32UsbBuckBoard, build_board
 
 def build_project() -> volt.Project:
     project = volt.Project("stm32-usb-buck", description="STM32 USB buck reference design")
-    project.expect_diagnostic(code="POWER_INPUT_WITHOUT_SOURCE", severity="error")
     project.expect_diagnostic(code="SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED", severity="warning")
     project.expect_diagnostic(code="SCHEMATIC_TITLE_BLOCK_TEXT_OVERFLOW", severity="warning")
     project.expect_diagnostic(code="SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL", severity="warning")

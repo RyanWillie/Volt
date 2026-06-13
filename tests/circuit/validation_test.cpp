@@ -359,9 +359,8 @@ TEST_CASE("Circuit electrical-rule validation excludes connectivity diagnostics"
 
     const auto report = volt::validate_electrical_rules(circuit);
 
-    REQUIRE(report.count() == 2);
-    CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"POWER_INPUT_WITHOUT_SOURCE"});
-    CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"PIN_VOLTAGE_RANGE_VIOLATION"});
+    REQUIRE(report.count() == 1);
+    CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"PIN_VOLTAGE_RANGE_VIOLATION"});
 }
 
 TEST_CASE("Full circuit validation preserves connectivity before electrical rules") {
@@ -400,11 +399,10 @@ TEST_CASE("Full circuit validation preserves connectivity before electrical rule
 
     const auto report = volt::validate_circuit(circuit);
 
-    REQUIRE(report.count() == 4);
+    REQUIRE(report.count() == 3);
     CHECK(report.diagnostics()[0].code() == volt::DiagnosticCode{"UNCONNECTED_REQUIRED_PIN"});
     CHECK(report.diagnostics()[1].code() == volt::DiagnosticCode{"SINGLE_PIN_NET"});
-    CHECK(report.diagnostics()[2].code() == volt::DiagnosticCode{"POWER_INPUT_WITHOUT_SOURCE"});
-    CHECK(report.diagnostics()[3].code() == volt::DiagnosticCode{"PIN_VOLTAGE_RANGE_VIOLATION"});
+    CHECK(report.diagnostics()[2].code() == volt::DiagnosticCode{"PIN_VOLTAGE_RANGE_VIOLATION"});
     for (const auto &diagnostic : report.diagnostics()) {
         CHECK(diagnostic.category() == volt::DiagnosticCategory{volt::diagnostic_categories::Erc});
     }

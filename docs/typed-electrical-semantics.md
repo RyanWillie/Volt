@@ -266,6 +266,9 @@ Supply participation comes from pin semantics:
 - A supply source is a pin with `terminal_kind = Power` and `direction = Output` or
   `Bidirectional`. Regulator outputs, connector-provided rails, battery outputs, and
   module ports that source a rail lower into this shape.
+- A power net with an authored typed `voltage` quantity is an explicit supply assertion for
+  ERC. This covers rails sourced through passive series elements such as switches, fuses,
+  ferrites, and jumpers until Volt has a richer kernel-owned series-element model.
 - A supply load is a pin with `terminal_kind = Power` and `direction = Input`. IC supply
   pins and regulator inputs lower into this shape.
 - A voltage regulator is not a special kernel object for ERC. It is a component whose
@@ -296,7 +299,8 @@ draw, power dissipation, or regulator behavior from a component category string.
 Ambiguous or incomplete power intent should be reported through ERC diagnostics, not by
 rejecting the circuit at mutation time:
 
-- power inputs on a non-ground net with no typed source are errors today
+- power inputs on a non-ground net with no typed source or authored supply assertion are
+  errors today
 - ground pins connected to non-ground nets are errors today
 - power pins connected to ground nets are errors today
 - net voltage outside a connected pin voltage range is an error today
@@ -320,6 +324,7 @@ VOL-183 can now implement power/source/load diagnostics from existing kernel dat
 
 - classify supply nets from `NetKind::Power` and `NetKind::Ground`, not net-name parsing
 - classify supply sources from power output or bidirectional pins
+- treat `NetKind::Power` nets with a typed `voltage` quantity as authored supply assertions
 - classify supply loads from power input pins
 - ignore passive participants for source/load counting unless their pin semantics say
   otherwise

@@ -168,7 +168,7 @@ def test_power_pin_semantics_drive_diagnostics():
     )
     u1 = design.instantiate(load, ref="U1")
 
-    vcc = design.net("VCC", kind="power", voltage=3.3)
+    vcc = design.net("VCC", kind="power")
     vcc += u1["VCC"]
     gnd = design.net("GND", kind="ground")
     gnd += u1["GND"]
