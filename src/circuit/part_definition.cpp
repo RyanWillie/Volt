@@ -263,6 +263,10 @@ PartDefinition::PartDefinition(PartIdentity identity, std::vector<PartPin> pins,
 }
 
 void PartDefinition::require_symbol_lineup_matches_pins() const {
+    if (symbols_.empty()) {
+        throw std::invalid_argument{
+            "Part definition must contain at least one schematic symbol projection"};
+    }
     for (const auto &symbol : symbols_) {
         auto counts = std::vector<std::size_t>(pins_.size(), 0U);
         for (const auto &symbol_pin : symbol.pins()) {
@@ -287,6 +291,10 @@ void PartDefinition::require_orderable_mappings_match_pins() const {
     for (const auto &mapping : orderable_part_.pin_pad_mappings()) {
         if (find_pin_by_number(pins_, mapping.pin_number()) == nullptr) {
             throw std::invalid_argument{"Orderable part maps a pin outside the part definition"};
+        }
+        if (mapping.pad().find(',') != std::string::npos) {
+            throw std::invalid_argument{
+                "Orderable part multi-pad mappings must use one explicit pad entry per pad"};
         }
         if (find_pad_by_label(orderable_part_.footprint_pads(), mapping.pad()) == nullptr) {
             throw std::invalid_argument{

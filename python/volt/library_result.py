@@ -226,12 +226,18 @@ def _part_pad_mapping_complete(part: Part) -> bool:
 
     footprint_labels = {str(pad.label) for pad in part.footprint.pads}
     mapped_labels = _mapped_pad_labels(pads)
+    all_mapping_keys_resolve = _all_pad_mapping_keys_resolve(part, pads)
     all_mapped_labels_exist = all(label in footprint_labels for label in mapped_labels)
     all_electrical_pads_mapped = all(
         not _pad_requires_mapping(pad) or str(pad.label) in mapped_labels
         for pad in part.footprint.pads
     )
-    return all_pins_mapped and all_mapped_labels_exist and all_electrical_pads_mapped
+    return (
+        all_pins_mapped
+        and all_mapping_keys_resolve
+        and all_mapped_labels_exist
+        and all_electrical_pads_mapped
+    )
 
 
 def _part_result(
@@ -469,6 +475,12 @@ def _unique_pin_names(part: Part) -> set[str]:
     for pin in part.pins:
         names[pin.name] = names.get(pin.name, 0) + 1
     return {name for name, count in names.items() if count == 1}
+
+
+def _all_pad_mapping_keys_resolve(part: Part, pads: dict[int | str, object]) -> bool:
+    pin_numbers = {str(pin.number) for pin in part.pins}
+    unique_pin_names = _unique_pin_names(part)
+    return all(str(key) in pin_numbers or str(key) in unique_pin_names for key in pads)
 
 
 def _model_3d_reference_payload(model) -> dict[str, object] | None:

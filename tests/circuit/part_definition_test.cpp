@@ -100,6 +100,9 @@ TEST_CASE("Part definition assembly rejects symbol pins outside the pin map") {
 }
 
 TEST_CASE("Part definition assembly requires every pin to appear in each symbol exactly once") {
+    CHECK_THROWS_AS(part(three_pin_map(), std::vector<volt::HashedSchematicSymbolReference>{}),
+                    std::invalid_argument);
+
     CHECK_THROWS_AS(part(three_pin_map(), std::vector{symbol(std::vector{
                                               volt::PartSymbolPin{"GND", "1"},
                                               volt::PartSymbolPin{"VO", "2"},
@@ -134,12 +137,20 @@ TEST_CASE("Part definition assembly rejects pin-pad mappings to unknown pins or 
 }
 
 TEST_CASE("Part definition assembly requires multi-pad pins to use explicit pad mappings") {
+    const auto collapsed_pad_label = std::vector{
+        volt::PartFootprintPad{"1", -1.0, 0.0, 0.6, 0.6},
+        volt::PartFootprintPad{"2,4", 0.0, 0.0, 0.6, 0.6},
+        volt::PartFootprintPad{"3", 1.0, 0.0, 0.6, 0.6},
+    };
+
     CHECK_THROWS_AS(part(three_pin_map(), std::vector{symbol()},
-                         orderable(std::vector{
-                             volt::OrderablePinPadMapping{"1", "1"},
-                             volt::OrderablePinPadMapping{"2", "2,4"},
-                             volt::OrderablePinPadMapping{"3", "3"},
-                         })),
+                         orderable(
+                             std::vector{
+                                 volt::OrderablePinPadMapping{"1", "1"},
+                                 volt::OrderablePinPadMapping{"2", "2,4"},
+                                 volt::OrderablePinPadMapping{"3", "3"},
+                             },
+                             collapsed_pad_label)),
                     std::invalid_argument);
 
     const auto accepted = part(three_pin_map(), std::vector{symbol()},

@@ -178,6 +178,10 @@ TEST_CASE("Part definition reader rejects structurally malformed artifacts") {
 TEST_CASE("Part definition reader rejects symbol lineup contract violations") {
     const auto fixture = nlohmann::json::parse(read_fixture("ap1117.part.volt.json"));
 
+    auto empty_symbols = fixture;
+    empty_symbols["symbols"] = nlohmann::json::array();
+    check_malformed_part_is_rejected(empty_symbols);
+
     auto foreign_symbol_pin = fixture;
     foreign_symbol_pin["symbols"][0]["pins"][2] = {{"name", "ENABLE"}, {"number", "9"}};
     check_malformed_part_is_rejected(foreign_symbol_pin);
@@ -210,6 +214,7 @@ TEST_CASE("Part definition reader rejects footprint lineup contract violations")
     auto collapsed_multi_pad_mapping = fixture;
     collapsed_multi_pad_mapping["orderable_part"]["pin_pad_mappings"][1]["pad"] = "2,4";
     collapsed_multi_pad_mapping["orderable_part"]["pin_pad_mappings"].erase(2);
+    collapsed_multi_pad_mapping["orderable_part"]["footprint"]["pads"][1]["label"] = "2,4";
     check_malformed_part_is_rejected(collapsed_multi_pad_mapping);
 }
 
