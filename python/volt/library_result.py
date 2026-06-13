@@ -9,6 +9,12 @@ from typing import Iterable, Iterator
 
 from . import _volt
 from ._footprint import Footprint, footprint_ref
+from .diagnostics import (
+    DiagnosticEntity,
+    DiagnosticMeasurement,
+    DiagnosticOverlay,
+    _diagnostic_from_dict,
+)
 from .part import Part, _pad_labels
 
 
@@ -22,6 +28,10 @@ class LibraryDiagnostic:
     code: str
     message: str
     entities: tuple[object, ...] = ()
+    category: str = "general"
+    overlays: tuple[DiagnosticOverlay, ...] = ()
+    measurement: DiagnosticMeasurement | None = None
+    rule: str | None = None
 
 
 class LibraryDiagnostics:
@@ -180,9 +190,8 @@ def _validate_part(part: Part) -> tuple[_PartValidationFacts, tuple[LibraryDiagn
         )
 
     pad_mapping_complete = True
-    if has_logical_pins and part.footprint is not None:
-        pad_mapping_complete, pad_diagnostics = _validate_part_pad_mapping(part, source)
-        diagnostics.extend(pad_diagnostics)
+    if has_logical_pins and has_object_footprint:
+        pad_mapping_complete = _part_pad_mapping_complete(part)
 
     serializable = True
     try:
@@ -208,69 +217,21 @@ def _validate_part(part: Part) -> tuple[_PartValidationFacts, tuple[LibraryDiagn
     )
 
 
-def _validate_part_pad_mapping(
-    part: Part,
-    source: str,
-) -> tuple[bool, tuple[LibraryDiagnostic, ...]]:
-    diagnostics: list[LibraryDiagnostic] = []
+def _part_pad_mapping_complete(part: Part) -> bool:
     pads = part.pads or {}
     mapped_pin_numbers = _mapped_pin_numbers(part.pins, pads)
-    missing_pin_numbers = [
-        str(pin.number) for pin in part.pins if str(pin.number) not in mapped_pin_numbers
-    ]
-    if missing_pin_numbers:
-        diagnostics.append(
-            _library_diagnostic(
-                source,
-                "LIBRARY_PART_MISSING_PIN_MAPPING",
-                "Part "
-                f"{part.name} has logical pins without pad mappings: "
-                + ", ".join(missing_pin_numbers),
-            )
-        )
+    all_pins_mapped = all(str(pin.number) in mapped_pin_numbers for pin in part.pins)
+    if not isinstance(part.footprint, Footprint):
+        return all_pins_mapped
 
-    if isinstance(part.footprint, Footprint):
-        diagnostics.extend(_validate_footprint_pad_mapping(part, source, pads))
-
-    return (not diagnostics, tuple(diagnostics))
-
-
-def _validate_footprint_pad_mapping(
-    part: Part,
-    source: str,
-    pads: dict[int | str, object],
-) -> tuple[LibraryDiagnostic, ...]:
-    diagnostics: list[LibraryDiagnostic] = []
     footprint_labels = {str(pad.label) for pad in part.footprint.pads}
     mapped_labels = _mapped_pad_labels(pads)
-    unknown_labels = sorted(label for label in mapped_labels if label not in footprint_labels)
-    if unknown_labels:
-        diagnostics.append(
-            _library_diagnostic(
-                source,
-                "LIBRARY_PART_UNKNOWN_PAD",
-                f"Part {part.name} maps to unknown footprint pads: "
-                + ", ".join(unknown_labels),
-            )
-        )
-
-    missing_electrical_labels = [
-        str(pad.label)
+    all_mapped_labels_exist = all(label in footprint_labels for label in mapped_labels)
+    all_electrical_pads_mapped = all(
+        not _pad_requires_mapping(pad) or str(pad.label) in mapped_labels
         for pad in part.footprint.pads
-        if _pad_requires_mapping(pad) and str(pad.label) not in mapped_labels
-    ]
-    if missing_electrical_labels:
-        diagnostics.append(
-            _library_diagnostic(
-                source,
-                "LIBRARY_PART_INCOMPLETE_PAD_MAPPING",
-                f"Part {part.name} has electrical footprint pads without logical "
-                "pin mappings: "
-                + ", ".join(sorted(missing_electrical_labels)),
-            )
-        )
-
-    return tuple(diagnostics)
+    )
+    return all_pins_mapped and all_mapped_labels_exist and all_electrical_pads_mapped
 
 
 def _part_result(
@@ -310,7 +271,7 @@ def _build_part_artifact(
                 bytes=bytes(artifact["bytes"]),
                 sha256=str(artifact["sha256"]),
             ),
-            (),
+            _kernel_part_diagnostics(source, artifact["diagnostics"]),
         )
     except (TypeError, ValueError, RuntimeError) as error:
         return (
@@ -329,10 +290,7 @@ def _part_artifact_prerequisites(part: Part, facts: _PartValidationFacts) -> boo
     if part.library is None:
         return False
     if not (
-        facts.has_logical_pins
-        and part.footprint is not None
-        and facts.pad_mapping_complete
-        and facts.serializable
+        facts.has_logical_pins and facts.has_object_footprint and facts.serializable
     ):
         return False
     physical = part._physical_part_spec()
@@ -345,7 +303,11 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
     physical = part._physical_part_spec()
     if physical is None:
         raise ValueError("part artifact requires an orderable physical part")
-    pads = physical.pin_pads_for(part)
+    pads = (
+        physical.pin_pads_for(part)
+        if physical.same_numbered_pads or physical.pin_pads is not None
+        else {}
+    )
     footprint_library, footprint_name = footprint_ref(physical.footprint)
     return {
         "identity": {
@@ -363,6 +325,7 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
             "footprint_library": footprint_library,
             "footprint_name": footprint_name,
             "footprint_hash": _content_hash(_footprint_payload(physical.footprint)),
+            "footprint_pads": _part_footprint_pads(physical.footprint),
             "pin_pad_mappings": _part_pin_pad_mappings(part, pads),
             "approved_alternate_mpns": list(physical.approved_alternate_mpns),
             "model_3d": _model_3d_reference_payload(physical.model_3d),
@@ -387,6 +350,10 @@ def _part_symbol_refs(part: Part) -> list[dict[str, object]]:
             "name": symbol.name,
             "variant": symbol.variant,
             "hash": _content_hash(_symbol_payload(symbol)),
+            "pins": [
+                {"name": pin.name, "number": str(pin.number)}
+                for pin in symbol.pins
+            ],
         }
         for symbol in part.schematic_symbols
     ]
@@ -405,20 +372,59 @@ def _footprint_payload(footprint) -> dict[str, object]:
     return {"ref": (library, name)}
 
 
+def _part_footprint_pads(footprint: Footprint) -> list[dict[str, object]]:
+    if not isinstance(footprint, Footprint):
+        raise ValueError("part artifact requires footprint geometry")
+    return [_part_footprint_pad(pad) for pad in footprint.pads]
+
+
+def _part_footprint_pad(pad) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "label": str(pad.label),
+        "x_mm": float(pad.position[0]),
+        "y_mm": float(pad.position[1]),
+        "width_mm": float(pad.size[0]),
+        "height_mm": float(pad.size[1]),
+    }
+    role = _part_footprint_pad_role(pad)
+    if role is not None:
+        payload["role"] = role
+    return payload
+
+
+def _part_footprint_pad_role(pad) -> str | None:
+    role = getattr(pad, "mechanical_role", None)
+    if role is None:
+        return None
+    if str(role).casefold() == "thermal":
+        return "thermal"
+    return "mechanical"
+
+
 def _part_pin_pad_mappings(
     part: Part,
     pads: dict[int | str, object],
 ) -> list[dict[str, str]]:
     pads_by_pin_number, pads_by_pin_name = _pads_by_logical_pin(part, pads)
     mappings: list[dict[str, str]] = []
+    consumed_keys: set[str] = set()
     for pin in part.pins:
         labels = pads_by_pin_number.get(str(pin.number))
+        consumed_key = str(pin.number)
         if labels is None:
             labels = pads_by_pin_name.get(pin.name)
+            consumed_key = pin.name
         if labels is None:
-            raise ValueError(f"Part {part.name} has no pad mapping for pin {pin.number}")
+            continue
+        consumed_keys.add(consumed_key)
         for label in labels:
             mappings.append({"pin_number": str(pin.number), "pad": label})
+    for key, value in sorted(pads.items(), key=lambda item: str(item[0])):
+        key_text = str(key)
+        if key_text in consumed_keys:
+            continue
+        for label in _pad_labels(value):
+            mappings.append({"pin_number": key_text, "pad": label})
     return mappings
 
 
@@ -508,6 +514,27 @@ def _pad_requires_mapping(pad) -> bool:
     return getattr(pad, "mechanical_role", None) is None
 
 
+def _kernel_part_diagnostics(source: str, diagnostics) -> tuple[LibraryDiagnostic, ...]:
+    result: list[LibraryDiagnostic] = []
+    for item in diagnostics:
+        diagnostic = _diagnostic_from_dict(item)
+        result.append(
+            LibraryDiagnostic(
+                source=source,
+                report=diagnostic.category,
+                severity=diagnostic.severity,
+                code=diagnostic.code,
+                message=diagnostic.message,
+                entities=diagnostic.entities,
+                category=diagnostic.category,
+                overlays=diagnostic.overlays,
+                measurement=diagnostic.measurement,
+                rule=diagnostic.rule,
+            )
+        )
+    return tuple(result)
+
+
 def _library_diagnostic(source: str, code: str, message: str) -> LibraryDiagnostic:
     return LibraryDiagnostic(
         source=source,
@@ -534,34 +561,55 @@ def _part_result_payload(part: LibraryPartResult) -> dict:
                 "byte_size": len(part.artifact.bytes),
             }
         ),
-        "diagnostics": [
-            {
-                "source": diagnostic.source,
-                "report": diagnostic.report,
-                "severity": diagnostic.severity,
-                "code": diagnostic.code,
-                "message": diagnostic.message,
-                "entities": list(diagnostic.entities),
-            }
-            for diagnostic in part.diagnostics
-        ],
+        "diagnostics": [_library_diagnostic_payload(diagnostic) for diagnostic in part.diagnostics],
     }
 
 
 def _library_diagnostics_payload(diagnostics: LibraryDiagnostics) -> dict:
     return {
         "summary": _library_diagnostic_summary(diagnostics),
-        "diagnostics": [
-            {
-                "source": diagnostic.source,
-                "report": diagnostic.report,
-                "severity": diagnostic.severity,
-                "code": diagnostic.code,
-                "message": diagnostic.message,
-                "entities": list(diagnostic.entities),
-            }
-            for diagnostic in diagnostics
-        ],
+        "diagnostics": [_library_diagnostic_payload(diagnostic) for diagnostic in diagnostics],
+    }
+
+
+def _library_diagnostic_payload(diagnostic: LibraryDiagnostic) -> dict[str, object]:
+    return {
+        "source": diagnostic.source,
+        "report": diagnostic.report,
+        "severity": diagnostic.severity,
+        "category": diagnostic.category,
+        "code": diagnostic.code,
+        "message": diagnostic.message,
+        "entities": [_diagnostic_entity_payload(entity) for entity in diagnostic.entities],
+        "overlays": [_diagnostic_overlay_payload(overlay) for overlay in diagnostic.overlays],
+        "measurement": _diagnostic_measurement_payload(diagnostic.measurement),
+        "rule": diagnostic.rule,
+    }
+
+
+def _diagnostic_entity_payload(entity: object) -> dict[str, object]:
+    if isinstance(entity, DiagnosticEntity):
+        return {"kind": entity.kind, "index": entity.index}
+    return dict(entity)
+
+
+def _diagnostic_overlay_payload(overlay: DiagnosticOverlay) -> dict[str, object]:
+    return {
+        "kind": overlay.kind,
+        "points": [list(point) for point in overlay.points],
+        "entities": [_diagnostic_entity_payload(entity) for entity in overlay.entities],
+        "layers": [_diagnostic_entity_payload(layer) for layer in overlay.layers],
+    }
+
+
+def _diagnostic_measurement_payload(
+    measurement: DiagnosticMeasurement | None,
+) -> dict[str, float] | None:
+    if measurement is None:
+        return None
+    return {
+        "actual_mm": measurement.actual_mm,
+        "required_mm": measurement.required_mm,
     }
 
 

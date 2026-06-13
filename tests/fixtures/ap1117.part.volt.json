@@ -25,13 +25,23 @@
     "derived_from": "manual"
   },
   "symbols": [
-    { "name": "volt.power:regulator_3pin", "variant": "default", "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+    { "name": "volt.power:regulator_3pin", "variant": "default", "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "pins": [{ "name": "GND", "number": "1" }, { "name": "VO", "number": "2" }, { "name": "VI", "number": "3" }] }
   ],
   "orderable_part": {
     "manufacturer": "Diodes Incorporated",
     "mpn": "AP1117E15G-13",
     "package": "SOT-223-3",
-    "footprint": { "library": "Package_TO_SOT_SMD", "name": "SOT-223-3_TabPin2", "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+    "footprint": {
+      "library": "Package_TO_SOT_SMD",
+      "name": "SOT-223-3_TabPin2",
+      "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "pads": [
+      { "label": "1", "x_mm": -1, "y_mm": 0, "width_mm": 0.59999999999999998, "height_mm": 0.59999999999999998 },
+      { "label": "2", "x_mm": 0, "y_mm": 0, "width_mm": 0.59999999999999998, "height_mm": 0.59999999999999998 },
+      { "label": "3", "x_mm": 1, "y_mm": 0, "width_mm": 0.59999999999999998, "height_mm": 0.59999999999999998 },
+      { "label": "4", "x_mm": 0, "y_mm": 2, "width_mm": 1.8, "height_mm": 1.8, "role": "thermal" }
+      ]
+    },
     "pin_pad_mappings": [
       { "pin_number": "1", "pad": "1" },
       { "pin_number": "2", "pad": "2" },

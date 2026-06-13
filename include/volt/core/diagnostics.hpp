@@ -20,6 +20,7 @@ namespace diagnostic_categories {
 inline constexpr auto General = std::string_view{"general"};
 inline constexpr auto Erc = std::string_view{"erc"};
 inline constexpr auto Drc = std::string_view{"drc"};
+inline constexpr auto PartLineup = std::string_view{"part.lineup"};
 inline constexpr auto PcbBoard = std::string_view{"pcb.board"};
 inline constexpr auto PcbVisual = std::string_view{"pcb.visual"};
 inline constexpr auto PcbFabrication = std::string_view{"pcb.fabrication"};
@@ -29,9 +30,10 @@ inline constexpr auto PcbFabrication = std::string_view{"pcb.fabrication"};
 namespace diagnostic_category_catalogs {
 
 inline constexpr auto All =
-    std::array{diagnostic_categories::General,   diagnostic_categories::Erc,
-               diagnostic_categories::Drc,       diagnostic_categories::PcbBoard,
-               diagnostic_categories::PcbVisual, diagnostic_categories::PcbFabrication};
+    std::array{diagnostic_categories::General,       diagnostic_categories::Erc,
+               diagnostic_categories::Drc,           diagnostic_categories::PartLineup,
+               diagnostic_categories::PcbBoard,      diagnostic_categories::PcbVisual,
+               diagnostic_categories::PcbFabrication};
 
 } // namespace diagnostic_category_catalogs
 
@@ -114,6 +116,15 @@ inline constexpr auto KiCadFabExportLoss = std::string_view{"PCB_KICAD_FAB_EXPOR
 
 } // namespace pcb_fabrication_diagnostic_codes
 
+namespace part_lineup_diagnostic_codes {
+
+inline constexpr auto PinWithoutPad = std::string_view{"PART_PIN_WITHOUT_PAD"};
+inline constexpr auto PadWithoutPin = std::string_view{"PART_PAD_WITHOUT_PIN"};
+inline constexpr auto PadOverlap = std::string_view{"PART_PAD_OVERLAP"};
+inline constexpr auto PadRowPitchInconsistent = std::string_view{"PART_PAD_ROW_PITCH_INCONSISTENT"};
+
+} // namespace part_lineup_diagnostic_codes
+
 namespace diagnostic_code_catalogs {
 
 inline constexpr auto Erc = std::array{erc_diagnostic_codes::PinMustNotConnect,
@@ -165,6 +176,11 @@ inline constexpr auto PcbVisual =
 
 inline constexpr auto PcbFabrication =
     std::array{pcb_fabrication_diagnostic_codes::KiCadFabExportLoss};
+
+inline constexpr auto PartLineup = std::array{
+    part_lineup_diagnostic_codes::PinWithoutPad, part_lineup_diagnostic_codes::PadWithoutPin,
+    part_lineup_diagnostic_codes::PadOverlap,
+    part_lineup_diagnostic_codes::PadRowPitchInconsistent};
 
 } // namespace diagnostic_code_catalogs
 
@@ -236,6 +252,7 @@ class DiagnosticCategory {
 /** Kind of entity referenced by a diagnostic. */
 enum class EntityKind {
     Board,
+    PartDefinition,
     ComponentDef,
     Component,
     PinDef,
@@ -277,6 +294,11 @@ class EntityRef {
   public:
     /** Create a reference to the board projection root. */
     [[nodiscard]] static EntityRef board() noexcept { return EntityRef{EntityKind::Board, 0U}; }
+
+    /** Create a reference to a standalone part definition artifact. */
+    [[nodiscard]] static EntityRef part_definition() noexcept {
+        return EntityRef{EntityKind::PartDefinition, 0U};
+    }
 
     /** Create a reference to a component definition. */
     [[nodiscard]] static EntityRef component_def(ComponentDefId id) noexcept {

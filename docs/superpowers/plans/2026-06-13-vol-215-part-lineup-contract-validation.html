@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>VOL-215 Part Lineup Contract Validation Plan</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 920px; line-height: 1.5; color: #1f2933; }
+    h1, h2 { line-height: 1.15; }
+    h1 { margin-bottom: 0.2rem; }
+    .meta { color: #52606d; margin-top: 0; }
+    code { background: #f3f4f6; padding: 0.08rem 0.25rem; border-radius: 4px; }
+    li { margin: 0.35rem 0; }
+    .check { margin-left: 1.2rem; }
+  </style>
+</head>
+<body>
+  <h1>VOL-215 Part Lineup Contract Validation</h1>
+  <p class="meta">Goal: make pin-map, schematic symbol, and footprint projection drift mechanically impossible at artifact assembly/load boundaries, while reporting design-quality lineup concerns through shared diagnostics.</p>
+
+  <h2>Architecture</h2>
+  <p>The C++ part artifact remains the owner of EDA meaning. VOL-214 stored hash references for symbols and footprints; this slice adds the minimum projection summaries needed for validation: symbol pin occurrences and footprint pad summaries. Python continues to author ergonomic <code>volt.Part</code> objects and lowers them into the kernel artifact/diagnostic API.</p>
+
+  <h2>Tasks</h2>
+  <ol>
+    <li><strong>Red tests for structural rejection.</strong> Add C++ tests for part-constructor assembly and artifact-reader load rejection: symbol pin outside pin map, missing/duplicated symbol coverage, pin-pad mappings to unknown pins or pads, collapsed multi-pad mappings, and repeated pin names with non-distinct symbol resolution.</li>
+    <li><strong>Red tests for diagnostics.</strong> Add C++ tests for <code>PART_PIN_WITHOUT_PAD</code>, <code>PART_PAD_WITHOUT_PIN</code>, <code>PART_PAD_OVERLAP</code>, <code>PART_PAD_ROW_PITCH_INCONSISTENT</code>, plus a correct part with zero lineup diagnostics.</li>
+    <li><strong>Kernel implementation.</strong> Extend <code>PartDefinition</code>, symbol references, and orderable footprint references with projection summaries; enforce structural rules in constructors and reader; add shared part diagnostic codes/category and <code>validate_part_lineup</code>.</li>
+    <li><strong>Python bridge.</strong> Lower Python symbol pins and footprint pads into the kernel payload; expose part diagnostic codes and lineup diagnostics from the binding; map kernel diagnostics into <code>LibraryResult</code> without turning design-quality warnings into artifact rejection.</li>
+    <li><strong>Determinism and verification.</strong> Update the golden <code>volt.part</code> fixture and content hash, run targeted C++ and Python tests, then run the broader available checks before commit.</li>
+    <li><strong>Publish and review.</strong> Commit, push <code>feat/vol-215-part-lineup-contract-validation</code>, open a ready PR, create the requested thermonuclear review thread, post review findings on the PR, and address actionable feedback.</li>
+  </ol>
+
+  <h2>Checks</h2>
+  <ul>
+    <li>Focused C++: <code>volt_core_tests</code> cases for part definition IO, diagnostics taxonomy, and part lineup validation.</li>
+    <li>Focused Python: <code>python/tests/test_component_library.py</code> and <code>python/tests/test_python_diagnostics.py</code>.</li>
+    <li>Broader: CMake dev build/test and Python pytest where environment setup allows.</li>
+  </ul>
+</body>
+</html>

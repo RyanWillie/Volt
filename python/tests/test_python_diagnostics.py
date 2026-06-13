@@ -26,6 +26,9 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
     assert volt.DIAGNOSTIC_CATEGORIES == tuple(_volt.diagnostic_categories())
     assert volt.ERC_DIAGNOSTIC_CODES == tuple(_volt.erc_diagnostic_codes())
     assert volt.DRC_DIAGNOSTIC_CODES == tuple(_volt.drc_diagnostic_codes())
+    assert volt.PART_LINEUP_DIAGNOSTIC_CODES == tuple(
+        _volt.part_lineup_diagnostic_codes()
+    )
     assert volt.PCB_FABRICATION_DIAGNOSTIC_CODES == tuple(
         _volt.pcb_fabrication_diagnostic_codes()
     )
@@ -34,6 +37,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "general",
         "erc",
         "drc",
+        "part.lineup",
         "pcb.board",
         "pcb.visual",
         "pcb.fabrication",
@@ -76,6 +80,12 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "PCB_COPPER_WEIGHT_OUTSIDE_CAPABILITY",
         "PCB_DRILL_DIAMETER_OUTSIDE_CAPABILITY",
         "PCB_DRILL_DIAMETER_AT_CAPABILITY_LIMIT",
+    )
+    assert volt.PART_LINEUP_DIAGNOSTIC_CODES == (
+        "PART_PIN_WITHOUT_PAD",
+        "PART_PAD_WITHOUT_PIN",
+        "PART_PAD_OVERLAP",
+        "PART_PAD_ROW_PITCH_INCONSISTENT",
     )
     assert volt.PCB_FABRICATION_DIAGNOSTIC_CODES == ("PCB_KICAD_FAB_EXPORT_LOSS",)
 

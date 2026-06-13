@@ -83,6 +83,8 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     switch (entity.kind()) {
     case EntityKind::Board:
         return "board:0";
+    case EntityKind::PartDefinition:
+        return "part_definition:0";
     case EntityKind::ComponentDef:
         return encode_local_id(ComponentDefId{entity.index()});
     case EntityKind::Component:

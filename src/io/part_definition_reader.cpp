@@ -81,6 +81,13 @@ class PartDefinitionReader {
     [[nodiscard]] static std::vector<HashedSchematicSymbolReference>
     symbols(const nlohmann::json &object);
 
+    [[nodiscard]] static std::optional<PartFootprintPadRole>
+    part_footprint_pad_role(const nlohmann::json &object);
+
+    [[nodiscard]] static PartFootprintPad part_footprint_pad(const nlohmann::json &object);
+
+    [[nodiscard]] static std::vector<PartFootprintPad> footprint_pads(const nlohmann::json &object);
+
     [[nodiscard]] static PartModel3DReference model_3d(const nlohmann::json &object);
 
     [[nodiscard]] static OrderablePart orderable_part(const nlohmann::json &object);
@@ -398,9 +405,58 @@ PartDefinitionReader::symbols(const nlohmann::json &object) {
     result.reserve(symbol_array.size());
     for (const auto &symbol : symbol_array) {
         require(symbol.is_object(), "Schematic symbol reference must be an object");
+        auto pins = std::vector<PartSymbolPin>{};
+        const auto &pin_array = array_field(symbol, "pins");
+        pins.reserve(pin_array.size());
+        for (const auto &pin : pin_array) {
+            require(pin.is_object(), "Schematic symbol pin must be an object");
+            pins.emplace_back(string_field(pin, "name"), string_field(pin, "number"));
+        }
         result.emplace_back(string_field(symbol, "name"),
                             optional_string_field(symbol, "variant", "default"),
-                            ContentHash{string_field(symbol, "hash")});
+                            ContentHash{string_field(symbol, "hash")}, std::move(pins));
+    }
+    return result;
+}
+
+[[nodiscard]] std::optional<PartFootprintPadRole>
+PartDefinitionReader::part_footprint_pad_role(const nlohmann::json &object) {
+    const auto *role = optional_field(object, "role");
+    if (role == nullptr) {
+        return std::nullopt;
+    }
+    require(role->is_string(), "Footprint pad role must be a string");
+    const auto value = role->get<std::string>();
+    if (value == "mechanical") {
+        return PartFootprintPadRole::Mechanical;
+    }
+    if (value == "thermal") {
+        return PartFootprintPadRole::Thermal;
+    }
+    throw std::logic_error{"Invalid footprint pad role"};
+}
+
+[[nodiscard]] PartFootprintPad
+PartDefinitionReader::part_footprint_pad(const nlohmann::json &object) {
+    require(object.is_object(), "Footprint pad must be an object");
+    const auto role = part_footprint_pad_role(object);
+    if (role.has_value()) {
+        return PartFootprintPad{string_field(object, "label"),     number_field(object, "x_mm"),
+                                number_field(object, "y_mm"),      number_field(object, "width_mm"),
+                                number_field(object, "height_mm"), role.value()};
+    }
+    return PartFootprintPad{string_field(object, "label"), number_field(object, "x_mm"),
+                            number_field(object, "y_mm"), number_field(object, "width_mm"),
+                            number_field(object, "height_mm")};
+}
+
+[[nodiscard]] std::vector<PartFootprintPad>
+PartDefinitionReader::footprint_pads(const nlohmann::json &object) {
+    auto result = std::vector<PartFootprintPad>{};
+    const auto &pads = array_field(object, "pads");
+    result.reserve(pads.size());
+    for (const auto &pad : pads) {
+        result.push_back(part_footprint_pad(pad));
     }
     return result;
 }
@@ -443,6 +499,7 @@ PartDefinitionReader::symbols(const nlohmann::json &object) {
         HashedFootprintReference{
             FootprintRef{string_field(footprint, "library"), string_field(footprint, "name")},
             ContentHash{string_field(footprint, "hash")}},
+        footprint_pads(footprint),
         std::move(mappings),
         std::move(alternates),
         std::move(model)};
