@@ -1481,6 +1481,42 @@ def test_python_board_add_via_uses_net_class_before_authoring_fallback():
     } == set()
 
 
+def test_python_board_add_via_explicit_annular_violation_reaches_drc():
+    design = volt.Design("via-explicit-annular-drc")
+    route = design.net("ROUTE")
+    board = design.board()
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(10.0, 10.0))
+    board.set_design_rules(min_via_drill=0.35, min_via_annular=0.80)
+
+    board.add_via(route, at=(2.0, 2.0), start_layer=front, end_layer=back, annular=0.50)
+
+    [via] = json.loads(board.to_json())["board"]["vias"]
+    assert via["drill_diameter_mm"] == 0.35
+    assert via["annular_diameter_mm"] == 0.50
+    assert {
+        diagnostic.code
+        for diagnostic in board.validate()
+        if diagnostic.code.startswith("PCB_VIA_")
+    } == {"PCB_VIA_ANNULAR_BELOW_MINIMUM"}
+
+
+def test_python_board_add_via_rejects_resolved_impossible_geometry():
+    design = volt.Design("via-impossible-geometry")
+    route = design.net("ROUTE")
+    board = design.board()
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(10.0, 10.0))
+    board.set_design_rules(min_via_drill=0.60, min_via_annular=0.80)
+
+    with pytest.raises(ValueError, match="annular diameter must be greater than drill"):
+        board.add_via(route, at=(2.0, 2.0), start_layer=front, end_layer=back, annular=0.50)
+
+
 def test_python_board_authoring_sets_capability_profile_from_file_and_inline():
     design = volt.Design("capability-profile")
     board = design.board("Control")

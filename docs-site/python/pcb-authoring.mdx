@@ -71,8 +71,10 @@ to the same via model as `board.add_via(...)`. Tracks and vias reference existin
 nets. Board data implements connectivity; it does not define the netlist.
 
 When a via omits `drill` or `annular`, Volt resolves that default from the net class when
-one is assigned, then floors it at the board's own minimum via rules. Explicit values are
-left as authored so deliberate rule violations remain diagnosable through `board.validate()`.
+one is assigned, then floors it at the board's own minimum via rules. Structurally valid
+explicit values are left as authored so deliberate rule violations remain diagnosable through
+`board.validate()`; impossible diameter pairs such as an annular diameter not greater than the
+drill are rejected at the authoring boundary.
 
 When `grid` is set, explicit authoring coordinates snap to that board grid while
 footprint pad anchors stay exact. `.to(...)` routes default to octilinear geometry, so

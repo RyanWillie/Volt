@@ -1567,11 +1567,19 @@ std::size_t PyCircuit::board_add_via(std::size_t net, double x, double y, std::s
     auto &board = board_projection();
     const auto default_via_size = volt::resolve_via_size(
         board, net_id_value, default_authoring_via_drill_mm, default_authoring_via_annular_mm);
+    const auto resolved_drill_diameter_mm =
+        drill_diameter_mm.value_or(default_via_size.drill_diameter_mm);
+    const auto resolved_annular_diameter_mm =
+        annular_diameter_mm.value_or(default_via_size.annular_diameter_mm);
+    if (resolved_annular_diameter_mm <= resolved_drill_diameter_mm) {
+        throw py::value_error{
+            "Resolved via annular diameter must be greater than drill diameter; specify both "
+            "drill and annular for an explicit via size"};
+    }
     return board
         .add_via(volt::BoardVia{net_id_value, volt::BoardPoint{x, y},
                                 volt::BoardLayerId{start_layer}, volt::BoardLayerId{end_layer},
-                                drill_diameter_mm.value_or(default_via_size.drill_diameter_mm),
-                                annular_diameter_mm.value_or(default_via_size.annular_diameter_mm)})
+                                resolved_drill_diameter_mm, resolved_annular_diameter_mm})
         .index();
 }
 
