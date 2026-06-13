@@ -127,6 +127,12 @@ class Circuit {
     /** Record that an otherwise connectable concrete pin is intentionally left open. */
     bool mark_intentional_no_connect_pin(PinId pin);
 
+    /** Set explicit do-not-populate assembly intent for an existing component. */
+    void set_component_dnp(ComponentId component, bool dnp);
+
+    /** Set or clear selected-part override assembly intent for an existing component. */
+    void set_component_selection_override(ComponentId component, bool override);
+
     /** Store a reusable net class intent definition. */
     [[nodiscard]] NetClassId add_net_class(NetClass net_class);
 
@@ -173,11 +179,21 @@ class Circuit {
     /** Return whether this concrete pin has explicit no-connect author intent. */
     [[nodiscard]] bool is_intentional_no_connect_pin(PinId pin) const;
 
+    /** Return explicit component DNP intent, if one has been authored. */
+    [[nodiscard]] std::optional<bool> component_dnp(ComponentId component) const;
+
+    /** Return whether this component has selected-part override intent. */
+    [[nodiscard]] bool is_component_selection_override(ComponentId component) const;
+
     /** Return intentional stub-net assertions in deterministic insertion order. */
     [[nodiscard]] const std::vector<NetId> &intentional_stub_nets() const noexcept;
 
     /** Return intentional no-connect pin assertions in deterministic insertion order. */
     [[nodiscard]] const std::vector<PinId> &intentional_no_connect_pins() const noexcept;
+
+    /** Return component assembly intent in deterministic insertion order. */
+    [[nodiscard]] const std::vector<ComponentAssemblyIntent> &
+    component_assembly_intents() const noexcept;
 
     /** Return a reusable net class intent definition by ID. */
     [[nodiscard]] const NetClass &net_class(NetClassId id) const;

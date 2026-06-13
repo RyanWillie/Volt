@@ -1,8 +1,9 @@
 """Design root for the Volt Python authoring facade."""
 
 from __future__ import annotations
+import json
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from . import _volt
 from ._footprint import Footprint, FootprintRef
@@ -42,6 +43,7 @@ class Design:
         self._net_class_counter = 0
         self._schematic_symbols: dict[str, SchematicSymbolSpec] = {}
         self._schematic_sheets: dict[str, int] = {}
+        self._sourcing_snapshot: dict[str, dict[str, object]] = {}
 
     def net(self, name: str, *, kind: str = "signal", voltage: float | None = None) -> Net:
         """Create or return a logical net by name, optionally annotating its voltage."""
@@ -290,6 +292,7 @@ class Design:
                     voltage_rating=part.voltage_rating,
                     power_rating=part.power_rating,
                     model_3d=part.model_3d,
+                    approved_alternate_mpns=part.approved_alternate_mpns,
                 )
             return component
 
@@ -529,6 +532,40 @@ class Design:
         return DiagnosticReport(
             _diagnostic_from_dict(item) for item in self._circuit.validate_for_pcb()
         )
+
+    def validate_bom_readiness(self) -> DiagnosticReport:
+        """Run BOM-readiness validation and return the diagnostic report."""
+        return DiagnosticReport(
+            _diagnostic_from_dict(item) for item in self._circuit.validate_bom_readiness()
+        )
+
+    def set_sourcing_snapshot(
+        self, snapshot: Mapping[str, Mapping[str, object]]
+    ) -> "Design":
+        """Set design-owned sourcing metadata keyed by manufacturer part number."""
+        normalized: dict[str, dict[str, object]] = {}
+        for mpn, fields in snapshot.items():
+            if not isinstance(mpn, str) or not mpn:
+                raise ValueError("Sourcing snapshot MPN keys must be non-empty strings")
+            if not isinstance(fields, Mapping):
+                raise TypeError("Sourcing snapshot entries must be mappings")
+            normalized[mpn] = dict(fields)
+        self._sourcing_snapshot = normalized
+        return self
+
+    def bom(self) -> dict:
+        """Return the deterministic kernel BOM projection as a JSON-compatible dict."""
+        return json.loads(self._circuit.bom_json(self._sourcing_snapshot))
+
+    def bom_csv(self) -> str:
+        """Return the deterministic kernel BOM projection as CSV text."""
+        return self._circuit.bom_csv(self._sourcing_snapshot)
+
+    def _has_sourcing_snapshot(self) -> bool:
+        return bool(self._sourcing_snapshot)
+
+    def _bom_sourcing_snapshot_json(self) -> str:
+        return self._circuit.bom_sourcing_snapshot_json(self._sourcing_snapshot)
 
     def to_json(self) -> str:
         """Serialize the logical design to Volt JSON."""

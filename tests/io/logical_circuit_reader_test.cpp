@@ -113,14 +113,51 @@ TEST_CASE("Logical circuit reader preserves design intent") {
     fixture["design_intent"] = {
         {"stub_nets", nlohmann::json::array({"net:0"})},
         {"no_connect_pins", nlohmann::json::array({"pin:5"})},
+        {"component_assembly",
+         nlohmann::json::array(
+             {{{"component", "component:1"}, {"dnp", true}, {"selection_override", true}}})},
     };
 
     const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
 
     CHECK(circuit.is_intentional_stub_net(volt::NetId{0}));
     CHECK(circuit.is_intentional_no_connect_pin(volt::PinId{5}));
+    CHECK(circuit.component_dnp(volt::ComponentId{1}) == std::optional<bool>{true});
+    CHECK(circuit.is_component_selection_override(volt::ComponentId{1}));
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
     CHECK(output["design_intent"] == fixture["design_intent"]);
+}
+
+TEST_CASE("Logical circuit reader preserves override-only component assembly intent") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["design_intent"] = {
+        {"stub_nets", nlohmann::json::array()},
+        {"no_connect_pins", nlohmann::json::array()},
+        {"component_assembly",
+         nlohmann::json::array({{{"component", "component:1"}, {"selection_override", true}}})},
+    };
+
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
+
+    CHECK_FALSE(circuit.component_dnp(volt::ComponentId{1}).has_value());
+    CHECK(circuit.is_component_selection_override(volt::ComponentId{1}));
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+    CHECK_FALSE(output["design_intent"]["component_assembly"][0].contains("dnp"));
+}
+
+TEST_CASE("Logical circuit reader preserves selected-part alternates") {
+    auto fixture = nlohmann::json::parse(read_fixture("led_circuit.volt.json"));
+    fixture["components"][1]["selected_physical_part"]["approved_alternate_mpns"] =
+        nlohmann::json::array({"RC0603FR-07330RLA", "RC0603FR-07330RLB"});
+
+    const auto circuit = volt::io::read_logical_circuit_text(fixture.dump());
+    const auto &selected_part = circuit.selected_physical_part(volt::ComponentId{1}).value();
+
+    CHECK(selected_part.approved_alternate_mpns() ==
+          std::vector<std::string>{"RC0603FR-07330RLA", "RC0603FR-07330RLB"});
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+    CHECK(output["components"][1]["selected_physical_part"]["approved_alternate_mpns"] ==
+          fixture["components"][1]["selected_physical_part"]["approved_alternate_mpns"]);
 }
 
 TEST_CASE("Logical circuit reader preserves net classes and net assignments") {

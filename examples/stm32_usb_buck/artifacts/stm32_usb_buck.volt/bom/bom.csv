@@ -1,0 +1,4 @@
+manufacturer,mpn,package,quantity,references,dnp,approved_alternate_mpns,selection_override_references
+STMicroelectronics,STM32F405RGT6,LQFP-64,0,U1,true,,
+Samtec,FTSH-105-01-L-DV-K,2x05 1.27mm,0,J2,true,,
+Sullins,PEC04SAAN,1x04 2.54mm,0,J3,true,,

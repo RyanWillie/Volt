@@ -543,6 +543,8 @@ class Component:
         voltage_rating: float | None = None,
         power_rating: float | None = None,
         model_3d: PartModel3D | None = None,
+        approved_alternate_mpns: Iterable[str] = (),
+        selection_override: bool = False,
     ) -> Component:
         """Attach selected physical part data; pass a Footprint object for board-ready geometry."""
         if not isinstance(pin_pads, dict):
@@ -568,6 +570,10 @@ class Component:
             pin_pads,
             properties or {},
             None if model_3d is None else model_3d._selected_part_payload(),
+            tuple(str(mpn) for mpn in approved_alternate_mpns),
+        )
+        self._design._circuit.set_component_selection_override(
+            self._index, bool(selection_override)
         )
         for name, dimension, value in selected_part_ratings:
             self._design._circuit.set_selected_part_quantity(self._index, name, dimension, value)
@@ -579,6 +585,11 @@ class Component:
             self._design._register_component_model_3d_asset_source(self._index, model_3d)
         else:
             self._design._clear_component_model_3d_asset_source(self._index)
+        return self
+
+    def dnp(self, value: bool = True) -> Component:
+        """Set explicit do-not-populate assembly intent for this component."""
+        self._design._circuit.set_component_dnp(self._index, bool(value))
         return self
 
     def __repr__(self) -> str:

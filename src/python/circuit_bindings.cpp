@@ -42,6 +42,8 @@ void bind_circuit(pybind11::module_ &module) {
     module.def("pcb_fabrication_diagnostic_codes", []() {
         return string_view_catalog_to_tuple(diagnostic_code_catalogs::PcbFabrication);
     });
+    module.def("bom_diagnostic_codes",
+               []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::Bom); });
     module.def("read_capability_profile_text", [](const std::string &text) {
         return board_capability_profile_to_dict(volt::io::read_capability_profile_text(text));
     });
@@ -87,7 +89,8 @@ void bind_circuit(pybind11::module_ &module) {
         .def("select_physical_part", &PyCircuit::select_physical_part, py::arg("component"),
              py::arg("manufacturer"), py::arg("part_number"), py::arg("package"),
              py::arg("footprint_library"), py::arg("footprint_name"), py::arg("pin_pads"),
-             py::arg("properties") = py::dict{}, py::arg("model_3d") = py::none())
+             py::arg("properties") = py::dict{}, py::arg("model_3d") = py::none(),
+             py::arg("approved_alternate_mpns") = py::tuple{})
         .def("set_component_quantity", &PyCircuit::set_component_quantity, py::arg("component"),
              py::arg("name"), py::arg("dimension"), py::arg("value"))
         .def("set_component_percent_tolerance", &PyCircuit::set_component_percent_tolerance,
@@ -115,6 +118,10 @@ void bind_circuit(pybind11::module_ &module) {
         .def("mark_intentional_stub_net", &PyCircuit::mark_intentional_stub_net, py::arg("net"))
         .def("mark_intentional_no_connect_pin", &PyCircuit::mark_intentional_no_connect_pin,
              py::arg("pin"))
+        .def("set_component_dnp", &PyCircuit::set_component_dnp, py::arg("component"),
+             py::arg("dnp"))
+        .def("set_component_selection_override", &PyCircuit::set_component_selection_override,
+             py::arg("component"), py::arg("selection_override"))
         .def("define_module", &PyCircuit::define_module, py::arg("name"))
         .def("add_template_net", &PyCircuit::add_template_net, py::arg("module"), py::arg("name"),
              py::arg("kind") = "signal")
@@ -210,6 +217,11 @@ void bind_circuit(pybind11::module_ &module) {
         .def("validate_schematic", &PyCircuit::validate_schematic)
         .def("validate_schematic_readability", &PyCircuit::validate_schematic_readability)
         .def("validate_for_pcb", &PyCircuit::validate_for_pcb)
+        .def("validate_bom_readiness", &PyCircuit::validate_bom_readiness)
+        .def("bom_json", &PyCircuit::bom_json, py::arg("sourcing_snapshot") = py::dict{})
+        .def("bom_csv", &PyCircuit::bom_csv, py::arg("sourcing_snapshot") = py::dict{})
+        .def("bom_sourcing_snapshot_json", &PyCircuit::bom_sourcing_snapshot_json,
+             py::arg("sourcing_snapshot") = py::dict{})
         .def("board", &PyCircuit::board, py::arg("name") = "Main")
         .def("board_design_rules", &PyCircuit::board_design_rules)
         .def("board_set_design_rules", &PyCircuit::board_set_design_rules,

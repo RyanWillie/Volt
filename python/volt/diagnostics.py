@@ -14,6 +14,7 @@ DRC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.drc_diagnostic_codes())
 PART_LINEUP_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(
     _volt.part_lineup_diagnostic_codes()
 )
+BOM_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.bom_diagnostic_codes())
 PCB_VISUAL_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.pcb_visual_diagnostic_codes())
 PCB_FABRICATION_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(
     _volt.pcb_fabrication_diagnostic_codes()

@@ -148,7 +148,8 @@ class PhysicalPart {
      */
     PhysicalPart(ManufacturerPart manufacturer_part, PackageRef package, FootprintRef footprint,
                  std::vector<PinPadMapping> pin_pad_mappings, PropertyMap properties = {},
-                 std::optional<PartModel3D> model_3d = std::nullopt);
+                 std::optional<PartModel3D> model_3d = std::nullopt,
+                 std::vector<std::string> approved_alternate_mpns = {});
 
     /** Return the selected manufacturer part identity. */
     [[nodiscard]] const ManufacturerPart &manufacturer_part() const noexcept;
@@ -171,6 +172,11 @@ class PhysicalPart {
     /** Return optional selected-part 3D model metadata. */
     [[nodiscard]] const std::optional<PartModel3D> &model_3d() const noexcept { return model_3d_; }
 
+    /** Return approved alternate manufacturer part numbers for this selected part. */
+    [[nodiscard]] const std::vector<std::string> &approved_alternate_mpns() const noexcept {
+        return approved_alternate_mpns_;
+    }
+
   private:
     friend class ElectricalModel;
 
@@ -184,6 +190,7 @@ class PhysicalPart {
     PropertyMap properties_;
     ElectricalAttributeMap electrical_attributes_;
     std::optional<PartModel3D> model_3d_;
+    std::vector<std::string> approved_alternate_mpns_;
 };
 
 } // namespace volt

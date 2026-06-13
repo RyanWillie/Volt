@@ -20,136 +20,10 @@
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 
+#include "logical_circuit_reader_impl.hpp"
 #include "logical_net_class_format.hpp"
 
 namespace volt::io::detail {
-
-/** Internal implementation for loading the v1 logical circuit JSON format. */
-class LogicalCircuitReader {
-  public:
-    /** Construct a reader over a parsed JSON document. */
-    explicit LogicalCircuitReader(const nlohmann::json &document) : document_{document} {}
-
-    /** Load and structurally validate the document into a Circuit. */
-    [[nodiscard]] Circuit read();
-
-  private:
-    static void require(bool condition, const std::string &message);
-
-    static const nlohmann::json &field(const nlohmann::json &object, const char *name);
-
-    static std::string string_field(const nlohmann::json &object, const char *name);
-
-    static std::string optional_string_field(const nlohmann::json &object, const char *name,
-                                             std::string default_value);
-
-    static void require_format(const nlohmann::json &object);
-
-    static void require_version(const nlohmann::json &object);
-
-    static const nlohmann::json &array_field(const nlohmann::json &object, const char *name);
-
-    static const nlohmann::json *optional_array_field(const nlohmann::json &object,
-                                                      const char *name);
-
-    template <typename Id>
-    static std::string local_id(const nlohmann::json &object, std::set<std::string> &seen) {
-        const auto id = string_field(object, "id");
-        static_cast<void>(decode_local_id<Id>(id));
-        require(seen.insert(id).second, "Duplicate local ID");
-        return id;
-    }
-
-    [[nodiscard]] static ConnectionRequirement connection_requirement(const std::string &value);
-
-    [[nodiscard]] static ElectricalTerminalKind electrical_terminal_kind(const std::string &value);
-
-    [[nodiscard]] static ElectricalDirection electrical_direction(const std::string &value);
-
-    [[nodiscard]] static ElectricalSignalDomain electrical_signal_domain(const std::string &value);
-
-    [[nodiscard]] static ElectricalDriveKind electrical_drive_kind(const std::string &value);
-
-    [[nodiscard]] static ElectricalPolarity electrical_polarity(const std::string &value);
-
-    [[nodiscard]] static NetKind net_kind(const std::string &value);
-
-    [[nodiscard]] static PortRole port_role(const std::string &value);
-
-    [[nodiscard]] static UnitDimension unit_dimension(const std::string &value);
-
-    [[nodiscard]] static ToleranceMode tolerance_mode(const std::string &value);
-
-    [[nodiscard]] static double number_field(const nlohmann::json &object, const char *name);
-
-    [[nodiscard]] static PropertyValue property_value(const nlohmann::json &object);
-
-    [[nodiscard]] static PropertyMap properties(const nlohmann::json &object);
-
-    [[nodiscard]] static ElectricalAttributeValue
-    electrical_attribute_value(const nlohmann::json &object);
-
-    void read_component_electrical_attributes(const nlohmann::json &object, ComponentId component,
-                                              ElectricalAttributeOwner owner);
-
-    void read_net_electrical_attributes(const nlohmann::json &object, NetId net);
-
-    void read_pin_definition_electrical_attributes(const nlohmann::json &object,
-                                                   PinDefId pin_definition);
-
-    [[nodiscard]] static std::optional<DefinitionSource>
-    definition_source(const nlohmann::json &object);
-
-    [[nodiscard]] static std::vector<SchematicSymbolReference>
-    schematic_symbol_references(const nlohmann::json &object);
-
-    template <typename Id>
-    [[nodiscard]] Id resolve(const std::map<std::string, Id> &ids, const std::string &id) const {
-        const auto it = ids.find(id);
-        require(it != ids.end(), "Reference points to a missing local ID");
-        return it->second;
-    }
-
-    void read_pin_definitions();
-
-    void read_component_definitions();
-
-    void read_components();
-
-    void read_pins();
-
-    void read_nets();
-
-    void read_net_classes();
-
-    void read_design_intent();
-
-    void read_module_definitions();
-
-    void read_module_instances();
-
-    [[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>>
-    infer_component_origins(ModuleDefId definition, const ModuleInstanceName &name) const;
-
-    [[nodiscard]] PhysicalPart physical_part(const nlohmann::json &object) const;
-
-    void read_selected_physical_parts();
-
-    const nlohmann::json &document_;
-    Circuit circuit_;
-    std::map<std::string, PinDefId> pin_def_ids_;
-    std::map<std::string, ComponentDefId> component_def_ids_;
-    std::map<std::string, ComponentId> component_ids_;
-    std::map<std::string, PinId> pin_ids_;
-    std::map<std::string, NetId> net_ids_;
-    std::map<std::string, NetClassId> net_class_ids_;
-    std::map<std::string, ModuleDefId> module_def_ids_;
-    std::map<std::string, TemplateNetDefId> template_net_ids_;
-    std::map<std::string, ModuleComponentId> module_component_ids_;
-    std::map<std::string, PortDefId> port_def_ids_;
-    std::map<std::string, ModuleInstanceId> module_instance_ids_;
-    std::vector<std::pair<std::string, nlohmann::json>> selected_parts_;
-};
 
 [[nodiscard]] Circuit LogicalCircuitReader::read() {
     require(document_.is_object(), "Logical circuit document must be an object");
@@ -777,6 +651,31 @@ void LogicalCircuitReader::read_design_intent() {
         [[maybe_unused]] const auto changed =
             circuit_.mark_intentional_no_connect_pin(resolve(pin_ids_, id));
     }
+
+    const auto component_assembly = optional_array_field(*it, "component_assembly");
+    if (component_assembly == nullptr) {
+        return;
+    }
+    auto seen_components = std::set<std::string>{};
+    for (const auto &intent : *component_assembly) {
+        require(intent.is_object(), "Component assembly intent must be an object");
+        const auto component_id = string_field(intent, "component");
+        require(seen_components.insert(component_id).second, "Duplicate component assembly intent");
+        const auto dnp = intent.find("dnp");
+        const auto &selection_override = field(intent, "selection_override");
+        if (dnp != intent.end()) {
+            require(dnp->is_boolean(), "Component assembly DNP intent must be a boolean");
+        }
+        require(selection_override.is_boolean(),
+                "Component assembly selection override intent must be a boolean");
+        require(dnp != intent.end() || selection_override.get<bool>(),
+                "Component assembly intent must include DNP or selection override intent");
+        const auto component = resolve(component_ids_, component_id);
+        if (dnp != intent.end()) {
+            circuit_.set_component_dnp(component, dnp->get<bool>());
+        }
+        circuit_.set_component_selection_override(component, selection_override.get<bool>());
+    }
 }
 
 void LogicalCircuitReader::read_module_definitions() {
@@ -927,6 +826,15 @@ LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
                                   translation[2].get<double>()},
             number_field(*model_it, "rotation_deg")};
     }
+    auto alternates = std::vector<std::string>{};
+    const auto alternate_it = object.find("approved_alternate_mpns");
+    if (alternate_it != object.end()) {
+        require(alternate_it->is_array(), "Selected physical part alternates must be an array");
+        for (const auto &alternate : *alternate_it) {
+            require(alternate.is_string(), "Selected physical part alternate MPN must be a string");
+            alternates.push_back(alternate.get<std::string>());
+        }
+    }
     return PhysicalPart{
         ManufacturerPart{string_field(manufacturer_part, "manufacturer"),
                          string_field(manufacturer_part, "part_number")},
@@ -934,7 +842,8 @@ LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
         FootprintRef{string_field(footprint, "library"), string_field(footprint, "name")},
         std::move(mappings),
         properties(field(object, "properties")),
-        model_3d};
+        model_3d,
+        std::move(alternates)};
 }
 
 void LogicalCircuitReader::read_selected_physical_parts() {
