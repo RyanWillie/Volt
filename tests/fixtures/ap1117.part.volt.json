@@ -1,6 +1,6 @@
 {
   "format": "volt.part",
-  "version": 1,
+  "version": 2,
   "identity": {
     "namespace": "volt.power",
     "name": "AP1117-15",

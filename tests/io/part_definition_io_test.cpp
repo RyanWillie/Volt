@@ -132,7 +132,7 @@ TEST_CASE("Part definition writer emits the golden kernel artifact and stable co
     CHECK(volt::io::write_part_definition(part) == fixture);
     CHECK(volt::io::part_definition_content_hash(part) ==
           volt::ContentHash{
-              "sha256:aa0d8b2e3643b32f06cf4202ab0afdd4018fabd659434147649f7864bbc01272"});
+              "sha256:c8fced6ae99b97ac783676d97ca0253d2d1139b399614a2baa47212feb066cec"});
 }
 
 TEST_CASE("Golden part definition fixture round-trips byte-identically") {
@@ -153,6 +153,10 @@ TEST_CASE("Part definition reader rejects structurally malformed artifacts") {
     auto wrong_format = fixture;
     wrong_format["format"] = "volt.logical_circuit";
     check_malformed_part_is_rejected(wrong_format);
+
+    auto legacy_v1 = fixture;
+    legacy_v1["version"] = 1;
+    check_malformed_part_is_rejected(legacy_v1);
 
     auto persisted_role = fixture;
     persisted_role["pins"][0]["role"] = "ground";

@@ -218,7 +218,7 @@ def _validate_part(part: Part) -> tuple[_PartValidationFacts, tuple[LibraryDiagn
 
 
 def _part_pad_mapping_complete(part: Part) -> bool:
-    pads = part.pads or {}
+    pads = _part_physical_pin_pads(part)
     mapped_pin_numbers = _mapped_pin_numbers(part.pins, pads)
     all_pins_mapped = all(str(pin.number) in mapped_pin_numbers for pin in part.pins)
     if not isinstance(part.footprint, Footprint):
@@ -303,11 +303,7 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
     physical = part._physical_part_spec()
     if physical is None:
         raise ValueError("part artifact requires an orderable physical part")
-    pads = (
-        physical.pin_pads_for(part)
-        if physical.same_numbered_pads or physical.pin_pads is not None
-        else {}
-    )
+    pads = _part_physical_pin_pads(part, physical)
     footprint_library, footprint_name = footprint_ref(physical.footprint)
     return {
         "identity": {
@@ -372,6 +368,16 @@ def _footprint_payload(footprint) -> dict[str, object]:
     return {"ref": (library, name)}
 
 
+def _part_physical_pin_pads(part: Part, physical=None) -> dict[int | str, object]:
+    if physical is None:
+        physical = part._physical_part_spec()
+    if physical is None:
+        return {}
+    if physical.same_numbered_pads or physical.pin_pads is not None:
+        return physical.pin_pads_for(part)
+    return {}
+
+
 def _part_footprint_pads(footprint: Footprint) -> list[dict[str, object]]:
     if not isinstance(footprint, Footprint):
         raise ValueError("part artifact requires footprint geometry")
@@ -396,9 +402,21 @@ def _part_footprint_pad_role(pad) -> str | None:
     role = getattr(pad, "mechanical_role", None)
     if role is None:
         return None
-    if str(role).casefold() == "thermal":
+    role_text = str(role)
+    if role_text.casefold() == "thermal":
         return "thermal"
-    return "mechanical"
+    if role_text in {
+        "mechanical",
+        "mounting",
+        "Mounting",
+        "fiducial",
+        "Fiducial",
+        "mechanical_support",
+        "mechanical-support",
+        "MechanicalSupport",
+    }:
+        return "mechanical"
+    raise ValueError(f"Unknown footprint pad mechanical role: {role_text}")
 
 
 def _part_pin_pad_mappings(
@@ -511,7 +529,10 @@ def _mapped_pad_labels(pads: dict[int | str, object]) -> set[str]:
 
 
 def _pad_requires_mapping(pad) -> bool:
-    return getattr(pad, "mechanical_role", None) is None
+    try:
+        return _part_footprint_pad_role(pad) is None
+    except ValueError:
+        return True
 
 
 def _kernel_part_diagnostics(source: str, diagnostics) -> tuple[LibraryDiagnostic, ...]:

@@ -100,7 +100,7 @@ but the canonical `volt.part` bytes stay independently loadable and hash-address
 keeps lock entries, future manifests, and design-local snapshots attached to one byte
 representation instead of duplicating embedded copies across designs.
 
-The first implemented artifact format is `format: "volt.part"`, `version: 1`.
+The current implemented artifact format is `format: "volt.part"`, `version: 2`.
 
 ### Projections must line up, and the kernel checks it
 

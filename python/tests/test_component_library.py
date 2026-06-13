@@ -1079,6 +1079,37 @@ def test_library_build_validates_board_ready_part():
     assert library["R_0603_10K"] is part
 
 
+def test_part_orderable_same_numbered_preserves_artifact_pin_pad_mappings():
+    library = volt.Library("volt.test.passives")
+    library.add(
+        volt.Part(
+            name="SameNumbered",
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            symbol=_two_pin_test_symbol("volt.test:SameNumbered"),
+            orderable_part=volt.OrderablePart.same_numbered(
+                manufacturer="Yageo",
+                part_number="RC0603FR-0710KL",
+                package="0603",
+                footprint=_resistor_0603_footprint(),
+            ),
+            prefix="R",
+        )
+    )
+
+    result = library.build()
+    part_result = result.part("SameNumbered")
+    artifact = part_result.artifact
+
+    assert result.ok
+    assert part_result.board_ready
+    assert part_result.pad_mapping_complete
+    assert artifact is not None
+    assert json.loads(artifact.bytes)["orderable_part"]["pin_pad_mappings"] == [
+        {"pin_number": "1", "pad": "1"},
+        {"pin_number": "2", "pad": "2"},
+    ]
+
+
 def test_part_instantiation_requires_library_identity():
     part = _library_resistor_part()
     design = volt.Design("unbound-part")
@@ -1307,6 +1338,42 @@ def test_part_validation_allows_mechanical_pads_without_logical_pin_mapping():
 
     assert result.ok
     assert tuple(result.diagnostics) == ()
+
+
+def test_part_validation_rejects_unknown_mechanical_pad_role():
+    library = volt.Library("volt.test.mechanical")
+    library.add(
+        volt.Part(
+            name="TypoMechanicalPad",
+            pins=[volt.PinSpec("A", 1), volt.PinSpec("B", 2)],
+            footprint=volt.Footprint(
+                ("volt.test", "TypoMechanicalPad"),
+                pads=(
+                    volt.FootprintPad.surface_mount("1", at=(-1.0, 0.0), size=(0.6, 0.6)),
+                    volt.FootprintPad.surface_mount("2", at=(0.0, 0.0), size=(0.6, 0.6)),
+                    volt.FootprintPad.surface_mount(
+                        "MP",
+                        at=(1.0, 0.0),
+                        size=(0.6, 0.6),
+                        mechanical_role="mountng",
+                    ),
+                ),
+            ),
+            pads={1: "1", 2: "2"},
+            manufacturer="Volt",
+            mpn="TYPO-MECH",
+            package="custom",
+        )
+    )
+
+    result = library.build()
+
+    assert not result.ok
+    assert [(diagnostic.code, diagnostic.severity) for diagnostic in result.diagnostics] == [
+        ("LIBRARY_PART_ARTIFACT_INVALID", "error")
+    ]
+    assert "Unknown footprint pad mechanical role" in result.diagnostics[0].message
+    assert result.part("TypoMechanicalPad").board_ready is False
 
 
 def test_part_validation_reports_lineup_diagnostics_and_non_serializable_data():
