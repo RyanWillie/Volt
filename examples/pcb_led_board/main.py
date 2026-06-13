@@ -103,6 +103,8 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
         footprint=_passive_0603(("leds", "LED_0603_1608Metric")),
         pin_pads={"A": "1", "K": "2"},
     )
+    for part in parts.values():
+        part.dnp(False)
     return design, nets, parts
 
 

@@ -201,5 +201,6 @@
     { "id": "net:4", "name": "CTRL", "kind": "Signal", "pins": ["pin:6", "pin:16"] },
     { "id": "net:5", "name": "OUT", "kind": "Signal", "pins": ["pin:4", "pin:20"] },
     { "id": "net:6", "name": "LED_A", "kind": "Signal", "pins": ["pin:21", "pin:22"] }
-  ]
+  ],
+  "design_intent": { "stub_nets": [], "no_connect_pins": [], "component_assembly": [{ "component": "component:0", "dnp": false, "selection_override": false }, { "component": "component:1", "dnp": false, "selection_override": false }, { "component": "component:2", "dnp": false, "selection_override": false }, { "component": "component:3", "dnp": false, "selection_override": false }, { "component": "component:4", "dnp": false, "selection_override": false }, { "component": "component:5", "dnp": false, "selection_override": false }, { "component": "component:6", "dnp": false, "selection_override": false }, { "component": "component:7", "dnp": false, "selection_override": false }, { "component": "component:8", "dnp": false, "selection_override": false }] }
 }

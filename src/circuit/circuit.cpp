@@ -279,6 +279,16 @@ bool Circuit::mark_intentional_no_connect_pin(PinId pin) {
     return intent_.mark_intentional_no_connect_pin(pin);
 }
 
+void Circuit::set_component_dnp(ComponentId component, bool dnp) {
+    require_component(component);
+    intent_.set_component_dnp(component, dnp);
+}
+
+void Circuit::set_component_selection_override(ComponentId component, bool override) {
+    require_component(component);
+    intent_.set_component_selection_override(component, override);
+}
+
 [[nodiscard]] NetClassId Circuit::add_net_class(NetClass net_class) {
     return net_classes_.add_net_class(std::move(net_class));
 }
@@ -337,12 +347,27 @@ Circuit::module_component_origins(ModuleInstanceId instance) const {
     return intent_.is_intentional_no_connect_pin(pin);
 }
 
+[[nodiscard]] std::optional<bool> Circuit::component_dnp(ComponentId component) const {
+    require_component(component);
+    return intent_.component_dnp(component);
+}
+
+[[nodiscard]] bool Circuit::is_component_selection_override(ComponentId component) const {
+    require_component(component);
+    return intent_.is_component_selection_override(component);
+}
+
 [[nodiscard]] const std::vector<NetId> &Circuit::intentional_stub_nets() const noexcept {
     return intent_.intentional_stub_nets();
 }
 
 [[nodiscard]] const std::vector<PinId> &Circuit::intentional_no_connect_pins() const noexcept {
     return intent_.intentional_no_connect_pins();
+}
+
+[[nodiscard]] const std::vector<ComponentAssemblyIntent> &
+Circuit::component_assembly_intents() const noexcept {
+    return intent_.component_assembly_intents();
 }
 
 [[nodiscard]] const NetClass &Circuit::net_class(NetClassId id) const {

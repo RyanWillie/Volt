@@ -76,5 +76,6 @@
       } },
     { "id": "net:1", "name": "LED_A", "kind": "Signal", "pins": ["pin:3", "pin:4"] },
     { "id": "net:2", "name": "GND", "kind": "Ground", "pins": ["pin:5", "pin:1"] }
-  ]
+  ],
+  "design_intent": { "stub_nets": [], "no_connect_pins": [], "component_assembly": [{ "component": "component:0", "dnp": false, "selection_override": false }, { "component": "component:1", "dnp": false, "selection_override": false }, { "component": "component:2", "dnp": false, "selection_override": false }] }
 }

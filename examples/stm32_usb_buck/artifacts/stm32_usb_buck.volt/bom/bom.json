@@ -1,0 +1,261 @@
+{
+  "components": [
+    {
+      "component": "component:24",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "H1",
+      "selection_override": false
+    },
+    {
+      "component": "component:25",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "H2",
+      "selection_override": false
+    },
+    {
+      "component": "component:26",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "H3",
+      "selection_override": false
+    },
+    {
+      "component": "component:27",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "H4",
+      "selection_override": false
+    },
+    {
+      "component": "component:19",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "J2",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Samtec",
+        "mpn": "FTSH-105-01-L-DV-K",
+        "package": "2x05 1.27mm"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:20",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "J3",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Sullins",
+        "mpn": "PEC04SAAN",
+        "package": "1x04 2.54mm"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:22",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "LED_STATUS/D",
+      "selection_override": false
+    },
+    {
+      "component": "component:21",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "LED_STATUS/R",
+      "selection_override": false
+    },
+    {
+      "component": "component:6",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "PWR/C3V3",
+      "selection_override": false
+    },
+    {
+      "component": "component:5",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "PWR/C5V",
+      "selection_override": false
+    },
+    {
+      "component": "component:4",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "PWR/CIN",
+      "selection_override": false
+    },
+    {
+      "component": "component:7",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "PWR/CVDDA",
+      "selection_override": false
+    },
+    {
+      "component": "component:1",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "PWR/J",
+      "selection_override": false
+    },
+    {
+      "component": "component:3",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "PWR/U3V3",
+      "selection_override": false
+    },
+    {
+      "component": "component:2",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "PWR/U5",
+      "selection_override": false
+    },
+    {
+      "component": "component:17",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/CHSEIN",
+      "selection_override": false
+    },
+    {
+      "component": "component:18",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/CHSEOUT",
+      "selection_override": false
+    },
+    {
+      "component": "component:11",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/CVCAP1",
+      "selection_override": false
+    },
+    {
+      "component": "component:12",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/CVCAP2",
+      "selection_override": false
+    },
+    {
+      "component": "component:10",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/CVDD",
+      "selection_override": false
+    },
+    {
+      "component": "component:14",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/RBOOT",
+      "selection_override": false
+    },
+    {
+      "component": "component:13",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/RRESET",
+      "selection_override": false
+    },
+    {
+      "component": "component:15",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/SWBOOT",
+      "selection_override": false
+    },
+    {
+      "component": "component:16",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/Y1",
+      "selection_override": false
+    },
+    {
+      "component": "component:23",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "U1",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "STMicroelectronics",
+        "mpn": "STM32F405RGT6",
+        "package": "LQFP-64"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:8",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "USB/J1",
+      "selection_override": false
+    },
+    {
+      "component": "component:9",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "USB/U1",
+      "selection_override": false
+    },
+    {
+      "component": "component:0",
+      "dnp": true,
+      "dnp_explicit": true,
+      "reference": "VIN_SRC",
+      "selection_override": false
+    }
+  ],
+  "format": "volt.bom",
+  "lines": [
+    {
+      "approved_alternate_mpns": [],
+      "dnp": true,
+      "manufacturer": "STMicroelectronics",
+      "mpn": "STM32F405RGT6",
+      "package": "LQFP-64",
+      "quantity": 0,
+      "references": [
+        "U1"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": true,
+      "manufacturer": "Samtec",
+      "mpn": "FTSH-105-01-L-DV-K",
+      "package": "2x05 1.27mm",
+      "quantity": 0,
+      "references": [
+        "J2"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": true,
+      "manufacturer": "Sullins",
+      "mpn": "PEC04SAAN",
+      "package": "1x04 2.54mm",
+      "quantity": 0,
+      "references": [
+        "J3"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    }
+  ],
+  "version": 1
+}

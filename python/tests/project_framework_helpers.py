@@ -49,6 +49,8 @@ def _minimal_design(name="status-led"):
     j1 = design.connector_1x02(ref="J1")
     r1 = design.R("330", ref="R1")
     d1 = design.LED(ref="D1")
+    for component in (j1, r1, d1):
+        component.dnp(True)
     vcc += j1[1], r1[1]
     led_a += r1[2], d1["A"]
     gnd += d1["K"], j1[2]
@@ -78,6 +80,8 @@ def _board_ready_design(name="status-led"):
         footprint=_passive_0603(("leds", "LED_0603_1608Metric")),
         pin_pads={"A": "1", "K": "2"},
     )
+    for reference in ("J1", "R1", "D1"):
+        design.component(reference).dnp(False)
     return design
 
 

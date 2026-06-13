@@ -204,12 +204,69 @@ TEST_CASE("Logical circuit writer emits design intent") {
 
     circuit.mark_intentional_stub_net(net);
     circuit.mark_intentional_no_connect_pin(pin);
+    circuit.set_component_dnp(component, true);
+    circuit.set_component_selection_override(component, true);
 
     const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
 
     REQUIRE(output.contains("design_intent"));
     CHECK(output["design_intent"]["stub_nets"] == nlohmann::json::array({"net:0"}));
     CHECK(output["design_intent"]["no_connect_pins"] == nlohmann::json::array({"pin:0"}));
+    CHECK(output["design_intent"]["component_assembly"] ==
+          nlohmann::json::array(
+              {{{"component", "component:0"}, {"dnp", true}, {"selection_override", true}}}));
+}
+
+TEST_CASE("Logical circuit writer emits override-only component assembly intent") {
+    volt::Circuit circuit;
+    const auto pin_def = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{pin_def}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    circuit.set_component_selection_override(component, true);
+
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+    const auto &assembly = output["design_intent"]["component_assembly"][0];
+
+    CHECK(assembly["component"] == "component:0");
+    CHECK_FALSE(assembly.contains("dnp"));
+    CHECK(assembly["selection_override"] == true);
+}
+
+TEST_CASE("Logical circuit writer emits selected-part alternates") {
+    volt::Circuit circuit;
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+    circuit.select_physical_part(
+        component,
+        volt::PhysicalPart{
+            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+            volt::PackageRef{"0603"},
+            volt::FootprintRef{"passives", "R_0603_1608Metric"},
+            std::vector{volt::PinPadMapping{first_pin, "1"}, volt::PinPadMapping{second_pin, "2"}},
+            {},
+            std::nullopt,
+            std::vector<std::string>{"RC0603FR-07330RLA", "RC0603FR-07330RLB"},
+        });
+
+    const auto output = nlohmann::json::parse(volt::io::write_logical_circuit(circuit));
+
+    CHECK(output["components"][0]["selected_physical_part"]["approved_alternate_mpns"] ==
+          nlohmann::json::array({"RC0603FR-07330RLA", "RC0603FR-07330RLB"}));
 }
 
 TEST_CASE("Logical circuit writer emits net classes and net assignments") {

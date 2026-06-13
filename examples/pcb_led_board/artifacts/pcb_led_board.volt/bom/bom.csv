@@ -1,0 +1,4 @@
+manufacturer,mpn,package,quantity,references,dnp,approved_alternate_mpns,selection_override_references
+Generic,HDR-1x02-2.54mm,2.54mm-1x02,1,J1,false,,
+Lite-On,LTST-C190KRKT,0603,1,D1,false,,
+Yageo,RC0603FR-07330RL,0603,1,R1,false,,

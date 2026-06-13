@@ -1,0 +1,86 @@
+{
+  "components": [
+    {
+      "component": "component:2",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "D1",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Lite-On",
+        "mpn": "LTST-C190KRKT",
+        "package": "0603"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:0",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "J1",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Generic",
+        "mpn": "HDR-1x02-2.54mm",
+        "package": "2.54mm-1x02"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:1",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "R1",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Yageo",
+        "mpn": "RC0603FR-07330RL",
+        "package": "0603"
+      },
+      "selection_override": false
+    }
+  ],
+  "format": "volt.bom",
+  "lines": [
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Generic",
+      "mpn": "HDR-1x02-2.54mm",
+      "package": "2.54mm-1x02",
+      "quantity": 1,
+      "references": [
+        "J1"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Lite-On",
+      "mpn": "LTST-C190KRKT",
+      "package": "0603",
+      "quantity": 1,
+      "references": [
+        "D1"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Yageo",
+      "mpn": "RC0603FR-07330RL",
+      "package": "0603",
+      "quantity": 1,
+      "references": [
+        "R1"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    }
+  ],
+  "version": 1
+}
