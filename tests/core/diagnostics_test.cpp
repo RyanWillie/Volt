@@ -201,6 +201,21 @@ TEST_CASE("Part lineup diagnostic codes are stable constants") {
           });
 }
 
+TEST_CASE("BOM diagnostic codes are stable constants") {
+    CHECK(std::string{volt::diagnostic_categories::Bom} == "bom");
+    CHECK(std::string{volt::bom_diagnostic_codes::ComponentMissingSelectedPart} ==
+          "BOM_COMPONENT_MISSING_SELECTED_PART");
+    CHECK(std::string{volt::bom_diagnostic_codes::ComponentImplicitDnp} ==
+          "BOM_COMPONENT_IMPLICIT_DNP");
+    CHECK(std::string{volt::bom_diagnostic_codes::ApprovedAlternateIncompatible} ==
+          "BOM_APPROVED_ALTERNATE_INCOMPATIBLE");
+    CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::Bom.begin(),
+                                   volt::diagnostic_code_catalogs::Bom.end()} ==
+          std::vector<std::string>{"BOM_COMPONENT_MISSING_SELECTED_PART",
+                                   "BOM_COMPONENT_IMPLICIT_DNP",
+                                   "BOM_APPROVED_ALTERNATE_INCOMPATIBLE"});
+}
+
 TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
     CHECK(std::string{volt::diagnostic_categories::Erc} == "erc");
     CHECK(std::string{volt::diagnostic_categories::Drc} == "drc");

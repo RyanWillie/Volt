@@ -32,6 +32,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
     assert volt.PCB_FABRICATION_DIAGNOSTIC_CODES == tuple(
         _volt.pcb_fabrication_diagnostic_codes()
     )
+    assert volt.BOM_DIAGNOSTIC_CODES == tuple(_volt.bom_diagnostic_codes())
 
     assert volt.DIAGNOSTIC_CATEGORIES == (
         "general",
@@ -41,6 +42,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "pcb.board",
         "pcb.visual",
         "pcb.fabrication",
+        "bom",
     )
     assert volt.ERC_DIAGNOSTIC_CODES == (
         "PIN_MUST_NOT_CONNECT",
@@ -88,6 +90,11 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "PART_PAD_ROW_PITCH_INCONSISTENT",
     )
     assert volt.PCB_FABRICATION_DIAGNOSTIC_CODES == ("PCB_KICAD_FAB_EXPORT_LOSS",)
+    assert volt.BOM_DIAGNOSTIC_CODES == (
+        "BOM_COMPONENT_MISSING_SELECTED_PART",
+        "BOM_COMPONENT_IMPLICIT_DNP",
+        "BOM_APPROVED_ALTERNATE_INCOMPATIBLE",
+    )
 
 
 def test_voltage_rating_diagnostic_is_inspectable():

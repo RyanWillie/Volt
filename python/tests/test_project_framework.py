@@ -634,6 +634,8 @@ def test_project_result_write_emits_deterministic_bundle(tmp_path):
     assert manifest["tests"]["summary"] == {"failed": 0, "passed": 0}
     assert [artifact["path"] for artifact in manifest["artifacts"]] == [
         "logical/status-led.volt.json",
+        "bom/bom.json",
+        "bom/bom.csv",
         "schematic/Main.volt.schematic.json",
         "schematic/Main.svg",
         "schematic/Main.body.svg",
@@ -645,6 +647,8 @@ def test_project_result_write_emits_deterministic_bundle(tmp_path):
         "diagnostics/tests.json",
     ]
     assert set(first_texts) == {
+        "bom/bom.csv",
+        "bom/bom.json",
         "diagnostics/diagnostics.json",
         "diagnostics/tests.json",
         "logical/status-led.volt.json",
@@ -826,6 +830,8 @@ def test_project_result_write_cleans_stale_bundle_artifacts(tmp_path):
     manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
     assert [artifact["path"] for artifact in manifest["artifacts"]] == [
         "logical/status-led.volt.json",
+        "bom/bom.json",
+        "bom/bom.csv",
         "diagnostics/diagnostics.json",
         "diagnostics/tests.json",
     ]
@@ -1064,6 +1070,10 @@ def test_two_board_project_fixture_writes_deterministic_bundle(tmp_path):
 
     assert first_texts == second_texts
     assert set(first_texts) == {
+        "bom/front-panel.bom.csv",
+        "bom/front-panel.bom.json",
+        "bom/main-controller.bom.csv",
+        "bom/main-controller.bom.json",
         "diagnostics/diagnostics.json",
         "diagnostics/tests.json",
         "logical/front-panel.volt.json",

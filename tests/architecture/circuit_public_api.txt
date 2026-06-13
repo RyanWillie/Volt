@@ -41,6 +41,8 @@ void set_selected_part_electrical_attribute(ComponentId component, const Electri
 void set_net_electrical_attribute(NetId net, const ElectricalAttributeSpec &spec, ElectricalAttributeValue value)
 bool mark_intentional_stub_net(NetId net)
 bool mark_intentional_no_connect_pin(PinId pin)
+void set_component_dnp(ComponentId component, bool dnp)
+void set_component_selection_override(ComponentId component, bool override)
 [[nodiscard]] NetClassId add_net_class(NetClass net_class)
 bool assign_net_class(NetId net, NetClassId net_class)
 [[nodiscard]] const std::optional<PhysicalPart> &selected_physical_part(ComponentId component) const
@@ -54,8 +56,11 @@ bool assign_net_class(NetId net, NetClassId net_class)
 [[nodiscard]] std::vector<std::pair<ModuleComponentId, ComponentId>> module_component_origins(ModuleInstanceId instance) const
 [[nodiscard]] bool is_intentional_stub_net(NetId net) const
 [[nodiscard]] bool is_intentional_no_connect_pin(PinId pin) const
+[[nodiscard]] std::optional<bool> component_dnp(ComponentId component) const
+[[nodiscard]] bool is_component_selection_override(ComponentId component) const
 [[nodiscard]] const std::vector<NetId> &intentional_stub_nets() const noexcept
 [[nodiscard]] const std::vector<PinId> &intentional_no_connect_pins() const noexcept
+[[nodiscard]] const std::vector<ComponentAssemblyIntent> &component_assembly_intents() const noexcept
 [[nodiscard]] const NetClass &net_class(NetClassId id) const
 [[nodiscard]] std::optional<NetClassId> net_class_by_name(const NetClassName &name) const
 [[nodiscard]] std::optional<NetClassId> net_class_for_net(NetId net) const

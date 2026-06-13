@@ -80,6 +80,8 @@ void validate_required_module_ports(const Circuit &circuit, DiagnosticReport &re
 
 void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &report);
 
+void validate_bom_component_readiness(const Circuit &circuit, DiagnosticReport &report);
+
 } // namespace detail
 
 /** Validate logical connectivity shape and pin connection requirements. */
@@ -93,5 +95,8 @@ void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &
 
 /** Validate whether a circuit is ready for PCB/layout work. */
 [[nodiscard]] DiagnosticReport validate_for_pcb(const Circuit &circuit);
+
+/** Validate whether a circuit is ready for deterministic BOM projection and handoff. */
+[[nodiscard]] DiagnosticReport validate_bom_readiness(const Circuit &circuit);
 
 } // namespace volt

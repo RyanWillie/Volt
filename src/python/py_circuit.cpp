@@ -2,7 +2,9 @@
 
 #include "binding_pcb_conversions.hpp"
 
+#include <volt/circuit/bom.hpp>
 #include <volt/circuit/queries.hpp>
+#include <volt/io/bom_writer.hpp>
 #include <volt/io/pcb_svg_writer.hpp>
 #include <volt/io/pcb_writer.hpp>
 #include <volt/pcb/board_router.hpp>
@@ -45,6 +47,31 @@ namespace {
     }
 
     throw py::type_error{"Pin-pad mapping values must be pad labels or sequences of pad labels"};
+}
+
+[[nodiscard]] std::vector<std::string> strings_from_iterable(py::handle value,
+                                                             const char *message) {
+    if (!py::isinstance<py::iterable>(value)) {
+        throw py::type_error{message};
+    }
+    auto result = std::vector<std::string>{};
+    for (const auto item : py::reinterpret_borrow<py::iterable>(value)) {
+        result.push_back(py::cast<std::string>(item));
+    }
+    return result;
+}
+
+[[nodiscard]] volt::BomSourcingSnapshot sourcing_snapshot_from_dict(const py::dict &dict) {
+    auto snapshot = volt::BomSourcingSnapshot{};
+    for (const auto item : dict) {
+        const auto mpn = py::cast<std::string>(item.first);
+        if (!py::isinstance<py::dict>(item.second)) {
+            throw py::type_error{"BOM sourcing snapshot values must be dicts"};
+        }
+        snapshot.set_mpn_properties(
+            mpn, properties_from_dict(py::reinterpret_borrow<py::dict>(item.second)));
+    }
+    return snapshot;
 }
 
 [[nodiscard]] volt::NetClassLayerScope parse_net_class_layer_scope(const std::string &scope) {
@@ -521,7 +548,8 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
                                      const std::string &part_number, const std::string &package,
                                      const std::string &footprint_library,
                                      const std::string &footprint_name, const py::dict &pin_pads,
-                                     const py::dict &properties, py::object model_3d) {
+                                     const py::dict &properties, py::object model_3d,
+                                     py::object approved_alternate_mpns) {
     const auto component_handle = component_id(component);
     auto mappings = std::vector<volt::PinPadMapping>{};
     mappings.reserve(static_cast<std::size_t>(py::len(pin_pads)));
@@ -550,11 +578,13 @@ void PyCircuit::select_physical_part(std::size_t component, const std::string &m
     }
 
     circuit_.select_physical_part(
-        component_handle, volt::PhysicalPart{volt::ManufacturerPart{manufacturer, part_number},
-                                             volt::PackageRef{package},
-                                             volt::FootprintRef{footprint_library, footprint_name},
-                                             std::move(mappings), properties_from_dict(properties),
-                                             part_model_3d_from_object(model_3d)});
+        component_handle,
+        volt::PhysicalPart{
+            volt::ManufacturerPart{manufacturer, part_number}, volt::PackageRef{package},
+            volt::FootprintRef{footprint_library, footprint_name}, std::move(mappings),
+            properties_from_dict(properties), part_model_3d_from_object(model_3d),
+            strings_from_iterable(approved_alternate_mpns,
+                                  "approved_alternate_mpns must be iterable")});
 }
 
 void PyCircuit::set_component_quantity(std::size_t component, const std::string &name,
@@ -703,6 +733,14 @@ void PyCircuit::mark_intentional_stub_net(std::size_t net) {
 
 void PyCircuit::mark_intentional_no_connect_pin(std::size_t pin) {
     static_cast<void>(circuit_.mark_intentional_no_connect_pin(pin_id(pin)));
+}
+
+void PyCircuit::set_component_dnp(std::size_t component, bool dnp) {
+    circuit_.set_component_dnp(component_id(component), dnp);
+}
+
+void PyCircuit::set_component_selection_override(std::size_t component, bool selection_override) {
+    circuit_.set_component_selection_override(component_id(component), selection_override);
 }
 
 std::size_t PyCircuit::define_module(const std::string &name) {
@@ -1288,6 +1326,20 @@ py::list PyCircuit::validate_schematic_readability() {
 
 py::list PyCircuit::validate_for_pcb() const {
     return diagnostics_to_list(volt::validate_for_pcb(circuit_));
+}
+
+py::list PyCircuit::validate_bom_readiness() const {
+    return diagnostics_to_list(volt::validate_bom_readiness(circuit_));
+}
+
+std::string PyCircuit::bom_json(const py::dict &sourcing_snapshot) const {
+    return volt::io::write_bom_json(
+        volt::project_bom(circuit_, sourcing_snapshot_from_dict(sourcing_snapshot)));
+}
+
+std::string PyCircuit::bom_csv(const py::dict &sourcing_snapshot) const {
+    return volt::io::write_bom_csv(
+        volt::project_bom(circuit_, sourcing_snapshot_from_dict(sourcing_snapshot)));
 }
 
 std::string PyCircuit::to_json() const {

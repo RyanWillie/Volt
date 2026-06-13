@@ -1,5 +1,6 @@
 add_library(
     volt_circuit
+    bom.cpp
     circuit.cpp
     connectivity_model.cpp
     definitions.cpp

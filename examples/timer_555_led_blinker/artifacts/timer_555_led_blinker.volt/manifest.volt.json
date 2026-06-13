@@ -11,6 +11,24 @@
     },
     {
       "group": {
+        "design": "timer-555-led-blinker"
+      },
+      "kind": "bom",
+      "media_type": "application/vnd.volt.bom+json",
+      "name": "timer-555-led-blinker",
+      "path": "bom/bom.json"
+    },
+    {
+      "group": {
+        "design": "timer-555-led-blinker"
+      },
+      "kind": "bom_csv",
+      "media_type": "text/csv",
+      "name": "timer-555-led-blinker",
+      "path": "bom/bom.csv"
+    },
+    {
+      "group": {
         "design": "timer-555-led-blinker",
         "schematic": "555 LED Blinker"
       },

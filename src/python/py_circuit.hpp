@@ -61,7 +61,8 @@ class PyCircuit {
                               const std::string &part_number, const std::string &package,
                               const std::string &footprint_library,
                               const std::string &footprint_name, const py::dict &pin_pads,
-                              const py::dict &properties, py::object model_3d);
+                              const py::dict &properties, py::object model_3d,
+                              py::object approved_alternate_mpns);
 
     void set_component_quantity(std::size_t component, const std::string &name,
                                 const std::string &dimension_name, double value);
@@ -104,6 +105,10 @@ class PyCircuit {
     void mark_intentional_stub_net(std::size_t net);
 
     void mark_intentional_no_connect_pin(std::size_t pin);
+
+    void set_component_dnp(std::size_t component, bool dnp);
+
+    void set_component_selection_override(std::size_t component, bool selection_override);
 
     [[nodiscard]] std::size_t define_module(const std::string &name);
 
@@ -256,6 +261,12 @@ class PyCircuit {
     [[nodiscard]] py::list validate_schematic_readability();
 
     [[nodiscard]] py::list validate_for_pcb() const;
+
+    [[nodiscard]] py::list validate_bom_readiness() const;
+
+    [[nodiscard]] std::string bom_json(const py::dict &sourcing_snapshot) const;
+
+    [[nodiscard]] std::string bom_csv(const py::dict &sourcing_snapshot) const;
 
     [[nodiscard]] std::string to_json() const;
 

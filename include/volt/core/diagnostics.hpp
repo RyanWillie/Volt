@@ -24,6 +24,7 @@ inline constexpr auto PartLineup = std::string_view{"part.lineup"};
 inline constexpr auto PcbBoard = std::string_view{"pcb.board"};
 inline constexpr auto PcbVisual = std::string_view{"pcb.visual"};
 inline constexpr auto PcbFabrication = std::string_view{"pcb.fabrication"};
+inline constexpr auto Bom = std::string_view{"bom"};
 
 } // namespace diagnostic_categories
 
@@ -33,7 +34,7 @@ inline constexpr auto All =
     std::array{diagnostic_categories::General,       diagnostic_categories::Erc,
                diagnostic_categories::Drc,           diagnostic_categories::PartLineup,
                diagnostic_categories::PcbBoard,      diagnostic_categories::PcbVisual,
-               diagnostic_categories::PcbFabrication};
+               diagnostic_categories::PcbFabrication, diagnostic_categories::Bom};
 
 } // namespace diagnostic_category_catalogs
 
@@ -125,6 +126,16 @@ inline constexpr auto PadRowPitchInconsistent = std::string_view{"PART_PAD_ROW_P
 
 } // namespace part_lineup_diagnostic_codes
 
+namespace bom_diagnostic_codes {
+
+inline constexpr auto ComponentMissingSelectedPart =
+    std::string_view{"BOM_COMPONENT_MISSING_SELECTED_PART"};
+inline constexpr auto ComponentImplicitDnp = std::string_view{"BOM_COMPONENT_IMPLICIT_DNP"};
+inline constexpr auto ApprovedAlternateIncompatible =
+    std::string_view{"BOM_APPROVED_ALTERNATE_INCOMPATIBLE"};
+
+} // namespace bom_diagnostic_codes
+
 namespace diagnostic_code_catalogs {
 
 inline constexpr auto Erc = std::array{erc_diagnostic_codes::PinMustNotConnect,
@@ -181,6 +192,10 @@ inline constexpr auto PartLineup = std::array{
     part_lineup_diagnostic_codes::PinWithoutPad, part_lineup_diagnostic_codes::PadWithoutPin,
     part_lineup_diagnostic_codes::PadOverlap,
     part_lineup_diagnostic_codes::PadRowPitchInconsistent};
+
+inline constexpr auto Bom = std::array{bom_diagnostic_codes::ComponentMissingSelectedPart,
+                                       bom_diagnostic_codes::ComponentImplicitDnp,
+                                       bom_diagnostic_codes::ApprovedAlternateIncompatible};
 
 } // namespace diagnostic_code_catalogs
 

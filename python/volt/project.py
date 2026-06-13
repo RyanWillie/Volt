@@ -615,6 +615,29 @@ class ProjectResult:
                         group={"design": model.name},
                     )
                 )
+                bom_json_path, bom_csv_path = _bom_artifact_paths(model, self.designs)
+                relative_bom_json = _unique_path(bom_json_path, used_paths)
+                relative_bom_csv = _unique_path(bom_csv_path, used_paths)
+                _write_json(root / relative_bom_json, model.bom())
+                _write_text(root / relative_bom_csv, model.bom_csv())
+                artifacts.append(
+                    _artifact_record(
+                        "bom",
+                        model.name,
+                        relative_bom_json,
+                        "application/vnd.volt.bom+json",
+                        group={"design": model.name},
+                    )
+                )
+                artifacts.append(
+                    _artifact_record(
+                        "bom_csv",
+                        model.name,
+                        relative_bom_csv,
+                        "text/csv",
+                        group={"design": model.name},
+                    )
+                )
             elif isinstance(model, Schematic):
                 output_name = model_output_name(model, self.schematics)
                 relative_json = _unique_path(
@@ -1231,6 +1254,13 @@ def _safe_slug(name: str) -> str:
     return cleaned or "model"
 
 
+def _bom_artifact_paths(model: Design, designs: tuple[Design, ...]) -> tuple[Path, Path]:
+    if len(designs) == 1:
+        return Path("bom") / "bom.json", Path("bom") / "bom.csv"
+    slug = _safe_slug(model.name)
+    return Path("bom") / f"{slug}.bom.json", Path("bom") / f"{slug}.bom.csv"
+
+
 def _pcb_svg_layer_filename_token(layer_name: str) -> str:
     cleaned = _PCB_SVG_LAYER_TOKEN_CHARS.sub("_", layer_name.strip()).strip("_")
     return cleaned or "layer"
@@ -1346,7 +1376,7 @@ def _prepare_bundle_root(root: Path) -> None:
         raise FileExistsError(
             f"Refusing to overwrite {root}: not an existing Volt project-result bundle"
         )
-    for directory in ("logical", "schematic", "pcb", "diagnostics", "assets"):
+    for directory in ("logical", "schematic", "pcb", "bom", "diagnostics", "assets"):
         shutil.rmtree(root / directory, ignore_errors=True)
     manifest = root / "manifest.volt.json"
     if manifest.exists():

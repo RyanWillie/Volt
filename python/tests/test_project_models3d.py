@@ -77,6 +77,8 @@ def test_project_result_writes_part_model_assets_and_placement_transforms(tmp_pa
     manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
     assert [artifact["path"] for artifact in manifest["artifacts"]] == [
         "logical/model-bundle.volt.json",
+        "bom/bom.json",
+        "bom/bom.csv",
         "pcb/Main.volt.pcb.json",
         "pcb/Main.svg",
         "pcb/Main.kicad_pcb",

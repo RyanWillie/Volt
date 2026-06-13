@@ -1,0 +1,10 @@
+manufacturer,mpn,package,quantity,references,dnp,approved_alternate_mpns,selection_override_references
+JST,S2B-PH-SM4-TB(LF)(SN),JST-PH-SMD-1x02,1,J1,false,,
+Lite-On,LTST-C171KRKT,0805,1,D1,false,,
+Samsung Electro-Mechanics,CL21B103KBANNNC,0805,1,C2,false,,
+Samsung Electro-Mechanics,CL21B104KBCNNNC,0805,1,C3,false,,
+Samsung Electro-Mechanics,CL21B105KBFNNNE,0805,1,C1,false,,
+Stackpole,RMCF0805FT100K,0805,1,R1,false,,
+Stackpole,RMCF0805FT1K00,0805,1,R3,false,,
+Stackpole,RMCF0805FT47K0,0805,1,R2,false,,
+Texas Instruments,NE555DR,SOIC-8,1,U1,false,,

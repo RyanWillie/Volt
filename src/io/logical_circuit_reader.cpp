@@ -777,6 +777,31 @@ void LogicalCircuitReader::read_design_intent() {
         [[maybe_unused]] const auto changed =
             circuit_.mark_intentional_no_connect_pin(resolve(pin_ids_, id));
     }
+
+    const auto component_assembly = optional_array_field(*it, "component_assembly");
+    if (component_assembly == nullptr) {
+        return;
+    }
+    auto seen_components = std::set<std::string>{};
+    for (const auto &intent : *component_assembly) {
+        require(intent.is_object(), "Component assembly intent must be an object");
+        const auto component_id = string_field(intent, "component");
+        require(seen_components.insert(component_id).second, "Duplicate component assembly intent");
+        const auto dnp = intent.find("dnp");
+        const auto &selection_override = field(intent, "selection_override");
+        if (dnp != intent.end()) {
+            require(dnp->is_boolean(), "Component assembly DNP intent must be a boolean");
+        }
+        require(selection_override.is_boolean(),
+                "Component assembly selection override intent must be a boolean");
+        require(dnp != intent.end() || selection_override.get<bool>(),
+                "Component assembly intent must include DNP or selection override intent");
+        const auto component = resolve(component_ids_, component_id);
+        if (dnp != intent.end()) {
+            circuit_.set_component_dnp(component, dnp->get<bool>());
+        }
+        circuit_.set_component_selection_override(component, selection_override.get<bool>());
+    }
 }
 
 void LogicalCircuitReader::read_module_definitions() {
@@ -927,6 +952,15 @@ LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
                                   translation[2].get<double>()},
             number_field(*model_it, "rotation_deg")};
     }
+    auto alternates = std::vector<std::string>{};
+    const auto alternate_it = object.find("approved_alternate_mpns");
+    if (alternate_it != object.end()) {
+        require(alternate_it->is_array(), "Selected physical part alternates must be an array");
+        for (const auto &alternate : *alternate_it) {
+            require(alternate.is_string(), "Selected physical part alternate MPN must be a string");
+            alternates.push_back(alternate.get<std::string>());
+        }
+    }
     return PhysicalPart{
         ManufacturerPart{string_field(manufacturer_part, "manufacturer"),
                          string_field(manufacturer_part, "part_number")},
@@ -934,7 +968,8 @@ LogicalCircuitReader::infer_component_origins(ModuleDefId definition,
         FootprintRef{string_field(footprint, "library"), string_field(footprint, "name")},
         std::move(mappings),
         properties(field(object, "properties")),
-        model_3d};
+        model_3d,
+        std::move(alternates)};
 }
 
 void LogicalCircuitReader::read_selected_physical_parts() {

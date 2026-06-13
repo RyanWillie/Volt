@@ -18,6 +18,7 @@ target_link_libraries(volt_nlohmann_json INTERFACE nlohmann_json::nlohmann_json)
 
 add_library(
     volt_io
+    bom_writer.cpp
     detail_schematic_svg_common.cpp
     detail_schematic_svg_elements.cpp
     detail_schematic_svg_layers.cpp
