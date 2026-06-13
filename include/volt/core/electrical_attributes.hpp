@@ -46,6 +46,7 @@ class ElectricalAttributeName {
 enum class ElectricalAttributeOwner {
     ComponentInstance,
     SelectedPart,
+    PartDefinition,
     PinSpec,
     Net,
     Constraint,

@@ -1,0 +1,50 @@
+{
+  "format": "volt.part",
+  "version": 1,
+  "identity": {
+    "namespace": "volt.power",
+    "name": "AP1117-15",
+    "version": "1.0.0"
+  },
+  "pins": [
+    { "name": "GND", "number": "1", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "name": "VO", "number": "2", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Output", "electrical_attributes": {
+        "voltage_range": { "type": "range", "dimension": "voltage", "minimum": 1.5, "maximum": 1.5 }
+      } },
+    { "name": "VI", "number": "3", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input", "electrical_attributes": {
+        "voltage_range": { "type": "range", "dimension": "voltage", "minimum": 2.5, "maximum": 18 }
+      } }
+  ],
+  "electrical_attributes": {
+    "input_voltage": { "type": "range", "dimension": "voltage", "minimum": 2.5, "maximum": 18 },
+    "output_current": { "type": "quantity", "dimension": "current", "value": 1 }
+  },
+  "provenance": {
+    "authored_by": "volt.tests",
+    "datasheet": "AP1117 rev 24",
+    "derived_from": "manual"
+  },
+  "symbols": [
+    { "name": "volt.power:regulator_3pin", "variant": "default", "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+  ],
+  "orderable_part": {
+    "manufacturer": "Diodes Incorporated",
+    "mpn": "AP1117E15G-13",
+    "package": "SOT-223-3",
+    "footprint": { "library": "Package_TO_SOT_SMD", "name": "SOT-223-3_TabPin2", "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+    "pin_pad_mappings": [
+      { "pin_number": "1", "pad": "1" },
+      { "pin_number": "2", "pad": "2" },
+      { "pin_number": "2", "pad": "4" },
+      { "pin_number": "3", "pad": "3" }
+    ],
+    "approved_alternate_mpns": ["AP1117E15G-7"],
+    "model_3d": {
+      "format": "step",
+      "file_name": "sot223.step",
+      "hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "translation_mm": [0, 0, 0.80000000000000004],
+      "rotation_deg": 0
+    }
+  }
+}

@@ -23,6 +23,7 @@ Source: `python/volt/library.py`
 | `add(self, part: Part) -> Part` | Add a reusable public part to this library. |
 | `build(self) -> LibraryResult` | Validate this library's public parts and return a deterministic result. |
 | `part_family(self, **defaults) -> _PartFamily` | Create a helper that registers parts using shared defaults. |
+| `part(self, name: str, **kwargs) -> Part` | Create and register a public part in this library. |
 | `component(self, name: str, *, pins: Iterable[PinSpec], properties: dict \| None = None, source_name: str \| None = None, source_version: str \| None = None, physical_part: PhysicalPartSpec \| None = None, prefix: str = 'U', schematic_symbol: SchematicSymbolSpec \| Iterable[SchematicSymbolSpec] \| None = None) -> LibraryComponent` | Register a reusable component entry in this Python library. |
 | `__getitem__(self, name: str) -> Part \| LibraryComponent` | Return a registered public part or legacy library component by name. |
 
@@ -91,6 +92,19 @@ Source: `python/volt/library_result.py`
 | `__getitem__(self, index: int) -> LibraryDiagnostic` | Return one diagnostic by positional index. |
 | `errors(self, *, source: str \| None = None) -> tuple[LibraryDiagnostic, ...]` | Return error diagnostics, optionally filtered by source. |
 
+## `volt.LibraryPartArtifact`
+
+Canonical kernel-owned part artifact emitted by a library build.
+
+Source: `python/volt/library_result.py`
+
+### Fields
+
+| Field |
+| --- |
+| `bytes: bytes` |
+| `sha256: str` |
+
 ## `volt.LibraryPartResult`
 
 Validation status for one public library part.
@@ -107,6 +121,7 @@ Source: `python/volt/library_result.py`
 | `serializable: bool` |
 | `has_footprint: bool` |
 | `pad_mapping_complete: bool` |
+| `artifact: LibraryPartArtifact \| None` |
 | `diagnostics: tuple[LibraryDiagnostic, ...]` |
 
 ## `volt.LibraryResult`
@@ -170,14 +185,21 @@ Source: `python/volt/library.py`
 | `voltage_rating: float \| None` |
 | `power_rating: float \| None` |
 | `model_3d: PartModel3D \| None` |
+| `approved_alternate_mpns: tuple[str, ...]` |
 | `same_numbered_pads: bool` |
 
 ### Methods
 
 | Method | Summary |
 | --- | --- |
-| `same_numbered(cls, *, manufacturer: str, part_number: str, package: str, footprint: FootprintInput, properties: dict \| None = None, voltage_rating: float \| None = None, power_rating: float \| None = None, model_3d: PartModel3D \| None = None) -> PhysicalPartSpec` | Create a physical part whose footprint pad labels match pin numbers. |
+| `same_numbered(cls, *, manufacturer: str, part_number: str, package: str, footprint: FootprintInput, properties: dict \| None = None, voltage_rating: float \| None = None, power_rating: float \| None = None, model_3d: PartModel3D \| None = None, approved_alternate_mpns: Iterable[str] = ()) -> PhysicalPartSpec` | Create a physical part whose footprint pad labels match pin numbers. |
 | `pin_pads_for(self, component: LibraryComponent) -> dict[int \| str, PinPadValue]` | Return the pin-to-pad mapping for a library component. |
+
+## `volt.OrderablePart`
+
+Artifact-facing name for orderable physical part identity.
+
+Source: `python/volt/library.py`
 
 ## `volt.Part`
 

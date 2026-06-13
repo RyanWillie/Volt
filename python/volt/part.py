@@ -80,6 +80,9 @@ class Part:
         voltage_rating: float | None = None,
         power_rating: float | None = None,
         model_3d: PartModel3D | None = None,
+        approved_alternate_mpns: Iterable[str] = (),
+        orderable: PhysicalPartSpec | None = None,
+        orderable_part: PhysicalPartSpec | None = None,
         prefix: str = "U",
         extensions: dict | None = None,
         source_name: str | None = None,
@@ -97,6 +100,38 @@ class Part:
             raise TypeError("Part accepts either symbol or schematic_symbol")
         if mpn is not None and part_number is not None and mpn != part_number:
             raise ValueError("Part mpn and part_number must match when both are provided")
+        if orderable is not None:
+            if orderable_part is not None:
+                raise TypeError("Part accepts either orderable or orderable_part")
+            orderable_part = orderable
+        alternate_mpns = tuple(str(mpn) for mpn in approved_alternate_mpns)
+        if orderable_part is not None:
+            if (
+                footprint is not None
+                or pads is not None
+                or manufacturer is not None
+                or mpn is not None
+                or part_number is not None
+                or package is not None
+                or physical_properties is not None
+                or voltage_rating is not None
+                or power_rating is not None
+                or model_3d is not None
+                or alternate_mpns
+            ):
+                raise TypeError(
+                    "Part accepts either orderable_part or explicit physical part fields"
+                )
+            footprint = orderable_part.footprint
+            pads = orderable_part.pin_pads
+            manufacturer = orderable_part.manufacturer
+            mpn = orderable_part.part_number
+            package = orderable_part.package
+            physical_properties = orderable_part.properties
+            voltage_rating = orderable_part.voltage_rating
+            power_rating = orderable_part.power_rating
+            model_3d = orderable_part.model_3d
+            alternate_mpns = orderable_part.approved_alternate_mpns
 
         logical_properties = dict(properties or {})
         if value is not None:
@@ -124,6 +159,7 @@ class Part:
         self.voltage_rating = voltage_rating
         self.power_rating = power_rating
         self.model_3d = model_3d
+        self.approved_alternate_mpns = alternate_mpns
         self.prefix = prefix
         self.extensions = _freeze_value(extensions or {})
         self.source_name = source_name or name
@@ -183,6 +219,7 @@ class Part:
             voltage_rating=self.voltage_rating,
             power_rating=self.power_rating,
             model_3d=self.model_3d,
+            approved_alternate_mpns=self.approved_alternate_mpns,
         )
 
     def _to_dict(self) -> dict:
@@ -205,6 +242,7 @@ class Part:
             "voltage_rating": self.voltage_rating,
             "power_rating": self.power_rating,
             "model_3d": None if self.model_3d is None else self.model_3d._to_dict(),
+            "approved_alternate_mpns": list(self.approved_alternate_mpns),
             "prefix": self.prefix,
             "extensions": _mutable_value(self.extensions),
             "source_name": self.source_name,

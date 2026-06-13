@@ -9,6 +9,7 @@ add_library(
     hierarchy_model.cpp
     instances.cpp
     nets.cpp
+    part_definition.cpp
     parts.cpp
     queries.cpp
     net_class_resolution.cpp

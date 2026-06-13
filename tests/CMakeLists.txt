@@ -34,6 +34,7 @@ add_executable(
     circuit/validation_signal_domain_test.cpp
     circuit/validation_test.cpp
     core/diagnostics_test.cpp
+    core/content_hash_test.cpp
     core/electrical_attributes_test.cpp
     core/entity_table_test.cpp
     core/ids_test.cpp
@@ -46,6 +47,7 @@ add_executable(
     io/logical_circuit_reader_test.cpp
     io/logical_circuit_round_trip_test.cpp
     io/logical_circuit_writer_test.cpp
+    io/part_definition_io_test.cpp
     io/pcb_projection_io_test.cpp
     io/pcb_svg_writer_test.cpp
     io/schematic_reader_test.cpp

@@ -4,9 +4,10 @@ configure_file(
     @ONLY
 )
 
-add_library(volt_core version.cpp)
+add_library(volt_core content_hash.cpp version.cpp)
 add_library(Volt::Core ALIAS volt_core)
 
+set_target_properties(volt_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_features(volt_core PUBLIC cxx_std_20)
 
 target_include_directories(

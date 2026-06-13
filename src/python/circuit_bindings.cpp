@@ -1,13 +1,16 @@
 #include "circuit_bindings.hpp"
 
+#include "binding_part_definition_conversions.hpp"
 #include "binding_pcb_conversions.hpp"
 #include "py_circuit.hpp"
 
+#include <volt/core/content_hash.hpp>
 #include <volt/io/board_capability_profile.hpp>
 
 #include <array>
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <string_view>
 
 namespace volt::python {
@@ -40,6 +43,12 @@ void bind_circuit(pybind11::module_ &module) {
     module.def("normalize_capability_profile", [](const py::dict &profile) {
         return board_capability_profile_to_dict(board_capability_profile_from_dict(profile));
     });
+    module.def("content_hash", [](const py::bytes &bytes) {
+        const auto data = static_cast<std::string>(bytes);
+        return volt::sha256_content_hash(data).value();
+    });
+    module.def("part_definition_artifact",
+               [](const py::dict &part) { return part_definition_artifact_from_dict(part); });
 
     py::class_<PyCircuit>(module, "Circuit")
         .def(py::init<>())
