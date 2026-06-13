@@ -194,6 +194,19 @@ void apply_escape_room_overrides(const Board &board, BoardRoom &room) {
 
 } // namespace
 
+[[nodiscard]] BoardViaSize resolve_via_size(const Board &board, NetId net,
+                                            double fallback_drill_diameter_mm,
+                                            double fallback_annular_diameter_mm) {
+    const auto rules = resolve_net_class_rules(board.circuit(), net);
+    const auto &design = board.design_rules();
+    return {
+        std::max(rules.via_drill_mm.value_or(fallback_drill_diameter_mm),
+                 design.minimum_via_drill_diameter_mm()),
+        std::max(rules.via_diameter_mm.value_or(fallback_annular_diameter_mm),
+                 design.minimum_via_annular_diameter_mm()),
+    };
+}
+
 BoardRouter::BoardRouter(Board &board, const FootprintLibrary &footprints)
     : board_{&board}, footprints_{footprints}, index_{board, footprints_} {}
 
@@ -224,16 +237,14 @@ void BoardRouter::require_routable_layer(BoardLayerId layer) const {
 [[nodiscard]] BoardRouteParameters BoardRouter::resolve_parameters(NetId net) const {
     const auto rules = resolve_net_class_rules(board_->circuit(), net);
     const auto &design = board_->design_rules();
+    const auto via_size = resolve_via_size(*board_, net, design.minimum_via_drill_diameter_mm(),
+                                           design.minimum_via_annular_diameter_mm());
 
     auto params = BoardRouteParameters{};
     params.track_width_mm = std::max(rules.track_width_mm.value_or(design.minimum_track_width_mm()),
                                      design.minimum_track_width_mm());
-    params.via_drill_mm =
-        std::max(rules.via_drill_mm.value_or(design.minimum_via_drill_diameter_mm()),
-                 design.minimum_via_drill_diameter_mm());
-    params.via_diameter_mm =
-        std::max(rules.via_diameter_mm.value_or(design.minimum_via_annular_diameter_mm()),
-                 design.minimum_via_annular_diameter_mm());
+    params.via_drill_mm = via_size.drill_diameter_mm;
+    params.via_diameter_mm = via_size.annular_diameter_mm;
 
     for (std::size_t index = 0; index < board_->layer_count(); ++index) {
         const auto layer = BoardLayerId{index};

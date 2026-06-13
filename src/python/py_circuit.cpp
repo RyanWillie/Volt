@@ -3,9 +3,7 @@
 #include "binding_pcb_conversions.hpp"
 
 #include <algorithm>
-#include <array>
 
-#include <volt/circuit/net_class_resolution.hpp>
 #include <volt/circuit/queries.hpp>
 #include <volt/io/pcb_svg_writer.hpp>
 #include <volt/io/pcb_writer.hpp>
@@ -268,20 +266,6 @@ template <typename Id>
         return std::nullopt;
     }
     return py::cast<std::string>(dict[py::str{key}]);
-}
-
-[[nodiscard]] std::pair<double, double> resolved_authoring_via_size(const volt::Board &board,
-                                                                    volt::NetId net,
-                                                                    double fallback_drill_mm,
-                                                                    double fallback_annular_mm) {
-    const auto &rules = board.design_rules();
-    const auto net_rules = volt::resolve_net_class_rules(board.circuit(), net);
-    return {
-        std::max({fallback_drill_mm, rules.minimum_via_drill_diameter_mm(),
-                  net_rules.via_drill_mm.value_or(0.0)}),
-        std::max({fallback_annular_mm, rules.minimum_via_annular_diameter_mm(),
-                  net_rules.via_diameter_mm.value_or(0.0)}),
-    };
 }
 
 [[nodiscard]] volt::NetClassTraceEnvironment parse_trace_environment(const std::string &value) {
@@ -1581,13 +1565,13 @@ std::size_t PyCircuit::board_add_via(std::size_t net, double x, double y, std::s
                                      std::optional<double> annular_diameter_mm) {
     const auto net_id_value = net_id(net);
     auto &board = board_projection();
-    const auto [default_drill_mm, default_annular_mm] = resolved_authoring_via_size(
+    const auto default_via_size = volt::resolve_via_size(
         board, net_id_value, default_authoring_via_drill_mm, default_authoring_via_annular_mm);
     return board
         .add_via(volt::BoardVia{net_id_value, volt::BoardPoint{x, y},
                                 volt::BoardLayerId{start_layer}, volt::BoardLayerId{end_layer},
-                                drill_diameter_mm.value_or(default_drill_mm),
-                                annular_diameter_mm.value_or(default_annular_mm)})
+                                drill_diameter_mm.value_or(default_via_size.drill_diameter_mm),
+                                annular_diameter_mm.value_or(default_via_size.annular_diameter_mm)})
         .index();
 }
 

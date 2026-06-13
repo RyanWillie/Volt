@@ -1459,6 +1459,28 @@ def test_python_board_add_via_defaults_respect_net_class_via_size():
     } == set()
 
 
+def test_python_board_add_via_uses_net_class_before_authoring_fallback():
+    design = volt.Design("via-net-class-below-fallback")
+    route = design.net("ROUTE")
+    design.net_class("RouteVias", via_drill=0.25, via_diameter=0.50).assign(route)
+    board = design.board()
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(10.0, 10.0))
+
+    board.add_via(route, at=(2.0, 2.0), start_layer=front, end_layer=back)
+
+    [via] = json.loads(board.to_json())["board"]["vias"]
+    assert via["drill_diameter_mm"] == 0.25
+    assert via["annular_diameter_mm"] == 0.50
+    assert {
+        diagnostic.code
+        for diagnostic in board.validate()
+        if diagnostic.code.startswith("PCB_VIA_")
+    } == set()
+
+
 def test_python_board_authoring_sets_capability_profile_from_file_and_inline():
     design = volt.Design("capability-profile")
     board = design.board("Control")
