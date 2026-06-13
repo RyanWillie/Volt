@@ -8,7 +8,7 @@ namespace volt {
 
 ComponentAssemblyIntent::ComponentAssemblyIntent(ComponentId component, std::optional<bool> dnp,
                                                  bool selection_override)
-    : component_{component}, dnp_{std::move(dnp)}, selection_override_{selection_override} {}
+    : component_{component}, dnp_{dnp}, selection_override_{selection_override} {}
 
 bool DesignIntent::mark_intentional_stub_net(NetId net) {
     if (is_intentional_stub_net(net)) {
