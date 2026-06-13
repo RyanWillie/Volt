@@ -182,6 +182,44 @@ Board::resolve_pads(const FootprintLibrary &footprints) const {
     return resolutions;
 }
 
+[[nodiscard]] std::vector<ProjectedFootprintGeometry>
+Board::project_footprint_geometries(const FootprintLibrary &footprints) const {
+    auto geometries = std::vector<ProjectedFootprintGeometry>{};
+    const auto resolution_footprints = detail::board_resolution_footprints(*this, footprints);
+    for (std::size_t index = 0; index < placements_.placement_count(); ++index) {
+        const auto placement_id = ComponentPlacementId{index};
+        const auto &component_placement = placement(placement_id);
+        const auto &selected_part =
+            circuit().selected_physical_part(component_placement.component());
+        if (!selected_part.has_value()) {
+            continue;
+        }
+
+        const auto footprint_resolution =
+            resolve_footprint(selected_part.value(), resolution_footprints);
+        const auto *definition = footprint_resolution.definition();
+        if (definition == nullptr) {
+            continue;
+        }
+
+        auto courtyard = std::optional<std::vector<BoardPoint>>{};
+        if (definition->courtyard().has_value()) {
+            courtyard = detail::transformed_footprint_polygon(component_placement,
+                                                              definition->courtyard().value());
+        }
+        auto body = std::optional<std::vector<BoardPoint>>{};
+        if (definition->body().has_value()) {
+            body = detail::transformed_footprint_polygon(component_placement,
+                                                         definition->body().value());
+        }
+
+        geometries.emplace_back(placement_id, component_placement.component(), std::move(courtyard),
+                                std::move(body));
+    }
+
+    return geometries;
+}
+
 [[nodiscard]] std::vector<RatsnestEdge>
 Board::ratsnest_edges(const FootprintLibrary &footprints) const {
     return derive_ratsnest_edges(resolve_pads(footprints));

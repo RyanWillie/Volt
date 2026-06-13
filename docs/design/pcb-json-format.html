@@ -337,6 +337,8 @@
             <tr><td><code>pads[].position</code></td><td>Footprint-local pad center in millimeters.</td><td>Independent rendering before placement transform.</td></tr>
             <tr><td><code>pads[].size</code></td><td>Width and height in millimeters.</td><td>Pad body rendering.</td></tr>
             <tr><td><code>pads[].kind</code>, <code>shape</code>, <code>layers</code>, <code>drill</code>, <code>mechanical_role</code></td><td>Pad technology and geometry metadata.</td><td>Shape, layer membership, through-hole rendering, and non-electrical annotation.</td></tr>
+            <tr><td><code>courtyard</code></td><td>Optional footprint-local courtyard polygon.</td><td>Render and inspect declared component clearance extents. Missing means no courtyard was declared, distinct from an invalid empty polygon.</td></tr>
+            <tr><td><code>body</code></td><td>Optional footprint-local body outline polygon.</td><td>Render the declared physical body extent without guessing from pad bounds. Missing means no body outline was declared.</td></tr>
           </tbody>
         </table>
       </div>

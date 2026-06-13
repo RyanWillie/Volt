@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 
 FootprintRef = tuple[str, str]
+FootprintPolygon = tuple[tuple[float, float], ...]
 
 
 @dataclass(frozen=True, init=False)
@@ -14,6 +15,8 @@ class Footprint:
 
     ref: FootprintRef
     pads: tuple[Any, ...]
+    courtyard: FootprintPolygon | None
+    body: FootprintPolygon | None
 
     def __init__(
         self,
@@ -22,6 +25,8 @@ class Footprint:
         library: str | None = None,
         name: str | None = None,
         pads: Iterable[Any],
+        courtyard: Iterable[tuple[float, float]] | None = None,
+        body: Iterable[tuple[float, float]] | None = None,
     ) -> None:
         if ref is not None:
             if library is not None or name is not None:
@@ -39,6 +44,8 @@ class Footprint:
 
         object.__setattr__(self, "ref", (library, name))
         object.__setattr__(self, "pads", tuple(pads))
+        object.__setattr__(self, "courtyard", _footprint_polygon(courtyard, "courtyard"))
+        object.__setattr__(self, "body", _footprint_polygon(body, "body"))
 
     @property
     def library(self) -> str:
@@ -51,7 +58,12 @@ class Footprint:
         return self.ref[1]
 
     def _to_dict(self) -> dict:
-        return {"ref": self.ref, "pads": [pad._to_dict() for pad in self.pads]}
+        payload = {"ref": self.ref, "pads": [pad._to_dict() for pad in self.pads]}
+        if self.courtyard is not None:
+            payload["courtyard"] = list(self.courtyard)
+        if self.body is not None:
+            payload["body"] = list(self.body)
+        return payload
 
 
 FootprintInput = Footprint | FootprintRef
@@ -76,3 +88,19 @@ def _tuple_footprint_ref(ref: tuple[object, ...]) -> FootprintRef:
     if not name:
         raise ValueError("Footprint name must not be empty")
     return library, name
+
+
+def _footprint_polygon(
+    value: Iterable[tuple[float, float]] | None,
+    field_name: str,
+) -> FootprintPolygon | None:
+    if value is None:
+        return None
+    vertices: list[tuple[float, float]] = []
+    for point in value:
+        coordinates = tuple(point)
+        if len(coordinates) != 2:
+            raise TypeError(f"Footprint {field_name} points must be (x, y) pairs")
+        x, y = coordinates
+        vertices.append((float(x), float(y)))
+    return tuple(vertices)

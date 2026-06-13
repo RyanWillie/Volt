@@ -132,6 +132,55 @@ TEST_CASE("FootprintDefinition assigns stable pad identities by label") {
     CHECK_FALSE(footprint.pad_id("3").has_value());
 }
 
+TEST_CASE("FootprintDefinition stores optional courtyard and body geometry") {
+    const auto pad = volt::FootprintPad::surface_mount(
+        "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.0, 0.0},
+        volt::FootprintSize{0.5, 0.5}, volt::FootprintLayerSet::front_smd());
+
+    const auto without_geometry =
+        volt::FootprintDefinition{volt::FootprintRef{"test", "NoGeometry"}, std::vector{pad}};
+
+    CHECK_FALSE(without_geometry.courtyard().has_value());
+    CHECK_FALSE(without_geometry.body().has_value());
+
+    const auto courtyard = volt::FootprintPolygon{std::vector{
+        volt::FootprintPoint{-1.0, -0.5},
+        volt::FootprintPoint{1.0, -0.5},
+        volt::FootprintPoint{1.0, 0.5},
+        volt::FootprintPoint{-1.0, 0.5},
+    }};
+    const auto body = volt::FootprintPolygon{std::vector{
+        volt::FootprintPoint{-0.6, -0.3},
+        volt::FootprintPoint{0.6, -0.3},
+        volt::FootprintPoint{0.6, 0.3},
+        volt::FootprintPoint{-0.6, 0.3},
+    }};
+
+    const auto footprint = volt::FootprintDefinition{volt::FootprintRef{"test", "WithGeometry"},
+                                                     std::vector{pad}, courtyard, body};
+
+    REQUIRE(footprint.courtyard().has_value());
+    REQUIRE(footprint.body().has_value());
+    CHECK(footprint.courtyard()->vertices()[2] == volt::FootprintPoint{1.0, 0.5});
+    CHECK(footprint.body()->vertices()[0] == volt::FootprintPoint{-0.6, -0.3});
+}
+
+TEST_CASE("Footprint polygons reject structurally invalid geometry") {
+    CHECK_THROWS_AS(volt::FootprintPolygon(std::vector<volt::FootprintPoint>{}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::FootprintPolygon(std::vector{
+                        volt::FootprintPoint{0.0, 0.0},
+                        volt::FootprintPoint{1.0, 0.0},
+                    }),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::FootprintPolygon(std::vector{
+                        volt::FootprintPoint{0.0, 0.0},
+                        volt::FootprintPoint{1.0, 0.0},
+                        volt::FootprintPoint{2.0, 0.0},
+                    }),
+                    std::invalid_argument);
+}
+
 TEST_CASE("FootprintDefinition rejects duplicate pad labels") {
     CHECK_THROWS_AS(
         volt::FootprintDefinition(

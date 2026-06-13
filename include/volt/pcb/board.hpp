@@ -190,6 +190,10 @@ class Board {
     /** Derive pad-to-pin/net resolution for all placed components. */
     [[nodiscard]] std::vector<PadResolution> resolve_pads(const FootprintLibrary &footprints) const;
 
+    /** Derive board-space footprint courtyard/body polygons for all resolved placements. */
+    [[nodiscard]] std::vector<ProjectedFootprintGeometry>
+    project_footprint_geometries(const FootprintLibrary &footprints) const;
+
     /** Derive deterministic unrouted ratsnest edges for all placed multi-pad nets. */
     [[nodiscard]] std::vector<RatsnestEdge>
     ratsnest_edges(const FootprintLibrary &footprints) const;

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -22,6 +23,95 @@ namespace {
 
 [[nodiscard]] bool is_positive_finite(double value) noexcept {
     return std::isfinite(value) && value > 0.0;
+}
+
+inline constexpr double kPartFootprintPolygonEpsilon = 1.0e-9;
+
+[[nodiscard]] double
+part_footprint_polygon_area_twice(const std::vector<PartFootprintPoint> &vertices) {
+    double area = 0.0;
+    std::size_t previous = vertices.size() - 1U;
+    for (std::size_t current = 0; current < vertices.size(); ++current) {
+        area += vertices[previous].x_mm() * vertices[current].y_mm();
+        area -= vertices[current].x_mm() * vertices[previous].y_mm();
+        previous = current;
+    }
+    return area;
+}
+
+[[nodiscard]] double part_footprint_orientation(PartFootprintPoint a, PartFootprintPoint b,
+                                                PartFootprintPoint c) noexcept {
+    return ((b.x_mm() - a.x_mm()) * (c.y_mm() - a.y_mm())) -
+           ((b.y_mm() - a.y_mm()) * (c.x_mm() - a.x_mm()));
+}
+
+[[nodiscard]] bool part_footprint_point_on_segment(PartFootprintPoint point, PartFootprintPoint a,
+                                                   PartFootprintPoint b) noexcept {
+    const auto cross = ((point.y_mm() - a.y_mm()) * (b.x_mm() - a.x_mm())) -
+                       ((point.x_mm() - a.x_mm()) * (b.y_mm() - a.y_mm()));
+    if (std::abs(cross) > kPartFootprintPolygonEpsilon) {
+        return false;
+    }
+
+    const auto dot = ((point.x_mm() - a.x_mm()) * (b.x_mm() - a.x_mm())) +
+                     ((point.y_mm() - a.y_mm()) * (b.y_mm() - a.y_mm()));
+    if (dot < -kPartFootprintPolygonEpsilon) {
+        return false;
+    }
+
+    const auto length_squared = ((b.x_mm() - a.x_mm()) * (b.x_mm() - a.x_mm())) +
+                                ((b.y_mm() - a.y_mm()) * (b.y_mm() - a.y_mm()));
+    return dot <= length_squared + kPartFootprintPolygonEpsilon;
+}
+
+[[nodiscard]] bool part_footprint_segments_intersect(PartFootprintPoint a, PartFootprintPoint b,
+                                                     PartFootprintPoint c,
+                                                     PartFootprintPoint d) noexcept {
+    const auto ab_c = part_footprint_orientation(a, b, c);
+    const auto ab_d = part_footprint_orientation(a, b, d);
+    const auto cd_a = part_footprint_orientation(c, d, a);
+    const auto cd_b = part_footprint_orientation(c, d, b);
+
+    if (std::abs(ab_c) <= kPartFootprintPolygonEpsilon &&
+        part_footprint_point_on_segment(c, a, b)) {
+        return true;
+    }
+    if (std::abs(ab_d) <= kPartFootprintPolygonEpsilon &&
+        part_footprint_point_on_segment(d, a, b)) {
+        return true;
+    }
+    if (std::abs(cd_a) <= kPartFootprintPolygonEpsilon &&
+        part_footprint_point_on_segment(a, c, d)) {
+        return true;
+    }
+    if (std::abs(cd_b) <= kPartFootprintPolygonEpsilon &&
+        part_footprint_point_on_segment(b, c, d)) {
+        return true;
+    }
+
+    return ((ab_c > 0.0) != (ab_d > 0.0)) && ((cd_a > 0.0) != (cd_b > 0.0));
+}
+
+[[nodiscard]] bool
+part_footprint_polygon_has_self_intersection(const std::vector<PartFootprintPoint> &vertices) {
+    for (std::size_t first = 0; first < vertices.size(); ++first) {
+        const auto first_next = (first + 1U) % vertices.size();
+        for (std::size_t second = first + 1U; second < vertices.size(); ++second) {
+            const auto second_next = (second + 1U) % vertices.size();
+            const auto adjacent = first == second || first_next == second || second_next == first ||
+                                  (first == 0U && second_next == 0U);
+            if (adjacent) {
+                continue;
+            }
+
+            if (part_footprint_segments_intersect(vertices[first], vertices[first_next],
+                                                  vertices[second], vertices[second_next])) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 [[nodiscard]] bool almost_equal(double lhs, double rhs) noexcept {
@@ -162,6 +252,32 @@ PartFootprintPad::PartFootprintPad(std::string label, double x_mm, double y_mm, 
     }
 }
 
+PartFootprintPoint::PartFootprintPoint(double x_mm, double y_mm) : x_mm_{x_mm}, y_mm_{y_mm} {
+    if (!std::isfinite(x_mm_) || !std::isfinite(y_mm_)) {
+        throw std::invalid_argument{"Part footprint polygon coordinates must be finite"};
+    }
+}
+
+PartFootprintPolygon::PartFootprintPolygon(std::vector<PartFootprintPoint> vertices)
+    : vertices_{std::move(vertices)} {
+    drop_duplicate_closing_vertex();
+    if (vertices_.size() < 3U) {
+        throw std::invalid_argument{"Part footprint polygon must contain at least three vertices"};
+    }
+    if (std::abs(part_footprint_polygon_area_twice(vertices_)) <= kPartFootprintPolygonEpsilon) {
+        throw std::invalid_argument{"Part footprint polygon area must be positive"};
+    }
+    if (part_footprint_polygon_has_self_intersection(vertices_)) {
+        throw std::invalid_argument{"Part footprint polygon must not self-intersect"};
+    }
+}
+
+void PartFootprintPolygon::drop_duplicate_closing_vertex() {
+    if (vertices_.size() > 1U && vertices_.front() == vertices_.back()) {
+        vertices_.pop_back();
+    }
+}
+
 HashedFootprintReference::HashedFootprintReference(FootprintRef footprint, ContentHash hash)
     : footprint_{std::move(footprint)}, hash_{std::move(hash)} {}
 
@@ -201,10 +317,13 @@ OrderablePart::OrderablePart(ManufacturerPart manufacturer_part, PackageRef pack
                              std::vector<PartFootprintPad> footprint_pads,
                              std::vector<OrderablePinPadMapping> pin_pad_mappings,
                              std::vector<std::string> approved_alternate_mpns,
-                             std::optional<PartModel3DReference> model_3d)
+                             std::optional<PartModel3DReference> model_3d,
+                             std::optional<PartFootprintPolygon> footprint_courtyard,
+                             std::optional<PartFootprintPolygon> footprint_body)
     : manufacturer_part_{std::move(manufacturer_part)}, package_{std::move(package)},
       footprint_{std::move(footprint)}, footprint_pads_{std::move(footprint_pads)},
-      pin_pad_mappings_{std::move(pin_pad_mappings)},
+      footprint_courtyard_{std::move(footprint_courtyard)},
+      footprint_body_{std::move(footprint_body)}, pin_pad_mappings_{std::move(pin_pad_mappings)},
       approved_alternate_mpns_{std::move(approved_alternate_mpns)}, model_3d_{std::move(model_3d)} {
     if (footprint_pads_.empty()) {
         throw std::invalid_argument{"Orderable part footprint projection must contain pads"};

@@ -182,6 +182,60 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["viewer"]["diagnostics"] == nlohmann::json::array());
 }
 
+TEST_CASE("PCB projection writer and reader round-trip footprint courtyard and body geometry") {
+    const auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
+    const auto footprint = volt::FootprintDefinition{
+        volt::FootprintRef{"passives", "R_0603_1608Metric"},
+        std::vector{
+            volt::FootprintPad::surface_mount(
+                "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{-0.75, 0.0},
+                volt::FootprintSize{0.8, 0.95}, volt::FootprintLayerSet::front_smd()),
+            volt::FootprintPad::surface_mount(
+                "2", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.75, 0.0},
+                volt::FootprintSize{0.8, 0.95}, volt::FootprintLayerSet::front_smd()),
+        },
+        volt::FootprintPolygon{std::vector{
+            volt::FootprintPoint{-1.2, -0.8},
+            volt::FootprintPoint{1.2, -0.8},
+            volt::FootprintPoint{1.2, 0.8},
+            volt::FootprintPoint{-1.2, 0.8},
+        }},
+        volt::FootprintPolygon{std::vector{
+            volt::FootprintPoint{-0.9, -0.5},
+            volt::FootprintPoint{0.9, -0.5},
+            volt::FootprintPoint{0.9, 0.5},
+            volt::FootprintPoint{-0.9, 0.5},
+        }},
+    };
+    static_cast<void>(board.cache_footprint_definition(footprint));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{25.0, 15.0}, volt::BoardRotation::degrees(0.0)}));
+
+    const auto empty_library = volt::FootprintLibrary{};
+    const auto text = volt::io::write_pcb_board(board, empty_library);
+    const auto document = nlohmann::json::parse(text);
+    const auto &definition = document["board"]["footprint_definitions"][0];
+
+    CHECK(definition["courtyard"] ==
+          nlohmann::json::array(
+              {nlohmann::json::array({-1.2, -0.8}), nlohmann::json::array({1.2, -0.8}),
+               nlohmann::json::array({1.2, 0.8}), nlohmann::json::array({-1.2, 0.8})}));
+    CHECK(definition["body"] ==
+          nlohmann::json::array(
+              {nlohmann::json::array({-0.9, -0.5}), nlohmann::json::array({0.9, -0.5}),
+               nlohmann::json::array({0.9, 0.5}), nlohmann::json::array({-0.9, 0.5})}));
+
+    const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
+
+    CHECK(volt::io::write_pcb_board(restored, empty_library) == text);
+    REQUIRE(restored.footprint_definition(volt::FootprintDefId{0}).courtyard().has_value());
+    CHECK(restored.footprint_definition(volt::FootprintDefId{0}).courtyard()->vertices()[1] ==
+          volt::FootprintPoint{1.2, -0.8});
+}
+
 TEST_CASE("PCB projection writer and reader round-trip generic board features") {
     const auto fixture = make_resistor_circuit();
     auto board = make_viewer_ready_board(fixture);
@@ -1036,6 +1090,15 @@ TEST_CASE("PCB projection reader rejects invalid footprint library data") {
         CHECK_THROWS_MATCHES(
             volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::invalid_argument,
             Catch::Matchers::Message("Footprint size dimensions must be positive"));
+    }
+
+    SECTION("empty declared footprint courtyard") {
+        auto document = make_board_json(fixture);
+        document["board"]["footprint_definitions"][0]["courtyard"] = nlohmann::json::array();
+
+        CHECK_THROWS_MATCHES(
+            volt::io::read_pcb_board_text(fixture.circuit, document.dump()), std::invalid_argument,
+            Catch::Matchers::Message("Footprint polygon must contain at least three vertices"));
     }
 }
 

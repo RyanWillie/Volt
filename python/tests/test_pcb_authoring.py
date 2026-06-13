@@ -41,7 +41,15 @@ def _small_resistor_led_design():
     return design, r1, d1
 
 
-def _passive_0603(ref, *, pad_span=1.5, pad_width=0.8, second_pad_layers="front_smd"):
+def _passive_0603(
+    ref,
+    *,
+    pad_span=1.5,
+    pad_width=0.8,
+    second_pad_layers="front_smd",
+    courtyard=None,
+    body=None,
+):
     half_span = pad_span / 2
     return volt.FootprintDefinition(
         ref,
@@ -60,6 +68,8 @@ def _passive_0603(ref, *, pad_span=1.5, pad_width=0.8, second_pad_layers="front_
                 layers=second_pad_layers,
             ),
         ),
+        courtyard=courtyard,
+        body=body,
     )
 
 
@@ -1596,7 +1606,11 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
 
 
 def test_python_board_auto_registers_object_owned_library_footprint():
-    footprint = _passive_0603(("volt.test", "Object0603"))
+    footprint = _passive_0603(
+        ("volt.test", "Object0603"),
+        courtyard=((-1.2, -0.8), (1.2, -0.8), (1.2, 0.8), (-1.2, 0.8)),
+        body=((-0.9, -0.5), (0.9, -0.5), (0.9, 0.5), (-0.9, 0.5)),
+    )
     library = volt.Library("volt.test")
     resistor = library.component(
         "ObjectResistor",
@@ -1630,6 +1644,18 @@ def test_python_board_auto_registers_object_owned_library_footprint():
     definitions = document["board"]["footprint_definitions"]
     assert [definition["ref"] for definition in definitions] == [
         {"library": "volt.test", "name": "Object0603"}
+    ]
+    assert definitions[0]["courtyard"] == [
+        [-1.2, -0.8],
+        [1.2, -0.8],
+        [1.2, 0.8],
+        [-1.2, 0.8],
+    ]
+    assert definitions[0]["body"] == [
+        [-0.9, -0.5],
+        [0.9, -0.5],
+        [0.9, 0.5],
+        [-0.9, 0.5],
     ]
     assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
     assert len(document["viewer"]["pad_resolutions"]) == 2

@@ -239,6 +239,17 @@ void write_footprint_point(std::ostream &out, FootprintPoint point) {
     out << ']';
 }
 
+void write_footprint_polygon(std::ostream &out, const FootprintPolygon &polygon) {
+    out << '[';
+    for (std::size_t index = 0; index < polygon.vertices().size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        write_footprint_point(out, polygon.vertices()[index]);
+    }
+    out << ']';
+}
+
 void write_footprint_size(std::ostream &out, FootprintSize size) {
     out << '[';
     write_number(out, size.width_mm());
@@ -600,7 +611,18 @@ void write_footprint_definitions(std::ostream &out,
             }
             out << '\n';
         }
-        out << "        ]\n";
+        out << "        ]";
+        if (definition.courtyard().has_value()) {
+            out << ",\n";
+            out << "        \"courtyard\": ";
+            write_footprint_polygon(out, definition.courtyard().value());
+        }
+        if (definition.body().has_value()) {
+            out << ",\n";
+            out << "        \"body\": ";
+            write_footprint_polygon(out, definition.body().value());
+        }
+        out << '\n';
         out << "      }";
         if (definition_index + 1U != definitions.size()) {
             out << ',';

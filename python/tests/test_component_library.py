@@ -126,6 +126,8 @@ def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
                 volt.FootprintPad.surface_mount("3", at=(1.0, 0.0), size=(0.6, 0.6)),
                 volt.FootprintPad.surface_mount("4", at=(0.0, 2.0), size=(1.8, 1.8)),
             ),
+            courtyard=((-2.4, -1.2), (2.4, -1.2), (2.4, 3.2), (-2.4, 3.2)),
+            body=((-1.9, -0.8), (1.9, -0.8), (1.9, 2.8), (-1.9, 2.8)),
         ),
         pads={1: "1", 2: ("2", "4"), 3: "3"},
     )
@@ -138,6 +140,7 @@ def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
     assert volt._volt.content_hash(artifact.bytes) == artifact.sha256
     assert artifact.bytes == library.build().part("AP1117-15").artifact.bytes
     assert document["format"] == "volt.part"
+    assert document["version"] == 3
     assert document["identity"] == {
         "namespace": "volt.test",
         "name": "AP1117-15",
@@ -167,6 +170,18 @@ def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
         "2",
         "3",
         "4",
+    ]
+    assert document["orderable_part"]["footprint"]["courtyard"] == [
+        {"x_mm": -2.4, "y_mm": -1.2},
+        {"x_mm": 2.4, "y_mm": -1.2},
+        {"x_mm": 2.4, "y_mm": 3.2},
+        {"x_mm": -2.4, "y_mm": 3.2},
+    ]
+    assert document["orderable_part"]["footprint"]["body"] == [
+        {"x_mm": -1.9, "y_mm": -0.8},
+        {"x_mm": 1.9, "y_mm": -0.8},
+        {"x_mm": 1.9, "y_mm": 2.8},
+        {"x_mm": -1.9, "y_mm": 2.8},
     ]
 
 

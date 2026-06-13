@@ -121,7 +121,26 @@ void write_footprint_pads(std::ostream &out, const std::vector<PartFootprintPad>
         }
         out << '\n';
     }
-    out << "      ]\n";
+    out << "      ]";
+}
+
+void write_footprint_polygon(std::ostream &out, std::string_view name,
+                             const PartFootprintPolygon &polygon) {
+    out << ",\n";
+    out << "      " << detail::json_string(name) << ": [\n";
+    for (std::size_t index = 0; index < polygon.vertices().size(); ++index) {
+        const auto point = polygon.vertices()[index];
+        out << "      { \"x_mm\": ";
+        detail::write_json_number(out, point.x_mm());
+        out << ", \"y_mm\": ";
+        detail::write_json_number(out, point.y_mm());
+        out << " }";
+        if (index + 1U != polygon.vertices().size()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "      ]";
 }
 
 void write_model_3d(std::ostream &out, const PartModel3DReference &model) {
@@ -155,6 +174,13 @@ void write_orderable_part(std::ostream &out, const OrderablePart &part) {
     out << "      \"name\": " << detail::json_string(part.footprint().footprint().name()) << ",\n";
     out << "      \"hash\": " << detail::json_string(part.footprint().hash().value()) << ",\n";
     write_footprint_pads(out, part.footprint_pads());
+    if (part.footprint_courtyard().has_value()) {
+        write_footprint_polygon(out, "courtyard", part.footprint_courtyard().value());
+    }
+    if (part.footprint_body().has_value()) {
+        write_footprint_polygon(out, "body", part.footprint_body().value());
+    }
+    out << '\n';
     out << "    },\n";
     out << "    \"pin_pad_mappings\": [\n";
     for (std::size_t index = 0; index < part.pin_pad_mappings().size(); ++index) {

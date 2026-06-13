@@ -33,7 +33,7 @@ namespace {
 
 [[nodiscard]] inline std::string optional_part_string_field(const py::dict &dict, const char *name,
                                                             std::string default_value) {
-    if (!dict.contains(name) || py::isinstance<py::none>(dict[name])) {
+    if (!dict.contains(name) || dict[name].is_none()) {
         return default_value;
     }
     return py::cast<std::string>(dict[name]);
@@ -114,7 +114,7 @@ part_footprint_pads_from_list(const py::list &pads) {
         const auto y = py::cast<double>(pad["y_mm"]);
         const auto width = py::cast<double>(pad["width_mm"]);
         const auto height = py::cast<double>(pad["height_mm"]);
-        if (pad.contains("role") && !py::isinstance<py::none>(pad["role"])) {
+        if (pad.contains("role") && !pad["role"].is_none()) {
             result.emplace_back(
                 label, x, y, width, height,
                 part_footprint_pad_role_from_string(py::cast<std::string>(pad["role"])));
@@ -123,6 +123,32 @@ part_footprint_pads_from_list(const py::list &pads) {
         }
     }
     return result;
+}
+
+[[nodiscard]] inline volt::PartFootprintPoint part_footprint_point_from_dict(const py::dict &dict) {
+    return volt::PartFootprintPoint{py::cast<double>(dict["x_mm"]), py::cast<double>(dict["y_mm"])};
+}
+
+[[nodiscard]] inline std::optional<volt::PartFootprintPolygon>
+optional_part_footprint_polygon_from_object(py::handle value) {
+    if (value.is_none()) {
+        return std::nullopt;
+    }
+    const auto points = py::cast<py::list>(value);
+    auto vertices = std::vector<volt::PartFootprintPoint>{};
+    vertices.reserve(static_cast<std::size_t>(py::len(points)));
+    for (const auto item : points) {
+        vertices.push_back(part_footprint_point_from_dict(py::cast<py::dict>(item)));
+    }
+    return volt::PartFootprintPolygon{std::move(vertices)};
+}
+
+[[nodiscard]] inline std::optional<volt::PartFootprintPolygon>
+optional_part_footprint_polygon_from_dict(const py::dict &dict, const char *name) {
+    if (!dict.contains(name) || dict[name].is_none()) {
+        return std::nullopt;
+    }
+    return optional_part_footprint_polygon_from_object(dict[name]);
 }
 
 [[nodiscard]] inline std::vector<volt::OrderablePinPadMapping>
@@ -139,7 +165,7 @@ part_pin_pad_mappings_from_list(const py::list &mappings) {
 
 [[nodiscard]] inline std::optional<volt::PartModel3DReference>
 part_model_3d_reference_from_object(py::handle value) {
-    if (py::isinstance<py::none>(value)) {
+    if (value.is_none()) {
         return std::nullopt;
     }
     const auto dict = py::cast<py::dict>(value);
@@ -154,6 +180,14 @@ part_model_3d_reference_from_object(py::handle value) {
         volt::ContentHash{required_string_field(dict, "hash")}, translation, rotation};
 }
 
+[[nodiscard]] inline std::optional<volt::PartModel3DReference>
+part_model_3d_reference_from_dict(const py::dict &dict, const char *name) {
+    if (!dict.contains(name) || dict[name].is_none()) {
+        return std::nullopt;
+    }
+    return part_model_3d_reference_from_object(dict[name]);
+}
+
 [[nodiscard]] inline volt::OrderablePart orderable_part_from_dict(const py::dict &dict) {
     return volt::OrderablePart{
         volt::ManufacturerPart{required_string_field(dict, "manufacturer"),
@@ -166,8 +200,9 @@ part_model_3d_reference_from_object(py::handle value) {
         part_footprint_pads_from_list(required_list_field(dict, "footprint_pads")),
         part_pin_pad_mappings_from_list(required_list_field(dict, "pin_pad_mappings")),
         string_vector_from_list(required_list_field(dict, "approved_alternate_mpns")),
-        part_model_3d_reference_from_object(dict.contains("model_3d") ? dict["model_3d"]
-                                                                      : py::none{})};
+        part_model_3d_reference_from_dict(dict, "model_3d"),
+        optional_part_footprint_polygon_from_dict(dict, "footprint_courtyard"),
+        optional_part_footprint_polygon_from_dict(dict, "footprint_body")};
 }
 
 [[nodiscard]] inline volt::PartDefinition part_definition_from_dict(const py::dict &dict) {

@@ -319,6 +319,37 @@ class PadResolution {
     PadResolutionStatus status_;
 };
 
+/** Derived board-space footprint body/courtyard geometry for one placement. */
+class ProjectedFootprintGeometry {
+  public:
+    /** Construct projected footprint geometry for a placed component. */
+    ProjectedFootprintGeometry(ComponentPlacementId placement, ComponentId component,
+                               std::optional<std::vector<BoardPoint>> courtyard,
+                               std::optional<std::vector<BoardPoint>> body);
+
+    /** Return the placement that owns this projected geometry. */
+    [[nodiscard]] ComponentPlacementId placement() const noexcept { return placement_; }
+
+    /** Return the logical component for this placement. */
+    [[nodiscard]] ComponentId component() const noexcept { return component_; }
+
+    /** Return the optional board-space courtyard polygon. */
+    [[nodiscard]] const std::optional<std::vector<BoardPoint>> &courtyard() const noexcept {
+        return courtyard_;
+    }
+
+    /** Return the optional board-space body or silk-outline polygon. */
+    [[nodiscard]] const std::optional<std::vector<BoardPoint>> &body() const noexcept {
+        return body_;
+    }
+
+  private:
+    ComponentPlacementId placement_;
+    ComponentId component_;
+    std::optional<std::vector<BoardPoint>> courtyard_;
+    std::optional<std::vector<BoardPoint>> body_;
+};
+
 /** Stable endpoint of a derived ratsnest edge. */
 class RatsnestEndpoint {
   public:
@@ -397,6 +428,9 @@ namespace detail {
 
 [[nodiscard]] BoardPoint transform_footprint_point(const ComponentPlacement &placement,
                                                    FootprintPoint point);
+
+[[nodiscard]] std::vector<BoardPoint>
+transformed_footprint_polygon(const ComponentPlacement &placement, const FootprintPolygon &polygon);
 
 [[nodiscard]] std::vector<BoardPoint>
 transformed_pad_body_corners(const ComponentPlacement &placement, const FootprintPad &pad);

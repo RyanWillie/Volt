@@ -86,6 +86,11 @@ class PcbBoardReader {
 
     [[nodiscard]] static FootprintPoint footprint_point(const nlohmann::json &value);
 
+    [[nodiscard]] static FootprintPolygon footprint_polygon(const nlohmann::json &value);
+
+    [[nodiscard]] static std::optional<FootprintPolygon>
+    optional_footprint_polygon(const nlohmann::json &object, const char *name);
+
     [[nodiscard]] static FootprintSize footprint_size(const nlohmann::json &value);
 
     [[nodiscard]] static FootprintRef footprint_ref(const nlohmann::json &object);
@@ -319,6 +324,25 @@ void PcbBoardReader::require_version(const nlohmann::json &object) {
     return FootprintPoint{point.x_mm(), point.y_mm()};
 }
 
+[[nodiscard]] FootprintPolygon PcbBoardReader::footprint_polygon(const nlohmann::json &value) {
+    require(value.is_array(), "PCB footprint polygon must be an array");
+    auto vertices = std::vector<FootprintPoint>{};
+    vertices.reserve(value.size());
+    for (const auto &point : value) {
+        vertices.push_back(footprint_point(point));
+    }
+    return FootprintPolygon{std::move(vertices)};
+}
+
+[[nodiscard]] std::optional<FootprintPolygon>
+PcbBoardReader::optional_footprint_polygon(const nlohmann::json &object, const char *name) {
+    const auto *value = optional_field(object, name);
+    if (value == nullptr) {
+        return std::nullopt;
+    }
+    return footprint_polygon(*value);
+}
+
 [[nodiscard]] FootprintSize PcbBoardReader::footprint_size(const nlohmann::json &value) {
     require(value.is_array(), "PCB footprint size must be an array");
     require(value.size() == 2U, "PCB footprint size must contain two numbers");
@@ -544,7 +568,9 @@ void PcbBoardReader::read_footprint_definitions(Board &board,
         }
 
         const auto id = board.cache_footprint_definition(
-            FootprintDefinition{footprint_ref(object_field(definition, "ref")), std::move(pads)});
+            FootprintDefinition{footprint_ref(object_field(definition, "ref")), std::move(pads),
+                                optional_footprint_polygon(definition, "courtyard"),
+                                optional_footprint_polygon(definition, "body")});
         require(id == expected, "PCB footprint definition IDs must be sequential");
     }
 }
