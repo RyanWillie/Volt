@@ -34,7 +34,7 @@ Source: `python/volt/pcb.py`
 | `cache_footprint(self, footprint: Footprint) -> int` | Cache an explicit board-owned footprint definition for importers and low-level tests. |
 | `place(self, component: Component \| int, *, at: Point, rotation: float = 0.0, side: str = 'top', locked: bool = False) -> int` | Place a component footprint on the board and return the placement index. |
 | `add_track(self, net: Net \| int, *, layer: int, points: Iterable[Point], width: float) -> int` | Add a routed track segment sequence for a logical net. |
-| `add_via(self, net: Net \| int, *, at: Point, start_layer: int, end_layer: int, drill: float = 0.3, annular: float = 0.7) -> int` | Add a via connecting a net between two board layers. |
+| `add_via(self, net: Net \| int, *, at: Point, start_layer: int, end_layer: int, drill: float \| None = None, annular: float \| None = None) -> int` | Add a via connecting a net between two board layers. |
 | `assisted_connect(self, net: Net \| int, *, start: Point, start_layer: int, end: Point, end_layer: int) -> dict` | Route a net between two points using the kernel assisted-connection solver. |
 | `escape(self, component: Component \| int) -> dict` | Fan out a placed component using the kernel escape router. |
 | `add_zone(self, *, outline: Iterable[Point], layers: Iterable[int], net: Net \| int \| None = None, fill: str = 'solid', priority: int = 0) -> int` | Add a copper zone, optionally bound to a logical net. |
@@ -125,9 +125,9 @@ Source: `python/volt/_pcb_layout.py`
 | `route(self, net: Net \| int, *, layer: int, width: float = 0.2, mode: str = 'octilinear') -> BoardRoute` | Start a schematic-style routed track sequence from the cursor. |
 | `connect(self, start: tuple[float, float] \| BoardAnchor, end: tuple[float, float] \| BoardAnchor, *, layer: int, net: Net \| int \| None = None, width: float = 0.2, through = (), mode: str = 'octilinear') -> int` | Route between two anchors, inferring the net from pad anchors when possible. |
 | `bundle(self, pairs, *, layer: int, net: Net \| int \| None = None, width: float = 0.2, mode: str = 'octilinear') -> tuple[int, ...]` | Route multiple independent anchor pairs as one deterministic bundle. |
-| `via(self, net: Net \| int, *, at: tuple[float, float] \| BoardAnchor \| None = None, start_layer: int, end_layer: int, drill: float = 0.3, annular: float = 0.7) -> int` | Add a via at a board anchor and move the cursor to that anchor. |
-| `stitch(self, net: Net \| int, *, at, start_layer: int, end_layer: int, drill: float = 0.3, annular: float = 0.7) -> tuple[int, ...]` | Add a deterministic set of vias for one net. |
-| `fanout(self, anchors, *, layer: int, direction: str, distance: float, net: Net \| int \| None = None, width: float = 0.2, via_layers: tuple[int, int] \| None = None, drill: float = 0.3, annular: float = 0.7) -> tuple[BoardFanout, ...]` | Route one or more anchors outward and optionally drop vias at the endpoints. |
+| `via(self, net: Net \| int, *, at: tuple[float, float] \| BoardAnchor \| None = None, start_layer: int, end_layer: int, drill: float \| None = None, annular: float \| None = None) -> int` | Add a via at a board anchor and move the cursor to that anchor. |
+| `stitch(self, net: Net \| int, *, at, start_layer: int, end_layer: int, drill: float \| None = None, annular: float \| None = None) -> tuple[int, ...]` | Add a deterministic set of vias for one net. |
+| `fanout(self, anchors, *, layer: int, direction: str, distance: float, net: Net \| int \| None = None, width: float = 0.2, via_layers: tuple[int, int] \| None = None, drill: float \| None = None, annular: float \| None = None) -> tuple[BoardFanout, ...]` | Route one or more anchors outward and optionally drop vias at the endpoints. |
 | `node(self, at: tuple[float, float] \| BoardAnchor \| None = None, *, dx: float = 0, dy: float = 0) -> BoardAnchor` | Return a reusable board-local geometry anchor without adding objects. |
 | `polygon(self, vertices) -> tuple[BoardAnchor, ...]` | Return a polygon outline from board anchors or local coordinates. |
 | `rect(self, *, at: tuple[float, float] \| BoardAnchor \| None = None, size: tuple[float, float]) -> tuple[BoardAnchor, ...]` | Return a rectangular outline from a board anchor and size. |

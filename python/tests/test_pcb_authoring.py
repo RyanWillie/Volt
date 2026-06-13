@@ -1410,6 +1410,55 @@ def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():
     )
 
 
+def test_python_board_add_via_defaults_respect_board_rule_floor():
+    design = volt.Design("via-rule-floor")
+    route = design.net("ROUTE")
+    board = design.board()
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(10.0, 10.0))
+    board.set_design_rules(min_via_drill=0.35, min_via_annular=0.80)
+
+    board.add_via(route, at=(2.0, 2.0), start_layer=front, end_layer=back)
+    board.layout().via(route, at=(4.0, 4.0), start_layer=front, end_layer=back)
+
+    document = json.loads(board.to_json())
+    assert [
+        (via["drill_diameter_mm"], via["annular_diameter_mm"])
+        for via in document["board"]["vias"]
+    ] == [(0.35, 0.80), (0.35, 0.80)]
+    assert "PCB_VIA_DRILL_BELOW_MINIMUM" not in {
+        diagnostic.code for diagnostic in board.validate()
+    }
+    assert "PCB_VIA_ANNULAR_BELOW_MINIMUM" not in {
+        diagnostic.code for diagnostic in board.validate()
+    }
+
+
+def test_python_board_add_via_defaults_respect_net_class_via_size():
+    design = volt.Design("via-net-class")
+    route = design.net("ROUTE")
+    design.net_class("RouteVias", via_drill=0.42, via_diameter=0.90).assign(route)
+    board = design.board()
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(10.0, 10.0))
+    board.set_design_rules(min_via_drill=0.35, min_via_annular=0.80)
+
+    board.add_via(route, at=(2.0, 2.0), start_layer=front, end_layer=back)
+
+    [via] = json.loads(board.to_json())["board"]["vias"]
+    assert via["drill_diameter_mm"] == 0.42
+    assert via["annular_diameter_mm"] == 0.90
+    assert {
+        diagnostic.code
+        for diagnostic in board.validate()
+        if diagnostic.code.startswith("PCB_VIA_")
+    } == set()
+
+
 def test_python_board_authoring_sets_capability_profile_from_file_and_inline():
     design = volt.Design("capability-profile")
     board = design.board("Control")

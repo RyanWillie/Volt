@@ -796,8 +796,8 @@ class Board:
         at: Point,
         start_layer: int,
         end_layer: int,
-        drill: float = 0.30,
-        annular: float = 0.70,
+        drill: float | None = None,
+        annular: float | None = None,
     ) -> int:
         """Add a via connecting a net between two board layers."""
         if isinstance(net, Net):
@@ -813,8 +813,8 @@ class Board:
             y,
             _layer_index(start_layer),
             _layer_index(end_layer),
-            float(drill),
-            float(annular),
+            None if drill is None else float(drill),
+            None if annular is None else float(annular),
         )
 
     def assisted_connect(
