@@ -1,5 +1,7 @@
 #include "py_circuit.hpp"
 
+#include "binding_diagnostic_conversions.hpp"
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -33,6 +35,17 @@ namespace {
     throw std::logic_error{"Unhandled KiCad loss severity"};
 }
 
+[[nodiscard]] std::string
+kicad_loss_fabrication_impact_name(volt::adapters::kicad::LossFabricationImpact impact) {
+    switch (impact) {
+    case volt::adapters::kicad::LossFabricationImpact::Informational:
+        return "informational";
+    case volt::adapters::kicad::LossFabricationImpact::FabCritical:
+        return "fab-critical";
+    }
+    throw std::logic_error{"Unhandled KiCad loss fabrication impact"};
+}
+
 [[nodiscard]] py::dict
 kicad_loss_warning_to_dict(const volt::adapters::kicad::LossWarning &warning) {
     auto result = py::dict{};
@@ -40,6 +53,7 @@ kicad_loss_warning_to_dict(const volt::adapters::kicad::LossWarning &warning) {
     result["construct"] = warning.construct;
     result["message"] = warning.message;
     result["severity"] = kicad_loss_severity_name(warning.severity);
+    result["fabrication_impact"] = kicad_loss_fabrication_impact_name(warning.fabrication_impact);
     return result;
 }
 
@@ -51,6 +65,8 @@ py::dict PyCircuit::board_to_kicad_pcb() const {
 
     auto result = py::dict{};
     result["text"] = export_result.text;
+    result["diagnostics"] = diagnostics_to_list(
+        volt::adapters::kicad::fabrication_diagnostics(export_result.loss_report));
 
     auto warnings = py::list{};
     for (const auto &warning : export_result.loss_report.warnings()) {

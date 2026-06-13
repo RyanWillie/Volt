@@ -463,6 +463,12 @@
               <td>A routed board still has placed pads on the same logical net that are not physically connected by copper.</td>
               <td><code>net</code>, then the two <code>component_placement</code>/<code>footprint_pad</code> endpoints.</td>
             </tr>
+            <tr>
+              <td><code>PCB_KICAD_FAB_EXPORT_LOSS</code></td>
+              <td class="severity-error">Error</td>
+              <td>The KiCad PCB writer omitted a fab-critical Volt construct, so the generated <code>.kicad_pcb</code> is not complete enough for fabrication handoff.</td>
+              <td><code>board</code></td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -497,7 +503,10 @@ validate_for_pcb(circuit)
 
 validate_board(board, footprints)
   validate placement and footprint readiness
-  validate board-owned PCB design rules and DRC</code></pre>
+  validate board-owned PCB design rules and DRC
+
+Project board stage diagnostics
+  collect fab-critical KiCad export losses as pcb.kicad_export</code></pre>
         <p>
           Use <code>validate_circuit(circuit)</code> for the default complete logical
           validation suite. The named entry points expose stable intent-level groups for

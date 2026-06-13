@@ -168,6 +168,24 @@ if readiness.has_errors or board_report.has_errors:
 
 board.write_json("board.volt.pcb.json")
 board.write_svg("board.svg")
+export = board.write_kicad_pcb("board.kicad_pcb")
+
+for warning in export.warnings:
+    print(warning.fabrication_impact, warning.construct, warning.message)
 ```
 
 `board.validate()` catches board-level issues such as missing selected parts, unresolved footprint geometry, invalid layer usage, and DRC-style projection problems.
+Project runs convert fab-critical KiCad export losses into `PCB_KICAD_FAB_EXPORT_LOSS`
+diagnostics under `pcb.kicad_export`, so expected-diagnostics policy can gate known
+handoff gaps. The diagnostic `rule` is the KiCad loss construct, such as
+`board.zone`, so expectations can allow one known omission without masking another.
+Informational adapter losses remain visible in `export.warnings`.
+
+For local KiCad verification without making CI depend on KiCad, run:
+
+```bash
+python3 scripts/verify-kicad-fab-export.py board.kicad_pcb --output-dir artifacts/kicad-fab --drc
+```
+
+The script exports Gerbers and drill files with `kicad-cli` when it is installed, and
+skips cleanly when `kicad-cli` is absent.

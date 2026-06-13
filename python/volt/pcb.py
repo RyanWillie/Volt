@@ -389,6 +389,7 @@ class KiCadLossWarning:
     construct: str
     message: str
     severity: str
+    fabrication_impact: str
 
 
 @dataclass(frozen=True)
@@ -397,6 +398,7 @@ class KiCadPcbExport:
 
     text: str
     warnings: tuple[KiCadLossWarning, ...]
+    diagnostics: DiagnosticReport
 
 
 @dataclass(frozen=True)
@@ -985,6 +987,9 @@ class Board:
         return KiCadPcbExport(
             text=result["text"],
             warnings=tuple(KiCadLossWarning(**warning) for warning in result["warnings"]),
+            diagnostics=DiagnosticReport(
+                _diagnostic_from_dict(item) for item in result["diagnostics"]
+            ),
         )
 
     def _sync_component_object_footprint(self, component: int) -> None:

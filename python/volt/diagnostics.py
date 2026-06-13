@@ -12,6 +12,9 @@ DIAGNOSTIC_CATEGORIES: tuple[str, ...] = tuple(_volt.diagnostic_categories())
 ERC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.erc_diagnostic_codes())
 DRC_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.drc_diagnostic_codes())
 PCB_VISUAL_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(_volt.pcb_visual_diagnostic_codes())
+PCB_FABRICATION_DIAGNOSTIC_CODES: tuple[str, ...] = tuple(
+    _volt.pcb_fabrication_diagnostic_codes()
+)
 
 
 @dataclass(frozen=True)
@@ -62,6 +65,7 @@ class Diagnostic:
     category: str = "general"
     overlays: tuple[DiagnosticOverlay, ...] = ()
     measurement: DiagnosticMeasurement | None = None
+    rule: str | None = None
 
 
 class DiagnosticReport:
@@ -103,6 +107,7 @@ def _diagnostic_from_dict(item) -> Diagnostic:
             for overlay in item.get("overlays", ())
         ),
         measurement=_diagnostic_measurement_from_dict(item.get("measurement")),
+        rule=item.get("rule"),
     )
 
 

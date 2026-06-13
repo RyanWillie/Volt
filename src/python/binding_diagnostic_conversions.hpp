@@ -158,6 +158,8 @@ diagnostic_measurement_to_object(const std::optional<volt::DiagnosticMeasurement
     result["entities"] = diagnostic_entities_to_list(diagnostic.entities());
     result["overlays"] = diagnostic_overlays_to_list(diagnostic.overlays());
     result["measurement"] = diagnostic_measurement_to_object(diagnostic.measurement());
+    result["rule"] =
+        diagnostic.rule().has_value() ? py::cast(diagnostic.rule().value()) : py::none();
 
     return result;
 }

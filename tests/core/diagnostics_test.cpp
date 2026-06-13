@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -125,6 +126,35 @@ TEST_CASE("Diagnostic carries an optional typed measurement") {
     CHECK(with.measurement().value() == volt::DiagnosticMeasurement{0.15, 0.2});
 }
 
+TEST_CASE("Diagnostic carries optional stable rule identity") {
+    const auto without = volt::Diagnostic{
+        volt::Severity::Error, volt::DiagnosticCode{"PCB_KICAD_FAB_EXPORT_LOSS"},
+        volt::DiagnosticCategory{"pcb.fabrication"}, "KiCad PCB export lost a construct"};
+    CHECK_FALSE(without.rule().has_value());
+
+    const auto with = volt::Diagnostic{
+        volt::Severity::Error,
+        volt::DiagnosticCode{"PCB_KICAD_FAB_EXPORT_LOSS"},
+        volt::DiagnosticCategory{"pcb.fabrication"},
+        "KiCad PCB export lost a construct",
+        std::vector{volt::EntityRef::board()},
+        {},
+        std::nullopt,
+        "board.zone",
+    };
+    REQUIRE(with.rule().has_value());
+    CHECK(with.rule().value() == "board.zone");
+    CHECK_THROWS_AS((volt::Diagnostic{volt::Severity::Error,
+                                      volt::DiagnosticCode{"PCB_KICAD_FAB_EXPORT_LOSS"},
+                                      volt::DiagnosticCategory{"pcb.fabrication"},
+                                      "KiCad PCB export lost a construct",
+                                      {},
+                                      {},
+                                      std::nullopt,
+                                      ""}),
+                    std::invalid_argument);
+}
+
 TEST_CASE("Diagnostic overlay construction rejects malformed geometry") {
     CHECK_THROWS_AS((volt::DiagnosticPoint{std::numeric_limits<double>::infinity(), 0.0}),
                     std::invalid_argument);
@@ -143,6 +173,15 @@ TEST_CASE("PCB visual diagnostic codes are stable constants") {
     CHECK(std::string{volt::pcb_visual_diagnostic_codes::LabelOutsideBoard} ==
           "PCB_VISUAL_LABEL_OUTSIDE_BOARD");
     CHECK(std::string{volt::diagnostic_categories::PcbVisual} == "pcb.visual");
+}
+
+TEST_CASE("PCB fabrication diagnostic codes are stable constants") {
+    CHECK(std::string{volt::diagnostic_categories::PcbFabrication} == "pcb.fabrication");
+    CHECK(std::string{volt::pcb_fabrication_diagnostic_codes::KiCadFabExportLoss} ==
+          "PCB_KICAD_FAB_EXPORT_LOSS");
+    CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::PcbFabrication.begin(),
+                                   volt::diagnostic_code_catalogs::PcbFabrication.end()} ==
+          std::vector<std::string>{"PCB_KICAD_FAB_EXPORT_LOSS"});
 }
 
 TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {

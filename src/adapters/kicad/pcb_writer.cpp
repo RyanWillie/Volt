@@ -130,13 +130,20 @@ void add_layer(std::vector<PcbLayer> &layers, PcbLayer layer) {
     }
 }
 
+void add_fab_critical_warning(LossReport &loss_report, LossKind kind, std::string construct,
+                              std::string message, LossSeverity severity = LossSeverity::Warning) {
+    loss_report.add_warning(kind, std::move(construct), std::move(message), severity,
+                            LossFabricationImpact::FabCritical);
+}
+
 void report_layer_mapping_collision(const Board &board, BoardLayerId current, BoardLayerId existing,
                                     const PcbLayer &candidate, LossReport &loss_report) {
     auto message = std::ostringstream{};
     message << "Board layer '" << board.layer(current).name() << "' also maps to KiCad layer '"
             << candidate.name << "', already claimed by board layer '"
             << board.layer(existing).name() << "'; constructs on the duplicate layer are omitted";
-    loss_report.add_warning(LossKind::UnsupportedConstruct, "board.layer.mapping", message.str());
+    add_fab_critical_warning(loss_report, LossKind::UnsupportedConstruct, "board.layer.mapping",
+                             message.str());
 }
 
 [[nodiscard]] LayerMap build_layer_map(const Board &board, LossReport &loss_report) {
@@ -290,7 +297,8 @@ void report_invalid_pad_resolution(const PadResolution &resolution, const Circui
     message << "Pad '" << resolution.pad_label() << "' on "
             << circuit.component(resolution.component()).reference().value()
             << " has invalid selected-part pin-pad mapping; KiCad pad is emitted without a net";
-    loss_report.add_warning(LossKind::IncompleteConstruct, "pad_resolution", message.str());
+    add_fab_critical_warning(loss_report, LossKind::IncompleteConstruct, "pad_resolution",
+                             message.str());
 }
 
 void write_effects(std::ostream &out, double size_mm) {
@@ -375,8 +383,8 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
         const auto &feature = board.feature(id);
         if (feature.kind() == BoardFeatureKind::Hole) {
             if (feature.hole().plated()) {
-                loss_report.add_warning(
-                    LossKind::UnsupportedConstruct, "board.feature.hole.plated",
+                add_fab_critical_warning(
+                    loss_report, LossKind::UnsupportedConstruct, "board.feature.hole.plated",
                     "The first KiCad PCB writer subset does not export plated board-feature holes");
                 continue;
             }
@@ -384,20 +392,20 @@ void write_board_features(std::ostream &out, const Board &board, LossReport &los
             continue;
         }
         if (feature.kind() == BoardFeatureKind::Slot) {
-            loss_report.add_warning(
-                LossKind::UnsupportedConstruct, "board.feature.slot",
+            add_fab_critical_warning(
+                loss_report, LossKind::UnsupportedConstruct, "board.feature.slot",
                 "The first KiCad PCB writer subset does not export board slots");
             continue;
         }
         if (feature.kind() == BoardFeatureKind::Cutout) {
-            loss_report.add_warning(
-                LossKind::UnsupportedConstruct, "board.feature.cutout",
+            add_fab_critical_warning(
+                loss_report, LossKind::UnsupportedConstruct, "board.feature.cutout",
                 "The first KiCad PCB writer subset does not export board cutouts");
             continue;
         }
         if (feature.kind() == BoardFeatureKind::Circle) {
-            loss_report.add_warning(
-                LossKind::UnsupportedConstruct, "board.feature.circle",
+            add_fab_critical_warning(
+                loss_report, LossKind::UnsupportedConstruct, "board.feature.circle",
                 "The first KiCad PCB writer subset does not export board circles");
             continue;
         }
@@ -414,16 +422,16 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
         const auto id = ComponentPlacementId{index};
         const auto &placement = board.placement(id);
         if (placement.side() != BoardSide::Top) {
-            loss_report.add_warning(
-                LossKind::UnsupportedConstruct, "component_placement.side",
+            add_fab_critical_warning(
+                loss_report, LossKind::UnsupportedConstruct, "component_placement.side",
                 "The first KiCad PCB writer subset exports top-side component placements");
             continue;
         }
 
         const auto *definition = definition_for_placement(board, placement, footprints);
         if (definition == nullptr) {
-            loss_report.add_warning(
-                LossKind::IncompleteConstruct, "footprint",
+            add_fab_critical_warning(
+                loss_report, LossKind::IncompleteConstruct, "footprint",
                 "Component placement has no resolved footprint definition for KiCad export");
             continue;
         }
@@ -527,8 +535,8 @@ void write_tracks(std::ostream &out, const Board &board, const LayerMap &layer_m
         const auto &track = board.track(BoardTrackId{track_index});
         const auto layer = layer_map.find(track.layer());
         if (!layer.has_value() || layer->kind != "signal") {
-            loss_report.add_warning(
-                LossKind::UnsupportedConstruct, "board.track.layer",
+            add_fab_critical_warning(
+                loss_report, LossKind::UnsupportedConstruct, "board.track.layer",
                 "The first KiCad PCB writer subset exports tracks only on top or bottom copper");
             continue;
         }
@@ -566,8 +574,8 @@ void write_vias(std::ostream &out, const Board &board, const LayerMap &layer_map
         const auto end_layer = layer_map.find(via.end_layer());
         if (!start_layer.has_value() || !end_layer.has_value() || start_layer->kind != "signal" ||
             end_layer->kind != "signal") {
-            loss_report.add_warning(
-                LossKind::UnsupportedConstruct, "board.via.layer_span",
+            add_fab_critical_warning(
+                loss_report, LossKind::UnsupportedConstruct, "board.via.layer_span",
                 "The first KiCad PCB writer subset exports vias only between copper layers");
             continue;
         }
@@ -590,15 +598,43 @@ void write_vias(std::ostream &out, const Board &board, const LayerMap &layer_map
     }
 }
 
+[[nodiscard]] bool unmapped_text_layer_is_informational(const BoardLayer &layer) {
+    switch (layer.role()) {
+    case BoardLayerRole::Mechanical:
+        return true;
+    case BoardLayerRole::Copper:
+    case BoardLayerRole::SolderMask:
+    case BoardLayerRole::Paste:
+    case BoardLayerRole::Silkscreen:
+    case BoardLayerRole::Fabrication:
+    case BoardLayerRole::EdgeCuts:
+    case BoardLayerRole::Drill:
+    case BoardLayerRole::Courtyard:
+    case BoardLayerRole::Keepout:
+        return false;
+    }
+    throw std::logic_error{"Unhandled board layer role"};
+}
+
+void report_unmapped_text_layer(const BoardLayer &layer, LossReport &loss_report) {
+    constexpr auto message =
+        "The first KiCad PCB writer subset exports board text only on mapped KiCad layers";
+    if (unmapped_text_layer_is_informational(layer)) {
+        loss_report.add_warning(LossKind::UnsupportedConstruct, "board.text.layer", message,
+                                LossSeverity::Info, LossFabricationImpact::Informational);
+        return;
+    }
+    add_fab_critical_warning(loss_report, LossKind::UnsupportedConstruct, "board.text.layer",
+                             message);
+}
+
 void write_texts(std::ostream &out, const Board &board, const LayerMap &layer_map,
                  LossReport &loss_report) {
     for (std::size_t index = 0; index < board.text_count(); ++index) {
         const auto &text = board.text(BoardTextId{index});
         const auto layer = layer_map.find(text.layer());
         if (!layer.has_value()) {
-            loss_report.add_warning(
-                LossKind::UnsupportedConstruct, "board.text.layer",
-                "The first KiCad PCB writer subset exports board text only on mapped KiCad layers");
+            report_unmapped_text_layer(board.layer(text.layer()), loss_report);
             continue;
         }
 
@@ -643,12 +679,13 @@ void write_outline(std::ostream &out, const Board &board) {
 
 void report_unsupported_board_constructs(const Board &board, LossReport &loss_report) {
     for (std::size_t index = 0; index < board.zone_count(); ++index) {
-        loss_report.add_warning(LossKind::UnsupportedConstruct, "board.zone",
-                                "The first KiCad PCB writer subset does not export copper zones");
+        add_fab_critical_warning(loss_report, LossKind::UnsupportedConstruct, "board.zone",
+                                 "The first KiCad PCB writer subset does not export copper zones");
     }
     for (std::size_t index = 0; index < board.keepout_count(); ++index) {
-        loss_report.add_warning(LossKind::UnsupportedConstruct, "board.keepout",
-                                "The first KiCad PCB writer subset does not export board keepouts");
+        add_fab_critical_warning(
+            loss_report, LossKind::UnsupportedConstruct, "board.keepout",
+            "The first KiCad PCB writer subset does not export board keepouts");
     }
 }
 
