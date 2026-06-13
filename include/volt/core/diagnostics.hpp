@@ -30,11 +30,14 @@ inline constexpr auto Bom = std::string_view{"bom"};
 
 namespace diagnostic_category_catalogs {
 
-inline constexpr auto All =
-    std::array{diagnostic_categories::General,       diagnostic_categories::Erc,
-               diagnostic_categories::Drc,           diagnostic_categories::PartLineup,
-               diagnostic_categories::PcbBoard,      diagnostic_categories::PcbVisual,
-               diagnostic_categories::PcbFabrication, diagnostic_categories::Bom};
+inline constexpr auto All = std::array{diagnostic_categories::General,
+                                       diagnostic_categories::Erc,
+                                       diagnostic_categories::Drc,
+                                       diagnostic_categories::PartLineup,
+                                       diagnostic_categories::PcbBoard,
+                                       diagnostic_categories::PcbVisual,
+                                       diagnostic_categories::PcbFabrication,
+                                       diagnostic_categories::Bom};
 
 } // namespace diagnostic_category_catalogs
 
