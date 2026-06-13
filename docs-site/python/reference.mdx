@@ -67,8 +67,10 @@ Inspection records: `volt.TemplateNetInfo`, `volt.PortInfo`, `volt.ModuleCompone
 | `volt.PinSpec` | Data for a component pin definition. |
 | `volt.PartModel3D` | Footprint-relative 3D asset declaration for a selected physical part. |
 | `volt.PhysicalPartSpec` | Reusable selected physical part data. |
+| `volt.OrderablePart` | Artifact-facing selected physical part identity with manufacturer, MPN, package, footprint, pad map, and approved alternates. |
 | `volt.Part` | Public reusable part definition with logical pins, symbols, footprint geometry, pad mapping, ratings, and manufacturer metadata. |
 | `volt.Library` | Namespace/versioned collection of reusable public parts and compatibility `LibraryComponent` specs. |
+| `volt.LibraryPartArtifact` | Canonical kernel-owned part artifact bytes plus content hash returned by a library build. |
 | `volt.LibraryResult` | Output of one deterministic library validation run. |
 | `volt.LibraryDiagnostics` | Ordered diagnostics collected from library part validation. |
 | `volt.LibraryDiagnostic` | One library validation diagnostic with source, report, severity, code, and message. |

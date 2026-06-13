@@ -93,6 +93,15 @@ Python remains the authoring surface; the artifact is the meaning. Content hashe
 entries, trust tiers, and BOM identity all attach to this byte representation, so it must
 exist before any of them.
 
+Location decision: part artifacts are sibling documents referenced by content hash, not
+embedded payloads inside logical circuit JSON. A logical circuit may later record which
+part hashes its instances consumed, and `.voltlib` manifests may index the same hashes,
+but the canonical `volt.part` bytes stay independently loadable and hash-addressed. This
+keeps lock entries, future manifests, and design-local snapshots attached to one byte
+representation instead of duplicating embedded copies across designs.
+
+The first implemented artifact format is `format: "volt.part"`, `version: 1`.
+
 ### Projections must line up, and the kernel checks it
 
 Symbol and footprint are validated against the pin map. Following the kernel rule that
@@ -227,11 +236,11 @@ AP1117_15 = LIB.part(
         package="SOT-223-3",
         footprint=volt.packages.sot223(pins=3, tab_pad="4"),
         pin_pads={1: "1", 2: ("2", "4"), 3: "3"},
-        alternates=("AP1117E15G-7",),
+        approved_alternate_mpns=("AP1117E15G-7",),
+        model_3d=volt.PartModel3D("models/sot223.step"),  # frozen bytes, verified by hash
     ),
     symbol=regulator_symbol,          # references pins by name; lineup is validated
-    model3d=volt.PartModel3D("models/sot223.step"),  # frozen bytes, verified by hash
-    provenance=volt.Provenance(datasheet="AP1117 rev 24"),
+    extensions={"provenance": {"datasheet": "AP1117 rev 24"}},
     prefix="U",
 )
 ```
@@ -278,8 +287,6 @@ elsewhere. Steps 3 and 5 are layered conveniences that can iterate.
 
 ## Open questions
 
-- Should the part artifact live inside the logical circuit format as an embedded payload,
-  or as a sibling document referenced by hash from designs and `.voltlib` manifests?
 - How does a design-local library relate to project structure: a `Library` declared
   inline in project code, a sibling package, or both?
 - What is the minimum dimensional-sanity rule set for footprints that is useful without

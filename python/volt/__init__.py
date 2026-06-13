@@ -18,6 +18,7 @@ from .diagnostics import (
 from .library import (
     Library,
     LibraryComponent,
+    OrderablePart,
     PartModel3D,
     PhysicalPartSpec,
     PinSpec,
@@ -29,6 +30,7 @@ from .library import (
 from .library_result import (
     LibraryDiagnostic,
     LibraryDiagnostics,
+    LibraryPartArtifact,
     LibraryPartResult,
     LibraryResult,
 )
@@ -148,6 +150,7 @@ __all__ = [
     "LibraryComponent",
     "LibraryDiagnostic",
     "LibraryDiagnostics",
+    "LibraryPartArtifact",
     "LibraryPartResult",
     "LibraryResult",
     "ModuleComponent",
@@ -176,6 +179,7 @@ __all__ = [
     "KiCadPcbExport",
     "MechanicalKeepout",
     "PhysicalPartSpec",
+    "OrderablePart",
     "Part",
     "PCB_VISUAL_DIAGNOSTIC_CODES",
     "PlacedBoardComponent",

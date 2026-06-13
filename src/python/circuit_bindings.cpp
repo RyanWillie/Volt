@@ -1,5 +1,6 @@
 #include "circuit_bindings.hpp"
 
+#include "binding_part_definition_conversions.hpp"
 #include "binding_pcb_conversions.hpp"
 #include "py_circuit.hpp"
 
@@ -40,6 +41,8 @@ void bind_circuit(pybind11::module_ &module) {
     module.def("normalize_capability_profile", [](const py::dict &profile) {
         return board_capability_profile_to_dict(board_capability_profile_from_dict(profile));
     });
+    module.def("part_definition_artifact",
+               [](const py::dict &part) { return part_definition_artifact_from_dict(part); });
 
     py::class_<PyCircuit>(module, "Circuit")
         .def(py::init<>())

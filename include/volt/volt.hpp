@@ -11,9 +11,11 @@
 #include <volt/circuit/instances.hpp>
 #include <volt/circuit/net_classes.hpp>
 #include <volt/circuit/nets.hpp>
+#include <volt/circuit/part_definition.hpp>
 #include <volt/circuit/parts.hpp>
 #include <volt/circuit/queries.hpp>
 #include <volt/circuit/validation.hpp>
+#include <volt/core/content_hash.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/entity_table.hpp>
@@ -25,6 +27,8 @@
 #include <volt/io/board_capability_profile.hpp>
 #include <volt/io/logical_circuit_reader.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
+#include <volt/io/part_definition_reader.hpp>
+#include <volt/io/part_definition_writer.hpp>
 #include <volt/io/pcb_reader.hpp>
 #include <volt/io/pcb_schema.hpp>
 #include <volt/io/pcb_svg_writer.hpp>

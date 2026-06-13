@@ -4,7 +4,7 @@ configure_file(
     @ONLY
 )
 
-add_library(volt_core version.cpp)
+add_library(volt_core content_hash.cpp version.cpp)
 add_library(Volt::Core ALIAS volt_core)
 
 target_compile_features(volt_core PUBLIC cxx_std_20)

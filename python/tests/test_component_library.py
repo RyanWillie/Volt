@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -94,6 +95,72 @@ def test_pin_spec_role_preset_rejects_contradictory_explicit_semantics():
     assert "role" not in circuit["pin_definitions"][0]
     assert circuit["pin_definitions"][0]["terminal_kind"] == "Power"
     assert circuit["pin_definitions"][0]["direction"] == "Input"
+
+
+def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
+    library = volt.Library("volt.test", version="1.2.3")
+    library.part(
+        "AP1117-15",
+        pins=[
+            volt.PinSpec("GND", 1, role="ground"),
+            volt.PinSpec("VO", 2, role="power_output", voltage_range=(1.5, 1.5)),
+            volt.PinSpec("VI", 3, role="power_input", voltage_range=(2.5, 18.0)),
+        ],
+        manufacturer="Diodes Incorporated",
+        mpn="AP1117E15G-13",
+        package="SOT-223-3",
+        footprint=("Package_TO_SOT_SMD", "SOT-223-3_TabPin2"),
+        pads={1: "1", 2: ("2", "4"), 3: "3"},
+    )
+
+    artifact = library.build().part("AP1117-15").artifact
+    assert artifact is not None
+    document = json.loads(artifact.bytes)
+
+    assert artifact.sha256 == "sha256:" + hashlib.sha256(artifact.bytes).hexdigest()
+    assert artifact.bytes == library.build().part("AP1117-15").artifact.bytes
+    assert document["format"] == "volt.part"
+    assert document["identity"] == {
+        "namespace": "volt.test",
+        "name": "AP1117-15",
+        "version": "1.2.3",
+    }
+    assert b'"role"' not in artifact.bytes
+    assert document["pins"][0]["terminal_kind"] == "Ground"
+    assert document["pins"][0]["direction"] == "Passive"
+    assert document["pins"][1]["terminal_kind"] == "Power"
+    assert document["pins"][1]["direction"] == "Output"
+    assert document["pins"][2]["terminal_kind"] == "Power"
+    assert document["pins"][2]["direction"] == "Input"
+    assert document["orderable_part"]["mpn"] == "AP1117E15G-13"
+    assert document["orderable_part"]["pin_pad_mappings"] == [
+        {"pin_number": "1", "pad": "1"},
+        {"pin_number": "2", "pad": "2"},
+        {"pin_number": "2", "pad": "4"},
+        {"pin_number": "3", "pad": "3"},
+    ]
+
+
+def test_library_part_build_reports_pin_role_contradictions():
+    library = volt.Library("volt.test")
+    library.part(
+        "Broken",
+        pins=[volt.PinSpec("VDD", 1, role="power", terminal="ground")],
+        manufacturer="Example",
+        mpn="BROKEN-1",
+        package="SOT-23",
+        footprint=("Package_TO_SOT_SMD", "SOT-23"),
+        pads={1: "1"},
+    )
+
+    result = library.build()
+
+    assert not result.ok
+    assert any(
+        diagnostic.code == "LIBRARY_PART_ARTIFACT_INVALID"
+        and "PinSpec role preset contradicts explicit terminal kind" in diagnostic.message
+        for diagnostic in result.diagnostics
+    )
 
 def test_library_component_schematic_symbol_default_is_definition_owned():
     design = volt.Design("library-symbol")

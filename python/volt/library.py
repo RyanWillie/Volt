@@ -180,7 +180,15 @@ class PhysicalPartSpec:
     voltage_rating: float | None = None
     power_rating: float | None = None
     model_3d: PartModel3D | None = None
+    approved_alternate_mpns: tuple[str, ...] = ()
     same_numbered_pads: bool = False
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "approved_alternate_mpns",
+            tuple(str(mpn) for mpn in self.approved_alternate_mpns),
+        )
 
     @classmethod
     def same_numbered(
@@ -194,6 +202,7 @@ class PhysicalPartSpec:
         voltage_rating: float | None = None,
         power_rating: float | None = None,
         model_3d: PartModel3D | None = None,
+        approved_alternate_mpns: Iterable[str] = (),
     ) -> PhysicalPartSpec:
         """Create a physical part whose footprint pad labels match pin numbers."""
         return cls(
@@ -205,6 +214,7 @@ class PhysicalPartSpec:
             voltage_rating=voltage_rating,
             power_rating=power_rating,
             model_3d=model_3d,
+            approved_alternate_mpns=tuple(approved_alternate_mpns),
             same_numbered_pads=True,
         )
 
@@ -224,6 +234,11 @@ class PhysicalPartSpec:
         if self.pin_pads is None:
             raise ValueError("physical part requires pin_pads or same_numbered_pads")
         return dict(self.pin_pads)
+
+
+@dataclass(frozen=True)
+class OrderablePart(PhysicalPartSpec):
+    """Artifact-facing name for orderable physical part identity."""
 
 
 @dataclass(frozen=True)
@@ -616,6 +631,12 @@ class Library:
     def part_family(self, **defaults) -> _PartFamily:
         """Create a helper that registers parts using shared defaults."""
         return _PartFamily(self, defaults)
+
+    def part(self, name: str, **kwargs) -> Part:
+        """Create and register a public part in this library."""
+        from .part import Part
+
+        return self.add(Part(name=name, **kwargs))
 
     def component(
         self,
