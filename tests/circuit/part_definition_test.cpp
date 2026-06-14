@@ -99,6 +99,37 @@ TEST_CASE("Part definition assembly rejects symbol pins outside the pin map") {
                     std::invalid_argument);
 }
 
+TEST_CASE("Part footprint polygons reject structurally invalid geometry") {
+    CHECK_THROWS_AS(volt::PartFootprintPolygon(std::vector<volt::PartFootprintPoint>{}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::PartFootprintPolygon(std::vector{
+                        volt::PartFootprintPoint{0.0, 0.0},
+                        volt::PartFootprintPoint{1.0, 0.0},
+                    }),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::PartFootprintPolygon(std::vector{
+                        volt::PartFootprintPoint{0.0, 0.0},
+                        volt::PartFootprintPoint{1.0, 0.0},
+                        volt::PartFootprintPoint{2.0, 0.0},
+                    }),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::PartFootprintPolygon(std::vector{
+                        volt::PartFootprintPoint{0.0, 0.0},
+                        volt::PartFootprintPoint{1.0, 0.0},
+                        volt::PartFootprintPoint{1.0, 0.0},
+                        volt::PartFootprintPoint{0.0, 1.0},
+                    }),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::PartFootprintPolygon(std::vector{
+                        volt::PartFootprintPoint{0.0, 0.0},
+                        volt::PartFootprintPoint{1.0, 0.0},
+                        volt::PartFootprintPoint{0.0, 1.0},
+                        volt::PartFootprintPoint{0.0, 0.0},
+                        volt::PartFootprintPoint{-1.0, 0.0},
+                    }),
+                    std::invalid_argument);
+}
+
 TEST_CASE("Part definition assembly requires every pin to appear in each symbol exactly once") {
     CHECK_THROWS_AS(part(three_pin_map(), std::vector<volt::HashedSchematicSymbolReference>{}),
                     std::invalid_argument);

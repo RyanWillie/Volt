@@ -1,5 +1,7 @@
 #include <volt/pcb/footprints.hpp>
 
+#include "../detail/footprint_polygon_validation.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <optional>
@@ -9,91 +11,6 @@
 #include <vector>
 
 namespace volt {
-
-namespace {
-
-inline constexpr double kFootprintPolygonEpsilon = 1.0e-9;
-
-[[nodiscard]] double signed_area_twice(const std::vector<FootprintPoint> &vertices) {
-    double area = 0.0;
-    std::size_t previous = vertices.size() - 1U;
-    for (std::size_t current = 0; current < vertices.size(); ++current) {
-        area += vertices[previous].x_mm() * vertices[current].y_mm();
-        area -= vertices[current].x_mm() * vertices[previous].y_mm();
-        previous = current;
-    }
-    return area;
-}
-
-[[nodiscard]] double orientation(FootprintPoint a, FootprintPoint b, FootprintPoint c) noexcept {
-    return ((b.x_mm() - a.x_mm()) * (c.y_mm() - a.y_mm())) -
-           ((b.y_mm() - a.y_mm()) * (c.x_mm() - a.x_mm()));
-}
-
-[[nodiscard]] bool point_on_segment(FootprintPoint point, FootprintPoint a,
-                                    FootprintPoint b) noexcept {
-    const auto cross = ((point.y_mm() - a.y_mm()) * (b.x_mm() - a.x_mm())) -
-                       ((point.x_mm() - a.x_mm()) * (b.y_mm() - a.y_mm()));
-    if (std::abs(cross) > kFootprintPolygonEpsilon) {
-        return false;
-    }
-
-    const auto dot = ((point.x_mm() - a.x_mm()) * (b.x_mm() - a.x_mm())) +
-                     ((point.y_mm() - a.y_mm()) * (b.y_mm() - a.y_mm()));
-    if (dot < -kFootprintPolygonEpsilon) {
-        return false;
-    }
-
-    const auto length_squared = ((b.x_mm() - a.x_mm()) * (b.x_mm() - a.x_mm())) +
-                                ((b.y_mm() - a.y_mm()) * (b.y_mm() - a.y_mm()));
-    return dot <= length_squared + kFootprintPolygonEpsilon;
-}
-
-[[nodiscard]] bool segments_intersect(FootprintPoint a, FootprintPoint b, FootprintPoint c,
-                                      FootprintPoint d) noexcept {
-    const auto ab_c = orientation(a, b, c);
-    const auto ab_d = orientation(a, b, d);
-    const auto cd_a = orientation(c, d, a);
-    const auto cd_b = orientation(c, d, b);
-
-    if (std::abs(ab_c) <= kFootprintPolygonEpsilon && point_on_segment(c, a, b)) {
-        return true;
-    }
-    if (std::abs(ab_d) <= kFootprintPolygonEpsilon && point_on_segment(d, a, b)) {
-        return true;
-    }
-    if (std::abs(cd_a) <= kFootprintPolygonEpsilon && point_on_segment(a, c, d)) {
-        return true;
-    }
-    if (std::abs(cd_b) <= kFootprintPolygonEpsilon && point_on_segment(b, c, d)) {
-        return true;
-    }
-
-    return ((ab_c > 0.0) != (ab_d > 0.0)) && ((cd_a > 0.0) != (cd_b > 0.0));
-}
-
-[[nodiscard]] bool has_self_intersection(const std::vector<FootprintPoint> &vertices) {
-    for (std::size_t first = 0; first < vertices.size(); ++first) {
-        const auto first_next = (first + 1U) % vertices.size();
-        for (std::size_t second = first + 1U; second < vertices.size(); ++second) {
-            const auto second_next = (second + 1U) % vertices.size();
-            const auto adjacent = first == second || first_next == second || second_next == first ||
-                                  (first == 0U && second_next == 0U);
-            if (adjacent) {
-                continue;
-            }
-
-            if (segments_intersect(vertices[first], vertices[first_next], vertices[second],
-                                   vertices[second_next])) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-} // namespace
 
 FootprintPoint::FootprintPoint(double x_mm, double y_mm) : x_mm_{x_mm}, y_mm_{y_mm} {
     if (!std::isfinite(x_mm_) || !std::isfinite(y_mm_)) {
@@ -114,15 +31,7 @@ FootprintSize::FootprintSize(double width_mm, double height_mm)
 FootprintPolygon::FootprintPolygon(std::vector<FootprintPoint> vertices)
     : vertices_{std::move(vertices)} {
     drop_duplicate_closing_vertex();
-    if (vertices_.size() < 3U) {
-        throw std::invalid_argument{"Footprint polygon must contain at least three vertices"};
-    }
-    if (std::abs(signed_area_twice(vertices_)) <= kFootprintPolygonEpsilon) {
-        throw std::invalid_argument{"Footprint polygon area must be positive"};
-    }
-    if (has_self_intersection(vertices_)) {
-        throw std::invalid_argument{"Footprint polygon must not self-intersect"};
-    }
+    detail::validate_footprint_polygon_vertices(vertices_, "Footprint polygon");
 }
 
 void FootprintPolygon::drop_duplicate_closing_vertex() {
