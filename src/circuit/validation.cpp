@@ -67,6 +67,23 @@ namespace volt::detail {
             definition.direction() == ElectricalDirection::Bidirectional);
 }
 
+[[nodiscard]] bool has_authored_power_supply(const Circuit &circuit, NetId net_id) {
+    const auto &net = circuit.net(net_id);
+    if (net.kind() != NetKind::Power) {
+        return false;
+    }
+
+    const auto voltage_attribute_name = ElectricalAttributeName{"voltage"};
+    const auto &attributes = circuit.net_electrical_attributes(net_id);
+    if (!attributes.contains(voltage_attribute_name)) {
+        return false;
+    }
+
+    const auto &voltage = attributes.get(voltage_attribute_name);
+    return voltage.kind() == ElectricalAttributeValueKind::Quantity &&
+           voltage.as_quantity().dimension() == UnitDimension::Voltage;
+}
+
 NetContinuityView::NetContinuityView(const Circuit &circuit) {
     parent_.reserve(circuit.net_count());
     for (std::size_t index = 0; index < circuit.net_count(); ++index) {
@@ -91,6 +108,17 @@ NetContinuityView::NetContinuityView(const Circuit &circuit) {
         pins.insert(pins.end(), net_pins.begin(), net_pins.end());
     }
     return pins;
+}
+
+[[nodiscard]] bool NetContinuityView::group_has_authored_power_supply(const Circuit &circuit,
+                                                                      NetId net) const {
+    const auto group = find(net.index());
+    for (std::size_t index = 0; index < circuit.net_count(); ++index) {
+        if (find(index) == group && has_authored_power_supply(circuit, NetId{index})) {
+            return true;
+        }
+    }
+    return false;
 }
 
 [[nodiscard]] std::size_t NetContinuityView::find(std::size_t index) const {
@@ -170,9 +198,9 @@ void validate_net_shape(NetId net_id, const Net &net, const std::vector<PinId> &
 
 void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, const Net &net,
                                          const std::vector<PinId> &group_pins,
-                                         DiagnosticReport &report) {
+                                         bool has_authored_power_supply, DiagnosticReport &report) {
     auto power_input_pins = std::vector<PinId>{};
-    auto has_power_source = false;
+    auto has_power_source = has_authored_power_supply;
     for (const auto pin_id : group_pins) {
         const auto &pin = circuit.pin(pin_id);
         const auto &definition = circuit.pin_definition(pin.definition());
@@ -410,8 +438,11 @@ void validate_net_electrical_rules(const Circuit &circuit, const NetContinuityVi
         const auto net_id = NetId{index};
         const auto &net = circuit.net(net_id);
         const auto group_pins = continuity.pins_for_group(circuit, net_id);
+        const auto has_authored_power_supply =
+            continuity.group_has_authored_power_supply(circuit, net_id);
 
-        validate_power_and_ground_semantics(circuit, net_id, net, group_pins, report);
+        validate_power_and_ground_semantics(circuit, net_id, net, group_pins,
+                                            has_authored_power_supply, report);
         validate_selected_part_voltage_ratings(circuit, net_id, net, group_pins, report);
         validate_pin_voltage_ranges(circuit, net_id, net, group_pins, report);
         validate_net_class_voltage_limit(circuit, net_id, report);
@@ -426,11 +457,14 @@ void validate_net_semantics(const Circuit &circuit, const NetContinuityView &con
         const auto net_id = NetId{index};
         const auto &net = circuit.net(net_id);
         const auto group_pins = continuity.pins_for_group(circuit, net_id);
+        const auto has_authored_power_supply =
+            continuity.group_has_authored_power_supply(circuit, net_id);
 
         if (!circuit.is_intentional_stub_net(net_id)) {
             validate_net_shape(net_id, net, group_pins, report);
         }
-        validate_power_and_ground_semantics(circuit, net_id, net, group_pins, report);
+        validate_power_and_ground_semantics(circuit, net_id, net, group_pins,
+                                            has_authored_power_supply, report);
         validate_selected_part_voltage_ratings(circuit, net_id, net, group_pins, report);
         validate_pin_voltage_ranges(circuit, net_id, net, group_pins, report);
         validate_net_class_voltage_limit(circuit, net_id, report);

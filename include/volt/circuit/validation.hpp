@@ -36,6 +36,9 @@ class NetContinuityView {
     /** Return all pins electrically continuous with this net for validation checks. */
     [[nodiscard]] std::vector<PinId> pins_for_group(const Circuit &circuit, NetId net) const;
 
+    /** Return whether any net in this electrical continuity group asserts power intent. */
+    [[nodiscard]] bool group_has_authored_power_supply(const Circuit &circuit, NetId net) const;
+
   private:
     [[nodiscard]] std::size_t find(std::size_t index) const;
 
@@ -51,7 +54,7 @@ void validate_net_shape(NetId net_id, const Net &net, const std::vector<PinId> &
 
 void validate_power_and_ground_semantics(const Circuit &circuit, NetId net_id, const Net &net,
                                          const std::vector<PinId> &group_pins,
-                                         DiagnosticReport &report);
+                                         bool has_authored_power_supply, DiagnosticReport &report);
 
 void validate_selected_part_voltage_ratings(const Circuit &circuit, NetId net_id, const Net &net,
                                             const std::vector<PinId> &group_pins,

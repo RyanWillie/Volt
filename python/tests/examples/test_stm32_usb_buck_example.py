@@ -471,16 +471,15 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert 'data-sheet="sheet:1"' not in first_page_texts[0]
 
     codes = {diagnostic["code"] for diagnostic in validation["diagnostics"]}
-    assert "POWER_INPUT_WITHOUT_SOURCE" in codes
+    assert "POWER_INPUT_WITHOUT_SOURCE" not in codes
     assert "SINGLE_PIN_NET" not in codes
     assert "UNCONNECTED_REQUIRED_PIN" not in codes
     assert validation["status"] == "expected-diagnostics"
     assert validation["unexpected"] == []
     assert validation["missing_expected"] == []
-    assert validation["summary"]["errors"] == 2
-    assert validation["summary"]["warnings"] == len(validation["diagnostics"]) - 2
+    assert validation["summary"]["errors"] == 0
+    assert validation["summary"]["warnings"] == len(validation["diagnostics"])
     assert {item["code"] for item in validation["expected"]} == {
-        "POWER_INPUT_WITHOUT_SOURCE",
         "SCHEMATIC_DENSE_PORT_TAGS",
         "SCHEMATIC_LABEL_CROWDS_SYMBOL",
         "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",

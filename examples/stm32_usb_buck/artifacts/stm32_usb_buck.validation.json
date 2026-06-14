@@ -1,46 +1,6 @@
 {
   "diagnostics": [
     {
-      "category": "erc",
-      "code": "POWER_INPUT_WITHOUT_SOURCE",
-      "entities": [
-        {
-          "index": 3,
-          "kind": "net"
-        },
-        {
-          "index": 83,
-          "kind": "pin"
-        }
-      ],
-      "measurement": null,
-      "message": "Power input is connected to a net with no typed supply source",
-      "overlays": [],
-      "rule": null,
-      "severity": "error",
-      "source": "logical_design"
-    },
-    {
-      "category": "erc",
-      "code": "POWER_INPUT_WITHOUT_SOURCE",
-      "entities": [
-        {
-          "index": 8,
-          "kind": "net"
-        },
-        {
-          "index": 83,
-          "kind": "pin"
-        }
-      ],
-      "measurement": null,
-      "message": "Power input is connected to a net with no typed supply source",
-      "overlays": [],
-      "rule": null,
-      "severity": "error",
-      "source": "logical_design"
-    },
-    {
       "category": "general",
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "entities": [
@@ -1352,17 +1312,6 @@
   "expected": [
     {
       "board": null,
-      "code": "POWER_INPUT_WITHOUT_SOURCE",
-      "design": null,
-      "matched": true,
-      "report": null,
-      "rule": null,
-      "severity": "error",
-      "source": null,
-      "stage": null
-    },
-    {
-      "board": null,
       "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
       "design": null,
       "matched": true,
@@ -1420,48 +1369,9 @@
   "missing_expected": [],
   "reports": {
     "logical_design": {
-      "diagnostics": [
-        {
-          "category": "erc",
-          "code": "POWER_INPUT_WITHOUT_SOURCE",
-          "entities": [
-            {
-              "index": 3,
-              "kind": "net"
-            },
-            {
-              "index": 83,
-              "kind": "pin"
-            }
-          ],
-          "measurement": null,
-          "message": "Power input is connected to a net with no typed supply source",
-          "overlays": [],
-          "rule": null,
-          "severity": "error"
-        },
-        {
-          "category": "erc",
-          "code": "POWER_INPUT_WITHOUT_SOURCE",
-          "entities": [
-            {
-              "index": 8,
-              "kind": "net"
-            },
-            {
-              "index": 83,
-              "kind": "pin"
-            }
-          ],
-          "measurement": null,
-          "message": "Power input is connected to a net with no typed supply source",
-          "overlays": [],
-          "rule": null,
-          "severity": "error"
-        }
-      ],
+      "diagnostics": [],
       "summary": {
-        "errors": 2,
+        "errors": 0,
         "infos": 0,
         "warnings": 0
       }
@@ -2763,7 +2673,7 @@
   },
   "status": "expected-diagnostics",
   "summary": {
-    "errors": 2,
+    "errors": 0,
     "infos": 0,
     "warnings": 48
   },
