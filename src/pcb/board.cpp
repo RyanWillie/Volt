@@ -12,6 +12,58 @@
 
 namespace volt {
 
+namespace {
+
+struct ResolvedPlacementFootprint {
+    ComponentPlacementId placement_id;
+    ComponentPlacement placement;
+    FootprintDefinition definition;
+    std::vector<FootprintPadBinding> pad_bindings;
+};
+
+[[nodiscard]] std::vector<ResolvedPlacementFootprint>
+resolved_placement_footprints(const Board &board, const FootprintLibrary &footprints) {
+    auto resolved = std::vector<ResolvedPlacementFootprint>{};
+    resolved.reserve(board.placement_count());
+
+    const auto resolution_footprints = detail::board_resolution_footprints(board, footprints);
+    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+        const auto placement_id = ComponentPlacementId{index};
+        const auto &component_placement = board.placement(placement_id);
+        const auto &selected_part =
+            board.circuit().selected_physical_part(component_placement.component());
+        if (!selected_part.has_value()) {
+            continue;
+        }
+
+        const auto footprint_resolution =
+            resolve_footprint(selected_part.value(), resolution_footprints);
+        const auto *definition = footprint_resolution.definition();
+        if (definition == nullptr) {
+            continue;
+        }
+
+        resolved.push_back(ResolvedPlacementFootprint{
+            placement_id, component_placement, *definition, footprint_resolution.pad_bindings()});
+    }
+
+    return resolved;
+}
+
+[[nodiscard]] bool
+optional_library_polygon_conflicts(const std::optional<FootprintPolygon> &board_polygon,
+                                   const std::optional<FootprintPolygon> &library_polygon) {
+    if (!library_polygon.has_value()) {
+        return false;
+    }
+    if (!board_polygon.has_value()) {
+        return true;
+    }
+    return board_polygon.value() != library_polygon.value();
+}
+
+} // namespace
+
 Board::Board(const Circuit &circuit, BoardName name) : circuit_{&circuit}, name_{std::move(name)} {}
 
 [[nodiscard]] BoardLayerId Board::add_layer(BoardLayer layer) {
@@ -158,28 +210,34 @@ Board::placement_for_component(ComponentId component) const noexcept {
 [[nodiscard]] std::vector<PadResolution>
 Board::resolve_pads(const FootprintLibrary &footprints) const {
     auto resolutions = std::vector<PadResolution>{};
-    const auto resolution_footprints = detail::board_resolution_footprints(*this, footprints);
-    for (std::size_t index = 0; index < placements_.placement_count(); ++index) {
-        const auto placement_id = ComponentPlacementId{index};
-        const auto &component_placement = placement(placement_id);
-        const auto &selected_part =
-            circuit().selected_physical_part(component_placement.component());
-        if (!selected_part.has_value()) {
-            continue;
-        }
-
-        const auto footprint_resolution =
-            resolve_footprint(selected_part.value(), resolution_footprints);
-        const auto *definition = footprint_resolution.definition();
-        if (definition == nullptr) {
-            continue;
-        }
-
-        append_pad_resolutions(placement_id, component_placement, *definition,
-                               footprint_resolution.pad_bindings(), resolutions);
+    for (const auto &resolved : resolved_placement_footprints(*this, footprints)) {
+        append_pad_resolutions(resolved.placement_id, resolved.placement, resolved.definition,
+                               resolved.pad_bindings, resolutions);
     }
 
     return resolutions;
+}
+
+[[nodiscard]] std::vector<ProjectedFootprintGeometry>
+Board::project_footprint_geometries(const FootprintLibrary &footprints) const {
+    auto geometries = std::vector<ProjectedFootprintGeometry>{};
+    for (const auto &resolved : resolved_placement_footprints(*this, footprints)) {
+        auto courtyard = std::optional<std::vector<BoardPoint>>{};
+        if (resolved.definition.courtyard().has_value()) {
+            courtyard = detail::transformed_footprint_polygon(
+                resolved.placement, resolved.definition.courtyard().value());
+        }
+        auto body = std::optional<std::vector<BoardPoint>>{};
+        if (resolved.definition.body().has_value()) {
+            body = detail::transformed_footprint_polygon(resolved.placement,
+                                                         resolved.definition.body().value());
+        }
+
+        geometries.emplace_back(resolved.placement_id, resolved.placement.component(),
+                                std::move(courtyard), std::move(body));
+    }
+
+    return geometries;
 }
 
 [[nodiscard]] std::vector<RatsnestEdge>
@@ -437,6 +495,20 @@ namespace {
 
 namespace volt::detail {
 
+[[nodiscard]] bool
+footprint_library_definition_conflicts(const FootprintDefinition &board_definition,
+                                       const FootprintDefinition &library_definition) {
+    if (board_definition.ref() != library_definition.ref()) {
+        return false;
+    }
+    if (board_definition.pads() != library_definition.pads()) {
+        return true;
+    }
+    return optional_library_polygon_conflicts(board_definition.courtyard(),
+                                              library_definition.courtyard()) ||
+           optional_library_polygon_conflicts(board_definition.body(), library_definition.body());
+}
+
 [[nodiscard]] FootprintLibrary board_resolution_footprints(const Board &board,
                                                            const FootprintLibrary &footprints) {
     auto library = FootprintLibrary{};
@@ -449,7 +521,7 @@ namespace volt::detail {
             library.add(definition);
             continue;
         }
-        if (!(*existing == definition)) {
+        if (footprint_library_definition_conflicts(*existing, definition)) {
             throw std::logic_error{
                 "Board footprint definition conflicts with footprint library definition"};
         }

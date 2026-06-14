@@ -201,12 +201,12 @@
   <main>
     <header>
       <div class="stack">
-        <p class="label">Format v1</p>
+        <p class="label">Format v2</p>
         <h1>Volt PCB projection data is stable board state plus recomputable viewer affordances.</h1>
       </div>
       <div class="meta">
         <p><strong>Format:</strong> <code>volt.pcb</code></p>
-        <p><strong>Version:</strong> <code>1</code></p>
+        <p><strong>Version:</strong> <code>2</code></p>
         <p><strong>Units:</strong> millimeters for all board and footprint geometry</p>
         <p><strong>Scope:</strong> placement-ready PCB projection over one logical circuit</p>
       </div>
@@ -244,7 +244,7 @@
       <div class="stack">
         <pre><code>{
   "format": "volt.pcb",
-  "version": 1,
+  "version": 2,
   "board": {
     "id": "board:0",
     "name": "Control",
@@ -282,9 +282,9 @@
             <tr><th>Path</th><th>Meaning</th><th>Viewer use</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>board.id</code></td><td>Stable board entity ID. v1 stores one board as <code>board:0</code>.</td><td>Root selection and SVG <code>data-board</code>.</td></tr>
+            <tr><td><code>board.id</code></td><td>Stable board entity ID. v2 stores one board as <code>board:0</code>.</td><td>Root selection and SVG <code>data-board</code>.</td></tr>
             <tr><td><code>board.name</code></td><td>Human-facing board name.</td><td>Titles and inspection panels.</td></tr>
-            <tr><td><code>board.units</code></td><td>Geometry units. v1 supports <code>mm</code>.</td><td>Scene scale and ruler labels.</td></tr>
+            <tr><td><code>board.units</code></td><td>Geometry units. v2 supports <code>mm</code>.</td><td>Scene scale and ruler labels.</td></tr>
             <tr><td><code>board.layers[]</code></td><td>Layer ID, name, role, side, thickness, and enabled state.</td><td>Layer lists, filtering, coloring, and stack views.</td></tr>
             <tr><td><code>board.layer_stack</code></td><td>Optional ordered layer IDs plus total board thickness in millimeters.</td><td>2D ordering and 3D board thickness hints.</td></tr>
             <tr><td><code>board.outline</code></td><td>Optional polygon outline in board coordinates.</td><td>Board shape, bounds, and hit regions.</td></tr>
@@ -337,6 +337,8 @@
             <tr><td><code>pads[].position</code></td><td>Footprint-local pad center in millimeters.</td><td>Independent rendering before placement transform.</td></tr>
             <tr><td><code>pads[].size</code></td><td>Width and height in millimeters.</td><td>Pad body rendering.</td></tr>
             <tr><td><code>pads[].kind</code>, <code>shape</code>, <code>layers</code>, <code>drill</code>, <code>mechanical_role</code></td><td>Pad technology and geometry metadata.</td><td>Shape, layer membership, through-hole rendering, and non-electrical annotation.</td></tr>
+            <tr><td><code>courtyard</code></td><td>Optional footprint-local courtyard polygon.</td><td>Render and inspect declared component clearance extents. Missing means no courtyard was declared, distinct from an invalid empty polygon. Polygon arrays are canonical boundary vertices and must not repeat the first vertex at the end.</td></tr>
+            <tr><td><code>body</code></td><td>Optional footprint-local body outline polygon.</td><td>Render the declared physical body extent without guessing from pad bounds. Missing means no body outline was declared. Polygon arrays are canonical boundary vertices and must not repeat the first vertex at the end.</td></tr>
           </tbody>
         </table>
       </div>
@@ -470,7 +472,7 @@
         <ul>
           <li>No product UI, 3D renderer, click payload, editor workflow, or agent feedback protocol is defined here.</li>
           <li>No component 3D body assets, generated model files, asset hashes, or project viewer bundles are part of <code>board.geometry</code>.</li>
-          <li>No <code>source</code> section, source-code location mapping, or viewer-to-agent source trace is part of v1.</li>
+          <li>No <code>source</code> section, source-code location mapping, or viewer-to-agent source trace is part of v2.</li>
           <li>No direct UI mutation of kernel state is authorized by this data.</li>
           <li>No autorouting, Gerber, or manufacturing output contract is implied.</li>
         </ul>

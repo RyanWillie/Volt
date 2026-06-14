@@ -19,7 +19,7 @@ This page is the human-readable index for the public names exported by `volt.__a
 | --- | --- |
 | `volt.Design` | Root handle for one kernel-owned logical circuit plus schematic and PCB projections. |
 
-Common methods: `net`, `nets`, `R`, `C`, `CP`, `L`, `LED`, `diode`, `switch`, `crystal`, `test_point`, `connector_1x01`, `connector_1x02`, `connector_1x03`, `regulator`, `op_amp`, `define_component`, `define_module`, `instantiate`, `schematic`, `board`, `validate`, `validate_for_pcb`, `to_json`, and `write`.
+Common methods: `net`, `nets`, `R`, `C`, `CP`, `L`, `LED`, `diode`, `switch`, `crystal`, `test_point`, `connector_1x01`, `connector_1x02`, `connector_1x03`, `regulator`, `op_amp`, `define_component`, `define_module`, `instantiate`, `schematic`, `board`, `validate`, `validate_for_pcb`, `validate_bom_readiness`, `set_sourcing_snapshot`, `bom`, `bom_csv`, `to_json`, and `write`.
 
 ## Project framework
 
@@ -140,10 +140,11 @@ Inspection records: `volt.TemplateNetInfo`, `volt.PortInfo`, `volt.ModuleCompone
 | `volt.DiagnosticEntity` | Reference to an entity involved in a diagnostic. |
 | `volt.DiagnosticOverlay` | Overlay-ready diagnostic geometry with highlight entities and board-layer references. |
 | `volt.DiagnosticMeasurement` | Typed actual-versus-required measurement in millimeters attached to a diagnostic. |
-| `volt.DIAGNOSTIC_CATEGORIES` | Stable diagnostic category strings, including `erc`, `drc`, `part.lineup`, `pcb.board`, `pcb.visual`, and `pcb.fabrication`. |
+| `volt.DIAGNOSTIC_CATEGORIES` | Stable diagnostic category strings, including `erc`, `drc`, `part.lineup`, `pcb.board`, `pcb.visual`, `pcb.fabrication`, and `bom`. |
 | `volt.ERC_DIAGNOSTIC_CODES` | Stable electrical rule diagnostic code strings exported for project-facing checks. |
 | `volt.DRC_DIAGNOSTIC_CODES` | Stable design rule diagnostic code strings exported for project-facing checks. |
 | `volt.PART_LINEUP_DIAGNOSTIC_CODES` | Stable part lineup diagnostic code strings exported for library and project checks. |
+| `volt.BOM_DIAGNOSTIC_CODES` | Stable BOM-readiness diagnostic code strings exported for assembly/project-facing checks. |
 | `volt.PCB_VISUAL_DIAGNOSTIC_CODES` | Stable PCB visual/review diagnostic code strings exported for project-facing checks. |
 | `volt.PCB_FABRICATION_DIAGNOSTIC_CODES` | Stable fabrication handoff diagnostic code strings exported for project-facing checks. |
 

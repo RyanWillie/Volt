@@ -224,6 +224,26 @@ footprint_layer_set_from_string(const std::string &value) {
     throw std::invalid_argument{"Unknown footprint pad kind"};
 }
 
+[[nodiscard]] inline volt::FootprintPoint footprint_point_from_object(py::handle value) {
+    const auto point = py::cast<std::pair<double, double>>(value);
+    return volt::FootprintPoint{point.first, point.second};
+}
+
+[[nodiscard]] inline std::optional<volt::FootprintPolygon>
+optional_footprint_polygon_from_dict(const py::dict &data, const char *name) {
+    if (!data.contains(name) || data[name].is_none()) {
+        return std::nullopt;
+    }
+
+    const auto points = py::cast<py::iterable>(data[name]);
+    auto vertices = std::vector<volt::FootprintPoint>{};
+    vertices.reserve(static_cast<std::size_t>(py::len(points)));
+    for (const auto item : points) {
+        vertices.push_back(footprint_point_from_object(item));
+    }
+    return volt::FootprintPolygon{std::move(vertices)};
+}
+
 [[nodiscard]] inline volt::FootprintDefinition
 footprint_definition_from_dict(const py::dict &data) {
     const auto ref = py::cast<std::pair<std::string, std::string>>(data["ref"]);
@@ -233,7 +253,9 @@ footprint_definition_from_dict(const py::dict &data) {
     for (const auto item : pad_data) {
         pads.push_back(footprint_pad_from_dict(py::cast<py::dict>(item)));
     }
-    return volt::FootprintDefinition{volt::FootprintRef{ref.first, ref.second}, std::move(pads)};
+    return volt::FootprintDefinition{volt::FootprintRef{ref.first, ref.second}, std::move(pads),
+                                     optional_footprint_polygon_from_dict(data, "courtyard"),
+                                     optional_footprint_polygon_from_dict(data, "body")};
 }
 
 [[nodiscard]] inline std::vector<int> optional_int_vector_from_dict(const py::dict &data,

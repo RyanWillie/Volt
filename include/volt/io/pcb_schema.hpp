@@ -10,11 +10,11 @@
 
 namespace volt::io {
 
-/** Return the canonical v1 PCB projection format name. */
+/** Return the canonical PCB projection format name. */
 [[nodiscard]] inline constexpr std::string_view pcb_format_name() noexcept { return "volt.pcb"; }
 
 /** Return the canonical PCB projection format version written by this library. */
-[[nodiscard]] inline constexpr int pcb_format_version() noexcept { return 1; }
+[[nodiscard]] inline constexpr int pcb_format_version() noexcept { return 2; }
 
 namespace detail {
 

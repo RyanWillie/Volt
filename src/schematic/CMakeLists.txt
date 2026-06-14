@@ -24,7 +24,7 @@ add_library(
 add_library(Volt::Schematic ALIAS volt_schematic)
 
 set_target_properties(volt_schematic PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_features(volt_schematic PUBLIC cxx_std_20)
+target_compile_features(volt_schematic PUBLIC cxx_std_23)
 target_link_libraries(volt_schematic PUBLIC Volt::Circuit)
 target_include_directories(
     volt_schematic

@@ -264,6 +264,10 @@ def _part_footprint_payload(footprint: FootprintInput | None) -> dict | None:
     result = {"library": library, "name": name}
     if isinstance(footprint, Footprint):
         result["pads"] = [pad._to_dict() for pad in footprint.pads]
+        if footprint.courtyard is not None:
+            result["courtyard"] = list(footprint.courtyard)
+        if footprint.body is not None:
+            result["body"] = list(footprint.body)
     return result
 
 

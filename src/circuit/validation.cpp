@@ -24,6 +24,13 @@ namespace volt::detail {
                       std::move(entities)};
 }
 
+[[nodiscard]] Diagnostic bom_error(std::string_view code, std::string message,
+                                   std::vector<EntityRef> entities = {}) {
+    return Diagnostic{Severity::Error, DiagnosticCode{std::string{code}},
+                      DiagnosticCategory{diagnostic_categories::Bom}, std::move(message),
+                      std::move(entities)};
+}
+
 [[nodiscard]] bool is_no_connect_pin(const PinDefinition &definition) {
     return definition.connection_requirement() == ConnectionRequirement::MustNotConnect ||
            definition.terminal_kind() == ElectricalTerminalKind::NoConnect;
@@ -502,6 +509,42 @@ void validate_physical_part_selection(const Circuit &circuit, DiagnosticReport &
     }
 }
 
+void validate_bom_component_readiness(const Circuit &circuit, DiagnosticReport &report) {
+    for (std::size_t index = 0; index < circuit.component_count(); ++index) {
+        const auto component_id = ComponentId{index};
+        const auto &component = circuit.component(component_id);
+        const auto entities = std::vector{EntityRef::component(component_id),
+                                          EntityRef::component_def(component.definition())};
+        const auto dnp = circuit.component_dnp(component_id);
+        if (!dnp.has_value()) {
+            report.add(bom_error(bom_diagnostic_codes::ComponentImplicitDnp,
+                                 "Component requires explicit DNP intent for BOM readiness",
+                                 entities));
+        }
+
+        const auto &selected_part = circuit.selected_physical_part(component_id);
+        if (!dnp.value_or(false) && !selected_part.has_value()) {
+            report.add(
+                bom_error(bom_diagnostic_codes::ComponentMissingSelectedPart,
+                          "Populated component requires a selected physical part for BOM readiness",
+                          entities));
+            continue;
+        }
+        if (!selected_part.has_value()) {
+            continue;
+        }
+
+        const auto &primary = selected_part->manufacturer_part().part_number();
+        for (const auto &alternate : selected_part->approved_alternate_mpns()) {
+            if (alternate == primary) {
+                report.add(bom_error(bom_diagnostic_codes::ApprovedAlternateDuplicatesPrimary,
+                                     "Approved alternate MPN duplicates the selected primary MPN",
+                                     entities));
+            }
+        }
+    }
+}
+
 } // namespace volt::detail
 
 namespace volt {
@@ -562,6 +605,17 @@ namespace volt {
     auto rules = RuleSet<Circuit>{};
     rules.add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
         detail::validate_physical_part_selection(rule_circuit, rule_report);
+    });
+    rules.run(circuit, report);
+
+    return report;
+}
+
+[[nodiscard]] DiagnosticReport validate_bom_readiness(const Circuit &circuit) {
+    auto report = DiagnosticReport{};
+    auto rules = RuleSet<Circuit>{};
+    rules.add([](const Circuit &rule_circuit, DiagnosticReport &rule_report) {
+        detail::validate_bom_component_readiness(rule_circuit, rule_report);
     });
     rules.run(circuit, report);
 

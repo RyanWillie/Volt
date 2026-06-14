@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>VOL-216 BOM Projection Plan</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.5; max-width: 980px; margin: 40px auto; padding: 0 24px; color: #1f2933; }
+    h1, h2 { line-height: 1.15; }
+    h1 { margin-bottom: 8px; }
+    .meta { color: #52606d; margin-bottom: 28px; }
+    section { border-top: 1px solid #d9e2ec; padding-top: 18px; margin-top: 22px; }
+    code { background: #f0f4f8; padding: 1px 4px; border-radius: 4px; }
+    li { margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <h1>VOL-216 BOM Projection Implementation Plan</h1>
+  <p class="meta"><strong>Goal:</strong> Emit deterministic <code>bom.json</code> and <code>bom.csv</code> from kernel-owned BOM intent, with DNP, per-instance selected-part overrides, alternates, sourcing snapshots, and stable BOM-readiness diagnostics.</p>
+
+  <section>
+    <h2>Architecture</h2>
+    <p>DNP belongs in <code>DesignIntent</code> as typed component-instance intent. Approved alternates belong on selected/orderable part identity, not Python-only metadata. BOM projection is a C++ kernel read model over <code>Circuit</code> plus an optional design-owned MPN sourcing snapshot; Python only exposes and writes that projection into project bundles.</p>
+  </section>
+
+  <section>
+    <h2>Tasks And Verification</h2>
+    <ol>
+      <li><strong>Kernel intent and selected-part shape.</strong> Add failing C++ tests for component DNP intent, selected-part approved alternates, and logical JSON round-trip. Implement <code>DesignIntent</code>, <code>Circuit</code>, logical reader/writer, and Python binding plumbing. Verify with <code>logical_circuit_writer_test</code>, <code>logical_circuit_reader_test</code>, and <code>circuit_test</code>.</li>
+      <li><strong>BOM projection.</strong> Add failing C++ tests for deterministic grouping by manufacturer/MPN/package, DNP visibility, alternates visibility, per-instance selected-part override behavior, reference sorting, and MPN-level sourcing merge. Implement focused BOM model/writer files under <code>include/volt/circuit</code> and <code>src/circuit</code>. Verify with new <code>tests/circuit/bom_test.cpp</code>.</li>
+      <li><strong>BOM readiness diagnostics.</strong> Add failing C++ tests for populated instance missing selected part, missing explicit DNP intent, and malformed alternate compatibility. Implement <code>validate_bom_readiness</code>, stable BOM diagnostic codes, category/catalog exposure, and Python bindings. Verify with validation and diagnostics catalog tests.</li>
+      <li><strong>Python authoring API.</strong> Add failing Python tests for <code>component.dnp()</code>, <code>select_part(..., approved_alternate_mpns=...)</code>, <code>design.validate_bom_readiness()</code>, and <code>design.bom()</code>. Implement thin wrappers over kernel state. Regenerate Python API docs if the public surface changes.</li>
+      <li><strong>Project bundle output.</strong> Add failing project-framework golden tests proving <code>bom/bom.json</code> and <code>bom/bom.csv</code> appear in <code>manifest.volt.json</code>, are deterministic, include DNP/alternates/overrides, and merge optional design-owned sourcing by MPN. Implement bundle writing without introducing VOL-188 CPL or assembly-bundle scope.</li>
+      <li><strong>Final verification and PR.</strong> Run targeted C++ and Python tests, then broader available tests. Push <code>feat/vol-216-bom-projection-dnp-overrides-alternates</code>, open a ready PR titled with <code>VOL-216</code>, dispatch a thermonuclear review thread, address actionable findings, and leave review findings on the PR.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Out Of Scope</h2>
+    <p>No CPL, full assembly bundle, fab-house submission, registry, lockfile, trust-tier, rich distributor integration, or alternate BOM shape for VOL-188. Sourcing remains a design-owned snapshot keyed by MPN and never enters part hashes or library code.</p>
+  </section>
+</body>
+</html>

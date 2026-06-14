@@ -1,7 +1,10 @@
 #include <volt/circuit/part_definition.hpp>
 
+#include "../detail/footprint_polygon_validation.hpp"
+
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -162,6 +165,17 @@ PartFootprintPad::PartFootprintPad(std::string label, double x_mm, double y_mm, 
     }
 }
 
+PartFootprintPoint::PartFootprintPoint(double x_mm, double y_mm) : x_mm_{x_mm}, y_mm_{y_mm} {
+    if (!std::isfinite(x_mm_) || !std::isfinite(y_mm_)) {
+        throw std::invalid_argument{"Part footprint polygon coordinates must be finite"};
+    }
+}
+
+PartFootprintPolygon::PartFootprintPolygon(std::vector<PartFootprintPoint> vertices)
+    : vertices_{std::move(vertices)} {
+    detail::validate_footprint_polygon_vertices(vertices_, "Part footprint polygon");
+}
+
 HashedFootprintReference::HashedFootprintReference(FootprintRef footprint, ContentHash hash)
     : footprint_{std::move(footprint)}, hash_{std::move(hash)} {}
 
@@ -201,10 +215,13 @@ OrderablePart::OrderablePart(ManufacturerPart manufacturer_part, PackageRef pack
                              std::vector<PartFootprintPad> footprint_pads,
                              std::vector<OrderablePinPadMapping> pin_pad_mappings,
                              std::vector<std::string> approved_alternate_mpns,
-                             std::optional<PartModel3DReference> model_3d)
+                             std::optional<PartModel3DReference> model_3d,
+                             std::optional<PartFootprintPolygon> footprint_courtyard,
+                             std::optional<PartFootprintPolygon> footprint_body)
     : manufacturer_part_{std::move(manufacturer_part)}, package_{std::move(package)},
       footprint_{std::move(footprint)}, footprint_pads_{std::move(footprint_pads)},
-      pin_pad_mappings_{std::move(pin_pad_mappings)},
+      footprint_courtyard_{std::move(footprint_courtyard)},
+      footprint_body_{std::move(footprint_body)}, pin_pad_mappings_{std::move(pin_pad_mappings)},
       approved_alternate_mpns_{std::move(approved_alternate_mpns)}, model_3d_{std::move(model_3d)} {
     if (footprint_pads_.empty()) {
         throw std::invalid_argument{"Orderable part footprint projection must contain pads"};

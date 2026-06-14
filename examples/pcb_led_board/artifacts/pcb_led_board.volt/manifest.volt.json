@@ -11,6 +11,24 @@
     },
     {
       "group": {
+        "design": "pcb-led-board"
+      },
+      "kind": "bom",
+      "media_type": "application/vnd.volt.bom+json",
+      "name": "pcb-led-board",
+      "path": "bom/bom.json"
+    },
+    {
+      "group": {
+        "design": "pcb-led-board"
+      },
+      "kind": "bom_csv",
+      "media_type": "text/csv",
+      "name": "pcb-led-board",
+      "path": "bom/bom.csv"
+    },
+    {
+      "group": {
         "design": "pcb-led-board",
         "schematic": "First Board LED"
       },

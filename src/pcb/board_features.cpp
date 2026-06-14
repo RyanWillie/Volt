@@ -125,6 +125,12 @@ PadResolution::PadResolution(ComponentPlacementId placement, ComponentId compone
     : placement_{placement}, component_{component}, pad_{pad}, pad_label_{std::move(pad_label)},
       position_{position}, pin_{pin}, net_{net}, status_{status} {}
 
+ProjectedFootprintGeometry::ProjectedFootprintGeometry(
+    ComponentPlacementId placement, ComponentId component,
+    std::optional<std::vector<BoardPoint>> courtyard, std::optional<std::vector<BoardPoint>> body)
+    : placement_{placement}, component_{component}, courtyard_{std::move(courtyard)},
+      body_{std::move(body)} {}
+
 RatsnestEndpoint::RatsnestEndpoint(ComponentPlacementId placement, ComponentId component,
                                    FootprintPadId pad, BoardPoint position)
     : placement_{placement}, component_{component}, pad_{pad}, position_{position} {}
@@ -292,6 +298,17 @@ namespace volt::detail {
     const auto rotated_y = (std::sin(radians) * local_x) + (std::cos(radians) * local_y);
     return BoardPoint{placement.position().x_mm() + rotated_x,
                       placement.position().y_mm() + rotated_y};
+}
+
+[[nodiscard]] std::vector<BoardPoint>
+transformed_footprint_polygon(const ComponentPlacement &placement,
+                              const FootprintPolygon &polygon) {
+    auto result = std::vector<BoardPoint>{};
+    result.reserve(polygon.vertices().size());
+    for (const auto point : polygon.vertices()) {
+        result.push_back(transform_footprint_point(placement, point));
+    }
+    return result;
 }
 
 [[nodiscard]] std::vector<BoardPoint>

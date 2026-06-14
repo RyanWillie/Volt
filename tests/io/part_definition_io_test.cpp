@@ -106,7 +106,19 @@ volt::PartDefinition build_ap1117_part() {
                 volt::ContentHash{
                     "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
                 {0.0, 0.0, 0.8},
-                0.0}},
+                0.0},
+            volt::PartFootprintPolygon{std::vector{
+                volt::PartFootprintPoint{-2.4, -1.2},
+                volt::PartFootprintPoint{2.4, -1.2},
+                volt::PartFootprintPoint{2.4, 3.2},
+                volt::PartFootprintPoint{-2.4, 3.2},
+            }},
+            volt::PartFootprintPolygon{std::vector{
+                volt::PartFootprintPoint{-1.9, -0.8},
+                volt::PartFootprintPoint{1.9, -0.8},
+                volt::PartFootprintPoint{1.9, 2.8},
+                volt::PartFootprintPoint{-1.9, 2.8},
+            }}},
     };
 }
 
@@ -132,7 +144,7 @@ TEST_CASE("Part definition writer emits the golden kernel artifact and stable co
     CHECK(volt::io::write_part_definition(part) == fixture);
     CHECK(volt::io::part_definition_content_hash(part) ==
           volt::ContentHash{
-              "sha256:c8fced6ae99b97ac783676d97ca0253d2d1139b399614a2baa47212feb066cec"});
+              "sha256:e81ab37d851b54ecceabd09fa314b712f8db14aee9fc509ee01367cf560ac33c"});
 }
 
 TEST_CASE("Golden part definition fixture round-trips byte-identically") {
@@ -145,6 +157,9 @@ TEST_CASE("Golden part definition fixture round-trips byte-identically") {
     CHECK(first_write == fixture);
     CHECK(volt::io::write_part_definition(second_read) == fixture);
     CHECK(document["pins"][0].find("role") == document["pins"][0].end());
+    CHECK(document["version"] == 3);
+    CHECK(document["orderable_part"]["footprint"]["courtyard"][2]["x_mm"] == 2.4);
+    CHECK(document["orderable_part"]["footprint"]["body"][0]["y_mm"] == -0.8);
 }
 
 TEST_CASE("Part definition reader rejects structurally malformed artifacts") {
@@ -155,8 +170,17 @@ TEST_CASE("Part definition reader rejects structurally malformed artifacts") {
     check_malformed_part_is_rejected(wrong_format);
 
     auto legacy_v1 = fixture;
-    legacy_v1["version"] = 1;
+    legacy_v1["version"] = 2;
     check_malformed_part_is_rejected(legacy_v1);
+
+    auto empty_courtyard = fixture;
+    empty_courtyard["orderable_part"]["footprint"]["courtyard"] = nlohmann::json::array();
+    check_malformed_part_is_rejected(empty_courtyard);
+
+    auto closed_courtyard = fixture;
+    closed_courtyard["orderable_part"]["footprint"]["courtyard"].push_back(
+        closed_courtyard["orderable_part"]["footprint"]["courtyard"][0]);
+    check_malformed_part_is_rejected(closed_courtyard);
 
     auto persisted_role = fixture;
     persisted_role["pins"][0]["role"] = "ground";

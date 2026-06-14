@@ -3,6 +3,7 @@
 #include <volt/authoring/component_library.hpp>
 #include <volt/authoring/connection_helpers.hpp>
 #include <volt/authoring/reference_designators.hpp>
+#include <volt/circuit/bom.hpp>
 #include <volt/circuit/circuit.hpp>
 #include <volt/circuit/definitions.hpp>
 #include <volt/circuit/design_intent.hpp>
@@ -25,6 +26,7 @@
 #include <volt/core/rule_set.hpp>
 #include <volt/core/version.hpp>
 #include <volt/io/board_capability_profile.hpp>
+#include <volt/io/bom_writer.hpp>
 #include <volt/io/logical_circuit_reader.hpp>
 #include <volt/io/logical_circuit_writer.hpp>
 #include <volt/io/part_definition_reader.hpp>

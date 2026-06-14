@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - CMake 3.25 or newer
-- A C++20 compiler
+- A C++23 compiler
 - Ninja
 - Python dev dependencies from `requirements-dev.txt`
 

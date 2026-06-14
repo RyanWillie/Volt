@@ -43,6 +43,8 @@ void write_board_layers(std::ostream &out, const std::vector<BoardLayerId> &laye
 
 void write_footprint_point(std::ostream &out, FootprintPoint point);
 
+void write_footprint_polygon(std::ostream &out, const FootprintPolygon &polygon);
+
 void write_footprint_size(std::ostream &out, FootprintSize size);
 
 void write_footprint_ref(std::ostream &out, const FootprintRef &ref);

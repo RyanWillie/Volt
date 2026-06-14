@@ -251,6 +251,50 @@ TEST_CASE("Circuit assigns and reads a selected physical part for a component") 
     CHECK(selected_part->footprint().name() == "R_0603_1608Metric");
 }
 
+TEST_CASE("Circuit stores component assembly intent and selected part alternates") {
+    volt::Circuit circuit;
+    const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin = circuit.add_pin_definition(volt::PinDefinition{
+        "2", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto component_def = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", std::vector{first_pin, second_pin}});
+    const auto component =
+        circuit.instantiate_component(component_def, volt::ReferenceDesignator{"R1"});
+
+    CHECK_FALSE(circuit.component_dnp(component).has_value());
+    circuit.set_component_selection_override(component, true);
+    CHECK_FALSE(circuit.component_dnp(component).has_value());
+    CHECK(circuit.is_component_selection_override(component));
+    circuit.set_component_selection_override(component, false);
+    CHECK_FALSE(circuit.is_component_selection_override(component));
+    CHECK(circuit.component_assembly_intents().empty());
+
+    circuit.set_component_dnp(component, true);
+    circuit.set_component_selection_override(component, true);
+
+    circuit.select_physical_part(component, volt::PhysicalPart{
+                                                volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                                                volt::PackageRef{"0603"},
+                                                volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                                                std::vector{volt::PinPadMapping{first_pin, "1"},
+                                                            volt::PinPadMapping{second_pin, "2"}},
+                                                {},
+                                                std::nullopt,
+                                                std::vector<std::string>{"RC0603FR-07330RLA"},
+                                            });
+
+    CHECK(circuit.component_dnp(component) == std::optional<bool>{true});
+    CHECK(circuit.is_component_selection_override(component));
+    REQUIRE(circuit.selected_physical_part(component).has_value());
+    CHECK(circuit.selected_physical_part(component)->approved_alternate_mpns() ==
+          std::vector<std::string>{"RC0603FR-07330RLA"});
+}
+
 TEST_CASE("Circuit sets typed electrical attributes on selected physical parts") {
     volt::Circuit circuit;
     const auto first_pin = circuit.add_pin_definition(volt::PinDefinition{

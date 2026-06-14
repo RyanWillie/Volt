@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volt Codebase Growth Optimization Audit</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18212f;
+      --muted: #5b6676;
+      --line: #d9e0e8;
+      --panel: #f6f8fb;
+      --paper: #ffffff;
+      --accent: #0b6b64;
+      --risk: #a43f22;
+      --warn: #936300;
+      --ok: #28724f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 40px 28px 64px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1.4fr .8fr;
+      gap: 36px;
+      align-items: start;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 28px;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 34px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 34px 0 12px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+    p { margin: 0 0 12px; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .92em;
+      background: #eef2f5;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    a { color: var(--accent); text-decoration-thickness: 1px; }
+    .lede {
+      font-size: 18px;
+      color: #273342;
+      max-width: 760px;
+    }
+    .meta {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 16px;
+      border-radius: 8px;
+    }
+    .meta dl {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 7px 12px;
+      margin: 0;
+    }
+    .meta dt { color: var(--muted); }
+    .meta dd { margin: 0; font-weight: 600; }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 24px 0 6px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--paper);
+    }
+    .metric b {
+      display: block;
+      font-size: 24px;
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+    .metric span { color: var(--muted); font-size: 13px; }
+    .finding {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 18px;
+      border-top: 1px solid var(--line);
+      padding: 20px 0;
+    }
+    .rank {
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .severity {
+      display: inline-block;
+      min-width: 84px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .high { color: var(--risk); border-color: #e6b5a6; background: #fff2ee; }
+    .medium { color: var(--warn); border-color: #dfc783; background: #fff8df; }
+    .low { color: var(--ok); border-color: #a9d5bd; background: #eefaf3; }
+    .evidence {
+      margin: 10px 0;
+      padding: 10px 12px;
+      background: var(--panel);
+      border-left: 3px solid var(--accent);
+      color: #344253;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: var(--paper);
+    }
+    ol, ul { margin: 8px 0 0 20px; padding: 0; }
+    li { margin: 6px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      background: var(--panel);
+    }
+    footer {
+      margin-top: 36px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 800px) {
+      header, .finding, .grid, .metrics { grid-template-columns: 1fr; }
+      main { padding: 28px 18px 48px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Volt Codebase Growth Optimization Audit</h1>
+      <p class="lede">The growth is partly justified by real product surface area, but several areas are now growing faster than their ownership boundaries. The highest-leverage optimization is not mechanical line deletion; it is moving endpoint, pad, footprint, and rule semantics back behind kernel-owned typed APIs so Python can stay ergonomic instead of becoming a parallel EDA engine.</p>
+    </div>
+    <aside class="meta">
+      <dl>
+        <dt>Date</dt><dd>2026-06-12</dd>
+        <dt>Scope</dt><dd>C++ kernel/adapters, Python API, tests, examples, docs</dd>
+        <dt>Mode</dt><dd>Read-only investigation</dd>
+        <dt>Worktree note</dt><dd>Untracked docs/transcripts ignored</dd>
+      </dl>
+    </aside>
+  </header>
+
+  <section>
+    <h2>Size Snapshot</h2>
+    <div class="metrics">
+      <div class="metric"><b>128,985</b><span>tracked lines across repo files</span></div>
+      <div class="metric"><b>113,798</b><span>source/docs/examples subset lines</span></div>
+      <div class="metric"><b>18,807</b><span>tracked generated example artifact lines</span></div>
+      <div class="metric"><b>3,714</b><span>lines in <code>python/volt/schematic.py</code></span></div>
+    </div>
+    <table>
+      <thead><tr><th>Area</th><th>Lines</th><th>Files</th><th>Interpretation</th></tr></thead>
+      <tbody>
+        <tr><td><code>src</code></td><td>27,952</td><td>100</td><td>Core implementation is broad but mostly decomposed by domain.</td></tr>
+        <tr><td><code>python</code></td><td>26,851</td><td>57</td><td>Largest hand-authored growth hotspot; several modules exceed healthy facade size.</td></tr>
+        <tr><td><code>tests</code></td><td>16,640</td><td>63</td><td>Large but mostly justified by invariant coverage and format round trips.</td></tr>
+        <tr><td><code>docs</code></td><td>16,196</td><td>33</td><td>Planning/design docs are substantial; useful but should not hide active architecture debt.</td></tr>
+        <tr><td><code>examples</code></td><td>12,388</td><td>59</td><td>Includes many generated golden artifacts; policy decision needed.</td></tr>
+        <tr><td><code>include</code></td><td>10,500</td><td>83</td><td>Header surface is significant but aligned with kernel/module boundaries.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Priority Findings</h2>
+
+    <article class="finding">
+      <div><div class="rank">01</div><span class="severity high">High</span></div>
+      <div>
+        <h3>Python schematic authoring is becoming a parallel semantic layer</h3>
+        <p><code>python/volt/schematic.py</code> is a 3,714-line facade that handles wire builders, drawing state, regions, two-terminal placement, labels, stubs, ports, IO, errors, and endpoint conversion. The risk is not only file size: methods around <code>connect</code>, <code>_connect_existing_net</code>, and <code>_add_wire_with_endpoint_payloads</code> normalize anchors, infer endpoint payloads, validate cross-design handles, and choose route intent before calling the kernel.</p>
+        <p class="evidence">Evidence: <code>python/volt/schematic.py:1738</code>, <code>python/volt/schematic.py:1866</code>, and kernel-side endpoint resolution around <code>src/schematic/schematic.cpp:642</code> and <code>src/schematic/schematic.cpp:692</code>.</p>
+        <p><strong>Optimization:</strong> introduce kernel-facing endpoint request types such as <code>SchematicEndpointRef</code> and <code>SchematicWireRequest</code>. Let Python parse ergonomic calling forms, but pass typed endpoint refs into C++ for net resolution and structural checks. After that boundary exists, split <code>schematic.py</code> into focused authoring modules with the facade only re-exporting stable API.</p>
+      </div>
+    </article>
+
+    <article class="finding">
+      <div><div class="rank">02</div><span class="severity high">High</span></div>
+      <div>
+        <h3>PCB authoring infers pad/net identity in Python</h3>
+        <p><code>python/volt/_pcb_composition.py</code> and <code>python/volt/_pcb_layout.py</code> infer routing net identity from pad anchors, while C++ already owns pad resolution and board routing. This is exactly the kind of EDA meaning the project guidelines say should live in the kernel.</p>
+        <p class="evidence">Evidence: <code>python/volt/_pcb_composition.py:156</code>, <code>python/volt/_pcb_composition.py:378</code>, <code>python/volt/_pcb_layout.py:523</code>, with kernel ownership in <code>src/pcb/board.cpp:158</code> and <code>src/pcb/board_router.cpp:79</code>.</p>
+        <p><strong>Optimization:</strong> expose a <code>BoardEndpoint</code> or <code>route_between_endpoints</code> API that accepts pad/point endpoint refs and lets C++ resolve the net. Python can keep <code>layout.connect(start, end)</code> sugar, but should not decide whether two endpoints share a net.</p>
+      </div>
+    </article>
+
+    <article class="finding">
+      <div><div class="rank">03</div><span class="severity high">High</span></div>
+      <div>
+        <h3>Generated example artifacts are tracked in duplicate forms</h3>
+        <p>The repository tracks 57 generated example artifact files totaling 18,807 lines. Several outputs are duplicated in both legacy flat paths and newer project-package paths, including SVG, JSON, validation, and KiCad outputs. Golden files are useful, but the current shape makes diffs look larger than the source change that produced them.</p>
+        <p class="evidence">Evidence: <code>examples/*/artifacts/**</code> includes duplicated flat outputs and nested <code>.volt/</code> package outputs for timer, PCB LED, and STM32 examples.</p>
+        <p><strong>Optimization:</strong> choose one golden-output policy. Prefer keeping only canonical package outputs plus small targeted fixtures for tests. Generate broad visual/export artifacts in CI or release jobs unless a test asserts that exact file. This can remove thousands of reviewed lines without weakening behavior coverage.</p>
+      </div>
+    </article>
+
+    <article class="finding">
+      <div><div class="rank">04</div><span class="severity medium">Medium</span></div>
+      <div>
+        <h3>Three JSON readers carry their own mini-frameworks</h3>
+        <p><code>logical_circuit_reader.cpp</code>, <code>schematic_reader.cpp</code>, and <code>pcb_reader.cpp</code> each define local helpers for <code>require</code>, field lookup, typed fields, optional fields, local IDs, version checks, and reference resolution. That duplication is now large enough to create schema behavior drift.</p>
+        <p class="evidence">Evidence: helper clusters begin around <code>src/io/logical_circuit_reader.cpp:37</code>, <code>src/io/schematic_reader.cpp:38</code>, and <code>src/io/pcb_reader.cpp:41</code>.</p>
+        <p><strong>Optimization:</strong> add <code>src/io/detail/json_fields.hpp</code> or a small <code>JsonReaderContext</code> for typed extraction and consistent error messages. Keep domain parsing local; centralize the repetitive structural reader mechanics.</p>
+      </div>
+    </article>
+
+    <article class="finding">
+      <div><div class="rank">05</div><span class="severity medium">Medium</span></div>
+      <div>
+        <h3>Board polygon validation is duplicated almost line-for-line</h3>
+        <p><code>BoardOutline</code> and <code>BoardPolygon</code> repeat duplicate-closing-vertex cleanup, signed area, segment intersection, and self-intersection validation. The meaningful difference is mostly the noun in error messages and <code>BoardOutline::contains</code>.</p>
+        <p class="evidence">Evidence: <code>src/pcb/board_outline.cpp:59</code> through <code>src/pcb/board_outline.cpp:239</code>.</p>
+        <p><strong>Optimization:</strong> use one internal validation path over <code>std::vector&lt;BoardPoint&gt;</code> with a context noun, or a private validated polygon helper. Keep public types separate; delete the repeated geometry mechanics.</p>
+      </div>
+    </article>
+
+    <article class="finding">
+      <div><div class="rank">06</div><span class="severity medium">Medium</span></div>
+      <div>
+        <h3>Schematic and PCB Python anchors repeat the same mechanics</h3>
+        <p><code>SchematicAnchor</code> and <code>BoardAnchor</code> share x/y/point access, offsets, directional moves, axis targeting, iteration, and repr. Placed schematic and placed board components also share pin lookup, ambiguity handling, and dynamic attribute access patterns.</p>
+        <p class="evidence">Evidence: <code>python/volt/_schematic_handles.py:16</code> and <code>python/volt/_pcb_layout.py:35</code>.</p>
+        <p><strong>Optimization:</strong> extract a tiny internal 2D anchor base/factory and a shared pin-anchor lookup helper. Keep schematic and PCB types distinct at the API boundary so domain semantics do not blur.</p>
+      </div>
+    </article>
+
+    <article class="finding">
+      <div><div class="rank">07</div><span class="severity medium">Medium</span></div>
+      <div>
+        <h3>Enum schema conversion is hand-rolled repeatedly</h3>
+        <p><code>schematic_schema.cpp</code> and <code>pcb_schema.cpp</code> use repeated switch and string-if chains for enum names and parsing. This is verbose and easy to desynchronize when schemas evolve.</p>
+        <p class="evidence">Evidence: repeated enum conversion patterns start near <code>src/io/schematic_schema.cpp:5</code> and <code>src/io/pcb_schema.cpp:14</code>.</p>
+        <p><strong>Optimization:</strong> use small constexpr mapping tables plus generic <code>enum_name</code> and <code>enum_from_name</code> helpers. This is a safe local reduction because schema ownership remains in C++.</p>
+      </div>
+    </article>
+
+    <article class="finding">
+      <div><div class="rank">08</div><span class="severity medium">Medium</span></div>
+      <div>
+        <h3>Physical footprint/model caches are split across Python and kernel state</h3>
+        <p>Python carries object footprint caches, model asset maps, cached board footprints, and dataclasses mirroring footprint/part structures. Some of this is packaging concern, but geometry and mapping identity should not drift from kernel-owned selected physical parts.</p>
+        <p class="evidence">Evidence: <code>python/volt/design.py:34</code>, <code>python/volt/logical.py:534</code>, <code>python/volt/library.py:170</code>, <code>python/volt/pcb.py:195</code>.</p>
+        <p><strong>Optimization:</strong> route object-authored footprint definitions through a kernel-owned footprint registry/cache keyed by kernel IDs. Keep Python asset-copy bookkeeping, but move geometry identity and selected-part mappings into C++.</p>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <h2>Recommended Sequence</h2>
+    <div class="grid">
+      <div class="box">
+        <h3>First: stop review-noise growth</h3>
+        <ol>
+          <li>Decide the generated artifact policy for <code>examples/**/artifacts</code>.</li>
+          <li>Keep only canonical golden outputs required by tests.</li>
+          <li>Add a check that prevents accidental committed <code>dist/</code>, <code>__pycache__</code>, and regenerated duplicate artifacts.</li>
+        </ol>
+      </div>
+      <div class="box">
+        <h3>Second: move semantics to the kernel</h3>
+        <ol>
+          <li>Add schematic endpoint request types and binding helpers.</li>
+          <li>Add PCB endpoint routing APIs that resolve net identity in C++.</li>
+          <li>Move board rule/capability normalization out of Python policy maps.</li>
+        </ol>
+      </div>
+      <div class="box">
+        <h3>Third: delete repeated mechanics</h3>
+        <ol>
+          <li>Centralize JSON reader field extraction.</li>
+          <li>Centralize board polygon validation.</li>
+          <li>Use enum mapping tables for schema conversions.</li>
+        </ol>
+      </div>
+      <div class="box">
+        <h3>Fourth: decompose large facades</h3>
+        <ol>
+          <li>Split <code>schematic.py</code> after endpoint semantics move down.</li>
+          <li>Keep public imports stable from <code>python/volt/schematic.py</code>.</li>
+          <li>Split by ownership boundary: endpoints, routes, ports, drawing, IO.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What Looks Justified</h2>
+    <ul>
+      <li>The C++ circuit kernel largely follows the project principle that invalid kernel state should be impossible; core connectivity checks still live in mutation APIs.</li>
+      <li>Tests are large, but much of that size buys important structural and round-trip coverage for a format-heavy EDA kernel.</li>
+      <li>Documentation growth is substantial but useful while the architecture is still forming; the concern is only when docs mask unresolved ownership decisions.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Investigation used local file metrics, tracked-file inspection, targeted source reads, and two scoped subagent audits. No implementation files were changed.
+  </footer>
+</main>
+</body>
+</html>

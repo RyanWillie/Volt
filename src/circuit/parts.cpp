@@ -71,10 +71,12 @@ PartModel3D::PartModel3D(std::string format, std::string file_name,
 
 PhysicalPart::PhysicalPart(ManufacturerPart manufacturer_part, PackageRef package,
                            FootprintRef footprint, std::vector<PinPadMapping> pin_pad_mappings,
-                           PropertyMap properties, std::optional<PartModel3D> model_3d)
+                           PropertyMap properties, std::optional<PartModel3D> model_3d,
+                           std::vector<std::string> approved_alternate_mpns)
     : manufacturer_part_{std::move(manufacturer_part)}, package_{std::move(package)},
       footprint_{std::move(footprint)}, pin_pad_mappings_{std::move(pin_pad_mappings)},
-      properties_{std::move(properties)}, model_3d_{std::move(model_3d)} {
+      properties_{std::move(properties)}, model_3d_{std::move(model_3d)},
+      approved_alternate_mpns_{std::move(approved_alternate_mpns)} {
     if (pin_pad_mappings_.empty()) {
         throw std::invalid_argument{"Physical part must contain at least one pin-pad mapping"};
     }
@@ -85,6 +87,17 @@ PhysicalPart::PhysicalPart(ManufacturerPart manufacturer_part, PackageRef packag
             [current](const PinPadMapping &mapping) { return mapping.pad() == current->pad(); });
         if (duplicate_pad) {
             throw std::invalid_argument{"Physical part contains duplicate physical pad mapping"};
+        }
+    }
+    for (auto current = approved_alternate_mpns_.begin(); current != approved_alternate_mpns_.end();
+         ++current) {
+        if (current->empty()) {
+            throw std::invalid_argument{"Approved alternate MPN must not be empty"};
+        }
+        const auto duplicate = std::find(std::next(current), approved_alternate_mpns_.end(),
+                                         *current) != approved_alternate_mpns_.end();
+        if (duplicate) {
+            throw std::invalid_argument{"Approved alternate MPNs must be unique"};
         }
     }
 }

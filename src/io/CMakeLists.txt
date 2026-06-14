@@ -18,6 +18,7 @@ target_link_libraries(volt_nlohmann_json INTERFACE nlohmann_json::nlohmann_json)
 
 add_library(
     volt_io
+    bom_writer.cpp
     detail_schematic_svg_common.cpp
     detail_schematic_svg_elements.cpp
     detail_schematic_svg_layers.cpp
@@ -35,6 +36,7 @@ add_library(
     pcb_svg_layers.cpp
     pcb_svg_writer.cpp
     pcb_writer.cpp
+    pcb_writer_footprints.cpp
     pcb_writer_rooms.cpp
     schematic_reader.cpp
     schematic_schema.cpp
@@ -44,7 +46,7 @@ add_library(
 add_library(Volt::IO ALIAS volt_io)
 
 set_target_properties(volt_io PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_features(volt_io PUBLIC cxx_std_20)
+target_compile_features(volt_io PUBLIC cxx_std_23)
 target_link_libraries(
     volt_io
     PUBLIC

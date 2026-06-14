@@ -360,6 +360,16 @@ void write_selected_physical_part(std::ostream &out, const PhysicalPart &part) {
         out << "\n";
         out << "      },\n";
     }
+    if (!part.approved_alternate_mpns().empty()) {
+        out << "      \"approved_alternate_mpns\": [";
+        for (std::size_t index = 0; index < part.approved_alternate_mpns().size(); ++index) {
+            if (index != 0U) {
+                out << ", ";
+            }
+            out << json_string(part.approved_alternate_mpns()[index]);
+        }
+        out << "],\n";
+    }
     out << "      \"properties\": ";
     write_properties(out, part.properties());
     if (!part.electrical_attributes().empty()) {
@@ -630,8 +640,9 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
         }
         out << '\n';
     }
-    const auto has_design_intent =
-        !circuit.intentional_stub_nets().empty() || !circuit.intentional_no_connect_pins().empty();
+    const auto has_design_intent = !circuit.intentional_stub_nets().empty() ||
+                                   !circuit.intentional_no_connect_pins().empty() ||
+                                   !circuit.component_assembly_intents().empty();
     const auto has_net_classes =
         circuit.net_class_count() != 0 || !circuit.net_class_assignments().empty();
     const auto has_hierarchy =
@@ -659,7 +670,26 @@ void write_logical_circuit(std::ostream &out, const Circuit &circuit) {
             out << detail::json_string(
                 detail::pin_id(circuit.intentional_no_connect_pins()[index]));
         }
-        out << "] }" << (has_hierarchy ? ",\n" : "\n");
+        out << "]";
+        if (!circuit.component_assembly_intents().empty()) {
+            out << ", \"component_assembly\": [";
+            for (std::size_t index = 0; index < circuit.component_assembly_intents().size();
+                 ++index) {
+                const auto &intent = circuit.component_assembly_intents()[index];
+                if (index != 0U) {
+                    out << ", ";
+                }
+                out << "{ \"component\": "
+                    << detail::json_string(detail::component_id(intent.component()));
+                if (intent.dnp().has_value()) {
+                    out << ", \"dnp\": " << (intent.dnp().value() ? "true" : "false");
+                }
+                out << ", \"selection_override\": "
+                    << (intent.selection_override() ? "true" : "false") << " }";
+            }
+            out << "]";
+        }
+        out << " }" << (has_hierarchy ? ",\n" : "\n");
     }
 
     if (!has_hierarchy) {
