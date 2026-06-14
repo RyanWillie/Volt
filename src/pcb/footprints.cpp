@@ -1,5 +1,7 @@
 #include <volt/pcb/footprints.hpp>
 
+#include "../detail/footprint_polygon_validation.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <optional>
@@ -24,6 +26,11 @@ FootprintSize::FootprintSize(double width_mm, double height_mm)
     if (width_mm_ <= 0.0 || height_mm_ <= 0.0) {
         throw std::invalid_argument{"Footprint size dimensions must be positive"};
     }
+}
+
+FootprintPolygon::FootprintPolygon(std::vector<FootprintPoint> vertices)
+    : vertices_{std::move(vertices)} {
+    detail::validate_footprint_polygon_vertices(vertices_, "Footprint polygon");
 }
 
 FootprintLayerSet::FootprintLayerSet(std::vector<FootprintLayer> layers)
@@ -166,8 +173,11 @@ FootprintPad::FootprintPad(std::string label, FootprintPadKind kind, FootprintPa
     }
 }
 
-FootprintDefinition::FootprintDefinition(FootprintRef ref, std::vector<FootprintPad> pads)
-    : ref_{std::move(ref)}, pads_{std::move(pads)} {
+FootprintDefinition::FootprintDefinition(FootprintRef ref, std::vector<FootprintPad> pads,
+                                         std::optional<FootprintPolygon> courtyard,
+                                         std::optional<FootprintPolygon> body)
+    : ref_{std::move(ref)}, pads_{std::move(pads)}, courtyard_{std::move(courtyard)},
+      body_{std::move(body)} {
     if (pads_.empty()) {
         throw std::invalid_argument{"Footprint definition must contain at least one pad"};
     }

@@ -56,6 +56,25 @@ class FootprintSize {
     double height_mm_;
 };
 
+/** Closed polygon in footprint-local coordinates. */
+class FootprintPolygon {
+  public:
+    /** Construct a non-degenerate footprint-local polygon from boundary vertices. */
+    explicit FootprintPolygon(std::vector<FootprintPoint> vertices);
+
+    /** Return polygon vertices in deterministic boundary order. */
+    [[nodiscard]] const std::vector<FootprintPoint> &vertices() const noexcept { return vertices_; }
+
+    /** Return whether two footprint polygons carry the same vertices. */
+    [[nodiscard]] friend bool operator==(const FootprintPolygon &lhs,
+                                         const FootprintPolygon &rhs) noexcept {
+        return lhs.vertices_ == rhs.vertices_;
+    }
+
+  private:
+    std::vector<FootprintPoint> vertices_;
+};
+
 /** PCB layers a normalized footprint pad may occupy. */
 enum class FootprintLayer {
     FrontCopper,
@@ -228,13 +247,23 @@ class FootprintPad {
 class FootprintDefinition {
   public:
     /** Construct a footprint definition with a library-qualified reference and unique pads. */
-    FootprintDefinition(FootprintRef ref, std::vector<FootprintPad> pads);
+    FootprintDefinition(FootprintRef ref, std::vector<FootprintPad> pads,
+                        std::optional<FootprintPolygon> courtyard = std::nullopt,
+                        std::optional<FootprintPolygon> body = std::nullopt);
 
     /** Return the library-qualified footprint reference. */
     [[nodiscard]] const FootprintRef &ref() const noexcept { return ref_; }
 
     /** Return all pads in stable definition order. */
     [[nodiscard]] const std::vector<FootprintPad> &pads() const noexcept { return pads_; }
+
+    /** Return the optional declared courtyard polygon. */
+    [[nodiscard]] const std::optional<FootprintPolygon> &courtyard() const noexcept {
+        return courtyard_;
+    }
+
+    /** Return the optional declared body or silk-outline polygon. */
+    [[nodiscard]] const std::optional<FootprintPolygon> &body() const noexcept { return body_; }
 
     /** Return the number of pads in the definition. */
     [[nodiscard]] std::size_t pad_count() const noexcept { return pads_.size(); }
@@ -252,6 +281,8 @@ class FootprintDefinition {
   private:
     FootprintRef ref_;
     std::vector<FootprintPad> pads_;
+    std::optional<FootprintPolygon> courtyard_;
+    std::optional<FootprintPolygon> body_;
 };
 
 /** Small in-memory footprint library for built-ins and tests. */

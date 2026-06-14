@@ -98,6 +98,35 @@ TEST_CASE("BoardFootprintModel dedupes identical cached definitions and rejects 
     CHECK_THROWS_AS(model.cache_footprint_definition(std::move(conflict)), std::logic_error);
 }
 
+TEST_CASE("BoardFootprintModel treats footprint courtyard and body geometry as cache identity") {
+    const auto pad = volt::FootprintPad::surface_mount(
+        "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.0, 0.0},
+        volt::FootprintSize{0.5, 0.5}, volt::FootprintLayerSet::front_smd());
+    const auto body = volt::FootprintPolygon{std::vector{
+        volt::FootprintPoint{-0.4, -0.3},
+        volt::FootprintPoint{0.4, -0.3},
+        volt::FootprintPoint{0.4, 0.3},
+        volt::FootprintPoint{-0.4, 0.3},
+    }};
+    const auto larger_body = volt::FootprintPolygon{std::vector{
+        volt::FootprintPoint{-0.5, -0.3},
+        volt::FootprintPoint{0.5, -0.3},
+        volt::FootprintPoint{0.5, 0.3},
+        volt::FootprintPoint{-0.5, 0.3},
+    }};
+
+    auto model = volt::BoardFootprintModel{};
+    const auto footprint = volt::FootprintDefinition{volt::FootprintRef{"test", "GeometryIdentity"},
+                                                     std::vector{pad}, std::nullopt, body};
+    const auto id = model.cache_footprint_definition(footprint);
+
+    CHECK(model.cache_footprint_definition(footprint) == id);
+
+    auto conflict = volt::FootprintDefinition{volt::FootprintRef{"test", "GeometryIdentity"},
+                                              std::vector{pad}, std::nullopt, larger_body};
+    CHECK_THROWS_AS(model.cache_footprint_definition(std::move(conflict)), std::logic_error);
+}
+
 TEST_CASE("Board stackup stores copper weight and dielectric properties") {
     auto front = volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top};
     front.set_copper_weight_oz(1.0);

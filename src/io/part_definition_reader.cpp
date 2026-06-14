@@ -88,6 +88,13 @@ class PartDefinitionReader {
 
     [[nodiscard]] static std::vector<PartFootprintPad> footprint_pads(const nlohmann::json &object);
 
+    [[nodiscard]] static PartFootprintPoint part_footprint_point(const nlohmann::json &object);
+
+    [[nodiscard]] static PartFootprintPolygon part_footprint_polygon(const nlohmann::json &value);
+
+    [[nodiscard]] static std::optional<PartFootprintPolygon>
+    optional_part_footprint_polygon(const nlohmann::json &object, const char *name);
+
     [[nodiscard]] static PartModel3DReference model_3d(const nlohmann::json &object);
 
     [[nodiscard]] static OrderablePart orderable_part(const nlohmann::json &object);
@@ -461,6 +468,33 @@ PartDefinitionReader::footprint_pads(const nlohmann::json &object) {
     return result;
 }
 
+[[nodiscard]] PartFootprintPoint
+PartDefinitionReader::part_footprint_point(const nlohmann::json &object) {
+    require(object.is_object(), "Footprint polygon point must be an object");
+    return PartFootprintPoint{number_field(object, "x_mm"), number_field(object, "y_mm")};
+}
+
+[[nodiscard]] PartFootprintPolygon
+PartDefinitionReader::part_footprint_polygon(const nlohmann::json &value) {
+    require(value.is_array(), "Footprint polygon must be an array");
+    auto vertices = std::vector<PartFootprintPoint>{};
+    vertices.reserve(value.size());
+    for (const auto &point : value) {
+        vertices.push_back(part_footprint_point(point));
+    }
+    return PartFootprintPolygon{std::move(vertices)};
+}
+
+[[nodiscard]] std::optional<PartFootprintPolygon>
+PartDefinitionReader::optional_part_footprint_polygon(const nlohmann::json &object,
+                                                      const char *name) {
+    const auto *value = optional_field(object, name);
+    if (value == nullptr) {
+        return std::nullopt;
+    }
+    return part_footprint_polygon(*value);
+}
+
 [[nodiscard]] PartModel3DReference PartDefinitionReader::model_3d(const nlohmann::json &object) {
     const auto &translation = array_field(object, "translation_mm");
     require(translation.size() == 3U, "3D model translation must contain three numbers");
@@ -502,7 +536,9 @@ PartDefinitionReader::footprint_pads(const nlohmann::json &object) {
         footprint_pads(footprint),
         std::move(mappings),
         std::move(alternates),
-        std::move(model)};
+        std::move(model),
+        optional_part_footprint_polygon(footprint, "courtyard"),
+        optional_part_footprint_polygon(footprint, "body")};
 }
 
 [[nodiscard]] PartDefinition read_part_definition_document(const nlohmann::json &document) {

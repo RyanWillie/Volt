@@ -627,6 +627,52 @@ TEST_CASE("Board pad resolution and validation use cached footprint definitions"
     CHECK(find_diagnostic(report, "PCB_FOOTPRINT_UNRESOLVED") == nullptr);
 }
 
+TEST_CASE("Board projects footprint courtyard and body geometry through placement transforms") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    const auto footprint = volt::FootprintDefinition{
+        volt::FootprintRef{"passives", "R_0603_1608Metric"},
+        std::vector{
+            volt::FootprintPad::surface_mount(
+                "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.0, 0.0},
+                volt::FootprintSize{0.5, 0.5}, volt::FootprintLayerSet::front_smd()),
+            volt::FootprintPad::surface_mount(
+                "2", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{1.0, 0.0},
+                volt::FootprintSize{0.5, 0.5}, volt::FootprintLayerSet::front_smd()),
+        },
+        volt::FootprintPolygon{std::vector{
+            volt::FootprintPoint{1.0, 2.0},
+            volt::FootprintPoint{3.0, 2.0},
+            volt::FootprintPoint{3.0, 4.0},
+            volt::FootprintPoint{1.0, 4.0},
+        }},
+        volt::FootprintPolygon{std::vector{
+            volt::FootprintPoint{0.0, 0.0},
+            volt::FootprintPoint{1.0, 0.0},
+            volt::FootprintPoint{1.0, 1.0},
+            volt::FootprintPoint{0.0, 1.0},
+        }},
+    };
+    [[maybe_unused]] const auto cached = board.cache_footprint_definition(footprint);
+    const auto placement = board.place_component(
+        volt::ComponentPlacement{fixture.component, volt::BoardPoint{10.0, 20.0},
+                                 volt::BoardRotation::degrees(90.0), volt::BoardSide::Bottom});
+
+    const auto geometries = board.project_footprint_geometries(volt::FootprintLibrary{});
+
+    REQUIRE(geometries.size() == 1);
+    CHECK(geometries[0].placement() == placement);
+    CHECK(geometries[0].component() == fixture.component);
+    REQUIRE(geometries[0].courtyard().has_value());
+    CHECK(geometries[0].courtyard().value() ==
+          std::vector{volt::BoardPoint{8.0, 19.0}, volt::BoardPoint{8.0, 17.0},
+                      volt::BoardPoint{6.0, 17.0}, volt::BoardPoint{6.0, 19.0}});
+    REQUIRE(geometries[0].body().has_value());
+    CHECK(geometries[0].body().value() ==
+          std::vector{volt::BoardPoint{10.0, 20.0}, volt::BoardPoint{10.0, 19.0},
+                      volt::BoardPoint{9.0, 19.0}, volt::BoardPoint{9.0, 20.0}});
+}
+
 TEST_CASE("Board validation reports design issues without owning connectivity") {
     auto fixture = make_resistor_circuit(false);
     auto board = volt::Board{fixture.circuit};

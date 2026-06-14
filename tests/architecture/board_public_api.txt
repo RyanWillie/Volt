@@ -63,4 +63,5 @@ void set_capability_profile(BoardCapabilityProfile profile)
 [[nodiscard]] std::size_t text_count() const noexcept
 [[nodiscard]] std::optional<ComponentPlacementId> placement_for_component(ComponentId component) const noexcept
 [[nodiscard]] std::vector<PadResolution> resolve_pads(const FootprintLibrary &footprints) const
+[[nodiscard]] std::vector<ProjectedFootprintGeometry> project_footprint_geometries(const FootprintLibrary &footprints) const
 [[nodiscard]] std::vector<RatsnestEdge> ratsnest_edges(const FootprintLibrary &footprints) const

@@ -27,7 +27,7 @@
 
 namespace volt::io::detail {
 
-/** Internal implementation for loading the v1 PCB projection JSON format. */
+/** Internal implementation for loading the v2 PCB projection JSON format. */
 class PcbBoardReader {
   public:
     /** Construct a reader over a parsed JSON document and its logical circuit context. */
@@ -85,6 +85,11 @@ class PcbBoardReader {
     [[nodiscard]] static std::vector<BoardPoint> board_points(const nlohmann::json &value);
 
     [[nodiscard]] static FootprintPoint footprint_point(const nlohmann::json &value);
+
+    [[nodiscard]] static FootprintPolygon footprint_polygon(const nlohmann::json &value);
+
+    [[nodiscard]] static std::optional<FootprintPolygon>
+    optional_footprint_polygon(const nlohmann::json &object, const char *name);
 
     [[nodiscard]] static FootprintSize footprint_size(const nlohmann::json &value);
 
@@ -187,7 +192,7 @@ class PcbBoardReader {
     require_format(document_);
     require_version(document_);
     const auto &board_json = object_field(document_, "board");
-    // v1 stores one board per document; this stable ID anchors viewer references.
+    // v2 stores one board per document; this stable ID anchors viewer references.
     require(string_field(board_json, "id") == "board:0", "PCB board id must be board:0");
 
     static_cast<void>(board_units_from_name(string_field(board_json, "units")));
@@ -317,6 +322,25 @@ void PcbBoardReader::require_version(const nlohmann::json &object) {
 [[nodiscard]] FootprintPoint PcbBoardReader::footprint_point(const nlohmann::json &value) {
     const auto point = board_point(value);
     return FootprintPoint{point.x_mm(), point.y_mm()};
+}
+
+[[nodiscard]] FootprintPolygon PcbBoardReader::footprint_polygon(const nlohmann::json &value) {
+    require(value.is_array(), "PCB footprint polygon must be an array");
+    auto vertices = std::vector<FootprintPoint>{};
+    vertices.reserve(value.size());
+    for (const auto &point : value) {
+        vertices.push_back(footprint_point(point));
+    }
+    return FootprintPolygon{std::move(vertices)};
+}
+
+[[nodiscard]] std::optional<FootprintPolygon>
+PcbBoardReader::optional_footprint_polygon(const nlohmann::json &object, const char *name) {
+    const auto *value = optional_field(object, name);
+    if (value == nullptr) {
+        return std::nullopt;
+    }
+    return footprint_polygon(*value);
 }
 
 [[nodiscard]] FootprintSize PcbBoardReader::footprint_size(const nlohmann::json &value) {
@@ -544,7 +568,9 @@ void PcbBoardReader::read_footprint_definitions(Board &board,
         }
 
         const auto id = board.cache_footprint_definition(
-            FootprintDefinition{footprint_ref(object_field(definition, "ref")), std::move(pads)});
+            FootprintDefinition{footprint_ref(object_field(definition, "ref")), std::move(pads),
+                                optional_footprint_polygon(definition, "courtyard"),
+                                optional_footprint_polygon(definition, "body")});
         require(id == expected, "PCB footprint definition IDs must be sequential");
     }
 }

@@ -171,6 +171,48 @@ class PartFootprintPad {
     std::optional<PartFootprintPadRole> role_;
 };
 
+/** Point in an orderable part's footprint projection, measured in millimeters. */
+class PartFootprintPoint {
+  public:
+    /** Construct a finite footprint-projection point. */
+    PartFootprintPoint(double x_mm, double y_mm);
+
+    /** Return the footprint-local X coordinate in millimeters. */
+    [[nodiscard]] double x_mm() const noexcept { return x_mm_; }
+
+    /** Return the footprint-local Y coordinate in millimeters. */
+    [[nodiscard]] double y_mm() const noexcept { return y_mm_; }
+
+    /** Return whether two part footprint points have the same coordinates. */
+    [[nodiscard]] friend bool operator==(PartFootprintPoint lhs,
+                                         PartFootprintPoint rhs) noexcept = default;
+
+  private:
+    double x_mm_;
+    double y_mm_;
+};
+
+/** Closed polygon in an orderable part's footprint projection. */
+class PartFootprintPolygon {
+  public:
+    /** Construct a non-degenerate footprint-projection polygon from boundary vertices. */
+    explicit PartFootprintPolygon(std::vector<PartFootprintPoint> vertices);
+
+    /** Return polygon vertices in deterministic boundary order. */
+    [[nodiscard]] const std::vector<PartFootprintPoint> &vertices() const noexcept {
+        return vertices_;
+    }
+
+    /** Return whether two part footprint polygons carry the same vertices. */
+    [[nodiscard]] friend bool operator==(const PartFootprintPolygon &lhs,
+                                         const PartFootprintPolygon &rhs) noexcept {
+        return lhs.vertices_ == rhs.vertices_;
+    }
+
+  private:
+    std::vector<PartFootprintPoint> vertices_;
+};
+
 /** Hash-addressed footprint projection for an orderable part. */
 class HashedFootprintReference {
   public:
@@ -245,7 +287,9 @@ class OrderablePart {
                   HashedFootprintReference footprint, std::vector<PartFootprintPad> footprint_pads,
                   std::vector<OrderablePinPadMapping> pin_pad_mappings,
                   std::vector<std::string> approved_alternate_mpns = {},
-                  std::optional<PartModel3DReference> model_3d = std::nullopt);
+                  std::optional<PartModel3DReference> model_3d = std::nullopt,
+                  std::optional<PartFootprintPolygon> footprint_courtyard = std::nullopt,
+                  std::optional<PartFootprintPolygon> footprint_body = std::nullopt);
 
     /** Return the primary manufacturer part identity. */
     [[nodiscard]] const ManufacturerPart &manufacturer_part() const noexcept {
@@ -261,6 +305,16 @@ class OrderablePart {
     /** Return footprint pad summaries in projection order. */
     [[nodiscard]] const std::vector<PartFootprintPad> &footprint_pads() const noexcept {
         return footprint_pads_;
+    }
+
+    /** Return the optional declared footprint courtyard polygon. */
+    [[nodiscard]] const std::optional<PartFootprintPolygon> &footprint_courtyard() const noexcept {
+        return footprint_courtyard_;
+    }
+
+    /** Return the optional declared footprint body or silk-outline polygon. */
+    [[nodiscard]] const std::optional<PartFootprintPolygon> &footprint_body() const noexcept {
+        return footprint_body_;
     }
 
     /** Return pin-number to pad mappings in deterministic insertion order. */
@@ -283,6 +337,8 @@ class OrderablePart {
     PackageRef package_;
     HashedFootprintReference footprint_;
     std::vector<PartFootprintPad> footprint_pads_;
+    std::optional<PartFootprintPolygon> footprint_courtyard_;
+    std::optional<PartFootprintPolygon> footprint_body_;
     std::vector<OrderablePinPadMapping> pin_pad_mappings_;
     std::vector<std::string> approved_alternate_mpns_;
     std::optional<PartModel3DReference> model_3d_;
