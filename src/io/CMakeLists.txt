@@ -35,6 +35,7 @@ add_library(
     pcb_svg_layers.cpp
     pcb_svg_writer.cpp
     pcb_writer.cpp
+    pcb_writer_footprints.cpp
     pcb_writer_rooms.cpp
     schematic_reader.cpp
     schematic_schema.cpp
