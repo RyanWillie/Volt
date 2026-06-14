@@ -39,6 +39,19 @@ struct BoardRouteParameters {
     std::vector<BoardLayerId> allowed_layers;
 };
 
+/** Resolved via copper sizing after applying board and net-class floors. */
+struct BoardViaSize {
+    /** Via drill diameter in millimeters. */
+    double drill_diameter_mm = 0.0;
+    /** Via outer annular copper diameter in millimeters. */
+    double annular_diameter_mm = 0.0;
+};
+
+/** Resolve via sizing for a net, flooring caller defaults against board and net-class rules. */
+[[nodiscard]] BoardViaSize resolve_via_size(const Board &board, NetId net,
+                                            double fallback_drill_diameter_mm,
+                                            double fallback_annular_diameter_mm);
+
 /** Typed outcome of an assisted connection attempt. */
 struct BoardRouteResult {
     /** Whether a legal route was found and committed. */

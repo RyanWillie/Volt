@@ -33,6 +33,21 @@ if report.has_errors:
 
 Each `diagnostic.code` is stable enough for tests and tooling to classify. The human-readable message is for display.
 
+Project diagnostics also expose copyable waiver keys:
+
+```python
+result = project.run()
+for diagnostic in result.unexpected_diagnostics:
+    print(diagnostic.expect_diagnostic_kwargs)
+
+project.expect_diagnostic(**diagnostic.expect_diagnostic_kwargs)
+# or, for an observed project diagnostic:
+project.expect_diagnostic(diagnostic)
+```
+
+If an expected diagnostic never matches a run, `result.missing_expected_diagnostics`
+keeps that policy visible so source, report, stage, or rule typos do not disappear.
+
 ## Which validator to run
 
 | Stage | Call | Typical findings |

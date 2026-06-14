@@ -2,6 +2,8 @@
 
 #include "binding_pcb_conversions.hpp"
 
+#include <algorithm>
+
 #include <volt/circuit/bom.hpp>
 #include <volt/circuit/queries.hpp>
 #include <volt/io/bom_writer.hpp>
@@ -14,6 +16,9 @@ namespace volt::python {
 PyCircuit::PyCircuit() : circuit_{}, schematic_document_{circuit_} {}
 
 namespace {
+
+constexpr auto default_authoring_via_drill_mm = 0.30;
+constexpr auto default_authoring_via_annular_mm = 0.70;
 
 [[nodiscard]] std::optional<std::size_t> optional_index_from_py(py::handle value,
                                                                 const char *message) {
@@ -463,6 +468,14 @@ std::size_t PyCircuit::add_net_class(const std::string &name, const py::dict &op
     if (const auto track_width = optional_double_field(options, "track_width")) {
         net_class.set_track_width_mm(track_width.value());
     }
+    const auto via_drill = optional_double_field(options, "via_drill");
+    const auto via_diameter = optional_double_field(options, "via_diameter");
+    if (via_drill.has_value() != via_diameter.has_value()) {
+        throw py::value_error{"Specify both via_drill and via_diameter for net-class via sizing"};
+    }
+    if (via_drill.has_value()) {
+        net_class.set_via_size_mm(via_drill.value(), via_diameter.value());
+    }
     if (const auto clearance = optional_double_field(options, "clearance")) {
         net_class.set_copper_clearance_mm(clearance.value());
     }
@@ -494,6 +507,10 @@ py::dict PyCircuit::net_class_info(std::size_t net_class) const {
     result["copper_clearance_mm"] = rule.copper_clearance_mm().has_value()
                                         ? py::cast(rule.copper_clearance_mm().value())
                                         : py::none{};
+    result["via_drill_mm"] =
+        rule.via_drill_mm().has_value() ? py::cast(rule.via_drill_mm().value()) : py::none{};
+    result["via_diameter_mm"] =
+        rule.via_diameter_mm().has_value() ? py::cast(rule.via_diameter_mm().value()) : py::none{};
     if (rule.derived_track_width().has_value()) {
         result["derived_track_width"] = derived_rule_to_dict(rule.derived_track_width().value());
     } else {
@@ -1601,12 +1618,25 @@ std::size_t PyCircuit::board_add_track(std::size_t net, std::size_t layer,
 }
 
 std::size_t PyCircuit::board_add_via(std::size_t net, double x, double y, std::size_t start_layer,
-                                     std::size_t end_layer, double drill_diameter_mm,
-                                     double annular_diameter_mm) {
-    return board_projection()
-        .add_via(volt::BoardVia{net_id(net), volt::BoardPoint{x, y},
+                                     std::size_t end_layer, std::optional<double> drill_diameter_mm,
+                                     std::optional<double> annular_diameter_mm) {
+    const auto net_id_value = net_id(net);
+    auto &board = board_projection();
+    const auto default_via_size = volt::resolve_via_size(
+        board, net_id_value, default_authoring_via_drill_mm, default_authoring_via_annular_mm);
+    const auto resolved_drill_diameter_mm =
+        drill_diameter_mm.value_or(default_via_size.drill_diameter_mm);
+    const auto resolved_annular_diameter_mm =
+        annular_diameter_mm.value_or(default_via_size.annular_diameter_mm);
+    if (resolved_annular_diameter_mm <= resolved_drill_diameter_mm) {
+        throw py::value_error{
+            "Resolved via annular diameter must be greater than drill diameter; specify both "
+            "drill and annular for an explicit via size"};
+    }
+    return board
+        .add_via(volt::BoardVia{net_id_value, volt::BoardPoint{x, y},
                                 volt::BoardLayerId{start_layer}, volt::BoardLayerId{end_layer},
-                                drill_diameter_mm, annular_diameter_mm})
+                                resolved_drill_diameter_mm, resolved_annular_diameter_mm})
         .index();
 }
 

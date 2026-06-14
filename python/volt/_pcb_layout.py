@@ -569,8 +569,8 @@ class BoardLayout:
         at: tuple[float, float] | BoardAnchor | None = None,
         start_layer: int,
         end_layer: int,
-        drill: float = 0.30,
-        annular: float = 0.70,
+        drill: float | None = None,
+        annular: float | None = None,
     ) -> int:
         """Add a via at a board anchor and move the cursor to that anchor."""
         anchor = self._here if at is None else self._anchor_at(at)
@@ -592,8 +592,8 @@ class BoardLayout:
         at,
         start_layer: int,
         end_layer: int,
-        drill: float = 0.30,
-        annular: float = 0.70,
+        drill: float | None = None,
+        annular: float | None = None,
     ) -> tuple[int, ...]:
         """Add a deterministic set of vias for one net."""
         return _compose_stitch(
@@ -616,8 +616,8 @@ class BoardLayout:
         net: Net | int | None = None,
         width: float = 0.20,
         via_layers: tuple[int, int] | None = None,
-        drill: float = 0.30,
-        annular: float = 0.70,
+        drill: float | None = None,
+        annular: float | None = None,
     ) -> tuple[BoardFanout, ...]:
         """Route one or more anchors outward and optionally drop vias at the endpoints."""
         return _compose_fanout(

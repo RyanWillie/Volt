@@ -209,8 +209,8 @@ def stitch(
     at,
     start_layer: int,
     end_layer: int,
-    drill: float = 0.30,
-    annular: float = 0.70,
+    drill: float | None = None,
+    annular: float | None = None,
 ) -> tuple[int, ...]:
     """Add a deterministic set of vias for one net."""
     with context.hold():
@@ -237,8 +237,8 @@ def fanout(
     net: Net | int | None = None,
     width: float = 0.20,
     via_layers: tuple[int, int] | None = None,
-    drill: float = 0.30,
-    annular: float = 0.70,
+    drill: float | None = None,
+    annular: float | None = None,
 ) -> tuple[BoardFanout, ...]:
     """Route one or more anchors outward and optionally drop vias at the endpoints."""
     fanout_direction = _direction(direction)

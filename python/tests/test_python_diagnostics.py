@@ -549,6 +549,15 @@ def test_project_diagnostics_preserve_pcb_visual_overlay_payloads():
         ],
         "measurement": None,
         "rule": None,
+        "expect_diagnostic_kwargs": {
+            "code": "PCB_VISUAL_LABEL_OVERLAP",
+            "severity": "warning",
+            "stage": "board",
+            "source": "pcb:Main",
+            "report": "pcb.visual",
+            "design": "demo",
+            "board": "Main",
+        },
     }
 
 

@@ -302,6 +302,100 @@ def test_project_result_reports_diagnostics_and_ok_state():
     assert {diagnostic.source for diagnostic in diagnostics} == {"logical:bad-led"}
 
 
+def test_project_diagnostic_exposes_copyable_expectation_kwargs(tmp_path):
+    project = volt.Project("bad-led")
+
+    @project.design
+    def design():
+        d = volt.Design("bad-led")
+        lonely = d.net("LONELY")
+        r1 = d.R("1k", ref="R1")
+        r1.dnp(True)
+        lonely += r1[1]
+        return d
+
+    result = project.run()
+    diagnostic = next(
+        diagnostic
+        for diagnostic in result.diagnostics
+        if diagnostic.code == "SINGLE_PIN_NET"
+    )
+
+    assert diagnostic.expect_diagnostic_kwargs == {
+        "code": "SINGLE_PIN_NET",
+        "severity": "warning",
+        "stage": "design",
+        "source": "logical:bad-led",
+        "report": "logical.default",
+        "design": "bad-led",
+    }
+
+    accepting = volt.Project("bad-led")
+    accepting.expect_diagnostic(diagnostic)
+    accepting.expect_diagnostic(
+        code="UNCONNECTED_REQUIRED_PIN", severity="error", stage="design"
+    )
+
+    @accepting.design
+    def accepting_design():
+        d = volt.Design("bad-led")
+        lonely = d.net("LONELY")
+        r1 = d.R("1k", ref="R1")
+        r1.dnp(True)
+        lonely += r1[1]
+        return d
+
+    accepted = accepting.run()
+    assert accepted.ok
+    assert accepted.expected_diagnostics[0].expect_diagnostic_kwargs == (
+        diagnostic.expect_diagnostic_kwargs
+    )
+
+    artifacts = result.write_artifacts(tmp_path)
+    payload = json.loads(artifacts.diagnostics_json.read_text(encoding="utf-8"))
+    flat_diagnostic = next(
+        item for item in payload["diagnostics"] if item["code"] == "SINGLE_PIN_NET"
+    )
+    assert flat_diagnostic["expect_diagnostic_kwargs"] == (
+        diagnostic.expect_diagnostic_kwargs
+    )
+
+
+def test_project_expected_diagnostic_source_typo_is_visible():
+    project = volt.Project("bad-led")
+    project.expect_diagnostic(
+        code="SINGLE_PIN_NET",
+        severity="warning",
+        stage="design",
+        source="logical:typo",
+    )
+
+    @project.design
+    def design():
+        d = volt.Design("bad-led")
+        lonely = d.net("LONELY")
+        r1 = d.R("1k", ref="R1")
+        r1.dnp(True)
+        lonely += r1[1]
+        return d
+
+    result = project.run()
+
+    assert not result.expected_diagnostics_ok
+    assert [diagnostic.code for diagnostic in result.unexpected_diagnostics] == [
+        "UNCONNECTED_REQUIRED_PIN",
+        "SINGLE_PIN_NET",
+    ]
+    assert [item.expect_diagnostic_kwargs for item in result.missing_expected_diagnostics] == [
+        {
+            "code": "SINGLE_PIN_NET",
+            "severity": "warning",
+            "stage": "design",
+            "source": "logical:typo",
+        }
+    ]
+
+
 def test_project_expected_diagnostics_distinguish_expected_missing_and_unexpected():
     project = volt.Project("bad-led")
     project.expect_diagnostic(code="SINGLE_PIN_NET", severity="warning", stage="design")

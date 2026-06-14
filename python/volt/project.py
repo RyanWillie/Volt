@@ -69,6 +69,11 @@ class ProjectDiagnostic:
     board: str | None = None
     rule: str | None = None
 
+    @property
+    def expect_diagnostic_kwargs(self) -> dict[str, str]:
+        """Return copyable ``Project.expect_diagnostic`` keyword arguments."""
+        return _expect_diagnostic_kwargs(self)
+
 
 @dataclass(frozen=True)
 class ProjectTestResult:
@@ -92,6 +97,11 @@ class ExpectedDiagnostic:
     design: str | None = None
     board: str | None = None
     rule: str | None = None
+
+    @property
+    def expect_diagnostic_kwargs(self) -> dict[str, str]:
+        """Return this policy as ``Project.expect_diagnostic`` keyword arguments."""
+        return _expect_diagnostic_kwargs(self)
 
     def matches(self, diagnostic: ProjectDiagnostic) -> bool:
         """Return whether this expectation covers a project diagnostic."""
@@ -120,6 +130,11 @@ class ExpectedDiagnosticResult:
     board: str | None
     rule: str | None
     matched: bool
+
+    @property
+    def expect_diagnostic_kwargs(self) -> dict[str, str]:
+        """Return the checked policy as ``Project.expect_diagnostic`` keyword arguments."""
+        return _expect_diagnostic_kwargs(self)
 
 
 @dataclass(frozen=True)
@@ -289,8 +304,9 @@ class Project:
 
     def expect_diagnostic(
         self,
+        diagnostic: ProjectDiagnostic | ExpectedDiagnostic | ExpectedDiagnosticResult | None = None,
         *,
-        code: str,
+        code: str | None = None,
         severity: str | None = None,
         stage: ProjectStage | str | None = None,
         source: str | None = None,
@@ -300,6 +316,29 @@ class Project:
         rule: str | None = None,
     ) -> ExpectedDiagnostic:
         """Declare a project-local diagnostic that is expected for this run."""
+        if diagnostic is not None:
+            if not isinstance(
+                diagnostic,
+                (ProjectDiagnostic, ExpectedDiagnostic, ExpectedDiagnosticResult),
+            ):
+                raise TypeError("Project.expect_diagnostic diagnostic must be a project diagnostic")
+            if any(
+                value is not None
+                for value in (code, severity, stage, source, report, design, board, rule)
+            ):
+                raise ValueError(
+                    "Project.expect_diagnostic cannot combine a diagnostic instance "
+                    "with explicit match fields"
+                )
+            fields = diagnostic.expect_diagnostic_kwargs
+            code = fields["code"]
+            severity = fields.get("severity")
+            stage = fields.get("stage")
+            source = fields.get("source")
+            report = fields.get("report")
+            design = fields.get("design")
+            board = fields.get("board")
+            rule = fields.get("rule")
         if not isinstance(code, str) or not code:
             raise ValueError("Expected diagnostic code must be a non-empty string")
         expectation = ExpectedDiagnostic(
@@ -1072,6 +1111,25 @@ def _matches_any_expected(
     return any(expectation.matches(diagnostic) for expectation in expectations)
 
 
+def _expect_diagnostic_kwargs(
+    diagnostic: ProjectDiagnostic | ExpectedDiagnostic | ExpectedDiagnosticResult,
+) -> dict[str, str]:
+    return {
+        key: value
+        for key, value in {
+            "code": diagnostic.code,
+            "severity": diagnostic.severity,
+            "stage": diagnostic.stage,
+            "source": diagnostic.source,
+            "report": diagnostic.report,
+            "design": diagnostic.design,
+            "board": diagnostic.board,
+            "rule": diagnostic.rule,
+        }.items()
+        if value is not None
+    }
+
+
 def _expected_diagnostic_results(
     expectations: Iterable[ExpectedDiagnostic],
     diagnostics: ProjectDiagnostics,
@@ -1586,6 +1644,7 @@ def _flat_diagnostic_payload(diagnostic: ProjectDiagnostic) -> dict[str, object]
         "overlays": [_diagnostic_overlay_payload(overlay) for overlay in diagnostic.overlays],
         "measurement": _diagnostic_measurement_payload(diagnostic.measurement),
         "rule": diagnostic.rule,
+        "expect_diagnostic_kwargs": diagnostic.expect_diagnostic_kwargs,
     }
 
 
@@ -1604,6 +1663,7 @@ def _project_diagnostic_payload(diagnostic: ProjectDiagnostic) -> dict[str, obje
         "design": diagnostic.design,
         "board": diagnostic.board,
         "rule": diagnostic.rule,
+        "expect_diagnostic_kwargs": diagnostic.expect_diagnostic_kwargs,
     }
 
 
@@ -1618,6 +1678,7 @@ def _expected_diagnostic_result_payload(result: ExpectedDiagnosticResult) -> dic
         "board": result.board,
         "rule": result.rule,
         "matched": result.matched,
+        "expect_diagnostic_kwargs": result.expect_diagnostic_kwargs,
     }
 
 

@@ -43,6 +43,12 @@ Source: `python/volt/project.py`
 | `board: str \| None` |
 | `rule: str \| None` |
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `expect_diagnostic_kwargs: dict[str, str]` | Return this policy as ``Project.expect_diagnostic`` keyword arguments. |
+
 ### Methods
 
 | Method | Summary |
@@ -69,6 +75,12 @@ Source: `python/volt/project.py`
 | `rule: str \| None` |
 | `matched: bool` |
 
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `expect_diagnostic_kwargs: dict[str, str]` | Return the checked policy as ``Project.expect_diagnostic`` keyword arguments. |
+
 ## `volt.Project`
 
 Canonical staged entrypoint for a Volt electronics project.
@@ -80,7 +92,7 @@ Source: `python/volt/project.py`
 | Method | Summary |
 | --- | --- |
 | `use_library(self, library: Library) -> Library` | Include a library's validation diagnostics in this project result. |
-| `expect_diagnostic(self, *, code: str, severity: str \| None = None, stage: ProjectStage \| str \| None = None, source: str \| None = None, report: str \| None = None, design: str \| None = None, board: str \| None = None, rule: str \| None = None) -> ExpectedDiagnostic` | Declare a project-local diagnostic that is expected for this run. |
+| `expect_diagnostic(self, diagnostic: ProjectDiagnostic \| ExpectedDiagnostic \| ExpectedDiagnosticResult \| None = None, *, code: str \| None = None, severity: str \| None = None, stage: ProjectStage \| str \| None = None, source: str \| None = None, report: str \| None = None, design: str \| None = None, board: str \| None = None, rule: str \| None = None) -> ExpectedDiagnostic` | Declare a project-local diagnostic that is expected for this run. |
 | `run(self) -> 'ProjectResult'` | Run the registered project stages and return one result. |
 | `run_through(self, stage: ProjectStage) -> 'ProjectResult'` | Run stages through the given stage handle. |
 
@@ -128,6 +140,12 @@ Source: `python/volt/project.py`
 | `design: str \| None` |
 | `board: str \| None` |
 | `rule: str \| None` |
+
+### Properties
+
+| Property | Summary |
+| --- | --- |
+| `expect_diagnostic_kwargs: dict[str, str]` | Return copyable ``Project.expect_diagnostic`` keyword arguments. |
 
 ## `volt.ProjectDiagnostics`
 
