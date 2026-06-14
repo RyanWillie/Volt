@@ -191,6 +191,13 @@ TEST_CASE("Footprint polygons reject structurally invalid geometry") {
                         volt::FootprintPoint{1.0, 0.0},
                         volt::FootprintPoint{0.0, 1.0},
                         volt::FootprintPoint{0.0, 0.0},
+                    }),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::FootprintPolygon(std::vector{
+                        volt::FootprintPoint{0.0, 0.0},
+                        volt::FootprintPoint{1.0, 0.0},
+                        volt::FootprintPoint{0.0, 1.0},
+                        volt::FootprintPoint{0.0, 0.0},
                         volt::FootprintPoint{-1.0, 0.0},
                     }),
                     std::invalid_argument);

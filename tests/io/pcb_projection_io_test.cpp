@@ -111,7 +111,7 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
 
     CHECK(first == second);
     CHECK(document["format"] == "volt.pcb");
-    CHECK(document["version"] == 1);
+    CHECK(document["version"] == 2);
     CHECK(document["board"]["id"] == "board:0");
     CHECK(document["board"]["name"] == "Control");
     CHECK(document["board"]["units"] == "mm");
@@ -234,6 +234,12 @@ TEST_CASE("PCB projection writer and reader round-trip footprint courtyard and b
     REQUIRE(restored.footprint_definition(volt::FootprintDefId{0}).courtyard().has_value());
     CHECK(restored.footprint_definition(volt::FootprintDefId{0}).courtyard()->vertices()[1] ==
           volt::FootprintPoint{1.2, -0.8});
+
+    auto closed_courtyard = document;
+    closed_courtyard["board"]["footprint_definitions"][0]["courtyard"].push_back(
+        closed_courtyard["board"]["footprint_definitions"][0]["courtyard"][0]);
+    CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, closed_courtyard.dump()),
+                    std::invalid_argument);
 }
 
 TEST_CASE("PCB projection writer and reader round-trip generic board features") {

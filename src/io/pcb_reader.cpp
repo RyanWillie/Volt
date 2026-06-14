@@ -27,7 +27,7 @@
 
 namespace volt::io::detail {
 
-/** Internal implementation for loading the v1 PCB projection JSON format. */
+/** Internal implementation for loading the v2 PCB projection JSON format. */
 class PcbBoardReader {
   public:
     /** Construct a reader over a parsed JSON document and its logical circuit context. */
@@ -192,7 +192,7 @@ class PcbBoardReader {
     require_format(document_);
     require_version(document_);
     const auto &board_json = object_field(document_, "board");
-    // v1 stores one board per document; this stable ID anchors viewer references.
+    // v2 stores one board per document; this stable ID anchors viewer references.
     require(string_field(board_json, "id") == "board:0", "PCB board id must be board:0");
 
     static_cast<void>(board_units_from_name(string_field(board_json, "units")));

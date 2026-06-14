@@ -173,14 +173,7 @@ PartFootprintPoint::PartFootprintPoint(double x_mm, double y_mm) : x_mm_{x_mm}, 
 
 PartFootprintPolygon::PartFootprintPolygon(std::vector<PartFootprintPoint> vertices)
     : vertices_{std::move(vertices)} {
-    drop_duplicate_closing_vertex();
     detail::validate_footprint_polygon_vertices(vertices_, "Part footprint polygon");
-}
-
-void PartFootprintPolygon::drop_duplicate_closing_vertex() {
-    if (vertices_.size() > 1U && vertices_.front() == vertices_.back()) {
-        vertices_.pop_back();
-    }
 }
 
 HashedFootprintReference::HashedFootprintReference(FootprintRef footprint, ContentHash hash)

@@ -123,7 +123,8 @@ collect_footprint_definitions(const Board &board, const FootprintLibrary &footpr
 
     for (const auto &definition : footprints.definitions()) {
         const auto existing = find_footprint_definition(definitions, definition.ref());
-        if (existing.has_value() && !(definitions[existing->index()] == definition)) {
+        if (existing.has_value() && ::volt::detail::footprint_library_definition_conflicts(
+                                        definitions[existing->index()], definition)) {
             throw std::logic_error{
                 "Board footprint definition conflicts with footprint library definition"};
         }

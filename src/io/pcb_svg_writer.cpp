@@ -186,7 +186,7 @@ void write_pcb_svg_number(std::ostream &out, double value) {
             library.add(definition);
             continue;
         }
-        if (!(*existing == definition)) {
+        if (::volt::detail::footprint_library_definition_conflicts(*existing, definition)) {
             throw std::logic_error{
                 "Board footprint definition conflicts with footprint library definition"};
         }

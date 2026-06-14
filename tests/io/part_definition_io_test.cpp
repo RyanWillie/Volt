@@ -177,6 +177,11 @@ TEST_CASE("Part definition reader rejects structurally malformed artifacts") {
     empty_courtyard["orderable_part"]["footprint"]["courtyard"] = nlohmann::json::array();
     check_malformed_part_is_rejected(empty_courtyard);
 
+    auto closed_courtyard = fixture;
+    closed_courtyard["orderable_part"]["footprint"]["courtyard"].push_back(
+        closed_courtyard["orderable_part"]["footprint"]["courtyard"][0]);
+    check_malformed_part_is_rejected(closed_courtyard);
+
     auto persisted_role = fixture;
     persisted_role["pins"][0]["role"] = "ground";
     check_malformed_part_is_rejected(persisted_role);

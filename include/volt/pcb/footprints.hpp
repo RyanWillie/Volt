@@ -72,8 +72,6 @@ class FootprintPolygon {
     }
 
   private:
-    void drop_duplicate_closing_vertex();
-
     std::vector<FootprintPoint> vertices_;
 };
 

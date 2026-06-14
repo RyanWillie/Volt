@@ -226,6 +226,10 @@ namespace detail {
 [[nodiscard]] FootprintLibrary board_resolution_footprints(const Board &board,
                                                            const FootprintLibrary &footprints);
 
+[[nodiscard]] bool
+footprint_library_definition_conflicts(const FootprintDefinition &board_definition,
+                                       const FootprintDefinition &library_definition);
+
 [[nodiscard]] Diagnostic board_diagnostic(DiagnosticCode code, std::string message,
                                           std::vector<EntityRef> entities = {});
 

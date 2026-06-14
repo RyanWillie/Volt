@@ -1,6 +1,6 @@
 {
   "format": "volt.pcb",
-  "version": 1,
+  "version": 2,
   "board": {
     "id": "board:0",
     "name": "First Board LED",

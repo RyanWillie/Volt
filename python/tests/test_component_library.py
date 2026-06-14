@@ -1337,6 +1337,39 @@ def test_part_validation_reports_unknown_pad_label():
     assert result.part("BadPad").board_ready is False
 
 
+def test_part_validation_rejects_closed_footprint_polygons_at_artifact_boundary():
+    library = volt.Library("volt.test.bad")
+    library.add(
+        volt.Part(
+            name="ClosedCourtyard",
+            pins=[volt.PinSpec("1", 1), volt.PinSpec("2", 2)],
+            symbol=_two_pin_test_symbol("volt.test:ClosedCourtyard"),
+            footprint=volt.Footprint(
+                ("volt.test", "ClosedCourtyard"),
+                pads=(
+                    volt.FootprintPad.surface_mount("1", at=(-0.75, 0.0), size=(0.8, 0.95)),
+                    volt.FootprintPad.surface_mount("2", at=(0.75, 0.0), size=(0.8, 0.95)),
+                ),
+                courtyard=((-1.2, -0.8), (1.2, -0.8), (1.2, 0.8), (-1.2, 0.8), (-1.2, -0.8)),
+            ),
+            pads={1: "1", 2: "2"},
+            manufacturer="Yageo",
+            mpn="CLOSEDCOURTYARD",
+            package="0603",
+        )
+    )
+
+    result = library.build()
+    part_result = result.part("ClosedCourtyard")
+
+    assert not result.ok
+    assert part_result.artifact is None
+    assert [diagnostic.code for diagnostic in result.diagnostics] == [
+        "LIBRARY_PART_ARTIFACT_INVALID",
+    ]
+    assert "must not repeat vertices" in result.diagnostics[0].message
+
+
 def test_part_validation_reports_unresolvable_pad_mapping_key_not_board_ready():
     library = volt.Library("volt.test.bad")
     library.add(

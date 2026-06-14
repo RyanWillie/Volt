@@ -125,6 +125,13 @@ TEST_CASE("Part footprint polygons reject structurally invalid geometry") {
                         volt::PartFootprintPoint{1.0, 0.0},
                         volt::PartFootprintPoint{0.0, 1.0},
                         volt::PartFootprintPoint{0.0, 0.0},
+                    }),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::PartFootprintPolygon(std::vector{
+                        volt::PartFootprintPoint{0.0, 0.0},
+                        volt::PartFootprintPoint{1.0, 0.0},
+                        volt::PartFootprintPoint{0.0, 1.0},
+                        volt::PartFootprintPoint{0.0, 0.0},
                         volt::PartFootprintPoint{-1.0, 0.0},
                     }),
                     std::invalid_argument);
