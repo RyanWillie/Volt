@@ -19,7 +19,7 @@ add_library(
 add_library(Volt::Circuit ALIAS volt_circuit)
 
 set_target_properties(volt_circuit PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_features(volt_circuit PUBLIC cxx_std_20)
+target_compile_features(volt_circuit PUBLIC cxx_std_23)
 target_link_libraries(volt_circuit PUBLIC Volt::Core)
 target_include_directories(
     volt_circuit

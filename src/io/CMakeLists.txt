@@ -44,7 +44,7 @@ add_library(
 add_library(Volt::IO ALIAS volt_io)
 
 set_target_properties(volt_io PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_features(volt_io PUBLIC cxx_std_20)
+target_compile_features(volt_io PUBLIC cxx_std_23)
 target_link_libraries(
     volt_io
     PUBLIC

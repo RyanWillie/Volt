@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/RyanWillie/Volt/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/RyanWillie/Volt/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="C++20" src="https://img.shields.io/badge/C%2B%2B-20-00599C">
+  <img alt="C++23" src="https://img.shields.io/badge/C%2B%2B-23-00599C">
   <img alt="CMake" src="https://img.shields.io/badge/build-CMake-064F8C">
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
   <img alt="Status: pre-release" src="https://img.shields.io/badge/status-pre--release-f5a623">
@@ -44,7 +44,7 @@ the kernel can establish stable invariants first.
 
 ## What Works Today
 
-- C++20 core library with typed IDs, deterministic entity storage, diagnostics, and
+- C++23 core library with typed IDs, deterministic entity storage, diagnostics, and
   metadata properties
 - Logical circuit model for component definitions, instances, concrete pins, nets, and
   selected physical parts

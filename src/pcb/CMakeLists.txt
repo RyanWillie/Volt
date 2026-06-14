@@ -22,7 +22,7 @@ add_library(
 add_library(Volt::PCB ALIAS volt_pcb)
 
 set_target_properties(volt_pcb PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_features(volt_pcb PUBLIC cxx_std_20)
+target_compile_features(volt_pcb PUBLIC cxx_std_23)
 target_link_libraries(volt_pcb PUBLIC Volt::Circuit)
 target_include_directories(
     volt_pcb
