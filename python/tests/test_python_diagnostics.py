@@ -66,6 +66,8 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "PCB_VIA_ANNULAR_BELOW_MINIMUM",
         "PCB_COPPER_OUTSIDE_OUTLINE",
         "PCB_COPPER_CLEARANCE_VIOLATION",
+        "PCB_COMPONENT_BODY_OVERLAP",
+        "PCB_COMPONENT_COURTYARD_OVERLAP",
         "PCB_KEEPOUT_COPPER_VIOLATION",
         "PCB_KEEPOUT_VIA_VIOLATION",
         "PCB_KEEPOUT_PLACEMENT_VIOLATION",
