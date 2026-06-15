@@ -126,9 +126,9 @@ PadResolution::PadResolution(ComponentPlacementId placement, ComponentId compone
       position_{position}, pin_{pin}, net_{net}, status_{status} {}
 
 ProjectedFootprintGeometry::ProjectedFootprintGeometry(
-    ComponentPlacementId placement, ComponentId component,
+    ComponentPlacementId placement, ComponentId component, BoardSide side,
     std::optional<std::vector<BoardPoint>> courtyard, std::optional<std::vector<BoardPoint>> body)
-    : placement_{placement}, component_{component}, courtyard_{std::move(courtyard)},
+    : placement_{placement}, component_{component}, side_{side}, courtyard_{std::move(courtyard)},
       body_{std::move(body)} {}
 
 RatsnestEndpoint::RatsnestEndpoint(ComponentPlacementId placement, ComponentId component,

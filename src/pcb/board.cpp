@@ -234,7 +234,7 @@ Board::project_footprint_geometries(const FootprintLibrary &footprints) const {
         }
 
         geometries.emplace_back(resolved.placement_id, resolved.placement.component(),
-                                std::move(courtyard), std::move(body));
+                                resolved.placement.side(), std::move(courtyard), std::move(body));
     }
 
     return geometries;

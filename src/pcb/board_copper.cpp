@@ -2,6 +2,7 @@
 #include <volt/pcb/board_spatial_index.hpp>
 
 #include "board_capability_validation.hpp"
+#include "board_footprint_drc.hpp"
 #include "board_room_rules.hpp"
 
 #include <algorithm>
@@ -1203,6 +1204,9 @@ void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
         })
         .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_copper_clearance(rule_board, shapes, rule_report);
+        })
+        .add([&footprints](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_footprint_geometry_drc(rule_board, footprints, rule_report);
         })
         .add([&shapes](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_keepout_copper_shapes(rule_board, shapes, rule_report);

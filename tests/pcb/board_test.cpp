@@ -33,6 +33,12 @@ struct MultiComponentNetCircuit {
     volt::NetId shared_net;
 };
 
+struct TwoResistorCircuit {
+    volt::Circuit circuit;
+    volt::ComponentId first_component;
+    volt::ComponentId second_component;
+};
+
 [[nodiscard]] ResistorCircuit make_resistor_circuit(bool select_physical_part = true) {
     auto circuit = volt::Circuit{};
     const auto first_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
@@ -119,6 +125,47 @@ struct MultiComponentNetCircuit {
                                     second_pin_definition, shared_net};
 }
 
+[[nodiscard]] TwoResistorCircuit make_two_resistor_circuit(volt::FootprintRef footprint) {
+    auto circuit = volt::Circuit{};
+    const auto first_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+        "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto second_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
+        "B", "2", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto component_definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"Resistor", {first_pin_definition, second_pin_definition}});
+    const auto first_component =
+        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R1"});
+    const auto second_component =
+        circuit.instantiate_component(component_definition, volt::ReferenceDesignator{"R2"});
+
+    for (const auto component : std::vector{first_component, second_component}) {
+        circuit.select_physical_part(
+            component, volt::PhysicalPart{
+                           volt::ManufacturerPart{"Example", "DENSE"},
+                           volt::PackageRef{"DENSE"},
+                           footprint,
+                           std::vector{volt::PinPadMapping{first_pin_definition, "1"},
+                                       volt::PinPadMapping{second_pin_definition, "2"}},
+                       });
+        const auto first_pin =
+            volt::queries::pin_by_definition(circuit, component, first_pin_definition).value();
+        const auto second_pin =
+            volt::queries::pin_by_definition(circuit, component, second_pin_definition).value();
+        const auto first_net = circuit.add_net(volt::Net{
+            volt::NetName{"N" + std::to_string(first_pin.index())}, volt::NetKind::Signal});
+        const auto second_net = circuit.add_net(volt::Net{
+            volt::NetName{"N" + std::to_string(second_pin.index())}, volt::NetKind::Signal});
+        circuit.connect(first_net, first_pin);
+        circuit.connect(second_net, second_pin);
+    }
+
+    return TwoResistorCircuit{std::move(circuit), first_component, second_component};
+}
+
 [[nodiscard]] const volt::Diagnostic *find_diagnostic(const volt::DiagnosticReport &report,
                                                       const std::string &code) {
     for (const auto &diagnostic : report.diagnostics()) {
@@ -151,6 +198,38 @@ find_diagnostics(const volt::DiagnosticReport &report, const std::string &code) 
                 "2", volt::FootprintPadShape::RoundedRectangle, volt::FootprintPoint{0.80, 0.0},
                 volt::FootprintSize{0.90, 0.95}, volt::FootprintLayerSet::front_smd()),
         }};
+}
+
+[[nodiscard]] volt::FootprintDefinition dense_overlap_footprint(bool include_geometry) {
+    auto pads = std::vector{
+        volt::FootprintPad::surface_mount(
+            "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{-3.0, 0.0},
+            volt::FootprintSize{0.50, 0.50}, volt::FootprintLayerSet::front_smd()),
+        volt::FootprintPad::surface_mount(
+            "2", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{3.0, 0.0},
+            volt::FootprintSize{0.50, 0.50}, volt::FootprintLayerSet::front_smd()),
+    };
+    if (!include_geometry) {
+        return volt::FootprintDefinition{volt::FootprintRef{"test", "DenseOverlap"},
+                                         std::move(pads)};
+    }
+
+    return volt::FootprintDefinition{
+        volt::FootprintRef{"test", "DenseOverlap"},
+        std::move(pads),
+        volt::FootprintPolygon{std::vector{
+            volt::FootprintPoint{-2.0, -1.25},
+            volt::FootprintPoint{2.0, -1.25},
+            volt::FootprintPoint{2.0, 1.25},
+            volt::FootprintPoint{-2.0, 1.25},
+        }},
+        volt::FootprintPolygon{std::vector{
+            volt::FootprintPoint{-1.5, -1.0},
+            volt::FootprintPoint{1.5, -1.0},
+            volt::FootprintPoint{1.5, 1.0},
+            volt::FootprintPoint{-1.5, 1.0},
+        }},
+    };
 }
 
 [[nodiscard]] std::vector<volt::BoardClearancePair>
@@ -663,6 +742,7 @@ TEST_CASE("Board projects footprint courtyard and body geometry through placemen
     REQUIRE(geometries.size() == 1);
     CHECK(geometries[0].placement() == placement);
     CHECK(geometries[0].component() == fixture.component);
+    CHECK(geometries[0].side() == volt::BoardSide::Bottom);
     REQUIRE(geometries[0].courtyard().has_value());
     CHECK(geometries[0].courtyard().value() ==
           std::vector{volt::BoardPoint{8.0, 19.0}, volt::BoardPoint{8.0, 17.0},
@@ -854,6 +934,147 @@ TEST_CASE("Board validation reports first PCB DRC rule violations") {
     CHECK(outside_outline->overlays()[0].entities() ==
           std::vector{volt::EntityRef::board_track(outside_track)});
     CHECK_FALSE(outside_outline->measurement().has_value());
+}
+
+TEST_CASE("Board DRC reports component body and courtyard overlaps with clean pad copper") {
+    auto library = volt::FootprintLibrary{};
+    library.add(dense_overlap_footprint(true));
+    auto fixture = make_two_resistor_circuit(volt::FootprintRef{"test", "DenseOverlap"});
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.20, 0.30, 0.70, 0.10});
+    const auto first_placement = board.place_component(volt::ComponentPlacement{
+        fixture.first_component, volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    const auto second_placement = board.place_component(volt::ComponentPlacement{
+        fixture.second_component, volt::BoardPoint{12.5, 10.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto report = volt::validate_board(board, library);
+
+    CHECK(find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION") == nullptr);
+
+    const auto *body = find_diagnostic(report, "PCB_COMPONENT_BODY_OVERLAP");
+    REQUIRE(body != nullptr);
+    CHECK(body->severity() == volt::Severity::Error);
+    CHECK(body->category() == volt::DiagnosticCategory{volt::diagnostic_categories::Drc});
+    CHECK(body->entities() == std::vector{volt::EntityRef::component_placement(first_placement),
+                                          volt::EntityRef::component_placement(second_placement),
+                                          volt::EntityRef::component(fixture.first_component),
+                                          volt::EntityRef::component(fixture.second_component)});
+    REQUIRE(body->overlays().size() == 2);
+    CHECK(body->overlays()[0].kind() == volt::DiagnosticOverlayKind::Polygon);
+    CHECK(body->overlays()[0].entities() ==
+          std::vector{volt::EntityRef::component_placement(first_placement)});
+    CHECK(body->overlays()[0].points() ==
+          std::vector{volt::DiagnosticPoint{8.5, 9.0}, volt::DiagnosticPoint{11.5, 9.0},
+                      volt::DiagnosticPoint{11.5, 11.0}, volt::DiagnosticPoint{8.5, 11.0}});
+    CHECK(body->overlays()[1].kind() == volt::DiagnosticOverlayKind::Polygon);
+    CHECK_FALSE(body->measurement().has_value());
+
+    const auto *courtyard = find_diagnostic(report, "PCB_COMPONENT_COURTYARD_OVERLAP");
+    REQUIRE(courtyard != nullptr);
+    CHECK(courtyard->severity() == volt::Severity::Error);
+    CHECK(courtyard->category() == volt::DiagnosticCategory{volt::diagnostic_categories::Drc});
+    CHECK(courtyard->entities() ==
+          std::vector{volt::EntityRef::component_placement(first_placement),
+                      volt::EntityRef::component_placement(second_placement),
+                      volt::EntityRef::component(fixture.first_component),
+                      volt::EntityRef::component(fixture.second_component)});
+    REQUIRE(courtyard->overlays().size() == 2);
+    CHECK(courtyard->overlays()[0].kind() == volt::DiagnosticOverlayKind::Polygon);
+    CHECK(courtyard->overlays()[1].kind() == volt::DiagnosticOverlayKind::Polygon);
+}
+
+TEST_CASE("Board DRC accepts spaced component body and courtyard geometry") {
+    auto library = volt::FootprintLibrary{};
+    library.add(dense_overlap_footprint(true));
+    auto fixture = make_two_resistor_circuit(volt::FootprintRef{"test", "DenseOverlap"});
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.20, 0.30, 0.70, 0.10});
+    [[maybe_unused]] const auto first_placement = board.place_component(
+        volt::ComponentPlacement{fixture.first_component, volt::BoardPoint{8.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top});
+    [[maybe_unused]] const auto second_placement = board.place_component(
+        volt::ComponentPlacement{fixture.second_component, volt::BoardPoint{18.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top});
+
+    const auto report = volt::validate_board(board, library);
+
+    CHECK(find_diagnostic(report, "PCB_COMPONENT_BODY_OVERLAP") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_COMPONENT_COURTYARD_OVERLAP") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION") == nullptr);
+}
+
+TEST_CASE("Board DRC ignores component geometry overlaps on opposite sides") {
+    auto library = volt::FootprintLibrary{};
+    library.add(dense_overlap_footprint(true));
+    auto fixture = make_two_resistor_circuit(volt::FootprintRef{"test", "DenseOverlap"});
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.20, 0.30, 0.70, 0.10});
+    [[maybe_unused]] const auto first_placement = board.place_component(
+        volt::ComponentPlacement{fixture.first_component, volt::BoardPoint{10.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top});
+    [[maybe_unused]] const auto second_placement = board.place_component(
+        volt::ComponentPlacement{fixture.second_component, volt::BoardPoint{10.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Bottom});
+
+    const auto report = volt::validate_board(board, library);
+
+    CHECK(find_diagnostic(report, "PCB_COMPONENT_BODY_OVERLAP") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_COMPONENT_COURTYARD_OVERLAP") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION") == nullptr);
+}
+
+TEST_CASE("Board DRC explicitly skips component overlap checks without footprint geometry") {
+    auto library = volt::FootprintLibrary{};
+    library.add(dense_overlap_footprint(false));
+    auto fixture = make_two_resistor_circuit(volt::FootprintRef{"test", "DenseOverlap"});
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    const auto first_placement = board.place_component(volt::ComponentPlacement{
+        fixture.first_component, volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    const auto second_placement = board.place_component(volt::ComponentPlacement{
+        fixture.second_component, volt::BoardPoint{12.5, 10.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto geometries = board.project_footprint_geometries(library);
+    REQUIRE(geometries.size() == 2);
+    CHECK(geometries[0].placement() == first_placement);
+    CHECK_FALSE(geometries[0].courtyard().has_value());
+    CHECK_FALSE(geometries[0].body().has_value());
+    CHECK(geometries[1].placement() == second_placement);
+    CHECK_FALSE(geometries[1].courtyard().has_value());
+    CHECK_FALSE(geometries[1].body().has_value());
+
+    const auto report = volt::validate_board(board, library);
+
+    CHECK(find_diagnostic(report, "PCB_COMPONENT_BODY_OVERLAP") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_COMPONENT_COURTYARD_OVERLAP") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION") == nullptr);
 }
 
 TEST_CASE("Board validation emits no capability diagnostics without an explicit profile") {

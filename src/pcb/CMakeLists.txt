@@ -6,6 +6,7 @@ add_library(
     board_copper.cpp
     board_copper_model.cpp
     board_features.cpp
+    board_footprint_drc.cpp
     board_footprint_model.cpp
     board_geometry.cpp
     board_geometry_projection.cpp
