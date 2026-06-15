@@ -742,6 +742,7 @@ TEST_CASE("Board projects footprint courtyard and body geometry through placemen
     REQUIRE(geometries.size() == 1);
     CHECK(geometries[0].placement() == placement);
     CHECK(geometries[0].component() == fixture.component);
+    CHECK(geometries[0].side() == volt::BoardSide::Bottom);
     REQUIRE(geometries[0].courtyard().has_value());
     CHECK(geometries[0].courtyard().value() ==
           std::vector{volt::BoardPoint{8.0, 19.0}, volt::BoardPoint{8.0, 17.0},
@@ -987,6 +988,33 @@ TEST_CASE("Board DRC reports component body and courtyard overlaps with clean pa
     REQUIRE(courtyard->overlays().size() == 2);
     CHECK(courtyard->overlays()[0].kind() == volt::DiagnosticOverlayKind::Polygon);
     CHECK(courtyard->overlays()[1].kind() == volt::DiagnosticOverlayKind::Polygon);
+}
+
+TEST_CASE("Board DRC ignores component geometry overlaps on opposite sides") {
+    auto library = volt::FootprintLibrary{};
+    library.add(dense_overlap_footprint(true));
+    auto fixture = make_two_resistor_circuit(volt::FootprintRef{"test", "DenseOverlap"});
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.20, 0.30, 0.70, 0.10});
+    [[maybe_unused]] const auto first_placement = board.place_component(
+        volt::ComponentPlacement{fixture.first_component, volt::BoardPoint{10.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Top});
+    [[maybe_unused]] const auto second_placement = board.place_component(
+        volt::ComponentPlacement{fixture.second_component, volt::BoardPoint{10.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Bottom});
+
+    const auto report = volt::validate_board(board, library);
+
+    CHECK(find_diagnostic(report, "PCB_COMPONENT_BODY_OVERLAP") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_COMPONENT_COURTYARD_OVERLAP") == nullptr);
+    CHECK(find_diagnostic(report, "PCB_COPPER_CLEARANCE_VIOLATION") == nullptr);
 }
 
 TEST_CASE("Board DRC explicitly skips component overlap checks without footprint geometry") {

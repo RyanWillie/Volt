@@ -427,6 +427,9 @@ void validate_component_geometry_overlaps(const std::vector<ProjectedFootprintGe
         for (std::size_t rhs_index = lhs_index + 1U; rhs_index < geometries.size(); ++rhs_index) {
             const auto &lhs = geometries[lhs_index];
             const auto &rhs = geometries[rhs_index];
+            if (lhs.side() != rhs.side()) {
+                continue;
+            }
             append_component_geometry_overlap(
                 lhs, rhs, lhs.body(), rhs.body(), drc_diagnostic_codes::ComponentBodyOverlap,
                 "Component body geometry overlaps another placed component", report);

@@ -324,7 +324,7 @@ class ProjectedFootprintGeometry {
   public:
     /** Construct projected footprint geometry for a placed component. */
     ProjectedFootprintGeometry(ComponentPlacementId placement, ComponentId component,
-                               std::optional<std::vector<BoardPoint>> courtyard,
+                               BoardSide side, std::optional<std::vector<BoardPoint>> courtyard,
                                std::optional<std::vector<BoardPoint>> body);
 
     /** Return the placement that owns this projected geometry. */
@@ -332,6 +332,9 @@ class ProjectedFootprintGeometry {
 
     /** Return the logical component for this placement. */
     [[nodiscard]] ComponentId component() const noexcept { return component_; }
+
+    /** Return the board side that owns this projected geometry. */
+    [[nodiscard]] BoardSide side() const noexcept { return side_; }
 
     /** Return the optional board-space courtyard polygon. */
     [[nodiscard]] const std::optional<std::vector<BoardPoint>> &courtyard() const noexcept {
@@ -346,6 +349,7 @@ class ProjectedFootprintGeometry {
   private:
     ComponentPlacementId placement_;
     ComponentId component_;
+    BoardSide side_;
     std::optional<std::vector<BoardPoint>> courtyard_;
     std::optional<std::vector<BoardPoint>> body_;
 };
