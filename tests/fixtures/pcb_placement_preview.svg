@@ -4,7 +4,9 @@
     .board-outline{fill:#d7ead0;stroke:#1f5f3a;stroke-width:0.28}
     .board-feature{fill:none;stroke:#6b7280;stroke-width:0.24}
     .board-feature-label,.reference-designator,.pad-net-label,.diagnostic-label{font:1.8px sans-serif;fill:#172026}
-    .footprint-body{fill:#fff8db;stroke:#8a6a16;stroke-width:0.18}
+    .footprint-courtyard{fill:none;stroke:#64748b;stroke-width:0.12;stroke-dasharray:0.7 0.45}
+    .footprint-body.declared{fill:#fff8db;stroke:#8a6a16;stroke-width:0.18}
+    .footprint-envelope.synthetic{fill:#fff8db;fill-opacity:0.24;stroke:#8a6a16;stroke-width:0.18;stroke-dasharray:0.9 0.55}
     .footprint-pad{fill:#d99822;stroke:#5a3a08;stroke-width:0.14}
     .pad-overlay{fill:#175cd3;stroke:#ffffff;stroke-width:0.12}
     .ratsnest{fill:none;stroke:#175cd3;stroke-width:0.16;stroke-dasharray:0.8 0.55}
@@ -24,11 +26,11 @@
     </g>
     <g class="layer layer-footprints">
       <g class="component-placement top locked" data-placement="component_placement:0" data-component="component:0" data-footprint-def="footprint_def:0" data-footprint="passives:R_0603_1608Metric" transform="translate(25 15) rotate(90)">
-        <rect class="footprint-body" x="-1.65" y="-0.975" width="3.3" height="1.95"/>
+        <rect class="footprint-envelope synthetic" x="-1.65" y="-0.975" width="3.3" height="1.95"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:0:0" data-pad="footprint_pad:0" data-pin="pin:0" data-net="net:0" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:0:1" data-pad="footprint_pad:1" data-pin="pin:1" data-net="net:1" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
-        <text class="reference-designator" data-component="component:0" x="0" y="-1.975" text-anchor="middle">R1</text>
       </g>
+      <text class="reference-designator" data-placement="component_placement:0" data-component="component:0" x="26.975" y="15" text-anchor="middle">R1</text>
     </g>
     <g class="layer layer-ratsnest">
     </g>
