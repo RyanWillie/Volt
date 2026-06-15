@@ -154,6 +154,34 @@ struct MultiComponentNetCircuit {
     return count;
 }
 
+[[nodiscard]] volt::FootprintDefinition resistor_with_declared_geometry() {
+    const auto courtyard = volt::FootprintPolygon{std::vector{
+        volt::FootprintPoint{-3.0, -1.5},
+        volt::FootprintPoint{3.0, -1.5},
+        volt::FootprintPoint{3.0, 1.5},
+        volt::FootprintPoint{-3.0, 1.5},
+    }};
+    const auto body = volt::FootprintPolygon{std::vector{
+        volt::FootprintPoint{-1.2, -0.55},
+        volt::FootprintPoint{1.2, -0.55},
+        volt::FootprintPoint{1.2, 0.55},
+        volt::FootprintPoint{-1.2, 0.55},
+    }};
+    return volt::FootprintDefinition{
+        volt::FootprintRef{"test", "DeclaredGeometry"},
+        std::vector{
+            volt::FootprintPad::surface_mount(
+                "1", volt::FootprintPadShape::RoundedRectangle, volt::FootprintPoint{-0.75, 0.0},
+                volt::FootprintSize{0.8, 0.95}, volt::FootprintLayerSet::front_smd()),
+            volt::FootprintPad::surface_mount(
+                "2", volt::FootprintPadShape::RoundedRectangle, volt::FootprintPoint{0.75, 0.0},
+                volt::FootprintSize{0.8, 0.95}, volt::FootprintLayerSet::front_smd()),
+        },
+        courtyard,
+        body,
+    };
+}
+
 } // namespace
 
 TEST_CASE("PCB SVG writer renders a deterministic placement preview") {
@@ -185,6 +213,98 @@ TEST_CASE("PCB SVG writer exposes stable selectors matching PCB JSON entities") 
     CHECK(svg.find("data-pad=\"footprint_pad:0\"") != std::string::npos);
     CHECK(svg.find("data-pin=\"pin:0\"") != std::string::npos);
     CHECK(svg.find("data-net=\"net:0\"") != std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer renders declared footprint body and courtyard polygons") {
+    auto fixture = make_resistor_circuit(false);
+    fixture.circuit.select_physical_part(
+        fixture.component, volt::PhysicalPart{
+                               volt::ManufacturerPart{"Volt", "DeclaredGeometry"},
+                               volt::PackageRef{"DeclaredGeometry"},
+                               volt::FootprintRef{"test", "DeclaredGeometry"},
+                               std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
+                                           volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+                           });
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Declared Geometry"}};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto footprint =
+        board.cache_footprint_definition(resistor_with_declared_geometry());
+    [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{15.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::FootprintLibrary{});
+
+    CHECK(svg.find("<polygon class=\"footprint-courtyard\" points=\"-3,-1.5 3,-1.5 3,1.5 "
+                   "-3,1.5\"/>") != std::string::npos);
+    CHECK(svg.find("<polygon class=\"footprint-body declared\" points=\"-1.2,-0.55 1.2,-0.55 "
+                   "1.2,0.55 -1.2,0.55\"/>") != std::string::npos);
+    CHECK(svg.find("class=\"footprint-envelope synthetic\"") == std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer marks pad-derived footprint envelopes as synthetic") {
+    const auto fixture = make_resistor_circuit();
+    const auto board = make_preview_board(fixture);
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(svg.find(".footprint-envelope.synthetic{fill:#fff8db;fill-opacity:0.24;"
+                   "stroke:#8a6a16;stroke-width:0.18;stroke-dasharray:0.9 0.55}") !=
+          std::string::npos);
+    CHECK(svg.find("<rect class=\"footprint-envelope synthetic\" x=\"-1.65\" y=\"-0.975\" "
+                   "width=\"3.3\" height=\"1.95\"/>") != std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer keeps reference designators upright for rotated placements") {
+    auto fixture = make_multi_component_net(8);
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Reference Orientation"}};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{60.0, 24.0}));
+    [[maybe_unused]] const auto r1 = board.place_component(volt::ComponentPlacement{
+        fixture.components[0], volt::BoardPoint{10.0, 8.0}, volt::BoardRotation::degrees(0.0)});
+    [[maybe_unused]] const auto r2 = board.place_component(volt::ComponentPlacement{
+        fixture.components[1], volt::BoardPoint{20.0, 8.0}, volt::BoardRotation::degrees(90.0)});
+    [[maybe_unused]] const auto r3 = board.place_component(volt::ComponentPlacement{
+        fixture.components[2], volt::BoardPoint{30.0, 8.0}, volt::BoardRotation::degrees(180.0)});
+    [[maybe_unused]] const auto r4 = board.place_component(volt::ComponentPlacement{
+        fixture.components[3], volt::BoardPoint{40.0, 8.0}, volt::BoardRotation::degrees(270.0)});
+    [[maybe_unused]] const auto r5 = board.place_component(
+        volt::ComponentPlacement{fixture.components[4], volt::BoardPoint{50.0, 10.0},
+                                 volt::BoardRotation::degrees(0.0), volt::BoardSide::Bottom});
+    [[maybe_unused]] const auto r6 = board.place_component(
+        volt::ComponentPlacement{fixture.components[5], volt::BoardPoint{10.0, 17.0},
+                                 volt::BoardRotation::degrees(90.0), volt::BoardSide::Bottom});
+    [[maybe_unused]] const auto r7 = board.place_component(
+        volt::ComponentPlacement{fixture.components[6], volt::BoardPoint{20.0, 17.0},
+                                 volt::BoardRotation::degrees(180.0), volt::BoardSide::Bottom});
+    [[maybe_unused]] const auto r8 = board.place_component(
+        volt::ComponentPlacement{fixture.components[7], volt::BoardPoint{30.0, 17.0},
+                                 volt::BoardRotation::degrees(270.0), volt::BoardSide::Bottom});
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(svg.find("transform=\"translate(50 10) rotate(0) scale(-1 1)\"") != std::string::npos);
+    CHECK(svg.find("transform=\"translate(10 17) rotate(90) scale(-1 1)\"") != std::string::npos);
+    CHECK(svg.find("transform=\"translate(20 17) rotate(180) scale(-1 1)\"") != std::string::npos);
+    CHECK(svg.find("transform=\"translate(30 17) rotate(270) scale(-1 1)\"") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:0\" x=\"10\" "
+                   "y=\"6.025\" text-anchor=\"middle\">R1</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:1\" "
+                   "x=\"21.975\" y=\"8\" text-anchor=\"middle\">R2</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:2\" x=\"30\" "
+                   "y=\"9.975\" text-anchor=\"middle\">R3</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:3\" "
+                   "x=\"38.025\" y=\"8\" text-anchor=\"middle\">R4</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:4\" "
+                   "x=\"50\" y=\"8.025\" text-anchor=\"middle\">R5</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:5\" "
+                   "x=\"11.975\" y=\"17\" text-anchor=\"middle\">R6</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:6\" "
+                   "x=\"20\" y=\"18.975\" text-anchor=\"middle\">R7</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:7\" "
+                   "x=\"28.025\" y=\"17\" text-anchor=\"middle\">R8</text>") != std::string::npos);
+    CHECK(count_occurrences(svg, "class=\"reference-designator\"") == 8U);
+    CHECK(svg.find("class=\"reference-designator\" transform=") == std::string::npos);
 }
 
 TEST_CASE("PCB SVG writer exposes deterministic layer filename tokens") {

@@ -260,31 +260,60 @@ find_pad_resolution(const std::vector<PadResolution> &resolutions, ComponentPlac
     return &*match;
 }
 
-[[nodiscard]] PcbSvgBounds footprint_local_bounds(const FootprintDefinition &definition) {
-    auto bounds = PcbSvgBounds{0.0, 0.0, 0.0, 0.0};
-    auto initialized = false;
-    for (std::size_t index = 0; index < definition.pad_count(); ++index) {
+void include_footprint_point(PcbSvgBounds &bounds, FootprintPoint point) {
+    bounds.min_x = std::min(bounds.min_x, point.x_mm());
+    bounds.min_y = std::min(bounds.min_y, point.y_mm());
+    bounds.max_x = std::max(bounds.max_x, point.x_mm());
+    bounds.max_y = std::max(bounds.max_y, point.y_mm());
+}
+
+[[nodiscard]] bool footprint_has_declared_geometry(const FootprintDefinition &definition) {
+    return definition.body().has_value() || definition.courtyard().has_value();
+}
+
+[[nodiscard]] PcbSvgBounds footprint_pad_bounds(const FootprintDefinition &definition) {
+    const auto &first_pad = definition.pad(FootprintPadId{0});
+    const auto first_half_width = first_pad.size().width_mm() / 2.0;
+    const auto first_half_height = first_pad.size().height_mm() / 2.0;
+    auto bounds = PcbSvgBounds{first_pad.position().x_mm() - first_half_width,
+                               first_pad.position().y_mm() - first_half_height,
+                               first_pad.position().x_mm() + first_half_width,
+                               first_pad.position().y_mm() + first_half_height};
+    for (std::size_t index = 1; index < definition.pad_count(); ++index) {
         const auto &pad = definition.pad(FootprintPadId{index});
         const auto half_width = pad.size().width_mm() / 2.0;
         const auto half_height = pad.size().height_mm() / 2.0;
-        const auto min_x = pad.position().x_mm() - half_width;
-        const auto max_x = pad.position().x_mm() + half_width;
-        const auto min_y = pad.position().y_mm() - half_height;
-        const auto max_y = pad.position().y_mm() + half_height;
-
-        if (!initialized) {
-            bounds = PcbSvgBounds{min_x, min_y, max_x, max_y};
-            initialized = true;
-            continue;
-        }
-
-        bounds.min_x = std::min(bounds.min_x, min_x);
-        bounds.min_y = std::min(bounds.min_y, min_y);
-        bounds.max_x = std::max(bounds.max_x, max_x);
-        bounds.max_y = std::max(bounds.max_y, max_y);
+        include_footprint_point(bounds, FootprintPoint{pad.position().x_mm() - half_width,
+                                                       pad.position().y_mm() - half_height});
+        include_footprint_point(bounds, FootprintPoint{pad.position().x_mm() + half_width,
+                                                       pad.position().y_mm() + half_height});
     }
-    return PcbSvgBounds{bounds.min_x - 0.5, bounds.min_y - 0.5, bounds.max_x + 0.5,
-                        bounds.max_y + 0.5};
+    return bounds;
+}
+
+[[nodiscard]] PcbSvgBounds synthetic_footprint_envelope(const FootprintDefinition &definition) {
+    const auto pad_bounds = footprint_pad_bounds(definition);
+    return PcbSvgBounds{pad_bounds.min_x - 0.5, pad_bounds.min_y - 0.5, pad_bounds.max_x + 0.5,
+                        pad_bounds.max_y + 0.5};
+}
+
+[[nodiscard]] PcbSvgBounds footprint_local_bounds(const FootprintDefinition &definition) {
+    auto bounds = footprint_pad_bounds(definition);
+    if (!footprint_has_declared_geometry(definition)) {
+        return synthetic_footprint_envelope(definition);
+    }
+
+    if (definition.courtyard().has_value()) {
+        for (const auto point : definition.courtyard()->vertices()) {
+            include_footprint_point(bounds, point);
+        }
+    }
+    if (definition.body().has_value()) {
+        for (const auto point : definition.body()->vertices()) {
+            include_footprint_point(bounds, point);
+        }
+    }
+    return bounds;
 }
 
 void include_board_point(PcbSvgBounds &bounds, BoardPoint point) {
@@ -405,7 +434,11 @@ void write_style(std::ostream &out, bool include_copper, bool include_zones, boo
     out << "    "
            ".board-feature-label,.reference-designator,.pad-net-label,.diagnostic-label{font:1.8px "
            "sans-serif;fill:#172026}\n";
-    out << "    .footprint-body{fill:#fff8db;stroke:#8a6a16;stroke-width:0.18}\n";
+    out << "    .footprint-courtyard{fill:none;stroke:#64748b;stroke-width:0.12;"
+           "stroke-dasharray:0.7 0.45}\n";
+    out << "    .footprint-body.declared{fill:#fff8db;stroke:#8a6a16;stroke-width:0.18}\n";
+    out << "    .footprint-envelope.synthetic{fill:#fff8db;fill-opacity:0.24;"
+           "stroke:#8a6a16;stroke-width:0.18;stroke-dasharray:0.9 0.55}\n";
     out << "    .footprint-pad{fill:#d99822;stroke:#5a3a08;stroke-width:0.14}\n";
     out << "    .pad-overlay{fill:#175cd3;stroke:#ffffff;stroke-width:0.12}\n";
     out << "    .ratsnest{fill:none;stroke:#175cd3;stroke-width:0.16;stroke-dasharray:0.8 "
@@ -437,6 +470,17 @@ void write_pcb_svg_outline(std::ostream &out, const Board &board) {
 void write_pcb_point_list(std::ostream &out, const std::vector<BoardPoint> &points);
 
 void write_pcb_point_list(std::ostream &out, const std::vector<BoardPoint> &points) {
+    for (std::size_t point_index = 0; point_index < points.size(); ++point_index) {
+        if (point_index != 0U) {
+            out << ' ';
+        }
+        write_pcb_svg_number(out, points[point_index].x_mm());
+        out << ',';
+        write_pcb_svg_number(out, points[point_index].y_mm());
+    }
+}
+
+void write_footprint_point_list(std::ostream &out, const std::vector<FootprintPoint> &points) {
     for (std::size_t point_index = 0; point_index < points.size(); ++point_index) {
         if (point_index != 0U) {
             out << ' ';
@@ -537,6 +581,48 @@ void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id
     out << "/>\n";
 }
 
+void write_footprint_geometry(std::ostream &out, const FootprintDefinition &definition) {
+    if (definition.courtyard().has_value()) {
+        out << "        <polygon class=\"footprint-courtyard\" points=\"";
+        write_footprint_point_list(out, definition.courtyard()->vertices());
+        out << "\"/>\n";
+    }
+    if (definition.body().has_value()) {
+        out << "        <polygon class=\"footprint-body declared\" points=\"";
+        write_footprint_point_list(out, definition.body()->vertices());
+        out << "\"/>\n";
+    }
+    if (footprint_has_declared_geometry(definition)) {
+        return;
+    }
+
+    const auto local_bounds = synthetic_footprint_envelope(definition);
+    out << "        <rect class=\"footprint-envelope synthetic\" x=\"";
+    write_pcb_svg_number(out, local_bounds.min_x);
+    out << "\" y=\"";
+    write_pcb_svg_number(out, local_bounds.min_y);
+    out << "\" width=\"";
+    write_pcb_svg_number(out, local_bounds.max_x - local_bounds.min_x);
+    out << "\" height=\"";
+    write_pcb_svg_number(out, local_bounds.max_y - local_bounds.min_y);
+    out << "\"/>\n";
+}
+
+void write_reference_designator(std::ostream &out, const ComponentPlacement &placement,
+                                const FootprintDefinition &definition,
+                                const ComponentInstance &component) {
+    const auto local_bounds = footprint_local_bounds(definition);
+    const auto anchor = volt::detail::transform_footprint_point(
+        placement, FootprintPoint{0.0, local_bounds.min_y - 1.0});
+    out << "      <text class=\"reference-designator\" data-component=\""
+        << encode_local_id(placement.component()) << "\" x=\"";
+    write_pcb_svg_number(out, anchor.x_mm());
+    out << "\" y=\"";
+    write_pcb_svg_number(out, anchor.y_mm());
+    out << "\" text-anchor=\"middle\">" << pcb_svg_escape(component.reference().value())
+        << "</text>\n";
+}
+
 void write_placements(std::ostream &out, const Board &board, const FootprintLibrary &footprints,
                       const std::vector<PadResolution> &resolutions,
                       PcbPlacementSvgOptions options) {
@@ -563,7 +649,6 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
             continue;
         }
 
-        const auto local_bounds = footprint_local_bounds(*definition);
         const auto &component = board.circuit().component(placement.component());
         out << "      <g class=\"component-placement " << board_side_name(placement.side());
         if (placement.locked()) {
@@ -590,15 +675,7 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
         }
         out << "\">\n";
         if (placement_context_selected) {
-            out << "        <rect class=\"footprint-body\" x=\"";
-            write_pcb_svg_number(out, local_bounds.min_x);
-            out << "\" y=\"";
-            write_pcb_svg_number(out, local_bounds.min_y);
-            out << "\" width=\"";
-            write_pcb_svg_number(out, local_bounds.max_x - local_bounds.min_x);
-            out << "\" height=\"";
-            write_pcb_svg_number(out, local_bounds.max_y - local_bounds.min_y);
-            out << "\"/>\n";
+            write_footprint_geometry(out, *definition);
         }
         for (std::size_t pad_index = 0; pad_index < definition->pad_count(); ++pad_index) {
             const auto pad_id = FootprintPadId{pad_index};
@@ -610,14 +687,10 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
             write_pad(out, definition->pad(pad_id), pad_id,
                       find_pad_resolution(resolutions, placement_id, pad_id));
         }
-        if (placement_context_selected) {
-            out << "        <text class=\"reference-designator\" data-component=\""
-                << encode_local_id(placement.component()) << "\" x=\"0\" y=\"";
-            write_pcb_svg_number(out, local_bounds.min_y - 1.0);
-            out << "\" text-anchor=\"middle\">" << pcb_svg_escape(component.reference().value())
-                << "</text>\n";
-        }
         out << "      </g>\n";
+        if (placement_context_selected) {
+            write_reference_designator(out, placement, *definition, component);
+        }
     }
     out << "    </g>\n";
 }
