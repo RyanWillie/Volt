@@ -110,7 +110,7 @@ bounds_from_board(const Board &board, const FootprintLibrary &footprints,
 [[nodiscard]] std::string pad_shape_class(FootprintPadShape shape);
 
 void write_style(std::ostream &out, bool include_copper, bool include_zones, bool include_keepouts,
-                 bool include_texts);
+                 bool include_texts, bool include_diagnostic_overlays);
 
 void write_pcb_svg_outline(std::ostream &out, const Board &board);
 

@@ -147,15 +147,19 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     throw std::logic_error{"Unhandled diagnostic entity kind"};
 }
 
-[[nodiscard]] std::string entity_ref_list(const Diagnostic &diagnostic) {
+[[nodiscard]] std::string entity_ref_list(const std::vector<EntityRef> &entities) {
     auto result = std::string{};
-    for (std::size_t index = 0; index < diagnostic.entities().size(); ++index) {
+    for (std::size_t index = 0; index < entities.size(); ++index) {
         if (index != 0U) {
             result += " ";
         }
-        result += entity_ref_svg_id(diagnostic.entities()[index]);
+        result += entity_ref_svg_id(entities[index]);
     }
     return result;
+}
+
+[[nodiscard]] std::string entity_ref_list(const Diagnostic &diagnostic) {
+    return entity_ref_list(diagnostic.entities());
 }
 
 [[nodiscard]] std::string severity_class(Severity severity) {
@@ -168,6 +172,20 @@ void write_pcb_svg_number(std::ostream &out, double value) {
         return "error";
     }
     throw std::logic_error{"Unhandled diagnostic severity"};
+}
+
+[[nodiscard]] std::string overlay_kind_class(DiagnosticOverlayKind kind) {
+    switch (kind) {
+    case DiagnosticOverlayKind::BoundingBox:
+        return "bounding-box";
+    case DiagnosticOverlayKind::Point:
+        return "point";
+    case DiagnosticOverlayKind::Polygon:
+        return "polygon";
+    case DiagnosticOverlayKind::Segment:
+        return "segment";
+    }
+    throw std::logic_error{"Unhandled diagnostic overlay kind"};
 }
 
 [[nodiscard]] std::string footprint_ref_token(const FootprintRef &ref) {
@@ -324,8 +342,36 @@ bounds_from_board(const Board &board, const FootprintLibrary &footprints,
     return bounds;
 }
 
+[[nodiscard]] bool overlay_selected(const DiagnosticOverlay &overlay,
+                                    PcbPlacementSvgOptions options) {
+    if (!options.layer_filter.has_value()) {
+        return true;
+    }
+    return overlay.layers().empty() ||
+           layer_list_contains(overlay.layers(), options.layer_filter.value());
+}
+
+[[nodiscard]] bool has_selected_diagnostic_overlays(const Board &board,
+                                                    const DiagnosticReport &diagnostics,
+                                                    PcbPlacementSvgOptions options) {
+    if (!options.diagnostic_overlays) {
+        return false;
+    }
+    for (const auto &diagnostic : diagnostics.diagnostics()) {
+        if (!diagnostic_selected(board, diagnostic, options)) {
+            continue;
+        }
+        for (const auto &overlay : diagnostic.overlays()) {
+            if (overlay_selected(overlay, options)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void write_style(std::ostream &out, bool include_copper, bool include_zones, bool include_keepouts,
-                 bool include_texts) {
+                 bool include_texts, bool include_diagnostic_overlays) {
     out << "  <style>\n";
     out << "    .board-background{fill:#f8faf8}\n";
     out << "    .board-outline{fill:#d7ead0;stroke:#1f5f3a;stroke-width:0.28}\n";
@@ -363,6 +409,19 @@ void write_style(std::ostream &out, bool include_copper, bool include_zones, boo
     out << "    .diagnostic-marker{fill:none;stroke:#b42318;stroke-width:0.28;stroke-dasharray:0.9 "
            "0.55}\n";
     out << "    .diagnostic-label{fill:#b42318}\n";
+    if (include_diagnostic_overlays) {
+        out << "    .diagnostic-overlay{stroke-width:0.32;stroke-linecap:round;"
+               "stroke-linejoin:round;stroke-dasharray:1.1 0.55}\n";
+        out << "    .diagnostic-overlay.error{fill:#b42318;fill-opacity:0.1;stroke:#b42318}\n";
+        out << "    .diagnostic-overlay.warning{fill:#d97706;fill-opacity:0.1;stroke:#d97706}\n";
+        out << "    .diagnostic-overlay.info{fill:#175cd3;fill-opacity:0.08;stroke:#175cd3}\n";
+        out << "    .diagnostic-overlay.segment{fill:none}\n";
+        out << "    .diagnostic-overlay.point{fill-opacity:0.22}\n";
+        out << "    .diagnostic-marker.warning{stroke:#d97706}\n";
+        out << "    .diagnostic-marker.info{stroke:#175cd3}\n";
+        out << "    .diagnostic-label.warning{fill:#d97706}\n";
+        out << "    .diagnostic-label.info{fill:#175cd3}\n";
+    }
     out << "  </style>\n";
 }
 
@@ -499,6 +558,99 @@ void write_ratsnest(std::ostream &out, const Board &board, const std::vector<Rat
     out << "    </g>\n";
 }
 
+void write_diagnostic_overlay_attrs(std::ostream &out, const Diagnostic &diagnostic,
+                                    const DiagnosticOverlay &overlay, std::size_t diagnostic_index,
+                                    std::size_t overlay_index, const std::string &severity,
+                                    const std::string &diagnostic_entities) {
+    out << " id=\"diagnostic-overlay-" << diagnostic_index << '-' << overlay_index
+        << "\" class=\"diagnostic-overlay " << severity << ' ' << overlay_kind_class(overlay.kind())
+        << "\" data-diagnostic-code=\"" << pcb_svg_escape(diagnostic.code().value())
+        << "\" data-diagnostic-index=\"" << diagnostic_index << "\" data-overlay-index=\""
+        << overlay_index << "\" data-entities=\"" << pcb_svg_escape(diagnostic_entities)
+        << "\" data-overlay-entities=\"" << pcb_svg_escape(entity_ref_list(overlay.entities()))
+        << "\" data-layers=\"" << pcb_svg_escape(board_layer_list_attr(overlay.layers())) << "\"";
+}
+
+void write_diagnostic_point_list(std::ostream &out, const std::vector<DiagnosticPoint> &points) {
+    for (std::size_t point_index = 0; point_index < points.size(); ++point_index) {
+        if (point_index != 0U) {
+            out << ' ';
+        }
+        write_pcb_svg_number(out, points[point_index].x_mm);
+        out << ',';
+        write_pcb_svg_number(out, points[point_index].y_mm);
+    }
+}
+
+[[nodiscard]] double svg_overlay_dimension(double value) {
+    const auto rounded = std::round(value * 1.0e12) / 1.0e12;
+    if (std::abs(value - rounded) < 1.0e-12) {
+        return rounded;
+    }
+    return value;
+}
+
+void write_diagnostic_overlay(std::ostream &out, const Diagnostic &diagnostic,
+                              const DiagnosticOverlay &overlay, std::size_t diagnostic_index,
+                              std::size_t overlay_index, const std::string &severity,
+                              const std::string &diagnostic_entities) {
+    switch (overlay.kind()) {
+    case DiagnosticOverlayKind::BoundingBox: {
+        const auto &points = overlay.points();
+        const auto min_x = std::min(points[0].x_mm, points[1].x_mm);
+        const auto min_y = std::min(points[0].y_mm, points[1].y_mm);
+        const auto max_x = std::max(points[0].x_mm, points[1].x_mm);
+        const auto max_y = std::max(points[0].y_mm, points[1].y_mm);
+        out << "      <rect";
+        write_diagnostic_overlay_attrs(out, diagnostic, overlay, diagnostic_index, overlay_index,
+                                       severity, diagnostic_entities);
+        out << " x=\"";
+        write_pcb_svg_number(out, min_x);
+        out << "\" y=\"";
+        write_pcb_svg_number(out, min_y);
+        out << "\" width=\"";
+        write_pcb_svg_number(out, svg_overlay_dimension(max_x - min_x));
+        out << "\" height=\"";
+        write_pcb_svg_number(out, svg_overlay_dimension(max_y - min_y));
+        out << "\"/>\n";
+        return;
+    }
+    case DiagnosticOverlayKind::Point:
+        out << "      <circle";
+        write_diagnostic_overlay_attrs(out, diagnostic, overlay, diagnostic_index, overlay_index,
+                                       severity, diagnostic_entities);
+        out << " cx=\"";
+        write_pcb_svg_number(out, overlay.points()[0].x_mm);
+        out << "\" cy=\"";
+        write_pcb_svg_number(out, overlay.points()[0].y_mm);
+        out << "\" r=\"0.45\"/>\n";
+        return;
+    case DiagnosticOverlayKind::Polygon:
+        out << "      <polygon";
+        write_diagnostic_overlay_attrs(out, diagnostic, overlay, diagnostic_index, overlay_index,
+                                       severity, diagnostic_entities);
+        out << " points=\"";
+        write_diagnostic_point_list(out, overlay.points());
+        out << "\"/>\n";
+        return;
+    case DiagnosticOverlayKind::Segment:
+        out << "      <line";
+        write_diagnostic_overlay_attrs(out, diagnostic, overlay, diagnostic_index, overlay_index,
+                                       severity, diagnostic_entities);
+        out << " x1=\"";
+        write_pcb_svg_number(out, overlay.points()[0].x_mm);
+        out << "\" y1=\"";
+        write_pcb_svg_number(out, overlay.points()[0].y_mm);
+        out << "\" x2=\"";
+        write_pcb_svg_number(out, overlay.points()[1].x_mm);
+        out << "\" y2=\"";
+        write_pcb_svg_number(out, overlay.points()[1].y_mm);
+        out << "\"/>\n";
+        return;
+    }
+    throw std::logic_error{"Unhandled diagnostic overlay kind"};
+}
+
 void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticReport &diagnostics,
                        const PcbSvgBounds &bounds, PcbPlacementSvgOptions options) {
     out << "    <g class=\"layer layer-diagnostics\">\n";
@@ -520,6 +672,16 @@ void write_diagnostics(std::ostream &out, const Board &board, const DiagnosticRe
             out << "\" y=\"";
             write_pcb_svg_number(out, y);
             out << "\">" << pcb_svg_escape(diagnostic.code().value()) << "</text>\n";
+
+            for (std::size_t overlay_index = 0; overlay_index < diagnostic.overlays().size();
+                 ++overlay_index) {
+                const auto &overlay = diagnostic.overlays()[overlay_index];
+                if (!overlay_selected(overlay, options)) {
+                    continue;
+                }
+                write_diagnostic_overlay(out, diagnostic, overlay, index, overlay_index, severity,
+                                         entities);
+            }
 
             for (const auto entity : diagnostic.entities()) {
                 if (entity.kind() == EntityKind::BoardTrack) {
@@ -659,6 +821,8 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
     const auto has_zones = board.zone_count() != 0U;
     const auto has_keepouts = board.keepout_count() != 0U;
     const auto has_texts = board.text_count() != 0U;
+    const auto has_diagnostic_overlays =
+        detail::has_selected_diagnostic_overlays(board, diagnostics, options);
 
     out << "<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"pcb-placement-preview\" viewBox=\"0 "
            "0 ";
@@ -672,7 +836,8 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
     out << "mm\" data-board=\"board:0\" data-board-name=\""
         << detail::pcb_svg_escape(board.name().value()) << "\" data-units=\""
         << detail::board_units_name(board.units()) << "\">\n";
-    detail::write_style(out, has_copper, has_zones, has_keepouts, has_texts);
+    detail::write_style(out, has_copper, has_zones, has_keepouts, has_texts,
+                        has_diagnostic_overlays);
     out << "  <rect class=\"board-background\" x=\"0\" y=\"0\" width=\"";
     detail::write_pcb_svg_number(out, width);
     out << "\" height=\"";

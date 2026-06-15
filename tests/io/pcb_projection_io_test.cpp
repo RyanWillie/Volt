@@ -852,6 +852,56 @@ TEST_CASE("PCB projection reader and writer preserve emitted PCB visual text dia
     CHECK((*diagnostic)["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
 }
 
+TEST_CASE("PCB projection JSON orders emitted PCB visual diagnostics deterministically") {
+    auto fixture = make_resistor_circuit();
+    const auto second_component = fixture.circuit.instantiate_component(
+        fixture.component_definition, volt::ReferenceDesignator{"R2"});
+    fixture.circuit.select_physical_part(
+        second_component,
+        volt::PhysicalPart{volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+                           volt::PackageRef{"0603"},
+                           volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                           std::vector{
+                               volt::PinPadMapping{fixture.first_pin_definition, "1"},
+                               volt::PinPadMapping{fixture.second_pin_definition, "2"},
+                           }});
+
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{50.0, 30.0}));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)}));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        second_component, volt::BoardPoint{10.5, 10.0}, volt::BoardRotation::degrees(0.0)}));
+    static_cast<void>(board.add_text(volt::BoardText{
+        "REV A", volt::BoardPoint{20.0, 20.0}, volt::BoardRotation::degrees(0.0), front, 1.0}));
+    static_cast<void>(board.add_text(volt::BoardText{
+        "DATE", volt::BoardPoint{20.5, 20.0}, volt::BoardRotation::degrees(0.0), front, 1.0}));
+    static_cast<void>(board.add_text(volt::BoardText{
+        "OFF", volt::BoardPoint{-2.0, 5.0}, volt::BoardRotation::degrees(0.0), front, 1.0}));
+
+    const auto first =
+        nlohmann::json::parse(volt::io::write_pcb_board(board, volt::builtin_footprint_library()));
+    const auto second =
+        nlohmann::json::parse(volt::io::write_pcb_board(board, volt::builtin_footprint_library()));
+    auto visual_codes = std::vector<std::string>{};
+    for (const auto &diagnostic : first["viewer"]["diagnostics"]) {
+        if (diagnostic["category"] == "pcb.visual") {
+            visual_codes.push_back(diagnostic["code"].get<std::string>());
+        }
+    }
+
+    CHECK(first["viewer"]["diagnostics"] == second["viewer"]["diagnostics"]);
+    CHECK(visual_codes == std::vector<std::string>{"PCB_VISUAL_PLACEMENT_OVERLAP",
+                                                   "PCB_VISUAL_LABEL_OUTSIDE_BOARD",
+                                                   "PCB_VISUAL_LABEL_OVERLAP"});
+}
+
 TEST_CASE("PCB projection reader rejects dangling references") {
     const auto fixture = make_resistor_circuit();
 
