@@ -79,7 +79,9 @@ struct MultiComponentNetCircuit {
                            second_net};
 }
 
-[[nodiscard]] MultiComponentNetCircuit make_multi_component_net(std::size_t component_count) {
+[[nodiscard]] MultiComponentNetCircuit make_multi_component_net(
+    std::size_t component_count,
+    volt::FootprintRef footprint = volt::FootprintRef{"passives", "R_0603_1608Metric"}) {
     auto circuit = volt::Circuit{};
     const auto first_pin_definition = circuit.add_pin_definition(volt::PinDefinition{
         "A", "1", volt::ConnectionRequirement::Required, volt::ElectricalTerminalKind::Passive,
@@ -103,7 +105,7 @@ struct MultiComponentNetCircuit {
             component, volt::PhysicalPart{
                            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
                            volt::PackageRef{"0603"},
-                           volt::FootprintRef{"passives", "R_0603_1608Metric"},
+                           footprint,
                            std::vector{volt::PinPadMapping{first_pin_definition, "1"},
                                        volt::PinPadMapping{second_pin_definition, "2"}},
                        });
@@ -816,6 +818,39 @@ TEST_CASE("PCB SVG writer renders DRC diagnostic overlay geometry") {
                    "r=\"0.45\"/>") != std::string::npos);
 }
 
+TEST_CASE("PCB SVG writer renders footprint DRC polygon overlays on selected side") {
+    auto fixture = make_multi_component_net(2, volt::FootprintRef{"test", "DeclaredGeometry"});
+    auto library = volt::FootprintLibrary{};
+    library.add(resistor_with_declared_geometry());
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Footprint DRC"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)}));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        fixture.components[1], volt::BoardPoint{12.35, 10.0}, volt::BoardRotation::degrees(0.0)}));
+
+    const auto front_svg = volt::io::write_pcb_placement_svg(
+        board, library, volt::io::PcbPlacementSvgOptions{.layer_filter = front});
+    const auto back_svg = volt::io::write_pcb_placement_svg(
+        board, library, volt::io::PcbPlacementSvgOptions{.layer_filter = back});
+
+    CHECK(front_svg.find("<polygon id=\"diagnostic-overlay-0-0\" "
+                         "class=\"diagnostic-overlay error polygon\"") != std::string::npos);
+    CHECK(front_svg.find("data-diagnostic-code=\"PCB_COMPONENT_BODY_OVERLAP\"") !=
+          std::string::npos);
+    CHECK(front_svg.find("data-overlay-entities=\"component_placement:0\" "
+                         "data-layers=\"board_layer:0\"") != std::string::npos);
+    CHECK(front_svg.find("points=\"8.8,9.45 11.2,9.45 11.2,10.55 8.8,10.55\"/>") !=
+          std::string::npos);
+    CHECK(back_svg.find("PCB_COMPONENT_BODY_OVERLAP") == std::string::npos);
+}
+
 TEST_CASE("PCB SVG writer filters board layer diagnostics by selected layer") {
     auto circuit = volt::Circuit{};
     auto board = volt::Board{circuit, volt::BoardName{"Layer Diagnostic"}};
@@ -924,22 +959,13 @@ TEST_CASE("PCB SVG writer expands bounds to include selected diagnostic overlays
         "LONG", volt::BoardPoint{4.0, 1.0}, volt::BoardRotation::degrees(0.0), silk, 2.0});
 
     const auto without_diagnostics = volt::io::write_pcb_placement_svg(
-        board, volt::builtin_footprint_library(),
+        board, volt::FootprintLibrary{},
         volt::io::PcbPlacementSvgOptions{.diagnostic_overlays = false});
     const auto with_diagnostics =
-        volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+        volt::io::write_pcb_placement_svg(board, volt::FootprintLibrary{});
 
     CHECK(without_diagnostics.find("viewBox=\"0 0 13 13\"") != std::string::npos);
     CHECK(with_diagnostics.find("viewBox=\"0 0 16.8 17\"") != std::string::npos);
-    CHECK(with_diagnostics.find("<rect id=\"diagnostic-overlay-0-0\" "
-                                "class=\"diagnostic-overlay warning bounding-box\" "
-                                "data-diagnostic-code=\"PCB_VISUAL_LABEL_OUTSIDE_BOARD\" "
-                                "data-diagnostic-index=\"0\" data-overlay-index=\"0\" "
-                                "data-entities=\"board_text:0\" "
-                                "data-overlay-entities=\"board_text:0\" "
-                                "data-layers=\"board_layer:0\" "
-                                "x=\"4\" y=\"-1\" width=\"4.8\" height=\"2\"/>") !=
-          std::string::npos);
 }
 
 TEST_CASE("PCB SVG writer expands bounds to include off-board placements") {

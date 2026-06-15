@@ -33,6 +33,10 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     if (!std::isfinite(value)) {
         throw std::invalid_argument{"PCB SVG numeric values must be finite"};
     }
+    const auto rounded = std::round(value * 1.0e12) / 1.0e12;
+    if (std::abs(value - rounded) < 1.0e-12) {
+        value = rounded;
+    }
     if (std::abs(value) < 1.0e-12) {
         value = 0.0;
     }
@@ -603,14 +607,6 @@ void write_diagnostic_point_list(std::ostream &out, const std::vector<Diagnostic
     }
 }
 
-[[nodiscard]] double svg_overlay_dimension(double value) {
-    const auto rounded = std::round(value * 1.0e12) / 1.0e12;
-    if (std::abs(value - rounded) < 1.0e-12) {
-        return rounded;
-    }
-    return value;
-}
-
 void write_diagnostic_overlay(std::ostream &out, const Diagnostic &diagnostic,
                               const DiagnosticOverlay &overlay, std::size_t diagnostic_index,
                               std::size_t overlay_index, const std::string &severity,
@@ -630,9 +626,9 @@ void write_diagnostic_overlay(std::ostream &out, const Diagnostic &diagnostic,
         out << "\" y=\"";
         write_pcb_svg_number(out, min_y);
         out << "\" width=\"";
-        write_pcb_svg_number(out, svg_overlay_dimension(max_x - min_x));
+        write_pcb_svg_number(out, max_x - min_x);
         out << "\" height=\"";
-        write_pcb_svg_number(out, svg_overlay_dimension(max_y - min_y));
+        write_pcb_svg_number(out, max_y - min_y);
         out << "\"/>\n";
         return;
     }
