@@ -235,10 +235,12 @@ TEST_CASE("PCB SVG writer renders declared footprint body and courtyard polygons
 
     const auto svg = volt::io::write_pcb_placement_svg(board, volt::FootprintLibrary{});
 
-    CHECK(svg.find("<polygon class=\"footprint-courtyard\" points=\"-3,-1.5 3,-1.5 3,1.5 "
-                   "-3,1.5\"/>") != std::string::npos);
-    CHECK(svg.find("<polygon class=\"footprint-body declared\" points=\"-1.2,-0.55 1.2,-0.55 "
-                   "1.2,0.55 -1.2,0.55\"/>") != std::string::npos);
+    CHECK(svg.find("<polygon class=\"footprint-courtyard declared\" "
+                   "data-placement=\"component_placement:0\" data-component=\"component:0\" "
+                   "points=\"12,8.5 18,8.5 18,11.5 12,11.5\"/>") != std::string::npos);
+    CHECK(svg.find("<polygon class=\"footprint-body declared\" "
+                   "data-placement=\"component_placement:0\" data-component=\"component:0\" "
+                   "points=\"13.8,9.45 16.2,9.45 16.2,10.55 13.8,10.55\"/>") != std::string::npos);
     CHECK(svg.find("class=\"footprint-envelope synthetic\"") == std::string::npos);
 }
 
@@ -287,22 +289,30 @@ TEST_CASE("PCB SVG writer keeps reference designators upright for rotated placem
     CHECK(svg.find("transform=\"translate(10 17) rotate(90) scale(-1 1)\"") != std::string::npos);
     CHECK(svg.find("transform=\"translate(20 17) rotate(180) scale(-1 1)\"") != std::string::npos);
     CHECK(svg.find("transform=\"translate(30 17) rotate(270) scale(-1 1)\"") != std::string::npos);
-    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:0\" x=\"10\" "
-                   "y=\"6.025\" text-anchor=\"middle\">R1</text>") != std::string::npos);
-    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:1\" "
-                   "x=\"21.975\" y=\"8\" text-anchor=\"middle\">R2</text>") != std::string::npos);
-    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:2\" x=\"30\" "
-                   "y=\"9.975\" text-anchor=\"middle\">R3</text>") != std::string::npos);
-    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:3\" "
-                   "x=\"38.025\" y=\"8\" text-anchor=\"middle\">R4</text>") != std::string::npos);
-    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:4\" "
-                   "x=\"50\" y=\"8.025\" text-anchor=\"middle\">R5</text>") != std::string::npos);
-    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:5\" "
-                   "x=\"11.975\" y=\"17\" text-anchor=\"middle\">R6</text>") != std::string::npos);
-    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:6\" "
-                   "x=\"20\" y=\"18.975\" text-anchor=\"middle\">R7</text>") != std::string::npos);
-    CHECK(svg.find("<text class=\"reference-designator\" data-component=\"component:7\" "
-                   "x=\"28.025\" y=\"17\" text-anchor=\"middle\">R8</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-placement=\"component_placement:0\" "
+                   "data-component=\"component:0\" x=\"10\" y=\"6.025\" "
+                   "text-anchor=\"middle\">R1</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-placement=\"component_placement:1\" "
+                   "data-component=\"component:1\" x=\"21.975\" y=\"8\" "
+                   "text-anchor=\"middle\">R2</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-placement=\"component_placement:2\" "
+                   "data-component=\"component:2\" x=\"30\" y=\"9.975\" "
+                   "text-anchor=\"middle\">R3</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-placement=\"component_placement:3\" "
+                   "data-component=\"component:3\" x=\"38.025\" y=\"8\" "
+                   "text-anchor=\"middle\">R4</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-placement=\"component_placement:4\" "
+                   "data-component=\"component:4\" x=\"50\" y=\"8.025\" "
+                   "text-anchor=\"middle\">R5</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-placement=\"component_placement:5\" "
+                   "data-component=\"component:5\" x=\"11.975\" y=\"17\" "
+                   "text-anchor=\"middle\">R6</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-placement=\"component_placement:6\" "
+                   "data-component=\"component:6\" x=\"20\" y=\"18.975\" "
+                   "text-anchor=\"middle\">R7</text>") != std::string::npos);
+    CHECK(svg.find("<text class=\"reference-designator\" data-placement=\"component_placement:7\" "
+                   "data-component=\"component:7\" x=\"28.025\" y=\"17\" "
+                   "text-anchor=\"middle\">R8</text>") != std::string::npos);
     CHECK(count_occurrences(svg, "class=\"reference-designator\"") == 8U);
     CHECK(svg.find("class=\"reference-designator\" transform=") == std::string::npos);
 }

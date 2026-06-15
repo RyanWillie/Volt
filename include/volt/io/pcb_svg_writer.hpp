@@ -94,13 +94,18 @@ find_pad_resolution(const std::vector<PadResolution> &resolutions, ComponentPlac
 
 void include_board_point(PcbSvgBounds &bounds, BoardPoint point);
 
+[[nodiscard]] const ProjectedFootprintGeometry *projected_footprint_geometry_for_placement(
+    const std::vector<ProjectedFootprintGeometry> &geometries, ComponentPlacementId placement);
+
 void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &placement,
-                              const FootprintDefinition &definition);
+                              const FootprintDefinition &definition,
+                              const ProjectedFootprintGeometry *projected_geometry);
 
 void include_feature_bounds(PcbSvgBounds &bounds, const BoardFeature &feature);
 
-[[nodiscard]] PcbSvgBounds bounds_from_board(const Board &board,
-                                             const FootprintLibrary &footprints);
+[[nodiscard]] PcbSvgBounds
+bounds_from_board(const Board &board, const FootprintLibrary &footprints,
+                  const std::vector<ProjectedFootprintGeometry> &footprint_geometries);
 
 [[nodiscard]] std::string pad_shape_class(FootprintPadShape shape);
 
@@ -158,6 +163,7 @@ void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id
 
 void write_placements(std::ostream &out, const Board &board, const FootprintLibrary &footprints,
                       const std::vector<PadResolution> &resolutions,
+                      const std::vector<ProjectedFootprintGeometry> &footprint_geometries,
                       PcbPlacementSvgOptions options);
 
 void write_pad_overlays(std::ostream &out, const Board &board,

@@ -127,7 +127,7 @@
         <rect class="footprint-pad rounded-rectangle non_electrical" data-pad-projection="pcb_pad:0:2" data-pad="footprint_pad:2" x="-4.1" y="1.2" width="1.5" height="3.4" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle non_electrical" data-pad-projection="pcb_pad:0:3" data-pad="footprint_pad:3" x="2.6" y="1.2" width="1.5" height="3.4" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-component="component:0" x="7" y="9.9" text-anchor="middle">J1</text>
+      <text class="reference-designator" data-placement="component_placement:0" data-component="component:0" x="7" y="9.9" text-anchor="middle">J1</text>
       <g class="component-placement top locked" data-placement="component_placement:1" data-component="component:1" data-footprint-def="footprint_def:1" data-footprint="KiCad_Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" transform="translate(23 15) rotate(0)">
         <rect class="footprint-envelope synthetic" x="-3.95" y="-2.705" width="7.9" height="5.41"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:1:0" data-pad="footprint_pad:0" data-pin="pin:2" data-net="net:1" x="-3.45" y="-2.205" width="1.95" height="0.6" rx="0.1" ry="0.1"/>
@@ -139,49 +139,49 @@
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:1:6" data-pad="footprint_pad:6" data-pin="pin:8" data-net="net:2" x="1.5" y="-0.935" width="1.95" height="0.6" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:1:7" data-pad="footprint_pad:7" data-pin="pin:9" data-net="net:0" x="1.5" y="-2.205" width="1.95" height="0.6" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-component="component:1" x="23" y="11.295" text-anchor="middle">U1</text>
+      <text class="reference-designator" data-placement="component_placement:1" data-component="component:1" x="23" y="11.295" text-anchor="middle">U1</text>
       <g class="component-placement top" data-placement="component_placement:2" data-component="component:2" data-footprint-def="footprint_def:2" data-footprint="Resistor_SMD:R_0805_2012Metric" transform="translate(36 10) rotate(0)">
         <rect class="footprint-envelope synthetic" x="-1.925" y="-1.2" width="3.85" height="2.4"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:0" data-pad="footprint_pad:0" data-pin="pin:10" data-net="net:0" x="-1.425" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:1" data-pad="footprint_pad:1" data-pin="pin:11" data-net="net:2" x="0.4" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-component="component:2" x="36" y="7.8" text-anchor="middle">R1</text>
+      <text class="reference-designator" data-placement="component_placement:2" data-component="component:2" x="36" y="7.8" text-anchor="middle">R1</text>
       <g class="component-placement top" data-placement="component_placement:3" data-component="component:3" data-footprint-def="footprint_def:2" data-footprint="Resistor_SMD:R_0805_2012Metric" transform="translate(36 14) rotate(0)">
         <rect class="footprint-envelope synthetic" x="-1.925" y="-1.2" width="3.85" height="2.4"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:3:0" data-pad="footprint_pad:0" data-pin="pin:12" data-net="net:2" x="-1.425" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:3:1" data-pad="footprint_pad:1" data-pin="pin:13" data-net="net:3" x="0.4" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-component="component:3" x="36" y="11.8" text-anchor="middle">R2</text>
+      <text class="reference-designator" data-placement="component_placement:3" data-component="component:3" x="36" y="11.8" text-anchor="middle">R2</text>
       <g class="component-placement top" data-placement="component_placement:4" data-component="component:4" data-footprint-def="footprint_def:3" data-footprint="Capacitor_SMD:C_0805_2012Metric" transform="translate(39 17.95) rotate(90)">
         <rect class="footprint-envelope synthetic" x="-1.95" y="-1.225" width="3.9" height="2.45"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:4:0" data-pad="footprint_pad:0" data-pin="pin:14" data-net="net:3" x="-1.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:4:1" data-pad="footprint_pad:1" data-pin="pin:15" data-net="net:1" x="0.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-component="component:4" x="41.225" y="17.95" text-anchor="middle">C1</text>
+      <text class="reference-designator" data-placement="component_placement:4" data-component="component:4" x="41.225" y="17.95" text-anchor="middle">C1</text>
       <g class="component-placement top" data-placement="component_placement:5" data-component="component:5" data-footprint-def="footprint_def:3" data-footprint="Capacitor_SMD:C_0805_2012Metric" transform="translate(31 21) rotate(90)">
         <rect class="footprint-envelope synthetic" x="-1.95" y="-1.225" width="3.9" height="2.45"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:5:0" data-pad="footprint_pad:0" data-pin="pin:16" data-net="net:4" x="-1.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:5:1" data-pad="footprint_pad:1" data-pin="pin:17" data-net="net:1" x="0.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-component="component:5" x="33.225" y="21" text-anchor="middle">C2</text>
+      <text class="reference-designator" data-placement="component_placement:5" data-component="component:5" x="33.225" y="21" text-anchor="middle">C2</text>
       <g class="component-placement top" data-placement="component_placement:6" data-component="component:6" data-footprint-def="footprint_def:3" data-footprint="Capacitor_SMD:C_0805_2012Metric" transform="translate(29 10) rotate(0)">
         <rect class="footprint-envelope synthetic" x="-1.95" y="-1.225" width="3.9" height="2.45"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:6:0" data-pad="footprint_pad:0" data-pin="pin:18" data-net="net:0" x="-1.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:6:1" data-pad="footprint_pad:1" data-pin="pin:19" data-net="net:1" x="0.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-component="component:6" x="29" y="7.775" text-anchor="middle">C3</text>
+      <text class="reference-designator" data-placement="component_placement:6" data-component="component:6" x="29" y="7.775" text-anchor="middle">C3</text>
       <g class="component-placement top" data-placement="component_placement:7" data-component="component:7" data-footprint-def="footprint_def:2" data-footprint="Resistor_SMD:R_0805_2012Metric" transform="translate(15.5 20) rotate(90)">
         <rect class="footprint-envelope synthetic" x="-1.925" y="-1.2" width="3.85" height="2.4"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:7:0" data-pad="footprint_pad:0" data-pin="pin:20" data-net="net:5" x="-1.425" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:7:1" data-pad="footprint_pad:1" data-pin="pin:21" data-net="net:6" x="0.4" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-component="component:7" x="17.7" y="20" text-anchor="middle">R3</text>
+      <text class="reference-designator" data-placement="component_placement:7" data-component="component:7" x="17.7" y="20" text-anchor="middle">R3</text>
       <g class="component-placement top" data-placement="component_placement:8" data-component="component:8" data-footprint-def="footprint_def:4" data-footprint="LED_SMD:LED_0805_2012Metric" transform="translate(12.5 24) rotate(0)">
         <rect class="footprint-envelope synthetic" x="-1.925" y="-1.2" width="3.85" height="2.4"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:8:0" data-pad="footprint_pad:0" data-pin="pin:23" data-net="net:1" x="-1.425" y="-0.7" width="0.975" height="1.4" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:8:1" data-pad="footprint_pad:1" data-pin="pin:22" data-net="net:6" x="0.45" y="-0.7" width="0.975" height="1.4" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-component="component:8" x="12.5" y="21.8" text-anchor="middle">D1</text>
+      <text class="reference-designator" data-placement="component_placement:8" data-component="component:8" x="12.5" y="21.8" text-anchor="middle">D1</text>
     </g>
     <g class="layer layer-pad-overlays">
     </g>

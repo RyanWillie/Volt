@@ -30,7 +30,7 @@
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:0:0" data-pad="footprint_pad:0" data-pin="pin:0" data-net="net:0" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:0:1" data-pad="footprint_pad:1" data-pin="pin:1" data-net="net:1" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-component="component:0" x="26.975" y="15" text-anchor="middle">R1</text>
+      <text class="reference-designator" data-placement="component_placement:0" data-component="component:0" x="26.975" y="15" text-anchor="middle">R1</text>
     </g>
     <g class="layer layer-ratsnest">
     </g>
