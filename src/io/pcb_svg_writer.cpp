@@ -370,6 +370,27 @@ bounds_from_board(const Board &board, const FootprintLibrary &footprints,
     return false;
 }
 
+void include_selected_diagnostic_overlay_bounds(PcbSvgBounds &bounds, const Board &board,
+                                                const DiagnosticReport &diagnostics,
+                                                PcbPlacementSvgOptions options) {
+    if (!options.diagnostic_overlays) {
+        return;
+    }
+    for (const auto &diagnostic : diagnostics.diagnostics()) {
+        if (!diagnostic_selected(board, diagnostic, options)) {
+            continue;
+        }
+        for (const auto &overlay : diagnostic.overlays()) {
+            if (!overlay_selected(overlay, options)) {
+                continue;
+            }
+            for (const auto point : overlay.points()) {
+                include_board_point(bounds, BoardPoint{point.x_mm, point.y_mm});
+            }
+        }
+    }
+}
+
 void write_style(std::ostream &out, bool include_copper, bool include_zones, bool include_keepouts,
                  bool include_texts, bool include_diagnostic_overlays) {
     out << "  <style>\n";
@@ -810,7 +831,8 @@ void write_pcb_placement_svg(std::ostream &out, const Board &board,
     const auto preview_footprints = detail::preview_footprint_library(board, footprints);
     const auto diagnostics = validate_board(board, preview_footprints);
     const auto footprint_geometries = board.project_footprint_geometries(preview_footprints);
-    const auto bounds = detail::bounds_from_board(board, preview_footprints, footprint_geometries);
+    auto bounds = detail::bounds_from_board(board, preview_footprints, footprint_geometries);
+    detail::include_selected_diagnostic_overlay_bounds(bounds, board, diagnostics, options);
     const auto width = detail::preview_width(bounds);
     const auto height = detail::preview_height(bounds, board, diagnostics, options);
     const auto translate_x = detail::pcb_svg_margin_mm - bounds.min_x;

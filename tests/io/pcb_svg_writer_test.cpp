@@ -913,6 +913,35 @@ TEST_CASE("PCB SVG writer omits diagnostic layout when overlays are disabled") {
     CHECK(svg.find("viewBox=\"0 0 58 38\"") != std::string::npos);
 }
 
+TEST_CASE("PCB SVG writer expands bounds to include selected diagnostic overlays") {
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit, volt::BoardName{"Off Board Text"}};
+    const auto silk = board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{5.0, 5.0}));
+    [[maybe_unused]] const auto text = board.add_text(volt::BoardText{
+        "LONG", volt::BoardPoint{4.0, 1.0}, volt::BoardRotation::degrees(0.0), silk, 2.0});
+
+    const auto without_diagnostics = volt::io::write_pcb_placement_svg(
+        board, volt::builtin_footprint_library(),
+        volt::io::PcbPlacementSvgOptions{.diagnostic_overlays = false});
+    const auto with_diagnostics =
+        volt::io::write_pcb_placement_svg(board, volt::builtin_footprint_library());
+
+    CHECK(without_diagnostics.find("viewBox=\"0 0 13 13\"") != std::string::npos);
+    CHECK(with_diagnostics.find("viewBox=\"0 0 16.8 17\"") != std::string::npos);
+    CHECK(with_diagnostics.find("<rect id=\"diagnostic-overlay-0-0\" "
+                                "class=\"diagnostic-overlay warning bounding-box\" "
+                                "data-diagnostic-code=\"PCB_VISUAL_LABEL_OUTSIDE_BOARD\" "
+                                "data-diagnostic-index=\"0\" data-overlay-index=\"0\" "
+                                "data-entities=\"board_text:0\" "
+                                "data-overlay-entities=\"board_text:0\" "
+                                "data-layers=\"board_layer:0\" "
+                                "x=\"4\" y=\"-1\" width=\"4.8\" height=\"2\"/>") !=
+          std::string::npos);
+}
+
 TEST_CASE("PCB SVG writer expands bounds to include off-board placements") {
     const auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
