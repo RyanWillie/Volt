@@ -96,7 +96,7 @@ include/volt/core      typed IDs, entity storage, diagnostics, properties, versi
 include/volt/circuit   logical circuit model, parts, nets, instances, hierarchy, validation
 include/volt/authoring component-library specs, reference allocation, connection helpers
 include/volt/schematic schematic projection model, symbols, layout, readability validation
-include/volt/pcb       board outline, layers, footprints, copper, geometry projection
+include/volt/pcb       PCB aggregate root plus geometry, layers, copper, placement, routing subfolders
 include/volt/io        deterministic read/write for logical, schematic, and PCB data
 include/volt/adapters  KiCad schematic and PCB export adapters
 python/volt            Python authoring bindings over kernel-owned state

@@ -15,8 +15,10 @@ ALLOWLIST_DIR = ROOT / "tests" / "architecture"
 ROOT_TYPES = {
     "Circuit": ROOT / "include" / "volt" / "circuit" / "circuit.hpp",
     "Board": ROOT / "include" / "volt" / "pcb" / "board.hpp",
-    "BoardSpatialIndex": ROOT / "include" / "volt" / "pcb" / "board_spatial_index.hpp",
-    "BoardRouter": ROOT / "include" / "volt" / "pcb" / "board_router.hpp",
+    "BoardSpatialIndex": (
+        ROOT / "include" / "volt" / "pcb" / "routing" / "board_spatial_index.hpp"
+    ),
+    "BoardRouter": ROOT / "include" / "volt" / "pcb" / "routing" / "board_router.hpp",
     "Schematic": ROOT / "include" / "volt" / "schematic" / "schematic.hpp",
 }
 
@@ -168,7 +170,7 @@ def subsystem_root_name(path: Path) -> str | None:
             return None
         if "_model" in name or name in {"design_intent.hpp", "net_classes.hpp"}:
             return "Circuit"
-    if path.match("include/volt/pcb/*"):
+    if path.match("include/volt/pcb/**/*.hpp") or path.match("include/volt/pcb/*.hpp"):
         if name == "board.hpp":
             return None
         if "_model" in name:
@@ -200,7 +202,7 @@ def check_subsystem_sources_have_real_logic(failures: list[str]) -> None:
     for directory in source_patterns:
         if not directory.exists():
             continue
-        for path in directory.glob("*"):
+        for path in directory.rglob("*"):
             if path.suffix != ".cpp":
                 continue
             name = path.name

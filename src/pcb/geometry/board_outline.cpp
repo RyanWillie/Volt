@@ -1,4 +1,4 @@
-#include <volt/pcb/board_outline.hpp>
+#include <volt/pcb/geometry/board_outline.hpp>
 
 #include <cmath>
 #include <cstddef>

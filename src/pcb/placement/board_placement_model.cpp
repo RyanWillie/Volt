@@ -1,4 +1,4 @@
-#include <volt/pcb/board_placement_model.hpp>
+#include <volt/pcb/placement/board_placement_model.hpp>
 
 #include <cstddef>
 #include <optional>

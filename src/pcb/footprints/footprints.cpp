@@ -1,6 +1,6 @@
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
 
-#include "../detail/footprint_polygon_validation.hpp"
+#include "../../detail/footprint_polygon_validation.hpp"
 
 #include <algorithm>
 #include <cmath>

@@ -3,7 +3,7 @@
 #include "binding_common.hpp"
 
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
 
 namespace volt::python {
 

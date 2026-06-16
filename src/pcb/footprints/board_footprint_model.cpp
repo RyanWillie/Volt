@@ -1,4 +1,4 @@
-#include <volt/pcb/board_footprint_model.hpp>
+#include <volt/pcb/footprints/board_footprint_model.hpp>
 
 #include <cstddef>
 #include <optional>

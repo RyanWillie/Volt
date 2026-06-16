@@ -23,7 +23,7 @@
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/pcb_schema.hpp>
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
 
 namespace volt::io::detail {
 

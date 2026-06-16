@@ -9,7 +9,7 @@
 #include <volt/io/bom_writer.hpp>
 #include <volt/io/pcb_svg_writer.hpp>
 #include <volt/io/pcb_writer.hpp>
-#include <volt/pcb/board_router.hpp>
+#include <volt/pcb/routing/board_router.hpp>
 
 namespace volt::python {
 

@@ -13,7 +13,7 @@
 #include <volt/io/logical_circuit_writer.hpp>
 #include <volt/io/pcb_schema.hpp>
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
 
 namespace volt::io {
 

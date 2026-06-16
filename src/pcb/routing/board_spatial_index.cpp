@@ -1,4 +1,4 @@
-#include <volt/pcb/board_spatial_index.hpp>
+#include <volt/pcb/routing/board_spatial_index.hpp>
 
 #include <algorithm>
 #include <cmath>

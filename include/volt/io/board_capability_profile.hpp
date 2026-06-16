@@ -5,7 +5,7 @@
 #include <string>
 #include <string_view>
 
-#include <volt/pcb/board_copper.hpp>
+#include <volt/pcb/copper/board_copper.hpp>
 
 namespace volt::io {
 

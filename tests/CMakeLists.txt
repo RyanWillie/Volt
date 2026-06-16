@@ -58,17 +58,18 @@ add_executable(
     io/schematic_schema_test.cpp
     io/schematic_svg_writer_test.cpp
     io/schematic_writer_test.cpp
-    pcb/board_geometry_projection_test.cpp
-    pcb/board_escape_router_test.cpp
-    pcb/board_router_test.cpp
-    pcb/board_spatial_index_test.cpp
+    pcb/geometry/board_geometry_projection_test.cpp
+    pcb/routing/board_escape_router_test.cpp
+    pcb/routing/board_router_test.cpp
+    pcb/routing/board_spatial_index_test.cpp
     pcb/board_test.cpp
-    pcb/board_models_test.cpp
-    pcb/erc_drc_real_board_coverage_matrix_test.cpp
-    pcb/erc_drc_real_board_edge_cases_test.cpp
-    pcb/erc_drc_real_board_regression_test.cpp
-    pcb/board_validation_test.cpp
-    pcb/footprints_test.cpp
+    pcb/public_include_compatibility_test.cpp
+    pcb/models/board_models_test.cpp
+    pcb/validation/erc_drc_real_board_coverage_matrix_test.cpp
+    pcb/validation/erc_drc_real_board_edge_cases_test.cpp
+    pcb/validation/erc_drc_real_board_regression_test.cpp
+    pcb/validation/board_validation_test.cpp
+    pcb/footprints/footprints_test.cpp
     adapters/kicad_boundary_test.cpp
     adapters/kicad_loss_report_test.cpp
     adapters/kicad_pcb_writer_test.cpp

@@ -4,7 +4,7 @@
 
 #include <volt/adapters/kicad/loss_report.hpp>
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
 
 namespace volt::adapters::kicad {
 

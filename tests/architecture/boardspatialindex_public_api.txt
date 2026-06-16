@@ -3,9 +3,9 @@ include <optional>
 include <vector>
 include <volt/core/ids.hpp>
 include <volt/pcb/board.hpp>
-include <volt/pcb/board_copper.hpp>
-include <volt/pcb/board_features.hpp>
-include <volt/pcb/footprints.hpp>
+include <volt/pcb/copper/board_copper.hpp>
+include <volt/pcb/features/board_features.hpp>
+include <volt/pcb/footprints/footprints.hpp>
 
 explicit BoardSpatialIndex(const Board &board)
 explicit BoardSpatialIndex(const Board &&board) = delete
