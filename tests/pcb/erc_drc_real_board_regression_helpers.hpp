@@ -255,6 +255,34 @@ struct RealBoardFixture {
                            std::move(package), std::move(footprint), std::move(mappings)});
 }
 
+struct AddedPin {
+    volt::PinDefId definition;
+    volt::ComponentId component;
+    volt::PinId pin;
+};
+
+[[nodiscard, maybe_unused]] AddedPin add_single_pin_component(
+    volt::Circuit &circuit, std::string reference, std::string pin_name,
+    volt::ConnectionRequirement requirement, volt::ElectricalTerminalKind terminal,
+    volt::ElectricalDirection direction,
+    volt::ElectricalSignalDomain domain = volt::ElectricalSignalDomain::Unspecified,
+    volt::ElectricalDriveKind drive = volt::ElectricalDriveKind::Unspecified) {
+    const auto pin_definition = circuit.add_pin_definition(
+        volt::PinDefinition{pin_name, "1", requirement, terminal, direction, domain, drive});
+    const auto definition = circuit.add_component_definition(
+        volt::ComponentDefinition{"RealBoardEdgeCaseOnePin", std::vector{pin_definition}});
+    const auto component =
+        circuit.instantiate_component(definition, volt::ReferenceDesignator{std::move(reference)});
+    return AddedPin{pin_definition, component,
+                    volt::queries::pin_by_name(circuit, component, pin_name).value()};
+}
+
+[[maybe_unused]] void assign_net_class(volt::Circuit &circuit, volt::NetId net,
+                                       volt::NetClass net_class) {
+    const auto id = circuit.add_net_class(std::move(net_class));
+    REQUIRE(circuit.assign_net_class(net, id));
+}
+
 [[nodiscard, maybe_unused]] RealBoardFixture make_real_board_fixture(bool select_led_part = true) {
     auto circuit = volt::Circuit{};
 
@@ -491,10 +519,14 @@ struct RealBoardLayout {
                                                                    BoardOptions options = {},
                                                                    bool place_led = true) {
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Status Controller"}};
-    const auto front = board.add_layer(
-        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
-    const auto back = board.add_layer(
-        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    auto front_layer =
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top};
+    front_layer.set_copper_weight_oz(1.0);
+    const auto front = board.add_layer(std::move(front_layer));
+    auto back_layer =
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom};
+    back_layer.set_copper_weight_oz(1.0);
+    const auto back = board.add_layer(std::move(back_layer));
     board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
     board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{44.0, 22.0}));
@@ -592,6 +624,62 @@ find_diagnostic(const volt::DiagnosticReport &report, std::string_view code) {
         }
     }
     return nullptr;
+}
+
+[[nodiscard, maybe_unused]] std::vector<const volt::Diagnostic *>
+find_diagnostics(const volt::DiagnosticReport &report, std::string_view code) {
+    auto matches = std::vector<const volt::Diagnostic *>{};
+    for (const auto &diagnostic : report.diagnostics()) {
+        if (diagnostic.code().value() == code) {
+            matches.push_back(&diagnostic);
+        }
+    }
+    return matches;
+}
+
+[[nodiscard, maybe_unused]] const volt::Diagnostic &
+require_diagnostic(const volt::DiagnosticReport &report, const ExpectedDiagnostic &expected) {
+    INFO("actual diagnostic codes: " << diagnostic_code_list(report));
+    const auto *match = static_cast<const volt::Diagnostic *>(nullptr);
+    for (const auto &diagnostic : report.diagnostics()) {
+        if (diagnostic.code() == volt::DiagnosticCode{expected.code} &&
+            diagnostic.severity() == expected.severity &&
+            diagnostic.category() == expected.category) {
+            match = &diagnostic;
+            break;
+        }
+    }
+    REQUIRE(match != nullptr);
+    return *match;
+}
+
+[[nodiscard, maybe_unused]] const volt::Diagnostic &
+require_diagnostic_with_entities(const volt::DiagnosticReport &report,
+                                 const ExpectedDiagnostic &expected,
+                                 const std::vector<volt::EntityRef> &entities) {
+    INFO("actual diagnostic codes: " << diagnostic_code_list(report));
+    const auto *match = static_cast<const volt::Diagnostic *>(nullptr);
+    for (const auto &diagnostic : report.diagnostics()) {
+        if (diagnostic.code() == volt::DiagnosticCode{expected.code} &&
+            diagnostic.severity() == expected.severity &&
+            diagnostic.category() == expected.category && diagnostic.entities() == entities) {
+            match = &diagnostic;
+            break;
+        }
+    }
+    REQUIRE(match != nullptr);
+    return *match;
+}
+
+[[maybe_unused]] void check_diagnostic_count(const volt::DiagnosticReport &report,
+                                             std::string_view code, std::size_t expected_count) {
+    INFO("actual diagnostic codes: " << diagnostic_code_list(report));
+    CHECK(find_diagnostics(report, code).size() == expected_count);
+}
+
+[[maybe_unused]] void check_diagnostic_entities(const volt::Diagnostic &diagnostic,
+                                                const std::vector<volt::EntityRef> &entities) {
+    CHECK(diagnostic.entities() == entities);
 }
 
 [[nodiscard, maybe_unused]] volt::BoardCapabilityProfile make_manufacturing_prereq_profile() {

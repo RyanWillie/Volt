@@ -2,33 +2,6 @@
 
 namespace {
 
-struct AddedPin {
-    volt::PinDefId definition;
-    volt::ComponentId component;
-    volt::PinId pin;
-};
-
-[[nodiscard]] AddedPin add_single_pin_component(
-    volt::Circuit &circuit, std::string reference, std::string pin_name,
-    volt::ConnectionRequirement requirement, volt::ElectricalTerminalKind terminal,
-    volt::ElectricalDirection direction,
-    volt::ElectricalSignalDomain domain = volt::ElectricalSignalDomain::Unspecified,
-    volt::ElectricalDriveKind drive = volt::ElectricalDriveKind::Unspecified) {
-    const auto pin_definition = circuit.add_pin_definition(
-        volt::PinDefinition{pin_name, "1", requirement, terminal, direction, domain, drive});
-    const auto definition = circuit.add_component_definition(
-        volt::ComponentDefinition{"RealBoardEdgeCaseOnePin", std::vector{pin_definition}});
-    const auto component =
-        circuit.instantiate_component(definition, volt::ReferenceDesignator{std::move(reference)});
-    return AddedPin{pin_definition, component,
-                    volt::queries::pin_by_name(circuit, component, pin_name).value()};
-}
-
-void assign_net_class(volt::Circuit &circuit, volt::NetId net, volt::NetClass net_class) {
-    const auto id = circuit.add_net_class(std::move(net_class));
-    REQUIRE(circuit.assign_net_class(net, id));
-}
-
 [[nodiscard]] volt::BoardCapabilityProfile make_physical_edge_capability_profile() {
     return volt::BoardCapabilityProfile{
         "Real-board physical edge fab",
