@@ -64,6 +64,7 @@ add_executable(
     pcb/board_spatial_index_test.cpp
     pcb/board_test.cpp
     pcb/board_models_test.cpp
+    pcb/erc_drc_real_board_edge_cases_test.cpp
     pcb/erc_drc_real_board_regression_test.cpp
     pcb/board_validation_test.cpp
     pcb/footprints_test.cpp
