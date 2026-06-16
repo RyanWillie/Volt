@@ -111,7 +111,7 @@ TEST_CASE("Real-board ERC matrix covers hierarchy and module-port boundaries") {
 
     const auto report = volt::validate_circuit(fixture.circuit);
 
-    [[maybe_unused]] const auto &diagnostic = require_diagnostic_with_entities(
+    [[maybe_unused]] const auto diagnostic = require_diagnostic_with_entities(
         report,
         ExpectedDiagnostic{"UNBOUND_REQUIRED_PORT", volt::Severity::Error,
                            volt::DiagnosticCategory{volt::diagnostic_categories::Erc}},
@@ -135,7 +135,7 @@ TEST_CASE("Real-board PCB readiness matrix covers mapping and unplaced-pad bound
         const auto report = volt::validate_board(layout.board, library);
 
         REQUIRE(layout.led_placement.has_value());
-        [[maybe_unused]] const auto &diagnostic = require_diagnostic_with_entities(
+        [[maybe_unused]] const auto diagnostic = require_diagnostic_with_entities(
             report,
             ExpectedDiagnostic{"PCB_PAD_MAPPING_NON_ELECTRICAL", volt::Severity::Error,
                                volt::DiagnosticCategory{volt::diagnostic_categories::PcbBoard}},
@@ -164,7 +164,7 @@ TEST_CASE("Real-board PCB readiness matrix covers mapping and unplaced-pad bound
         const auto report = volt::validate_board(layout.board, library);
 
         check_diagnostic_count(report, "PCB_COMPONENT_NOT_PLACED", 2);
-        [[maybe_unused]] const auto &diagnostic = require_diagnostic_with_entities(
+        [[maybe_unused]] const auto diagnostic = require_diagnostic_with_entities(
             report,
             ExpectedDiagnostic{"PCB_NET_WITHOUT_PLACED_PADS", volt::Severity::Warning,
                                volt::DiagnosticCategory{volt::diagnostic_categories::PcbBoard}},
@@ -182,7 +182,7 @@ TEST_CASE("Real-board board-model matrix covers layer-stack and fabrication loss
 
         const auto report = volt::validate_board(layout.board, library);
 
-        [[maybe_unused]] const auto &diagnostic = require_diagnostic_with_entities(
+        [[maybe_unused]] const auto diagnostic = require_diagnostic_with_entities(
             report,
             ExpectedDiagnostic{"PCB_LAYER_STACK_SIDE_ORDER_CONFLICT", volt::Severity::Error,
                                volt::DiagnosticCategory{volt::diagnostic_categories::PcbBoard}},
@@ -226,7 +226,7 @@ TEST_CASE("Real-board DRC matrix covers room, zone, and outline shape variants")
 
         const auto report = volt::validate_board(layout.board, library);
 
-        const auto &diagnostic = require_diagnostic_with_entities(
+        const auto diagnostic = require_diagnostic_with_entities(
             report,
             ExpectedDiagnostic{"PCB_TRACK_WIDTH_BELOW_NET_CLASS", volt::Severity::Error,
                                volt::DiagnosticCategory{volt::diagnostic_categories::Drc}},
@@ -234,9 +234,9 @@ TEST_CASE("Real-board DRC matrix covers room, zone, and outline shape variants")
                         volt::EntityRef::net(fixture.led_drive),
                         volt::EntityRef::board_layer(layout.front),
                         volt::EntityRef::board_room(room_id)});
-        REQUIRE(diagnostic.measurement().has_value());
-        CHECK(diagnostic.measurement()->actual_mm == 0.30);
-        CHECK(diagnostic.measurement()->required_mm == 0.50);
+        REQUIRE(diagnostic.get().measurement().has_value());
+        CHECK(diagnostic.get().measurement()->actual_mm == 0.30);
+        CHECK(diagnostic.get().measurement()->required_mm == 0.50);
     }
 
     SECTION("copper keepout also catches copper zones, not just tracks") {
@@ -254,7 +254,7 @@ TEST_CASE("Real-board DRC matrix covers room, zone, and outline shape variants")
 
         const auto report = volt::validate_board(layout.board, library);
 
-        [[maybe_unused]] const auto &diagnostic = require_diagnostic_with_entities(
+        [[maybe_unused]] const auto diagnostic = require_diagnostic_with_entities(
             report,
             ExpectedDiagnostic{"PCB_KEEPOUT_COPPER_VIOLATION", volt::Severity::Error,
                                volt::DiagnosticCategory{volt::diagnostic_categories::Drc}},
@@ -270,13 +270,13 @@ TEST_CASE("Real-board DRC matrix covers room, zone, and outline shape variants")
 
         const auto report = volt::validate_board(layout.board, library);
 
-        const auto &diagnostic = require_diagnostic_with_entities(
+        const auto diagnostic = require_diagnostic_with_entities(
             report,
             ExpectedDiagnostic{"PCB_COPPER_OUTSIDE_OUTLINE", volt::Severity::Error,
                                volt::DiagnosticCategory{volt::diagnostic_categories::Drc}},
             std::vector{volt::EntityRef::board_via(via), volt::EntityRef::net(fixture.vdd),
                         volt::EntityRef::board_layer(layout.front)});
-        CHECK_FALSE(diagnostic.overlays().empty());
+        CHECK_FALSE(diagnostic.get().overlays().empty());
     }
 }
 
@@ -308,27 +308,27 @@ TEST_CASE("Real-board manufacturability matrix covers limits, warnings, and phys
 
         const auto report = volt::validate_board(layout.board, library);
 
-        [[maybe_unused]] const auto &thickness = require_diagnostic_with_entities(
+        [[maybe_unused]] const auto thickness = require_diagnostic_with_entities(
             report,
             ExpectedDiagnostic{"PCB_BOARD_THICKNESS_AT_CAPABILITY_LIMIT", volt::Severity::Warning,
                                volt::DiagnosticCategory{volt::diagnostic_categories::Drc}},
             std::vector{volt::EntityRef::board()});
-        [[maybe_unused]] const auto &front_weight = require_diagnostic_with_entities(
+        [[maybe_unused]] const auto front_weight = require_diagnostic_with_entities(
             report,
             ExpectedDiagnostic{"PCB_COPPER_WEIGHT_OUTSIDE_CAPABILITY", volt::Severity::Error,
                                volt::DiagnosticCategory{volt::diagnostic_categories::Drc}},
             std::vector{volt::EntityRef::board_layer(layout.front)});
-        [[maybe_unused]] const auto &back_weight = require_diagnostic_with_entities(
+        [[maybe_unused]] const auto back_weight = require_diagnostic_with_entities(
             report,
             ExpectedDiagnostic{"PCB_COPPER_WEIGHT_OUTSIDE_CAPABILITY", volt::Severity::Error,
                                volt::DiagnosticCategory{volt::diagnostic_categories::Drc}},
             std::vector{volt::EntityRef::board_layer(layout.back)});
-        [[maybe_unused]] const auto &drill_limit = require_diagnostic_with_entities(
+        [[maybe_unused]] const auto drill_limit = require_diagnostic_with_entities(
             report,
             ExpectedDiagnostic{"PCB_DRILL_DIAMETER_AT_CAPABILITY_LIMIT", volt::Severity::Warning,
                                volt::DiagnosticCategory{volt::diagnostic_categories::Drc}},
             std::vector{volt::EntityRef::board_via(drill_at_limit)});
-        [[maybe_unused]] const auto &drill_range = require_diagnostic_with_entities(
+        [[maybe_unused]] const auto drill_range = require_diagnostic_with_entities(
             report,
             ExpectedDiagnostic{"PCB_DRILL_DIAMETER_OUTSIDE_CAPABILITY", volt::Severity::Error,
                                volt::DiagnosticCategory{volt::diagnostic_categories::Drc}},

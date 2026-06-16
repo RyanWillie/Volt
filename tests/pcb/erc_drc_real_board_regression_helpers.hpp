@@ -3,6 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -637,7 +638,7 @@ find_diagnostics(const volt::DiagnosticReport &report, std::string_view code) {
     return matches;
 }
 
-[[nodiscard, maybe_unused]] const volt::Diagnostic &
+[[nodiscard, maybe_unused]] std::reference_wrapper<const volt::Diagnostic>
 require_diagnostic(const volt::DiagnosticReport &report, const ExpectedDiagnostic &expected) {
     INFO("actual diagnostic codes: " << diagnostic_code_list(report));
     const auto *match = static_cast<const volt::Diagnostic *>(nullptr);
@@ -650,10 +651,10 @@ require_diagnostic(const volt::DiagnosticReport &report, const ExpectedDiagnosti
         }
     }
     REQUIRE(match != nullptr);
-    return *match;
+    return std::cref(*match);
 }
 
-[[nodiscard, maybe_unused]] const volt::Diagnostic &
+[[nodiscard, maybe_unused]] std::reference_wrapper<const volt::Diagnostic>
 require_diagnostic_with_entities(const volt::DiagnosticReport &report,
                                  const ExpectedDiagnostic &expected,
                                  const std::vector<volt::EntityRef> &entities) {
@@ -668,7 +669,7 @@ require_diagnostic_with_entities(const volt::DiagnosticReport &report,
         }
     }
     REQUIRE(match != nullptr);
-    return *match;
+    return std::cref(*match);
 }
 
 [[maybe_unused]] void check_diagnostic_count(const volt::DiagnosticReport &report,
