@@ -8,16 +8,16 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/core/diagnostics.hpp>
-#include <volt/pcb/board_copper.hpp>
-#include <volt/pcb/board_copper_model.hpp>
-#include <volt/pcb/board_features.hpp>
-#include <volt/pcb/board_footprint_model.hpp>
-#include <volt/pcb/board_geometry.hpp>
-#include <volt/pcb/board_layers.hpp>
-#include <volt/pcb/board_outline.hpp>
-#include <volt/pcb/board_placement_model.hpp>
-#include <volt/pcb/board_structure_model.hpp>
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/copper/board_copper.hpp>
+#include <volt/pcb/copper/board_copper_model.hpp>
+#include <volt/pcb/features/board_features.hpp>
+#include <volt/pcb/footprints/board_footprint_model.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/geometry/board_geometry.hpp>
+#include <volt/pcb/geometry/board_outline.hpp>
+#include <volt/pcb/layers/board_layers.hpp>
+#include <volt/pcb/placement/board_placement_model.hpp>
+#include <volt/pcb/structure/board_structure_model.hpp>
 
 namespace volt {
 

@@ -1,4 +1,4 @@
-#include <volt/pcb/board_router.hpp>
+#include <volt/pcb/routing/board_router.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -13,9 +13,9 @@
 #include <vector>
 
 #include <volt/circuit/net_class_resolution.hpp>
-#include <volt/pcb/board_copper.hpp>
+#include <volt/pcb/copper/board_copper.hpp>
 
-#include "board_room_rules.hpp"
+#include "../copper/board_room_rules.hpp"
 
 namespace volt {
 

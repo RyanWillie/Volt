@@ -4,7 +4,7 @@
 
 #include <variant>
 
-#include <volt/pcb/board_geometry_projection.hpp>
+#include <volt/pcb/projection/board_geometry_projection.hpp>
 
 namespace volt::io::detail {
 

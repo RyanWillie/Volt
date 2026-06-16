@@ -1,8 +1,8 @@
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/board_spatial_index.hpp>
+#include <volt/pcb/routing/board_spatial_index.hpp>
 
-#include "board_capability_validation.hpp"
-#include "board_footprint_drc.hpp"
+#include "../validation/board_capability_validation.hpp"
+#include "../validation/board_footprint_drc.hpp"
 #include "board_room_rules.hpp"
 
 #include <algorithm>

@@ -6,7 +6,7 @@
 
 #include <volt/core/diagnostics.hpp>
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
 
 namespace volt::io {
 

@@ -1,24 +1,24 @@
 add_library(
     volt_pcb
     board.cpp
-    board_capability.cpp
-    board_capability_validation.cpp
-    board_copper.cpp
-    board_copper_model.cpp
-    board_features.cpp
-    board_footprint_drc.cpp
-    board_footprint_model.cpp
-    board_geometry.cpp
-    board_geometry_projection.cpp
-    board_layers.cpp
-    board_outline.cpp
-    board_placement_model.cpp
-    board_room_rules.cpp
-    board_router.cpp
-    board_spatial_index.cpp
-    board_structure_model.cpp
-    board_visual_validation.cpp
-    footprints.cpp
+    copper/board_capability.cpp
+    copper/board_copper.cpp
+    copper/board_copper_model.cpp
+    copper/board_room_rules.cpp
+    features/board_features.cpp
+    footprints/board_footprint_model.cpp
+    footprints/footprints.cpp
+    geometry/board_geometry.cpp
+    geometry/board_outline.cpp
+    layers/board_layers.cpp
+    placement/board_placement_model.cpp
+    projection/board_geometry_projection.cpp
+    routing/board_router.cpp
+    routing/board_spatial_index.cpp
+    structure/board_structure_model.cpp
+    validation/board_capability_validation.cpp
+    validation/board_footprint_drc.cpp
+    validation/board_visual_validation.cpp
 )
 add_library(Volt::PCB ALIAS volt_pcb)
 

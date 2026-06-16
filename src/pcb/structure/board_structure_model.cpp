@@ -1,4 +1,4 @@
-#include <volt/pcb/board_structure_model.hpp>
+#include <volt/pcb/structure/board_structure_model.hpp>
 
 #include <cstddef>
 #include <stdexcept>

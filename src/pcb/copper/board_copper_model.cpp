@@ -1,4 +1,4 @@
-#include <volt/pcb/board_copper_model.hpp>
+#include <volt/pcb/copper/board_copper_model.hpp>
 
 #include <cstddef>
 #include <stdexcept>

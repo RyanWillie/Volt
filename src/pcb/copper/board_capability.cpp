@@ -1,4 +1,4 @@
-#include <volt/pcb/board_copper.hpp>
+#include <volt/pcb/copper/board_copper.hpp>
 
 #include <algorithm>
 #include <cmath>
