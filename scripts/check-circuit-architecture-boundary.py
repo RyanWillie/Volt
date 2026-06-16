@@ -242,9 +242,11 @@ def friend_declarations(path: Path, text: str) -> list[FriendDeclaration]:
 
         chunk = " ".join(pending)
         brace_depth += line.count("{") - line.count("}")
-        if ";" not in chunk:
-            if "{" not in chunk or brace_depth > 0:
+        if "{" in chunk:
+            if brace_depth > 0:
                 continue
+        elif ";" not in chunk:
+            continue
         declarations.append(
             FriendDeclaration(path=path, line=pending_line, declaration=normalize_declaration(chunk))
         )
@@ -420,6 +422,30 @@ def entity_ref_names(text: str) -> set[str]:
             text,
         )
     )
+    lines = text.splitlines()
+    changed = True
+    while changed:
+        changed = False
+        for line in lines:
+            matches = re.findall(
+                r"\b(?:const\s+)?auto\s*(?:[&*]\s*)?([A-Za-z_]\w*)\s*=\s*[^;]*"
+                r"\.entities\s*\(\)\s*(?:\[[^\]]+\]|\.front\s*\(\)|\.back\s*\(\))",
+                line,
+            )
+            for name in matches:
+                if name not in names:
+                    names.add(name)
+                    changed = True
+            for source in tuple(names):
+                matches = re.findall(
+                    rf"\b(?:const\s+)?auto\s*(?:[&*]\s*)?([A-Za-z_]\w*)\s*=\s*"
+                    rf"{re.escape(source)}\s*(?:\[[^\]]+\]|\.front\s*\(\)|\.back\s*\(\))",
+                    line,
+                )
+                for name in matches:
+                    if name not in names:
+                        names.add(name)
+                        changed = True
     return names
 
 
@@ -639,6 +665,27 @@ def run_self_tests() -> int:
         == ["friend class Backdoor", "friend void mutate_private_state(Comparable &value)"],
         "non-operator friend grants must be classified as privileged access",
     )
+    inline_privileged_friend = textwrap.dedent(
+        """
+        struct Sneaky {
+            friend void mutate_private_state(Sneaky &value) {
+                if (operator==(value, value)) {
+                    value.secret = 1;
+                }
+            }
+            [[nodiscard]] friend bool operator==(const Sneaky &lhs,
+                                                 const Sneaky &rhs) noexcept = default;
+            int secret = 0;
+        };
+        """
+    )
+    inline_friends = friend_declarations(Path("sample.hpp"), inline_privileged_friend)
+    require_self_test(
+        any(item.declaration == "friend void mutate_private_state(Sneaky &value)"
+            and is_privileged_friend(item.declaration)
+            for item in inline_friends),
+        "inline non-operator friend bodies must not be truncated into comparison friends",
+    )
 
     python_sample = textwrap.dedent(
         """
@@ -682,6 +729,22 @@ def run_self_tests() -> int:
     require_self_test(
         len(entity_ref_traversal_lines(entity_ref_bad)) == 2,
         "EntityRef kind/index use in kernel code must be reported",
+    )
+    entity_ref_auto_bad = textwrap.dedent(
+        """
+        void mutate_from_auto_ref(const Diagnostic &diagnostic,
+                                  const std::vector<EntityRef> &entities) {
+            auto first = diagnostic.entities().front();
+            if (first.kind() == EntityKind::Net) {
+                const auto copied = entities.front();
+                (void)copied.index();
+            }
+        }
+        """
+    )
+    require_self_test(
+        len(entity_ref_traversal_lines(entity_ref_auto_bad)) == 2,
+        "EntityRef auto aliases from diagnostic entity lists must be reported",
     )
     entity_ref_reporting = textwrap.dedent(
         """
