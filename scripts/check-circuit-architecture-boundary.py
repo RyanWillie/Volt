@@ -3,13 +3,18 @@
 
 from __future__ import annotations
 
+import argparse
+import ast
 import re
 import sys
+import textwrap
+from dataclasses import dataclass
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CODE_DIRS = [ROOT / "include", ROOT / "src", ROOT / "tests", ROOT / "examples", ROOT / "python"]
+ARCHITECTURE_CODE_DIRS = [ROOT / "include", ROOT / "src"]
 ALLOWLIST_DIR = ROOT / "tests" / "architecture"
 
 ROOT_TYPES = {
@@ -32,6 +37,102 @@ REJECTED_TOKENS = (
     "CircuitDesignIntent",
 )
 
+PRIVILEGED_FRIEND_ALLOWLIST = {
+    (
+        "include/volt/circuit/intent/design_intent.hpp",
+        "friend class Circuit",
+    ): "Circuit aggregate root currently owns design-intent mutations; VOL-232 will narrow this.",
+    (
+        "include/volt/circuit/electrical/electrical_model.hpp",
+        "friend class Circuit",
+    ): "Circuit aggregate root currently owns electrical metadata mutations; VOL-232 will narrow this.",
+    (
+        "include/volt/circuit/hierarchy/hierarchy.hpp",
+        "friend class HierarchyModel",
+    ): "HierarchyModel currently maintains ModuleDefinition membership; VOL-232 will replace this.",
+    (
+        "include/volt/circuit/hierarchy/hierarchy_model.hpp",
+        "friend class Circuit",
+    ): "Circuit aggregate root currently owns hierarchy mutations; VOL-232 will narrow this.",
+    (
+        "include/volt/circuit/connectivity/instances.hpp",
+        "friend class ConnectivityModel",
+    ): "ConnectivityModel currently updates instance properties at the mutation boundary.",
+    (
+        "include/volt/circuit/constraints/net_classes.hpp",
+        "friend class Circuit",
+    ): "Circuit aggregate root currently owns net-class assignment mutations; VOL-232 will narrow this.",
+    (
+        "include/volt/circuit/parts/parts.hpp",
+        "friend class ElectricalModel",
+    ): "ElectricalModel currently applies selected-part electrical attributes; VOL-232 will narrow this.",
+    (
+        "include/volt/pcb/copper/board_copper_model.hpp",
+        "friend class Board",
+    ): "Board aggregate root currently owns copper mutations; VOL-232 will narrow this.",
+    (
+        "include/volt/pcb/placement/board_placement_model.hpp",
+        "friend class Board",
+    ): "Board aggregate root currently owns placement mutations; VOL-232 will narrow this.",
+    (
+        "include/volt/pcb/routing/board_spatial_index.hpp",
+        "friend class BoardRouter",
+    ): "BoardRouter currently inserts accepted transient shapes into its routing index.",
+    (
+        "include/volt/pcb/routing/board_spatial_index.hpp",
+        "friend void detail::validate_copper_clearance(const Board &board, const std::vector<detail::BoardCopperShape> &shapes, DiagnosticReport &report)",
+    ): "Board copper DRC currently reuses the spatial index's internal shape snapshot.",
+    (
+        "include/volt/schematic/schematic_items_model.hpp",
+        "friend class Schematic",
+    ): "Schematic aggregate root currently owns item mutations; VOL-232 will narrow this.",
+    (
+        "include/volt/schematic/schematic_sheet.hpp",
+        "friend class SchematicSheetModel",
+    ): "SchematicSheetModel currently maintains sheet membership lists; VOL-232 will narrow this.",
+    (
+        "include/volt/schematic/schematic_sheet_model.hpp",
+        "friend class Schematic",
+    ): "Schematic aggregate root currently owns sheet membership mutations; VOL-232 will narrow this.",
+}
+
+PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {
+    (
+        "python/volt/_pcb_composition.py",
+        "fanout",
+    ): "Existing PCB fanout helper infers route nets from pad anchors; VOL-234 moves this into the kernel.",
+    (
+        "python/volt/_pcb_composition.py",
+        "_route_net",
+    ): "Known Python route-net inference choke point scheduled for kernel ownership in VOL-234.",
+    (
+        "python/volt/_pcb_layout.py",
+        "BoardLayout._pad_anchor_net",
+    ): "Known Python pad-anchor net resolver scheduled for kernel ownership in VOL-234.",
+}
+
+ENTITY_REF_KERNEL_ALLOWLIST = {
+    (
+        "src/pcb/copper/board_copper.cpp",
+        "[kind](EntityRef entity) { return entity.kind() == kind; });",
+    ): "Existing DRC helper classifies diagnostic copper shapes by reporting refs; keep narrow until a typed shape role replaces it.",
+}
+
+
+@dataclass(frozen=True)
+class FriendDeclaration:
+    path: Path
+    line: int
+    declaration: str
+
+
+@dataclass(frozen=True)
+class PythonConnectivityRisk:
+    path: Path
+    line: int
+    qualname: str
+    reason: str
+
 
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -39,6 +140,14 @@ def read(path: Path) -> str:
 
 def strip_comments(text: str) -> str:
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
+    return re.sub(r"//.*", "", text)
+
+
+def strip_comments_preserve_lines(text: str) -> str:
+    def block_replacement(match: re.Match[str]) -> str:
+        return "\n" * match.group(0).count("\n")
+
+    text = re.sub(r"/\*.*?\*/", block_replacement, text, flags=re.DOTALL)
     return re.sub(r"//.*", "", text)
 
 
@@ -51,6 +160,24 @@ def code_files() -> list[Path]:
             if path.suffix in {".cpp", ".hpp", ".h", ".py"}:
                 files.append(path)
     return sorted(files)
+
+
+def architecture_code_files() -> list[Path]:
+    files: list[Path] = []
+    for directory in ARCHITECTURE_CODE_DIRS:
+        if not directory.exists():
+            continue
+        for path in directory.rglob("*"):
+            if path.suffix in {".cpp", ".hpp", ".h"}:
+                files.append(path)
+    return sorted(files)
+
+
+def relative(path: Path) -> str:
+    try:
+        return path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def fail(message: str, failures: list[str]) -> None:
@@ -86,12 +213,53 @@ def public_section(body: str) -> str:
 
 
 def normalize_declaration(declaration: str) -> str:
+    declaration = re.sub(r"\{.*\}\s*$", "", declaration, flags=re.DOTALL)
+    declaration = declaration.rstrip(";")
     declaration = re.sub(r"\s+", " ", declaration)
     declaration = re.sub(r"\(\s+", "(", declaration)
     declaration = re.sub(r"\s+\)", ")", declaration)
     declaration = re.sub(r"\s+,", ",", declaration)
     declaration = re.sub(r"\s*([*&])\s+([A-Za-z_]\w*)", r" \1\2", declaration)
     return declaration.strip()
+
+
+def friend_declarations(path: Path, text: str) -> list[FriendDeclaration]:
+    declarations: list[FriendDeclaration] = []
+    pending: list[str] | None = None
+    pending_line = 0
+    brace_depth = 0
+    stripped = strip_comments_preserve_lines(text)
+    for line_number, line in enumerate(stripped.splitlines(), start=1):
+        if pending is None:
+            match = re.search(r"\bfriend\b", line)
+            if match is None:
+                continue
+            pending = [line[match.start() :]]
+            pending_line = line_number
+            brace_depth = 0
+        else:
+            pending.append(line.strip())
+
+        chunk = " ".join(pending)
+        brace_depth += line.count("{") - line.count("}")
+        if ";" not in chunk:
+            if "{" not in chunk or brace_depth > 0:
+                continue
+        declarations.append(
+            FriendDeclaration(path=path, line=pending_line, declaration=normalize_declaration(chunk))
+        )
+        pending = None
+        pending_line = 0
+        brace_depth = 0
+    return declarations
+
+
+def is_comparison_operator_friend(declaration: str) -> bool:
+    return re.search(r"\bfriend\b.*\boperator\s*(==|!=|<=>|<=|>=|<|>)\s*\(", declaration) is not None
+
+
+def is_privileged_friend(declaration: str) -> bool:
+    return declaration.startswith("friend ") and not is_comparison_operator_friend(declaration)
 
 
 def declaration_chunks(section: str) -> list[str]:
@@ -132,12 +300,150 @@ def public_api_snapshot(class_name: str, header_path: Path) -> list[str]:
     ]
 
 
+def python_pcb_authoring_files() -> list[Path]:
+    python_dir = ROOT / "python" / "volt"
+    if not python_dir.exists():
+        return []
+    return sorted(
+        path
+        for path in python_dir.glob("_pcb*.py")
+        if path.name not in {"_pcb_models.py"}
+    )
+
+
+def call_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return None
+
+
+def names_in(node: ast.AST) -> set[str]:
+    return {child.id for child in ast.walk(node) if isinstance(child, ast.Name)}
+
+
+class _PythonConnectivityRiskVisitor(ast.NodeVisitor):
+    def __init__(self) -> None:
+        self.risks: set[str] = set()
+
+    def visit_Call(self, node: ast.Call) -> None:
+        name = call_name(node.func)
+        if name in {"pad_net", "_pad_anchor_net"}:
+            self.risks.add("uses Python pad-anchor net lookup")
+        self.generic_visit(node)
+
+    def visit_Compare(self, node: ast.Compare) -> None:
+        compared_names = names_in(node.left)
+        for comparator in node.comparators:
+            compared_names.update(names_in(comparator))
+        if any(name.endswith("_net") for name in compared_names):
+            self.risks.add("compares route-net identity in Python")
+        self.generic_visit(node)
+
+    def visit_Return(self, node: ast.Return) -> None:
+        if isinstance(node.value, ast.Attribute) and node.value.attr == "net":
+            self.risks.add("returns net identity from Python object state")
+        self.generic_visit(node)
+
+
+def function_qualname(stack: list[str], name: str) -> str:
+    return ".".join([*stack, name])
+
+
+def python_connectivity_risks(path: Path, text: str) -> list[PythonConnectivityRisk]:
+    tree = ast.parse(text, filename=relative(path))
+    risks: list[PythonConnectivityRisk] = []
+
+    class Visitor(ast.NodeVisitor):
+        def __init__(self) -> None:
+            self.stack: list[str] = []
+
+        def visit_ClassDef(self, node: ast.ClassDef) -> None:
+            self.stack.append(node.name)
+            self.generic_visit(node)
+            self.stack.pop()
+
+        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+            visitor = _PythonConnectivityRiskVisitor()
+            for child in node.body:
+                visitor.visit(child)
+            if visitor.risks:
+                risks.append(
+                    PythonConnectivityRisk(
+                        path=path,
+                        line=node.lineno,
+                        qualname=function_qualname(self.stack, node.name),
+                        reason=", ".join(sorted(visitor.risks)),
+                    )
+                )
+
+    Visitor().visit(tree)
+    return risks
+
+
+def entity_ref_sensitive_files() -> list[Path]:
+    roots = (
+        ROOT / "include" / "volt" / "circuit",
+        ROOT / "include" / "volt" / "pcb",
+        ROOT / "include" / "volt" / "schematic",
+        ROOT / "src" / "circuit",
+        ROOT / "src" / "pcb",
+        ROOT / "src" / "schematic",
+    )
+    files: list[Path] = []
+    for root in roots:
+        if not root.exists():
+            continue
+        for path in root.rglob("*"):
+            if path.suffix in {".cpp", ".hpp", ".h"}:
+                files.append(path)
+    return sorted(files)
+
+
+def entity_ref_names(text: str) -> set[str]:
+    names = set(
+        re.findall(
+            r"\bEntityRef\s*(?:[&*]\s*)?([A-Za-z_]\w*)",
+            text,
+        )
+    )
+    names.update(
+        re.findall(
+            r"\bstd::vector\s*<\s*EntityRef\s*>\s*(?:[&*]\s*)?([A-Za-z_]\w*)",
+            text,
+        )
+    )
+    names.update(
+        re.findall(
+            r"\bfor\s*\([^:]+?\b([A-Za-z_]\w*)\s*:\s*[^)]*\.entities\s*\(",
+            text,
+        )
+    )
+    return names
+
+
+def entity_ref_traversal_lines(text: str) -> list[tuple[int, str]]:
+    stripped = strip_comments_preserve_lines(text)
+    names = entity_ref_names(stripped)
+    lines: list[tuple[int, str]] = []
+    for line_number, line in enumerate(stripped.splitlines(), start=1):
+        for name in names:
+            if re.search(rf"\b{re.escape(name)}\s*\.\s*(kind|index)\s*\(", line):
+                lines.append((line_number, line.strip()))
+                break
+            if re.search(rf"\b{re.escape(name)}\s*(?:\[[^\]]+\]|\.front\(\)|\.back\(\))\s*\.\s*(kind|index)\s*\(", line):
+                lines.append((line_number, line.strip()))
+                break
+    return lines
+
+
 def check_rejected_tokens(failures: list[str]) -> None:
     for path in code_files():
         text = read(path)
         for token in REJECTED_TOKENS:
             if token in text:
-                fail(f"{path.relative_to(ROOT)} contains rejected architecture token {token}", failures)
+                fail(f"{relative(path)} contains rejected architecture token {token}", failures)
 
 
 def check_circuit_has_no_friend_classes(failures: list[str]) -> None:
@@ -156,11 +462,34 @@ def check_no_flat_pcb_public_headers(failures: list[str]) -> None:
             )
 
 
+def check_privileged_friends_are_allowlisted(failures: list[str]) -> None:
+    found_allowlisted: set[tuple[str, str]] = set()
+    for path in architecture_code_files():
+        for declaration in friend_declarations(path, read(path)):
+            if not is_privileged_friend(declaration.declaration):
+                continue
+            key = (relative(path), declaration.declaration)
+            if key in PRIVILEGED_FRIEND_ALLOWLIST:
+                found_allowlisted.add(key)
+                continue
+            fail(
+                f"{relative(path)}:{declaration.line} declares non-comparison friend "
+                f"{declaration.declaration!r} without a documented architecture allowlist reason",
+                failures,
+            )
+
+    for key, reason in sorted(PRIVILEGED_FRIEND_ALLOWLIST.items()):
+        if not reason.strip():
+            fail(f"privileged friend allowlist entry {key!r} must document a reason", failures)
+        if key not in found_allowlisted:
+            fail(f"privileged friend allowlist entry {key!r} no longer matches source", failures)
+
+
 def check_public_api_snapshots(failures: list[str]) -> None:
     for class_name, header_path in ROOT_TYPES.items():
         allowlist = ALLOWLIST_DIR / f"{class_name.lower()}_public_api.txt"
         if not allowlist.exists():
-            fail(f"{allowlist.relative_to(ROOT)} is missing", failures)
+            fail(f"{relative(allowlist)} is missing", failures)
             continue
 
         actual = public_api_snapshot(class_name, header_path)
@@ -171,9 +500,51 @@ def check_public_api_snapshots(failures: list[str]) -> None:
         ]
         if actual != expected:
             fail(
-                f"{allowlist.relative_to(ROOT)} does not match {header_path.relative_to(ROOT)}",
+                f"{relative(allowlist)} does not match {relative(header_path)}",
                 failures,
             )
+
+
+def check_python_connectivity_semantics(failures: list[str]) -> None:
+    found_allowlisted: set[tuple[str, str]] = set()
+    for path in python_pcb_authoring_files():
+        for risk in python_connectivity_risks(path, read(path)):
+            key = (relative(path), risk.qualname)
+            if key in PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST:
+                found_allowlisted.add(key)
+                continue
+            fail(
+                f"{relative(path)}:{risk.line} function {risk.qualname} owns PCB "
+                f"connectivity/net inference in Python ({risk.reason})",
+                failures,
+            )
+
+    for key, reason in sorted(PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST.items()):
+        if not reason.strip():
+            fail(f"Python connectivity allowlist entry {key!r} must document a reason", failures)
+        if key not in found_allowlisted:
+            fail(f"Python connectivity allowlist entry {key!r} no longer matches source", failures)
+
+
+def check_entity_ref_not_kernel_traversal_handle(failures: list[str]) -> None:
+    found_allowlisted: set[tuple[str, str]] = set()
+    for path in entity_ref_sensitive_files():
+        for line_number, line in entity_ref_traversal_lines(read(path)):
+            key = (relative(path), line)
+            if key in ENTITY_REF_KERNEL_ALLOWLIST:
+                found_allowlisted.add(key)
+                continue
+            fail(
+                f"{relative(path)}:{line_number} branches on or unwraps EntityRef in a "
+                f"kernel-owned layer: {line}",
+                failures,
+            )
+
+    for key, reason in sorted(ENTITY_REF_KERNEL_ALLOWLIST.items()):
+        if not reason.strip():
+            fail(f"EntityRef kernel allowlist entry {key!r} must document a reason", failures)
+        if key not in found_allowlisted:
+            fail(f"EntityRef kernel allowlist entry {key!r} no longer matches source", failures)
 
 
 def subsystem_root_name(path: Path) -> str | None:
@@ -203,7 +574,7 @@ def check_subsystem_back_references(failures: list[str]) -> None:
             continue
         text = strip_comments(read(path))
         if re.search(rf"\b(?:const\s+)?{root_name}\s*[&*]", text):
-            fail(f"{path.relative_to(ROOT)} holds or accepts a {root_name} back-reference", failures)
+            fail(f"{relative(path)} holds or accepts a {root_name} back-reference", failures)
 
 
 def check_subsystem_sources_have_real_logic(failures: list[str]) -> None:
@@ -226,7 +597,7 @@ def check_subsystem_sources_have_real_logic(failures: list[str]) -> None:
                 continue
             text = strip_comments(read(path))
             if re.search(r"\b(?:circuit_|board_|schematic_|root_)\s*(?:\.|->)", text):
-                fail(f"{path.relative_to(ROOT)} delegates through a model root back-reference", failures)
+                fail(f"{relative(path)} delegates through a model root back-reference", failures)
             meaningful_lines = [
                 line.strip()
                 for line in text.splitlines()
@@ -235,15 +606,109 @@ def check_subsystem_sources_have_real_logic(failures: list[str]) -> None:
                 and line.strip() not in {"namespace volt {", "} // namespace volt", "}"}
             ]
             if len(meaningful_lines) < 4:
-                fail(f"{path.relative_to(ROOT)} does not contain enough real subsystem logic", failures)
+                fail(f"{relative(path)} does not contain enough real subsystem logic", failures)
 
 
-def main() -> int:
+def require_self_test(condition: bool, message: str) -> None:
+    if not condition:
+        raise AssertionError(message)
+
+
+def run_self_tests() -> int:
+    friend_sample = textwrap.dedent(
+        """
+        struct Comparable {
+            [[nodiscard]] friend bool operator==(const Comparable &lhs,
+                                                 const Comparable &rhs) noexcept {
+                return lhs.value == rhs.value;
+            }
+            friend class Backdoor;
+            friend void mutate_private_state(Comparable &value);
+            int value = 0;
+        };
+        """
+    )
+    friends = friend_declarations(Path("sample.hpp"), friend_sample)
+    require_self_test(
+        any(is_comparison_operator_friend(item.declaration) for item in friends),
+        "comparison operator friends must be classified as non-privileged value semantics",
+    )
+    privileged = [item for item in friends if is_privileged_friend(item.declaration)]
+    require_self_test(
+        [item.declaration for item in privileged]
+        == ["friend class Backdoor", "friend void mutate_private_state(Comparable &value)"],
+        "non-operator friend grants must be classified as privileged access",
+    )
+
+    python_sample = textwrap.dedent(
+        """
+        def _route_net(context, net, start, end):
+            if net is not None:
+                return net
+            start_net = context.pad_net(start)
+            end_net = context.pad_net(end)
+            if start_net != end_net:
+                raise ValueError("different nets")
+            return start_net
+        """
+    )
+    risks = python_connectivity_risks(Path("python/volt/_pcb_new.py"), python_sample)
+    require_self_test(
+        any(risk.qualname == "_route_net" for risk in risks),
+        "Python route-net inference sample must be reported",
+    )
+    python_projection_sample = textwrap.dedent(
+        """
+        def text(context, value, *, at, layer):
+            anchor = context.anchor_at(at)
+            return context.board.add_text(value, at=anchor.point, layer=layer)
+        """
+    )
+    require_self_test(
+        not python_connectivity_risks(Path("python/volt/_pcb_projection.py"), python_projection_sample),
+        "Python presentation helpers must not be reported as connectivity ownership",
+    )
+
+    entity_ref_bad = textwrap.dedent(
+        """
+        void mutate_from_ref(Circuit &circuit, EntityRef ref) {
+            if (ref.kind() != EntityKind::Net) {
+                return;
+            }
+            circuit.net(NetId{ref.index()});
+        }
+        """
+    )
+    require_self_test(
+        len(entity_ref_traversal_lines(entity_ref_bad)) == 2,
+        "EntityRef kind/index use in kernel code must be reported",
+    )
+    entity_ref_reporting = textwrap.dedent(
+        """
+        void add_diagnostic(DiagnosticReport &report, NetId net) {
+            report.add(Diagnostic{Severity::Warning, DiagnosticCategory{"erc"},
+                                  DiagnosticCode{"net.stub"}, "Stub",
+                                  std::vector{EntityRef::net(net)}});
+        }
+        """
+    )
+    require_self_test(
+        not entity_ref_traversal_lines(entity_ref_reporting),
+        "EntityRef diagnostic reporting must stay allowed",
+    )
+
+    return 0
+
+
+def run_checks() -> int:
     failures: list[str] = []
     check_rejected_tokens(failures)
     check_circuit_has_no_friend_classes(failures)
     check_no_flat_pcb_public_headers(failures)
+    check_privileged_friends_are_allowlisted(failures)
     check_public_api_snapshots(failures)
+    check_python_connectivity_semantics(failures)
+    check_entity_ref_not_kernel_traversal_handle(failures)
     check_subsystem_back_references(failures)
     check_subsystem_sources_have_real_logic(failures)
 
@@ -252,6 +717,19 @@ def main() -> int:
             print(f"architecture boundary violation: {failure}", file=sys.stderr)
         return 1
     return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="run representative bad-sample tests for this checker",
+    )
+    args = parser.parse_args(argv)
+    if args.self_test:
+        return run_self_tests()
+    return run_checks()
 
 
 if __name__ == "__main__":
