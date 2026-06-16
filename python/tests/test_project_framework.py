@@ -819,6 +819,37 @@ def test_project_result_write_flat_artifacts_emits_legacy_example_outputs(tmp_pa
     assert diagnostics["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
 
 
+def test_project_result_write_flat_artifacts_can_omit_pcb_diagnostic_overlays(tmp_path):
+    project = volt.Project("off-board-text")
+
+    @project.design
+    def design():
+        return _board_ready_design("off-board-text")
+
+    @project.board
+    def board(context):
+        pcb = _stage_board(context.design())
+        silk = pcb.add_layer("F.SilkS", role="silkscreen", side="top")
+        pcb.add_text("LONG", at=(18, 1), layer=silk, size=2.0)
+        return pcb
+
+    artifacts = project.run().write_artifacts(
+        tmp_path,
+        slug="off_board_text",
+        pcb_svg_options={"diagnostic_overlays": False},
+    )
+
+    pcb_json = json.loads(artifacts.pcb_json.read_text(encoding="utf-8"))
+    pcb_svg = artifacts.pcb_svg.read_text(encoding="utf-8")
+
+    assert any(
+        item["code"] == "PCB_VISUAL_LABEL_OUTSIDE_BOARD"
+        for item in pcb_json["viewer"]["diagnostics"]
+    )
+    assert "data-diagnostic-code=" not in pcb_svg
+    assert "diagnostic-overlay" not in pcb_svg
+
+
 def test_project_result_write_flat_artifacts_can_emit_layer_svgs(tmp_path):
     project = volt.Project("status-led")
 

@@ -970,10 +970,12 @@ TEST_CASE("Board DRC reports component body and courtyard overlaps with clean pa
     CHECK(body->overlays()[0].kind() == volt::DiagnosticOverlayKind::Polygon);
     CHECK(body->overlays()[0].entities() ==
           std::vector{volt::EntityRef::component_placement(first_placement)});
+    CHECK(body->overlays()[0].layers() == std::vector{front});
     CHECK(body->overlays()[0].points() ==
           std::vector{volt::DiagnosticPoint{8.5, 9.0}, volt::DiagnosticPoint{11.5, 9.0},
                       volt::DiagnosticPoint{11.5, 11.0}, volt::DiagnosticPoint{8.5, 11.0}});
     CHECK(body->overlays()[1].kind() == volt::DiagnosticOverlayKind::Polygon);
+    CHECK(body->overlays()[1].layers() == std::vector{front});
     CHECK_FALSE(body->measurement().has_value());
 
     const auto *courtyard = find_diagnostic(report, "PCB_COMPONENT_COURTYARD_OVERLAP");
@@ -987,7 +989,9 @@ TEST_CASE("Board DRC reports component body and courtyard overlaps with clean pa
                       volt::EntityRef::component(fixture.second_component)});
     REQUIRE(courtyard->overlays().size() == 2);
     CHECK(courtyard->overlays()[0].kind() == volt::DiagnosticOverlayKind::Polygon);
+    CHECK(courtyard->overlays()[0].layers() == std::vector{front});
     CHECK(courtyard->overlays()[1].kind() == volt::DiagnosticOverlayKind::Polygon);
+    CHECK(courtyard->overlays()[1].layers() == std::vector{front});
 }
 
 TEST_CASE("Board DRC accepts spaced component body and courtyard geometry") {
