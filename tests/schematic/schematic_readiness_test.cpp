@@ -1,6 +1,6 @@
 #include "schematic_test_helpers.hpp"
 
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 
 TEST_CASE("Schematic readiness reports connected symbol pins without visual net coverage") {
     volt::Circuit circuit;

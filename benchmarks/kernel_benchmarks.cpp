@@ -11,11 +11,11 @@
 #include <volt/authoring/connection_helpers.hpp>
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/nets.hpp>
-#include <volt/circuit/queries.hpp>
-#include <volt/circuit/validation.hpp>
-#include <volt/io/logical_circuit_reader.hpp>
-#include <volt/io/logical_circuit_writer.hpp>
+#include <volt/circuit/connectivity/nets.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
+#include <volt/circuit/validation/validation.hpp>
+#include <volt/io/logical/logical_circuit_reader.hpp>
+#include <volt/io/logical/logical_circuit_writer.hpp>
 
 namespace {
 

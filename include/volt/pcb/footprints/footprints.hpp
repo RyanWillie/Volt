@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include <volt/circuit/parts.hpp>
+#include <volt/circuit/parts/parts.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/ids.hpp>
 

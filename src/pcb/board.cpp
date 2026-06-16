@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 
 namespace volt {
 

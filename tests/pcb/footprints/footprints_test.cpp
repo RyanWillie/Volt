@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-#include <volt/circuit/parts.hpp>
+#include <volt/circuit/parts/parts.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/ids.hpp>
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
 
 namespace {
 

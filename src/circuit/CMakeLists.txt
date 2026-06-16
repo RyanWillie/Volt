@@ -1,21 +1,21 @@
 add_library(
     volt_circuit
-    bom.cpp
+    bom/bom.cpp
     circuit.cpp
-    connectivity_model.cpp
-    definitions.cpp
-    design_intent.cpp
-    electrical_model.cpp
-    hierarchy.cpp
-    hierarchy_model.cpp
-    instances.cpp
-    nets.cpp
-    part_definition.cpp
-    parts.cpp
-    queries.cpp
-    net_class_resolution.cpp
-    net_classes.cpp
-    validation.cpp
+    connectivity/connectivity_model.cpp
+    connectivity/definitions.cpp
+    connectivity/instances.cpp
+    connectivity/nets.cpp
+    connectivity/queries.cpp
+    constraints/net_class_resolution.cpp
+    constraints/net_classes.cpp
+    electrical/electrical_model.cpp
+    hierarchy/hierarchy.cpp
+    hierarchy/hierarchy_model.cpp
+    intent/design_intent.cpp
+    parts/part_definition.cpp
+    parts/parts.cpp
+    validation/validation.cpp
 )
 add_library(Volt::Circuit ALIAS volt_circuit)
 

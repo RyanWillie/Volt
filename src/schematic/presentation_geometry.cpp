@@ -1,6 +1,6 @@
 #include <volt/schematic/presentation_geometry.hpp>
 
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 
 namespace volt::detail {
 

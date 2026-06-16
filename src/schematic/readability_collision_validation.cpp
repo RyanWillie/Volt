@@ -1,6 +1,6 @@
 #include <volt/schematic/readability_collision_validation.hpp>
 
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 
 namespace volt::detail {
 

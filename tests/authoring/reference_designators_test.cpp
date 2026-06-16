@@ -5,8 +5,8 @@
 #include <volt/authoring/component_library.hpp>
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/instances.hpp>
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/instances.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/properties.hpp>
 
 namespace {

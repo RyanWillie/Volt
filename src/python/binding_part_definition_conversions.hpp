@@ -3,8 +3,8 @@
 #include "binding_component_conversions.hpp"
 #include "binding_diagnostic_conversions.hpp"
 
-#include <volt/circuit/part_definition.hpp>
-#include <volt/io/part_definition_writer.hpp>
+#include <volt/circuit/parts/part_definition.hpp>
+#include <volt/io/parts/part_definition_writer.hpp>
 
 namespace volt::python {
 

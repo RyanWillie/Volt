@@ -6,7 +6,7 @@
 
 #include <volt/authoring/component_library.hpp>
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/definitions.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/core/properties.hpp>
 #include <volt/schematic/default_symbols.hpp>
 

@@ -5,7 +5,7 @@
 #include "py_circuit.hpp"
 
 #include <volt/core/content_hash.hpp>
-#include <volt/io/board_capability_profile.hpp>
+#include <volt/io/capabilities/board_capability_profile.hpp>
 
 #include <array>
 #include <cstddef>

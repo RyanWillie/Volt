@@ -1,6 +1,6 @@
 #include "schematic_test_helpers.hpp"
 
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 
 TEST_CASE("Symbol definitions store structured drawing primitives and pins") {
     const auto symbol = make_resistor_symbol();

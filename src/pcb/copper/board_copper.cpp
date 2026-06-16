@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include <volt/circuit/net_class_resolution.hpp>
+#include <volt/circuit/constraints/net_class_resolution.hpp>
 #include <volt/core/rule_set.hpp>
 
 namespace volt {

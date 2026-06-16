@@ -3,7 +3,7 @@
 #include <string_view>
 
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/instances.hpp>
+#include <volt/circuit/connectivity/instances.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 

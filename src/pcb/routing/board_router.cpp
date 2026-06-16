@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include <volt/circuit/net_class_resolution.hpp>
+#include <volt/circuit/constraints/net_class_resolution.hpp>
 #include <volt/pcb/copper/board_copper.hpp>
 
 #include "../copper/board_room_rules.hpp"

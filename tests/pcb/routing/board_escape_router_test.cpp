@@ -9,12 +9,12 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/queries.hpp>
-#include <volt/io/pcb_reader.hpp>
-#include <volt/io/pcb_writer.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
+#include <volt/io/pcb/pcb_reader.hpp>
+#include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/board_router.hpp>
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/routing/board_router.hpp>
 
 namespace {
 
