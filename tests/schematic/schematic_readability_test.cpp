@@ -1,6 +1,6 @@
 #include "schematic_test_helpers.hpp"
 
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 
 TEST_CASE("Schematic readability reports usable-area and title-block layout issues") {
     volt::Circuit circuit;

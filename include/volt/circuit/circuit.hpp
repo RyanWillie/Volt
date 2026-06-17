@@ -8,16 +8,16 @@
 #include <utility>
 #include <vector>
 
-#include <volt/circuit/connectivity_model.hpp>
-#include <volt/circuit/definitions.hpp>
-#include <volt/circuit/design_intent.hpp>
-#include <volt/circuit/electrical_model.hpp>
-#include <volt/circuit/hierarchy.hpp>
-#include <volt/circuit/hierarchy_model.hpp>
-#include <volt/circuit/instances.hpp>
-#include <volt/circuit/net_classes.hpp>
-#include <volt/circuit/nets.hpp>
-#include <volt/circuit/parts.hpp>
+#include <volt/circuit/connectivity/connectivity_model.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
+#include <volt/circuit/connectivity/instances.hpp>
+#include <volt/circuit/connectivity/nets.hpp>
+#include <volt/circuit/constraints/net_classes.hpp>
+#include <volt/circuit/electrical/electrical_model.hpp>
+#include <volt/circuit/hierarchy/hierarchy.hpp>
+#include <volt/circuit/hierarchy/hierarchy_model.hpp>
+#include <volt/circuit/intent/design_intent.hpp>
+#include <volt/circuit/parts/parts.hpp>
 #include <volt/core/ids.hpp>
 
 namespace volt {

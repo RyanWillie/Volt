@@ -11,14 +11,14 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/definitions.hpp>
-#include <volt/circuit/net_classes.hpp>
-#include <volt/circuit/queries.hpp>
-#include <volt/circuit/validation.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
+#include <volt/circuit/constraints/net_classes.hpp>
+#include <volt/circuit/validation/validation.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
 
 namespace {
 

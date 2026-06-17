@@ -21,6 +21,9 @@ ROOT_TYPES = {
     "BoardRouter": ROOT / "include" / "volt" / "pcb" / "routing" / "board_router.hpp",
     "Schematic": ROOT / "include" / "volt" / "schematic" / "schematic.hpp",
 }
+ALLOWED_FLAT_PCB_HEADERS = {
+    ROOT / "include" / "volt" / "pcb" / "board.hpp",
+}
 
 REJECTED_TOKENS = (
     "CircuitView",
@@ -143,6 +146,16 @@ def check_circuit_has_no_friend_classes(failures: list[str]) -> None:
         fail("include/volt/circuit/circuit.hpp declares a friend class inside Circuit", failures)
 
 
+def check_no_flat_pcb_public_headers(failures: list[str]) -> None:
+    pcb_dir = ROOT / "include" / "volt" / "pcb"
+    for path in sorted(pcb_dir.glob("*.hpp")):
+        if path not in ALLOWED_FLAT_PCB_HEADERS:
+            fail(
+                f"{path.relative_to(ROOT)} is a flat PCB public header; use an ownership-folder path instead",
+                failures,
+            )
+
+
 def check_public_api_snapshots(failures: list[str]) -> None:
     for class_name, header_path in ROOT_TYPES.items():
         allowlist = ALLOWLIST_DIR / f"{class_name.lower()}_public_api.txt"
@@ -165,7 +178,7 @@ def check_public_api_snapshots(failures: list[str]) -> None:
 
 def subsystem_root_name(path: Path) -> str | None:
     name = path.name
-    if path.match("include/volt/circuit/*"):
+    if path.match("include/volt/circuit/*.hpp") or path.match("include/volt/circuit/**/*.hpp"):
         if name in {"circuit.hpp", "validation.hpp", "queries.hpp"}:
             return None
         if "_model" in name or name in {"design_intent.hpp", "net_classes.hpp"}:
@@ -229,6 +242,7 @@ def main() -> int:
     failures: list[str] = []
     check_rejected_tokens(failures)
     check_circuit_has_no_friend_classes(failures)
+    check_no_flat_pcb_public_headers(failures)
     check_public_api_snapshots(failures)
     check_subsystem_back_references(failures)
     check_subsystem_sources_have_real_logic(failures)

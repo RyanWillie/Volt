@@ -475,8 +475,8 @@
           <div class="panel">
             <h3>Create</h3>
             <ul>
-              <li><code>include/volt/pcb/board_geometry.hpp</code></li>
-              <li><code>include/volt/pcb/board_layers.hpp</code></li>
+              <li><code>include/volt/pcb/geometry/board_geometry.hpp</code></li>
+              <li><code>include/volt/pcb/layers/board_layers.hpp</code></li>
               <li><code>include/volt/pcb/board_primitives.hpp</code></li>
               <li><code>include/volt/pcb/board_ratsnest.hpp</code></li>
               <li><code>include/volt/pcb/board_validation.hpp</code></li>
@@ -493,7 +493,7 @@
             <h3>Modify</h3>
             <ul>
               <li><code>include/volt/pcb/board.hpp</code> becomes the umbrella facade and keeps <code>Board</code>.</li>
-              <li><code>include/volt/pcb/footprints.hpp</code> moves concrete constructors and lookup code out of line where possible.</li>
+              <li><code>include/volt/pcb/footprints/footprints.hpp</code> moves concrete constructors and lookup code out of line where possible.</li>
               <li><code>src/pcb/CMakeLists.txt</code> becomes a compiled static target.</li>
               <li><code>scripts/check-build-config.py</code> recognizes new compiled coverage targets.</li>
               <li>Only touch tests if a public inline helper moves and a test needs an added include.</li>

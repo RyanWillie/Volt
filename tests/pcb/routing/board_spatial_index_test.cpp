@@ -11,8 +11,8 @@
 #include <volt/circuit/circuit.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/board_spatial_index.hpp>
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/routing/board_spatial_index.hpp>
 
 namespace {
 

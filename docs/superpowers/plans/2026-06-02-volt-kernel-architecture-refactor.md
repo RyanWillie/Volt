@@ -25,12 +25,12 @@
 ## Stage 2: Queries And Const Read Surface
 
 **Files:**
-- Create: `include/volt/circuit/queries.hpp`
-- Create: `src/circuit/queries.cpp`
+- Create: `include/volt/circuit/connectivity/queries.hpp`
+- Create: `src/circuit/connectivity/queries.cpp`
 - Modify: `include/volt/circuit/circuit.hpp`
 - Modify: `src/circuit/circuit.cpp`
 - Modify callers in `src`, `include`, `tests`, and `src/python` as needed
-- Test: `tests/circuit/queries_test.cpp`
+- Test: `tests/circuit/connectivity/queries_test.cpp`
 
 - [ ] Write failing tests for `volt::queries::component_by_reference`, `net_by_name`, `pins_for`, `pin_by_name`, `pin_by_number`, `pin_by_definition`, module lookup queries, port binding queries, and `net_of`.
 - [ ] Move derived reads out of `Circuit` where they can be written against fundamental public accessors.
@@ -40,11 +40,11 @@
 ## Stage 3: ConnectivityModel
 
 **Files:**
-- Create: `include/volt/circuit/connectivity_model.hpp`
-- Create: `src/circuit/connectivity_model.cpp`
+- Create: `include/volt/circuit/connectivity/connectivity_model.hpp`
+- Create: `src/circuit/connectivity/connectivity_model.cpp`
 - Modify: `include/volt/circuit/circuit.hpp`
 - Modify: `src/circuit/circuit.cpp`
-- Test: `tests/circuit/connectivity_model_test.cpp`
+- Test: `tests/circuit/connectivity/connectivity_model_test.cpp`
 
 - [ ] Write failing subsystem tests for pin-definition storage, component-definition pin membership, unique component references, unique net names, dangling pin rejection, and one-net-per-pin enforcement.
 - [ ] Move component, pin, and net storage plus connect/disconnect logic into `ConnectivityModel`.
@@ -54,11 +54,11 @@
 ## Stage 4: HierarchyModel
 
 **Files:**
-- Create: `include/volt/circuit/hierarchy_model.hpp`
-- Create: `src/circuit/hierarchy_model.cpp`
+- Create: `include/volt/circuit/hierarchy/hierarchy_model.hpp`
+- Create: `src/circuit/hierarchy/hierarchy_model.cpp`
 - Modify: `include/volt/circuit/circuit.hpp`
 - Modify: `src/circuit/circuit.cpp`
-- Test: `tests/circuit/hierarchy_model_test.cpp`
+- Test: `tests/circuit/hierarchy/hierarchy_model_test.cpp`
 
 - [ ] Write failing subsystem tests for module-name uniqueness, template-net uniqueness within a module, port membership, module component membership, pin-template connections, instance origin metadata, and duplicate binding rejection.
 - [ ] Move hierarchy-owned state and local invariants into `HierarchyModel`.
@@ -68,14 +68,14 @@
 ## Stage 5: ElectricalModel And DesignIntent
 
 **Files:**
-- Create: `include/volt/circuit/electrical_model.hpp`
-- Create: `src/circuit/electrical_model.cpp`
-- Create: `include/volt/circuit/design_intent.hpp`
-- Create: `src/circuit/design_intent.cpp`
+- Create: `include/volt/circuit/electrical/electrical_model.hpp`
+- Create: `src/circuit/electrical/electrical_model.cpp`
+- Create: `include/volt/circuit/intent/design_intent.hpp`
+- Create: `src/circuit/intent/design_intent.cpp`
 - Modify: `include/volt/circuit/circuit.hpp`
 - Modify: `src/circuit/circuit.cpp`
-- Test: `tests/circuit/electrical_model_test.cpp`
-- Test: `tests/circuit/design_intent_test.cpp`
+- Test: `tests/circuit/electrical/electrical_model_test.cpp`
+- Test: `tests/circuit/intent/design_intent_test.cpp`
 
 - [ ] Write failing subsystem tests for electrical owner-kind validation, selected-part attribute storage, idempotent stub/no-connect marking, and deterministic insertion order.
 - [ ] Move typed electrical attributes and selected-part state into `ElectricalModel`.
@@ -87,12 +87,12 @@
 
 **Files:**
 - Create: `include/volt/core/rule_set.hpp`
-- Modify: `include/volt/circuit/validation.hpp`
-- Modify: `src/circuit/validation.cpp`
+- Modify: `include/volt/circuit/validation/validation.hpp`
+- Modify: `src/circuit/validation/validation.cpp`
 - Modify: `include/volt/pcb/board.hpp`
-- Modify: `src/pcb/board_copper.cpp`
+- Modify: `src/pcb/copper/board_copper.cpp`
 - Test: `tests/core/rule_set_test.cpp`
-- Test: existing `tests/circuit/validation_test.cpp` and `tests/pcb/board_test.cpp`
+- Test: existing `tests/circuit/validation/validation_test.cpp` and `tests/pcb/board_test.cpp`
 
 - [ ] Write failing `RuleSet` tests for registration order and report mutation.
 - [ ] Convert circuit validation entry points to construct rule sets of existing read-only rules.

@@ -6,8 +6,8 @@
 #include <volt/authoring/connection_helpers.hpp>
 #include <volt/authoring/reference_designators.hpp>
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/nets.hpp>
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/nets.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt::examples {

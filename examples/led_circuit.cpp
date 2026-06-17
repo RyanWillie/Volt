@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include <volt/circuit/validation.hpp>
+#include <volt/circuit/validation/validation.hpp>
 
 int main() {
     const auto circuit = volt::examples::build_led_circuit();

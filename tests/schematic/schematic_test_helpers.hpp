@@ -12,9 +12,9 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/definitions.hpp>
-#include <volt/circuit/instances.hpp>
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
+#include <volt/circuit/connectivity/instances.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/schematic/geometry.hpp>
 #include <volt/schematic/layout.hpp>
 #include <volt/schematic/schematic.hpp>

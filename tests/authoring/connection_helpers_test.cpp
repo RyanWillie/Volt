@@ -5,9 +5,9 @@
 
 #include <volt/authoring/connection_helpers.hpp>
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/definitions.hpp>
-#include <volt/circuit/nets.hpp>
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
+#include <volt/circuit/connectivity/nets.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 
 namespace {
 

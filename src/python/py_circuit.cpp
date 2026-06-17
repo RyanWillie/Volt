@@ -4,11 +4,11 @@
 
 #include <algorithm>
 
-#include <volt/circuit/bom.hpp>
-#include <volt/circuit/queries.hpp>
-#include <volt/io/bom_writer.hpp>
-#include <volt/io/pcb_svg_writer.hpp>
-#include <volt/io/pcb_writer.hpp>
+#include <volt/circuit/bom/bom.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
+#include <volt/io/bom/bom_writer.hpp>
+#include <volt/io/pcb/pcb_svg_writer.hpp>
+#include <volt/io/pcb/pcb_writer.hpp>
 #include <volt/pcb/routing/board_router.hpp>
 
 namespace volt::python {

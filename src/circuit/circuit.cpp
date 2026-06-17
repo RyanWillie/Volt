@@ -1,6 +1,6 @@
 #include <volt/circuit/circuit.hpp>
 
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 
 #include <algorithm>
 #include <cstddef>

@@ -10,7 +10,7 @@
 #include <variant>
 #include <vector>
 
-#include <volt/circuit/definitions.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/schematic/readability_geometry.hpp>
 #include <volt/schematic/schematic.hpp>

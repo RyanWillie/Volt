@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/nets.hpp>
-#include <volt/circuit/queries.hpp>
-#include <volt/circuit/validation.hpp>
+#include <volt/circuit/connectivity/nets.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
+#include <volt/circuit/validation/validation.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>

@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/board_geometry_projection.hpp>
+#include <volt/pcb/projection/board_geometry_projection.hpp>
 
 TEST_CASE("Board geometry projection derives bare-board 3D geometry from board state") {
     auto circuit = volt::Circuit{};

@@ -4,10 +4,10 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/definitions.hpp>
-#include <volt/circuit/instances.hpp>
-#include <volt/circuit/nets.hpp>
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
+#include <volt/circuit/connectivity/instances.hpp>
+#include <volt/circuit/connectivity/nets.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 

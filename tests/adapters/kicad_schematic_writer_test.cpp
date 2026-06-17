@@ -7,7 +7,7 @@
 
 #include <volt/adapters/kicad/schematic_writer.hpp>
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/definitions.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/schematic/schematic.hpp>
 #include <volt/schematic/symbols.hpp>
 

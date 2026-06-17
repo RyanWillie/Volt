@@ -9,11 +9,11 @@
 
 #include <volt/circuit/circuit.hpp>
 #include <volt/pcb/board.hpp>
-#include <volt/pcb/board_copper_model.hpp>
-#include <volt/pcb/board_footprint_model.hpp>
-#include <volt/pcb/board_placement_model.hpp>
-#include <volt/pcb/board_structure_model.hpp>
-#include <volt/pcb/footprints.hpp>
+#include <volt/pcb/copper/board_copper_model.hpp>
+#include <volt/pcb/footprints/board_footprint_model.hpp>
+#include <volt/pcb/footprints/footprints.hpp>
+#include <volt/pcb/placement/board_placement_model.hpp>
+#include <volt/pcb/structure/board_structure_model.hpp>
 
 namespace {
 

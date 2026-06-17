@@ -6,7 +6,7 @@
 #include <string_view>
 #include <vector>
 
-#include <volt/circuit/definitions.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/core/diagnostics.hpp>
 #include <volt/schematic/presentation_geometry.hpp>
 #include <volt/schematic/schematic.hpp>

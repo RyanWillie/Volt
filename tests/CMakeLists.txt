@@ -19,23 +19,23 @@ add_executable(
     authoring/reference_designators_test.cpp
     circuit/circuit_test.cpp
     circuit/authoring_test.cpp
-    circuit/bom_test.cpp
-    circuit/connectivity_model_test.cpp
-    circuit/definitions_test.cpp
-    circuit/design_intent_test.cpp
-    circuit/electrical_model_test.cpp
-    circuit/hierarchy_model_test.cpp
-    circuit/hierarchy_test.cpp
-    circuit/instances_test.cpp
+    circuit/bom/bom_test.cpp
+    circuit/connectivity/connectivity_model_test.cpp
+    circuit/connectivity/definitions_test.cpp
+    circuit/connectivity/instances_test.cpp
+    circuit/connectivity/nets_test.cpp
+    circuit/connectivity/queries_test.cpp
+    circuit/constraints/net_classes_test.cpp
+    circuit/electrical/electrical_model_test.cpp
+    circuit/hierarchy/hierarchy_model_test.cpp
+    circuit/hierarchy/hierarchy_test.cpp
+    circuit/intent/design_intent_test.cpp
     circuit/led_circuit_test.cpp
-    circuit/nets_test.cpp
-    circuit/parts_test.cpp
-    circuit/queries_test.cpp
-    circuit/net_classes_test.cpp
-    circuit/part_definition_test.cpp
-    circuit/validation_power_intent_test.cpp
-    circuit/validation_signal_domain_test.cpp
-    circuit/validation_test.cpp
+    circuit/parts/part_definition_test.cpp
+    circuit/parts/parts_test.cpp
+    circuit/validation/validation_power_intent_test.cpp
+    circuit/validation/validation_signal_domain_test.cpp
+    circuit/validation/validation_test.cpp
     core/diagnostics_test.cpp
     core/content_hash_test.cpp
     core/electrical_attributes_test.cpp
@@ -46,24 +46,24 @@ add_executable(
     core/rule_set_test.cpp
     core/umbrella_header_test.cpp
     core/version_test.cpp
-    io/board_capability_profile_io_test.cpp
-    io/logical_circuit_reader_test.cpp
-    io/logical_circuit_round_trip_test.cpp
-    io/logical_circuit_writer_test.cpp
-    io/part_definition_io_test.cpp
-    io/pcb_projection_io_test.cpp
-    io/pcb_svg_writer_test.cpp
-    io/schematic_reader_test.cpp
-    io/schematic_round_trip_test.cpp
-    io/schematic_schema_test.cpp
-    io/schematic_svg_writer_test.cpp
-    io/schematic_writer_test.cpp
+    io/capabilities/board_capability_profile_io_test.cpp
+    io/logical/logical_circuit_reader_test.cpp
+    io/logical/logical_circuit_round_trip_test.cpp
+    io/logical/logical_circuit_writer_test.cpp
+    io/parts/part_definition_io_test.cpp
+    io/pcb/pcb_projection_io_test.cpp
+    io/pcb/pcb_svg_writer_test.cpp
+    io/schematic/schematic_reader_test.cpp
+    io/schematic/schematic_round_trip_test.cpp
+    io/schematic/schematic_schema_test.cpp
+    io/schematic/schematic_svg_writer_test.cpp
+    io/schematic/schematic_writer_test.cpp
     pcb/geometry/board_geometry_projection_test.cpp
     pcb/routing/board_escape_router_test.cpp
     pcb/routing/board_router_test.cpp
     pcb/routing/board_spatial_index_test.cpp
     pcb/board_test.cpp
-    pcb/public_include_compatibility_test.cpp
+    pcb/canonical_public_include_paths_test.cpp
     pcb/models/board_models_test.cpp
     pcb/validation/erc_drc_real_board_coverage_matrix_test.cpp
     pcb/validation/erc_drc_real_board_edge_cases_test.cpp

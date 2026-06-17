@@ -18,31 +18,31 @@ target_link_libraries(volt_nlohmann_json INTERFACE nlohmann_json::nlohmann_json)
 
 add_library(
     volt_io
-    bom_writer.cpp
-    detail_schematic_svg_common.cpp
-    detail_schematic_svg_elements.cpp
-    detail_schematic_svg_layers.cpp
-    detail_schematic_svg_page_chrome.cpp
-    board_capability_profile.cpp
-    logical_circuit_reader.cpp
-    logical_circuit_writer.cpp
-    logical_net_class_format.cpp
-    part_definition_reader.cpp
-    part_definition_writer.cpp
-    pcb_feature_io.cpp
-    pcb_feature_svg.cpp
-    pcb_reader.cpp
-    pcb_schema.cpp
-    pcb_svg_footprints.cpp
-    pcb_svg_layers.cpp
-    pcb_svg_writer.cpp
-    pcb_writer.cpp
-    pcb_writer_footprints.cpp
-    pcb_writer_rooms.cpp
-    schematic_reader.cpp
-    schematic_schema.cpp
-    schematic_svg_writer.cpp
-    schematic_writer.cpp
+    bom/bom_writer.cpp
+    capabilities/board_capability_profile.cpp
+    logical/logical_circuit_reader.cpp
+    logical/logical_circuit_writer.cpp
+    logical/logical_net_class_format.cpp
+    parts/part_definition_reader.cpp
+    parts/part_definition_writer.cpp
+    pcb/pcb_feature_io.cpp
+    pcb/pcb_feature_svg.cpp
+    pcb/pcb_reader.cpp
+    pcb/pcb_schema.cpp
+    pcb/pcb_svg_footprints.cpp
+    pcb/pcb_svg_layers.cpp
+    pcb/pcb_svg_writer.cpp
+    pcb/pcb_writer.cpp
+    pcb/pcb_writer_footprints.cpp
+    pcb/pcb_writer_rooms.cpp
+    schematic/detail_schematic_svg_common.cpp
+    schematic/detail_schematic_svg_elements.cpp
+    schematic/detail_schematic_svg_layers.cpp
+    schematic/detail_schematic_svg_page_chrome.cpp
+    schematic/schematic_reader.cpp
+    schematic/schematic_schema.cpp
+    schematic/schematic_svg_writer.cpp
+    schematic/schematic_writer.cpp
 )
 add_library(Volt::IO ALIAS volt_io)
 

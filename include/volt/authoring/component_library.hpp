@@ -6,7 +6,7 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/definitions.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>

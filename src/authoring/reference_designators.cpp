@@ -5,7 +5,7 @@
 #include <string>
 #include <utility>
 
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
 
 namespace volt::authoring {
 

@@ -4,11 +4,11 @@
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
-#include <volt/circuit/definitions.hpp>
-#include <volt/circuit/instances.hpp>
-#include <volt/circuit/nets.hpp>
-#include <volt/circuit/parts.hpp>
-#include <volt/circuit/queries.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
+#include <volt/circuit/connectivity/instances.hpp>
+#include <volt/circuit/connectivity/nets.hpp>
+#include <volt/circuit/connectivity/queries.hpp>
+#include <volt/circuit/parts/parts.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 

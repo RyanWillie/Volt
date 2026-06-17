@@ -8,7 +8,7 @@
 #include <string_view>
 #include <variant>
 
-#include <volt/circuit/definitions.hpp>
+#include <volt/circuit/connectivity/definitions.hpp>
 #include <volt/schematic/schematic.hpp>
 
 namespace volt {
