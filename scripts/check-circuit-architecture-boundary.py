@@ -100,14 +100,37 @@ PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {
     (
         "python/volt/_pcb_composition.py",
         "fanout",
+        "route_net = net if net is not None else context.pad_net(source)",
     ): "Existing PCB fanout helper infers route nets from pad anchors; VOL-234 moves this into the kernel.",
     (
         "python/volt/_pcb_composition.py",
+        "fanout",
+        "if route_net is None:",
+    ): "Existing PCB fanout helper validates Python-inferred route nets; VOL-234 moves this into the kernel.",
+    (
+        "python/volt/_pcb_composition.py",
         "_route_net",
+        "start_net = context.pad_net(start)",
+    ): "Known Python route-net inference choke point scheduled for kernel ownership in VOL-234.",
+    (
+        "python/volt/_pcb_composition.py",
+        "_route_net",
+        "end_net = context.pad_net(end)",
+    ): "Known Python route-net inference choke point scheduled for kernel ownership in VOL-234.",
+    (
+        "python/volt/_pcb_composition.py",
+        "_route_net",
+        "if start_net is None or end_net is None:",
+    ): "Known Python route-net inference choke point scheduled for kernel ownership in VOL-234.",
+    (
+        "python/volt/_pcb_composition.py",
+        "_route_net",
+        "if start_net != end_net:",
     ): "Known Python route-net inference choke point scheduled for kernel ownership in VOL-234.",
     (
         "python/volt/_pcb_layout.py",
         "BoardLayout._pad_anchor_net",
+        "return resolution.net",
     ): "Known Python pad-anchor net resolver scheduled for kernel ownership in VOL-234.",
 }
 
@@ -131,6 +154,7 @@ class PythonConnectivityRisk:
     path: Path
     line: int
     qualname: str
+    line_text: str
     reason: str
 
 
@@ -327,12 +351,12 @@ def names_in(node: ast.AST) -> set[str]:
 
 class _PythonConnectivityRiskVisitor(ast.NodeVisitor):
     def __init__(self) -> None:
-        self.risks: set[str] = set()
+        self.risks: set[tuple[int, str]] = set()
 
     def visit_Call(self, node: ast.Call) -> None:
         name = call_name(node.func)
         if name in {"pad_net", "_pad_anchor_net"}:
-            self.risks.add("uses Python pad-anchor net lookup")
+            self.risks.add((node.lineno, "uses Python pad-anchor net lookup"))
         self.generic_visit(node)
 
     def visit_Compare(self, node: ast.Compare) -> None:
@@ -340,12 +364,12 @@ class _PythonConnectivityRiskVisitor(ast.NodeVisitor):
         for comparator in node.comparators:
             compared_names.update(names_in(comparator))
         if any(name.endswith("_net") for name in compared_names):
-            self.risks.add("compares route-net identity in Python")
+            self.risks.add((node.lineno, "compares route-net identity in Python"))
         self.generic_visit(node)
 
     def visit_Return(self, node: ast.Return) -> None:
         if isinstance(node.value, ast.Attribute) and node.value.attr == "net":
-            self.risks.add("returns net identity from Python object state")
+            self.risks.add((node.lineno, "returns net identity from Python object state"))
         self.generic_visit(node)
 
 
@@ -355,6 +379,7 @@ def function_qualname(stack: list[str], name: str) -> str:
 
 def python_connectivity_risks(path: Path, text: str) -> list[PythonConnectivityRisk]:
     tree = ast.parse(text, filename=relative(path))
+    lines = text.splitlines()
     risks: list[PythonConnectivityRisk] = []
 
     class Visitor(ast.NodeVisitor):
@@ -370,13 +395,14 @@ def python_connectivity_risks(path: Path, text: str) -> list[PythonConnectivityR
             visitor = _PythonConnectivityRiskVisitor()
             for child in node.body:
                 visitor.visit(child)
-            if visitor.risks:
+            for line, reason in sorted(visitor.risks):
                 risks.append(
                     PythonConnectivityRisk(
                         path=path,
-                        line=node.lineno,
+                        line=line,
                         qualname=function_qualname(self.stack, node.name),
-                        reason=", ".join(sorted(visitor.risks)),
+                        line_text=lines[line - 1].strip(),
+                        reason=reason,
                     )
                 )
 
@@ -404,25 +430,34 @@ def entity_ref_sensitive_files() -> list[Path]:
 
 
 def entity_ref_names(text: str) -> set[str]:
+    lines = text.splitlines()
     names = set(
         re.findall(
             r"\bEntityRef\s*(?:[&*]\s*)?([A-Za-z_]\w*)",
             text,
         )
     )
-    names.update(
-        re.findall(
-            r"\bstd::vector\s*<\s*EntityRef\s*>\s*(?:[&*]\s*)?([A-Za-z_]\w*)",
-            text,
+    for line in lines:
+        names.update(
+            re.findall(
+                r"\bstd::(?:array|span|vector)\s*<[^;{}]*\bEntityRef\b[^;{}]*>\s*"
+                r"(?:[&*]\s*)?([A-Za-z_]\w*)",
+                line,
+            )
         )
-    )
+        names.update(
+            re.findall(
+                r"\bstd::pair\s*<[^;{}]*\bEntityRef\b[^;{}]*>\s*(?:[&*]\s*)?"
+                r"([A-Za-z_]\w*)",
+                line,
+            )
+        )
     names.update(
         re.findall(
             r"\bfor\s*\([^:]+?\b([A-Za-z_]\w*)\s*:\s*[^)]*\.entities\s*\(",
             text,
         )
     )
-    lines = text.splitlines()
     changed = True
     while changed:
         changed = False
@@ -454,11 +489,21 @@ def entity_ref_traversal_lines(text: str) -> list[tuple[int, str]]:
     names = entity_ref_names(stripped)
     lines: list[tuple[int, str]] = []
     for line_number, line in enumerate(stripped.splitlines(), start=1):
+        if re.search(
+            r"\.entities\s*\(\)\s*(?:\[[^\]]+\]|\.front\(\)|\.back\(\))\s*"
+            r"\.\s*(kind|index)\s*\(",
+            line,
+        ):
+            lines.append((line_number, line.strip()))
+            continue
         for name in names:
             if re.search(rf"\b{re.escape(name)}\s*\.\s*(kind|index)\s*\(", line):
                 lines.append((line_number, line.strip()))
                 break
             if re.search(rf"\b{re.escape(name)}\s*(?:\[[^\]]+\]|\.front\(\)|\.back\(\))\s*\.\s*(kind|index)\s*\(", line):
+                lines.append((line_number, line.strip()))
+                break
+            if re.search(rf"\b{re.escape(name)}\s*\.\s*(?:first|second)\s*\.\s*(kind|index)\s*\(", line):
                 lines.append((line_number, line.strip()))
                 break
     return lines
@@ -532,16 +577,16 @@ def check_public_api_snapshots(failures: list[str]) -> None:
 
 
 def check_python_connectivity_semantics(failures: list[str]) -> None:
-    found_allowlisted: set[tuple[str, str]] = set()
+    found_allowlisted: set[tuple[str, str, str]] = set()
     for path in python_pcb_authoring_files():
         for risk in python_connectivity_risks(path, read(path)):
-            key = (relative(path), risk.qualname)
+            key = (relative(path), risk.qualname, risk.line_text)
             if key in PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST:
                 found_allowlisted.add(key)
                 continue
             fail(
                 f"{relative(path)}:{risk.line} function {risk.qualname} owns PCB "
-                f"connectivity/net inference in Python ({risk.reason})",
+                f"connectivity/net inference in Python ({risk.reason}): {risk.line_text}",
                 failures,
             )
 
@@ -704,6 +749,27 @@ def run_self_tests() -> int:
         any(risk.qualname == "_route_net" for risk in risks),
         "Python route-net inference sample must be reported",
     )
+    python_allowlist_sample = textwrap.dedent(
+        """
+        def _route_net(context, net, start, middle, end):
+            start_net = context.pad_net(start)
+            middle_net = context.pad_net(middle)
+            return start_net if middle_net is None else middle_net
+        """
+    )
+    allowlist_risks = python_connectivity_risks(
+        Path("python/volt/_pcb_composition.py"), python_allowlist_sample
+    )
+    unallowlisted = [
+        risk
+        for risk in allowlist_risks
+        if (relative(risk.path), risk.qualname, risk.line_text)
+        not in PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST
+    ]
+    require_self_test(
+        any("middle_net = context.pad_net(middle)" == risk.line_text for risk in unallowlisted),
+        "extra Python route-net inference inside known-debt functions must still fail",
+    )
     python_projection_sample = textwrap.dedent(
         """
         def text(context, value, *, at, layer):
@@ -745,6 +811,25 @@ def run_self_tests() -> int:
     require_self_test(
         len(entity_ref_traversal_lines(entity_ref_auto_bad)) == 2,
         "EntityRef auto aliases from diagnostic entity lists must be reported",
+    )
+    entity_ref_container_bad = textwrap.dedent(
+        """
+        void mutate_from_containers(const Diagnostic &diagnostic,
+                                    std::span<const EntityRef> refs,
+                                    std::pair<EntityRef, EntityRef> pair) {
+            if (diagnostic.entities().front().kind() == EntityKind::Net) {
+                return;
+            }
+            if (refs.front().index() == 0U) {
+                return;
+            }
+            (void)pair.first.kind();
+        }
+        """
+    )
+    require_self_test(
+        len(entity_ref_traversal_lines(entity_ref_container_bad)) == 3,
+        "EntityRef direct, span, and pair access must be reported",
     )
     entity_ref_reporting = textwrap.dedent(
         """
