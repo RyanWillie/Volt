@@ -6,11 +6,10 @@
 
 #include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 #include <volt/schematic/schematic_sheet.hpp>
 
 namespace volt {
-
-class Schematic;
 
 /**
  * Owns schematic sheets, authored regions, and sheet-local item membership lists.
@@ -47,33 +46,33 @@ class SchematicSheetModel {
     /** Require that a sheet ID belongs to this model. */
     void require_sheet(SheetId sheet) const;
 
-  private:
-    friend class Schematic;
-
     /** Record that a symbol instance appears on a sheet. */
-    void add_symbol_instance(SheetId sheet, SymbolInstanceId instance);
+    void add_symbol_instance(detail::KernelMutationAccess access, SheetId sheet,
+                             SymbolInstanceId instance);
 
     /** Record that a wire run appears on a sheet. */
-    void add_wire_run(SheetId sheet, WireRunId wire);
+    void add_wire_run(detail::KernelMutationAccess access, SheetId sheet, WireRunId wire);
 
     /** Record that a net label appears on a sheet. */
-    void add_net_label(SheetId sheet, NetLabelId label);
+    void add_net_label(detail::KernelMutationAccess access, SheetId sheet, NetLabelId label);
 
     /** Record that a junction appears on a sheet. */
-    void add_junction(SheetId sheet, JunctionId junction);
+    void add_junction(detail::KernelMutationAccess access, SheetId sheet, JunctionId junction);
 
     /** Record that a power or ground marker appears on a sheet. */
-    void add_power_port(SheetId sheet, PowerPortId port);
+    void add_power_port(detail::KernelMutationAccess access, SheetId sheet, PowerPortId port);
 
     /** Record that a no-connect marker appears on a sheet. */
-    void add_no_connect_marker(SheetId sheet, NoConnectMarkerId marker);
+    void add_no_connect_marker(detail::KernelMutationAccess access, SheetId sheet,
+                               NoConnectMarkerId marker);
 
     /** Record that a sheet or off-page port appears on a sheet. */
-    void add_sheet_port(SheetId sheet, SheetPortId port);
+    void add_sheet_port(detail::KernelMutationAccess access, SheetId sheet, SheetPortId port);
 
     /** Record that a symbol field appears on a sheet. */
-    void add_symbol_field(SheetId sheet, SymbolFieldId field);
+    void add_symbol_field(detail::KernelMutationAccess access, SheetId sheet, SymbolFieldId field);
 
+  private:
     [[nodiscard]] Sheet &mutable_sheet(SheetId id);
 
     EntityTable<Sheet, SheetId> sheets_;

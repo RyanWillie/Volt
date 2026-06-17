@@ -8,6 +8,7 @@
 #include <volt/circuit/hierarchy/hierarchy.hpp>
 #include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 
 namespace volt {
 
@@ -167,35 +168,36 @@ class HierarchyModel {
     [[nodiscard]] bool module_component_belongs_to_module(ModuleDefId module,
                                                           ModuleComponentId component) const;
 
-  private:
-    friend class Circuit;
-
     /** Add a component template to a module definition. */
-    [[nodiscard]] ModuleComponentId add_module_component(ModuleDefId module,
+    [[nodiscard]] ModuleComponentId add_module_component(detail::KernelMutationAccess access,
+                                                         ModuleDefId module,
                                                          ModuleComponentTemplate component);
 
     /** Connect a module component pin to a template net. */
-    bool connect_module_pin(ModuleDefId module, TemplateNetDefId net, ModuleComponentId component,
-                            PinDefId pin);
+    bool connect_module_pin(detail::KernelMutationAccess access, ModuleDefId module,
+                            TemplateNetDefId net, ModuleComponentId component, PinDefId pin);
 
     /** Restore a root module instance with pre-existing concrete origins. */
     [[nodiscard]] ModuleInstanceId restore_root_module_instance(
-        ModuleDefId definition, ModuleInstanceName name,
+        detail::KernelMutationAccess access, ModuleDefId definition, ModuleInstanceName name,
         const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
         const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins);
 
     /** Record the concrete net created for a module template net. */
-    void record_module_net_origin(ModuleInstanceId instance, TemplateNetDefId template_net,
-                                  NetId concrete_net);
+    void record_module_net_origin(detail::KernelMutationAccess access, ModuleInstanceId instance,
+                                  TemplateNetDefId template_net, NetId concrete_net);
 
     /** Record the concrete component created for a module component template. */
-    void record_module_component_origin(ModuleInstanceId instance, ModuleComponentId component,
+    void record_module_component_origin(detail::KernelMutationAccess access,
+                                        ModuleInstanceId instance, ModuleComponentId component,
                                         ComponentId concrete_component);
 
     /** Bind a module instance port between an internal and parent net. */
-    [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port,
+    [[nodiscard]] PortBindingId bind_port(detail::KernelMutationAccess access,
+                                          ModuleInstanceId instance, PortDefId port,
                                           NetId internal_net, NetId parent_net);
 
+  private:
     EntityTable<ModuleDefinition, ModuleDefId> module_definitions_;
     EntityTable<TemplateNetDefinition, TemplateNetDefId> template_net_definitions_;
     EntityTable<ModuleComponentTemplate, ModuleComponentId> module_component_templates_;

@@ -10,7 +10,7 @@ ComponentAssemblyIntent::ComponentAssemblyIntent(ComponentId component, std::opt
                                                  bool selection_override)
     : component_{component}, dnp_{dnp}, selection_override_{selection_override} {}
 
-bool DesignIntent::mark_intentional_stub_net(NetId net) {
+bool DesignIntent::mark_intentional_stub_net(detail::KernelMutationAccess, NetId net) {
     if (is_intentional_stub_net(net)) {
         return false;
     }
@@ -19,7 +19,7 @@ bool DesignIntent::mark_intentional_stub_net(NetId net) {
     return true;
 }
 
-bool DesignIntent::mark_intentional_no_connect_pin(PinId pin) {
+bool DesignIntent::mark_intentional_no_connect_pin(detail::KernelMutationAccess, PinId pin) {
     if (is_intentional_no_connect_pin(pin)) {
         return false;
     }
@@ -72,7 +72,8 @@ DesignIntent::component_assembly_intents() const noexcept {
     return component_assembly_intents_;
 }
 
-void DesignIntent::set_component_dnp(ComponentId component, bool dnp) {
+void DesignIntent::set_component_dnp(detail::KernelMutationAccess, ComponentId component,
+                                     bool dnp) {
     const auto existing =
         std::find_if(component_assembly_intents_.begin(), component_assembly_intents_.end(),
                      [component](const ComponentAssemblyIntent &intent) {
@@ -86,7 +87,8 @@ void DesignIntent::set_component_dnp(ComponentId component, bool dnp) {
     *existing = ComponentAssemblyIntent{component, dnp, selection_override};
 }
 
-void DesignIntent::set_component_selection_override(ComponentId component, bool override) {
+void DesignIntent::set_component_selection_override(detail::KernelMutationAccess,
+                                                    ComponentId component, bool override) {
     const auto existing =
         std::find_if(component_assembly_intents_.begin(), component_assembly_intents_.end(),
                      [component](const ComponentAssemblyIntent &intent) {

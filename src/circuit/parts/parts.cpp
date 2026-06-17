@@ -114,7 +114,8 @@ PhysicalPart::PhysicalPart(ManufacturerPart manufacturer_part, PackageRef packag
     return electrical_attributes_;
 }
 
-void PhysicalPart::set_electrical_attribute(const ElectricalAttributeSpec &spec,
+void PhysicalPart::set_electrical_attribute(detail::KernelMutationAccess,
+                                            const ElectricalAttributeSpec &spec,
                                             ElectricalAttributeValue value) {
     electrical_attributes_.set(spec, value);
 }

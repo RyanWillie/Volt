@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include "../../core/mutation_access.hpp"
+
 namespace volt {
 
 [[nodiscard]] PinDefId ConnectivityModel::add_pin_definition(PinDefinition definition) {
@@ -105,7 +107,8 @@ bool ConnectivityModel::disconnect(PinId pin) {
 void ConnectivityModel::set_component_property(ComponentId component, PropertyKey key,
                                                PropertyValue value) {
     require_component(component);
-    components_.get(component).set_property(std::move(key), std::move(value));
+    components_.get(component).set_property(detail::kernel_mutation_access(), std::move(key),
+                                            std::move(value));
 }
 
 [[nodiscard]] std::optional<NetId> ConnectivityModel::net_of(PinId pin) const {

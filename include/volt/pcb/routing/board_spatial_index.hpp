@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/copper/board_copper.hpp>
 #include <volt/pcb/features/board_features.hpp>
@@ -117,6 +118,11 @@ class BoardSpatialIndex {
     /** Insert one accepted transient shape so later queries see it. */
     void insert(BoardSpatialQueryShape shape);
 
+    /** Insert one accepted transient shape after the board model has recorded the same geometry. */
+    void insert_after_board_mutation(detail::KernelMutationAccess access,
+                                     BoardSpatialQueryShape shape,
+                                     std::size_t previous_geometry_mutation_count);
+
     /** Return candidate copper-clearance pairs in ascending shape-index order. */
     [[nodiscard]] std::vector<BoardSpatialCandidatePair> copper_clearance_candidates() const;
 
@@ -129,8 +135,6 @@ class BoardSpatialIndex {
     query_legality(const BoardSpatialQueryShape &candidate) const;
 
   private:
-    friend class BoardRouter;
-
     friend void
     detail::validate_copper_clearance(const Board &board,
                                       const std::vector<detail::BoardCopperShape> &shapes,
@@ -190,9 +194,6 @@ class BoardSpatialIndex {
     void append_shape(detail::BoardCopperShape shape);
 
     void insert(detail::BoardCopperShape shape);
-
-    void insert_after_board_mutation(BoardSpatialQueryShape shape,
-                                     std::size_t previous_geometry_mutation_count);
 
     void insert_after_board_mutation(detail::BoardCopperShape shape,
                                      std::size_t previous_geometry_mutation_count);

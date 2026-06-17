@@ -6,11 +6,10 @@
 
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt {
-
-class ConnectivityModel;
 
 /** Human-facing reference designator for a component instance, such as R1 or U1. */
 class ReferenceDesignator {
@@ -47,11 +46,10 @@ class ComponentInstance {
     /** Return extensible metadata properties for this component instance. */
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
+    /** Set or replace one component instance property. */
+    void set_property(detail::KernelMutationAccess access, PropertyKey key, PropertyValue value);
+
   private:
-    friend class ConnectivityModel;
-
-    void set_property(PropertyKey key, PropertyValue value);
-
     ComponentDefId definition_;
     ReferenceDesignator reference_;
     PropertyMap properties_;

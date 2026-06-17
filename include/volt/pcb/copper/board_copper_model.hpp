@@ -4,11 +4,10 @@
 
 #include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 #include <volt/pcb/copper/board_copper.hpp>
 
 namespace volt {
-
-class Board;
 
 /**
  * Owns routed and presentation copper primitives for a board projection: tracks, vias, zones,
@@ -57,27 +56,26 @@ class BoardCopperModel {
     /** Return the number of board text items owned by this model. */
     [[nodiscard]] std::size_t text_count() const noexcept;
 
-  private:
-    friend class Board;
-
     /** Add a routed copper track and return its stable board-local ID. */
-    [[nodiscard]] BoardTrackId add_track(BoardTrack track);
+    [[nodiscard]] BoardTrackId add_track(detail::KernelMutationAccess access, BoardTrack track);
 
     /** Add a routed copper via and return its stable board-local ID. */
-    [[nodiscard]] BoardViaId add_via(BoardVia via);
+    [[nodiscard]] BoardViaId add_via(detail::KernelMutationAccess access, BoardVia via);
 
     /** Add a copper zone and return its stable board-local ID. */
-    [[nodiscard]] BoardZoneId add_zone(BoardZone zone);
+    [[nodiscard]] BoardZoneId add_zone(detail::KernelMutationAccess access, BoardZone zone);
 
     /** Add a copper keepout and return its stable board-local ID. */
-    [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout);
+    [[nodiscard]] BoardKeepoutId add_keepout(detail::KernelMutationAccess access,
+                                             BoardKeepout keepout);
 
     /** Add a board room and return its stable board-local ID. */
-    [[nodiscard]] BoardRoomId add_room(BoardRoom room);
+    [[nodiscard]] BoardRoomId add_room(detail::KernelMutationAccess access, BoardRoom room);
 
     /** Add board text and return its stable board-local ID. */
-    [[nodiscard]] BoardTextId add_text(BoardText text);
+    [[nodiscard]] BoardTextId add_text(detail::KernelMutationAccess access, BoardText text);
 
+  private:
     EntityTable<BoardTrack, BoardTrackId> tracks_;
     EntityTable<BoardVia, BoardViaId> vias_;
     EntityTable<BoardZone, BoardZoneId> zones_;

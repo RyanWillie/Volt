@@ -1,10 +1,24 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <concepts>
 #include <stdexcept>
+#include <utility>
 
 #include <volt/circuit/connectivity/instances.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
+
+namespace {
+
+template <typename Model>
+concept CanSetComponentProperty =
+    requires(Model model, volt::PropertyKey key, volt::PropertyValue value) {
+        model.set_property(std::move(key), std::move(value));
+    };
+
+static_assert(!CanSetComponentProperty<volt::ComponentInstance>);
+
+} // namespace
 
 TEST_CASE("ReferenceDesignator stores a non-empty component reference") {
     const auto reference = volt::ReferenceDesignator{"R1"};

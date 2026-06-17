@@ -284,7 +284,8 @@ void NetClass::set_allowed_layer_names(std::vector<std::string> names) {
     return net_classes_.insert(std::move(net_class));
 }
 
-[[nodiscard]] bool NetClasses::assign_net_class(NetId net, NetClassId net_class) {
+[[nodiscard]] bool NetClasses::assign_net_class(detail::KernelMutationAccess, NetId net,
+                                                NetClassId net_class) {
     require_net_class(net_class);
     const auto existing =
         std::find_if(net_class_assignments_.begin(), net_class_assignments_.end(),

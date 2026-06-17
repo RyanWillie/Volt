@@ -8,11 +8,10 @@
 #include <volt/circuit/connectivity/instances.hpp>
 #include <volt/circuit/connectivity/nets.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt {
-
-class HierarchyModel;
 
 /** Human-facing reusable module name. */
 class ModuleName {
@@ -186,13 +185,16 @@ class ModuleDefinition {
     /** Return component templates in deterministic insertion order. */
     [[nodiscard]] const std::vector<ModuleComponentId> &components() const noexcept;
 
+    /** Add a template-local net to this module definition. */
+    void add_template_net(detail::KernelMutationAccess access, TemplateNetDefId net);
+
+    /** Add a boundary port to this module definition. */
+    void add_port(detail::KernelMutationAccess access, PortDefId port);
+
+    /** Add a component template to this module definition. */
+    void add_component(detail::KernelMutationAccess access, ModuleComponentId component);
+
   private:
-    friend class HierarchyModel;
-
-    void add_template_net(TemplateNetDefId net);
-    void add_port(PortDefId port);
-    void add_component(ModuleComponentId component);
-
     ModuleName name_;
     std::vector<TemplateNetDefId> template_nets_;
     std::vector<PortDefId> ports_;

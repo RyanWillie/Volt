@@ -4,10 +4,9 @@
 #include <vector>
 
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 
 namespace volt {
-
-class Circuit;
 
 /** Explicit assembly intent for one component instance. */
 class ComponentAssemblyIntent {
@@ -64,21 +63,20 @@ class DesignIntent {
     [[nodiscard]] const std::vector<ComponentAssemblyIntent> &
     component_assembly_intents() const noexcept;
 
-  private:
-    friend class Circuit;
-
     /** Mark a single-pin net as intentional design intent. */
-    bool mark_intentional_stub_net(NetId net);
+    bool mark_intentional_stub_net(detail::KernelMutationAccess access, NetId net);
 
     /** Mark an unconnected concrete pin as intentional design intent. */
-    bool mark_intentional_no_connect_pin(PinId pin);
+    bool mark_intentional_no_connect_pin(detail::KernelMutationAccess access, PinId pin);
 
     /** Set explicit DNP intent for a component. */
-    void set_component_dnp(ComponentId component, bool dnp);
+    void set_component_dnp(detail::KernelMutationAccess access, ComponentId component, bool dnp);
 
     /** Set or clear selected-part override intent for a component. */
-    void set_component_selection_override(ComponentId component, bool override);
+    void set_component_selection_override(detail::KernelMutationAccess access,
+                                          ComponentId component, bool override);
 
+  private:
     std::vector<NetId> intentional_stub_nets_;
     std::vector<PinId> intentional_no_connect_pins_;
     std::vector<ComponentAssemblyIntent> component_assembly_intents_;

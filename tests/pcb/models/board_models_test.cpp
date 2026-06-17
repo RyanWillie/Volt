@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <concepts>
+#include <cstddef>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -13,6 +14,7 @@
 #include <volt/pcb/footprints/board_footprint_model.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
 #include <volt/pcb/placement/board_placement_model.hpp>
+#include <volt/pcb/routing/board_spatial_index.hpp>
 #include <volt/pcb/structure/board_structure_model.hpp>
 
 namespace {
@@ -40,6 +42,12 @@ concept CanAddRoom = requires(Model model, volt::BoardRoom room) { model.add_roo
 template <typename Model>
 concept CanAddText = requires(Model model, volt::BoardText text) { model.add_text(text); };
 
+template <typename Model>
+concept CanInsertAfterBoardMutation =
+    requires(Model &model, volt::BoardSpatialQueryShape shape, std::size_t mutation_count) {
+        model.insert_after_board_mutation(shape, mutation_count);
+    };
+
 static_assert(!CanPlaceComponent<volt::BoardPlacementModel>);
 static_assert(!CanAddTrack<volt::BoardCopperModel>);
 static_assert(!CanAddVia<volt::BoardCopperModel>);
@@ -47,6 +55,7 @@ static_assert(!CanAddZone<volt::BoardCopperModel>);
 static_assert(!CanAddKeepout<volt::BoardCopperModel>);
 static_assert(!CanAddRoom<volt::BoardCopperModel>);
 static_assert(!CanAddText<volt::BoardCopperModel>);
+static_assert(!CanInsertAfterBoardMutation<volt::BoardSpatialIndex>);
 
 } // namespace
 

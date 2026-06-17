@@ -11,6 +11,7 @@
 
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt {
@@ -177,12 +178,12 @@ class PhysicalPart {
         return approved_alternate_mpns_;
     }
 
-  private:
-    friend class ElectricalModel;
-
-    void set_electrical_attribute(const ElectricalAttributeSpec &spec,
+    /** Set typed electrical metadata for this physical part selection. */
+    void set_electrical_attribute(detail::KernelMutationAccess access,
+                                  const ElectricalAttributeSpec &spec,
                                   ElectricalAttributeValue value);
 
+  private:
     ManufacturerPart manufacturer_part_;
     PackageRef package_;
     FootprintRef footprint_;
