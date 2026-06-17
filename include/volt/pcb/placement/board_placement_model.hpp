@@ -5,6 +5,7 @@
 
 #include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 #include <volt/pcb/features/board_features.hpp>
 
 namespace volt {
@@ -32,7 +33,8 @@ class BoardPlacementModel {
     placement_for_component(ComponentId component) const noexcept;
 
     /** Place one logical component on the board and return its placement ID. */
-    [[nodiscard]] ComponentPlacementId place_component(ComponentPlacement placement);
+    [[nodiscard]] ComponentPlacementId place_component(detail::KernelMutationAccess access,
+                                                       ComponentPlacement placement);
 
   private:
     EntityTable<ComponentPlacement, ComponentPlacementId> placements_;

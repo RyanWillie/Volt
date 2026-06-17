@@ -6,35 +6,43 @@
 
 namespace volt {
 
-[[nodiscard]] SymbolInstanceId SchematicItemsModel::add_symbol_instance(SymbolInstance instance) {
+[[nodiscard]] SymbolInstanceId
+SchematicItemsModel::add_symbol_instance(detail::KernelMutationAccess, SymbolInstance instance) {
     return symbol_instances_.insert(instance);
 }
 
-[[nodiscard]] WireRunId SchematicItemsModel::add_wire_run(WireRun wire) {
+[[nodiscard]] WireRunId SchematicItemsModel::add_wire_run(detail::KernelMutationAccess,
+                                                          WireRun wire) {
     return wire_runs_.insert(std::move(wire));
 }
 
-[[nodiscard]] NetLabelId SchematicItemsModel::add_net_label(NetLabel label) {
+[[nodiscard]] NetLabelId SchematicItemsModel::add_net_label(detail::KernelMutationAccess,
+                                                            NetLabel label) {
     return net_labels_.insert(std::move(label));
 }
 
-[[nodiscard]] JunctionId SchematicItemsModel::add_junction(Junction junction) {
+[[nodiscard]] JunctionId SchematicItemsModel::add_junction(detail::KernelMutationAccess,
+                                                           Junction junction) {
     return junctions_.insert(junction);
 }
 
-[[nodiscard]] PowerPortId SchematicItemsModel::add_power_port(PowerPort port) {
+[[nodiscard]] PowerPortId SchematicItemsModel::add_power_port(detail::KernelMutationAccess,
+                                                              PowerPort port) {
     return power_ports_.insert(std::move(port));
 }
 
-[[nodiscard]] NoConnectMarkerId SchematicItemsModel::add_no_connect_marker(NoConnectMarker marker) {
+[[nodiscard]] NoConnectMarkerId
+SchematicItemsModel::add_no_connect_marker(detail::KernelMutationAccess, NoConnectMarker marker) {
     return no_connect_markers_.insert(std::move(marker));
 }
 
-[[nodiscard]] SheetPortId SchematicItemsModel::add_sheet_port(SheetPort port) {
+[[nodiscard]] SheetPortId SchematicItemsModel::add_sheet_port(detail::KernelMutationAccess,
+                                                              SheetPort port) {
     return sheet_ports_.insert(std::move(port));
 }
 
-[[nodiscard]] SymbolFieldId SchematicItemsModel::add_symbol_field(SymbolField field) {
+[[nodiscard]] SymbolFieldId SchematicItemsModel::add_symbol_field(detail::KernelMutationAccess,
+                                                                  SymbolField field) {
     require_symbol_instance(field.symbol_instance());
     return symbol_fields_.insert(std::move(field));
 }

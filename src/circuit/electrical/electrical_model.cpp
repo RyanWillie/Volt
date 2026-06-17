@@ -22,27 +22,30 @@ namespace {
 
 } // namespace
 
-void ElectricalModel::set_component_attribute(ComponentId component,
+void ElectricalModel::set_component_attribute(detail::KernelMutationAccess, ComponentId component,
                                               const ElectricalAttributeSpec &spec,
                                               ElectricalAttributeValue value) {
     require_attribute_owner(spec, ElectricalAttributeOwner::ComponentInstance);
     mutable_attributes(component_attributes_, component).set(spec, value);
 }
 
-void ElectricalModel::set_pin_definition_attribute(PinDefId pin_definition,
+void ElectricalModel::set_pin_definition_attribute(detail::KernelMutationAccess,
+                                                   PinDefId pin_definition,
                                                    const ElectricalAttributeSpec &spec,
                                                    ElectricalAttributeValue value) {
     require_attribute_owner(spec, ElectricalAttributeOwner::PinSpec);
     mutable_attributes(pin_definition_attributes_, pin_definition).set(spec, value);
 }
 
-void ElectricalModel::set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
+void ElectricalModel::set_net_attribute(detail::KernelMutationAccess, NetId net,
+                                        const ElectricalAttributeSpec &spec,
                                         ElectricalAttributeValue value) {
     require_attribute_owner(spec, ElectricalAttributeOwner::Net);
     mutable_attributes(net_attributes_, net).set(spec, value);
 }
 
-void ElectricalModel::select_physical_part(ComponentId component, PhysicalPart physical_part,
+void ElectricalModel::select_physical_part(detail::KernelMutationAccess, ComponentId component,
+                                           PhysicalPart physical_part,
                                            const std::vector<PinDefId> &component_pins) {
     require_physical_part_matches_component_definition(component_pins, physical_part);
     const auto existing =
@@ -57,7 +60,8 @@ void ElectricalModel::select_physical_part(ComponentId component, PhysicalPart p
     existing->second = std::move(physical_part);
 }
 
-void ElectricalModel::set_selected_part_attribute(ComponentId component,
+void ElectricalModel::set_selected_part_attribute(detail::KernelMutationAccess access,
+                                                  ComponentId component,
                                                   const ElectricalAttributeSpec &spec,
                                                   ElectricalAttributeValue value) {
     require_attribute_owner(spec, ElectricalAttributeOwner::SelectedPart);
@@ -68,7 +72,7 @@ void ElectricalModel::set_selected_part_attribute(ComponentId component,
         throw std::logic_error{"Component has no selected physical part"};
     }
 
-    existing->second->set_electrical_attribute(spec, value);
+    existing->second->set_electrical_attribute(access, spec, value);
 }
 
 [[nodiscard]] const ElectricalAttributeMap &

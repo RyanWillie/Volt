@@ -11,6 +11,8 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 
+#include "../core/mutation_access.hpp"
+
 namespace volt {
 
 SheetSize::SheetSize(double width, double height) : width_{width}, height_{height} {
@@ -152,30 +154,42 @@ Sheet::Sheet(std::string name, SheetMetadata metadata)
     return regions_[index];
 }
 
-std::size_t Sheet::add_region(SheetRegion region) {
+std::size_t Sheet::add_region(detail::KernelMutationAccess, SheetRegion region) {
     regions_.push_back(std::move(region));
     return regions_.size() - 1U;
 }
 
-void Sheet::add_symbol_instance(SymbolInstanceId instance) {
+void Sheet::add_symbol_instance(detail::KernelMutationAccess, SymbolInstanceId instance) {
     symbol_instances_.push_back(instance);
 }
 
-void Sheet::add_wire_run(WireRunId wire) { wire_runs_.push_back(wire); }
+void Sheet::add_wire_run(detail::KernelMutationAccess, WireRunId wire) {
+    wire_runs_.push_back(wire);
+}
 
-void Sheet::add_net_label(NetLabelId label) { net_labels_.push_back(label); }
+void Sheet::add_net_label(detail::KernelMutationAccess, NetLabelId label) {
+    net_labels_.push_back(label);
+}
 
-void Sheet::add_junction(JunctionId junction) { junctions_.push_back(junction); }
+void Sheet::add_junction(detail::KernelMutationAccess, JunctionId junction) {
+    junctions_.push_back(junction);
+}
 
-void Sheet::add_power_port(PowerPortId port) { power_ports_.push_back(port); }
+void Sheet::add_power_port(detail::KernelMutationAccess, PowerPortId port) {
+    power_ports_.push_back(port);
+}
 
-void Sheet::add_no_connect_marker(NoConnectMarkerId marker) {
+void Sheet::add_no_connect_marker(detail::KernelMutationAccess, NoConnectMarkerId marker) {
     no_connect_markers_.push_back(marker);
 }
 
-void Sheet::add_sheet_port(SheetPortId port) { sheet_ports_.push_back(port); }
+void Sheet::add_sheet_port(detail::KernelMutationAccess, SheetPortId port) {
+    sheet_ports_.push_back(port);
+}
 
-void Sheet::add_symbol_field(SymbolFieldId field) { symbol_fields_.push_back(field); }
+void Sheet::add_symbol_field(detail::KernelMutationAccess, SymbolFieldId field) {
+    symbol_fields_.push_back(field);
+}
 
 [[nodiscard]] const std::optional<std::size_t> &SymbolInstance::authored_region() const noexcept {
     return authored_region_;
@@ -328,8 +342,8 @@ void Schematic::replace_with(Schematic replacement) {
     require_symbol_matches_component(instance.symbol_definition(), instance.component());
     require_authored_region(sheet, instance.authored_region());
 
-    const auto id = items_.add_symbol_instance(instance);
-    sheets_.add_symbol_instance(sheet, id);
+    const auto id = items_.add_symbol_instance(detail::kernel_mutation_access(), instance);
+    sheets_.add_symbol_instance(detail::kernel_mutation_access(), sheet, id);
     return id;
 }
 
@@ -339,8 +353,8 @@ void Schematic::replace_with(Schematic replacement) {
     require_authored_region(sheet, junction.authored_region());
     require_junction_does_not_touch_different_net(sheet, junction);
 
-    const auto id = items_.add_junction(junction);
-    sheets_.add_junction(sheet, id);
+    const auto id = items_.add_junction(detail::kernel_mutation_access(), junction);
+    sheets_.add_junction(detail::kernel_mutation_access(), sheet, id);
     return id;
 }
 
@@ -349,8 +363,8 @@ void Schematic::replace_with(Schematic replacement) {
     static_cast<void>(circuit_.net(port.net()));
     require_authored_region(sheet, port.authored_region());
 
-    const auto id = items_.add_power_port(std::move(port));
-    sheets_.add_power_port(sheet, id);
+    const auto id = items_.add_power_port(detail::kernel_mutation_access(), std::move(port));
+    sheets_.add_power_port(detail::kernel_mutation_access(), sheet, id);
     return id;
 }
 
@@ -384,8 +398,9 @@ void Schematic::replace_with(Schematic replacement) {
     static_cast<void>(circuit_.pin(marker.pin()));
     require_authored_region(sheet, marker.authored_region());
 
-    const auto id = items_.add_no_connect_marker(std::move(marker));
-    sheets_.add_no_connect_marker(sheet, id);
+    const auto id =
+        items_.add_no_connect_marker(detail::kernel_mutation_access(), std::move(marker));
+    sheets_.add_no_connect_marker(detail::kernel_mutation_access(), sheet, id);
     return id;
 }
 
@@ -394,8 +409,8 @@ void Schematic::replace_with(Schematic replacement) {
     static_cast<void>(circuit_.net(port.net()));
     require_authored_region(sheet, port.authored_region());
 
-    const auto id = items_.add_sheet_port(std::move(port));
-    sheets_.add_sheet_port(sheet, id);
+    const auto id = items_.add_sheet_port(detail::kernel_mutation_access(), std::move(port));
+    sheets_.add_sheet_port(detail::kernel_mutation_access(), sheet, id);
     return id;
 }
 
@@ -417,8 +432,8 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
         throw std::logic_error{"Symbol field must be placed on the symbol instance sheet"};
     }
 
-    const auto id = items_.add_symbol_field(std::move(field));
-    sheets_.add_symbol_field(sheet, id);
+    const auto id = items_.add_symbol_field(detail::kernel_mutation_access(), std::move(field));
+    sheets_.add_symbol_field(detail::kernel_mutation_access(), sheet, id);
     return id;
 }
 
@@ -428,8 +443,8 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
     require_authored_region(sheet, wire.authored_region());
     require_wire_run_does_not_collide_with_different_net(sheet, wire);
 
-    const auto id = items_.add_wire_run(std::move(wire));
-    sheets_.add_wire_run(sheet, id);
+    const auto id = items_.add_wire_run(detail::kernel_mutation_access(), std::move(wire));
+    sheets_.add_wire_run(detail::kernel_mutation_access(), sheet, id);
     return id;
 }
 
@@ -447,8 +462,8 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
     static_cast<void>(circuit_.net(label.net()));
     require_authored_region(sheet, label.authored_region());
 
-    const auto id = items_.add_net_label(std::move(label));
-    sheets_.add_net_label(sheet, id);
+    const auto id = items_.add_net_label(detail::kernel_mutation_access(), std::move(label));
+    sheets_.add_net_label(detail::kernel_mutation_access(), sheet, id);
     return id;
 }
 

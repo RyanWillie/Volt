@@ -275,7 +275,8 @@ void BoardSpatialIndex::insert(detail::BoardCopperShape shape) {
     append_shape(std::move(shape));
 }
 
-void BoardSpatialIndex::insert_after_board_mutation(BoardSpatialQueryShape shape,
+void BoardSpatialIndex::insert_after_board_mutation(detail::KernelMutationAccess,
+                                                    BoardSpatialQueryShape shape,
                                                     std::size_t previous_geometry_mutation_count) {
     insert_after_board_mutation(to_copper_shape(std::move(shape)),
                                 previous_geometry_mutation_count);

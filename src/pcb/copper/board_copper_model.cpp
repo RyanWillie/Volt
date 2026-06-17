@@ -6,21 +6,25 @@
 
 namespace volt {
 
-[[nodiscard]] BoardTrackId BoardCopperModel::add_track(BoardTrack track) {
+[[nodiscard]] BoardTrackId BoardCopperModel::add_track(detail::KernelMutationAccess,
+                                                       BoardTrack track) {
     return tracks_.insert(std::move(track));
 }
 
-[[nodiscard]] BoardViaId BoardCopperModel::add_via(BoardVia via) { return vias_.insert(via); }
+[[nodiscard]] BoardViaId BoardCopperModel::add_via(detail::KernelMutationAccess, BoardVia via) {
+    return vias_.insert(via);
+}
 
-[[nodiscard]] BoardZoneId BoardCopperModel::add_zone(BoardZone zone) {
+[[nodiscard]] BoardZoneId BoardCopperModel::add_zone(detail::KernelMutationAccess, BoardZone zone) {
     return zones_.insert(std::move(zone));
 }
 
-[[nodiscard]] BoardKeepoutId BoardCopperModel::add_keepout(BoardKeepout keepout) {
+[[nodiscard]] BoardKeepoutId BoardCopperModel::add_keepout(detail::KernelMutationAccess,
+                                                           BoardKeepout keepout) {
     return keepouts_.insert(std::move(keepout));
 }
 
-[[nodiscard]] BoardRoomId BoardCopperModel::add_room(BoardRoom room) {
+[[nodiscard]] BoardRoomId BoardCopperModel::add_room(detail::KernelMutationAccess, BoardRoom room) {
     for (std::size_t index = 0; index < rooms_.size(); ++index) {
         if (rooms_.get(BoardRoomId{index}).name() == room.name()) {
             throw std::logic_error{"Board room name already exists"};
@@ -29,7 +33,7 @@ namespace volt {
     return rooms_.insert(std::move(room));
 }
 
-[[nodiscard]] BoardTextId BoardCopperModel::add_text(BoardText text) {
+[[nodiscard]] BoardTextId BoardCopperModel::add_text(detail::KernelMutationAccess, BoardText text) {
     return texts_.insert(std::move(text));
 }
 

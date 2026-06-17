@@ -4,6 +4,7 @@
 
 #include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 #include <volt/schematic/schematic_items.hpp>
 
 namespace volt {
@@ -81,28 +82,31 @@ class SchematicItemsModel {
     void require_symbol_instance(SymbolInstanceId instance) const;
 
     /** Add a symbol placement over an existing logical component. */
-    [[nodiscard]] SymbolInstanceId add_symbol_instance(SymbolInstance instance);
+    [[nodiscard]] SymbolInstanceId add_symbol_instance(detail::KernelMutationAccess access,
+                                                       SymbolInstance instance);
 
     /** Add a drawn wire run over an existing logical net. */
-    [[nodiscard]] WireRunId add_wire_run(WireRun wire);
+    [[nodiscard]] WireRunId add_wire_run(detail::KernelMutationAccess access, WireRun wire);
 
     /** Add a net label over an existing logical net. */
-    [[nodiscard]] NetLabelId add_net_label(NetLabel label);
+    [[nodiscard]] NetLabelId add_net_label(detail::KernelMutationAccess access, NetLabel label);
 
     /** Add a junction over an existing logical net. */
-    [[nodiscard]] JunctionId add_junction(Junction junction);
+    [[nodiscard]] JunctionId add_junction(detail::KernelMutationAccess access, Junction junction);
 
     /** Add a power or ground marker over an existing logical net. */
-    [[nodiscard]] PowerPortId add_power_port(PowerPort port);
+    [[nodiscard]] PowerPortId add_power_port(detail::KernelMutationAccess access, PowerPort port);
 
     /** Add a no-connect marker over an existing logical pin. */
-    [[nodiscard]] NoConnectMarkerId add_no_connect_marker(NoConnectMarker marker);
+    [[nodiscard]] NoConnectMarkerId add_no_connect_marker(detail::KernelMutationAccess access,
+                                                          NoConnectMarker marker);
 
     /** Add a sheet or off-page port over an existing logical net. */
-    [[nodiscard]] SheetPortId add_sheet_port(SheetPort port);
+    [[nodiscard]] SheetPortId add_sheet_port(detail::KernelMutationAccess access, SheetPort port);
 
     /** Add a field owned by an existing symbol instance. */
-    [[nodiscard]] SymbolFieldId add_symbol_field(SymbolField field);
+    [[nodiscard]] SymbolFieldId add_symbol_field(detail::KernelMutationAccess access,
+                                                 SymbolField field);
 
   private:
     EntityTable<SymbolInstance, SymbolInstanceId> symbol_instances_;

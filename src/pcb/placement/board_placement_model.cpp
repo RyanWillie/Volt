@@ -7,7 +7,7 @@
 namespace volt {
 
 [[nodiscard]] ComponentPlacementId
-BoardPlacementModel::place_component(ComponentPlacement placement) {
+BoardPlacementModel::place_component(detail::KernelMutationAccess, ComponentPlacement placement) {
     if (placement_for_component(placement.component()).has_value()) {
         throw std::logic_error{"Component already has a board placement"};
     }

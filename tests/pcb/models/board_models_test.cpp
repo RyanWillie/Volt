@@ -48,14 +48,14 @@ concept CanInsertAfterBoardMutation =
         model.insert_after_board_mutation(shape, mutation_count);
     };
 
-static_assert(CanPlaceComponent<volt::BoardPlacementModel>);
-static_assert(CanAddTrack<volt::BoardCopperModel>);
-static_assert(CanAddVia<volt::BoardCopperModel>);
-static_assert(CanAddZone<volt::BoardCopperModel>);
-static_assert(CanAddKeepout<volt::BoardCopperModel>);
-static_assert(CanAddRoom<volt::BoardCopperModel>);
-static_assert(CanAddText<volt::BoardCopperModel>);
-static_assert(CanInsertAfterBoardMutation<volt::BoardSpatialIndex>);
+static_assert(!CanPlaceComponent<volt::BoardPlacementModel>);
+static_assert(!CanAddTrack<volt::BoardCopperModel>);
+static_assert(!CanAddVia<volt::BoardCopperModel>);
+static_assert(!CanAddZone<volt::BoardCopperModel>);
+static_assert(!CanAddKeepout<volt::BoardCopperModel>);
+static_assert(!CanAddRoom<volt::BoardCopperModel>);
+static_assert(!CanAddText<volt::BoardCopperModel>);
+static_assert(!CanInsertAfterBoardMutation<volt::BoardSpatialIndex>);
 
 } // namespace
 

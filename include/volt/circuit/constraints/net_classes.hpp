@@ -9,6 +9,7 @@
 #include <volt/circuit/connectivity/nets.hpp>
 #include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 #include <volt/core/quantities.hpp>
 
 namespace volt {
@@ -246,7 +247,8 @@ class NetClasses {
     void require_net_class(NetClassId net_class) const;
 
     /** Assign a net class to a logical net. */
-    [[nodiscard]] bool assign_net_class(NetId net, NetClassId net_class);
+    [[nodiscard]] bool assign_net_class(detail::KernelMutationAccess access, NetId net,
+                                        NetClassId net_class);
 
   private:
     EntityTable<NetClass, NetClassId> net_classes_;

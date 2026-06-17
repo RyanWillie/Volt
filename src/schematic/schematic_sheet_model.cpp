@@ -5,6 +5,8 @@
 #include <string>
 #include <utility>
 
+#include "../core/mutation_access.hpp"
+
 namespace volt {
 
 [[nodiscard]] SheetId SchematicSheetModel::add_sheet(Sheet sheet) {
@@ -23,39 +25,47 @@ namespace volt {
         throw std::logic_error{"Sheet region name already exists"};
     }
 
-    return sheet_ref.add_region(std::move(region));
+    return sheet_ref.add_region(detail::kernel_mutation_access(), std::move(region));
 }
 
-void SchematicSheetModel::add_symbol_instance(SheetId sheet_id, SymbolInstanceId instance) {
-    mutable_sheet(sheet_id).add_symbol_instance(instance);
+void SchematicSheetModel::add_symbol_instance(detail::KernelMutationAccess access, SheetId sheet_id,
+                                              SymbolInstanceId instance) {
+    mutable_sheet(sheet_id).add_symbol_instance(access, instance);
 }
 
-void SchematicSheetModel::add_wire_run(SheetId sheet_id, WireRunId wire) {
-    mutable_sheet(sheet_id).add_wire_run(wire);
+void SchematicSheetModel::add_wire_run(detail::KernelMutationAccess access, SheetId sheet_id,
+                                       WireRunId wire) {
+    mutable_sheet(sheet_id).add_wire_run(access, wire);
 }
 
-void SchematicSheetModel::add_net_label(SheetId sheet_id, NetLabelId label) {
-    mutable_sheet(sheet_id).add_net_label(label);
+void SchematicSheetModel::add_net_label(detail::KernelMutationAccess access, SheetId sheet_id,
+                                        NetLabelId label) {
+    mutable_sheet(sheet_id).add_net_label(access, label);
 }
 
-void SchematicSheetModel::add_junction(SheetId sheet_id, JunctionId junction) {
-    mutable_sheet(sheet_id).add_junction(junction);
+void SchematicSheetModel::add_junction(detail::KernelMutationAccess access, SheetId sheet_id,
+                                       JunctionId junction) {
+    mutable_sheet(sheet_id).add_junction(access, junction);
 }
 
-void SchematicSheetModel::add_power_port(SheetId sheet_id, PowerPortId port) {
-    mutable_sheet(sheet_id).add_power_port(port);
+void SchematicSheetModel::add_power_port(detail::KernelMutationAccess access, SheetId sheet_id,
+                                         PowerPortId port) {
+    mutable_sheet(sheet_id).add_power_port(access, port);
 }
 
-void SchematicSheetModel::add_no_connect_marker(SheetId sheet_id, NoConnectMarkerId marker) {
-    mutable_sheet(sheet_id).add_no_connect_marker(marker);
+void SchematicSheetModel::add_no_connect_marker(detail::KernelMutationAccess access,
+                                                SheetId sheet_id, NoConnectMarkerId marker) {
+    mutable_sheet(sheet_id).add_no_connect_marker(access, marker);
 }
 
-void SchematicSheetModel::add_sheet_port(SheetId sheet_id, SheetPortId port) {
-    mutable_sheet(sheet_id).add_sheet_port(port);
+void SchematicSheetModel::add_sheet_port(detail::KernelMutationAccess access, SheetId sheet_id,
+                                         SheetPortId port) {
+    mutable_sheet(sheet_id).add_sheet_port(access, port);
 }
 
-void SchematicSheetModel::add_symbol_field(SheetId sheet_id, SymbolFieldId field) {
-    mutable_sheet(sheet_id).add_symbol_field(field);
+void SchematicSheetModel::add_symbol_field(detail::KernelMutationAccess access, SheetId sheet_id,
+                                           SymbolFieldId field) {
+    mutable_sheet(sheet_id).add_symbol_field(access, field);
 }
 
 [[nodiscard]] std::optional<SheetId>

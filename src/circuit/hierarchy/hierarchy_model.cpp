@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include "../../core/mutation_access.hpp"
+
 namespace volt {
 
 [[nodiscard]] ModuleDefId HierarchyModel::add_module_definition(ModuleDefinition definition) {
@@ -25,7 +27,7 @@ namespace volt {
     }
 
     const auto id = template_net_definitions_.insert(std::move(net));
-    module_definitions_.get(module).add_template_net(id);
+    module_definitions_.get(module).add_template_net(detail::kernel_mutation_access(), id);
     return id;
 }
 
@@ -37,24 +39,26 @@ namespace volt {
     }
 
     const auto id = port_definitions_.insert(std::move(port));
-    module_definitions_.get(module).add_port(id);
+    module_definitions_.get(module).add_port(detail::kernel_mutation_access(), id);
     return id;
 }
 
 [[nodiscard]] ModuleComponentId
-HierarchyModel::add_module_component(ModuleDefId module, ModuleComponentTemplate component) {
+HierarchyModel::add_module_component(detail::KernelMutationAccess access, ModuleDefId module,
+                                     ModuleComponentTemplate component) {
     require_module_definition(module);
     if (module_component_by_reference(module, component.reference()).has_value()) {
         throw std::logic_error{"Module component reference designator already exists"};
     }
 
     const auto id = module_component_templates_.insert(std::move(component));
-    module_definitions_.get(module).add_component(id);
+    module_definitions_.get(module).add_component(access, id);
     return id;
 }
 
-bool HierarchyModel::connect_module_pin(ModuleDefId module, TemplateNetDefId net,
-                                        ModuleComponentId component, PinDefId pin) {
+bool HierarchyModel::connect_module_pin(detail::KernelMutationAccess, ModuleDefId module,
+                                        TemplateNetDefId net, ModuleComponentId component,
+                                        PinDefId pin) {
     require_template_net_in_module(module, net);
     require_module_component_in_module(module, component);
 
@@ -82,7 +86,7 @@ bool HierarchyModel::connect_module_pin(ModuleDefId module, TemplateNetDefId net
 }
 
 [[nodiscard]] ModuleInstanceId HierarchyModel::restore_root_module_instance(
-    ModuleDefId definition, ModuleInstanceName name,
+    detail::KernelMutationAccess access, ModuleDefId definition, ModuleInstanceName name,
     const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
     const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins) {
     require_module_definition(definition);
@@ -154,15 +158,16 @@ bool HierarchyModel::connect_module_pin(ModuleDefId module, TemplateNetDefId net
 
     const auto instance = instantiate_root_module(definition, std::move(name));
     for (const auto &[template_net, concrete_net] : origins) {
-        record_module_net_origin(instance, template_net, concrete_net);
+        record_module_net_origin(access, instance, template_net, concrete_net);
     }
     for (const auto &[template_component, concrete_component] : component_origins) {
-        record_module_component_origin(instance, template_component, concrete_component);
+        record_module_component_origin(access, instance, template_component, concrete_component);
     }
     return instance;
 }
 
-void HierarchyModel::record_module_net_origin(ModuleInstanceId instance,
+void HierarchyModel::record_module_net_origin(detail::KernelMutationAccess,
+                                              ModuleInstanceId instance,
                                               TemplateNetDefId template_net, NetId concrete_net) {
     require_module_instance(instance);
     require_template_net_in_module(module_instances_.get(instance).definition(), template_net);
@@ -177,7 +182,8 @@ void HierarchyModel::record_module_net_origin(ModuleInstanceId instance,
     module_origin_nets_.push_back(concrete_net);
 }
 
-void HierarchyModel::record_module_component_origin(ModuleInstanceId instance,
+void HierarchyModel::record_module_component_origin(detail::KernelMutationAccess,
+                                                    ModuleInstanceId instance,
                                                     ModuleComponentId component,
                                                     ComponentId concrete_component) {
     require_module_instance(instance);
@@ -193,7 +199,8 @@ void HierarchyModel::record_module_component_origin(ModuleInstanceId instance,
     module_origin_components_.push_back(concrete_component);
 }
 
-[[nodiscard]] PortBindingId HierarchyModel::bind_port(ModuleInstanceId instance, PortDefId port,
+[[nodiscard]] PortBindingId HierarchyModel::bind_port(detail::KernelMutationAccess,
+                                                      ModuleInstanceId instance, PortDefId port,
                                                       NetId internal_net, NetId parent_net) {
     require_module_instance(instance);
     require_port_in_module(module_instances_.get(instance).definition(), port);

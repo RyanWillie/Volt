@@ -6,6 +6,7 @@
 
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt {
@@ -46,7 +47,7 @@ class ComponentInstance {
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
     /** Set or replace one component instance property. */
-    void set_property(PropertyKey key, PropertyValue value);
+    void set_property(detail::KernelMutationAccess access, PropertyKey key, PropertyValue value);
 
   private:
     ComponentDefId definition_;

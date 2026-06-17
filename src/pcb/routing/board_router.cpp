@@ -15,6 +15,7 @@
 #include <volt/circuit/constraints/net_class_resolution.hpp>
 #include <volt/pcb/copper/board_copper.hpp>
 
+#include "../../core/mutation_access.hpp"
 #include "../copper/board_room_rules.hpp"
 
 namespace volt {
@@ -420,17 +421,17 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         const auto previous_geometry_mutation_count = board_->geometry_mutation_count();
         const auto track_id = board_->add_track(BoardTrack{
             request.net, segment.layer, std::vector{segment.start, segment.end}, width_mm});
-        index_.insert_after_board_mutation(
-            BoardSpatialQueryShape{
-                BoardSpatialQueryShapeKind::Segment,
-                request.net,
-                std::vector{segment.layer},
-                std::vector{segment.start, segment.end},
-                width_mm / 2.0,
-                BoardClearanceKind::Track,
-                BoardKeepoutRestriction::Copper,
-            },
-            previous_geometry_mutation_count);
+        index_.insert_after_board_mutation(detail::kernel_mutation_access(),
+                                           BoardSpatialQueryShape{
+                                               BoardSpatialQueryShapeKind::Segment,
+                                               request.net,
+                                               std::vector{segment.layer},
+                                               std::vector{segment.start, segment.end},
+                                               width_mm / 2.0,
+                                               BoardClearanceKind::Track,
+                                               BoardKeepoutRestriction::Copper,
+                                           },
+                                           previous_geometry_mutation_count);
         result.tracks.push_back(track_id);
     }
 
@@ -440,6 +441,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
             board_->add_via(BoardVia{request.net, via.position, via.start_layer, via.end_layer,
                                      params.via_drill_mm, params.via_diameter_mm});
         index_.insert_after_board_mutation(
+            detail::kernel_mutation_access(),
             BoardSpatialQueryShape{
                 BoardSpatialQueryShapeKind::Disc,
                 request.net,
@@ -606,7 +608,8 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
             const auto track_id =
                 board_->add_track(BoardTrack{pad.net.value(), candidate.layer,
                                              std::vector{pad.pad_position, endpoint}, width_mm});
-            index_.insert_after_board_mutation(shape, previous_geometry_mutation_count);
+            index_.insert_after_board_mutation(detail::kernel_mutation_access(), shape,
+                                               previous_geometry_mutation_count);
             pad.endpoint = endpoint;
             pad.escaped = true;
             pad.failure_reason = BoardEscapeFailureReason::None;

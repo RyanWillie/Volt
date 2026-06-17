@@ -1,13 +1,26 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <concepts>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
+
+namespace {
+
+template <typename Model>
+concept CanSetPhysicalPartElectricalAttribute =
+    requires(Model model, const volt::ElectricalAttributeSpec &spec,
+             volt::ElectricalAttributeValue value) { model.set_electrical_attribute(spec, value); };
+
+static_assert(!CanSetPhysicalPartElectricalAttribute<volt::PhysicalPart>);
+
+} // namespace
 
 TEST_CASE("ManufacturerPart stores selected manufacturer identity") {
     const auto part = volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"};

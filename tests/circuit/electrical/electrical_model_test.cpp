@@ -43,11 +43,11 @@ concept CanSetSelectedPartAttribute =
         model.set_selected_part_attribute(component, spec, value);
     };
 
-static_assert(CanSetComponentAttribute<volt::ElectricalModel>);
-static_assert(CanSetPinDefinitionAttribute<volt::ElectricalModel>);
-static_assert(CanSetNetAttribute<volt::ElectricalModel>);
-static_assert(CanSelectPhysicalPart<volt::ElectricalModel>);
-static_assert(CanSetSelectedPartAttribute<volt::ElectricalModel>);
+static_assert(!CanSetComponentAttribute<volt::ElectricalModel>);
+static_assert(!CanSetPinDefinitionAttribute<volt::ElectricalModel>);
+static_assert(!CanSetNetAttribute<volt::ElectricalModel>);
+static_assert(!CanSelectPhysicalPart<volt::ElectricalModel>);
+static_assert(!CanSetSelectedPartAttribute<volt::ElectricalModel>);
 
 volt::PhysicalPart make_resistor_physical_part(volt::PinDefId first_pin,
                                                volt::PinDefId second_pin) {

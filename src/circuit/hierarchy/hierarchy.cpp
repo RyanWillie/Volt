@@ -48,11 +48,15 @@ ModuleDefinition::ModuleDefinition(ModuleName name) : name_{std::move(name)} {}
     return components_;
 }
 
-void ModuleDefinition::add_template_net(TemplateNetDefId net) { template_nets_.push_back(net); }
+void ModuleDefinition::add_template_net(detail::KernelMutationAccess, TemplateNetDefId net) {
+    template_nets_.push_back(net);
+}
 
-void ModuleDefinition::add_port(PortDefId port) { ports_.push_back(port); }
+void ModuleDefinition::add_port(detail::KernelMutationAccess, PortDefId port) {
+    ports_.push_back(port);
+}
 
-void ModuleDefinition::add_component(ModuleComponentId component) {
+void ModuleDefinition::add_component(detail::KernelMutationAccess, ModuleComponentId component) {
     components_.push_back(component);
 }
 

@@ -7,6 +7,7 @@
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 
 namespace volt {
 
@@ -37,23 +38,27 @@ class ElectricalModel {
     selected_physical_part(ComponentId component) const noexcept;
 
     /** Set typed electrical metadata for a concrete component. */
-    void set_component_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
+    void set_component_attribute(detail::KernelMutationAccess access, ComponentId component,
+                                 const ElectricalAttributeSpec &spec,
                                  ElectricalAttributeValue value);
 
     /** Set typed electrical metadata for a reusable pin definition. */
-    void set_pin_definition_attribute(PinDefId pin_definition, const ElectricalAttributeSpec &spec,
+    void set_pin_definition_attribute(detail::KernelMutationAccess access, PinDefId pin_definition,
+                                      const ElectricalAttributeSpec &spec,
                                       ElectricalAttributeValue value);
 
     /** Set typed electrical metadata for a logical net. */
-    void set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
-                           ElectricalAttributeValue value);
+    void set_net_attribute(detail::KernelMutationAccess access, NetId net,
+                           const ElectricalAttributeSpec &spec, ElectricalAttributeValue value);
 
     /** Select the physical part used to implement a concrete component. */
-    void select_physical_part(ComponentId component, PhysicalPart physical_part,
+    void select_physical_part(detail::KernelMutationAccess access, ComponentId component,
+                              PhysicalPart physical_part,
                               const std::vector<PinDefId> &component_pins);
 
     /** Set typed electrical metadata for a selected physical part. */
-    void set_selected_part_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
+    void set_selected_part_attribute(detail::KernelMutationAccess access, ComponentId component,
+                                     const ElectricalAttributeSpec &spec,
                                      ElectricalAttributeValue value);
 
   private:

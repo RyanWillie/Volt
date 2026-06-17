@@ -40,6 +40,10 @@ FRIEND_TYPE_PREFIXES = ("friend " "class ", "friend " "struct ")
 
 PRIVILEGED_FRIEND_ALLOWLIST = {
     (
+        "include/volt/core/mutation_access.hpp",
+        "friend constexpr KernelMutationAccess kernel_mutation_access() noexcept",
+    ): "Kernel-owned mutation passkey exposes a narrow source-private factory without granting class-wide access.",
+    (
         "include/volt/pcb/routing/board_spatial_index.hpp",
         "friend void detail::validate_copper_clearance(const Board &board, const std::vector<detail::BoardCopperShape> &shapes, DiagnosticReport &report)",
     ): "Board copper DRC currently reuses the spatial index's internal shape snapshot.",
@@ -88,6 +92,109 @@ ENTITY_REF_KERNEL_ALLOWLIST = {
         "src/pcb/copper/board_copper.cpp",
         "[kind](EntityRef entity) { return entity.kind() == kind; });",
     ): "Existing DRC helper classifies diagnostic copper shapes by reporting refs; keep narrow until a typed shape role replaces it.",
+}
+
+KERNEL_MUTATION_ACCESS_TYPE = "detail::KernelMutationAccess"
+
+GATED_SUBMODEL_MUTATORS = {
+    "ComponentInstance": (
+        ROOT / "include" / "volt" / "circuit" / "connectivity" / "instances.hpp",
+        {"set_property"},
+    ),
+    "NetClasses": (
+        ROOT / "include" / "volt" / "circuit" / "constraints" / "net_classes.hpp",
+        {"assign_net_class"},
+    ),
+    "ElectricalModel": (
+        ROOT / "include" / "volt" / "circuit" / "electrical" / "electrical_model.hpp",
+        {
+            "set_component_attribute",
+            "set_pin_definition_attribute",
+            "set_net_attribute",
+            "select_physical_part",
+            "set_selected_part_attribute",
+        },
+    ),
+    "PhysicalPart": (
+        ROOT / "include" / "volt" / "circuit" / "parts" / "parts.hpp",
+        {"set_electrical_attribute"},
+    ),
+    "DesignIntent": (
+        ROOT / "include" / "volt" / "circuit" / "intent" / "design_intent.hpp",
+        {
+            "mark_intentional_stub_net",
+            "mark_intentional_no_connect_pin",
+            "set_component_dnp",
+            "set_component_selection_override",
+        },
+    ),
+    "ModuleDefinition": (
+        ROOT / "include" / "volt" / "circuit" / "hierarchy" / "hierarchy.hpp",
+        {"add_template_net", "add_port", "add_component"},
+    ),
+    "HierarchyModel": (
+        ROOT / "include" / "volt" / "circuit" / "hierarchy" / "hierarchy_model.hpp",
+        {
+            "add_module_component",
+            "connect_module_pin",
+            "restore_root_module_instance",
+            "record_module_net_origin",
+            "record_module_component_origin",
+            "bind_port",
+        },
+    ),
+    "BoardPlacementModel": (
+        ROOT / "include" / "volt" / "pcb" / "placement" / "board_placement_model.hpp",
+        {"place_component"},
+    ),
+    "BoardCopperModel": (
+        ROOT / "include" / "volt" / "pcb" / "copper" / "board_copper_model.hpp",
+        {"add_track", "add_via", "add_zone", "add_keepout", "add_room", "add_text"},
+    ),
+    "BoardSpatialIndex": (
+        ROOT / "include" / "volt" / "pcb" / "routing" / "board_spatial_index.hpp",
+        {"insert_after_board_mutation"},
+    ),
+    "Sheet": (
+        ROOT / "include" / "volt" / "schematic" / "schematic_sheet.hpp",
+        {
+            "add_region",
+            "add_symbol_instance",
+            "add_wire_run",
+            "add_net_label",
+            "add_junction",
+            "add_power_port",
+            "add_no_connect_marker",
+            "add_sheet_port",
+            "add_symbol_field",
+        },
+    ),
+    "SchematicSheetModel": (
+        ROOT / "include" / "volt" / "schematic" / "schematic_sheet_model.hpp",
+        {
+            "add_symbol_instance",
+            "add_wire_run",
+            "add_net_label",
+            "add_junction",
+            "add_power_port",
+            "add_no_connect_marker",
+            "add_sheet_port",
+            "add_symbol_field",
+        },
+    ),
+    "SchematicItemsModel": (
+        ROOT / "include" / "volt" / "schematic" / "schematic_items_model.hpp",
+        {
+            "add_symbol_instance",
+            "add_wire_run",
+            "add_net_label",
+            "add_junction",
+            "add_power_port",
+            "add_no_connect_marker",
+            "add_sheet_port",
+            "add_symbol_field",
+        },
+    ),
 }
 
 
@@ -247,19 +354,29 @@ def declaration_chunks(section: str) -> list[str]:
 
 
 def public_declarations(class_name: str, header_path: Path) -> list[str]:
-    body = class_body(strip_comments(read(header_path)), class_name)
+    return public_declarations_from_header(class_name, read(header_path))
+
+
+def public_declarations_from_header(class_name: str, header: str) -> list[str]:
+    body = class_body(strip_comments(header), class_name)
     declarations: list[str] = []
     for chunk in declaration_chunks(public_section(body)):
         if "(" not in chunk or ")" not in chunk:
             continue
-        prefix = chunk.split("(", 1)[0].strip()
-        if not prefix:
+        name = declaration_function_name(chunk)
+        if name is None:
             continue
-        name = prefix.split()[-1].split("::")[-1].strip("&*")
         if name in {"if", "for", "while", "switch"}:
             continue
         declarations.append(chunk)
     return declarations
+
+
+def declaration_function_name(declaration: str) -> str | None:
+    prefix = declaration.split("(", 1)[0].strip()
+    if not prefix:
+        return None
+    return prefix.split()[-1].split("::")[-1].strip("&*")
 
 
 def header_includes(header_path: Path) -> list[str]:
@@ -640,6 +757,20 @@ def check_subsystem_sources_have_real_logic(failures: list[str]) -> None:
                 fail(f"{relative(path)} does not contain enough real subsystem logic", failures)
 
 
+def check_submodel_mutators_require_kernel_access(failures: list[str]) -> None:
+    for class_name, (header_path, method_names) in sorted(GATED_SUBMODEL_MUTATORS.items()):
+        for declaration in public_declarations(class_name, header_path):
+            if declaration_function_name(declaration) not in method_names:
+                continue
+            if KERNEL_MUTATION_ACCESS_TYPE in declaration:
+                continue
+            fail(
+                f"{relative(header_path)} exposes {class_name}::{declaration_function_name(declaration)} "
+                f"without {KERNEL_MUTATION_ACCESS_TYPE}",
+                failures,
+            )
+
+
 def require_self_test(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
@@ -703,6 +834,44 @@ def run_self_tests() -> int:
             and is_privileged_friend(item.declaration)
             for item in inline_friends),
         "inline non-operator friend bodies must not be truncated into comparison friends",
+    )
+
+    submodel_mutator_sample = textwrap.dedent(
+        """
+        namespace volt::detail {
+        class KernelMutationAccess;
+        }
+        class SampleModel {
+          public:
+            void mutate(int value);
+            void mutate_guarded(volt::detail::KernelMutationAccess, int value);
+
+          private:
+            void hidden_mutation(int value);
+        };
+        """
+    )
+    sample_declarations = public_declarations_from_header("SampleModel", submodel_mutator_sample)
+    require_self_test(
+        any(
+            declaration_function_name(declaration) == "mutate"
+            and KERNEL_MUTATION_ACCESS_TYPE not in declaration
+            for declaration in sample_declarations
+        ),
+        "public submodel mutator samples without kernel access must be observable",
+    )
+    require_self_test(
+        any(
+            declaration_function_name(declaration) == "mutate_guarded"
+            and KERNEL_MUTATION_ACCESS_TYPE in declaration
+            for declaration in sample_declarations
+        ),
+        "public submodel mutator samples with kernel access must be distinguishable",
+    )
+    require_self_test(
+        all(declaration_function_name(declaration) != "hidden_mutation"
+            for declaration in sample_declarations),
+        "private submodel mutators must not be treated as public architecture surface",
     )
 
     python_sample = textwrap.dedent(
@@ -832,6 +1001,7 @@ def run_checks() -> int:
     check_entity_ref_not_kernel_traversal_handle(failures)
     check_subsystem_back_references(failures)
     check_subsystem_sources_have_real_logic(failures)
+    check_submodel_mutators_require_kernel_access(failures)
 
     if failures:
         for failure in failures:

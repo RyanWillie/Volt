@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <volt/core/ids.hpp>
+#include <volt/core/mutation_access.hpp>
 #include <volt/schematic/schematic_sheet_metadata.hpp>
 
 namespace volt {
@@ -59,31 +60,31 @@ class Sheet {
     [[nodiscard]] const SheetRegion &region(std::size_t index) const;
 
     /** Add a named functional region to this sheet. */
-    std::size_t add_region(SheetRegion region);
+    std::size_t add_region(detail::KernelMutationAccess access, SheetRegion region);
 
     /** Record that a symbol instance appears on this sheet. */
-    void add_symbol_instance(SymbolInstanceId instance);
+    void add_symbol_instance(detail::KernelMutationAccess access, SymbolInstanceId instance);
 
     /** Record that a wire run appears on this sheet. */
-    void add_wire_run(WireRunId wire);
+    void add_wire_run(detail::KernelMutationAccess access, WireRunId wire);
 
     /** Record that a net label appears on this sheet. */
-    void add_net_label(NetLabelId label);
+    void add_net_label(detail::KernelMutationAccess access, NetLabelId label);
 
     /** Record that a junction appears on this sheet. */
-    void add_junction(JunctionId junction);
+    void add_junction(detail::KernelMutationAccess access, JunctionId junction);
 
     /** Record that a power or ground marker appears on this sheet. */
-    void add_power_port(PowerPortId port);
+    void add_power_port(detail::KernelMutationAccess access, PowerPortId port);
 
     /** Record that a no-connect marker appears on this sheet. */
-    void add_no_connect_marker(NoConnectMarkerId marker);
+    void add_no_connect_marker(detail::KernelMutationAccess access, NoConnectMarkerId marker);
 
     /** Record that a sheet or off-page port appears on this sheet. */
-    void add_sheet_port(SheetPortId port);
+    void add_sheet_port(detail::KernelMutationAccess access, SheetPortId port);
 
     /** Record that a symbol field appears on this sheet. */
-    void add_symbol_field(SymbolFieldId field);
+    void add_symbol_field(detail::KernelMutationAccess access, SymbolFieldId field);
 
   private:
     std::string name_;

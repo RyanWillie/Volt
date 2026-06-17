@@ -95,22 +95,22 @@ concept CanAddSchematicSymbolField =
     requires(Model model, volt::SymbolField field) { model.add_symbol_field(field); };
 
 static_assert(!HasMutableSheetAccessor<volt::SchematicSheetModel>);
-static_assert(CanAddSheetSymbolInstance<volt::SchematicSheetModel>);
-static_assert(CanAddSheetWireRun<volt::SchematicSheetModel>);
-static_assert(CanAddSheetNetLabel<volt::SchematicSheetModel>);
-static_assert(CanAddSheetJunction<volt::SchematicSheetModel>);
-static_assert(CanAddSheetPowerPort<volt::SchematicSheetModel>);
-static_assert(CanAddSheetNoConnect<volt::SchematicSheetModel>);
-static_assert(CanAddSheetPortMembership<volt::SchematicSheetModel>);
-static_assert(CanAddSheetSymbolField<volt::SchematicSheetModel>);
-static_assert(CanAddSchematicSymbolInstance<volt::SchematicItemsModel>);
-static_assert(CanAddSchematicWireRun<volt::SchematicItemsModel>);
-static_assert(CanAddSchematicNetLabel<volt::SchematicItemsModel>);
-static_assert(CanAddSchematicJunction<volt::SchematicItemsModel>);
-static_assert(CanAddSchematicPowerPort<volt::SchematicItemsModel>);
-static_assert(CanAddSchematicNoConnect<volt::SchematicItemsModel>);
-static_assert(CanAddSchematicSheetPort<volt::SchematicItemsModel>);
-static_assert(CanAddSchematicSymbolField<volt::SchematicItemsModel>);
+static_assert(!CanAddSheetSymbolInstance<volt::SchematicSheetModel>);
+static_assert(!CanAddSheetWireRun<volt::SchematicSheetModel>);
+static_assert(!CanAddSheetNetLabel<volt::SchematicSheetModel>);
+static_assert(!CanAddSheetJunction<volt::SchematicSheetModel>);
+static_assert(!CanAddSheetPowerPort<volt::SchematicSheetModel>);
+static_assert(!CanAddSheetNoConnect<volt::SchematicSheetModel>);
+static_assert(!CanAddSheetPortMembership<volt::SchematicSheetModel>);
+static_assert(!CanAddSheetSymbolField<volt::SchematicSheetModel>);
+static_assert(!CanAddSchematicSymbolInstance<volt::SchematicItemsModel>);
+static_assert(!CanAddSchematicWireRun<volt::SchematicItemsModel>);
+static_assert(!CanAddSchematicNetLabel<volt::SchematicItemsModel>);
+static_assert(!CanAddSchematicJunction<volt::SchematicItemsModel>);
+static_assert(!CanAddSchematicPowerPort<volt::SchematicItemsModel>);
+static_assert(!CanAddSchematicNoConnect<volt::SchematicItemsModel>);
+static_assert(!CanAddSchematicSheetPort<volt::SchematicItemsModel>);
+static_assert(!CanAddSchematicSymbolField<volt::SchematicItemsModel>);
 
 } // namespace
 
