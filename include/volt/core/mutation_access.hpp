@@ -10,12 +10,17 @@ namespace volt::detail {
  */
 class KernelMutationAccess {
   public:
+    /** Copy a mutation access passkey through an already-authorized kernel call chain. */
     constexpr KernelMutationAccess(const KernelMutationAccess &) noexcept = default;
+
+    /** Replace a mutation access passkey through an already-authorized kernel call chain. */
     constexpr KernelMutationAccess &operator=(const KernelMutationAccess &) noexcept = default;
 
   private:
+    /** Construct a mutation access passkey from the source-private factory. */
     constexpr KernelMutationAccess() noexcept = default;
 
+    /** Return a mutation access passkey for kernel implementation files. */
     friend constexpr KernelMutationAccess kernel_mutation_access() noexcept;
 };
 
