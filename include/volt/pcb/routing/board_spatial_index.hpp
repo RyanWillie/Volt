@@ -117,6 +117,10 @@ class BoardSpatialIndex {
     /** Insert one accepted transient shape so later queries see it. */
     void insert(BoardSpatialQueryShape shape);
 
+    /** Insert one accepted transient shape after the board model has recorded the same geometry. */
+    void insert_after_board_mutation(BoardSpatialQueryShape shape,
+                                     std::size_t previous_geometry_mutation_count);
+
     /** Return candidate copper-clearance pairs in ascending shape-index order. */
     [[nodiscard]] std::vector<BoardSpatialCandidatePair> copper_clearance_candidates() const;
 
@@ -188,9 +192,6 @@ class BoardSpatialIndex {
     void append_shape(detail::BoardCopperShape shape);
 
     void insert(detail::BoardCopperShape shape);
-
-    void insert_after_board_mutation(BoardSpatialQueryShape shape,
-                                     std::size_t previous_geometry_mutation_count);
 
     void insert_after_board_mutation(detail::BoardCopperShape shape,
                                      std::size_t previous_geometry_mutation_count);
