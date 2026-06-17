@@ -16,8 +16,8 @@ template <typename Model>
 concept CanMarkIntentionalNoConnectPin =
     requires(Model model, volt::PinId pin) { model.mark_intentional_no_connect_pin(pin); };
 
-static_assert(!CanMarkIntentionalStubNet<volt::DesignIntent>);
-static_assert(!CanMarkIntentionalNoConnectPin<volt::DesignIntent>);
+static_assert(CanMarkIntentionalStubNet<volt::DesignIntent>);
+static_assert(CanMarkIntentionalNoConnectPin<volt::DesignIntent>);
 
 } // namespace
 

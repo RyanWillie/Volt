@@ -12,8 +12,6 @@
 
 namespace volt {
 
-class HierarchyModel;
-
 /** Human-facing reusable module name. */
 class ModuleName {
   public:
@@ -186,13 +184,16 @@ class ModuleDefinition {
     /** Return component templates in deterministic insertion order. */
     [[nodiscard]] const std::vector<ModuleComponentId> &components() const noexcept;
 
-  private:
-    friend class HierarchyModel;
-
+    /** Add a template-local net to this module definition. */
     void add_template_net(TemplateNetDefId net);
+
+    /** Add a boundary port to this module definition. */
     void add_port(PortDefId port);
+
+    /** Add a component template to this module definition. */
     void add_component(ModuleComponentId component);
 
+  private:
     ModuleName name_;
     std::vector<TemplateNetDefId> template_nets_;
     std::vector<PortDefId> ports_;

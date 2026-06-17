@@ -27,7 +27,7 @@ concept CanAssignNetClass = requires(Model model, volt::NetId net, volt::NetClas
     model.assign_net_class(net, rule);
 };
 
-static_assert(!CanAssignNetClass<volt::NetClasses>);
+static_assert(CanAssignNetClass<volt::NetClasses>);
 
 [[nodiscard]] const volt::Diagnostic *find_diagnostic(const volt::DiagnosticReport &report,
                                                       const std::string &code) {

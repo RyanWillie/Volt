@@ -10,8 +10,6 @@
 
 namespace volt {
 
-class Circuit;
-
 /**
  * Owns typed electrical metadata and selected physical implementation state.
  *
@@ -38,9 +36,6 @@ class ElectricalModel {
     [[nodiscard]] const std::optional<PhysicalPart> &
     selected_physical_part(ComponentId component) const noexcept;
 
-  private:
-    friend class Circuit;
-
     /** Set typed electrical metadata for a concrete component. */
     void set_component_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
                                  ElectricalAttributeValue value);
@@ -61,6 +56,7 @@ class ElectricalModel {
     void set_selected_part_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
                                      ElectricalAttributeValue value);
 
+  private:
     template <typename Id>
     [[nodiscard]] static ElectricalAttributeMap &
     mutable_attributes(std::vector<std::pair<Id, ElectricalAttributeMap>> &entries, Id owner);

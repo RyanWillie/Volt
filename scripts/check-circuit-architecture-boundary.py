@@ -36,64 +36,13 @@ REJECTED_TOKENS = (
     "CircuitElectrical",
     "CircuitDesignIntent",
 )
+FRIEND_TYPE_PREFIXES = ("friend " "class ", "friend " "struct ")
 
 PRIVILEGED_FRIEND_ALLOWLIST = {
-    (
-        "include/volt/circuit/intent/design_intent.hpp",
-        "friend class Circuit",
-    ): "Circuit aggregate root currently owns design-intent mutations; VOL-232 will narrow this.",
-    (
-        "include/volt/circuit/electrical/electrical_model.hpp",
-        "friend class Circuit",
-    ): "Circuit aggregate root currently owns electrical metadata mutations; VOL-232 will narrow this.",
-    (
-        "include/volt/circuit/hierarchy/hierarchy.hpp",
-        "friend class HierarchyModel",
-    ): "HierarchyModel currently maintains ModuleDefinition membership; VOL-232 will replace this.",
-    (
-        "include/volt/circuit/hierarchy/hierarchy_model.hpp",
-        "friend class Circuit",
-    ): "Circuit aggregate root currently owns hierarchy mutations; VOL-232 will narrow this.",
-    (
-        "include/volt/circuit/connectivity/instances.hpp",
-        "friend class ConnectivityModel",
-    ): "ConnectivityModel currently updates instance properties at the mutation boundary.",
-    (
-        "include/volt/circuit/constraints/net_classes.hpp",
-        "friend class Circuit",
-    ): "Circuit aggregate root currently owns net-class assignment mutations; VOL-232 will narrow this.",
-    (
-        "include/volt/circuit/parts/parts.hpp",
-        "friend class ElectricalModel",
-    ): "ElectricalModel currently applies selected-part electrical attributes; VOL-232 will narrow this.",
-    (
-        "include/volt/pcb/copper/board_copper_model.hpp",
-        "friend class Board",
-    ): "Board aggregate root currently owns copper mutations; VOL-232 will narrow this.",
-    (
-        "include/volt/pcb/placement/board_placement_model.hpp",
-        "friend class Board",
-    ): "Board aggregate root currently owns placement mutations; VOL-232 will narrow this.",
-    (
-        "include/volt/pcb/routing/board_spatial_index.hpp",
-        "friend class BoardRouter",
-    ): "BoardRouter currently inserts accepted transient shapes into its routing index.",
     (
         "include/volt/pcb/routing/board_spatial_index.hpp",
         "friend void detail::validate_copper_clearance(const Board &board, const std::vector<detail::BoardCopperShape> &shapes, DiagnosticReport &report)",
     ): "Board copper DRC currently reuses the spatial index's internal shape snapshot.",
-    (
-        "include/volt/schematic/schematic_items_model.hpp",
-        "friend class Schematic",
-    ): "Schematic aggregate root currently owns item mutations; VOL-232 will narrow this.",
-    (
-        "include/volt/schematic/schematic_sheet.hpp",
-        "friend class SchematicSheetModel",
-    ): "SchematicSheetModel currently maintains sheet membership lists; VOL-232 will narrow this.",
-    (
-        "include/volt/schematic/schematic_sheet_model.hpp",
-        "friend class Schematic",
-    ): "Schematic aggregate root currently owns sheet membership mutations; VOL-232 will narrow this.",
 }
 
 PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {
@@ -282,6 +231,10 @@ def friend_declarations(path: Path, text: str) -> list[FriendDeclaration]:
 
 def is_comparison_operator_friend(declaration: str) -> bool:
     return re.search(r"\bfriend\b.*\boperator\s*(==|!=|<=>|<=|>=|<|>)\s*\(", declaration) is not None
+
+
+def is_broad_type_friend(declaration: str) -> bool:
+    return declaration.startswith(FRIEND_TYPE_PREFIXES)
 
 
 def is_privileged_friend(declaration: str) -> bool:
@@ -517,10 +470,15 @@ def check_rejected_tokens(failures: list[str]) -> None:
                 fail(f"{relative(path)} contains rejected architecture token {token}", failures)
 
 
-def check_circuit_has_no_friend_classes(failures: list[str]) -> None:
-    body = class_body(strip_comments(read(ROOT_TYPES["Circuit"])), "Circuit")
-    if re.search(r"\bfriend\s+class\b", body):
-        fail("include/volt/circuit/circuit.hpp declares a friend class inside Circuit", failures)
+def check_no_broad_type_friends(failures: list[str]) -> None:
+    for path in architecture_code_files():
+        for declaration in friend_declarations(path, read(path)):
+            if is_broad_type_friend(declaration.declaration):
+                fail(
+                    f"{relative(path)}:{declaration.line} declares broad type friendship "
+                    "instead of a narrow API",
+                    failures,
+                )
 
 
 def check_no_flat_pcb_public_headers(failures: list[str]) -> None:
@@ -538,6 +496,8 @@ def check_privileged_friends_are_allowlisted(failures: list[str]) -> None:
     for path in architecture_code_files():
         for declaration in friend_declarations(path, read(path)):
             if not is_privileged_friend(declaration.declaration):
+                continue
+            if is_broad_type_friend(declaration.declaration):
                 continue
             key = (relative(path), declaration.declaration)
             if key in PRIVILEGED_FRIEND_ALLOWLIST:
@@ -686,6 +646,8 @@ def require_self_test(condition: bool, message: str) -> None:
 
 
 def run_self_tests() -> int:
+    friend_class_declaration = FRIEND_TYPE_PREFIXES[0] + "Backdoor;"
+    friend_struct_declaration = FRIEND_TYPE_PREFIXES[1] + "StructBackdoor;"
     friend_sample = textwrap.dedent(
         """
         struct Comparable {
@@ -693,11 +655,14 @@ def run_self_tests() -> int:
                                                  const Comparable &rhs) noexcept {
                 return lhs.value == rhs.value;
             }
-            friend class Backdoor;
+            CLASS_FRIEND_DECLARATION
+            STRUCT_FRIEND_DECLARATION
             friend void mutate_private_state(Comparable &value);
             int value = 0;
         };
         """
+    ).replace("CLASS_FRIEND_DECLARATION", friend_class_declaration).replace(
+        "STRUCT_FRIEND_DECLARATION", friend_struct_declaration
     )
     friends = friend_declarations(Path("sample.hpp"), friend_sample)
     require_self_test(
@@ -706,8 +671,16 @@ def run_self_tests() -> int:
     )
     privileged = [item for item in friends if is_privileged_friend(item.declaration)]
     require_self_test(
+        sum(is_broad_type_friend(item.declaration) for item in privileged) == 2,
+        "type-level friend grants must be identifiable as broad privileged access",
+    )
+    require_self_test(
         [item.declaration for item in privileged]
-        == ["friend class Backdoor", "friend void mutate_private_state(Comparable &value)"],
+        == [
+            friend_class_declaration.rstrip(";"),
+            friend_struct_declaration.rstrip(";"),
+            "friend void mutate_private_state(Comparable &value)",
+        ],
         "non-operator friend grants must be classified as privileged access",
     )
     inline_privileged_friend = textwrap.dedent(
@@ -851,7 +824,7 @@ def run_self_tests() -> int:
 def run_checks() -> int:
     failures: list[str] = []
     check_rejected_tokens(failures)
-    check_circuit_has_no_friend_classes(failures)
+    check_no_broad_type_friends(failures)
     check_no_flat_pcb_public_headers(failures)
     check_privileged_friends_are_allowlisted(failures)
     check_public_api_snapshots(failures)

@@ -245,12 +245,10 @@ class NetClasses {
     /** Require that a net class ID belongs to this model. */
     void require_net_class(NetClassId net_class) const;
 
-  private:
-    friend class Circuit;
-
     /** Assign a net class to a logical net. */
     [[nodiscard]] bool assign_net_class(NetId net, NetClassId net_class);
 
+  private:
     EntityTable<NetClass, NetClassId> net_classes_;
     std::vector<std::pair<NetId, NetClassId>> net_class_assignments_;
 };

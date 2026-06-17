@@ -58,27 +58,34 @@ class Sheet {
     /** Return a region by sheet-local region index. */
     [[nodiscard]] const SheetRegion &region(std::size_t index) const;
 
-  private:
-    friend class SchematicSheetModel;
-
+    /** Add a named functional region to this sheet. */
     std::size_t add_region(SheetRegion region);
 
+    /** Record that a symbol instance appears on this sheet. */
     void add_symbol_instance(SymbolInstanceId instance);
 
+    /** Record that a wire run appears on this sheet. */
     void add_wire_run(WireRunId wire);
 
+    /** Record that a net label appears on this sheet. */
     void add_net_label(NetLabelId label);
 
+    /** Record that a junction appears on this sheet. */
     void add_junction(JunctionId junction);
 
+    /** Record that a power or ground marker appears on this sheet. */
     void add_power_port(PowerPortId port);
 
+    /** Record that a no-connect marker appears on this sheet. */
     void add_no_connect_marker(NoConnectMarkerId marker);
 
+    /** Record that a sheet or off-page port appears on this sheet. */
     void add_sheet_port(SheetPortId port);
 
+    /** Record that a symbol field appears on this sheet. */
     void add_symbol_field(SymbolFieldId field);
 
+  private:
     std::string name_;
     SheetMetadata metadata_;
     std::vector<SymbolInstanceId> symbol_instances_;

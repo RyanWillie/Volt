@@ -129,8 +129,6 @@ class BoardSpatialIndex {
     query_legality(const BoardSpatialQueryShape &candidate) const;
 
   private:
-    friend class BoardRouter;
-
     friend void
     detail::validate_copper_clearance(const Board &board,
                                       const std::vector<detail::BoardCopperShape> &shapes,

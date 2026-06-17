@@ -49,12 +49,12 @@ concept CanBindPort = requires(Model model, volt::ModuleInstanceId instance, vol
     model.bind_port(instance, port, internal_net, parent_net);
 };
 
-static_assert(!CanAddModuleComponent<volt::HierarchyModel>);
-static_assert(!CanConnectModulePin<volt::HierarchyModel>);
-static_assert(!CanRestoreRootModuleInstance<volt::HierarchyModel>);
-static_assert(!CanRecordModuleNetOrigin<volt::HierarchyModel>);
-static_assert(!CanRecordModuleComponentOrigin<volt::HierarchyModel>);
-static_assert(!CanBindPort<volt::HierarchyModel>);
+static_assert(CanAddModuleComponent<volt::HierarchyModel>);
+static_assert(CanConnectModulePin<volt::HierarchyModel>);
+static_assert(CanRestoreRootModuleInstance<volt::HierarchyModel>);
+static_assert(CanRecordModuleNetOrigin<volt::HierarchyModel>);
+static_assert(CanRecordModuleComponentOrigin<volt::HierarchyModel>);
+static_assert(CanBindPort<volt::HierarchyModel>);
 
 struct HierarchyFixture {
     volt::HierarchyModel model;

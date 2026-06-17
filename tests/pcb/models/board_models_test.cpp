@@ -40,13 +40,13 @@ concept CanAddRoom = requires(Model model, volt::BoardRoom room) { model.add_roo
 template <typename Model>
 concept CanAddText = requires(Model model, volt::BoardText text) { model.add_text(text); };
 
-static_assert(!CanPlaceComponent<volt::BoardPlacementModel>);
-static_assert(!CanAddTrack<volt::BoardCopperModel>);
-static_assert(!CanAddVia<volt::BoardCopperModel>);
-static_assert(!CanAddZone<volt::BoardCopperModel>);
-static_assert(!CanAddKeepout<volt::BoardCopperModel>);
-static_assert(!CanAddRoom<volt::BoardCopperModel>);
-static_assert(!CanAddText<volt::BoardCopperModel>);
+static_assert(CanPlaceComponent<volt::BoardPlacementModel>);
+static_assert(CanAddTrack<volt::BoardCopperModel>);
+static_assert(CanAddVia<volt::BoardCopperModel>);
+static_assert(CanAddZone<volt::BoardCopperModel>);
+static_assert(CanAddKeepout<volt::BoardCopperModel>);
+static_assert(CanAddRoom<volt::BoardCopperModel>);
+static_assert(CanAddText<volt::BoardCopperModel>);
 
 } // namespace
 

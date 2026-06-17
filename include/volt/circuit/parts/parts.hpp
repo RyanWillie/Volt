@@ -177,12 +177,11 @@ class PhysicalPart {
         return approved_alternate_mpns_;
     }
 
-  private:
-    friend class ElectricalModel;
-
+    /** Set typed electrical metadata for this physical part selection. */
     void set_electrical_attribute(const ElectricalAttributeSpec &spec,
                                   ElectricalAttributeValue value);
 
+  private:
     ManufacturerPart manufacturer_part_;
     PackageRef package_;
     FootprintRef footprint_;

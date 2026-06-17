@@ -167,9 +167,6 @@ class HierarchyModel {
     [[nodiscard]] bool module_component_belongs_to_module(ModuleDefId module,
                                                           ModuleComponentId component) const;
 
-  private:
-    friend class Circuit;
-
     /** Add a component template to a module definition. */
     [[nodiscard]] ModuleComponentId add_module_component(ModuleDefId module,
                                                          ModuleComponentTemplate component);
@@ -196,6 +193,7 @@ class HierarchyModel {
     [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port,
                                           NetId internal_net, NetId parent_net);
 
+  private:
     EntityTable<ModuleDefinition, ModuleDefId> module_definitions_;
     EntityTable<TemplateNetDefinition, TemplateNetDefId> template_net_definitions_;
     EntityTable<ModuleComponentTemplate, ModuleComponentId> module_component_templates_;

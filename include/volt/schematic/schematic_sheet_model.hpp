@@ -10,8 +10,6 @@
 
 namespace volt {
 
-class Schematic;
-
 /**
  * Owns schematic sheets, authored regions, and sheet-local item membership lists.
  *
@@ -47,9 +45,6 @@ class SchematicSheetModel {
     /** Require that a sheet ID belongs to this model. */
     void require_sheet(SheetId sheet) const;
 
-  private:
-    friend class Schematic;
-
     /** Record that a symbol instance appears on a sheet. */
     void add_symbol_instance(SheetId sheet, SymbolInstanceId instance);
 
@@ -74,6 +69,7 @@ class SchematicSheetModel {
     /** Record that a symbol field appears on a sheet. */
     void add_symbol_field(SheetId sheet, SymbolFieldId field);
 
+  private:
     [[nodiscard]] Sheet &mutable_sheet(SheetId id);
 
     EntityTable<Sheet, SheetId> sheets_;

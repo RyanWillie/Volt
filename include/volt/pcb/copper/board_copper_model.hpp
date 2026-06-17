@@ -8,8 +8,6 @@
 
 namespace volt {
 
-class Board;
-
 /**
  * Owns routed and presentation copper primitives for a board projection: tracks, vias, zones,
  * and derived copper shapes.
@@ -57,9 +55,6 @@ class BoardCopperModel {
     /** Return the number of board text items owned by this model. */
     [[nodiscard]] std::size_t text_count() const noexcept;
 
-  private:
-    friend class Board;
-
     /** Add a routed copper track and return its stable board-local ID. */
     [[nodiscard]] BoardTrackId add_track(BoardTrack track);
 
@@ -78,6 +73,7 @@ class BoardCopperModel {
     /** Add board text and return its stable board-local ID. */
     [[nodiscard]] BoardTextId add_text(BoardText text);
 
+  private:
     EntityTable<BoardTrack, BoardTrackId> tracks_;
     EntityTable<BoardVia, BoardViaId> vias_;
     EntityTable<BoardZone, BoardZoneId> zones_;

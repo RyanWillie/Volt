@@ -80,9 +80,6 @@ class SchematicItemsModel {
     /** Require that a symbol instance ID belongs to this model. */
     void require_symbol_instance(SymbolInstanceId instance) const;
 
-  private:
-    friend class Schematic;
-
     /** Add a symbol placement over an existing logical component. */
     [[nodiscard]] SymbolInstanceId add_symbol_instance(SymbolInstance instance);
 
@@ -107,6 +104,7 @@ class SchematicItemsModel {
     /** Add a field owned by an existing symbol instance. */
     [[nodiscard]] SymbolFieldId add_symbol_field(SymbolField field);
 
+  private:
     EntityTable<SymbolInstance, SymbolInstanceId> symbol_instances_;
     EntityTable<WireRun, WireRunId> wire_runs_;
     EntityTable<NetLabel, NetLabelId> net_labels_;

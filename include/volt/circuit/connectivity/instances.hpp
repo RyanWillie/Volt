@@ -10,8 +10,6 @@
 
 namespace volt {
 
-class ConnectivityModel;
-
 /** Human-facing reference designator for a component instance, such as R1 or U1. */
 class ReferenceDesignator {
   public:
@@ -47,11 +45,10 @@ class ComponentInstance {
     /** Return extensible metadata properties for this component instance. */
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
-  private:
-    friend class ConnectivityModel;
-
+    /** Set or replace one component instance property. */
     void set_property(PropertyKey key, PropertyValue value);
 
+  private:
     ComponentDefId definition_;
     ReferenceDesignator reference_;
     PropertyMap properties_;
