@@ -1,6 +1,9 @@
 #include <volt/circuit/intent/design_intent.hpp>
 
+#include "../circuit_storage.hpp"
+
 #include <algorithm>
+#include <memory>
 #include <optional>
 #include <utility>
 
@@ -10,103 +13,156 @@ ComponentAssemblyIntent::ComponentAssemblyIntent(ComponentId component, std::opt
                                                  bool selection_override)
     : component_{component}, dnp_{dnp}, selection_override_{selection_override} {}
 
-bool DesignIntent::mark_intentional_stub_net(detail::KernelMutationAccess, NetId net) {
+DesignIntent::DesignIntent() : DesignIntent{std::make_shared<detail::DesignIntentState>()} {}
+
+DesignIntent::DesignIntent(std::shared_ptr<const detail::DesignIntentState> state)
+    : state_{std::move(state)} {}
+
+DesignIntent::DesignIntent(const DesignIntent &other)
+    : DesignIntent{std::make_shared<detail::DesignIntentState>(other.state())} {}
+
+DesignIntent::DesignIntent(DesignIntent &&other) noexcept = default;
+
+DesignIntent &DesignIntent::operator=(const DesignIntent &other) {
+    if (this != &other) {
+        state_ = std::make_shared<detail::DesignIntentState>(other.state());
+    }
+    return *this;
+}
+
+DesignIntent &DesignIntent::operator=(DesignIntent &&other) noexcept = default;
+
+DesignIntent::~DesignIntent() = default;
+
+Circuit::DesignIntentStorage::DesignIntentStorage()
+    : DesignIntentStorage{std::make_shared<detail::DesignIntentState>()} {}
+
+Circuit::DesignIntentStorage::DesignIntentStorage(std::shared_ptr<detail::DesignIntentState> state)
+    : DesignIntent{state}, state_{std::move(state)} {}
+
+Circuit::DesignIntentStorage::DesignIntentStorage(const DesignIntentStorage &other)
+    : DesignIntentStorage{std::make_shared<detail::DesignIntentState>(other.state())} {}
+
+Circuit::DesignIntentStorage &
+Circuit::DesignIntentStorage::operator=(const DesignIntentStorage &other) {
+    if (this != &other) {
+        auto replacement =
+            DesignIntentStorage{std::make_shared<detail::DesignIntentState>(other.state())};
+        *this = std::move(replacement);
+    }
+    return *this;
+}
+
+[[nodiscard]] detail::DesignIntentState &Circuit::DesignIntentStorage::mutable_state() noexcept {
+    return *state_;
+}
+
+[[nodiscard]] const detail::DesignIntentState &
+Circuit::DesignIntentStorage::state() const noexcept {
+    return *state_;
+}
+
+bool Circuit::DesignIntentStorage::mark_intentional_stub_net(NetId net) {
     if (is_intentional_stub_net(net)) {
         return false;
     }
 
-    intentional_stub_nets_.push_back(net);
+    mutable_state().intentional_stub_nets.push_back(net);
     return true;
 }
 
-bool DesignIntent::mark_intentional_no_connect_pin(detail::KernelMutationAccess, PinId pin) {
+bool Circuit::DesignIntentStorage::mark_intentional_no_connect_pin(PinId pin) {
     if (is_intentional_no_connect_pin(pin)) {
         return false;
     }
 
-    intentional_no_connect_pins_.push_back(pin);
+    mutable_state().intentional_no_connect_pins.push_back(pin);
     return true;
 }
 
 [[nodiscard]] bool DesignIntent::is_intentional_stub_net(NetId net) const {
-    return std::find(intentional_stub_nets_.begin(), intentional_stub_nets_.end(), net) !=
-           intentional_stub_nets_.end();
+    return std::find(state().intentional_stub_nets.begin(), state().intentional_stub_nets.end(),
+                     net) != state().intentional_stub_nets.end();
 }
 
 [[nodiscard]] bool DesignIntent::is_intentional_no_connect_pin(PinId pin) const {
-    return std::find(intentional_no_connect_pins_.begin(), intentional_no_connect_pins_.end(),
-                     pin) != intentional_no_connect_pins_.end();
+    return std::find(state().intentional_no_connect_pins.begin(),
+                     state().intentional_no_connect_pins.end(),
+                     pin) != state().intentional_no_connect_pins.end();
 }
 
 [[nodiscard]] std::optional<bool> DesignIntent::component_dnp(ComponentId component) const {
-    const auto existing =
-        std::find_if(component_assembly_intents_.begin(), component_assembly_intents_.end(),
-                     [component](const ComponentAssemblyIntent &intent) {
-                         return intent.component() == component;
-                     });
-    if (existing == component_assembly_intents_.end()) {
+    const auto existing = std::find_if(state().component_assembly_intents.begin(),
+                                       state().component_assembly_intents.end(),
+                                       [component](const ComponentAssemblyIntent &intent) {
+                                           return intent.component() == component;
+                                       });
+    if (existing == state().component_assembly_intents.end()) {
         return std::nullopt;
     }
     return existing->dnp();
 }
 
 [[nodiscard]] bool DesignIntent::is_component_selection_override(ComponentId component) const {
-    const auto existing =
-        std::find_if(component_assembly_intents_.begin(), component_assembly_intents_.end(),
-                     [component](const ComponentAssemblyIntent &intent) {
-                         return intent.component() == component;
-                     });
-    return existing != component_assembly_intents_.end() && existing->selection_override();
+    const auto existing = std::find_if(state().component_assembly_intents.begin(),
+                                       state().component_assembly_intents.end(),
+                                       [component](const ComponentAssemblyIntent &intent) {
+                                           return intent.component() == component;
+                                       });
+    return existing != state().component_assembly_intents.end() && existing->selection_override();
 }
 
 [[nodiscard]] const std::vector<NetId> &DesignIntent::intentional_stub_nets() const noexcept {
-    return intentional_stub_nets_;
+    return state().intentional_stub_nets;
 }
 
 [[nodiscard]] const std::vector<PinId> &DesignIntent::intentional_no_connect_pins() const noexcept {
-    return intentional_no_connect_pins_;
+    return state().intentional_no_connect_pins;
 }
 
 [[nodiscard]] const std::vector<ComponentAssemblyIntent> &
 DesignIntent::component_assembly_intents() const noexcept {
-    return component_assembly_intents_;
+    return state().component_assembly_intents;
 }
 
-void DesignIntent::set_component_dnp(detail::KernelMutationAccess, ComponentId component,
-                                     bool dnp) {
-    const auto existing =
-        std::find_if(component_assembly_intents_.begin(), component_assembly_intents_.end(),
-                     [component](const ComponentAssemblyIntent &intent) {
-                         return intent.component() == component;
-                     });
-    if (existing == component_assembly_intents_.end()) {
-        component_assembly_intents_.emplace_back(component, dnp, false);
+void Circuit::DesignIntentStorage::set_component_dnp(ComponentId component, bool dnp) {
+    const auto existing = std::find_if(mutable_state().component_assembly_intents.begin(),
+                                       mutable_state().component_assembly_intents.end(),
+                                       [component](const ComponentAssemblyIntent &intent) {
+                                           return intent.component() == component;
+                                       });
+    if (existing == mutable_state().component_assembly_intents.end()) {
+        mutable_state().component_assembly_intents.emplace_back(component, dnp, false);
         return;
     }
     const auto selection_override = existing->selection_override();
     *existing = ComponentAssemblyIntent{component, dnp, selection_override};
 }
 
-void DesignIntent::set_component_selection_override(detail::KernelMutationAccess,
-                                                    ComponentId component, bool override) {
-    const auto existing =
-        std::find_if(component_assembly_intents_.begin(), component_assembly_intents_.end(),
-                     [component](const ComponentAssemblyIntent &intent) {
-                         return intent.component() == component;
-                     });
-    if (existing == component_assembly_intents_.end()) {
+void Circuit::DesignIntentStorage::set_component_selection_override(ComponentId component,
+                                                                    bool override) {
+    const auto existing = std::find_if(mutable_state().component_assembly_intents.begin(),
+                                       mutable_state().component_assembly_intents.end(),
+                                       [component](const ComponentAssemblyIntent &intent) {
+                                           return intent.component() == component;
+                                       });
+    if (existing == mutable_state().component_assembly_intents.end()) {
         if (!override) {
             return;
         }
-        component_assembly_intents_.emplace_back(component, std::nullopt, override);
+        mutable_state().component_assembly_intents.emplace_back(component, std::nullopt, override);
         return;
     }
     const auto dnp = existing->dnp();
     if (!override && !dnp.has_value()) {
-        component_assembly_intents_.erase(existing);
+        mutable_state().component_assembly_intents.erase(existing);
         return;
     }
     *existing = ComponentAssemblyIntent{component, dnp, override};
+}
+
+[[nodiscard]] const detail::DesignIntentState &DesignIntent::state() const noexcept {
+    return *state_;
 }
 
 } // namespace volt

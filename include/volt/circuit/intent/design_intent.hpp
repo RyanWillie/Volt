@@ -1,12 +1,16 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <vector>
 
 #include <volt/core/ids.hpp>
-#include <volt/core/mutation_access.hpp>
 
 namespace volt {
+
+namespace detail {
+struct DesignIntentState;
+}
 
 /** Explicit assembly intent for one component instance. */
 class ComponentAssemblyIntent {
@@ -41,6 +45,19 @@ class ComponentAssemblyIntent {
  */
 class DesignIntent {
   public:
+    /** Construct empty design-intent storage. */
+    DesignIntent();
+    /** Copy design-intent state. */
+    DesignIntent(const DesignIntent &other);
+    /** Move design-intent state. */
+    DesignIntent(DesignIntent &&other) noexcept;
+    /** Copy design-intent state. */
+    DesignIntent &operator=(const DesignIntent &other);
+    /** Move design-intent state. */
+    DesignIntent &operator=(DesignIntent &&other) noexcept;
+    /** Destroy design-intent state. */
+    ~DesignIntent();
+
     /** Return whether a net is intentionally left as a stub. */
     [[nodiscard]] bool is_intentional_stub_net(NetId net) const;
 
@@ -63,23 +80,14 @@ class DesignIntent {
     [[nodiscard]] const std::vector<ComponentAssemblyIntent> &
     component_assembly_intents() const noexcept;
 
-    /** Mark a single-pin net as intentional design intent. */
-    bool mark_intentional_stub_net(detail::KernelMutationAccess access, NetId net);
-
-    /** Mark an unconnected concrete pin as intentional design intent. */
-    bool mark_intentional_no_connect_pin(detail::KernelMutationAccess access, PinId pin);
-
-    /** Set explicit DNP intent for a component. */
-    void set_component_dnp(detail::KernelMutationAccess access, ComponentId component, bool dnp);
-
-    /** Set or clear selected-part override intent for a component. */
-    void set_component_selection_override(detail::KernelMutationAccess access,
-                                          ComponentId component, bool override);
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit DesignIntent(std::shared_ptr<const detail::DesignIntentState> state);
 
   private:
-    std::vector<NetId> intentional_stub_nets_;
-    std::vector<PinId> intentional_no_connect_pins_;
-    std::vector<ComponentAssemblyIntent> component_assembly_intents_;
+    [[nodiscard]] const detail::DesignIntentState &state() const noexcept;
+
+    std::shared_ptr<const detail::DesignIntentState> state_;
 };
 
 } // namespace volt

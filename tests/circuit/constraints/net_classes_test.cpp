@@ -55,23 +55,25 @@ TEST_CASE("NetClasses stores net classes by stable ID and name") {
     high_voltage.set_maximum_net_voltage(volt::Quantity{volt::UnitDimension::Voltage, 60.0});
     high_voltage.set_copper_clearance_mm(0.6);
 
-    auto model = volt::NetClasses{};
-    const auto high_voltage_id = model.add_net_class(std::move(high_voltage));
-    const auto logic_id = model.add_net_class(volt::NetClass{volt::NetClassName{"Logic"}});
+    auto circuit = volt::Circuit{};
+    const auto high_voltage_id = circuit.add_net_class(std::move(high_voltage));
+    const auto logic_id = circuit.add_net_class(volt::NetClass{volt::NetClassName{"Logic"}});
 
-    REQUIRE(model.net_class_count() == 2);
-    CHECK(model.net_class(high_voltage_id).name() == volt::NetClassName{"HighVoltage"});
-    REQUIRE(model.net_class(high_voltage_id).maximum_net_voltage().has_value());
-    CHECK(model.net_class(high_voltage_id).maximum_net_voltage()->value() == 60.0);
-    REQUIRE(model.net_class(high_voltage_id).copper_clearance_mm().has_value());
-    CHECK(model.net_class(high_voltage_id).copper_clearance_mm().value() == 0.6);
-    CHECK(model.net_class_by_name(volt::NetClassName{"HighVoltage"}) == high_voltage_id);
-    CHECK(model.net_class_by_name(volt::NetClassName{"Logic"}) == logic_id);
-    CHECK_THROWS_AS(model.add_net_class(volt::NetClass{volt::NetClassName{"Logic"}}),
+    REQUIRE(circuit.net_class_count() == 2);
+    CHECK(circuit.net_class(high_voltage_id).name() == volt::NetClassName{"HighVoltage"});
+    REQUIRE(circuit.net_class(high_voltage_id).maximum_net_voltage().has_value());
+    CHECK(circuit.net_class(high_voltage_id).maximum_net_voltage()->value() == 60.0);
+    REQUIRE(circuit.net_class(high_voltage_id).copper_clearance_mm().has_value());
+    CHECK(circuit.net_class(high_voltage_id).copper_clearance_mm().value() == 0.6);
+    CHECK(circuit.net_class_by_name(volt::NetClassName{"HighVoltage"}) == high_voltage_id);
+    CHECK(circuit.net_class_by_name(volt::NetClassName{"Logic"}) == logic_id);
+    CHECK_THROWS_AS(circuit.add_net_class(volt::NetClass{volt::NetClassName{"Logic"}}),
                     std::logic_error);
 
-    CHECK_FALSE(model.net_class_for_net(volt::NetId{7}).has_value());
-    CHECK(model.net_class_assignments().empty());
+    const auto unassigned_net =
+        circuit.add_net(volt::Net{volt::NetName{"UNASSIGNED"}, volt::NetKind::Signal});
+    CHECK_FALSE(circuit.net_class_for_net(unassigned_net).has_value());
+    CHECK(circuit.net_class_assignments().empty());
 }
 
 TEST_CASE("NetClass rejects malformed local constraints") {

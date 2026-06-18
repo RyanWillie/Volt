@@ -1,134 +1,186 @@
 #include <volt/schematic/schematic_items_model.hpp>
 
+#include "schematic_storage.hpp"
+
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
 #include <utility>
 
 namespace volt {
 
+SchematicItemsModel::SchematicItemsModel()
+    : SchematicItemsModel{std::make_shared<detail::SchematicItemsState>()} {}
+
+SchematicItemsModel::SchematicItemsModel(std::shared_ptr<const detail::SchematicItemsState> state)
+    : state_{std::move(state)} {}
+
+SchematicItemsModel::SchematicItemsModel(const SchematicItemsModel &other)
+    : SchematicItemsModel{std::make_shared<detail::SchematicItemsState>(other.state())} {}
+
+SchematicItemsModel::SchematicItemsModel(SchematicItemsModel &&other) noexcept = default;
+
+SchematicItemsModel &SchematicItemsModel::operator=(const SchematicItemsModel &other) {
+    if (this != &other) {
+        state_ = std::make_shared<detail::SchematicItemsState>(other.state());
+    }
+    return *this;
+}
+
+SchematicItemsModel &SchematicItemsModel::operator=(SchematicItemsModel &&other) noexcept = default;
+
+SchematicItemsModel::~SchematicItemsModel() = default;
+
+Schematic::ItemStorage::ItemStorage()
+    : ItemStorage{std::make_shared<detail::SchematicItemsState>()} {}
+
+Schematic::ItemStorage::ItemStorage(std::shared_ptr<detail::SchematicItemsState> state)
+    : SchematicItemsModel{state}, state_{std::move(state)} {}
+
+Schematic::ItemStorage::ItemStorage(const ItemStorage &other)
+    : ItemStorage{std::make_shared<detail::SchematicItemsState>(other.state())} {}
+
+Schematic::ItemStorage &Schematic::ItemStorage::operator=(const ItemStorage &other) {
+    if (this != &other) {
+        auto replacement =
+            ItemStorage{std::make_shared<detail::SchematicItemsState>(other.state())};
+        *this = std::move(replacement);
+    }
+    return *this;
+}
+
+[[nodiscard]] detail::SchematicItemsState &Schematic::ItemStorage::mutable_state() noexcept {
+    return *state_;
+}
+
+[[nodiscard]] const detail::SchematicItemsState &Schematic::ItemStorage::state() const noexcept {
+    return *state_;
+}
+
 [[nodiscard]] SymbolInstanceId
-SchematicItemsModel::add_symbol_instance(detail::KernelMutationAccess, SymbolInstance instance) {
-    return symbol_instances_.insert(instance);
+Schematic::ItemStorage::add_symbol_instance(SymbolInstance instance) {
+    return mutable_state().symbol_instances.insert(instance);
 }
 
-[[nodiscard]] WireRunId SchematicItemsModel::add_wire_run(detail::KernelMutationAccess,
-                                                          WireRun wire) {
-    return wire_runs_.insert(std::move(wire));
+[[nodiscard]] WireRunId Schematic::ItemStorage::add_wire_run(WireRun wire) {
+    return mutable_state().wire_runs.insert(std::move(wire));
 }
 
-[[nodiscard]] NetLabelId SchematicItemsModel::add_net_label(detail::KernelMutationAccess,
-                                                            NetLabel label) {
-    return net_labels_.insert(std::move(label));
+[[nodiscard]] NetLabelId Schematic::ItemStorage::add_net_label(NetLabel label) {
+    return mutable_state().net_labels.insert(std::move(label));
 }
 
-[[nodiscard]] JunctionId SchematicItemsModel::add_junction(detail::KernelMutationAccess,
-                                                           Junction junction) {
-    return junctions_.insert(junction);
+[[nodiscard]] JunctionId Schematic::ItemStorage::add_junction(Junction junction) {
+    return mutable_state().junctions.insert(junction);
 }
 
-[[nodiscard]] PowerPortId SchematicItemsModel::add_power_port(detail::KernelMutationAccess,
-                                                              PowerPort port) {
-    return power_ports_.insert(std::move(port));
+[[nodiscard]] PowerPortId Schematic::ItemStorage::add_power_port(PowerPort port) {
+    return mutable_state().power_ports.insert(std::move(port));
 }
 
 [[nodiscard]] NoConnectMarkerId
-SchematicItemsModel::add_no_connect_marker(detail::KernelMutationAccess, NoConnectMarker marker) {
-    return no_connect_markers_.insert(std::move(marker));
+Schematic::ItemStorage::add_no_connect_marker(NoConnectMarker marker) {
+    return mutable_state().no_connect_markers.insert(std::move(marker));
 }
 
-[[nodiscard]] SheetPortId SchematicItemsModel::add_sheet_port(detail::KernelMutationAccess,
-                                                              SheetPort port) {
-    return sheet_ports_.insert(std::move(port));
+[[nodiscard]] SheetPortId Schematic::ItemStorage::add_sheet_port(SheetPort port) {
+    return mutable_state().sheet_ports.insert(std::move(port));
 }
 
-[[nodiscard]] SymbolFieldId SchematicItemsModel::add_symbol_field(detail::KernelMutationAccess,
-                                                                  SymbolField field) {
+[[nodiscard]] SymbolFieldId Schematic::ItemStorage::add_symbol_field(SymbolField field) {
     require_symbol_instance(field.symbol_instance());
-    return symbol_fields_.insert(std::move(field));
+    return mutable_state().symbol_fields.insert(std::move(field));
 }
 
 [[nodiscard]] const SymbolInstance &
 SchematicItemsModel::symbol_instance(SymbolInstanceId id) const {
-    return symbol_instances_.get(id);
+    return state().symbol_instances.get(id);
 }
 
 [[nodiscard]] const WireRun &SchematicItemsModel::wire_run(WireRunId id) const {
-    return wire_runs_.get(id);
+    return state().wire_runs.get(id);
 }
 
 [[nodiscard]] const NetLabel &SchematicItemsModel::net_label(NetLabelId id) const {
-    return net_labels_.get(id);
+    return state().net_labels.get(id);
 }
 
-void SchematicItemsModel::move_net_label_text(NetLabelId id, Point position) {
-    net_labels_.get(id).move_text_to(position);
+void Schematic::ItemStorage::move_net_label_text(NetLabelId id, Point position) {
+    mutable_state().net_labels.get(id) =
+        mutable_state().net_labels.get(id).with_text_position(position);
 }
 
 [[nodiscard]] const Junction &SchematicItemsModel::junction(JunctionId id) const {
-    return junctions_.get(id);
+    return state().junctions.get(id);
 }
 
 [[nodiscard]] const PowerPort &SchematicItemsModel::power_port(PowerPortId id) const {
-    return power_ports_.get(id);
+    return state().power_ports.get(id);
 }
 
-void SchematicItemsModel::move_power_port_label(PowerPortId id, Point position) {
-    power_ports_.get(id).move_label_to(position);
+void Schematic::ItemStorage::move_power_port_label(PowerPortId id, Point position) {
+    mutable_state().power_ports.get(id) =
+        mutable_state().power_ports.get(id).with_label_position(position);
 }
 
 [[nodiscard]] const NoConnectMarker &
 SchematicItemsModel::no_connect_marker(NoConnectMarkerId id) const {
-    return no_connect_markers_.get(id);
+    return state().no_connect_markers.get(id);
 }
 
 [[nodiscard]] const SheetPort &SchematicItemsModel::sheet_port(SheetPortId id) const {
-    return sheet_ports_.get(id);
+    return state().sheet_ports.get(id);
 }
 
 [[nodiscard]] const SymbolField &SchematicItemsModel::symbol_field(SymbolFieldId id) const {
-    return symbol_fields_.get(id);
+    return state().symbol_fields.get(id);
 }
 
-void SchematicItemsModel::move_symbol_field(SymbolFieldId id, Point position) {
-    symbol_fields_.get(id).move_to(position);
+void Schematic::ItemStorage::move_symbol_field(SymbolFieldId id, Point position) {
+    mutable_state().symbol_fields.get(id) =
+        mutable_state().symbol_fields.get(id).with_position(position);
 }
 
 [[nodiscard]] std::size_t SchematicItemsModel::symbol_instance_count() const noexcept {
-    return symbol_instances_.size();
+    return state().symbol_instances.size();
 }
 
 [[nodiscard]] std::size_t SchematicItemsModel::wire_run_count() const noexcept {
-    return wire_runs_.size();
+    return state().wire_runs.size();
 }
 
 [[nodiscard]] std::size_t SchematicItemsModel::net_label_count() const noexcept {
-    return net_labels_.size();
+    return state().net_labels.size();
 }
 
 [[nodiscard]] std::size_t SchematicItemsModel::junction_count() const noexcept {
-    return junctions_.size();
+    return state().junctions.size();
 }
 
 [[nodiscard]] std::size_t SchematicItemsModel::power_port_count() const noexcept {
-    return power_ports_.size();
+    return state().power_ports.size();
 }
 
 [[nodiscard]] std::size_t SchematicItemsModel::no_connect_marker_count() const noexcept {
-    return no_connect_markers_.size();
+    return state().no_connect_markers.size();
 }
 
 [[nodiscard]] std::size_t SchematicItemsModel::sheet_port_count() const noexcept {
-    return sheet_ports_.size();
+    return state().sheet_ports.size();
 }
 
 [[nodiscard]] std::size_t SchematicItemsModel::symbol_field_count() const noexcept {
-    return symbol_fields_.size();
+    return state().symbol_fields.size();
 }
 
 void SchematicItemsModel::require_symbol_instance(SymbolInstanceId instance) const {
-    if (!symbol_instances_.contains(instance)) {
+    if (!state().symbol_instances.contains(instance)) {
         throw std::out_of_range{"Symbol instance ID does not belong to this schematic"};
     }
+}
+
+[[nodiscard]] const detail::SchematicItemsState &SchematicItemsModel::state() const noexcept {
+    return *state_;
 }
 
 } // namespace volt

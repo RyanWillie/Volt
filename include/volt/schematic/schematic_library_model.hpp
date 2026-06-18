@@ -1,14 +1,18 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
 
-#include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/schematic/symbols.hpp>
 
 namespace volt {
+
+namespace detail {
+struct SchematicLibraryState;
+}
 
 /**
  * Owns reusable schematic symbol definitions for one schematic projection.
@@ -21,8 +25,18 @@ namespace volt {
  */
 class SchematicLibraryModel {
   public:
-    /** Add a reusable symbol definition and return its schematic-local ID. */
-    [[nodiscard]] SymbolDefId add_symbol_definition(SymbolDefinition definition);
+    /** Construct an empty schematic-library facade. */
+    SchematicLibraryModel();
+    /** Copy schematic-library state. */
+    SchematicLibraryModel(const SchematicLibraryModel &other);
+    /** Move schematic-library state. */
+    SchematicLibraryModel(SchematicLibraryModel &&other) noexcept;
+    /** Copy schematic-library state. */
+    SchematicLibraryModel &operator=(const SchematicLibraryModel &other);
+    /** Move schematic-library state. */
+    SchematicLibraryModel &operator=(SchematicLibraryModel &&other) noexcept;
+    /** Destroy schematic-library state. */
+    ~SchematicLibraryModel();
 
     /** Return the symbol definition with the requested name, if present. */
     [[nodiscard]] std::optional<SymbolDefId>
@@ -37,8 +51,14 @@ class SchematicLibraryModel {
     /** Require that a symbol definition ID belongs to this model. */
     void require_symbol_definition(SymbolDefId symbol_definition) const;
 
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit SchematicLibraryModel(std::shared_ptr<const detail::SchematicLibraryState> state);
+
   private:
-    EntityTable<SymbolDefinition, SymbolDefId> symbol_definitions_;
+    [[nodiscard]] const detail::SchematicLibraryState &state() const noexcept;
+
+    std::shared_ptr<const detail::SchematicLibraryState> state_;
 };
 
 } // namespace volt

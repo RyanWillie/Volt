@@ -1,18 +1,20 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
-#include <utility>
 #include <vector>
 
 #include <volt/circuit/hierarchy/hierarchy.hpp>
-#include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
-#include <volt/core/mutation_access.hpp>
 
 namespace volt {
 
 class Circuit;
+
+namespace detail {
+struct HierarchyState;
+}
 
 /**
  * Owns module hierarchy storage: module/template definitions, ports, components, instances,
@@ -27,18 +29,18 @@ class Circuit;
  */
 class HierarchyModel {
   public:
-    /** Add a reusable module definition and return its stable ID. */
-    [[nodiscard]] ModuleDefId add_module_definition(ModuleDefinition definition);
-
-    /** Add a template net to a module definition. */
-    [[nodiscard]] TemplateNetDefId add_template_net(ModuleDefId module, TemplateNetDefinition net);
-
-    /** Add a port definition to a module definition. */
-    [[nodiscard]] PortDefId add_port_definition(ModuleDefId module, PortDefinition port);
-
-    /** Instantiate a root module without origin metadata. */
-    [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition,
-                                                           ModuleInstanceName name);
+    /** Construct an empty hierarchy model facade. */
+    HierarchyModel();
+    /** Copy hierarchy model state. */
+    HierarchyModel(const HierarchyModel &other);
+    /** Move hierarchy model state. */
+    HierarchyModel(HierarchyModel &&other) noexcept;
+    /** Copy hierarchy model state. */
+    HierarchyModel &operator=(const HierarchyModel &other);
+    /** Move hierarchy model state. */
+    HierarchyModel &operator=(HierarchyModel &&other) noexcept;
+    /** Destroy hierarchy model state. */
+    ~HierarchyModel();
 
     /** Return a module definition by name, if present. */
     [[nodiscard]] std::optional<ModuleDefId>
@@ -168,47 +170,14 @@ class HierarchyModel {
     [[nodiscard]] bool module_component_belongs_to_module(ModuleDefId module,
                                                           ModuleComponentId component) const;
 
-    /** Add a component template to a module definition. */
-    [[nodiscard]] ModuleComponentId add_module_component(detail::KernelMutationAccess access,
-                                                         ModuleDefId module,
-                                                         ModuleComponentTemplate component);
-
-    /** Connect a module component pin to a template net. */
-    bool connect_module_pin(detail::KernelMutationAccess access, ModuleDefId module,
-                            TemplateNetDefId net, ModuleComponentId component, PinDefId pin);
-
-    /** Restore a root module instance with pre-existing concrete origins. */
-    [[nodiscard]] ModuleInstanceId restore_root_module_instance(
-        detail::KernelMutationAccess access, ModuleDefId definition, ModuleInstanceName name,
-        const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
-        const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins);
-
-    /** Record the concrete net created for a module template net. */
-    void record_module_net_origin(detail::KernelMutationAccess access, ModuleInstanceId instance,
-                                  TemplateNetDefId template_net, NetId concrete_net);
-
-    /** Record the concrete component created for a module component template. */
-    void record_module_component_origin(detail::KernelMutationAccess access,
-                                        ModuleInstanceId instance, ModuleComponentId component,
-                                        ComponentId concrete_component);
-
-    /** Bind a module instance port between an internal and parent net. */
-    [[nodiscard]] PortBindingId bind_port(detail::KernelMutationAccess access,
-                                          ModuleInstanceId instance, PortDefId port,
-                                          NetId internal_net, NetId parent_net);
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit HierarchyModel(std::shared_ptr<const detail::HierarchyState> state);
 
   private:
-    EntityTable<ModuleDefinition, ModuleDefId> module_definitions_;
-    EntityTable<TemplateNetDefinition, TemplateNetDefId> template_net_definitions_;
-    EntityTable<ModuleComponentTemplate, ModuleComponentId> module_component_templates_;
-    EntityTable<PortDefinition, PortDefId> port_definitions_;
-    EntityTable<ModuleInstance, ModuleInstanceId> module_instances_;
-    EntityTable<PortBinding, PortBindingId> port_bindings_;
-    std::vector<ModulePinConnection> module_pin_connections_;
-    std::vector<ModuleNetOrigin> module_net_origins_;
-    std::vector<NetId> module_origin_nets_;
-    std::vector<ModuleComponentOrigin> module_component_origins_;
-    std::vector<ComponentId> module_origin_components_;
+    [[nodiscard]] const detail::HierarchyState &state() const noexcept;
+
+    std::shared_ptr<const detail::HierarchyState> state_;
 };
 
 } // namespace volt

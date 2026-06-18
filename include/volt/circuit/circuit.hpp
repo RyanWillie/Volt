@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
@@ -294,6 +295,134 @@ class Circuit {
     }
 
   private:
+    struct ConnectivityStorage : ConnectivityModel {
+        ConnectivityStorage();
+        ConnectivityStorage(const ConnectivityStorage &other);
+        ConnectivityStorage(ConnectivityStorage &&other) noexcept = default;
+        ConnectivityStorage &operator=(const ConnectivityStorage &other);
+        ConnectivityStorage &operator=(ConnectivityStorage &&other) noexcept = default;
+
+        [[nodiscard]] PinDefId add_pin_definition(PinDefinition definition);
+        [[nodiscard]] ComponentDefId add_component_definition(ComponentDefinition definition);
+        [[nodiscard]] ComponentId add_component(ComponentInstance component);
+        [[nodiscard]] PinId add_pin(PinInstance pin);
+        [[nodiscard]] NetId add_net(Net net);
+        [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition,
+                                                        ReferenceDesignator reference,
+                                                        PropertyMap properties = {});
+        bool connect(NetId net, PinId pin);
+        bool disconnect(PinId pin);
+        void set_component_property(ComponentId component, PropertyKey key, PropertyValue value);
+
+      private:
+        explicit ConnectivityStorage(std::shared_ptr<detail::ConnectivityState> state);
+        [[nodiscard]] detail::ConnectivityState &mutable_state() noexcept;
+        [[nodiscard]] const detail::ConnectivityState &state() const noexcept;
+
+        std::shared_ptr<detail::ConnectivityState> state_;
+    };
+
+    struct HierarchyStorage : HierarchyModel {
+        HierarchyStorage();
+        HierarchyStorage(const HierarchyStorage &other);
+        HierarchyStorage(HierarchyStorage &&other) noexcept = default;
+        HierarchyStorage &operator=(const HierarchyStorage &other);
+        HierarchyStorage &operator=(HierarchyStorage &&other) noexcept = default;
+
+        [[nodiscard]] ModuleDefId add_module_definition(ModuleDefinition definition);
+        [[nodiscard]] TemplateNetDefId add_template_net(ModuleDefId module,
+                                                        TemplateNetDefinition net);
+        [[nodiscard]] PortDefId add_port_definition(ModuleDefId module, PortDefinition port);
+        [[nodiscard]] ModuleComponentId add_module_component(ModuleDefId module,
+                                                             ModuleComponentTemplate component);
+        bool connect_module_pin(ModuleDefId module, TemplateNetDefId net,
+                                ModuleComponentId component, PinDefId pin);
+        [[nodiscard]] ModuleInstanceId instantiate_root_module(ModuleDefId definition,
+                                                               ModuleInstanceName name);
+        [[nodiscard]] ModuleInstanceId restore_root_module_instance(
+            ModuleDefId definition, ModuleInstanceName name,
+            const std::vector<std::pair<TemplateNetDefId, NetId>> &origins,
+            const std::vector<std::pair<ModuleComponentId, ComponentId>> &component_origins);
+        void record_module_net_origin(ModuleInstanceId instance, TemplateNetDefId template_net,
+                                      NetId concrete_net);
+        void record_module_component_origin(ModuleInstanceId instance, ModuleComponentId component,
+                                            ComponentId concrete_component);
+        [[nodiscard]] PortBindingId bind_port(ModuleInstanceId instance, PortDefId port,
+                                              NetId internal_net, NetId parent_net);
+
+      private:
+        explicit HierarchyStorage(std::shared_ptr<detail::HierarchyState> state);
+        [[nodiscard]] detail::HierarchyState &mutable_state() noexcept;
+        [[nodiscard]] const detail::HierarchyState &state() const noexcept;
+
+        std::shared_ptr<detail::HierarchyState> state_;
+    };
+
+    struct ElectricalStorage : ElectricalModel {
+        ElectricalStorage();
+        ElectricalStorage(const ElectricalStorage &other);
+        ElectricalStorage(ElectricalStorage &&other) noexcept = default;
+        ElectricalStorage &operator=(const ElectricalStorage &other);
+        ElectricalStorage &operator=(ElectricalStorage &&other) noexcept = default;
+
+        void set_component_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
+                                     ElectricalAttributeValue value);
+        void set_pin_definition_attribute(PinDefId pin_definition,
+                                          const ElectricalAttributeSpec &spec,
+                                          ElectricalAttributeValue value);
+        void set_net_attribute(NetId net, const ElectricalAttributeSpec &spec,
+                               ElectricalAttributeValue value);
+        void select_physical_part(ComponentId component, PhysicalPart physical_part,
+                                  const std::vector<PinDefId> &component_pins);
+        void set_selected_part_attribute(ComponentId component, const ElectricalAttributeSpec &spec,
+                                         ElectricalAttributeValue value);
+
+      private:
+        explicit ElectricalStorage(std::shared_ptr<detail::ElectricalState> state);
+        [[nodiscard]] detail::ElectricalState &mutable_state() noexcept;
+        [[nodiscard]] const detail::ElectricalState &state() const noexcept;
+
+        std::shared_ptr<detail::ElectricalState> state_;
+    };
+
+    struct DesignIntentStorage : DesignIntent {
+        DesignIntentStorage();
+        DesignIntentStorage(const DesignIntentStorage &other);
+        DesignIntentStorage(DesignIntentStorage &&other) noexcept = default;
+        DesignIntentStorage &operator=(const DesignIntentStorage &other);
+        DesignIntentStorage &operator=(DesignIntentStorage &&other) noexcept = default;
+
+        bool mark_intentional_stub_net(NetId net);
+        bool mark_intentional_no_connect_pin(PinId pin);
+        void set_component_dnp(ComponentId component, bool dnp);
+        void set_component_selection_override(ComponentId component, bool override);
+
+      private:
+        explicit DesignIntentStorage(std::shared_ptr<detail::DesignIntentState> state);
+        [[nodiscard]] detail::DesignIntentState &mutable_state() noexcept;
+        [[nodiscard]] const detail::DesignIntentState &state() const noexcept;
+
+        std::shared_ptr<detail::DesignIntentState> state_;
+    };
+
+    struct NetClassStorage : NetClasses {
+        NetClassStorage();
+        NetClassStorage(const NetClassStorage &other);
+        NetClassStorage(NetClassStorage &&other) noexcept = default;
+        NetClassStorage &operator=(const NetClassStorage &other);
+        NetClassStorage &operator=(NetClassStorage &&other) noexcept = default;
+
+        [[nodiscard]] NetClassId add_net_class(NetClass net_class);
+        [[nodiscard]] bool assign_net_class(NetId net, NetClassId net_class);
+
+      private:
+        explicit NetClassStorage(std::shared_ptr<detail::NetClassesState> state);
+        [[nodiscard]] detail::NetClassesState &mutable_state() noexcept;
+        [[nodiscard]] const detail::NetClassesState &state() const noexcept;
+
+        std::shared_ptr<detail::NetClassesState> state_;
+    };
+
     void require_pin_definition(PinDefId pin_definition) const;
 
     void require_component_definition(ComponentDefId component_definition) const;
@@ -339,11 +468,11 @@ class Circuit {
 
     [[nodiscard]] std::optional<NetId> net_of_existing_pin(PinId pin) const;
 
-    ConnectivityModel connectivity_;
-    HierarchyModel hierarchy_;
-    ElectricalModel electrical_;
-    DesignIntent intent_;
-    NetClasses net_classes_;
+    ConnectivityStorage connectivity_;
+    HierarchyStorage hierarchy_;
+    ElectricalStorage electrical_;
+    DesignIntentStorage intent_;
+    NetClassStorage net_classes_;
 };
 
 } // namespace volt

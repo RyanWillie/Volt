@@ -130,9 +130,6 @@ class NetLabel {
     /** Return the optional explicit rendered text position. */
     [[nodiscard]] const std::optional<Point> &explicit_text_position() const noexcept;
 
-    /** Move rendered label text without changing the anchor or logical net it names. */
-    void move_text_to(Point position) noexcept;
-
     /** Return the label orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
 
@@ -144,6 +141,9 @@ class NetLabel {
 
     /** Return generic text presentation metadata. */
     [[nodiscard]] SchematicTextStyle style() const noexcept { return style_; }
+
+    /** Return a copy with explicit rendered text position changed. */
+    [[nodiscard]] NetLabel with_text_position(Point position) const;
 
   private:
     NetId net_;
@@ -214,8 +214,8 @@ class PowerPort {
     /** Return optional explicit rendered label position. */
     [[nodiscard]] const std::optional<Point> &explicit_label_position() const noexcept;
 
-    /** Move rendered marker label text without changing the marker anchor or logical net. */
-    void move_label_to(Point position) noexcept;
+    /** Return a copy with explicit rendered label position changed. */
+    [[nodiscard]] PowerPort with_label_position(Point position) const;
 
   private:
     NetId net_;
@@ -323,9 +323,6 @@ class SymbolField {
     /** Return the field anchor position. */
     [[nodiscard]] Point position() const noexcept { return position_; }
 
-    /** Move the rendered field anchor without changing the owning symbol or field value. */
-    void move_to(Point position) noexcept;
-
     /** Return the field orientation. */
     [[nodiscard]] SchematicOrientation orientation() const noexcept { return orientation_; }
 
@@ -334,6 +331,9 @@ class SymbolField {
 
     /** Return generic text presentation metadata. */
     [[nodiscard]] SchematicTextStyle style() const noexcept { return style_; }
+
+    /** Return a copy with the field anchor position changed. */
+    [[nodiscard]] SymbolField with_position(Point position) const;
 
   private:
     SymbolInstanceId symbol_instance_;

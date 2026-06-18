@@ -10,8 +10,6 @@
 
 #include <volt/circuit/connectivity/queries.hpp>
 
-#include "../core/mutation_access.hpp"
-
 namespace volt {
 
 namespace {
@@ -107,7 +105,7 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
 
 [[nodiscard]] ComponentPlacementId Board::place_component(ComponentPlacement placement) {
     static_cast<void>(circuit().component(placement.component()));
-    const auto id = placements_.place_component(detail::kernel_mutation_access(), placement);
+    const auto id = placements_.place_component(placement);
     ++geometry_mutation_count_;
     return id;
 }
@@ -115,7 +113,7 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
 [[nodiscard]] BoardTrackId Board::add_track(BoardTrack track) {
     require_net(track.net());
     require_copper_layer(track.layer());
-    const auto id = copper_.add_track(detail::kernel_mutation_access(), std::move(track));
+    const auto id = copper_.add_track(std::move(track));
     ++geometry_mutation_count_;
     return id;
 }
@@ -124,7 +122,7 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     require_net(via.net());
     require_copper_layer(via.start_layer());
     require_copper_layer(via.end_layer());
-    const auto id = copper_.add_via(detail::kernel_mutation_access(), via);
+    const auto id = copper_.add_via(via);
     ++geometry_mutation_count_;
     return id;
 }
@@ -139,7 +137,7 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
             throw std::logic_error{"Board copper zones require copper layers"};
         }
     }
-    const auto id = copper_.add_zone(detail::kernel_mutation_access(), std::move(zone));
+    const auto id = copper_.add_zone(std::move(zone));
     ++geometry_mutation_count_;
     return id;
 }
@@ -148,7 +146,7 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     for (const auto layer : keepout.layers()) {
         require_layer(layer);
     }
-    const auto id = copper_.add_keepout(detail::kernel_mutation_access(), std::move(keepout));
+    const auto id = copper_.add_keepout(std::move(keepout));
     ++geometry_mutation_count_;
     return id;
 }
@@ -157,14 +155,14 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     for (const auto layer : room.layers()) {
         require_layer(layer);
     }
-    const auto id = copper_.add_room(detail::kernel_mutation_access(), std::move(room));
+    const auto id = copper_.add_room(std::move(room));
     ++geometry_mutation_count_;
     return id;
 }
 
 [[nodiscard]] BoardTextId Board::add_text(BoardText text) {
     require_layer(text.layer());
-    const auto id = copper_.add_text(detail::kernel_mutation_access(), std::move(text));
+    const auto id = copper_.add_text(std::move(text));
     ++geometry_mutation_count_;
     return id;
 }

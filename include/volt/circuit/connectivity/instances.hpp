@@ -6,7 +6,6 @@
 
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/core/ids.hpp>
-#include <volt/core/mutation_access.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt {
@@ -46,8 +45,8 @@ class ComponentInstance {
     /** Return extensible metadata properties for this component instance. */
     [[nodiscard]] const PropertyMap &properties() const noexcept { return properties_; }
 
-    /** Set or replace one component instance property. */
-    void set_property(detail::KernelMutationAccess access, PropertyKey key, PropertyValue value);
+    /** Return a copy with one metadata property set or replaced. */
+    [[nodiscard]] ComponentInstance with_property(PropertyKey key, PropertyValue value) const;
 
   private:
     ComponentDefId definition_;

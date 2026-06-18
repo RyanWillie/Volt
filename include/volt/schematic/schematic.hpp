@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -222,6 +223,76 @@ class Schematic {
     }
 
   private:
+    struct LibraryStorage : SchematicLibraryModel {
+        LibraryStorage();
+        LibraryStorage(const LibraryStorage &other);
+        LibraryStorage(LibraryStorage &&other) noexcept = default;
+        LibraryStorage &operator=(const LibraryStorage &other);
+        LibraryStorage &operator=(LibraryStorage &&other) noexcept = default;
+
+        [[nodiscard]] SymbolDefId add_symbol_definition(SymbolDefinition definition);
+
+      private:
+        explicit LibraryStorage(std::shared_ptr<detail::SchematicLibraryState> state);
+        [[nodiscard]] detail::SchematicLibraryState &mutable_state() noexcept;
+        [[nodiscard]] const detail::SchematicLibraryState &state() const noexcept;
+
+        std::shared_ptr<detail::SchematicLibraryState> state_;
+    };
+
+    struct SheetStorage : SchematicSheetModel {
+        SheetStorage();
+        SheetStorage(const SheetStorage &other);
+        SheetStorage(SheetStorage &&other) noexcept = default;
+        SheetStorage &operator=(const SheetStorage &other);
+        SheetStorage &operator=(SheetStorage &&other) noexcept = default;
+
+        [[nodiscard]] SheetId add_sheet(Sheet sheet);
+        [[nodiscard]] std::size_t add_sheet_region(SheetId sheet, SheetRegion region);
+        void add_symbol_instance(SheetId sheet, SymbolInstanceId instance);
+        void add_wire_run(SheetId sheet, WireRunId wire);
+        void add_net_label(SheetId sheet, NetLabelId label);
+        void add_junction(SheetId sheet, JunctionId junction);
+        void add_power_port(SheetId sheet, PowerPortId port);
+        void add_no_connect_marker(SheetId sheet, NoConnectMarkerId marker);
+        void add_sheet_port(SheetId sheet, SheetPortId port);
+        void add_symbol_field(SheetId sheet, SymbolFieldId field);
+
+      private:
+        explicit SheetStorage(std::shared_ptr<detail::SchematicSheetState> state);
+        [[nodiscard]] detail::SchematicSheetState &mutable_state() noexcept;
+        [[nodiscard]] const detail::SchematicSheetState &state() const noexcept;
+
+        std::shared_ptr<detail::SchematicSheetState> state_;
+    };
+
+    struct ItemStorage : SchematicItemsModel {
+        ItemStorage();
+        ItemStorage(const ItemStorage &other);
+        ItemStorage(ItemStorage &&other) noexcept = default;
+        ItemStorage &operator=(const ItemStorage &other);
+        ItemStorage &operator=(ItemStorage &&other) noexcept = default;
+
+        void move_net_label_text(NetLabelId id, Point position);
+        void move_power_port_label(PowerPortId id, Point position);
+        void move_symbol_field(SymbolFieldId id, Point position);
+        [[nodiscard]] SymbolInstanceId add_symbol_instance(SymbolInstance instance);
+        [[nodiscard]] WireRunId add_wire_run(WireRun wire);
+        [[nodiscard]] NetLabelId add_net_label(NetLabel label);
+        [[nodiscard]] JunctionId add_junction(Junction junction);
+        [[nodiscard]] PowerPortId add_power_port(PowerPort port);
+        [[nodiscard]] NoConnectMarkerId add_no_connect_marker(NoConnectMarker marker);
+        [[nodiscard]] SheetPortId add_sheet_port(SheetPort port);
+        [[nodiscard]] SymbolFieldId add_symbol_field(SymbolField field);
+
+      private:
+        explicit ItemStorage(std::shared_ptr<detail::SchematicItemsState> state);
+        [[nodiscard]] detail::SchematicItemsState &mutable_state() noexcept;
+        [[nodiscard]] const detail::SchematicItemsState &state() const noexcept;
+
+        std::shared_ptr<detail::SchematicItemsState> state_;
+    };
+
     void require_sheet(SheetId sheet) const;
 
     void require_symbol_definition(SymbolDefId symbol_definition) const;
@@ -266,9 +337,9 @@ class Schematic {
                               const std::vector<SchematicEndpoint> &endpoints) const;
 
     const Circuit &circuit_;
-    SchematicLibraryModel library_;
-    SchematicSheetModel sheets_;
-    SchematicItemsModel items_;
+    LibraryStorage library_;
+    SheetStorage sheets_;
+    ItemStorage items_;
 };
 
 } // namespace volt

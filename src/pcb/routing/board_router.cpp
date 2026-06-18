@@ -15,7 +15,6 @@
 #include <volt/circuit/constraints/net_class_resolution.hpp>
 #include <volt/pcb/copper/board_copper.hpp>
 
-#include "../../core/mutation_access.hpp"
 #include "../copper/board_room_rules.hpp"
 
 namespace volt {
@@ -190,6 +189,15 @@ void apply_escape_room_overrides(const Board &board, BoardRoom &room) {
         width_mm / 2.0,
         BoardClearanceKind::Track,
         BoardKeepoutRestriction::Copper,
+    };
+}
+
+[[nodiscard]] BoardSpatialQueryShape committed_via_shape(const Board &board, const BoardVia &via) {
+    return BoardSpatialQueryShape{
+        BoardSpatialQueryShapeKind::Disc,      via.net(),
+        detail::via_copper_layers(board, via), std::vector{via.position()},
+        via.annular_diameter_mm() / 2.0,       BoardClearanceKind::Via,
+        BoardKeepoutRestriction::Via,
     };
 }
 
@@ -421,17 +429,9 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         const auto previous_geometry_mutation_count = board_->geometry_mutation_count();
         const auto track_id = board_->add_track(BoardTrack{
             request.net, segment.layer, std::vector{segment.start, segment.end}, width_mm});
-        index_.insert_after_board_mutation(detail::kernel_mutation_access(),
-                                           BoardSpatialQueryShape{
-                                               BoardSpatialQueryShapeKind::Segment,
-                                               request.net,
-                                               std::vector{segment.layer},
-                                               std::vector{segment.start, segment.end},
-                                               width_mm / 2.0,
-                                               BoardClearanceKind::Track,
-                                               BoardKeepoutRestriction::Copper,
-                                           },
-                                           previous_geometry_mutation_count);
+        index_.insert_after_board_mutation(
+            escape_segment_shape(request.net, segment.layer, segment.start, segment.end, width_mm),
+            previous_geometry_mutation_count);
         result.tracks.push_back(track_id);
     }
 
@@ -440,18 +440,8 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         const auto via_id =
             board_->add_via(BoardVia{request.net, via.position, via.start_layer, via.end_layer,
                                      params.via_drill_mm, params.via_diameter_mm});
-        index_.insert_after_board_mutation(
-            detail::kernel_mutation_access(),
-            BoardSpatialQueryShape{
-                BoardSpatialQueryShapeKind::Disc,
-                request.net,
-                detail::via_copper_layers(*board_, board_->via(via_id)),
-                std::vector{via.position},
-                params.via_diameter_mm / 2.0,
-                BoardClearanceKind::Via,
-                BoardKeepoutRestriction::Via,
-            },
-            previous_geometry_mutation_count);
+        index_.insert_after_board_mutation(committed_via_shape(*board_, board_->via(via_id)),
+                                           previous_geometry_mutation_count);
         result.vias.push_back(via_id);
     }
 }
@@ -584,7 +574,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
         };
         apply_escape_room_overrides(*board_, room);
         result.room = board_->add_room(std::move(room));
-        index_ = BoardSpatialIndex{*board_, footprints_};
+        index_ = SpatialIndexStorage{*board_, footprints_};
     }
 
     for (const auto &candidate : candidates) {
@@ -608,8 +598,7 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
             const auto track_id =
                 board_->add_track(BoardTrack{pad.net.value(), candidate.layer,
                                              std::vector{pad.pad_position, endpoint}, width_mm});
-            index_.insert_after_board_mutation(detail::kernel_mutation_access(), shape,
-                                               previous_geometry_mutation_count);
+            index_.insert_after_board_mutation(shape, previous_geometry_mutation_count);
             pad.endpoint = endpoint;
             pad.escaped = true;
             pad.failure_reason = BoardEscapeFailureReason::None;

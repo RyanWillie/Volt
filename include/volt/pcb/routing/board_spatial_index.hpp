@@ -1,17 +1,23 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <vector>
 
 #include <volt/core/ids.hpp>
-#include <volt/core/mutation_access.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/copper/board_copper.hpp>
 #include <volt/pcb/features/board_features.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
 
 namespace volt {
+
+namespace detail {
+struct BoardSpatialIndexBox;
+struct BoardSpatialIndexCell;
+struct BoardSpatialIndexState;
+} // namespace detail
 
 /** Geometric primitive category for routing-facing spatial query candidates. */
 enum class BoardSpatialQueryShapeKind {
@@ -87,6 +93,13 @@ struct BoardSpatialQueryResult {
                                          const BoardSpatialQueryResult &rhs) = default;
 };
 
+class BoardSpatialIndex;
+
+namespace detail {
+void insert_after_board_mutation(BoardSpatialIndex &index, BoardSpatialQueryShape shape,
+                                 std::size_t previous_geometry_mutation_count);
+} // namespace detail
+
 /**
  * Runtime-only spatial index over normalized board copper shapes.
  *
@@ -100,6 +113,16 @@ class BoardSpatialIndex {
   public:
     /** Build an empty index over the board's current rules for incremental routing. */
     explicit BoardSpatialIndex(const Board &board);
+    /** Copy spatial-index state. */
+    BoardSpatialIndex(const BoardSpatialIndex &other);
+    /** Move spatial-index state. */
+    BoardSpatialIndex(BoardSpatialIndex &&other) noexcept;
+    /** Copy spatial-index state. */
+    BoardSpatialIndex &operator=(const BoardSpatialIndex &other);
+    /** Move spatial-index state. */
+    BoardSpatialIndex &operator=(BoardSpatialIndex &&other) noexcept;
+    /** Destroy spatial-index state. */
+    ~BoardSpatialIndex();
 
     /** Reject temporary board bindings because the index stores a caller-owned board pointer. */
     explicit BoardSpatialIndex(const Board &&board) = delete;
@@ -111,17 +134,10 @@ class BoardSpatialIndex {
     BoardSpatialIndex(const Board &&board, const FootprintLibrary &footprints) = delete;
 
     /** Return the conservative board-wide copper-clearance bound used for pruning. */
-    [[nodiscard]] double conservative_clearance_mm() const noexcept {
-        return conservative_clearance_mm_;
-    }
+    [[nodiscard]] double conservative_clearance_mm() const noexcept;
 
     /** Insert one accepted transient shape so later queries see it. */
     void insert(BoardSpatialQueryShape shape);
-
-    /** Insert one accepted transient shape after the board model has recorded the same geometry. */
-    void insert_after_board_mutation(detail::KernelMutationAccess access,
-                                     BoardSpatialQueryShape shape,
-                                     std::size_t previous_geometry_mutation_count);
 
     /** Return candidate copper-clearance pairs in ascending shape-index order. */
     [[nodiscard]] std::vector<BoardSpatialCandidatePair> copper_clearance_candidates() const;
@@ -139,49 +155,42 @@ class BoardSpatialIndex {
     detail::validate_copper_clearance(const Board &board,
                                       const std::vector<detail::BoardCopperShape> &shapes,
                                       DiagnosticReport &report);
-
-    struct Box {
-        double min_x_mm = 0.0;
-        double min_y_mm = 0.0;
-        double max_x_mm = 0.0;
-        double max_y_mm = 0.0;
-    };
-
-    struct Cell {
-        BoardLayerId layer;
-        long long x = 0;
-        long long y = 0;
-        std::vector<std::size_t> shape_indices;
-    };
+    friend void detail::insert_after_board_mutation(BoardSpatialIndex &index,
+                                                    BoardSpatialQueryShape shape,
+                                                    std::size_t previous_geometry_mutation_count);
 
     BoardSpatialIndex(const Board &board, std::vector<detail::BoardCopperShape> shapes);
     BoardSpatialIndex(const Board &&board, std::vector<detail::BoardCopperShape> shapes) = delete;
 
-    const Board *board_;
-    std::vector<detail::BoardCopperShape> shapes_;
-    std::vector<Box> boxes_;
-    std::vector<Cell> cells_;
-    double conservative_clearance_mm_;
-    double cell_size_mm_;
-    std::size_t expected_geometry_mutation_count_;
+    [[nodiscard]] detail::BoardSpatialIndexState &mutable_state() noexcept;
+    [[nodiscard]] const detail::BoardSpatialIndexState &state() const noexcept;
 
-    [[nodiscard]] static bool cell_less(const Cell &lhs, const Cell &rhs);
+    std::unique_ptr<detail::BoardSpatialIndexState> state_;
 
-    [[nodiscard]] static bool same_cell_key(const Cell &lhs, const Cell &rhs);
+    [[nodiscard]] static bool cell_less(const detail::BoardSpatialIndexCell &lhs,
+                                        const detail::BoardSpatialIndexCell &rhs);
 
-    [[nodiscard]] static Box shape_box(const detail::BoardCopperShape &shape);
+    [[nodiscard]] static bool same_cell_key(const detail::BoardSpatialIndexCell &lhs,
+                                            const detail::BoardSpatialIndexCell &rhs);
 
-    [[nodiscard]] static Box outline_box(const BoardOutline &outline);
+    [[nodiscard]] static detail::BoardSpatialIndexBox
+    shape_box(const detail::BoardCopperShape &shape);
 
-    [[nodiscard]] static Box merge_box(Box lhs, Box rhs);
+    [[nodiscard]] static detail::BoardSpatialIndexBox outline_box(const BoardOutline &outline);
 
-    [[nodiscard]] static Box expanded_box(Box box, double expansion_mm);
+    [[nodiscard]] static detail::BoardSpatialIndexBox merge_box(detail::BoardSpatialIndexBox lhs,
+                                                                detail::BoardSpatialIndexBox rhs);
 
-    [[nodiscard]] static bool boxes_intersect(Box lhs, Box rhs);
+    [[nodiscard]] static detail::BoardSpatialIndexBox expanded_box(detail::BoardSpatialIndexBox box,
+                                                                   double expansion_mm);
+
+    [[nodiscard]] static bool boxes_intersect(detail::BoardSpatialIndexBox lhs,
+                                              detail::BoardSpatialIndexBox rhs);
 
     [[nodiscard]] static long long cell_key(double value, double cell_size_mm);
 
-    [[nodiscard]] static double extent_cell_size(const Board &board, const std::vector<Box> &boxes);
+    [[nodiscard]] static double
+    extent_cell_size(const Board &board, const std::vector<detail::BoardSpatialIndexBox> &boxes);
 
     [[nodiscard]] static detail::BoardCopperShape to_copper_shape(BoardSpatialQueryShape candidate);
 
@@ -194,9 +203,6 @@ class BoardSpatialIndex {
     void append_shape(detail::BoardCopperShape shape);
 
     void insert(detail::BoardCopperShape shape);
-
-    void insert_after_board_mutation(detail::BoardCopperShape shape,
-                                     std::size_t previous_geometry_mutation_count);
 
     [[nodiscard]] std::vector<std::size_t>
     candidate_obstacles(const detail::BoardCopperShape &candidate) const;

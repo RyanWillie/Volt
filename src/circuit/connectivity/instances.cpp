@@ -17,9 +17,11 @@ ComponentInstance::ComponentInstance(ComponentDefId definition, ReferenceDesigna
     : definition_{definition}, reference_{std::move(reference)},
       properties_{std::move(properties)} {}
 
-void ComponentInstance::set_property(detail::KernelMutationAccess, PropertyKey key,
-                                     PropertyValue value) {
-    properties_.set(std::move(key), std::move(value));
+[[nodiscard]] ComponentInstance ComponentInstance::with_property(PropertyKey key,
+                                                                 PropertyValue value) const {
+    auto properties = properties_;
+    properties.set(std::move(key), std::move(value));
+    return ComponentInstance{definition_, reference_, std::move(properties)};
 }
 
 PinInstance::PinInstance(ComponentId component, PinDefId definition)

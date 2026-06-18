@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -8,10 +9,13 @@
 #include <volt/circuit/connectivity/instances.hpp>
 #include <volt/circuit/connectivity/nets.hpp>
 #include <volt/core/ids.hpp>
-#include <volt/core/mutation_access.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt {
+
+namespace detail {
+struct ModuleDefinitionState;
+}
 
 /** Human-facing reusable module name. */
 class ModuleName {
@@ -170,35 +174,37 @@ class ModuleDefinition {
   public:
     /** Construct an empty reusable logical module template. */
     explicit ModuleDefinition(ModuleName name);
+    /** Copy reusable module definition state. */
+    ModuleDefinition(const ModuleDefinition &other);
+    /** Move reusable module definition state. */
+    ModuleDefinition(ModuleDefinition &&other) noexcept;
+    /** Copy reusable module definition state. */
+    ModuleDefinition &operator=(const ModuleDefinition &other);
+    /** Move reusable module definition state. */
+    ModuleDefinition &operator=(ModuleDefinition &&other) noexcept;
+    /** Destroy reusable module definition state. */
+    ~ModuleDefinition();
 
     /** Return the reusable module name. */
-    [[nodiscard]] const ModuleName &name() const noexcept { return name_; }
+    [[nodiscard]] const ModuleName &name() const noexcept;
 
     /** Return template-local nets in deterministic insertion order. */
-    [[nodiscard]] const std::vector<TemplateNetDefId> &template_nets() const noexcept {
-        return template_nets_;
-    }
+    [[nodiscard]] const std::vector<TemplateNetDefId> &template_nets() const noexcept;
 
     /** Return module ports in deterministic insertion order. */
-    [[nodiscard]] const std::vector<PortDefId> &ports() const noexcept { return ports_; }
+    [[nodiscard]] const std::vector<PortDefId> &ports() const noexcept;
 
     /** Return component templates in deterministic insertion order. */
     [[nodiscard]] const std::vector<ModuleComponentId> &components() const noexcept;
 
-    /** Add a template-local net to this module definition. */
-    void add_template_net(detail::KernelMutationAccess access, TemplateNetDefId net);
-
-    /** Add a boundary port to this module definition. */
-    void add_port(detail::KernelMutationAccess access, PortDefId port);
-
-    /** Add a component template to this module definition. */
-    void add_component(detail::KernelMutationAccess access, ModuleComponentId component);
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit ModuleDefinition(std::shared_ptr<const detail::ModuleDefinitionState> state);
 
   private:
-    ModuleName name_;
-    std::vector<TemplateNetDefId> template_nets_;
-    std::vector<PortDefId> ports_;
-    std::vector<ModuleComponentId> components_;
+    [[nodiscard]] const detail::ModuleDefinitionState &state() const noexcept;
+
+    std::shared_ptr<const detail::ModuleDefinitionState> state_;
 };
 
 /** Root-level occurrence of a reusable module definition. */

@@ -1,20 +1,22 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <volt/circuit/connectivity/nets.hpp>
-#include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
-#include <volt/core/mutation_access.hpp>
 #include <volt/core/quantities.hpp>
 
 namespace volt {
 
 class Circuit;
+
+namespace detail {
+struct NetClassesState;
+}
 
 /** Semantic copper-layer restriction that scales with any board layer count. */
 enum class NetClassLayerScope {
@@ -224,8 +226,18 @@ class NetClass {
  */
 class NetClasses {
   public:
-    /** Add a reusable net class and return its stable ID. */
-    [[nodiscard]] NetClassId add_net_class(NetClass net_class);
+    /** Construct empty net-class storage. */
+    NetClasses();
+    /** Copy net-class state. */
+    NetClasses(const NetClasses &other);
+    /** Move net-class state. */
+    NetClasses(NetClasses &&other) noexcept;
+    /** Copy net-class state. */
+    NetClasses &operator=(const NetClasses &other);
+    /** Move net-class state. */
+    NetClasses &operator=(NetClasses &&other) noexcept;
+    /** Destroy net-class state. */
+    ~NetClasses();
 
     /** Return a net class by stable ID. */
     [[nodiscard]] const NetClass &net_class(NetClassId id) const;
@@ -246,13 +258,14 @@ class NetClasses {
     /** Require that a net class ID belongs to this model. */
     void require_net_class(NetClassId net_class) const;
 
-    /** Assign a net class to a logical net. */
-    [[nodiscard]] bool assign_net_class(detail::KernelMutationAccess access, NetId net,
-                                        NetClassId net_class);
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit NetClasses(std::shared_ptr<const detail::NetClassesState> state);
 
   private:
-    EntityTable<NetClass, NetClassId> net_classes_;
-    std::vector<std::pair<NetId, NetClassId>> net_class_assignments_;
+    [[nodiscard]] const detail::NetClassesState &state() const noexcept;
+
+    std::shared_ptr<const detail::NetClassesState> state_;
 };
 
 } // namespace volt
