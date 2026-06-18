@@ -118,6 +118,21 @@ void Board::set_capability_profile(BoardCapabilityProfile profile) {
     return id;
 }
 
+[[nodiscard]] BoardTrackRouteResult Board::add_track(BoardTrackRouteRequest request,
+                                                     const FootprintLibrary &footprints) {
+    const auto net = route_track_net(request, footprints);
+
+    auto points = std::vector<BoardPoint>{};
+    points.reserve(request.endpoints.size());
+    for (const auto &endpoint : request.endpoints) {
+        points.push_back(endpoint.position);
+    }
+
+    const auto track =
+        add_track(BoardTrack{net, request.layer, std::move(points), request.width_mm});
+    return BoardTrackRouteResult{track, net};
+}
+
 [[nodiscard]] BoardViaId Board::add_via(BoardVia via) {
     require_net(via.net());
     require_copper_layer(via.start_layer());
@@ -254,6 +269,75 @@ void Board::require_copper_layer(BoardLayerId layer_id) const {
     if (layer(layer_id).role() != BoardLayerRole::Copper) {
         throw std::logic_error{"Board copper primitives require copper layers"};
     }
+}
+
+[[nodiscard]] std::optional<NetId>
+Board::route_endpoint_net(const BoardRouteEndpoint &endpoint,
+                          const FootprintLibrary &footprints) const {
+    if (!endpoint.placement.has_value() && !endpoint.pad.has_value()) {
+        return std::nullopt;
+    }
+    if (!endpoint.placement.has_value() || !endpoint.pad.has_value()) {
+        throw std::invalid_argument{"Board route pad endpoints require placement and pad IDs"};
+    }
+
+    const auto &component_placement = placement(endpoint.placement.value());
+    const auto &selected_part = circuit().selected_physical_part(component_placement.component());
+    if (!selected_part.has_value()) {
+        throw std::invalid_argument{"Board route endpoint component has no selected physical part"};
+    }
+
+    const auto resolution_footprints = detail::board_resolution_footprints(*this, footprints);
+    const auto footprint_resolution =
+        resolve_footprint(selected_part.value(), resolution_footprints);
+    const auto *definition = footprint_resolution.definition();
+    if (definition == nullptr) {
+        throw std::invalid_argument{"Board route endpoint footprint cannot be resolved"};
+    }
+
+    static_cast<void>(definition->pad(endpoint.pad.value()));
+
+    const auto pad_resolutions = resolve_pads(resolution_footprints);
+    const auto *resolution = detail::find_board_pad_resolution(
+        pad_resolutions, endpoint.placement.value(), endpoint.pad.value());
+    if (resolution == nullptr || resolution->status() != PadResolutionStatus::Connected ||
+        !resolution->net().has_value()) {
+        throw std::invalid_argument{"Board route endpoint pad is not connected to a logical net"};
+    }
+    return resolution->net().value();
+}
+
+[[nodiscard]] NetId Board::route_track_net(const BoardTrackRouteRequest &request,
+                                           const FootprintLibrary &footprints) const {
+    auto resolved_net = std::optional<NetId>{};
+    if (request.net.has_value()) {
+        require_net(request.net.value());
+        resolved_net = request.net.value();
+    }
+
+    for (const auto &endpoint : request.endpoints) {
+        const auto endpoint_net = route_endpoint_net(endpoint, footprints);
+        if (!endpoint_net.has_value()) {
+            continue;
+        }
+        if (!resolved_net.has_value()) {
+            resolved_net = endpoint_net.value();
+            continue;
+        }
+        if (resolved_net.value() != endpoint_net.value()) {
+            if (request.net.has_value()) {
+                throw std::logic_error{
+                    "Board route endpoint net does not match explicit route net"};
+            }
+            throw std::logic_error{"Board route endpoints resolve to different nets"};
+        }
+    }
+
+    if (!resolved_net.has_value()) {
+        throw std::invalid_argument{
+            "Board routed track requires an explicit net or a pad endpoint with a net"};
+    }
+    return resolved_net.value();
 }
 
 void Board::append_pad_resolutions(ComponentPlacementId placement_id,

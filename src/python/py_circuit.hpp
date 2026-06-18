@@ -330,6 +330,12 @@ class PyCircuit {
                                               const std::vector<std::pair<double, double>> &points,
                                               double width_mm);
 
+    [[nodiscard]] py::dict board_add_track_for_route(std::optional<std::size_t> net,
+                                                     std::size_t layer, const py::list &endpoints,
+                                                     double width_mm);
+
+    [[nodiscard]] std::size_t board_track_net(std::size_t track) const;
+
     [[nodiscard]] std::size_t board_add_via(std::size_t net, double x, double y,
                                             std::size_t start_layer, std::size_t end_layer,
                                             std::optional<double> drill_diameter_mm,

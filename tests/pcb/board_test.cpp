@@ -633,6 +633,183 @@ TEST_CASE("Board resolves placed pads to logical pins and existing nets") {
     CHECK(resolutions[1].net() == fixture.second_net);
 }
 
+TEST_CASE("Board resolves routed track nets from pad endpoint intent") {
+    auto fixture = make_multi_component_net(2);
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto first_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    const auto second_placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[1], volt::BoardPoint{20.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+
+    const auto routed = board.add_track(
+        volt::BoardTrackRouteRequest{
+            std::nullopt,
+            front,
+            std::vector{
+                volt::BoardRouteEndpoint::footprint_pad(volt::BoardPoint{10.75, 10.0},
+                                                        first_placement, volt::FootprintPadId{1}),
+                volt::BoardRouteEndpoint::footprint_pad(volt::BoardPoint{19.25, 10.0},
+                                                        second_placement, volt::FootprintPadId{0}),
+            },
+            0.25,
+        },
+        volt::builtin_footprint_library());
+
+    CHECK(routed.net == fixture.shared_net);
+    CHECK(routed.track == volt::BoardTrackId{0});
+    CHECK(board.track(routed.track).net() == fixture.shared_net);
+    CHECK(board.track(routed.track).points() ==
+          std::vector{volt::BoardPoint{10.75, 10.0}, volt::BoardPoint{19.25, 10.0}});
+}
+
+TEST_CASE("Board rejects route endpoint intent that cannot resolve one logical net") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto placement = board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{10.0, 8.0}, volt::BoardRotation::degrees(0.0)});
+
+    CHECK_THROWS_AS(
+        board.add_track(
+            volt::BoardTrackRouteRequest{
+                std::nullopt,
+                front,
+                std::vector{
+                    volt::BoardRouteEndpoint::footprint_pad(volt::BoardPoint{9.25, 8.0}, placement,
+                                                            volt::FootprintPadId{0}),
+                    volt::BoardRouteEndpoint::footprint_pad(volt::BoardPoint{10.75, 8.0}, placement,
+                                                            volt::FootprintPadId{1}),
+                },
+                0.25,
+            },
+            volt::builtin_footprint_library()),
+        std::logic_error);
+    CHECK(board.track_count() == 0U);
+
+    CHECK_THROWS_AS(board.add_track(
+                        volt::BoardTrackRouteRequest{
+                            std::nullopt,
+                            front,
+                            std::vector{
+                                volt::BoardRouteEndpoint::footprint_pad(
+                                    volt::BoardPoint{9.25, 8.0}, volt::ComponentPlacementId{99},
+                                    volt::FootprintPadId{0}),
+                                volt::BoardRouteEndpoint::board_point(volt::BoardPoint{6.0, 8.0}),
+                            },
+                            0.25,
+                        },
+                        volt::builtin_footprint_library()),
+                    std::out_of_range);
+
+    CHECK_THROWS_AS(
+        board.add_track(
+            volt::BoardTrackRouteRequest{
+                std::nullopt,
+                front,
+                std::vector{
+                    volt::BoardRouteEndpoint::footprint_pad(volt::BoardPoint{9.25, 8.0}, placement,
+                                                            volt::FootprintPadId{99}),
+                    volt::BoardRouteEndpoint::board_point(volt::BoardPoint{6.0, 8.0}),
+                },
+                0.25,
+            },
+            volt::builtin_footprint_library()),
+        std::out_of_range);
+}
+
+TEST_CASE("Board validates explicit route net overrides against pad endpoint intent") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto placement = board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{10.0, 8.0}, volt::BoardRotation::degrees(0.0)});
+    const auto first_pad = volt::BoardRouteEndpoint::footprint_pad(
+        volt::BoardPoint{9.25, 8.0}, placement, volt::FootprintPadId{0});
+    const auto free_endpoint = volt::BoardRouteEndpoint::board_point(volt::BoardPoint{6.0, 8.0});
+
+    const auto routed = board.add_track(
+        volt::BoardTrackRouteRequest{
+            std::optional<volt::NetId>{fixture.first_net},
+            front,
+            std::vector{first_pad, free_endpoint},
+            0.25,
+        },
+        volt::builtin_footprint_library());
+
+    CHECK(routed.net == fixture.first_net);
+    CHECK(board.track(routed.track).net() == fixture.first_net);
+
+    CHECK_THROWS_AS(board.add_track(
+                        volt::BoardTrackRouteRequest{
+                            std::optional<volt::NetId>{fixture.second_net},
+                            front,
+                            std::vector{first_pad, free_endpoint},
+                            0.25,
+                        },
+                        volt::builtin_footprint_library()),
+                    std::logic_error);
+}
+
+TEST_CASE("Board rejects route endpoint intent with unresolved footprint data") {
+    auto no_part = make_resistor_circuit(false);
+    auto no_part_board = volt::Board{no_part.circuit};
+    const auto no_part_front = no_part_board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto no_part_placement = no_part_board.place_component(volt::ComponentPlacement{
+        no_part.component, volt::BoardPoint{10.0, 8.0}, volt::BoardRotation::degrees(0.0)});
+
+    CHECK_THROWS_AS(
+        no_part_board.add_track(
+            volt::BoardTrackRouteRequest{
+                std::nullopt,
+                no_part_front,
+                std::vector{
+                    volt::BoardRouteEndpoint::footprint_pad(
+                        volt::BoardPoint{9.25, 8.0}, no_part_placement, volt::FootprintPadId{0}),
+                    volt::BoardRouteEndpoint::board_point(volt::BoardPoint{6.0, 8.0}),
+                },
+                0.25,
+            },
+            volt::builtin_footprint_library()),
+        std::invalid_argument);
+
+    auto missing_mapping = make_resistor_circuit();
+    missing_mapping.circuit.select_physical_part(
+        missing_mapping.component,
+        volt::PhysicalPart{
+            volt::ManufacturerPart{"Yageo", "RC0603FR-07330RL"},
+            volt::PackageRef{"0603"},
+            volt::FootprintRef{"passives", "R_0603_1608Metric"},
+            std::vector{volt::PinPadMapping{missing_mapping.first_pin_definition, "1"},
+                        volt::PinPadMapping{missing_mapping.second_pin_definition, "99"}},
+        });
+    auto missing_mapping_board = volt::Board{missing_mapping.circuit};
+    const auto missing_mapping_front = missing_mapping_board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto missing_mapping_placement = missing_mapping_board.place_component(
+        volt::ComponentPlacement{missing_mapping.component, volt::BoardPoint{10.0, 8.0},
+                                 volt::BoardRotation::degrees(0.0)});
+
+    CHECK_THROWS_AS(missing_mapping_board.add_track(
+                        volt::BoardTrackRouteRequest{
+                            std::nullopt,
+                            missing_mapping_front,
+                            std::vector{
+                                volt::BoardRouteEndpoint::footprint_pad(
+                                    volt::BoardPoint{10.75, 8.0}, missing_mapping_placement,
+                                    volt::FootprintPadId{1}),
+                                volt::BoardRouteEndpoint::board_point(volt::BoardPoint{13.0, 8.0}),
+                            },
+                            0.25,
+                        },
+                        volt::builtin_footprint_library()),
+                    std::invalid_argument);
+}
+
 TEST_CASE("Board derives a ratsnest edge for a simple two-component net") {
     auto fixture = make_multi_component_net(2);
     auto board = volt::Board{fixture.circuit};

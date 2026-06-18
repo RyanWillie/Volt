@@ -135,6 +135,43 @@ schematic_endpoints_from_list(const py::list &endpoints) {
     return result;
 }
 
+[[nodiscard]] volt::BoardRouteEndpoint board_route_endpoint_from_tuple(const py::tuple &endpoint) {
+    if (py::len(endpoint) != 4U) {
+        throw py::value_error{
+            "Board route endpoint payloads must contain x, y, placement, and pad"};
+    }
+
+    const auto x = py::cast<double>(endpoint[0]);
+    const auto y = py::cast<double>(endpoint[1]);
+    require_finite(x, "Board route endpoint coordinates must be finite");
+    require_finite(y, "Board route endpoint coordinates must be finite");
+
+    const auto placement =
+        optional_index_from_py(endpoint[2], "Board route endpoint placements must be indexes");
+    const auto pad =
+        optional_index_from_py(endpoint[3], "Board route endpoint pads must be indexes");
+    if (placement.has_value() != pad.has_value()) {
+        throw py::value_error{"Board route pad endpoints require placement and pad IDs"};
+    }
+
+    const auto position = volt::BoardPoint{x, y};
+    if (!placement.has_value()) {
+        return volt::BoardRouteEndpoint::board_point(position);
+    }
+    return volt::BoardRouteEndpoint::footprint_pad(
+        position, volt::ComponentPlacementId{placement.value()}, volt::FootprintPadId{pad.value()});
+}
+
+[[nodiscard]] std::vector<volt::BoardRouteEndpoint>
+board_route_endpoints_from_list(const py::list &endpoints) {
+    auto result = std::vector<volt::BoardRouteEndpoint>{};
+    result.reserve(static_cast<std::size_t>(py::len(endpoints)));
+    for (const auto item : endpoints) {
+        result.push_back(board_route_endpoint_from_tuple(py::cast<py::tuple>(item)));
+    }
+    return result;
+}
+
 [[nodiscard]] std::optional<volt::PartModel3D> part_model_3d_from_object(py::handle value) {
     if (value.is_none()) {
         return std::nullopt;
@@ -1615,6 +1652,32 @@ std::size_t PyCircuit::board_add_track(std::size_t net, std::size_t layer,
         .add_track(volt::BoardTrack{net_id(net), volt::BoardLayerId{layer}, std::move(board_points),
                                     width_mm})
         .index();
+}
+
+py::dict PyCircuit::board_add_track_for_route(std::optional<std::size_t> net, std::size_t layer,
+                                              const py::list &endpoints, double width_mm) {
+    auto route_net = std::optional<volt::NetId>{};
+    if (net.has_value()) {
+        route_net = net_id(net.value());
+    }
+
+    const auto result = board_projection().add_track(
+        volt::BoardTrackRouteRequest{
+            route_net,
+            volt::BoardLayerId{layer},
+            board_route_endpoints_from_list(endpoints),
+            width_mm,
+        },
+        volt::builtin_footprint_library());
+
+    auto lowered = py::dict{};
+    lowered["track"] = result.track.index();
+    lowered["net"] = result.net.index();
+    return lowered;
+}
+
+std::size_t PyCircuit::board_track_net(std::size_t track) const {
+    return board_projection().track(volt::BoardTrackId{track}).net().index();
 }
 
 std::size_t PyCircuit::board_add_via(std::size_t net, double x, double y, std::size_t start_layer,

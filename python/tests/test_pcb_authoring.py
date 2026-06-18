@@ -419,7 +419,7 @@ def test_pcb_layout_routes_default_to_octilinear_segments():
 
 def test_pcb_layout_grid_snaps_route_numeric_helpers_without_snapping_anchor_targets():
     design, r1, _d1 = _small_resistor_led_design()
-    net = design.net("SIG")
+    net = next(net for net in design.nets() if net.name == "LED_A")
     board = design.board("Control")
     layer = board.add_layer("F.Cu", role="copper", side="top")
     board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
@@ -612,6 +612,73 @@ def test_pcb_layout_connect_re_resolves_pad_anchor_nets_at_mutation_time():
     assert track == 0
     assert document["board"]["tracks"][0]["net"] == "net:0"
     assert document["board"]["tracks"][0]["points"] == [[10.0, 8.0], [20.0, 8.0]]
+
+
+def test_pcb_layout_connect_delegates_pad_net_resolution_to_kernel(monkeypatch):
+    design = volt.Design("pcb-layout-kernel-route-endpoints")
+    net = design.net("SIG")
+    left_component = design.R("1k", ref="R1")
+    right_component = design.R("1k", ref="R2")
+    net += left_component[1], right_component[1]
+    for component in (left_component, right_component):
+        component.select_part(
+            manufacturer="Yageo",
+            part_number="RC0603FR-071KL",
+            package="0603",
+            footprint=("passives", "R_0603_1608Metric"),
+            pin_pads={1: "1", 2: "2"},
+        )
+
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+
+    with board.layout(unit=1.0) as layout:
+        left = layout.two_pad(left_component).at((10.0, 8.0)).right()
+        right = layout.two_pad(right_component).at((20.0, 8.0)).right()
+        left_anchor = left[1]
+        right_anchor = right[1]
+
+        def fail_resolve_pads():
+            raise AssertionError("layout.connect must not infer route nets in Python")
+
+        monkeypatch.setattr(board, "resolve_pads", fail_resolve_pads)
+        track = layout.connect(left_anchor, right_anchor, layer=front, mode="direct")
+
+    document = json.loads(board.to_json())
+    assert track == 0
+    assert document["board"]["tracks"][0]["net"] == "net:0"
+
+
+def test_pcb_layout_connect_rejects_explicit_net_that_disagrees_with_pad_endpoint():
+    design, r1, _d1 = _small_resistor_led_design()
+    led_a = next(net for net in design.nets() if net.name == "LED_A")
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+
+    with board.layout(unit=1.0) as layout:
+        resistor = layout.two_pad(r1).at((10.0, 8.0)).right()
+        with pytest.raises(RuntimeError, match="does not match explicit route net"):
+            layout.connect(resistor.start, resistor.start.left(2.0), layer=front, net=led_a)
+
+
+def test_pcb_layout_route_rejects_explicit_net_that_disagrees_with_pad_endpoint():
+    design, r1, _d1 = _small_resistor_led_design()
+    led_a = next(net for net in design.nets() if net.name == "LED_A")
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(32.0, 20.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+
+    with board.layout(unit=1.0) as layout:
+        resistor = layout.two_pad(r1).at((10.0, 8.0)).right()
+        with pytest.raises(RuntimeError, match="does not match explicit route net"):
+            layout.route(led_a, layer=front, mode="direct").at(resistor.start).to(
+                resistor.start.left(2.0)
+            )
 
 
 def test_pcb_layout_fanout_and_stitch_lower_to_tracks_and_vias():

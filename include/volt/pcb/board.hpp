@@ -83,6 +83,10 @@ class Board {
     /** Add a routed copper track over an existing logical net and board copper layer. */
     [[nodiscard]] BoardTrackId add_track(BoardTrack track);
 
+    /** Add a routed copper track, resolving pad endpoint intent against the board projection. */
+    [[nodiscard]] BoardTrackRouteResult add_track(BoardTrackRouteRequest request,
+                                                  const FootprintLibrary &footprints);
+
     /** Add a routed copper via over an existing logical net and board copper layer span. */
     [[nodiscard]] BoardViaId add_via(BoardVia via);
 
@@ -283,6 +287,12 @@ class Board {
     void require_net(NetId net) const;
 
     void require_copper_layer(BoardLayerId layer_id) const;
+
+    [[nodiscard]] std::optional<NetId> route_endpoint_net(const BoardRouteEndpoint &endpoint,
+                                                          const FootprintLibrary &footprints) const;
+
+    [[nodiscard]] NetId route_track_net(const BoardTrackRouteRequest &request,
+                                        const FootprintLibrary &footprints) const;
 
     void append_pad_resolutions(ComponentPlacementId placement_id,
                                 const ComponentPlacement &component_placement,

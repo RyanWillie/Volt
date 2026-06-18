@@ -40,6 +40,16 @@ def _net_index(value: int) -> int:
     return value
 
 
+def _optional_net_index(value: Net | int | None, design) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, Net):
+        if value._design is not design:
+            raise ValueError("Net belongs to a different design")
+        return value.index
+    return _net_index(value)
+
+
 def _layer_indices(values: Iterable[int]) -> list[int]:
     return [_layer_index(value) for value in values]
 
@@ -788,6 +798,28 @@ class Board:
             [_point(point, "Board track point") for point in points],
             float(width),
         )
+
+    def _add_track_for_route(
+        self,
+        net: Net | int | None,
+        *,
+        layer: int,
+        endpoints,
+        width: float,
+    ) -> dict:
+        """Add a layout route track from endpoint intent resolved by the kernel."""
+        self._sync_object_footprints()
+        return self._design._circuit.board_add_track_for_route(
+            _optional_net_index(net, self._design),
+            _layer_index(layer),
+            list(endpoints),
+            float(width),
+        )
+
+    def _track_net(self, track: int) -> int:
+        if isinstance(track, bool) or not isinstance(track, int):
+            raise TypeError("Board track IDs must be integers")
+        return self._design._circuit.board_track_net(track)
 
     def add_via(
         self,
