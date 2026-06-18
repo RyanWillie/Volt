@@ -1,5 +1,7 @@
 #include <volt/circuit/hierarchy/hierarchy.hpp>
 
+#include "../circuit_storage.hpp"
+
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -42,23 +44,75 @@ ModulePinConnection::ModulePinConnection(TemplateNetDefId net, ModuleComponentId
                                          PinDefId pin)
     : net_{net}, component_{component}, pin_{pin} {}
 
-ModuleDefinition::ModuleDefinition(ModuleName name) : name_{std::move(name)} {}
+ModuleDefinition::ModuleDefinition(ModuleName name)
+    : ModuleDefinition{std::make_shared<detail::ModuleDefinitionState>(std::move(name))} {}
+
+ModuleDefinition::ModuleDefinition(std::shared_ptr<const detail::ModuleDefinitionState> state)
+    : state_{std::move(state)} {}
+
+ModuleDefinition::ModuleDefinition(const ModuleDefinition &other)
+    : ModuleDefinition{std::make_shared<detail::ModuleDefinitionState>(other.state())} {}
+
+ModuleDefinition::ModuleDefinition(ModuleDefinition &&other) noexcept = default;
+
+ModuleDefinition &ModuleDefinition::operator=(const ModuleDefinition &other) {
+    if (this != &other) {
+        state_ = std::make_shared<detail::ModuleDefinitionState>(other.state());
+    }
+    return *this;
+}
+
+ModuleDefinition &ModuleDefinition::operator=(ModuleDefinition &&other) noexcept = default;
+
+ModuleDefinition::~ModuleDefinition() = default;
+
+[[nodiscard]] const ModuleName &ModuleDefinition::name() const noexcept { return state().name; }
+
+[[nodiscard]] const std::vector<TemplateNetDefId> &
+ModuleDefinition::template_nets() const noexcept {
+    return state().template_nets;
+}
+
+[[nodiscard]] const std::vector<PortDefId> &ModuleDefinition::ports() const noexcept {
+    return state().ports;
+}
 
 [[nodiscard]] const std::vector<ModuleComponentId> &ModuleDefinition::components() const noexcept {
-    return components_;
+    return state().components;
 }
 
-void ModuleDefinition::add_template_net(detail::KernelMutationAccess, TemplateNetDefId net) {
-    template_nets_.push_back(net);
+[[nodiscard]] const detail::ModuleDefinitionState &ModuleDefinition::state() const noexcept {
+    return *state_;
 }
 
-void ModuleDefinition::add_port(detail::KernelMutationAccess, PortDefId port) {
-    ports_.push_back(port);
+namespace detail {
+
+ModuleDefinitionStorage::ModuleDefinitionStorage(ModuleName name)
+    : ModuleDefinitionStorage{std::make_shared<ModuleDefinitionState>(std::move(name))} {}
+
+ModuleDefinitionStorage::ModuleDefinitionStorage(std::shared_ptr<ModuleDefinitionState> state)
+    : ModuleDefinition{state}, state_{std::move(state)} {}
+
+ModuleDefinitionStorage::ModuleDefinitionStorage(const ModuleDefinitionStorage &other)
+    : ModuleDefinitionStorage{std::make_shared<ModuleDefinitionState>(other.state())} {}
+
+ModuleDefinitionStorage &ModuleDefinitionStorage::operator=(const ModuleDefinitionStorage &other) {
+    if (this != &other) {
+        auto replacement =
+            ModuleDefinitionStorage{std::make_shared<ModuleDefinitionState>(other.state())};
+        *this = std::move(replacement);
+    }
+    return *this;
 }
 
-void ModuleDefinition::add_component(detail::KernelMutationAccess, ModuleComponentId component) {
-    components_.push_back(component);
+ModuleDefinitionStorage::ModuleDefinitionStorage(ModuleDefinition definition)
+    : ModuleDefinitionStorage{std::make_shared<ModuleDefinitionState>(definition.name())} {
+    state_->template_nets = definition.template_nets();
+    state_->ports = definition.ports();
+    state_->components = definition.components();
 }
+
+} // namespace detail
 
 ModuleInstance::ModuleInstance(ModuleDefId definition, ModuleInstanceName name)
     : definition_{definition}, name_{std::move(name)} {}

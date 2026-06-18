@@ -1,14 +1,17 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 
-#include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
-#include <volt/core/mutation_access.hpp>
 #include <volt/pcb/features/board_features.hpp>
 
 namespace volt {
+
+namespace detail {
+struct BoardPlacementState;
+}
 
 /**
  * Owns physical placements of logical components on a board, and pad-to-net resolution.
@@ -22,6 +25,19 @@ namespace volt {
  */
 class BoardPlacementModel {
   public:
+    /** Construct an empty board-placement facade. */
+    BoardPlacementModel();
+    /** Copy board-placement state. */
+    BoardPlacementModel(const BoardPlacementModel &other);
+    /** Move board-placement state. */
+    BoardPlacementModel(BoardPlacementModel &&other) noexcept;
+    /** Copy board-placement state. */
+    BoardPlacementModel &operator=(const BoardPlacementModel &other);
+    /** Move board-placement state. */
+    BoardPlacementModel &operator=(BoardPlacementModel &&other) noexcept;
+    /** Destroy board-placement state. */
+    ~BoardPlacementModel();
+
     /** Return a component placement by board-local ID. */
     [[nodiscard]] const ComponentPlacement &placement(ComponentPlacementId id) const;
 
@@ -32,12 +48,14 @@ class BoardPlacementModel {
     [[nodiscard]] std::optional<ComponentPlacementId>
     placement_for_component(ComponentId component) const noexcept;
 
-    /** Place one logical component on the board and return its placement ID. */
-    [[nodiscard]] ComponentPlacementId place_component(detail::KernelMutationAccess access,
-                                                       ComponentPlacement placement);
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit BoardPlacementModel(std::shared_ptr<const detail::BoardPlacementState> state);
 
   private:
-    EntityTable<ComponentPlacement, ComponentPlacementId> placements_;
+    [[nodiscard]] const detail::BoardPlacementState &state() const noexcept;
+
+    std::shared_ptr<const detail::BoardPlacementState> state_;
 };
 
 } // namespace volt

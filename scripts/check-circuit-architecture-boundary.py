@@ -40,13 +40,13 @@ FRIEND_TYPE_PREFIXES = ("friend " "class ", "friend " "struct ")
 
 PRIVILEGED_FRIEND_ALLOWLIST = {
     (
-        "include/volt/core/mutation_access.hpp",
-        "friend constexpr KernelMutationAccess kernel_mutation_access() noexcept",
-    ): "Kernel-owned mutation passkey exposes a narrow source-private factory without granting class-wide access.",
-    (
         "include/volt/pcb/routing/board_spatial_index.hpp",
         "friend void detail::validate_copper_clearance(const Board &board, const std::vector<detail::BoardCopperShape> &shapes, DiagnosticReport &report)",
     ): "Board copper DRC currently reuses the spatial index's internal shape snapshot.",
+    (
+        "include/volt/pcb/routing/board_spatial_index.hpp",
+        "friend void detail::insert_after_board_mutation(BoardSpatialIndex &index, BoardSpatialQueryShape shape, std::size_t previous_geometry_mutation_count)",
+    ): "BoardRouter mirrors an accepted board mutation into its private runtime spatial index.",
 }
 
 PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {
@@ -94,16 +94,31 @@ ENTITY_REF_KERNEL_ALLOWLIST = {
     ): "Existing DRC helper classifies diagnostic copper shapes by reporting refs; keep narrow until a typed shape role replaces it.",
 }
 
-KERNEL_MUTATION_ACCESS_TYPE = "detail::KernelMutationAccess"
+KERNEL_MUTATION_ACCESS_TOKENS = ("KernelMutationAccess", "kernel_mutation_access")
+SUBMODEL_STORAGE_ACCESSORS = {"mutable_state", "state"}
 
-GATED_SUBMODEL_MUTATORS = {
+SUBMODEL_MUTATORS = {
+    "ConnectivityModel": (
+        ROOT / "include" / "volt" / "circuit" / "connectivity" / "connectivity_model.hpp",
+        {
+            "add_pin_definition",
+            "add_component_definition",
+            "add_component",
+            "add_pin",
+            "add_net",
+            "instantiate_component",
+            "connect",
+            "disconnect",
+            "set_component_property",
+        },
+    ),
     "ComponentInstance": (
         ROOT / "include" / "volt" / "circuit" / "connectivity" / "instances.hpp",
         {"set_property"},
     ),
     "NetClasses": (
         ROOT / "include" / "volt" / "circuit" / "constraints" / "net_classes.hpp",
-        {"assign_net_class"},
+        {"add_net_class", "assign_net_class"},
     ),
     "ElectricalModel": (
         ROOT / "include" / "volt" / "circuit" / "electrical" / "electrical_model.hpp",
@@ -135,6 +150,10 @@ GATED_SUBMODEL_MUTATORS = {
     "HierarchyModel": (
         ROOT / "include" / "volt" / "circuit" / "hierarchy" / "hierarchy_model.hpp",
         {
+            "add_module_definition",
+            "add_template_net",
+            "add_port_definition",
+            "instantiate_root_module",
             "add_module_component",
             "connect_module_pin",
             "restore_root_module_instance",
@@ -169,9 +188,15 @@ GATED_SUBMODEL_MUTATORS = {
             "add_symbol_field",
         },
     ),
+    "SchematicLibraryModel": (
+        ROOT / "include" / "volt" / "schematic" / "schematic_library_model.hpp",
+        {"add_symbol_definition"},
+    ),
     "SchematicSheetModel": (
         ROOT / "include" / "volt" / "schematic" / "schematic_sheet_model.hpp",
         {
+            "add_sheet",
+            "add_sheet_region",
             "add_symbol_instance",
             "add_wire_run",
             "add_net_label",
@@ -185,6 +210,9 @@ GATED_SUBMODEL_MUTATORS = {
     "SchematicItemsModel": (
         ROOT / "include" / "volt" / "schematic" / "schematic_items_model.hpp",
         {
+            "move_net_label_text",
+            "move_power_port_label",
+            "move_symbol_field",
             "add_symbol_instance",
             "add_wire_run",
             "add_net_label",
@@ -195,6 +223,70 @@ GATED_SUBMODEL_MUTATORS = {
             "add_symbol_field",
         },
     ),
+    "BoardStructureModel": (
+        ROOT / "include" / "volt" / "pcb" / "structure" / "board_structure_model.hpp",
+        {
+            "add_layer",
+            "set_layer_stack",
+            "set_outline",
+            "set_design_rules",
+            "set_capability_profile",
+            "add_feature",
+        },
+    ),
+    "BoardFootprintModel": (
+        ROOT / "include" / "volt" / "pcb" / "footprints" / "board_footprint_model.hpp",
+        {"cache_footprint_definition"},
+    ),
+}
+
+SUBMODEL_DERIVATION_ALLOWLIST = {
+    ("include/volt/circuit/circuit.hpp", "ConnectivityStorage", "ConnectivityModel"):
+        "Circuit-private storage adapter exposes connectivity mutation only to Circuit.",
+    ("include/volt/circuit/circuit.hpp", "HierarchyStorage", "HierarchyModel"):
+        "Circuit-private storage adapter exposes hierarchy mutation only to Circuit.",
+    ("include/volt/circuit/circuit.hpp", "ElectricalStorage", "ElectricalModel"):
+        "Circuit-private storage adapter exposes electrical mutation only to Circuit.",
+    ("include/volt/circuit/circuit.hpp", "DesignIntentStorage", "DesignIntent"):
+        "Circuit-private storage adapter exposes design-intent mutation only to Circuit.",
+    ("include/volt/circuit/circuit.hpp", "NetClassStorage", "NetClasses"):
+        "Circuit-private storage adapter exposes net-class mutation only to Circuit.",
+    ("include/volt/pcb/board.hpp", "StructureStorage", "BoardStructureModel"):
+        "Board-private storage adapter exposes board structure mutation only to Board.",
+    ("include/volt/pcb/board.hpp", "FootprintStorage", "BoardFootprintModel"):
+        "Board-private storage adapter exposes footprint cache mutation only to Board.",
+    ("include/volt/pcb/board.hpp", "PlacementStorage", "BoardPlacementModel"):
+        "Board-private storage adapter exposes placement mutation only to Board.",
+    ("include/volt/pcb/board.hpp", "CopperStorage", "BoardCopperModel"):
+        "Board-private storage adapter exposes copper mutation only to Board.",
+    ("include/volt/schematic/schematic.hpp", "LibraryStorage", "SchematicLibraryModel"):
+        "Schematic-private storage adapter exposes library mutation only to Schematic.",
+    ("include/volt/schematic/schematic.hpp", "SheetStorage", "SchematicSheetModel"):
+        "Schematic-private storage adapter exposes sheet mutation only to Schematic.",
+    ("include/volt/schematic/schematic.hpp", "ItemStorage", "SchematicItemsModel"):
+        "Schematic-private storage adapter exposes item mutation only to Schematic.",
+    (
+        "src/circuit/circuit_storage.hpp",
+        "ModuleDefinitionStorage",
+        "ModuleDefinition",
+    ): "Circuit source-private storage adapter exposes module membership mutation only after root preflight.",
+    (
+        "src/schematic/schematic_storage.hpp",
+        "SheetStorage",
+        "Sheet",
+    ): "Schematic source-private storage adapter exposes sheet membership mutation only after Schematic preflight.",
+    (
+        "include/volt/pcb/routing/board_router.hpp",
+        "SpatialIndexStorage",
+        "BoardSpatialIndex",
+    ): "BoardRouter-private storage adapter mirrors committed Board copper into its runtime spatial index.",
+}
+
+PRIVATE_STORAGE_HEADER_ALLOWLIST = {
+    "src/circuit/circuit_storage.hpp": ("src/circuit/",),
+    "src/pcb/board_storage.hpp": ("src/pcb/",),
+    "src/pcb/routing/board_spatial_index_storage.hpp": ("src/pcb/routing/",),
+    "src/schematic/schematic_storage.hpp": ("src/schematic/",),
 }
 
 
@@ -212,6 +304,14 @@ class PythonConnectivityRisk:
     qualname: str
     line_text: str
     reason: str
+
+
+@dataclass(frozen=True)
+class SubmodelDerivation:
+    path: Path
+    line: int
+    derived: str
+    base: str
 
 
 def read(path: Path) -> str:
@@ -265,7 +365,7 @@ def fail(message: str, failures: list[str]) -> None:
 
 
 def class_body(header: str, class_name: str) -> str:
-    match = re.search(rf"\bclass\s+{re.escape(class_name)}\b[^{{]*{{", header)
+    match = re.search(rf"\bclass\s+{re.escape(class_name)}\b[^{{;]*{{", header)
     if match is None:
         raise ValueError(f"class {class_name} not found")
 
@@ -290,6 +390,35 @@ def public_section(body: str) -> str:
     if private is None:
         return body[public.end() :]
     return body[public.end() : public.end() + private.start()]
+
+
+def access_sections(body: str) -> list[tuple[str, str]]:
+    matches = []
+    depth = 0
+    access_pattern = re.compile(r"\b(public|protected|private)\s*:")
+    index = 0
+    while index < len(body):
+        match = access_pattern.match(body, index)
+        if match is not None and depth == 0:
+            matches.append(match)
+            index = match.end()
+            continue
+        if body[index] == "{":
+            depth += 1
+        elif body[index] == "}":
+            depth = max(depth - 1, 0)
+        index += 1
+    if not matches:
+        return [("private", body)]
+
+    sections: list[tuple[str, str]] = []
+    first = matches[0]
+    if first.start() > 0:
+        sections.append(("private", body[: first.start()]))
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
+        sections.append((match.group(1), body[match.end() : end]))
+    return sections
 
 
 def normalize_declaration(declaration: str) -> str:
@@ -359,16 +488,41 @@ def public_declarations(class_name: str, header_path: Path) -> list[str]:
 
 def public_declarations_from_header(class_name: str, header: str) -> list[str]:
     body = class_body(strip_comments(header), class_name)
+    return declarations_from_accesses(body, {"public"})
+
+
+def declarations_from_accesses(body: str, access_names: set[str]) -> list[str]:
     declarations: list[str] = []
-    for chunk in declaration_chunks(public_section(body)):
-        if "(" not in chunk or ")" not in chunk:
+    for access, section in access_sections(body):
+        if access not in access_names:
             continue
-        name = declaration_function_name(chunk)
-        if name is None:
+        for chunk in declaration_chunks(section):
+            if "(" not in chunk or ")" not in chunk:
+                continue
+            name = declaration_function_name(chunk)
+            if name is None:
+                continue
+            if name in {"if", "for", "while", "switch"}:
+                continue
+            declarations.append(chunk)
+    return declarations
+
+
+def public_or_protected_declarations(class_name: str, header_path: Path) -> list[tuple[str, str]]:
+    body = class_body(strip_comments(read(header_path)), class_name)
+    declarations: list[tuple[str, str]] = []
+    for access, section in access_sections(body):
+        if access not in {"public", "protected"}:
             continue
-        if name in {"if", "for", "while", "switch"}:
-            continue
-        declarations.append(chunk)
+        for chunk in declaration_chunks(section):
+            if "(" not in chunk or ")" not in chunk:
+                continue
+            name = declaration_function_name(chunk)
+            if name is None:
+                continue
+            if name in {"if", "for", "while", "switch"}:
+                continue
+            declarations.append((access, chunk))
     return declarations
 
 
@@ -377,6 +531,33 @@ def declaration_function_name(declaration: str) -> str | None:
     if not prefix:
         return None
     return prefix.split()[-1].split("::")[-1].strip("&*")
+
+
+def submodel_derivations(path: Path, text: str) -> list[SubmodelDerivation]:
+    stripped = strip_comments_preserve_lines(text)
+    derivations: list[SubmodelDerivation] = []
+    pattern = re.compile(
+        r"\b(?:class|struct)\s+([A-Za-z_]\w*)\s*(?:final\s*)?:\s*([^{;]+)\{"
+    )
+    for match in pattern.finditer(stripped):
+        derived = match.group(1)
+        base_clause = match.group(2)
+        for base_match in re.finditer(
+            r"(?:^|,)\s*(?:public|protected|private)?\s*(?:volt::)?([A-Za-z_]\w*)",
+            base_clause,
+        ):
+            base = base_match.group(1)
+            if base not in SUBMODEL_MUTATORS:
+                continue
+            derivations.append(
+                SubmodelDerivation(
+                    path=path,
+                    line=stripped.count("\n", 0, match.start()) + 1,
+                    derived=derived,
+                    base=base,
+                )
+            )
+    return derivations
 
 
 def header_includes(header_path: Path) -> list[str]:
@@ -587,6 +768,18 @@ def check_rejected_tokens(failures: list[str]) -> None:
                 fail(f"{relative(path)} contains rejected architecture token {token}", failures)
 
 
+def check_no_kernel_mutation_access(failures: list[str]) -> None:
+    for path in architecture_code_files():
+        text = read(path)
+        for token in KERNEL_MUTATION_ACCESS_TOKENS:
+            if token in text:
+                fail(
+                    f"{relative(path)} still references broad kernel mutation passkey token "
+                    f"{token}",
+                    failures,
+                )
+
+
 def check_no_broad_type_friends(failures: list[str]) -> None:
     for path in architecture_code_files():
         for declaration in friend_declarations(path, read(path)):
@@ -757,18 +950,89 @@ def check_subsystem_sources_have_real_logic(failures: list[str]) -> None:
                 fail(f"{relative(path)} does not contain enough real subsystem logic", failures)
 
 
-def check_submodel_mutators_require_kernel_access(failures: list[str]) -> None:
-    for class_name, (header_path, method_names) in sorted(GATED_SUBMODEL_MUTATORS.items()):
-        for declaration in public_declarations(class_name, header_path):
+def check_no_public_submodel_mutators(failures: list[str]) -> None:
+    for class_name, (header_path, method_names) in sorted(SUBMODEL_MUTATORS.items()):
+        for access, declaration in public_or_protected_declarations(class_name, header_path):
             if declaration_function_name(declaration) not in method_names:
                 continue
-            if KERNEL_MUTATION_ACCESS_TYPE in declaration:
-                continue
             fail(
-                f"{relative(header_path)} exposes {class_name}::{declaration_function_name(declaration)} "
-                f"without {KERNEL_MUTATION_ACCESS_TYPE}",
+                f"{relative(header_path)} exposes {access} submodel mutation API "
+                f"{class_name}::{declaration_function_name(declaration)}; use the owning "
+                "aggregate root command surface",
                 failures,
             )
+
+
+def check_no_public_submodel_storage_accessors(failures: list[str]) -> None:
+    for class_name, (header_path, _) in sorted(SUBMODEL_MUTATORS.items()):
+        for access, declaration in public_or_protected_declarations(class_name, header_path):
+            function_name = declaration_function_name(declaration)
+            if function_name not in SUBMODEL_STORAGE_ACCESSORS:
+                continue
+            fail(
+                f"{relative(header_path)} exposes {access} submodel storage accessor "
+                f"{class_name}::{function_name}; composed storage must stay behind the "
+                "owning aggregate root implementation boundary",
+                failures,
+            )
+
+
+def check_private_storage_headers_stay_private(failures: list[str]) -> None:
+    header_names = {
+        Path(path).name: (path, allowed_prefixes)
+        for path, allowed_prefixes in PRIVATE_STORAGE_HEADER_ALLOWLIST.items()
+    }
+    found_headers: set[str] = set()
+    include_pattern = re.compile(r'^\s*#\s*include\s+[<"]([^>"]+)[>"]')
+    for path in architecture_code_files():
+        if path.suffix not in {".cpp", ".hpp", ".h"}:
+            continue
+        rel = relative(path)
+        for line_number, line in enumerate(read(path).splitlines(), start=1):
+            match = include_pattern.match(line)
+            if match is None:
+                continue
+            include_name = Path(match.group(1)).name
+            if include_name not in header_names:
+                continue
+            header_path, allowed_prefixes = header_names[include_name]
+            found_headers.add(header_path)
+            if not any(rel.startswith(prefix) for prefix in allowed_prefixes):
+                fail(
+                    f"{rel}:{line_number} includes private storage header {header_path} "
+                    "outside its owning implementation directory",
+                    failures,
+                )
+
+    for header_path in sorted(PRIVATE_STORAGE_HEADER_ALLOWLIST):
+        if not (ROOT / header_path).exists():
+            fail(f"private storage header {header_path} is missing", failures)
+        elif header_path not in found_headers:
+            fail(f"private storage header {header_path} is not included by its owner", failures)
+
+
+def check_no_submodel_derivation_escape_hatches(failures: list[str]) -> None:
+    found_allowlisted: set[tuple[str, str, str]] = set()
+    for path in code_files():
+        if path.suffix not in {".cpp", ".hpp", ".h"}:
+            continue
+        for derivation in submodel_derivations(path, read(path)):
+            key = (relative(derivation.path), derivation.derived, derivation.base)
+            if key in SUBMODEL_DERIVATION_ALLOWLIST:
+                found_allowlisted.add(key)
+                continue
+            fail(
+                f"{relative(derivation.path)}:{derivation.line} derives "
+                f"{derivation.derived} from mutating submodel {derivation.base}; this can "
+                "re-export protected storage mutators outside the owning aggregate root",
+                failures,
+            )
+
+    for key, reason in sorted(SUBMODEL_DERIVATION_ALLOWLIST.items()):
+        if not reason.strip():
+            fail(f"submodel derivation allowlist entry {key!r} must document a reason", failures)
+        if key not in found_allowlisted:
+            fail(f"submodel derivation allowlist entry {key!r} no longer matches source", failures)
 
 
 def require_self_test(condition: bool, message: str) -> None:
@@ -838,13 +1102,13 @@ def run_self_tests() -> int:
 
     submodel_mutator_sample = textwrap.dedent(
         """
-        namespace volt::detail {
-        class KernelMutationAccess;
-        }
         class SampleModel {
           public:
+            int read_value() const;
             void mutate(int value);
-            void mutate_guarded(volt::detail::KernelMutationAccess, int value);
+
+          protected:
+            void protected_mutation(int value);
 
           private:
             void hidden_mutation(int value);
@@ -855,23 +1119,93 @@ def run_self_tests() -> int:
     require_self_test(
         any(
             declaration_function_name(declaration) == "mutate"
-            and KERNEL_MUTATION_ACCESS_TYPE not in declaration
             for declaration in sample_declarations
         ),
-        "public submodel mutator samples without kernel access must be observable",
+        "public submodel mutator samples must be observable",
     )
     require_self_test(
-        any(
-            declaration_function_name(declaration) == "mutate_guarded"
-            and KERNEL_MUTATION_ACCESS_TYPE in declaration
-            for declaration in sample_declarations
-        ),
-        "public submodel mutator samples with kernel access must be distinguishable",
+        any(declaration_function_name(declaration) == "read_value"
+            for declaration in sample_declarations),
+        "public submodel read samples must remain observable",
     )
     require_self_test(
         all(declaration_function_name(declaration) != "hidden_mutation"
             for declaration in sample_declarations),
         "private submodel mutators must not be treated as public architecture surface",
+    )
+    forward_decl_sample = textwrap.dedent(
+        """
+        class SampleModel;
+
+        namespace detail {
+        void helper(SampleModel &model);
+        }
+
+        class SampleModel {
+          public:
+            int read_value() const;
+        };
+        """
+    )
+    require_self_test(
+        public_declarations_from_header("SampleModel", forward_decl_sample)
+        == ["int read_value() const"],
+        "public API parser must ignore forward declarations before the real class body",
+    )
+    # public_or_protected_declarations reads from disk, so exercise the parser directly instead.
+    sample_body = class_body(strip_comments(submodel_mutator_sample), "SampleModel")
+    protected_sample = [
+        declaration
+        for access, section in access_sections(sample_body)
+        if access == "protected"
+        for declaration in declaration_chunks(section)
+    ]
+    require_self_test(
+        any(declaration_function_name(declaration) == "protected_mutation"
+            for declaration in protected_sample),
+        "protected submodel mutator samples must be observable",
+    )
+    protected_storage_sample = textwrap.dedent(
+        """
+        class SampleStorageModel {
+          public:
+            int read_value() const;
+
+          protected:
+            detail::SampleState &mutable_state() noexcept;
+            const detail::SampleState &state() const noexcept;
+        };
+        """
+    )
+    storage_body = class_body(strip_comments(protected_storage_sample), "SampleStorageModel")
+    storage_accessors = [
+        declaration
+        for access, section in access_sections(storage_body)
+        if access in {"public", "protected"}
+        for declaration in declaration_chunks(section)
+        if declaration_function_name(declaration) in SUBMODEL_STORAGE_ACCESSORS
+    ]
+    require_self_test(
+        {declaration_function_name(declaration) for declaration in storage_accessors}
+        == SUBMODEL_STORAGE_ACCESSORS,
+        "public/protected submodel storage accessors must be observable",
+    )
+    submodel_derivation_sample = textwrap.dedent(
+        """
+        struct TestConnectivityModel : volt::ConnectivityModel {
+          public:
+            using ConnectivityModel::add_net;
+        };
+        """
+    )
+    sample_derivations = submodel_derivations(Path("tests/sample.cpp"), submodel_derivation_sample)
+    require_self_test(
+        any(
+            derivation.derived == "TestConnectivityModel"
+            and derivation.base == "ConnectivityModel"
+            for derivation in sample_derivations
+        ),
+        "subclasses of mutating submodels must be reported as derivation escape hatches",
     )
 
     python_sample = textwrap.dedent(
@@ -993,6 +1327,7 @@ def run_self_tests() -> int:
 def run_checks() -> int:
     failures: list[str] = []
     check_rejected_tokens(failures)
+    check_no_kernel_mutation_access(failures)
     check_no_broad_type_friends(failures)
     check_no_flat_pcb_public_headers(failures)
     check_privileged_friends_are_allowlisted(failures)
@@ -1001,7 +1336,10 @@ def run_checks() -> int:
     check_entity_ref_not_kernel_traversal_handle(failures)
     check_subsystem_back_references(failures)
     check_subsystem_sources_have_real_logic(failures)
-    check_submodel_mutators_require_kernel_access(failures)
+    check_no_public_submodel_mutators(failures)
+    check_no_public_submodel_storage_accessors(failures)
+    check_private_storage_headers_stay_private(failures)
+    check_no_submodel_derivation_escape_hatches(failures)
 
     if failures:
         for failure in failures:

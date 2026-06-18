@@ -1,20 +1,24 @@
 include <cstddef>
+include <memory>
 include <optional>
 include <vector>
 include <volt/core/ids.hpp>
-include <volt/core/mutation_access.hpp>
 include <volt/pcb/board.hpp>
 include <volt/pcb/copper/board_copper.hpp>
 include <volt/pcb/features/board_features.hpp>
 include <volt/pcb/footprints/footprints.hpp>
 
 explicit BoardSpatialIndex(const Board &board)
+BoardSpatialIndex(const BoardSpatialIndex &other)
+BoardSpatialIndex(BoardSpatialIndex &&other) noexcept
+BoardSpatialIndex &operator=(const BoardSpatialIndex &other)
+BoardSpatialIndex &operator=(BoardSpatialIndex &&other) noexcept
+~BoardSpatialIndex()
 explicit BoardSpatialIndex(const Board &&board) = delete
 BoardSpatialIndex(const Board &board, const FootprintLibrary &footprints)
 BoardSpatialIndex(const Board &&board, const FootprintLibrary &footprints) = delete
 [[nodiscard]] double conservative_clearance_mm() const noexcept
 void insert(BoardSpatialQueryShape shape)
-void insert_after_board_mutation(detail::KernelMutationAccess access, BoardSpatialQueryShape shape, std::size_t previous_geometry_mutation_count)
 [[nodiscard]] std::vector<BoardSpatialCandidatePair> copper_clearance_candidates() const
 [[nodiscard]] std::vector<std::size_t> candidate_obstacles(const BoardSpatialQueryShape &candidate) const
 [[nodiscard]] BoardSpatialQueryResult query_legality(const BoardSpatialQueryShape &candidate) const

@@ -1,13 +1,17 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 
-#include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/pcb/footprints/footprints.hpp>
 
 namespace volt {
+
+namespace detail {
+struct BoardFootprintState;
+}
 
 /**
  * Owns board-cached footprint definitions used by placements and projection IO.
@@ -19,8 +23,18 @@ namespace volt {
  */
 class BoardFootprintModel {
   public:
-    /** Cache a footprint definition for board projection use. */
-    [[nodiscard]] FootprintDefId cache_footprint_definition(FootprintDefinition footprint);
+    /** Construct an empty board-footprint facade. */
+    BoardFootprintModel();
+    /** Copy board-footprint state. */
+    BoardFootprintModel(const BoardFootprintModel &other);
+    /** Move board-footprint state. */
+    BoardFootprintModel(BoardFootprintModel &&other) noexcept;
+    /** Copy board-footprint state. */
+    BoardFootprintModel &operator=(const BoardFootprintModel &other);
+    /** Move board-footprint state. */
+    BoardFootprintModel &operator=(BoardFootprintModel &&other) noexcept;
+    /** Destroy board-footprint state. */
+    ~BoardFootprintModel();
 
     /** Return a cached footprint definition by board-local ID. */
     [[nodiscard]] const FootprintDefinition &footprint_definition(FootprintDefId id) const;
@@ -32,8 +46,14 @@ class BoardFootprintModel {
     [[nodiscard]] std::optional<FootprintDefId>
     footprint_definition_id(const FootprintRef &ref) const noexcept;
 
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit BoardFootprintModel(std::shared_ptr<const detail::BoardFootprintState> state);
+
   private:
-    EntityTable<FootprintDefinition, FootprintDefId> footprint_definitions_;
+    [[nodiscard]] const detail::BoardFootprintState &state() const noexcept;
+
+    std::shared_ptr<const detail::BoardFootprintState> state_;
 };
 
 } // namespace volt

@@ -1,13 +1,16 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 
-#include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
-#include <volt/core/mutation_access.hpp>
 #include <volt/pcb/copper/board_copper.hpp>
 
 namespace volt {
+
+namespace detail {
+struct BoardCopperState;
+}
 
 /**
  * Owns routed and presentation copper primitives for a board projection: tracks, vias, zones,
@@ -20,6 +23,19 @@ namespace volt {
  */
 class BoardCopperModel {
   public:
+    /** Construct an empty board-copper facade. */
+    BoardCopperModel();
+    /** Copy board-copper state. */
+    BoardCopperModel(const BoardCopperModel &other);
+    /** Move board-copper state. */
+    BoardCopperModel(BoardCopperModel &&other) noexcept;
+    /** Copy board-copper state. */
+    BoardCopperModel &operator=(const BoardCopperModel &other);
+    /** Move board-copper state. */
+    BoardCopperModel &operator=(BoardCopperModel &&other) noexcept;
+    /** Destroy board-copper state. */
+    ~BoardCopperModel();
+
     /** Return a routed track by board-local ID. */
     [[nodiscard]] const BoardTrack &track(BoardTrackId id) const;
 
@@ -56,32 +72,14 @@ class BoardCopperModel {
     /** Return the number of board text items owned by this model. */
     [[nodiscard]] std::size_t text_count() const noexcept;
 
-    /** Add a routed copper track and return its stable board-local ID. */
-    [[nodiscard]] BoardTrackId add_track(detail::KernelMutationAccess access, BoardTrack track);
-
-    /** Add a routed copper via and return its stable board-local ID. */
-    [[nodiscard]] BoardViaId add_via(detail::KernelMutationAccess access, BoardVia via);
-
-    /** Add a copper zone and return its stable board-local ID. */
-    [[nodiscard]] BoardZoneId add_zone(detail::KernelMutationAccess access, BoardZone zone);
-
-    /** Add a copper keepout and return its stable board-local ID. */
-    [[nodiscard]] BoardKeepoutId add_keepout(detail::KernelMutationAccess access,
-                                             BoardKeepout keepout);
-
-    /** Add a board room and return its stable board-local ID. */
-    [[nodiscard]] BoardRoomId add_room(detail::KernelMutationAccess access, BoardRoom room);
-
-    /** Add board text and return its stable board-local ID. */
-    [[nodiscard]] BoardTextId add_text(detail::KernelMutationAccess access, BoardText text);
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit BoardCopperModel(std::shared_ptr<const detail::BoardCopperState> state);
 
   private:
-    EntityTable<BoardTrack, BoardTrackId> tracks_;
-    EntityTable<BoardVia, BoardViaId> vias_;
-    EntityTable<BoardZone, BoardZoneId> zones_;
-    EntityTable<BoardKeepout, BoardKeepoutId> keepouts_;
-    EntityTable<BoardRoom, BoardRoomId> rooms_;
-    EntityTable<BoardText, BoardTextId> texts_;
+    [[nodiscard]] const detail::BoardCopperState &state() const noexcept;
+
+    std::shared_ptr<const detail::BoardCopperState> state_;
 };
 
 } // namespace volt

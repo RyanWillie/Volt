@@ -11,7 +11,6 @@
 
 #include <volt/core/electrical_attributes.hpp>
 #include <volt/core/ids.hpp>
-#include <volt/core/mutation_access.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt {
@@ -150,7 +149,8 @@ class PhysicalPart {
     PhysicalPart(ManufacturerPart manufacturer_part, PackageRef package, FootprintRef footprint,
                  std::vector<PinPadMapping> pin_pad_mappings, PropertyMap properties = {},
                  std::optional<PartModel3D> model_3d = std::nullopt,
-                 std::vector<std::string> approved_alternate_mpns = {});
+                 std::vector<std::string> approved_alternate_mpns = {},
+                 ElectricalAttributeMap electrical_attributes = {});
 
     /** Return the selected manufacturer part identity. */
     [[nodiscard]] const ManufacturerPart &manufacturer_part() const noexcept;
@@ -178,10 +178,9 @@ class PhysicalPart {
         return approved_alternate_mpns_;
     }
 
-    /** Set typed electrical metadata for this physical part selection. */
-    void set_electrical_attribute(detail::KernelMutationAccess access,
-                                  const ElectricalAttributeSpec &spec,
-                                  ElectricalAttributeValue value);
+    /** Return a copy with one selected-part electrical attribute set. */
+    [[nodiscard]] PhysicalPart with_electrical_attribute(const ElectricalAttributeSpec &spec,
+                                                         ElectricalAttributeValue value) const;
 
   private:
     ManufacturerPart manufacturer_part_;

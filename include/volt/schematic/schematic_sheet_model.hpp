@@ -1,15 +1,18 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
 
-#include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
-#include <volt/core/mutation_access.hpp>
 #include <volt/schematic/schematic_sheet.hpp>
 
 namespace volt {
+
+namespace detail {
+struct SchematicSheetState;
+}
 
 /**
  * Owns schematic sheets, authored regions, and sheet-local item membership lists.
@@ -21,11 +24,18 @@ namespace volt {
  */
 class SchematicSheetModel {
   public:
-    /** Add a schematic sheet and return its schematic-local ID. */
-    [[nodiscard]] SheetId add_sheet(Sheet sheet);
-
-    /** Add a named authored region to an existing sheet. */
-    [[nodiscard]] std::size_t add_sheet_region(SheetId sheet, SheetRegion region);
+    /** Construct an empty schematic-sheet facade. */
+    SchematicSheetModel();
+    /** Copy schematic-sheet state. */
+    SchematicSheetModel(const SchematicSheetModel &other);
+    /** Move schematic-sheet state. */
+    SchematicSheetModel(SchematicSheetModel &&other) noexcept;
+    /** Copy schematic-sheet state. */
+    SchematicSheetModel &operator=(const SchematicSheetModel &other);
+    /** Move schematic-sheet state. */
+    SchematicSheetModel &operator=(SchematicSheetModel &&other) noexcept;
+    /** Destroy schematic-sheet state. */
+    ~SchematicSheetModel();
 
     /** Return the sheet with the requested name, if present. */
     [[nodiscard]] std::optional<SheetId> sheet_by_name(const std::string &name) const;
@@ -46,36 +56,14 @@ class SchematicSheetModel {
     /** Require that a sheet ID belongs to this model. */
     void require_sheet(SheetId sheet) const;
 
-    /** Record that a symbol instance appears on a sheet. */
-    void add_symbol_instance(detail::KernelMutationAccess access, SheetId sheet,
-                             SymbolInstanceId instance);
-
-    /** Record that a wire run appears on a sheet. */
-    void add_wire_run(detail::KernelMutationAccess access, SheetId sheet, WireRunId wire);
-
-    /** Record that a net label appears on a sheet. */
-    void add_net_label(detail::KernelMutationAccess access, SheetId sheet, NetLabelId label);
-
-    /** Record that a junction appears on a sheet. */
-    void add_junction(detail::KernelMutationAccess access, SheetId sheet, JunctionId junction);
-
-    /** Record that a power or ground marker appears on a sheet. */
-    void add_power_port(detail::KernelMutationAccess access, SheetId sheet, PowerPortId port);
-
-    /** Record that a no-connect marker appears on a sheet. */
-    void add_no_connect_marker(detail::KernelMutationAccess access, SheetId sheet,
-                               NoConnectMarkerId marker);
-
-    /** Record that a sheet or off-page port appears on a sheet. */
-    void add_sheet_port(detail::KernelMutationAccess access, SheetId sheet, SheetPortId port);
-
-    /** Record that a symbol field appears on a sheet. */
-    void add_symbol_field(detail::KernelMutationAccess access, SheetId sheet, SymbolFieldId field);
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit SchematicSheetModel(std::shared_ptr<const detail::SchematicSheetState> state);
 
   private:
-    [[nodiscard]] Sheet &mutable_sheet(SheetId id);
+    [[nodiscard]] const detail::SchematicSheetState &state() const noexcept;
 
-    EntityTable<Sheet, SheetId> sheets_;
+    std::shared_ptr<const detail::SchematicSheetState> state_;
 };
 
 } // namespace volt

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -199,6 +200,84 @@ class Board {
     ratsnest_edges(const FootprintLibrary &footprints) const;
 
   private:
+    struct StructureStorage : BoardStructureModel {
+        StructureStorage();
+        StructureStorage(const StructureStorage &other);
+        StructureStorage(StructureStorage &&other) noexcept = default;
+        StructureStorage &operator=(const StructureStorage &other);
+        StructureStorage &operator=(StructureStorage &&other) noexcept = default;
+
+        [[nodiscard]] BoardLayerId add_layer(BoardLayer layer);
+        void set_layer_stack(LayerStack stack);
+        void set_outline(BoardOutline outline);
+        void set_design_rules(BoardDesignRules rules);
+        void set_capability_profile(BoardCapabilityProfile profile);
+        [[nodiscard]] BoardFeatureId add_feature(BoardFeature feature);
+
+      private:
+        explicit StructureStorage(std::shared_ptr<detail::BoardStructureState> state);
+        [[nodiscard]] detail::BoardStructureState &mutable_state() noexcept;
+        [[nodiscard]] const detail::BoardStructureState &state() const noexcept;
+
+        std::shared_ptr<detail::BoardStructureState> state_;
+    };
+
+    struct FootprintStorage : BoardFootprintModel {
+        FootprintStorage();
+        FootprintStorage(const FootprintStorage &other);
+        FootprintStorage(FootprintStorage &&other) noexcept = default;
+        FootprintStorage &operator=(const FootprintStorage &other);
+        FootprintStorage &operator=(FootprintStorage &&other) noexcept = default;
+
+        [[nodiscard]] FootprintDefId cache_footprint_definition(FootprintDefinition footprint);
+
+      private:
+        explicit FootprintStorage(std::shared_ptr<detail::BoardFootprintState> state);
+        [[nodiscard]] detail::BoardFootprintState &mutable_state() noexcept;
+        [[nodiscard]] const detail::BoardFootprintState &state() const noexcept;
+
+        std::shared_ptr<detail::BoardFootprintState> state_;
+    };
+
+    struct PlacementStorage : BoardPlacementModel {
+        PlacementStorage();
+        PlacementStorage(const PlacementStorage &other);
+        PlacementStorage(PlacementStorage &&other) noexcept = default;
+        PlacementStorage &operator=(const PlacementStorage &other);
+        PlacementStorage &operator=(PlacementStorage &&other) noexcept = default;
+
+        [[nodiscard]] ComponentPlacementId place_component(ComponentPlacement placement);
+
+      private:
+        explicit PlacementStorage(std::shared_ptr<detail::BoardPlacementState> state);
+        [[nodiscard]] detail::BoardPlacementState &mutable_state() noexcept;
+        [[nodiscard]] const detail::BoardPlacementState &state() const noexcept;
+
+        std::shared_ptr<detail::BoardPlacementState> state_;
+    };
+
+    struct CopperStorage : BoardCopperModel {
+        CopperStorage();
+        CopperStorage(const CopperStorage &other);
+        CopperStorage(CopperStorage &&other) noexcept = default;
+        CopperStorage &operator=(const CopperStorage &other);
+        CopperStorage &operator=(CopperStorage &&other) noexcept = default;
+
+        [[nodiscard]] BoardTrackId add_track(BoardTrack track);
+        [[nodiscard]] BoardViaId add_via(BoardVia via);
+        [[nodiscard]] BoardZoneId add_zone(BoardZone zone);
+        [[nodiscard]] BoardKeepoutId add_keepout(BoardKeepout keepout);
+        [[nodiscard]] BoardRoomId add_room(BoardRoom room);
+        [[nodiscard]] BoardTextId add_text(BoardText text);
+
+      private:
+        explicit CopperStorage(std::shared_ptr<detail::BoardCopperState> state);
+        [[nodiscard]] detail::BoardCopperState &mutable_state() noexcept;
+        [[nodiscard]] const detail::BoardCopperState &state() const noexcept;
+
+        std::shared_ptr<detail::BoardCopperState> state_;
+    };
+
     void require_layer(BoardLayerId layer) const;
 
     void require_net(NetId net) const;
@@ -215,10 +294,10 @@ class Board {
     BoardName name_;
     BoardUnits units_{BoardUnits::Millimeters};
     std::size_t geometry_mutation_count_ = 0;
-    BoardStructureModel structure_;
-    BoardFootprintModel footprint_cache_;
-    BoardPlacementModel placements_;
-    BoardCopperModel copper_;
+    StructureStorage structure_;
+    FootprintStorage footprint_cache_;
+    PlacementStorage placements_;
+    CopperStorage copper_;
 };
 
 namespace detail {

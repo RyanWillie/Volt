@@ -1,8 +1,11 @@
 #include <volt/circuit/constraints/net_classes.hpp>
 
+#include "../circuit_storage.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -276,22 +279,68 @@ void NetClass::set_allowed_layer_names(std::vector<std::string> names) {
     return std::nullopt;
 }
 
-[[nodiscard]] NetClassId NetClasses::add_net_class(NetClass net_class) {
+NetClasses::NetClasses() : NetClasses{std::make_shared<detail::NetClassesState>()} {}
+
+NetClasses::NetClasses(std::shared_ptr<const detail::NetClassesState> state)
+    : state_{std::move(state)} {}
+
+NetClasses::NetClasses(const NetClasses &other)
+    : NetClasses{std::make_shared<detail::NetClassesState>(other.state())} {}
+
+NetClasses::NetClasses(NetClasses &&other) noexcept = default;
+
+NetClasses &NetClasses::operator=(const NetClasses &other) {
+    if (this != &other) {
+        state_ = std::make_shared<detail::NetClassesState>(other.state());
+    }
+    return *this;
+}
+
+NetClasses &NetClasses::operator=(NetClasses &&other) noexcept = default;
+
+NetClasses::~NetClasses() = default;
+
+Circuit::NetClassStorage::NetClassStorage()
+    : NetClassStorage{std::make_shared<detail::NetClassesState>()} {}
+
+Circuit::NetClassStorage::NetClassStorage(std::shared_ptr<detail::NetClassesState> state)
+    : NetClasses{state}, state_{std::move(state)} {}
+
+Circuit::NetClassStorage::NetClassStorage(const NetClassStorage &other)
+    : NetClassStorage{std::make_shared<detail::NetClassesState>(other.state())} {}
+
+Circuit::NetClassStorage &Circuit::NetClassStorage::operator=(const NetClassStorage &other) {
+    if (this != &other) {
+        auto replacement =
+            NetClassStorage{std::make_shared<detail::NetClassesState>(other.state())};
+        *this = std::move(replacement);
+    }
+    return *this;
+}
+
+[[nodiscard]] detail::NetClassesState &Circuit::NetClassStorage::mutable_state() noexcept {
+    return *state_;
+}
+
+[[nodiscard]] const detail::NetClassesState &Circuit::NetClassStorage::state() const noexcept {
+    return *state_;
+}
+
+[[nodiscard]] NetClassId Circuit::NetClassStorage::add_net_class(NetClass net_class) {
     if (net_class_by_name(net_class.name()).has_value()) {
         throw std::logic_error{"Net class name already exists"};
     }
 
-    return net_classes_.insert(std::move(net_class));
+    return mutable_state().net_classes.insert(std::move(net_class));
 }
 
-[[nodiscard]] bool NetClasses::assign_net_class(detail::KernelMutationAccess, NetId net,
-                                                NetClassId net_class) {
+[[nodiscard]] bool Circuit::NetClassStorage::assign_net_class(NetId net, NetClassId net_class) {
     require_net_class(net_class);
-    const auto existing =
-        std::find_if(net_class_assignments_.begin(), net_class_assignments_.end(),
-                     [net](const auto &assignment) { return assignment.first == net; });
-    if (existing == net_class_assignments_.end()) {
-        net_class_assignments_.emplace_back(net, net_class);
+    const auto existing = std::find_if(
+        mutable_state().net_class_assignments.begin(), mutable_state().net_class_assignments.end(),
+        [net](const auto &assignment) { return assignment.first == net; });
+    if (existing == mutable_state().net_class_assignments.end()) {
+        mutable_state().net_class_assignments.emplace_back(net, net_class);
         return true;
     }
     if (existing->second == net_class) {
@@ -303,14 +352,14 @@ void NetClass::set_allowed_layer_names(std::vector<std::string> names) {
 }
 
 [[nodiscard]] const NetClass &NetClasses::net_class(NetClassId id) const {
-    return net_classes_.get(id);
+    return state().net_classes.get(id);
 }
 
 [[nodiscard]] std::optional<NetClassId>
 NetClasses::net_class_by_name(const NetClassName &name) const {
-    for (std::size_t index = 0; index < net_classes_.size(); ++index) {
+    for (std::size_t index = 0; index < state().net_classes.size(); ++index) {
         const auto id = NetClassId{index};
-        if (net_classes_.get(id).name() == name) {
+        if (state().net_classes.get(id).name() == name) {
             return id;
         }
     }
@@ -320,9 +369,9 @@ NetClasses::net_class_by_name(const NetClassName &name) const {
 
 [[nodiscard]] std::optional<NetClassId> NetClasses::net_class_for_net(NetId net) const noexcept {
     const auto match =
-        std::find_if(net_class_assignments_.begin(), net_class_assignments_.end(),
+        std::find_if(state().net_class_assignments.begin(), state().net_class_assignments.end(),
                      [net](const auto &assignment) { return assignment.first == net; });
-    if (match == net_class_assignments_.end()) {
+    if (match == state().net_class_assignments.end()) {
         return std::nullopt;
     }
 
@@ -331,17 +380,19 @@ NetClasses::net_class_by_name(const NetClassName &name) const {
 
 [[nodiscard]] const std::vector<std::pair<NetId, NetClassId>> &
 NetClasses::net_class_assignments() const noexcept {
-    return net_class_assignments_;
+    return state().net_class_assignments;
 }
 
 [[nodiscard]] std::size_t NetClasses::net_class_count() const noexcept {
-    return net_classes_.size();
+    return state().net_classes.size();
 }
 
 void NetClasses::require_net_class(NetClassId net_class) const {
-    if (!net_classes_.contains(net_class)) {
+    if (!state().net_classes.contains(net_class)) {
         throw std::out_of_range{"Net class ID is out of range"};
     }
 }
+
+[[nodiscard]] const detail::NetClassesState &NetClasses::state() const noexcept { return *state_; }
 
 } // namespace volt

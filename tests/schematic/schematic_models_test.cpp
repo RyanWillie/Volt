@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include <volt/schematic/schematic.hpp>
 #include <volt/schematic/schematic_items_model.hpp>
 #include <volt/schematic/schematic_library_model.hpp>
 #include <volt/schematic/schematic_sheet_model.hpp>
@@ -115,28 +116,30 @@ static_assert(!CanAddSchematicSymbolField<volt::SchematicItemsModel>);
 } // namespace
 
 TEST_CASE("SchematicLibraryModel owns unique symbol definitions") {
-    auto model = volt::SchematicLibraryModel{};
-    const auto symbol = model.add_symbol_definition(make_resistor_symbol());
+    auto circuit = volt::Circuit{};
+    auto schematic = volt::Schematic{circuit};
+    const auto symbol = schematic.add_symbol_definition(make_resistor_symbol());
 
     CHECK(symbol == volt::SymbolDefId{0});
-    CHECK(model.symbol_definition_count() == 1);
-    CHECK(model.symbol_definition(symbol).name() == "Resistor");
-    CHECK(model.symbol_definition_by_name("Resistor") == symbol);
-    CHECK_FALSE(model.symbol_definition_by_name("Missing").has_value());
-    CHECK_THROWS_AS(model.add_symbol_definition(make_resistor_symbol()), std::logic_error);
+    CHECK(schematic.symbol_definition_count() == 1);
+    CHECK(schematic.symbol_definition(symbol).name() == "Resistor");
+    CHECK(schematic.symbol_definition_by_name("Resistor") == symbol);
+    CHECK_FALSE(schematic.symbol_definition_by_name("Missing").has_value());
+    CHECK_THROWS_AS(schematic.add_symbol_definition(make_resistor_symbol()), std::logic_error);
 }
 
 TEST_CASE("SchematicSheetModel owns sheets and authored regions") {
-    auto model = volt::SchematicSheetModel{};
-    const auto sheet = model.add_sheet(volt::Sheet{"Main"});
-    const auto region = model.add_sheet_region(
+    auto circuit = volt::Circuit{};
+    auto schematic = volt::Schematic{circuit};
+    const auto sheet = schematic.add_sheet(volt::Sheet{"Main"});
+    const auto region = schematic.add_sheet_region(
         sheet, volt::SheetRegion{"power", "Power", volt::SheetRegionBounds{0.0, 0.0, 20.0, 10.0}});
 
-    CHECK(model.sheet_count() == 1);
-    CHECK(model.sheet_by_name("Main") == sheet);
-    CHECK(model.sheet_region_by_name(sheet, "power") == region);
-    CHECK_THROWS_AS(model.add_sheet(volt::Sheet{"Main"}), std::logic_error);
-    CHECK_THROWS_AS(model.add_sheet_region(
+    CHECK(schematic.sheet_count() == 1);
+    CHECK(schematic.sheet_by_name("Main") == sheet);
+    CHECK(schematic.sheet_region_by_name(sheet, "power") == region);
+    CHECK_THROWS_AS(schematic.add_sheet(volt::Sheet{"Main"}), std::logic_error);
+    CHECK_THROWS_AS(schematic.add_sheet_region(
                         sheet, volt::SheetRegion{"power", "Power",
                                                  volt::SheetRegionBounds{0.0, 0.0, 20.0, 10.0}}),
                     std::logic_error);

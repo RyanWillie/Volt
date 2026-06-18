@@ -1,78 +1,119 @@
 #include <volt/schematic/schematic_sheet_model.hpp>
 
+#include "schematic_storage.hpp"
+
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
-#include "../core/mutation_access.hpp"
-
 namespace volt {
 
-[[nodiscard]] SheetId SchematicSheetModel::add_sheet(Sheet sheet) {
+SchematicSheetModel::SchematicSheetModel()
+    : SchematicSheetModel{std::make_shared<detail::SchematicSheetState>()} {}
+
+SchematicSheetModel::SchematicSheetModel(std::shared_ptr<const detail::SchematicSheetState> state)
+    : state_{std::move(state)} {}
+
+SchematicSheetModel::SchematicSheetModel(const SchematicSheetModel &other)
+    : SchematicSheetModel{std::make_shared<detail::SchematicSheetState>(other.state())} {}
+
+SchematicSheetModel::SchematicSheetModel(SchematicSheetModel &&other) noexcept = default;
+
+SchematicSheetModel &SchematicSheetModel::operator=(const SchematicSheetModel &other) {
+    if (this != &other) {
+        state_ = std::make_shared<detail::SchematicSheetState>(other.state());
+    }
+    return *this;
+}
+
+SchematicSheetModel &SchematicSheetModel::operator=(SchematicSheetModel &&other) noexcept = default;
+
+SchematicSheetModel::~SchematicSheetModel() = default;
+
+Schematic::SheetStorage::SheetStorage()
+    : SheetStorage{std::make_shared<detail::SchematicSheetState>()} {}
+
+Schematic::SheetStorage::SheetStorage(std::shared_ptr<detail::SchematicSheetState> state)
+    : SchematicSheetModel{state}, state_{std::move(state)} {}
+
+Schematic::SheetStorage::SheetStorage(const SheetStorage &other)
+    : SheetStorage{std::make_shared<detail::SchematicSheetState>(other.state())} {}
+
+Schematic::SheetStorage &Schematic::SheetStorage::operator=(const SheetStorage &other) {
+    if (this != &other) {
+        auto replacement =
+            SheetStorage{std::make_shared<detail::SchematicSheetState>(other.state())};
+        *this = std::move(replacement);
+    }
+    return *this;
+}
+
+[[nodiscard]] detail::SchematicSheetState &Schematic::SheetStorage::mutable_state() noexcept {
+    return *state_;
+}
+
+[[nodiscard]] const detail::SchematicSheetState &Schematic::SheetStorage::state() const noexcept {
+    return *state_;
+}
+
+[[nodiscard]] SheetId Schematic::SheetStorage::add_sheet(Sheet sheet) {
     if (sheet_by_name(sheet.name()).has_value()) {
         throw std::logic_error{"Sheet name already exists"};
     }
 
-    return sheets_.insert(std::move(sheet));
+    return mutable_state().sheets.insert(detail::SheetStorage{std::move(sheet)});
 }
 
-[[nodiscard]] std::size_t SchematicSheetModel::add_sheet_region(SheetId sheet_id,
-                                                                SheetRegion region) {
+[[nodiscard]] std::size_t Schematic::SheetStorage::add_sheet_region(SheetId sheet_id,
+                                                                    SheetRegion region) {
     require_sheet(sheet_id);
-    auto &sheet_ref = mutable_sheet(sheet_id);
+    auto &sheet_ref = mutable_state().sheets.get(sheet_id);
     if (sheet_ref.region_by_name(region.name()).has_value()) {
         throw std::logic_error{"Sheet region name already exists"};
     }
 
-    return sheet_ref.add_region(detail::kernel_mutation_access(), std::move(region));
+    return sheet_ref.add_region(std::move(region));
 }
 
-void SchematicSheetModel::add_symbol_instance(detail::KernelMutationAccess access, SheetId sheet_id,
-                                              SymbolInstanceId instance) {
-    mutable_sheet(sheet_id).add_symbol_instance(access, instance);
+void Schematic::SheetStorage::add_symbol_instance(SheetId sheet_id, SymbolInstanceId instance) {
+    mutable_state().sheets.get(sheet_id).add_symbol_instance(instance);
 }
 
-void SchematicSheetModel::add_wire_run(detail::KernelMutationAccess access, SheetId sheet_id,
-                                       WireRunId wire) {
-    mutable_sheet(sheet_id).add_wire_run(access, wire);
+void Schematic::SheetStorage::add_wire_run(SheetId sheet_id, WireRunId wire) {
+    mutable_state().sheets.get(sheet_id).add_wire_run(wire);
 }
 
-void SchematicSheetModel::add_net_label(detail::KernelMutationAccess access, SheetId sheet_id,
-                                        NetLabelId label) {
-    mutable_sheet(sheet_id).add_net_label(access, label);
+void Schematic::SheetStorage::add_net_label(SheetId sheet_id, NetLabelId label) {
+    mutable_state().sheets.get(sheet_id).add_net_label(label);
 }
 
-void SchematicSheetModel::add_junction(detail::KernelMutationAccess access, SheetId sheet_id,
-                                       JunctionId junction) {
-    mutable_sheet(sheet_id).add_junction(access, junction);
+void Schematic::SheetStorage::add_junction(SheetId sheet_id, JunctionId junction) {
+    mutable_state().sheets.get(sheet_id).add_junction(junction);
 }
 
-void SchematicSheetModel::add_power_port(detail::KernelMutationAccess access, SheetId sheet_id,
-                                         PowerPortId port) {
-    mutable_sheet(sheet_id).add_power_port(access, port);
+void Schematic::SheetStorage::add_power_port(SheetId sheet_id, PowerPortId port) {
+    mutable_state().sheets.get(sheet_id).add_power_port(port);
 }
 
-void SchematicSheetModel::add_no_connect_marker(detail::KernelMutationAccess access,
-                                                SheetId sheet_id, NoConnectMarkerId marker) {
-    mutable_sheet(sheet_id).add_no_connect_marker(access, marker);
+void Schematic::SheetStorage::add_no_connect_marker(SheetId sheet_id, NoConnectMarkerId marker) {
+    mutable_state().sheets.get(sheet_id).add_no_connect_marker(marker);
 }
 
-void SchematicSheetModel::add_sheet_port(detail::KernelMutationAccess access, SheetId sheet_id,
-                                         SheetPortId port) {
-    mutable_sheet(sheet_id).add_sheet_port(access, port);
+void Schematic::SheetStorage::add_sheet_port(SheetId sheet_id, SheetPortId port) {
+    mutable_state().sheets.get(sheet_id).add_sheet_port(port);
 }
 
-void SchematicSheetModel::add_symbol_field(detail::KernelMutationAccess access, SheetId sheet_id,
-                                           SymbolFieldId field) {
-    mutable_sheet(sheet_id).add_symbol_field(access, field);
+void Schematic::SheetStorage::add_symbol_field(SheetId sheet_id, SymbolFieldId field) {
+    mutable_state().sheets.get(sheet_id).add_symbol_field(field);
 }
 
 [[nodiscard]] std::optional<SheetId>
 SchematicSheetModel::sheet_by_name(const std::string &name) const {
-    for (std::size_t index = 0; index < sheets_.size(); ++index) {
+    for (std::size_t index = 0; index < state().sheets.size(); ++index) {
         const auto id = SheetId{index};
-        if (sheets_.get(id).name() == name) {
+        if (state().sheets.get(id).name() == name) {
             return id;
         }
     }
@@ -83,27 +124,31 @@ SchematicSheetModel::sheet_by_name(const std::string &name) const {
 [[nodiscard]] std::optional<std::size_t>
 SchematicSheetModel::sheet_region_by_name(SheetId sheet_id, const std::string &name) const {
     require_sheet(sheet_id);
-    return sheets_.get(sheet_id).region_by_name(name);
+    return state().sheets.get(sheet_id).region_by_name(name);
 }
 
-[[nodiscard]] const Sheet &SchematicSheetModel::sheet(SheetId id) const { return sheets_.get(id); }
+[[nodiscard]] const Sheet &SchematicSheetModel::sheet(SheetId id) const {
+    return state().sheets.get(id);
+}
 
 [[nodiscard]] const SheetRegion &SchematicSheetModel::sheet_region(SheetId sheet_id,
                                                                    std::size_t region) const {
     require_sheet(sheet_id);
-    return sheets_.get(sheet_id).region(region);
+    return state().sheets.get(sheet_id).region(region);
 }
 
 [[nodiscard]] std::size_t SchematicSheetModel::sheet_count() const noexcept {
-    return sheets_.size();
+    return state().sheets.size();
 }
 
 void SchematicSheetModel::require_sheet(SheetId sheet_id) const {
-    if (!sheets_.contains(sheet_id)) {
+    if (!state().sheets.contains(sheet_id)) {
         throw std::out_of_range{"Sheet ID does not belong to this schematic"};
     }
 }
 
-[[nodiscard]] Sheet &SchematicSheetModel::mutable_sheet(SheetId id) { return sheets_.get(id); }
+[[nodiscard]] const detail::SchematicSheetState &SchematicSheetModel::state() const noexcept {
+    return *state_;
+}
 
 } // namespace volt

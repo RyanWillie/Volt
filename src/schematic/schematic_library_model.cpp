@@ -1,26 +1,80 @@
 #include <volt/schematic/schematic_library_model.hpp>
 
+#include "schematic_storage.hpp"
+
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 namespace volt {
 
+SchematicLibraryModel::SchematicLibraryModel()
+    : SchematicLibraryModel{std::make_shared<detail::SchematicLibraryState>()} {}
+
+SchematicLibraryModel::SchematicLibraryModel(
+    std::shared_ptr<const detail::SchematicLibraryState> state)
+    : state_{std::move(state)} {}
+
+SchematicLibraryModel::SchematicLibraryModel(const SchematicLibraryModel &other)
+    : SchematicLibraryModel{std::make_shared<detail::SchematicLibraryState>(other.state())} {}
+
+SchematicLibraryModel::SchematicLibraryModel(SchematicLibraryModel &&other) noexcept = default;
+
+SchematicLibraryModel &SchematicLibraryModel::operator=(const SchematicLibraryModel &other) {
+    if (this != &other) {
+        state_ = std::make_shared<detail::SchematicLibraryState>(other.state());
+    }
+    return *this;
+}
+
+SchematicLibraryModel &
+SchematicLibraryModel::operator=(SchematicLibraryModel &&other) noexcept = default;
+
+SchematicLibraryModel::~SchematicLibraryModel() = default;
+
+Schematic::LibraryStorage::LibraryStorage()
+    : LibraryStorage{std::make_shared<detail::SchematicLibraryState>()} {}
+
+Schematic::LibraryStorage::LibraryStorage(std::shared_ptr<detail::SchematicLibraryState> state)
+    : SchematicLibraryModel{state}, state_{std::move(state)} {}
+
+Schematic::LibraryStorage::LibraryStorage(const LibraryStorage &other)
+    : LibraryStorage{std::make_shared<detail::SchematicLibraryState>(other.state())} {}
+
+Schematic::LibraryStorage &Schematic::LibraryStorage::operator=(const LibraryStorage &other) {
+    if (this != &other) {
+        auto replacement =
+            LibraryStorage{std::make_shared<detail::SchematicLibraryState>(other.state())};
+        *this = std::move(replacement);
+    }
+    return *this;
+}
+
+[[nodiscard]] detail::SchematicLibraryState &Schematic::LibraryStorage::mutable_state() noexcept {
+    return *state_;
+}
+
+[[nodiscard]] const detail::SchematicLibraryState &
+Schematic::LibraryStorage::state() const noexcept {
+    return *state_;
+}
+
 [[nodiscard]] SymbolDefId
-SchematicLibraryModel::add_symbol_definition(SymbolDefinition definition) {
+Schematic::LibraryStorage::add_symbol_definition(SymbolDefinition definition) {
     if (symbol_definition_by_name(definition.name()).has_value()) {
         throw std::logic_error{"Symbol definition name already exists"};
     }
 
-    return symbol_definitions_.insert(std::move(definition));
+    return mutable_state().symbol_definitions.insert(std::move(definition));
 }
 
 [[nodiscard]] std::optional<SymbolDefId>
 SchematicLibraryModel::symbol_definition_by_name(const std::string &name) const {
-    for (std::size_t index = 0; index < symbol_definitions_.size(); ++index) {
+    for (std::size_t index = 0; index < state().symbol_definitions.size(); ++index) {
         const auto id = SymbolDefId{index};
-        if (symbol_definitions_.get(id).name() == name) {
+        if (state().symbol_definitions.get(id).name() == name) {
             return id;
         }
     }
@@ -30,17 +84,21 @@ SchematicLibraryModel::symbol_definition_by_name(const std::string &name) const 
 
 [[nodiscard]] const SymbolDefinition &
 SchematicLibraryModel::symbol_definition(SymbolDefId id) const {
-    return symbol_definitions_.get(id);
+    return state().symbol_definitions.get(id);
 }
 
 [[nodiscard]] std::size_t SchematicLibraryModel::symbol_definition_count() const noexcept {
-    return symbol_definitions_.size();
+    return state().symbol_definitions.size();
 }
 
 void SchematicLibraryModel::require_symbol_definition(SymbolDefId symbol_definition) const {
-    if (!symbol_definitions_.contains(symbol_definition)) {
+    if (!state().symbol_definitions.contains(symbol_definition)) {
         throw std::out_of_range{"Symbol definition ID does not belong to this schematic"};
     }
+}
+
+[[nodiscard]] const detail::SchematicLibraryState &SchematicLibraryModel::state() const noexcept {
+    return *state_;
 }
 
 } // namespace volt

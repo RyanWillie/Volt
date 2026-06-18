@@ -1,10 +1,10 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
 
-#include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/pcb/copper/board_copper.hpp>
 #include <volt/pcb/features/board_features.hpp>
@@ -12,6 +12,10 @@
 #include <volt/pcb/layers/board_layers.hpp>
 
 namespace volt {
+
+namespace detail {
+struct BoardStructureState;
+}
 
 /**
  * Owns board structure data: layers, stackup, outline, design rules, and mechanical features.
@@ -23,23 +27,18 @@ namespace volt {
  */
 class BoardStructureModel {
   public:
-    /** Add a board layer and return its stable board-local ID. */
-    [[nodiscard]] BoardLayerId add_layer(BoardLayer layer);
-
-    /** Replace the board layer stack. */
-    void set_layer_stack(LayerStack stack);
-
-    /** Replace the board outline. */
-    void set_outline(BoardOutline outline);
-
-    /** Replace the board design rules. */
-    void set_design_rules(BoardDesignRules rules);
-
-    /** Store the board capability profile snapshot used by manufacturability lint. */
-    void set_capability_profile(BoardCapabilityProfile profile);
-
-    /** Add a non-copper board feature and return its stable board-local ID. */
-    [[nodiscard]] BoardFeatureId add_feature(BoardFeature feature);
+    /** Construct an empty board-structure facade. */
+    BoardStructureModel();
+    /** Copy board-structure state. */
+    BoardStructureModel(const BoardStructureModel &other);
+    /** Move board-structure state. */
+    BoardStructureModel(BoardStructureModel &&other) noexcept;
+    /** Copy board-structure state. */
+    BoardStructureModel &operator=(const BoardStructureModel &other);
+    /** Move board-structure state. */
+    BoardStructureModel &operator=(BoardStructureModel &&other) noexcept;
+    /** Destroy board-structure state. */
+    ~BoardStructureModel();
 
     /** Return a board layer by board-local ID. */
     [[nodiscard]] const BoardLayer &layer(BoardLayerId id) const;
@@ -71,13 +70,14 @@ class BoardStructureModel {
     /** Return the board layer with the requested name, if present. */
     [[nodiscard]] std::optional<BoardLayerId> layer_by_name(const std::string &name) const;
 
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit BoardStructureModel(std::shared_ptr<const detail::BoardStructureState> state);
+
   private:
-    EntityTable<BoardLayer, BoardLayerId> layers_;
-    std::optional<LayerStack> layer_stack_;
-    std::optional<BoardOutline> outline_;
-    BoardDesignRules design_rules_;
-    std::optional<BoardCapabilityProfile> capability_profile_;
-    EntityTable<BoardFeature, BoardFeatureId> features_;
+    [[nodiscard]] const detail::BoardStructureState &state() const noexcept;
+
+    std::shared_ptr<const detail::BoardStructureState> state_;
 };
 
 } // namespace volt

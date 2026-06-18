@@ -1,76 +1,140 @@
 #include <volt/pcb/copper/board_copper_model.hpp>
 
+#include "../board_storage.hpp"
+
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
 #include <utility>
 
 namespace volt {
 
-[[nodiscard]] BoardTrackId BoardCopperModel::add_track(detail::KernelMutationAccess,
-                                                       BoardTrack track) {
-    return tracks_.insert(std::move(track));
+BoardCopperModel::BoardCopperModel()
+    : BoardCopperModel{std::make_shared<detail::BoardCopperState>()} {}
+
+BoardCopperModel::BoardCopperModel(std::shared_ptr<const detail::BoardCopperState> state)
+    : state_{std::move(state)} {}
+
+BoardCopperModel::BoardCopperModel(const BoardCopperModel &other)
+    : BoardCopperModel{std::make_shared<detail::BoardCopperState>(other.state())} {}
+
+BoardCopperModel::BoardCopperModel(BoardCopperModel &&other) noexcept = default;
+
+BoardCopperModel &BoardCopperModel::operator=(const BoardCopperModel &other) {
+    if (this != &other) {
+        state_ = std::make_shared<detail::BoardCopperState>(other.state());
+    }
+    return *this;
 }
 
-[[nodiscard]] BoardViaId BoardCopperModel::add_via(detail::KernelMutationAccess, BoardVia via) {
-    return vias_.insert(via);
+BoardCopperModel &BoardCopperModel::operator=(BoardCopperModel &&other) noexcept = default;
+
+BoardCopperModel::~BoardCopperModel() = default;
+
+Board::CopperStorage::CopperStorage()
+    : CopperStorage{std::make_shared<detail::BoardCopperState>()} {}
+
+Board::CopperStorage::CopperStorage(std::shared_ptr<detail::BoardCopperState> state)
+    : BoardCopperModel{state}, state_{std::move(state)} {}
+
+Board::CopperStorage::CopperStorage(const CopperStorage &other)
+    : CopperStorage{std::make_shared<detail::BoardCopperState>(other.state())} {}
+
+Board::CopperStorage &Board::CopperStorage::operator=(const CopperStorage &other) {
+    if (this != &other) {
+        auto replacement = CopperStorage{std::make_shared<detail::BoardCopperState>(other.state())};
+        *this = std::move(replacement);
+    }
+    return *this;
 }
 
-[[nodiscard]] BoardZoneId BoardCopperModel::add_zone(detail::KernelMutationAccess, BoardZone zone) {
-    return zones_.insert(std::move(zone));
+[[nodiscard]] detail::BoardCopperState &Board::CopperStorage::mutable_state() noexcept {
+    return *state_;
 }
 
-[[nodiscard]] BoardKeepoutId BoardCopperModel::add_keepout(detail::KernelMutationAccess,
-                                                           BoardKeepout keepout) {
-    return keepouts_.insert(std::move(keepout));
+[[nodiscard]] const detail::BoardCopperState &Board::CopperStorage::state() const noexcept {
+    return *state_;
 }
 
-[[nodiscard]] BoardRoomId BoardCopperModel::add_room(detail::KernelMutationAccess, BoardRoom room) {
-    for (std::size_t index = 0; index < rooms_.size(); ++index) {
-        if (rooms_.get(BoardRoomId{index}).name() == room.name()) {
+[[nodiscard]] BoardTrackId Board::CopperStorage::add_track(BoardTrack track) {
+    return mutable_state().tracks.insert(std::move(track));
+}
+
+[[nodiscard]] BoardViaId Board::CopperStorage::add_via(BoardVia via) {
+    return mutable_state().vias.insert(via);
+}
+
+[[nodiscard]] BoardZoneId Board::CopperStorage::add_zone(BoardZone zone) {
+    return mutable_state().zones.insert(std::move(zone));
+}
+
+[[nodiscard]] BoardKeepoutId Board::CopperStorage::add_keepout(BoardKeepout keepout) {
+    return mutable_state().keepouts.insert(std::move(keepout));
+}
+
+[[nodiscard]] BoardRoomId Board::CopperStorage::add_room(BoardRoom room) {
+    for (std::size_t index = 0; index < state().rooms.size(); ++index) {
+        if (state().rooms.get(BoardRoomId{index}).name() == room.name()) {
             throw std::logic_error{"Board room name already exists"};
         }
     }
-    return rooms_.insert(std::move(room));
+    return mutable_state().rooms.insert(std::move(room));
 }
 
-[[nodiscard]] BoardTextId BoardCopperModel::add_text(detail::KernelMutationAccess, BoardText text) {
-    return texts_.insert(std::move(text));
+[[nodiscard]] BoardTextId Board::CopperStorage::add_text(BoardText text) {
+    return mutable_state().texts.insert(std::move(text));
 }
 
 [[nodiscard]] const BoardTrack &BoardCopperModel::track(BoardTrackId id) const {
-    return tracks_.get(id);
+    return state().tracks.get(id);
 }
 
-[[nodiscard]] std::size_t BoardCopperModel::track_count() const noexcept { return tracks_.size(); }
+[[nodiscard]] std::size_t BoardCopperModel::track_count() const noexcept {
+    return state().tracks.size();
+}
 
-[[nodiscard]] const BoardVia &BoardCopperModel::via(BoardViaId id) const { return vias_.get(id); }
+[[nodiscard]] const BoardVia &BoardCopperModel::via(BoardViaId id) const {
+    return state().vias.get(id);
+}
 
-[[nodiscard]] std::size_t BoardCopperModel::via_count() const noexcept { return vias_.size(); }
+[[nodiscard]] std::size_t BoardCopperModel::via_count() const noexcept {
+    return state().vias.size();
+}
 
 [[nodiscard]] const BoardZone &BoardCopperModel::zone(BoardZoneId id) const {
-    return zones_.get(id);
+    return state().zones.get(id);
 }
 
-[[nodiscard]] std::size_t BoardCopperModel::zone_count() const noexcept { return zones_.size(); }
+[[nodiscard]] std::size_t BoardCopperModel::zone_count() const noexcept {
+    return state().zones.size();
+}
 
 [[nodiscard]] const BoardKeepout &BoardCopperModel::keepout(BoardKeepoutId id) const {
-    return keepouts_.get(id);
+    return state().keepouts.get(id);
 }
 
 [[nodiscard]] std::size_t BoardCopperModel::keepout_count() const noexcept {
-    return keepouts_.size();
+    return state().keepouts.size();
 }
 
 [[nodiscard]] const BoardRoom &BoardCopperModel::room(BoardRoomId id) const {
-    return rooms_.get(id);
+    return state().rooms.get(id);
 }
 
-[[nodiscard]] std::size_t BoardCopperModel::room_count() const noexcept { return rooms_.size(); }
+[[nodiscard]] std::size_t BoardCopperModel::room_count() const noexcept {
+    return state().rooms.size();
+}
 
 [[nodiscard]] const BoardText &BoardCopperModel::text(BoardTextId id) const {
-    return texts_.get(id);
+    return state().texts.get(id);
 }
 
-[[nodiscard]] std::size_t BoardCopperModel::text_count() const noexcept { return texts_.size(); }
+[[nodiscard]] std::size_t BoardCopperModel::text_count() const noexcept {
+    return state().texts.size();
+}
+
+[[nodiscard]] const detail::BoardCopperState &BoardCopperModel::state() const noexcept {
+    return *state_;
+}
 
 } // namespace volt

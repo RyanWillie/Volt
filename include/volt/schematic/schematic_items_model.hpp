@@ -1,15 +1,18 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 
-#include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
-#include <volt/core/mutation_access.hpp>
 #include <volt/schematic/schematic_items.hpp>
 
 namespace volt {
 
 class Schematic;
+
+namespace detail {
+struct SchematicItemsState;
+}
 
 /**
  * Owns schematic presentation items that reference existing logical kernel entities.
@@ -21,6 +24,19 @@ class Schematic;
  */
 class SchematicItemsModel {
   public:
+    /** Construct an empty schematic-items facade. */
+    SchematicItemsModel();
+    /** Copy schematic-items state. */
+    SchematicItemsModel(const SchematicItemsModel &other);
+    /** Move schematic-items state. */
+    SchematicItemsModel(SchematicItemsModel &&other) noexcept;
+    /** Copy schematic-items state. */
+    SchematicItemsModel &operator=(const SchematicItemsModel &other);
+    /** Move schematic-items state. */
+    SchematicItemsModel &operator=(SchematicItemsModel &&other) noexcept;
+    /** Destroy schematic-items state. */
+    ~SchematicItemsModel();
+
     /** Return a symbol placement by schematic-local ID. */
     [[nodiscard]] const SymbolInstance &symbol_instance(SymbolInstanceId id) const;
 
@@ -30,17 +46,11 @@ class SchematicItemsModel {
     /** Return a net label by schematic-local ID. */
     [[nodiscard]] const NetLabel &net_label(NetLabelId id) const;
 
-    /** Move rendered net-label text without changing logical connectivity. */
-    void move_net_label_text(NetLabelId id, Point position);
-
     /** Return a junction by schematic-local ID. */
     [[nodiscard]] const Junction &junction(JunctionId id) const;
 
     /** Return a power or ground marker by schematic-local ID. */
     [[nodiscard]] const PowerPort &power_port(PowerPortId id) const;
-
-    /** Move rendered power-port text without changing logical connectivity. */
-    void move_power_port_label(PowerPortId id, Point position);
 
     /** Return a no-connect marker by schematic-local ID. */
     [[nodiscard]] const NoConnectMarker &no_connect_marker(NoConnectMarkerId id) const;
@@ -50,9 +60,6 @@ class SchematicItemsModel {
 
     /** Return a symbol field by schematic-local ID. */
     [[nodiscard]] const SymbolField &symbol_field(SymbolFieldId id) const;
-
-    /** Move a symbol field without changing its owning logical symbol placement. */
-    void move_symbol_field(SymbolFieldId id, Point position);
 
     /** Return the number of symbol placements. */
     [[nodiscard]] std::size_t symbol_instance_count() const noexcept;
@@ -81,42 +88,14 @@ class SchematicItemsModel {
     /** Require that a symbol instance ID belongs to this model. */
     void require_symbol_instance(SymbolInstanceId instance) const;
 
-    /** Add a symbol placement over an existing logical component. */
-    [[nodiscard]] SymbolInstanceId add_symbol_instance(detail::KernelMutationAccess access,
-                                                       SymbolInstance instance);
-
-    /** Add a drawn wire run over an existing logical net. */
-    [[nodiscard]] WireRunId add_wire_run(detail::KernelMutationAccess access, WireRun wire);
-
-    /** Add a net label over an existing logical net. */
-    [[nodiscard]] NetLabelId add_net_label(detail::KernelMutationAccess access, NetLabel label);
-
-    /** Add a junction over an existing logical net. */
-    [[nodiscard]] JunctionId add_junction(detail::KernelMutationAccess access, Junction junction);
-
-    /** Add a power or ground marker over an existing logical net. */
-    [[nodiscard]] PowerPortId add_power_port(detail::KernelMutationAccess access, PowerPort port);
-
-    /** Add a no-connect marker over an existing logical pin. */
-    [[nodiscard]] NoConnectMarkerId add_no_connect_marker(detail::KernelMutationAccess access,
-                                                          NoConnectMarker marker);
-
-    /** Add a sheet or off-page port over an existing logical net. */
-    [[nodiscard]] SheetPortId add_sheet_port(detail::KernelMutationAccess access, SheetPort port);
-
-    /** Add a field owned by an existing symbol instance. */
-    [[nodiscard]] SymbolFieldId add_symbol_field(detail::KernelMutationAccess access,
-                                                 SymbolField field);
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit SchematicItemsModel(std::shared_ptr<const detail::SchematicItemsState> state);
 
   private:
-    EntityTable<SymbolInstance, SymbolInstanceId> symbol_instances_;
-    EntityTable<WireRun, WireRunId> wire_runs_;
-    EntityTable<NetLabel, NetLabelId> net_labels_;
-    EntityTable<Junction, JunctionId> junctions_;
-    EntityTable<PowerPort, PowerPortId> power_ports_;
-    EntityTable<NoConnectMarker, NoConnectMarkerId> no_connect_markers_;
-    EntityTable<SheetPort, SheetPortId> sheet_ports_;
-    EntityTable<SymbolField, SymbolFieldId> symbol_fields_;
+    [[nodiscard]] const detail::SchematicItemsState &state() const noexcept;
+
+    std::shared_ptr<const detail::SchematicItemsState> state_;
 };
 
 } // namespace volt

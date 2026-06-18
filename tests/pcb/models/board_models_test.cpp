@@ -60,42 +60,44 @@ static_assert(!CanInsertAfterBoardMutation<volt::BoardSpatialIndex>);
 } // namespace
 
 TEST_CASE("BoardStructureModel owns layers, stack, outline, rules, and features") {
-    auto model = volt::BoardStructureModel{};
-    const auto front = model.add_layer(
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
         volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
-    const auto back = model.add_layer(
+    const auto back = board.add_layer(
         volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
-    model.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
-    model.set_outline(
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
         volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{40.0, 20.0}));
-    model.set_design_rules(volt::BoardDesignRules{0.20, 0.18, 0.30, 0.70, 0.10});
-    const auto feature = model.add_feature(
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.18, 0.30, 0.70, 0.10});
+    const auto feature = board.add_feature(
         volt::BoardFeature::hole("MH1", volt::BoardPoint{3.0, 3.0}, 3.2, false, "mounting"));
 
-    CHECK(model.layer_count() == 2);
-    CHECK(model.layer(front).name() == "F.Cu");
-    REQUIRE(model.layer_stack().has_value());
-    CHECK(model.layer_stack()->layers() == std::vector{front, back});
-    REQUIRE(model.outline().has_value());
-    CHECK(model.design_rules().minimum_track_width_mm() == 0.18);
-    CHECK(model.feature(feature).kind() == volt::BoardFeatureKind::Hole);
-    CHECK(model.feature(feature).role() == "mounting");
+    CHECK(board.layer_count() == 2);
+    CHECK(board.layer(front).name() == "F.Cu");
+    REQUIRE(board.layer_stack().has_value());
+    CHECK(board.layer_stack()->layers() == std::vector{front, back});
+    REQUIRE(board.outline().has_value());
+    CHECK(board.design_rules().minimum_track_width_mm() == 0.18);
+    CHECK(board.feature(feature).kind() == volt::BoardFeatureKind::Hole);
+    CHECK(board.feature(feature).role() == "mounting");
 
-    CHECK_THROWS_AS(model.add_layer(volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper,
+    CHECK_THROWS_AS(board.add_layer(volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper,
                                                      volt::BoardLayerSide::Top}),
                     std::logic_error);
-    CHECK_THROWS_AS(model.set_layer_stack(volt::LayerStack{{front, volt::BoardLayerId{99}}, 1.6}),
+    CHECK_THROWS_AS(board.set_layer_stack(volt::LayerStack{{front, volt::BoardLayerId{99}}, 1.6}),
                     std::out_of_range);
 }
 
 TEST_CASE("BoardFootprintModel dedupes identical cached definitions and rejects conflicts") {
-    auto model = volt::BoardFootprintModel{};
-    const auto first = model.cache_footprint_definition(volt::passive_0603_footprint());
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    const auto first = board.cache_footprint_definition(volt::passive_0603_footprint());
 
-    CHECK(model.cache_footprint_definition(volt::passive_0603_footprint()) == first);
-    CHECK(model.footprint_definition(first) == volt::passive_0603_footprint());
-    CHECK(model.footprint_definition_count() == 1);
-    CHECK(model.footprint_definition_id(volt::FootprintRef{"passives", "R_0603_1608Metric"}) ==
+    CHECK(board.cache_footprint_definition(volt::passive_0603_footprint()) == first);
+    CHECK(board.footprint_definition(first) == volt::passive_0603_footprint());
+    CHECK(board.footprint_definition_count() == 1);
+    CHECK(board.footprint_definition_id(volt::FootprintRef{"passives", "R_0603_1608Metric"}) ==
           first);
 
     auto conflict = volt::FootprintDefinition{
@@ -104,7 +106,7 @@ TEST_CASE("BoardFootprintModel dedupes identical cached definitions and rejects 
             "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.0, 0.0},
             volt::FootprintSize{0.5, 0.5}, volt::FootprintLayerSet::front_smd())},
     };
-    CHECK_THROWS_AS(model.cache_footprint_definition(std::move(conflict)), std::logic_error);
+    CHECK_THROWS_AS(board.cache_footprint_definition(std::move(conflict)), std::logic_error);
 }
 
 TEST_CASE("BoardFootprintModel treats footprint courtyard and body geometry as cache identity") {
@@ -124,16 +126,17 @@ TEST_CASE("BoardFootprintModel treats footprint courtyard and body geometry as c
         volt::FootprintPoint{-0.5, 0.3},
     }};
 
-    auto model = volt::BoardFootprintModel{};
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
     const auto footprint = volt::FootprintDefinition{volt::FootprintRef{"test", "GeometryIdentity"},
                                                      std::vector{pad}, std::nullopt, body};
-    const auto id = model.cache_footprint_definition(footprint);
+    const auto id = board.cache_footprint_definition(footprint);
 
-    CHECK(model.cache_footprint_definition(footprint) == id);
+    CHECK(board.cache_footprint_definition(footprint) == id);
 
     auto conflict = volt::FootprintDefinition{volt::FootprintRef{"test", "GeometryIdentity"},
                                               std::vector{pad}, std::nullopt, larger_body};
-    CHECK_THROWS_AS(model.cache_footprint_definition(std::move(conflict)), std::logic_error);
+    CHECK_THROWS_AS(board.cache_footprint_definition(std::move(conflict)), std::logic_error);
 }
 
 TEST_CASE("Board stackup stores copper weight and dielectric properties") {
@@ -155,27 +158,28 @@ TEST_CASE("Board stackup stores copper weight and dielectric properties") {
 }
 
 TEST_CASE("Board stackup requires dielectrics to match copper layer pairs") {
-    auto model = volt::BoardStructureModel{};
-    const auto front = model.add_layer(
+    auto circuit = volt::Circuit{};
+    auto board = volt::Board{circuit};
+    const auto front = board.add_layer(
         volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
-    const auto back = model.add_layer(
+    const auto back = board.add_layer(
         volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
-    const auto silk = model.add_layer(
+    const auto silk = board.add_layer(
         volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
 
-    model.set_layer_stack(
+    board.set_layer_stack(
         volt::LayerStack{{front, silk, back}, 1.6, std::vector{volt::BoardDielectric{1.51, 4.6}}});
-    REQUIRE(model.layer_stack().has_value());
-    REQUIRE(model.layer_stack()->dielectrics().size() == 1);
-    CHECK(model.layer_stack()->dielectrics().front().relative_permittivity() == 4.6);
+    REQUIRE(board.layer_stack().has_value());
+    REQUIRE(board.layer_stack()->dielectrics().size() == 1);
+    CHECK(board.layer_stack()->dielectrics().front().relative_permittivity() == 4.6);
 
     CHECK_THROWS_AS(
-        model.set_layer_stack(volt::LayerStack{
+        board.set_layer_stack(volt::LayerStack{
             {front, back},
             1.6,
             std::vector{volt::BoardDielectric{0.7, 4.6}, volt::BoardDielectric{0.7, 4.6}}}),
         std::invalid_argument);
-    CHECK_THROWS_AS(model.set_layer_stack(volt::LayerStack{
+    CHECK_THROWS_AS(board.set_layer_stack(volt::LayerStack{
                         {front, silk}, 1.6, std::vector{volt::BoardDielectric{1.51, 4.6}}}),
                     std::invalid_argument);
 }

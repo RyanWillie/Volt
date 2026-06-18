@@ -1,9 +1,13 @@
+#include <volt/pcb/routing/board_router.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
+
+#include "board_spatial_index_storage.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -53,7 +57,28 @@ shape_outline_actual_clearance(const detail::BoardCopperShape &shape, const Boar
 
 } // namespace
 
-[[nodiscard]] bool BoardSpatialIndex::cell_less(const Cell &lhs, const Cell &rhs) {
+BoardSpatialIndex::BoardSpatialIndex(const BoardSpatialIndex &other)
+    : state_{std::make_unique<detail::BoardSpatialIndexState>(other.state())} {}
+
+BoardSpatialIndex::BoardSpatialIndex(BoardSpatialIndex &&other) noexcept = default;
+
+BoardSpatialIndex &BoardSpatialIndex::operator=(const BoardSpatialIndex &other) {
+    if (this != &other) {
+        state_ = std::make_unique<detail::BoardSpatialIndexState>(other.state());
+    }
+    return *this;
+}
+
+BoardSpatialIndex &BoardSpatialIndex::operator=(BoardSpatialIndex &&other) noexcept = default;
+
+BoardSpatialIndex::~BoardSpatialIndex() = default;
+
+[[nodiscard]] double BoardSpatialIndex::conservative_clearance_mm() const noexcept {
+    return state().conservative_clearance_mm;
+}
+
+[[nodiscard]] bool BoardSpatialIndex::cell_less(const detail::BoardSpatialIndexCell &lhs,
+                                                const detail::BoardSpatialIndexCell &rhs) {
     if (lhs.layer.index() != rhs.layer.index()) {
         return lhs.layer.index() < rhs.layer.index();
     }
@@ -63,13 +88,14 @@ shape_outline_actual_clearance(const detail::BoardCopperShape &shape, const Boar
     return lhs.y < rhs.y;
 }
 
-[[nodiscard]] bool BoardSpatialIndex::same_cell_key(const Cell &lhs, const Cell &rhs) {
+[[nodiscard]] bool BoardSpatialIndex::same_cell_key(const detail::BoardSpatialIndexCell &lhs,
+                                                    const detail::BoardSpatialIndexCell &rhs) {
     return lhs.layer == rhs.layer && lhs.x == rhs.x && lhs.y == rhs.y;
 }
 
-[[nodiscard]] BoardSpatialIndex::Box
+[[nodiscard]] detail::BoardSpatialIndexBox
 BoardSpatialIndex::shape_box(const detail::BoardCopperShape &shape) {
-    auto box = Box{
+    auto box = detail::BoardSpatialIndexBox{
         std::numeric_limits<double>::infinity(),
         std::numeric_limits<double>::infinity(),
         -std::numeric_limits<double>::infinity(),
@@ -84,8 +110,9 @@ BoardSpatialIndex::shape_box(const detail::BoardCopperShape &shape) {
     return box;
 }
 
-[[nodiscard]] BoardSpatialIndex::Box BoardSpatialIndex::outline_box(const BoardOutline &outline) {
-    auto box = Box{
+[[nodiscard]] detail::BoardSpatialIndexBox
+BoardSpatialIndex::outline_box(const BoardOutline &outline) {
+    auto box = detail::BoardSpatialIndexBox{
         std::numeric_limits<double>::infinity(),
         std::numeric_limits<double>::infinity(),
         -std::numeric_limits<double>::infinity(),
@@ -100,7 +127,8 @@ BoardSpatialIndex::shape_box(const detail::BoardCopperShape &shape) {
     return box;
 }
 
-[[nodiscard]] BoardSpatialIndex::Box BoardSpatialIndex::merge_box(Box lhs, Box rhs) {
+[[nodiscard]] detail::BoardSpatialIndexBox
+BoardSpatialIndex::merge_box(detail::BoardSpatialIndexBox lhs, detail::BoardSpatialIndexBox rhs) {
     lhs.min_x_mm = std::min(lhs.min_x_mm, rhs.min_x_mm);
     lhs.min_y_mm = std::min(lhs.min_y_mm, rhs.min_y_mm);
     lhs.max_x_mm = std::max(lhs.max_x_mm, rhs.max_x_mm);
@@ -108,7 +136,8 @@ BoardSpatialIndex::shape_box(const detail::BoardCopperShape &shape) {
     return lhs;
 }
 
-[[nodiscard]] BoardSpatialIndex::Box BoardSpatialIndex::expanded_box(Box box, double expansion_mm) {
+[[nodiscard]] detail::BoardSpatialIndexBox
+BoardSpatialIndex::expanded_box(detail::BoardSpatialIndexBox box, double expansion_mm) {
     box.min_x_mm -= expansion_mm;
     box.min_y_mm -= expansion_mm;
     box.max_x_mm += expansion_mm;
@@ -116,7 +145,8 @@ BoardSpatialIndex::shape_box(const detail::BoardCopperShape &shape) {
     return box;
 }
 
-[[nodiscard]] bool BoardSpatialIndex::boxes_intersect(Box lhs, Box rhs) {
+[[nodiscard]] bool BoardSpatialIndex::boxes_intersect(detail::BoardSpatialIndexBox lhs,
+                                                      detail::BoardSpatialIndexBox rhs) {
     return lhs.min_x_mm <= rhs.max_x_mm && lhs.max_x_mm >= rhs.min_x_mm &&
            lhs.min_y_mm <= rhs.max_y_mm && lhs.max_y_mm >= rhs.min_y_mm;
 }
@@ -125,9 +155,10 @@ BoardSpatialIndex::shape_box(const detail::BoardCopperShape &shape) {
     return static_cast<long long>(std::floor(value / cell_size_mm));
 }
 
-[[nodiscard]] double BoardSpatialIndex::extent_cell_size(const Board &board,
-                                                         const std::vector<Box> &boxes) {
-    auto extent = std::optional<Box>{};
+[[nodiscard]] double
+BoardSpatialIndex::extent_cell_size(const Board &board,
+                                    const std::vector<detail::BoardSpatialIndexBox> &boxes) {
+    auto extent = std::optional<detail::BoardSpatialIndexBox>{};
     if (board.outline().has_value()) {
         extent = outline_box(board.outline().value());
     }
@@ -174,37 +205,41 @@ BoardSpatialIndex::BoardSpatialIndex(const Board &board, const FootprintLibrary 
 
 BoardSpatialIndex::BoardSpatialIndex(const Board &board,
                                      std::vector<detail::BoardCopperShape> shapes)
-    : board_{&board}, shapes_{std::move(shapes)},
-      conservative_clearance_mm_{detail::maximum_required_copper_clearance(board)},
-      cell_size_mm_{1.0}, expected_geometry_mutation_count_{board.geometry_mutation_count()} {
-    boxes_.reserve(shapes_.size());
-    for (const auto &shape : shapes_) {
+    : state_{std::make_unique<detail::BoardSpatialIndexState>()} {
+    mutable_state().board = &board;
+    mutable_state().shapes = std::move(shapes);
+    mutable_state().conservative_clearance_mm = detail::maximum_required_copper_clearance(board);
+    mutable_state().cell_size_mm = 1.0;
+    mutable_state().expected_geometry_mutation_count = board.geometry_mutation_count();
+
+    mutable_state().boxes.reserve(state().shapes.size());
+    for (const auto &shape : state().shapes) {
         validate_shape(shape);
-        boxes_.push_back(shape_box(shape));
+        mutable_state().boxes.push_back(shape_box(shape));
     }
-    cell_size_mm_ = extent_cell_size(board, boxes_);
-    for (std::size_t index = 0; index < shapes_.size(); ++index) {
+    mutable_state().cell_size_mm = extent_cell_size(board, state().boxes);
+    for (std::size_t index = 0; index < state().shapes.size(); ++index) {
         index_shape(index);
     }
 }
 
 void BoardSpatialIndex::ensure_conservative_bound_current() const {
-    const auto current = detail::maximum_required_copper_clearance(*board_);
-    if (current > conservative_clearance_mm_ + detail::board_drc_epsilon) {
+    const auto current = detail::maximum_required_copper_clearance(*state().board);
+    if (current > state().conservative_clearance_mm + detail::board_drc_epsilon) {
         throw std::logic_error{
             "Board spatial index clearance bound is stale; rebuild after board rule changes"};
     }
 }
 
 void BoardSpatialIndex::ensure_geometry_current() const {
-    if (board_->geometry_mutation_count() != expected_geometry_mutation_count_) {
+    if (state().board->geometry_mutation_count() != state().expected_geometry_mutation_count) {
         throw std::logic_error{
             "Board spatial index is stale; board geometry changed outside the index"};
     }
 }
 
 void BoardSpatialIndex::validate_shape(const detail::BoardCopperShape &shape) const {
-    if (shape.net.index() >= board_->circuit().net_count()) {
+    if (shape.net.index() >= state().board->circuit().net_count()) {
         throw std::invalid_argument{"Board spatial index shape net must belong to the board"};
     }
     if (shape.layers.empty()) {
@@ -227,8 +262,8 @@ void BoardSpatialIndex::validate_shape(const detail::BoardCopperShape &shape) co
         throw std::invalid_argument{"Board spatial index shape layers must be unique"};
     }
     for (const auto layer : shape.layers) {
-        if (layer.index() >= board_->layer_count() ||
-            board_->layer(layer).role() != BoardLayerRole::Copper) {
+        if (layer.index() >= state().board->layer_count() ||
+            state().board->layer(layer).role() != BoardLayerRole::Copper) {
             throw std::invalid_argument{
                 "Board spatial index shape layers must be board copper layers"};
         }
@@ -236,20 +271,39 @@ void BoardSpatialIndex::validate_shape(const detail::BoardCopperShape &shape) co
 }
 
 void BoardSpatialIndex::index_shape(std::size_t shape_index) {
-    const auto &shape = shapes_[shape_index];
-    const auto box = boxes_[shape_index];
-    const auto min_x = cell_key(box.min_x_mm, cell_size_mm_);
-    const auto max_x = cell_key(box.max_x_mm, cell_size_mm_);
-    const auto min_y = cell_key(box.min_y_mm, cell_size_mm_);
-    const auto max_y = cell_key(box.max_y_mm, cell_size_mm_);
+    const auto &shape = state().shapes[shape_index];
+    const auto box = state().boxes[shape_index];
+    const auto cell_key_for = [](double value, double cell_size_mm) {
+        return static_cast<long long>(std::floor(value / cell_size_mm));
+    };
+    const auto cell_less_for = [](const detail::BoardSpatialIndexCell &lhs,
+                                  const detail::BoardSpatialIndexCell &rhs) {
+        if (lhs.layer.index() != rhs.layer.index()) {
+            return lhs.layer.index() < rhs.layer.index();
+        }
+        if (lhs.x != rhs.x) {
+            return lhs.x < rhs.x;
+        }
+        return lhs.y < rhs.y;
+    };
+    const auto same_cell_key_for = [](const detail::BoardSpatialIndexCell &lhs,
+                                      const detail::BoardSpatialIndexCell &rhs) {
+        return lhs.layer == rhs.layer && lhs.x == rhs.x && lhs.y == rhs.y;
+    };
+
+    const auto min_x = cell_key_for(box.min_x_mm, state().cell_size_mm);
+    const auto max_x = cell_key_for(box.max_x_mm, state().cell_size_mm);
+    const auto min_y = cell_key_for(box.min_y_mm, state().cell_size_mm);
+    const auto max_y = cell_key_for(box.max_y_mm, state().cell_size_mm);
 
     for (const auto layer : shape.layers) {
         for (auto x = min_x; x <= max_x; ++x) {
             for (auto y = min_y; y <= max_y; ++y) {
-                auto key = Cell{layer, x, y, {}};
-                auto position = std::lower_bound(cells_.begin(), cells_.end(), key, cell_less);
-                if (position == cells_.end() || !same_cell_key(*position, key)) {
-                    position = cells_.insert(position, std::move(key));
+                auto key = detail::BoardSpatialIndexCell{layer, x, y, {}};
+                auto position = std::lower_bound(mutable_state().cells.begin(),
+                                                 mutable_state().cells.end(), key, cell_less_for);
+                if (position == mutable_state().cells.end() || !same_cell_key_for(*position, key)) {
+                    position = mutable_state().cells.insert(position, std::move(key));
                 }
                 position->shape_indices.push_back(shape_index);
             }
@@ -264,9 +318,9 @@ void BoardSpatialIndex::insert(BoardSpatialQueryShape shape) {
 void BoardSpatialIndex::append_shape(detail::BoardCopperShape shape) {
     ensure_conservative_bound_current();
     validate_shape(shape);
-    const auto shape_index = shapes_.size();
-    boxes_.push_back(shape_box(shape));
-    shapes_.push_back(std::move(shape));
+    const auto shape_index = state().shapes.size();
+    mutable_state().boxes.push_back(shape_box(shape));
+    mutable_state().shapes.push_back(std::move(shape));
     index_shape(shape_index);
 }
 
@@ -275,23 +329,27 @@ void BoardSpatialIndex::insert(detail::BoardCopperShape shape) {
     append_shape(std::move(shape));
 }
 
-void BoardSpatialIndex::insert_after_board_mutation(detail::KernelMutationAccess,
-                                                    BoardSpatialQueryShape shape,
-                                                    std::size_t previous_geometry_mutation_count) {
-    insert_after_board_mutation(to_copper_shape(std::move(shape)),
-                                previous_geometry_mutation_count);
+void BoardRouter::SpatialIndexStorage::insert_after_board_mutation(
+    BoardSpatialQueryShape shape, std::size_t previous_geometry_mutation_count) {
+    detail::insert_after_board_mutation(*this, std::move(shape), previous_geometry_mutation_count);
 }
 
-void BoardSpatialIndex::insert_after_board_mutation(detail::BoardCopperShape shape,
-                                                    std::size_t previous_geometry_mutation_count) {
-    if (expected_geometry_mutation_count_ != previous_geometry_mutation_count ||
-        board_->geometry_mutation_count() != previous_geometry_mutation_count + 1U) {
+namespace detail {
+
+void insert_after_board_mutation(BoardSpatialIndex &index, BoardSpatialQueryShape shape,
+                                 std::size_t previous_geometry_mutation_count) {
+    if (index.state().expected_geometry_mutation_count != previous_geometry_mutation_count ||
+        index.state().board->geometry_mutation_count() != previous_geometry_mutation_count + 1U) {
         throw std::logic_error{
             "Board spatial index mirror insert must follow exactly one board geometry mutation"};
     }
-    append_shape(std::move(shape));
-    expected_geometry_mutation_count_ = board_->geometry_mutation_count();
+
+    index.append_shape(BoardSpatialIndex::to_copper_shape(std::move(shape)));
+    index.mutable_state().expected_geometry_mutation_count =
+        index.state().board->geometry_mutation_count();
 }
+
+} // namespace detail
 
 [[nodiscard]] std::vector<std::size_t>
 BoardSpatialIndex::candidate_obstacles(const BoardSpatialQueryShape &candidate) const {
@@ -303,20 +361,20 @@ BoardSpatialIndex::candidate_obstacles(const detail::BoardCopperShape &candidate
     ensure_conservative_bound_current();
     ensure_geometry_current();
     validate_shape(candidate);
-    const auto query_box = expanded_box(shape_box(candidate), conservative_clearance_mm_);
-    const auto min_x = cell_key(query_box.min_x_mm, cell_size_mm_);
-    const auto max_x = cell_key(query_box.max_x_mm, cell_size_mm_);
-    const auto min_y = cell_key(query_box.min_y_mm, cell_size_mm_);
-    const auto max_y = cell_key(query_box.max_y_mm, cell_size_mm_);
+    const auto query_box = expanded_box(shape_box(candidate), state().conservative_clearance_mm);
+    const auto min_x = cell_key(query_box.min_x_mm, state().cell_size_mm);
+    const auto max_x = cell_key(query_box.max_x_mm, state().cell_size_mm);
+    const auto min_y = cell_key(query_box.min_y_mm, state().cell_size_mm);
+    const auto max_y = cell_key(query_box.max_y_mm, state().cell_size_mm);
 
     auto candidates = std::vector<std::size_t>{};
     for (const auto layer : candidate.layers) {
         for (auto x = min_x; x <= max_x; ++x) {
             for (auto y = min_y; y <= max_y; ++y) {
-                const auto key = Cell{layer, x, y, {}};
+                const auto key = detail::BoardSpatialIndexCell{layer, x, y, {}};
                 const auto position =
-                    std::lower_bound(cells_.begin(), cells_.end(), key, cell_less);
-                if (position == cells_.end() || !same_cell_key(*position, key)) {
+                    std::lower_bound(state().cells.begin(), state().cells.end(), key, cell_less);
+                if (position == state().cells.end() || !same_cell_key(*position, key)) {
                     continue;
                 }
                 candidates.insert(candidates.end(), position->shape_indices.begin(),
@@ -329,8 +387,9 @@ BoardSpatialIndex::candidate_obstacles(const detail::BoardCopperShape &candidate
     candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
     candidates.erase(std::remove_if(candidates.begin(), candidates.end(),
                                     [this, &candidate, query_box](auto index) {
-                                        return !detail::layers_overlap(candidate, shapes_[index]) ||
-                                               !boxes_intersect(query_box, boxes_[index]);
+                                        return !detail::layers_overlap(candidate,
+                                                                       state().shapes[index]) ||
+                                               !boxes_intersect(query_box, state().boxes[index]);
                                     }),
                      candidates.end());
     return candidates;
@@ -340,8 +399,8 @@ BoardSpatialIndex::candidate_obstacles(const detail::BoardCopperShape &candidate
 BoardSpatialIndex::copper_clearance_candidates() const {
     ensure_geometry_current();
     auto pairs = std::vector<BoardSpatialCandidatePair>{};
-    for (std::size_t lhs_index = 0; lhs_index < shapes_.size(); ++lhs_index) {
-        const auto obstacles = candidate_obstacles(shapes_[lhs_index]);
+    for (std::size_t lhs_index = 0; lhs_index < state().shapes.size(); ++lhs_index) {
+        const auto obstacles = candidate_obstacles(state().shapes[lhs_index]);
         for (const auto rhs_index : obstacles) {
             if (rhs_index <= lhs_index) {
                 continue;
@@ -383,9 +442,10 @@ BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
 
     const auto obstacles = candidate_obstacles(candidate);
     for (const auto obstacle_index : obstacles) {
-        const auto &obstacle = shapes_[obstacle_index];
-        const auto check = detail::check_copper_clearance(
-            *board_, candidate, candidate_kind, obstacle, detail::shape_clearance_kind(obstacle));
+        const auto &obstacle = state().shapes[obstacle_index];
+        const auto check =
+            detail::check_copper_clearance(*state().board, candidate, candidate_kind, obstacle,
+                                           detail::shape_clearance_kind(obstacle));
         if (!check.violates) {
             continue;
         }
@@ -400,10 +460,10 @@ BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
         });
     }
 
-    if (board_->outline().has_value()) {
-        const auto &outline = board_->outline().value();
-        const auto outline_clearance =
-            board_->design_rules().clearance_mm(candidate_kind, BoardClearanceKind::BoardEdge);
+    if (state().board->outline().has_value()) {
+        const auto &outline = state().board->outline().value();
+        const auto outline_clearance = state().board->design_rules().clearance_mm(
+            candidate_kind, BoardClearanceKind::BoardEdge);
         if (!detail::shape_satisfies_outline(candidate, outline, outline_clearance)) {
             result.blockers.push_back(BoardSpatialBlocker{
                 BoardSpatialBlockerKind::BoardOutline,
@@ -418,9 +478,10 @@ BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
         }
     }
 
-    for (std::size_t keepout_index = 0; keepout_index < board_->keepout_count(); ++keepout_index) {
+    for (std::size_t keepout_index = 0; keepout_index < state().board->keepout_count();
+         ++keepout_index) {
         const auto keepout_id = BoardKeepoutId{keepout_index};
-        const auto &keepout = board_->keepout(keepout_id);
+        const auto &keepout = state().board->keepout(keepout_id);
         if (!detail::keepout_restricts(keepout, keepout_restriction)) {
             continue;
         }
@@ -441,6 +502,14 @@ BoardSpatialIndex::query_legality(const detail::BoardCopperShape &candidate,
 
     result.legal = result.blockers.empty();
     return result;
+}
+
+[[nodiscard]] detail::BoardSpatialIndexState &BoardSpatialIndex::mutable_state() noexcept {
+    return *state_;
+}
+
+[[nodiscard]] const detail::BoardSpatialIndexState &BoardSpatialIndex::state() const noexcept {
+    return *state_;
 }
 
 namespace detail {

@@ -72,11 +72,12 @@ PartModel3D::PartModel3D(std::string format, std::string file_name,
 PhysicalPart::PhysicalPart(ManufacturerPart manufacturer_part, PackageRef package,
                            FootprintRef footprint, std::vector<PinPadMapping> pin_pad_mappings,
                            PropertyMap properties, std::optional<PartModel3D> model_3d,
-                           std::vector<std::string> approved_alternate_mpns)
+                           std::vector<std::string> approved_alternate_mpns,
+                           ElectricalAttributeMap electrical_attributes)
     : manufacturer_part_{std::move(manufacturer_part)}, package_{std::move(package)},
       footprint_{std::move(footprint)}, pin_pad_mappings_{std::move(pin_pad_mappings)},
-      properties_{std::move(properties)}, model_3d_{std::move(model_3d)},
-      approved_alternate_mpns_{std::move(approved_alternate_mpns)} {
+      properties_{std::move(properties)}, electrical_attributes_{std::move(electrical_attributes)},
+      model_3d_{std::move(model_3d)}, approved_alternate_mpns_{std::move(approved_alternate_mpns)} {
     if (pin_pad_mappings_.empty()) {
         throw std::invalid_argument{"Physical part must contain at least one pin-pad mapping"};
     }
@@ -114,10 +115,21 @@ PhysicalPart::PhysicalPart(ManufacturerPart manufacturer_part, PackageRef packag
     return electrical_attributes_;
 }
 
-void PhysicalPart::set_electrical_attribute(detail::KernelMutationAccess,
-                                            const ElectricalAttributeSpec &spec,
-                                            ElectricalAttributeValue value) {
-    electrical_attributes_.set(spec, value);
+[[nodiscard]] PhysicalPart
+PhysicalPart::with_electrical_attribute(const ElectricalAttributeSpec &spec,
+                                        ElectricalAttributeValue value) const {
+    auto attributes = electrical_attributes_;
+    attributes.set(spec, value);
+    return PhysicalPart{
+        manufacturer_part_,
+        package_,
+        footprint_,
+        pin_pad_mappings_,
+        properties_,
+        model_3d_,
+        approved_alternate_mpns_,
+        std::move(attributes),
+    };
 }
 
 } // namespace volt

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string_view>
 #include <vector>
@@ -10,11 +11,14 @@
 #include <volt/circuit/connectivity/nets.hpp>
 #include <volt/circuit/parts/parts.hpp>
 #include <volt/core/electrical_attributes.hpp>
-#include <volt/core/entity_table.hpp>
 #include <volt/core/ids.hpp>
 #include <volt/core/properties.hpp>
 
 namespace volt {
+
+namespace detail {
+struct ConnectivityState;
+}
 
 /**
  * Owns logical connectivity storage: component definitions, instances, pins, and nets.
@@ -27,34 +31,18 @@ namespace volt {
  */
 class ConnectivityModel {
   public:
-    /** Add a reusable pin definition and return its stable ID. */
-    [[nodiscard]] PinDefId add_pin_definition(PinDefinition definition);
-
-    /** Add a reusable component definition and return its stable ID. */
-    [[nodiscard]] ComponentDefId add_component_definition(ComponentDefinition definition);
-
-    /** Add a concrete component instance and return its stable ID. */
-    [[nodiscard]] ComponentId add_component(ComponentInstance component);
-
-    /** Add a concrete pin instance and return its stable ID. */
-    [[nodiscard]] PinId add_pin(PinInstance pin);
-
-    /** Add a logical net and return its stable ID. */
-    [[nodiscard]] NetId add_net(Net net);
-
-    /** Instantiate a component definition and its concrete pins. */
-    [[nodiscard]] ComponentId instantiate_component(ComponentDefId definition,
-                                                    ReferenceDesignator reference,
-                                                    PropertyMap properties = {});
-
-    /** Connect a concrete pin to a logical net. */
-    bool connect(NetId net, PinId pin);
-
-    /** Disconnect a concrete pin from its current logical net. */
-    bool disconnect(PinId pin);
-
-    /** Set a property on a concrete component. */
-    void set_component_property(ComponentId component, PropertyKey key, PropertyValue value);
+    /** Construct an empty connectivity model facade. */
+    ConnectivityModel();
+    /** Copy connectivity model state. */
+    ConnectivityModel(const ConnectivityModel &other);
+    /** Move connectivity model state. */
+    ConnectivityModel(ConnectivityModel &&other) noexcept;
+    /** Copy connectivity model state. */
+    ConnectivityModel &operator=(const ConnectivityModel &other);
+    /** Move connectivity model state. */
+    ConnectivityModel &operator=(ConnectivityModel &&other) noexcept;
+    /** Destroy connectivity model state. */
+    ~ConnectivityModel();
 
     /** Return the logical net currently containing a concrete pin, if any. */
     [[nodiscard]] std::optional<NetId> net_of(PinId pin) const;
@@ -126,14 +114,16 @@ class ConnectivityModel {
     /** Require that a logical net ID belongs to this model. */
     void require_net(NetId net) const;
 
+  protected:
+    /** Construct a read-only facade over owner-private storage. */
+    explicit ConnectivityModel(std::shared_ptr<const detail::ConnectivityState> state);
+
   private:
+    [[nodiscard]] const detail::ConnectivityState &state() const noexcept;
+
     [[nodiscard]] std::optional<NetId> net_of_existing_pin(PinId pin) const;
 
-    EntityTable<PinDefinition, PinDefId> pin_definitions_;
-    EntityTable<ComponentDefinition, ComponentDefId> component_definitions_;
-    EntityTable<ComponentInstance, ComponentId> components_;
-    EntityTable<PinInstance, PinId> pins_;
-    EntityTable<Net, NetId> nets_;
+    std::shared_ptr<const detail::ConnectivityState> state_;
 };
 
 } // namespace volt

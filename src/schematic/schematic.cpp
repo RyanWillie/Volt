@@ -1,7 +1,10 @@
 #include <volt/schematic/schematic.hpp>
 
+#include "schematic_storage.hpp"
+
 #include <cmath>
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -10,8 +13,6 @@
 #include <vector>
 
 #include <volt/circuit/connectivity/queries.hpp>
-
-#include "../core/mutation_access.hpp"
 
 namespace volt {
 
@@ -112,35 +113,72 @@ SheetMetadata::coordinate_zones() const noexcept {
 Sheet::Sheet(std::string name) : Sheet{name, SheetMetadata{name}} {}
 
 Sheet::Sheet(std::string name, SheetMetadata metadata)
-    : name_{std::move(name)}, metadata_{std::move(metadata)} {
-    if (name_.empty()) {
+    : Sheet{std::make_shared<detail::SheetState>(std::move(name), std::move(metadata))} {
+    if (state().name.empty()) {
         throw std::invalid_argument{"Sheet name must not be empty"};
     }
 }
 
+Sheet::Sheet(std::shared_ptr<const detail::SheetState> state) : state_{std::move(state)} {}
+
+Sheet::Sheet(const Sheet &other) : Sheet{std::make_shared<detail::SheetState>(other.state())} {}
+
+Sheet::Sheet(Sheet &&other) noexcept = default;
+
+Sheet &Sheet::operator=(const Sheet &other) {
+    if (this != &other) {
+        state_ = std::make_shared<detail::SheetState>(other.state());
+    }
+    return *this;
+}
+
+Sheet &Sheet::operator=(Sheet &&other) noexcept = default;
+
+Sheet::~Sheet() = default;
+
+[[nodiscard]] const std::string &Sheet::name() const noexcept { return state().name; }
+
+[[nodiscard]] const SheetMetadata &Sheet::metadata() const noexcept { return state().metadata; }
+
 [[nodiscard]] const std::vector<SymbolInstanceId> &Sheet::symbol_instances() const noexcept {
-    return symbol_instances_;
+    return state().symbol_instances;
+}
+
+[[nodiscard]] const std::vector<WireRunId> &Sheet::wire_runs() const noexcept {
+    return state().wire_runs;
+}
+
+[[nodiscard]] const std::vector<NetLabelId> &Sheet::net_labels() const noexcept {
+    return state().net_labels;
+}
+
+[[nodiscard]] const std::vector<JunctionId> &Sheet::junctions() const noexcept {
+    return state().junctions;
 }
 
 [[nodiscard]] const std::vector<PowerPortId> &Sheet::power_ports() const noexcept {
-    return power_ports_;
+    return state().power_ports;
 }
 
 [[nodiscard]] const std::vector<NoConnectMarkerId> &Sheet::no_connect_markers() const noexcept {
-    return no_connect_markers_;
+    return state().no_connect_markers;
 }
 
 [[nodiscard]] const std::vector<SheetPortId> &Sheet::sheet_ports() const noexcept {
-    return sheet_ports_;
+    return state().sheet_ports;
 }
 
 [[nodiscard]] const std::vector<SymbolFieldId> &Sheet::symbol_fields() const noexcept {
-    return symbol_fields_;
+    return state().symbol_fields;
+}
+
+[[nodiscard]] const std::vector<SheetRegion> &Sheet::regions() const noexcept {
+    return state().regions;
 }
 
 [[nodiscard]] std::optional<std::size_t> Sheet::region_by_name(const std::string &name) const {
-    for (std::size_t index = 0; index < regions_.size(); ++index) {
-        if (regions_[index].name() == name) {
+    for (std::size_t index = 0; index < state().regions.size(); ++index) {
+        if (state().regions[index].name() == name) {
             return index;
         }
     }
@@ -148,48 +186,53 @@ Sheet::Sheet(std::string name, SheetMetadata metadata)
 }
 
 [[nodiscard]] const SheetRegion &Sheet::region(std::size_t index) const {
-    if (index >= regions_.size()) {
+    if (index >= state().regions.size()) {
         throw std::out_of_range{"Sheet region index does not belong to this sheet"};
     }
-    return regions_[index];
+    return state().regions[index];
 }
 
-std::size_t Sheet::add_region(detail::KernelMutationAccess, SheetRegion region) {
-    regions_.push_back(std::move(region));
-    return regions_.size() - 1U;
+[[nodiscard]] const detail::SheetState &Sheet::state() const noexcept { return *state_; }
+
+namespace detail {
+
+SheetStorage::SheetStorage(std::string name) : SheetStorage{name, SheetMetadata{name}} {}
+
+SheetStorage::SheetStorage(std::string name, SheetMetadata metadata)
+    : SheetStorage{std::make_shared<SheetState>(std::move(name), std::move(metadata))} {
+    if (state_->name.empty()) {
+        throw std::invalid_argument{"Sheet name must not be empty"};
+    }
 }
 
-void Sheet::add_symbol_instance(detail::KernelMutationAccess, SymbolInstanceId instance) {
-    symbol_instances_.push_back(instance);
+SheetStorage::SheetStorage(std::shared_ptr<SheetState> state)
+    : Sheet{state}, state_{std::move(state)} {}
+
+SheetStorage::SheetStorage(const SheetStorage &other)
+    : SheetStorage{std::make_shared<SheetState>(other.state())} {}
+
+SheetStorage &SheetStorage::operator=(const SheetStorage &other) {
+    if (this != &other) {
+        auto replacement = SheetStorage{std::make_shared<SheetState>(other.state())};
+        *this = std::move(replacement);
+    }
+    return *this;
 }
 
-void Sheet::add_wire_run(detail::KernelMutationAccess, WireRunId wire) {
-    wire_runs_.push_back(wire);
+SheetStorage::SheetStorage(Sheet sheet)
+    : SheetStorage{std::make_shared<SheetState>(sheet.name(), sheet.metadata())} {
+    state_->symbol_instances = sheet.symbol_instances();
+    state_->wire_runs = sheet.wire_runs();
+    state_->net_labels = sheet.net_labels();
+    state_->junctions = sheet.junctions();
+    state_->power_ports = sheet.power_ports();
+    state_->no_connect_markers = sheet.no_connect_markers();
+    state_->sheet_ports = sheet.sheet_ports();
+    state_->symbol_fields = sheet.symbol_fields();
+    state_->regions = sheet.regions();
 }
 
-void Sheet::add_net_label(detail::KernelMutationAccess, NetLabelId label) {
-    net_labels_.push_back(label);
-}
-
-void Sheet::add_junction(detail::KernelMutationAccess, JunctionId junction) {
-    junctions_.push_back(junction);
-}
-
-void Sheet::add_power_port(detail::KernelMutationAccess, PowerPortId port) {
-    power_ports_.push_back(port);
-}
-
-void Sheet::add_no_connect_marker(detail::KernelMutationAccess, NoConnectMarkerId marker) {
-    no_connect_markers_.push_back(marker);
-}
-
-void Sheet::add_sheet_port(detail::KernelMutationAccess, SheetPortId port) {
-    sheet_ports_.push_back(port);
-}
-
-void Sheet::add_symbol_field(detail::KernelMutationAccess, SymbolFieldId field) {
-    symbol_fields_.push_back(field);
-}
+} // namespace detail
 
 [[nodiscard]] const std::optional<std::size_t> &SymbolInstance::authored_region() const noexcept {
     return authored_region_;
@@ -239,10 +282,12 @@ NetLabel::NetLabel(NetId net, Point position, SchematicOrientation orientation,
     return text_position_;
 }
 
-void NetLabel::move_text_to(Point position) noexcept { text_position_ = position; }
-
 [[nodiscard]] const std::optional<std::size_t> &NetLabel::authored_region() const noexcept {
     return authored_region_;
+}
+
+[[nodiscard]] NetLabel NetLabel::with_text_position(Point position) const {
+    return NetLabel{net_, position_, orientation_, authored_region_, label_, style_, position};
 }
 
 [[nodiscard]] const std::optional<std::size_t> &Junction::authored_region() const noexcept {
@@ -267,7 +312,9 @@ PowerPort::PowerPort(NetId net, PowerPortKind kind, Point position,
     return label_position_;
 }
 
-void PowerPort::move_label_to(Point position) noexcept { label_position_ = position; }
+[[nodiscard]] PowerPort PowerPort::with_label_position(Point position) const {
+    return PowerPort{net_, kind_, position_, orientation_, authored_region_, label_, position};
+}
 
 NoConnectMarker::NoConnectMarker(PinId pin, Point position, SchematicOrientation orientation,
                                  std::string reason, std::optional<std::size_t> authored_region)
@@ -305,10 +352,13 @@ SymbolField::SymbolField(SymbolInstanceId symbol_instance, std::string name, std
     }
 }
 
-void SymbolField::move_to(Point position) noexcept { position_ = position; }
-
 [[nodiscard]] const std::optional<std::size_t> &SymbolField::authored_region() const noexcept {
     return authored_region_;
+}
+
+[[nodiscard]] SymbolField SymbolField::with_position(Point position) const {
+    return SymbolField{symbol_instance_, name_, value_, position, orientation_,
+                       authored_region_, style_};
 }
 
 Schematic::Schematic(const Circuit &circuit) : circuit_{circuit} {}
@@ -342,8 +392,8 @@ void Schematic::replace_with(Schematic replacement) {
     require_symbol_matches_component(instance.symbol_definition(), instance.component());
     require_authored_region(sheet, instance.authored_region());
 
-    const auto id = items_.add_symbol_instance(detail::kernel_mutation_access(), instance);
-    sheets_.add_symbol_instance(detail::kernel_mutation_access(), sheet, id);
+    const auto id = items_.add_symbol_instance(instance);
+    sheets_.add_symbol_instance(sheet, id);
     return id;
 }
 
@@ -353,8 +403,8 @@ void Schematic::replace_with(Schematic replacement) {
     require_authored_region(sheet, junction.authored_region());
     require_junction_does_not_touch_different_net(sheet, junction);
 
-    const auto id = items_.add_junction(detail::kernel_mutation_access(), junction);
-    sheets_.add_junction(detail::kernel_mutation_access(), sheet, id);
+    const auto id = items_.add_junction(junction);
+    sheets_.add_junction(sheet, id);
     return id;
 }
 
@@ -363,8 +413,8 @@ void Schematic::replace_with(Schematic replacement) {
     static_cast<void>(circuit_.net(port.net()));
     require_authored_region(sheet, port.authored_region());
 
-    const auto id = items_.add_power_port(detail::kernel_mutation_access(), std::move(port));
-    sheets_.add_power_port(detail::kernel_mutation_access(), sheet, id);
+    const auto id = items_.add_power_port(std::move(port));
+    sheets_.add_power_port(sheet, id);
     return id;
 }
 
@@ -398,9 +448,8 @@ void Schematic::replace_with(Schematic replacement) {
     static_cast<void>(circuit_.pin(marker.pin()));
     require_authored_region(sheet, marker.authored_region());
 
-    const auto id =
-        items_.add_no_connect_marker(detail::kernel_mutation_access(), std::move(marker));
-    sheets_.add_no_connect_marker(detail::kernel_mutation_access(), sheet, id);
+    const auto id = items_.add_no_connect_marker(std::move(marker));
+    sheets_.add_no_connect_marker(sheet, id);
     return id;
 }
 
@@ -409,8 +458,8 @@ void Schematic::replace_with(Schematic replacement) {
     static_cast<void>(circuit_.net(port.net()));
     require_authored_region(sheet, port.authored_region());
 
-    const auto id = items_.add_sheet_port(detail::kernel_mutation_access(), std::move(port));
-    sheets_.add_sheet_port(detail::kernel_mutation_access(), sheet, id);
+    const auto id = items_.add_sheet_port(std::move(port));
+    sheets_.add_sheet_port(sheet, id);
     return id;
 }
 
@@ -432,8 +481,8 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
         throw std::logic_error{"Symbol field must be placed on the symbol instance sheet"};
     }
 
-    const auto id = items_.add_symbol_field(detail::kernel_mutation_access(), std::move(field));
-    sheets_.add_symbol_field(detail::kernel_mutation_access(), sheet, id);
+    const auto id = items_.add_symbol_field(std::move(field));
+    sheets_.add_symbol_field(sheet, id);
     return id;
 }
 
@@ -443,8 +492,8 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
     require_authored_region(sheet, wire.authored_region());
     require_wire_run_does_not_collide_with_different_net(sheet, wire);
 
-    const auto id = items_.add_wire_run(detail::kernel_mutation_access(), std::move(wire));
-    sheets_.add_wire_run(detail::kernel_mutation_access(), sheet, id);
+    const auto id = items_.add_wire_run(std::move(wire));
+    sheets_.add_wire_run(sheet, id);
     return id;
 }
 
@@ -462,8 +511,8 @@ Schematic::add_sheet_port_for_endpoint(SheetId sheet, std::optional<NetId> net,
     static_cast<void>(circuit_.net(label.net()));
     require_authored_region(sheet, label.authored_region());
 
-    const auto id = items_.add_net_label(detail::kernel_mutation_access(), std::move(label));
-    sheets_.add_net_label(detail::kernel_mutation_access(), sheet, id);
+    const auto id = items_.add_net_label(std::move(label));
+    sheets_.add_net_label(sheet, id);
     return id;
 }
 
