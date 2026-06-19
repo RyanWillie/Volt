@@ -54,6 +54,7 @@ def test_board_assembly_diagnostics_are_explicit():
     design = volt.Design("assembly-gaps")
     placed_without_part = design.R("330", ref="R1").dnp(False)
     unplaced = design.R("1k", ref="R2").dnp(False)
+    design.R("10k", ref="R3").dnp(False)
     _select_resistor(unplaced)
     board = design.board("Main")
     board.place(placed_without_part, at=(1, 2))
@@ -61,6 +62,9 @@ def test_board_assembly_diagnostics_are_explicit():
     report = board.validate_assembly()
 
     assert [diagnostic.code for diagnostic in report] == [
+        "ASSEMBLY_COMPONENT_MISSING_SELECTED_PART",
+        "ASSEMBLY_PART_IDENTITY_MISSING",
+        "ASSEMBLY_COMPONENT_UNPLACED",
         "ASSEMBLY_COMPONENT_MISSING_SELECTED_PART",
         "ASSEMBLY_PART_IDENTITY_MISSING",
         "ASSEMBLY_COMPONENT_UNPLACED",

@@ -103,7 +103,6 @@ void append_component_diagnostics(const Board &board, DiagnosticReport &report) 
                 assembly_diagnostic_codes::PartIdentityMissing,
                 "Populated component has no manufacturer part identity for assembly handoff",
                 entities));
-            continue;
         }
         if (!board.placement_for_component(component).has_value()) {
             report.add(assembly_diagnostic(

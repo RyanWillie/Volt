@@ -155,9 +155,11 @@ TEST_CASE("CPL projection reports missing assembly data and skips DNP components
     const auto missing_selected = add_unselected_resistor(circuit, "R0");
     const auto unplaced = add_resistor(circuit, "R1", "RC0603FR-07330RL");
     const auto dnp = add_resistor(circuit, "R2", "RC0603FR-071KL");
+    const auto unplaced_missing_selected = add_unselected_resistor(circuit, "R3");
     circuit.set_component_dnp(missing_selected, false);
     circuit.set_component_dnp(unplaced, false);
     circuit.set_component_dnp(dnp, true);
+    circuit.set_component_dnp(unplaced_missing_selected, false);
     auto board = volt::Board{circuit};
     static_cast<void>(board.place_component(volt::ComponentPlacement{
         missing_selected, volt::BoardPoint{1.0, 2.0}, volt::BoardRotation::degrees(0.0)}));
@@ -169,9 +171,10 @@ TEST_CASE("CPL projection reports missing assembly data and skips DNP components
     CHECK_FALSE(cpl.rows()[0].footprint().has_value());
     CHECK_FALSE(cpl.rows()[0].part_identity().has_value());
     CHECK(diagnostic_codes(cpl.diagnostics()) ==
-          std::vector<std::string>{"ASSEMBLY_COMPONENT_MISSING_SELECTED_PART",
-                                   "ASSEMBLY_PART_IDENTITY_MISSING",
-                                   "ASSEMBLY_COMPONENT_UNPLACED"});
+          std::vector<std::string>{
+              "ASSEMBLY_COMPONENT_MISSING_SELECTED_PART", "ASSEMBLY_PART_IDENTITY_MISSING",
+              "ASSEMBLY_COMPONENT_UNPLACED", "ASSEMBLY_COMPONENT_MISSING_SELECTED_PART",
+              "ASSEMBLY_PART_IDENTITY_MISSING", "ASSEMBLY_COMPONENT_UNPLACED"});
     CHECK(cpl.diagnostics().diagnostics()[0].category() ==
           volt::DiagnosticCategory{std::string{volt::diagnostic_categories::Assembly}});
 }
