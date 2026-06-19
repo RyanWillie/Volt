@@ -65,6 +65,11 @@ pybind11_add_module(
     bindings.cpp
     circuit_bindings.cpp
     py_circuit.cpp
+    py_circuit_board.cpp
+    py_circuit_logical.cpp
+    py_circuit_modules.cpp
+    py_circuit_reports.cpp
+    py_circuit_schematic.cpp
     py_kicad.cpp
 )
 target_link_libraries(_volt PRIVATE Volt::Authoring Volt::IO Volt::KiCadAdapter)

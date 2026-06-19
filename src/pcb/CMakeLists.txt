@@ -3,7 +3,9 @@ add_library(
     board.cpp
     copper/board_capability.cpp
     copper/board_copper.cpp
+    copper/board_copper_geometry.cpp
     copper/board_copper_model.cpp
+    copper/board_copper_validation.cpp
     copper/board_room_rules.cpp
     features/board_features.cpp
     footprints/board_footprint_model.cpp
