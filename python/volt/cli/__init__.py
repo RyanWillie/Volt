@@ -248,6 +248,7 @@ def _root_provides_module(root: Path, module_name: str) -> bool:
 @contextmanager
 def _project_runtime(root: Path):
     previous_cwd = Path.cwd()
+    previous_sys_path = list(sys.path)
     root_text = str(root)
     sys.path.insert(0, root_text)
     os.chdir(root)
@@ -255,7 +256,4 @@ def _project_runtime(root: Path):
         yield
     finally:
         os.chdir(previous_cwd)
-        if sys.path and sys.path[0] == root_text:
-            sys.path.pop(0)
-        else:
-            sys.path.remove(root_text)
+        sys.path[:] = previous_sys_path

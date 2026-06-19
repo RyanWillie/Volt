@@ -167,6 +167,25 @@ def main():
     assert (second / "called.txt").read_text(encoding="utf-8") == "second"
 
 
+def test_run_restores_sys_path_when_entrypoint_mutates_it(tmp_path, monkeypatch):
+    root = tmp_path / "board"
+    _write_project(root)
+    _write_entrypoint(
+        root,
+        """import sys
+
+def main():
+    sys.path.clear()
+""",
+    )
+    monkeypatch.chdir(tmp_path)
+    previous_sys_path = list(sys.path)
+
+    assert main(["run", "--project", str(root)]) == 0
+
+    assert sys.path == previous_sys_path
+
+
 def test_loader_rejects_entrypoint_without_module_and_function(tmp_path, capsys):
     root = tmp_path / "board"
     _write_project(root, entrypoint="project_entry")
