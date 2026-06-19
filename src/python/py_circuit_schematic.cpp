@@ -1,6 +1,6 @@
 #include "py_circuit.hpp"
 
-#include "py_circuit_helpers.hpp"
+#include "py_circuit_schematic_helpers.hpp"
 
 #include <sstream>
 

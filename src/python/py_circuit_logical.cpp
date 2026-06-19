@@ -1,6 +1,6 @@
 #include "py_circuit.hpp"
 
-#include "py_circuit_helpers.hpp"
+#include "py_circuit_logical_helpers.hpp"
 
 #include <volt/circuit/bom/bom.hpp>
 #include <volt/circuit/connectivity/queries.hpp>

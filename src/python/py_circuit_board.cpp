@@ -1,6 +1,7 @@
 #include "py_circuit.hpp"
 
-#include "py_circuit_helpers.hpp"
+#include "binding_pcb_conversions.hpp"
+#include "py_circuit_board_helpers.hpp"
 
 #include <algorithm>
 

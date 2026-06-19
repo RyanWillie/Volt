@@ -1,7 +1,5 @@
 #include "py_circuit.hpp"
 
-#include "py_circuit_helpers.hpp"
-
 #include <volt/circuit/connectivity/queries.hpp>
 
 namespace volt::python {
