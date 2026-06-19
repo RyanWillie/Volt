@@ -150,6 +150,8 @@ class ProjectArtifactPaths:
     pcb_svg: Path | None = None
     pcb_layer_svgs: tuple[Path, ...] = ()
     kicad_pcb: Path | None = None
+    cpl_json: Path | None = None
+    cpl_csv: Path | None = None
     diagnostics_json: Path | None = None
 
 
@@ -765,6 +767,11 @@ class ProjectResult:
                     used_paths,
                 )
                 _write_text(root / relative_kicad, kicad_export.text)
+                cpl_json_path, cpl_csv_path = _cpl_artifact_paths(output_name)
+                relative_cpl_json = _unique_path(cpl_json_path, used_paths)
+                relative_cpl_csv = _unique_path(cpl_csv_path, used_paths)
+                _write_text(root / relative_cpl_json, model.cpl_json())
+                _write_text(root / relative_cpl_csv, model.cpl_csv())
                 group = {"design": model._design.name, "board": model.name}
                 artifacts.append(
                     _artifact_record(
@@ -790,6 +797,24 @@ class ProjectResult:
                         output_name,
                         relative_kicad,
                         "application/x-kicad-pcb",
+                        group=group,
+                    )
+                )
+                artifacts.append(
+                    _artifact_record(
+                        "cpl",
+                        output_name,
+                        relative_cpl_json,
+                        "application/vnd.volt.cpl+json",
+                        group=group,
+                    )
+                )
+                artifacts.append(
+                    _artifact_record(
+                        "cpl_csv",
+                        output_name,
+                        relative_cpl_csv,
+                        "text/csv",
                         group=group,
                     )
                 )
@@ -894,6 +919,8 @@ class ProjectResult:
         pcb_json = root / f"{base}.volt.pcb.json" if board is not None else None
         pcb_svg = root / f"{base}.pcb.svg" if board is not None else None
         kicad_pcb = root / f"{base}.kicad_pcb" if board is not None else None
+        cpl_json = root / f"{base}.cpl.json" if board is not None else None
+        cpl_csv = root / f"{base}.cpl.csv" if board is not None else None
         diagnostics_json = root / f"{base}.validation.json"
         svg_options = dict(pcb_svg_options or {})
         separate_layers = svg_options.pop("separate_layers", False)
@@ -929,6 +956,8 @@ class ProjectResult:
                     layer_paths.append(layer_svg)
                 pcb_layer_svgs = tuple(layer_paths)
             _write_text(kicad_pcb, board.to_kicad_pcb().text)
+            _write_text(cpl_json, board.cpl_json())
+            _write_text(cpl_csv, board.cpl_csv())
         _write_json(diagnostics_json, _flat_diagnostics_payload(self))
 
         return ProjectArtifactPaths(
@@ -941,6 +970,8 @@ class ProjectResult:
             pcb_svg=pcb_svg,
             pcb_layer_svgs=pcb_layer_svgs,
             kicad_pcb=kicad_pcb,
+            cpl_json=cpl_json,
+            cpl_csv=cpl_csv,
             diagnostics_json=diagnostics_json,
         )
 
@@ -1237,6 +1268,16 @@ def _collect_default_diagnostics(runs: tuple[_StageRun, ...]) -> tuple[ProjectDi
                     _report_diagnostics(
                         run.stage.name,
                         f"pcb:{model.name}",
+                        "pcb.assembly",
+                        model.validate_assembly(),
+                        design=model._design.name,
+                        board=model.name,
+                    )
+                )
+                diagnostics.extend(
+                    _report_diagnostics(
+                        run.stage.name,
+                        f"pcb:{model.name}",
                         "logical.pcb_ready",
                         model._design.validate_for_pcb(),
                         design=model._design.name,
@@ -1347,6 +1388,11 @@ def _bom_sourcing_artifact_path(model: Design, designs: tuple[Design, ...]) -> P
     if len(designs) == 1:
         return Path("bom") / "sourcing.json"
     return Path("bom") / f"{_safe_slug(model.name)}.sourcing.json"
+
+
+def _cpl_artifact_paths(output_name: str) -> tuple[Path, Path]:
+    slug = _safe_slug(output_name)
+    return Path("pcb") / f"{slug}.cpl.json", Path("pcb") / f"{slug}.cpl.csv"
 
 
 def _pcb_svg_layer_filename_token(layer_name: str) -> str:

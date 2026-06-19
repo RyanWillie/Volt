@@ -80,6 +80,8 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             "pcb": artifacts.pcb_json.read_text(encoding="utf-8"),
             "pcb_svg": artifacts.pcb_svg.read_text(encoding="utf-8"),
             "kicad_pcb": artifacts.kicad_pcb.read_text(encoding="utf-8"),
+            "cpl_json": artifacts.cpl_json.read_text(encoding="utf-8"),
+            "cpl_csv": artifacts.cpl_csv.read_text(encoding="utf-8"),
             "validation": artifacts.diagnostics_json.read_text(encoding="utf-8"),
             "project": _project_bundle_texts(
                 artifacts.logical_json.parent / "timer_555_led_blinker.volt"
@@ -112,6 +114,8 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             second_artifacts.kicad_pcb.read_text(encoding="utf-8")
             == first_texts["kicad_pcb"]
         )
+        assert second_artifacts.cpl_json.read_text(encoding="utf-8") == first_texts["cpl_json"]
+        assert second_artifacts.cpl_csv.read_text(encoding="utf-8") == first_texts["cpl_csv"]
         assert (
             second_artifacts.diagnostics_json.read_text(encoding="utf-8")
             == first_texts["validation"]
@@ -148,6 +152,12 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
             encoding="utf-8"
         ),
         "kicad_pcb": (artifact_dir / "timer_555_led_blinker.kicad_pcb").read_text(
+            encoding="utf-8"
+        ),
+        "cpl_json": (artifact_dir / "timer_555_led_blinker.cpl.json").read_text(
+            encoding="utf-8"
+        ),
+        "cpl_csv": (artifact_dir / "timer_555_led_blinker.cpl.csv").read_text(
             encoding="utf-8"
         ),
         "validation": (artifact_dir / "timer_555_led_blinker.validation.json").read_text(

@@ -25,6 +25,7 @@ inline constexpr auto PcbBoard = std::string_view{"pcb.board"};
 inline constexpr auto PcbVisual = std::string_view{"pcb.visual"};
 inline constexpr auto PcbFabrication = std::string_view{"pcb.fabrication"};
 inline constexpr auto Bom = std::string_view{"bom"};
+inline constexpr auto Assembly = std::string_view{"assembly"};
 
 } // namespace diagnostic_categories
 
@@ -37,7 +38,8 @@ inline constexpr auto All = std::array{diagnostic_categories::General,
                                        diagnostic_categories::PcbBoard,
                                        diagnostic_categories::PcbVisual,
                                        diagnostic_categories::PcbFabrication,
-                                       diagnostic_categories::Bom};
+                                       diagnostic_categories::Bom,
+                                       diagnostic_categories::Assembly};
 
 } // namespace diagnostic_category_catalogs
 
@@ -142,6 +144,16 @@ inline constexpr auto ApprovedAlternateDuplicatesPrimary =
 
 } // namespace bom_diagnostic_codes
 
+namespace assembly_diagnostic_codes {
+
+inline constexpr auto ComponentMissingSelectedPart =
+    std::string_view{"ASSEMBLY_COMPONENT_MISSING_SELECTED_PART"};
+inline constexpr auto PartIdentityMissing = std::string_view{"ASSEMBLY_PART_IDENTITY_MISSING"};
+inline constexpr auto ComponentUnplaced = std::string_view{"ASSEMBLY_COMPONENT_UNPLACED"};
+inline constexpr auto OrientationAmbiguous = std::string_view{"ASSEMBLY_ORIENTATION_AMBIGUOUS"};
+
+} // namespace assembly_diagnostic_codes
+
 namespace diagnostic_code_catalogs {
 
 inline constexpr auto Erc = std::array{erc_diagnostic_codes::PinMustNotConnect,
@@ -204,6 +216,11 @@ inline constexpr auto PartLineup = std::array{
 inline constexpr auto Bom = std::array{bom_diagnostic_codes::ComponentMissingSelectedPart,
                                        bom_diagnostic_codes::ComponentImplicitDnp,
                                        bom_diagnostic_codes::ApprovedAlternateDuplicatesPrimary};
+
+inline constexpr auto Assembly = std::array{assembly_diagnostic_codes::ComponentMissingSelectedPart,
+                                            assembly_diagnostic_codes::PartIdentityMissing,
+                                            assembly_diagnostic_codes::ComponentUnplaced,
+                                            assembly_diagnostic_codes::OrientationAmbiguous};
 
 } // namespace diagnostic_code_catalogs
 

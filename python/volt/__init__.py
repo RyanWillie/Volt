@@ -5,6 +5,7 @@ from __future__ import annotations
 from . import _volt
 from .design import Design
 from .diagnostics import (
+    ASSEMBLY_DIAGNOSTIC_CODES,
     BOM_DIAGNOSTIC_CODES,
     DIAGNOSTIC_CATEGORIES,
     DRC_DIAGNOSTIC_CODES,
@@ -134,6 +135,7 @@ __all__ = [
     "BoardPadAnchor",
     "BoardRoute",
     "BoardTwoPadComponent",
+    "ASSEMBLY_DIAGNOSTIC_CODES",
     "BOM_DIAGNOSTIC_CODES",
     "BuildContext",
     "CapabilityProfile",

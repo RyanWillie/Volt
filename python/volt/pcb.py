@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
 from . import _volt
-from ._footprint import Footprint
+from ._footprint import Footprint, FootprintRef, footprint_ref
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
 from .library import _SelectedPartModel3D
 from .logical import Component, Net
@@ -990,6 +991,48 @@ class Board:
             _diagnostic_from_dict(item) for item in self._design._circuit.board_validate()
         )
 
+    def validate_assembly(
+        self,
+        *,
+        rotation_offsets: dict[FootprintRef, float] | None = None,
+    ) -> DiagnosticReport:
+        """Run assembly handoff validation and return the diagnostic report."""
+        self._sync_object_footprints()
+        return DiagnosticReport(
+            _diagnostic_from_dict(item)
+            for item in self._design._circuit.board_validate_assembly(
+                _rotation_offsets_payload(rotation_offsets)
+            )
+        )
+
+    def cpl(
+        self,
+        *,
+        rotation_offsets: dict[FootprintRef, float] | None = None,
+    ) -> dict:
+        """Return the deterministic kernel CPL projection as a JSON-compatible dict."""
+        return json.loads(self.cpl_json(rotation_offsets=rotation_offsets))
+
+    def cpl_json(
+        self,
+        *,
+        rotation_offsets: dict[FootprintRef, float] | None = None,
+    ) -> str:
+        """Return the deterministic kernel CPL projection as canonical JSON text."""
+        self._sync_object_footprints()
+        return self._design._circuit.board_cpl_json(_rotation_offsets_payload(rotation_offsets))
+
+    def cpl_csv(
+        self,
+        *,
+        rotation_offsets: dict[FootprintRef, float] | None = None,
+    ) -> str:
+        """Return the deterministic JLCPCB-shaped CPL projection as CSV text."""
+        self._sync_object_footprints()
+        return self._design._circuit.board_cpl_csv(
+            _rotation_offsets_payload(rotation_offsets)
+        )
+
     def to_json(self) -> str:
         """Serialize the PCB projection to Volt board JSON."""
         self._sync_object_footprints()
@@ -1073,3 +1116,14 @@ class Board:
         export = self.to_kicad_pcb()
         Path(path).write_text(export.text, encoding="utf-8")
         return export
+
+
+def _rotation_offsets_payload(
+    rotation_offsets: dict[FootprintRef, float] | None,
+) -> dict[FootprintRef, float]:
+    if rotation_offsets is None:
+        return {}
+    return {
+        footprint_ref(footprint): float(rotation)
+        for footprint, rotation in rotation_offsets.items()
+    }

@@ -33,6 +33,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         _volt.pcb_fabrication_diagnostic_codes()
     )
     assert volt.BOM_DIAGNOSTIC_CODES == tuple(_volt.bom_diagnostic_codes())
+    assert volt.ASSEMBLY_DIAGNOSTIC_CODES == tuple(_volt.assembly_diagnostic_codes())
 
     assert volt.DIAGNOSTIC_CATEGORIES == (
         "general",
@@ -43,6 +44,7 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "pcb.visual",
         "pcb.fabrication",
         "bom",
+        "assembly",
     )
     assert volt.ERC_DIAGNOSTIC_CODES == (
         "PIN_MUST_NOT_CONNECT",
@@ -96,6 +98,12 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "BOM_COMPONENT_MISSING_SELECTED_PART",
         "BOM_COMPONENT_IMPLICIT_DNP",
         "BOM_APPROVED_ALTERNATE_DUPLICATES_PRIMARY",
+    )
+    assert volt.ASSEMBLY_DIAGNOSTIC_CODES == (
+        "ASSEMBLY_COMPONENT_MISSING_SELECTED_PART",
+        "ASSEMBLY_PART_IDENTITY_MISSING",
+        "ASSEMBLY_COMPONENT_UNPLACED",
+        "ASSEMBLY_ORIENTATION_AMBIGUOUS",
     )
 
 

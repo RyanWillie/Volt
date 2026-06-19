@@ -98,6 +98,26 @@
       "path": "pcb/First-Board-LED.kicad_pcb"
     },
     {
+      "group": {
+        "board": "First Board LED",
+        "design": "pcb-led-board"
+      },
+      "kind": "cpl",
+      "media_type": "application/vnd.volt.cpl+json",
+      "name": "First Board LED",
+      "path": "pcb/First-Board-LED.cpl.json"
+    },
+    {
+      "group": {
+        "board": "First Board LED",
+        "design": "pcb-led-board"
+      },
+      "kind": "cpl_csv",
+      "media_type": "text/csv",
+      "name": "First Board LED",
+      "path": "pcb/First-Board-LED.cpl.csv"
+    },
+    {
       "kind": "part_models_3d",
       "media_type": "application/json",
       "name": "Project part models",

@@ -371,6 +371,12 @@ class PyCircuit {
 
     [[nodiscard]] py::list board_validate() const;
 
+    [[nodiscard]] py::list board_validate_assembly(const py::dict &rotation_offsets) const;
+
+    [[nodiscard]] std::string board_cpl_json(const py::dict &rotation_offsets) const;
+
+    [[nodiscard]] std::string board_cpl_csv(const py::dict &rotation_offsets) const;
+
     [[nodiscard]] std::string board_to_json() const;
 
     [[nodiscard]] std::string board_to_svg(bool pad_net_overlays, bool diagnostic_overlays,

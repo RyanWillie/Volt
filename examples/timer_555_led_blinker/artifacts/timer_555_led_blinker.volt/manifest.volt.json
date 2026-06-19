@@ -98,6 +98,26 @@
       "path": "pcb/555-LED-Blinker.kicad_pcb"
     },
     {
+      "group": {
+        "board": "555 LED Blinker",
+        "design": "timer-555-led-blinker"
+      },
+      "kind": "cpl",
+      "media_type": "application/vnd.volt.cpl+json",
+      "name": "555 LED Blinker",
+      "path": "pcb/555-LED-Blinker.cpl.json"
+    },
+    {
+      "group": {
+        "board": "555 LED Blinker",
+        "design": "timer-555-led-blinker"
+      },
+      "kind": "cpl_csv",
+      "media_type": "text/csv",
+      "name": "555 LED Blinker",
+      "path": "pcb/555-LED-Blinker.cpl.csv"
+    },
+    {
       "kind": "diagnostics",
       "media_type": "application/json",
       "name": "Project diagnostics",
