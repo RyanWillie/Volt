@@ -7,7 +7,7 @@ name = "volt-eda"
 version = "0.1.0"
 description = "A modern C++ electronics design kernel with Python authoring bindings."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
     { name = "Ryan Williamson" },
@@ -26,6 +26,9 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/RyanWillie/Volt"
 Repository = "https://github.com/RyanWillie/Volt"
+
+[project.scripts]
+volt = "volt.cli:main"
 
 [tool.scikit-build]
 cmake.version = ">=3.25"

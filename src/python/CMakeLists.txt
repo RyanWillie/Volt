@@ -1,6 +1,6 @@
 include(FetchContent)
 
-find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
+find_package(Python3 3.11 COMPONENTS Interpreter Development.Module REQUIRED)
 
 FetchContent_Declare(
     pybind11
@@ -10,6 +10,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(pybind11)
 
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt)
+file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt/cli)
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/python/volt/libraries)
 set(
     VOLT_PYTHON_PACKAGE_FILES
@@ -30,6 +31,7 @@ set(
     _utils.py
     design.py
     diagnostics.py
+    cli/__init__.py
     library.py
     library_result.py
     logical.py
