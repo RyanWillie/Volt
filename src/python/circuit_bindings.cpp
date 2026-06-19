@@ -262,6 +262,9 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("component"))
         .def("board_add_track", &PyCircuit::board_add_track, py::arg("net"), py::arg("layer"),
              py::arg("points"), py::arg("width_mm"))
+        .def("board_add_track_for_route", &PyCircuit::board_add_track_for_route, py::arg("net"),
+             py::arg("layer"), py::arg("endpoints"), py::arg("width_mm"))
+        .def("board_track_net", &PyCircuit::board_track_net, py::arg("track"))
         .def("board_add_via", &PyCircuit::board_add_via, py::arg("net"), py::arg("x"), py::arg("y"),
              py::arg("start_layer"), py::arg("end_layer"), py::arg("drill_diameter_mm"),
              py::arg("annular_diameter_mm"))

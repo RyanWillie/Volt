@@ -518,7 +518,14 @@ class BoardLayout:
         mode: str = "octilinear",
     ) -> BoardRoute:
         """Start a schematic-style routed track sequence from the cursor."""
-        return BoardRoute(self, net, layer=layer, width=width, mode=mode)
+        return BoardRoute(
+            self,
+            net,
+            layer=layer,
+            width=width,
+            mode=mode,
+            endpoint_intent=True,
+        )
 
     def connect(
         self,
@@ -531,7 +538,7 @@ class BoardLayout:
         through=(),
         mode: str = "octilinear",
     ) -> int:
-        """Route between two anchors, inferring the net from pad anchors when possible."""
+        """Route between two anchors, delegating pad endpoint nets to the kernel."""
         return _compose_connect(
             self._composition(),
             start,
@@ -787,6 +794,9 @@ class BoardLayout:
         return False
 
     def _anchor_at(self, value: tuple[float, float] | BoardAnchor) -> BoardAnchor:
+        if isinstance(value, BoardAnchor):
+            _board_point(value, board=self._board)
+            return value
         point = _board_point(value, board=self._board)
         if isinstance(value, (tuple, list)):
             point = (
@@ -828,11 +838,28 @@ class BoardLayout:
             snap_anchor=self._snap_anchor,
             axis_target=self._composition_axis_target,
             is_anchor=lambda value: isinstance(value, BoardAnchor),
-            pad_net=self._pad_anchor_net,
+            track_net=self._board._track_net,
             hold=self.hold,
-            route=self.route,
+            route_for_connect=self._route_for_connect,
             via=self.via,
             connect=self.connect,
+        )
+
+    def _route_for_connect(
+        self,
+        net: Net | int | None,
+        *,
+        layer: int,
+        width: float,
+        mode: str,
+    ) -> BoardRoute:
+        return BoardRoute(
+            self,
+            net,
+            layer=layer,
+            width=width,
+            mode=mode,
+            endpoint_intent=True,
         )
 
     def _composition_axis_target(self, target, axis: str) -> float:
@@ -840,14 +867,6 @@ class BoardLayout:
         if isinstance(target, BoardAnchor):
             return coordinate
         return self._snap_coordinate(coordinate)
-
-    def _pad_anchor_net(self, value) -> int | None:
-        if not isinstance(value, BoardPadAnchor):
-            return None
-        for resolution in self._board.resolve_pads():
-            if resolution.placement == value.placement and resolution.pad == value.pad:
-                return resolution.net
-        return None
 
     def __repr__(self) -> str:
         return (
@@ -863,11 +882,12 @@ class BoardRoute:
     def __init__(
         self,
         layout: BoardLayout,
-        net: Net | int,
+        net: Net | int | None,
         *,
         layer: int,
         width: float,
         mode: str,
+        endpoint_intent: bool,
     ):
         self._layout = layout
         self._board = layout._board
@@ -875,6 +895,7 @@ class BoardRoute:
         self._layer = layer
         self._width = _positive_coordinate(width, "Board route width")
         self._mode = _route_mode(mode)
+        self._endpoint_intent = bool(endpoint_intent)
         self._points: list[BoardAnchor] = [layout.here]
         self._track: int | None = None
 
@@ -972,12 +993,16 @@ class BoardRoute:
         points = _distinct_adjacent_points(self._points)
         if len(points) < 2:
             raise ValueError("Board route requires at least two distinct points")
-        self._track = self._board.add_track(
+        result = self._board._add_track_for_route(
             self._net,
             layer=self._layer,
-            points=tuple(anchor.point for anchor in points),
+            endpoints=tuple(
+                _route_endpoint_payload(anchor, include_identity=self._endpoint_intent)
+                for anchor in points
+            ),
             width=self._width,
         )
+        self._track = int(result["track"])
         self._layout._here = points[-1]
         return self._track
 
@@ -1253,6 +1278,14 @@ def _distinct_adjacent_points(points: list[BoardAnchor]) -> list[BoardAnchor]:
             continue
         result.append(point)
     return result
+
+
+def _route_endpoint_payload(
+    anchor: BoardAnchor, *, include_identity: bool
+) -> tuple[float, float, int | None, int | None]:
+    if include_identity and isinstance(anchor, BoardPadAnchor):
+        return (anchor.x, anchor.y, anchor.placement, anchor.pad)
+    return (anchor.x, anchor.y, None, None)
 
 
 def _route_mode(value: str) -> str:

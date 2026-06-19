@@ -119,6 +119,47 @@ class BoardTrack {
     double width_mm_;
 };
 
+/** Authoring endpoint intent for a routed track point. */
+struct BoardRouteEndpoint {
+    /** Return a plain board-space point with no pad identity. */
+    [[nodiscard]] static BoardRouteEndpoint board_point(BoardPoint position) {
+        return BoardRouteEndpoint{position, std::nullopt, std::nullopt};
+    }
+
+    /** Return a board-space point tied to one resolved footprint pad. */
+    [[nodiscard]] static BoardRouteEndpoint
+    footprint_pad(BoardPoint position, ComponentPlacementId placement, FootprintPadId pad) {
+        return BoardRouteEndpoint{position, placement, pad};
+    }
+
+    /** Board-space route point used for committed copper geometry. */
+    BoardPoint position;
+    /** Optional board placement identity used for kernel-owned net resolution. */
+    std::optional<ComponentPlacementId> placement;
+    /** Optional footprint pad identity used for kernel-owned net resolution. */
+    std::optional<FootprintPadId> pad;
+};
+
+/** Kernel-owned routed track request whose endpoint intent may resolve the route net. */
+struct BoardTrackRouteRequest {
+    /** Existing logical net override; omitted to infer from pad endpoints in the kernel. */
+    std::optional<NetId> net;
+    /** Board copper layer for the committed track. */
+    BoardLayerId layer;
+    /** Ordered route endpoints. Pad endpoints participate in kernel net resolution. */
+    std::vector<BoardRouteEndpoint> endpoints;
+    /** Routed track width in millimeters. */
+    double width_mm = 0.0;
+};
+
+/** Committed routed track plus the kernel-resolved net used for it. */
+struct BoardTrackRouteResult {
+    /** Board-local track ID created for the route. */
+    BoardTrackId track;
+    /** Existing logical net the route physically implements. */
+    NetId net;
+};
+
 /** Routed copper via that physically implements an existing logical net across layers. */
 class BoardVia {
   public:

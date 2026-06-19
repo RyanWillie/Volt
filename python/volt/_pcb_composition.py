@@ -22,9 +22,9 @@ class BoardLayoutComposition:
     snap_anchor: object
     axis_target: object
     is_anchor: object
-    pad_net: object
+    track_net: object
     hold: object
-    route: object
+    route_for_connect: object
     via: object
     connect: object
 
@@ -164,9 +164,8 @@ def connect(
     through=(),
     mode: str = "octilinear",
 ) -> int:
-    """Route between two anchors, inferring the net from pad anchors when possible."""
-    route_net = _route_net(context, net, start, end)
-    route = context.route(route_net, layer=layer, width=width, mode=mode).at(start)
+    """Route between two anchors, delegating endpoint net resolution to the kernel."""
+    route = context.route_for_connect(net, layer=layer, width=width, mode=mode).at(start)
     for anchor in _anchor_collection(
         through, "Board layout connect through", context.is_anchor
     ):
@@ -251,15 +250,12 @@ def fanout(
         ):
             source_anchor = context.anchor_at(source)
             end = source_anchor.offset(dx=dx, dy=dy)
-            route_net = net if net is not None else context.pad_net(source)
-            if route_net is None:
-                raise ValueError("Board layout fanout requires a net or pad anchors with nets")
-            track = context.connect(source_anchor, end, layer=layer, net=route_net, width=width)
+            track = context.connect(source_anchor, end, layer=layer, net=net, width=width)
             via = None
             if via_layers is not None:
                 start_layer, end_layer = _via_layer_pair(via_layers)
                 via = context.via(
-                    route_net,
+                    context.track_net(track),
                     at=end,
                     start_layer=start_layer,
                     end_layer=end_layer,
@@ -373,18 +369,6 @@ def _outline_anchors(
     if size is None:
         raise ValueError("Board layout outline requires either outline or size")
     return rect(context, at=at, size=size)
-
-
-def _route_net(context: BoardLayoutComposition, net: Net | int | None, start, end) -> Net | int:
-    if net is not None:
-        return net
-    start_net = context.pad_net(start)
-    end_net = context.pad_net(end)
-    if start_net is None or end_net is None:
-        raise ValueError("Board layout connect requires a net unless both anchors resolve nets")
-    if start_net != end_net:
-        raise ValueError("Board layout connect anchors resolve to different nets")
-    return start_net
 
 
 def _bundle_pair(value) -> tuple:

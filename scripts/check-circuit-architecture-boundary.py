@@ -49,43 +49,7 @@ PRIVILEGED_FRIEND_ALLOWLIST = {
     ): "BoardRouter mirrors an accepted board mutation into its private runtime spatial index.",
 }
 
-PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {
-    (
-        "python/volt/_pcb_composition.py",
-        "fanout",
-        "route_net = net if net is not None else context.pad_net(source)",
-    ): "Existing PCB fanout helper infers route nets from pad anchors; VOL-234 moves this into the kernel.",
-    (
-        "python/volt/_pcb_composition.py",
-        "fanout",
-        "if route_net is None:",
-    ): "Existing PCB fanout helper validates Python-inferred route nets; VOL-234 moves this into the kernel.",
-    (
-        "python/volt/_pcb_composition.py",
-        "_route_net",
-        "start_net = context.pad_net(start)",
-    ): "Known Python route-net inference choke point scheduled for kernel ownership in VOL-234.",
-    (
-        "python/volt/_pcb_composition.py",
-        "_route_net",
-        "end_net = context.pad_net(end)",
-    ): "Known Python route-net inference choke point scheduled for kernel ownership in VOL-234.",
-    (
-        "python/volt/_pcb_composition.py",
-        "_route_net",
-        "if start_net is None or end_net is None:",
-    ): "Known Python route-net inference choke point scheduled for kernel ownership in VOL-234.",
-    (
-        "python/volt/_pcb_composition.py",
-        "_route_net",
-        "if start_net != end_net:",
-    ): "Known Python route-net inference choke point scheduled for kernel ownership in VOL-234.",
-    (
-        "python/volt/_pcb_layout.py",
-        "BoardLayout._pad_anchor_net",
-        "return resolution.net",
-    ): "Known Python pad-anchor net resolver scheduled for kernel ownership in VOL-234.",
-}
+PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {}
 
 ENTITY_REF_KERNEL_ALLOWLIST = {
     (
