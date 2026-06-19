@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -22,6 +23,12 @@ entrypoint = "{entrypoint}"
 def _write_entrypoint(root: Path, body: str):
     root.joinpath("project_entry.py").write_text(body, encoding="utf-8")
     sys.modules.pop("project_entry", None)
+
+
+def _read_model_json(capsys):
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    return json.loads(captured.out)
 
 
 def test_main_help_uses_argparse(capsys):
@@ -233,3 +240,343 @@ def main():
     assert main(["run", "--project", str(root)]) == 1
 
     assert "gate failed" in capsys.readouterr().err
+
+
+def test_model_json_emits_clean_result_to_stdout(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(root)
+    _write_entrypoint(
+        root,
+        """import volt
+
+CALLS = 0
+
+def main():
+    global CALLS
+    CALLS += 1
+    if CALLS > 1:
+        raise RuntimeError("entrypoint called more than once")
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return volt.Design("status-led")
+
+    return project.run()
+""",
+    )
+
+    assert main(["model", "--json", "--project", str(root)]) == 0
+
+    payload = _read_model_json(capsys)
+    assert payload["status"] == "clean"
+    assert payload["diagnostics"]["status"] == "clean"
+    assert payload["diagnostics"]["summary"] == {
+        "errors": 0,
+        "infos": 0,
+        "warnings": 0,
+    }
+    assert [item["name"] for item in payload["models"]["designs"]] == ["status-led"]
+    assert payload["models"]["schematics"] == []
+    assert payload["models"]["boards"] == []
+    assert payload["models"]["designs"][0]["model"]["components"] == []
+
+
+def test_model_json_accepts_project_entrypoint_from_project_root(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(root)
+    root.joinpath("project_name.txt").write_text("status-led", encoding="utf-8")
+    _write_entrypoint(
+        root,
+        """from pathlib import Path
+
+import volt
+
+def main():
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return volt.Design(Path("project_name.txt").read_text(encoding="utf-8").strip())
+
+    return project
+""",
+    )
+
+    assert main(["model", "--json", "--project", str(root)]) == 0
+
+    payload = _read_model_json(capsys)
+    assert payload["status"] == "clean"
+    assert [item["name"] for item in payload["models"]["designs"]] == ["status-led"]
+
+
+def test_model_json_keeps_project_stdout_out_of_json_stream(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(root)
+    _write_entrypoint(
+        root,
+        """import volt
+
+def main():
+    print("project chatter")
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return volt.Design("status-led")
+
+    return project.run()
+""",
+    )
+
+    assert main(["model", "--json", "--project", str(root)]) == 0
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert captured.err == "project chatter\n"
+    assert payload["status"] == "clean"
+    assert [item["name"] for item in payload["models"]["designs"]] == ["status-led"]
+
+
+def test_model_json_keeps_expected_diagnostics_non_gating(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(root)
+    _write_entrypoint(
+        root,
+        """import volt
+
+def main():
+    project = volt.Project("bad-led")
+    project.expect_diagnostic(code="UNCONNECTED_REQUIRED_PIN")
+    project.expect_diagnostic(code="SINGLE_PIN_NET")
+
+    @project.design
+    def design():
+        design = volt.Design("bad-led")
+        lonely = design.net("LONELY")
+        resistor = design.R("1k", ref="R1")
+        resistor.dnp(True)
+        lonely += resistor[1]
+        return design
+
+    return project.run()
+""",
+    )
+
+    assert main(["model", "--json", "--project", str(root)]) == 0
+
+    payload = _read_model_json(capsys)
+    assert payload["status"] == "expected-diagnostics"
+    assert payload["diagnostics"]["status"] == "expected-diagnostics"
+    assert payload["diagnostics"]["summary"]["errors"] > 0
+    assert [item["code"] for item in payload["diagnostics"]["unexpected"]] == []
+
+
+def test_model_json_keeps_failed_status_non_gating(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(root)
+    _write_entrypoint(
+        root,
+        """import volt
+
+def main():
+    project = volt.Project("bad-led")
+
+    @project.design
+    def design():
+        design = volt.Design("bad-led")
+        design.R("1k", ref="R1")
+        return design
+
+    return project.run()
+""",
+    )
+
+    assert main(["model", "--json", "--project", str(root)]) == 0
+
+    payload = _read_model_json(capsys)
+    assert payload["status"] == "failed"
+    assert payload["diagnostics"]["status"] == "failed"
+    assert payload["diagnostics"]["summary"]["errors"] > 0
+    assert "UNCONNECTED_REQUIRED_PIN" in {
+        item["code"] for item in payload["diagnostics"]["unexpected"]
+    }
+
+
+def test_model_json_emits_named_multi_model_arrays(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(root)
+    _write_entrypoint(
+        root,
+        """import volt
+
+def _design(name):
+    return volt.Design(name)
+
+def _schematic(design):
+    return design.schematic("Main")
+
+def _board(design):
+    board = design.board("Main")
+    board.set_rectangular_outline(origin=(0, 0), size=(20, 10))
+    return board
+
+def main():
+    project = volt.Project("control-panel")
+
+    @project.design
+    def design():
+        return (_design("main:controller"), _design("front-panel"))
+
+    @project.schematic
+    def schematic(context):
+        return tuple(_schematic(design) for design in context.designs)
+
+    @project.board
+    def board(context):
+        return tuple(_board(design) for design in context.designs)
+
+    return project.run()
+""",
+    )
+
+    assert main(["model", "--json", "--project", str(root)]) == 0
+
+    payload = _read_model_json(capsys)
+    assert [item["name"] for item in payload["models"]["designs"]] == [
+        "main:controller",
+        "front-panel",
+    ]
+    assert [
+        (item["name"], item["design"], item["schematic"])
+        for item in payload["models"]["schematics"]
+    ] == [
+        ("main~1controller:Main", "main:controller", "Main"),
+        ("front-panel:Main", "front-panel", "Main"),
+    ]
+    assert [
+        (item["name"], item["design"], item["board"])
+        for item in payload["models"]["boards"]
+    ] == [
+        ("main~1controller:Main", "main:controller", "Main"),
+        ("front-panel:Main", "front-panel", "Main"),
+    ]
+    assert payload["models"]["schematics"][0]["model"]["sheets"][0]["name"] == "Main"
+    assert payload["models"]["boards"][0]["model"]["board"]["name"] == "Main"
+
+
+def test_model_json_selectors_filter_arrays(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(root)
+    _write_entrypoint(
+        root,
+        """import volt
+
+def _design(name):
+    return volt.Design(name)
+
+def _schematic(design):
+    return design.schematic("Main")
+
+def _board(design):
+    board = design.board("Main")
+    board.set_rectangular_outline(origin=(0, 0), size=(20, 10))
+    return board
+
+def main():
+    project = volt.Project("control-panel")
+
+    @project.design
+    def design():
+        return (_design("main:controller"), _design("front-panel"))
+
+    @project.schematic
+    def schematic(context):
+        return tuple(_schematic(design) for design in context.designs)
+
+    @project.board
+    def board(context):
+        return tuple(_board(design) for design in context.designs)
+
+    return project.run()
+""",
+    )
+
+    assert main(["model", "--json", "--project", str(root), "--design", "front-panel"]) == 0
+    payload = _read_model_json(capsys)
+    assert [item["name"] for item in payload["models"]["designs"]] == ["front-panel"]
+    assert [item["name"] for item in payload["models"]["schematics"]] == [
+        "front-panel:Main"
+    ]
+    assert [item["name"] for item in payload["models"]["boards"]] == [
+        "front-panel:Main"
+    ]
+
+    assert (
+        main(
+            [
+                "model",
+                "--json",
+                "--project",
+                str(root),
+                "--schematic",
+                "main~1controller:Main",
+                "--board",
+                "front-panel:Main",
+            ]
+        )
+        == 0
+    )
+    payload = _read_model_json(capsys)
+    assert [item["name"] for item in payload["models"]["designs"]] == [
+        "main:controller",
+        "front-panel",
+    ]
+    assert [item["name"] for item in payload["models"]["schematics"]] == [
+        "main~1controller:Main"
+    ]
+    assert [item["name"] for item in payload["models"]["boards"]] == [
+        "front-panel:Main"
+    ]
+
+
+def test_model_json_reports_ambiguous_and_missing_selectors(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(root)
+    _write_entrypoint(
+        root,
+        """import volt
+
+def _design(name):
+    return volt.Design(name)
+
+def _schematic(design):
+    return design.schematic("Main")
+
+def main():
+    project = volt.Project("control-panel")
+
+    @project.design
+    def design():
+        return (_design("main-controller"), _design("front-panel"))
+
+    @project.schematic
+    def schematic(context):
+        return tuple(_schematic(design) for design in context.designs)
+
+    return project.run()
+""",
+    )
+
+    assert main(["model", "--json", "--project", str(root), "--schematic", "Main"]) == 2
+    ambiguous = capsys.readouterr()
+    assert ambiguous.out == ""
+    assert "Ambiguous schematic selector 'Main'" in ambiguous.err
+    assert "main-controller:Main" in ambiguous.err
+    assert "front-panel:Main" in ambiguous.err
+
+    assert main(["model", "--json", "--project", str(root), "--board", "missing"]) == 2
+    missing = capsys.readouterr()
+    assert missing.out == ""
+    assert "No board named 'missing'" in missing.err
+    assert "Candidates: <none>" in missing.err
