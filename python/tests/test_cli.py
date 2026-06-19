@@ -84,7 +84,7 @@ def test_project_config_resolves_relative_paths_from_project_root(tmp_path):
     _write_project(
         root,
         paths=f"""artifacts = "artifacts"
-cache = "{absolute}"
+cache = "{absolute.as_posix()}"
 """,
     )
 
