@@ -21,6 +21,10 @@ namespace volt::io::detail {
     throw std::logic_error{"Unhandled diagnostic severity"};
 }
 
+[[nodiscard]] std::string entity_ref_id(EntityRef entity) {
+    return entity_ref_serialized_id(entity);
+}
+
 [[nodiscard]] std::string overlay_kind_name(DiagnosticOverlayKind kind) {
     switch (kind) {
     case DiagnosticOverlayKind::BoundingBox:

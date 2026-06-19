@@ -85,6 +85,10 @@ void write_pcb_svg_number(std::ostream &out, double value) {
     return height;
 }
 
+[[nodiscard]] std::string entity_ref_svg_id(EntityRef entity) {
+    return entity_ref_serialized_id(entity);
+}
+
 [[nodiscard]] std::string entity_ref_list(const std::vector<EntityRef> &entities) {
     auto result = std::string{};
     for (std::size_t index = 0; index < entities.size(); ++index) {
