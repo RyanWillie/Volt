@@ -19,13 +19,21 @@ from typing import Any, Callable
 from .._project_model_lookup import model_output_name
 from ..design import Design
 from ..pcb import Board
-from ..project import Project, ProjectResult, _diagnostics_payload
+from ..project import (
+    Project,
+    ProjectDiagnostics,
+    ProjectResult,
+    _diagnostics_payload,
+)
 from ..schematic import Schematic
 
 
 EXIT_SUCCESS = 0
 EXIT_CHECK_FAILED = 1
 EXIT_COMMAND_FAILED = 2
+DIAGNOSTIC_SEVERITIES = ("error", "warning", "info")
+DIAGNOSTIC_STAGES = ("library", "design", "schematic", "board")
+_SEVERITY_ORDER = {"error": 0, "warning": 1, "info": 2}
 
 
 class CliError(Exception):
@@ -58,10 +66,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return EXIT_SUCCESS
 
     try:
-        handler(args)
+        result = handler(args)
     except CliError as error:
         print(f"volt: error: {error}", file=sys.stderr)
         return error.exit_code
+    if isinstance(result, int):
+        return result
     return EXIT_SUCCESS
 
 
@@ -202,6 +212,37 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     model_parser.set_defaults(handler=_handle_model)
 
+    diagnostics_parser = subparsers.add_parser(
+        "diagnostics",
+        help="report project diagnostics",
+        description="Load and run the configured project entrypoint, then report diagnostics.",
+    )
+    _add_project_argument(diagnostics_parser)
+    diagnostics_parser.add_argument(
+        "--json",
+        dest="emit_json",
+        action="store_true",
+        help="Emit diagnostics using the project bundle diagnostics.json schema.",
+    )
+    diagnostics_parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Exit 1 when the project result is not ok.",
+    )
+    diagnostics_parser.add_argument(
+        "--stage",
+        help="Filter diagnostics to one project stage.",
+    )
+    diagnostics_parser.add_argument(
+        "--severity",
+        dest="severities",
+        action="append",
+        default=None,
+        metavar="LEVEL",
+        help="Filter diagnostics to a severity; may be repeated.",
+    )
+    diagnostics_parser.set_defaults(handler=_handle_diagnostics)
+
     return parser
 
 
@@ -239,6 +280,34 @@ def _handle_model(args: argparse.Namespace) -> None:
     print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
 
 
+def _handle_diagnostics(args: argparse.Namespace) -> int | None:
+    stage = _validated_diagnostic_stage(args.stage)
+    severities = _validated_diagnostic_severities(args.severities)
+    config = discover_project(project=args.project)
+    project_stdout = StringIO()
+    try:
+        with redirect_stdout(project_stdout):
+            result = _project_result_from_entrypoint(config)
+    except Exception:
+        _forward_project_stdout(project_stdout)
+        raise
+    _forward_project_stdout(project_stdout)
+
+    diagnostics = _filtered_diagnostics(
+        result,
+        stage=stage,
+        severities=severities,
+    )
+    if args.emit_json:
+        payload = _diagnostics_payload(result, diagnostics=diagnostics)
+        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+    else:
+        _print_diagnostics_report(result, diagnostics)
+    if args.check and not result.ok:
+        return EXIT_CHECK_FAILED
+    return None
+
+
 def _forward_project_stdout(stream: StringIO) -> None:
     text = stream.getvalue()
     if text:
@@ -261,7 +330,7 @@ def _project_result_from_entrypoint(config: ProjectConfig) -> ProjectResult:
                 ) from error
     raise CliError(
         f"Project entrypoint {config.entrypoint!r} must return "
-        "volt.ProjectResult or volt.Project for 'volt model --json'."
+        "volt.ProjectResult or volt.Project."
     )
 
 
@@ -381,6 +450,126 @@ def _board_payload(
         "board": model.name,
         "model": json.loads(model.to_json()),
     }
+
+
+def _validated_diagnostic_stage(stage: str | None) -> str | None:
+    if stage is None:
+        return None
+    normalized = stage.strip().lower()
+    if normalized in DIAGNOSTIC_STAGES:
+        return normalized
+    expected = ", ".join(DIAGNOSTIC_STAGES)
+    raise CliError(
+        f"Invalid diagnostic stage {stage!r}. Expected one of: {expected}."
+    )
+
+
+def _validated_diagnostic_severities(
+    severities: Sequence[str] | None,
+) -> tuple[str, ...]:
+    if severities is None:
+        return ()
+    normalized: list[str] = []
+    for severity in severities:
+        value = severity.strip().lower()
+        if value not in DIAGNOSTIC_SEVERITIES:
+            expected = ", ".join(DIAGNOSTIC_SEVERITIES)
+            raise CliError(
+                f"Invalid diagnostic severity {severity!r}. Expected one of: {expected}."
+            )
+        if value not in normalized:
+            normalized.append(value)
+    return tuple(normalized)
+
+
+def _filtered_diagnostics(
+    result: ProjectResult,
+    *,
+    stage: str | None,
+    severities: tuple[str, ...],
+) -> ProjectDiagnostics:
+    diagnostics = tuple(result.diagnostics)
+    if stage is not None:
+        diagnostics = tuple(
+            diagnostic for diagnostic in diagnostics if diagnostic.stage == stage
+        )
+    if severities:
+        diagnostics = tuple(
+            diagnostic
+            for diagnostic in diagnostics
+            if diagnostic.severity in severities
+        )
+    return ProjectDiagnostics(diagnostics)
+
+
+def _print_diagnostics_report(
+    result: ProjectResult,
+    diagnostics: ProjectDiagnostics,
+) -> None:
+    payload = _diagnostics_payload(result, diagnostics=diagnostics)
+    summary = _diagnostic_summary_text(payload["summary"])
+    print(f"Diagnostics: {payload['status']} ({summary})")
+    grouped = _group_diagnostics(diagnostics)
+    if not grouped:
+        print("No diagnostics.")
+        return
+    styled = _style_stdout()
+    for report, source in sorted(grouped):
+        print(report)
+        print(f"  {source}")
+        for diagnostic in sorted(grouped[(report, source)], key=_diagnostic_sort_key):
+            severity = _format_severity(diagnostic.severity, styled=styled)
+            print(
+                f"    {severity} {diagnostic.code} "
+                f"[{diagnostic.stage}] {diagnostic.message}"
+            )
+
+
+def _diagnostic_summary_text(summary: Mapping[str, int]) -> str:
+    return ", ".join(
+        (
+            _count_text(summary["errors"], "error", "errors"),
+            _count_text(summary["warnings"], "warning", "warnings"),
+            _count_text(summary["infos"], "info", "infos"),
+        )
+    )
+
+
+def _count_text(count: int, singular: str, plural: str) -> str:
+    noun = singular if count == 1 else plural
+    return f"{count} {noun}"
+
+
+def _group_diagnostics(diagnostics: ProjectDiagnostics):
+    grouped = {}
+    for diagnostic in diagnostics:
+        key = (diagnostic.report, diagnostic.source)
+        grouped.setdefault(key, []).append(diagnostic)
+    return grouped
+
+
+def _diagnostic_sort_key(diagnostic) -> tuple[object, ...]:
+    return (
+        diagnostic.stage,
+        _SEVERITY_ORDER.get(diagnostic.severity, len(_SEVERITY_ORDER)),
+        diagnostic.code,
+        diagnostic.message,
+    )
+
+
+def _style_stdout() -> bool:
+    return sys.stdout.isatty() and "NO_COLOR" not in os.environ
+
+
+def _format_severity(severity: str, *, styled: bool) -> str:
+    label = severity.upper()
+    if not styled:
+        return label
+    colors = {"error": "31", "warning": "33", "info": "36"}
+    glyphs = {"error": "✖", "warning": "▲", "info": "ℹ"}
+    color = colors.get(severity, "0")
+    glyph = glyphs.get(severity, "-")
+    return f"\x1b[{color}m{glyph} {label}\x1b[0m"
 
 
 def _format_candidates(candidates: Iterable[str]) -> str:
