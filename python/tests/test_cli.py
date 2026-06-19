@@ -133,6 +133,40 @@ def main():
     assert (root / "override-cwd.txt").read_text(encoding="utf-8") == str(root)
 
 
+def test_run_reloads_entrypoint_module_for_each_project(tmp_path, monkeypatch):
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    _write_project(first)
+    _write_project(second)
+    _write_entrypoint(
+        first,
+        """from pathlib import Path
+
+VALUE = "first"
+
+def main():
+    Path("called.txt").write_text(VALUE, encoding="utf-8")
+""",
+    )
+    _write_entrypoint(
+        second,
+        """from pathlib import Path
+
+VALUE = "second"
+
+def main():
+    Path("called.txt").write_text(VALUE, encoding="utf-8")
+""",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["run", "--project", str(first)]) == 0
+    assert main(["run", "--project", str(second)]) == 0
+
+    assert (first / "called.txt").read_text(encoding="utf-8") == "first"
+    assert (second / "called.txt").read_text(encoding="utf-8") == "second"
+
+
 def test_loader_rejects_entrypoint_without_module_and_function(tmp_path, capsys):
     root = tmp_path / "board"
     _write_project(root, entrypoint="project_entry")

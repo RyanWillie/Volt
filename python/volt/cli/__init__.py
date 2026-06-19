@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import importlib.machinery
 import os
 import sys
 import tomllib
@@ -121,6 +122,8 @@ def load_entrypoint(config: ProjectConfig) -> Callable[[], object]:
 
     module_name, function_name = _split_entrypoint(config.entrypoint)
     with _project_runtime(config.root):
+        _evict_project_entrypoint_modules(module_name, config.root)
+        importlib.invalidate_caches()
         try:
             module = importlib.import_module(module_name)
         except Exception as error:
@@ -223,6 +226,23 @@ def _split_entrypoint(entrypoint: str) -> tuple[str, str]:
     if separator != ":" or not module_name or not function_name:
         raise CliError(f"Project entrypoint {entrypoint!r} must use module:function.")
     return module_name, function_name
+
+
+def _evict_project_entrypoint_modules(module_name: str, root: Path) -> None:
+    top_level_module = module_name.partition(".")[0]
+    if not _root_provides_module(root, top_level_module):
+        return
+
+    package_prefix = f"{top_level_module}."
+    for cached_name in list(sys.modules):
+        if cached_name == top_level_module or cached_name.startswith(package_prefix):
+            del sys.modules[cached_name]
+
+
+def _root_provides_module(root: Path, module_name: str) -> bool:
+    return (
+        importlib.machinery.PathFinder.find_spec(module_name, [str(root)]) is not None
+    )
 
 
 @contextmanager
