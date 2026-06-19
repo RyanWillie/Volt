@@ -5,6 +5,7 @@
 - CMake 3.25 or newer
 - A C++23 compiler
 - Ninja
+- Python 3.11 or newer
 - Python dev dependencies from `requirements-dev.txt`
 
 ## Common Commands

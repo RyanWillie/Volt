@@ -235,7 +235,12 @@ def check_python_package_build() -> None:
     smoke_script = read("scripts/smoke-python-wheel.py")
 
     require('name = "volt-eda"' in pyproject, "Python distribution name must be volt-eda")
-    require('requires-python = ">=3.10"' in pyproject, "Python package must declare Python 3.10+")
+    require('requires-python = ">=3.11"' in pyproject, "Python package must declare Python 3.11+")
+    require('volt = "volt.cli:main"' in pyproject, "Python package must install the volt CLI entry point")
+    require(
+        "find_package(Python3 3.11" in python_cmake,
+        "Python binding build must enforce the Python 3.11+ floor",
+    )
     require(
         'build-backend = "scikit_build_core.build"' in pyproject,
         "Python package must use scikit-build-core",
