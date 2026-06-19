@@ -20,6 +20,7 @@ add_library(
     volt_io
     bom/bom_writer.cpp
     capabilities/board_capability_profile.cpp
+    detail/entity_ref_format.cpp
     logical/logical_circuit_reader.cpp
     logical/logical_circuit_writer.cpp
     logical/logical_net_class_format.cpp

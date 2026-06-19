@@ -186,6 +186,12 @@ struct MultiComponentNetCircuit {
 
 } // namespace
 
+TEST_CASE("PCB SVG writer exposes declared entity reference helper symbols") {
+    CHECK(volt::io::detail::entity_ref_svg_id(volt::EntityRef::board()) == "board:0");
+    CHECK(volt::io::detail::entity_ref_svg_id(
+              volt::EntityRef::board_track(volt::BoardTrackId{3})) == "board_track:3");
+}
+
 TEST_CASE("PCB SVG writer renders a deterministic placement preview") {
     const auto fixture = make_resistor_circuit();
     const auto board = make_preview_board(fixture);

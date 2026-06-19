@@ -101,6 +101,11 @@ struct ResistorCircuit {
 
 } // namespace
 
+TEST_CASE("PCB writer exposes declared entity reference helper symbols") {
+    CHECK(volt::io::detail::entity_ref_id(volt::EntityRef::board()) == "board:0");
+    CHECK(volt::io::detail::entity_ref_id(volt::EntityRef::net(volt::NetId{2})) == "net:2");
+}
+
 TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON") {
     const auto fixture = make_resistor_circuit();
     const auto board = make_viewer_ready_board(fixture);

@@ -53,7 +53,7 @@ PYTHON_CONNECTIVITY_SEMANTICS_ALLOWLIST = {}
 
 ENTITY_REF_KERNEL_ALLOWLIST = {
     (
-        "src/pcb/copper/board_copper.cpp",
+        "src/pcb/copper/board_copper_geometry.cpp",
         "[kind](EntityRef entity) { return entity.kind() == kind; });",
     ): "Existing DRC helper classifies diagnostic copper shapes by reporting refs; keep narrow until a typed shape role replaces it.",
 }
