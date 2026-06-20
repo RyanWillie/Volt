@@ -59,6 +59,7 @@ add_executable(
     io/schematic/schematic_svg_writer_test.cpp
     io/schematic/schematic_writer_test.cpp
     pcb/geometry/board_geometry_projection_test.cpp
+    pcb/assembly/cpl_test.cpp
     pcb/routing/board_escape_router_test.cpp
     pcb/routing/board_router_test.cpp
     pcb/routing/board_spatial_index_test.cpp

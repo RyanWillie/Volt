@@ -25,6 +25,7 @@
 #include <volt/core/quantities.hpp>
 #include <volt/core/rule_set.hpp>
 #include <volt/core/version.hpp>
+#include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/bom/bom_writer.hpp>
 #include <volt/io/capabilities/board_capability_profile.hpp>
 #include <volt/io/logical/logical_circuit_reader.hpp>
@@ -39,6 +40,7 @@
 #include <volt/io/schematic/schematic_schema.hpp>
 #include <volt/io/schematic/schematic_svg_writer.hpp>
 #include <volt/io/schematic/schematic_writer.hpp>
+#include <volt/pcb/assembly/cpl.hpp>
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/copper/board_copper_model.hpp>
 #include <volt/pcb/footprints/board_footprint_model.hpp>

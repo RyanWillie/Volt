@@ -1,0 +1,56 @@
+{
+  "format": "volt.cpl",
+  "version": 1,
+  "metadata": {
+    "units": "mm",
+    "origin": {
+      "convention": "board_origin",
+      "description": "Positions are board coordinates in millimeters from the authored board origin"
+    },
+    "rotation": {
+      "convention": "degrees_counterclockwise_board_coordinates",
+      "description": "rotation_deg is authored placement rotation plus any data-supplied footprint rotation offset, normalized to [0, 360)",
+      "includes_rotation_offsets": true
+    }
+  },
+  "rows": [
+    {
+      "designator": "D1",
+      "component": "component:2",
+      "placement": "component_placement:2",
+      "footprint": {"library": "leds", "name": "LED_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [24, 7],
+      "authored_rotation_deg": 180,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 180,
+      "part": {"manufacturer": "Lite-On", "mpn": "LTST-C190KRKT", "package": "0603"}
+    },
+    {
+      "designator": "J1",
+      "component": "component:0",
+      "placement": "component_placement:0",
+      "footprint": {"library": "connectors", "name": "PinHeader_1x02_P2.54mm_Vertical"},
+      "side": "top",
+      "position_mm": [5, 9],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Generic", "mpn": "HDR-1x02-2.54mm", "package": "2.54mm-1x02"}
+    },
+    {
+      "designator": "R1",
+      "component": "component:1",
+      "placement": "component_placement:1",
+      "footprint": {"library": "passives", "name": "R_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [15, 7],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Yageo", "mpn": "RC0603FR-07330RL", "package": "0603"}
+    }
+  ],
+  "diagnostics": [
+  ]
+}

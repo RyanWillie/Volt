@@ -88,6 +88,8 @@ def test_project_result_writes_part_model_assets_and_placement_transforms(tmp_pa
         "pcb/Main.volt.pcb.json",
         "pcb/Main.svg",
         "pcb/Main.kicad_pcb",
+        "pcb/Main.cpl.json",
+        "pcb/Main.cpl.csv",
         "assets/part_models_3d.json",
         f"assets/models/{asset_hash}.glb",
         "pcb/Main.volt.models3d.json",

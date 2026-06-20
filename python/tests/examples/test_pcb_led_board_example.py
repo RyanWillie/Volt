@@ -41,6 +41,8 @@ def _artifact_texts(artifacts):
         "pcb": artifacts.pcb_json.read_text(encoding="utf-8"),
         "pcb_svg": artifacts.pcb_svg.read_text(encoding="utf-8"),
         "kicad_pcb": artifacts.kicad_pcb.read_text(encoding="utf-8"),
+        "cpl_json": artifacts.cpl_json.read_text(encoding="utf-8"),
+        "cpl_csv": artifacts.cpl_csv.read_text(encoding="utf-8"),
         "validation": artifacts.diagnostics_json.read_text(encoding="utf-8"),
         "project": _project_bundle_texts(project_bundle),
         "pages": tuple(path.read_text(encoding="utf-8") for path in artifacts.schematic_svg_pages),
@@ -79,6 +81,12 @@ def _committed_artifact_texts(main):
             encoding="utf-8"
         ),
         "kicad_pcb": (artifact_dir / f"{main.EXAMPLE_SLUG}.kicad_pcb").read_text(
+            encoding="utf-8"
+        ),
+        "cpl_json": (artifact_dir / f"{main.EXAMPLE_SLUG}.cpl.json").read_text(
+            encoding="utf-8"
+        ),
+        "cpl_csv": (artifact_dir / f"{main.EXAMPLE_SLUG}.cpl.csv").read_text(
             encoding="utf-8"
         ),
         "validation": (artifact_dir / f"{main.EXAMPLE_SLUG}.validation.json").read_text(

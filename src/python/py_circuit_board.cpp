@@ -6,11 +6,38 @@
 #include <algorithm>
 
 #include <volt/circuit/connectivity/queries.hpp>
+#include <volt/io/assembly/cpl_writer.hpp>
 #include <volt/io/pcb/pcb_svg_writer.hpp>
 #include <volt/io/pcb/pcb_writer.hpp>
+#include <volt/pcb/assembly/cpl.hpp>
 #include <volt/pcb/routing/board_router.hpp>
 
 namespace volt::python {
+namespace {
+
+[[nodiscard]] volt::FootprintRef footprint_ref_from_key(py::handle key) {
+    if (!py::isinstance<py::tuple>(key)) {
+        throw py::type_error{"CPL rotation offset keys must be (library, name) tuples"};
+    }
+    const auto tuple = py::cast<py::tuple>(key);
+    if (py::len(tuple) != 2U) {
+        throw py::type_error{"CPL rotation offset keys must be (library, name) tuples"};
+    }
+    return volt::FootprintRef{py::cast<std::string>(tuple[0]), py::cast<std::string>(tuple[1])};
+}
+
+[[nodiscard]] volt::CplProjectionOptions
+cpl_projection_options_from_dict(const py::dict &rotation_offsets) {
+    auto options = volt::CplProjectionOptions{};
+    options.rotation_offsets.reserve(static_cast<std::size_t>(py::len(rotation_offsets)));
+    for (const auto item : rotation_offsets) {
+        options.rotation_offsets.emplace_back(footprint_ref_from_key(item.first),
+                                              py::cast<double>(item.second));
+    }
+    return options;
+}
+
+} // namespace
 
 py::dict PyCircuit::board(const std::string &name) {
     const auto &projection = board_projection(name);
@@ -497,6 +524,25 @@ py::list PyCircuit::board_resolve_pads() const {
 py::list PyCircuit::board_validate() const {
     return diagnostics_to_list(
         validate_board(board_projection(), volt::builtin_footprint_library()));
+}
+
+py::list PyCircuit::board_validate_assembly(const py::dict &rotation_offsets) const {
+    const auto options = cpl_projection_options_from_dict(rotation_offsets);
+    return diagnostics_to_list(
+        volt::project_cpl(board_projection(), volt::builtin_footprint_library(), options)
+            .diagnostics());
+}
+
+std::string PyCircuit::board_cpl_json(const py::dict &rotation_offsets) const {
+    const auto options = cpl_projection_options_from_dict(rotation_offsets);
+    return volt::io::write_cpl_json(
+        volt::project_cpl(board_projection(), volt::builtin_footprint_library(), options));
+}
+
+std::string PyCircuit::board_cpl_csv(const py::dict &rotation_offsets) const {
+    const auto options = cpl_projection_options_from_dict(rotation_offsets);
+    return volt::io::write_cpl_csv(
+        volt::project_cpl(board_projection(), volt::builtin_footprint_library(), options));
 }
 
 std::string PyCircuit::board_to_json() const {

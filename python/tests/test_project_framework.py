@@ -740,6 +740,8 @@ def test_project_result_write_emits_deterministic_bundle(tmp_path):
         "pcb/Main.volt.pcb.json",
         "pcb/Main.svg",
         "pcb/Main.kicad_pcb",
+        "pcb/Main.cpl.json",
+        "pcb/Main.cpl.csv",
         "diagnostics/diagnostics.json",
         "diagnostics/tests.json",
     ]
@@ -750,6 +752,8 @@ def test_project_result_write_emits_deterministic_bundle(tmp_path):
         "diagnostics/tests.json",
         "logical/status-led.volt.json",
         "manifest.volt.json",
+        "pcb/Main.cpl.csv",
+        "pcb/Main.cpl.json",
         "pcb/Main.kicad_pcb",
         "pcb/Main.svg",
         "pcb/Main.volt.pcb.json",
@@ -811,9 +815,13 @@ def test_project_result_write_flat_artifacts_emits_legacy_example_outputs(tmp_pa
     assert artifacts.pcb_json == tmp_path / "status_led.volt.pcb.json"
     assert artifacts.pcb_svg == tmp_path / "status_led.pcb.svg"
     assert artifacts.kicad_pcb == tmp_path / "status_led.kicad_pcb"
+    assert artifacts.cpl_json == tmp_path / "status_led.cpl.json"
+    assert artifacts.cpl_csv == tmp_path / "status_led.cpl.csv"
     assert artifacts.diagnostics_json == tmp_path / "status_led.validation.json"
     assert artifacts.schematic_svg.read_text(encoding="utf-8").startswith("<svg")
     assert artifacts.kicad_pcb.read_text(encoding="utf-8").startswith("(kicad_pcb\n")
+    assert artifacts.cpl_json.read_text(encoding="utf-8").startswith("{\n")
+    assert artifacts.cpl_csv.read_text(encoding="utf-8").startswith("Designator,Mid X")
     diagnostics = json.loads(artifacts.diagnostics_json.read_text(encoding="utf-8"))
     assert diagnostics["status"] == "clean"
     assert diagnostics["summary"] == {"errors": 0, "infos": 0, "warnings": 0}
@@ -1208,9 +1216,13 @@ def test_two_board_project_fixture_writes_deterministic_bundle(tmp_path):
         "logical/front-panel.volt.json",
         "logical/main-controller.volt.json",
         "manifest.volt.json",
+        "pcb/front-panel-Main.cpl.csv",
+        "pcb/front-panel-Main.cpl.json",
         "pcb/front-panel-Main.kicad_pcb",
         "pcb/front-panel-Main.svg",
         "pcb/front-panel-Main.volt.pcb.json",
+        "pcb/main-controller-Main.cpl.csv",
+        "pcb/main-controller-Main.cpl.json",
         "pcb/main-controller-Main.kicad_pcb",
         "pcb/main-controller-Main.svg",
         "pcb/main-controller-Main.volt.pcb.json",

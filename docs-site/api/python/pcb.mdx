@@ -43,6 +43,10 @@ Source: `python/volt/pcb.py`
 | `add_text(self, text: str, *, at: Point, layer: int, rotation: float = 0.0, size: float = 1.0, locked: bool = False) -> int` | Add a board text item and return its kernel index. |
 | `resolve_pads(self) -> tuple[PadResolution, ...]` | Resolve placed footprint pads to component pins and logical nets. |
 | `validate(self) -> DiagnosticReport` | Run PCB projection validation and return the diagnostic report. |
+| `validate_assembly(self, *, rotation_offsets: dict[FootprintRef, float] \| None = None) -> DiagnosticReport` | Run assembly handoff validation and return the diagnostic report. |
+| `cpl(self, *, rotation_offsets: dict[FootprintRef, float] \| None = None) -> dict` | Return the deterministic kernel CPL projection as a JSON-compatible dict. |
+| `cpl_json(self, *, rotation_offsets: dict[FootprintRef, float] \| None = None) -> str` | Return the deterministic kernel CPL projection as canonical JSON text. |
+| `cpl_csv(self, *, rotation_offsets: dict[FootprintRef, float] \| None = None) -> str` | Return the deterministic JLCPCB-shaped CPL projection as CSV text. |
 | `to_json(self) -> str` | Serialize the PCB projection to Volt board JSON. |
 | `to_svg(self, *, pad_net_overlays: bool = True, diagnostic_overlays: bool = True, ratsnest_edges: bool = True, layer: int \| None = None) -> str` | Render the PCB projection as SVG. |
 | `to_kicad_pcb(self) -> KiCadPcbExport` | Export the PCB projection to a KiCad `.kicad_pcb` adapter document. |

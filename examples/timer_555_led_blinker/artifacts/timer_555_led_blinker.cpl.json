@@ -1,0 +1,128 @@
+{
+  "format": "volt.cpl",
+  "version": 1,
+  "metadata": {
+    "units": "mm",
+    "origin": {
+      "convention": "board_origin",
+      "description": "Positions are board coordinates in millimeters from the authored board origin"
+    },
+    "rotation": {
+      "convention": "degrees_counterclockwise_board_coordinates",
+      "description": "rotation_deg is authored placement rotation plus any data-supplied footprint rotation offset, normalized to [0, 360)",
+      "includes_rotation_offsets": true
+    }
+  },
+  "rows": [
+    {
+      "designator": "C1",
+      "component": "component:4",
+      "placement": "component_placement:4",
+      "footprint": {"library": "Capacitor_SMD", "name": "C_0805_2012Metric"},
+      "side": "top",
+      "position_mm": [39, 17.949999999999999],
+      "authored_rotation_deg": 90,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 90,
+      "part": {"manufacturer": "Samsung Electro-Mechanics", "mpn": "CL21B105KBFNNNE", "package": "0805"}
+    },
+    {
+      "designator": "C2",
+      "component": "component:5",
+      "placement": "component_placement:5",
+      "footprint": {"library": "Capacitor_SMD", "name": "C_0805_2012Metric"},
+      "side": "top",
+      "position_mm": [31, 21],
+      "authored_rotation_deg": 90,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 90,
+      "part": {"manufacturer": "Samsung Electro-Mechanics", "mpn": "CL21B103KBANNNC", "package": "0805"}
+    },
+    {
+      "designator": "C3",
+      "component": "component:6",
+      "placement": "component_placement:6",
+      "footprint": {"library": "Capacitor_SMD", "name": "C_0805_2012Metric"},
+      "side": "top",
+      "position_mm": [29, 10],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Samsung Electro-Mechanics", "mpn": "CL21B104KBCNNNC", "package": "0805"}
+    },
+    {
+      "designator": "D1",
+      "component": "component:8",
+      "placement": "component_placement:8",
+      "footprint": {"library": "LED_SMD", "name": "LED_0805_2012Metric"},
+      "side": "top",
+      "position_mm": [12.5, 24],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Lite-On", "mpn": "LTST-C171KRKT", "package": "0805"}
+    },
+    {
+      "designator": "J1",
+      "component": "component:0",
+      "placement": "component_placement:0",
+      "footprint": {"library": "Connector_JST", "name": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal"},
+      "side": "top",
+      "position_mm": [7, 16],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "JST", "mpn": "S2B-PH-SM4-TB(LF)(SN)", "package": "JST-PH-SMD-1x02"}
+    },
+    {
+      "designator": "R1",
+      "component": "component:2",
+      "placement": "component_placement:2",
+      "footprint": {"library": "Resistor_SMD", "name": "R_0805_2012Metric"},
+      "side": "top",
+      "position_mm": [36, 10],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Stackpole", "mpn": "RMCF0805FT100K", "package": "0805"}
+    },
+    {
+      "designator": "R2",
+      "component": "component:3",
+      "placement": "component_placement:3",
+      "footprint": {"library": "Resistor_SMD", "name": "R_0805_2012Metric"},
+      "side": "top",
+      "position_mm": [36, 14],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Stackpole", "mpn": "RMCF0805FT47K0", "package": "0805"}
+    },
+    {
+      "designator": "R3",
+      "component": "component:7",
+      "placement": "component_placement:7",
+      "footprint": {"library": "Resistor_SMD", "name": "R_0805_2012Metric"},
+      "side": "top",
+      "position_mm": [15.5, 20],
+      "authored_rotation_deg": 90,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 90,
+      "part": {"manufacturer": "Stackpole", "mpn": "RMCF0805FT1K00", "package": "0805"}
+    },
+    {
+      "designator": "U1",
+      "component": "component:1",
+      "placement": "component_placement:1",
+      "footprint": {"library": "KiCad_Package_SO", "name": "SOIC-8_3.9x4.9mm_P1.27mm"},
+      "side": "top",
+      "position_mm": [23, 15],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Texas Instruments", "mpn": "NE555DR", "package": "SOIC-8"}
+    }
+  ],
+  "diagnostics": [
+  ]
+}

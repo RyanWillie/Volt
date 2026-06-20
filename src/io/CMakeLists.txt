@@ -18,6 +18,7 @@ target_link_libraries(volt_nlohmann_json INTERFACE nlohmann_json::nlohmann_json)
 
 add_library(
     volt_io
+    assembly/cpl_writer.cpp
     bom/bom_writer.cpp
     capabilities/board_capability_profile.cpp
     detail/entity_ref_format.cpp

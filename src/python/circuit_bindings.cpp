@@ -44,6 +44,8 @@ void bind_circuit(pybind11::module_ &module) {
     });
     module.def("bom_diagnostic_codes",
                []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::Bom); });
+    module.def("assembly_diagnostic_codes",
+               []() { return string_view_catalog_to_tuple(diagnostic_code_catalogs::Assembly); });
     module.def("read_capability_profile_text", [](const std::string &text) {
         return board_capability_profile_to_dict(volt::io::read_capability_profile_text(text));
     });
@@ -284,6 +286,10 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("locked"))
         .def("board_resolve_pads", &PyCircuit::board_resolve_pads)
         .def("board_validate", &PyCircuit::board_validate)
+        .def("board_validate_assembly", &PyCircuit::board_validate_assembly,
+             py::arg("rotation_offsets") = py::dict{})
+        .def("board_cpl_json", &PyCircuit::board_cpl_json, py::arg("rotation_offsets") = py::dict{})
+        .def("board_cpl_csv", &PyCircuit::board_cpl_csv, py::arg("rotation_offsets") = py::dict{})
         .def("board_to_json", &PyCircuit::board_to_json)
         .def("board_to_svg", &PyCircuit::board_to_svg, py::arg("pad_net_overlays") = true,
              py::arg("diagnostic_overlays") = true, py::arg("ratsnest_edges") = true,
