@@ -295,6 +295,7 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("diagnostic_overlays") = true, py::arg("ratsnest_edges") = true,
              py::arg("layer_filter") = std::nullopt)
         .def("board_to_kicad_pcb", &PyCircuit::board_to_kicad_pcb)
+        .def("board_to_fabrication_files", &PyCircuit::board_to_fabrication_files)
         .def("to_json", &PyCircuit::to_json);
 }
 

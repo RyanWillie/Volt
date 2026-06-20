@@ -122,6 +122,7 @@ inline constexpr auto BoardFeatureAnnotationMissing =
 namespace pcb_fabrication_diagnostic_codes {
 
 inline constexpr auto KiCadFabExportLoss = std::string_view{"PCB_KICAD_FAB_EXPORT_LOSS"};
+inline constexpr auto NativeFabExportLoss = std::string_view{"PCB_NATIVE_FAB_EXPORT_LOSS"};
 
 } // namespace pcb_fabrication_diagnostic_codes
 
@@ -206,7 +207,8 @@ inline constexpr auto PcbVisual =
                pcb_visual_diagnostic_codes::BoardFeatureAnnotationMissing};
 
 inline constexpr auto PcbFabrication =
-    std::array{pcb_fabrication_diagnostic_codes::KiCadFabExportLoss};
+    std::array{pcb_fabrication_diagnostic_codes::KiCadFabExportLoss,
+               pcb_fabrication_diagnostic_codes::NativeFabExportLoss};
 
 inline constexpr auto PartLineup = std::array{
     part_lineup_diagnostic_codes::PinWithoutPad, part_lineup_diagnostic_codes::PadWithoutPin,

@@ -179,9 +179,11 @@ TEST_CASE("PCB fabrication diagnostic codes are stable constants") {
     CHECK(std::string{volt::diagnostic_categories::PcbFabrication} == "pcb.fabrication");
     CHECK(std::string{volt::pcb_fabrication_diagnostic_codes::KiCadFabExportLoss} ==
           "PCB_KICAD_FAB_EXPORT_LOSS");
+    CHECK(std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabExportLoss} ==
+          "PCB_NATIVE_FAB_EXPORT_LOSS");
     CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::PcbFabrication.begin(),
                                    volt::diagnostic_code_catalogs::PcbFabrication.end()} ==
-          std::vector<std::string>{"PCB_KICAD_FAB_EXPORT_LOSS"});
+          std::vector<std::string>{"PCB_KICAD_FAB_EXPORT_LOSS", "PCB_NATIVE_FAB_EXPORT_LOSS"});
 }
 
 TEST_CASE("Part lineup diagnostic codes are stable constants") {

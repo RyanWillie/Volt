@@ -27,6 +27,7 @@ add_library(
     logical/logical_net_class_format.cpp
     parts/part_definition_reader.cpp
     parts/part_definition_writer.cpp
+    pcb/pcb_fabrication_writer.cpp
     pcb/pcb_feature_io.cpp
     pcb/pcb_feature_svg.cpp
     pcb/pcb_reader.cpp

@@ -385,6 +385,8 @@ class PyCircuit {
 
     [[nodiscard]] py::dict board_to_kicad_pcb() const;
 
+    [[nodiscard]] py::dict board_to_fabrication_files() const;
+
   private:
     [[nodiscard]] std::vector<volt::PinId> pins_by_name(volt::ComponentId component,
                                                         const std::string &name) const;

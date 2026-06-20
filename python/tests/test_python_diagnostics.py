@@ -93,7 +93,10 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
         "PART_PAD_OVERLAP",
         "PART_PAD_ROW_PITCH_INCONSISTENT",
     )
-    assert volt.PCB_FABRICATION_DIAGNOSTIC_CODES == ("PCB_KICAD_FAB_EXPORT_LOSS",)
+    assert volt.PCB_FABRICATION_DIAGNOSTIC_CODES == (
+        "PCB_KICAD_FAB_EXPORT_LOSS",
+        "PCB_NATIVE_FAB_EXPORT_LOSS",
+    )
     assert volt.BOM_DIAGNOSTIC_CODES == (
         "BOM_COMPONENT_MISSING_SELECTED_PART",
         "BOM_COMPONENT_IMPLICIT_DNP",

@@ -93,6 +93,27 @@ def _two_pad_footprint(ref, *, start=(0.0, 0.0), end=(1.5, 0.0)):
     )
 
 
+def _rect_0603(ref):
+    half_span = 0.75
+    return volt.FootprintDefinition(
+        ref,
+        pads=(
+            volt.FootprintPad.surface_mount(
+                "1",
+                at=(-half_span, 0.0),
+                size=(0.8, 0.95),
+                shape="rectangle",
+            ),
+            volt.FootprintPad.surface_mount(
+                "2",
+                at=(half_span, 0.0),
+                size=(0.8, 0.95),
+                shape="rectangle",
+            ),
+        ),
+    )
+
+
 def _placed_positions(board):
     return {
         item["component"]: (tuple(item["position"]), item["rotation_deg"], item["locked"])
@@ -1231,6 +1252,96 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
     assert with_loss.warnings[0].kind == "unsupported"
     assert with_loss.warnings[0].severity == "warning"
     assert with_loss.warnings[0].fabrication_impact == "fab-critical"
+
+
+def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
+    design, r1, d1 = _small_resistor_led_design()
+    r1.select_part(
+        manufacturer="Volt",
+        part_number="RECT-R",
+        package="0603",
+        footprint=("test", "RectR0603"),
+        pin_pads={1: "1", 2: "2"},
+    )
+    d1.select_part(
+        manufacturer="Volt",
+        part_number="RECT-D",
+        package="0603",
+        footprint=("test", "RectD0603"),
+        pin_pads={"A": "1", "K": "2"},
+    )
+    led_a = next(net for net in design.nets() if net.name == "LED_A")
+    board = design.board("Control")
+
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    back = board.add_layer("B.Cu", role="copper", side="bottom")
+    board.set_layer_stack((front, back), thickness=1.6)
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
+    board.add(volt.Hole(center=(3.0, 3.0), diameter=3.2, role="mounting", label="MH1"))
+    board.cache_footprint(_rect_0603(("test", "RectR0603")))
+    board.cache_footprint(_rect_0603(("test", "RectD0603")))
+    board.place(r1, at=(18.0, 15.0), rotation=0.0, side="top", locked=True)
+    board.place(d1, at=(28.0, 15.0), rotation=180.0, side="top")
+    board.add_track(
+        led_a,
+        layer=front,
+        points=((18.75, 15.0), (23.0, 10.0), (28.75, 15.0)),
+        width=0.25,
+    )
+    board.add_via(
+        led_a,
+        at=(23.0, 15.0),
+        start_layer=front,
+        end_layer=back,
+        drill=0.30,
+        annular=0.70,
+    )
+
+    export = board.to_fabrication_files()
+
+    assert export.warnings == ()
+    assert export.text_by_filename("Control.GTL") == board.to_fabrication_files().text_by_filename(
+        "Control.GTL"
+    )
+    assert [file.filename for file in export.files] == [
+        "Control.GTL",
+        "Control.GBL",
+        "Control.GTS",
+        "Control.GBS",
+        "Control.GTO",
+        "Control.GTP",
+        "Control.GKO",
+        "Control-PTH.TXT",
+        "Control-NPTH.TXT",
+    ]
+    assert "%TF.FileFunction,Copper,L1,Top*%" in export.text_by_filename("Control.GTL")
+    assert "X0018750000Y0015000000D02*" in export.text_by_filename("Control.GTL")
+    assert ";TYPE=PLATED" in export.text_by_filename("Control-PTH.TXT")
+    assert "X0023000000Y0015000000" in export.text_by_filename("Control-PTH.TXT")
+    assert ";TYPE=NON_PLATED" in export.text_by_filename("Control-NPTH.TXT")
+    assert "X0003000000Y0003000000" in export.text_by_filename("Control-NPTH.TXT")
+
+    written = board.write_fabrication_files(tmp_path)
+    assert [file.filename for file in written.files] == [file.filename for file in export.files]
+    for file in export.files:
+        assert (tmp_path / file.filename).read_text(encoding="utf-8") == file.text
+
+    board.add(
+        volt.Slot(
+            start=(10.0, 20.0),
+            end=(16.0, 20.0),
+            width=1.2,
+            role="mounting",
+            label="SLOT",
+        )
+    )
+    with_loss = board.to_fabrication_files()
+    assert [warning.construct for warning in with_loss.warnings] == ["board.feature.slot"]
+    assert with_loss.warnings[0].fabrication_impact == "fab-critical"
+    assert [diagnostic.code for diagnostic in with_loss.diagnostics] == [
+        "PCB_NATIVE_FAB_EXPORT_LOSS"
+    ]
+    assert with_loss.diagnostics[0].rule == "board.feature.slot"
 
 
 def test_python_board_authoring_writes_zones_keepouts_rooms_and_text():
