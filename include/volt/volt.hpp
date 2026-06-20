@@ -32,6 +32,7 @@
 #include <volt/io/logical/logical_circuit_writer.hpp>
 #include <volt/io/parts/part_definition_reader.hpp>
 #include <volt/io/parts/part_definition_writer.hpp>
+#include <volt/io/pcb/fabrication_writer.hpp>
 #include <volt/io/pcb/pcb_reader.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>
 #include <volt/io/pcb/pcb_svg_writer.hpp>

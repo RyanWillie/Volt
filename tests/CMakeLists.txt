@@ -52,6 +52,7 @@ add_executable(
     io/logical/logical_circuit_writer_test.cpp
     io/parts/part_definition_io_test.cpp
     io/pcb/pcb_projection_io_test.cpp
+    io/pcb/pcb_fabrication_writer_test.cpp
     io/pcb/pcb_svg_writer_test.cpp
     io/schematic/schematic_reader_test.cpp
     io/schematic/schematic_round_trip_test.cpp
