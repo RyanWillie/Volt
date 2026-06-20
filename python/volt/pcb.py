@@ -1171,7 +1171,13 @@ class Board:
         """Write native Gerber and Excellon files and return their loss report."""
         export = self.to_fabrication_files()
         root = Path(path)
-        root.mkdir(parents=True, exist_ok=True)
+        if root.exists():
+            if not root.is_dir():
+                raise NotADirectoryError(root)
+            if any(root.iterdir()):
+                raise FileExistsError("Fabrication output directory must be empty")
+        else:
+            root.mkdir(parents=True, exist_ok=True)
         for file in export.files:
             (root / file.filename).write_text(file.text, encoding="utf-8")
         return export

@@ -225,6 +225,7 @@ TEST_CASE("PCB fabrication writer exports deterministic Gerber and Excellon file
     REQUIRE(silk != nullptr);
     CHECK(contains(silk->text, "%TF.FileFunction,Legend,Top*%"));
     CHECK(contains(silk->text, "G04 TEXT REV A*"));
+    CHECK(contains(silk->text, "X0005000000Y0017000000D02*"));
     CHECK(contains(silk->text, "X0008800000Y0009500000D02*"));
 
     const auto *paste = find_file(result, "Control.GTP");
@@ -252,6 +253,53 @@ TEST_CASE("PCB fabrication writer exports deterministic Gerber and Excellon file
     CHECK(contains(npth->text, ";TYPE=NON_PLATED"));
     CHECK(contains(npth->text, "T01C2.400000"));
     CHECK(contains(npth->text, "X0004000000Y0004000000"));
+}
+
+TEST_CASE("PCB fabrication writer reports unsupported board text glyphs") {
+    const auto fixture = make_fabrication_circuit();
+    auto board = make_fabrication_board(fixture);
+    static_cast<void>(board.add_text(volt::BoardText{"@", volt::BoardPoint{8.0, 18.0},
+                                                     volt::BoardRotation::degrees(0.0),
+                                                     volt::BoardLayerId{2}, 1.0, true}));
+
+    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+
+    REQUIRE(result.loss_report.warnings().size() == 1);
+    CHECK(result.loss_report.warnings().front().construct == "board.text.character");
+    CHECK(result.loss_report.warnings().front().fabrication_impact ==
+          volt::io::PcbFabricationLossImpact::FabCritical);
+
+    const auto diagnostics = volt::io::fabrication_diagnostics(result.loss_report);
+    REQUIRE(diagnostics.count() == 1);
+    CHECK(diagnostics.diagnostics().front().code() ==
+          volt::DiagnosticCode{
+              std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabExportLoss}});
+    REQUIRE(diagnostics.diagnostics().front().rule().has_value());
+    CHECK(diagnostics.diagnostics().front().rule().value() == "board.text.character");
+}
+
+TEST_CASE("PCB fabrication writer reports finished hole diameter loss") {
+    const auto fixture = make_fabrication_circuit();
+    auto board = make_fabrication_board(fixture);
+    static_cast<void>(board.add_feature(
+        volt::BoardFeature::hole("FH", volt::BoardPoint{8.0, 4.0}, 2.4, false, "mounting", 2.0)));
+
+    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+
+    REQUIRE(result.loss_report.warnings().size() == 1);
+    CHECK(result.loss_report.warnings().front().construct ==
+          "board.feature.hole.finished_diameter");
+    CHECK(result.loss_report.warnings().front().fabrication_impact ==
+          volt::io::PcbFabricationLossImpact::FabCritical);
+
+    const auto diagnostics = volt::io::fabrication_diagnostics(result.loss_report);
+    REQUIRE(diagnostics.count() == 1);
+    CHECK(diagnostics.diagnostics().front().code() ==
+          volt::DiagnosticCode{
+              std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabExportLoss}});
+    REQUIRE(diagnostics.diagnostics().front().rule().has_value());
+    CHECK(diagnostics.diagnostics().front().rule().value() ==
+          "board.feature.hole.finished_diameter");
 }
 
 TEST_CASE("PCB fabrication writer reports unsupported geometry and native diagnostics") {

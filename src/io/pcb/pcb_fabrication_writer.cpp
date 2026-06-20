@@ -1,6 +1,7 @@
 #include <volt/io/pcb/pcb_fabrication_writer.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <iomanip>
@@ -38,6 +39,8 @@ struct DrillHit {
     double diameter_mm;
     bool plated;
 };
+
+using GlyphRows = std::array<std::string_view, 7>;
 
 [[nodiscard]] bool is_fab_critical(const PcbFabricationLossWarning &warning) noexcept {
     return warning.fabrication_impact == PcbFabricationLossImpact::FabCritical;
@@ -88,6 +91,99 @@ void add_fab_critical_warning(
 
 [[nodiscard]] std::string xy(BoardPoint point) {
     return "X" + coordinate(point.x_mm()) + "Y" + coordinate(point.y_mm());
+}
+
+[[nodiscard]] std::optional<GlyphRows> glyph_for(char character) {
+    switch (character) {
+    case ' ':
+        return GlyphRows{"00000", "00000", "00000", "00000", "00000", "00000", "00000"};
+    case '-':
+        return GlyphRows{"00000", "00000", "00000", "11111", "00000", "00000", "00000"};
+    case '.':
+        return GlyphRows{"00000", "00000", "00000", "00000", "00000", "01100", "01100"};
+    case '/':
+        return GlyphRows{"00001", "00010", "00100", "01000", "10000", "00000", "00000"};
+    case ':':
+        return GlyphRows{"00000", "01100", "01100", "00000", "01100", "01100", "00000"};
+    case '_':
+        return GlyphRows{"00000", "00000", "00000", "00000", "00000", "00000", "11111"};
+    case '+':
+        return GlyphRows{"00000", "00100", "00100", "11111", "00100", "00100", "00000"};
+    case '0':
+        return GlyphRows{"01110", "10001", "10011", "10101", "11001", "10001", "01110"};
+    case '1':
+        return GlyphRows{"00100", "01100", "00100", "00100", "00100", "00100", "01110"};
+    case '2':
+        return GlyphRows{"01110", "10001", "00001", "00010", "00100", "01000", "11111"};
+    case '3':
+        return GlyphRows{"11110", "00001", "00001", "01110", "00001", "00001", "11110"};
+    case '4':
+        return GlyphRows{"00010", "00110", "01010", "10010", "11111", "00010", "00010"};
+    case '5':
+        return GlyphRows{"11111", "10000", "10000", "11110", "00001", "00001", "11110"};
+    case '6':
+        return GlyphRows{"01110", "10000", "10000", "11110", "10001", "10001", "01110"};
+    case '7':
+        return GlyphRows{"11111", "00001", "00010", "00100", "01000", "01000", "01000"};
+    case '8':
+        return GlyphRows{"01110", "10001", "10001", "01110", "10001", "10001", "01110"};
+    case '9':
+        return GlyphRows{"01110", "10001", "10001", "01111", "00001", "00001", "01110"};
+    case 'A':
+        return GlyphRows{"01110", "10001", "10001", "11111", "10001", "10001", "10001"};
+    case 'B':
+        return GlyphRows{"11110", "10001", "10001", "11110", "10001", "10001", "11110"};
+    case 'C':
+        return GlyphRows{"01110", "10001", "10000", "10000", "10000", "10001", "01110"};
+    case 'D':
+        return GlyphRows{"11110", "10001", "10001", "10001", "10001", "10001", "11110"};
+    case 'E':
+        return GlyphRows{"11111", "10000", "10000", "11110", "10000", "10000", "11111"};
+    case 'F':
+        return GlyphRows{"11111", "10000", "10000", "11110", "10000", "10000", "10000"};
+    case 'G':
+        return GlyphRows{"01110", "10001", "10000", "10111", "10001", "10001", "01110"};
+    case 'H':
+        return GlyphRows{"10001", "10001", "10001", "11111", "10001", "10001", "10001"};
+    case 'I':
+        return GlyphRows{"01110", "00100", "00100", "00100", "00100", "00100", "01110"};
+    case 'J':
+        return GlyphRows{"00111", "00010", "00010", "00010", "00010", "10010", "01100"};
+    case 'K':
+        return GlyphRows{"10001", "10010", "10100", "11000", "10100", "10010", "10001"};
+    case 'L':
+        return GlyphRows{"10000", "10000", "10000", "10000", "10000", "10000", "11111"};
+    case 'M':
+        return GlyphRows{"10001", "11011", "10101", "10101", "10001", "10001", "10001"};
+    case 'N':
+        return GlyphRows{"10001", "11001", "10101", "10011", "10001", "10001", "10001"};
+    case 'O':
+        return GlyphRows{"01110", "10001", "10001", "10001", "10001", "10001", "01110"};
+    case 'P':
+        return GlyphRows{"11110", "10001", "10001", "11110", "10000", "10000", "10000"};
+    case 'Q':
+        return GlyphRows{"01110", "10001", "10001", "10001", "10101", "10010", "01101"};
+    case 'R':
+        return GlyphRows{"11110", "10001", "10001", "11110", "10100", "10010", "10001"};
+    case 'S':
+        return GlyphRows{"01111", "10000", "10000", "01110", "00001", "00001", "11110"};
+    case 'T':
+        return GlyphRows{"11111", "00100", "00100", "00100", "00100", "00100", "00100"};
+    case 'U':
+        return GlyphRows{"10001", "10001", "10001", "10001", "10001", "10001", "01110"};
+    case 'V':
+        return GlyphRows{"10001", "10001", "10001", "10001", "10001", "01010", "00100"};
+    case 'W':
+        return GlyphRows{"10001", "10001", "10001", "10101", "10101", "10101", "01010"};
+    case 'X':
+        return GlyphRows{"10001", "10001", "01010", "00100", "01010", "10001", "10001"};
+    case 'Y':
+        return GlyphRows{"10001", "10001", "01010", "00100", "00100", "00100", "00100"};
+    case 'Z':
+        return GlyphRows{"11111", "00001", "00010", "00100", "01000", "10000", "11111"};
+    default:
+        return std::nullopt;
+    }
 }
 
 [[nodiscard]] std::string file_token(std::string_view value) {
@@ -496,10 +592,74 @@ void report_unsupported_board_text_layers(const Board &board,
     }
 }
 
+[[nodiscard]] BoardPoint transform_board_text_point(const BoardText &text, double local_x,
+                                                    double local_y) {
+    constexpr double pi = 3.14159265358979323846264338327950288;
+    const auto radians = text.rotation().degrees() * pi / 180.0;
+    const auto rotated_x = (std::cos(radians) * local_x) - (std::sin(radians) * local_y);
+    const auto rotated_y = (std::sin(radians) * local_x) + (std::cos(radians) * local_y);
+    return BoardPoint{text.position().x_mm() + rotated_x, text.position().y_mm() + rotated_y};
+}
+
+void draw_text_cell(GerberWriter &writer, const BoardText &text, double left_mm, double top_mm,
+                    double right_mm, double bottom_mm) {
+    writer.draw_region(std::vector{
+        transform_board_text_point(text, left_mm, top_mm),
+        transform_board_text_point(text, right_mm, top_mm),
+        transform_board_text_point(text, right_mm, bottom_mm),
+        transform_board_text_point(text, left_mm, bottom_mm),
+    });
+}
+
+void report_unsupported_board_text_character(PcbFabricationLossReport &loss_report) {
+    add_fab_critical_warning(
+        loss_report, PcbFabricationLossKind::UnsupportedConstruct, "board.text.character",
+        "Native fabrication export v1 can only render uppercase A-Z, digits, spaces, and common "
+        "silkscreen punctuation in board text");
+}
+
+void write_board_text(GerberWriter &writer, const BoardText &text,
+                      PcbFabricationLossReport &loss_report) {
+    constexpr double text_width_factor = 0.6;
+    constexpr std::size_t glyph_columns = 5U;
+    constexpr std::size_t glyph_rows = 7U;
+    writer.comment("TEXT " + text.text());
+
+    const auto glyph_width_mm = text.size_mm() * text_width_factor;
+    const auto cell_width_mm = glyph_width_mm / static_cast<double>(glyph_columns);
+    const auto cell_height_mm = text.size_mm() / static_cast<double>(glyph_rows);
+    auto cursor_x_mm = 0.0;
+
+    for (const auto character : text.text()) {
+        const auto glyph = glyph_for(character);
+        if (!glyph.has_value()) {
+            report_unsupported_board_text_character(loss_report);
+            cursor_x_mm += glyph_width_mm;
+            continue;
+        }
+
+        for (std::size_t row_index = 0; row_index < glyph_rows; ++row_index) {
+            const auto row = glyph->at(row_index);
+            for (std::size_t column_index = 0; column_index < glyph_columns; ++column_index) {
+                if (row[column_index] != '1') {
+                    continue;
+                }
+                const auto left_mm =
+                    cursor_x_mm + (static_cast<double>(column_index) * cell_width_mm);
+                const auto right_mm = left_mm + cell_width_mm;
+                const auto top_mm =
+                    -text.size_mm() + (static_cast<double>(row_index) * cell_height_mm);
+                const auto bottom_mm = top_mm + cell_height_mm;
+                draw_text_cell(writer, text, left_mm, top_mm, right_mm, bottom_mm);
+            }
+        }
+        cursor_x_mm += glyph_width_mm;
+    }
+}
+
 void write_silkscreen_layer(GerberWriter &writer, const Board &board,
                             const std::vector<PlacementExport> &placements, FabricationSide side,
                             PcbFabricationLossReport &loss_report) {
-    (void)loss_report;
     for (const auto &placement_export : placements) {
         const auto &placement = *placement_export.placement;
         if ((side == FabricationSide::Top && placement.side() != BoardSide::Top) ||
@@ -522,11 +682,7 @@ void write_silkscreen_layer(GerberWriter &writer, const Board &board,
         if (!layer_matches_side(layer, side)) {
             continue;
         }
-        writer.comment("TEXT " + text.text());
-        const auto line_end = BoardPoint{
-            text.position().x_mm() + text.size_mm() * static_cast<double>(text.text().size()) * 0.5,
-            text.position().y_mm()};
-        writer.draw_polyline(std::vector{text.position(), line_end}, 0.12, false);
+        write_board_text(writer, text, loss_report);
     }
 }
 
@@ -560,13 +716,22 @@ void report_unsupported_board_features(const Board &board, PcbFabricationLossRep
     }
 }
 
-void append_board_feature_drills(const Board &board, std::vector<DrillHit> &drills) {
+void append_board_feature_drills(const Board &board, std::vector<DrillHit> &drills,
+                                 PcbFabricationLossReport &loss_report) {
     for (std::size_t index = 0; index < board.feature_count(); ++index) {
         const auto &feature = board.feature(BoardFeatureId{index});
         if (feature.kind() != BoardFeatureKind::Hole) {
             continue;
         }
         const auto &hole = feature.hole();
+        if (hole.finished_diameter_mm().has_value() &&
+            std::abs(hole.finished_diameter_mm().value() - hole.drill_diameter_mm()) > 1.0e-9) {
+            add_fab_critical_warning(
+                loss_report, PcbFabricationLossKind::UnsupportedConstruct,
+                "board.feature.hole.finished_diameter",
+                "Native Excellon export v1 emits drill diameter but cannot encode distinct "
+                "finished hole diameter requirements");
+        }
         drills.push_back(DrillHit{hole.center(), hole.drill_diameter_mm(), hole.plated()});
     }
 }
@@ -770,7 +935,7 @@ write_pcb_fabrication_files(const Board &board, const FootprintLibrary &footprin
     auto drills = std::vector<DrillHit>{};
     append_via_drills(board, drills);
     append_pad_drills(placements, drills);
-    append_board_feature_drills(board, drills);
+    append_board_feature_drills(board, drills, result.loss_report);
     append_file(result.files, basename + "-PTH.TXT", "drill-plated", write_excellon(drills, true));
     append_file(result.files, basename + "-NPTH.TXT", "drill-non-plated",
                 write_excellon(drills, false));

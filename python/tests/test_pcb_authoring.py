@@ -1325,6 +1325,8 @@ def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
     assert [file.filename for file in written.files] == [file.filename for file in export.files]
     for file in export.files:
         assert (tmp_path / file.filename).read_text(encoding="utf-8") == file.text
+    with pytest.raises(FileExistsError, match="Fabrication output directory must be empty"):
+        board.write_fabrication_files(tmp_path)
 
     board.add(
         volt.Slot(
