@@ -7,7 +7,12 @@ import pytest
 from volt.cli import CliError, discover_project, load_project_config, main
 
 
-def _write_project(root: Path, entrypoint: str = "project_entry:main", paths: str = ""):
+def _write_project(
+    root: Path,
+    entrypoint: str = "project_entry:main",
+    paths: str = "",
+    extra_config: str = "",
+):
     root.mkdir(parents=True, exist_ok=True)
     root.joinpath("volt.toml").write_text(
         f"""[project]
@@ -15,6 +20,7 @@ entrypoint = "{entrypoint}"
 
 [paths]
 {paths}
+{extra_config}
 """,
         encoding="utf-8",
     )
@@ -548,6 +554,149 @@ def test_diagnostics_invalid_filters_exit_with_actionable_error(tmp_path, capsys
 
     assert main(["diagnostics", "--stage", "pcb", "--project", str(root)]) == 2
     assert "Invalid diagnostic stage 'pcb'" in capsys.readouterr().err
+
+
+def test_build_writes_bundle_when_project_ok(tmp_path, capsys):
+    root = tmp_path / "board"
+    output = tmp_path / "bundle"
+    _write_project(root)
+    _write_entrypoint(
+        root,
+        """import volt
+
+def main():
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return volt.Design("status-led")
+
+    return project.run()
+""",
+    )
+
+    assert main(["build", "--output", str(output), "--project", str(root)]) == 0
+
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert str(output) in captured.out
+    manifest = json.loads((output / "manifest.volt.json").read_text(encoding="utf-8"))
+    assert manifest["status"] == "clean"
+    assert manifest["profile"] == "default"
+    assert output.joinpath("logical", "status-led.volt.json").is_file()
+
+
+def test_build_json_gates_failed_project_without_writing(tmp_path, capsys):
+    root = tmp_path / "board"
+    output = tmp_path / "bundle"
+    _write_project(root)
+    _write_bad_led_entrypoint(root)
+
+    assert (
+        main(["build", "--json", "--output", str(output), "--project", str(root)])
+        == 1
+    )
+
+    payload = _read_stdout_json(capsys)
+    assert payload["status"] == "failed"
+    assert payload["ok"] is False
+    assert payload["written"] is False
+    assert payload["output"] == str(output)
+    assert payload["diagnostics"]["summary"]["errors"] > 0
+    assert not output.exists()
+
+
+def test_build_flat_uses_existing_flat_artifact_writer(tmp_path, capsys):
+    root = tmp_path / "board"
+    output = tmp_path / "flat"
+    _write_project(root)
+    _write_entrypoint(
+        root,
+        """import volt
+
+def main():
+    project = volt.Project("status-led")
+
+    @project.design
+    def design():
+        return volt.Design("status-led")
+
+    return project
+""",
+    )
+
+    assert (
+        main(["build", "--flat", "--output", str(output), "--project", str(root)])
+        == 0
+    )
+
+    capsys.readouterr()
+    assert output.joinpath("status-led.volt.json").is_file()
+    assert output.joinpath("status-led.validation.json").is_file()
+    assert not output.joinpath("manifest.volt.json").exists()
+
+
+def test_info_json_reports_project_metadata_without_gating(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(
+        root,
+        extra_config="""
+[manufacturing]
+profile = "profiles/jlcpcb.volt.json"
+""",
+    )
+    _write_bad_led_entrypoint(root)
+
+    assert main(["info", "--json", "--project", str(root)]) == 0
+
+    payload = _read_stdout_json(capsys)
+    assert payload["project"] == {
+        "name": "bad-led",
+        "version": None,
+        "description": None,
+    }
+    assert payload["status"] == "failed"
+    assert payload["ok"] is False
+    assert payload["stages"] == [
+        {"name": "design", "model_count": 1, "tests": {"total": 0, "failed": 0}}
+    ]
+    assert payload["models"] == {"designs": 1, "schematics": 0, "boards": 0}
+    assert payload["diagnostics"]["summary"]["errors"] > 0
+    assert payload["tests"] == {"total": 0, "failed": 0}
+    assert payload["manufacturing_profile"] == {
+        "path": "profiles/jlcpcb.volt.json",
+        "resolved_path": str(root / "profiles" / "jlcpcb.volt.json"),
+    }
+
+
+def test_init_scaffolds_runnable_project_and_refuses_overwrite(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["init", "blink", "--profile", "jlcpcb"]) == 0
+
+    root = tmp_path / "blink"
+    config_text = root.joinpath("volt.toml").read_text(encoding="utf-8")
+    entrypoint_text = root.joinpath("main.py").read_text(encoding="utf-8")
+    assert 'profile = "profiles/jlcpcb.volt.json"' in config_text
+    assert "CapabilityProfile.from_file" in entrypoint_text
+    assert "set_capability_profile" in entrypoint_text
+    assert root.joinpath("profiles", "jlcpcb.volt.json").is_file()
+    capsys.readouterr()
+
+    assert main(["model", "--json", "--project", str(root)]) == 0
+    payload = _read_model_json(capsys)
+    assert payload["status"] == "clean"
+    [board] = payload["models"]["boards"]
+    assert board["model"]["board"]["capability_profile"]["name"] == (
+        "JLCPCB 2-layer FR-4 capability snapshot"
+    )
+
+    assert main(["init", "blink", "--profile", "jlcpcb"]) == 2
+    refused = capsys.readouterr()
+    assert refused.out == ""
+    assert "Refusing to overwrite existing file" in refused.err
 
 
 def test_model_json_emits_named_multi_model_arrays(tmp_path, capsys):

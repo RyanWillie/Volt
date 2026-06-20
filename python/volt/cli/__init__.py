@@ -33,6 +33,8 @@ EXIT_CHECK_FAILED = 1
 EXIT_COMMAND_FAILED = 2
 DIAGNOSTIC_SEVERITIES = ("error", "warning", "info")
 DIAGNOSTIC_STAGES = ("library", "design", "schematic", "board")
+BUILD_PROFILES = ("default", "viewer")
+INIT_PROFILES = ("jlcpcb", "oshpark", "pcbway", "generic")
 _SEVERITY_ORDER = {"error": 0, "warning": 1, "info": 2}
 
 
@@ -52,6 +54,8 @@ class ProjectConfig:
     config_path: Path
     entrypoint: str
     paths: Mapping[str, Path]
+    manufacturing_profile_path: str | None
+    manufacturing_profile: Path | None
     raw: Mapping[str, Any]
 
 
@@ -126,11 +130,18 @@ def load_project_config(path: str | Path) -> ProjectConfig:
         name: _resolve_project_path(root, name, value, config_path)
         for name, value in paths_table.items()
     }
+    manufacturing_profile_path, manufacturing_profile = _manufacturing_profile(
+        payload,
+        root,
+        config_path,
+    )
     return ProjectConfig(
         root=root,
         config_path=config_path,
         entrypoint=entrypoint.strip(),
         paths=paths,
+        manufacturing_profile_path=manufacturing_profile_path,
+        manufacturing_profile=manufacturing_profile,
         raw=payload,
     )
 
@@ -243,6 +254,73 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     diagnostics_parser.set_defaults(handler=_handle_diagnostics)
 
+    build_parser = subparsers.add_parser(
+        "build",
+        help="run a project and write build artifacts",
+        description="Run the configured project and write project-result artifacts.",
+    )
+    _add_project_argument(build_parser)
+    build_parser.add_argument(
+        "--output",
+        type=Path,
+        help="Output directory. Defaults to [paths].artifacts or ./build.",
+    )
+    build_parser.add_argument(
+        "--profile",
+        choices=BUILD_PROFILES,
+        default="default",
+        help="ProjectResult.write bundle profile.",
+    )
+    build_parser.add_argument(
+        "--flat",
+        action="store_true",
+        help="Write legacy flat artifacts instead of the project-result bundle.",
+    )
+    build_parser.add_argument(
+        "--json",
+        dest="emit_json",
+        action="store_true",
+        help="Emit a stable build summary as JSON.",
+    )
+    build_parser.set_defaults(handler=_handle_build)
+
+    info_parser = subparsers.add_parser(
+        "info",
+        help="report project metadata and run summary",
+        description="Run the configured project and report metadata without gating.",
+    )
+    _add_project_argument(info_parser)
+    info_parser.add_argument(
+        "--json",
+        dest="emit_json",
+        action="store_true",
+        help="Emit a stable project info summary as JSON.",
+    )
+    info_parser.set_defaults(handler=_handle_info)
+
+    init_parser = subparsers.add_parser(
+        "init",
+        help="scaffold a new Volt project",
+        description="Create volt.toml, main.py, and a starter capability profile.",
+    )
+    init_parser.add_argument(
+        "name",
+        nargs="?",
+        help="Project directory and name. Defaults to the current directory.",
+    )
+    init_parser.add_argument(
+        "--profile",
+        choices=INIT_PROFILES,
+        default="generic",
+        help="Starter manufacturing capability profile to write.",
+    )
+    init_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing starter files.",
+    )
+    init_parser.set_defaults(handler=_handle_init)
+
     return parser
 
 
@@ -308,10 +386,120 @@ def _handle_diagnostics(args: argparse.Namespace) -> int | None:
     return None
 
 
+def _handle_build(args: argparse.Namespace) -> int | None:
+    config = discover_project(project=args.project)
+    result = _project_result_with_forwarded_stdout(config)
+    output = _build_output_path(config, args.output)
+    mode = "flat" if args.flat else "bundle"
+
+    if not result.ok:
+        if args.emit_json:
+            print(
+                json.dumps(
+                    _build_payload(
+                        result,
+                        output=output,
+                        mode=mode,
+                        profile=args.profile,
+                        written=False,
+                    ),
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            )
+        else:
+            payload = _diagnostics_payload(result)
+            summary = _diagnostic_summary_text(payload["summary"])
+            print(
+                f"Build refused: {payload['status']} ({summary})",
+                file=sys.stderr,
+            )
+        return EXIT_CHECK_FAILED
+
+    if args.flat:
+        result.write_artifacts(output)
+    else:
+        result.write(output, profile=args.profile)
+
+    if args.emit_json:
+        print(
+            json.dumps(
+                _build_payload(
+                    result,
+                    output=output,
+                    mode=mode,
+                    profile=args.profile,
+                    written=True,
+                ),
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+        )
+    else:
+        print(f"Build: {result.status} -> {output}")
+    return None
+
+
+def _handle_info(args: argparse.Namespace) -> None:
+    config = discover_project(project=args.project)
+    result = _project_result_with_forwarded_stdout(config)
+    payload = _info_payload(config, result)
+    if args.emit_json:
+        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+        return
+    _print_info_report(payload)
+
+
+def _handle_init(args: argparse.Namespace) -> None:
+    root = _init_root(args.name)
+    project_name = root.name or "volt-project"
+    profile_path = Path("profiles") / f"{args.profile}.volt.json"
+    files = (
+        root / "volt.toml",
+        root / "main.py",
+        root / profile_path,
+    )
+    existing = tuple(path for path in files if path.exists())
+    if existing and not args.force:
+        raise CliError(
+            f"Refusing to overwrite existing file: {existing[0]}. Pass --force to replace it."
+        )
+    if root.exists() and not root.is_dir():
+        raise CliError(f"Project target exists and is not a directory: {root}")
+
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "profiles").mkdir(parents=True, exist_ok=True)
+    (root / "volt.toml").write_text(
+        _starter_config(profile_path=profile_path),
+        encoding="utf-8",
+    )
+    (root / "main.py").write_text(
+        _starter_entrypoint(project_name),
+        encoding="utf-8",
+    )
+    (root / profile_path).write_text(
+        json.dumps(_starter_profile(args.profile), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    print(f"Initialized Volt project at {root}")
+
+
 def _forward_project_stdout(stream: StringIO) -> None:
     text = stream.getvalue()
     if text:
         print(text, file=sys.stderr, end="")
+
+
+def _project_result_with_forwarded_stdout(config: ProjectConfig) -> ProjectResult:
+    project_stdout = StringIO()
+    try:
+        with redirect_stdout(project_stdout):
+            result = _project_result_from_entrypoint(config)
+    except Exception:
+        _forward_project_stdout(project_stdout)
+        raise
+    _forward_project_stdout(project_stdout)
+    return result
 
 
 def _project_result_from_entrypoint(config: ProjectConfig) -> ProjectResult:
@@ -383,6 +571,121 @@ def _model_json_payload(
             ],
             "boards": [_board_payload(model, all_boards) for model in boards],
         },
+    }
+
+
+def _build_output_path(config: ProjectConfig, output: Path | None) -> Path:
+    if output is None:
+        return config.paths.get("artifacts", config.root / "build")
+    path = output.expanduser()
+    if path.is_absolute():
+        return path
+    return Path.cwd() / path
+
+
+def _build_payload(
+    result: ProjectResult,
+    *,
+    output: Path,
+    mode: str,
+    profile: str,
+    written: bool,
+) -> dict[str, object]:
+    return {
+        "ok": result.ok,
+        "status": result.status,
+        "output": str(output),
+        "mode": mode,
+        "profile": profile,
+        "written": written,
+        "diagnostics": _diagnostics_payload(result),
+        "tests": _tests_summary(_project_tests(result)),
+    }
+
+
+def _info_payload(config: ProjectConfig, result: ProjectResult) -> dict[str, object]:
+    diagnostics = _diagnostics_payload(result)
+    return {
+        "project": {
+            "name": result.project.name,
+            "version": result.project.version,
+            "description": result.project.description,
+        },
+        "status": result.status,
+        "ok": result.ok,
+        "config": {
+            "root": str(config.root),
+            "path": str(config.config_path),
+            "entrypoint": config.entrypoint,
+        },
+        "manufacturing_profile": _manufacturing_profile_payload(config),
+        "stages": [
+            {
+                "name": stage.name,
+                "model_count": stage.model_count,
+                "tests": _tests_summary(stage.tests),
+            }
+            for stage in result.stages
+        ],
+        "models": {
+            "designs": len(result.designs),
+            "schematics": len(result.schematics),
+            "boards": len(result.boards),
+        },
+        "diagnostics": {
+            "status": diagnostics["status"],
+            "summary": diagnostics["summary"],
+        },
+        "tests": _tests_summary(_project_tests(result)),
+    }
+
+
+def _print_info_report(payload: Mapping[str, object]) -> None:
+    project = payload["project"]
+    diagnostics = payload["diagnostics"]
+    models = payload["models"]
+    tests = payload["tests"]
+    profile = payload["manufacturing_profile"]
+    assert isinstance(project, Mapping)
+    assert isinstance(diagnostics, Mapping)
+    assert isinstance(models, Mapping)
+    assert isinstance(tests, Mapping)
+    print(f"Project: {project['name']}")
+    print(f"Status: {payload['status']}")
+    print(
+        "Models: "
+        f"{models['designs']} designs, "
+        f"{models['schematics']} schematics, "
+        f"{models['boards']} boards"
+    )
+    print(f"Diagnostics: {_diagnostic_summary_text(diagnostics['summary'])}")
+    print(f"Tests: {tests['total']} total, {tests['failed']} failed")
+    if isinstance(profile, Mapping):
+        print(f"Manufacturing profile: {profile['path']}")
+    else:
+        print("Manufacturing profile: <none>")
+
+
+def _project_tests(result: ProjectResult) -> tuple[object, ...]:
+    return tuple(test for stage in result.stages for test in stage.tests)
+
+
+def _tests_summary(tests: Iterable[object]) -> dict[str, int]:
+    items = tuple(tests)
+    return {
+        "total": len(items),
+        "failed": sum(1 for item in items if not getattr(item, "ok", False)),
+    }
+
+
+def _manufacturing_profile_payload(
+    config: ProjectConfig,
+) -> dict[str, str] | None:
+    if config.manufacturing_profile_path is None or config.manufacturing_profile is None:
+        return None
+    return {
+        "path": config.manufacturing_profile_path,
+        "resolved_path": str(config.manufacturing_profile),
     }
 
 
@@ -604,6 +907,30 @@ def _optional_table(
     raise CliError(f"{config_path} [{name}] must be a table.")
 
 
+def _manufacturing_profile(
+    payload: Mapping[str, Any],
+    root: Path,
+    config_path: Path,
+) -> tuple[str | None, Path | None]:
+    table = payload.get("manufacturing")
+    if table is None:
+        return None, None
+    if not isinstance(table, dict):
+        raise CliError(f"{config_path} [manufacturing] must be a table.")
+    value = table.get("profile")
+    if value is None:
+        return None, None
+    if not isinstance(value, str) or not value.strip():
+        raise CliError(
+            f"{config_path} [manufacturing].profile must be a non-empty string path."
+        )
+    profile_path = value.strip()
+    path = Path(profile_path).expanduser()
+    if not path.is_absolute():
+        path = root / path
+    return profile_path, path
+
+
 def _resolve_project_path(root: Path, name: str, value: object, config_path: Path) -> Path:
     if not isinstance(value, str) or not value.strip():
         raise CliError(f"{config_path} [paths].{name} must be a non-empty string path.")
@@ -618,6 +945,190 @@ def _split_entrypoint(entrypoint: str) -> tuple[str, str]:
     if separator != ":" or not module_name or not function_name:
         raise CliError(f"Project entrypoint {entrypoint!r} must use module:function.")
     return module_name, function_name
+
+
+def _init_root(name: str | None) -> Path:
+    if name is None:
+        return Path.cwd()
+    path = Path(name).expanduser()
+    if path.is_absolute():
+        return path
+    return Path.cwd() / path
+
+
+def _starter_config(*, profile_path: Path) -> str:
+    return f"""[project]
+entrypoint = "main:main"
+
+[paths]
+artifacts = "build"
+
+[manufacturing]
+profile = "{profile_path.as_posix()}"
+"""
+
+
+def _starter_entrypoint(project_name: str) -> str:
+    project_literal = json.dumps(project_name)
+    return f"""from pathlib import Path
+import tomllib
+
+import volt
+
+
+def _configured_profile_path():
+    with Path("volt.toml").open("rb") as handle:
+        config = tomllib.load(handle)
+    return Path(config["manufacturing"]["profile"])
+
+
+def main():
+    project = volt.Project({project_literal})
+
+    @project.design
+    def design():
+        return volt.Design({project_literal})
+
+    @project.board
+    def board(context):
+        design = context.design()
+        board = design.board("Main")
+        front = board.add_layer("F.Cu", role="copper", side="top")
+        back = board.add_layer("B.Cu", role="copper", side="bottom")
+        board.set_layer_stack((front, back), thickness=1.6)
+        board.set_rectangular_outline(origin=(0.0, 0.0), size=(50.0, 30.0))
+        profile = volt.CapabilityProfile.from_file(_configured_profile_path())
+        board.set_design_rules(
+            copper_clearance=0.25,
+            min_track_width=0.20,
+            min_via_drill=0.30,
+            min_via_annular=0.60,
+            board_outline_clearance=0.30,
+        )
+        board.set_capability_profile(profile)
+        return board
+
+    return project.run()
+"""
+
+
+def _starter_profile(profile: str) -> dict[str, object]:
+    profiles = {
+        "jlcpcb": _capability_profile_payload(
+            name="JLCPCB 2-layer FR-4 capability snapshot",
+            source="https://jlcpcb.com/capabilities/pcb-capabilities",
+            as_of="2026-06-13",
+            minimum_track_width=0.10,
+            minimum_via_drill=0.15,
+            minimum_via_annular=0.25,
+            minimum_clearances=(
+                ("track", "track", 0.10),
+                ("track", "pad", 0.15),
+                ("track", "via", 0.20),
+            ),
+            copper_weight_refinements=((1.0, 0.10, 0.10), (2.0, 0.16, 0.16)),
+            supported_copper_layer_counts=(2,),
+            board_thickness_range=(0.4, 2.0),
+            available_copper_weights=(1.0, 2.0, 2.5, 3.5, 4.5),
+            drill_diameter_range=(0.15, 6.3),
+        ),
+        "oshpark": _capability_profile_payload(
+            name="OSH Park 2-layer starter capability template",
+            source="Starter template; verify against OSH Park capabilities before fabrication",
+            as_of="2026-06-20",
+            minimum_track_width=0.1524,
+            minimum_via_drill=0.254,
+            minimum_via_annular=0.508,
+            minimum_clearances=(("track", "track", 0.1524), ("track", "pad", 0.1524)),
+            supported_copper_layer_counts=(2,),
+            board_thickness_range=(1.55, 1.65),
+            available_copper_weights=(1.0,),
+            drill_diameter_range=(0.254, 6.3),
+        ),
+        "pcbway": _capability_profile_payload(
+            name="PCBWay 2-layer starter capability template",
+            source="Starter template; verify against PCBWay capabilities before fabrication",
+            as_of="2026-06-20",
+            minimum_track_width=0.15,
+            minimum_via_drill=0.30,
+            minimum_via_annular=0.60,
+            minimum_clearances=(("track", "track", 0.15), ("track", "pad", 0.15)),
+            supported_copper_layer_counts=(2,),
+            board_thickness_range=(0.4, 2.0),
+            available_copper_weights=(1.0, 2.0),
+            drill_diameter_range=(0.30, 6.3),
+        ),
+        "generic": _capability_profile_payload(
+            name="Generic 2-layer starter capability template",
+            source="Volt starter template; replace with fabricator-published capabilities",
+            as_of="2026-06-20",
+            minimum_track_width=0.20,
+            minimum_via_drill=0.30,
+            minimum_via_annular=0.60,
+            minimum_clearances=(("track", "track", 0.20), ("track", "pad", 0.20)),
+            supported_copper_layer_counts=(2,),
+            board_thickness_range=(0.8, 1.6),
+            available_copper_weights=(1.0,),
+            drill_diameter_range=(0.30, 6.0),
+        ),
+    }
+    return profiles[profile]
+
+
+def _capability_profile_payload(
+    *,
+    name: str,
+    source: str,
+    as_of: str,
+    minimum_track_width: float,
+    minimum_via_drill: float,
+    minimum_via_annular: float,
+    minimum_clearances: tuple[tuple[str, str, float], ...],
+    copper_weight_refinements: tuple[tuple[float, float, float], ...] = (),
+    supported_copper_layer_counts: tuple[int, ...] = (),
+    board_thickness_range: tuple[float, float] | None = None,
+    available_copper_weights: tuple[float, ...] = (),
+    drill_diameter_range: tuple[float, float] | None = None,
+) -> dict[str, object]:
+    profile: dict[str, object] = {
+        "name": name,
+        "provenance": {"source": source, "as_of": as_of},
+        "minimum_track_width_mm": minimum_track_width,
+        "minimum_via_drill_mm": minimum_via_drill,
+        "minimum_via_annular_mm": minimum_via_annular,
+        "minimum_clearances": [
+            {"first": first, "second": second, "clearance_mm": clearance}
+            for first, second, clearance in minimum_clearances
+        ],
+    }
+    if copper_weight_refinements:
+        profile["copper_weight_refinements"] = [
+            {
+                "copper_weight_oz": copper_weight,
+                "minimum_track_width_mm": track_width,
+                "minimum_clearance_mm": clearance,
+            }
+            for copper_weight, track_width, clearance in copper_weight_refinements
+        ]
+    if supported_copper_layer_counts:
+        profile["supported_copper_layer_counts"] = list(supported_copper_layer_counts)
+    if board_thickness_range is not None:
+        profile["board_thickness_range_mm"] = {
+            "minimum_mm": board_thickness_range[0],
+            "maximum_mm": board_thickness_range[1],
+        }
+    if available_copper_weights:
+        profile["available_copper_weights_oz"] = list(available_copper_weights)
+    if drill_diameter_range is not None:
+        profile["drill_diameter_range_mm"] = {
+            "minimum_mm": drill_diameter_range[0],
+            "maximum_mm": drill_diameter_range[1],
+        }
+    return {
+        "format": "volt.capability_profile",
+        "version": 1,
+        "profile": profile,
+    }
 
 
 def _evict_project_entrypoint_modules(module_name: str, root: Path) -> None:
