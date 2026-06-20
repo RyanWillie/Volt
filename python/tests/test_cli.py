@@ -31,6 +31,42 @@ def _read_model_json(capsys):
     return json.loads(captured.out)
 
 
+def _read_stdout_json(capsys):
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    return json.loads(captured.out)
+
+
+def _write_bad_led_entrypoint(root: Path, *, expect_diagnostics: bool = False):
+    expectations = (
+        """
+    project.expect_diagnostic(code="UNCONNECTED_REQUIRED_PIN")
+    project.expect_diagnostic(code="SINGLE_PIN_NET")
+"""
+        if expect_diagnostics
+        else ""
+    )
+    _write_entrypoint(
+        root,
+        f"""import volt
+
+def main():
+    project = volt.Project("bad-led")
+{expectations}
+    @project.design
+    def design():
+        design = volt.Design("bad-led")
+        lonely = design.net("LONELY")
+        resistor = design.R("1k", ref="R1")
+        resistor.dnp(True)
+        lonely += resistor[1]
+        return design
+
+    return project.run()
+""",
+    )
+
+
 def test_main_help_uses_argparse(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--help"])
@@ -401,6 +437,117 @@ def main():
     assert "UNCONNECTED_REQUIRED_PIN" in {
         item["code"] for item in payload["diagnostics"]["unexpected"]
     }
+
+
+def test_diagnostics_human_output_groups_by_report_and_source(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(root)
+    _write_bad_led_entrypoint(root)
+
+    assert main(["diagnostics", "--project", str(root)]) == 0
+
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert "Diagnostics: failed" in captured.out
+    assert "1 error" in captured.out
+    assert "1 warning" in captured.out
+    assert "logical.default" in captured.out
+    assert "logical:bad-led" in captured.out
+    assert "ERROR UNCONNECTED_REQUIRED_PIN [design]" in captured.out
+    assert "WARNING SINGLE_PIN_NET [design]" in captured.out
+    assert "\x1b[" not in captured.out
+    assert captured.out.index("UNCONNECTED_REQUIRED_PIN") < captured.out.index(
+        "SINGLE_PIN_NET"
+    )
+
+
+def test_diagnostics_json_reuses_bundle_schema_and_filters(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(root)
+    _write_bad_led_entrypoint(root)
+
+    assert (
+        main(
+            [
+                "diagnostics",
+                "--json",
+                "--stage",
+                "design",
+                "--severity",
+                "warning",
+                "--project",
+                str(root),
+            ]
+        )
+        == 0
+    )
+
+    payload = _read_stdout_json(capsys)
+    assert set(payload) == {
+        "diagnostics",
+        "expected",
+        "missing_expected",
+        "status",
+        "summary",
+        "unexpected",
+    }
+    assert payload["status"] == "failed"
+    assert payload["summary"] == {"errors": 0, "infos": 0, "warnings": 1}
+    assert [item["code"] for item in payload["diagnostics"]] == ["SINGLE_PIN_NET"]
+    diagnostic = payload["diagnostics"][0]
+    assert {
+        "board",
+        "category",
+        "code",
+        "design",
+        "entities",
+        "expect_diagnostic_kwargs",
+        "measurement",
+        "message",
+        "overlays",
+        "report",
+        "rule",
+        "severity",
+        "source",
+        "stage",
+    } <= set(diagnostic)
+    assert diagnostic["stage"] == "design"
+    assert diagnostic["source"] == "logical:bad-led"
+    assert diagnostic["report"] == "logical.default"
+    assert diagnostic["severity"] == "warning"
+    assert [item["code"] for item in payload["unexpected"]] == ["SINGLE_PIN_NET"]
+
+
+def test_diagnostics_check_mode_uses_project_ok(tmp_path, capsys):
+    failed = tmp_path / "failed"
+    _write_project(failed)
+    _write_bad_led_entrypoint(failed)
+
+    assert main(["diagnostics", "--project", str(failed)]) == 0
+    capsys.readouterr()
+    assert main(["diagnostics", "--check", "--project", str(failed)]) == 1
+    capsys.readouterr()
+
+    expected = tmp_path / "expected"
+    _write_project(expected)
+    _write_bad_led_entrypoint(expected, expect_diagnostics=True)
+
+    assert main(["diagnostics", "--check", "--project", str(expected)]) == 0
+
+
+def test_diagnostics_invalid_filters_exit_with_actionable_error(tmp_path, capsys):
+    root = tmp_path / "board"
+    _write_project(root)
+    _write_bad_led_entrypoint(root)
+
+    assert (
+        main(["diagnostics", "--severity", "critical", "--project", str(root)])
+        == 2
+    )
+    assert "Invalid diagnostic severity 'critical'" in capsys.readouterr().err
+
+    assert main(["diagnostics", "--stage", "pcb", "--project", str(root)]) == 2
+    assert "Invalid diagnostic stage 'pcb'" in capsys.readouterr().err
 
 
 def test_model_json_emits_named_multi_model_arrays(tmp_path, capsys):
