@@ -318,16 +318,33 @@ TEST_CASE("PCB fabrication writer matches representative golden native output fi
     const auto result = volt::io::write_pcb_fabrication_files(board, footprints);
 
     REQUIRE_FALSE(result.loss_report.has_warnings());
-    REQUIRE(find_file(result, "Control.GTL") != nullptr);
-    CHECK(find_file(result, "Control.GTL")->text == read_fixture("native_fabrication_control.GTL"));
-    REQUIRE(find_file(result, "Control.GTS") != nullptr);
-    CHECK(find_file(result, "Control.GTS")->text == read_fixture("native_fabrication_control.GTS"));
-    REQUIRE(find_file(result, "Control-PTH.TXT") != nullptr);
-    CHECK(find_file(result, "Control-PTH.TXT")->text ==
-          read_fixture("native_fabrication_control-PTH.TXT"));
-    REQUIRE(find_file(result, "Control-NPTH.TXT") != nullptr);
-    CHECK(find_file(result, "Control-NPTH.TXT")->text ==
-          read_fixture("native_fabrication_control-NPTH.TXT"));
+    const auto expected = std::vector<std::pair<std::string, std::string>>{
+        {"Control.GTL", "native_fabrication_control.GTL"},
+        {"Control.GBL", "native_fabrication_control.GBL"},
+        {"Control.GTS", "native_fabrication_control.GTS"},
+        {"Control.GBS", "native_fabrication_control.GBS"},
+        {"Control.GTO", "native_fabrication_control.GTO"},
+        {"Control.GTP", "native_fabrication_control.GTP"},
+        {"Control.GKO", "native_fabrication_control.GKO"},
+        {"Control-PTH.TXT", "native_fabrication_control-PTH.TXT"},
+        {"Control-NPTH.TXT", "native_fabrication_control-NPTH.TXT"},
+    };
+    CHECK(file_names(result) == std::vector<std::string>{
+                                    "Control.GTL",
+                                    "Control.GBL",
+                                    "Control.GTS",
+                                    "Control.GBS",
+                                    "Control.GTO",
+                                    "Control.GTP",
+                                    "Control.GKO",
+                                    "Control-PTH.TXT",
+                                    "Control-NPTH.TXT",
+                                });
+    for (const auto &[filename, fixture_name] : expected) {
+        const auto *file = find_file(result, filename);
+        REQUIRE(file != nullptr);
+        CHECK(file->text == read_fixture(fixture_name));
+    }
 }
 
 TEST_CASE("PCB fabrication writer keeps numeric output locale-stable") {

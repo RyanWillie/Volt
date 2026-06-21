@@ -32,6 +32,7 @@ set(
     design.py
     diagnostics.py
     cli/__init__.py
+    cli/manufacturing.py
     library.py
     library_result.py
     logical.py
