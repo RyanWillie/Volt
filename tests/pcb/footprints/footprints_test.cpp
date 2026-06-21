@@ -68,6 +68,18 @@ TEST_CASE("FootprintPad stores through-hole drill and mechanical role") {
     CHECK(*pad.mechanical_role() == volt::FootprintPadMechanicalRole::Mounting);
 }
 
+TEST_CASE("FootprintPad rejects non-square circle geometry") {
+    CHECK_THROWS_AS(volt::FootprintPad::surface_mount(
+                        "1", volt::FootprintPadShape::Circle, volt::FootprintPoint{0.0, 0.0},
+                        volt::FootprintSize{1.0, 0.8}, volt::FootprintLayerSet::front_smd()),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(volt::FootprintPad::through_hole(
+                        "1", volt::FootprintPadShape::Circle, volt::FootprintPoint{0.0, 0.0},
+                        volt::FootprintSize{1.2, 1.0}, volt::FootprintLayerSet::through_hole(),
+                        volt::FootprintDrill{0.6, volt::FootprintPadPlating::Plated}),
+                    std::invalid_argument);
+}
+
 TEST_CASE("Footprint geometry rejects invalid structural values") {
     CHECK_THROWS_AS(volt::FootprintPoint(std::numeric_limits<double>::quiet_NaN(), 0.0),
                     std::invalid_argument);

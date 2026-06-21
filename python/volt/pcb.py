@@ -413,6 +413,42 @@ class KiCadPcbExport:
 
 
 @dataclass(frozen=True)
+class PcbFabricationLossWarning:
+    """Structured warning for an unsupported or lossy native fabrication construct."""
+
+    kind: str
+    construct: str
+    message: str
+    severity: str
+    fabrication_impact: str
+
+
+@dataclass(frozen=True)
+class PcbFabricationFile:
+    """One native Gerber or Excellon fabrication output file."""
+
+    filename: str
+    function: str
+    text: str
+
+
+@dataclass(frozen=True)
+class PcbFabricationExport:
+    """Result of exporting a board projection to native fabrication files."""
+
+    files: tuple[PcbFabricationFile, ...]
+    warnings: tuple[PcbFabricationLossWarning, ...]
+    diagnostics: DiagnosticReport
+
+    def text_by_filename(self, filename: str) -> str:
+        """Return one exported file by exact filename."""
+        for file in self.files:
+            if file.filename == filename:
+                return file.text
+        raise KeyError(filename)
+
+
+@dataclass(frozen=True)
 class Hole:
     """Generic circular board hole primitive."""
 
@@ -1067,6 +1103,20 @@ class Board:
             ),
         )
 
+    def to_fabrication_files(self) -> PcbFabricationExport:
+        """Export the PCB projection to native Gerber and Excellon fabrication files."""
+        self._sync_object_footprints()
+        result = self._design._circuit.board_to_fabrication_files()
+        return PcbFabricationExport(
+            files=tuple(PcbFabricationFile(**file) for file in result["files"]),
+            warnings=tuple(
+                PcbFabricationLossWarning(**warning) for warning in result["warnings"]
+            ),
+            diagnostics=DiagnosticReport(
+                _diagnostic_from_dict(item) for item in result["diagnostics"]
+            ),
+        )
+
     def _sync_component_object_footprint(self, component: int) -> None:
         footprint = self._design._object_footprint_for_component(component)
         if footprint is not None:
@@ -1115,6 +1165,21 @@ class Board:
         """Write the KiCad PCB adapter document and return its loss report."""
         export = self.to_kicad_pcb()
         Path(path).write_text(export.text, encoding="utf-8")
+        return export
+
+    def write_fabrication_files(self, path: str | Path) -> PcbFabricationExport:
+        """Write native Gerber and Excellon files and return their loss report."""
+        export = self.to_fabrication_files()
+        root = Path(path)
+        if root.exists():
+            if not root.is_dir():
+                raise NotADirectoryError(root)
+            if any(root.iterdir()):
+                raise FileExistsError("Fabrication output directory must be empty")
+        else:
+            root.mkdir(parents=True, exist_ok=True)
+        for file in export.files:
+            (root / file.filename).write_text(file.text, encoding="utf-8")
         return export
 
 

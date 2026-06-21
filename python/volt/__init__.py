@@ -76,6 +76,9 @@ from .pcb import (
     KiCadPcbExport,
     MechanicalKeepout,
     PadResolution,
+    PcbFabricationExport,
+    PcbFabricationFile,
+    PcbFabricationLossWarning,
     Slot,
     Text,
 )

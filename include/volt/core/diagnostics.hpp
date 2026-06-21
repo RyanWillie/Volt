@@ -122,6 +122,13 @@ inline constexpr auto BoardFeatureAnnotationMissing =
 namespace pcb_fabrication_diagnostic_codes {
 
 inline constexpr auto KiCadFabExportLoss = std::string_view{"PCB_KICAD_FAB_EXPORT_LOSS"};
+inline constexpr auto NativeFabMissingGeometry =
+    std::string_view{"PCB_NATIVE_FAB_MISSING_GEOMETRY"};
+inline constexpr auto NativeFabUnsupportedGeometry =
+    std::string_view{"PCB_NATIVE_FAB_UNSUPPORTED_GEOMETRY"};
+inline constexpr auto NativeFabUnsupportedLayer =
+    std::string_view{"PCB_NATIVE_FAB_UNSUPPORTED_LAYER"};
+inline constexpr auto NativeFabLossyGeometry = std::string_view{"PCB_NATIVE_FAB_LOSSY_GEOMETRY"};
 
 } // namespace pcb_fabrication_diagnostic_codes
 
@@ -206,7 +213,11 @@ inline constexpr auto PcbVisual =
                pcb_visual_diagnostic_codes::BoardFeatureAnnotationMissing};
 
 inline constexpr auto PcbFabrication =
-    std::array{pcb_fabrication_diagnostic_codes::KiCadFabExportLoss};
+    std::array{pcb_fabrication_diagnostic_codes::KiCadFabExportLoss,
+               pcb_fabrication_diagnostic_codes::NativeFabMissingGeometry,
+               pcb_fabrication_diagnostic_codes::NativeFabUnsupportedGeometry,
+               pcb_fabrication_diagnostic_codes::NativeFabUnsupportedLayer,
+               pcb_fabrication_diagnostic_codes::NativeFabLossyGeometry};
 
 inline constexpr auto PartLineup = std::array{
     part_lineup_diagnostic_codes::PinWithoutPad, part_lineup_diagnostic_codes::PadWithoutPin,
