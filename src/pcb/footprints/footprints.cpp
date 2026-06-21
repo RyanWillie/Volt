@@ -150,6 +150,9 @@ FootprintPad::FootprintPad(std::string label, FootprintPadKind kind, FootprintPa
     if (label_.empty()) {
         throw std::invalid_argument{"Footprint pad label must not be empty"};
     }
+    if (shape_ == FootprintPadShape::Circle && size_.width_mm() != size_.height_mm()) {
+        throw std::invalid_argument{"Circle footprint pads must use equal width and height"};
+    }
     if (kind_ == FootprintPadKind::SurfaceMount && !layers_.is_surface_mount()) {
         throw std::invalid_argument{"Surface-mount footprint pads must use SMD layers"};
     }

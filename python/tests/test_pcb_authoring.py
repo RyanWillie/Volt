@@ -1974,6 +1974,25 @@ def test_python_board_ref_only_missing_geometry_still_reports_unresolved():
     assert "PCB_FOOTPRINT_UNRESOLVED" in {diagnostic.code for diagnostic in board.validate()}
 
 
+def test_python_board_rejects_non_square_circle_footprint_pad():
+    design = volt.Design("bad-circle-pad")
+    board = design.board()
+    footprint = volt.FootprintDefinition(
+        ("volt.test", "BadCirclePad"),
+        pads=(
+            volt.FootprintPad.surface_mount(
+                "1",
+                at=(0.0, 0.0),
+                size=(1.0, 0.8),
+                shape="circle",
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="Circle footprint pads"):
+        board.cache_footprint(footprint)
+
+
 def test_python_board_object_owned_footprints_keep_pad_mapping_diagnostics():
     footprint = _passive_0603(("volt.test", "Mapped0603"))
     missing_pad_footprint = volt.Footprint(
