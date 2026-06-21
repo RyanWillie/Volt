@@ -95,7 +95,10 @@ def test_erc_and_drc_diagnostic_contracts_are_exported_in_stable_order():
     )
     assert volt.PCB_FABRICATION_DIAGNOSTIC_CODES == (
         "PCB_KICAD_FAB_EXPORT_LOSS",
-        "PCB_NATIVE_FAB_EXPORT_LOSS",
+        "PCB_NATIVE_FAB_MISSING_GEOMETRY",
+        "PCB_NATIVE_FAB_UNSUPPORTED_GEOMETRY",
+        "PCB_NATIVE_FAB_UNSUPPORTED_LAYER",
+        "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
     )
     assert volt.BOM_DIAGNOSTIC_CODES == (
         "BOM_COMPONENT_MISSING_SELECTED_PART",

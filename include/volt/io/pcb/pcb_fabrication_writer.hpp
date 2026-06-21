@@ -26,9 +26,10 @@ enum class PcbFabricationLossImpact {
 
 /** Category for imperfect native fabrication output. */
 enum class PcbFabricationLossKind {
-    UnsupportedConstruct,
-    IncompleteConstruct,
-    LossyConstruct,
+    MissingGeometry,
+    UnsupportedGeometry,
+    UnsupportedLayer,
+    LossyGeometry,
 };
 
 /** One native fabrication warning for a construct that could not be emitted perfectly. */
@@ -47,6 +48,9 @@ struct PcbFabricationLossWarning {
 
     /** Whether this loss means the fabrication package is incomplete for ordering. */
     PcbFabricationLossImpact fabrication_impact = PcbFabricationLossImpact::Informational;
+
+    /** Specific model entities responsible for the loss, when the board model knows them. */
+    std::vector<EntityRef> entities;
 };
 
 /** Warnings collected while writing native Gerber and Excellon fabrication files. */
@@ -56,7 +60,8 @@ class PcbFabricationLossReport {
     void add_warning(
         PcbFabricationLossKind kind, std::string construct, std::string message,
         PcbFabricationLossSeverity severity = PcbFabricationLossSeverity::Warning,
-        PcbFabricationLossImpact fabrication_impact = PcbFabricationLossImpact::Informational);
+        PcbFabricationLossImpact fabrication_impact = PcbFabricationLossImpact::Informational,
+        std::vector<EntityRef> entities = {});
 
     /** Return whether any native fabrication warnings were recorded. */
     [[nodiscard]] bool has_warnings() const noexcept { return !warnings_.empty(); }
@@ -103,7 +108,7 @@ struct PcbFabricationExportResult {
     PcbFabricationLossReport loss_report;
 };
 
-/** Convert fab-critical native fabrication losses to stable manufacturability diagnostics. */
+/** Convert native fabrication losses to stable manufacturability diagnostics. */
 [[nodiscard]] DiagnosticReport fabrication_diagnostics(const PcbFabricationLossReport &report);
 
 /** Write deterministic native Gerber RS-274X and Excellon NC drill fabrication files. */

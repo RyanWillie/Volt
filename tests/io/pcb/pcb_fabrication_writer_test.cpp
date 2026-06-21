@@ -1,8 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <locale>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <volt/circuit/circuit.hpp>
@@ -19,6 +21,24 @@ struct FabricationCircuit {
     volt::ComponentId header;
     volt::NetId signal;
     volt::NetId ground;
+};
+
+class CommaDecimalNumpunct : public std::numpunct<char> {
+  protected:
+    [[nodiscard]] char do_decimal_point() const override { return ','; }
+};
+
+class ScopedLocale {
+  public:
+    explicit ScopedLocale(std::locale locale) : previous_{std::locale::global(std::move(locale))} {}
+
+    ~ScopedLocale() { std::locale::global(previous_); }
+
+    ScopedLocale(const ScopedLocale &) = delete;
+    ScopedLocale &operator=(const ScopedLocale &) = delete;
+
+  private:
+    std::locale previous_;
 };
 
 [[nodiscard]] FabricationCircuit make_fabrication_circuit() {
@@ -168,6 +188,33 @@ file_names(const volt::io::PcbFabricationExportResult &result) {
     return text.find(needle) != std::string_view::npos;
 }
 
+[[nodiscard]] const volt::Diagnostic *find_diagnostic(const volt::DiagnosticReport &report,
+                                                      std::string_view code,
+                                                      std::string_view rule) {
+    const auto match = std::find_if(report.diagnostics().begin(), report.diagnostics().end(),
+                                    [code, rule](const volt::Diagnostic &diagnostic) {
+                                        return diagnostic.code().value() == code &&
+                                               diagnostic.rule().has_value() &&
+                                               diagnostic.rule().value() == rule;
+                                    });
+    if (match == report.diagnostics().end()) {
+        return nullptr;
+    }
+    return &*match;
+}
+
+[[nodiscard]] bool has_diagnostic(const volt::DiagnosticReport &report, std::string_view code,
+                                  std::string_view rule,
+                                  const std::vector<volt::EntityRef> &entities) {
+    return std::any_of(report.diagnostics().begin(), report.diagnostics().end(),
+                       [code, rule, &entities](const volt::Diagnostic &diagnostic) {
+                           return diagnostic.code().value() == code &&
+                                  diagnostic.rule().has_value() &&
+                                  diagnostic.rule().value() == rule &&
+                                  diagnostic.entities() == entities;
+                       });
+}
+
 } // namespace
 
 TEST_CASE("PCB fabrication writer exports deterministic Gerber and Excellon files") {
@@ -255,12 +302,31 @@ TEST_CASE("PCB fabrication writer exports deterministic Gerber and Excellon file
     CHECK(contains(npth->text, "X0004000000Y0004000000"));
 }
 
+TEST_CASE("PCB fabrication writer keeps numeric output locale-stable") {
+    const auto fixture = make_fabrication_circuit();
+    const auto board = make_fabrication_board(fixture);
+    const auto footprints = fabrication_footprints();
+    [[maybe_unused]] const auto scoped_locale =
+        ScopedLocale{std::locale{std::locale::classic(), new CommaDecimalNumpunct}};
+
+    const auto result = volt::io::write_pcb_fabrication_files(board, footprints);
+
+    const auto *top_copper = find_file(result, "Control.GTL");
+    REQUIRE(top_copper != nullptr);
+    CHECK(contains(top_copper->text, "%ADD10C,0.250000*%"));
+    CHECK_FALSE(contains(top_copper->text, "%ADD10C,0,250000*%"));
+    const auto *pth = find_file(result, "Control-PTH.TXT");
+    REQUIRE(pth != nullptr);
+    CHECK(contains(pth->text, "T02C0.800000"));
+    CHECK_FALSE(contains(pth->text, "T02C0,800000"));
+}
+
 TEST_CASE("PCB fabrication writer reports unsupported board text glyphs") {
     const auto fixture = make_fabrication_circuit();
     auto board = make_fabrication_board(fixture);
-    static_cast<void>(board.add_text(volt::BoardText{"@", volt::BoardPoint{8.0, 18.0},
+    const auto text = board.add_text(volt::BoardText{"@", volt::BoardPoint{8.0, 18.0},
                                                      volt::BoardRotation::degrees(0.0),
-                                                     volt::BoardLayerId{2}, 1.0, true}));
+                                                     volt::BoardLayerId{2}, 1.0, true});
 
     const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
 
@@ -273,7 +339,10 @@ TEST_CASE("PCB fabrication writer reports unsupported board text glyphs") {
     REQUIRE(diagnostics.count() == 1);
     CHECK(diagnostics.diagnostics().front().code() ==
           volt::DiagnosticCode{
-              std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabExportLoss}});
+              std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabUnsupportedGeometry}});
+    CHECK(diagnostics.diagnostics().front().entities() ==
+          std::vector{volt::EntityRef::board_text(text),
+                      volt::EntityRef::board_layer(volt::BoardLayerId{2})});
     REQUIRE(diagnostics.diagnostics().front().rule().has_value());
     CHECK(diagnostics.diagnostics().front().rule().value() == "board.text.character");
 }
@@ -296,7 +365,8 @@ TEST_CASE("PCB fabrication writer reports finished hole diameter loss") {
     REQUIRE(diagnostics.count() == 1);
     CHECK(diagnostics.diagnostics().front().code() ==
           volt::DiagnosticCode{
-              std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabExportLoss}});
+              std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabLossyGeometry}});
+    CHECK(diagnostics.diagnostics().front().severity() == volt::Severity::Warning);
     REQUIRE(diagnostics.diagnostics().front().rule().has_value());
     CHECK(diagnostics.diagnostics().front().rule().value() ==
           "board.feature.hole.finished_diameter");
@@ -305,13 +375,13 @@ TEST_CASE("PCB fabrication writer reports finished hole diameter loss") {
 TEST_CASE("PCB fabrication writer reports unsupported geometry and native diagnostics") {
     const auto fixture = make_fabrication_circuit();
     auto board = make_fabrication_board(fixture);
-    static_cast<void>(board.add_feature(volt::BoardFeature::slot(
-        "SLOT", volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{5.0, 1.0}, 1.0, false)));
-    static_cast<void>(board.add_feature(volt::BoardFeature::cutout(
+    const auto slot = board.add_feature(volt::BoardFeature::slot(
+        "SLOT", volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{5.0, 1.0}, 1.0, false));
+    const auto cutout = board.add_feature(volt::BoardFeature::cutout(
         "CUT", std::vector{volt::BoardPoint{22.0, 1.0}, volt::BoardPoint{25.0, 1.0},
-                           volt::BoardPoint{25.0, 4.0}, volt::BoardPoint{22.0, 4.0}})));
-    static_cast<void>(
-        board.add_feature(volt::BoardFeature::circle("FID", volt::BoardPoint{26.0, 5.0}, 1.0)));
+                           volt::BoardPoint{25.0, 4.0}, volt::BoardPoint{22.0, 4.0}}));
+    const auto circle =
+        board.add_feature(volt::BoardFeature::circle("FID", volt::BoardPoint{26.0, 5.0}, 1.0));
 
     const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
 
@@ -327,11 +397,18 @@ TEST_CASE("PCB fabrication writer reports unsupported geometry and native diagno
     REQUIRE(diagnostics.count() == 3);
     CHECK(diagnostics.diagnostics().front().category() ==
           volt::DiagnosticCategory{volt::diagnostic_categories::PcbFabrication});
-    CHECK(diagnostics.diagnostics().front().code() ==
-          volt::DiagnosticCode{
-              std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabExportLoss}});
-    REQUIRE(diagnostics.diagnostics().front().rule().has_value());
-    CHECK(diagnostics.diagnostics().front().rule().value() == "board.feature.slot");
+    const auto *slot_diagnostic =
+        find_diagnostic(diagnostics, "PCB_NATIVE_FAB_UNSUPPORTED_GEOMETRY", "board.feature.slot");
+    REQUIRE(slot_diagnostic != nullptr);
+    CHECK(slot_diagnostic->entities() == std::vector{volt::EntityRef::board_feature(slot)});
+    const auto *cutout_diagnostic =
+        find_diagnostic(diagnostics, "PCB_NATIVE_FAB_UNSUPPORTED_GEOMETRY", "board.feature.cutout");
+    REQUIRE(cutout_diagnostic != nullptr);
+    CHECK(cutout_diagnostic->entities() == std::vector{volt::EntityRef::board_feature(cutout)});
+    const auto *circle_diagnostic =
+        find_diagnostic(diagnostics, "PCB_NATIVE_FAB_UNSUPPORTED_GEOMETRY", "board.feature.circle");
+    REQUIRE(circle_diagnostic != nullptr);
+    CHECK(circle_diagnostic->entities() == std::vector{volt::EntityRef::board_feature(circle)});
 }
 
 TEST_CASE("PCB fabrication writer reports unsupported copper layer data") {
@@ -341,23 +418,78 @@ TEST_CASE("PCB fabrication writer reports unsupported copper layer data") {
         volt::BoardLayer{"TopAux", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
     const auto inner = board.add_layer(
         volt::BoardLayer{"In1.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Inner});
-    static_cast<void>(board.add_track(volt::BoardTrack{
+    const auto duplicate_track = board.add_track(volt::BoardTrack{
         fixture.ground,
         duplicate_top,
         std::vector{volt::BoardPoint{1.0, 1.0}, volt::BoardPoint{2.0, 1.0}},
         0.25,
-    }));
-    static_cast<void>(board.add_track(volt::BoardTrack{
+    });
+    const auto inner_track = board.add_track(volt::BoardTrack{
         fixture.ground,
         inner,
         std::vector{volt::BoardPoint{1.0, 2.0}, volt::BoardPoint{2.0, 2.0}},
         0.25,
-    }));
+    });
 
     const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
 
-    REQUIRE(result.loss_report.warnings().size() >= 2);
-    CHECK(result.loss_report.warnings().at(0).construct == "board.layer.copper_side");
-    CHECK(result.loss_report.warnings().at(1).construct == "board.layer.mapping");
+    REQUIRE(result.loss_report.warnings().size() >= 4);
     CHECK(result.loss_report.has_fab_critical_warnings());
+
+    const auto diagnostics = volt::io::fabrication_diagnostics(result.loss_report);
+    CHECK(has_diagnostic(diagnostics, "PCB_NATIVE_FAB_UNSUPPORTED_LAYER",
+                         "board.layer.copper_stack_membership",
+                         std::vector{volt::EntityRef::board_layer(duplicate_top)}));
+    CHECK(has_diagnostic(diagnostics, "PCB_NATIVE_FAB_UNSUPPORTED_LAYER",
+                         "board.layer.copper_stack_membership",
+                         std::vector{volt::EntityRef::board_layer(inner)}));
+    CHECK(has_diagnostic(diagnostics, "PCB_NATIVE_FAB_UNSUPPORTED_LAYER", "board.track.layer",
+                         std::vector{volt::EntityRef::board_track(duplicate_track),
+                                     volt::EntityRef::board_layer(duplicate_top)}));
+    CHECK(has_diagnostic(diagnostics, "PCB_NATIVE_FAB_UNSUPPORTED_LAYER", "board.track.layer",
+                         std::vector{volt::EntityRef::board_track(inner_track),
+                                     volt::EntityRef::board_layer(inner)}));
+}
+
+TEST_CASE("PCB fabrication writer derives copper output from two-layer board stack") {
+    const auto fixture = make_fabrication_circuit();
+    auto board = make_fabrication_board(fixture);
+    const auto duplicate_top = board.add_layer(
+        volt::BoardLayer{"TopAux", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    board.set_layer_stack(
+        volt::LayerStack{{volt::BoardLayerId{0}, duplicate_top, volt::BoardLayerId{1}}, 1.6});
+
+    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+
+    const auto diagnostics = volt::io::fabrication_diagnostics(result.loss_report);
+    const auto *diagnostic = find_diagnostic(diagnostics, "PCB_NATIVE_FAB_UNSUPPORTED_LAYER",
+                                             "board.layer_stack.copper_count");
+    REQUIRE(diagnostic != nullptr);
+    CHECK(diagnostic->entities() ==
+          std::vector{volt::EntityRef::board_layer(volt::BoardLayerId{0}),
+                      volt::EntityRef::board_layer(duplicate_top),
+                      volt::EntityRef::board_layer(volt::BoardLayerId{1})});
+    CHECK(find_file(result, "Control.GTL") == nullptr);
+    CHECK(find_file(result, "Control.GBL") == nullptr);
+}
+
+TEST_CASE("PCB fabrication writer reports missing stackup without inventing copper files") {
+    const auto fixture = make_fabrication_circuit();
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"NoStack"}};
+    static_cast<void>(board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top}));
+    static_cast<void>(board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom}));
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+
+    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+
+    const auto diagnostics = volt::io::fabrication_diagnostics(result.loss_report);
+    const auto *diagnostic =
+        find_diagnostic(diagnostics, "PCB_NATIVE_FAB_MISSING_GEOMETRY", "board.layer_stack");
+    REQUIRE(diagnostic != nullptr);
+    CHECK(diagnostic->entities() == std::vector{volt::EntityRef::board()});
+    CHECK(find_file(result, "NoStack.GTL") == nullptr);
+    CHECK(find_file(result, "NoStack.GBL") == nullptr);
 }

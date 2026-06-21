@@ -12,12 +12,14 @@ namespace {
 
 [[nodiscard]] std::string fabrication_loss_kind_name(volt::io::PcbFabricationLossKind kind) {
     switch (kind) {
-    case volt::io::PcbFabricationLossKind::UnsupportedConstruct:
-        return "unsupported";
-    case volt::io::PcbFabricationLossKind::IncompleteConstruct:
-        return "incomplete";
-    case volt::io::PcbFabricationLossKind::LossyConstruct:
-        return "lossy";
+    case volt::io::PcbFabricationLossKind::MissingGeometry:
+        return "missing_geometry";
+    case volt::io::PcbFabricationLossKind::UnsupportedGeometry:
+        return "unsupported_geometry";
+    case volt::io::PcbFabricationLossKind::UnsupportedLayer:
+        return "unsupported_layer";
+    case volt::io::PcbFabricationLossKind::LossyGeometry:
+        return "lossy_geometry";
     }
     throw std::logic_error{"Unhandled native fabrication loss kind"};
 }

@@ -1341,7 +1341,7 @@ def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
     assert [warning.construct for warning in with_loss.warnings] == ["board.feature.slot"]
     assert with_loss.warnings[0].fabrication_impact == "fab-critical"
     assert [diagnostic.code for diagnostic in with_loss.diagnostics] == [
-        "PCB_NATIVE_FAB_EXPORT_LOSS"
+        "PCB_NATIVE_FAB_UNSUPPORTED_GEOMETRY"
     ]
     assert with_loss.diagnostics[0].rule == "board.feature.slot"
 

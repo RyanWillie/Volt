@@ -179,11 +179,20 @@ TEST_CASE("PCB fabrication diagnostic codes are stable constants") {
     CHECK(std::string{volt::diagnostic_categories::PcbFabrication} == "pcb.fabrication");
     CHECK(std::string{volt::pcb_fabrication_diagnostic_codes::KiCadFabExportLoss} ==
           "PCB_KICAD_FAB_EXPORT_LOSS");
-    CHECK(std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabExportLoss} ==
-          "PCB_NATIVE_FAB_EXPORT_LOSS");
+    CHECK(std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabMissingGeometry} ==
+          "PCB_NATIVE_FAB_MISSING_GEOMETRY");
+    CHECK(std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabUnsupportedGeometry} ==
+          "PCB_NATIVE_FAB_UNSUPPORTED_GEOMETRY");
+    CHECK(std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabUnsupportedLayer} ==
+          "PCB_NATIVE_FAB_UNSUPPORTED_LAYER");
+    CHECK(std::string{volt::pcb_fabrication_diagnostic_codes::NativeFabLossyGeometry} ==
+          "PCB_NATIVE_FAB_LOSSY_GEOMETRY");
     CHECK(std::vector<std::string>{volt::diagnostic_code_catalogs::PcbFabrication.begin(),
                                    volt::diagnostic_code_catalogs::PcbFabrication.end()} ==
-          std::vector<std::string>{"PCB_KICAD_FAB_EXPORT_LOSS", "PCB_NATIVE_FAB_EXPORT_LOSS"});
+          std::vector<std::string>{"PCB_KICAD_FAB_EXPORT_LOSS", "PCB_NATIVE_FAB_MISSING_GEOMETRY",
+                                   "PCB_NATIVE_FAB_UNSUPPORTED_GEOMETRY",
+                                   "PCB_NATIVE_FAB_UNSUPPORTED_LAYER",
+                                   "PCB_NATIVE_FAB_LOSSY_GEOMETRY"});
 }
 
 TEST_CASE("Part lineup diagnostic codes are stable constants") {

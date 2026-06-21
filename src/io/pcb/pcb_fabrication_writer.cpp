@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstddef>
 #include <iomanip>
+#include <locale>
 #include <optional>
 #include <ostream>
 #include <sstream>
@@ -48,15 +49,41 @@ using GlyphRows = std::array<std::string_view, 7>;
 
 void add_fab_critical_warning(
     PcbFabricationLossReport &report, PcbFabricationLossKind kind, std::string construct,
-    std::string message,
-    PcbFabricationLossSeverity severity = PcbFabricationLossSeverity::Warning) {
+    std::string message, std::vector<EntityRef> entities = {},
+    PcbFabricationLossSeverity severity = PcbFabricationLossSeverity::Error) {
     report.add_warning(kind, std::move(construct), std::move(message), severity,
-                       PcbFabricationLossImpact::FabCritical);
+                       PcbFabricationLossImpact::FabCritical, std::move(entities));
 }
 
 [[nodiscard]] std::string fabrication_diagnostic_message(const PcbFabricationLossWarning &warning) {
-    return "Native PCB fabrication export has fab-critical loss for " + warning.construct + ": " +
+    return "Native PCB fabrication export has loss for " + warning.construct + ": " +
            warning.message;
+}
+
+[[nodiscard]] Severity diagnostic_severity(PcbFabricationLossSeverity severity) noexcept {
+    switch (severity) {
+    case PcbFabricationLossSeverity::Info:
+        return Severity::Info;
+    case PcbFabricationLossSeverity::Warning:
+        return Severity::Warning;
+    case PcbFabricationLossSeverity::Error:
+        return Severity::Error;
+    }
+    return Severity::Error;
+}
+
+[[nodiscard]] std::string_view diagnostic_code(PcbFabricationLossKind kind) noexcept {
+    switch (kind) {
+    case PcbFabricationLossKind::MissingGeometry:
+        return pcb_fabrication_diagnostic_codes::NativeFabMissingGeometry;
+    case PcbFabricationLossKind::UnsupportedGeometry:
+        return pcb_fabrication_diagnostic_codes::NativeFabUnsupportedGeometry;
+    case PcbFabricationLossKind::UnsupportedLayer:
+        return pcb_fabrication_diagnostic_codes::NativeFabUnsupportedLayer;
+    case PcbFabricationLossKind::LossyGeometry:
+        return pcb_fabrication_diagnostic_codes::NativeFabLossyGeometry;
+    }
+    return pcb_fabrication_diagnostic_codes::NativeFabUnsupportedGeometry;
 }
 
 [[nodiscard]] double normalized_number(double value) {
@@ -75,6 +102,7 @@ void add_fab_critical_warning(
 
 [[nodiscard]] std::string decimal_mm(double value) {
     auto out = std::ostringstream{};
+    out.imbue(std::locale::classic());
     out << std::fixed << std::setprecision(6) << normalized_number(value);
     return out.str();
 }
@@ -315,51 +343,137 @@ class GerberWriter {
     int current_aperture_ = 0;
 };
 
-[[nodiscard]] std::optional<BoardLayerId>
-first_enabled_copper_layer(const Board &board, BoardLayerSide side,
-                           PcbFabricationLossReport &loss_report) {
-    auto result = std::optional<BoardLayerId>{};
-    for (std::size_t index = 0; index < board.layer_count(); ++index) {
-        const auto layer_id = BoardLayerId{index};
-        const auto &layer = board.layer(layer_id);
-        if (!layer.enabled() || layer.role() != BoardLayerRole::Copper || layer.side() != side) {
-            continue;
-        }
-        if (!result.has_value()) {
-            result = layer_id;
-            continue;
-        }
-        add_fab_critical_warning(
-            loss_report, PcbFabricationLossKind::UnsupportedConstruct, "board.layer.mapping",
-            "Native fabrication export supports one top and one bottom copper layer in v1; "
-            "duplicate copper layers on the same side are omitted");
+[[nodiscard]] std::vector<EntityRef> board_layer_entities(const std::vector<BoardLayerId> &layers) {
+    auto entities = std::vector<EntityRef>{};
+    entities.reserve(layers.size());
+    for (const auto layer_id : layers) {
+        entities.push_back(EntityRef::board_layer(layer_id));
     }
-    return result;
+    if (entities.empty()) {
+        entities.push_back(EntityRef::board());
+    }
+    return entities;
 }
 
-void report_unsupported_copper_layers(const Board &board, PcbFabricationLossReport &loss_report) {
+[[nodiscard]] bool contains_layer(const std::vector<BoardLayerId> &layers, BoardLayerId layer_id) {
+    return std::find(layers.begin(), layers.end(), layer_id) != layers.end();
+}
+
+[[nodiscard]] bool is_exported_copper_layer(const CopperLayerMap &copper_layers,
+                                            BoardLayerId layer_id) {
+    return (copper_layers.top.has_value() && copper_layers.top.value() == layer_id) ||
+           (copper_layers.bottom.has_value() && copper_layers.bottom.value() == layer_id);
+}
+
+void report_enabled_copper_layers_outside_stack(const Board &board,
+                                                const std::vector<BoardLayerId> &stack_copper,
+                                                PcbFabricationLossReport &loss_report) {
     for (std::size_t index = 0; index < board.layer_count(); ++index) {
         const auto layer_id = BoardLayerId{index};
         const auto &layer = board.layer(layer_id);
         if (!layer.enabled() || layer.role() != BoardLayerRole::Copper) {
             continue;
         }
-        if (layer.side() != BoardLayerSide::Top && layer.side() != BoardLayerSide::Bottom) {
+        if (!contains_layer(stack_copper, layer_id)) {
             add_fab_critical_warning(
-                loss_report, PcbFabricationLossKind::UnsupportedConstruct,
-                "board.layer.copper_side",
-                "Native fabrication export v1 emits top and bottom copper only");
+                loss_report, PcbFabricationLossKind::UnsupportedLayer,
+                "board.layer.copper_stack_membership",
+                "Native fabrication export derives copper ownership from the board stack; "
+                "enabled copper layers outside the two exported stack layers are omitted",
+                std::vector{EntityRef::board_layer(layer_id)});
         }
     }
 }
 
 [[nodiscard]] CopperLayerMap build_copper_layer_map(const Board &board,
                                                     PcbFabricationLossReport &loss_report) {
-    report_unsupported_copper_layers(board, loss_report);
-    return CopperLayerMap{
-        first_enabled_copper_layer(board, BoardLayerSide::Top, loss_report),
-        first_enabled_copper_layer(board, BoardLayerSide::Bottom, loss_report),
-    };
+    if (!board.layer_stack().has_value()) {
+        add_fab_critical_warning(
+            loss_report, PcbFabricationLossKind::MissingGeometry, "board.layer_stack",
+            "Native fabrication export requires a board layer stack to identify copper outputs",
+            std::vector{EntityRef::board()});
+        return {};
+    }
+
+    auto stack_copper = std::vector<BoardLayerId>{};
+    for (const auto layer_id : board.layer_stack()->layers()) {
+        const auto &layer = board.layer(layer_id);
+        if (layer.enabled() && layer.role() == BoardLayerRole::Copper) {
+            stack_copper.push_back(layer_id);
+        }
+    }
+
+    if (stack_copper.size() != 2U) {
+        add_fab_critical_warning(
+            loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.layer_stack.copper_count",
+            "Native fabrication export v1 emits exactly two board-stack copper layers",
+            board_layer_entities(stack_copper));
+        return {};
+    }
+
+    const auto &top_layer = board.layer(stack_copper.front());
+    const auto &bottom_layer = board.layer(stack_copper.back());
+    if (top_layer.side() != BoardLayerSide::Top || bottom_layer.side() != BoardLayerSide::Bottom) {
+        add_fab_critical_warning(
+            loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.layer_stack.outer_sides",
+            "Native fabrication export v1 expects the two stack copper layers to be top then "
+            "bottom",
+            board_layer_entities(stack_copper));
+        return {};
+    }
+
+    report_enabled_copper_layers_outside_stack(board, stack_copper, loss_report);
+    return CopperLayerMap{stack_copper.front(), stack_copper.back()};
+}
+
+void report_unsupported_copper_content(const Board &board, const CopperLayerMap &copper_layers,
+                                       PcbFabricationLossReport &loss_report) {
+    if (!copper_layers.top.has_value() || !copper_layers.bottom.has_value()) {
+        return;
+    }
+
+    for (std::size_t index = 0; index < board.track_count(); ++index) {
+        const auto track_id = BoardTrackId{index};
+        const auto &track = board.track(track_id);
+        if (is_exported_copper_layer(copper_layers, track.layer())) {
+            continue;
+        }
+        add_fab_critical_warning(
+            loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.track.layer",
+            "Native fabrication export v1 omits tracks on copper layers outside the exported "
+            "two-layer stack",
+            std::vector{EntityRef::board_track(track_id), EntityRef::board_layer(track.layer())});
+    }
+
+    for (std::size_t index = 0; index < board.zone_count(); ++index) {
+        const auto zone_id = BoardZoneId{index};
+        const auto &zone = board.zone(zone_id);
+        for (const auto layer_id : zone.layers()) {
+            if (is_exported_copper_layer(copper_layers, layer_id)) {
+                continue;
+            }
+            add_fab_critical_warning(
+                loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.zone.layer",
+                "Native fabrication export v1 omits zones on copper layers outside the exported "
+                "two-layer stack",
+                std::vector{EntityRef::board_zone(zone_id), EntityRef::board_layer(layer_id)});
+        }
+    }
+
+    for (std::size_t index = 0; index < board.via_count(); ++index) {
+        const auto via_id = BoardViaId{index};
+        const auto &via = board.via(via_id);
+        if (is_exported_copper_layer(copper_layers, via.start_layer()) &&
+            is_exported_copper_layer(copper_layers, via.end_layer())) {
+            continue;
+        }
+        add_fab_critical_warning(
+            loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.via.layer_span",
+            "Native fabrication export v1 omits via copper on layers outside the exported "
+            "two-layer stack",
+            std::vector{EntityRef::board_via(via_id), EntityRef::board_layer(via.start_layer()),
+                        EntityRef::board_layer(via.end_layer())});
+    }
 }
 
 [[nodiscard]] const FootprintDefinition *
@@ -374,16 +488,19 @@ definition_for_placement(const FootprintLibrary &footprints, const PhysicalPart 
 }
 
 void report_invalid_pad_resolution(const Board &board, const PadResolution &resolution,
+                                   ComponentPlacementId placement_id, FootprintPadId pad_id,
                                    PcbFabricationLossReport &loss_report) {
     if (resolution.status() == PadResolutionStatus::Connected ||
         resolution.status() == PadResolutionStatus::NonElectrical) {
         return;
     }
     const auto &component = board.circuit().component(resolution.component());
-    add_fab_critical_warning(
-        loss_report, PcbFabricationLossKind::IncompleteConstruct, "pad_resolution",
-        "Footprint pad " + component.reference().value() + "." + resolution.pad_label() +
-            " is emitted without a resolved logical net");
+    add_fab_critical_warning(loss_report, PcbFabricationLossKind::MissingGeometry, "pad_resolution",
+                             "Footprint pad " + component.reference().value() + "." +
+                                 resolution.pad_label() +
+                                 " is emitted without a resolved logical net",
+                             std::vector{EntityRef::component_placement(placement_id),
+                                         EntityRef::footprint_pad(pad_id)});
 }
 
 [[nodiscard]] std::vector<PlacementExport>
@@ -399,16 +516,18 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
         const auto &selected_part = board.circuit().selected_physical_part(placement.component());
         if (!selected_part.has_value()) {
             add_fab_critical_warning(
-                loss_report, PcbFabricationLossKind::IncompleteConstruct, "component.part",
-                "Component placement has no selected physical part for fabrication export");
+                loss_report, PcbFabricationLossKind::MissingGeometry, "component.part",
+                "Component placement has no selected physical part for fabrication export",
+                std::vector{EntityRef::component_placement(id)});
             continue;
         }
         const auto *definition =
             definition_for_placement(resolution_footprints, selected_part.value());
         if (definition == nullptr) {
             add_fab_critical_warning(
-                loss_report, PcbFabricationLossKind::IncompleteConstruct, "footprint",
-                "Component placement has no resolved footprint definition for fabrication export");
+                loss_report, PcbFabricationLossKind::MissingGeometry, "footprint",
+                "Component placement has no resolved footprint definition for fabrication export",
+                std::vector{EntityRef::component_placement(id)});
             continue;
         }
 
@@ -422,7 +541,7 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
                 throw std::logic_error{
                     "Native fabrication export requires a pad resolution for every pad"};
             }
-            report_invalid_pad_resolution(board, *resolution, loss_report);
+            report_invalid_pad_resolution(board, *resolution, id, pad_id, loss_report);
             placement_export.pad_resolutions.push_back(*resolution);
         }
         exports.push_back(std::move(placement_export));
@@ -452,7 +571,8 @@ build_placement_exports(const Board &board, const FootprintLibrary &footprints,
                                   FootprintLayer::BackPaste);
 }
 
-void write_pad_shape(GerberWriter &writer, const ComponentPlacement &placement,
+void write_pad_shape(GerberWriter &writer, ComponentPlacementId placement_id,
+                     const ComponentPlacement &placement, FootprintPadId pad_id,
                      const FootprintPad &pad, const PadResolution &resolution,
                      PcbFabricationLossReport &loss_report) {
     if (pad.shape() == FootprintPadShape::Circle) {
@@ -460,16 +580,20 @@ void write_pad_shape(GerberWriter &writer, const ComponentPlacement &placement,
         return;
     }
     if (pad.shape() == FootprintPadShape::Oval) {
-        add_fab_critical_warning(loss_report, PcbFabricationLossKind::UnsupportedConstruct,
+        add_fab_critical_warning(loss_report, PcbFabricationLossKind::UnsupportedGeometry,
                                  "footprint.pad.oval",
-                                 "Native fabrication export v1 does not emit oval pad geometry");
+                                 "Native fabrication export v1 does not emit oval pad geometry",
+                                 std::vector{EntityRef::component_placement(placement_id),
+                                             EntityRef::footprint_pad(pad_id)});
         return;
     }
     if (pad.shape() == FootprintPadShape::RoundedRectangle) {
         loss_report.add_warning(
-            PcbFabricationLossKind::LossyConstruct, "footprint.pad.rounded_rectangle",
+            PcbFabricationLossKind::LossyGeometry, "footprint.pad.rounded_rectangle",
             "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-            PcbFabricationLossSeverity::Warning, PcbFabricationLossImpact::Informational);
+            PcbFabricationLossSeverity::Warning, PcbFabricationLossImpact::Informational,
+            std::vector{EntityRef::component_placement(placement_id),
+                        EntityRef::footprint_pad(pad_id)});
     }
     writer.draw_region(volt::detail::transformed_pad_body_corners(placement, pad));
 }
@@ -517,8 +641,8 @@ void write_copper_layer(GerberWriter &writer, const Board &board, BoardLayerId l
             if (std::find(layers.begin(), layers.end(), layer_id) == layers.end()) {
                 continue;
             }
-            write_pad_shape(writer, placement, pad, placement_export.pad_resolutions.at(pad_index),
-                            loss_report);
+            write_pad_shape(writer, placement_export.id, placement, pad_id, pad,
+                            placement_export.pad_resolutions.at(pad_index), loss_report);
         }
     }
 }
@@ -530,14 +654,15 @@ void write_mask_or_paste_layer(GerberWriter &writer, const std::vector<Placement
         const auto &placement = *placement_export.placement;
         const auto &definition = placement_export.definition;
         for (std::size_t pad_index = 0; pad_index < definition.pad_count(); ++pad_index) {
-            const auto &pad = definition.pad(FootprintPadId{pad_index});
+            const auto pad_id = FootprintPadId{pad_index};
+            const auto &pad = definition.pad(pad_id);
             const auto selected = paste ? pad_has_paste(pad, placement.side(), side)
                                         : pad_has_solder_mask(pad, placement.side(), side);
             if (!selected) {
                 continue;
             }
-            write_pad_shape(writer, placement, pad, placement_export.pad_resolutions.at(pad_index),
-                            loss_report);
+            write_pad_shape(writer, placement_export.id, placement, pad_id, pad,
+                            placement_export.pad_resolutions.at(pad_index), loss_report);
         }
     }
 }
@@ -581,14 +706,16 @@ void write_mask_or_paste_layer(GerberWriter &writer, const std::vector<Placement
 void report_unsupported_board_text_layers(const Board &board,
                                           PcbFabricationLossReport &loss_report) {
     for (std::size_t index = 0; index < board.text_count(); ++index) {
-        const auto &text = board.text(BoardTextId{index});
+        const auto text_id = BoardTextId{index};
+        const auto &text = board.text(text_id);
         const auto &layer = board.layer(text.layer());
         if (layer.role() == BoardLayerRole::Silkscreen) {
             continue;
         }
         add_fab_critical_warning(
-            loss_report, PcbFabricationLossKind::UnsupportedConstruct, "board.text.layer",
-            "Native fabrication export v1 emits board text only on silkscreen layers");
+            loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.text.layer",
+            "Native fabrication export v1 emits board text only on silkscreen layers",
+            std::vector{EntityRef::board_text(text_id), EntityRef::board_layer(text.layer())});
     }
 }
 
@@ -611,14 +738,16 @@ void draw_text_cell(GerberWriter &writer, const BoardText &text, double left_mm,
     });
 }
 
-void report_unsupported_board_text_character(PcbFabricationLossReport &loss_report) {
+void report_unsupported_board_text_character(BoardTextId text_id, BoardLayerId layer_id,
+                                             PcbFabricationLossReport &loss_report) {
     add_fab_critical_warning(
-        loss_report, PcbFabricationLossKind::UnsupportedConstruct, "board.text.character",
+        loss_report, PcbFabricationLossKind::UnsupportedGeometry, "board.text.character",
         "Native fabrication export v1 can only render uppercase A-Z, digits, spaces, and common "
-        "silkscreen punctuation in board text");
+        "silkscreen punctuation in board text",
+        std::vector{EntityRef::board_text(text_id), EntityRef::board_layer(layer_id)});
 }
 
-void write_board_text(GerberWriter &writer, const BoardText &text,
+void write_board_text(GerberWriter &writer, BoardTextId text_id, const BoardText &text,
                       PcbFabricationLossReport &loss_report) {
     constexpr double text_width_factor = 0.6;
     constexpr std::size_t glyph_columns = 5U;
@@ -633,7 +762,7 @@ void write_board_text(GerberWriter &writer, const BoardText &text,
     for (const auto character : text.text()) {
         const auto glyph = glyph_for(character);
         if (!glyph.has_value()) {
-            report_unsupported_board_text_character(loss_report);
+            report_unsupported_board_text_character(text_id, text.layer(), loss_report);
             cursor_x_mm += glyph_width_mm;
             continue;
         }
@@ -674,7 +803,8 @@ void write_silkscreen_layer(GerberWriter &writer, const Board &board,
     }
 
     for (std::size_t index = 0; index < board.text_count(); ++index) {
-        const auto &text = board.text(BoardTextId{index});
+        const auto text_id = BoardTextId{index};
+        const auto &text = board.text(text_id);
         const auto &layer = board.layer(text.layer());
         if (layer.role() != BoardLayerRole::Silkscreen) {
             continue;
@@ -682,36 +812,41 @@ void write_silkscreen_layer(GerberWriter &writer, const Board &board,
         if (!layer_matches_side(layer, side)) {
             continue;
         }
-        write_board_text(writer, text, loss_report);
+        write_board_text(writer, text_id, text, loss_report);
     }
 }
 
-void write_outline(GerberWriter &writer, const Board &board,
-                   PcbFabricationLossReport &loss_report) {
+[[nodiscard]] bool write_outline(GerberWriter &writer, const Board &board,
+                                 PcbFabricationLossReport &loss_report) {
     if (!board.outline().has_value()) {
-        add_fab_critical_warning(loss_report, PcbFabricationLossKind::IncompleteConstruct,
-                                 "board.outline",
-                                 "Native fabrication export requires a board outline");
-        return;
+        add_fab_critical_warning(
+            loss_report, PcbFabricationLossKind::MissingGeometry, "board.outline",
+            "Native fabrication export requires a board outline", std::vector{EntityRef::board()});
+        return false;
     }
     writer.draw_polyline(board.outline()->vertices(), 0.10, true);
+    return true;
 }
 
 void report_unsupported_board_features(const Board &board, PcbFabricationLossReport &loss_report) {
     for (std::size_t index = 0; index < board.feature_count(); ++index) {
-        const auto &feature = board.feature(BoardFeatureId{index});
+        const auto feature_id = BoardFeatureId{index};
+        const auto &feature = board.feature(feature_id);
         if (feature.kind() == BoardFeatureKind::Slot) {
             add_fab_critical_warning(
-                loss_report, PcbFabricationLossKind::UnsupportedConstruct, "board.feature.slot",
-                "Native fabrication export v1 does not emit slotted drill features");
+                loss_report, PcbFabricationLossKind::UnsupportedGeometry, "board.feature.slot",
+                "Native fabrication export v1 does not emit slotted drill features",
+                std::vector{EntityRef::board_feature(feature_id)});
         } else if (feature.kind() == BoardFeatureKind::Cutout) {
             add_fab_critical_warning(
-                loss_report, PcbFabricationLossKind::UnsupportedConstruct, "board.feature.cutout",
-                "Native fabrication export v1 does not emit internal board cutouts");
+                loss_report, PcbFabricationLossKind::UnsupportedGeometry, "board.feature.cutout",
+                "Native fabrication export v1 does not emit internal board cutouts",
+                std::vector{EntityRef::board_feature(feature_id)});
         } else if (feature.kind() == BoardFeatureKind::Circle) {
             add_fab_critical_warning(
-                loss_report, PcbFabricationLossKind::UnsupportedConstruct, "board.feature.circle",
-                "Native fabrication export v1 does not emit generic board circle features");
+                loss_report, PcbFabricationLossKind::UnsupportedGeometry, "board.feature.circle",
+                "Native fabrication export v1 does not emit generic board circle features",
+                std::vector{EntityRef::board_feature(feature_id)});
         }
     }
 }
@@ -719,7 +854,8 @@ void report_unsupported_board_features(const Board &board, PcbFabricationLossRep
 void append_board_feature_drills(const Board &board, std::vector<DrillHit> &drills,
                                  PcbFabricationLossReport &loss_report) {
     for (std::size_t index = 0; index < board.feature_count(); ++index) {
-        const auto &feature = board.feature(BoardFeatureId{index});
+        const auto feature_id = BoardFeatureId{index};
+        const auto &feature = board.feature(feature_id);
         if (feature.kind() != BoardFeatureKind::Hole) {
             continue;
         }
@@ -727,10 +863,12 @@ void append_board_feature_drills(const Board &board, std::vector<DrillHit> &dril
         if (hole.finished_diameter_mm().has_value() &&
             std::abs(hole.finished_diameter_mm().value() - hole.drill_diameter_mm()) > 1.0e-9) {
             add_fab_critical_warning(
-                loss_report, PcbFabricationLossKind::UnsupportedConstruct,
+                loss_report, PcbFabricationLossKind::LossyGeometry,
                 "board.feature.hole.finished_diameter",
                 "Native Excellon export v1 emits drill diameter but cannot encode distinct "
-                "finished hole diameter requirements");
+                "finished hole diameter requirements",
+                std::vector{EntityRef::board_feature(feature_id)},
+                PcbFabricationLossSeverity::Warning);
         }
         drills.push_back(DrillHit{hole.center(), hole.drill_diameter_mm(), hole.plated()});
     }
@@ -822,7 +960,8 @@ void append_file(std::vector<PcbFabricationFile> &files, std::string filename, s
 
 void PcbFabricationLossReport::add_warning(PcbFabricationLossKind kind, std::string construct,
                                            std::string message, PcbFabricationLossSeverity severity,
-                                           PcbFabricationLossImpact fabrication_impact) {
+                                           PcbFabricationLossImpact fabrication_impact,
+                                           std::vector<EntityRef> entities) {
     if (construct.empty()) {
         throw std::invalid_argument{"Fabrication loss warning construct must not be empty"};
     }
@@ -830,7 +969,8 @@ void PcbFabricationLossReport::add_warning(PcbFabricationLossKind kind, std::str
         throw std::invalid_argument{"Fabrication loss warning message must not be empty"};
     }
     warnings_.push_back(PcbFabricationLossWarning{kind, std::move(construct), std::move(message),
-                                                  severity, fabrication_impact});
+                                                  severity, fabrication_impact,
+                                                  std::move(entities)});
 }
 
 [[nodiscard]] bool PcbFabricationLossReport::has_fab_critical_warnings() const noexcept {
@@ -851,15 +991,16 @@ PcbFabricationLossReport::fab_critical_warnings() const {
 [[nodiscard]] DiagnosticReport fabrication_diagnostics(const PcbFabricationLossReport &report) {
     auto diagnostics = DiagnosticReport{};
     for (const auto &warning : report.warnings()) {
-        if (!is_fab_critical(warning)) {
-            continue;
+        auto entities = warning.entities;
+        if (entities.empty()) {
+            entities.push_back(EntityRef::board());
         }
         diagnostics.add(Diagnostic{
-            Severity::Error,
-            DiagnosticCode{std::string{pcb_fabrication_diagnostic_codes::NativeFabExportLoss}},
+            diagnostic_severity(warning.severity),
+            DiagnosticCode{std::string{diagnostic_code(warning.kind)}},
             DiagnosticCategory{diagnostic_categories::PcbFabrication},
             fabrication_diagnostic_message(warning),
-            std::vector{EntityRef::board()},
+            std::move(entities),
             {},
             std::nullopt,
             warning.construct,
@@ -876,6 +1017,7 @@ write_pcb_fabrication_files(const Board &board, const FootprintLibrary &footprin
     report_unsupported_board_features(board, result.loss_report);
     report_unsupported_board_text_layers(board, result.loss_report);
     const auto copper_layers = build_copper_layer_map(board, result.loss_report);
+    report_unsupported_copper_content(board, copper_layers, result.loss_report);
     const auto placements = build_placement_exports(board, footprints, result.loss_report);
 
     if (copper_layers.top.has_value()) {
@@ -928,8 +1070,9 @@ write_pcb_fabrication_files(const Board &board, const FootprintLibrary &footprin
     }
     {
         auto writer = GerberWriter{"Profile,NP"};
-        write_outline(writer, board, result.loss_report);
-        append_file(result.files, basename + ".GKO", "profile", writer.finish());
+        if (write_outline(writer, board, result.loss_report)) {
+            append_file(result.files, basename + ".GKO", "profile", writer.finish());
+        }
     }
 
     auto drills = std::vector<DrillHit>{};
