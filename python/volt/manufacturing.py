@@ -126,6 +126,12 @@ def _required_profile_payload(
             diagnostics=diagnostics,
         )
 
+    profile_config = _required_profile_config(
+        manufacturing_profile,
+        output=output,
+        board=board_record,
+        diagnostics=diagnostics,
+    )
     board_profile = _board_capability_profile(board)
     if board_profile is None:
         raise ManufacturingPackageError(
@@ -137,9 +143,35 @@ def _required_profile_payload(
         )
 
     return {
-        "config": manufacturing_profile,
+        "config": profile_config,
         "board": board_profile,
     }
+
+
+def _required_profile_config(
+    manufacturing_profile: dict[str, str],
+    *,
+    output: Path,
+    board: dict[str, str],
+    diagnostics: dict[str, object],
+) -> dict[str, str]:
+    required_fields = ("path", "resolved_path")
+    missing_fields = [
+        field
+        for field in required_fields
+        if not isinstance(manufacturing_profile.get(field), str)
+        or not manufacturing_profile[field].strip()
+    ]
+    if missing_fields:
+        formatted = ", ".join(missing_fields)
+        raise ManufacturingPackageError(
+            f"Manufacturing export requires profile metadata field(s): {formatted}.",
+            status="missing-manufacturing-profile",
+            output=output,
+            board=board,
+            diagnostics=diagnostics,
+        )
+    return dict(manufacturing_profile)
 
 
 def native_fabrication_payload(native_export: Any) -> dict[str, object]:

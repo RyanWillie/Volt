@@ -559,6 +559,17 @@ def test_project_result_manufacturing_package_refuses_missing_required_profile_d
     }
     assert not missing_config_output.exists()
 
+    partial_config_output = tmp_path / "partial-config-package"
+    with pytest.raises(volt.ManufacturingPackageError) as partial_error:
+        missing_config.write_manufacturing_package(
+            partial_config_output,
+            manufacturing_profile={"path": "profiles/generic.volt.json"},
+        )
+
+    assert partial_error.value.status == "missing-manufacturing-profile"
+    assert "resolved_path" in str(partial_error.value)
+    assert not partial_config_output.exists()
+
     missing_board_profile_root = tmp_path / "missing-board-profile"
     missing_board_profile_output = tmp_path / "missing-board-profile-package"
     _write_manufacturing_project(missing_board_profile_root, board_profile=False)
