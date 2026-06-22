@@ -24,6 +24,19 @@ Read this before applying any official Volt skill in this folder.
 - `docs/design/footprint-library-conventions.html` for footprint geometry and selected-part boundaries.
 - `docs/design/pcb-json-format.html` for PCB JSON, viewer diagnostics, SVG selectors, DRC, and capability lint boundaries.
 - `docs/design/kicad-pcb-export-handoff.html` for KiCad adapter review and fab-critical loss handling.
+- `docs/design/schemdraw-style-schematic-authoring.html` for preferred schematic API design and SchemDraw style conventions.
+
+## Skills In This Folder
+
+Start at `volt-basics` if you are new. The end-to-end flow and the skill for each step:
+
+1. Define parts (pins, electrical semantics, footprint, symbol, selected part) — `volt-component-authoring`.
+2. Author logical connectivity (nets, instances, Project, tests) — `volt-circuit-authoring`.
+3. Present it as a readable schematic — `volt-schematic-authoring`.
+4. Give the board structure and produce the manufacturing handoff — `volt-pcb-authoring`.
+5. Place and route the board to a professional standard — `volt-pcb-layout`.
+
+The logical circuit owns connectivity. Schematic and PCB skills project or implement it; they never create, merge, or split nets.
 
 ## Validation Posture
 
