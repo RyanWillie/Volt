@@ -99,8 +99,56 @@ struct PcbFabricationExportOptions {
     std::optional<std::string> basename = std::nullopt;
 };
 
+/** Stable Gerber metadata for native fabrication exports. */
+struct PcbFabricationGerberExporterMetadata {
+    /** Gerber dialect emitted by the native exporter. */
+    std::string format = "RS-274X";
+
+    /** Coordinate units emitted by the native exporter. */
+    std::string units = "mm";
+
+    /** Integer and decimal precision for emitted coordinates. */
+    std::string coordinate_format = "4.6";
+
+    /** Zero-suppression mode used by emitted Gerber coordinates. */
+    std::string zero_suppression = "none";
+};
+
+/** Stable Excellon drill metadata for native fabrication exports. */
+struct PcbFabricationDrillExporterMetadata {
+    /** Drill-file dialect emitted by the native exporter. */
+    std::string format = "Excellon";
+
+    /** Coordinate units emitted by the native exporter. */
+    std::string units = "mm";
+
+    /** Integer and decimal precision for emitted drill coordinates. */
+    std::string coordinate_format = "4.6";
+
+    /** How plated and non-plated drill hits are partitioned. */
+    std::string pth_npth = "separate-files";
+};
+
+/** Stable metadata describing the native fabrication exporter. */
+struct PcbFabricationExporterMetadata {
+    /** Stable exporter identity for package manifests and Python callers. */
+    std::string name = "volt.native_fabrication";
+
+    /** Schema version for the exporter metadata payload. */
+    int schema_version = 1;
+
+    /** Gerber-specific native exporter metadata. */
+    PcbFabricationGerberExporterMetadata gerber;
+
+    /** Excellon drill-specific native exporter metadata. */
+    PcbFabricationDrillExporterMetadata drill;
+};
+
 /** Result of exporting Volt board projection data to native fabrication files. */
 struct PcbFabricationExportResult {
+    /** Metadata describing the native Gerber and Excellon exporter. */
+    PcbFabricationExporterMetadata exporter;
+
     /** Files in stable package order. */
     std::vector<PcbFabricationFile> files;
 

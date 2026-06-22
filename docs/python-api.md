@@ -25,10 +25,11 @@ authoring, PCB layout authoring, and staged project runs:
 - validate library parts for board readiness, pad mapping, footprint geometry, and
   serializability
 - run staged projects with default diagnostics, product-intent tests, and bundle output
+- export deterministic manufacturing packages from project results
 
-Richer ERC, a simulation foundation, manufacturing outputs, and deeper PCB flows remain
-planned layers. The Python API should not introduce semantics that those future kernel
-layers cannot load, validate, serialize, or inspect.
+Richer ERC, a simulation foundation, and deeper PCB flows remain planned layers. The
+Python API should not introduce semantics that those future kernel layers cannot load,
+validate, serialize, or inspect.
 
 ## Core Rule
 
@@ -276,6 +277,29 @@ schematic JSON/SVG, PCB JSON/SVG, diagnostics, test results, and
 `manifest.volt.json`. The output path may be missing, empty, or an existing Volt
 project-result bundle. Other pre-existing content is rejected so the write does not
 delete unrelated files.
+
+`result.write_manufacturing_package(path, board=None, manufacturing_profile=None,
+archive=False)` writes the full deterministic manufacturing handoff package for one
+project board. It uses the same package writer as `volt export manufacturing`: native
+Gerber/Excellon files, BOM, CPL, diagnostics, profile metadata, native fabrication
+coverage, manifest, inspection HTML, and optional deterministic zip archive. If the
+project result is not ok or native fabrication reports fab-critical loss, the method
+raises `volt.ManufacturingPackageError` and does not write an orderable-looking package.
+Missing or ambiguous board selectors raise `LookupError`.
+
+```python
+result = project.run()
+package = result.write_manufacturing_package(
+    "dist/status-led-manufacturing",
+    board="Control",
+    manufacturing_profile={
+        "path": "profiles/generic.volt.json",
+        "resolved_path": "profiles/generic.volt.json",
+    },
+    archive=True,
+)
+print(package.archive)
+```
 
 Stages can also own product-intent tests. These tests are not a replacement for kernel
 diagnostics; they encode the specific behavior the product must keep while the circuit

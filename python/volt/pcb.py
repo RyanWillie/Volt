@@ -439,6 +439,7 @@ class PcbFabricationExport:
     files: tuple[PcbFabricationFile, ...]
     warnings: tuple[PcbFabricationLossWarning, ...]
     diagnostics: DiagnosticReport
+    exporter: dict[str, object]
 
     def text_by_filename(self, filename: str) -> str:
         """Return one exported file by exact filename."""
@@ -1115,6 +1116,7 @@ class Board:
             diagnostics=DiagnosticReport(
                 _diagnostic_from_dict(item) for item in result["diagnostics"]
             ),
+            exporter=dict(result["exporter"]),
         )
 
     def _sync_component_object_footprint(self, component: int) -> None:

@@ -66,6 +66,28 @@ fabrication_loss_warning_to_dict(const volt::io::PcbFabricationLossWarning &warn
     return result;
 }
 
+[[nodiscard]] py::dict
+fabrication_exporter_metadata_to_dict(const volt::io::PcbFabricationExporterMetadata &metadata) {
+    auto gerber = py::dict{};
+    gerber["format"] = metadata.gerber.format;
+    gerber["units"] = metadata.gerber.units;
+    gerber["coordinate_format"] = metadata.gerber.coordinate_format;
+    gerber["zero_suppression"] = metadata.gerber.zero_suppression;
+
+    auto drill = py::dict{};
+    drill["format"] = metadata.drill.format;
+    drill["units"] = metadata.drill.units;
+    drill["coordinate_format"] = metadata.drill.coordinate_format;
+    drill["pth_npth"] = metadata.drill.pth_npth;
+
+    auto result = py::dict{};
+    result["name"] = metadata.name;
+    result["schema_version"] = metadata.schema_version;
+    result["gerber"] = std::move(gerber);
+    result["drill"] = std::move(drill);
+    return result;
+}
+
 } // namespace
 
 py::dict PyCircuit::board_to_fabrication_files() const {
@@ -86,6 +108,7 @@ py::dict PyCircuit::board_to_fabrication_files() const {
     }
     result["warnings"] = std::move(warnings);
     result["diagnostics"] = diagnostics_to_list(fabrication_diagnostics(export_result.loss_report));
+    result["exporter"] = fabrication_exporter_metadata_to_dict(export_result.exporter);
     return result;
 }
 
