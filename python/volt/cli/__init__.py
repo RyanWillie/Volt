@@ -26,6 +26,10 @@ from ..project import (
     _diagnostics_payload,
 )
 from ..schematic import Schematic
+from .manufacturing import (
+    native_fabrication_payload as _native_fabrication_payload,
+    write_manufacturing_package as _write_manufacturing_package,
+)
 
 
 EXIT_SUCCESS = 0
@@ -284,6 +288,46 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     build_parser.set_defaults(handler=_handle_build)
 
+    export_parser = subparsers.add_parser(
+        "export",
+        help="export project handoff packages",
+        description="Export project handoff packages.",
+    )
+    export_subparsers = export_parser.add_subparsers(
+        dest="export_command",
+        metavar="export-command",
+    )
+    manufacturing_parser = export_subparsers.add_parser(
+        "manufacturing",
+        help="write a deterministic native manufacturing package",
+        description=(
+            "Run the configured project and write a deterministic board-house "
+            "manufacturing package from Volt-native fabrication outputs."
+        ),
+    )
+    _add_project_argument(manufacturing_parser)
+    manufacturing_parser.add_argument(
+        "--output",
+        type=Path,
+        help="Output directory. Defaults to [paths].artifacts/manufacturing or ./build/manufacturing.",
+    )
+    manufacturing_parser.add_argument(
+        "--board",
+        help="Select one PCB by board name or design:board output name.",
+    )
+    manufacturing_parser.add_argument(
+        "--archive",
+        action="store_true",
+        help="Also write a deterministic zip archive next to the output directory.",
+    )
+    manufacturing_parser.add_argument(
+        "--json",
+        dest="emit_json",
+        action="store_true",
+        help="Emit a stable manufacturing export summary as JSON.",
+    )
+    manufacturing_parser.set_defaults(handler=_handle_export_manufacturing)
+
     info_parser = subparsers.add_parser(
         "info",
         help="report project metadata and run summary",
@@ -440,6 +484,84 @@ def _handle_build(args: argparse.Namespace) -> int | None:
     return None
 
 
+def _handle_export_manufacturing(args: argparse.Namespace) -> int | None:
+    config = discover_project(project=args.project)
+    result = _project_result_with_forwarded_stdout(config)
+    output = _manufacturing_output_path(config, args.output)
+    board = _select_manufacturing_board(result, args.board)
+    board_record = _manufacturing_board_record(board, result)
+
+    if not result.ok:
+        payload = _manufacturing_export_payload(
+            config,
+            result,
+            output=output,
+            board=board_record,
+            written=False,
+            status=result.status,
+        )
+        if args.emit_json:
+            print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+        else:
+            diagnostics = _diagnostics_payload(result)
+            print(
+                f"Manufacturing export refused: {diagnostics['status']} "
+                f"({_diagnostic_summary_text(diagnostics['summary'])})",
+                file=sys.stderr,
+            )
+        return EXIT_CHECK_FAILED
+
+    native_export = board.to_fabrication_files()
+    native_payload = _native_fabrication_payload(native_export)
+    if native_payload["coverage"]["fab_critical_loss"]:
+        payload = _manufacturing_export_payload(
+            config,
+            result,
+            output=output,
+            board=board_record,
+            written=False,
+            status="native-fabrication-loss",
+            native_fabrication=native_payload,
+        )
+        if args.emit_json:
+            print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+        else:
+            print(
+                "Manufacturing export refused: native fabrication export reported "
+                "fab-critical loss.",
+                file=sys.stderr,
+            )
+        return EXIT_CHECK_FAILED
+
+    package = _write_manufacturing_package(
+        result,
+        board=board,
+        board_record=board_record,
+        output=output,
+        native_export=native_export,
+        native_payload=native_payload,
+        manufacturing_profile=_manufacturing_profile_payload(config),
+        board_selector=args.board,
+        archive=args.archive,
+    )
+
+    payload = _manufacturing_export_payload(
+        config,
+        result,
+        output=output,
+        board=board_record,
+        written=True,
+        status=result.status,
+        native_fabrication=native_payload,
+        archive=package["archive"],
+    )
+    if args.emit_json:
+        print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+    else:
+        print(f"Manufacturing export: {result.status} -> {output}")
+    return None
+
+
 def _handle_info(args: argparse.Namespace) -> None:
     config = discover_project(project=args.project)
     result = _project_result_with_forwarded_stdout(config)
@@ -583,6 +705,15 @@ def _build_output_path(config: ProjectConfig, output: Path | None) -> Path:
     return Path.cwd() / path
 
 
+def _manufacturing_output_path(config: ProjectConfig, output: Path | None) -> Path:
+    if output is None:
+        return config.paths.get("artifacts", config.root / "build") / "manufacturing"
+    path = output.expanduser()
+    if path.is_absolute():
+        return path
+    return Path.cwd() / path
+
+
 def _build_payload(
     result: ProjectResult,
     *,
@@ -601,6 +732,37 @@ def _build_payload(
         "diagnostics": _diagnostics_payload(result),
         "tests": _tests_summary(_project_tests(result)),
     }
+
+
+def _manufacturing_export_payload(
+    config: ProjectConfig,
+    result: ProjectResult,
+    *,
+    output: Path,
+    board: dict[str, str],
+    written: bool,
+    status: str,
+    native_fabrication: dict[str, object] | None = None,
+    archive: str | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "ok": status == result.status and result.ok,
+        "status": status,
+        "output": str(output),
+        "board": board,
+        "written": written,
+        "diagnostics": _diagnostics_payload(result),
+        "tests": _tests_summary(_project_tests(result)),
+        "manufacturing_profile": _manufacturing_profile_payload(config),
+    }
+    if native_fabrication is not None:
+        payload["native_fabrication"] = {
+            "coverage": native_fabrication["coverage"],
+            "warnings": native_fabrication["warnings"],
+        }
+    if archive is not None:
+        payload["archive"] = archive
+    return payload
 
 
 def _info_payload(config: ProjectConfig, result: ProjectResult) -> dict[str, object]:
@@ -686,6 +848,30 @@ def _manufacturing_profile_payload(
     return {
         "path": config.manufacturing_profile_path,
         "resolved_path": str(config.manufacturing_profile),
+    }
+
+
+def _select_manufacturing_board(result: ProjectResult, selector: str | None) -> Board:
+    if selector is not None:
+        return _select_projection(result.boards, result.boards, selector, "board")
+    if not result.boards:
+        raise CliError("Project result has no boards to export for manufacturing.")
+    if len(result.boards) > 1:
+        candidates = ", ".join(
+            model_output_name(board, result.boards) for board in result.boards
+        )
+        raise CliError(
+            "Project result has multiple boards; pass --board. "
+            f"Candidates: {candidates}"
+        )
+    return result.boards[0]
+
+
+def _manufacturing_board_record(board: Board, result: ProjectResult) -> dict[str, str]:
+    return {
+        "design": board._design.name,
+        "name": board.name,
+        "output_name": model_output_name(board, result.boards),
     }
 
 

@@ -1,0 +1,11 @@
+G04 Volt Gerber RS-274X*
+%FSLAX46Y46*%
+%MOMM*%
+%TF.GenerationSoftware,Volt,Volt Native Fabrication Exporter,0.1*%
+%TF.FileFunction,Soldermask,Bot*%
+%TF.FilePolarity,Positive*%
+%LPD*%
+%ADD10C,1.600000*%
+D10*
+X0020000000Y0010000000D03*
+M02*

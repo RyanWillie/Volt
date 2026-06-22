@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <fstream>
+#include <iterator>
 #include <locale>
 #include <string>
 #include <string_view>
@@ -188,6 +190,12 @@ file_names(const volt::io::PcbFabricationExportResult &result) {
     return text.find(needle) != std::string_view::npos;
 }
 
+[[nodiscard]] std::string read_fixture(const std::string &name) {
+    auto input = std::ifstream{std::string{VOLT_TEST_FIXTURE_DIR} + "/" + name};
+    REQUIRE(input.is_open());
+    return {std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+}
+
 [[nodiscard]] const volt::Diagnostic *find_diagnostic(const volt::DiagnosticReport &report,
                                                       std::string_view code,
                                                       std::string_view rule) {
@@ -300,6 +308,43 @@ TEST_CASE("PCB fabrication writer exports deterministic Gerber and Excellon file
     CHECK(contains(npth->text, ";TYPE=NON_PLATED"));
     CHECK(contains(npth->text, "T01C2.400000"));
     CHECK(contains(npth->text, "X0004000000Y0004000000"));
+}
+
+TEST_CASE("PCB fabrication writer matches representative golden native output fixtures") {
+    const auto fixture = make_fabrication_circuit();
+    const auto board = make_fabrication_board(fixture);
+    const auto footprints = fabrication_footprints();
+
+    const auto result = volt::io::write_pcb_fabrication_files(board, footprints);
+
+    REQUIRE_FALSE(result.loss_report.has_warnings());
+    const auto expected = std::vector<std::pair<std::string, std::string>>{
+        {"Control.GTL", "native_fabrication_control.GTL"},
+        {"Control.GBL", "native_fabrication_control.GBL"},
+        {"Control.GTS", "native_fabrication_control.GTS"},
+        {"Control.GBS", "native_fabrication_control.GBS"},
+        {"Control.GTO", "native_fabrication_control.GTO"},
+        {"Control.GTP", "native_fabrication_control.GTP"},
+        {"Control.GKO", "native_fabrication_control.GKO"},
+        {"Control-PTH.TXT", "native_fabrication_control-PTH.TXT"},
+        {"Control-NPTH.TXT", "native_fabrication_control-NPTH.TXT"},
+    };
+    CHECK(file_names(result) == std::vector<std::string>{
+                                    "Control.GTL",
+                                    "Control.GBL",
+                                    "Control.GTS",
+                                    "Control.GBS",
+                                    "Control.GTO",
+                                    "Control.GTP",
+                                    "Control.GKO",
+                                    "Control-PTH.TXT",
+                                    "Control-NPTH.TXT",
+                                });
+    for (const auto &[filename, fixture_name] : expected) {
+        const auto *file = find_file(result, filename);
+        REQUIRE(file != nullptr);
+        CHECK(file->text == read_fixture(fixture_name));
+    }
 }
 
 TEST_CASE("PCB fabrication writer keeps numeric output locale-stable") {
