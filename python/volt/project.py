@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
@@ -153,6 +154,38 @@ class ProjectArtifactPaths:
     cpl_json: Path | None = None
     cpl_csv: Path | None = None
     diagnostics_json: Path | None = None
+
+
+@dataclass(frozen=True)
+class ManufacturingPackageResult:
+    """Summary returned after writing a deterministic manufacturing package."""
+
+    output: Path
+    board: dict[str, str]
+    status: str
+    archive: Path | None
+    native_fabrication: dict[str, object]
+
+
+class ManufacturingPackageError(RuntimeError):
+    """Raised when a manufacturing package would be unsafe or ambiguous to write."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: str,
+        output: Path,
+        board: dict[str, str] | None = None,
+        diagnostics: dict[str, object] | None = None,
+        native_fabrication: dict[str, object] | None = None,
+    ):
+        super().__init__(message)
+        self.status = status
+        self.output = output
+        self.board = board
+        self.diagnostics = diagnostics
+        self.native_fabrication = native_fabrication
 
 
 @dataclass(frozen=True)
@@ -892,6 +925,27 @@ class ProjectResult:
                     "summary": _test_summary(bundle_policy.tests),
                 },
             },
+        )
+
+    def write_manufacturing_package(
+        self,
+        path: str | Path,
+        *,
+        board: str | None = None,
+        manufacturing_profile: Mapping[str, str] | None = None,
+        archive: bool = False,
+    ) -> ManufacturingPackageResult:
+        """Write the full deterministic manufacturing package for one board."""
+        from .manufacturing import write_project_manufacturing_package
+
+        return write_project_manufacturing_package(
+            self,
+            output=Path(path),
+            board_selector=board,
+            manufacturing_profile=(
+                None if manufacturing_profile is None else dict(manufacturing_profile)
+            ),
+            archive=archive,
         )
 
     def write_artifacts(

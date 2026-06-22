@@ -1,4 +1,4 @@
-"""Manufacturing package assembly for the Volt CLI."""
+"""Shared deterministic manufacturing package assembly."""
 
 from __future__ import annotations
 
@@ -11,52 +11,139 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from ..project import ProjectResult, _diagnostics_payload
+from ._project_model_lookup import model_output_name
+from .pcb import Board
+from .project import (
+    ManufacturingPackageError,
+    ManufacturingPackageResult,
+    ProjectResult,
+    _diagnostics_payload,
+)
 
 
-def write_manufacturing_package(
+def write_project_manufacturing_package(
     result: ProjectResult,
     *,
-    board: Any,
-    board_record: dict[str, str],
     output: Path,
-    native_export: Any,
-    native_payload: dict[str, object],
-    manufacturing_profile: dict[str, str] | None,
     board_selector: str | None,
+    manufacturing_profile: dict[str, str] | None,
     archive: bool,
-) -> dict[str, str | None]:
-    """Write a deterministic manufacturing package from native fabrication output."""
+) -> ManufacturingPackageResult:
+    """Write a deterministic manufacturing package from a project result."""
+    board = select_manufacturing_board(result, board_selector)
+    board_record = manufacturing_board_record(board, result)
+    diagnostics = _diagnostics_payload(result)
 
-    output.parent.mkdir(parents=True, exist_ok=True)
-    staging = Path(
-        tempfile.mkdtemp(prefix=f".{output.name}.", dir=output.parent)
-    )
-    try:
-        result.write(staging)
-        _write_manufacturing_contents(
-            result,
-            board=board,
-            board_record=board_record,
-            output=staging,
-            native_export=native_export,
-            native_payload=native_payload,
-            manufacturing_profile=manufacturing_profile,
-            board_selector=board_selector,
-            archive=archive,
+    if not result.ok:
+        raise ManufacturingPackageError(
+            "Manufacturing export refused because the project result is not ok.",
+            status=result.status,
+            output=output,
+            board=board_record,
+            diagnostics=diagnostics,
         )
-        _replace_directory(staging, output)
-    except Exception:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
 
-    archive_path = None
-    if archive:
-        archive_path = _write_deterministic_archive(output)
-    return {"archive": None if archive_path is None else str(archive_path)}
+    profile_payload = _required_profile_payload(
+        board,
+        manufacturing_profile=manufacturing_profile,
+        output=output,
+        board_record=board_record,
+        diagnostics=diagnostics,
+    )
+    native_export = board.to_fabrication_files()
+    native_payload = native_fabrication_payload(native_export)
+    if native_payload["coverage"]["fab_critical_loss"]:
+        raise ManufacturingPackageError(
+            "Manufacturing export refused because native fabrication reported fab-critical loss.",
+            status="native-fabrication-loss",
+            output=output,
+            board=board_record,
+            diagnostics=diagnostics,
+            native_fabrication=native_payload,
+        )
+
+    package = _write_manufacturing_package(
+        result,
+        board=board,
+        board_record=board_record,
+        output=output,
+        native_export=native_export,
+        native_payload=native_payload,
+        profile_payload=profile_payload,
+        board_selector=board_selector,
+        archive=archive,
+    )
+    archive_path = package["archive"]
+    return ManufacturingPackageResult(
+        output=output,
+        board=board_record,
+        status=result.status,
+        archive=None if archive_path is None else Path(archive_path),
+        native_fabrication=native_payload,
+    )
+
+
+def select_manufacturing_board(result: ProjectResult, selector: str | None) -> Board:
+    """Select the board to export using project-result projection lookup rules."""
+    if selector is not None:
+        return _select_projection(result.boards, result.boards, selector, "board")
+    if not result.boards:
+        raise LookupError("Project result has no boards to export for manufacturing.")
+    if len(result.boards) > 1:
+        candidates = _format_candidates(
+            model_output_name(board, result.boards) for board in result.boards
+        )
+        raise LookupError(
+            "Project result has multiple boards; pass --board or board=. "
+            f"Candidates: {candidates}"
+        )
+    return result.boards[0]
+
+
+def manufacturing_board_record(board: Board, result: ProjectResult) -> dict[str, str]:
+    """Return stable board metadata used by package manifests and summaries."""
+    return {
+        "design": board._design.name,
+        "name": board.name,
+        "output_name": model_output_name(board, result.boards),
+    }
+
+
+def _required_profile_payload(
+    board: Board,
+    *,
+    manufacturing_profile: dict[str, str] | None,
+    output: Path,
+    board_record: dict[str, str],
+    diagnostics: dict[str, object],
+) -> dict[str, object]:
+    if manufacturing_profile is None:
+        raise ManufacturingPackageError(
+            "Manufacturing export requires manufacturing profile metadata.",
+            status="missing-manufacturing-profile",
+            output=output,
+            board=board_record,
+            diagnostics=diagnostics,
+        )
+
+    board_profile = _board_capability_profile(board)
+    if board_profile is None:
+        raise ManufacturingPackageError(
+            "Manufacturing export requires a board capability profile.",
+            status="missing-board-capability-profile",
+            output=output,
+            board=board_record,
+            diagnostics=diagnostics,
+        )
+
+    return {
+        "config": manufacturing_profile,
+        "board": board_profile,
+    }
 
 
 def native_fabrication_payload(native_export: Any) -> dict[str, object]:
+    """Return native fabrication loss and coverage metadata for manifests."""
     warnings = [
         {
             "kind": warning.kind,
@@ -77,27 +164,46 @@ def native_fabrication_payload(native_export: Any) -> dict[str, object]:
         },
         "warnings": warnings,
         "diagnostics": _native_diagnostics_payload(native_export.diagnostics),
-        "exporter": native_exporter_metadata(),
+        "exporter": native_export.exporter,
     }
 
 
-def native_exporter_metadata() -> dict[str, object]:
-    return {
-        "name": "volt.native_fabrication",
-        "schema_version": 1,
-        "gerber": {
-            "format": "RS-274X",
-            "units": "mm",
-            "coordinate_format": "4.6",
-            "zero_suppression": "none",
-        },
-        "drill": {
-            "format": "Excellon",
-            "units": "mm",
-            "coordinate_format": "4.6",
-            "pth_npth": "separate-files",
-        },
-    }
+def _write_manufacturing_package(
+    result: ProjectResult,
+    *,
+    board: Any,
+    board_record: dict[str, str],
+    output: Path,
+    native_export: Any,
+    native_payload: dict[str, object],
+    profile_payload: dict[str, object],
+    board_selector: str | None,
+    archive: bool,
+) -> dict[str, str | None]:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=output.parent))
+    try:
+        result.write(staging)
+        _write_manufacturing_contents(
+            result,
+            board=board,
+            board_record=board_record,
+            output=staging,
+            native_export=native_export,
+            native_payload=native_payload,
+            profile_payload=profile_payload,
+            board_selector=board_selector,
+            archive=archive,
+        )
+        _replace_directory(staging, output)
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+    archive_path = None
+    if archive:
+        archive_path = _write_deterministic_archive(output)
+    return {"archive": None if archive_path is None else str(archive_path)}
 
 
 def _write_manufacturing_contents(
@@ -108,7 +214,7 @@ def _write_manufacturing_contents(
     output: Path,
     native_export: Any,
     native_payload: dict[str, object],
-    manufacturing_profile: dict[str, str] | None,
+    profile_payload: dict[str, object],
     board_selector: str | None,
     archive: bool,
 ) -> None:
@@ -132,10 +238,6 @@ def _write_manufacturing_contents(
             }
         )
 
-    profile_payload = {
-        "config": manufacturing_profile,
-        "board": _board_capability_profile(board),
-    }
     _write_json(manufacturing_root / "profile.json", profile_payload)
 
     native_report = {
@@ -193,7 +295,7 @@ def _write_manufacturing_contents(
         },
         "board": board_record,
         "profile": profile_payload,
-        "exporter": native_exporter_metadata(),
+        "exporter": native_payload["exporter"],
         "diagnostics": {
             "path": "diagnostics/diagnostics.json",
             "status": result.status,
@@ -206,6 +308,39 @@ def _write_manufacturing_contents(
         "artifacts": artifacts,
     }
     _write_json(manufacturing_root / "manifest.json", manifest)
+
+
+def _select_projection(
+    models: tuple[Board, ...],
+    all_models: tuple[Board, ...],
+    selector: str,
+    kind: str,
+) -> Board:
+    output_matches = tuple(
+        model for model in models if model_output_name(model, all_models) == selector
+    )
+    if len(output_matches) == 1:
+        return output_matches[0]
+
+    name_matches = tuple(model for model in models if model.name == selector)
+    if len(name_matches) == 1:
+        return name_matches[0]
+
+    candidates = _format_candidates(
+        model_output_name(model, all_models) for model in models
+    )
+    if len(output_matches) > 1 or len(name_matches) > 1:
+        raise LookupError(
+            f"Ambiguous {kind} selector {selector!r}. Candidates: {candidates}"
+        )
+    raise LookupError(f"No {kind} named {selector!r}. Candidates: {candidates}")
+
+
+def _format_candidates(candidates) -> str:
+    names = tuple(candidates)
+    if not names:
+        return "<none>"
+    return ", ".join(names)
 
 
 def _replace_directory(source: Path, destination: Path) -> None:

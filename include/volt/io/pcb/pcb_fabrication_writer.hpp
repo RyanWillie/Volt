@@ -99,8 +99,35 @@ struct PcbFabricationExportOptions {
     std::optional<std::string> basename = std::nullopt;
 };
 
+/** Stable Gerber metadata for native fabrication exports. */
+struct PcbFabricationGerberExporterMetadata {
+    std::string format = "RS-274X";
+    std::string units = "mm";
+    std::string coordinate_format = "4.6";
+    std::string zero_suppression = "none";
+};
+
+/** Stable Excellon drill metadata for native fabrication exports. */
+struct PcbFabricationDrillExporterMetadata {
+    std::string format = "Excellon";
+    std::string units = "mm";
+    std::string coordinate_format = "4.6";
+    std::string pth_npth = "separate-files";
+};
+
+/** Stable metadata describing the native fabrication exporter. */
+struct PcbFabricationExporterMetadata {
+    std::string name = "volt.native_fabrication";
+    int schema_version = 1;
+    PcbFabricationGerberExporterMetadata gerber;
+    PcbFabricationDrillExporterMetadata drill;
+};
+
 /** Result of exporting Volt board projection data to native fabrication files. */
 struct PcbFabricationExportResult {
+    /** Metadata describing the native Gerber and Excellon exporter. */
+    PcbFabricationExporterMetadata exporter;
+
     /** Files in stable package order. */
     std::vector<PcbFabricationFile> files;
 

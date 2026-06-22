@@ -234,6 +234,16 @@ TEST_CASE("PCB fabrication writer exports deterministic Gerber and Excellon file
     const auto repeated = volt::io::write_pcb_fabrication_files(board, footprints);
 
     CHECK_FALSE(result.loss_report.has_warnings());
+    CHECK(result.exporter.name == "volt.native_fabrication");
+    CHECK(result.exporter.schema_version == 1);
+    CHECK(result.exporter.gerber.format == "RS-274X");
+    CHECK(result.exporter.gerber.units == "mm");
+    CHECK(result.exporter.gerber.coordinate_format == "4.6");
+    CHECK(result.exporter.gerber.zero_suppression == "none");
+    CHECK(result.exporter.drill.format == "Excellon");
+    CHECK(result.exporter.drill.units == "mm");
+    CHECK(result.exporter.drill.coordinate_format == "4.6");
+    CHECK(result.exporter.drill.pth_npth == "separate-files");
     CHECK(file_names(result) == std::vector<std::string>{
                                     "Control.GTL",
                                     "Control.GBL",

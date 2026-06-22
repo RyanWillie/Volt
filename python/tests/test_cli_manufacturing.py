@@ -1,7 +1,12 @@
+import importlib
 import json
+import os
 import sys
 import zipfile
 from pathlib import Path
+
+import pytest
+import volt
 
 from volt.cli import main
 
@@ -32,6 +37,30 @@ def _read_stdout_json(capsys):
     captured = capsys.readouterr()
     assert captured.err == ""
     return json.loads(captured.out)
+
+
+def _run_project_direct(root: Path) -> volt.ProjectResult:
+    previous_cwd = Path.cwd()
+    sys.path.insert(0, str(root))
+    sys.modules.pop("project_entry", None)
+    os.chdir(root)
+    try:
+        module = importlib.import_module("project_entry")
+        result = module.main()
+    finally:
+        os.chdir(previous_cwd)
+        sys.modules.pop("project_entry", None)
+        sys.path.remove(str(root))
+    assert isinstance(result, volt.ProjectResult)
+    return result
+
+
+def _manufacturing_profile_metadata(root: Path) -> dict[str, str]:
+    path = root / "profiles" / "generic.volt.json"
+    return {
+        "path": "profiles/generic.volt.json",
+        "resolved_path": str(path),
+    }
 
 
 def _write_manufacturing_profile(root: Path) -> None:
@@ -65,7 +94,12 @@ def _write_manufacturing_profile(root: Path) -> None:
     )
 
 
-def _write_manufacturing_entrypoint(root: Path, *, lossy: bool = False) -> None:
+def _write_manufacturing_entrypoint(
+    root: Path,
+    *,
+    lossy: bool = False,
+    board_profile: bool = True,
+) -> None:
     lossy_feature = (
         """
         board.add(
@@ -81,6 +115,12 @@ def _write_manufacturing_entrypoint(root: Path, *, lossy: bool = False) -> None:
         if lossy
         else ""
     )
+    profile_setup = (
+        '    profile = volt.CapabilityProfile.from_file(Path("profiles/generic.volt.json"))\n'
+        if board_profile
+        else ""
+    )
+    board_profile_call = "        board.set_capability_profile(profile)\n" if board_profile else ""
     _write_entrypoint(
         root,
         f"""from pathlib import Path
@@ -133,7 +173,7 @@ def _net(design, name):
 
 
 def main():
-    profile = volt.CapabilityProfile.from_file(Path("profiles/generic.volt.json"))
+{profile_setup}
     project = volt.Project("status-led")
 
     @project.design
@@ -180,7 +220,7 @@ def main():
     def board(context):
         [design] = context.designs
         board = design.board("Control")
-        board.set_capability_profile(profile)
+{board_profile_call}
         front = board.add_layer("F.Cu", role="copper", side="top")
         back = board.add_layer("B.Cu", role="copper", side="bottom")
         silk = board.add_layer("F.SilkS", role="silkscreen", side="top")
@@ -248,16 +288,26 @@ def _directory_bytes(root: Path) -> dict[str, bytes]:
     }
 
 
-def _write_manufacturing_project(root: Path, *, lossy: bool = False) -> None:
+def _write_manufacturing_project(
+    root: Path,
+    *,
+    lossy: bool = False,
+    board_profile: bool = True,
+    config_profile: bool = True,
+) -> None:
     _write_project(
         root,
-        extra_config="""
+        extra_config=(
+            """
 [manufacturing]
 profile = "profiles/generic.volt.json"
-""",
+"""
+            if config_profile
+            else ""
+        ),
     )
     _write_manufacturing_profile(root)
-    _write_manufacturing_entrypoint(root, lossy=lossy)
+    _write_manufacturing_entrypoint(root, lossy=lossy, board_profile=board_profile)
 
 
 def test_export_manufacturing_writes_deterministic_native_package(tmp_path, capsys):
@@ -395,6 +445,175 @@ def test_export_manufacturing_writes_deterministic_native_package(tmp_path, caps
         assert "manufacturing/old-gerber.gbr" not in package.namelist()
 
 
+def test_project_result_writes_same_manufacturing_package_as_cli(tmp_path, capsys):
+    root = tmp_path / "board"
+    direct_output = tmp_path / "direct-package"
+    cli_output = tmp_path / "cli-package"
+    _write_manufacturing_project(root)
+
+    result = _run_project_direct(root)
+    written = result.write_manufacturing_package(
+        direct_output,
+        manufacturing_profile=_manufacturing_profile_metadata(root),
+        archive=True,
+    )
+
+    assert written.status == "clean"
+    assert written.output == direct_output
+    assert written.archive == direct_output.with_suffix(".zip")
+    assert written.board == {
+        "design": "status-led",
+        "name": "Control",
+        "output_name": "Control",
+    }
+
+    assert (
+        main(
+            [
+                "export",
+                "manufacturing",
+                "--json",
+                "--archive",
+                "--output",
+                str(cli_output),
+                "--project",
+                str(root),
+            ]
+        )
+        == 0
+    )
+    _read_stdout_json(capsys)
+
+    assert _directory_bytes(direct_output) == _directory_bytes(cli_output)
+    assert direct_output.with_suffix(".zip").read_bytes() == cli_output.with_suffix(
+        ".zip"
+    ).read_bytes()
+
+
+def test_project_result_manufacturing_package_rerun_is_deterministic(tmp_path):
+    root = tmp_path / "board"
+    output = tmp_path / "direct-package"
+    _write_manufacturing_project(root)
+    result = _run_project_direct(root)
+
+    result.write_manufacturing_package(
+        output,
+        manufacturing_profile=_manufacturing_profile_metadata(root),
+        archive=True,
+    )
+    first = _directory_bytes(output)
+    first_archive = output.with_suffix(".zip").read_bytes()
+    output.joinpath("stale-order-file.txt").write_text("stale", encoding="utf-8")
+    output.joinpath("manufacturing", "old-gerber.gbr").write_text("stale", encoding="utf-8")
+
+    repeated = result.write_manufacturing_package(
+        output,
+        manufacturing_profile=_manufacturing_profile_metadata(root),
+        archive=True,
+    )
+
+    assert repeated.archive == output.with_suffix(".zip")
+    assert _directory_bytes(output) == first
+    assert output.with_suffix(".zip").read_bytes() == first_archive
+
+
+def test_project_result_manufacturing_package_refuses_fab_critical_loss(tmp_path):
+    root = tmp_path / "board"
+    output = tmp_path / "direct-package"
+    _write_manufacturing_project(root, lossy=True)
+    result = _run_project_direct(root)
+
+    with pytest.raises(volt.ManufacturingPackageError) as error:
+        result.write_manufacturing_package(
+            output,
+            manufacturing_profile=_manufacturing_profile_metadata(root),
+        )
+
+    assert error.value.status == "native-fabrication-loss"
+    assert error.value.native_fabrication["coverage"] == {
+        "classification": "fab-critical-loss",
+        "fab_critical_loss": True,
+    }
+    assert [warning["construct"] for warning in error.value.native_fabrication["warnings"]] == [
+        "board.feature.hole.finished_diameter"
+    ]
+    assert not output.exists()
+
+
+def test_project_result_manufacturing_package_refuses_missing_required_profile_data(
+    tmp_path,
+):
+    missing_config_root = tmp_path / "missing-config"
+    missing_config_output = tmp_path / "missing-config-package"
+    _write_manufacturing_project(missing_config_root, config_profile=False)
+    missing_config = _run_project_direct(missing_config_root)
+
+    with pytest.raises(volt.ManufacturingPackageError) as config_error:
+        missing_config.write_manufacturing_package(missing_config_output)
+
+    assert config_error.value.status == "missing-manufacturing-profile"
+    assert config_error.value.board == {
+        "design": "status-led",
+        "name": "Control",
+        "output_name": "Control",
+    }
+    assert not missing_config_output.exists()
+
+    missing_board_profile_root = tmp_path / "missing-board-profile"
+    missing_board_profile_output = tmp_path / "missing-board-profile-package"
+    _write_manufacturing_project(missing_board_profile_root, board_profile=False)
+    missing_board_profile = _run_project_direct(missing_board_profile_root)
+
+    with pytest.raises(volt.ManufacturingPackageError) as board_error:
+        missing_board_profile.write_manufacturing_package(
+            missing_board_profile_output,
+            manufacturing_profile=_manufacturing_profile_metadata(missing_board_profile_root),
+        )
+
+    assert board_error.value.status == "missing-board-capability-profile"
+    assert not missing_board_profile_output.exists()
+
+
+def test_project_result_manufacturing_package_reports_selector_errors_without_writing(
+    tmp_path,
+):
+    root = tmp_path / "board"
+    output = tmp_path / "direct-package"
+    _write_project(root)
+    _write_entrypoint(
+        root,
+        """import volt
+
+def main():
+    project = volt.Project("control-panel")
+
+    @project.design
+    def design():
+        return (volt.Design("main-controller"), volt.Design("front-panel"))
+
+    @project.board
+    def board(context):
+        boards = []
+        for design in context.designs:
+            board = design.board("Main")
+            board.set_rectangular_outline(origin=(0, 0), size=(20, 10))
+            boards.append(board)
+        return tuple(boards)
+
+    return project.run()
+""",
+    )
+    result = _run_project_direct(root)
+
+    with pytest.raises(LookupError, match="Project result has multiple boards"):
+        result.write_manufacturing_package(output)
+    assert not output.exists()
+
+    with pytest.raises(LookupError, match="No board named 'missing'"):
+        result.write_manufacturing_package(output, board="missing")
+    assert not output.exists()
+
+
 def test_export_manufacturing_refuses_fab_critical_native_loss_without_writing(
     tmp_path, capsys
 ):
@@ -427,6 +646,32 @@ def test_export_manufacturing_refuses_fab_critical_native_loss_without_writing(
     assert [warning["construct"] for warning in payload["native_fabrication"]["warnings"]] == [
         "board.feature.hole.finished_diameter"
     ]
+    assert not output.exists()
+
+
+def test_export_manufacturing_refuses_missing_profile_without_writing(tmp_path, capsys):
+    root = tmp_path / "board"
+    output = tmp_path / "manufacturing-package"
+    _write_manufacturing_project(root, config_profile=False)
+
+    assert (
+        main(
+            [
+                "export",
+                "manufacturing",
+                "--json",
+                "--output",
+                str(output),
+                "--project",
+                str(root),
+            ]
+        )
+        == 1
+    )
+
+    payload = _read_stdout_json(capsys)
+    assert payload["status"] == "missing-manufacturing-profile"
+    assert payload["written"] is False
     assert not output.exists()
 
 

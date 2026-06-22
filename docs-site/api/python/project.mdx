@@ -81,6 +81,28 @@ Source: `python/volt/project.py`
 | --- | --- |
 | `expect_diagnostic_kwargs: dict[str, str]` | Return the checked policy as ``Project.expect_diagnostic`` keyword arguments. |
 
+## `volt.ManufacturingPackageError`
+
+Raised when a manufacturing package would be unsafe or ambiguous to write.
+
+Source: `python/volt/project.py`
+
+## `volt.ManufacturingPackageResult`
+
+Summary returned after writing a deterministic manufacturing package.
+
+Source: `python/volt/project.py`
+
+### Fields
+
+| Field |
+| --- |
+| `output: Path` |
+| `board: dict[str, str]` |
+| `status: str` |
+| `archive: Path \| None` |
+| `native_fabrication: dict[str, object]` |
+
 ## `volt.Project`
 
 Canonical staged entrypoint for a Volt electronics project.
@@ -216,6 +238,7 @@ Source: `python/volt/project.py`
 | `stage(self, stage: ProjectStage \| str) -> StageResult` | Return an executed stage summary by stage handle or name. |
 | `test_failures(self) -> tuple[ProjectTestResult, ...]` | Return failed project tests in stage execution order. |
 | `write(self, path: str \| Path, *, profile: str = 'default') -> None` | Write a deterministic project result bundle, optionally with viewer-profile checks. |
+| `write_manufacturing_package(self, path: str \| Path, *, board: str \| None = None, manufacturing_profile: Mapping[str, str] \| None = None, archive: bool = False) -> ManufacturingPackageResult` | Write the full deterministic manufacturing package for one board. |
 | `write_artifacts(self, path: str \| Path, *, slug: str \| None = None, pcb_svg_options: dict[str, object] \| None = None) -> ProjectArtifactPaths` | Write standard flat example/viewer artifacts and return their paths. |
 
 ## `volt.ProjectStage`
