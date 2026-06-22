@@ -7,7 +7,7 @@ import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import TYPE_CHECKING, Callable, Iterable, Mapping
 
 from ._project_model_lookup import model_output_name, one_or_named, one_or_named_projection
 from ._project_models3d import collect_project_part_models_3d, copy_part_model_3d_asset
@@ -24,6 +24,9 @@ from .schematic import Schematic
 
 
 BuildFunction = Callable[..., object]
+
+if TYPE_CHECKING:
+    from .manufacturing import ManufacturingPackageResult
 
 
 @dataclass(frozen=True)
@@ -892,6 +895,25 @@ class ProjectResult:
                     "summary": _test_summary(bundle_policy.tests),
                 },
             },
+        )
+
+    def write_manufacturing_package(
+        self,
+        path: str | Path,
+        *,
+        board: str | None = None,
+        manufacturing_profile: Mapping[str, str] | None = None,
+        archive: bool = False,
+    ) -> "ManufacturingPackageResult":
+        """Write a deterministic native manufacturing package for this project result."""
+        from .manufacturing import write_manufacturing_package
+
+        return write_manufacturing_package(
+            self,
+            path,
+            board=board,
+            manufacturing_profile=manufacturing_profile,
+            archive=archive,
         )
 
     def write_artifacts(

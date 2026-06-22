@@ -99,7 +99,7 @@ def import_map(tree: ast.Module) -> dict[str, str]:
 
 
 def module_page(module: str) -> str:
-    if module == "project":
+    if module in {"project", "manufacturing"}:
         return "project"
     if module == "design":
         return "design"

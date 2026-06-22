@@ -31,16 +31,16 @@ set(
     _utils.py
     design.py
     diagnostics.py
-    cli/__init__.py
-    cli/manufacturing.py
     library.py
     library_result.py
     logical.py
+    manufacturing.py
     part.py
     pcb.py
     project.py
     project_checks.py
     schematic.py
+    cli/__init__.py
 )
 foreach(package_file IN LISTS VOLT_PYTHON_PACKAGE_FILES)
     configure_file(

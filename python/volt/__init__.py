@@ -97,6 +97,10 @@ from .project import (
     ProjectTestResult,
     StageResult,
 )
+from .manufacturing import (
+    ManufacturingPackageError,
+    ManufacturingPackageResult,
+)
 from ._pcb_layout import (
     BoardAnchor,
     BoardFanout,
@@ -187,6 +191,8 @@ __all__ = [
     "KiCadLossWarning",
     "KiCadPcbExport",
     "MechanicalKeepout",
+    "ManufacturingPackageError",
+    "ManufacturingPackageResult",
     "PhysicalPartSpec",
     "OrderablePart",
     "Part",

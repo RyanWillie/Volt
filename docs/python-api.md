@@ -277,6 +277,16 @@ schematic JSON/SVG, PCB JSON/SVG, diagnostics, test results, and
 project-result bundle. Other pre-existing content is rejected so the write does not
 delete unrelated files.
 
+`result.write_manufacturing_package(path, board=None, archive=False)` writes the full
+deterministic manufacturing package used by `volt export manufacturing`: the project
+bundle, BOM, CPL, native Gerber and Excellon files, diagnostics, board/profile metadata,
+native fabrication loss report, inspection page, manifest, and optional deterministic
+zip archive. The method returns `volt.ManufacturingPackageResult` with the selected
+board, native fabrication summary, output path, and archive path. It raises
+`volt.ManufacturingPackageError` before writing an orderable-looking package when the
+project failed or the native fabrication export reports fab-critical loss; missing or
+ambiguous board selectors raise `LookupError`.
+
 Stages can also own product-intent tests. These tests are not a replacement for kernel
 diagnostics; they encode the specific behavior the product must keep while the circuit
 iterates:

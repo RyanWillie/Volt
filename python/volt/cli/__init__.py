@@ -19,6 +19,7 @@ from typing import Any, Callable
 from .._project_model_lookup import model_output_name
 from ..design import Design
 from ..pcb import Board
+from ..manufacturing import ManufacturingPackageError
 from ..project import (
     Project,
     ProjectDiagnostics,
@@ -26,10 +27,6 @@ from ..project import (
     _diagnostics_payload,
 )
 from ..schematic import Schematic
-from .manufacturing import (
-    native_fabrication_payload as _native_fabrication_payload,
-    write_manufacturing_package as _write_manufacturing_package,
-)
 
 
 EXIT_SUCCESS = 0
@@ -488,72 +485,43 @@ def _handle_export_manufacturing(args: argparse.Namespace) -> int | None:
     config = discover_project(project=args.project)
     result = _project_result_with_forwarded_stdout(config)
     output = _manufacturing_output_path(config, args.output)
-    board = _select_manufacturing_board(result, args.board)
-    board_record = _manufacturing_board_record(board, result)
-
-    if not result.ok:
+    try:
+        package = result.write_manufacturing_package(
+            output,
+            board=args.board,
+            manufacturing_profile=_manufacturing_profile_payload(config),
+            archive=args.archive,
+        )
+    except LookupError as error:
+        raise CliError(str(error)) from error
+    except ManufacturingPackageError as error:
+        board = error.board
+        if board is None:
+            raise CliError(str(error)) from error
         payload = _manufacturing_export_payload(
             config,
             result,
             output=output,
-            board=board_record,
+            board=board,
             written=False,
-            status=result.status,
+            status=error.status,
+            native_fabrication=error.native_fabrication,
         )
         if args.emit_json:
             print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
         else:
-            diagnostics = _diagnostics_payload(result)
-            print(
-                f"Manufacturing export refused: {diagnostics['status']} "
-                f"({_diagnostic_summary_text(diagnostics['summary'])})",
-                file=sys.stderr,
-            )
+            print(str(error), file=sys.stderr)
         return EXIT_CHECK_FAILED
-
-    native_export = board.to_fabrication_files()
-    native_payload = _native_fabrication_payload(native_export)
-    if native_payload["coverage"]["fab_critical_loss"]:
-        payload = _manufacturing_export_payload(
-            config,
-            result,
-            output=output,
-            board=board_record,
-            written=False,
-            status="native-fabrication-loss",
-            native_fabrication=native_payload,
-        )
-        if args.emit_json:
-            print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
-        else:
-            print(
-                "Manufacturing export refused: native fabrication export reported "
-                "fab-critical loss.",
-                file=sys.stderr,
-            )
-        return EXIT_CHECK_FAILED
-
-    package = _write_manufacturing_package(
-        result,
-        board=board,
-        board_record=board_record,
-        output=output,
-        native_export=native_export,
-        native_payload=native_payload,
-        manufacturing_profile=_manufacturing_profile_payload(config),
-        board_selector=args.board,
-        archive=args.archive,
-    )
 
     payload = _manufacturing_export_payload(
         config,
         result,
         output=output,
-        board=board_record,
+        board=package.board,
         written=True,
         status=result.status,
-        native_fabrication=native_payload,
-        archive=package["archive"],
+        native_fabrication=package.native_fabrication,
+        archive=None if package.archive is None else str(package.archive),
     )
     if args.emit_json:
         print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
@@ -848,30 +816,6 @@ def _manufacturing_profile_payload(
     return {
         "path": config.manufacturing_profile_path,
         "resolved_path": str(config.manufacturing_profile),
-    }
-
-
-def _select_manufacturing_board(result: ProjectResult, selector: str | None) -> Board:
-    if selector is not None:
-        return _select_projection(result.boards, result.boards, selector, "board")
-    if not result.boards:
-        raise CliError("Project result has no boards to export for manufacturing.")
-    if len(result.boards) > 1:
-        candidates = ", ".join(
-            model_output_name(board, result.boards) for board in result.boards
-        )
-        raise CliError(
-            "Project result has multiple boards; pass --board. "
-            f"Candidates: {candidates}"
-        )
-    return result.boards[0]
-
-
-def _manufacturing_board_record(board: Board, result: ProjectResult) -> dict[str, str]:
-    return {
-        "design": board._design.name,
-        "name": board.name,
-        "output_name": model_output_name(board, result.boards),
     }
 
 
