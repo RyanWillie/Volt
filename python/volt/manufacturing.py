@@ -235,6 +235,8 @@ def _write_manufacturing_package(
     archive_path = None
     if archive:
         archive_path = _write_deterministic_archive(output)
+    else:
+        _remove_deterministic_archive(output)
     return {"archive": None if archive_path is None else str(archive_path)}
 
 
@@ -521,7 +523,7 @@ def _relative_href(from_path: str, to_path: str) -> str:
 
 
 def _write_deterministic_archive(root: Path) -> Path:
-    archive_path = root.with_suffix(".zip") if root.suffix else Path(f"{root}.zip")
+    archive_path = _deterministic_archive_path(root)
     with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(root.rglob("*")):
             if not path.is_file():
@@ -531,3 +533,13 @@ def _write_deterministic_archive(root: Path) -> Path:
             info.compress_type = zipfile.ZIP_DEFLATED
             archive.writestr(info, path.read_bytes())
     return archive_path
+
+
+def _remove_deterministic_archive(root: Path) -> None:
+    archive_path = _deterministic_archive_path(root)
+    if archive_path.is_file():
+        archive_path.unlink()
+
+
+def _deterministic_archive_path(root: Path) -> Path:
+    return root.with_suffix(".zip") if root.suffix else Path(f"{root}.zip")

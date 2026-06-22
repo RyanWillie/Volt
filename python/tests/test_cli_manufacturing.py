@@ -517,6 +517,33 @@ def test_project_result_manufacturing_package_rerun_is_deterministic(tmp_path):
     assert output.with_suffix(".zip").read_bytes() == first_archive
 
 
+def test_project_result_manufacturing_package_archive_false_removes_stale_archive(
+    tmp_path,
+):
+    root = tmp_path / "board"
+    output = tmp_path / "direct-package"
+    _write_manufacturing_project(root)
+    result = _run_project_direct(root)
+
+    result.write_manufacturing_package(
+        output,
+        manufacturing_profile=_manufacturing_profile_metadata(root),
+        archive=True,
+    )
+    archive = output.with_suffix(".zip")
+    assert archive.exists()
+
+    without_archive = result.write_manufacturing_package(
+        output,
+        manufacturing_profile=_manufacturing_profile_metadata(root),
+        archive=False,
+    )
+
+    assert without_archive.archive is None
+    assert output.exists()
+    assert not archive.exists()
+
+
 def test_project_result_manufacturing_package_refuses_fab_critical_loss(tmp_path):
     root = tmp_path / "board"
     output = tmp_path / "direct-package"
