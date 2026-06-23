@@ -5,6 +5,9 @@ description: Use when authoring or improving a Volt PCB board layout — placing
 
 # Volt PCB Layout
 
+> First read `../shared-volt-architecture.md`.
+> For board structure and manufacturing output (layers, outline, design rules, mounting holes, KiCad export), use `volt-pcb-authoring`.
+
 Author a professional, clean PCB layout from a Volt logical circuit using the structured
 board layout grammar. The board must be **electrically correct** (DRC-clean, every net
 routed) and **look professional** (grid-aligned, sensibly placed, cleanly routed, readable
@@ -46,6 +49,39 @@ Seven categories. Keep them in view through every phase. Severities are advisory
 7. **Composition** — component centroid near board center; sensible board utilization;
    consistent orientation of like parts.
 
+## The relative-first principle
+
+The layout grammar is designed so that almost nothing requires a hand-calculated coordinate.
+Follow this discipline:
+
+1. **Place a small set of anchors explicitly.** Give the central IC, connectors, and
+   mounting reference parts explicit coordinates and `locked=True`. These are the fixed
+   skeleton the rest of the board hangs from.
+2. **Derive everything else relatively.** Use anchor offsets (`.up()`, `.down()`,
+   `.left()`, `.right()`, `.offset()`), axis projections (`.tox()`, `.toy()`), and layout
+   helpers (`layout.stack()`, `layout.align()`, `layout.distribute()`, `layout.mirror()`)
+   to position all other parts relative to the anchors already placed. Never invent a
+   hand-measured mm value when an anchor-derived expression gives the same point.
+3. **Snap anything you reuse.** `layout.snap(anchor)` or `layout.node(anchor)` rounds a
+   derived anchor to the layout grid and gives it a name. Store snapped points that appear
+   in more than one route or placement.
+4. **Absolute `(x, y)` tuples are the escape hatch**, used only when a coordinate truly has
+   no meaningful anchor-relative expression (e.g. the board center, or a fixed mechanical
+   constraint). When you use one, snap it immediately.
+
+```python
+# Skeleton — locked, explicit
+header = layout.place(parts["J1"],
+                      at=board.edge("left").center().right(7),
+                      orient="right", locked=True)
+timer  = layout.place(parts["U1"], at=(23.0, 15.0), orient="right", locked=True)
+
+# Everything else is relative
+cdec = layout.two_pad(parts["CDEC"]).at((29.0, 10.0)).anchor("center").right()
+power_rail = layout.snap(header[1].up(5.15))   # reused — snap it
+timing_junction = layout.snap(rb.end.right(2.0))
+```
+
 ## Workflow
 
 Work the phases in order. Each names the rubric criteria it serves.
@@ -84,6 +120,9 @@ Pick the board size *after* a rough placement estimate so utilization lands in b
 generous, tighten once placed. Put mounting holes at the corners first; they constrain the
 edge keepout.
 
+Board structure belongs to `volt-pcb-authoring`; layout opens only after the board handle
+and layers exist.
+
 ### 2. Placement — *rubric 1, 2, 3, 7*
 
 Open the layout with an **explicit grid** so placement and routing snap. Use `unit` for the
@@ -118,10 +157,33 @@ coordinates:
       ra = layout.two_pad(parts["RA"]).at((36.0, 10.0)).anchor("center").right()
       rb = layout.two_pad(parts["RB"]).at(layout.snap(ra.center.down(2.0))).anchor("center").right()
   ```
-  `layout.stack(count=, pitch=)` gives evenly spaced anchors for a bank of like parts.
+- **Evenly-spaced banks** — `layout.stack(count=, pitch=)` generates the anchor series; use
+  `layout.distribute(count=, start=, end=)` when the endpoints are already fixed.
+- **Mirror a group** — `layout.mirror(anchors, axis="x")` reflects the x coordinate
+  (across a vertical line, mirroring left↔right); `axis="y"` reflects the y coordinate
+  (across a horizontal line, mirroring top↔bottom).
 - **Consistent orientation** (rubric 7) — orient like parts the same way unless routing
   truly demands otherwise.
 - Snap any derived anchor you reuse: `layout.snap(anchor)` or `layout.node(anchor)`.
+
+**Fuller placement toolset** — methods the current skill introduced:
+
+| Method | Purpose |
+|---|---|
+| `layout.align(anchors, axis=, target=)` | Align a set of anchors along one board axis |
+| `layout.distribute(count=, start=, end=)` | Even spacing between two fixed endpoints |
+| `layout.stack(count=, direction=, pitch=, at=)` | Evenly-spaced anchor series from cursor |
+| `layout.mirror(anchors, axis=, about=)` | Reflect anchors across x or y axis |
+| `layout.move(dx=, dy=)` | Shift cursor by relative offset |
+| `layout.move_from(anchor, dx=, dy=, direction=)` | Jump cursor to anchor ± offset |
+| `layout.bundle(pairs, layer=, net=, width=, mode=)` | Route multiple independent pairs as a batch |
+| `layout.fanout(anchors, layer=, direction=, distance=, via_layers=)` | Escape pads outward, optionally add vias |
+| `layout.stitch(net, at=, start_layer=, end_layer=)` | Add a deterministic set of vias for one net |
+| `layout.keepout(layers=, restrictions=, outline=, at=, size=)` | Constrain copper/vias/text within an area |
+| `layout.zone(layers=, net=, outline=, at=, size=, fill=)` | Add a copper fill zone |
+| `layout.rect(at=, size=)` / `layout.polygon(vertices)` | Compute rectangular or arbitrary outlines |
+| `layout.frame(at=, direction=)` | Temporarily switch to a local coordinate origin |
+| `layout.route(...).through(point)` | Route via an intermediate waypoint before `.to()` |
 
 **Before routing, sanity-check placement:** render `board.to_svg()` and look. Is the
 ratsnest short and untangled? Do courtyards breathe? Are connectors on the edge and the
@@ -141,15 +203,29 @@ layout.route(nets["OUT"], layer=front, width=0.20).at(u1.OUT).to(rled.start)
 - **Width by net class** (rubric 5): power and ground wide, signal narrow; keep a class
   consistent.
 - **Octilinear by default** (rubric 4): a single `.to(pad)` auto-inserts a clean corner.
-  Reach for `.tox()/.toy()` to shape a route; use `mode="direct"` *only* for an intentional
-  single 45° shot, never to "just connect two points".
+  Reach for `.tox()/.toy()` to shape a route; chain `.through(waypoint)` for multi-bend
+  runs; use `mode="direct"` *only* for an intentional single 45° shot, never to "just
+  connect two points".
 - **Vias only on a real layer change** (rubric 5): `layout.via(net, at=anchor,
   start_layer=front, end_layer=back)`. Don't via to dodge a route you could have placed
   around.
+- **Connect shorthand** — `layout.connect(start, end, layer=, net=, width=, through=(),
+  mode=)` routes between two anchors in one call; `through=(waypoint,)` threads it through
+  an intermediate node.
+- **Bundle parallel nets** — `layout.bundle(pairs, layer=, width=, mode=)` routes a list
+  of `(start, end)` anchor pairs as a batch.
+- **GND backbone pattern** — route short drops from each ground pad, via to the back layer,
+  then stitch them together with `layout.route(gnd, layer=back)` segments. Reserve
+  `layout.stitch(net, at=..., start_layer=, end_layer=)` for adding multiple stitching
+  vias deterministically.
+- **Fanout from dense ICs** — `layout.fanout(anchors, layer=, direction=, distance=,
+  via_layers=)` escapes a cluster of pads outward before detailed routing.
 - **Per-layer direction** (rubric 5, advisory): if the board benefits, keep front mostly
   horizontal and back mostly vertical.
-- **Ground pour** (rubric 5): `board.add_zone(outline=..., layers=(back,),
-  net=nets["GND"])` rather than routing every ground return by hand.
+- **Ground pour** (rubric 5): `layout.zone(layers=(back,), net=nets["GND"], at=...,
+  size=...)` rather than routing every ground return by hand.
+- **Keepout areas**: `layout.keepout(layers=..., restrictions=..., at=..., size=...)` for
+  mounting-hole keep-clear zones, RF quiet areas, or mechanical clearances.
 
 ### 4. Finish — silkscreen & docs — *rubric 6*
 
@@ -206,3 +282,8 @@ This is where "looks professional" gets verified, not assumed.
   rotation 0° or 90°.
 - **Treating the rubric as a gate.** It is advisory. Diagnose and improve; do not refuse to
   finish a board over an `info`.
+
+## Further reading
+
+- `references/layout-grammar.md` — full method-by-method reference for the `board.layout()` grammar.
+- `references/walkthrough-555-routing.md` — narrated read of the routing section of `examples/timer_555_led_blinker/board.py`.
