@@ -357,6 +357,43 @@ TEST_CASE("PCB fabrication writer matches representative golden native output fi
     }
 }
 
+TEST_CASE("PCB fabrication writer emits unconnected mapped pads without fabrication loss") {
+    auto circuit = volt::Circuit{};
+    const auto passive = circuit.add_pin_definition(volt::PinDefinition{
+        "1", "1", volt::ConnectionRequirement::Optional, volt::ElectricalTerminalKind::Passive,
+        volt::ElectricalDirection::Passive, volt::ElectricalSignalDomain::Unspecified,
+        volt::ElectricalDriveKind::Passive});
+    const auto definition =
+        circuit.add_component_definition(volt::ComponentDefinition{"TestPoint", {passive}});
+    const auto component =
+        circuit.instantiate_component(definition, volt::ReferenceDesignator{"TP1"});
+    circuit.select_physical_part(component, volt::PhysicalPart{
+                                                volt::ManufacturerPart{"Volt", "TP-SMD"},
+                                                volt::PackageRef{"TH"},
+                                                volt::FootprintRef{"test", "OnePinThroughHole"},
+                                                std::vector{volt::PinPadMapping{passive, "1"}},
+                                            });
+
+    auto board = volt::Board{circuit, volt::BoardName{"Control"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{10.0, 10.0}));
+    static_cast<void>(board.cache_footprint_definition(through_hole_footprint()));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        component, volt::BoardPoint{5.0, 5.0}, volt::BoardRotation::degrees(0.0)}));
+
+    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+
+    CHECK_FALSE(result.loss_report.has_warnings());
+    const auto *top_copper = find_file(result, "Control.GTL");
+    REQUIRE(top_copper != nullptr);
+    CHECK(contains(top_copper->text, "%TF.FileFunction,Copper,L1,Top*%"));
+}
+
 TEST_CASE("PCB fabrication writer keeps numeric output locale-stable") {
     const auto fixture = make_fabrication_circuit();
     const auto board = make_fabrication_board(fixture);

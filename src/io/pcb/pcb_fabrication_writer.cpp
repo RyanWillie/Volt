@@ -490,8 +490,7 @@ definition_for_placement(const FootprintLibrary &footprints, const PhysicalPart 
 void report_invalid_pad_resolution(const Board &board, const PadResolution &resolution,
                                    ComponentPlacementId placement_id, FootprintPadId pad_id,
                                    PcbFabricationLossReport &loss_report) {
-    if (resolution.status() == PadResolutionStatus::Connected ||
-        resolution.status() == PadResolutionStatus::NonElectrical) {
+    if (resolution.status() != PadResolutionStatus::Invalid) {
         return;
     }
     const auto &component = board.circuit().component(resolution.component());
