@@ -353,6 +353,31 @@ footprint_pad_mechanical_role_from_name(const std::string &value) {
     throw std::logic_error{"Invalid PCB footprint pad mechanical role"};
 }
 
+[[nodiscard]] std::string footprint_marking_kind_name(FootprintMarkingKind kind) {
+    switch (kind) {
+    case FootprintMarkingKind::Silkscreen:
+        return "silkscreen";
+    case FootprintMarkingKind::Polarity:
+        return "polarity";
+    case FootprintMarkingKind::PinOne:
+        return "pin_1";
+    }
+    throw std::logic_error{"Unhandled PCB footprint marking kind"};
+}
+
+[[nodiscard]] FootprintMarkingKind footprint_marking_kind_from_name(const std::string &value) {
+    if (value == "silkscreen") {
+        return FootprintMarkingKind::Silkscreen;
+    }
+    if (value == "polarity") {
+        return FootprintMarkingKind::Polarity;
+    }
+    if (value == "pin_1") {
+        return FootprintMarkingKind::PinOne;
+    }
+    throw std::logic_error{"Invalid PCB footprint marking kind"};
+}
+
 [[nodiscard]] std::string pad_resolution_status_name(PadResolutionStatus status) {
     switch (status) {
     case PadResolutionStatus::Connected:

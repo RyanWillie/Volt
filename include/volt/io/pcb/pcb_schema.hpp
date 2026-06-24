@@ -14,7 +14,7 @@ namespace volt::io {
 [[nodiscard]] inline constexpr std::string_view pcb_format_name() noexcept { return "volt.pcb"; }
 
 /** Return the canonical PCB projection format version written by this library. */
-[[nodiscard]] inline constexpr int pcb_format_version() noexcept { return 2; }
+[[nodiscard]] inline constexpr int pcb_format_version() noexcept { return 3; }
 
 namespace detail {
 
@@ -70,6 +70,10 @@ namespace detail {
 
 [[nodiscard]] FootprintPadMechanicalRole
 footprint_pad_mechanical_role_from_name(const std::string &value);
+
+[[nodiscard]] std::string footprint_marking_kind_name(FootprintMarkingKind kind);
+
+[[nodiscard]] FootprintMarkingKind footprint_marking_kind_from_name(const std::string &value);
 
 [[nodiscard]] std::string pad_resolution_status_name(PadResolutionStatus status);
 

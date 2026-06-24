@@ -332,6 +332,13 @@ def _part_artifact_payload(part: Part) -> dict[str, object]:
                 physical.footprint, "courtyard"
             ),
             "footprint_body": _part_footprint_polygon(physical.footprint, "body"),
+            "footprint_fabrication_outline": _part_footprint_polygon(
+                physical.footprint, "fabrication_outline"
+            ),
+            "footprint_assembly_outline": _part_footprint_polygon(
+                physical.footprint, "assembly_outline"
+            ),
+            "footprint_markings": _part_footprint_markings(physical.footprint),
             "pin_pad_mappings": _part_pin_pad_mappings(part, pads),
             "approved_alternate_mpns": list(physical.approved_alternate_mpns),
             "model_3d": _model_3d_reference_payload(physical.model_3d),
@@ -404,6 +411,21 @@ def _part_footprint_polygon(
     if polygon is None:
         return None
     return [{"x_mm": float(x), "y_mm": float(y)} for x, y in polygon]
+
+
+def _part_footprint_markings(footprint: Footprint) -> list[dict[str, object]]:
+    if not isinstance(footprint, Footprint):
+        raise ValueError("part artifact requires footprint geometry")
+    return [
+        {
+            "kind": marking.kind,
+            "polygon": [
+                {"x_mm": float(x), "y_mm": float(y)}
+                for x, y in marking.polygon
+            ],
+        }
+        for marking in footprint.markings
+    ]
 
 
 def _part_footprint_pad(pad) -> dict[str, object]:

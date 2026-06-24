@@ -95,6 +95,14 @@ class PartDefinitionReader {
     [[nodiscard]] static std::optional<PartFootprintPolygon>
     optional_part_footprint_polygon(const nlohmann::json &object, const char *name);
 
+    [[nodiscard]] static PartFootprintMarkingKind
+    part_footprint_marking_kind(const std::string &value);
+
+    [[nodiscard]] static PartFootprintMarking part_footprint_marking(const nlohmann::json &object);
+
+    [[nodiscard]] static std::vector<PartFootprintMarking>
+    part_footprint_markings(const nlohmann::json &object);
+
     [[nodiscard]] static PartModel3DReference model_3d(const nlohmann::json &object);
 
     [[nodiscard]] static OrderablePart orderable_part(const nlohmann::json &object);
@@ -495,6 +503,42 @@ PartDefinitionReader::optional_part_footprint_polygon(const nlohmann::json &obje
     return part_footprint_polygon(*value);
 }
 
+[[nodiscard]] PartFootprintMarkingKind
+PartDefinitionReader::part_footprint_marking_kind(const std::string &value) {
+    if (value == "silkscreen") {
+        return PartFootprintMarkingKind::Silkscreen;
+    }
+    if (value == "polarity") {
+        return PartFootprintMarkingKind::Polarity;
+    }
+    if (value == "pin_1") {
+        return PartFootprintMarkingKind::PinOne;
+    }
+    throw std::logic_error{"Invalid footprint marking kind"};
+}
+
+[[nodiscard]] PartFootprintMarking
+PartDefinitionReader::part_footprint_marking(const nlohmann::json &object) {
+    require(object.is_object(), "Footprint marking must be an object");
+    return PartFootprintMarking{part_footprint_marking_kind(string_field(object, "kind")),
+                                part_footprint_polygon(field(object, "polygon"))};
+}
+
+[[nodiscard]] std::vector<PartFootprintMarking>
+PartDefinitionReader::part_footprint_markings(const nlohmann::json &object) {
+    const auto *value = optional_field(object, "markings");
+    if (value == nullptr) {
+        return {};
+    }
+    require(value->is_array(), "Footprint markings must be an array");
+    auto markings = std::vector<PartFootprintMarking>{};
+    markings.reserve(value->size());
+    for (const auto &marking : *value) {
+        markings.push_back(part_footprint_marking(marking));
+    }
+    return markings;
+}
+
 [[nodiscard]] PartModel3DReference PartDefinitionReader::model_3d(const nlohmann::json &object) {
     const auto &translation = array_field(object, "translation_mm");
     require(translation.size() == 3U, "3D model translation must contain three numbers");
@@ -538,7 +582,10 @@ PartDefinitionReader::optional_part_footprint_polygon(const nlohmann::json &obje
         std::move(alternates),
         std::move(model),
         optional_part_footprint_polygon(footprint, "courtyard"),
-        optional_part_footprint_polygon(footprint, "body")};
+        optional_part_footprint_polygon(footprint, "body"),
+        optional_part_footprint_polygon(footprint, "fabrication_outline"),
+        optional_part_footprint_polygon(footprint, "assembly_outline"),
+        part_footprint_markings(footprint)};
 }
 
 [[nodiscard]] PartDefinition read_part_definition_document(const nlohmann::json &document) {

@@ -33,6 +33,17 @@ FootprintPolygon::FootprintPolygon(std::vector<FootprintPoint> vertices)
     detail::validate_footprint_polygon_vertices(vertices_, "Footprint polygon");
 }
 
+FootprintMarking::FootprintMarking(FootprintMarkingKind kind, FootprintPolygon polygon)
+    : kind_{kind}, polygon_{std::move(polygon)} {}
+
+FootprintPackageGeometry::FootprintPackageGeometry(
+    std::optional<FootprintPolygon> courtyard, std::optional<FootprintPolygon> body,
+    std::optional<FootprintPolygon> fabrication_outline,
+    std::optional<FootprintPolygon> assembly_outline, std::vector<FootprintMarking> markings)
+    : courtyard_{std::move(courtyard)}, body_{std::move(body)},
+      fabrication_outline_{std::move(fabrication_outline)},
+      assembly_outline_{std::move(assembly_outline)}, markings_{std::move(markings)} {}
+
 FootprintLayerSet::FootprintLayerSet(std::vector<FootprintLayer> layers)
     : layers_{std::move(layers)} {
     if (layers_.empty()) {
@@ -179,8 +190,12 @@ FootprintPad::FootprintPad(std::string label, FootprintPadKind kind, FootprintPa
 FootprintDefinition::FootprintDefinition(FootprintRef ref, std::vector<FootprintPad> pads,
                                          std::optional<FootprintPolygon> courtyard,
                                          std::optional<FootprintPolygon> body)
-    : ref_{std::move(ref)}, pads_{std::move(pads)}, courtyard_{std::move(courtyard)},
-      body_{std::move(body)} {
+    : FootprintDefinition{std::move(ref), std::move(pads),
+                          FootprintPackageGeometry{std::move(courtyard), std::move(body)}} {}
+
+FootprintDefinition::FootprintDefinition(FootprintRef ref, std::vector<FootprintPad> pads,
+                                         FootprintPackageGeometry package_geometry)
+    : ref_{std::move(ref)}, pads_{std::move(pads)}, package_geometry_{std::move(package_geometry)} {
     if (pads_.empty()) {
         throw std::invalid_argument{"Footprint definition must contain at least one pad"};
     }
@@ -261,43 +276,54 @@ FootprintResolution::pad_bindings() const noexcept {
 }
 
 [[nodiscard]] FootprintDefinition passive_0603_footprint() {
-    return detail::two_terminal_smd_footprint(FootprintRef{"passives", "R_0603_1608Metric"}, 1.50,
-                                              0.80, 0.95);
+    return detail::two_terminal_smd_footprint(
+        FootprintRef{"passives", "R_0603_1608Metric"}, 1.50, 0.80, 0.95,
+        detail::chip_smd_package_geometry(1.60, 0.80, 2.50, 1.40));
 }
 
 [[nodiscard]] FootprintDefinition resistor_0402_footprint() {
-    return detail::two_terminal_smd_footprint(FootprintRef{"passives", "R_0402_1005Metric"}, 1.00,
-                                              0.55, 0.60);
+    return detail::two_terminal_smd_footprint(
+        FootprintRef{"passives", "R_0402_1005Metric"}, 1.00, 0.55, 0.60,
+        detail::chip_smd_package_geometry(1.00, 0.50, 1.80, 1.10));
 }
 
 [[nodiscard]] FootprintDefinition resistor_0805_footprint() {
-    return detail::two_terminal_smd_footprint(FootprintRef{"passives", "R_0805_2012Metric"}, 2.00,
-                                              1.05, 1.20);
+    return detail::two_terminal_smd_footprint(
+        FootprintRef{"passives", "R_0805_2012Metric"}, 2.00, 1.05, 1.20,
+        detail::chip_smd_package_geometry(2.00, 1.25, 3.20, 1.90));
 }
 
 [[nodiscard]] FootprintDefinition capacitor_0603_footprint() {
-    return detail::two_terminal_smd_footprint(FootprintRef{"passives", "C_0603_1608Metric"}, 1.50,
-                                              0.80, 0.95);
+    return detail::two_terminal_smd_footprint(
+        FootprintRef{"passives", "C_0603_1608Metric"}, 1.50, 0.80, 0.95,
+        detail::chip_smd_package_geometry(1.60, 0.80, 2.50, 1.40));
 }
 
 [[nodiscard]] FootprintDefinition inductor_0603_footprint() {
-    return detail::two_terminal_smd_footprint(FootprintRef{"passives", "L_0603_1608Metric"}, 1.50,
-                                              0.80, 0.95);
+    return detail::two_terminal_smd_footprint(
+        FootprintRef{"passives", "L_0603_1608Metric"}, 1.50, 0.80, 0.95,
+        detail::chip_smd_package_geometry(1.60, 0.80, 2.50, 1.40));
 }
 
 [[nodiscard]] FootprintDefinition led_0603_footprint() {
-    return detail::two_terminal_smd_footprint(FootprintRef{"leds", "LED_0603_1608Metric"}, 1.50,
-                                              0.80, 0.95);
+    return detail::two_terminal_smd_footprint(
+        FootprintRef{"leds", "LED_0603_1608Metric"}, 1.50, 0.80, 0.95,
+        detail::chip_smd_package_geometry(
+            1.60, 0.80, 2.50, 1.40, std::vector{detail::polarity_bar_mark(0.55, 0.0, 0.12, 0.60)}));
 }
 
 [[nodiscard]] FootprintDefinition diode_0603_footprint() {
-    return detail::two_terminal_smd_footprint(FootprintRef{"diodes", "D_0603_1608Metric"}, 1.50,
-                                              0.80, 0.95);
+    return detail::two_terminal_smd_footprint(
+        FootprintRef{"diodes", "D_0603_1608Metric"}, 1.50, 0.80, 0.95,
+        detail::chip_smd_package_geometry(
+            1.60, 0.80, 2.50, 1.40, std::vector{detail::polarity_bar_mark(0.55, 0.0, 0.12, 0.60)}));
 }
 
 [[nodiscard]] FootprintDefinition diode_sod_123_footprint() {
-    return detail::two_terminal_smd_footprint(FootprintRef{"diodes", "D_SOD-123"}, 3.70, 1.20,
-                                              1.35);
+    return detail::two_terminal_smd_footprint(
+        FootprintRef{"diodes", "D_SOD-123"}, 3.70, 1.20, 1.35,
+        detail::chip_smd_package_geometry(
+            3.70, 1.60, 5.10, 2.30, std::vector{detail::polarity_bar_mark(1.45, 0.0, 0.18, 1.15)}));
 }
 
 [[nodiscard]] FootprintDefinition header_1x02_footprint() {
@@ -518,14 +544,62 @@ namespace volt::detail {
         FootprintDrill{drill_mm, FootprintPadPlating::NonPlated}, role);
 }
 
+[[nodiscard]] FootprintPolygon rectangle_polygon(double width_mm, double height_mm) {
+    const auto half_width = width_mm / 2.0;
+    const auto half_height = height_mm / 2.0;
+    return FootprintPolygon{std::vector{
+        FootprintPoint{-half_width, -half_height},
+        FootprintPoint{half_width, -half_height},
+        FootprintPoint{half_width, half_height},
+        FootprintPoint{-half_width, half_height},
+    }};
+}
+
+[[nodiscard]] FootprintPackageGeometry
+chip_smd_package_geometry(double body_length_mm, double body_width_mm, double courtyard_length_mm,
+                          double courtyard_width_mm, std::vector<FootprintMarking> markings) {
+    auto body = rectangle_polygon(body_length_mm, body_width_mm);
+    return FootprintPackageGeometry{
+        rectangle_polygon(courtyard_length_mm, courtyard_width_mm),
+        body,
+        body,
+        body,
+        std::move(markings),
+    };
+}
+
+[[nodiscard]] FootprintMarking triangular_pin_one_mark(double x_mm, double y_mm, double size_mm) {
+    return FootprintMarking{FootprintMarkingKind::PinOne,
+                            FootprintPolygon{std::vector{
+                                FootprintPoint{x_mm, y_mm - (size_mm / 2.0)},
+                                FootprintPoint{x_mm + size_mm, y_mm},
+                                FootprintPoint{x_mm, y_mm + (size_mm / 2.0)},
+                            }}};
+}
+
+[[nodiscard]] FootprintMarking polarity_bar_mark(double x_mm, double y_mm, double width_mm,
+                                                 double height_mm) {
+    const auto half_width = width_mm / 2.0;
+    const auto half_height = height_mm / 2.0;
+    return FootprintMarking{FootprintMarkingKind::Polarity,
+                            FootprintPolygon{std::vector{
+                                FootprintPoint{x_mm - half_width, y_mm - half_height},
+                                FootprintPoint{x_mm + half_width, y_mm - half_height},
+                                FootprintPoint{x_mm + half_width, y_mm + half_height},
+                                FootprintPoint{x_mm - half_width, y_mm + half_height},
+                            }}};
+}
+
 [[nodiscard]] FootprintDefinition two_terminal_smd_footprint(FootprintRef ref, double pad_span_mm,
                                                              double pad_width_mm,
-                                                             double pad_height_mm) {
+                                                             double pad_height_mm,
+                                                             FootprintPackageGeometry geometry) {
     const auto half_span = pad_span_mm / 2.0;
     return FootprintDefinition{
         std::move(ref),
         std::vector{front_smd_pad("1", -half_span, 0.0, pad_width_mm, pad_height_mm),
-                    front_smd_pad("2", half_span, 0.0, pad_width_mm, pad_height_mm)}};
+                    front_smd_pad("2", half_span, 0.0, pad_width_mm, pad_height_mm)},
+        std::move(geometry)};
 }
 
 [[nodiscard]] FootprintDefinition

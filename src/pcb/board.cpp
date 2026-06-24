@@ -50,16 +50,25 @@ resolved_placement_footprints(const Board &board, const FootprintLibrary &footpr
     return resolved;
 }
 
-[[nodiscard]] bool
-optional_library_polygon_conflicts(const std::optional<FootprintPolygon> &board_polygon,
-                                   const std::optional<FootprintPolygon> &library_polygon) {
-    if (!library_polygon.has_value()) {
-        return false;
+[[nodiscard]] std::optional<std::vector<BoardPoint>>
+project_optional_polygon(const ComponentPlacement &placement,
+                         const std::optional<FootprintPolygon> &polygon) {
+    if (!polygon.has_value()) {
+        return std::nullopt;
     }
-    if (!board_polygon.has_value()) {
-        return true;
+    return detail::transformed_footprint_polygon(placement, polygon.value());
+}
+
+[[nodiscard]] std::vector<ProjectedFootprintMarking>
+project_markings(const ComponentPlacement &placement,
+                 const std::vector<FootprintMarking> &markings) {
+    auto projected = std::vector<ProjectedFootprintMarking>{};
+    projected.reserve(markings.size());
+    for (const auto &marking : markings) {
+        projected.emplace_back(marking.kind(),
+                               detail::transformed_footprint_polygon(placement, marking.polygon()));
     }
-    return board_polygon.value() != library_polygon.value();
+    return projected;
 }
 
 } // namespace
@@ -237,19 +246,13 @@ Board::resolve_pads(const FootprintLibrary &footprints) const {
 Board::project_footprint_geometries(const FootprintLibrary &footprints) const {
     auto geometries = std::vector<ProjectedFootprintGeometry>{};
     for (const auto &resolved : resolved_placement_footprints(*this, footprints)) {
-        auto courtyard = std::optional<std::vector<BoardPoint>>{};
-        if (resolved.definition.courtyard().has_value()) {
-            courtyard = detail::transformed_footprint_polygon(
-                resolved.placement, resolved.definition.courtyard().value());
-        }
-        auto body = std::optional<std::vector<BoardPoint>>{};
-        if (resolved.definition.body().has_value()) {
-            body = detail::transformed_footprint_polygon(resolved.placement,
-                                                         resolved.definition.body().value());
-        }
-
-        geometries.emplace_back(resolved.placement_id, resolved.placement.component(),
-                                resolved.placement.side(), std::move(courtyard), std::move(body));
+        geometries.emplace_back(
+            resolved.placement_id, resolved.placement.component(), resolved.placement.side(),
+            project_optional_polygon(resolved.placement, resolved.definition.courtyard()),
+            project_optional_polygon(resolved.placement, resolved.definition.body()),
+            project_optional_polygon(resolved.placement, resolved.definition.fabrication_outline()),
+            project_optional_polygon(resolved.placement, resolved.definition.assembly_outline()),
+            project_markings(resolved.placement, resolved.definition.markings()));
     }
 
     return geometries;
@@ -585,12 +588,7 @@ footprint_library_definition_conflicts(const FootprintDefinition &board_definiti
     if (board_definition.ref() != library_definition.ref()) {
         return false;
     }
-    if (board_definition.pads() != library_definition.pads()) {
-        return true;
-    }
-    return optional_library_polygon_conflicts(board_definition.courtyard(),
-                                              library_definition.courtyard()) ||
-           optional_library_polygon_conflicts(board_definition.body(), library_definition.body());
+    return board_definition.pads() != library_definition.pads();
 }
 
 [[nodiscard]] FootprintLibrary board_resolution_footprints(const Board &board,

@@ -280,6 +280,9 @@ Source: `python/volt/_footprint.py`
 | `pads: tuple[Any, ...]` |
 | `courtyard: FootprintPolygon \| None` |
 | `body: FootprintPolygon \| None` |
+| `fabrication_outline: FootprintPolygon \| None` |
+| `assembly_outline: FootprintPolygon \| None` |
+| `markings: tuple[FootprintMarking, ...]` |
 
 ### Properties
 
@@ -310,6 +313,27 @@ Source: `python/volt/pcb.py`
 | --- |
 | `diameter: float` |
 | `plating: str` |
+
+## `volt.FootprintMarking`
+
+Semantic non-pad marking geometry owned by a footprint.
+
+Source: `python/volt/_footprint.py`
+
+### Fields
+
+| Field |
+| --- |
+| `kind: str` |
+| `polygon: FootprintPolygon` |
+
+### Methods
+
+| Method | Summary |
+| --- | --- |
+| `silkscreen(cls, polygon: Iterable[tuple[float, float]]) -> FootprintMarking` | Return a footprint-owned silkscreen marking polygon. |
+| `polarity(cls, polygon: Iterable[tuple[float, float]]) -> FootprintMarking` | Return a footprint-owned polarity marking polygon. |
+| `pin_1(cls, polygon: Iterable[tuple[float, float]]) -> FootprintMarking` | Return a footprint-owned pin-1 marking polygon. |
 
 ## `volt.FootprintPad`
 

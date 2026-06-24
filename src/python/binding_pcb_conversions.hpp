@@ -244,6 +244,48 @@ optional_footprint_polygon_from_dict(const py::dict &data, const char *name) {
     return volt::FootprintPolygon{std::move(vertices)};
 }
 
+[[nodiscard]] inline volt::FootprintMarkingKind
+footprint_marking_kind_from_string(const std::string &kind) {
+    if (kind == "silkscreen" || kind == "Silkscreen") {
+        return volt::FootprintMarkingKind::Silkscreen;
+    }
+    if (kind == "polarity" || kind == "Polarity") {
+        return volt::FootprintMarkingKind::Polarity;
+    }
+    if (kind == "pin_1" || kind == "pin-1" || kind == "PinOne") {
+        return volt::FootprintMarkingKind::PinOne;
+    }
+    throw std::invalid_argument{"Unknown footprint marking kind"};
+}
+
+[[nodiscard]] inline volt::FootprintMarking footprint_marking_from_dict(const py::dict &data) {
+    return volt::FootprintMarking{
+        footprint_marking_kind_from_string(py::cast<std::string>(data["kind"])),
+        volt::FootprintPolygon{[&]() {
+            const auto points = py::cast<py::iterable>(data["polygon"]);
+            auto vertices = std::vector<volt::FootprintPoint>{};
+            vertices.reserve(static_cast<std::size_t>(py::len(points)));
+            for (const auto item : points) {
+                vertices.push_back(footprint_point_from_object(item));
+            }
+            return vertices;
+        }()}};
+}
+
+[[nodiscard]] inline std::vector<volt::FootprintMarking>
+footprint_markings_from_dict(const py::dict &data) {
+    if (!data.contains("markings") || data["markings"].is_none()) {
+        return {};
+    }
+    const auto markings_data = py::cast<py::iterable>(data["markings"]);
+    auto markings = std::vector<volt::FootprintMarking>{};
+    markings.reserve(static_cast<std::size_t>(py::len(markings_data)));
+    for (const auto item : markings_data) {
+        markings.push_back(footprint_marking_from_dict(py::cast<py::dict>(item)));
+    }
+    return markings;
+}
+
 [[nodiscard]] inline volt::FootprintDefinition
 footprint_definition_from_dict(const py::dict &data) {
     const auto ref = py::cast<std::pair<std::string, std::string>>(data["ref"]);
@@ -253,9 +295,14 @@ footprint_definition_from_dict(const py::dict &data) {
     for (const auto item : pad_data) {
         pads.push_back(footprint_pad_from_dict(py::cast<py::dict>(item)));
     }
-    return volt::FootprintDefinition{volt::FootprintRef{ref.first, ref.second}, std::move(pads),
-                                     optional_footprint_polygon_from_dict(data, "courtyard"),
-                                     optional_footprint_polygon_from_dict(data, "body")};
+    return volt::FootprintDefinition{
+        volt::FootprintRef{ref.first, ref.second}, std::move(pads),
+        volt::FootprintPackageGeometry{
+            optional_footprint_polygon_from_dict(data, "courtyard"),
+            optional_footprint_polygon_from_dict(data, "body"),
+            optional_footprint_polygon_from_dict(data, "fabrication_outline"),
+            optional_footprint_polygon_from_dict(data, "assembly_outline"),
+            footprint_markings_from_dict(data)}};
 }
 
 [[nodiscard]] inline std::vector<int> optional_int_vector_from_dict(const py::dict &data,

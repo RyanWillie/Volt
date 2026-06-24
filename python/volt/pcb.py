@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from . import _volt
-from ._footprint import Footprint, FootprintRef, footprint_ref
+from ._footprint import Footprint, FootprintMarking, FootprintRef, footprint_ref
 from .diagnostics import DiagnosticReport, _diagnostic_from_dict
 from .library import _SelectedPartModel3D
 from .logical import Component, Net

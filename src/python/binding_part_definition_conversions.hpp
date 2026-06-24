@@ -151,6 +151,42 @@ optional_part_footprint_polygon_from_dict(const py::dict &dict, const char *name
     return optional_part_footprint_polygon_from_object(dict[name]);
 }
 
+[[nodiscard]] inline volt::PartFootprintMarkingKind
+part_footprint_marking_kind_from_string(const std::string &kind) {
+    if (kind == "silkscreen") {
+        return volt::PartFootprintMarkingKind::Silkscreen;
+    }
+    if (kind == "polarity") {
+        return volt::PartFootprintMarkingKind::Polarity;
+    }
+    if (kind == "pin_1") {
+        return volt::PartFootprintMarkingKind::PinOne;
+    }
+    throw std::invalid_argument{
+        "Part artifact footprint marking kind must be silkscreen, polarity, or pin_1"};
+}
+
+[[nodiscard]] inline volt::PartFootprintMarking
+part_footprint_marking_from_dict(const py::dict &dict) {
+    return volt::PartFootprintMarking{
+        part_footprint_marking_kind_from_string(required_string_field(dict, "kind")),
+        optional_part_footprint_polygon_from_object(dict["polygon"]).value()};
+}
+
+[[nodiscard]] inline std::vector<volt::PartFootprintMarking>
+part_footprint_markings_from_dict(const py::dict &dict, const char *name) {
+    if (!dict.contains(name) || dict[name].is_none()) {
+        return {};
+    }
+    const auto values = py::cast<py::list>(dict[name]);
+    auto markings = std::vector<volt::PartFootprintMarking>{};
+    markings.reserve(static_cast<std::size_t>(py::len(values)));
+    for (const auto item : values) {
+        markings.push_back(part_footprint_marking_from_dict(py::cast<py::dict>(item)));
+    }
+    return markings;
+}
+
 [[nodiscard]] inline std::vector<volt::OrderablePinPadMapping>
 part_pin_pad_mappings_from_list(const py::list &mappings) {
     auto result = std::vector<volt::OrderablePinPadMapping>{};
@@ -202,7 +238,10 @@ part_model_3d_reference_from_dict(const py::dict &dict, const char *name) {
         string_vector_from_list(required_list_field(dict, "approved_alternate_mpns")),
         part_model_3d_reference_from_dict(dict, "model_3d"),
         optional_part_footprint_polygon_from_dict(dict, "footprint_courtyard"),
-        optional_part_footprint_polygon_from_dict(dict, "footprint_body")};
+        optional_part_footprint_polygon_from_dict(dict, "footprint_body"),
+        optional_part_footprint_polygon_from_dict(dict, "footprint_fabrication_outline"),
+        optional_part_footprint_polygon_from_dict(dict, "footprint_assembly_outline"),
+        part_footprint_markings_from_dict(dict, "footprint_markings")};
 }
 
 [[nodiscard]] inline volt::PartDefinition part_definition_from_dict(const py::dict &dict) {

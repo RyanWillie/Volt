@@ -91,6 +91,12 @@ class PcbBoardReader {
     [[nodiscard]] static std::optional<FootprintPolygon>
     optional_footprint_polygon(const nlohmann::json &object, const char *name);
 
+    [[nodiscard]] static FootprintMarking footprint_marking(const nlohmann::json &object,
+                                                            FootprintMarkingId expected_id);
+
+    [[nodiscard]] static std::vector<FootprintMarking>
+    footprint_markings(const nlohmann::json &object);
+
     [[nodiscard]] static FootprintSize footprint_size(const nlohmann::json &value);
 
     [[nodiscard]] static FootprintRef footprint_ref(const nlohmann::json &object);
@@ -343,6 +349,30 @@ PcbBoardReader::optional_footprint_polygon(const nlohmann::json &object, const c
     return footprint_polygon(*value);
 }
 
+[[nodiscard]] FootprintMarking PcbBoardReader::footprint_marking(const nlohmann::json &object,
+                                                                 FootprintMarkingId expected_id) {
+    require(object.is_object(), "PCB footprint marking must be an object");
+    require_sequential_id(object, "id", expected_id,
+                          "PCB footprint marking IDs must be sequential");
+    return FootprintMarking{footprint_marking_kind_from_name(string_field(object, "kind")),
+                            footprint_polygon(field(object, "polygon"))};
+}
+
+[[nodiscard]] std::vector<FootprintMarking>
+PcbBoardReader::footprint_markings(const nlohmann::json &object) {
+    const auto *value = optional_field(object, "markings");
+    if (value == nullptr) {
+        return {};
+    }
+    require(value->is_array(), "PCB footprint markings must be an array");
+    auto markings = std::vector<FootprintMarking>{};
+    markings.reserve(value->size());
+    for (std::size_t index = 0; index < value->size(); ++index) {
+        markings.push_back(footprint_marking((*value)[index], FootprintMarkingId{index}));
+    }
+    return markings;
+}
+
 [[nodiscard]] FootprintSize PcbBoardReader::footprint_size(const nlohmann::json &value) {
     require(value.is_array(), "PCB footprint size must be an array");
     require(value.size() == 2U, "PCB footprint size must contain two numbers");
@@ -567,10 +597,13 @@ void PcbBoardReader::read_footprint_definitions(Board &board,
             pads.push_back(footprint_pad(pads_json[pad_index], FootprintPadId{pad_index}));
         }
 
-        const auto id = board.cache_footprint_definition(
-            FootprintDefinition{footprint_ref(object_field(definition, "ref")), std::move(pads),
-                                optional_footprint_polygon(definition, "courtyard"),
-                                optional_footprint_polygon(definition, "body")});
+        const auto id = board.cache_footprint_definition(FootprintDefinition{
+            footprint_ref(object_field(definition, "ref")), std::move(pads),
+            FootprintPackageGeometry{optional_footprint_polygon(definition, "courtyard"),
+                                     optional_footprint_polygon(definition, "body"),
+                                     optional_footprint_polygon(definition, "fabrication_outline"),
+                                     optional_footprint_polygon(definition, "assembly_outline"),
+                                     footprint_markings(definition)}});
         require(id == expected, "PCB footprint definition IDs must be sequential");
     }
 }

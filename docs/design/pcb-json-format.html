@@ -206,7 +206,7 @@
       </div>
       <div class="meta">
         <p><strong>Format:</strong> <code>volt.pcb</code></p>
-        <p><strong>Version:</strong> <code>2</code></p>
+        <p><strong>Version:</strong> <code>3</code></p>
         <p><strong>Units:</strong> millimeters for all board and footprint geometry</p>
         <p><strong>Scope:</strong> placement-ready PCB projection over one logical circuit</p>
       </div>
@@ -244,7 +244,7 @@
       <div class="stack">
         <pre><code>{
   "format": "volt.pcb",
-  "version": 2,
+  "version": 3,
   "board": {
     "id": "board:0",
     "name": "Control",
@@ -270,7 +270,7 @@
     "diagnostics": []
   }
 }</code></pre>
-        <p>Field order is deterministic. Entity arrays use insertion order. Local IDs are stable within a document and use typed prefixes such as <code>board_layer:</code>, <code>board_feature:</code>, <code>footprint_def:</code>, <code>footprint_pad:</code>, <code>component_placement:</code>, and <code>pcb_pad:</code>.</p>
+        <p>Field order is deterministic. Entity arrays use insertion order. Local IDs are stable within a document and use typed prefixes such as <code>board_layer:</code>, <code>board_feature:</code>, <code>footprint_def:</code>, <code>footprint_pad:</code>, <code>footprint_marking:</code>, <code>component_placement:</code>, and <code>pcb_pad:</code>.</p>
       </div>
     </section>
 
@@ -282,9 +282,9 @@
             <tr><th>Path</th><th>Meaning</th><th>Viewer use</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>board.id</code></td><td>Stable board entity ID. v2 stores one board as <code>board:0</code>.</td><td>Root selection and SVG <code>data-board</code>.</td></tr>
+            <tr><td><code>board.id</code></td><td>Stable board entity ID. v3 stores one board as <code>board:0</code>.</td><td>Root selection and SVG <code>data-board</code>.</td></tr>
             <tr><td><code>board.name</code></td><td>Human-facing board name.</td><td>Titles and inspection panels.</td></tr>
-            <tr><td><code>board.units</code></td><td>Geometry units. v2 supports <code>mm</code>.</td><td>Scene scale and ruler labels.</td></tr>
+            <tr><td><code>board.units</code></td><td>Geometry units. v3 supports <code>mm</code>.</td><td>Scene scale and ruler labels.</td></tr>
             <tr><td><code>board.layers[]</code></td><td>Layer ID, name, role, side, thickness, and enabled state.</td><td>Layer lists, filtering, coloring, and stack views.</td></tr>
             <tr><td><code>board.layer_stack</code></td><td>Optional ordered layer IDs plus total board thickness in millimeters.</td><td>2D ordering and 3D board thickness hints.</td></tr>
             <tr><td><code>board.outline</code></td><td>Optional polygon outline in board coordinates.</td><td>Board shape, bounds, and hit regions.</td></tr>
@@ -339,6 +339,9 @@
             <tr><td><code>pads[].kind</code>, <code>shape</code>, <code>layers</code>, <code>drill</code>, <code>mechanical_role</code></td><td>Pad technology and geometry metadata.</td><td>Shape, layer membership, through-hole rendering, and non-electrical annotation.</td></tr>
             <tr><td><code>courtyard</code></td><td>Optional footprint-local courtyard polygon.</td><td>Render and inspect declared component clearance extents. Missing means no courtyard was declared, distinct from an invalid empty polygon. Polygon arrays are canonical boundary vertices and must not repeat the first vertex at the end.</td></tr>
             <tr><td><code>body</code></td><td>Optional footprint-local body outline polygon.</td><td>Render the declared physical body extent without guessing from pad bounds. Missing means no body outline was declared. Polygon arrays are canonical boundary vertices and must not repeat the first vertex at the end.</td></tr>
+            <tr><td><code>fabrication_outline</code></td><td>Optional footprint-local fabrication outline polygon.</td><td>Render fab/documentation outlines from footprint data instead of deriving them from pads.</td></tr>
+            <tr><td><code>assembly_outline</code></td><td>Optional footprint-local assembly outline polygon.</td><td>Render assembly/package inspection outlines from canonical footprint data.</td></tr>
+            <tr><td><code>markings[]</code></td><td>Optional semantic marking polygons with <code>footprint_marking:&lt;n&gt;</code> IDs and kinds <code>silkscreen</code>, <code>polarity</code>, or <code>pin_1</code>.</td><td>Render footprint-owned marks such as polarity and pin-1 indicators with stable selectors.</td></tr>
           </tbody>
         </table>
       </div>
@@ -371,7 +374,7 @@
       <div class="stack">
         <div class="callout green">
           <h2>A renderer should consume JSON directly.</h2>
-          <p>The SVG preview is optional debug output. A 2D or first 3D renderer should use the JSON board outline, thickness, features, footprint pad geometry, placement transforms, and pad projection identity as its input model.</p>
+          <p>The SVG preview is optional debug output. A 2D or first 3D renderer should use the JSON board outline, thickness, features, footprint package geometry, pad geometry, placement transforms, and pad projection identity as its input model.</p>
         </div>
         <table>
           <thead>
@@ -382,6 +385,7 @@
             <tr><td>Layer controls</td><td><code>board.geometry.stackup[]</code>, <code>board.layers[]</code></td><td>Use layer IDs, names, roles, sides, enabled state, stack order, and <code>z_mm</code> for visibility and inspection.</td></tr>
             <tr><td>Mechanical features</td><td><code>board.geometry.openings[]</code>, <code>board.geometry.cutouts[]</code>, <code>board.geometry.surface_features[]</code></td><td>Render board holes, slots, cutouts, and board-side primitives from stable feature IDs and board-space geometry.</td></tr>
             <tr><td>Footprint pad bodies</td><td><code>board.footprint_definitions[].pads[]</code></td><td>Render pad shape, size, drill, and layer membership in footprint-local coordinates.</td></tr>
+            <tr><td>Footprint package geometry</td><td><code>body</code>, <code>courtyard</code>, <code>fabrication_outline</code>, <code>assembly_outline</code>, <code>markings[]</code></td><td>Render package occupancy and semantic marks from declared footprint geometry. Missing fields mean no such geometry was declared.</td></tr>
             <tr><td>Placed pads</td><td><code>board.placements[]</code> plus referenced <code>footprint_def</code></td><td>Apply placement side, rotation, and translation to every footprint-local pad. Bottom-side placements mirror local X before rotation.</td></tr>
             <tr><td>Selection identity</td><td><code>viewer.pad_resolutions[]</code>, <code>viewer.diagnostics[]</code></td><td>Use derived pad projection IDs, pin refs, net refs, and diagnostic entity refs for overlays and inspection panels.</td></tr>
           </tbody>

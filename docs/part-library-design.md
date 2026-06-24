@@ -100,7 +100,12 @@ but the canonical `volt.part` bytes stay independently loadable and hash-address
 keeps lock entries, future manifests, and design-local snapshots attached to one byte
 representation instead of duplicating embedded copies across designs.
 
-The current implemented artifact format is `format: "volt.part"`, `version: 3`. Version 3 adds optional footprint-local `courtyard` and `body` polygons to the footprint projection; omitting either field means no such geometry was declared, not an empty extent. Polygon arrays are canonical boundary vertices and must not repeat the first vertex at the end.
+The current implemented artifact format is `format: "volt.part"`, `version: 4`.
+Version 4 carries optional footprint-local `courtyard`, `body`, `fabrication_outline`,
+and `assembly_outline` polygons plus semantic footprint markings such as silkscreen,
+polarity, and pin-1 marks. Omitting a geometry field means no such geometry was
+declared, not an empty extent. Polygon arrays are canonical boundary vertices and must
+not repeat the first vertex at the end.
 
 ### Projections must line up, and the kernel checks it
 

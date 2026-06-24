@@ -49,6 +49,9 @@ def _passive_0603(
     second_pad_layers="front_smd",
     courtyard=None,
     body=None,
+    fabrication_outline=None,
+    assembly_outline=None,
+    markings=(),
 ):
     half_span = pad_span / 2
     return volt.FootprintDefinition(
@@ -70,6 +73,9 @@ def _passive_0603(
         ),
         courtyard=courtyard,
         body=body,
+        fabrication_outline=fabrication_outline,
+        assembly_outline=assembly_outline,
+        markings=markings,
     )
 
 
@@ -1897,6 +1903,16 @@ def test_python_board_auto_registers_object_owned_builtin_ref_footprint():
         ("passives", "R_0603_1608Metric"),
         courtyard=((-1.2, -0.8), (1.2, -0.8), (1.2, 0.8), (-1.2, 0.8)),
         body=((-0.9, -0.5), (0.9, -0.5), (0.9, 0.5), (-0.9, 0.5)),
+        fabrication_outline=((-0.8, -0.4), (0.8, -0.4), (0.8, 0.4), (-0.8, 0.4)),
+        assembly_outline=((-1.0, -0.6), (1.0, -0.6), (1.0, 0.6), (-1.0, 0.6)),
+        markings=(
+            volt.FootprintMarking.silkscreen(
+                ((-1.1, -0.7), (1.1, -0.7), (1.1, -0.55), (-1.1, -0.55))
+            ),
+            volt.FootprintMarking.pin_1(
+                ((-1.0, -0.5), (-0.85, -0.5), (-1.0, -0.35))
+            ),
+        ),
     )
     library = volt.Library("volt.test")
     resistor = library.component(
@@ -1943,6 +1959,30 @@ def test_python_board_auto_registers_object_owned_builtin_ref_footprint():
         [0.9, -0.5],
         [0.9, 0.5],
         [-0.9, 0.5],
+    ]
+    assert definitions[0]["fabrication_outline"] == [
+        [-0.8, -0.4],
+        [0.8, -0.4],
+        [0.8, 0.4],
+        [-0.8, 0.4],
+    ]
+    assert definitions[0]["assembly_outline"] == [
+        [-1.0, -0.6],
+        [1.0, -0.6],
+        [1.0, 0.6],
+        [-1.0, 0.6],
+    ]
+    assert definitions[0]["markings"] == [
+        {
+            "id": "footprint_marking:0",
+            "kind": "silkscreen",
+            "polygon": [[-1.1, -0.7], [1.1, -0.7], [1.1, -0.55], [-1.1, -0.55]],
+        },
+        {
+            "id": "footprint_marking:1",
+            "kind": "pin_1",
+            "polygon": [[-1.0, -0.5], [-0.85, -0.5], [-1.0, -0.35]],
+        },
     ]
     assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
     assert len(document["viewer"]["pad_resolutions"]) == 2

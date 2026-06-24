@@ -49,7 +49,9 @@ void include_projected_polygon_bounds(PcbSvgBounds &bounds,
 }
 
 [[nodiscard]] bool footprint_has_declared_geometry(const FootprintDefinition &definition) {
-    return definition.body().has_value() || definition.courtyard().has_value();
+    return definition.body().has_value() || definition.courtyard().has_value() ||
+           definition.fabrication_outline().has_value() ||
+           definition.assembly_outline().has_value() || !definition.markings().empty();
 }
 
 [[nodiscard]] PcbSvgBounds footprint_pad_bounds(const FootprintDefinition &definition) {
@@ -97,6 +99,24 @@ void write_declared_footprint_geometry(std::ostream &out,
     if (geometry.body().has_value()) {
         write_projected_footprint_polygon(out, "footprint-body declared", geometry,
                                           geometry.body().value());
+    }
+    if (geometry.fabrication_outline().has_value()) {
+        write_projected_footprint_polygon(out, "footprint-fabrication declared", geometry,
+                                          geometry.fabrication_outline().value());
+    }
+    if (geometry.assembly_outline().has_value()) {
+        write_projected_footprint_polygon(out, "footprint-assembly declared", geometry,
+                                          geometry.assembly_outline().value());
+    }
+    for (std::size_t index = 0; index < geometry.markings().size(); ++index) {
+        const auto &marking = geometry.markings()[index];
+        out << "      <polygon class=\"footprint-marking declared kind-"
+            << footprint_marking_kind_name(marking.kind()) << "\" data-placement=\""
+            << encode_local_id(geometry.placement()) << "\" data-component=\""
+            << encode_local_id(geometry.component()) << "\" data-marking=\""
+            << encode_local_id(FootprintMarkingId{index}) << "\" points=\"";
+        write_pcb_point_list(out, marking.polygon());
+        out << "\"/>\n";
     }
 }
 
@@ -160,6 +180,21 @@ void write_reference_designator(std::ostream &out, ComponentPlacementId placemen
             include_footprint_point(bounds, point);
         }
     }
+    if (definition.fabrication_outline().has_value()) {
+        for (const auto point : definition.fabrication_outline()->vertices()) {
+            include_footprint_point(bounds, point);
+        }
+    }
+    if (definition.assembly_outline().has_value()) {
+        for (const auto point : definition.assembly_outline()->vertices()) {
+            include_footprint_point(bounds, point);
+        }
+    }
+    for (const auto &marking : definition.markings()) {
+        for (const auto point : marking.polygon().vertices()) {
+            include_footprint_point(bounds, point);
+        }
+    }
     return bounds;
 }
 
@@ -178,6 +213,13 @@ void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &pl
     }
     include_projected_polygon_bounds(bounds, projected_geometry->courtyard());
     include_projected_polygon_bounds(bounds, projected_geometry->body());
+    include_projected_polygon_bounds(bounds, projected_geometry->fabrication_outline());
+    include_projected_polygon_bounds(bounds, projected_geometry->assembly_outline());
+    for (const auto &marking : projected_geometry->markings()) {
+        for (const auto point : marking.polygon()) {
+            include_board_point(bounds, point);
+        }
+    }
 }
 
 [[nodiscard]] std::string pad_shape_class(FootprintPadShape shape) {

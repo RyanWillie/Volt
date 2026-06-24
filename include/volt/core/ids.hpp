@@ -62,6 +62,7 @@ struct BoardRoomIdTag;
 struct BoardTextIdTag;
 struct FootprintDefIdTag;
 struct FootprintPadIdTag;
+struct FootprintMarkingIdTag;
 struct ComponentPlacementIdTag;
 
 } // namespace detail
@@ -130,6 +131,8 @@ using BoardTextId = EntityId<detail::BoardTextIdTag>;
 using FootprintDefId = EntityId<detail::FootprintDefIdTag>;
 /** ID for a pad inside a PCB footprint definition. */
 using FootprintPadId = EntityId<detail::FootprintPadIdTag>;
+/** ID for a marking inside a PCB footprint definition. */
+using FootprintMarkingId = EntityId<detail::FootprintMarkingIdTag>;
 /** ID for a component placement owned by a board projection. */
 using ComponentPlacementId = EntityId<detail::ComponentPlacementIdTag>;
 

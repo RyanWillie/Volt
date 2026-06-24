@@ -125,11 +125,19 @@ PadResolution::PadResolution(ComponentPlacementId placement, ComponentId compone
     : placement_{placement}, component_{component}, pad_{pad}, pad_label_{std::move(pad_label)},
       position_{position}, pin_{pin}, net_{net}, status_{status} {}
 
+ProjectedFootprintMarking::ProjectedFootprintMarking(FootprintMarkingKind kind,
+                                                     std::vector<BoardPoint> polygon)
+    : kind_{kind}, polygon_{std::move(polygon)} {}
+
 ProjectedFootprintGeometry::ProjectedFootprintGeometry(
     ComponentPlacementId placement, ComponentId component, BoardSide side,
-    std::optional<std::vector<BoardPoint>> courtyard, std::optional<std::vector<BoardPoint>> body)
+    std::optional<std::vector<BoardPoint>> courtyard, std::optional<std::vector<BoardPoint>> body,
+    std::optional<std::vector<BoardPoint>> fabrication_outline,
+    std::optional<std::vector<BoardPoint>> assembly_outline,
+    std::vector<ProjectedFootprintMarking> markings)
     : placement_{placement}, component_{component}, side_{side}, courtyard_{std::move(courtyard)},
-      body_{std::move(body)} {}
+      body_{std::move(body)}, fabrication_outline_{std::move(fabrication_outline)},
+      assembly_outline_{std::move(assembly_outline)}, markings_{std::move(markings)} {}
 
 RatsnestEndpoint::RatsnestEndpoint(ComponentPlacementId placement, ComponentId component,
                                    FootprintPadId pad, BoardPoint position)

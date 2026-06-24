@@ -144,7 +144,7 @@ TEST_CASE("FootprintDefinition assigns stable pad identities by label") {
     CHECK_FALSE(footprint.pad_id("3").has_value());
 }
 
-TEST_CASE("FootprintDefinition stores optional courtyard and body geometry") {
+TEST_CASE("FootprintDefinition stores complete package geometry") {
     const auto pad = volt::FootprintPad::surface_mount(
         "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.0, 0.0},
         volt::FootprintSize{0.5, 0.5}, volt::FootprintLayerSet::front_smd());
@@ -154,6 +154,9 @@ TEST_CASE("FootprintDefinition stores optional courtyard and body geometry") {
 
     CHECK_FALSE(without_geometry.courtyard().has_value());
     CHECK_FALSE(without_geometry.body().has_value());
+    CHECK_FALSE(without_geometry.fabrication_outline().has_value());
+    CHECK_FALSE(without_geometry.assembly_outline().has_value());
+    CHECK(without_geometry.markings().empty());
 
     const auto courtyard = volt::FootprintPolygon{std::vector{
         volt::FootprintPoint{-1.0, -0.5},
@@ -167,14 +170,45 @@ TEST_CASE("FootprintDefinition stores optional courtyard and body geometry") {
         volt::FootprintPoint{0.6, 0.3},
         volt::FootprintPoint{-0.6, 0.3},
     }};
+    const auto fabrication = volt::FootprintPolygon{std::vector{
+        volt::FootprintPoint{-0.7, -0.35},
+        volt::FootprintPoint{0.7, -0.35},
+        volt::FootprintPoint{0.7, 0.35},
+        volt::FootprintPoint{-0.7, 0.35},
+    }};
+    const auto assembly = volt::FootprintPolygon{std::vector{
+        volt::FootprintPoint{-0.8, -0.45},
+        volt::FootprintPoint{0.8, -0.45},
+        volt::FootprintPoint{0.8, 0.45},
+        volt::FootprintPoint{-0.8, 0.45},
+    }};
+    const auto pin_one_mark = volt::FootprintPolygon{std::vector{
+        volt::FootprintPoint{-0.8, -0.45},
+        volt::FootprintPoint{-0.65, -0.45},
+        volt::FootprintPoint{-0.8, -0.30},
+    }};
 
-    const auto footprint = volt::FootprintDefinition{volt::FootprintRef{"test", "WithGeometry"},
-                                                     std::vector{pad}, courtyard, body};
+    const auto footprint = volt::FootprintDefinition{
+        volt::FootprintRef{"test", "WithGeometry"}, std::vector{pad},
+        volt::FootprintPackageGeometry{
+            courtyard,
+            body,
+            fabrication,
+            assembly,
+            std::vector{volt::FootprintMarking{volt::FootprintMarkingKind::PinOne, pin_one_mark}},
+        }};
 
     REQUIRE(footprint.courtyard().has_value());
     REQUIRE(footprint.body().has_value());
+    REQUIRE(footprint.fabrication_outline().has_value());
+    REQUIRE(footprint.assembly_outline().has_value());
     CHECK(footprint.courtyard()->vertices()[2] == volt::FootprintPoint{1.0, 0.5});
     CHECK(footprint.body()->vertices()[0] == volt::FootprintPoint{-0.6, -0.3});
+    CHECK(footprint.fabrication_outline()->vertices()[1] == volt::FootprintPoint{0.7, -0.35});
+    CHECK(footprint.assembly_outline()->vertices()[3] == volt::FootprintPoint{-0.8, 0.45});
+    REQUIRE(footprint.markings().size() == 1);
+    CHECK(footprint.markings()[0].kind() == volt::FootprintMarkingKind::PinOne);
+    CHECK(footprint.markings()[0].polygon().vertices()[2] == volt::FootprintPoint{-0.8, -0.30});
 }
 
 TEST_CASE("Footprint polygons reject structurally invalid geometry") {
@@ -254,6 +288,31 @@ TEST_CASE("Built-in footprint library provides first board fixtures") {
     CHECK(library.find(volt::FootprintRef{"Package_SO", "SOIC-8_3.9x4.9mm_P1.27mm"}) != nullptr);
     CHECK(library.find(volt::FootprintRef{"Package_SO", "TSSOP-14_4.4x5mm_P0.65mm"}) != nullptr);
     CHECK(library.find(volt::FootprintRef{"Package_QFP", "LQFP-64_10x10mm_P0.5mm"}) != nullptr);
+}
+
+TEST_CASE("Built-in passive footprints declare package geometry") {
+    const auto library = volt::builtin_footprint_library();
+    const auto refs = std::vector{
+        volt::FootprintRef{"passives", "R_0603_1608Metric"},
+        volt::FootprintRef{"passives", "R_0805_2012Metric"},
+        volt::FootprintRef{"passives", "C_0603_1608Metric"},
+        volt::FootprintRef{"passives", "L_0603_1608Metric"},
+    };
+
+    for (const auto &ref : refs) {
+        const auto *definition = library.find(ref);
+        REQUIRE(definition != nullptr);
+        CHECK(definition->courtyard().has_value());
+        CHECK(definition->body().has_value());
+        CHECK(definition->fabrication_outline().has_value());
+        CHECK(definition->assembly_outline().has_value());
+    }
+
+    const auto *led = library.find(volt::FootprintRef{"leds", "LED_0603_1608Metric"});
+    REQUIRE(led != nullptr);
+    CHECK(std::any_of(led->markings().begin(), led->markings().end(), [](const auto &marking) {
+        return marking.kind() == volt::FootprintMarkingKind::Polarity;
+    }));
 }
 
 TEST_CASE("Built-in footprint library keeps unique references and stable pad labels") {
