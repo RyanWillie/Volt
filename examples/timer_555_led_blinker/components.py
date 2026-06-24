@@ -22,6 +22,25 @@ def _front_smd_pad(
     )
 
 
+def _rectangle(width: float, height: float) -> tuple[tuple[float, float], ...]:
+    return (
+        (-width / 2.0, -height / 2.0),
+        (width / 2.0, -height / 2.0),
+        (width / 2.0, height / 2.0),
+        (-width / 2.0, height / 2.0),
+    )
+
+
+def _passive_0805_geometry() -> dict[str, object]:
+    outline = _rectangle(2.00, 1.25)
+    return {
+        "courtyard": _rectangle(3.20, 1.90),
+        "body": outline,
+        "fabrication_outline": outline,
+        "assembly_outline": outline,
+    }
+
+
 TIMER_SYMBOL = volt.SchematicSymbolSpec.ic(
     "volt.examples.timer_555_led_blinker:NE555",
     pins=(
@@ -91,6 +110,7 @@ FOOTPRINTS = {
             _front_smd_pad("1", at=(-0.9125, 0.0), size=(1.025, 1.4)),
             _front_smd_pad("2", at=(0.9125, 0.0), size=(1.025, 1.4)),
         ),
+        **_passive_0805_geometry(),
     ),
     "capacitor_0805": volt.FootprintDefinition(
         ("Capacitor_SMD", "C_0805_2012Metric"),
@@ -98,6 +118,7 @@ FOOTPRINTS = {
             _front_smd_pad("1", at=(-0.95, 0.0), size=(1.0, 1.45)),
             _front_smd_pad("2", at=(0.95, 0.0), size=(1.0, 1.45)),
         ),
+        **_passive_0805_geometry(),
     ),
     "led_0805": volt.FootprintDefinition(
         ("LED_SMD", "LED_0805_2012Metric"),
@@ -105,6 +126,8 @@ FOOTPRINTS = {
             _front_smd_pad("1", at=(-0.9375, 0.0), size=(0.975, 1.4)),
             _front_smd_pad("2", at=(0.9375, 0.0), size=(0.975, 1.4)),
         ),
+        **_passive_0805_geometry(),
+        markings=(volt.FootprintMarking.polarity(_rectangle(0.16, 0.90)),),
     ),
 }
 

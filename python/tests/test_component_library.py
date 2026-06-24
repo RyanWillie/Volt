@@ -128,6 +128,23 @@ def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
             ),
             courtyard=((-2.4, -1.2), (2.4, -1.2), (2.4, 3.2), (-2.4, 3.2)),
             body=((-1.9, -0.8), (1.9, -0.8), (1.9, 2.8), (-1.9, 2.8)),
+            fabrication_outline=(
+                (-1.7, -0.6),
+                (1.7, -0.6),
+                (1.7, 2.6),
+                (-1.7, 2.6),
+            ),
+            assembly_outline=(
+                (-2.0, -0.9),
+                (2.0, -0.9),
+                (2.0, 2.9),
+                (-2.0, 2.9),
+            ),
+            markings=(
+                volt.FootprintMarking.pin_1(
+                    ((-1.9, -0.8), (-1.65, -0.8), (-1.9, -0.55))
+                ),
+            ),
         ),
         pads={1: "1", 2: ("2", "4"), 3: "3"},
     )
@@ -140,7 +157,7 @@ def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
     assert volt._volt.content_hash(artifact.bytes) == artifact.sha256
     assert artifact.bytes == library.build().part("AP1117-15").artifact.bytes
     assert document["format"] == "volt.part"
-    assert document["version"] == 3
+    assert document["version"] == 4
     assert document["identity"] == {
         "namespace": "volt.test",
         "name": "AP1117-15",
@@ -182,6 +199,28 @@ def test_library_part_build_emits_kernel_owned_artifact_without_role_sugar():
         {"x_mm": 1.9, "y_mm": -0.8},
         {"x_mm": 1.9, "y_mm": 2.8},
         {"x_mm": -1.9, "y_mm": 2.8},
+    ]
+    assert document["orderable_part"]["footprint"]["fabrication_outline"] == [
+        {"x_mm": -1.7, "y_mm": -0.6},
+        {"x_mm": 1.7, "y_mm": -0.6},
+        {"x_mm": 1.7, "y_mm": 2.6},
+        {"x_mm": -1.7, "y_mm": 2.6},
+    ]
+    assert document["orderable_part"]["footprint"]["assembly_outline"] == [
+        {"x_mm": -2.0, "y_mm": -0.9},
+        {"x_mm": 2.0, "y_mm": -0.9},
+        {"x_mm": 2.0, "y_mm": 2.9},
+        {"x_mm": -2.0, "y_mm": 2.9},
+    ]
+    assert document["orderable_part"]["footprint"]["markings"] == [
+        {
+            "kind": "pin_1",
+            "polygon": [
+                {"x_mm": -1.9, "y_mm": -0.8},
+                {"x_mm": -1.65, "y_mm": -0.8},
+                {"x_mm": -1.9, "y_mm": -0.55},
+            ],
+        }
     ]
 
 

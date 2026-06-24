@@ -213,6 +213,30 @@ class PartFootprintPolygon {
     std::vector<PartFootprintPoint> vertices_;
 };
 
+/** Semantic kind for non-pad markings in an orderable part footprint projection. */
+enum class PartFootprintMarkingKind {
+    Silkscreen,
+    Polarity,
+    PinOne,
+};
+
+/** Non-pad marking geometry in an orderable part footprint projection. */
+class PartFootprintMarking {
+  public:
+    /** Construct a semantic part footprint marking polygon. */
+    PartFootprintMarking(PartFootprintMarkingKind kind, PartFootprintPolygon polygon);
+
+    /** Return the marking semantics. */
+    [[nodiscard]] PartFootprintMarkingKind kind() const noexcept { return kind_; }
+
+    /** Return the footprint-local marking polygon. */
+    [[nodiscard]] const PartFootprintPolygon &polygon() const noexcept { return polygon_; }
+
+  private:
+    PartFootprintMarkingKind kind_;
+    PartFootprintPolygon polygon_;
+};
+
 /** Hash-addressed footprint projection for an orderable part. */
 class HashedFootprintReference {
   public:
@@ -289,7 +313,10 @@ class OrderablePart {
                   std::vector<std::string> approved_alternate_mpns = {},
                   std::optional<PartModel3DReference> model_3d = std::nullopt,
                   std::optional<PartFootprintPolygon> footprint_courtyard = std::nullopt,
-                  std::optional<PartFootprintPolygon> footprint_body = std::nullopt);
+                  std::optional<PartFootprintPolygon> footprint_body = std::nullopt,
+                  std::optional<PartFootprintPolygon> footprint_fabrication_outline = std::nullopt,
+                  std::optional<PartFootprintPolygon> footprint_assembly_outline = std::nullopt,
+                  std::vector<PartFootprintMarking> footprint_markings = {});
 
     /** Return the primary manufacturer part identity. */
     [[nodiscard]] const ManufacturerPart &manufacturer_part() const noexcept {
@@ -312,9 +339,26 @@ class OrderablePart {
         return footprint_courtyard_;
     }
 
-    /** Return the optional declared footprint body or silk-outline polygon. */
+    /** Return the optional declared footprint body envelope polygon. */
     [[nodiscard]] const std::optional<PartFootprintPolygon> &footprint_body() const noexcept {
         return footprint_body_;
+    }
+
+    /** Return the optional declared footprint fabrication outline polygon. */
+    [[nodiscard]] const std::optional<PartFootprintPolygon> &
+    footprint_fabrication_outline() const noexcept {
+        return footprint_fabrication_outline_;
+    }
+
+    /** Return the optional declared footprint assembly outline polygon. */
+    [[nodiscard]] const std::optional<PartFootprintPolygon> &
+    footprint_assembly_outline() const noexcept {
+        return footprint_assembly_outline_;
+    }
+
+    /** Return declared footprint silkscreen, polarity, and pin-one markings. */
+    [[nodiscard]] const std::vector<PartFootprintMarking> &footprint_markings() const noexcept {
+        return footprint_markings_;
     }
 
     /** Return pin-number to pad mappings in deterministic insertion order. */
@@ -339,6 +383,9 @@ class OrderablePart {
     std::vector<PartFootprintPad> footprint_pads_;
     std::optional<PartFootprintPolygon> footprint_courtyard_;
     std::optional<PartFootprintPolygon> footprint_body_;
+    std::optional<PartFootprintPolygon> footprint_fabrication_outline_;
+    std::optional<PartFootprintPolygon> footprint_assembly_outline_;
+    std::vector<PartFootprintMarking> footprint_markings_;
     std::vector<OrderablePinPadMapping> pin_pad_mappings_;
     std::vector<std::string> approved_alternate_mpns_;
     std::optional<PartModel3DReference> model_3d_;

@@ -363,6 +363,13 @@ void write_style(std::ostream &out, bool include_copper, bool include_zones, boo
     out << "    .footprint-courtyard{fill:none;stroke:#64748b;stroke-width:0.12;"
            "stroke-dasharray:0.7 0.45}\n";
     out << "    .footprint-body.declared{fill:#fff8db;stroke:#8a6a16;stroke-width:0.18}\n";
+    out << "    .footprint-fabrication.declared{fill:none;stroke:#475569;stroke-width:0.1}\n";
+    out << "    .footprint-assembly.declared{fill:none;stroke:#7c3aed;stroke-width:0.1;"
+           "stroke-dasharray:0.55 0.35}\n";
+    out << "    .footprint-marking.declared{fill:#172026;fill-opacity:0.45;stroke:#172026;"
+           "stroke-width:0.08}\n";
+    out << "    .footprint-marking.kind-pin_1,.footprint-marking.kind-polarity{"
+           "fill:#b42318;stroke:#7a271a}\n";
     out << "    .footprint-envelope.synthetic{fill:#fff8db;fill-opacity:0.24;"
            "stroke:#8a6a16;stroke-width:0.18;stroke-dasharray:0.9 0.55}\n";
     out << "    .footprint-pad{fill:#d99822;stroke:#5a3a08;stroke-width:0.14}\n";

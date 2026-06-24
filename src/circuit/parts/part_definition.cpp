@@ -176,6 +176,10 @@ PartFootprintPolygon::PartFootprintPolygon(std::vector<PartFootprintPoint> verti
     detail::validate_footprint_polygon_vertices(vertices_, "Part footprint polygon");
 }
 
+PartFootprintMarking::PartFootprintMarking(PartFootprintMarkingKind kind,
+                                           PartFootprintPolygon polygon)
+    : kind_{kind}, polygon_{std::move(polygon)} {}
+
 HashedFootprintReference::HashedFootprintReference(FootprintRef footprint, ContentHash hash)
     : footprint_{std::move(footprint)}, hash_{std::move(hash)} {}
 
@@ -217,11 +221,18 @@ OrderablePart::OrderablePart(ManufacturerPart manufacturer_part, PackageRef pack
                              std::vector<std::string> approved_alternate_mpns,
                              std::optional<PartModel3DReference> model_3d,
                              std::optional<PartFootprintPolygon> footprint_courtyard,
-                             std::optional<PartFootprintPolygon> footprint_body)
+                             std::optional<PartFootprintPolygon> footprint_body,
+                             std::optional<PartFootprintPolygon> footprint_fabrication_outline,
+                             std::optional<PartFootprintPolygon> footprint_assembly_outline,
+                             std::vector<PartFootprintMarking> footprint_markings)
     : manufacturer_part_{std::move(manufacturer_part)}, package_{std::move(package)},
       footprint_{std::move(footprint)}, footprint_pads_{std::move(footprint_pads)},
       footprint_courtyard_{std::move(footprint_courtyard)},
-      footprint_body_{std::move(footprint_body)}, pin_pad_mappings_{std::move(pin_pad_mappings)},
+      footprint_body_{std::move(footprint_body)},
+      footprint_fabrication_outline_{std::move(footprint_fabrication_outline)},
+      footprint_assembly_outline_{std::move(footprint_assembly_outline)},
+      footprint_markings_{std::move(footprint_markings)},
+      pin_pad_mappings_{std::move(pin_pad_mappings)},
       approved_alternate_mpns_{std::move(approved_alternate_mpns)}, model_3d_{std::move(model_3d)} {
     if (footprint_pads_.empty()) {
         throw std::invalid_argument{"Orderable part footprint projection must contain pads"};

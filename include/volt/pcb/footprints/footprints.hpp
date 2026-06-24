@@ -75,6 +75,79 @@ class FootprintPolygon {
     std::vector<FootprintPoint> vertices_;
 };
 
+/** Semantic kind for footprint-owned non-pad markings. */
+enum class FootprintMarkingKind {
+    Silkscreen,
+    Polarity,
+    PinOne,
+};
+
+/** Footprint-local non-pad marking geometry. */
+class FootprintMarking {
+  public:
+    /** Construct a semantic footprint-local marking polygon. */
+    FootprintMarking(FootprintMarkingKind kind, FootprintPolygon polygon);
+
+    /** Return the marking semantics. */
+    [[nodiscard]] FootprintMarkingKind kind() const noexcept { return kind_; }
+
+    /** Return the footprint-local marking polygon. */
+    [[nodiscard]] const FootprintPolygon &polygon() const noexcept { return polygon_; }
+
+    /** Return whether two markings describe the same semantic geometry. */
+    [[nodiscard]] friend bool operator==(const FootprintMarking &lhs,
+                                         const FootprintMarking &rhs) = default;
+
+  private:
+    FootprintMarkingKind kind_;
+    FootprintPolygon polygon_;
+};
+
+/** Complete package-level footprint geometry in footprint-local coordinates. */
+class FootprintPackageGeometry {
+  public:
+    /** Construct package geometry from optional named outlines and semantic markings. */
+    FootprintPackageGeometry(std::optional<FootprintPolygon> courtyard = std::nullopt,
+                             std::optional<FootprintPolygon> body = std::nullopt,
+                             std::optional<FootprintPolygon> fabrication_outline = std::nullopt,
+                             std::optional<FootprintPolygon> assembly_outline = std::nullopt,
+                             std::vector<FootprintMarking> markings = {});
+
+    /** Return the optional declared courtyard polygon. */
+    [[nodiscard]] const std::optional<FootprintPolygon> &courtyard() const noexcept {
+        return courtyard_;
+    }
+
+    /** Return the optional declared package body envelope polygon. */
+    [[nodiscard]] const std::optional<FootprintPolygon> &body() const noexcept { return body_; }
+
+    /** Return the optional fabrication outline polygon. */
+    [[nodiscard]] const std::optional<FootprintPolygon> &fabrication_outline() const noexcept {
+        return fabrication_outline_;
+    }
+
+    /** Return the optional assembly outline polygon. */
+    [[nodiscard]] const std::optional<FootprintPolygon> &assembly_outline() const noexcept {
+        return assembly_outline_;
+    }
+
+    /** Return footprint-local silkscreen, polarity, and pin-one markings. */
+    [[nodiscard]] const std::vector<FootprintMarking> &markings() const noexcept {
+        return markings_;
+    }
+
+    /** Return whether two package geometry payloads are identical. */
+    [[nodiscard]] friend bool operator==(const FootprintPackageGeometry &lhs,
+                                         const FootprintPackageGeometry &rhs) = default;
+
+  private:
+    std::optional<FootprintPolygon> courtyard_;
+    std::optional<FootprintPolygon> body_;
+    std::optional<FootprintPolygon> fabrication_outline_;
+    std::optional<FootprintPolygon> assembly_outline_;
+    std::vector<FootprintMarking> markings_;
+};
+
 /** PCB layers a normalized footprint pad may occupy. */
 enum class FootprintLayer {
     FrontCopper,
@@ -251,6 +324,10 @@ class FootprintDefinition {
                         std::optional<FootprintPolygon> courtyard = std::nullopt,
                         std::optional<FootprintPolygon> body = std::nullopt);
 
+    /** Construct a footprint definition with complete package geometry. */
+    FootprintDefinition(FootprintRef ref, std::vector<FootprintPad> pads,
+                        FootprintPackageGeometry package_geometry);
+
     /** Return the library-qualified footprint reference. */
     [[nodiscard]] const FootprintRef &ref() const noexcept { return ref_; }
 
@@ -259,11 +336,33 @@ class FootprintDefinition {
 
     /** Return the optional declared courtyard polygon. */
     [[nodiscard]] const std::optional<FootprintPolygon> &courtyard() const noexcept {
-        return courtyard_;
+        return package_geometry_.courtyard();
     }
 
-    /** Return the optional declared body or silk-outline polygon. */
-    [[nodiscard]] const std::optional<FootprintPolygon> &body() const noexcept { return body_; }
+    /** Return the optional declared package body envelope polygon. */
+    [[nodiscard]] const std::optional<FootprintPolygon> &body() const noexcept {
+        return package_geometry_.body();
+    }
+
+    /** Return the optional fabrication outline polygon. */
+    [[nodiscard]] const std::optional<FootprintPolygon> &fabrication_outline() const noexcept {
+        return package_geometry_.fabrication_outline();
+    }
+
+    /** Return the optional assembly outline polygon. */
+    [[nodiscard]] const std::optional<FootprintPolygon> &assembly_outline() const noexcept {
+        return package_geometry_.assembly_outline();
+    }
+
+    /** Return footprint-local silkscreen, polarity, and pin-one markings. */
+    [[nodiscard]] const std::vector<FootprintMarking> &markings() const noexcept {
+        return package_geometry_.markings();
+    }
+
+    /** Return the complete package-level geometry payload. */
+    [[nodiscard]] const FootprintPackageGeometry &package_geometry() const noexcept {
+        return package_geometry_;
+    }
 
     /** Return the number of pads in the definition. */
     [[nodiscard]] std::size_t pad_count() const noexcept { return pads_.size(); }
@@ -281,8 +380,7 @@ class FootprintDefinition {
   private:
     FootprintRef ref_;
     std::vector<FootprintPad> pads_;
-    std::optional<FootprintPolygon> courtyard_;
-    std::optional<FootprintPolygon> body_;
+    FootprintPackageGeometry package_geometry_;
 };
 
 /** Small in-memory footprint library for built-ins and tests. */
@@ -368,9 +466,20 @@ front_smd_pad(std::string label, double x_mm, double y_mm, double width_mm, doub
                                                double diameter_mm, double drill_mm,
                                                FootprintPadMechanicalRole role);
 
-[[nodiscard]] FootprintDefinition two_terminal_smd_footprint(FootprintRef ref, double pad_span_mm,
-                                                             double pad_width_mm,
-                                                             double pad_height_mm);
+[[nodiscard]] FootprintPolygon rectangle_polygon(double width_mm, double height_mm);
+
+[[nodiscard]] FootprintPackageGeometry
+chip_smd_package_geometry(double body_length_mm, double body_width_mm, double courtyard_length_mm,
+                          double courtyard_width_mm, std::vector<FootprintMarking> markings = {});
+
+[[nodiscard]] FootprintMarking triangular_pin_one_mark(double x_mm, double y_mm, double size_mm);
+
+[[nodiscard]] FootprintMarking polarity_bar_mark(double x_mm, double y_mm, double width_mm,
+                                                 double height_mm);
+
+[[nodiscard]] FootprintDefinition
+two_terminal_smd_footprint(FootprintRef ref, double pad_span_mm, double pad_width_mm,
+                           double pad_height_mm, FootprintPackageGeometry geometry = {});
 
 [[nodiscard]] FootprintDefinition
 single_row_header_footprint(FootprintRef ref, std::size_t pin_count, double pitch_mm);

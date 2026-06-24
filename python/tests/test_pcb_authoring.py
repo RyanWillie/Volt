@@ -9,6 +9,19 @@ import volt
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _rectangle(width, height):
+    return (
+        (-width / 2.0, -height / 2.0),
+        (width / 2.0, -height / 2.0),
+        (width / 2.0, height / 2.0),
+        (-width / 2.0, height / 2.0),
+    )
+
+
+def _offset_rectangle(x, y, width, height):
+    return tuple((px + x, py + y) for px, py in _rectangle(width, height))
+
+
 def _small_resistor_led_design():
     design = volt.Design("pcb-led")
 
@@ -49,8 +62,25 @@ def _passive_0603(
     second_pad_layers="front_smd",
     courtyard=None,
     body=None,
+    fabrication_outline=None,
+    assembly_outline=None,
+    markings=None,
 ):
     half_span = pad_span / 2
+    if courtyard is None:
+        courtyard = _rectangle(2.50, 1.40)
+    if body is None:
+        body = _rectangle(1.60, 0.80)
+    if fabrication_outline is None:
+        fabrication_outline = _rectangle(1.60, 0.80)
+    if assembly_outline is None:
+        assembly_outline = _rectangle(1.60, 0.80)
+    if markings is None:
+        markings = ()
+        if tuple(ref) == ("leds", "LED_0603_1608Metric"):
+            markings = (
+                volt.FootprintMarking.polarity(_offset_rectangle(0.55, 0.0, 0.12, 0.60)),
+            )
     return volt.FootprintDefinition(
         ref,
         pads=(
@@ -70,6 +100,9 @@ def _passive_0603(
         ),
         courtyard=courtyard,
         body=body,
+        fabrication_outline=fabrication_outline,
+        assembly_outline=assembly_outline,
+        markings=markings,
     )
 
 
@@ -1892,11 +1925,21 @@ def test_python_board_authoring_surfaces_kernel_structural_rejections():
         board.add(volt.Text("REV A", at=(1.0, 1.0), layer=front, size=0.0))
 
 
-def test_python_board_auto_registers_object_owned_builtin_ref_footprint():
+def test_python_board_auto_registers_design_local_object_owned_footprint():
     footprint = _passive_0603(
-        ("passives", "R_0603_1608Metric"),
+        ("volt.test", "CustomR0603"),
         courtyard=((-1.2, -0.8), (1.2, -0.8), (1.2, 0.8), (-1.2, 0.8)),
         body=((-0.9, -0.5), (0.9, -0.5), (0.9, 0.5), (-0.9, 0.5)),
+        fabrication_outline=((-0.8, -0.4), (0.8, -0.4), (0.8, 0.4), (-0.8, 0.4)),
+        assembly_outline=((-1.0, -0.6), (1.0, -0.6), (1.0, 0.6), (-1.0, 0.6)),
+        markings=(
+            volt.FootprintMarking.silkscreen(
+                ((-1.1, -0.7), (1.1, -0.7), (1.1, -0.55), (-1.1, -0.55))
+            ),
+            volt.FootprintMarking.pin_1(
+                ((-1.0, -0.5), (-0.85, -0.5), (-1.0, -0.35))
+            ),
+        ),
     )
     library = volt.Library("volt.test")
     resistor = library.component(
@@ -1930,7 +1973,7 @@ def test_python_board_auto_registers_object_owned_builtin_ref_footprint():
     document = json.loads(board.to_json())
     definitions = document["board"]["footprint_definitions"]
     assert [definition["ref"] for definition in definitions] == [
-        {"library": "passives", "name": "R_0603_1608Metric"}
+        {"library": "volt.test", "name": "CustomR0603"}
     ]
     assert definitions[0]["courtyard"] == [
         [-1.2, -0.8],
@@ -1944,11 +1987,35 @@ def test_python_board_auto_registers_object_owned_builtin_ref_footprint():
         [0.9, 0.5],
         [-0.9, 0.5],
     ]
+    assert definitions[0]["fabrication_outline"] == [
+        [-0.8, -0.4],
+        [0.8, -0.4],
+        [0.8, 0.4],
+        [-0.8, 0.4],
+    ]
+    assert definitions[0]["assembly_outline"] == [
+        [-1.0, -0.6],
+        [1.0, -0.6],
+        [1.0, 0.6],
+        [-1.0, 0.6],
+    ]
+    assert definitions[0]["markings"] == [
+        {
+            "id": "footprint_marking:0",
+            "kind": "silkscreen",
+            "polygon": [[-1.1, -0.7], [1.1, -0.7], [1.1, -0.55], [-1.1, -0.55]],
+        },
+        {
+            "id": "footprint_marking:1",
+            "kind": "pin_1",
+            "polygon": [[-1.0, -0.5], [-0.85, -0.5], [-1.0, -0.35]],
+        },
+    ]
     assert document["board"]["placements"][0]["footprint"] == "footprint_def:0"
     assert len(document["viewer"]["pad_resolutions"]) == 2
 
     svg = board.to_svg()
-    assert 'data-footprint="passives:R_0603_1608Metric"' in svg
+    assert 'data-footprint="volt.test:CustomR0603"' in svg
     assert 'class="footprint-pad' in svg
 
 
@@ -2164,7 +2231,10 @@ def test_python_board_dedupes_object_owned_footprints_and_rejects_conflicts():
 
 
 def test_python_board_rejects_object_owned_footprint_conflicting_with_builtin():
-    footprint = _passive_0603(("passives", "R_0603_1608Metric"), pad_span=1.9)
+    footprint = _passive_0603(
+        ("passives", "R_0603_1608Metric"),
+        body=((-0.6, -0.4), (0.6, -0.4), (0.6, 0.4), (-0.6, 0.4)),
+    )
     library = volt.Library("volt.test")
     resistor = library.component(
         "BuiltinConflict",

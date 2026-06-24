@@ -25,7 +25,25 @@ def _require_clean(result: volt.ProjectResult) -> None:
         raise RuntimeError("PCB LED board example validation failed: " + details)
 
 
-def _passive_0603(ref: tuple[str, str]) -> volt.FootprintDefinition:
+def _rectangle(width: float, height: float) -> tuple[tuple[float, float], ...]:
+    return (
+        (-width / 2.0, -height / 2.0),
+        (width / 2.0, -height / 2.0),
+        (width / 2.0, height / 2.0),
+        (-width / 2.0, height / 2.0),
+    )
+
+
+def _offset_rectangle(
+    x: float, y: float, width: float, height: float
+) -> tuple[tuple[float, float], ...]:
+    return tuple((px + x, py + y) for px, py in _rectangle(width, height))
+
+
+def _passive_0603(ref: tuple[str, str], *, polarity: bool = False) -> volt.FootprintDefinition:
+    markings = ()
+    if polarity:
+        markings = (volt.FootprintMarking.polarity(_offset_rectangle(0.55, 0.0, 0.12, 0.60)),)
     return volt.FootprintDefinition(
         ref,
         pads=(
@@ -36,6 +54,11 @@ def _passive_0603(ref: tuple[str, str]) -> volt.FootprintDefinition:
                 "2", at=(0.75, 0.0), size=(0.80, 0.95), shape="rounded_rectangle"
             ),
         ),
+        courtyard=_rectangle(2.50, 1.40),
+        body=_rectangle(1.60, 0.80),
+        fabrication_outline=_rectangle(1.60, 0.80),
+        assembly_outline=_rectangle(1.60, 0.80),
+        markings=markings,
     )
 
 
@@ -100,7 +123,7 @@ def build_design() -> tuple[volt.Design, dict[str, volt.Net], dict[str, volt.Com
         manufacturer="Lite-On",
         part_number="LTST-C190KRKT",
         package="0603",
-        footprint=_passive_0603(("leds", "LED_0603_1608Metric")),
+        footprint=_passive_0603(("leds", "LED_0603_1608Metric"), polarity=True),
         pin_pads={"A": "1", "K": "2"},
     )
     for part in parts.values():

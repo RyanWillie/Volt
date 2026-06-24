@@ -319,13 +319,34 @@ class PadResolution {
     PadResolutionStatus status_;
 };
 
-/** Derived board-space footprint body/courtyard geometry for one placement. */
+/** Derived board-space non-pad footprint marking geometry. */
+class ProjectedFootprintMarking {
+  public:
+    /** Construct a projected footprint marking. */
+    ProjectedFootprintMarking(FootprintMarkingKind kind, std::vector<BoardPoint> polygon);
+
+    /** Return the marking semantics. */
+    [[nodiscard]] FootprintMarkingKind kind() const noexcept { return kind_; }
+
+    /** Return the board-space marking polygon. */
+    [[nodiscard]] const std::vector<BoardPoint> &polygon() const noexcept { return polygon_; }
+
+  private:
+    FootprintMarkingKind kind_;
+    std::vector<BoardPoint> polygon_;
+};
+
+/** Derived board-space footprint package geometry for one placement. */
 class ProjectedFootprintGeometry {
   public:
     /** Construct projected footprint geometry for a placed component. */
-    ProjectedFootprintGeometry(ComponentPlacementId placement, ComponentId component,
-                               BoardSide side, std::optional<std::vector<BoardPoint>> courtyard,
-                               std::optional<std::vector<BoardPoint>> body);
+    ProjectedFootprintGeometry(
+        ComponentPlacementId placement, ComponentId component, BoardSide side,
+        std::optional<std::vector<BoardPoint>> courtyard,
+        std::optional<std::vector<BoardPoint>> body,
+        std::optional<std::vector<BoardPoint>> fabrication_outline = std::nullopt,
+        std::optional<std::vector<BoardPoint>> assembly_outline = std::nullopt,
+        std::vector<ProjectedFootprintMarking> markings = {});
 
     /** Return the placement that owns this projected geometry. */
     [[nodiscard]] ComponentPlacementId placement() const noexcept { return placement_; }
@@ -341,9 +362,25 @@ class ProjectedFootprintGeometry {
         return courtyard_;
     }
 
-    /** Return the optional board-space body or silk-outline polygon. */
+    /** Return the optional board-space package body envelope polygon. */
     [[nodiscard]] const std::optional<std::vector<BoardPoint>> &body() const noexcept {
         return body_;
+    }
+
+    /** Return the optional board-space fabrication outline polygon. */
+    [[nodiscard]] const std::optional<std::vector<BoardPoint>> &
+    fabrication_outline() const noexcept {
+        return fabrication_outline_;
+    }
+
+    /** Return the optional board-space assembly outline polygon. */
+    [[nodiscard]] const std::optional<std::vector<BoardPoint>> &assembly_outline() const noexcept {
+        return assembly_outline_;
+    }
+
+    /** Return board-space silkscreen, polarity, and pin-one markings. */
+    [[nodiscard]] const std::vector<ProjectedFootprintMarking> &markings() const noexcept {
+        return markings_;
     }
 
   private:
@@ -352,6 +389,9 @@ class ProjectedFootprintGeometry {
     BoardSide side_;
     std::optional<std::vector<BoardPoint>> courtyard_;
     std::optional<std::vector<BoardPoint>> body_;
+    std::optional<std::vector<BoardPoint>> fabrication_outline_;
+    std::optional<std::vector<BoardPoint>> assembly_outline_;
+    std::vector<ProjectedFootprintMarking> markings_;
 };
 
 /** Stable endpoint of a derived ratsnest edge. */

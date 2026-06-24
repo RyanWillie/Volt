@@ -143,6 +143,51 @@ void write_footprint_polygon(std::ostream &out, std::string_view name,
     out << "      ]";
 }
 
+[[nodiscard]] std::string_view part_footprint_marking_kind_name(PartFootprintMarkingKind kind) {
+    switch (kind) {
+    case PartFootprintMarkingKind::Silkscreen:
+        return "silkscreen";
+    case PartFootprintMarkingKind::Polarity:
+        return "polarity";
+    case PartFootprintMarkingKind::PinOne:
+        return "pin_1";
+    }
+    throw std::logic_error{"Unhandled part footprint marking kind"};
+}
+
+void write_footprint_marking(std::ostream &out, const PartFootprintMarking &marking) {
+    out << "        { \"kind\": "
+        << detail::json_string(part_footprint_marking_kind_name(marking.kind()))
+        << ", \"polygon\": [\n";
+    for (std::size_t index = 0; index < marking.polygon().vertices().size(); ++index) {
+        const auto point = marking.polygon().vertices()[index];
+        out << "          { \"x_mm\": ";
+        detail::write_json_number(out, point.x_mm());
+        out << ", \"y_mm\": ";
+        detail::write_json_number(out, point.y_mm());
+        out << " }";
+        if (index + 1U != marking.polygon().vertices().size()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "        ] }";
+}
+
+void write_footprint_markings(std::ostream &out,
+                              const std::vector<PartFootprintMarking> &markings) {
+    out << ",\n";
+    out << "      \"markings\": [\n";
+    for (std::size_t index = 0; index < markings.size(); ++index) {
+        write_footprint_marking(out, markings[index]);
+        if (index + 1U != markings.size()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "      ]";
+}
+
 void write_model_3d(std::ostream &out, const PartModel3DReference &model) {
     out << "    \"model_3d\": {\n";
     out << "      \"format\": " << detail::json_string(model.format()) << ",\n";
@@ -179,6 +224,16 @@ void write_orderable_part(std::ostream &out, const OrderablePart &part) {
     }
     if (part.footprint_body().has_value()) {
         write_footprint_polygon(out, "body", part.footprint_body().value());
+    }
+    if (part.footprint_fabrication_outline().has_value()) {
+        write_footprint_polygon(out, "fabrication_outline",
+                                part.footprint_fabrication_outline().value());
+    }
+    if (part.footprint_assembly_outline().has_value()) {
+        write_footprint_polygon(out, "assembly_outline", part.footprint_assembly_outline().value());
+    }
+    if (!part.footprint_markings().empty()) {
+        write_footprint_markings(out, part.footprint_markings());
     }
     out << '\n';
     out << "    },\n";

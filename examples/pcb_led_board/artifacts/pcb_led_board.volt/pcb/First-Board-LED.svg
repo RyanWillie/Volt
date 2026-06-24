@@ -9,6 +9,10 @@
     .board-feature-label,.reference-designator,.pad-net-label,.diagnostic-label{font:1.8px sans-serif;fill:#172026}
     .footprint-courtyard{fill:none;stroke:#64748b;stroke-width:0.12;stroke-dasharray:0.7 0.45}
     .footprint-body.declared{fill:#fff8db;stroke:#8a6a16;stroke-width:0.18}
+    .footprint-fabrication.declared{fill:none;stroke:#475569;stroke-width:0.1}
+    .footprint-assembly.declared{fill:none;stroke:#7c3aed;stroke-width:0.1;stroke-dasharray:0.55 0.35}
+    .footprint-marking.declared{fill:#172026;fill-opacity:0.45;stroke:#172026;stroke-width:0.08}
+    .footprint-marking.kind-pin_1,.footprint-marking.kind-polarity{fill:#b42318;stroke:#7a271a}
     .footprint-envelope.synthetic{fill:#fff8db;fill-opacity:0.24;stroke:#8a6a16;stroke-width:0.18;stroke-dasharray:0.9 0.55}
     .footprint-pad{fill:#d99822;stroke:#5a3a08;stroke-width:0.14}
     .pad-overlay{fill:#175cd3;stroke:#ffffff;stroke-width:0.12}
@@ -43,18 +47,25 @@
         <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:0:1" data-pad="footprint_pad:1" data-pin="pin:1" data-net="net:2" cx="0" cy="1.27" r="0.85"/>
       </g>
       <text class="reference-designator" data-placement="component_placement:0" data-component="component:0" x="5" y="5.38" text-anchor="middle">J1</text>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:1" data-component="component:1" points="13.75,6.3 16.25,6.3 16.25,7.7 13.75,7.7"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:1" data-component="component:1" points="14.2,6.6 15.8,6.6 15.8,7.4 14.2,7.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:1" data-component="component:1" points="14.2,6.6 15.8,6.6 15.8,7.4 14.2,7.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:1" data-component="component:1" points="14.2,6.6 15.8,6.6 15.8,7.4 14.2,7.4"/>
       <g class="component-placement top" data-placement="component_placement:1" data-component="component:1" data-footprint-def="footprint_def:1" data-footprint="passives:R_0603_1608Metric" transform="translate(15 7) rotate(0)">
-        <rect class="footprint-envelope synthetic" x="-1.65" y="-0.975" width="3.3" height="1.95"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:1:0" data-pad="footprint_pad:0" data-pin="pin:2" data-net="net:0" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:1:1" data-pad="footprint_pad:1" data-pin="pin:3" data-net="net:1" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-placement="component_placement:1" data-component="component:1" x="15" y="5.025" text-anchor="middle">R1</text>
+      <text class="reference-designator" data-placement="component_placement:1" data-component="component:1" x="15" y="5.3" text-anchor="middle">R1</text>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:2" data-component="component:2" points="25.25,7.7 22.75,7.7 22.75,6.3 25.25,6.3"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:2" data-component="component:2" points="24.8,7.4 23.2,7.4 23.2,6.6 24.8,6.6"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:2" data-component="component:2" points="24.8,7.4 23.2,7.4 23.2,6.6 24.8,6.6"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:2" data-component="component:2" points="24.8,7.4 23.2,7.4 23.2,6.6 24.8,6.6"/>
+      <polygon class="footprint-marking declared kind-polarity" data-placement="component_placement:2" data-component="component:2" data-marking="footprint_marking:0" points="23.51,7.3 23.39,7.3 23.39,6.7 23.51,6.7"/>
       <g class="component-placement top" data-placement="component_placement:2" data-component="component:2" data-footprint-def="footprint_def:2" data-footprint="leds:LED_0603_1608Metric" transform="translate(24 7) rotate(180)">
-        <rect class="footprint-envelope synthetic" x="-1.65" y="-0.975" width="3.3" height="1.95"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:0" data-pad="footprint_pad:0" data-pin="pin:4" data-net="net:1" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:1" data-pad="footprint_pad:1" data-pin="pin:5" data-net="net:2" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-placement="component_placement:2" data-component="component:2" x="24" y="8.975" text-anchor="middle">D1</text>
+      <text class="reference-designator" data-placement="component_placement:2" data-component="component:2" x="24" y="8.7" text-anchor="middle">D1</text>
     </g>
     <g class="layer layer-ratsnest">
       <line id="ratsnest-edge-net-0-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:0:0" data-net="net:0" data-from-pad="pcb_pad:0:0" data-to-pad="pcb_pad:1:0" x1="5" y1="7.73" x2="14.25" y2="7"/>

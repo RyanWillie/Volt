@@ -138,6 +138,10 @@ template <> struct LocalIdPrefix<FootprintPadId> {
     static constexpr auto value = std::string_view{"footprint_pad:"};
 };
 
+template <> struct LocalIdPrefix<FootprintMarkingId> {
+    static constexpr auto value = std::string_view{"footprint_marking:"};
+};
+
 template <> struct LocalIdPrefix<ComponentPlacementId> {
     static constexpr auto value = std::string_view{"component_placement:"};
 };

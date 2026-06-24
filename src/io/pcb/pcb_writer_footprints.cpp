@@ -21,6 +21,26 @@ void write_footprint_polygon(std::ostream &out, const FootprintPolygon &polygon)
     out << ']';
 }
 
+void write_footprint_marking(std::ostream &out, FootprintMarkingId marking_id,
+                             const FootprintMarking &marking) {
+    out << "{\"id\": " << json_string(encode_local_id(marking_id))
+        << ", \"kind\": " << json_string(footprint_marking_kind_name(marking.kind()))
+        << ", \"polygon\": ";
+    write_footprint_polygon(out, marking.polygon());
+    out << '}';
+}
+
+void write_footprint_markings(std::ostream &out, const std::vector<FootprintMarking> &markings) {
+    out << '[';
+    for (std::size_t index = 0; index < markings.size(); ++index) {
+        if (index != 0U) {
+            out << ", ";
+        }
+        write_footprint_marking(out, FootprintMarkingId{index}, markings[index]);
+    }
+    out << ']';
+}
+
 void write_footprint_size(std::ostream &out, FootprintSize size) {
     out << '[';
     write_number(out, size.width_mm());
@@ -122,6 +142,21 @@ void write_footprint_definitions(std::ostream &out,
             out << ",\n";
             out << "        \"body\": ";
             write_footprint_polygon(out, definition.body().value());
+        }
+        if (definition.fabrication_outline().has_value()) {
+            out << ",\n";
+            out << "        \"fabrication_outline\": ";
+            write_footprint_polygon(out, definition.fabrication_outline().value());
+        }
+        if (definition.assembly_outline().has_value()) {
+            out << ",\n";
+            out << "        \"assembly_outline\": ";
+            write_footprint_polygon(out, definition.assembly_outline().value());
+        }
+        if (!definition.markings().empty()) {
+            out << ",\n";
+            out << "        \"markings\": ";
+            write_footprint_markings(out, definition.markings());
         }
         out << '\n';
         out << "      }";

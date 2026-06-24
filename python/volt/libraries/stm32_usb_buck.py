@@ -5,6 +5,7 @@ from __future__ import annotations
 from volt import (
     Footprint,
     FootprintDrill,
+    FootprintMarking,
     FootprintPad,
     Library,
     PhysicalPartSpec,
@@ -65,20 +66,44 @@ def _front_smd_pad(
     return FootprintPad.surface_mount(label, at=(x, y), size=(width, height), shape=shape)
 
 
+def _rectangle(width: float, height: float) -> tuple[tuple[float, float], ...]:
+    return (
+        (-width / 2.0, -height / 2.0),
+        (width / 2.0, -height / 2.0),
+        (width / 2.0, height / 2.0),
+        (-width / 2.0, height / 2.0),
+    )
+
+
+def _offset_rectangle(
+    x: float, y: float, width: float, height: float
+) -> tuple[tuple[float, float], ...]:
+    return tuple((px + x, py + y) for px, py in _rectangle(width, height))
+
+
 def _two_terminal_smd_footprint(
     ref: tuple[str, str],
     *,
     pad_span: float,
     pad_width: float,
     pad_height: float,
+    body_size: tuple[float, float] = (1.60, 0.80),
+    courtyard_size: tuple[float, float] = (2.50, 1.40),
+    markings: tuple[FootprintMarking, ...] = (),
 ) -> Footprint:
     half_span = pad_span / 2.0
+    body = _rectangle(*body_size)
     return Footprint(
         ref,
         pads=(
             _front_smd_pad("1", -half_span, 0.0, pad_width, pad_height),
             _front_smd_pad("2", half_span, 0.0, pad_width, pad_height),
         ),
+        courtyard=_rectangle(*courtyard_size),
+        body=body,
+        fabrication_outline=body,
+        assembly_outline=body,
+        markings=markings,
     )
 
 
@@ -297,6 +322,9 @@ DIODE_SOD_123_FOOTPRINT = _two_terminal_smd_footprint(
     pad_span=3.70,
     pad_width=1.20,
     pad_height=1.35,
+    body_size=(3.70, 1.60),
+    courtyard_size=(5.10, 2.30),
+    markings=(FootprintMarking.polarity(_offset_rectangle(1.45, 0.0, 0.18, 1.15)),),
 )
 RESISTOR_0603_FOOTPRINT = _two_terminal_smd_footprint(
     ("passives", "R_0603_1608Metric"),

@@ -116,7 +116,7 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
 
     CHECK(first == second);
     CHECK(document["format"] == "volt.pcb");
-    CHECK(document["version"] == 2);
+    CHECK(document["version"] == 3);
     CHECK(document["board"]["id"] == "board:0");
     CHECK(document["board"]["name"] == "Control");
     CHECK(document["board"]["units"] == "mm");
@@ -187,7 +187,7 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["viewer"]["diagnostics"] == nlohmann::json::array());
 }
 
-TEST_CASE("PCB projection writer and reader round-trip footprint courtyard and body geometry") {
+TEST_CASE("PCB projection writer and reader round-trip footprint package geometry") {
     const auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit, volt::BoardName{"Control"}};
     board.set_outline(
@@ -202,18 +202,47 @@ TEST_CASE("PCB projection writer and reader round-trip footprint courtyard and b
                 "2", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.75, 0.0},
                 volt::FootprintSize{0.8, 0.95}, volt::FootprintLayerSet::front_smd()),
         },
-        volt::FootprintPolygon{std::vector{
-            volt::FootprintPoint{-1.2, -0.8},
-            volt::FootprintPoint{1.2, -0.8},
-            volt::FootprintPoint{1.2, 0.8},
-            volt::FootprintPoint{-1.2, 0.8},
-        }},
-        volt::FootprintPolygon{std::vector{
-            volt::FootprintPoint{-0.9, -0.5},
-            volt::FootprintPoint{0.9, -0.5},
-            volt::FootprintPoint{0.9, 0.5},
-            volt::FootprintPoint{-0.9, 0.5},
-        }},
+        volt::FootprintPackageGeometry{
+            volt::FootprintPolygon{std::vector{
+                volt::FootprintPoint{-1.2, -0.8},
+                volt::FootprintPoint{1.2, -0.8},
+                volt::FootprintPoint{1.2, 0.8},
+                volt::FootprintPoint{-1.2, 0.8},
+            }},
+            volt::FootprintPolygon{std::vector{
+                volt::FootprintPoint{-0.9, -0.5},
+                volt::FootprintPoint{0.9, -0.5},
+                volt::FootprintPoint{0.9, 0.5},
+                volt::FootprintPoint{-0.9, 0.5},
+            }},
+            volt::FootprintPolygon{std::vector{
+                volt::FootprintPoint{-0.8, -0.4},
+                volt::FootprintPoint{0.8, -0.4},
+                volt::FootprintPoint{0.8, 0.4},
+                volt::FootprintPoint{-0.8, 0.4},
+            }},
+            volt::FootprintPolygon{std::vector{
+                volt::FootprintPoint{-1.0, -0.6},
+                volt::FootprintPoint{1.0, -0.6},
+                volt::FootprintPoint{1.0, 0.6},
+                volt::FootprintPoint{-1.0, 0.6},
+            }},
+            std::vector{
+                volt::FootprintMarking{volt::FootprintMarkingKind::Silkscreen,
+                                       volt::FootprintPolygon{std::vector{
+                                           volt::FootprintPoint{-1.1, -0.7},
+                                           volt::FootprintPoint{1.1, -0.7},
+                                           volt::FootprintPoint{1.1, -0.55},
+                                           volt::FootprintPoint{-1.1, -0.55},
+                                       }}},
+                volt::FootprintMarking{volt::FootprintMarkingKind::PinOne,
+                                       volt::FootprintPolygon{std::vector{
+                                           volt::FootprintPoint{-1.0, -0.5},
+                                           volt::FootprintPoint{-0.85, -0.5},
+                                           volt::FootprintPoint{-1.0, -0.35},
+                                       }}},
+            },
+        },
     };
     static_cast<void>(board.cache_footprint_definition(footprint));
     static_cast<void>(board.place_component(volt::ComponentPlacement{
@@ -232,6 +261,21 @@ TEST_CASE("PCB projection writer and reader round-trip footprint courtyard and b
           nlohmann::json::array(
               {nlohmann::json::array({-0.9, -0.5}), nlohmann::json::array({0.9, -0.5}),
                nlohmann::json::array({0.9, 0.5}), nlohmann::json::array({-0.9, 0.5})}));
+    CHECK(definition["fabrication_outline"] ==
+          nlohmann::json::array(
+              {nlohmann::json::array({-0.8, -0.4}), nlohmann::json::array({0.8, -0.4}),
+               nlohmann::json::array({0.8, 0.4}), nlohmann::json::array({-0.8, 0.4})}));
+    CHECK(definition["assembly_outline"] ==
+          nlohmann::json::array(
+              {nlohmann::json::array({-1.0, -0.6}), nlohmann::json::array({1.0, -0.6}),
+               nlohmann::json::array({1.0, 0.6}), nlohmann::json::array({-1.0, 0.6})}));
+    REQUIRE(definition["markings"].size() == 2);
+    CHECK(definition["markings"][0]["id"] == "footprint_marking:0");
+    CHECK(definition["markings"][0]["kind"] == "silkscreen");
+    CHECK(definition["markings"][0]["polygon"][1] == nlohmann::json::array({1.1, -0.7}));
+    CHECK(definition["markings"][1]["id"] == "footprint_marking:1");
+    CHECK(definition["markings"][1]["kind"] == "pin_1");
+    CHECK(definition["markings"][1]["polygon"][2] == nlohmann::json::array({-1.0, -0.35}));
 
     const auto restored = volt::io::read_pcb_board_text(fixture.circuit, text);
 
@@ -239,12 +283,32 @@ TEST_CASE("PCB projection writer and reader round-trip footprint courtyard and b
     REQUIRE(restored.footprint_definition(volt::FootprintDefId{0}).courtyard().has_value());
     CHECK(restored.footprint_definition(volt::FootprintDefId{0}).courtyard()->vertices()[1] ==
           volt::FootprintPoint{1.2, -0.8});
+    REQUIRE(
+        restored.footprint_definition(volt::FootprintDefId{0}).fabrication_outline().has_value());
+    CHECK(restored.footprint_definition(volt::FootprintDefId{0})
+              .fabrication_outline()
+              ->vertices()[2] == volt::FootprintPoint{0.8, 0.4});
+    REQUIRE(restored.footprint_definition(volt::FootprintDefId{0}).markings().size() == 2);
+    CHECK(restored.footprint_definition(volt::FootprintDefId{0}).markings()[1].kind() ==
+          volt::FootprintMarkingKind::PinOne);
 
     auto closed_courtyard = document;
     closed_courtyard["board"]["footprint_definitions"][0]["courtyard"].push_back(
         closed_courtyard["board"]["footprint_definitions"][0]["courtyard"][0]);
     CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, closed_courtyard.dump()),
                     std::invalid_argument);
+
+    auto closed_marking = document;
+    closed_marking["board"]["footprint_definitions"][0]["markings"][1]["polygon"].push_back(
+        closed_marking["board"]["footprint_definitions"][0]["markings"][1]["polygon"][0]);
+    CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, closed_marking.dump()),
+                    std::invalid_argument);
+
+    auto non_sequential_marking = document;
+    non_sequential_marking["board"]["footprint_definitions"][0]["markings"][1]["id"] =
+        "footprint_marking:4";
+    CHECK_THROWS_AS(volt::io::read_pcb_board_text(fixture.circuit, non_sequential_marking.dump()),
+                    std::logic_error);
 }
 
 TEST_CASE("PCB projection writer and reader round-trip generic board features") {
