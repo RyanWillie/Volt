@@ -74,6 +74,10 @@ inline constexpr auto CopperClearanceViolation = std::string_view{"PCB_COPPER_CL
 inline constexpr auto ComponentBodyOverlap = std::string_view{"PCB_COMPONENT_BODY_OVERLAP"};
 inline constexpr auto ComponentCourtyardOverlap =
     std::string_view{"PCB_COMPONENT_COURTYARD_OVERLAP"};
+inline constexpr auto ComponentAssemblyClearanceWarning =
+    std::string_view{"PCB_COMPONENT_ASSEMBLY_CLEARANCE_WARNING"};
+inline constexpr auto ComponentBoardEdgeClearanceViolation =
+    std::string_view{"PCB_COMPONENT_BOARD_EDGE_CLEARANCE_VIOLATION"};
 inline constexpr auto KeepoutCopperViolation = std::string_view{"PCB_KEEPOUT_COPPER_VIOLATION"};
 inline constexpr auto KeepoutViaViolation = std::string_view{"PCB_KEEPOUT_VIA_VIOLATION"};
 inline constexpr auto KeepoutPlacementViolation =
@@ -111,6 +115,7 @@ inline constexpr auto ReferenceDesignatorHidden =
 inline constexpr auto ReferenceDesignatorUnreadable =
     std::string_view{"PCB_VISUAL_REFERENCE_DESIGNATOR_UNREADABLE"};
 inline constexpr auto LabelOverlap = std::string_view{"PCB_VISUAL_LABEL_OVERLAP"};
+inline constexpr auto LabelObstruction = std::string_view{"PCB_VISUAL_LABEL_OBSTRUCTION"};
 inline constexpr auto LabelOutsideBoard = std::string_view{"PCB_VISUAL_LABEL_OUTSIDE_BOARD"};
 inline constexpr auto RouteReadabilityConflict =
     std::string_view{"PCB_VISUAL_ROUTE_READABILITY_CONFLICT"};
@@ -185,6 +190,8 @@ inline constexpr auto Drc = std::array{drc_diagnostic_codes::TrackWidthBelowMini
                                        drc_diagnostic_codes::CopperClearanceViolation,
                                        drc_diagnostic_codes::ComponentBodyOverlap,
                                        drc_diagnostic_codes::ComponentCourtyardOverlap,
+                                       drc_diagnostic_codes::ComponentAssemblyClearanceWarning,
+                                       drc_diagnostic_codes::ComponentBoardEdgeClearanceViolation,
                                        drc_diagnostic_codes::KeepoutCopperViolation,
                                        drc_diagnostic_codes::KeepoutViaViolation,
                                        drc_diagnostic_codes::KeepoutPlacementViolation,
@@ -208,6 +215,7 @@ inline constexpr auto PcbVisual =
                pcb_visual_diagnostic_codes::ReferenceDesignatorHidden,
                pcb_visual_diagnostic_codes::ReferenceDesignatorUnreadable,
                pcb_visual_diagnostic_codes::LabelOverlap,
+               pcb_visual_diagnostic_codes::LabelObstruction,
                pcb_visual_diagnostic_codes::LabelOutsideBoard,
                pcb_visual_diagnostic_codes::RouteReadabilityConflict,
                pcb_visual_diagnostic_codes::BoardFeatureAnnotationMissing};

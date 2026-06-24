@@ -1248,7 +1248,7 @@ TEST_CASE("Board DRC reports component body and courtyard overlaps with clean pa
                       volt::DiagnosticPoint{11.5, 11.0}, volt::DiagnosticPoint{8.5, 11.0}});
     CHECK(body->overlays()[1].kind() == volt::DiagnosticOverlayKind::Polygon);
     CHECK(body->overlays()[1].layers() == std::vector{front});
-    CHECK_FALSE(body->measurement().has_value());
+    CHECK(body->measurement() == volt::DiagnosticMeasurement{0.0, 0.0});
 
     const auto *courtyard = find_diagnostic(report, "PCB_COMPONENT_COURTYARD_OVERLAP");
     REQUIRE(courtyard != nullptr);
@@ -1264,6 +1264,7 @@ TEST_CASE("Board DRC reports component body and courtyard overlaps with clean pa
     CHECK(courtyard->overlays()[0].layers() == std::vector{front});
     CHECK(courtyard->overlays()[1].kind() == volt::DiagnosticOverlayKind::Polygon);
     CHECK(courtyard->overlays()[1].layers() == std::vector{front});
+    CHECK(courtyard->measurement() == volt::DiagnosticMeasurement{0.0, 0.0});
 }
 
 TEST_CASE("Board DRC accepts spaced component body and courtyard geometry") {

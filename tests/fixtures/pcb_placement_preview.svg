@@ -29,15 +29,29 @@
     <g id="pcb-layer-B_Cu" class="pcb-layer board-layer layer-B_Cu" data-layer="board_layer:1" data-layer-name="B.Cu" data-layer-role="copper" data-layer-side="bottom">
     </g>
     <g class="layer layer-footprints">
+      <g class="layer layer-package-courtyards">
       <polygon class="footprint-courtyard declared" data-placement="component_placement:0" data-component="component:0" points="25.7,13.75 25.7,16.25 24.3,16.25 24.3,13.75"/>
+      </g>
+      <g class="layer layer-package-bodies">
       <polygon class="footprint-body declared" data-placement="component_placement:0" data-component="component:0" points="25.4,14.2 25.4,15.8 24.6,15.8 24.6,14.2"/>
+      </g>
+      <g class="layer layer-package-fabrication">
       <polygon class="footprint-fabrication declared" data-placement="component_placement:0" data-component="component:0" points="25.4,14.2 25.4,15.8 24.6,15.8 24.6,14.2"/>
+      </g>
+      <g class="layer layer-package-assembly">
       <polygon class="footprint-assembly declared" data-placement="component_placement:0" data-component="component:0" points="25.4,14.2 25.4,15.8 24.6,15.8 24.6,14.2"/>
+      </g>
+      <g class="layer layer-silkscreen">
+      </g>
+      <g class="layer layer-pads">
       <g class="component-placement top locked" data-placement="component_placement:0" data-component="component:0" data-footprint-def="footprint_def:0" data-footprint="passives:R_0603_1608Metric" transform="translate(25 15) rotate(90)">
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:0:0" data-pad="footprint_pad:0" data-pin="pin:0" data-net="net:0" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:0:1" data-pad="footprint_pad:1" data-pin="pin:1" data-net="net:1" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
       </g>
+      </g>
+      <g class="layer layer-reference-designators">
       <text class="reference-designator" data-placement="component_placement:0" data-component="component:0" x="26.7" y="15" text-anchor="middle">R1</text>
+      </g>
     </g>
     <g class="layer layer-ratsnest">
     </g>

@@ -3,6 +3,8 @@
 #include "../capabilities/board_capability_profile_io.hpp"
 #include "../detail/entity_ref_format.hpp"
 
+#include <array>
+#include <string_view>
 #include <variant>
 
 #include <volt/pcb/projection/board_geometry_projection.hpp>
@@ -706,7 +708,47 @@ void write_diagnostic(std::ostream &out, const Diagnostic &diagnostic) {
     } else {
         out << "null";
     }
+    out << ", \"rule\": ";
+    if (diagnostic.rule().has_value()) {
+        out << json_string(diagnostic.rule().value());
+    } else {
+        out << "null";
+    }
     out << '}';
+}
+
+void write_viewer_layers(std::ostream &out) {
+    struct ViewerLayer {
+        std::string_view id;
+        std::string_view kind;
+        std::string_view name;
+    };
+
+    constexpr auto layers = std::array{
+        ViewerLayer{"viewer_layer:board_outline", "board_outline", "Board outline"},
+        ViewerLayer{"viewer_layer:copper", "copper", "Copper"},
+        ViewerLayer{"viewer_layer:pads", "pads", "Pads"},
+        ViewerLayer{"viewer_layer:package_bodies", "package_bodies", "Package bodies"},
+        ViewerLayer{"viewer_layer:package_courtyards", "package_courtyards", "Package courtyards"},
+        ViewerLayer{"viewer_layer:package_fabrication", "package_fabrication",
+                    "Fabrication outlines"},
+        ViewerLayer{"viewer_layer:package_assembly", "package_assembly", "Assembly outlines"},
+        ViewerLayer{"viewer_layer:annotations", "annotations", "Annotations"},
+        ViewerLayer{"viewer_layer:diagnostics", "diagnostics", "Diagnostics"},
+    };
+
+    out << "    \"layers\": [\n";
+    for (std::size_t index = 0; index < layers.size(); ++index) {
+        const auto &layer = layers[index];
+        out << "      {\"id\": " << json_string(layer.id)
+            << ", \"kind\": " << json_string(layer.kind)
+            << ", \"name\": " << json_string(layer.name) << '}';
+        if (index + 1U != layers.size()) {
+            out << ',';
+        }
+        out << '\n';
+    }
+    out << "    ],\n";
 }
 
 void write_viewer(std::ostream &out, const Board &board,
@@ -716,6 +758,7 @@ void write_viewer(std::ostream &out, const Board &board,
     const auto diagnostics = validate_board(board, footprint_library);
 
     out << "  \"viewer\": {\n";
+    write_viewer_layers(out);
     out << "    \"pad_resolutions\": [\n";
     for (std::size_t index = 0; index < resolutions.size(); ++index) {
         const auto &resolution = resolutions[index];

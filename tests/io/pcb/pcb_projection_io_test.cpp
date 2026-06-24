@@ -184,6 +184,17 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["viewer"]["pad_resolutions"][0]["geometry"]["shape"] == "rounded_rectangle");
     CHECK(document["viewer"]["pad_resolutions"][0]["geometry"]["layers"] ==
           nlohmann::json::array({"front_copper", "front_solder_mask", "front_paste"}));
+    REQUIRE(document["viewer"]["layers"].size() == 9);
+    CHECK(document["viewer"]["layers"][0]["id"] == "viewer_layer:board_outline");
+    CHECK(document["viewer"]["layers"][0]["kind"] == "board_outline");
+    CHECK(document["viewer"]["layers"][1]["id"] == "viewer_layer:copper");
+    CHECK(document["viewer"]["layers"][2]["id"] == "viewer_layer:pads");
+    CHECK(document["viewer"]["layers"][3]["id"] == "viewer_layer:package_bodies");
+    CHECK(document["viewer"]["layers"][4]["id"] == "viewer_layer:package_courtyards");
+    CHECK(document["viewer"]["layers"][5]["id"] == "viewer_layer:package_fabrication");
+    CHECK(document["viewer"]["layers"][6]["id"] == "viewer_layer:package_assembly");
+    CHECK(document["viewer"]["layers"][7]["id"] == "viewer_layer:annotations");
+    CHECK(document["viewer"]["layers"][8]["id"] == "viewer_layer:diagnostics");
     CHECK(document["viewer"]["diagnostics"] == nlohmann::json::array());
 }
 
@@ -804,6 +815,8 @@ TEST_CASE("PCB projection writer serializes overlay-ready diagnostic geometry") 
                                                          volt::DiagnosticPoint{2.0, 2.0}},
                                              {}, std::vector{volt::BoardLayerId{0}}),
         },
+        std::nullopt,
+        "reference-designator-obstruction",
     };
 
     auto out = std::ostringstream{};
@@ -822,6 +835,7 @@ TEST_CASE("PCB projection writer serializes overlay-ready diagnostic geometry") 
     CHECK(payload["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
     CHECK(payload["overlays"][1]["kind"] == "point");
     CHECK(payload["overlays"][2]["kind"] == "polygon");
+    CHECK(payload["rule"] == "reference-designator-obstruction");
 }
 
 TEST_CASE("PCB projection writer serializes emitted PCB visual placement diagnostics") {

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -26,6 +27,26 @@ struct TextVisualExtent {
     BoardLayerId layer;
     BoardLayerSide side;
     std::string value;
+    std::vector<BoardPoint> corners;
+    DiagnosticPoint min;
+    DiagnosticPoint max;
+};
+
+struct PadVisualGeometry {
+    ComponentPlacementId placement;
+    ComponentId component;
+    FootprintPadId pad;
+    BoardSide side;
+    std::vector<BoardLayerId> layers;
+    std::vector<BoardPoint> outline;
+};
+
+struct ReferenceDesignatorVisualExtent {
+    ComponentPlacementId placement;
+    ComponentId component;
+    BoardSide side;
+    std::string value;
+    std::vector<BoardPoint> corners;
     DiagnosticPoint min;
     DiagnosticPoint max;
 };
@@ -107,8 +128,8 @@ box_bounds(const std::vector<BoardPoint> &corners) {
     const auto &text = board.text(text_id);
     const auto corners = text_box_corners(text);
     const auto [min, max] = box_bounds(corners);
-    return TextVisualExtent{text_id,     text.layer(), board.layer(text.layer()).side(),
-                            text.text(), min,          max};
+    return TextVisualExtent{
+        text_id, text.layer(), board.layer(text.layer()).side(), text.text(), corners, min, max};
 }
 
 [[nodiscard]] bool extents_overlap(const PlacementVisualExtent &lhs,
@@ -167,6 +188,55 @@ box_bounds(const std::vector<BoardPoint> &corners) {
                                            std::vector{extent.layer});
 }
 
+[[nodiscard]] DiagnosticOverlay
+reference_label_overlay(const ReferenceDesignatorVisualExtent &extent, const Board &board) {
+    return DiagnosticOverlay::bounding_box(
+        extent.min, extent.max,
+        std::vector{EntityRef::component(extent.component),
+                    EntityRef::component_placement(extent.placement)},
+        placement_overlay_layers(board, extent.side));
+}
+
+[[nodiscard]] DiagnosticPoint to_diagnostic_point(BoardPoint point) {
+    return DiagnosticPoint{point.x_mm(), point.y_mm()};
+}
+
+[[nodiscard]] DiagnosticOverlay polygon_overlay(std::vector<BoardPoint> points,
+                                                std::vector<EntityRef> entities,
+                                                std::vector<BoardLayerId> layers) {
+    auto diagnostic_points = std::vector<DiagnosticPoint>{};
+    diagnostic_points.reserve(points.size());
+    for (const auto point : points) {
+        diagnostic_points.push_back(to_diagnostic_point(point));
+    }
+    return DiagnosticOverlay::polygon(std::move(diagnostic_points), std::move(entities),
+                                      std::move(layers));
+}
+
+[[nodiscard]] bool layer_side_matches_board_side(BoardLayerSide layer_side, BoardSide side) {
+    switch (layer_side) {
+    case BoardLayerSide::Top:
+        return side == BoardSide::Top;
+    case BoardLayerSide::Bottom:
+        return side == BoardSide::Bottom;
+    case BoardLayerSide::Both:
+        return true;
+    case BoardLayerSide::Inner:
+    case BoardLayerSide::None:
+        return false;
+    }
+    throw std::logic_error{"Unhandled PCB board layer side"};
+}
+
+[[nodiscard]] bool text_shares_side(const TextVisualExtent &text, BoardSide side) {
+    return layer_side_matches_board_side(text.side, side);
+}
+
+[[nodiscard]] bool text_intersects_polygon(const TextVisualExtent &text,
+                                           const std::vector<BoardPoint> &polygon) {
+    return polygon_polygon_distance(text.corners, polygon) <= board_drc_epsilon;
+}
+
 [[nodiscard]] Diagnostic placement_overlap_diagnostic(const Board &board,
                                                       const PlacementVisualExtent &lhs,
                                                       const PlacementVisualExtent &rhs) {
@@ -204,6 +274,80 @@ box_bounds(const std::vector<BoardPoint> &corners) {
                       std::vector{text_overlay(lhs), text_overlay(rhs)}};
 }
 
+[[nodiscard]] Diagnostic text_pad_obstruction_diagnostic(const TextVisualExtent &text,
+                                                         const PadVisualGeometry &pad) {
+    return Diagnostic{
+        Severity::Warning,
+        DiagnosticCode{std::string{pcb_visual_diagnostic_codes::LabelObstruction}},
+        DiagnosticCategory{diagnostic_categories::PcbVisual},
+        "Board text '" + text.value + "' overlaps placed pad geometry",
+        std::vector{EntityRef::board_text(text.text), EntityRef::component_placement(pad.placement),
+                    EntityRef::component(pad.component), EntityRef::footprint_pad(pad.pad)},
+        std::vector{text_overlay(text),
+                    polygon_overlay(pad.outline,
+                                    std::vector{EntityRef::component_placement(pad.placement),
+                                                EntityRef::footprint_pad(pad.pad)},
+                                    pad.layers)},
+        std::nullopt,
+        "board-text-over-pad"};
+}
+
+[[nodiscard]] Diagnostic text_package_obstruction_diagnostic(
+    const Board &board, const TextVisualExtent &text, const ProjectedFootprintGeometry &geometry,
+    const std::vector<BoardPoint> &polygon, std::string_view label, std::string rule) {
+    return Diagnostic{
+        Severity::Warning,
+        DiagnosticCode{std::string{pcb_visual_diagnostic_codes::LabelObstruction}},
+        DiagnosticCategory{diagnostic_categories::PcbVisual},
+        "Board text '" + text.value + "' overlaps component " + std::string{label} + " geometry",
+        std::vector{EntityRef::board_text(text.text),
+                    EntityRef::component_placement(geometry.placement()),
+                    EntityRef::component(geometry.component())},
+        std::vector{text_overlay(text),
+                    polygon_overlay(
+                        polygon, std::vector{EntityRef::component_placement(geometry.placement())},
+                        placement_overlay_layers(board, geometry.side()))},
+        std::nullopt,
+        std::move(rule)};
+}
+
+[[nodiscard]] Diagnostic text_hole_obstruction_diagnostic(const TextVisualExtent &text,
+                                                          BoardFeatureId feature,
+                                                          const BoardFeature &hole) {
+    return Diagnostic{
+        Severity::Warning,
+        DiagnosticCode{std::string{pcb_visual_diagnostic_codes::LabelObstruction}},
+        DiagnosticCategory{diagnostic_categories::PcbVisual},
+        "Board text '" + text.value + "' overlaps board hole geometry",
+        std::vector{EntityRef::board_text(text.text), EntityRef::board_feature(feature)},
+        std::vector{text_overlay(text),
+                    DiagnosticOverlay::point(to_diagnostic_point(hole.hole().center()),
+                                             std::vector{EntityRef::board_feature(feature)},
+                                             std::vector{text.layer})},
+        std::nullopt,
+        "board-text-over-hole"};
+}
+
+[[nodiscard]] Diagnostic reference_designator_obstruction_diagnostic(
+    const Board &board, const ReferenceDesignatorVisualExtent &label,
+    const ProjectedFootprintGeometry &geometry, const std::vector<BoardPoint> &polygon) {
+    return Diagnostic{
+        Severity::Warning,
+        DiagnosticCode{std::string{pcb_visual_diagnostic_codes::ReferenceDesignatorHidden}},
+        DiagnosticCategory{diagnostic_categories::PcbVisual},
+        "Default reference designator '" + label.value + "' overlaps placed package geometry",
+        std::vector{EntityRef::component(label.component),
+                    EntityRef::component_placement(label.placement),
+                    EntityRef::component(geometry.component()),
+                    EntityRef::component_placement(geometry.placement())},
+        std::vector{reference_label_overlay(label, board),
+                    polygon_overlay(
+                        polygon, std::vector{EntityRef::component_placement(geometry.placement())},
+                        placement_overlay_layers(board, geometry.side()))},
+        std::nullopt,
+        "default-reference-designator-over-package"};
+}
+
 [[nodiscard]] Diagnostic text_outside_board_diagnostic(const TextVisualExtent &extent) {
     return Diagnostic{Severity::Warning,
                       DiagnosticCode{std::string{pcb_visual_diagnostic_codes::LabelOutsideBoard}},
@@ -235,6 +379,134 @@ collect_placement_visual_extents(const Board &board, const FootprintLibrary &foo
     return extents;
 }
 
+[[nodiscard]] std::vector<PadVisualGeometry>
+collect_pad_visual_geometry(const Board &board, const FootprintLibrary &footprints) {
+    auto pads = std::vector<PadVisualGeometry>{};
+    for (std::size_t placement_index = 0; placement_index < board.placement_count();
+         ++placement_index) {
+        const auto placement_id = ComponentPlacementId{placement_index};
+        const auto &placement = board.placement(placement_id);
+        const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+        if (!selected_part.has_value()) {
+            continue;
+        }
+        const auto footprint_resolution = resolve_footprint(selected_part.value(), footprints);
+        const auto *definition = footprint_resolution.definition();
+        if (definition == nullptr) {
+            continue;
+        }
+        for (std::size_t pad_index = 0; pad_index < definition->pad_count(); ++pad_index) {
+            const auto pad_id = FootprintPadId{pad_index};
+            const auto &pad = definition->pad(pad_id);
+            pads.push_back(PadVisualGeometry{
+                placement_id,
+                placement.component(),
+                pad_id,
+                placement.side(),
+                pad_copper_layers(board, pad, placement.side()),
+                transformed_pad_body_corners(placement, pad),
+            });
+        }
+    }
+    return pads;
+}
+
+struct FootprintLocalBounds {
+    double min_x;
+    double min_y;
+    double max_x;
+    double max_y;
+};
+
+void include_footprint_point(FootprintLocalBounds &bounds, FootprintPoint point) {
+    bounds.min_x = std::min(bounds.min_x, point.x_mm());
+    bounds.min_y = std::min(bounds.min_y, point.y_mm());
+    bounds.max_x = std::max(bounds.max_x, point.x_mm());
+    bounds.max_y = std::max(bounds.max_y, point.y_mm());
+}
+
+void include_footprint_polygon(FootprintLocalBounds &bounds,
+                               const std::optional<FootprintPolygon> &polygon) {
+    if (!polygon.has_value()) {
+        return;
+    }
+    for (const auto point : polygon->vertices()) {
+        include_footprint_point(bounds, point);
+    }
+}
+
+[[nodiscard]] FootprintLocalBounds footprint_local_bounds(const FootprintDefinition &definition) {
+    const auto &first_pad = definition.pad(FootprintPadId{0});
+    auto bounds = FootprintLocalBounds{
+        first_pad.position().x_mm() - (first_pad.size().width_mm() / 2.0),
+        first_pad.position().y_mm() - (first_pad.size().height_mm() / 2.0),
+        first_pad.position().x_mm() + (first_pad.size().width_mm() / 2.0),
+        first_pad.position().y_mm() + (first_pad.size().height_mm() / 2.0),
+    };
+    for (std::size_t index = 1; index < definition.pad_count(); ++index) {
+        const auto &pad = definition.pad(FootprintPadId{index});
+        include_footprint_point(
+            bounds, FootprintPoint{pad.position().x_mm() - (pad.size().width_mm() / 2.0),
+                                   pad.position().y_mm() - (pad.size().height_mm() / 2.0)});
+        include_footprint_point(
+            bounds, FootprintPoint{pad.position().x_mm() + (pad.size().width_mm() / 2.0),
+                                   pad.position().y_mm() + (pad.size().height_mm() / 2.0)});
+    }
+    include_footprint_polygon(bounds, definition.courtyard());
+    include_footprint_polygon(bounds, definition.body());
+    include_footprint_polygon(bounds, definition.fabrication_outline());
+    include_footprint_polygon(bounds, definition.assembly_outline());
+    for (const auto &marking : definition.markings()) {
+        for (const auto point : marking.polygon().vertices()) {
+            include_footprint_point(bounds, point);
+        }
+    }
+    return bounds;
+}
+
+[[nodiscard]] ReferenceDesignatorVisualExtent
+reference_designator_extent(const Board &board, const ComponentPlacement &placement,
+                            ComponentPlacementId placement_id,
+                            const FootprintDefinition &definition) {
+    constexpr double reference_size_mm = 1.8;
+    const auto bounds = footprint_local_bounds(definition);
+    const auto anchor =
+        transform_footprint_point(placement, FootprintPoint{0.0, bounds.min_y - 1.0});
+    const auto value = board.circuit().component(placement.component()).reference().value();
+    const auto width = static_cast<double>(value.size()) * reference_size_mm * text_width_factor;
+    const auto corners = std::vector{
+        BoardPoint{anchor.x_mm() - (width / 2.0), anchor.y_mm() - reference_size_mm},
+        BoardPoint{anchor.x_mm() + (width / 2.0), anchor.y_mm() - reference_size_mm},
+        BoardPoint{anchor.x_mm() + (width / 2.0), anchor.y_mm()},
+        BoardPoint{anchor.x_mm() - (width / 2.0), anchor.y_mm()},
+    };
+    const auto [min, max] = box_bounds(corners);
+    return ReferenceDesignatorVisualExtent{
+        placement_id, placement.component(), placement.side(), value, corners, min, max};
+}
+
+[[nodiscard]] std::vector<ReferenceDesignatorVisualExtent>
+collect_reference_designator_extents(const Board &board, const FootprintLibrary &footprints) {
+    auto labels = std::vector<ReferenceDesignatorVisualExtent>{};
+    labels.reserve(board.placement_count());
+    for (std::size_t placement_index = 0; placement_index < board.placement_count();
+         ++placement_index) {
+        const auto placement_id = ComponentPlacementId{placement_index};
+        const auto &placement = board.placement(placement_id);
+        const auto &selected_part = board.circuit().selected_physical_part(placement.component());
+        if (!selected_part.has_value()) {
+            continue;
+        }
+        const auto footprint_resolution = resolve_footprint(selected_part.value(), footprints);
+        const auto *definition = footprint_resolution.definition();
+        if (definition == nullptr) {
+            continue;
+        }
+        labels.push_back(reference_designator_extent(board, placement, placement_id, *definition));
+    }
+    return labels;
+}
+
 [[nodiscard]] bool text_exits_outline(const Board &board, const TextVisualExtent &extent) {
     if (!board.outline().has_value()) {
         return false;
@@ -243,12 +515,98 @@ collect_placement_visual_extents(const Board &board, const FootprintLibrary &foo
                                      0.0);
 }
 
+void validate_text_pad_obstructions(const std::vector<TextVisualExtent> &texts,
+                                    const std::vector<PadVisualGeometry> &pads,
+                                    DiagnosticReport &report) {
+    for (const auto &text : texts) {
+        for (const auto &pad : pads) {
+            if (!text_shares_side(text, pad.side) || !text_intersects_polygon(text, pad.outline)) {
+                continue;
+            }
+            report.add(text_pad_obstruction_diagnostic(text, pad));
+        }
+    }
+}
+
+void validate_text_package_obstructions(const Board &board,
+                                        const std::vector<TextVisualExtent> &texts,
+                                        const std::vector<ProjectedFootprintGeometry> &geometries,
+                                        DiagnosticReport &report) {
+    for (const auto &text : texts) {
+        for (const auto &geometry : geometries) {
+            if (!text_shares_side(text, geometry.side())) {
+                continue;
+            }
+            if (geometry.body().has_value() &&
+                text_intersects_polygon(text, geometry.body().value())) {
+                report.add(text_package_obstruction_diagnostic(board, text, geometry,
+                                                               geometry.body().value(), "body",
+                                                               "board-text-over-package-body"));
+            }
+            if (geometry.courtyard().has_value() &&
+                text_intersects_polygon(text, geometry.courtyard().value())) {
+                report.add(text_package_obstruction_diagnostic(
+                    board, text, geometry, geometry.courtyard().value(), "courtyard",
+                    "board-text-over-package-courtyard"));
+            }
+        }
+    }
+}
+
+[[nodiscard]] bool text_intersects_hole(const TextVisualExtent &text, const BoardFeature &feature) {
+    return point_polygon_distance(feature.hole().center(), text.corners) <=
+           (feature.hole().drill_diameter_mm() / 2.0) + board_drc_epsilon;
+}
+
+void validate_text_hole_obstructions(const Board &board, const std::vector<TextVisualExtent> &texts,
+                                     DiagnosticReport &report) {
+    for (const auto &text : texts) {
+        for (std::size_t feature_index = 0; feature_index < board.feature_count();
+             ++feature_index) {
+            const auto feature_id = BoardFeatureId{feature_index};
+            const auto &feature = board.feature(feature_id);
+            if (feature.kind() != BoardFeatureKind::Hole || !text_intersects_hole(text, feature)) {
+                continue;
+            }
+            report.add(text_hole_obstruction_diagnostic(text, feature_id, feature));
+        }
+    }
+}
+
+void validate_reference_designator_obstructions(
+    const Board &board, const std::vector<ReferenceDesignatorVisualExtent> &labels,
+    const std::vector<ProjectedFootprintGeometry> &geometries, DiagnosticReport &report) {
+    for (const auto &label : labels) {
+        for (const auto &geometry : geometries) {
+            if (label.placement == geometry.placement() || label.side != geometry.side()) {
+                continue;
+            }
+            if (geometry.body().has_value() &&
+                polygon_polygon_distance(label.corners, geometry.body().value()) <=
+                    board_drc_epsilon) {
+                report.add(reference_designator_obstruction_diagnostic(board, label, geometry,
+                                                                       geometry.body().value()));
+                continue;
+            }
+            if (geometry.courtyard().has_value() &&
+                polygon_polygon_distance(label.corners, geometry.courtyard().value()) <=
+                    board_drc_epsilon) {
+                report.add(reference_designator_obstruction_diagnostic(
+                    board, label, geometry, geometry.courtyard().value()));
+            }
+        }
+    }
+}
+
 } // namespace
 
 void validate_board_visual(const Board &board, const FootprintLibrary &footprints,
                            DiagnosticReport &report) {
     const auto extents = collect_placement_visual_extents(board, footprints);
     const auto texts = collect_text_visual_extents(board);
+    const auto pads = collect_pad_visual_geometry(board, footprints);
+    const auto geometries = board.project_footprint_geometries(footprints);
+    const auto reference_labels = collect_reference_designator_extents(board, footprints);
     for (std::size_t lhs_index = 0; lhs_index < extents.size(); ++lhs_index) {
         for (std::size_t rhs_index = lhs_index + 1U; rhs_index < extents.size(); ++rhs_index) {
             if (extents_overlap(extents[lhs_index], extents[rhs_index])) {
@@ -271,6 +629,11 @@ void validate_board_visual(const Board &board, const FootprintLibrary &footprint
             }
         }
     }
+
+    validate_text_pad_obstructions(texts, pads, report);
+    validate_text_package_obstructions(board, texts, geometries, report);
+    validate_text_hole_obstructions(board, texts, report);
+    validate_reference_designator_obstructions(board, reference_labels, geometries, report);
 }
 
 } // namespace volt::detail

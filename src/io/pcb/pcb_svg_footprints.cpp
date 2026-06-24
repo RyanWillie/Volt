@@ -90,34 +90,71 @@ void write_projected_footprint_polygon(std::ostream &out, std::string_view class
     out << "\"/>\n";
 }
 
-void write_declared_footprint_geometry(std::ostream &out,
-                                       const ProjectedFootprintGeometry &geometry) {
-    if (geometry.courtyard().has_value()) {
-        write_projected_footprint_polygon(out, "footprint-courtyard declared", geometry,
-                                          geometry.courtyard().value());
+[[nodiscard]] bool projected_geometry_selected(const Board &board,
+                                               const ProjectedFootprintGeometry &geometry,
+                                               PcbPlacementSvgOptions options) {
+    if (geometry.placement().index() >= board.placement_count()) {
+        return false;
     }
-    if (geometry.body().has_value()) {
-        write_projected_footprint_polygon(out, "footprint-body declared", geometry,
-                                          geometry.body().value());
+    return placement_selected(board, board.placement(geometry.placement()), options);
+}
+
+void write_projected_footprint_polygon_layer(
+    std::ostream &out, const Board &board,
+    const std::vector<ProjectedFootprintGeometry> &footprint_geometries,
+    PcbPlacementSvgOptions options, std::string_view layer_class, std::string_view polygon_class,
+    const std::optional<std::vector<BoardPoint>> &(ProjectedFootprintGeometry::*member)() const) {
+    out << "      <g class=\"layer " << layer_class << "\">\n";
+    for (const auto &geometry : footprint_geometries) {
+        const auto &polygon = (geometry.*member)();
+        if (!projected_geometry_selected(board, geometry, options) || !polygon.has_value()) {
+            continue;
+        }
+        write_projected_footprint_polygon(out, polygon_class, geometry, polygon.value());
     }
-    if (geometry.fabrication_outline().has_value()) {
-        write_projected_footprint_polygon(out, "footprint-fabrication declared", geometry,
-                                          geometry.fabrication_outline().value());
+    out << "      </g>\n";
+}
+
+void write_projected_footprint_marking_layer(
+    std::ostream &out, const Board &board,
+    const std::vector<ProjectedFootprintGeometry> &footprint_geometries,
+    PcbPlacementSvgOptions options) {
+    out << "      <g class=\"layer layer-silkscreen\">\n";
+    for (const auto &geometry : footprint_geometries) {
+        if (!projected_geometry_selected(board, geometry, options)) {
+            continue;
+        }
+        for (std::size_t index = 0; index < geometry.markings().size(); ++index) {
+            const auto &marking = geometry.markings()[index];
+            out << "      <polygon class=\"footprint-marking declared kind-"
+                << footprint_marking_kind_name(marking.kind()) << "\" data-placement=\""
+                << encode_local_id(geometry.placement()) << "\" data-component=\""
+                << encode_local_id(geometry.component()) << "\" data-marking=\""
+                << encode_local_id(FootprintMarkingId{index}) << "\" points=\"";
+            write_pcb_point_list(out, marking.polygon());
+            out << "\"/>\n";
+        }
     }
-    if (geometry.assembly_outline().has_value()) {
-        write_projected_footprint_polygon(out, "footprint-assembly declared", geometry,
-                                          geometry.assembly_outline().value());
-    }
-    for (std::size_t index = 0; index < geometry.markings().size(); ++index) {
-        const auto &marking = geometry.markings()[index];
-        out << "      <polygon class=\"footprint-marking declared kind-"
-            << footprint_marking_kind_name(marking.kind()) << "\" data-placement=\""
-            << encode_local_id(geometry.placement()) << "\" data-component=\""
-            << encode_local_id(geometry.component()) << "\" data-marking=\""
-            << encode_local_id(FootprintMarkingId{index}) << "\" points=\"";
-        write_pcb_point_list(out, marking.polygon());
-        out << "\"/>\n";
-    }
+    out << "      </g>\n";
+}
+
+void write_package_geometry_layers(
+    std::ostream &out, const Board &board,
+    const std::vector<ProjectedFootprintGeometry> &footprint_geometries,
+    PcbPlacementSvgOptions options) {
+    write_projected_footprint_polygon_layer(
+        out, board, footprint_geometries, options, "layer-package-courtyards",
+        "footprint-courtyard declared", &ProjectedFootprintGeometry::courtyard);
+    write_projected_footprint_polygon_layer(out, board, footprint_geometries, options,
+                                            "layer-package-bodies", "footprint-body declared",
+                                            &ProjectedFootprintGeometry::body);
+    write_projected_footprint_polygon_layer(
+        out, board, footprint_geometries, options, "layer-package-fabrication",
+        "footprint-fabrication declared", &ProjectedFootprintGeometry::fabrication_outline);
+    write_projected_footprint_polygon_layer(out, board, footprint_geometries, options,
+                                            "layer-package-assembly", "footprint-assembly declared",
+                                            &ProjectedFootprintGeometry::assembly_outline);
+    write_projected_footprint_marking_layer(out, board, footprint_geometries, options);
 }
 
 void write_synthetic_footprint_geometry(std::ostream &out, const FootprintDefinition &definition) {
@@ -148,6 +185,20 @@ void write_reference_designator(std::ostream &out, ComponentPlacementId placemen
     write_pcb_svg_number(out, anchor.y_mm());
     out << "\" text-anchor=\"middle\">" << pcb_svg_escape(component.reference().value())
         << "</text>\n";
+}
+
+[[nodiscard]] bool reference_designator_suppressed(const DiagnosticReport &diagnostics,
+                                                   ComponentPlacementId placement) {
+    for (const auto &diagnostic : diagnostics.diagnostics()) {
+        if (diagnostic.code().value() != pcb_visual_diagnostic_codes::ReferenceDesignatorHidden) {
+            continue;
+        }
+        if (diagnostic.entities().size() >= 2U &&
+            diagnostic.entities()[1] == EntityRef::component_placement(placement)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace
@@ -306,8 +357,10 @@ void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id
 void write_placements(std::ostream &out, const Board &board, const FootprintLibrary &footprints,
                       const std::vector<PadResolution> &resolutions,
                       const std::vector<ProjectedFootprintGeometry> &footprint_geometries,
-                      PcbPlacementSvgOptions options) {
+                      const DiagnosticReport &diagnostics, PcbPlacementSvgOptions options) {
     out << "    <g class=\"layer layer-footprints\">\n";
+    write_package_geometry_layers(out, board, footprint_geometries, options);
+    out << "      <g class=\"layer layer-pads\">\n";
     for (std::size_t index = 0; index < board.placement_count(); ++index) {
         const auto placement_id = ComponentPlacementId{index};
         const auto &placement = board.placement(placement_id);
@@ -328,14 +381,6 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
         }
         if (!placement_context_selected && !has_selected_pad) {
             continue;
-        }
-
-        const auto &component = board.circuit().component(placement.component());
-        const auto *projected_geometry =
-            projected_footprint_geometry_for_placement(footprint_geometries, placement_id);
-        if (placement_context_selected && footprint_has_declared_geometry(*definition) &&
-            projected_geometry != nullptr) {
-            write_declared_footprint_geometry(out, *projected_geometry);
         }
 
         out << "      <g class=\"component-placement " << board_side_name(placement.side());
@@ -376,10 +421,21 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
                       find_pad_resolution(resolutions, placement_id, pad_id));
         }
         out << "      </g>\n";
-        if (placement_context_selected) {
-            write_reference_designator(out, placement_id, placement, *definition, component);
-        }
     }
+    out << "      </g>\n";
+    out << "      <g class=\"layer layer-reference-designators\">\n";
+    for (std::size_t index = 0; index < board.placement_count(); ++index) {
+        const auto placement_id = ComponentPlacementId{index};
+        const auto &placement = board.placement(placement_id);
+        const auto *definition = resolve_definition_for_placement(board, placement, footprints);
+        if (definition == nullptr || !placement_selected(board, placement, options) ||
+            reference_designator_suppressed(diagnostics, placement_id)) {
+            continue;
+        }
+        const auto &component = board.circuit().component(placement.component());
+        write_reference_designator(out, placement_id, placement, *definition, component);
+    }
+    out << "      </g>\n";
     out << "    </g>\n";
 }
 

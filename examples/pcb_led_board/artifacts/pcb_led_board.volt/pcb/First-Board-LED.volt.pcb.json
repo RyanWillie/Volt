@@ -137,6 +137,17 @@
     ]
   },
   "viewer": {
+    "layers": [
+      {"id": "viewer_layer:board_outline", "kind": "board_outline", "name": "Board outline"},
+      {"id": "viewer_layer:copper", "kind": "copper", "name": "Copper"},
+      {"id": "viewer_layer:pads", "kind": "pads", "name": "Pads"},
+      {"id": "viewer_layer:package_bodies", "kind": "package_bodies", "name": "Package bodies"},
+      {"id": "viewer_layer:package_courtyards", "kind": "package_courtyards", "name": "Package courtyards"},
+      {"id": "viewer_layer:package_fabrication", "kind": "package_fabrication", "name": "Fabrication outlines"},
+      {"id": "viewer_layer:package_assembly", "kind": "package_assembly", "name": "Assembly outlines"},
+      {"id": "viewer_layer:annotations", "kind": "annotations", "name": "Annotations"},
+      {"id": "viewer_layer:diagnostics", "kind": "diagnostics", "name": "Diagnostics"}
+    ],
     "pad_resolutions": [
       {
         "id": "pcb_pad:0:0",
