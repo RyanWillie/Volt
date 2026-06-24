@@ -1,7 +1,24 @@
 import volt
 
 
+def _rectangle(width, height):
+    return (
+        (-width / 2.0, -height / 2.0),
+        (width / 2.0, -height / 2.0),
+        (width / 2.0, height / 2.0),
+        (-width / 2.0, height / 2.0),
+    )
+
+
+def _offset_rectangle(x, y, width, height):
+    return tuple((px + x, py + y) for px, py in _rectangle(width, height))
+
+
 def _passive_0603(ref):
+    markings = ()
+    if tuple(ref) == ("leds", "LED_0603_1608Metric"):
+        markings = (volt.FootprintMarking.polarity(_offset_rectangle(0.55, 0.0, 0.12, 0.60)),)
+
     return volt.FootprintDefinition(
         ref,
         pads=(
@@ -18,6 +35,11 @@ def _passive_0603(ref):
                 shape="rounded_rectangle",
             ),
         ),
+        courtyard=_rectangle(2.50, 1.40),
+        body=_rectangle(1.60, 0.80),
+        fabrication_outline=_rectangle(1.60, 0.80),
+        assembly_outline=_rectangle(1.60, 0.80),
+        markings=markings,
     )
 
 

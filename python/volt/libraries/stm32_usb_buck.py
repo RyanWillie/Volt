@@ -75,6 +75,12 @@ def _rectangle(width: float, height: float) -> tuple[tuple[float, float], ...]:
     )
 
 
+def _offset_rectangle(
+    x: float, y: float, width: float, height: float
+) -> tuple[tuple[float, float], ...]:
+    return tuple((px + x, py + y) for px, py in _rectangle(width, height))
+
+
 def _two_terminal_smd_footprint(
     ref: tuple[str, str],
     *,
@@ -318,7 +324,7 @@ DIODE_SOD_123_FOOTPRINT = _two_terminal_smd_footprint(
     pad_height=1.35,
     body_size=(3.70, 1.60),
     courtyard_size=(5.10, 2.30),
-    markings=(FootprintMarking.polarity(_rectangle(0.18, 1.15)),),
+    markings=(FootprintMarking.polarity(_offset_rectangle(1.45, 0.0, 0.18, 1.15)),),
 )
 RESISTOR_0603_FOOTPRINT = _two_terminal_smd_footprint(
     ("passives", "R_0603_1608Metric"),

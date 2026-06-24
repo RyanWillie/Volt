@@ -34,10 +34,16 @@ def _rectangle(width: float, height: float) -> tuple[tuple[float, float], ...]:
     )
 
 
+def _offset_rectangle(
+    x: float, y: float, width: float, height: float
+) -> tuple[tuple[float, float], ...]:
+    return tuple((px + x, py + y) for px, py in _rectangle(width, height))
+
+
 def _passive_0603(ref: tuple[str, str], *, polarity: bool = False) -> volt.FootprintDefinition:
     markings = ()
     if polarity:
-        markings = (volt.FootprintMarking.polarity(_rectangle(0.12, 0.60)),)
+        markings = (volt.FootprintMarking.polarity(_offset_rectangle(0.55, 0.0, 0.12, 0.60)),)
     return volt.FootprintDefinition(
         ref,
         pads=(

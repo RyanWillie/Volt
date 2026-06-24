@@ -60,7 +60,7 @@
       <polygon class="footprint-body declared" data-placement="component_placement:2" data-component="component:2" points="24.8,7.4 23.2,7.4 23.2,6.6 24.8,6.6"/>
       <polygon class="footprint-fabrication declared" data-placement="component_placement:2" data-component="component:2" points="24.8,7.4 23.2,7.4 23.2,6.6 24.8,6.6"/>
       <polygon class="footprint-assembly declared" data-placement="component_placement:2" data-component="component:2" points="24.8,7.4 23.2,7.4 23.2,6.6 24.8,6.6"/>
-      <polygon class="footprint-marking declared kind-polarity" data-placement="component_placement:2" data-component="component:2" data-marking="footprint_marking:0" points="24.06,7.3 23.94,7.3 23.94,6.7 24.06,6.7"/>
+      <polygon class="footprint-marking declared kind-polarity" data-placement="component_placement:2" data-component="component:2" data-marking="footprint_marking:0" points="23.51,7.3 23.39,7.3 23.39,6.7 23.51,6.7"/>
       <g class="component-placement top" data-placement="component_placement:2" data-component="component:2" data-footprint-def="footprint_def:2" data-footprint="leds:LED_0603_1608Metric" transform="translate(24 7) rotate(180)">
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:0" data-pad="footprint_pad:0" data-pin="pin:4" data-net="net:1" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:1" data-pad="footprint_pad:1" data-pin="pin:5" data-net="net:2" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>

@@ -588,7 +588,7 @@ footprint_library_definition_conflicts(const FootprintDefinition &board_definiti
     if (board_definition.ref() != library_definition.ref()) {
         return false;
     }
-    return board_definition.pads() != library_definition.pads();
+    return board_definition != library_definition;
 }
 
 [[nodiscard]] FootprintLibrary board_resolution_footprints(const Board &board,

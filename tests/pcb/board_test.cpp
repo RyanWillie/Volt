@@ -521,7 +521,7 @@ TEST_CASE("Board rejects cached footprint definitions that conflict with resolut
     CHECK_THROWS_AS(board.resolve_pads(volt::builtin_footprint_library()), std::logic_error);
 }
 
-TEST_CASE("Board cached package geometry overrides library geometry when pads match") {
+TEST_CASE("Board rejects cached package geometry conflicts when pads match") {
     auto fixture = make_resistor_circuit();
     auto board = volt::Board{fixture.circuit};
     const auto library = volt::builtin_footprint_library();
@@ -540,6 +540,21 @@ TEST_CASE("Board cached package geometry overrides library geometry when pads ma
     [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
         fixture.component, volt::BoardPoint{10.0, 6.0}, volt::BoardRotation::degrees(0.0)});
 
+    CHECK_THROWS_AS(board.resolve_pads(library), std::logic_error);
+    CHECK_THROWS_AS(board.project_footprint_geometries(library), std::logic_error);
+}
+
+TEST_CASE("Board accepts cached package geometry that matches library identity") {
+    auto fixture = make_resistor_circuit();
+    auto board = volt::Board{fixture.circuit};
+    const auto library = volt::builtin_footprint_library();
+    const auto *builtin = library.find(volt::FootprintRef{"passives", "R_0603_1608Metric"});
+    REQUIRE(builtin != nullptr);
+
+    [[maybe_unused]] const auto cached = board.cache_footprint_definition(*builtin);
+    [[maybe_unused]] const auto placement = board.place_component(volt::ComponentPlacement{
+        fixture.component, volt::BoardPoint{10.0, 6.0}, volt::BoardRotation::degrees(0.0)});
+
     const auto resolutions = board.resolve_pads(library);
     const auto projected = board.project_footprint_geometries(library);
 
@@ -548,10 +563,10 @@ TEST_CASE("Board cached package geometry overrides library geometry when pads ma
     REQUIRE(projected.size() == 1U);
     REQUIRE(projected[0].body().has_value());
     CHECK(projected[0].body().value() == std::vector{
-                                             volt::BoardPoint{9.6, 5.7},
-                                             volt::BoardPoint{10.4, 5.7},
-                                             volt::BoardPoint{10.4, 6.3},
-                                             volt::BoardPoint{9.6, 6.3},
+                                             volt::BoardPoint{9.2, 5.6},
+                                             volt::BoardPoint{10.8, 5.6},
+                                             volt::BoardPoint{10.8, 6.4},
+                                             volt::BoardPoint{9.2, 6.4},
                                          });
 }
 
