@@ -55,19 +55,22 @@ py::dict PyCircuit::board_design_rules() const {
     result["minimum_via_drill_diameter_mm"] = rules.minimum_via_drill_diameter_mm();
     result["minimum_via_annular_diameter_mm"] = rules.minimum_via_annular_diameter_mm();
     result["board_outline_clearance_mm"] = rules.board_outline_clearance_mm();
+    result["package_assembly_clearance_mm"] = rules.package_assembly_clearance_mm();
     return result;
 }
 
 void PyCircuit::board_set_design_rules(double copper_clearance_mm, double minimum_track_width_mm,
                                        double minimum_via_drill_diameter_mm,
                                        double minimum_via_annular_diameter_mm,
-                                       double board_outline_clearance_mm) {
+                                       double board_outline_clearance_mm,
+                                       double package_assembly_clearance_mm) {
     board_projection().set_design_rules(volt::BoardDesignRules{
         copper_clearance_mm,
         minimum_track_width_mm,
         minimum_via_drill_diameter_mm,
         minimum_via_annular_diameter_mm,
         board_outline_clearance_mm,
+        package_assembly_clearance_mm,
     });
 }
 

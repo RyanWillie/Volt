@@ -187,15 +187,19 @@ BoardVia::BoardVia(NetId net, BoardPoint position, BoardLayerId start_layer, Boa
 BoardDesignRules::BoardDesignRules(double copper_clearance_mm, double minimum_track_width_mm,
                                    double minimum_via_drill_diameter_mm,
                                    double minimum_via_annular_diameter_mm,
-                                   double board_outline_clearance_mm)
+                                   double board_outline_clearance_mm,
+                                   double package_assembly_clearance_mm)
     : copper_clearance_mm_{copper_clearance_mm}, minimum_track_width_mm_{minimum_track_width_mm},
       minimum_via_drill_diameter_mm_{minimum_via_drill_diameter_mm},
       minimum_via_annular_diameter_mm_{minimum_via_annular_diameter_mm},
-      board_outline_clearance_mm_{board_outline_clearance_mm} {
-    if (!std::isfinite(copper_clearance_mm_) || !std::isfinite(board_outline_clearance_mm_)) {
+      board_outline_clearance_mm_{board_outline_clearance_mm},
+      package_assembly_clearance_mm_{package_assembly_clearance_mm} {
+    if (!std::isfinite(copper_clearance_mm_) || !std::isfinite(board_outline_clearance_mm_) ||
+        !std::isfinite(package_assembly_clearance_mm_)) {
         throw std::invalid_argument{"Board design rule clearances must be finite"};
     }
-    if (copper_clearance_mm_ < 0.0 || board_outline_clearance_mm_ < 0.0) {
+    if (copper_clearance_mm_ < 0.0 || board_outline_clearance_mm_ < 0.0 ||
+        package_assembly_clearance_mm_ < 0.0) {
         throw std::invalid_argument{"Board design rule clearances must not be negative"};
     }
     if (!std::isfinite(minimum_track_width_mm_) || !std::isfinite(minimum_via_drill_diameter_mm_) ||
@@ -222,6 +226,10 @@ BoardDesignRules::BoardDesignRules(double copper_clearance_mm, double minimum_tr
 
 [[nodiscard]] double BoardDesignRules::board_outline_clearance_mm() const noexcept {
     return board_outline_clearance_mm_;
+}
+
+[[nodiscard]] double BoardDesignRules::package_assembly_clearance_mm() const noexcept {
+    return package_assembly_clearance_mm_;
 }
 
 namespace {

@@ -11,19 +11,13 @@
 #include <volt/io/detail/typed_id.hpp>
 #include <volt/io/pcb/pcb_schema.hpp>
 #include <volt/pcb/board.hpp>
+#include <volt/pcb/projection/footprint_visual_projection.hpp>
 
 namespace volt::io::detail {
 namespace {
 
-void include_footprint_point(PcbSvgBounds &bounds, FootprintPoint point) {
-    bounds.min_x = std::min(bounds.min_x, point.x_mm());
-    bounds.min_y = std::min(bounds.min_y, point.y_mm());
-    bounds.max_x = std::max(bounds.max_x, point.x_mm());
-    bounds.max_y = std::max(bounds.max_y, point.y_mm());
-}
-
 void include_local_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &placement,
-                                    const PcbSvgBounds &local_bounds) {
+                                    const ::volt::detail::FootprintVisualBounds &local_bounds) {
     include_board_point(bounds,
                         volt::detail::transform_footprint_point(
                             placement, FootprintPoint{local_bounds.min_x, local_bounds.min_y}));
@@ -46,38 +40,6 @@ void include_projected_polygon_bounds(PcbSvgBounds &bounds,
     for (const auto point : polygon.value()) {
         include_board_point(bounds, point);
     }
-}
-
-[[nodiscard]] bool footprint_has_declared_geometry(const FootprintDefinition &definition) {
-    return definition.body().has_value() || definition.courtyard().has_value() ||
-           definition.fabrication_outline().has_value() ||
-           definition.assembly_outline().has_value() || !definition.markings().empty();
-}
-
-[[nodiscard]] PcbSvgBounds footprint_pad_bounds(const FootprintDefinition &definition) {
-    const auto &first_pad = definition.pad(FootprintPadId{0});
-    const auto first_half_width = first_pad.size().width_mm() / 2.0;
-    const auto first_half_height = first_pad.size().height_mm() / 2.0;
-    auto bounds = PcbSvgBounds{first_pad.position().x_mm() - first_half_width,
-                               first_pad.position().y_mm() - first_half_height,
-                               first_pad.position().x_mm() + first_half_width,
-                               first_pad.position().y_mm() + first_half_height};
-    for (std::size_t index = 1; index < definition.pad_count(); ++index) {
-        const auto &pad = definition.pad(FootprintPadId{index});
-        const auto half_width = pad.size().width_mm() / 2.0;
-        const auto half_height = pad.size().height_mm() / 2.0;
-        include_footprint_point(bounds, FootprintPoint{pad.position().x_mm() - half_width,
-                                                       pad.position().y_mm() - half_height});
-        include_footprint_point(bounds, FootprintPoint{pad.position().x_mm() + half_width,
-                                                       pad.position().y_mm() + half_height});
-    }
-    return bounds;
-}
-
-[[nodiscard]] PcbSvgBounds synthetic_footprint_envelope(const FootprintDefinition &definition) {
-    const auto pad_bounds = footprint_pad_bounds(definition);
-    return PcbSvgBounds{pad_bounds.min_x - 0.5, pad_bounds.min_y - 0.5, pad_bounds.max_x + 0.5,
-                        pad_bounds.max_y + 0.5};
 }
 
 void write_projected_footprint_polygon(std::ostream &out, std::string_view class_name,
@@ -158,7 +120,7 @@ void write_package_geometry_layers(
 }
 
 void write_synthetic_footprint_geometry(std::ostream &out, const FootprintDefinition &definition) {
-    const auto local_bounds = synthetic_footprint_envelope(definition);
+    const auto local_bounds = ::volt::detail::synthetic_footprint_envelope(definition);
     out << "        <rect class=\"footprint-envelope synthetic\" x=\"";
     write_pcb_svg_number(out, local_bounds.min_x);
     out << "\" y=\"";
@@ -174,9 +136,7 @@ void write_reference_designator(std::ostream &out, ComponentPlacementId placemen
                                 const ComponentPlacement &placement,
                                 const FootprintDefinition &definition,
                                 const ComponentInstance &component) {
-    const auto local_bounds = footprint_local_bounds(definition);
-    const auto anchor = volt::detail::transform_footprint_point(
-        placement, FootprintPoint{0.0, local_bounds.min_y - 1.0});
+    const auto anchor = ::volt::detail::default_reference_designator_anchor(placement, definition);
     out << "      <text class=\"reference-designator\" data-placement=\""
         << encode_local_id(placement_id) << "\" data-component=\""
         << encode_local_id(placement.component()) << "\" x=\"";
@@ -216,50 +176,24 @@ void write_reference_designator(std::ostream &out, ComponentPlacementId placemen
 }
 
 [[nodiscard]] PcbSvgBounds footprint_local_bounds(const FootprintDefinition &definition) {
-    auto bounds = footprint_pad_bounds(definition);
-    if (!footprint_has_declared_geometry(definition)) {
-        return synthetic_footprint_envelope(definition);
-    }
-
-    if (definition.courtyard().has_value()) {
-        for (const auto point : definition.courtyard()->vertices()) {
-            include_footprint_point(bounds, point);
-        }
-    }
-    if (definition.body().has_value()) {
-        for (const auto point : definition.body()->vertices()) {
-            include_footprint_point(bounds, point);
-        }
-    }
-    if (definition.fabrication_outline().has_value()) {
-        for (const auto point : definition.fabrication_outline()->vertices()) {
-            include_footprint_point(bounds, point);
-        }
-    }
-    if (definition.assembly_outline().has_value()) {
-        for (const auto point : definition.assembly_outline()->vertices()) {
-            include_footprint_point(bounds, point);
-        }
-    }
-    for (const auto &marking : definition.markings()) {
-        for (const auto point : marking.polygon().vertices()) {
-            include_footprint_point(bounds, point);
-        }
-    }
-    return bounds;
+    const auto bounds = ::volt::detail::footprint_visual_bounds(definition);
+    return PcbSvgBounds{bounds.min_x, bounds.min_y, bounds.max_x, bounds.max_y};
 }
 
 void include_footprint_bounds(PcbSvgBounds &bounds, const ComponentPlacement &placement,
                               const FootprintDefinition &definition,
                               const ProjectedFootprintGeometry *projected_geometry) {
-    if (!footprint_has_declared_geometry(definition)) {
-        include_local_footprint_bounds(bounds, placement, synthetic_footprint_envelope(definition));
+    if (!::volt::detail::footprint_has_declared_visual_geometry(definition)) {
+        include_local_footprint_bounds(bounds, placement,
+                                       ::volt::detail::synthetic_footprint_envelope(definition));
         return;
     }
 
-    include_local_footprint_bounds(bounds, placement, footprint_pad_bounds(definition));
+    include_local_footprint_bounds(bounds, placement,
+                                   ::volt::detail::footprint_pad_bounds(definition));
     if (projected_geometry == nullptr) {
-        include_local_footprint_bounds(bounds, placement, footprint_local_bounds(definition));
+        include_local_footprint_bounds(bounds, placement,
+                                       ::volt::detail::footprint_visual_bounds(definition));
         return;
     }
     include_projected_polygon_bounds(bounds, projected_geometry->courtyard());
@@ -407,7 +341,8 @@ void write_placements(std::ostream &out, const Board &board, const FootprintLibr
             out << " scale(-1 1)";
         }
         out << "\">\n";
-        if (placement_context_selected && !footprint_has_declared_geometry(*definition)) {
+        if (placement_context_selected &&
+            !::volt::detail::footprint_has_declared_visual_geometry(*definition)) {
             write_synthetic_footprint_geometry(out, *definition);
         }
         for (std::size_t pad_index = 0; pad_index < definition->pad_count(); ++pad_index) {

@@ -335,7 +335,8 @@ class BoardDesignRules {
     BoardDesignRules(double copper_clearance_mm = 0.15, double minimum_track_width_mm = 0.15,
                      double minimum_via_drill_diameter_mm = 0.20,
                      double minimum_via_annular_diameter_mm = 0.45,
-                     double board_outline_clearance_mm = 0.0);
+                     double board_outline_clearance_mm = 0.0,
+                     double package_assembly_clearance_mm = 0.25);
 
     /** Set the required clearance for one unordered object-kind pair. */
     void set_clearance_mm(BoardClearanceKind first, BoardClearanceKind second, double clearance_mm);
@@ -364,12 +365,16 @@ class BoardDesignRules {
     /** Return required copper/pad setback from the board outline. */
     [[nodiscard]] double board_outline_clearance_mm() const noexcept;
 
+    /** Return recommended package-to-package assembly comfort clearance. */
+    [[nodiscard]] double package_assembly_clearance_mm() const noexcept;
+
   private:
     double copper_clearance_mm_;
     double minimum_track_width_mm_;
     double minimum_via_drill_diameter_mm_;
     double minimum_via_annular_diameter_mm_;
     double board_outline_clearance_mm_;
+    double package_assembly_clearance_mm_;
     std::vector<BoardClearancePair> clearance_matrix_;
 };
 

@@ -63,6 +63,8 @@ def rule(context: BoardLayoutComposition, name: str) -> float:
         "outline_clearance": "board_outline_clearance_mm",
         "board_outline_clearance": "board_outline_clearance_mm",
         "board_outline_clearance_mm": "board_outline_clearance_mm",
+        "package_assembly_clearance": "package_assembly_clearance_mm",
+        "package_assembly_clearance_mm": "package_assembly_clearance_mm",
     }
     key = aliases.get(normalized)
     if key is None:

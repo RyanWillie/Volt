@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
@@ -13,6 +14,8 @@ namespace {
 struct PlacementFixture {
     volt::Circuit circuit;
     std::vector<volt::ComponentId> components;
+    volt::PinDefId first_pin_definition;
+    volt::PinDefId second_pin_definition;
 };
 
 const volt::Diagnostic *find_diagnostic(const volt::DiagnosticReport &report,
@@ -75,9 +78,31 @@ find_diagnostics(const volt::DiagnosticReport &report, const std::string &code) 
     };
 }
 
+[[nodiscard]] volt::FootprintRef pad_only_ref() { return volt::FootprintRef{"test", "PadOnly"}; }
+
+[[nodiscard]] volt::FootprintDefinition pad_only_footprint() {
+    return volt::FootprintDefinition{
+        pad_only_ref(),
+        std::vector{
+            volt::FootprintPad::surface_mount(
+                "1", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{-0.2, 0.0},
+                volt::FootprintSize{0.2, 0.2}, volt::FootprintLayerSet::front_smd()),
+            volt::FootprintPad::surface_mount(
+                "2", volt::FootprintPadShape::Rectangle, volt::FootprintPoint{0.2, 0.0},
+                volt::FootprintSize{0.2, 0.2}, volt::FootprintLayerSet::front_smd()),
+        }};
+}
+
 [[nodiscard]] volt::FootprintLibrary square_package_library() {
     auto library = volt::FootprintLibrary{};
     library.add(square_package_footprint());
+    return library;
+}
+
+[[nodiscard]] volt::FootprintLibrary mixed_package_library() {
+    auto library = volt::FootprintLibrary{};
+    library.add(square_package_footprint());
+    library.add(pad_only_footprint());
     return library;
 }
 
@@ -112,7 +137,8 @@ make_placed_resistors(std::size_t count, volt::FootprintRef footprint = volt::Fo
         components.push_back(component);
     }
 
-    return PlacementFixture{std::move(circuit), std::move(components)};
+    return PlacementFixture{std::move(circuit), std::move(components), first_pin_definition,
+                            second_pin_definition};
 }
 
 [[nodiscard]] volt::Board make_visual_board(const PlacementFixture &fixture) {
@@ -236,12 +262,13 @@ TEST_CASE("Board footprint DRC reports measured assembly comfort gaps") {
     const auto library = square_package_library();
     const auto fixture = make_placed_resistors(3, square_package_ref());
     auto board = make_visual_board(fixture);
+    board.set_design_rules(volt::BoardDesignRules{0.15, 0.15, 0.20, 0.45, 0.0, 0.40});
     const auto first = board.place_component(volt::ComponentPlacement{
         fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
     const auto second = board.place_component(volt::ComponentPlacement{
         fixture.components[1], volt::BoardPoint{11.15, 10.0}, volt::BoardRotation::degrees(0.0)});
     [[maybe_unused]] const auto clean = board.place_component(volt::ComponentPlacement{
-        fixture.components[2], volt::BoardPoint{12.45, 10.0}, volt::BoardRotation::degrees(0.0)});
+        fixture.components[2], volt::BoardPoint{12.70, 10.0}, volt::BoardRotation::degrees(0.0)});
 
     const auto report = volt::validate_board(board, library);
 
@@ -250,7 +277,7 @@ TEST_CASE("Board footprint DRC reports measured assembly comfort gaps") {
     CHECK(warnings[0]->severity() == volt::Severity::Warning);
     CHECK(warnings[0]->category() == volt::DiagnosticCategory{volt::diagnostic_categories::Drc});
     CHECK(warnings[0]->rule() == "component-body-to-body-assembly-clearance");
-    CHECK(warnings[0]->measurement() == volt::DiagnosticMeasurement{0.15, 0.25});
+    CHECK(warnings[0]->measurement() == volt::DiagnosticMeasurement{0.15, 0.40});
     CHECK(warnings[0]->entities() ==
           std::vector{volt::EntityRef::component_placement(first),
                       volt::EntityRef::component_placement(second),
@@ -260,7 +287,7 @@ TEST_CASE("Board footprint DRC reports measured assembly comfort gaps") {
     CHECK(warnings[0]->overlays()[0].kind() == volt::DiagnosticOverlayKind::Polygon);
     CHECK(warnings[0]->overlays()[0].layers() == std::vector{volt::BoardLayerId{0}});
     CHECK(warnings[1]->rule() == "component-courtyard-to-courtyard-assembly-clearance");
-    CHECK(warnings[1]->measurement() == volt::DiagnosticMeasurement{0.15, 0.25});
+    CHECK(warnings[1]->measurement() == volt::DiagnosticMeasurement{0.15, 0.40});
 }
 
 TEST_CASE("Board footprint DRC distinguishes hard package overlap failures") {
@@ -583,6 +610,42 @@ TEST_CASE("Board visual validation reports obstructed default reference designat
     REQUIRE(hidden[0]->overlays().size() == 2);
     CHECK(hidden[0]->overlays()[0].kind() == volt::DiagnosticOverlayKind::BoundingBox);
     CHECK(hidden[0]->overlays()[1].kind() == volt::DiagnosticOverlayKind::Polygon);
+}
+
+TEST_CASE(
+    "Board visual validation uses shared default reference geometry for pad-only footprints") {
+    const auto library = mixed_package_library();
+    auto fixture = make_placed_resistors(2, square_package_ref());
+    fixture.circuit.select_physical_part(
+        fixture.components[1],
+        volt::PhysicalPart{
+            volt::ManufacturerPart{"Volt", "PAD-ONLY"},
+            volt::PackageRef{"PAD"},
+            pad_only_ref(),
+            std::vector{volt::PinPadMapping{fixture.first_pin_definition, "1"},
+                        volt::PinPadMapping{fixture.second_pin_definition, "2"}},
+        });
+    auto board = make_visual_board(fixture);
+    const auto square = board.place_component(volt::ComponentPlacement{
+        fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    const auto pad_only = board.place_component(volt::ComponentPlacement{
+        fixture.components[1], volt::BoardPoint{10.0, 13.55}, volt::BoardRotation::degrees(0.0)});
+
+    const auto report = volt::validate_board(board, library);
+
+    const auto hidden = find_diagnostics(
+        report, std::string{volt::pcb_visual_diagnostic_codes::ReferenceDesignatorHidden});
+    REQUIRE(hidden.size() == 1);
+    CHECK(hidden[0]->entities() == std::vector{volt::EntityRef::component(fixture.components[1]),
+                                               volt::EntityRef::component_placement(pad_only),
+                                               volt::EntityRef::component(fixture.components[0]),
+                                               volt::EntityRef::component_placement(square)});
+    REQUIRE(hidden[0]->overlays().size() == 2);
+    REQUIRE(hidden[0]->overlays()[0].points().size() == 2);
+    CHECK(hidden[0]->overlays()[0].points()[0].x_mm == Catch::Approx(8.92));
+    CHECK(hidden[0]->overlays()[0].points()[0].y_mm == Catch::Approx(10.15));
+    CHECK(hidden[0]->overlays()[0].points()[1].x_mm == Catch::Approx(11.08));
+    CHECK(hidden[0]->overlays()[0].points()[1].y_mm == Catch::Approx(11.95));
 }
 
 TEST_CASE("Board visual validation detects board text crossing concave outline voids") {

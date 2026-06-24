@@ -369,7 +369,7 @@ TEST_CASE("BoardCapabilityProfile exposes a conservative explicit fallback") {
 TEST_CASE("Board stores capability profiles without mutating design rules") {
     auto circuit = volt::Circuit{};
     auto board = volt::Board{circuit};
-    board.set_design_rules(volt::BoardDesignRules{0.11, 0.12, 0.21, 0.46, 0.07});
+    board.set_design_rules(volt::BoardDesignRules{0.11, 0.12, 0.21, 0.46, 0.07, 0.31});
 
     CHECK_FALSE(board.capability_profile().has_value());
 
@@ -382,6 +382,7 @@ TEST_CASE("Board stores capability profiles without mutating design rules") {
     CHECK(board.design_rules().minimum_via_drill_diameter_mm() == 0.21);
     CHECK(board.design_rules().minimum_via_annular_diameter_mm() == 0.46);
     CHECK(board.design_rules().board_outline_clearance_mm() == 0.07);
+    CHECK(board.design_rules().package_assembly_clearance_mm() == 0.31);
 }
 
 TEST_CASE("BoardRoom validates scope and optional rule overrides") {

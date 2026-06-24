@@ -576,6 +576,7 @@ class Board:
         min_via_drill: float | None = None,
         min_via_annular: float | None = None,
         board_outline_clearance: float | None = None,
+        package_assembly_clearance: float | None = None,
     ) -> Board:
         """Update board design rules, preserving unspecified rule values."""
         rules = self.design_rules()
@@ -600,12 +601,18 @@ class Board:
             if board_outline_clearance is None
             else board_outline_clearance
         )
+        package_assembly_clearance_value = (
+            rules["package_assembly_clearance_mm"]
+            if package_assembly_clearance is None
+            else package_assembly_clearance
+        )
         self._design._circuit.board_set_design_rules(
             float(copper_clearance_value),
             float(min_track_width_value),
             float(min_via_drill_value),
             float(min_via_annular_value),
             float(board_outline_clearance_value),
+            float(package_assembly_clearance_value),
         )
         return self
 

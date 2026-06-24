@@ -229,7 +229,7 @@ void bind_circuit(pybind11::module_ &module) {
         .def("board_set_design_rules", &PyCircuit::board_set_design_rules,
              py::arg("copper_clearance_mm"), py::arg("minimum_track_width_mm"),
              py::arg("minimum_via_drill_diameter_mm"), py::arg("minimum_via_annular_diameter_mm"),
-             py::arg("board_outline_clearance_mm"))
+             py::arg("board_outline_clearance_mm"), py::arg("package_assembly_clearance_mm"))
         .def("board_set_capability_profile", &PyCircuit::board_set_capability_profile,
              py::arg("profile"))
         .def("board_add_layer", &PyCircuit::board_add_layer, py::arg("name"), py::arg("role"),

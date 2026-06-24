@@ -12,8 +12,6 @@
 namespace volt::detail {
 namespace {
 
-inline constexpr double package_assembly_comfort_clearance_mm = 0.25;
-
 [[nodiscard]] double rounded_measurement(double value) noexcept {
     const auto rounded = std::round(value * 1.0e12) / 1.0e12;
     if (std::abs(rounded) <= board_drc_epsilon) {
@@ -139,10 +137,11 @@ void append_component_assembly_clearance(const Board &board, const ProjectedFoot
     if (!lhs_polygon.has_value() || !rhs_polygon.has_value()) {
         return;
     }
+    const auto required = board.design_rules().package_assembly_clearance_mm();
     const auto distance =
         rounded_measurement(polygon_polygon_distance(lhs_polygon.value(), rhs_polygon.value()));
-    if (distance <= board_drc_epsilon ||
-        distance + board_drc_epsilon >= package_assembly_comfort_clearance_mm) {
+    if (required <= board_drc_epsilon || distance <= board_drc_epsilon ||
+        distance + board_drc_epsilon >= required) {
         return;
     }
 
@@ -155,7 +154,7 @@ void append_component_assembly_clearance(const Board &board, const ProjectedFoot
                                                placement_side_layers(board, lhs.side())),
                     footprint_geometry_overlay(rhs.placement(), rhs_polygon.value(),
                                                placement_side_layers(board, rhs.side()))},
-        DiagnosticMeasurement{distance, package_assembly_comfort_clearance_mm}, std::move(rule)));
+        DiagnosticMeasurement{distance, required}, std::move(rule)));
 }
 
 [[nodiscard]] double package_board_edge_clearance(const BoardOutline &outline,

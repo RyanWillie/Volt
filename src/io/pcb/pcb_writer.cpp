@@ -423,6 +423,8 @@ void write_rules(std::ostream &out, const Board &board) {
     write_number(out, rules.minimum_via_annular_diameter_mm());
     out << ", \"board_outline_clearance_mm\": ";
     write_number(out, rules.board_outline_clearance_mm());
+    out << ", \"package_assembly_clearance_mm\": ";
+    write_number(out, rules.package_assembly_clearance_mm());
     if (!rules.clearance_matrix().empty()) {
         out << ", \"clearance_matrix\": [";
         for (std::size_t index = 0; index < rules.clearance_matrix().size(); ++index) {

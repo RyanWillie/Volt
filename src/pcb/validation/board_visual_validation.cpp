@@ -9,10 +9,10 @@
 #include <utility>
 #include <vector>
 
+#include <volt/pcb/projection/footprint_visual_projection.hpp>
+
 namespace volt::detail {
 namespace {
-
-inline constexpr double text_width_factor = 0.6;
 
 struct PlacementVisualExtent {
     ComponentPlacementId placement;
@@ -103,7 +103,8 @@ placement_visual_extent(const Board &board, const FootprintLibrary &footprints,
 }
 
 [[nodiscard]] std::vector<BoardPoint> text_box_corners(const BoardText &text) {
-    const auto width = static_cast<double>(text.text().size()) * text.size_mm() * text_width_factor;
+    const auto width =
+        static_cast<double>(text.text().size()) * text.size_mm() * board_text_width_factor;
     const auto height = text.size_mm();
     return std::vector{
         transform_text_point(text, 0.0, -height),
@@ -411,75 +412,12 @@ collect_pad_visual_geometry(const Board &board, const FootprintLibrary &footprin
     return pads;
 }
 
-struct FootprintLocalBounds {
-    double min_x;
-    double min_y;
-    double max_x;
-    double max_y;
-};
-
-void include_footprint_point(FootprintLocalBounds &bounds, FootprintPoint point) {
-    bounds.min_x = std::min(bounds.min_x, point.x_mm());
-    bounds.min_y = std::min(bounds.min_y, point.y_mm());
-    bounds.max_x = std::max(bounds.max_x, point.x_mm());
-    bounds.max_y = std::max(bounds.max_y, point.y_mm());
-}
-
-void include_footprint_polygon(FootprintLocalBounds &bounds,
-                               const std::optional<FootprintPolygon> &polygon) {
-    if (!polygon.has_value()) {
-        return;
-    }
-    for (const auto point : polygon->vertices()) {
-        include_footprint_point(bounds, point);
-    }
-}
-
-[[nodiscard]] FootprintLocalBounds footprint_local_bounds(const FootprintDefinition &definition) {
-    const auto &first_pad = definition.pad(FootprintPadId{0});
-    auto bounds = FootprintLocalBounds{
-        first_pad.position().x_mm() - (first_pad.size().width_mm() / 2.0),
-        first_pad.position().y_mm() - (first_pad.size().height_mm() / 2.0),
-        first_pad.position().x_mm() + (first_pad.size().width_mm() / 2.0),
-        first_pad.position().y_mm() + (first_pad.size().height_mm() / 2.0),
-    };
-    for (std::size_t index = 1; index < definition.pad_count(); ++index) {
-        const auto &pad = definition.pad(FootprintPadId{index});
-        include_footprint_point(
-            bounds, FootprintPoint{pad.position().x_mm() - (pad.size().width_mm() / 2.0),
-                                   pad.position().y_mm() - (pad.size().height_mm() / 2.0)});
-        include_footprint_point(
-            bounds, FootprintPoint{pad.position().x_mm() + (pad.size().width_mm() / 2.0),
-                                   pad.position().y_mm() + (pad.size().height_mm() / 2.0)});
-    }
-    include_footprint_polygon(bounds, definition.courtyard());
-    include_footprint_polygon(bounds, definition.body());
-    include_footprint_polygon(bounds, definition.fabrication_outline());
-    include_footprint_polygon(bounds, definition.assembly_outline());
-    for (const auto &marking : definition.markings()) {
-        for (const auto point : marking.polygon().vertices()) {
-            include_footprint_point(bounds, point);
-        }
-    }
-    return bounds;
-}
-
 [[nodiscard]] ReferenceDesignatorVisualExtent
 reference_designator_extent(const Board &board, const ComponentPlacement &placement,
                             ComponentPlacementId placement_id,
                             const FootprintDefinition &definition) {
-    constexpr double reference_size_mm = 1.8;
-    const auto bounds = footprint_local_bounds(definition);
-    const auto anchor =
-        transform_footprint_point(placement, FootprintPoint{0.0, bounds.min_y - 1.0});
     const auto value = board.circuit().component(placement.component()).reference().value();
-    const auto width = static_cast<double>(value.size()) * reference_size_mm * text_width_factor;
-    const auto corners = std::vector{
-        BoardPoint{anchor.x_mm() - (width / 2.0), anchor.y_mm() - reference_size_mm},
-        BoardPoint{anchor.x_mm() + (width / 2.0), anchor.y_mm() - reference_size_mm},
-        BoardPoint{anchor.x_mm() + (width / 2.0), anchor.y_mm()},
-        BoardPoint{anchor.x_mm() - (width / 2.0), anchor.y_mm()},
-    };
+    const auto corners = default_reference_designator_corners(placement, definition, value);
     const auto [min, max] = box_bounds(corners);
     return ReferenceDesignatorVisualExtent{
         placement_id, placement.component(), placement.side(), value, corners, min, max};
