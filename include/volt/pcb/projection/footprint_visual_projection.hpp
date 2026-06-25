@@ -13,9 +13,13 @@ inline constexpr double default_reference_designator_size_mm = 1.8;
 
 /** Local footprint bounds used for visual placement and preview sizing. */
 struct FootprintVisualBounds {
+    /** Minimum local X coordinate in footprint millimeters. */
     double min_x;
+    /** Minimum local Y coordinate in footprint millimeters. */
     double min_y;
+    /** Maximum local X coordinate in footprint millimeters. */
     double max_x;
+    /** Maximum local Y coordinate in footprint millimeters. */
     double max_y;
 };
 
