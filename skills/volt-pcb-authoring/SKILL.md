@@ -35,6 +35,8 @@ for diagnostic in design.validate_for_pcb():
 
 `design.validate_for_pcb()` (source: `python/volt/design.py`) adds PCB-readiness checks on top of `design.validate()`: selected physical parts, footprint geometry, and pin-pad mappings must be present for all placed components. Do not select parts or create nets in the PCB layer; consume what the logical circuit owns.
 
+Once components are placed, board DRC also checks package geometry against the design rules and the board edge. Watch for `PCB_COMPONENT_ASSEMBLY_CLEARANCE_WARNING` (two package bodies closer than `package_assembly_clearance`) and `PCB_COMPONENT_BOARD_EDGE_CLEARANCE_VIOLATION` (a package body too close to the outline). These depend on footprints declaring `body`/outline geometry (see `volt-component-authoring`); fix them by spacing parts or pulling them off the edge in `volt-pcb-layout`, not by loosening the rule.
+
 Run the project result check after authoring:
 
 ```python
@@ -211,6 +213,7 @@ for warning in kicad_export.warnings:
 After producing the manufacturing package:
 
 - `result.ok` is `True` before calling `write_manufacturing_package`.
+- **View the rendered board SVG as an image** (`board.to_svg()` or the `*.pcb.svg` / per-layer SVGs from `write_artifacts`) and look: placement sane, silkscreen legible and clear of pads, board outline and mounting holes correct, no overlaps or off-board parts. Diagnostics and link-checks won't show you a cramped or unreadable board — see "Viewing Rendered Output" in `../shared-volt-architecture.md` for how to view or rasterize it.
 - Open `manufacturing/inspection.html` and spot-check that Gerber links resolve.
 - Review `manufacturing/native-fabrication.json` → `coverage.fab_critical_loss` must be `false`.
 - Verify `manufacturing/manifest.json` has the expected board name, profile, and artifact list.

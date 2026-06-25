@@ -98,7 +98,9 @@ The kernel rejects: missing logical pins, unknown pin names, and duplicate pad l
 
 ### Phase 5: Build footprint geometry
 
-`FootprintDefinition` (alias of `Footprint`) holds the pad list and a library-qualified reference. See `references/footprints.md` for the SMD and through-hole recipes.
+`FootprintDefinition` (alias of `Footprint`) holds the pad list and a library-qualified reference. It can also carry non-pad geometry — `courtyard`, `body`, `fabrication_outline`, `assembly_outline`, and semantic `markings` (`volt.FootprintMarking`, kinds `silkscreen`/`polarity`/`pin_1`) — which feed board visual bounds and clearance diagnostics. See `references/footprints.md` for the SMD, through-hole, outline, and marking recipes.
+
+Structural rule: a footprint reference must resolve to one consistent geometry. The board **rejects same-ref footprint geometry conflicts** — reusing a `(library, name)` ref with pads that match but geometry that differs is an error. Keep one ref → one geometry.
 
 ### Phase 6: Build the schematic symbol
 

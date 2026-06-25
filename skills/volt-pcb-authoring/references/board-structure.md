@@ -13,7 +13,7 @@ This reference covers the five-step board structure sequence: layers → stackup
 | `design.board(name)` | `name: str` | — |
 | `board.add_layer(name, ...)` | `role: str`, `side: str` | `thickness=0.0`, `enabled=True`, `copper_weight=None` |
 | `board.set_layer_stack(layers, ...)` | `thickness: float` | `dielectrics=None` |
-| `board.set_design_rules(...)` | — (all optional) | `copper_clearance`, `min_track_width`, `min_via_drill`, `min_via_annular`, `board_outline_clearance` |
+| `board.set_design_rules(...)` | — (all optional) | `copper_clearance`, `min_track_width`, `min_via_drill`, `min_via_annular`, `board_outline_clearance`, `package_assembly_clearance` |
 | `board.set_rectangular_outline(...)` | `origin: Point`, `size: Point` | — |
 | `board.set_polygon_outline(vertices)` | `vertices: Iterable[Point]` | — |
 | `board.add(volt.Hole(...))` | — | `center`, `diameter`, `plated=False`, `role=""`, `label=""`, `finished_diameter=None` |
@@ -51,7 +51,7 @@ Key observations:
 
 - `add_layer` is called once per physical layer; the return value is the kernel layer index.
 - `set_layer_stack` receives a tuple of layer indices, not names. Call it **after** all `add_layer` calls.
-- `set_design_rules` uses `min_via_annular` (not `min_via_annular_ring` or `via_annular`). All five keyword args are optional — omit to preserve the current kernel default.
+- `set_design_rules` uses `min_via_annular` (not `min_via_annular_ring` or `via_annular`). All six keyword args are optional — omit to preserve the current kernel default. The sixth, `package_assembly_clearance`, sets the minimum package-body-to-package-body spacing checked during DRC (the 555 example above omits it).
 - `set_rectangular_outline` requires `origin=` and `size=` as keyword arguments.
 - `volt.Hole` `center=` is a `(float, float)` tuple. `role="mounting"` is the standard tag for mechanical mounting holes.
 
@@ -112,6 +112,7 @@ Source: `python/volt/pcb.py` `Board.set_design_rules`. All arguments are keyword
 | `min_via_drill` | Minimum via drill diameter (mm) |
 | `min_via_annular` | Minimum via annular ring outer diameter (mm) |
 | `board_outline_clearance` | Minimum copper-to-outline clearance (mm) |
+| `package_assembly_clearance` | Minimum package-body-to-package-body assembly clearance (mm) |
 
 Returns `self` for chaining.
 

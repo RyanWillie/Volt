@@ -185,9 +185,11 @@ coordinates:
 | `layout.frame(at=, direction=)` | Temporarily switch to a local coordinate origin |
 | `layout.route(...).through(point)` | Route via an intermediate waypoint before `.to()` |
 
-**Before routing, sanity-check placement:** render `board.to_svg()` and look. Is the
-ratsnest short and untangled? Do courtyards breathe? Are connectors on the edge and the
-centroid roughly centered? Re-place now — it is far cheaper than re-routing.
+**Before routing, sanity-check placement:** render `board.to_svg()` and **view it as an
+image** (rasterize first if your tooling needs it — see "Viewing Rendered Output" in
+`../shared-volt-architecture.md`). Is the ratsnest short and untangled? Do courtyards
+breathe? Are connectors on the edge and the centroid roughly centered? Re-place now — it
+is far cheaper than re-routing.
 
 ### 3. Routing — *rubric 4, 5*
 
@@ -243,10 +245,16 @@ board.add_text("My Board  Rev A", at=(W/2, H-1.5), layer=silk, size=1.0)
 
 This is where "looks professional" gets verified, not assumed.
 
-1. **Render and look** — `board.write_svg(...)`; inspect against all seven rubric
-   categories. Trust your eyes for the gestalt (rubric 7).
+1. **Render and look** — `board.write_svg(...)` (or `board.to_svg()`), then **view the SVG
+   as an image** and inspect against all seven rubric categories. Trust your eyes for the
+   gestalt (rubric 7). If your tooling can't render SVG directly, rasterize it first — see
+   "Viewing Rendered Output" in `../shared-volt-architecture.md`.
 2. **Run DRC** — `board.validate()` must be clean (this is correctness, separate from the
-   rubric).
+   rubric). Among the checks it can raise are `PCB_COMPONENT_ASSEMBLY_CLEARANCE_WARNING`
+   (package bodies closer than `package_assembly_clearance`) and
+   `PCB_COMPONENT_BOARD_EDGE_CLEARANCE_VIOLATION` (a package body too near the outline) —
+   resolve these by spacing parts or pulling them off the edge, the same moves rubric
+   category 2 already asks for.
 3. **Run the readability check** — once `validate_board_readability(board)` exists, run it
    and resolve every `warning`; weigh each `info`. Until then, walk the rubric checklist
    below by hand.

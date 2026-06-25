@@ -90,7 +90,7 @@ waypoint = layout.node(timer.DISCH.right(2.5))
 ```
 
 #### `layout.rule(name)` → `float`
-Return a board design-rule value by compact name (e.g. `"copper_clearance"`).
+Return a board design-rule value by compact name. Accepted names include `"copper_clearance"`, `"min_track_width"`, `"min_via_drill"`, `"min_via_annular"`, `"board_outline_clearance"` (alias `"outline_clearance"`), and `"package_assembly_clearance"` (the `_mm`-suffixed forms also work). Use it to derive widths/spacings from the active rules instead of hard-coding them.
 
 ---
 

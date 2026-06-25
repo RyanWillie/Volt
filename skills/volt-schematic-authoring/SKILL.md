@@ -220,7 +220,7 @@ sheet.region("timing", x=100, y=40, w=80, h=60, title="Timing Network")
 
 ## Visual Quality Rubric
 
-A clean model test is necessary but not sufficient. Open the rendered SVG and verify:
+A clean model test is necessary but not sufficient. Render the sheet and **view the SVG as an image** (see "Viewing Rendered Output" in `../shared-volt-architecture.md` for how to view or rasterize it), then verify:
 
 1. **Tag and port restraint** — power/ground stubs and off-page tags are quiet annotations,
    not the dominant visual element. Avoid excessive tagging when a short wire communicates
@@ -240,9 +240,10 @@ A clean model test is necessary but not sufficient. Open the rendered SVG and ve
 8. **Split sheets when needed** — if one page cannot remain readable at the chosen sheet
    size, split the design into multiple named sheets, each focused on a functional block.
 
-Always open the rendered SVG. Diagnostics (`SCHEMATIC_PIN_NET_NOT_VISUALLY_COVERED`,
-`SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED`) are necessary checks but will not catch crowded
-layouts, poorly aligned labels, or crossed wires.
+Always view the rendered SVG as an image — not just the JSON or diagnostics. Diagnostics
+(`SCHEMATIC_PIN_NET_NOT_VISUALLY_COVERED`, `SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED`) are
+necessary checks but will not catch crowded layouts, poorly aligned labels, or crossed
+wires — only your eyes on the drawing will.
 
 ## Validation Checklist
 
@@ -250,8 +251,8 @@ layouts, poorly aligned labels, or crossed wires.
   `SCHEMATIC_PIN_NET_NOT_VISUALLY_COVERED` or `SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED`.
 - Inspect schematic JSON: every `ComponentId`, `PinId`, and `NetId` reference resolves to
   an existing logical entity.
-- Open the rendered SVG: verify grouping, label alignment, tag restraint, spacing, no
-  collisions, title block fit.
+- View the rendered SVG as an image: verify grouping, label alignment, tag restraint,
+  spacing, no collisions, title block fit.
 - Add `@project.schematic.test` entries for durable contracts such as required component
   placement.
 

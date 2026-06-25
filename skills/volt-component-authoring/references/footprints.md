@@ -11,6 +11,7 @@ Source: `examples/timer_555_led_blinker/components.py`
 | `volt.FootprintDefinition` | `python/volt/pcb.py` (alias of `Footprint`) | Holds library-qualified ref + pad list |
 | `volt.FootprintPad` | `python/volt/pcb.py` | One pad geometry entry |
 | `FootprintDrill` | `python/volt/pcb.py` | Drill metadata for through-hole pads |
+| `volt.FootprintMarking` | `python/volt/_footprint.py` | Semantic non-pad mark (silkscreen / polarity / pin-1) |
 
 `FootprintDefinition` is a direct alias: `FootprintDefinition = Footprint` in `pcb.py`.
 
@@ -85,10 +86,63 @@ FootprintPad.through_hole(
 volt.FootprintDefinition(
     (library: str, name: str),
     pads=(...),
+    courtyard=None,             # Iterable[(x, y)] | None
+    body=None,                  # Iterable[(x, y)] | None
+    fabrication_outline=None,   # Iterable[(x, y)] | None
+    assembly_outline=None,      # Iterable[(x, y)] | None
+    markings=(),                # Iterable[volt.FootprintMarking]
 )
 ```
 
-The first positional argument is a `(library, name)` tuple — a library-qualified KiCad footprint reference. `pads` is any iterable of `FootprintPad` objects.
+The first positional argument is a `(library, name)` tuple — a library-qualified KiCad footprint reference. `pads` is any iterable of `FootprintPad` objects. The remaining keyword arguments are optional non-pad geometry (all in millimetres). Omitting a geometry field means no such geometry was declared — not an empty extent.
+
+Each outline/polygon is an iterable of `(x, y)` boundary vertices in canonical order. **Do not repeat the first vertex at the end** — the boundary is implicitly closed.
+
+---
+
+## Footprint outlines and markings
+
+A footprint may carry semantic non-pad geometry beyond its pads. These feed the board's
+visual bounds, clearance diagnostics (see `volt-pcb-authoring`), and the `volt.part`
+artifact (format `volt.part`, version 4).
+
+| Field | Meaning |
+|---|---|
+| `courtyard` | Keep-out boundary used for component-to-component spacing |
+| `body` | Physical package body extent |
+| `fabrication_outline` | Fab-layer outline |
+| `assembly_outline` | Assembly-drawing outline |
+| `markings` | Semantic marks (silkscreen / polarity / pin-1) as `volt.FootprintMarking` |
+
+`volt.FootprintMarking` (`python/volt/_footprint.py`) is a frozen value with `kind` and
+`polygon`. `kind` must be `"silkscreen"`, `"polarity"`, or `"pin_1"` — any other value
+raises `ValueError`. Use the classmethods rather than the raw constructor:
+
+```python
+volt.FootprintMarking.silkscreen([(x0, y0), (x1, y1), ...])
+volt.FootprintMarking.polarity([(x0, y0), (x1, y1), ...])
+volt.FootprintMarking.pin_1([(x0, y0), (x1, y1), ...])
+```
+
+Example — a polarized LED footprint that declares a pin-1 mark and a body outline:
+
+```python
+volt.FootprintDefinition(
+    ("LED_SMD", "LED_0805_2012Metric"),
+    pads=(
+        _front_smd_pad("1", at=(-0.9375, 0.0), size=(0.975, 1.4)),
+        _front_smd_pad("2", at=( 0.9375, 0.0), size=(0.975, 1.4)),
+    ),
+    body=((-1.0, -0.7), (1.0, -0.7), (1.0, 0.7), (-1.0, 0.7)),
+    markings=(
+        volt.FootprintMarking.pin_1([(-1.4, -0.7), (-1.2, -0.7), (-1.2, 0.7), (-1.4, 0.7)]),
+    ),
+)
+```
+
+Polarity and pin-1 marks are how the board can render and check orientation, so declare
+them for polarized parts (LEDs, diodes, electrolytics, connectors) when you author custom
+geometry.
 
 ---
 

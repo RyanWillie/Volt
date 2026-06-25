@@ -43,3 +43,12 @@ The logical circuit owns connectivity. Schematic and PCB skills project or imple
 - Prefer project-level validation and focused artifact inspection over broad full-suite runs when only authoring docs or example guidance changes.
 - When changing examples or generated artifacts, verify deterministic logical JSON, schematic JSON/SVG, PCB JSON/SVG, diagnostics, BOM/CPL, and manufacturing outputs as relevant.
 - Treat a clean validation report as necessary but not sufficient for visual surfaces. Inspect rendered schematic and PCB SVGs before calling the result polished.
+
+## Viewing Rendered Output
+
+"Inspect the SVG" means *look at the rendered drawing as an image* and judge it — diagnostics cannot tell you a schematic reads poorly or a board looks cramped. Generate the SVG (`schematic.to_svg()` / `board.to_svg()`, or the `*.svg` / `*.pcb.svg` files from `ProjectResult.write_artifacts(...)`), then view it:
+
+- Most coding agents can view an SVG file directly — open it as you would any image and assess it against the skill's quality rubric.
+- If your tooling only renders raster images, rasterize first and view the PNG: `cairosvg sheet.svg -o sheet.png --output-width 1400` (install with `pip install cairosvg`; `qlmanage -t -s 1400 sheet.svg -o .` works on macOS).
+
+This is a strong recommendation, not a hard gate: a clean diagnostics run with an unreviewed drawing is half-finished work.
