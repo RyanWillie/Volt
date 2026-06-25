@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <initializer_list>
 #include <iomanip>
 #include <limits>
 #include <optional>
@@ -32,6 +33,64 @@ constexpr double board_escape_stub_length_mm = 1.0;
 
 [[nodiscard]] bool same_point(BoardPoint lhs, BoardPoint rhs) {
     return detail::board_distance(lhs, rhs) < board_router_min_segment_mm;
+}
+
+[[nodiscard]] bool octilinear_segment(BoardPoint start, BoardPoint end) {
+    const auto dx = std::abs(end.x_mm() - start.x_mm());
+    const auto dy = std::abs(end.y_mm() - start.y_mm());
+    return dx < board_router_min_segment_mm || dy < board_router_min_segment_mm ||
+           std::abs(dx - dy) < board_router_min_segment_mm;
+}
+
+[[nodiscard]] std::vector<BoardPoint> normalized_path(std::initializer_list<BoardPoint> points) {
+    auto path = std::vector<BoardPoint>{};
+    for (const auto point : points) {
+        if (path.empty() || !same_point(path.back(), point)) {
+            path.push_back(point);
+        }
+    }
+    return path;
+}
+
+void append_path_shape(std::vector<std::vector<BoardPoint>> &paths,
+                       std::initializer_list<BoardPoint> points) {
+    auto path = normalized_path(points);
+    if (!path.empty()) {
+        paths.push_back(std::move(path));
+    }
+}
+
+[[nodiscard]] std::vector<std::vector<BoardPoint>> octilinear_path_shapes(BoardPoint start,
+                                                                          BoardPoint end) {
+    auto paths = std::vector<std::vector<BoardPoint>>{};
+    if (same_point(start, end)) {
+        paths.push_back(std::vector{start});
+        return paths;
+    }
+
+    if (octilinear_segment(start, end)) {
+        paths.push_back(std::vector{start, end});
+    }
+
+    const auto dx = std::abs(end.x_mm() - start.x_mm());
+    const auto dy = std::abs(end.y_mm() - start.y_mm());
+    if (dx < board_router_min_segment_mm || dy < board_router_min_segment_mm) {
+        return paths;
+    }
+
+    const auto corner_a = BoardPoint{end.x_mm(), start.y_mm()};
+    const auto corner_b = BoardPoint{start.x_mm(), end.y_mm()};
+    append_path_shape(paths, {start, corner_a, end});
+    append_path_shape(paths, {start, corner_b, end});
+
+    const auto mid_x0 = BoardPoint{(start.x_mm() + end.x_mm()) / 2.0, start.y_mm()};
+    const auto mid_x1 = BoardPoint{(start.x_mm() + end.x_mm()) / 2.0, end.y_mm()};
+    append_path_shape(paths, {start, mid_x0, mid_x1, end});
+
+    const auto mid_y0 = BoardPoint{start.x_mm(), (start.y_mm() + end.y_mm()) / 2.0};
+    const auto mid_y1 = BoardPoint{end.x_mm(), (start.y_mm() + end.y_mm()) / 2.0};
+    append_path_shape(paths, {start, mid_y0, mid_y1, end});
+    return paths;
 }
 
 [[nodiscard]] BoardLayerSide layer_side(const Board &board, BoardLayerId layer) {
@@ -271,40 +330,30 @@ BoardRouter::pattern_candidates(const BoardRouteRequest &request,
     const auto end = request.end;
     const auto start_layer = request.start_layer;
     const auto end_layer = request.end_layer;
-    const auto corner_a = BoardPoint{end.x_mm(), start.y_mm()};
-    const auto corner_b = BoardPoint{start.x_mm(), end.y_mm()};
-    const auto mid_x = BoardPoint{(start.x_mm() + end.x_mm()) / 2.0, start.y_mm()};
-    const auto mid_y = BoardPoint{(start.x_mm() + end.x_mm()) / 2.0, end.y_mm()};
+
+    const auto append_segments = [](Candidate &candidate, BoardLayerId layer,
+                                    const std::vector<BoardPoint> &path) {
+        for (std::size_t index = 1; index < path.size(); ++index) {
+            candidate.segments.push_back(SegmentStep{layer, path[index - 1], path[index]});
+        }
+    };
 
     auto candidates = std::vector<Candidate>{};
 
     if (start_layer == end_layer) {
-        // Straight.
-        candidates.push_back(Candidate{{SegmentStep{start_layer, start, end}}, {}});
-        // L, two corner orientations.
-        candidates.push_back(Candidate{
-            {SegmentStep{start_layer, start, corner_a}, SegmentStep{start_layer, corner_a, end}},
-            {}});
-        candidates.push_back(Candidate{
-            {SegmentStep{start_layer, start, corner_b}, SegmentStep{start_layer, corner_b, end}},
-            {}});
-        // Z, two mid-jog orientations.
-        candidates.push_back(Candidate{{SegmentStep{start_layer, start, mid_x},
-                                        SegmentStep{start_layer, mid_x, mid_y},
-                                        SegmentStep{start_layer, mid_y, end}},
-                                       {}});
-        const auto mid_y0 = BoardPoint{start.x_mm(), (start.y_mm() + end.y_mm()) / 2.0};
-        const auto mid_y1 = BoardPoint{end.x_mm(), (start.y_mm() + end.y_mm()) / 2.0};
-        candidates.push_back(Candidate{{SegmentStep{start_layer, start, mid_y0},
-                                        SegmentStep{start_layer, mid_y0, mid_y1},
-                                        SegmentStep{start_layer, mid_y1, end}},
-                                       {}});
+        for (const auto &path : octilinear_path_shapes(start, end)) {
+            auto candidate = Candidate{};
+            append_segments(candidate, start_layer, path);
+            candidates.push_back(std::move(candidate));
+        }
         return candidates;
     }
 
     // Layer change: place a via at a transition point legal on both layers, then route on
     // the start layer up to the via and on the end layer onward. Deterministic transition
     // order: end point, start point, then the two L corners.
+    const auto corner_a = BoardPoint{end.x_mm(), start.y_mm()};
+    const auto corner_b = BoardPoint{start.x_mm(), end.y_mm()};
     const auto transitions = std::vector<BoardPoint>{end, start, corner_a, corner_b};
     for (const auto transition : transitions) {
         const auto via_layers =
@@ -312,11 +361,15 @@ BoardRouter::pattern_candidates(const BoardRouteRequest &request,
         if (!layers_in_allowed_parameters(via_layers, params)) {
             continue;
         }
-        auto candidate = Candidate{};
-        candidate.segments.push_back(SegmentStep{start_layer, start, transition});
-        candidate.vias.push_back(ViaStep{transition, start_layer, end_layer});
-        candidate.segments.push_back(SegmentStep{end_layer, transition, end});
-        candidates.push_back(std::move(candidate));
+        for (const auto &start_path : octilinear_path_shapes(start, transition)) {
+            for (const auto &end_path : octilinear_path_shapes(transition, end)) {
+                auto candidate = Candidate{};
+                append_segments(candidate, start_layer, start_path);
+                candidate.vias.push_back(ViaStep{transition, start_layer, end_layer});
+                append_segments(candidate, end_layer, end_path);
+                candidates.push_back(std::move(candidate));
+            }
+        }
     }
     return candidates;
 }
@@ -328,6 +381,12 @@ BoardRouter::walk_around_candidates(const BoardRouteRequest &request,
     const auto end = request.end;
     const auto start_layer = request.start_layer;
     const auto end_layer = request.end_layer;
+    const auto append_segments = [](Candidate &candidate, BoardLayerId layer,
+                                    const std::vector<BoardPoint> &path) {
+        for (std::size_t index = 1; index < path.size(); ++index) {
+            candidate.segments.push_back(SegmentStep{layer, path[index - 1], path[index]});
+        }
+    };
 
     const auto dx = end.x_mm() - start.x_mm();
     const auto dy = end.y_mm() - start.y_mm();
@@ -351,21 +410,31 @@ BoardRouter::walk_around_candidates(const BoardRouteRequest &request,
             const auto offset = static_cast<double>(step) * step_mm * static_cast<double>(sign);
             const auto waypoint =
                 BoardPoint{mid.x_mm() + perp_x * offset, mid.y_mm() + perp_y * offset};
-            auto candidate = Candidate{};
             if (start_layer == end_layer) {
-                candidate.segments.push_back(SegmentStep{start_layer, start, waypoint});
-                candidate.segments.push_back(SegmentStep{start_layer, waypoint, end});
+                for (const auto &start_path : octilinear_path_shapes(start, waypoint)) {
+                    for (const auto &end_path : octilinear_path_shapes(waypoint, end)) {
+                        auto candidate = Candidate{};
+                        append_segments(candidate, start_layer, start_path);
+                        append_segments(candidate, start_layer, end_path);
+                        candidates.push_back(std::move(candidate));
+                    }
+                }
             } else {
                 const auto via_layers = via_candidate_layers(*board_, request.net, waypoint,
                                                              start_layer, end_layer, params);
                 if (!layers_in_allowed_parameters(via_layers, params)) {
                     continue;
                 }
-                candidate.segments.push_back(SegmentStep{start_layer, start, waypoint});
-                candidate.vias.push_back(ViaStep{waypoint, start_layer, end_layer});
-                candidate.segments.push_back(SegmentStep{end_layer, waypoint, end});
+                for (const auto &start_path : octilinear_path_shapes(start, waypoint)) {
+                    for (const auto &end_path : octilinear_path_shapes(waypoint, end)) {
+                        auto candidate = Candidate{};
+                        append_segments(candidate, start_layer, start_path);
+                        candidate.vias.push_back(ViaStep{waypoint, start_layer, end_layer});
+                        append_segments(candidate, end_layer, end_path);
+                        candidates.push_back(std::move(candidate));
+                    }
+                }
             }
-            candidates.push_back(std::move(candidate));
         }
     }
     return candidates;
@@ -378,6 +447,9 @@ BoardRouter::evaluate(const Candidate &candidate, const BoardRouteRequest &reque
     for (const auto &segment : candidate.segments) {
         if (same_point(segment.start, segment.end)) {
             continue;
+        }
+        if (!octilinear_segment(segment.start, segment.end)) {
+            return blockers;
         }
         if (!layer_in_allowed_parameters(segment.layer, params)) {
             return blockers;
@@ -423,6 +495,10 @@ void BoardRouter::commit(const Candidate &candidate, const BoardRouteRequest &re
     for (const auto &segment : candidate.segments) {
         if (same_point(segment.start, segment.end)) {
             continue;
+        }
+        if (!octilinear_segment(segment.start, segment.end)) {
+            throw std::logic_error{
+                "BoardRouter cannot commit a non-octilinear assisted route segment"};
         }
         const auto width_mm =
             track_width_for_segment(*board_, segment.layer, segment.start, segment.end, params);
