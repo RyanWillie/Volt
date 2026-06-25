@@ -96,6 +96,22 @@ track_geometry(const volt::Board &board) {
     return geometry;
 }
 
+[[nodiscard]] bool is_octilinear_segment(volt::BoardPoint start, volt::BoardPoint end) {
+    const auto dx = std::abs(end.x_mm() - start.x_mm());
+    const auto dy = std::abs(end.y_mm() - start.y_mm());
+    return dx < 1.0e-9 || dy < 1.0e-9 || std::abs(dx - dy) < 1.0e-9;
+}
+
+void check_tracks_are_octilinear(const volt::Board &board) {
+    for (std::size_t track_index = 0; track_index < board.track_count(); ++track_index) {
+        const auto &points = board.track(volt::BoardTrackId{track_index}).points();
+        for (std::size_t point_index = 1; point_index < points.size(); ++point_index) {
+            INFO("track " << track_index << " segment " << (point_index - 1));
+            CHECK(is_octilinear_segment(points[point_index - 1], points[point_index]));
+        }
+    }
+}
+
 } // namespace
 
 TEST_CASE("Router connects a clear straight path with one track", "[pcb][router]") {
@@ -117,6 +133,71 @@ TEST_CASE("Router connects a clear straight path with one track", "[pcb][router]
     CHECK(track.layer() == layout.front);
     CHECK(track.points().front() == volt::BoardPoint{10.0, 20.0});
     CHECK(track.points().back() == volt::BoardPoint{40.0, 20.0});
+}
+
+TEST_CASE("Router emits octilinear same-layer assisted routes", "[pcb][router]") {
+    auto fixture = make_router_fixture();
+    auto layout = make_two_layer_board(fixture.circuit);
+    auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
+
+    const auto result = router.connect(
+        volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{2.0, 2.0},
+                                volt::BoardPoint{12.0, 5.0}, layout.front, layout.front});
+
+    REQUIRE(result.routed);
+    check_tracks_are_octilinear(layout.board);
+}
+
+TEST_CASE("Router emits octilinear cross-layer assisted routes", "[pcb][router]") {
+    auto fixture = make_router_fixture();
+    auto layout = make_two_layer_board(fixture.circuit);
+    auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
+
+    const auto result = router.connect(
+        volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{2.0, 2.0},
+                                volt::BoardPoint{12.0, 5.0}, layout.front, layout.back});
+
+    REQUIRE(result.routed);
+    REQUIRE(result.vias.size() == 1U);
+    check_tracks_are_octilinear(layout.board);
+}
+
+TEST_CASE("Router emits octilinear walk-around assisted routes", "[pcb][router]") {
+    auto fixture = make_router_fixture();
+    auto layout = make_two_layer_board(fixture.circuit);
+    static_cast<void>(layout.board.add_keepout(volt::BoardKeepout{
+        std::vector{volt::BoardPoint{24.0, 19.0}, volt::BoardPoint{26.0, 19.0},
+                    volt::BoardPoint{26.0, 21.0}, volt::BoardPoint{24.0, 21.0}},
+        std::vector{layout.front}, std::vector{volt::BoardKeepoutRestriction::Copper}}));
+
+    auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
+    const auto result = router.connect(
+        volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{10.0, 20.0},
+                                volt::BoardPoint{40.0, 20.0}, layout.front, layout.front});
+
+    REQUIRE(result.routed);
+    REQUIRE(result.tracks.size() >= 2U);
+    check_tracks_are_octilinear(layout.board);
+}
+
+TEST_CASE("Router emits octilinear cross-layer walk-around assisted routes", "[pcb][router]") {
+    auto fixture = make_router_fixture();
+    auto layout = make_two_layer_board(fixture.circuit);
+    static_cast<void>(layout.board.add_keepout(
+        volt::BoardKeepout{std::vector{volt::BoardPoint{24.0, 19.0}, volt::BoardPoint{26.0, 19.0},
+                                       volt::BoardPoint{26.0, 21.0}, volt::BoardPoint{24.0, 21.0}},
+                           std::vector{layout.front, layout.back},
+                           std::vector{volt::BoardKeepoutRestriction::Copper}}));
+
+    auto router = volt::BoardRouter{layout.board, volt::builtin_footprint_library()};
+    const auto result = router.connect(
+        volt::BoardRouteRequest{fixture.signal_net, volt::BoardPoint{10.0, 20.0},
+                                volt::BoardPoint{40.0, 20.0}, layout.front, layout.back});
+
+    REQUIRE(result.routed);
+    REQUIRE(result.vias.size() == 1U);
+    REQUIRE(result.tracks.size() >= 2U);
+    check_tracks_are_octilinear(layout.board);
 }
 
 TEST_CASE("Routed copper passes full DRC clean by construction", "[pcb][router]") {

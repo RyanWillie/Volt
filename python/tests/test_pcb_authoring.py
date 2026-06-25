@@ -1010,6 +1010,31 @@ def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
     assert json.loads(blocked_board.to_json())["board"].get("tracks", []) == []
 
 
+def test_python_board_authoring_assisted_connect_is_octilinear():
+    design = volt.Design("assisted-connect-octilinear-repro")
+    net = design.net("N")
+    board = design.board("B")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_layer_stack((front,), thickness=1.6)
+    board.set_rectangular_outline(origin=(0, 0), size=(20, 20))
+
+    result = board.assisted_connect(
+        net,
+        start=(2.0, 2.0),
+        start_layer=front,
+        end=(12.0, 5.0),
+        end_layer=front,
+    )
+
+    assert result["routed"] is True
+    model = json.loads(board.to_json())
+    for track in model["board"]["tracks"]:
+        for start, end in zip(track["points"], track["points"][1:]):
+            dx = abs(end[0] - start[0])
+            dy = abs(end[1] - start[1])
+            assert dx == 0 or dy == 0 or abs(dx - dy) < 1e-9
+
+
 def test_python_board_authoring_escape_surfaces_kernel_result():
     design, r1, _ = _small_resistor_led_design()
     board = design.board("Control")
