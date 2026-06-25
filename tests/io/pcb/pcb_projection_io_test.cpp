@@ -125,6 +125,7 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["board"]["rules"]["minimum_via_drill_diameter_mm"] == 0.20);
     CHECK(document["board"]["rules"]["minimum_via_annular_diameter_mm"] == 0.45);
     CHECK(document["board"]["rules"]["board_outline_clearance_mm"] == 0.0);
+    CHECK(document["board"]["rules"]["package_assembly_clearance_mm"] == 0.25);
     CHECK_FALSE(document["board"].contains("capability_profile"));
 
     REQUIRE(document["board"]["layers"].size() == 2);
@@ -184,6 +185,17 @@ TEST_CASE("PCB projection writer emits deterministic product-viewer-ready JSON")
     CHECK(document["viewer"]["pad_resolutions"][0]["geometry"]["shape"] == "rounded_rectangle");
     CHECK(document["viewer"]["pad_resolutions"][0]["geometry"]["layers"] ==
           nlohmann::json::array({"front_copper", "front_solder_mask", "front_paste"}));
+    REQUIRE(document["viewer"]["layers"].size() == 9);
+    CHECK(document["viewer"]["layers"][0]["id"] == "viewer_layer:board_outline");
+    CHECK(document["viewer"]["layers"][0]["kind"] == "board_outline");
+    CHECK(document["viewer"]["layers"][1]["id"] == "viewer_layer:copper");
+    CHECK(document["viewer"]["layers"][2]["id"] == "viewer_layer:pads");
+    CHECK(document["viewer"]["layers"][3]["id"] == "viewer_layer:package_bodies");
+    CHECK(document["viewer"]["layers"][4]["id"] == "viewer_layer:package_courtyards");
+    CHECK(document["viewer"]["layers"][5]["id"] == "viewer_layer:package_fabrication");
+    CHECK(document["viewer"]["layers"][6]["id"] == "viewer_layer:package_assembly");
+    CHECK(document["viewer"]["layers"][7]["id"] == "viewer_layer:annotations");
+    CHECK(document["viewer"]["layers"][8]["id"] == "viewer_layer:diagnostics");
     CHECK(document["viewer"]["diagnostics"] == nlohmann::json::array());
 }
 
@@ -655,7 +667,7 @@ TEST_CASE("PCB projection writer and reader round-trip zones, keepouts, rooms, a
 TEST_CASE("PCB projection writer and reader round-trip board design rules") {
     const auto fixture = make_resistor_circuit();
     auto board = make_viewer_ready_board(fixture);
-    board.set_design_rules(volt::BoardDesignRules{0.20, 0.25, 0.30, 0.70, 0.10});
+    board.set_design_rules(volt::BoardDesignRules{0.20, 0.25, 0.30, 0.70, 0.10, 0.35});
     [[maybe_unused]] const auto track = board.add_track(volt::BoardTrack{
         fixture.first_net,
         volt::BoardLayerId{0},
@@ -671,6 +683,7 @@ TEST_CASE("PCB projection writer and reader round-trip board design rules") {
     CHECK(document["board"]["rules"]["minimum_via_drill_diameter_mm"] == 0.30);
     CHECK(document["board"]["rules"]["minimum_via_annular_diameter_mm"] == 0.70);
     CHECK(document["board"]["rules"]["board_outline_clearance_mm"] == 0.10);
+    CHECK(document["board"]["rules"]["package_assembly_clearance_mm"] == 0.35);
     REQUIRE_FALSE(document["viewer"]["diagnostics"].empty());
     const auto &track_width = document["viewer"]["diagnostics"][0];
     CHECK(track_width["code"] == "PCB_TRACK_WIDTH_BELOW_MINIMUM");
@@ -743,6 +756,7 @@ TEST_CASE("PCB projection reader defaults missing legacy board design rules") {
     CHECK(restored.design_rules().minimum_via_drill_diameter_mm() == 0.20);
     CHECK(restored.design_rules().minimum_via_annular_diameter_mm() == 0.45);
     CHECK(restored.design_rules().board_outline_clearance_mm() == 0.0);
+    CHECK(restored.design_rules().package_assembly_clearance_mm() == 0.25);
 }
 
 TEST_CASE("PCB projection reader rejects malformed embedded capability profiles") {
@@ -804,6 +818,8 @@ TEST_CASE("PCB projection writer serializes overlay-ready diagnostic geometry") 
                                                          volt::DiagnosticPoint{2.0, 2.0}},
                                              {}, std::vector{volt::BoardLayerId{0}}),
         },
+        std::nullopt,
+        "reference-designator-obstruction",
     };
 
     auto out = std::ostringstream{};
@@ -822,6 +838,7 @@ TEST_CASE("PCB projection writer serializes overlay-ready diagnostic geometry") 
     CHECK(payload["overlays"][0]["layers"] == nlohmann::json::array({"board_layer:0"}));
     CHECK(payload["overlays"][1]["kind"] == "point");
     CHECK(payload["overlays"][2]["kind"] == "polygon");
+    CHECK(payload["rule"] == "reference-designator-obstruction");
 }
 
 TEST_CASE("PCB projection writer serializes emitted PCB visual placement diagnostics") {

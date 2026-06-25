@@ -368,6 +368,7 @@ def test_timer_555_led_blinker_example_writes_stable_artifacts():
         "minimum_track_width_mm": 0.20,
         "minimum_via_annular_diameter_mm": 0.70,
         "minimum_via_drill_diameter_mm": 0.30,
+        "package_assembly_clearance_mm": 0.25,
     }
     assert len(pcb["board"]["placements"]) == 9
     assert len(pcb["board"]["footprint_definitions"]) == 5

@@ -36,17 +36,17 @@
       <polyline id="pcb-track-1" class="pcb-track" data-track="board_track:1" data-layer="board_layer:0" data-net="net:1" points="20.525,13.095 18.5,13.095" stroke-width="0.3"/>
       <polyline id="pcb-track-2" class="pcb-track" data-track="board_track:2" data-layer="board_layer:0" data-net="net:1" points="29.95,10 31.5,10" stroke-width="0.3"/>
       <polyline id="pcb-track-3" class="pcb-track" data-track="board_track:3" data-layer="board_layer:0" data-net="net:1" points="31,21.95 32.5,21.95" stroke-width="0.3"/>
-      <polyline id="pcb-track-4" class="pcb-track" data-track="board_track:4" data-layer="board_layer:0" data-net="net:1" points="39,18.9 40.5,18.9" stroke-width="0.3"/>
+      <polyline id="pcb-track-4" class="pcb-track" data-track="board_track:4" data-layer="board_layer:0" data-net="net:1" points="42,18.9 43.5,18.9" stroke-width="0.3"/>
       <polyline id="pcb-track-5" class="pcb-track" data-track="board_track:5" data-layer="board_layer:0" data-net="net:1" points="11.5625,24 10,24" stroke-width="0.3"/>
       <polyline id="pcb-track-11" class="pcb-track" data-track="board_track:11" data-layer="board_layer:0" data-net="net:0" points="6,13.15 6,8 28.05,8 28.05,10" stroke-width="0.3"/>
       <polyline id="pcb-track-12" class="pcb-track" data-track="board_track:12" data-layer="board_layer:0" data-net="net:0" points="28.05,10 25.475,10 25.475,13.095" stroke-width="0.3"/>
       <polyline id="pcb-track-13" class="pcb-track" data-track="board_track:13" data-layer="board_layer:0" data-net="net:0" points="28.05,10 28.05,8 35.0875,8 35.0875,10" stroke-width="0.3"/>
       <polyline id="pcb-track-14" class="pcb-track" data-track="board_track:14" data-layer="board_layer:0" data-net="net:0" points="20.525,16.905 17.5,16.905 17.5,11 25.475,11 25.475,13.095" stroke-width="0.25"/>
-      <polyline id="pcb-track-15" class="pcb-track" data-track="board_track:15" data-layer="board_layer:0" data-net="net:2" points="25.475,14.365 28,14.365 35.0875,14.365 35.0875,14" stroke-width="0.2"/>
+      <polyline id="pcb-track-15" class="pcb-track" data-track="board_track:15" data-layer="board_layer:0" data-net="net:2" points="25.475,14.365 28,14.365 38.0875,14.365 38.0875,14" stroke-width="0.2"/>
       <polyline id="pcb-track-16" class="pcb-track" data-track="board_track:16" data-layer="board_layer:0" data-net="net:2" points="25.475,14.365 28,14.365 28,12 38.5,12 38.5,10 36.9125,10" stroke-width="0.2"/>
       <polyline id="pcb-track-17" class="pcb-track" data-track="board_track:17" data-layer="board_layer:0" data-net="net:3" points="20.525,14.365 23.5,14.365 23.5,15.635 25.475,15.635" stroke-width="0.2"/>
-      <polyline id="pcb-track-18" class="pcb-track" data-track="board_track:18" data-layer="board_layer:0" data-net="net:3" points="25.475,15.635 39,15.635 39,14 36.9125,14" stroke-width="0.2"/>
-      <polyline id="pcb-track-19" class="pcb-track" data-track="board_track:19" data-layer="board_layer:0" data-net="net:3" points="39,14 39,17" stroke-width="0.2"/>
+      <polyline id="pcb-track-18" class="pcb-track" data-track="board_track:18" data-layer="board_layer:0" data-net="net:3" points="25.475,15.635 42,15.635 42,14 39.9125,14" stroke-width="0.2"/>
+      <polyline id="pcb-track-19" class="pcb-track" data-track="board_track:19" data-layer="board_layer:0" data-net="net:3" points="42,14 42,17" stroke-width="0.2"/>
       <polyline id="pcb-track-20" class="pcb-track" data-track="board_track:20" data-layer="board_layer:0" data-net="net:4" points="25.475,16.905 30,16.905 30,20.05 31,20.05" stroke-width="0.2"/>
       <polyline id="pcb-track-21" class="pcb-track" data-track="board_track:21" data-layer="board_layer:0" data-net="net:5" points="20.525,15.635 22,15.635 22,19.0875 15.5,19.0875" stroke-width="0.2"/>
       <polyline id="pcb-track-22" class="pcb-track" data-track="board_track:22" data-layer="board_layer:0" data-net="net:6" points="15.5,20.9125 15.5,24 13.4375,24" stroke-width="0.2"/>
@@ -67,8 +67,8 @@
         <circle class="pcb-via-drill" cx="32.5" cy="21.95" r="0.15"/>
       </g>
       <g id="pcb-via-4-layer-F_Cu" class="pcb-via" data-via="board_via:4" data-net="net:1" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
-        <circle class="pcb-via-annular" cx="40.5" cy="18.9" r="0.35"/>
-        <circle class="pcb-via-drill" cx="40.5" cy="18.9" r="0.15"/>
+        <circle class="pcb-via-annular" cx="43.5" cy="18.9" r="0.35"/>
+        <circle class="pcb-via-drill" cx="43.5" cy="18.9" r="0.15"/>
       </g>
       <g id="pcb-via-5-layer-F_Cu" class="pcb-via" data-via="board_via:5" data-net="net:1" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
         <circle class="pcb-via-annular" cx="10" cy="24" r="0.35"/>
@@ -83,8 +83,8 @@
       <polyline id="pcb-track-6" class="pcb-track" data-track="board_track:6" data-layer="board_layer:1" data-net="net:1" points="10,13.15 18.5,13.15 18.5,13.095" stroke-width="0.3"/>
       <polyline id="pcb-track-7" class="pcb-track" data-track="board_track:7" data-layer="board_layer:1" data-net="net:1" points="18.5,13.095 31.5,13.095 31.5,10" stroke-width="0.3"/>
       <polyline id="pcb-track-8" class="pcb-track" data-track="board_track:8" data-layer="board_layer:1" data-net="net:1" points="31.5,10 32.5,10 32.5,21.95" stroke-width="0.3"/>
-      <polyline id="pcb-track-9" class="pcb-track" data-track="board_track:9" data-layer="board_layer:1" data-net="net:1" points="32.5,21.95 40.5,21.95 40.5,18.9" stroke-width="0.3"/>
-      <polyline id="pcb-track-10" class="pcb-track" data-track="board_track:10" data-layer="board_layer:1" data-net="net:1" points="40.5,18.9 10,18.9 10,24" stroke-width="0.3"/>
+      <polyline id="pcb-track-9" class="pcb-track" data-track="board_track:9" data-layer="board_layer:1" data-net="net:1" points="32.5,21.95 43.5,21.95 43.5,18.9" stroke-width="0.3"/>
+      <polyline id="pcb-track-10" class="pcb-track" data-track="board_track:10" data-layer="board_layer:1" data-net="net:1" points="43.5,18.9 10,18.9 10,24" stroke-width="0.3"/>
       <g id="pcb-via-0-layer-B_Cu" class="pcb-via" data-via="board_via:0" data-net="net:1" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
         <circle class="pcb-via-annular" cx="10" cy="13.15" r="0.35"/>
         <circle class="pcb-via-drill" cx="10" cy="13.15" r="0.15"/>
@@ -102,8 +102,8 @@
         <circle class="pcb-via-drill" cx="32.5" cy="21.95" r="0.15"/>
       </g>
       <g id="pcb-via-4-layer-B_Cu" class="pcb-via" data-via="board_via:4" data-net="net:1" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
-        <circle class="pcb-via-annular" cx="40.5" cy="18.9" r="0.35"/>
-        <circle class="pcb-via-drill" cx="40.5" cy="18.9" r="0.15"/>
+        <circle class="pcb-via-annular" cx="43.5" cy="18.9" r="0.35"/>
+        <circle class="pcb-via-drill" cx="43.5" cy="18.9" r="0.15"/>
       </g>
       <g id="pcb-via-5-layer-B_Cu" class="pcb-via" data-via="board_via:5" data-net="net:1" data-layer="board_layer:1" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
         <circle class="pcb-via-annular" cx="10" cy="24" r="0.35"/>
@@ -124,6 +124,46 @@
     </g>
     </g>
     <g class="layer layer-footprints">
+      <g class="layer layer-package-courtyards">
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:2" data-component="component:2" points="34.4,9.05 37.6,9.05 37.6,10.95 34.4,10.95"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:3" data-component="component:3" points="37.4,13.05 40.6,13.05 40.6,14.95 37.4,14.95"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:4" data-component="component:4" points="42.95,16.35 42.95,19.55 41.05,19.55 41.05,16.35"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:5" data-component="component:5" points="31.95,19.4 31.95,22.6 30.05,22.6 30.05,19.4"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:6" data-component="component:6" points="27.4,9.05 30.6,9.05 30.6,10.95 27.4,10.95"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:7" data-component="component:7" points="16.45,18.4 16.45,21.6 14.55,21.6 14.55,18.4"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:8" data-component="component:8" points="10.9,23.05 14.1,23.05 14.1,24.95 10.9,24.95"/>
+      </g>
+      <g class="layer layer-package-bodies">
+      <polygon class="footprint-body declared" data-placement="component_placement:2" data-component="component:2" points="35,9.375 37,9.375 37,10.625 35,10.625"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:3" data-component="component:3" points="38,13.375 40,13.375 40,14.625 38,14.625"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:4" data-component="component:4" points="42.625,16.95 42.625,18.95 41.375,18.95 41.375,16.95"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:5" data-component="component:5" points="31.625,20 31.625,22 30.375,22 30.375,20"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:6" data-component="component:6" points="28,9.375 30,9.375 30,10.625 28,10.625"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:7" data-component="component:7" points="16.125,19 16.125,21 14.875,21 14.875,19"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:8" data-component="component:8" points="11.5,23.375 13.5,23.375 13.5,24.625 11.5,24.625"/>
+      </g>
+      <g class="layer layer-package-fabrication">
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:2" data-component="component:2" points="35,9.375 37,9.375 37,10.625 35,10.625"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:3" data-component="component:3" points="38,13.375 40,13.375 40,14.625 38,14.625"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:4" data-component="component:4" points="42.625,16.95 42.625,18.95 41.375,18.95 41.375,16.95"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:5" data-component="component:5" points="31.625,20 31.625,22 30.375,22 30.375,20"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:6" data-component="component:6" points="28,9.375 30,9.375 30,10.625 28,10.625"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:7" data-component="component:7" points="16.125,19 16.125,21 14.875,21 14.875,19"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:8" data-component="component:8" points="11.5,23.375 13.5,23.375 13.5,24.625 11.5,24.625"/>
+      </g>
+      <g class="layer layer-package-assembly">
+      <polygon class="footprint-assembly declared" data-placement="component_placement:2" data-component="component:2" points="35,9.375 37,9.375 37,10.625 35,10.625"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:3" data-component="component:3" points="38,13.375 40,13.375 40,14.625 38,14.625"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:4" data-component="component:4" points="42.625,16.95 42.625,18.95 41.375,18.95 41.375,16.95"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:5" data-component="component:5" points="31.625,20 31.625,22 30.375,22 30.375,20"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:6" data-component="component:6" points="28,9.375 30,9.375 30,10.625 28,10.625"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:7" data-component="component:7" points="16.125,19 16.125,21 14.875,21 14.875,19"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:8" data-component="component:8" points="11.5,23.375 13.5,23.375 13.5,24.625 11.5,24.625"/>
+      </g>
+      <g class="layer layer-silkscreen">
+      <polygon class="footprint-marking declared kind-polarity" data-placement="component_placement:8" data-component="component:8" data-marking="footprint_marking:0" points="12.42,23.55 12.58,23.55 12.58,24.45 12.42,24.45"/>
+      </g>
+      <g class="layer layer-pads">
       <g class="component-placement top locked" data-placement="component_placement:0" data-component="component:0" data-footprint-def="footprint_def:0" data-footprint="Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal" transform="translate(7 16) rotate(0)">
         <rect class="footprint-envelope synthetic" x="-4.6" y="-5.1" width="9.2" height="10.2"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:0:0" data-pad="footprint_pad:0" data-pin="pin:0" data-net="net:0" x="-1.5" y="-4.6" width="1" height="3.5" rx="0.1" ry="0.1"/>
@@ -131,7 +171,6 @@
         <rect class="footprint-pad rounded-rectangle non_electrical" data-pad-projection="pcb_pad:0:2" data-pad="footprint_pad:2" x="-4.1" y="1.2" width="1.5" height="3.4" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle non_electrical" data-pad-projection="pcb_pad:0:3" data-pad="footprint_pad:3" x="2.6" y="1.2" width="1.5" height="3.4" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-placement="component_placement:0" data-component="component:0" x="7" y="9.9" text-anchor="middle">J1</text>
       <g class="component-placement top locked" data-placement="component_placement:1" data-component="component:1" data-footprint-def="footprint_def:1" data-footprint="KiCad_Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" transform="translate(23 15) rotate(0)">
         <rect class="footprint-envelope synthetic" x="-3.95" y="-2.705" width="7.9" height="5.41"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:1:0" data-pad="footprint_pad:0" data-pin="pin:2" data-net="net:1" x="-3.45" y="-2.205" width="1.95" height="0.6" rx="0.1" ry="0.1"/>
@@ -143,87 +182,62 @@
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:1:6" data-pad="footprint_pad:6" data-pin="pin:8" data-net="net:2" x="1.5" y="-0.935" width="1.95" height="0.6" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:1:7" data-pad="footprint_pad:7" data-pin="pin:9" data-net="net:0" x="1.5" y="-2.205" width="1.95" height="0.6" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-placement="component_placement:1" data-component="component:1" x="23" y="11.295" text-anchor="middle">U1</text>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:2" data-component="component:2" points="34.4,9.05 37.6,9.05 37.6,10.95 34.4,10.95"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:2" data-component="component:2" points="35,9.375 37,9.375 37,10.625 35,10.625"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:2" data-component="component:2" points="35,9.375 37,9.375 37,10.625 35,10.625"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:2" data-component="component:2" points="35,9.375 37,9.375 37,10.625 35,10.625"/>
       <g class="component-placement top" data-placement="component_placement:2" data-component="component:2" data-footprint-def="footprint_def:2" data-footprint="Resistor_SMD:R_0805_2012Metric" transform="translate(36 10) rotate(0)">
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:0" data-pad="footprint_pad:0" data-pin="pin:10" data-net="net:0" x="-1.425" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:1" data-pad="footprint_pad:1" data-pin="pin:11" data-net="net:2" x="0.4" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-placement="component_placement:2" data-component="component:2" x="36" y="8.05" text-anchor="middle">R1</text>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:3" data-component="component:3" points="34.4,13.05 37.6,13.05 37.6,14.95 34.4,14.95"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:3" data-component="component:3" points="35,13.375 37,13.375 37,14.625 35,14.625"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:3" data-component="component:3" points="35,13.375 37,13.375 37,14.625 35,14.625"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:3" data-component="component:3" points="35,13.375 37,13.375 37,14.625 35,14.625"/>
-      <g class="component-placement top" data-placement="component_placement:3" data-component="component:3" data-footprint-def="footprint_def:2" data-footprint="Resistor_SMD:R_0805_2012Metric" transform="translate(36 14) rotate(0)">
+      <g class="component-placement top" data-placement="component_placement:3" data-component="component:3" data-footprint-def="footprint_def:2" data-footprint="Resistor_SMD:R_0805_2012Metric" transform="translate(39 14) rotate(0)">
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:3:0" data-pad="footprint_pad:0" data-pin="pin:12" data-net="net:2" x="-1.425" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:3:1" data-pad="footprint_pad:1" data-pin="pin:13" data-net="net:3" x="0.4" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-placement="component_placement:3" data-component="component:3" x="36" y="12.05" text-anchor="middle">R2</text>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:4" data-component="component:4" points="39.95,16.35 39.95,19.55 38.05,19.55 38.05,16.35"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:4" data-component="component:4" points="39.625,16.95 39.625,18.95 38.375,18.95 38.375,16.95"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:4" data-component="component:4" points="39.625,16.95 39.625,18.95 38.375,18.95 38.375,16.95"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:4" data-component="component:4" points="39.625,16.95 39.625,18.95 38.375,18.95 38.375,16.95"/>
-      <g class="component-placement top" data-placement="component_placement:4" data-component="component:4" data-footprint-def="footprint_def:3" data-footprint="Capacitor_SMD:C_0805_2012Metric" transform="translate(39 17.95) rotate(90)">
+      <g class="component-placement top" data-placement="component_placement:4" data-component="component:4" data-footprint-def="footprint_def:3" data-footprint="Capacitor_SMD:C_0805_2012Metric" transform="translate(42 17.95) rotate(90)">
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:4:0" data-pad="footprint_pad:0" data-pin="pin:14" data-net="net:3" x="-1.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:4:1" data-pad="footprint_pad:1" data-pin="pin:15" data-net="net:1" x="0.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-placement="component_placement:4" data-component="component:4" x="40.95" y="17.95" text-anchor="middle">C1</text>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:5" data-component="component:5" points="31.95,19.4 31.95,22.6 30.05,22.6 30.05,19.4"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:5" data-component="component:5" points="31.625,20 31.625,22 30.375,22 30.375,20"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:5" data-component="component:5" points="31.625,20 31.625,22 30.375,22 30.375,20"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:5" data-component="component:5" points="31.625,20 31.625,22 30.375,22 30.375,20"/>
       <g class="component-placement top" data-placement="component_placement:5" data-component="component:5" data-footprint-def="footprint_def:3" data-footprint="Capacitor_SMD:C_0805_2012Metric" transform="translate(31 21) rotate(90)">
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:5:0" data-pad="footprint_pad:0" data-pin="pin:16" data-net="net:4" x="-1.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:5:1" data-pad="footprint_pad:1" data-pin="pin:17" data-net="net:1" x="0.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-placement="component_placement:5" data-component="component:5" x="32.95" y="21" text-anchor="middle">C2</text>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:6" data-component="component:6" points="27.4,9.05 30.6,9.05 30.6,10.95 27.4,10.95"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:6" data-component="component:6" points="28,9.375 30,9.375 30,10.625 28,10.625"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:6" data-component="component:6" points="28,9.375 30,9.375 30,10.625 28,10.625"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:6" data-component="component:6" points="28,9.375 30,9.375 30,10.625 28,10.625"/>
       <g class="component-placement top" data-placement="component_placement:6" data-component="component:6" data-footprint-def="footprint_def:3" data-footprint="Capacitor_SMD:C_0805_2012Metric" transform="translate(29 10) rotate(0)">
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:6:0" data-pad="footprint_pad:0" data-pin="pin:18" data-net="net:0" x="-1.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:6:1" data-pad="footprint_pad:1" data-pin="pin:19" data-net="net:1" x="0.45" y="-0.725" width="1" height="1.45" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-placement="component_placement:6" data-component="component:6" x="29" y="8.05" text-anchor="middle">C3</text>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:7" data-component="component:7" points="16.45,18.4 16.45,21.6 14.55,21.6 14.55,18.4"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:7" data-component="component:7" points="16.125,19 16.125,21 14.875,21 14.875,19"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:7" data-component="component:7" points="16.125,19 16.125,21 14.875,21 14.875,19"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:7" data-component="component:7" points="16.125,19 16.125,21 14.875,21 14.875,19"/>
       <g class="component-placement top" data-placement="component_placement:7" data-component="component:7" data-footprint-def="footprint_def:2" data-footprint="Resistor_SMD:R_0805_2012Metric" transform="translate(15.5 20) rotate(90)">
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:7:0" data-pad="footprint_pad:0" data-pin="pin:20" data-net="net:5" x="-1.425" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:7:1" data-pad="footprint_pad:1" data-pin="pin:21" data-net="net:6" x="0.4" y="-0.7" width="1.025" height="1.4" rx="0.1" ry="0.1"/>
       </g>
-      <text class="reference-designator" data-placement="component_placement:7" data-component="component:7" x="17.45" y="20" text-anchor="middle">R3</text>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:8" data-component="component:8" points="10.9,23.05 14.1,23.05 14.1,24.95 10.9,24.95"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:8" data-component="component:8" points="11.5,23.375 13.5,23.375 13.5,24.625 11.5,24.625"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:8" data-component="component:8" points="11.5,23.375 13.5,23.375 13.5,24.625 11.5,24.625"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:8" data-component="component:8" points="11.5,23.375 13.5,23.375 13.5,24.625 11.5,24.625"/>
-      <polygon class="footprint-marking declared kind-polarity" data-placement="component_placement:8" data-component="component:8" data-marking="footprint_marking:0" points="12.42,23.55 12.58,23.55 12.58,24.45 12.42,24.45"/>
       <g class="component-placement top" data-placement="component_placement:8" data-component="component:8" data-footprint-def="footprint_def:4" data-footprint="LED_SMD:LED_0805_2012Metric" transform="translate(12.5 24) rotate(0)">
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:8:0" data-pad="footprint_pad:0" data-pin="pin:23" data-net="net:1" x="-1.425" y="-0.7" width="0.975" height="1.4" rx="0.1" ry="0.1"/>
         <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:8:1" data-pad="footprint_pad:1" data-pin="pin:22" data-net="net:6" x="0.45" y="-0.7" width="0.975" height="1.4" rx="0.1" ry="0.1"/>
       </g>
+      </g>
+      <g class="layer layer-reference-designators">
+      <text class="reference-designator" data-placement="component_placement:0" data-component="component:0" x="7" y="9.9" text-anchor="middle">J1</text>
+      <text class="reference-designator" data-placement="component_placement:1" data-component="component:1" x="23" y="11.295" text-anchor="middle">U1</text>
+      <text class="reference-designator" data-placement="component_placement:2" data-component="component:2" x="36" y="8.05" text-anchor="middle">R1</text>
+      <text class="reference-designator" data-placement="component_placement:3" data-component="component:3" x="39" y="12.05" text-anchor="middle">R2</text>
+      <text class="reference-designator" data-placement="component_placement:4" data-component="component:4" x="43.95" y="17.95" text-anchor="middle">C1</text>
+      <text class="reference-designator" data-placement="component_placement:5" data-component="component:5" x="32.95" y="21" text-anchor="middle">C2</text>
+      <text class="reference-designator" data-placement="component_placement:6" data-component="component:6" x="29" y="8.05" text-anchor="middle">C3</text>
+      <text class="reference-designator" data-placement="component_placement:7" data-component="component:7" x="17.45" y="20" text-anchor="middle">R3</text>
       <text class="reference-designator" data-placement="component_placement:8" data-component="component:8" x="12.5" y="22.05" text-anchor="middle">D1</text>
+      </g>
     </g>
     <g class="layer layer-ratsnest">
       <line id="ratsnest-edge-net-0-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:0:0" data-net="net:0" data-from-pad="pcb_pad:1:7" data-to-pad="pcb_pad:6:0" x1="25.475" y1="13.095" x2="28.05" y2="10"/>
       <line id="ratsnest-edge-net-0-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:0:1" data-net="net:0" data-from-pad="pcb_pad:1:3" data-to-pad="pcb_pad:1:7" x1="20.525" y1="16.905" x2="25.475" y2="13.095"/>
       <line id="ratsnest-edge-net-0-2" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:0:2" data-net="net:0" data-from-pad="pcb_pad:2:0" data-to-pad="pcb_pad:6:0" x1="35.0875" y1="10" x2="28.05" y2="10"/>
       <line id="ratsnest-edge-net-0-3" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:0:3" data-net="net:0" data-from-pad="pcb_pad:0:0" data-to-pad="pcb_pad:1:3" x1="6" y1="13.15" x2="20.525" y2="16.905"/>
-      <line id="ratsnest-edge-net-1-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:1:0" data-net="net:1" data-from-pad="pcb_pad:4:1" data-to-pad="pcb_pad:5:1" x1="39" y1="18.9" x2="31" y2="21.95"/>
-      <line id="ratsnest-edge-net-1-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:1:1" data-net="net:1" data-from-pad="pcb_pad:1:0" data-to-pad="pcb_pad:6:1" x1="20.525" y1="13.095" x2="29.95" y2="10"/>
+      <line id="ratsnest-edge-net-1-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:1:0" data-net="net:1" data-from-pad="pcb_pad:1:0" data-to-pad="pcb_pad:6:1" x1="20.525" y1="13.095" x2="29.95" y2="10"/>
+      <line id="ratsnest-edge-net-1-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:1:1" data-net="net:1" data-from-pad="pcb_pad:4:1" data-to-pad="pcb_pad:5:1" x1="42" y1="18.9" x2="31" y2="21.95"/>
       <line id="ratsnest-edge-net-1-2" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:1:2" data-net="net:1" data-from-pad="pcb_pad:0:1" data-to-pad="pcb_pad:8:0" x1="8" y1="13.15" x2="11.5625" y2="24"/>
       <line id="ratsnest-edge-net-1-3" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:1:3" data-net="net:1" data-from-pad="pcb_pad:5:1" data-to-pad="pcb_pad:6:1" x1="31" y1="21.95" x2="29.95" y2="10"/>
       <line id="ratsnest-edge-net-1-4" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:1:4" data-net="net:1" data-from-pad="pcb_pad:0:1" data-to-pad="pcb_pad:1:0" x1="8" y1="13.15" x2="20.525" y2="13.095"/>
-      <line id="ratsnest-edge-net-2-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:0" data-net="net:2" data-from-pad="pcb_pad:2:1" data-to-pad="pcb_pad:3:0" x1="36.9125" y1="10" x2="35.0875" y2="14"/>
-      <line id="ratsnest-edge-net-2-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:1" data-net="net:2" data-from-pad="pcb_pad:1:6" data-to-pad="pcb_pad:3:0" x1="25.475" y1="14.365" x2="35.0875" y2="14"/>
-      <line id="ratsnest-edge-net-3-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:3:0" data-net="net:3" data-from-pad="pcb_pad:3:1" data-to-pad="pcb_pad:4:0" x1="36.9125" y1="14" x2="39" y2="17"/>
+      <line id="ratsnest-edge-net-2-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:0" data-net="net:2" data-from-pad="pcb_pad:2:1" data-to-pad="pcb_pad:3:0" x1="36.9125" y1="10" x2="38.0875" y2="14"/>
+      <line id="ratsnest-edge-net-2-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:1" data-net="net:2" data-from-pad="pcb_pad:1:6" data-to-pad="pcb_pad:2:1" x1="25.475" y1="14.365" x2="36.9125" y2="10"/>
+      <line id="ratsnest-edge-net-3-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:3:0" data-net="net:3" data-from-pad="pcb_pad:3:1" data-to-pad="pcb_pad:4:0" x1="39.9125" y1="14" x2="42" y2="17"/>
       <line id="ratsnest-edge-net-3-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:3:1" data-net="net:3" data-from-pad="pcb_pad:1:1" data-to-pad="pcb_pad:1:5" x1="20.525" y1="14.365" x2="25.475" y2="15.635"/>
-      <line id="ratsnest-edge-net-3-2" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:3:2" data-net="net:3" data-from-pad="pcb_pad:1:5" data-to-pad="pcb_pad:3:1" x1="25.475" y1="15.635" x2="36.9125" y2="14"/>
+      <line id="ratsnest-edge-net-3-2" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:3:2" data-net="net:3" data-from-pad="pcb_pad:1:5" data-to-pad="pcb_pad:3:1" x1="25.475" y1="15.635" x2="39.9125" y2="14"/>
       <line id="ratsnest-edge-net-4-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:0" data-net="net:4" data-from-pad="pcb_pad:1:4" data-to-pad="pcb_pad:5:0" x1="25.475" y1="16.905" x2="31" y2="20.05"/>
       <line id="ratsnest-edge-net-5-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:5:0" data-net="net:5" data-from-pad="pcb_pad:1:2" data-to-pad="pcb_pad:7:0" x1="20.525" y1="15.635" x2="15.5" y2="19.0875"/>
       <line id="ratsnest-edge-net-6-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:6:0" data-net="net:6" data-from-pad="pcb_pad:7:1" data-to-pad="pcb_pad:8:1" x1="15.5" y1="20.9125" x2="13.4375" y2="24"/>
@@ -255,14 +269,14 @@
       <text class="pad-net-label connected" data-pad-projection="pcb_pad:2:0" data-net="net:0" x="35.7875" y="9.55">+5V</text>
       <circle class="pad-overlay connected" data-pad-projection="pcb_pad:2:1" data-net="net:2" cx="36.9125" cy="10" r="0.35"/>
       <text class="pad-net-label connected" data-pad-projection="pcb_pad:2:1" data-net="net:2" x="37.6125" y="9.55">DISCH</text>
-      <circle class="pad-overlay connected" data-pad-projection="pcb_pad:3:0" data-net="net:2" cx="35.0875" cy="14" r="0.35"/>
-      <text class="pad-net-label connected" data-pad-projection="pcb_pad:3:0" data-net="net:2" x="35.7875" y="13.55">DISCH</text>
-      <circle class="pad-overlay connected" data-pad-projection="pcb_pad:3:1" data-net="net:3" cx="36.9125" cy="14" r="0.35"/>
-      <text class="pad-net-label connected" data-pad-projection="pcb_pad:3:1" data-net="net:3" x="37.6125" y="13.55">TIMING</text>
-      <circle class="pad-overlay connected" data-pad-projection="pcb_pad:4:0" data-net="net:3" cx="39" cy="17" r="0.35"/>
-      <text class="pad-net-label connected" data-pad-projection="pcb_pad:4:0" data-net="net:3" x="39.7" y="16.55">TIMING</text>
-      <circle class="pad-overlay connected" data-pad-projection="pcb_pad:4:1" data-net="net:1" cx="39" cy="18.9" r="0.35"/>
-      <text class="pad-net-label connected" data-pad-projection="pcb_pad:4:1" data-net="net:1" x="39.7" y="18.45">GND</text>
+      <circle class="pad-overlay connected" data-pad-projection="pcb_pad:3:0" data-net="net:2" cx="38.0875" cy="14" r="0.35"/>
+      <text class="pad-net-label connected" data-pad-projection="pcb_pad:3:0" data-net="net:2" x="38.7875" y="13.55">DISCH</text>
+      <circle class="pad-overlay connected" data-pad-projection="pcb_pad:3:1" data-net="net:3" cx="39.9125" cy="14" r="0.35"/>
+      <text class="pad-net-label connected" data-pad-projection="pcb_pad:3:1" data-net="net:3" x="40.6125" y="13.55">TIMING</text>
+      <circle class="pad-overlay connected" data-pad-projection="pcb_pad:4:0" data-net="net:3" cx="42" cy="17" r="0.35"/>
+      <text class="pad-net-label connected" data-pad-projection="pcb_pad:4:0" data-net="net:3" x="42.7" y="16.55">TIMING</text>
+      <circle class="pad-overlay connected" data-pad-projection="pcb_pad:4:1" data-net="net:1" cx="42" cy="18.9" r="0.35"/>
+      <text class="pad-net-label connected" data-pad-projection="pcb_pad:4:1" data-net="net:1" x="42.7" y="18.45">GND</text>
       <circle class="pad-overlay connected" data-pad-projection="pcb_pad:5:0" data-net="net:4" cx="31" cy="20.05" r="0.35"/>
       <text class="pad-net-label connected" data-pad-projection="pcb_pad:5:0" data-net="net:4" x="31.7" y="19.6">CTRL</text>
       <circle class="pad-overlay connected" data-pad-projection="pcb_pad:5:1" data-net="net:1" cx="31" cy="21.95" r="0.35"/>

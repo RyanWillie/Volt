@@ -5,7 +5,7 @@
     "id": "board:0",
     "name": "First Board LED",
     "units": "mm",
-    "rules": {"copper_clearance_mm": 0.14999999999999999, "minimum_track_width_mm": 0.14999999999999999, "minimum_via_drill_diameter_mm": 0.20000000000000001, "minimum_via_annular_diameter_mm": 0.45000000000000001, "board_outline_clearance_mm": 0},
+    "rules": {"copper_clearance_mm": 0.14999999999999999, "minimum_track_width_mm": 0.14999999999999999, "minimum_via_drill_diameter_mm": 0.20000000000000001, "minimum_via_annular_diameter_mm": 0.45000000000000001, "board_outline_clearance_mm": 0, "package_assembly_clearance_mm": 0.25},
     "layers": [
       {"id": "board_layer:0", "name": "F.Cu", "role": "copper", "side": "top", "thickness_mm": 0, "enabled": true},
       {"id": "board_layer:1", "name": "B.Cu", "role": "copper", "side": "bottom", "thickness_mm": 0, "enabled": true}
@@ -137,6 +137,17 @@
     ]
   },
   "viewer": {
+    "layers": [
+      {"id": "viewer_layer:board_outline", "kind": "board_outline", "name": "Board outline"},
+      {"id": "viewer_layer:copper", "kind": "copper", "name": "Copper"},
+      {"id": "viewer_layer:pads", "kind": "pads", "name": "Pads"},
+      {"id": "viewer_layer:package_bodies", "kind": "package_bodies", "name": "Package bodies"},
+      {"id": "viewer_layer:package_courtyards", "kind": "package_courtyards", "name": "Package courtyards"},
+      {"id": "viewer_layer:package_fabrication", "kind": "package_fabrication", "name": "Fabrication outlines"},
+      {"id": "viewer_layer:package_assembly", "kind": "package_assembly", "name": "Assembly outlines"},
+      {"id": "viewer_layer:annotations", "kind": "annotations", "name": "Annotations"},
+      {"id": "viewer_layer:diagnostics", "kind": "diagnostics", "name": "Diagnostics"}
+    ],
     "pad_resolutions": [
       {
         "id": "pcb_pad:0:0",

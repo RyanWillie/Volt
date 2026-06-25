@@ -51,7 +51,7 @@ def build_board(context: volt.BuildContext) -> volt.Board:
             )
             rb = (
                 layout.two_pad(parts["RB"])
-                .at((36.0, 14.0))
+                .at((39.0, 14.0))
                 .anchor("center")
                 .right()
             )

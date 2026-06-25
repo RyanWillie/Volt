@@ -1586,6 +1586,7 @@ def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():
         min_via_drill=0.30,
         min_via_annular=0.70,
         board_outline_clearance=0.10,
+        package_assembly_clearance=0.35,
     )
     board.add_track(vcc, layer=front, points=((2.0, 2.0), (8.0, 2.0)), width=0.10)
     board.add_via(
@@ -1604,6 +1605,7 @@ def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():
         "minimum_track_width_mm": 0.25,
         "minimum_via_annular_diameter_mm": 0.70,
         "minimum_via_drill_diameter_mm": 0.30,
+        "package_assembly_clearance_mm": 0.35,
     }
 
     report = board.validate()

@@ -16,6 +16,7 @@ add_library(
     placement/board_placement_model.cpp
     assembly/cpl.cpp
     projection/board_geometry_projection.cpp
+    projection/footprint_visual_projection.cpp
     routing/board_router.cpp
     routing/board_spatial_index.cpp
     structure/board_structure_model.cpp

@@ -164,7 +164,7 @@ void write_pad(std::ostream &out, const FootprintPad &pad, FootprintPadId pad_id
 void write_placements(std::ostream &out, const Board &board, const FootprintLibrary &footprints,
                       const std::vector<PadResolution> &resolutions,
                       const std::vector<ProjectedFootprintGeometry> &footprint_geometries,
-                      PcbPlacementSvgOptions options);
+                      const DiagnosticReport &diagnostics, PcbPlacementSvgOptions options);
 
 void write_pad_overlays(std::ostream &out, const Board &board,
                         const std::vector<PadResolution> &resolutions,

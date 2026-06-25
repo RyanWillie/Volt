@@ -548,12 +548,17 @@ void PcbBoardReader::read_rules(Board &board, const nlohmann::json &board_json) 
         return;
     }
     require(rules->is_object(), "PCB board rules must be an object");
+    const auto *package_assembly_clearance =
+        optional_field(*rules, "package_assembly_clearance_mm");
     auto design_rules = BoardDesignRules{
         number_field(*rules, "copper_clearance_mm"),
         number_field(*rules, "minimum_track_width_mm"),
         number_field(*rules, "minimum_via_drill_diameter_mm"),
         number_field(*rules, "minimum_via_annular_diameter_mm"),
         number_field(*rules, "board_outline_clearance_mm"),
+        package_assembly_clearance == nullptr
+            ? BoardDesignRules{}.package_assembly_clearance_mm()
+            : number_field(*rules, "package_assembly_clearance_mm"),
     };
     if (const auto matrix = rules->find("clearance_matrix"); matrix != rules->end()) {
         require(matrix->is_array(), "PCB clearance matrix must be an array");

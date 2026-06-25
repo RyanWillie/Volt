@@ -243,6 +243,12 @@ TEST_CASE("PCB SVG writer renders declared footprint body and courtyard polygons
 
     const auto svg = volt::io::write_pcb_placement_svg(board, volt::FootprintLibrary{});
 
+    CHECK(svg.find("<g class=\"layer layer-package-courtyards\">") != std::string::npos);
+    CHECK(svg.find("<g class=\"layer layer-package-bodies\">") != std::string::npos);
+    CHECK(svg.find("<g class=\"layer layer-package-fabrication\">") != std::string::npos);
+    CHECK(svg.find("<g class=\"layer layer-package-assembly\">") != std::string::npos);
+    CHECK(svg.find("<g class=\"layer layer-silkscreen\">") != std::string::npos);
+    CHECK(svg.find("<g class=\"layer layer-pads\">") != std::string::npos);
     CHECK(svg.find("<polygon class=\"footprint-courtyard declared\" "
                    "data-placement=\"component_placement:0\" data-component=\"component:0\" "
                    "points=\"12,8.5 18,8.5 18,11.5 12,11.5\"/>") != std::string::npos);
@@ -346,6 +352,24 @@ TEST_CASE("PCB SVG writer keeps reference designators upright for rotated placem
                    "text-anchor=\"middle\">R8</text>") != std::string::npos);
     CHECK(count_occurrences(svg, "class=\"reference-designator\"") == 8U);
     CHECK(svg.find("class=\"reference-designator\" transform=") == std::string::npos);
+}
+
+TEST_CASE("PCB SVG writer omits default reference labels that obstruct dense placement") {
+    auto fixture = make_multi_component_net(2, volt::FootprintRef{"test", "DeclaredGeometry"});
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"Dense References"}};
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{0.0, 0.0}, volt::BoardSize{30.0, 20.0}));
+    [[maybe_unused]] const auto footprint =
+        board.cache_footprint_definition(resistor_with_declared_geometry());
+    [[maybe_unused]] const auto first = board.place_component(volt::ComponentPlacement{
+        fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    [[maybe_unused]] const auto second = board.place_component(volt::ComponentPlacement{
+        fixture.components[1], volt::BoardPoint{10.0, 7.5}, volt::BoardRotation::degrees(0.0)});
+
+    const auto svg = volt::io::write_pcb_placement_svg(board, volt::FootprintLibrary{});
+
+    CHECK(svg.find("data-component=\"component:0\" x=\"10\" y=\"7.5\"") == std::string::npos);
+    CHECK(svg.find("data-component=\"component:1\" x=\"10\" y=\"5\"") != std::string::npos);
 }
 
 TEST_CASE("PCB SVG writer exposes deterministic layer filename tokens") {

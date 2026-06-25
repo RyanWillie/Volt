@@ -297,6 +297,8 @@ TEST_CASE("ERC and DRC diagnostic categories and code catalogs are stable") {
               "PCB_COPPER_CLEARANCE_VIOLATION",
               "PCB_COMPONENT_BODY_OVERLAP",
               "PCB_COMPONENT_COURTYARD_OVERLAP",
+              "PCB_COMPONENT_ASSEMBLY_CLEARANCE_WARNING",
+              "PCB_COMPONENT_BOARD_EDGE_CLEARANCE_VIOLATION",
               "PCB_KEEPOUT_COPPER_VIOLATION",
               "PCB_KEEPOUT_VIA_VIOLATION",
               "PCB_KEEPOUT_PLACEMENT_VIOLATION",

@@ -21,7 +21,7 @@ Source: `python/volt/pcb.py`
 | Method | Summary |
 | --- | --- |
 | `design_rules(self) -> dict[str, float]` | Return the board design-rule values currently stored in the kernel. |
-| `set_design_rules(self, *, copper_clearance: float \| None = None, min_track_width: float \| None = None, min_via_drill: float \| None = None, min_via_annular: float \| None = None, board_outline_clearance: float \| None = None) -> Board` | Update board design rules, preserving unspecified rule values. |
+| `set_design_rules(self, *, copper_clearance: float \| None = None, min_track_width: float \| None = None, min_via_drill: float \| None = None, min_via_annular: float \| None = None, board_outline_clearance: float \| None = None, package_assembly_clearance: float \| None = None) -> Board` | Update board design rules, preserving unspecified rule values. |
 | `set_capability_profile(self, profile: CapabilityProfile) -> Board` | Set the board's pinned manufacturer capability profile snapshot. |
 | `add_layer(self, name: str, *, role: str, side: str, thickness: float = 0.0, enabled: bool = True, copper_weight: float \| None = None) -> int` | Add a physical or logical board layer and return its kernel index. |
 | `set_layer_stack(self, layers: Iterable[int], *, thickness: float, dielectrics: Iterable[tuple[float, float]] \| None = None) -> Board` | Set the stack order, total thickness, and copper-to-copper dielectrics. |

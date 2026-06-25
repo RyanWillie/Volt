@@ -279,7 +279,8 @@ class PyCircuit {
     void board_set_design_rules(double copper_clearance_mm, double minimum_track_width_mm,
                                 double minimum_via_drill_diameter_mm,
                                 double minimum_via_annular_diameter_mm,
-                                double board_outline_clearance_mm);
+                                double board_outline_clearance_mm,
+                                double package_assembly_clearance_mm);
 
     void board_set_capability_profile(const py::dict &profile);
 
