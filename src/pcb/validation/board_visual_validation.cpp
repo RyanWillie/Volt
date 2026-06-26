@@ -233,6 +233,11 @@ reference_label_overlay(const ReferenceDesignatorVisualExtent &extent, const Boa
     return layer_side_matches_board_side(text.side, side);
 }
 
+[[nodiscard]] bool text_shares_pad_layer(const TextVisualExtent &text,
+                                         const PadVisualGeometry &pad) {
+    return std::find(pad.layers.begin(), pad.layers.end(), text.layer) != pad.layers.end();
+}
+
 [[nodiscard]] bool text_intersects_polygon(const TextVisualExtent &text,
                                            const std::vector<BoardPoint> &polygon) {
     return polygon_polygon_distance(text.corners, polygon) <= board_drc_epsilon;
@@ -458,7 +463,7 @@ void validate_text_pad_obstructions(const std::vector<TextVisualExtent> &texts,
                                     DiagnosticReport &report) {
     for (const auto &text : texts) {
         for (const auto &pad : pads) {
-            if (!text_shares_side(text, pad.side) || !text_intersects_polygon(text, pad.outline)) {
+            if (!text_shares_pad_layer(text, pad) || !text_intersects_polygon(text, pad.outline)) {
                 continue;
             }
             report.add(text_pad_obstruction_diagnostic(text, pad));
