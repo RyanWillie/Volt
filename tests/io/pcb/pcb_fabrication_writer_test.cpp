@@ -165,6 +165,43 @@ class ScopedLocale {
     return board;
 }
 
+[[nodiscard]] volt::Board
+make_fabrication_y_axis_regression_board(const FabricationCircuit &fixture) {
+    auto board = volt::Board{fixture.circuit, volt::BoardName{"MirrorCheck"}};
+    const auto front = board.add_layer(
+        volt::BoardLayer{"F.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Top});
+    const auto back = board.add_layer(
+        volt::BoardLayer{"B.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Bottom});
+    const auto silk = board.add_layer(
+        volt::BoardLayer{"F.SilkS", volt::BoardLayerRole::Silkscreen, volt::BoardLayerSide::Top});
+    board.set_layer_stack(volt::LayerStack{{front, back}, 1.6});
+    board.set_outline(
+        volt::BoardOutline::rectangle(volt::BoardPoint{2.0, 3.0}, volt::BoardSize{45.0, 30.0}));
+    static_cast<void>(board.cache_footprint_definition(rect_smd_footprint()));
+    static_cast<void>(board.cache_footprint_definition(through_hole_footprint()));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        fixture.resistor, volt::BoardPoint{18.0, 6.0}, volt::BoardRotation::degrees(0.0)}));
+    static_cast<void>(board.place_component(volt::ComponentPlacement{
+        fixture.header, volt::BoardPoint{30.0, 14.0}, volt::BoardRotation::degrees(0.0)}));
+    static_cast<void>(board.add_track(volt::BoardTrack{
+        fixture.signal,
+        front,
+        std::vector{volt::BoardPoint{10.0, 7.0}, volt::BoardPoint{20.0, 11.0}},
+        0.25,
+    }));
+    static_cast<void>(board.add_via(
+        volt::BoardVia{fixture.ground, volt::BoardPoint{32.0, 9.0}, front, back, 0.35, 0.75}));
+    static_cast<void>(board.add_zone(
+        volt::BoardZone{std::vector{volt::BoardPoint{5.0, 20.0}, volt::BoardPoint{12.0, 20.0},
+                                    volt::BoardPoint{12.0, 24.0}, volt::BoardPoint{5.0, 24.0}},
+                        std::vector{back}, fixture.ground}));
+    static_cast<void>(board.add_feature(
+        volt::BoardFeature::hole("NPTH", volt::BoardPoint{7.5, 12.5}, 2.4, false, "mounting")));
+    static_cast<void>(board.add_text(volt::BoardText{
+        "V", volt::BoardPoint{13.5, 5.15}, volt::BoardRotation::degrees(0.0), silk, 1.0, true}));
+    return board;
+}
+
 [[nodiscard]] const volt::io::PcbFabricationFile *
 find_file(const volt::io::PcbFabricationExportResult &result, std::string_view filename) {
     const auto match = std::find_if(
@@ -272,13 +309,13 @@ TEST_CASE("PCB fabrication writer exports deterministic Gerber and Excellon file
     const auto *bottom_copper = find_file(result, "Control.GBL");
     REQUIRE(bottom_copper != nullptr);
     CHECK(contains(bottom_copper->text, "%TF.FileFunction,Copper,L2,Bot*%"));
-    CHECK(contains(bottom_copper->text, "X0015000000Y0015000000D03*"));
-    CHECK(contains(bottom_copper->text, "X0005000000Y0012000000D02*"));
+    CHECK(contains(bottom_copper->text, "X0015000000Y0005000000D03*"));
+    CHECK(contains(bottom_copper->text, "X0005000000Y0008000000D02*"));
 
     const auto *top_mask = find_file(result, "Control.GTS");
     REQUIRE(top_mask != nullptr);
     CHECK(contains(top_mask->text, "%TF.FileFunction,Soldermask,Top*%"));
-    CHECK(contains(top_mask->text, "X0009000000Y0009600000D02*"));
+    CHECK(contains(top_mask->text, "X0009000000Y0010400000D02*"));
     CHECK(contains(top_mask->text, "X0020000000Y0010000000D03*"));
 
     const auto *bottom_mask = find_file(result, "Control.GBS");
@@ -290,34 +327,34 @@ TEST_CASE("PCB fabrication writer exports deterministic Gerber and Excellon file
     REQUIRE(silk != nullptr);
     CHECK(contains(silk->text, "%TF.FileFunction,Legend,Top*%"));
     CHECK(contains(silk->text, "G04 TEXT REV A*"));
-    CHECK(contains(silk->text, "X0005000000Y0017000000D02*"));
-    CHECK(contains(silk->text, "X0008800000Y0009500000D02*"));
+    CHECK(contains(silk->text, "X0005000000Y0003000000D02*"));
+    CHECK(contains(silk->text, "X0008800000Y0010500000D02*"));
 
     const auto *paste = find_file(result, "Control.GTP");
     REQUIRE(paste != nullptr);
     CHECK(contains(paste->text, "%TF.FileFunction,Paste,Top*%"));
-    CHECK(contains(paste->text, "X0009000000Y0009600000D02*"));
+    CHECK(contains(paste->text, "X0009000000Y0010400000D02*"));
     CHECK_FALSE(contains(paste->text, "X0020000000Y0010000000D03*"));
 
     const auto *outline = find_file(result, "Control.GKO");
     REQUIRE(outline != nullptr);
     CHECK(contains(outline->text, "%TF.FileFunction,Profile,NP*%"));
-    CHECK(contains(outline->text, "X0000000000Y0000000000D02*"));
-    CHECK(contains(outline->text, "X0030000000Y0000000000D01*"));
+    CHECK(contains(outline->text, "X0000000000Y0020000000D02*"));
+    CHECK(contains(outline->text, "X0030000000Y0020000000D01*"));
 
     const auto *pth = find_file(result, "Control-PTH.TXT");
     REQUIRE(pth != nullptr);
     CHECK(contains(pth->text, ";TYPE=PLATED"));
     CHECK(contains(pth->text, "T01C0.350000"));
     CHECK(contains(pth->text, "T02C0.800000"));
-    CHECK(contains(pth->text, "X0015000000Y0015000000"));
+    CHECK(contains(pth->text, "X0015000000Y0005000000"));
     CHECK(contains(pth->text, "X0020000000Y0010000000"));
 
     const auto *npth = find_file(result, "Control-NPTH.TXT");
     REQUIRE(npth != nullptr);
     CHECK(contains(npth->text, ";TYPE=NON_PLATED"));
     CHECK(contains(npth->text, "T01C2.400000"));
-    CHECK(contains(npth->text, "X0004000000Y0004000000"));
+    CHECK(contains(npth->text, "X0004000000Y0016000000"));
 }
 
 TEST_CASE("PCB fabrication writer matches representative golden native output fixtures") {
@@ -355,6 +392,61 @@ TEST_CASE("PCB fabrication writer matches representative golden native output fi
         REQUIRE(file != nullptr);
         CHECK(file->text == read_fixture(fixture_name));
     }
+}
+
+TEST_CASE("PCB fabrication writer converts board y-down coordinates to fabrication y-up output") {
+    const auto fixture = make_fabrication_circuit();
+    const auto board = make_fabrication_y_axis_regression_board(fixture);
+    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+
+    CHECK_FALSE(result.loss_report.has_warnings());
+
+    const auto *top_copper = find_file(result, "MirrorCheck.GTL");
+    REQUIRE(top_copper != nullptr);
+    CHECK(contains(top_copper->text, "X0010000000Y0029000000D02*"));
+    CHECK_FALSE(contains(top_copper->text, "X0010000000Y0007000000D02*"));
+
+    const auto *bottom_copper = find_file(result, "MirrorCheck.GBL");
+    REQUIRE(bottom_copper != nullptr);
+    CHECK(contains(bottom_copper->text, "X0005000000Y0016000000D02*"));
+    CHECK_FALSE(contains(bottom_copper->text, "X0005000000Y0020000000D02*"));
+
+    const auto *top_mask = find_file(result, "MirrorCheck.GTS");
+    REQUIRE(top_mask != nullptr);
+    CHECK(contains(top_mask->text, "X0017000000Y0030400000D02*"));
+    CHECK_FALSE(contains(top_mask->text, "X0017000000Y0005600000D02*"));
+
+    const auto *bottom_mask = find_file(result, "MirrorCheck.GBS");
+    REQUIRE(bottom_mask != nullptr);
+    CHECK(contains(bottom_mask->text, "X0030000000Y0022000000D03*"));
+    CHECK_FALSE(contains(bottom_mask->text, "X0030000000Y0014000000D03*"));
+
+    const auto *paste = find_file(result, "MirrorCheck.GTP");
+    REQUIRE(paste != nullptr);
+    CHECK(contains(paste->text, "X0017000000Y0030400000D02*"));
+    CHECK_FALSE(contains(paste->text, "X0017000000Y0005600000D02*"));
+
+    const auto *silk = find_file(result, "MirrorCheck.GTO");
+    REQUIRE(silk != nullptr);
+    CHECK(contains(silk->text, "G04 TEXT V*"));
+    CHECK(contains(silk->text, "X0013500000Y0031850000D02*"));
+    CHECK_FALSE(contains(silk->text, "X0013500000Y0004150000D02*"));
+
+    const auto *outline = find_file(result, "MirrorCheck.GKO");
+    REQUIRE(outline != nullptr);
+    CHECK(contains(outline->text, "X0002000000Y0033000000D02*"));
+    CHECK(contains(outline->text, "X0047000000Y0003000000D01*"));
+    CHECK_FALSE(contains(outline->text, "X0002000000Y0003000000D02*"));
+
+    const auto *pth = find_file(result, "MirrorCheck-PTH.TXT");
+    REQUIRE(pth != nullptr);
+    CHECK(contains(pth->text, "X0032000000Y0027000000"));
+    CHECK_FALSE(contains(pth->text, "X0032000000Y0009000000"));
+
+    const auto *npth = find_file(result, "MirrorCheck-NPTH.TXT");
+    REQUIRE(npth != nullptr);
+    CHECK(contains(npth->text, "X0007500000Y0023500000"));
+    CHECK_FALSE(contains(npth->text, "X0007500000Y0012500000"));
 }
 
 TEST_CASE("PCB fabrication writer emits unconnected mapped pads without fabrication loss") {

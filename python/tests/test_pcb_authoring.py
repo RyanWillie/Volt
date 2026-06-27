@@ -1377,7 +1377,7 @@ def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
     assert ";TYPE=PLATED" in export.text_by_filename("Control-PTH.TXT")
     assert "X0023000000Y0015000000" in export.text_by_filename("Control-PTH.TXT")
     assert ";TYPE=NON_PLATED" in export.text_by_filename("Control-NPTH.TXT")
-    assert "X0003000000Y0003000000" in export.text_by_filename("Control-NPTH.TXT")
+    assert "X0003000000Y0027000000" in export.text_by_filename("Control-NPTH.TXT")
 
     written = board.write_fabrication_files(tmp_path)
     assert [file.filename for file in written.files] == [file.filename for file in export.files]

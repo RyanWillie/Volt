@@ -117,8 +117,46 @@ void add_fab_critical_warning(
     return out.str();
 }
 
-[[nodiscard]] std::string xy(BoardPoint point) {
-    return "X" + coordinate(point.x_mm()) + "Y" + coordinate(point.y_mm());
+class BoardFabricationTransform {
+  public:
+    [[nodiscard]] static BoardFabricationTransform from_board(const Board &board) {
+        if (!board.outline().has_value()) {
+            return {};
+        }
+
+        const auto &vertices = board.outline()->vertices();
+        auto min_y = vertices.front().y_mm();
+        auto max_y = vertices.front().y_mm();
+        for (const auto point : vertices) {
+            min_y = std::min(min_y, point.y_mm());
+            max_y = std::max(max_y, point.y_mm());
+        }
+        return BoardFabricationTransform{min_y, max_y};
+    }
+
+    [[nodiscard]] BoardPoint to_fabrication(BoardPoint point) const {
+        if (!has_outline_) {
+            return point;
+        }
+        // Volt board space is y-down. Native fabrication outputs use the board outline bounds as
+        // the common top-view y-up coordinate frame, preserving non-origin outline coordinates.
+        return BoardPoint{point.x_mm(), min_y_mm_ + max_y_mm_ - point.y_mm()};
+    }
+
+  private:
+    BoardFabricationTransform() = default;
+
+    BoardFabricationTransform(double min_y_mm, double max_y_mm)
+        : min_y_mm_{min_y_mm}, max_y_mm_{max_y_mm}, has_outline_{true} {}
+
+    double min_y_mm_ = 0.0;
+    double max_y_mm_ = 0.0;
+    bool has_outline_ = false;
+};
+
+[[nodiscard]] std::string xy(BoardPoint point, const BoardFabricationTransform &transform) {
+    const auto fabrication_point = transform.to_fabrication(point);
+    return "X" + coordinate(fabrication_point.x_mm()) + "Y" + coordinate(fabrication_point.y_mm());
 }
 
 [[nodiscard]] std::optional<GlyphRows> glyph_for(char character) {
@@ -259,7 +297,8 @@ void add_fab_critical_warning(
 
 class GerberWriter {
   public:
-    explicit GerberWriter(std::string_view file_function) {
+    explicit GerberWriter(std::string_view file_function, BoardFabricationTransform transform)
+        : transform_{transform} {
         out_ << "G04 Volt Gerber RS-274X*\n";
         out_ << "%FSLAX46Y46*%\n";
         out_ << "%MOMM*%\n";
@@ -276,18 +315,18 @@ class GerberWriter {
             return;
         }
         select_aperture(circle_aperture(width_mm));
-        out_ << xy(points.front()) << "D02*\n";
+        out_ << xy(points.front(), transform_) << "D02*\n";
         for (std::size_t index = 1; index < points.size(); ++index) {
-            out_ << xy(points[index]) << "D01*\n";
+            out_ << xy(points[index], transform_) << "D01*\n";
         }
         if (closed) {
-            out_ << xy(points.front()) << "D01*\n";
+            out_ << xy(points.front(), transform_) << "D01*\n";
         }
     }
 
     void flash_circle(BoardPoint center, double diameter_mm) {
         select_aperture(circle_aperture(diameter_mm));
-        out_ << xy(center) << "D03*\n";
+        out_ << xy(center, transform_) << "D03*\n";
     }
 
     void draw_region(const std::vector<BoardPoint> &points) {
@@ -295,11 +334,11 @@ class GerberWriter {
             return;
         }
         out_ << "G36*\n";
-        out_ << xy(points.front()) << "D02*\n";
+        out_ << xy(points.front(), transform_) << "D02*\n";
         for (std::size_t index = 1; index < points.size(); ++index) {
-            out_ << xy(points[index]) << "D01*\n";
+            out_ << xy(points[index], transform_) << "D01*\n";
         }
-        out_ << xy(points.front()) << "D01*\n";
+        out_ << xy(points.front(), transform_) << "D01*\n";
         out_ << "G37*\n";
     }
 
@@ -339,6 +378,7 @@ class GerberWriter {
 
     std::ostringstream out_;
     std::vector<Aperture> apertures_;
+    BoardFabricationTransform transform_;
     int next_aperture_code_ = 10;
     int current_aperture_ = 0;
 };
@@ -899,7 +939,8 @@ void append_pad_drills(const std::vector<PlacementExport> &placements,
     }
 }
 
-[[nodiscard]] std::string write_excellon(const std::vector<DrillHit> &all_drills, bool plated) {
+[[nodiscard]] std::string write_excellon(const std::vector<DrillHit> &all_drills, bool plated,
+                                         const BoardFabricationTransform &transform) {
     auto drills = std::vector<DrillHit>{};
     for (const auto &drill : all_drills) {
         if (drill.plated == plated) {
@@ -944,7 +985,7 @@ void append_pad_drills(const std::vector<PlacementExport> &placements,
             out << "T" << std::setw(2) << std::setfill('0') << tool << "\n";
             current_tool = tool;
         }
-        out << xy(drill.position) << "\n";
+        out << xy(drill.position, transform) << "\n";
     }
     out << "M30\n";
     return out.str();
@@ -1013,6 +1054,7 @@ write_pcb_fabrication_files(const Board &board, const FootprintLibrary &footprin
                             PcbFabricationExportOptions options) {
     auto result = PcbFabricationExportResult{};
     const auto basename = output_basename(board, options);
+    const auto transform = BoardFabricationTransform::from_board(board);
     report_unsupported_board_features(board, result.loss_report);
     report_unsupported_board_text_layers(board, result.loss_report);
     const auto copper_layers = build_copper_layer_map(board, result.loss_report);
@@ -1020,55 +1062,55 @@ write_pcb_fabrication_files(const Board &board, const FootprintLibrary &footprin
     const auto placements = build_placement_exports(board, footprints, result.loss_report);
 
     if (copper_layers.top.has_value()) {
-        auto writer = GerberWriter{"Copper,L1,Top"};
+        auto writer = GerberWriter{"Copper,L1,Top", transform};
         write_copper_layer(writer, board, copper_layers.top.value(), placements,
                            result.loss_report);
         append_file(result.files, basename + ".GTL", "copper-top", writer.finish());
     }
     if (copper_layers.bottom.has_value()) {
-        auto writer = GerberWriter{"Copper,L2,Bot"};
+        auto writer = GerberWriter{"Copper,L2,Bot", transform};
         write_copper_layer(writer, board, copper_layers.bottom.value(), placements,
                            result.loss_report);
         append_file(result.files, basename + ".GBL", "copper-bottom", writer.finish());
     }
 
     {
-        auto writer = GerberWriter{"Soldermask,Top"};
+        auto writer = GerberWriter{"Soldermask,Top", transform};
         write_mask_or_paste_layer(writer, placements, FabricationSide::Top, false,
                                   result.loss_report);
         append_file(result.files, basename + ".GTS", "soldermask-top", writer.finish());
     }
     {
-        auto writer = GerberWriter{"Soldermask,Bot"};
+        auto writer = GerberWriter{"Soldermask,Bot", transform};
         write_mask_or_paste_layer(writer, placements, FabricationSide::Bottom, false,
                                   result.loss_report);
         append_file(result.files, basename + ".GBS", "soldermask-bottom", writer.finish());
     }
     {
-        auto writer = GerberWriter{"Legend,Top"};
+        auto writer = GerberWriter{"Legend,Top", transform};
         write_silkscreen_layer(writer, board, placements, FabricationSide::Top, result.loss_report);
         append_file(result.files, basename + ".GTO", "silkscreen-top", writer.finish());
     }
     if (has_silkscreen_content(board, placements, FabricationSide::Bottom)) {
-        auto writer = GerberWriter{"Legend,Bot"};
+        auto writer = GerberWriter{"Legend,Bot", transform};
         write_silkscreen_layer(writer, board, placements, FabricationSide::Bottom,
                                result.loss_report);
         append_file(result.files, basename + ".GBO", "silkscreen-bottom", writer.finish());
     }
     {
-        auto writer = GerberWriter{"Paste,Top"};
+        auto writer = GerberWriter{"Paste,Top", transform};
         write_mask_or_paste_layer(writer, placements, FabricationSide::Top, true,
                                   result.loss_report);
         append_file(result.files, basename + ".GTP", "paste-top", writer.finish());
     }
     if (has_paste_content(placements, FabricationSide::Bottom)) {
-        auto writer = GerberWriter{"Paste,Bot"};
+        auto writer = GerberWriter{"Paste,Bot", transform};
         write_mask_or_paste_layer(writer, placements, FabricationSide::Bottom, true,
                                   result.loss_report);
         append_file(result.files, basename + ".GBP", "paste-bottom", writer.finish());
     }
     {
-        auto writer = GerberWriter{"Profile,NP"};
+        auto writer = GerberWriter{"Profile,NP", transform};
         if (write_outline(writer, board, result.loss_report)) {
             append_file(result.files, basename + ".GKO", "profile", writer.finish());
         }
@@ -1078,9 +1120,10 @@ write_pcb_fabrication_files(const Board &board, const FootprintLibrary &footprin
     append_via_drills(board, drills);
     append_pad_drills(placements, drills);
     append_board_feature_drills(board, drills, result.loss_report);
-    append_file(result.files, basename + "-PTH.TXT", "drill-plated", write_excellon(drills, true));
+    append_file(result.files, basename + "-PTH.TXT", "drill-plated",
+                write_excellon(drills, true, transform));
     append_file(result.files, basename + "-NPTH.TXT", "drill-non-plated",
-                write_excellon(drills, false));
+                write_excellon(drills, false, transform));
 
     return result;
 }
