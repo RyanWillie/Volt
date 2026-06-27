@@ -566,6 +566,32 @@ TEST_CASE("Board visual validation reports board text obstructing pads and packa
     CHECK(obstructions[2]->rule() == "board-text-over-package-courtyard");
 }
 
+TEST_CASE("Board visual validation reports bottom text over through-hole pads") {
+    const auto fixture =
+        make_placed_resistors(1, volt::FootprintRef{"connectors", "TerminalBlock_1x02_P5.08mm"});
+    auto board = make_visual_board(fixture);
+    const auto placement = board.place_component(volt::ComponentPlacement{
+        fixture.components[0], volt::BoardPoint{10.0, 10.0}, volt::BoardRotation::degrees(0.0)});
+    const auto bottom_text = board.add_text(volt::BoardText{"P1", volt::BoardPoint{9.7, 7.7},
+                                                            volt::BoardRotation::degrees(0.0),
+                                                            volt::BoardLayerId{1}, 0.6});
+
+    const auto report = volt::validate_board(board, volt::builtin_footprint_library());
+
+    const auto obstructions =
+        find_diagnostics(report, std::string{volt::pcb_visual_diagnostic_codes::LabelObstruction});
+    REQUIRE(obstructions.size() == 1);
+    CHECK(obstructions[0]->rule() == "board-text-over-pad");
+    CHECK(obstructions[0]->entities() ==
+          std::vector{volt::EntityRef::board_text(bottom_text),
+                      volt::EntityRef::component_placement(placement),
+                      volt::EntityRef::component(fixture.components[0]),
+                      volt::EntityRef::footprint_pad(volt::FootprintPadId{0})});
+    REQUIRE(obstructions[0]->overlays().size() == 2);
+    CHECK(obstructions[0]->overlays()[1].layers() ==
+          std::vector{volt::BoardLayerId{0}, volt::BoardLayerId{1}});
+}
+
 TEST_CASE("Board visual validation reports board text obstructing board holes") {
     const auto fixture = make_placed_resistors(0);
     auto board = make_visual_board(fixture);
