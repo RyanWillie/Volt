@@ -69,7 +69,7 @@ def _author_connectors_region(
         usb_ground = drawing.ground(
             "GND",
             net=usb_gnd,
-            at=usb_esd.GND.down(32),
+            at=usb_esd.GND.down(14),
             orient="Down",
         )
         for anchor in (usb_j.GND, usb_j.Shield, usb_esd.GND):

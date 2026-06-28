@@ -31,6 +31,8 @@ def build_project() -> volt.Project:
     project.expect_diagnostic(code="SCHEMATIC_SYMBOL_FIELD_FAR_FROM_SYMBOL", severity="warning")
     project.expect_diagnostic(code="SCHEMATIC_LABEL_CROWDS_SYMBOL", severity="warning")
     project.expect_diagnostic(code="SCHEMATIC_DENSE_PORT_TAGS", severity="warning")
+    project.expect_diagnostic(code="PCB_RULE_AT_CAPABILITY_MINIMUM", severity="warning")
+    project.expect_diagnostic(code="PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN", severity="warning")
 
     @project.design
     def design():
@@ -56,24 +58,24 @@ def build_project() -> volt.Project:
             x=18,
             y=18,
             w=558,
-            h=116,
+            h=126,
             style={"border": "dashed"},
         )
         mcu_region = sheet.region(
             "STM32 Microcontroller",
             x=18,
-            y=140,
+            y=150,
             w=346,
-            h=266,
+            h=256,
             title="STM32 MCU",
             style={"border": "dashed"},
         )
         connectors_region = sheet.region(
             "Connectors and USB",
-            x=370,
-            y=140,
-            w=208,
-            h=216,
+            x=350,
+            y=160,
+            w=228,
+            h=196,
             style={"border": "dashed"},
         )
 
@@ -111,7 +113,7 @@ def _raise_if_not_ok(result: volt.ProjectResult) -> None:
 def jlcpcb_manufacturing_profile_metadata() -> dict[str, str]:
     return {
         "path": JLCPCB_PROFILE_PROJECT_PATH,
-        "resolved_path": str(JLCPCB_PROFILE_PATH),
+        "resolved_path": JLCPCB_PROFILE_PROJECT_PATH,
     }
 
 

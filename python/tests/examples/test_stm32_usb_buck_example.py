@@ -193,6 +193,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
 
     net_names = {net["name"] for net in logical["nets"]}
     assert {"+12V", "+5V", "+3V3", "VDDA", "GND", "USB_DP", "USB_DM"} <= net_names
+    assert {"MCU_USB_DP", "MCU_USB_DM"}.isdisjoint(net_names)
+    board_model = stm32_board.build_board()
+    assert board_model.nets["MCU_USB_DP"] is board_model.nets["USB_DP"]
+    assert board_model.nets["MCU_USB_DM"] is board_model.nets["USB_DM"]
     net_ids = {net["id"] for net in logical["nets"]}
     component_ids = {component["id"] for component in logical["components"]}
 
@@ -226,10 +230,23 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert len(schematic["wire_runs"]) >= 20
     assert 1 <= len(schematic["net_labels"]) <= 10
     assert 8 <= len(schematic["power_ports"]) <= 32
-    assert len(schematic["sheet_ports"]) == 25
+    assert len(schematic["sheet_ports"]) == 31
     assert {
         port["name"] for port in schematic["sheet_ports"]
-    } >= {"USB D+", "USB D-", "SWDIO", "SWCLK", "SWO", "BOOT0", "VCAP1", "VCAP2"}
+    } >= {
+        "+12V IN",
+        "SW",
+        "BST",
+        "FB",
+        "USB D+",
+        "USB D-",
+        "SWDIO",
+        "SWCLK",
+        "SWO",
+        "BOOT0",
+        "VCAP1",
+        "VCAP2",
+    }
     assert {port["kind"] for port in schematic["sheet_ports"]} == {"Bidirectional"}
     assert len(schematic["no_connect_markers"]) <= 6
     assert {instance["component"] for instance in schematic["symbol_instances"]} <= component_ids
@@ -242,7 +259,9 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     } <= {pin["id"] for pin in logical["pins"]}
     assert {definition["name"] for definition in schematic["symbol_definitions"]} >= {
         "volt.benchmarks.stm32_usb_buck:STM32F405RGTx",
-        "volt.benchmarks.stm32_usb_buck:AP1117_15",
+        "volt.benchmarks.stm32_usb_buck:MP2359_Buck",
+        "volt.benchmarks.stm32_usb_buck:AP1117_33",
+        "volt.benchmarks.stm32_usb_buck:Inductor_10uH",
         "volt.examples.stm32_usb_buck:ReadableUSBMicroB",
         "volt.examples.stm32_usb_buck:PlainCapacitor",
         "volt.examples.stm32_usb_buck:PlainResistor",
@@ -299,7 +318,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         for field in reference_fields
     } == set(reference_labels)
     assert len(reference_labels) == len(set(reference_labels))
-    assert all(re.fullmatch(r"(?:C|D|J|R|SW|U|Y)\d+", label) for label in reference_labels)
+    assert all(re.fullmatch(r"(?:C|D|F|FB|J|L|R|SW|U|Y)\d+", label) for label in reference_labels)
     assert all("/" not in label and "_" not in label for label in reference_labels)
     assert component_values_by_reference["USB/J1"] == "USB Micro-B"
     assert component_values_by_reference["USB/U1"] == "USBLC6-4SC6"
@@ -325,13 +344,22 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert all("/" not in label for label in power_port_labels)
     symbol_field_values = {field["value"] for field in schematic["symbol_fields"]}
     assert {
-        "AP1117-5.0",
+        "MP2359 5V buck",
         "AP1117-3.3",
+        "250 mA polyfuse",
+        "600 Ohm @ 100 MHz",
+        "B5819W",
         "100 nF",
         "4.7 uF",
+        "10 uF",
+        "10 nF",
         "2.2 uF",
+        "10 uH",
         "10 kOhm",
         "100 kOhm",
+        "15 kOhm",
+        "47 kOhm",
+        "68 kOhm",
         "18 pF",
         "330 Ohm",
         "8 MHz",
@@ -545,17 +573,28 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "F.SilkS",
     ]
     assert pcb["board"]["layer_stack"]["board_thickness_mm"] == 1.6
-    assert pcb["board"]["outline"]["vertices"] == [
-        [0, 0],
-        [90, 0],
-        [90, 58],
-        [0, 58],
-    ]
+    assert pcb["board"]["outline"] == {
+        "kind": "polygon",
+        "vertices": [
+            [4, 0],
+            [86, 0],
+            [88.83, 1.17],
+            [90, 4],
+            [90, 54],
+            [88.83, 56.83],
+            [86, 58],
+            [4, 58],
+            [1.17, 56.83],
+            [0, 54],
+            [0, 4],
+            [1.17, 1.17],
+        ],
+    }
     assert pcb["board"]["rules"] == {
         "board_outline_clearance_mm": 0.25,
-        "copper_clearance_mm": 0.127,
-        "minimum_track_width_mm": 0.2,
-        "minimum_via_annular_diameter_mm": 0.7,
+        "copper_clearance_mm": 0.1,
+        "minimum_track_width_mm": 0.15,
+        "minimum_via_annular_diameter_mm": 0.5,
         "minimum_via_drill_diameter_mm": 0.3,
         "package_assembly_clearance_mm": 0.25,
     }
@@ -573,7 +612,13 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert len(pcb["board"]["zones"]) >= 1
     assert len(pcb["board"]["texts"]) >= 10
     assert all(_is_octilinear_track(track) for track in pcb["board"]["tracks"])
-    assert pcb["viewer"]["diagnostics"] == []
+    assert {diagnostic["code"] for diagnostic in pcb["viewer"]["diagnostics"]} == {
+        "PCB_RULE_AT_CAPABILITY_MINIMUM",
+        "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+    }
+    assert {diagnostic["severity"] for diagnostic in pcb["viewer"]["diagnostics"]} == {
+        "warning"
+    }
     assert len(pcb["viewer"]["pad_resolutions"]) >= 90
     pcb_net_names = {
         net_names_by_id[track["net"]] for track in pcb["board"]["tracks"]
@@ -585,16 +630,24 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert {
         "+12V",
         "+3V3",
-        "VDDA",
         "GND",
         "PWR/IN_12V",
+        "PWR/FUSED_12V",
+        "PWR/BUCK_IN",
+        "PWR/BUCK_EN",
+        "PWR/BUCK_SW",
+        "PWR/BUCK_BST",
+        "PWR/BUCK_FB",
         "PWR/OUT_5V",
         "PWR/OUT_3V3",
+        "PWR/VDDA",
+        "USB_DP",
+        "USB_DM",
         "USB/VBUS",
         "USB/USB_DP",
         "USB/USB_DM",
-        "MCU_USB_DP",
-        "MCU_USB_DM",
+        "USB/MCU_USB_DP",
+        "USB/MCU_USB_DM",
         "NRST",
         "BOOT0",
         "SWDIO",
@@ -604,6 +657,8 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
         "SUPPORT/GND",
         "SUPPORT/VCAP_1",
         "SUPPORT/VCAP_2",
+        "LED_STATUS/SUPPLY",
+        "LED_STATUS/LED_A",
         "LED_STATUS/SIGNAL",
     } <= pcb_net_names
     pcb_texts = {text["text"] for text in pcb["board"]["texts"]}
@@ -695,6 +750,20 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert '(1 "In1.Cu" signal)' in first_kicad_text
     assert '(2 "In2.Cu" signal)' in first_kicad_text
     assert '(property "Reference" "C9"' in first_kicad_text
+    assert all(
+        f'"{net_name}"' not in first_kicad_text
+        for net_name in {
+            "PWR/GND",
+            "PWR/OUT_3V3",
+            "USB/USB_DP",
+            "USB/USB_DM",
+            "USB/MCU_USB_DP",
+            "USB/MCU_USB_DM",
+            "USB/VBUS",
+            "LED_STATUS/SIGNAL",
+            "LED_STATUS/SUPPLY",
+        }
+    )
     assert json.loads(first_cpl_json_text)["format"] == "volt.cpl"
     assert first_cpl_csv_text.startswith("Designator,Mid X,Mid Y,Layer,Rotation\n")
     assert [path.name for path in artifacts.schematic_svg_pages] == ["stm32_usb_buck_STM32_USB_Buck.svg"]
@@ -714,8 +783,10 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert {
         diagnostic["expect_diagnostic_kwargs"]["stage"]
         for diagnostic in validation["diagnostics"]
-    } == {"schematic"}
+    } == {"schematic", "board"}
     assert {item["code"] for item in validation["expected"]} == {
+        "PCB_RULE_AT_CAPABILITY_MINIMUM",
+        "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
         "SCHEMATIC_DENSE_PORT_TAGS",
         "SCHEMATIC_LABEL_CROWDS_SYMBOL",
         "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
@@ -738,7 +809,7 @@ def test_stm32_usb_buck_example_writes_stable_logical_artifacts():
     assert {
         (test["stage"], test["name"], test["ok"]) for test in project_tests["tests"]
     } == {
-        ("design", "input_regulators_and_rails_are_preserved", True),
+        ("design", "buck_input_and_rails_are_preserved", True),
         ("design", "usb_debug_and_user_io_are_preserved", True),
         ("design", "power_and_signal_domains_stay_separate", True),
         ("schematic", "schematic_places_displayed_benchmark_parts", True),
@@ -766,9 +837,17 @@ def test_stm32_usb_buck_example_writes_jlcpcb_manufacturing_package():
         manifest = json.loads(
             output.joinpath("manufacturing", "manifest.json").read_text(encoding="utf-8")
         )
+        profile = json.loads(
+            output.joinpath("manufacturing", "profile.json").read_text(encoding="utf-8")
+        )
         assert manifest["format"] == "volt.manufacturing_package"
         assert manifest["schema_version"] == 1
         assert manifest["profile"]["config"] == main.jlcpcb_manufacturing_profile_metadata()
+        assert profile["config"] == main.jlcpcb_manufacturing_profile_metadata()
+        assert manifest["profile"]["config"]["resolved_path"] == (
+            "profiles/jlcpcb_4layer.voltcap.json"
+        )
+        assert not Path(manifest["profile"]["config"]["resolved_path"]).is_absolute()
         assert manifest["profile"]["board"]["name"] == (
             "JLCPCB 4-layer FR-4 capability snapshot"
         )

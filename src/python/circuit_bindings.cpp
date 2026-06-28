@@ -272,7 +272,7 @@ void bind_circuit(pybind11::module_ &module) {
              py::arg("annular_diameter_mm"))
         .def("board_assisted_connect", &PyCircuit::board_assisted_connect, py::arg("net"),
              py::arg("start_x"), py::arg("start_y"), py::arg("start_layer"), py::arg("end_x"),
-             py::arg("end_y"), py::arg("end_layer"))
+             py::arg("end_y"), py::arg("end_layer"), py::arg("track_width_mm") = std::nullopt)
         .def("board_escape", &PyCircuit::board_escape, py::arg("component"))
         .def("board_add_zone", &PyCircuit::board_add_zone, py::arg("net"), py::arg("layers"),
              py::arg("outline"), py::arg("fill"), py::arg("priority"))

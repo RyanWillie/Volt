@@ -143,8 +143,8 @@ def _author_mcu_region(
 
         drawing.signal_tags(
             (
-                (nets["MCU_USB_DM"], stm32.PA11, "USB D-"),
-                (nets["MCU_USB_DP"], stm32.PA12, "USB D+"),
+                (nets["USB_DM"], stm32.PA11, "USB D-"),
+                (nets["USB_DP"], stm32.PA12, "USB D+"),
                 (nets["SWDIO"], stm32.PA13, "SWDIO"),
                 (nets["SWCLK"], stm32.PA14, "SWCLK"),
                 (nets["SWO"], stm32.PB3, "SWO"),
@@ -256,8 +256,14 @@ def _author_mcu_region(
             )
 
         led_supply = nets["LED_STATUS/SUPPLY"]
+        led_anode = nets["LED_STATUS/LED_A"]
         led_signal = nets["LED_STATUS/SIGNAL"]
-        led_gnd = nets["LED_STATUS/GND"]
         drawing.power_stub("+3V3", at=led_r.start, net=led_supply, side="Up", length=20)
-        drawing.connect(led_r.end, led_d.start, net=led_signal, shape="-")
-        drawing.ground_stub("GND", at=led_d.end, net=led_gnd, side="Down", length=28)
+        drawing.connect(led_r.end, led_d.start, net=led_anode, shape="-")
+        drawing.signal_tag(
+            led_signal,
+            at=led_d.end,
+            side="Right",
+            length=16,
+            label="LED",
+        )

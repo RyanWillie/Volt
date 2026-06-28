@@ -1010,6 +1010,27 @@ def test_python_board_authoring_assisted_connect_surfaces_kernel_result():
     assert json.loads(blocked_board.to_json())["board"].get("tracks", []) == []
 
 
+def test_python_board_authoring_assisted_connect_honors_explicit_width():
+    design = volt.Design("assisted-connect-width")
+    route = design.net("ROUTE")
+    board = design.board("Control")
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(20.0, 12.0))
+
+    result = board.assisted_connect(
+        route,
+        start=(2.0, 6.0),
+        start_layer=front,
+        end=(18.0, 6.0),
+        end_layer=front,
+        width=0.42,
+    )
+
+    assert result == {"routed": True, "tracks": [0], "vias": [], "blockers": []}
+    document = json.loads(board.to_json())
+    assert document["board"]["tracks"][0]["width_mm"] == 0.42
+
+
 def test_python_board_authoring_assisted_connect_is_octilinear():
     design = volt.Design("assisted-connect-octilinear-repro")
     net = design.net("N")

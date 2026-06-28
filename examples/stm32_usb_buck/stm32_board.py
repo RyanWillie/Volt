@@ -76,7 +76,11 @@ def build_board() -> Stm32UsbBuckBoard:
     components: dict[str, volt.Component] = {}
 
     external_supply = define_external_supply(design)
-    source_12v = design.instantiate(external_supply, ref="VIN_SRC", properties={"value": "12 V input"})
+    source_12v = design.instantiate(
+        external_supply,
+        ref="VIN_SRC",
+        properties={"value": "12 V input", "pcb_reference": "J1"},
+    )
     _select_external_supply_part(source_12v)
     components["VIN_SRC"] = source_12v
     power.input_12v += source_12v["OUT"]
@@ -96,20 +100,30 @@ def build_board() -> Stm32UsbBuckBoard:
         power_instance,
         {
             "J": lib.CONNECTOR_1X04,
-            "U5": lib.AP1117_15,
-            "U3V3": lib.AP1117_15,
-            "CIN": lib.CAPACITOR,
-            "C5V": lib.CAPACITOR,
-            "C3V3": lib.CAPACITOR,
-            "CVDDA": lib.CAPACITOR,
+            "F1": lib.POLYFUSE,
+            "FB1": lib.FERRITE_BEAD,
+            "U5": lib.BUCK_MP2359,
+            "L1": lib.POWER_INDUCTOR_10UH,
+            "DSW": lib.SCHOTTKY_B5819,
+            "CIN": lib.CAP_10UF,
+            "CBST": lib.CAP_10NF,
+            "C5V": lib.CAP_10UF,
+            "REN_TOP": lib.RES_100K,
+            "REN_BOT": lib.RES_47K,
+            "RFB_TOP": lib.RES_68K,
+            "RFB_BOT": lib.RES_15K,
+            "U3V3": lib.AP1117_33,
+            "C3V3": lib.CAP_4U7,
+            "FBVDDA": lib.FERRITE_BEAD,
+            "CVDDA": lib.CAP_100NF,
         },
     )
     modules["PWR"] = power_instance
 
     usb_dp = design.net("USB_DP")
     usb_dm = design.net("USB_DM")
-    mcu_usb_dp = design.net("MCU_USB_DP")
-    mcu_usb_dm = design.net("MCU_USB_DM")
+    mcu_usb_dp = usb_dp
+    mcu_usb_dm = usb_dm
     nets.update(
         {
             "USB_DP": usb_dp,
@@ -142,15 +156,15 @@ def build_board() -> Stm32UsbBuckBoard:
     _select_module_library_parts(
         support,
         {
-            "CVDD": lib.CAPACITOR,
-            "CVCAP1": lib.CAPACITOR,
-            "CVCAP2": lib.CAPACITOR,
-            "RRESET": lib.RESISTOR,
-            "RBOOT": lib.RESISTOR,
+            "CVDD": lib.CAP_100NF,
+            "CVCAP1": lib.CAP_2U2,
+            "CVCAP2": lib.CAP_2U2,
+            "RRESET": lib.RES_10K,
+            "RBOOT": lib.RES_100K,
             "SWBOOT": lib.SPDT_SWITCH,
             "Y1": lib.CRYSTAL_GND24,
-            "CHSEIN": lib.CAPACITOR,
-            "CHSEOUT": lib.CAPACITOR,
+            "CHSEIN": lib.CAP_18PF,
+            "CHSEOUT": lib.CAP_18PF,
         },
     )
     modules["SUPPORT"] = support
@@ -205,9 +219,8 @@ def build_board() -> Stm32UsbBuckBoard:
         ref="LED_STATUS",
         supply=power.logic_3v3,
         signal=status_led,
-        ground=power.ground,
     )
-    _select_module_library_parts(led_instance, {"R": lib.RESISTOR})
+    _select_module_library_parts(led_instance, {"R": lib.RES_330R})
     _select_indicator_led_part(led_instance.component("D"))
     modules["LED_STATUS"] = led_instance
 
@@ -302,29 +315,37 @@ def _select_indicator_led_part(component: volt.Component) -> None:
 
 
 def define_mcu_support(design: volt.Design) -> volt.ModuleDefinition:
-    capacitor = design.define_component(
-        lib.CAPACITOR.name,
-        pins=lib.CAPACITOR.pins,
-        properties=lib.CAPACITOR.properties,
-        source=(lib.LIB.namespace, lib.CAPACITOR.source_name, lib.CAPACITOR.source_version),
-    )
-    resistor = design.define_component(
-        lib.RESISTOR.name,
-        pins=lib.RESISTOR.pins,
-        properties=lib.RESISTOR.properties,
-        source=(lib.LIB.namespace, lib.RESISTOR.source_name, lib.RESISTOR.source_version),
-    )
+    def define(library_component: volt.LibraryComponent) -> volt.ComponentDefinition:
+        return design.define_component(
+            library_component.name,
+            pins=library_component.pins,
+            properties=library_component.properties,
+            source=(
+                lib.LIB.namespace,
+                library_component.source_name,
+                library_component.source_version,
+            ),
+            schematic_symbol=library_component.schematic_symbols,
+        )
+
+    cap_100nf = define(lib.CAP_100NF)
+    cap_2u2 = define(lib.CAP_2U2)
+    cap_18pf = define(lib.CAP_18PF)
+    res_10k = define(lib.RES_10K)
+    res_100k = define(lib.RES_100K)
     crystal = design.define_component(
         lib.CRYSTAL_GND24.name,
         pins=lib.CRYSTAL_GND24.pins,
         properties=lib.CRYSTAL_GND24.properties,
         source=(lib.LIB.namespace, lib.CRYSTAL_GND24.source_name, lib.CRYSTAL_GND24.source_version),
+        schematic_symbol=lib.CRYSTAL_GND24.schematic_symbols,
     )
     switch = design.define_component(
         lib.SPDT_SWITCH.name,
         pins=lib.SPDT_SWITCH.pins,
         properties=lib.SPDT_SWITCH.properties,
         source=(lib.LIB.namespace, lib.SPDT_SWITCH.source_name, lib.SPDT_SWITCH.source_version),
+        schematic_symbol=lib.SPDT_SWITCH.schematic_symbols,
     )
 
     module = design.define_module("McuSupport")
@@ -338,29 +359,29 @@ def define_mcu_support(design: volt.Design) -> volt.ModuleDefinition:
     vcap2 = module.port("VCAP_2", kind="power", role="power_input")
 
     c_vdd = module.instantiate(
-        capacitor,
+        cap_100nf,
         ref="CVDD",
-        properties={"value": "100 nF", "pcb_reference": "C5"},
+        properties={"value": "100 nF", "pcb_reference": "C6"},
     )
     c_vcap1 = module.instantiate(
-        capacitor,
+        cap_2u2,
         ref="CVCAP1",
-        properties={"value": "2.2 uF", "pcb_reference": "C6"},
-    )
-    c_vcap2 = module.instantiate(
-        capacitor,
-        ref="CVCAP2",
         properties={"value": "2.2 uF", "pcb_reference": "C7"},
     )
+    c_vcap2 = module.instantiate(
+        cap_2u2,
+        ref="CVCAP2",
+        properties={"value": "2.2 uF", "pcb_reference": "C8"},
+    )
     r_reset = module.instantiate(
-        resistor,
+        res_10k,
         ref="RRESET",
-        properties={"value": "10 kOhm", "pcb_reference": "R1"},
+        properties={"value": "10 kOhm", "pcb_reference": "R5"},
     )
     r_boot = module.instantiate(
-        resistor,
+        res_100k,
         ref="RBOOT",
-        properties={"value": "100 kOhm", "pcb_reference": "R2"},
+        properties={"value": "100 kOhm", "pcb_reference": "R6"},
     )
     sw_boot = module.instantiate(
         switch,
@@ -369,14 +390,14 @@ def define_mcu_support(design: volt.Design) -> volt.ModuleDefinition:
     )
     y1 = module.instantiate(crystal, ref="Y1", properties={"value": "8 MHz", "pcb_reference": "Y1"})
     c_hse_in = module.instantiate(
-        capacitor,
+        cap_18pf,
         ref="CHSEIN",
-        properties={"value": "18 pF", "pcb_reference": "C8"},
+        properties={"value": "18 pF", "pcb_reference": "C9"},
     )
     c_hse_out = module.instantiate(
-        capacitor,
+        cap_18pf,
         ref="CHSEOUT",
-        properties={"value": "18 pF", "pcb_reference": "C9"},
+        properties={"value": "18 pF", "pcb_reference": "C10"},
     )
 
     module.connect(vdd, c_vdd[1], r_reset[1], sw_boot["A"])

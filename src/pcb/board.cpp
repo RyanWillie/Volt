@@ -260,7 +260,7 @@ Board::project_footprint_geometries(const FootprintLibrary &footprints) const {
 
 [[nodiscard]] std::vector<RatsnestEdge>
 Board::ratsnest_edges(const FootprintLibrary &footprints) const {
-    return derive_ratsnest_edges(resolve_pads(footprints));
+    return derive_ratsnest_edges(circuit(), resolve_pads(footprints));
 }
 
 void Board::require_layer(BoardLayerId layer) const { structure_.require_layer(layer); }

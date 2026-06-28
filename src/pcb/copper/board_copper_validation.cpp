@@ -243,9 +243,13 @@ void validate_netless_zone_outline_clearance(const Board &board, DiagnosticRepor
 void validate_copper_clearance(const Board &board, const std::vector<BoardCopperShape> &shapes,
                                DiagnosticReport &report) {
     const auto index = BoardSpatialIndex{board, shapes};
+    const auto continuity = NetContinuityView{board.circuit()};
     for (const auto pair : index.copper_clearance_candidates()) {
         const auto &lhs = shapes[pair.lhs_index];
         const auto &rhs = shapes[pair.rhs_index];
+        if (continuity.same_group(lhs.net, rhs.net)) {
+            continue;
+        }
         const auto check = check_copper_clearance(board, lhs, rhs);
         if (!check.violates) {
             continue;
@@ -421,7 +425,7 @@ void validate_unrouted_nets(const Board &board, const std::vector<PadResolution>
         }
     }
 
-    for (const auto &edge : derive_ratsnest_edges(resolutions)) {
+    for (const auto &edge : derive_ratsnest_edges(board.circuit(), resolutions)) {
         const auto from_index =
             shape_index_for_pad(shapes, edge.from().placement(), edge.from().pad());
         const auto to_index = shape_index_for_pad(shapes, edge.to().placement(), edge.to().pad());

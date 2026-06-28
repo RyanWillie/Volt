@@ -54,6 +54,7 @@ set(
     VOLT_PYTHON_LIBRARY_FILES
     __init__.py
     stm32_usb_buck.py
+    stm32_usb_buck_power.py
 )
 foreach(library_file IN LISTS VOLT_PYTHON_LIBRARY_FILES)
     configure_file(

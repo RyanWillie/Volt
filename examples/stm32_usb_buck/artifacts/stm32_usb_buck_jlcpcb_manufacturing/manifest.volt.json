@@ -136,7 +136,7 @@
     "summary": {
       "errors": 0,
       "infos": 0,
-      "warnings": 48
+      "warnings": 57
     }
   },
   "format": "volt.project_result",
@@ -155,7 +155,7 @@
       "tests": [
         {
           "message": "",
-          "name": "input_regulators_and_rails_are_preserved",
+          "name": "buck_input_and_rails_are_preserved",
           "ok": true,
           "stage": "design"
         },

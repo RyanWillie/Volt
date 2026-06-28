@@ -20,10 +20,11 @@ def define_external_supply(design: volt.Design) -> volt.ComponentDefinition:
 
 def define_led_indicator(design: volt.Design) -> volt.ModuleDefinition:
     resistor = design.define_component(
-        lib.RESISTOR.name,
-        pins=lib.RESISTOR.pins,
-        properties=lib.RESISTOR.properties,
-        source=(lib.LIB.namespace, lib.RESISTOR.source_name, lib.RESISTOR.source_version),
+        lib.RES_330R.name,
+        pins=lib.RES_330R.pins,
+        properties=lib.RES_330R.properties,
+        source=(lib.LIB.namespace, lib.RES_330R.source_name, lib.RES_330R.source_version),
+        schematic_symbol=lib.RES_330R.schematic_symbols,
     )
     led = design.define_component(
         "IndicatorLED",
@@ -38,13 +39,21 @@ def define_led_indicator(design: volt.Design) -> volt.ModuleDefinition:
     module = design.define_module("LedIndicator")
     supply = module.port("SUPPLY", kind="power", role="power_input")
     signal = module.port("SIGNAL", role="input")
-    ground = module.port("GND", kind="ground", role="ground")
-    r1 = module.instantiate(resistor, ref="R", properties={"value": "330 Ohm"})
-    d1 = module.instantiate(led, ref="D", properties={"value": "Green LED"})
+    led_anode = module.net("LED_A")
+    r1 = module.instantiate(
+        resistor,
+        ref="R",
+        properties={"value": "330 Ohm", "pcb_reference": "R7"},
+    )
+    d1 = module.instantiate(
+        led,
+        ref="D",
+        properties={"value": "Green LED", "pcb_reference": "D2"},
+    )
 
     module.connect(supply, r1[1])
-    module.connect(signal, r1[2], d1["A"])
-    module.connect(ground, d1["K"])
+    led_anode.connect(r1[2], d1["A"])
+    module.connect(signal, d1["K"])
     return module
 
 
@@ -55,10 +64,8 @@ def add_led_indicator(
     ref: str,
     supply: volt.Net,
     signal: volt.Net,
-    ground: volt.Net,
 ) -> volt.ModuleInstance:
     instance = design.instantiate(module, ref=ref)
     supply += instance["SUPPLY"]
     signal += instance["SIGNAL"]
-    ground += instance["GND"]
     return instance

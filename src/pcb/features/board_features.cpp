@@ -1,5 +1,7 @@
 #include <volt/pcb/board.hpp>
 
+#include <volt/circuit/validation/validation.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -146,6 +148,17 @@ RatsnestEndpoint::RatsnestEndpoint(ComponentPlacementId placement, ComponentId c
 RatsnestEdge::RatsnestEdge(NetId net, RatsnestEndpoint from, RatsnestEndpoint to)
     : net_{net}, from_{from}, to_{to} {}
 
+[[nodiscard]] NetId canonical_ratsnest_net(const detail::NetContinuityView &continuity, NetId net,
+                                           std::size_t net_count) {
+    for (std::size_t index = 0; index < net_count; ++index) {
+        const auto candidate = NetId{index};
+        if (continuity.same_group(candidate, net)) {
+            return candidate;
+        }
+    }
+    return net;
+}
+
 [[nodiscard]] std::vector<RatsnestEdge>
 derive_ratsnest_edges(const std::vector<PadResolution> &resolutions) {
     struct EndpointWithNet {
@@ -250,6 +263,28 @@ derive_ratsnest_edges(const std::vector<PadResolution> &resolutions) {
     }
 
     return edges;
+}
+
+[[nodiscard]] std::vector<RatsnestEdge>
+derive_ratsnest_edges(const Circuit &circuit, const std::vector<PadResolution> &resolutions) {
+    const auto continuity = detail::NetContinuityView{circuit};
+    auto grouped_resolutions = std::vector<PadResolution>{};
+    grouped_resolutions.reserve(resolutions.size());
+
+    for (const auto &resolution : resolutions) {
+        if (resolution.status() != PadResolutionStatus::Connected ||
+            !resolution.net().has_value()) {
+            grouped_resolutions.push_back(resolution);
+            continue;
+        }
+        grouped_resolutions.emplace_back(
+            resolution.placement(), resolution.component(), resolution.pad(),
+            resolution.pad_label(), resolution.position(), resolution.pin(),
+            canonical_ratsnest_net(continuity, resolution.net().value(), circuit.net_count()),
+            resolution.status());
+    }
+
+    return derive_ratsnest_edges(grouped_resolutions);
 }
 
 } // namespace volt

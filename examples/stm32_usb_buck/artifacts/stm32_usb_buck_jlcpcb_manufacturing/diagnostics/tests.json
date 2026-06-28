@@ -6,7 +6,7 @@
   "tests": [
     {
       "message": "",
-      "name": "input_regulators_and_rails_are_preserved",
+      "name": "buck_input_and_rails_are_preserved",
       "ok": true,
       "stage": "design"
     },

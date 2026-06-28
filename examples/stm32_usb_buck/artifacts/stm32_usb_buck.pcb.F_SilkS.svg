@@ -24,7 +24,7 @@
   </style>
   <rect class="board-background" x="0" y="0" width="98" height="66"/>
   <g class="board-content" transform="translate(4 4)">
-    <polygon class="board-outline" data-board="board:0" points="0,0 90,0 90,58 0,58"/>
+    <polygon class="board-outline" data-board="board:0" points="4,0 86,0 88.83,1.17 90,4 90,54 88.83,56.83 86,58 4,58 1.17,56.83 0,54 0,4 1.17,1.17"/>
     <g class="layer layer-board-features">
     </g>
     <g id="pcb-layer-F_SilkS" class="pcb-layer board-layer layer-F_SilkS" data-layer="board_layer:4" data-layer-name="F.SilkS" data-layer-role="silkscreen" data-layer-side="top">
@@ -33,96 +33,138 @@
     <g class="layer layer-copper">
     </g>
     <g class="layer layer-board-text">
-      <text id="pcb-text-0" class="board-text" data-text="board_text:0" data-layer="board_layer:4" x="30" y="54.5" font-size="1.2" transform="rotate(0 30 54.5)">STM32 USB BUCK</text>
-      <text id="pcb-text-1" class="board-text" data-text="board_text:1" data-layer="board_layer:4" x="2.5" y="17" font-size="0.8" transform="rotate(90 2.5 17)">12V IN</text>
-      <text id="pcb-text-2" class="board-text" data-text="board_text:2" data-layer="board_layer:4" x="81" y="45.5" font-size="0.8" transform="rotate(0 81 45.5)">USB</text>
-      <text id="pcb-text-3" class="board-text" data-text="board_text:3" data-layer="board_layer:4" x="71" y="9.5" font-size="0.8" transform="rotate(0 71 9.5)">SWD</text>
-      <text id="pcb-text-4" class="board-text" data-text="board_text:4" data-layer="board_layer:4" x="80" y="29" font-size="0.8" transform="rotate(0 80 29)">GPIO</text>
-      <text id="pcb-text-5" class="board-text" data-text="board_text:5" data-layer="board_layer:4" x="47" y="19" font-size="0.7" transform="rotate(0 47 19)">+3V3</text>
-      <text id="pcb-text-6" class="board-text" data-text="board_text:6" data-layer="board_layer:4" x="32" y="25.5" font-size="0.7" transform="rotate(0 32 25.5)">VDDA</text>
-      <text id="pcb-text-7" class="board-text" data-text="board_text:7" data-layer="board_layer:4" x="61" y="20.5" font-size="0.7" transform="rotate(0 61 20.5)">BOOT0</text>
-      <text id="pcb-text-8" class="board-text" data-text="board_text:8" data-layer="board_layer:4" x="25" y="29.5" font-size="0.7" transform="rotate(0 25 29.5)">RESET</text>
-      <text id="pcb-text-9" class="board-text" data-text="board_text:9" data-layer="board_layer:4" x="61" y="53" font-size="0.7" transform="rotate(0 61 53)">STATUS</text>
-      <text id="pcb-text-10" class="board-text" data-text="board_text:10" data-layer="board_layer:4" x="19.5" y="40" font-size="0.7" transform="rotate(0 19.5 40)">HSE 8MHZ</text>
-      <text id="pcb-text-11" class="board-text" data-text="board_text:11" data-layer="board_layer:4" x="12" y="54.5" font-size="0.7" transform="rotate(0 12 54.5)">GND POUR B.CU</text>
+      <text id="pcb-text-0" class="board-text" data-text="board_text:0" data-layer="board_layer:4" x="30" y="55" font-size="1.1" transform="rotate(0 30 55)">STM32 USB BUCK</text>
+      <text id="pcb-text-1" class="board-text" data-text="board_text:1" data-layer="board_layer:4" x="2.5" y="17" font-size="0.75" transform="rotate(90 2.5 17)">12V IN</text>
+      <text id="pcb-text-2" class="board-text" data-text="board_text:2" data-layer="board_layer:4" x="31" y="6" font-size="0.7" transform="rotate(0 31 6)">BUCK 5V</text>
+      <text id="pcb-text-3" class="board-text" data-text="board_text:3" data-layer="board_layer:4" x="81" y="45.5" font-size="0.8" transform="rotate(0 81 45.5)">USB</text>
+      <text id="pcb-text-4" class="board-text" data-text="board_text:4" data-layer="board_layer:4" x="71" y="9.5" font-size="0.8" transform="rotate(0 71 9.5)">SWD</text>
+      <text id="pcb-text-5" class="board-text" data-text="board_text:5" data-layer="board_layer:4" x="80" y="29" font-size="0.8" transform="rotate(0 80 29)">GPIO</text>
+      <text id="pcb-text-6" class="board-text" data-text="board_text:6" data-layer="board_layer:4" x="62" y="19" font-size="0.7" transform="rotate(0 62 19)">+3V3</text>
+      <text id="pcb-text-7" class="board-text" data-text="board_text:7" data-layer="board_layer:4" x="34" y="29.5" font-size="0.7" transform="rotate(0 34 29.5)">VDDA</text>
+      <text id="pcb-text-8" class="board-text" data-text="board_text:8" data-layer="board_layer:4" x="72" y="24" font-size="0.7" transform="rotate(0 72 24)">BOOT0</text>
+      <text id="pcb-text-9" class="board-text" data-text="board_text:9" data-layer="board_layer:4" x="27" y="28.5" font-size="0.7" transform="rotate(0 27 28.5)">RESET</text>
+      <text id="pcb-text-10" class="board-text" data-text="board_text:10" data-layer="board_layer:4" x="61" y="53" font-size="0.7" transform="rotate(0 61 53)">STATUS</text>
+      <text id="pcb-text-11" class="board-text" data-text="board_text:11" data-layer="board_layer:4" x="19.5" y="40" font-size="0.7" transform="rotate(0 19.5 40)">HSE 8MHZ</text>
+      <text id="pcb-text-12" class="board-text" data-text="board_text:12" data-layer="board_layer:4" x="12" y="55" font-size="0.65" transform="rotate(0 12 55)">GND POUR B.CU</text>
     </g>
     </g>
     <g class="layer layer-footprints">
       <g class="layer layer-package-courtyards">
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:4" data-component="component:4" points="15.75,22.3 18.25,22.3 18.25,23.7 15.75,23.7"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:5" data-component="component:5" points="29.75,22.3 32.25,22.3 32.25,23.7 29.75,23.7"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:6" data-component="component:6" points="44.75,22.3 47.25,22.3 47.25,23.7 44.75,23.7"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:7" data-component="component:7" points="33.7,28.75 33.7,31.25 32.3,31.25 32.3,28.75"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:10" data-component="component:10" points="36.75,21.3 39.25,21.3 39.25,22.7 36.75,22.7"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:11" data-component="component:11" points="42.7,41.75 42.7,44.25 41.3,44.25 41.3,41.75"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:12" data-component="component:12" points="54.7,41.75 54.7,44.25 53.3,44.25 53.3,41.75"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:13" data-component="component:13" points="35.25,26.3 37.75,26.3 37.75,27.7 35.25,27.7"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:14" data-component="component:14" points="60.7,23.75 60.7,26.25 59.3,26.25 59.3,23.75"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:15" data-component="component:15" points="63.75,22.8 69.25,22.8 69.25,26.2 63.75,26.2"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:16" data-component="component:16" points="35.5,31.4 39.5,31.4 39.5,34.6 35.5,34.6"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:17" data-component="component:17" points="31.75,35.3 34.25,35.3 34.25,36.7 31.75,36.7"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:18" data-component="component:18" points="39.75,38.3 42.25,38.3 42.25,39.7 39.75,39.7"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:19" data-component="component:21" points="60.75,49.3 63.25,49.3 63.25,50.7 60.75,50.7"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:20" data-component="component:22" points="68.75,49.3 71.25,49.3 71.25,50.7 68.75,50.7"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:24" data-component="component:24" points="1.5,1.5 8.5,1.5 8.5,8.5 1.5,8.5"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:25" data-component="component:25" points="81.5,1.5 88.5,1.5 88.5,8.5 81.5,8.5"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:26" data-component="component:26" points="1.5,49.5 8.5,49.5 8.5,56.5 1.5,56.5"/>
-      <polygon class="footprint-courtyard declared" data-placement="component_placement:27" data-component="component:27" points="81.5,49.5 88.5,49.5 88.5,56.5 81.5,56.5"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:2" data-component="component:2" points="11.5,10.8 15.5,10.8 15.5,13.2 11.5,13.2"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:3" data-component="component:3" points="17.75,11.3 20.25,11.3 20.25,12.7 17.75,12.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:5" data-component="component:5" points="33.6,14.1 38.4,14.1 38.4,18.9 33.6,18.9"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:6" data-component="component:6" points="24.95,21.85 30.05,21.85 30.05,24.15 24.95,24.15"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:7" data-component="component:7" points="23.7,16 23.7,20 21.3,20 21.3,16"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:8" data-component="component:8" points="30.25,9.8 32.75,9.8 32.75,11.2 30.25,11.2"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:9" data-component="component:9" points="43.2,15 43.2,19 40.8,19 40.8,15"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:10" data-component="component:10" points="22.25,7.3 24.75,7.3 24.75,8.7 22.25,8.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:11" data-component="component:11" points="22.25,9.8 24.75,9.8 24.75,11.2 22.25,11.2"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:12" data-component="component:12" points="38.75,9.8 41.25,9.8 41.25,11.2 38.75,11.2"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:13" data-component="component:13" points="38.75,12.3 41.25,12.3 41.25,13.7 38.75,13.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:15" data-component="component:15" points="63.7,14.75 63.7,17.25 62.3,17.25 62.3,14.75"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:16" data-component="component:16" points="39.25,27.8 41.75,27.8 41.75,29.2 39.25,29.2"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:17" data-component="component:17" points="38.2,27.75 38.2,30.25 36.8,30.25 36.8,27.75"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:20" data-component="component:20" points="37.75,21.3 40.25,21.3 40.25,22.7 37.75,22.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:21" data-component="component:21" points="42.7,41.75 42.7,44.25 41.3,44.25 41.3,41.75"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:22" data-component="component:22" points="54.7,41.75 54.7,44.25 53.3,44.25 53.3,41.75"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:23" data-component="component:23" points="34.75,25.8 37.25,25.8 37.25,27.2 34.75,27.2"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:24" data-component="component:24" points="60.7,23.75 60.7,26.25 59.3,26.25 59.3,23.75"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:25" data-component="component:25" points="63.75,22.8 69.25,22.8 69.25,26.2 63.75,26.2"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:26" data-component="component:26" points="34.5,32.4 38.5,32.4 38.5,35.6 34.5,35.6"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:27" data-component="component:27" points="31.25,35.8 33.75,35.8 33.75,37.2 31.25,37.2"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:28" data-component="component:28" points="39.25,38.8 41.75,38.8 41.75,40.2 39.25,40.2"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:29" data-component="component:31" points="60.75,49.3 63.25,49.3 63.25,50.7 60.75,50.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:30" data-component="component:32" points="68.75,49.3 71.25,49.3 71.25,50.7 68.75,50.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:34" data-component="component:34" points="2.5,2.5 9.5,2.5 9.5,9.5 2.5,9.5"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:35" data-component="component:35" points="80.5,2.5 87.5,2.5 87.5,9.5 80.5,9.5"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:36" data-component="component:36" points="2.5,48.5 9.5,48.5 9.5,55.5 2.5,55.5"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:37" data-component="component:37" points="80.5,48.5 87.5,48.5 87.5,55.5 80.5,55.5"/>
       </g>
       <g class="layer layer-package-bodies">
-      <polygon class="footprint-body declared" data-placement="component_placement:4" data-component="component:4" points="16.2,22.6 17.8,22.6 17.8,23.4 16.2,23.4"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:5" data-component="component:5" points="30.2,22.6 31.8,22.6 31.8,23.4 30.2,23.4"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:6" data-component="component:6" points="45.2,22.6 46.8,22.6 46.8,23.4 45.2,23.4"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:7" data-component="component:7" points="33.4,29.2 33.4,30.8 32.6,30.8 32.6,29.2"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:10" data-component="component:10" points="37.2,21.6 38.8,21.6 38.8,22.4 37.2,22.4"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:11" data-component="component:11" points="42.4,42.2 42.4,43.8 41.6,43.8 41.6,42.2"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:12" data-component="component:12" points="54.4,42.2 54.4,43.8 53.6,43.8 53.6,42.2"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:13" data-component="component:13" points="35.7,26.6 37.3,26.6 37.3,27.4 35.7,27.4"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:14" data-component="component:14" points="60.4,24.2 60.4,25.8 59.6,25.8 59.6,24.2"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:15" data-component="component:15" points="64.25,23.2 68.75,23.2 68.75,25.8 64.25,25.8"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:16" data-component="component:16" points="35.9,31.75 39.1,31.75 39.1,34.25 35.9,34.25"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:17" data-component="component:17" points="32.2,35.6 33.8,35.6 33.8,36.4 32.2,36.4"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:18" data-component="component:18" points="40.2,38.6 41.8,38.6 41.8,39.4 40.2,39.4"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:19" data-component="component:21" points="61.2,49.6 62.8,49.6 62.8,50.4 61.2,50.4"/>
-      <polygon class="footprint-body declared" data-placement="component_placement:20" data-component="component:22" points="69.2,49.6 70.8,49.6 70.8,50.4 69.2,50.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:2" data-component="component:2" points="11.9,11.2 15.1,11.2 15.1,12.8 11.9,12.8"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:3" data-component="component:3" points="18.2,11.6 19.8,11.6 19.8,12.4 18.2,12.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:5" data-component="component:5" points="34,14.5 38,14.5 38,18.5 34,18.5"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:6" data-component="component:6" points="25.65,22.2 29.35,22.2 29.35,23.8 25.65,23.8"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:7" data-component="component:7" points="23.3,16.4 23.3,19.6 21.7,19.6 21.7,16.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:8" data-component="component:8" points="30.7,10.1 32.3,10.1 32.3,10.9 30.7,10.9"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:9" data-component="component:9" points="42.8,15.4 42.8,18.6 41.2,18.6 41.2,15.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:10" data-component="component:10" points="22.7,7.6 24.3,7.6 24.3,8.4 22.7,8.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:11" data-component="component:11" points="22.7,10.1 24.3,10.1 24.3,10.9 22.7,10.9"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:12" data-component="component:12" points="39.2,10.1 40.8,10.1 40.8,10.9 39.2,10.9"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:13" data-component="component:13" points="39.2,12.6 40.8,12.6 40.8,13.4 39.2,13.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:15" data-component="component:15" points="63.4,15.2 63.4,16.8 62.6,16.8 62.6,15.2"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:16" data-component="component:16" points="39.7,28.1 41.3,28.1 41.3,28.9 39.7,28.9"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:17" data-component="component:17" points="37.9,28.2 37.9,29.8 37.1,29.8 37.1,28.2"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:20" data-component="component:20" points="38.2,21.6 39.8,21.6 39.8,22.4 38.2,22.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:21" data-component="component:21" points="42.4,42.2 42.4,43.8 41.6,43.8 41.6,42.2"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:22" data-component="component:22" points="54.4,42.2 54.4,43.8 53.6,43.8 53.6,42.2"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:23" data-component="component:23" points="35.2,26.1 36.8,26.1 36.8,26.9 35.2,26.9"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:24" data-component="component:24" points="60.4,24.2 60.4,25.8 59.6,25.8 59.6,24.2"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:25" data-component="component:25" points="64.25,23.2 68.75,23.2 68.75,25.8 64.25,25.8"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:26" data-component="component:26" points="34.9,32.75 38.1,32.75 38.1,35.25 34.9,35.25"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:27" data-component="component:27" points="31.7,36.1 33.3,36.1 33.3,36.9 31.7,36.9"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:28" data-component="component:28" points="39.7,39.1 41.3,39.1 41.3,39.9 39.7,39.9"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:29" data-component="component:31" points="61.2,49.6 62.8,49.6 62.8,50.4 61.2,50.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:30" data-component="component:32" points="69.2,49.6 70.8,49.6 70.8,50.4 69.2,50.4"/>
       </g>
       <g class="layer layer-package-fabrication">
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:4" data-component="component:4" points="16.2,22.6 17.8,22.6 17.8,23.4 16.2,23.4"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:5" data-component="component:5" points="30.2,22.6 31.8,22.6 31.8,23.4 30.2,23.4"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:6" data-component="component:6" points="45.2,22.6 46.8,22.6 46.8,23.4 45.2,23.4"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:7" data-component="component:7" points="33.4,29.2 33.4,30.8 32.6,30.8 32.6,29.2"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:10" data-component="component:10" points="37.2,21.6 38.8,21.6 38.8,22.4 37.2,22.4"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:11" data-component="component:11" points="42.4,42.2 42.4,43.8 41.6,43.8 41.6,42.2"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:12" data-component="component:12" points="54.4,42.2 54.4,43.8 53.6,43.8 53.6,42.2"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:13" data-component="component:13" points="35.7,26.6 37.3,26.6 37.3,27.4 35.7,27.4"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:14" data-component="component:14" points="60.4,24.2 60.4,25.8 59.6,25.8 59.6,24.2"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:15" data-component="component:15" points="64.25,23.2 68.75,23.2 68.75,25.8 64.25,25.8"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:16" data-component="component:16" points="35.9,31.75 39.1,31.75 39.1,34.25 35.9,34.25"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:17" data-component="component:17" points="32.2,35.6 33.8,35.6 33.8,36.4 32.2,36.4"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:18" data-component="component:18" points="40.2,38.6 41.8,38.6 41.8,39.4 40.2,39.4"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:19" data-component="component:21" points="61.2,49.6 62.8,49.6 62.8,50.4 61.2,50.4"/>
-      <polygon class="footprint-fabrication declared" data-placement="component_placement:20" data-component="component:22" points="69.2,49.6 70.8,49.6 70.8,50.4 69.2,50.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:2" data-component="component:2" points="11.9,11.2 15.1,11.2 15.1,12.8 11.9,12.8"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:3" data-component="component:3" points="18.2,11.6 19.8,11.6 19.8,12.4 18.2,12.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:5" data-component="component:5" points="34,14.5 38,14.5 38,18.5 34,18.5"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:6" data-component="component:6" points="25.65,22.2 29.35,22.2 29.35,23.8 25.65,23.8"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:7" data-component="component:7" points="23.3,16.4 23.3,19.6 21.7,19.6 21.7,16.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:8" data-component="component:8" points="30.7,10.1 32.3,10.1 32.3,10.9 30.7,10.9"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:9" data-component="component:9" points="42.8,15.4 42.8,18.6 41.2,18.6 41.2,15.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:10" data-component="component:10" points="22.7,7.6 24.3,7.6 24.3,8.4 22.7,8.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:11" data-component="component:11" points="22.7,10.1 24.3,10.1 24.3,10.9 22.7,10.9"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:12" data-component="component:12" points="39.2,10.1 40.8,10.1 40.8,10.9 39.2,10.9"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:13" data-component="component:13" points="39.2,12.6 40.8,12.6 40.8,13.4 39.2,13.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:15" data-component="component:15" points="63.4,15.2 63.4,16.8 62.6,16.8 62.6,15.2"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:16" data-component="component:16" points="39.7,28.1 41.3,28.1 41.3,28.9 39.7,28.9"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:17" data-component="component:17" points="37.9,28.2 37.9,29.8 37.1,29.8 37.1,28.2"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:20" data-component="component:20" points="38.2,21.6 39.8,21.6 39.8,22.4 38.2,22.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:21" data-component="component:21" points="42.4,42.2 42.4,43.8 41.6,43.8 41.6,42.2"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:22" data-component="component:22" points="54.4,42.2 54.4,43.8 53.6,43.8 53.6,42.2"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:23" data-component="component:23" points="35.2,26.1 36.8,26.1 36.8,26.9 35.2,26.9"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:24" data-component="component:24" points="60.4,24.2 60.4,25.8 59.6,25.8 59.6,24.2"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:25" data-component="component:25" points="64.25,23.2 68.75,23.2 68.75,25.8 64.25,25.8"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:26" data-component="component:26" points="34.9,32.75 38.1,32.75 38.1,35.25 34.9,35.25"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:27" data-component="component:27" points="31.7,36.1 33.3,36.1 33.3,36.9 31.7,36.9"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:28" data-component="component:28" points="39.7,39.1 41.3,39.1 41.3,39.9 39.7,39.9"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:29" data-component="component:31" points="61.2,49.6 62.8,49.6 62.8,50.4 61.2,50.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:30" data-component="component:32" points="69.2,49.6 70.8,49.6 70.8,50.4 69.2,50.4"/>
       </g>
       <g class="layer layer-package-assembly">
-      <polygon class="footprint-assembly declared" data-placement="component_placement:4" data-component="component:4" points="16.2,22.6 17.8,22.6 17.8,23.4 16.2,23.4"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:5" data-component="component:5" points="30.2,22.6 31.8,22.6 31.8,23.4 30.2,23.4"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:6" data-component="component:6" points="45.2,22.6 46.8,22.6 46.8,23.4 45.2,23.4"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:7" data-component="component:7" points="33.4,29.2 33.4,30.8 32.6,30.8 32.6,29.2"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:10" data-component="component:10" points="37.2,21.6 38.8,21.6 38.8,22.4 37.2,22.4"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:11" data-component="component:11" points="42.4,42.2 42.4,43.8 41.6,43.8 41.6,42.2"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:12" data-component="component:12" points="54.4,42.2 54.4,43.8 53.6,43.8 53.6,42.2"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:13" data-component="component:13" points="35.7,26.6 37.3,26.6 37.3,27.4 35.7,27.4"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:14" data-component="component:14" points="60.4,24.2 60.4,25.8 59.6,25.8 59.6,24.2"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:15" data-component="component:15" points="64.25,23.2 68.75,23.2 68.75,25.8 64.25,25.8"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:16" data-component="component:16" points="35.9,31.75 39.1,31.75 39.1,34.25 35.9,34.25"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:17" data-component="component:17" points="32.2,35.6 33.8,35.6 33.8,36.4 32.2,36.4"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:18" data-component="component:18" points="40.2,38.6 41.8,38.6 41.8,39.4 40.2,39.4"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:19" data-component="component:21" points="61.2,49.6 62.8,49.6 62.8,50.4 61.2,50.4"/>
-      <polygon class="footprint-assembly declared" data-placement="component_placement:20" data-component="component:22" points="69.2,49.6 70.8,49.6 70.8,50.4 69.2,50.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:2" data-component="component:2" points="11.9,11.2 15.1,11.2 15.1,12.8 11.9,12.8"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:3" data-component="component:3" points="18.2,11.6 19.8,11.6 19.8,12.4 18.2,12.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:5" data-component="component:5" points="34,14.5 38,14.5 38,18.5 34,18.5"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:6" data-component="component:6" points="25.65,22.2 29.35,22.2 29.35,23.8 25.65,23.8"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:7" data-component="component:7" points="23.3,16.4 23.3,19.6 21.7,19.6 21.7,16.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:8" data-component="component:8" points="30.7,10.1 32.3,10.1 32.3,10.9 30.7,10.9"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:9" data-component="component:9" points="42.8,15.4 42.8,18.6 41.2,18.6 41.2,15.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:10" data-component="component:10" points="22.7,7.6 24.3,7.6 24.3,8.4 22.7,8.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:11" data-component="component:11" points="22.7,10.1 24.3,10.1 24.3,10.9 22.7,10.9"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:12" data-component="component:12" points="39.2,10.1 40.8,10.1 40.8,10.9 39.2,10.9"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:13" data-component="component:13" points="39.2,12.6 40.8,12.6 40.8,13.4 39.2,13.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:15" data-component="component:15" points="63.4,15.2 63.4,16.8 62.6,16.8 62.6,15.2"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:16" data-component="component:16" points="39.7,28.1 41.3,28.1 41.3,28.9 39.7,28.9"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:17" data-component="component:17" points="37.9,28.2 37.9,29.8 37.1,29.8 37.1,28.2"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:20" data-component="component:20" points="38.2,21.6 39.8,21.6 39.8,22.4 38.2,22.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:21" data-component="component:21" points="42.4,42.2 42.4,43.8 41.6,43.8 41.6,42.2"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:22" data-component="component:22" points="54.4,42.2 54.4,43.8 53.6,43.8 53.6,42.2"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:23" data-component="component:23" points="35.2,26.1 36.8,26.1 36.8,26.9 35.2,26.9"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:24" data-component="component:24" points="60.4,24.2 60.4,25.8 59.6,25.8 59.6,24.2"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:25" data-component="component:25" points="64.25,23.2 68.75,23.2 68.75,25.8 64.25,25.8"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:26" data-component="component:26" points="34.9,32.75 38.1,32.75 38.1,35.25 34.9,35.25"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:27" data-component="component:27" points="31.7,36.1 33.3,36.1 33.3,36.9 31.7,36.9"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:28" data-component="component:28" points="39.7,39.1 41.3,39.1 41.3,39.9 39.7,39.9"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:29" data-component="component:31" points="61.2,49.6 62.8,49.6 62.8,50.4 61.2,50.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:30" data-component="component:32" points="69.2,49.6 70.8,49.6 70.8,50.4 69.2,50.4"/>
       </g>
       <g class="layer layer-silkscreen">
-      <polygon class="footprint-marking declared kind-pin_1" data-placement="component_placement:16" data-component="component:16" data-marking="footprint_marking:0" points="35.87,31.77 36.03,31.77 36.03,31.93 35.87,31.93"/>
-      <polygon class="footprint-marking declared kind-polarity" data-placement="component_placement:20" data-component="component:22" data-marking="footprint_marking:0" points="70.49,49.7 70.61,49.7 70.61,50.3 70.49,50.3"/>
+      <polygon class="footprint-marking declared kind-polarity" data-placement="component_placement:6" data-component="component:6" data-marking="footprint_marking:0" points="28.86,22.425 29.04,22.425 29.04,23.575 28.86,23.575"/>
+      <polygon class="footprint-marking declared kind-pin_1" data-placement="component_placement:26" data-component="component:26" data-marking="footprint_marking:0" points="34.87,32.77 35.03,32.77 35.03,32.93 34.87,32.93"/>
+      <polygon class="footprint-marking declared kind-polarity" data-placement="component_placement:30" data-component="component:32" data-marking="footprint_marking:0" points="70.49,49.7 70.61,49.7 70.61,50.3 70.49,50.3"/>
       </g>
       <g class="layer layer-pads">
       <g class="component-placement top" data-placement="component_placement:0" data-component="component:0" data-footprint-def="footprint_def:0" data-footprint="connectors:PinHeader_1x02_P2.54mm_Vertical" transform="translate(6 30) rotate(0)">
@@ -131,95 +173,119 @@
       <g class="component-placement top" data-placement="component_placement:1" data-component="component:1" data-footprint-def="footprint_def:1" data-footprint="connectors:PinHeader_1x04_P2.54mm_Vertical" transform="translate(6 17) rotate(0)">
         <rect class="footprint-envelope synthetic" x="-1.35" y="-5.16" width="2.7" height="10.32"/>
       </g>
-      <g class="component-placement top" data-placement="component_placement:2" data-component="component:2" data-footprint-def="footprint_def:2" data-footprint="Package_TO_SOT_SMD:SOT-223-3_TabPin2" transform="translate(23 17) rotate(0)">
-        <rect class="footprint-envelope synthetic" x="-3.325" y="-2.9" width="6.65" height="6.55"/>
+      <g class="component-placement top" data-placement="component_placement:2" data-component="component:2" data-footprint-def="footprint_def:2" data-footprint="protection:Fuse_1206_3216Metric" transform="translate(13.5 12) rotate(0)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:3" data-component="component:3" data-footprint-def="footprint_def:2" data-footprint="Package_TO_SOT_SMD:SOT-223-3_TabPin2" transform="translate(38 17) rotate(0)">
-        <rect class="footprint-envelope synthetic" x="-3.325" y="-2.9" width="6.65" height="6.55"/>
+      <g class="component-placement top" data-placement="component_placement:3" data-component="component:3" data-footprint-def="footprint_def:3" data-footprint="passives:L_0603_1608Metric" transform="translate(19 12) rotate(0)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:4" data-component="component:4" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(17 23) rotate(0)">
-      </g>
-      <g class="component-placement top" data-placement="component_placement:5" data-component="component:5" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(31 23) rotate(0)">
-      </g>
-      <g class="component-placement top" data-placement="component_placement:6" data-component="component:6" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(46 23) rotate(0)">
-      </g>
-      <g class="component-placement top" data-placement="component_placement:7" data-component="component:7" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(33 30) rotate(90)">
-      </g>
-      <g class="component-placement top locked" data-placement="component_placement:8" data-component="component:8" data-footprint-def="footprint_def:4" data-footprint="connectors:USB_Micro-B_Receptacle" transform="translate(84 39) rotate(180)">
-        <rect class="footprint-envelope synthetic" x="-3.15" y="-2.875" width="6.3" height="5.625"/>
-      </g>
-      <g class="component-placement top" data-placement="component_placement:9" data-component="component:9" data-footprint-def="footprint_def:5" data-footprint="Package_TO_SOT_SMD:SOT-23-6" transform="translate(73 37.5) rotate(0)">
+      <g class="component-placement top" data-placement="component_placement:4" data-component="component:4" data-footprint-def="footprint_def:4" data-footprint="Package_TO_SOT_SMD:SOT-23-6" transform="translate(27.5 16.5) rotate(0)">
         <rect class="footprint-envelope synthetic" x="-2.15" y="-1.75" width="4.3" height="3.5"/>
       </g>
-      <g class="component-placement top" data-placement="component_placement:10" data-component="component:10" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(38 22) rotate(0)">
+      <g class="component-placement top" data-placement="component_placement:5" data-component="component:5" data-footprint-def="footprint_def:5" data-footprint="inductors:L_4.0x4.0mm" transform="translate(36 16.5) rotate(0)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:11" data-component="component:11" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(42 43) rotate(90)">
+      <g class="component-placement top" data-placement="component_placement:6" data-component="component:6" data-footprint-def="footprint_def:6" data-footprint="diodes:D_SOD-123" transform="translate(27.5 23) rotate(0)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:12" data-component="component:12" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(54 43) rotate(90)">
+      <g class="component-placement top" data-placement="component_placement:7" data-component="component:7" data-footprint-def="footprint_def:7" data-footprint="passives:C_1206_3216Metric" transform="translate(22.5 18) rotate(90)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:13" data-component="component:13" data-footprint-def="footprint_def:6" data-footprint="passives:R_0603_1608Metric" transform="translate(36.5 27) rotate(0)">
+      <g class="component-placement top" data-placement="component_placement:8" data-component="component:8" data-footprint-def="footprint_def:8" data-footprint="passives:C_0603_1608Metric" transform="translate(31.5 10.5) rotate(0)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:14" data-component="component:14" data-footprint-def="footprint_def:6" data-footprint="passives:R_0603_1608Metric" transform="translate(60 25) rotate(90)">
+      <g class="component-placement top" data-placement="component_placement:9" data-component="component:9" data-footprint-def="footprint_def:7" data-footprint="passives:C_1206_3216Metric" transform="translate(42 17) rotate(90)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:15" data-component="component:15" data-footprint-def="footprint_def:7" data-footprint="switches:SW_SPDT_PCM12" transform="translate(66.5 24.5) rotate(0)">
+      <g class="component-placement top" data-placement="component_placement:10" data-component="component:10" data-footprint-def="footprint_def:9" data-footprint="passives:R_0603_1608Metric" transform="translate(23.5 8) rotate(0)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:16" data-component="component:16" data-footprint-def="footprint_def:8" data-footprint="crystals:Crystal_3225_4Pad" transform="translate(37.5 33) rotate(0)">
+      <g class="component-placement top" data-placement="component_placement:11" data-component="component:11" data-footprint-def="footprint_def:9" data-footprint="passives:R_0603_1608Metric" transform="translate(23.5 10.5) rotate(0)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:17" data-component="component:17" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(33 36) rotate(0)">
+      <g class="component-placement top" data-placement="component_placement:12" data-component="component:12" data-footprint-def="footprint_def:9" data-footprint="passives:R_0603_1608Metric" transform="translate(40 10.5) rotate(0)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:18" data-component="component:18" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(41 39) rotate(0)">
+      <g class="component-placement top" data-placement="component_placement:13" data-component="component:13" data-footprint-def="footprint_def:9" data-footprint="passives:R_0603_1608Metric" transform="translate(40 13) rotate(0)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:19" data-component="component:21" data-footprint-def="footprint_def:6" data-footprint="passives:R_0603_1608Metric" transform="translate(62 50) rotate(0)">
+      <g class="component-placement top" data-placement="component_placement:14" data-component="component:14" data-footprint-def="footprint_def:10" data-footprint="Package_TO_SOT_SMD:SOT-223-3_TabPin2" transform="translate(55 13.5) rotate(0)">
+        <rect class="footprint-envelope synthetic" x="-3.325" y="-2.9" width="6.65" height="6.55"/>
       </g>
-      <g class="component-placement top" data-placement="component_placement:20" data-component="component:22" data-footprint-def="footprint_def:9" data-footprint="leds:LED_0603_1608Metric" transform="translate(70 50) rotate(0)">
+      <g class="component-placement top" data-placement="component_placement:15" data-component="component:15" data-footprint-def="footprint_def:8" data-footprint="passives:C_0603_1608Metric" transform="translate(63 16) rotate(90)">
       </g>
-      <g class="component-placement top" data-placement="component_placement:21" data-component="component:23" data-footprint-def="footprint_def:10" data-footprint="Package_QFP:LQFP-64_10x10mm_P0.5mm" transform="translate(49 31) rotate(0)">
+      <g class="component-placement top" data-placement="component_placement:16" data-component="component:16" data-footprint-def="footprint_def:3" data-footprint="passives:L_0603_1608Metric" transform="translate(40.5 28.5) rotate(0)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:17" data-component="component:17" data-footprint-def="footprint_def:8" data-footprint="passives:C_0603_1608Metric" transform="translate(37.5 29) rotate(90)">
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:18" data-component="component:18" data-footprint-def="footprint_def:11" data-footprint="connectors:USB_Micro-B_Receptacle" transform="translate(84 39) rotate(180)">
+        <rect class="footprint-envelope synthetic" x="-3.15" y="-2.875" width="6.3" height="5.625"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:19" data-component="component:19" data-footprint-def="footprint_def:4" data-footprint="Package_TO_SOT_SMD:SOT-23-6" transform="translate(73 37.5) rotate(0)">
+        <rect class="footprint-envelope synthetic" x="-2.15" y="-1.75" width="4.3" height="3.5"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:20" data-component="component:20" data-footprint-def="footprint_def:8" data-footprint="passives:C_0603_1608Metric" transform="translate(39 22) rotate(0)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:21" data-component="component:21" data-footprint-def="footprint_def:8" data-footprint="passives:C_0603_1608Metric" transform="translate(42 43) rotate(90)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:22" data-component="component:22" data-footprint-def="footprint_def:8" data-footprint="passives:C_0603_1608Metric" transform="translate(54 43) rotate(90)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:23" data-component="component:23" data-footprint-def="footprint_def:9" data-footprint="passives:R_0603_1608Metric" transform="translate(36 26.5) rotate(0)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:24" data-component="component:24" data-footprint-def="footprint_def:9" data-footprint="passives:R_0603_1608Metric" transform="translate(60 25) rotate(90)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:25" data-component="component:25" data-footprint-def="footprint_def:12" data-footprint="switches:SW_SPDT_PCM12" transform="translate(66.5 24.5) rotate(0)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:26" data-component="component:26" data-footprint-def="footprint_def:13" data-footprint="crystals:Crystal_3225_4Pad" transform="translate(36.5 34) rotate(0)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:27" data-component="component:27" data-footprint-def="footprint_def:8" data-footprint="passives:C_0603_1608Metric" transform="translate(32.5 36.5) rotate(0)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:28" data-component="component:28" data-footprint-def="footprint_def:8" data-footprint="passives:C_0603_1608Metric" transform="translate(40.5 39.5) rotate(0)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:29" data-component="component:31" data-footprint-def="footprint_def:9" data-footprint="passives:R_0603_1608Metric" transform="translate(62 50) rotate(0)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:30" data-component="component:32" data-footprint-def="footprint_def:14" data-footprint="leds:LED_0603_1608Metric" transform="translate(70 50) rotate(0)">
+      </g>
+      <g class="component-placement top" data-placement="component_placement:31" data-component="component:33" data-footprint-def="footprint_def:15" data-footprint="Package_QFP:LQFP-64_10x10mm_P0.5mm" transform="translate(49 31) rotate(0)">
         <rect class="footprint-envelope synthetic" x="-6.975" y="-6.975" width="13.95" height="13.95"/>
       </g>
-      <g class="component-placement top locked" data-placement="component_placement:22" data-component="component:19" data-footprint-def="footprint_def:11" data-footprint="connectors:PinHeader_2x05_P1.27mm_Vertical_SmallPads" transform="translate(78 17) rotate(0)">
+      <g class="component-placement top locked" data-placement="component_placement:32" data-component="component:29" data-footprint-def="footprint_def:16" data-footprint="connectors:PinHeader_2x05_P1.27mm_Vertical_SmallPads" transform="translate(78 17) rotate(0)">
         <rect class="footprint-envelope synthetic" x="-1.56" y="-3.465" width="3.12" height="6.93"/>
       </g>
-      <g class="component-placement top locked" data-placement="component_placement:23" data-component="component:20" data-footprint-def="footprint_def:1" data-footprint="connectors:PinHeader_1x04_P2.54mm_Vertical" transform="translate(84 30) rotate(180)">
+      <g class="component-placement top locked" data-placement="component_placement:33" data-component="component:30" data-footprint-def="footprint_def:1" data-footprint="connectors:PinHeader_1x04_P2.54mm_Vertical" transform="translate(84 30) rotate(180)">
         <rect class="footprint-envelope synthetic" x="-1.35" y="-5.16" width="2.7" height="10.32"/>
       </g>
-      <g class="component-placement top locked" data-placement="component_placement:24" data-component="component:24" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(5 5) rotate(0)">
+      <g class="component-placement top locked" data-placement="component_placement:34" data-component="component:34" data-footprint-def="footprint_def:17" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(6 6) rotate(0)">
       </g>
-      <g class="component-placement top locked" data-placement="component_placement:25" data-component="component:25" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(85 5) rotate(0)">
+      <g class="component-placement top locked" data-placement="component_placement:35" data-component="component:35" data-footprint-def="footprint_def:17" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(84 6) rotate(0)">
       </g>
-      <g class="component-placement top locked" data-placement="component_placement:26" data-component="component:26" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(5 53) rotate(0)">
+      <g class="component-placement top locked" data-placement="component_placement:36" data-component="component:36" data-footprint-def="footprint_def:17" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(6 52) rotate(0)">
       </g>
-      <g class="component-placement top locked" data-placement="component_placement:27" data-component="component:27" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(85 53) rotate(0)">
+      <g class="component-placement top locked" data-placement="component_placement:37" data-component="component:37" data-footprint-def="footprint_def:17" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(84 52) rotate(0)">
       </g>
       </g>
       <g class="layer layer-reference-designators">
-      <text class="reference-designator" data-placement="component_placement:0" data-component="component:0" x="6" y="26.38" text-anchor="middle">VIN_SRC</text>
-      <text class="reference-designator" data-placement="component_placement:1" data-component="component:1" x="6" y="10.84" text-anchor="middle">PWR/J</text>
-      <text class="reference-designator" data-placement="component_placement:2" data-component="component:2" x="23" y="13.1" text-anchor="middle">PWR/U5</text>
-      <text class="reference-designator" data-placement="component_placement:3" data-component="component:3" x="38" y="13.1" text-anchor="middle">PWR/U3V3</text>
-      <text class="reference-designator" data-placement="component_placement:4" data-component="component:4" x="17" y="21.3" text-anchor="middle">PWR/CIN</text>
-      <text class="reference-designator" data-placement="component_placement:5" data-component="component:5" x="31" y="21.3" text-anchor="middle">PWR/C5V</text>
-      <text class="reference-designator" data-placement="component_placement:6" data-component="component:6" x="46" y="21.3" text-anchor="middle">PWR/C3V3</text>
-      <text class="reference-designator" data-placement="component_placement:7" data-component="component:7" x="34.7" y="30" text-anchor="middle">C4</text>
-      <text class="reference-designator" data-placement="component_placement:8" data-component="component:8" x="84" y="42.875" text-anchor="middle">USB/J1</text>
-      <text class="reference-designator" data-placement="component_placement:9" data-component="component:9" x="73" y="34.75" text-anchor="middle">USB/U1</text>
-      <text class="reference-designator" data-placement="component_placement:10" data-component="component:10" x="38" y="20.3" text-anchor="middle">C5</text>
-      <text class="reference-designator" data-placement="component_placement:11" data-component="component:11" x="43.7" y="43" text-anchor="middle">C6</text>
-      <text class="reference-designator" data-placement="component_placement:12" data-component="component:12" x="55.7" y="43" text-anchor="middle">C7</text>
-      <text class="reference-designator" data-placement="component_placement:13" data-component="component:13" x="36.5" y="25.3" text-anchor="middle">R1</text>
-      <text class="reference-designator" data-placement="component_placement:14" data-component="component:14" x="61.7" y="25" text-anchor="middle">R2</text>
-      <text class="reference-designator" data-placement="component_placement:15" data-component="component:15" x="66.5" y="21.8" text-anchor="middle">SW1</text>
-      <text class="reference-designator" data-placement="component_placement:16" data-component="component:16" x="37.5" y="30.4" text-anchor="middle">Y1</text>
-      <text class="reference-designator" data-placement="component_placement:17" data-component="component:17" x="33" y="34.3" text-anchor="middle">C8</text>
-      <text class="reference-designator" data-placement="component_placement:18" data-component="component:18" x="41" y="37.3" text-anchor="middle">C9</text>
-      <text class="reference-designator" data-placement="component_placement:19" data-component="component:21" x="62" y="48.3" text-anchor="middle">LED_STATUS/R</text>
-      <text class="reference-designator" data-placement="component_placement:20" data-component="component:22" x="70" y="48.3" text-anchor="middle">LED_STATUS/D</text>
-      <text class="reference-designator" data-placement="component_placement:21" data-component="component:23" x="49" y="23.025" text-anchor="middle">U1</text>
-      <text class="reference-designator" data-placement="component_placement:22" data-component="component:19" x="78" y="12.535" text-anchor="middle">J2</text>
-      <text class="reference-designator" data-placement="component_placement:23" data-component="component:20" x="84" y="36.16" text-anchor="middle">J3</text>
-      <text class="reference-designator" data-placement="component_placement:24" data-component="component:24" x="5" y="0.5" text-anchor="middle">H1</text>
-      <text class="reference-designator" data-placement="component_placement:25" data-component="component:25" x="85" y="0.5" text-anchor="middle">H2</text>
-      <text class="reference-designator" data-placement="component_placement:26" data-component="component:26" x="5" y="48.5" text-anchor="middle">H3</text>
-      <text class="reference-designator" data-placement="component_placement:27" data-component="component:27" x="85" y="48.5" text-anchor="middle">H4</text>
+      <text class="reference-designator" data-placement="component_placement:0" data-component="component:0" x="6" y="26.38" text-anchor="middle">J1</text>
+      <text class="reference-designator" data-placement="component_placement:2" data-component="component:2" x="13.5" y="9.8" text-anchor="middle">F1</text>
+      <text class="reference-designator" data-placement="component_placement:3" data-component="component:3" x="19" y="10.3" text-anchor="middle">FB1</text>
+      <text class="reference-designator" data-placement="component_placement:4" data-component="component:4" x="27.5" y="13.75" text-anchor="middle">U2</text>
+      <text class="reference-designator" data-placement="component_placement:5" data-component="component:5" x="36" y="13.1" text-anchor="middle">L1</text>
+      <text class="reference-designator" data-placement="component_placement:6" data-component="component:6" x="27.5" y="20.85" text-anchor="middle">D1</text>
+      <text class="reference-designator" data-placement="component_placement:7" data-component="component:7" x="24.7" y="18" text-anchor="middle">C1</text>
+      <text class="reference-designator" data-placement="component_placement:8" data-component="component:8" x="31.5" y="8.8" text-anchor="middle">C2</text>
+      <text class="reference-designator" data-placement="component_placement:9" data-component="component:9" x="44.2" y="17" text-anchor="middle">C3</text>
+      <text class="reference-designator" data-placement="component_placement:10" data-component="component:10" x="23.5" y="6.3" text-anchor="middle">R1</text>
+      <text class="reference-designator" data-placement="component_placement:12" data-component="component:12" x="40" y="8.8" text-anchor="middle">R3</text>
+      <text class="reference-designator" data-placement="component_placement:14" data-component="component:14" x="55" y="9.6" text-anchor="middle">U3</text>
+      <text class="reference-designator" data-placement="component_placement:15" data-component="component:15" x="64.7" y="16" text-anchor="middle">C4</text>
+      <text class="reference-designator" data-placement="component_placement:16" data-component="component:16" x="40.5" y="26.8" text-anchor="middle">FB2</text>
+      <text class="reference-designator" data-placement="component_placement:18" data-component="component:18" x="84" y="42.875" text-anchor="middle">J3</text>
+      <text class="reference-designator" data-placement="component_placement:19" data-component="component:19" x="73" y="34.75" text-anchor="middle">U4</text>
+      <text class="reference-designator" data-placement="component_placement:21" data-component="component:21" x="43.7" y="43" text-anchor="middle">C7</text>
+      <text class="reference-designator" data-placement="component_placement:22" data-component="component:22" x="55.7" y="43" text-anchor="middle">C8</text>
+      <text class="reference-designator" data-placement="component_placement:23" data-component="component:23" x="36" y="24.8" text-anchor="middle">R5</text>
+      <text class="reference-designator" data-placement="component_placement:24" data-component="component:24" x="61.7" y="25" text-anchor="middle">R6</text>
+      <text class="reference-designator" data-placement="component_placement:25" data-component="component:25" x="66.5" y="21.8" text-anchor="middle">SW1</text>
+      <text class="reference-designator" data-placement="component_placement:27" data-component="component:27" x="32.5" y="34.8" text-anchor="middle">C9</text>
+      <text class="reference-designator" data-placement="component_placement:28" data-component="component:28" x="40.5" y="37.8" text-anchor="middle">C10</text>
+      <text class="reference-designator" data-placement="component_placement:29" data-component="component:31" x="62" y="48.3" text-anchor="middle">R7</text>
+      <text class="reference-designator" data-placement="component_placement:30" data-component="component:32" x="70" y="48.3" text-anchor="middle">D2</text>
+      <text class="reference-designator" data-placement="component_placement:31" data-component="component:33" x="49" y="23.025" text-anchor="middle">U1</text>
+      <text class="reference-designator" data-placement="component_placement:32" data-component="component:29" x="78" y="12.535" text-anchor="middle">J4</text>
+      <text class="reference-designator" data-placement="component_placement:33" data-component="component:30" x="84" y="36.16" text-anchor="middle">J5</text>
+      <text class="reference-designator" data-placement="component_placement:34" data-component="component:34" x="6" y="1.5" text-anchor="middle">H1</text>
+      <text class="reference-designator" data-placement="component_placement:35" data-component="component:35" x="84" y="1.5" text-anchor="middle">H2</text>
+      <text class="reference-designator" data-placement="component_placement:36" data-component="component:36" x="6" y="47.5" text-anchor="middle">H3</text>
+      <text class="reference-designator" data-placement="component_placement:37" data-component="component:37" x="84" y="47.5" text-anchor="middle">H4</text>
       </g>
     </g>
     <g class="layer layer-ratsnest">
