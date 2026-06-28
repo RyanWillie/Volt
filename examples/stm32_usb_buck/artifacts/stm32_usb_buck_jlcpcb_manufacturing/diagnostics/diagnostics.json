@@ -7,911 +7,11 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 73,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 54,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 74,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 55,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 78,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 59,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 79,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 60,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 80,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 61,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 81,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 62,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 84,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 65,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 85,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 66,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 86,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 67,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 87,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 68,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 90,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 71,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 91,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 72,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 92,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 73,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 93,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 74,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 94,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 75,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 95,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 76,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
           "index": 96,
           "kind": "pin"
         },
         {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 77,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 97,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 78,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 98,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 79,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 99,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 80,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 100,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 81,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 103,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 84,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 104,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 85,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 105,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 86,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 106,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 87,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 107,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
+          "index": 33,
           "kind": "component"
         },
         {
@@ -943,11 +43,11 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 108,
+          "index": 97,
           "kind": "pin"
         },
         {
-          "index": 23,
+          "index": 33,
           "kind": "component"
         },
         {
@@ -979,119 +79,11 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 109,
+          "index": 101,
           "kind": "pin"
         },
         {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 90,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 110,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 91,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 111,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 92,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 112,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
+          "index": 33,
           "kind": "component"
         },
         {
@@ -1123,11 +115,11 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 113,
+          "index": 102,
           "kind": "pin"
         },
         {
-          "index": 23,
+          "index": 33,
           "kind": "component"
         },
         {
@@ -1159,11 +151,155 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 120,
+          "index": 103,
           "kind": "pin"
         },
         {
-          "index": 23,
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 95,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 104,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 96,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 107,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 99,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 108,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 100,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 109,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
           "kind": "component"
         },
         {
@@ -1195,11 +331,11 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 121,
+          "index": 110,
           "kind": "pin"
         },
         {
-          "index": 23,
+          "index": 33,
           "kind": "component"
         },
         {
@@ -1231,83 +367,11 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 122,
+          "index": 113,
           "kind": "pin"
         },
         {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 103,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 123,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
-          "kind": "component"
-        },
-        {
-          "index": 104,
-          "kind": "pin_definition"
-        }
-      ],
-      "expect_diagnostic_kwargs": {
-        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-        "design": "stm32_usb_buck",
-        "report": "schematic.readiness",
-        "severity": "warning",
-        "source": "schematic:STM32 USB Buck",
-        "stage": "schematic"
-      },
-      "measurement": null,
-      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
-      "overlays": [],
-      "report": "schematic.readiness",
-      "rule": null,
-      "severity": "warning",
-      "source": "schematic:STM32 USB Buck",
-      "stage": "schematic"
-    },
-    {
-      "board": null,
-      "category": "general",
-      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
-      "design": "stm32_usb_buck",
-      "entities": [
-        {
-          "index": 124,
-          "kind": "pin"
-        },
-        {
-          "index": 23,
+          "index": 33,
           "kind": "component"
         },
         {
@@ -1339,11 +403,47 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 126,
+          "index": 114,
           "kind": "pin"
         },
         {
-          "index": 23,
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 106,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 115,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
           "kind": "component"
         },
         {
@@ -1375,11 +475,11 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 127,
+          "index": 116,
           "kind": "pin"
         },
         {
-          "index": 23,
+          "index": 33,
           "kind": "component"
         },
         {
@@ -1411,11 +511,11 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 128,
+          "index": 117,
           "kind": "pin"
         },
         {
-          "index": 23,
+          "index": 33,
           "kind": "component"
         },
         {
@@ -1447,11 +547,11 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 129,
+          "index": 118,
           "kind": "pin"
         },
         {
-          "index": 23,
+          "index": 33,
           "kind": "component"
         },
         {
@@ -1483,11 +583,47 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 131,
+          "index": 119,
           "kind": "pin"
         },
         {
-          "index": 23,
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 111,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 120,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
           "kind": "component"
         },
         {
@@ -1519,15 +655,879 @@
       "design": "stm32_usb_buck",
       "entities": [
         {
-          "index": 132,
+          "index": 121,
           "kind": "pin"
         },
         {
-          "index": 23,
+          "index": 33,
           "kind": "component"
         },
         {
           "index": 113,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 122,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 114,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 123,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 115,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 126,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 118,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 127,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 119,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 128,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 120,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 129,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 121,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 130,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 122,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 131,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 123,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 132,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 124,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 133,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 125,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 134,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 126,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 135,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 127,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 136,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 128,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 143,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 135,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 144,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 136,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 145,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 137,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 146,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 138,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 147,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 139,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 149,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 141,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 150,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 142,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 151,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 143,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 152,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 144,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 154,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 146,
+          "kind": "pin_definition"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readiness",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Kernel no-connect intent is not shown by a schematic no-connect marker",
+      "overlays": [],
+      "report": "schematic.readiness",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_NO_CONNECT_INTENT_NOT_MARKED",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 155,
+          "kind": "pin"
+        },
+        {
+          "index": 33,
+          "kind": "component"
+        },
+        {
+          "index": 147,
           "kind": "pin_definition"
         }
       ],
@@ -1587,11 +1587,11 @@
           "kind": "sheet"
         },
         {
-          "index": 24,
+          "index": 44,
           "kind": "symbol_field"
         },
         {
-          "index": 8,
+          "index": 18,
           "kind": "symbol_instance"
         }
       ],
@@ -1623,19 +1623,63 @@
           "kind": "sheet"
         },
         {
-          "index": 15,
+          "index": 2,
           "kind": "symbol_instance"
         },
         {
-          "index": 9,
+          "index": 0,
           "kind": "sheet_port"
         },
         {
-          "index": 16,
+          "index": 2,
           "kind": "component"
         },
         {
-          "index": 31,
+          "index": 5,
+          "kind": "net"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_LABEL_CROWDS_SYMBOL",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readability",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Schematic tags or net labels crowd a symbol; add spacing or use compact stubs",
+      "overlays": [],
+      "report": "schematic.readability",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_LABEL_CROWDS_SYMBOL",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 0,
+          "kind": "sheet"
+        },
+        {
+          "index": 25,
+          "kind": "symbol_instance"
+        },
+        {
+          "index": 14,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 26,
+          "kind": "component"
+        },
+        {
+          "index": 37,
           "kind": "net"
         }
       ],
@@ -1667,6 +1711,42 @@
           "kind": "sheet"
         },
         {
+          "index": 0,
+          "kind": "power_port"
+        },
+        {
+          "index": 1,
+          "kind": "power_port"
+        },
+        {
+          "index": 2,
+          "kind": "power_port"
+        },
+        {
+          "index": 3,
+          "kind": "power_port"
+        },
+        {
+          "index": 4,
+          "kind": "power_port"
+        },
+        {
+          "index": 5,
+          "kind": "power_port"
+        },
+        {
+          "index": 6,
+          "kind": "power_port"
+        },
+        {
+          "index": 7,
+          "kind": "power_port"
+        },
+        {
+          "index": 8,
+          "kind": "power_port"
+        },
+        {
           "index": 9,
           "kind": "power_port"
         },
@@ -1685,6 +1765,58 @@
         {
           "index": 13,
           "kind": "power_port"
+        },
+        {
+          "index": 0,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 1,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 2,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 3,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 4,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 5,
+          "kind": "sheet_port"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "code": "SCHEMATIC_DENSE_PORT_TAGS",
+        "design": "stm32_usb_buck",
+        "report": "schematic.readability",
+        "severity": "warning",
+        "source": "schematic:STM32 USB Buck",
+        "stage": "schematic"
+      },
+      "measurement": null,
+      "message": "Schematic region 'Power Circuitry' contains dense sheet or power tags; prefer compact local labels where possible",
+      "overlays": [],
+      "report": "schematic.readability",
+      "rule": null,
+      "severity": "warning",
+      "source": "schematic:STM32 USB Buck",
+      "stage": "schematic"
+    },
+    {
+      "board": null,
+      "category": "general",
+      "code": "SCHEMATIC_DENSE_PORT_TAGS",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 0,
+          "kind": "sheet"
         },
         {
           "index": 14,
@@ -1715,24 +1847,20 @@
           "kind": "power_port"
         },
         {
-          "index": 1,
-          "kind": "sheet_port"
+          "index": 21,
+          "kind": "power_port"
         },
         {
-          "index": 2,
-          "kind": "sheet_port"
+          "index": 22,
+          "kind": "power_port"
         },
         {
-          "index": 3,
-          "kind": "sheet_port"
+          "index": 23,
+          "kind": "power_port"
         },
         {
-          "index": 4,
-          "kind": "sheet_port"
-        },
-        {
-          "index": 5,
-          "kind": "sheet_port"
+          "index": 24,
+          "kind": "power_port"
         },
         {
           "index": 6,
@@ -1777,6 +1905,30 @@
         {
           "index": 16,
           "kind": "sheet_port"
+        },
+        {
+          "index": 17,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 18,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 19,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 20,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 21,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 22,
+          "kind": "sheet_port"
         }
       ],
       "expect_diagnostic_kwargs": {
@@ -1807,22 +1959,6 @@
           "kind": "sheet"
         },
         {
-          "index": 21,
-          "kind": "power_port"
-        },
-        {
-          "index": 22,
-          "kind": "power_port"
-        },
-        {
-          "index": 23,
-          "kind": "power_port"
-        },
-        {
-          "index": 24,
-          "kind": "power_port"
-        },
-        {
           "index": 25,
           "kind": "power_port"
         },
@@ -1835,28 +1971,20 @@
           "kind": "power_port"
         },
         {
-          "index": 17,
-          "kind": "sheet_port"
+          "index": 28,
+          "kind": "power_port"
         },
         {
-          "index": 18,
-          "kind": "sheet_port"
+          "index": 29,
+          "kind": "power_port"
         },
         {
-          "index": 19,
-          "kind": "sheet_port"
+          "index": 30,
+          "kind": "power_port"
         },
         {
-          "index": 20,
-          "kind": "sheet_port"
-        },
-        {
-          "index": 21,
-          "kind": "sheet_port"
-        },
-        {
-          "index": 22,
-          "kind": "sheet_port"
+          "index": 31,
+          "kind": "power_port"
         },
         {
           "index": 23,
@@ -1864,6 +1992,30 @@
         },
         {
           "index": 24,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 25,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 26,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 27,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 28,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 29,
+          "kind": "sheet_port"
+        },
+        {
+          "index": 30,
           "kind": "sheet_port"
         }
       ],
@@ -1883,6 +2035,636 @@
       "severity": "warning",
       "source": "schematic:STM32 USB Buck",
       "stage": "schematic"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "pcb.visual",
+      "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 1,
+          "kind": "component"
+        },
+        {
+          "index": 1,
+          "kind": "component_placement"
+        },
+        {
+          "index": 34,
+          "kind": "component"
+        },
+        {
+          "index": 34,
+          "kind": "component_placement"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "rule": "default-reference-designator-over-package",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Default reference designator 'J2' overlaps placed package geometry",
+      "overlays": [
+        {
+          "entities": [
+            {
+              "index": 1,
+              "kind": "component"
+            },
+            {
+              "index": 1,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "bounding_box",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              4.92,
+              9.04
+            ],
+            [
+              7.08,
+              10.84
+            ]
+          ]
+        },
+        {
+          "entities": [
+            {
+              "index": 34,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "polygon",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              2.5,
+              2.5
+            ],
+            [
+              9.5,
+              2.5
+            ],
+            [
+              9.5,
+              9.5
+            ],
+            [
+              2.5,
+              9.5
+            ]
+          ]
+        }
+      ],
+      "report": "pcb.board",
+      "rule": "default-reference-designator-over-package",
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "pcb.visual",
+      "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 11,
+          "kind": "component"
+        },
+        {
+          "index": 11,
+          "kind": "component_placement"
+        },
+        {
+          "index": 10,
+          "kind": "component"
+        },
+        {
+          "index": 10,
+          "kind": "component_placement"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "rule": "default-reference-designator-over-package",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Default reference designator 'R2' overlaps placed package geometry",
+      "overlays": [
+        {
+          "entities": [
+            {
+              "index": 11,
+              "kind": "component"
+            },
+            {
+              "index": 11,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "bounding_box",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              22.42,
+              7.000000000000001
+            ],
+            [
+              24.58,
+              8.8
+            ]
+          ]
+        },
+        {
+          "entities": [
+            {
+              "index": 10,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "polygon",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              22.7,
+              7.6
+            ],
+            [
+              24.3,
+              7.6
+            ],
+            [
+              24.3,
+              8.4
+            ],
+            [
+              22.7,
+              8.4
+            ]
+          ]
+        }
+      ],
+      "report": "pcb.board",
+      "rule": "default-reference-designator-over-package",
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "pcb.visual",
+      "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 13,
+          "kind": "component"
+        },
+        {
+          "index": 13,
+          "kind": "component_placement"
+        },
+        {
+          "index": 12,
+          "kind": "component"
+        },
+        {
+          "index": 12,
+          "kind": "component_placement"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "rule": "default-reference-designator-over-package",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Default reference designator 'R4' overlaps placed package geometry",
+      "overlays": [
+        {
+          "entities": [
+            {
+              "index": 13,
+              "kind": "component"
+            },
+            {
+              "index": 13,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "bounding_box",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              38.92,
+              9.5
+            ],
+            [
+              41.08,
+              11.3
+            ]
+          ]
+        },
+        {
+          "entities": [
+            {
+              "index": 12,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "polygon",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              39.2,
+              10.1
+            ],
+            [
+              40.8,
+              10.1
+            ],
+            [
+              40.8,
+              10.9
+            ],
+            [
+              39.2,
+              10.9
+            ]
+          ]
+        }
+      ],
+      "report": "pcb.board",
+      "rule": "default-reference-designator-over-package",
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "pcb.visual",
+      "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 17,
+          "kind": "component"
+        },
+        {
+          "index": 17,
+          "kind": "component_placement"
+        },
+        {
+          "index": 16,
+          "kind": "component"
+        },
+        {
+          "index": 16,
+          "kind": "component_placement"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "rule": "default-reference-designator-over-package",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Default reference designator 'C5' overlaps placed package geometry",
+      "overlays": [
+        {
+          "entities": [
+            {
+              "index": 17,
+              "kind": "component"
+            },
+            {
+              "index": 17,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "bounding_box",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              38.120000000000005,
+              27.2
+            ],
+            [
+              40.28,
+              29.0
+            ]
+          ]
+        },
+        {
+          "entities": [
+            {
+              "index": 16,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "polygon",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              39.7,
+              28.1
+            ],
+            [
+              41.3,
+              28.1
+            ],
+            [
+              41.3,
+              28.9
+            ],
+            [
+              39.7,
+              28.9
+            ]
+          ]
+        }
+      ],
+      "report": "pcb.board",
+      "rule": "default-reference-designator-over-package",
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "pcb.visual",
+      "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 20,
+          "kind": "component"
+        },
+        {
+          "index": 20,
+          "kind": "component_placement"
+        },
+        {
+          "index": 5,
+          "kind": "component"
+        },
+        {
+          "index": 5,
+          "kind": "component_placement"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "rule": "default-reference-designator-over-package",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Default reference designator 'C6' overlaps placed package geometry",
+      "overlays": [
+        {
+          "entities": [
+            {
+              "index": 20,
+              "kind": "component"
+            },
+            {
+              "index": 20,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "bounding_box",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              37.92,
+              18.5
+            ],
+            [
+              40.08,
+              20.3
+            ]
+          ]
+        },
+        {
+          "entities": [
+            {
+              "index": 5,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "polygon",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              34.0,
+              14.5
+            ],
+            [
+              38.0,
+              14.5
+            ],
+            [
+              38.0,
+              18.5
+            ],
+            [
+              34.0,
+              18.5
+            ]
+          ]
+        }
+      ],
+      "report": "pcb.board",
+      "rule": "default-reference-designator-over-package",
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
+    },
+    {
+      "board": "STM32 USB Buck PCB",
+      "category": "pcb.visual",
+      "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+      "design": "stm32_usb_buck",
+      "entities": [
+        {
+          "index": 26,
+          "kind": "component"
+        },
+        {
+          "index": 26,
+          "kind": "component_placement"
+        },
+        {
+          "index": 17,
+          "kind": "component"
+        },
+        {
+          "index": 17,
+          "kind": "component_placement"
+        }
+      ],
+      "expect_diagnostic_kwargs": {
+        "board": "STM32 USB Buck PCB",
+        "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+        "design": "stm32_usb_buck",
+        "report": "pcb.board",
+        "rule": "default-reference-designator-over-package",
+        "severity": "warning",
+        "source": "pcb:STM32 USB Buck PCB",
+        "stage": "board"
+      },
+      "measurement": null,
+      "message": "Default reference designator 'Y1' overlaps placed package geometry",
+      "overlays": [
+        {
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component"
+            },
+            {
+              "index": 26,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "bounding_box",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              35.42,
+              29.599999999999998
+            ],
+            [
+              37.58,
+              31.4
+            ]
+          ]
+        },
+        {
+          "entities": [
+            {
+              "index": 17,
+              "kind": "component_placement"
+            }
+          ],
+          "kind": "polygon",
+          "layers": [
+            {
+              "index": 0,
+              "kind": "board_layer"
+            }
+          ],
+          "points": [
+            [
+              37.9,
+              28.2
+            ],
+            [
+              37.9,
+              29.8
+            ],
+            [
+              37.1,
+              29.8
+            ],
+            [
+              37.1,
+              28.2
+            ]
+          ]
+        }
+      ],
+      "report": "pcb.board",
+      "rule": "default-reference-designator-over-package",
+      "severity": "warning",
+      "source": "pcb:STM32 USB Buck PCB",
+      "stage": "board"
     }
   ],
   "expected": [
@@ -1960,6 +2742,21 @@
       "severity": "warning",
       "source": null,
       "stage": null
+    },
+    {
+      "board": null,
+      "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+      "design": null,
+      "expect_diagnostic_kwargs": {
+        "code": "PCB_VISUAL_REFERENCE_DESIGNATOR_HIDDEN",
+        "severity": "warning"
+      },
+      "matched": true,
+      "report": null,
+      "rule": null,
+      "severity": "warning",
+      "source": null,
+      "stage": null
     }
   ],
   "missing_expected": [],
@@ -1967,7 +2764,7 @@
   "summary": {
     "errors": 0,
     "infos": 0,
-    "warnings": 48
+    "warnings": 56
   },
   "unexpected": []
 }

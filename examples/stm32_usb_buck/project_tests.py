@@ -10,11 +10,21 @@ from .schematic_symbols import DISPLAY_REFERENCES
 BOARD_REFERENCES = (
     "VIN_SRC",
     "PWR/J",
+    "PWR/F1",
+    "PWR/FB1",
     "PWR/U5",
+    "PWR/L1",
+    "PWR/DSW",
     "PWR/U3V3",
     "PWR/CIN",
+    "PWR/CBST",
     "PWR/C5V",
+    "PWR/REN_TOP",
+    "PWR/REN_BOT",
+    "PWR/RFB_TOP",
+    "PWR/RFB_BOT",
     "PWR/C3V3",
+    "PWR/FBVDDA",
     "PWR/CVDDA",
     "USB/J1",
     "USB/U1",
@@ -41,12 +51,55 @@ BOARD_REFERENCES = (
 
 def register_project_tests(project: volt.Project) -> None:
     @project.design.test
-    def input_regulators_and_rails_are_preserved(check) -> None:
+    def buck_input_and_rails_are_preserved(check) -> None:
         check.net("+12V").connects("VIN_SRC.OUT")
-        check.net("PWR/IN_12V").connects("PWR/J.1", "PWR/U5.VI", "PWR/CIN.1")
-        check.net("PWR/OUT_5V").connects("PWR/U5.VO", "PWR/U3V3.VI", "PWR/C5V.1")
-        check.net("PWR/OUT_3V3").connects("PWR/U3V3.VO", "PWR/C3V3.1")
-        check.net("PWR/VDDA").connects("PWR/CVDDA.1")
+        check.net("PWR/IN_12V").connects("PWR/J.1", "PWR/F1.1")
+        check.net("PWR/FUSED_12V").connects("PWR/F1.2", "PWR/FB1.1")
+        check.net("PWR/BUCK_IN").connects(
+            "PWR/FB1.2",
+            "PWR/U5.IN",
+            "PWR/CIN.1",
+            "PWR/REN_TOP.1",
+        )
+        check.net("PWR/BUCK_EN").connects(
+            "PWR/U5.EN",
+            "PWR/REN_TOP.2",
+            "PWR/REN_BOT.1",
+        )
+        check.net("PWR/BUCK_SW").connects(
+            "PWR/U5.SW",
+            "PWR/DSW.K",
+            "PWR/L1.1",
+            "PWR/CBST.1",
+        )
+        check.net("PWR/BUCK_BST").connects("PWR/U5.BST", "PWR/CBST.2")
+        check.net("PWR/OUT_5V").connects(
+            "PWR/L1.2",
+            "PWR/C5V.1",
+            "PWR/RFB_TOP.1",
+            "PWR/U3V3.VI",
+        )
+        check.net("PWR/BUCK_FB").connects(
+            "PWR/U5.FB",
+            "PWR/RFB_TOP.2",
+            "PWR/RFB_BOT.1",
+        )
+        check.net("PWR/OUT_3V3").connects("PWR/U3V3.VO", "PWR/C3V3.1", "PWR/FBVDDA.1")
+        check.net("PWR/VDDA").connects("PWR/FBVDDA.2", "PWR/CVDDA.1")
+        check.net("PWR/GND").connects(
+            "PWR/J.2",
+            "PWR/J.3",
+            "PWR/J.4",
+            "PWR/CIN.2",
+            "PWR/U5.GND",
+            "PWR/REN_BOT.2",
+            "PWR/DSW.A",
+            "PWR/C5V.2",
+            "PWR/RFB_BOT.2",
+            "PWR/U3V3.GND",
+            "PWR/C3V3.2",
+            "PWR/CVDDA.2",
+        )
         check.net("+3V3").connects("U1.VBAT", "U1.VDD", "J2.VTref", "J3.1")
         check.net("VDDA").connects("U1.VDDA")
         check.net("GND").connects("VIN_SRC.GND", "U1.VSS", "U1.VSSA")
@@ -82,8 +135,8 @@ def register_project_tests(project: volt.Project) -> None:
         check.net("BOOT0").connects("J2.TDI", "J3.2", "U1.BOOT0")
         check.net("STATUS_LED").connects("U1.PC13")
         check.net("LED_STATUS/SUPPLY").connects("LED_STATUS/R.1")
-        check.net("LED_STATUS/SIGNAL").connects("LED_STATUS/R.2", "LED_STATUS/D.A")
-        check.net("LED_STATUS/GND").connects("LED_STATUS/D.K")
+        check.net("LED_STATUS/LED_A").connects("LED_STATUS/R.2", "LED_STATUS/D.A")
+        check.net("LED_STATUS/SIGNAL").connects("LED_STATUS/D.K")
 
     @project.design.test
     def power_and_signal_domains_stay_separate(check) -> None:

@@ -85,7 +85,7 @@
     "summary": {
       "errors": 0,
       "infos": 0,
-      "warnings": 48
+      "warnings": 56
     }
   },
   "exporter": {
@@ -155,44 +155,6 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 2,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 2,
-              "kind": "component_placement"
-            },
-            {
-              "index": 3,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
               "index": 3,
               "kind": "component_placement"
             },
@@ -231,44 +193,6 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 3,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 3,
-              "kind": "component_placement"
-            },
-            {
-              "index": 3,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
               "index": 4,
               "kind": "component_placement"
             },
@@ -293,6 +217,82 @@
             },
             {
               "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 3,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 4,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 5,
               "kind": "footprint_pad"
             }
           ],
@@ -421,6 +421,44 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
+              "index": 8,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 8,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
               "index": 9,
               "kind": "component_placement"
             },
@@ -445,82 +483,6 @@
             },
             {
               "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 3,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 4,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 5,
               "kind": "footprint_pad"
             }
           ],
@@ -725,45 +687,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 15,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 15,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 15,
+              "index": 14,
               "kind": "component_placement"
             },
             {
@@ -782,64 +706,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 16,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 16,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 16,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 16,
+              "index": 14,
               "kind": "component_placement"
             },
             {
@@ -858,7 +725,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 17,
+              "index": 15,
               "kind": "component_placement"
             },
             {
@@ -877,7 +744,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 17,
+              "index": 15,
               "kind": "component_placement"
             },
             {
@@ -896,7 +763,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 18,
+              "index": 16,
               "kind": "component_placement"
             },
             {
@@ -915,7 +782,45 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 18,
+              "index": 16,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 17,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 17,
               "kind": "component_placement"
             },
             {
@@ -972,83 +877,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 20,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 20,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 21,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 21,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -1067,7 +896,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -1086,7 +915,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -1105,7 +934,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -1124,7 +953,596 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
+              "index": 20,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 20,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
               "index": 21,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 21,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 22,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 22,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 23,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 23,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 24,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 24,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 25,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 25,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 25,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 3,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 27,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 27,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 28,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 28,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 29,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 29,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 30,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 30,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 3,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 4,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 5,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1143,7 +1561,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1162,7 +1580,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1181,7 +1599,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1200,7 +1618,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1219,7 +1637,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1238,7 +1656,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1257,7 +1675,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1276,7 +1694,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1295,7 +1713,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1314,7 +1732,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1333,7 +1751,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1352,7 +1770,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1371,7 +1789,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1390,7 +1808,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1409,7 +1827,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1428,7 +1846,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1447,7 +1865,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1466,7 +1884,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1485,7 +1903,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1504,7 +1922,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1523,7 +1941,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1542,7 +1960,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1561,7 +1979,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1580,7 +1998,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1599,7 +2017,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1618,7 +2036,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1637,7 +2055,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1656,7 +2074,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1675,7 +2093,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1694,7 +2112,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1713,7 +2131,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1732,7 +2150,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1751,7 +2169,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1770,7 +2188,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1789,7 +2207,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1808,7 +2226,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1827,7 +2245,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1846,7 +2264,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1865,7 +2283,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1884,7 +2302,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1903,7 +2321,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1922,7 +2340,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1941,7 +2359,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1960,7 +2378,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1979,7 +2397,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -1998,7 +2416,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2017,7 +2435,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2036,7 +2454,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2055,7 +2473,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2074,7 +2492,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2093,7 +2511,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2112,7 +2530,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2131,7 +2549,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2150,7 +2568,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2169,7 +2587,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2188,7 +2606,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2207,7 +2625,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -2264,44 +2682,6 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 2,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 2,
-              "kind": "component_placement"
-            },
-            {
-              "index": 3,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
               "index": 3,
               "kind": "component_placement"
             },
@@ -2340,44 +2720,6 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 3,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 3,
-              "kind": "component_placement"
-            },
-            {
-              "index": 3,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
               "index": 4,
               "kind": "component_placement"
             },
@@ -2402,6 +2744,82 @@
             },
             {
               "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 3,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 4,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 5,
               "kind": "footprint_pad"
             }
           ],
@@ -2530,6 +2948,44 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
+              "index": 8,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 8,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
               "index": 9,
               "kind": "component_placement"
             },
@@ -2554,82 +3010,6 @@
             },
             {
               "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 3,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 4,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 5,
               "kind": "footprint_pad"
             }
           ],
@@ -2834,45 +3214,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 15,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 15,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 15,
+              "index": 14,
               "kind": "component_placement"
             },
             {
@@ -2891,64 +3233,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 16,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 16,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 16,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 16,
+              "index": 14,
               "kind": "component_placement"
             },
             {
@@ -2967,7 +3252,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 17,
+              "index": 15,
               "kind": "component_placement"
             },
             {
@@ -2986,7 +3271,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 17,
+              "index": 15,
               "kind": "component_placement"
             },
             {
@@ -3005,7 +3290,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 18,
+              "index": 16,
               "kind": "component_placement"
             },
             {
@@ -3024,7 +3309,45 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 18,
+              "index": 16,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 17,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 17,
               "kind": "component_placement"
             },
             {
@@ -3081,83 +3404,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 20,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 20,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 21,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 21,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -3176,7 +3423,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -3195,7 +3442,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -3214,7 +3461,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -3233,7 +3480,596 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
+              "index": 20,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 20,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
               "index": 21,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 21,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 22,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 22,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 23,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 23,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 24,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 24,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 25,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 25,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 25,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 3,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 27,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 27,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 28,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 28,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 29,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 29,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 30,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 30,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 3,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 4,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 5,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3252,7 +4088,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3271,7 +4107,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3290,7 +4126,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3309,7 +4145,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3328,7 +4164,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3347,7 +4183,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3366,7 +4202,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3385,7 +4221,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3404,7 +4240,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3423,7 +4259,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3442,7 +4278,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3461,7 +4297,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3480,7 +4316,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3499,7 +4335,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3518,7 +4354,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3537,7 +4373,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3556,7 +4392,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3575,7 +4411,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3594,7 +4430,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3613,7 +4449,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3632,7 +4468,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3651,7 +4487,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3670,7 +4506,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3689,7 +4525,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3708,7 +4544,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3727,7 +4563,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3746,7 +4582,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3765,7 +4601,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3784,7 +4620,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3803,7 +4639,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3822,7 +4658,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3841,7 +4677,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3860,7 +4696,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3879,7 +4715,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3898,7 +4734,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3917,7 +4753,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3936,7 +4772,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3955,7 +4791,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3974,7 +4810,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -3993,7 +4829,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4012,7 +4848,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4031,7 +4867,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4050,7 +4886,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4069,7 +4905,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4088,7 +4924,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4107,7 +4943,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4126,7 +4962,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4145,7 +4981,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4164,7 +5000,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4183,7 +5019,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4202,7 +5038,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4221,7 +5057,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4240,7 +5076,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4259,7 +5095,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4278,7 +5114,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4297,7 +5133,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4316,7 +5152,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -4373,44 +5209,6 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 2,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 2,
-              "kind": "component_placement"
-            },
-            {
-              "index": 3,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
               "index": 3,
               "kind": "component_placement"
             },
@@ -4449,44 +5247,6 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 3,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 3,
-              "kind": "component_placement"
-            },
-            {
-              "index": 3,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
               "index": 4,
               "kind": "component_placement"
             },
@@ -4511,6 +5271,82 @@
             },
             {
               "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 3,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 4,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 4,
+              "kind": "component_placement"
+            },
+            {
+              "index": 5,
               "kind": "footprint_pad"
             }
           ],
@@ -4639,6 +5475,44 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
+              "index": 8,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 8,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
               "index": 9,
               "kind": "component_placement"
             },
@@ -4663,82 +5537,6 @@
             },
             {
               "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 3,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 4,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 9,
-              "kind": "component_placement"
-            },
-            {
-              "index": 5,
               "kind": "footprint_pad"
             }
           ],
@@ -4943,45 +5741,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 15,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 15,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 15,
+              "index": 14,
               "kind": "component_placement"
             },
             {
@@ -5000,64 +5760,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 16,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 16,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 16,
-              "kind": "component_placement"
-            },
-            {
-              "index": 2,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 16,
+              "index": 14,
               "kind": "component_placement"
             },
             {
@@ -5076,7 +5779,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 17,
+              "index": 15,
               "kind": "component_placement"
             },
             {
@@ -5095,7 +5798,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 17,
+              "index": 15,
               "kind": "component_placement"
             },
             {
@@ -5114,7 +5817,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 18,
+              "index": 16,
               "kind": "component_placement"
             },
             {
@@ -5133,7 +5836,45 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 18,
+              "index": 16,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 17,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 17,
               "kind": "component_placement"
             },
             {
@@ -5190,83 +5931,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 20,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 20,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 21,
-              "kind": "component_placement"
-            },
-            {
-              "index": 0,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 21,
-              "kind": "component_placement"
-            },
-            {
-              "index": 1,
-              "kind": "footprint_pad"
-            }
-          ],
-          "measurement": null,
-          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
-          "overlays": [],
-          "rule": "footprint.pad.rounded_rectangle",
-          "severity": "warning"
-        },
-        {
-          "category": "pcb.fabrication",
-          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
-          "entities": [
-            {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -5285,7 +5950,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -5304,7 +5969,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -5323,7 +5988,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 19,
               "kind": "component_placement"
             },
             {
@@ -5342,7 +6007,596 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
+              "index": 20,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 20,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
               "index": 21,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 21,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 22,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 22,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 23,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 23,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 24,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 24,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 25,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 25,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 25,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 26,
+              "kind": "component_placement"
+            },
+            {
+              "index": 3,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 27,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 27,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 28,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 28,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 29,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 29,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 30,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 30,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 0,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 1,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 2,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 3,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 4,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
+              "kind": "component_placement"
+            },
+            {
+              "index": 5,
+              "kind": "footprint_pad"
+            }
+          ],
+          "measurement": null,
+          "message": "Native PCB fabrication export has loss for footprint.pad.rounded_rectangle: Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+          "overlays": [],
+          "rule": "footprint.pad.rounded_rectangle",
+          "severity": "warning"
+        },
+        {
+          "category": "pcb.fabrication",
+          "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
+          "entities": [
+            {
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5361,7 +6615,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5380,7 +6634,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5399,7 +6653,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5418,7 +6672,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5437,7 +6691,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5456,7 +6710,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5475,7 +6729,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5494,7 +6748,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5513,7 +6767,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5532,7 +6786,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5551,7 +6805,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5570,7 +6824,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5589,7 +6843,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5608,7 +6862,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5627,7 +6881,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5646,7 +6900,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5665,7 +6919,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5684,7 +6938,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5703,7 +6957,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5722,7 +6976,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5741,7 +6995,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5760,7 +7014,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5779,7 +7033,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5798,7 +7052,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5817,7 +7071,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5836,7 +7090,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5855,7 +7109,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5874,7 +7128,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5893,7 +7147,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5912,7 +7166,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5931,7 +7185,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5950,7 +7204,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5969,7 +7223,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -5988,7 +7242,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6007,7 +7261,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6026,7 +7280,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6045,7 +7299,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6064,7 +7318,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6083,7 +7337,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6102,7 +7356,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6121,7 +7375,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6140,7 +7394,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6159,7 +7413,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6178,7 +7432,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6197,7 +7451,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6216,7 +7470,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6235,7 +7489,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6254,7 +7508,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6273,7 +7527,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6292,7 +7546,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6311,7 +7565,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6330,7 +7584,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6349,7 +7603,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6368,7 +7622,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6387,7 +7641,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6406,7 +7660,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6425,7 +7679,7 @@
           "code": "PCB_NATIVE_FAB_LOSSY_GEOMETRY",
           "entities": [
             {
-              "index": 21,
+              "index": 31,
               "kind": "component_placement"
             },
             {
@@ -6443,7 +7697,7 @@
       "summary": {
         "errors": 0,
         "infos": 0,
-        "warnings": 333
+        "warnings": 399
       }
     },
     "exporter": {
@@ -6531,6 +7785,468 @@
       }
     ],
     "warnings": [
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
+      {
+        "construct": "footprint.pad.rounded_rectangle",
+        "fabrication_impact": "informational",
+        "kind": "lossy_geometry",
+        "message": "Native fabrication export v1 approximates rounded rectangle pads as rectangles",
+        "severity": "warning"
+      },
       {
         "construct": "footprint.pad.rounded_rectangle",
         "fabrication_impact": "informational",

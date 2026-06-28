@@ -1,7 +1,7 @@
 {
   "components": [
     {
-      "component": "component:24",
+      "component": "component:34",
       "dnp": true,
       "dnp_explicit": true,
       "reference": "H1",
@@ -14,7 +14,7 @@
       "selection_override": false
     },
     {
-      "component": "component:25",
+      "component": "component:35",
       "dnp": true,
       "dnp_explicit": true,
       "reference": "H2",
@@ -27,7 +27,7 @@
       "selection_override": false
     },
     {
-      "component": "component:26",
+      "component": "component:36",
       "dnp": true,
       "dnp_explicit": true,
       "reference": "H3",
@@ -40,7 +40,7 @@
       "selection_override": false
     },
     {
-      "component": "component:27",
+      "component": "component:37",
       "dnp": true,
       "dnp_explicit": true,
       "reference": "H4",
@@ -53,7 +53,7 @@
       "selection_override": false
     },
     {
-      "component": "component:19",
+      "component": "component:29",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "J2",
@@ -66,7 +66,7 @@
       "selection_override": false
     },
     {
-      "component": "component:20",
+      "component": "component:30",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "J3",
@@ -79,7 +79,7 @@
       "selection_override": false
     },
     {
-      "component": "component:22",
+      "component": "component:32",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "LED_STATUS/D",
@@ -92,53 +92,53 @@
       "selection_override": false
     },
     {
-      "component": "component:21",
+      "component": "component:31",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "LED_STATUS/R",
       "selected_part": {
         "approved_alternate_mpns": [],
         "manufacturer": "Yageo",
-        "mpn": "RC0603FR-0710KL",
+        "mpn": "RC0603FR-07330RL",
         "package": "0603"
       },
       "selection_override": false
     },
     {
-      "component": "component:6",
+      "component": "component:15",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "PWR/C3V3",
       "selected_part": {
         "approved_alternate_mpns": [],
         "manufacturer": "Murata",
-        "mpn": "GRM188R71C104KA01D",
+        "mpn": "GRM188R60J475ME19D",
         "package": "0603"
       },
       "selection_override": false
     },
     {
-      "component": "component:5",
+      "component": "component:9",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "PWR/C5V",
       "selected_part": {
         "approved_alternate_mpns": [],
-        "manufacturer": "Murata",
-        "mpn": "GRM188R71C104KA01D",
-        "package": "0603"
+        "manufacturer": "Samsung Electro-Mechanics",
+        "mpn": "CL31A106KAHNNNE",
+        "package": "1206"
       },
       "selection_override": false
     },
     {
-      "component": "component:4",
+      "component": "component:8",
       "dnp": false,
       "dnp_explicit": true,
-      "reference": "PWR/CIN",
+      "reference": "PWR/CBST",
       "selected_part": {
         "approved_alternate_mpns": [],
         "manufacturer": "Murata",
-        "mpn": "GRM188R71C104KA01D",
+        "mpn": "GRM188R71H103KA01D",
         "package": "0603"
       },
       "selection_override": false
@@ -147,11 +147,76 @@
       "component": "component:7",
       "dnp": false,
       "dnp_explicit": true,
+      "reference": "PWR/CIN",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Samsung Electro-Mechanics",
+        "mpn": "CL31A106KAHNNNE",
+        "package": "1206"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:17",
+      "dnp": false,
+      "dnp_explicit": true,
       "reference": "PWR/CVDDA",
       "selected_part": {
         "approved_alternate_mpns": [],
         "manufacturer": "Murata",
         "mpn": "GRM188R71C104KA01D",
+        "package": "0603"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:6",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "PWR/DSW",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Diodes Incorporated",
+        "mpn": "B5819W-7-F",
+        "package": "SOD-123"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:2",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "PWR/F1",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Bourns",
+        "mpn": "MF-NSMF020-2",
+        "package": "1206 resettable fuse"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:3",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "PWR/FB1",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Murata",
+        "mpn": "BLM18AG601SN1D",
+        "package": "0603"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:16",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "PWR/FBVDDA",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Murata",
+        "mpn": "BLM18AG601SN1D",
         "package": "0603"
       },
       "selection_override": false
@@ -170,54 +235,15 @@
       "selection_override": false
     },
     {
-      "component": "component:3",
+      "component": "component:5",
       "dnp": false,
       "dnp_explicit": true,
-      "reference": "PWR/U3V3",
+      "reference": "PWR/L1",
       "selected_part": {
         "approved_alternate_mpns": [],
-        "manufacturer": "Diodes Incorporated",
-        "mpn": "AP1117E15G-13",
-        "package": "SOT-223-3"
-      },
-      "selection_override": false
-    },
-    {
-      "component": "component:2",
-      "dnp": false,
-      "dnp_explicit": true,
-      "reference": "PWR/U5",
-      "selected_part": {
-        "approved_alternate_mpns": [],
-        "manufacturer": "Diodes Incorporated",
-        "mpn": "AP1117E15G-13",
-        "package": "SOT-223-3"
-      },
-      "selection_override": false
-    },
-    {
-      "component": "component:17",
-      "dnp": false,
-      "dnp_explicit": true,
-      "reference": "SUPPORT/CHSEIN",
-      "selected_part": {
-        "approved_alternate_mpns": [],
-        "manufacturer": "Murata",
-        "mpn": "GRM188R71C104KA01D",
-        "package": "0603"
-      },
-      "selection_override": false
-    },
-    {
-      "component": "component:18",
-      "dnp": false,
-      "dnp_explicit": true,
-      "reference": "SUPPORT/CHSEOUT",
-      "selected_part": {
-        "approved_alternate_mpns": [],
-        "manufacturer": "Murata",
-        "mpn": "GRM188R71C104KA01D",
-        "package": "0603"
+        "manufacturer": "Bourns",
+        "mpn": "SRN4018-100M",
+        "package": "4.0x4.0mm shielded inductor"
       },
       "selection_override": false
     },
@@ -225,11 +251,37 @@
       "component": "component:11",
       "dnp": false,
       "dnp_explicit": true,
-      "reference": "SUPPORT/CVCAP1",
+      "reference": "PWR/REN_BOT",
       "selected_part": {
         "approved_alternate_mpns": [],
-        "manufacturer": "Murata",
-        "mpn": "GRM188R71C104KA01D",
+        "manufacturer": "Yageo",
+        "mpn": "RC0603FR-0747KL",
+        "package": "0603"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:10",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "PWR/REN_TOP",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Yageo",
+        "mpn": "RC0603FR-07100KL",
+        "package": "0603"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:13",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "PWR/RFB_BOT",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Yageo",
+        "mpn": "RC0603FR-0715KL",
         "package": "0603"
       },
       "selection_override": false
@@ -238,17 +290,95 @@
       "component": "component:12",
       "dnp": false,
       "dnp_explicit": true,
-      "reference": "SUPPORT/CVCAP2",
+      "reference": "PWR/RFB_TOP",
       "selected_part": {
         "approved_alternate_mpns": [],
-        "manufacturer": "Murata",
-        "mpn": "GRM188R71C104KA01D",
+        "manufacturer": "Yageo",
+        "mpn": "RC0603FR-0768KL",
         "package": "0603"
       },
       "selection_override": false
     },
     {
-      "component": "component:10",
+      "component": "component:14",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "PWR/U3V3",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Diodes Incorporated",
+        "mpn": "AP1117E33G-13",
+        "package": "SOT-223-3"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:4",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "PWR/U5",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Monolithic Power Systems",
+        "mpn": "MP2359DJ-LF-Z",
+        "package": "SOT-23-6"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:27",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/CHSEIN",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Murata",
+        "mpn": "GRM1885C1H180JA01D",
+        "package": "0603"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:28",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/CHSEOUT",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Murata",
+        "mpn": "GRM1885C1H180JA01D",
+        "package": "0603"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:21",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/CVCAP1",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Murata",
+        "mpn": "GRM188R61A225KE34D",
+        "package": "0603"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:22",
+      "dnp": false,
+      "dnp_explicit": true,
+      "reference": "SUPPORT/CVCAP2",
+      "selected_part": {
+        "approved_alternate_mpns": [],
+        "manufacturer": "Murata",
+        "mpn": "GRM188R61A225KE34D",
+        "package": "0603"
+      },
+      "selection_override": false
+    },
+    {
+      "component": "component:20",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "SUPPORT/CVDD",
@@ -261,20 +391,20 @@
       "selection_override": false
     },
     {
-      "component": "component:14",
+      "component": "component:24",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "SUPPORT/RBOOT",
       "selected_part": {
         "approved_alternate_mpns": [],
         "manufacturer": "Yageo",
-        "mpn": "RC0603FR-0710KL",
+        "mpn": "RC0603FR-07100KL",
         "package": "0603"
       },
       "selection_override": false
     },
     {
-      "component": "component:13",
+      "component": "component:23",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "SUPPORT/RRESET",
@@ -287,7 +417,7 @@
       "selection_override": false
     },
     {
-      "component": "component:15",
+      "component": "component:25",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "SUPPORT/SWBOOT",
@@ -300,7 +430,7 @@
       "selection_override": false
     },
     {
-      "component": "component:16",
+      "component": "component:26",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "SUPPORT/Y1",
@@ -313,7 +443,7 @@
       "selection_override": false
     },
     {
-      "component": "component:23",
+      "component": "component:33",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "U1",
@@ -326,7 +456,7 @@
       "selection_override": false
     },
     {
-      "component": "component:8",
+      "component": "component:18",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "USB/J1",
@@ -339,7 +469,7 @@
       "selection_override": false
     },
     {
-      "component": "component:9",
+      "component": "component:19",
       "dnp": false,
       "dnp_explicit": true,
       "reference": "USB/U1",
@@ -383,6 +513,32 @@
     {
       "approved_alternate_mpns": [],
       "dnp": false,
+      "manufacturer": "Bourns",
+      "mpn": "MF-NSMF020-2",
+      "package": "1206 resettable fuse",
+      "quantity": 1,
+      "references": [
+        "PWR/F1"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Bourns",
+      "mpn": "SRN4018-100M",
+      "package": "4.0x4.0mm shielded inductor",
+      "quantity": 1,
+      "references": [
+        "PWR/L1"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
       "manufacturer": "C&K",
       "mpn": "PCM12SMTR",
       "package": "SMD slide switch",
@@ -397,12 +553,24 @@
       "approved_alternate_mpns": [],
       "dnp": false,
       "manufacturer": "Diodes Incorporated",
-      "mpn": "AP1117E15G-13",
+      "mpn": "AP1117E33G-13",
       "package": "SOT-223-3",
-      "quantity": 2,
+      "quantity": 1,
       "references": [
-        "PWR/U3V3",
-        "PWR/U5"
+        "PWR/U3V3"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Diodes Incorporated",
+      "mpn": "B5819W-7-F",
+      "package": "SOD-123",
+      "quantity": 1,
+      "references": [
+        "PWR/DSW"
       ],
       "selection_override_references": [],
       "sourcing": {}
@@ -465,20 +633,94 @@
     {
       "approved_alternate_mpns": [],
       "dnp": false,
+      "manufacturer": "Monolithic Power Systems",
+      "mpn": "MP2359DJ-LF-Z",
+      "package": "SOT-23-6",
+      "quantity": 1,
+      "references": [
+        "PWR/U5"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Murata",
+      "mpn": "BLM18AG601SN1D",
+      "package": "0603",
+      "quantity": 2,
+      "references": [
+        "PWR/FB1",
+        "PWR/FBVDDA"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Murata",
+      "mpn": "GRM1885C1H180JA01D",
+      "package": "0603",
+      "quantity": 2,
+      "references": [
+        "SUPPORT/CHSEIN",
+        "SUPPORT/CHSEOUT"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Murata",
+      "mpn": "GRM188R60J475ME19D",
+      "package": "0603",
+      "quantity": 1,
+      "references": [
+        "PWR/C3V3"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Murata",
+      "mpn": "GRM188R61A225KE34D",
+      "package": "0603",
+      "quantity": 2,
+      "references": [
+        "SUPPORT/CVCAP1",
+        "SUPPORT/CVCAP2"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
       "manufacturer": "Murata",
       "mpn": "GRM188R71C104KA01D",
       "package": "0603",
-      "quantity": 9,
+      "quantity": 2,
       "references": [
-        "PWR/C3V3",
-        "PWR/C5V",
-        "PWR/CIN",
         "PWR/CVDDA",
-        "SUPPORT/CHSEIN",
-        "SUPPORT/CHSEOUT",
-        "SUPPORT/CVCAP1",
-        "SUPPORT/CVCAP2",
         "SUPPORT/CVDD"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Murata",
+      "mpn": "GRM188R71H103KA01D",
+      "package": "0603",
+      "quantity": 1,
+      "references": [
+        "PWR/CBST"
       ],
       "selection_override_references": [],
       "sourcing": {}
@@ -505,6 +747,20 @@
       "quantity": 1,
       "references": [
         "USB/U1"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Samsung Electro-Mechanics",
+      "mpn": "CL31A106KAHNNNE",
+      "package": "1206",
+      "quantity": 2,
+      "references": [
+        "PWR/C5V",
+        "PWR/CIN"
       ],
       "selection_override_references": [],
       "sourcing": {}
@@ -540,13 +796,77 @@
       "approved_alternate_mpns": [],
       "dnp": false,
       "manufacturer": "Yageo",
+      "mpn": "RC0603FR-07100KL",
+      "package": "0603",
+      "quantity": 2,
+      "references": [
+        "PWR/REN_TOP",
+        "SUPPORT/RBOOT"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Yageo",
       "mpn": "RC0603FR-0710KL",
       "package": "0603",
-      "quantity": 3,
+      "quantity": 1,
       "references": [
-        "LED_STATUS/R",
-        "SUPPORT/RBOOT",
         "SUPPORT/RRESET"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Yageo",
+      "mpn": "RC0603FR-0715KL",
+      "package": "0603",
+      "quantity": 1,
+      "references": [
+        "PWR/RFB_BOT"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Yageo",
+      "mpn": "RC0603FR-07330RL",
+      "package": "0603",
+      "quantity": 1,
+      "references": [
+        "LED_STATUS/R"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Yageo",
+      "mpn": "RC0603FR-0747KL",
+      "package": "0603",
+      "quantity": 1,
+      "references": [
+        "PWR/REN_BOT"
+      ],
+      "selection_override_references": [],
+      "sourcing": {}
+    },
+    {
+      "approved_alternate_mpns": [],
+      "dnp": false,
+      "manufacturer": "Yageo",
+      "mpn": "RC0603FR-0768KL",
+      "package": "0603",
+      "quantity": 1,
+      "references": [
+        "PWR/RFB_TOP"
       ],
       "selection_override_references": [],
       "sourcing": {}

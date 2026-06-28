@@ -28,8 +28,16 @@ def define_usb_interface(design: volt.Design) -> volt.ModuleDefinition:
     mcu_dm = module.port("MCU_USB_DM", role="bidirectional")
     ground = module.port("GND", kind="ground", role="ground")
 
-    connector = module.instantiate(usb_connector, ref="J1", properties={"value": "USB Micro-B"})
-    protector = module.instantiate(protection, ref="U1", properties={"value": "USBLC6-4SC6"})
+    connector = module.instantiate(
+        usb_connector,
+        ref="J1",
+        properties={"value": "USB Micro-B", "pcb_reference": "J3"},
+    )
+    protector = module.instantiate(
+        protection,
+        ref="U1",
+        properties={"value": "USBLC6-4SC6", "pcb_reference": "U4"},
+    )
 
     module.connect(vbus, connector["VBUS"], protector["VBUS"])
     module.connect(usb_dp, connector["D+"], protector["I/O1"])
@@ -73,8 +81,16 @@ def add_debug_and_user_connectors(
     reset: volt.Net,
     boot0: volt.Net,
 ) -> tuple[volt.Component, volt.Component]:
-    swd = design.instantiate(lib.JTAG_SWD_10, ref="J2", properties={"value": "SWD 10-pin"})
-    gpio = design.instantiate(lib.CONNECTOR_1X04, ref="J3", properties={"value": "GPIO 1x4"})
+    swd = design.instantiate(
+        lib.JTAG_SWD_10,
+        ref="J2",
+        properties={"value": "SWD 10-pin", "pcb_reference": "J4"},
+    )
+    gpio = design.instantiate(
+        lib.CONNECTOR_1X04,
+        ref="J3",
+        properties={"value": "GPIO 1x4", "pcb_reference": "J5"},
+    )
 
     logic_3v3 += swd["VTref"], gpio[1]
     swdio += swd["SWDIO"]

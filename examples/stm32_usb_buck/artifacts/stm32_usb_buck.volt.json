@@ -8,171 +8,253 @@
     { "id": "pin_def:3", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
     { "id": "pin_def:4", "name": "3", "number": "3", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
     { "id": "pin_def:5", "name": "4", "number": "4", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:6", "name": "GND", "number": "1", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:7", "name": "VO", "number": "2", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Output" },
-    { "id": "pin_def:8", "name": "VI", "number": "3", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
-    { "id": "pin_def:9", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
-    { "id": "pin_def:10", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
-    { "id": "pin_def:11", "name": "VBUS", "number": "1", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
-    { "id": "pin_def:12", "name": "D-", "number": "2", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:13", "name": "D+", "number": "3", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:14", "name": "ID", "number": "4", "connection_requirement": "MustNotConnect", "terminal_kind": "NoConnect" },
-    { "id": "pin_def:15", "name": "GND", "number": "5", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:16", "name": "Shield", "number": "6", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:17", "name": "I/O1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:18", "name": "GND", "number": "2", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:19", "name": "I/O2", "number": "3", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:20", "name": "I/O3", "number": "4", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:21", "name": "VBUS", "number": "5", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
-    { "id": "pin_def:22", "name": "I/O4", "number": "6", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:6", "name": "BST", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:7", "name": "GND", "number": "2", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:8", "name": "FB", "number": "3", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:9", "name": "EN", "number": "4", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
+    { "id": "pin_def:10", "name": "IN", "number": "5", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:11", "name": "SW", "number": "6", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Output" },
+    { "id": "pin_def:12", "name": "GND", "number": "1", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:13", "name": "VO", "number": "2", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Output" },
+    { "id": "pin_def:14", "name": "VI", "number": "3", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
+    { "id": "pin_def:15", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:16", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:17", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:18", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:19", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:20", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:21", "name": "A", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:22", "name": "K", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
     { "id": "pin_def:23", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
     { "id": "pin_def:24", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
     { "id": "pin_def:25", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
     { "id": "pin_def:26", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
     { "id": "pin_def:27", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
-    { "id": "pin_def:28", "name": "GND", "number": "2", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:29", "name": "3", "number": "3", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
-    { "id": "pin_def:30", "name": "GND", "number": "4", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:31", "name": "A", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
-    { "id": "pin_def:32", "name": "C", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
-    { "id": "pin_def:33", "name": "B", "number": "3", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
-    { "id": "pin_def:34", "name": "VTref", "number": "1", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
-    { "id": "pin_def:35", "name": "SWDIO", "number": "2", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:36", "name": "GND", "number": "3", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:37", "name": "SWCLK", "number": "4", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
-    { "id": "pin_def:38", "name": "GND", "number": "5", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:39", "name": "SWO", "number": "6", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:40", "name": "NC", "number": "7", "connection_requirement": "MustNotConnect", "terminal_kind": "NoConnect" },
-    { "id": "pin_def:41", "name": "TDI", "number": "8", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
-    { "id": "pin_def:42", "name": "GNDDetect", "number": "9", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:43", "name": "nRESET", "number": "10", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
-    { "id": "pin_def:44", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:45", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:46", "name": "3", "number": "3", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:47", "name": "4", "number": "4", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:48", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
-    { "id": "pin_def:49", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
-    { "id": "pin_def:50", "name": "A", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
-    { "id": "pin_def:51", "name": "K", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
-    { "id": "pin_def:52", "name": "VBAT", "number": "1", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
-    { "id": "pin_def:53", "name": "PC13", "number": "2", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:54", "name": "PC14", "number": "3", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:55", "name": "PC15", "number": "4", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:56", "name": "PH0", "number": "5", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
-    { "id": "pin_def:57", "name": "PH1", "number": "6", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
-    { "id": "pin_def:58", "name": "NRST", "number": "7", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
-    { "id": "pin_def:59", "name": "PC0", "number": "8", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:60", "name": "PC1", "number": "9", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:61", "name": "PC2", "number": "10", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:62", "name": "PC3", "number": "11", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:63", "name": "VSSA", "number": "12", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:64", "name": "VDDA", "number": "13", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
-    { "id": "pin_def:65", "name": "PA0", "number": "14", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:66", "name": "PA1", "number": "15", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:67", "name": "PA2", "number": "16", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:68", "name": "PA3", "number": "17", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:69", "name": "VSS", "number": "18", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:70", "name": "VDD", "number": "19", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
-    { "id": "pin_def:71", "name": "PA4", "number": "20", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:72", "name": "PA5", "number": "21", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:73", "name": "PA6", "number": "22", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:74", "name": "PA7", "number": "23", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:75", "name": "PC4", "number": "24", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:76", "name": "PC5", "number": "25", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:77", "name": "PB0", "number": "26", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:78", "name": "PB1", "number": "27", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:79", "name": "PB2", "number": "28", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:80", "name": "PB10", "number": "29", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:81", "name": "PB11", "number": "30", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:82", "name": "VCAP_1", "number": "31", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Output" },
-    { "id": "pin_def:83", "name": "VDD", "number": "32", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
-    { "id": "pin_def:84", "name": "PB12", "number": "33", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:85", "name": "PB13", "number": "34", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:86", "name": "PB14", "number": "35", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:87", "name": "PB15", "number": "36", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:88", "name": "PC6", "number": "37", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:89", "name": "PC7", "number": "38", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:90", "name": "PC8", "number": "39", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:91", "name": "PC9", "number": "40", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:92", "name": "PA8", "number": "41", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:93", "name": "PA9", "number": "42", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:94", "name": "PA10", "number": "43", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:95", "name": "PA11", "number": "44", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:96", "name": "PA12", "number": "45", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:97", "name": "PA13", "number": "46", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:98", "name": "VCAP_2", "number": "47", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Output" },
-    { "id": "pin_def:99", "name": "VDD", "number": "48", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
-    { "id": "pin_def:100", "name": "PA14", "number": "49", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:101", "name": "PA15", "number": "50", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:102", "name": "PC10", "number": "51", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:103", "name": "PC11", "number": "52", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:104", "name": "PC12", "number": "53", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:105", "name": "PD2", "number": "54", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:106", "name": "PB3", "number": "55", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:107", "name": "PB4", "number": "56", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:108", "name": "PB5", "number": "57", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:109", "name": "PB6", "number": "58", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:110", "name": "PB7", "number": "59", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:111", "name": "BOOT0", "number": "60", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
-    { "id": "pin_def:112", "name": "PB8", "number": "61", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:113", "name": "PB9", "number": "62", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
-    { "id": "pin_def:114", "name": "VSS", "number": "63", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
-    { "id": "pin_def:115", "name": "VDD", "number": "64", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
-    { "id": "pin_def:116", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" }
+    { "id": "pin_def:28", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:29", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:30", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:31", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:32", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:33", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:34", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:35", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:36", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:37", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:38", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:39", "name": "VBUS", "number": "1", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
+    { "id": "pin_def:40", "name": "D-", "number": "2", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:41", "name": "D+", "number": "3", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:42", "name": "ID", "number": "4", "connection_requirement": "MustNotConnect", "terminal_kind": "NoConnect" },
+    { "id": "pin_def:43", "name": "GND", "number": "5", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:44", "name": "Shield", "number": "6", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:45", "name": "I/O1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:46", "name": "GND", "number": "2", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:47", "name": "I/O2", "number": "3", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:48", "name": "I/O3", "number": "4", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:49", "name": "VBUS", "number": "5", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
+    { "id": "pin_def:50", "name": "I/O4", "number": "6", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:51", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:52", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:53", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:54", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:55", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:56", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:57", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:58", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:59", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:60", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:61", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:62", "name": "GND", "number": "2", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:63", "name": "3", "number": "3", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:64", "name": "GND", "number": "4", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:65", "name": "A", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:66", "name": "C", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:67", "name": "B", "number": "3", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:68", "name": "VTref", "number": "1", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
+    { "id": "pin_def:69", "name": "SWDIO", "number": "2", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:70", "name": "GND", "number": "3", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:71", "name": "SWCLK", "number": "4", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
+    { "id": "pin_def:72", "name": "GND", "number": "5", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:73", "name": "SWO", "number": "6", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:74", "name": "NC", "number": "7", "connection_requirement": "MustNotConnect", "terminal_kind": "NoConnect" },
+    { "id": "pin_def:75", "name": "TDI", "number": "8", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
+    { "id": "pin_def:76", "name": "GNDDetect", "number": "9", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:77", "name": "nRESET", "number": "10", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
+    { "id": "pin_def:78", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:79", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:80", "name": "3", "number": "3", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:81", "name": "4", "number": "4", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:82", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:83", "name": "2", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:84", "name": "A", "number": "1", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:85", "name": "K", "number": "2", "connection_requirement": "Required", "terminal_kind": "Passive", "direction": "Passive", "drive_kind": "Passive" },
+    { "id": "pin_def:86", "name": "VBAT", "number": "1", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
+    { "id": "pin_def:87", "name": "PC13", "number": "2", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:88", "name": "PC14", "number": "3", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:89", "name": "PC15", "number": "4", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:90", "name": "PH0", "number": "5", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
+    { "id": "pin_def:91", "name": "PH1", "number": "6", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
+    { "id": "pin_def:92", "name": "NRST", "number": "7", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
+    { "id": "pin_def:93", "name": "PC0", "number": "8", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:94", "name": "PC1", "number": "9", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:95", "name": "PC2", "number": "10", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:96", "name": "PC3", "number": "11", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:97", "name": "VSSA", "number": "12", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:98", "name": "VDDA", "number": "13", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
+    { "id": "pin_def:99", "name": "PA0", "number": "14", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:100", "name": "PA1", "number": "15", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:101", "name": "PA2", "number": "16", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:102", "name": "PA3", "number": "17", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:103", "name": "VSS", "number": "18", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:104", "name": "VDD", "number": "19", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
+    { "id": "pin_def:105", "name": "PA4", "number": "20", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:106", "name": "PA5", "number": "21", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:107", "name": "PA6", "number": "22", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:108", "name": "PA7", "number": "23", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:109", "name": "PC4", "number": "24", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:110", "name": "PC5", "number": "25", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:111", "name": "PB0", "number": "26", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:112", "name": "PB1", "number": "27", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:113", "name": "PB2", "number": "28", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:114", "name": "PB10", "number": "29", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:115", "name": "PB11", "number": "30", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:116", "name": "VCAP_1", "number": "31", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Output" },
+    { "id": "pin_def:117", "name": "VDD", "number": "32", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
+    { "id": "pin_def:118", "name": "PB12", "number": "33", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:119", "name": "PB13", "number": "34", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:120", "name": "PB14", "number": "35", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:121", "name": "PB15", "number": "36", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:122", "name": "PC6", "number": "37", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:123", "name": "PC7", "number": "38", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:124", "name": "PC8", "number": "39", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:125", "name": "PC9", "number": "40", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:126", "name": "PA8", "number": "41", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:127", "name": "PA9", "number": "42", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:128", "name": "PA10", "number": "43", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:129", "name": "PA11", "number": "44", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:130", "name": "PA12", "number": "45", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:131", "name": "PA13", "number": "46", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:132", "name": "VCAP_2", "number": "47", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Output" },
+    { "id": "pin_def:133", "name": "VDD", "number": "48", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
+    { "id": "pin_def:134", "name": "PA14", "number": "49", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:135", "name": "PA15", "number": "50", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:136", "name": "PC10", "number": "51", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:137", "name": "PC11", "number": "52", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:138", "name": "PC12", "number": "53", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:139", "name": "PD2", "number": "54", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:140", "name": "PB3", "number": "55", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:141", "name": "PB4", "number": "56", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:142", "name": "PB5", "number": "57", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:143", "name": "PB6", "number": "58", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:144", "name": "PB7", "number": "59", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:145", "name": "BOOT0", "number": "60", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Input", "signal_domain": "Digital" },
+    { "id": "pin_def:146", "name": "PB8", "number": "61", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:147", "name": "PB9", "number": "62", "connection_requirement": "Required", "terminal_kind": "Signal", "direction": "Bidirectional", "signal_domain": "Digital" },
+    { "id": "pin_def:148", "name": "VSS", "number": "63", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" },
+    { "id": "pin_def:149", "name": "VDD", "number": "64", "connection_requirement": "Required", "terminal_kind": "Power", "direction": "Input" },
+    { "id": "pin_def:150", "name": "1", "number": "1", "connection_requirement": "Required", "terminal_kind": "Ground", "direction": "Passive" }
   ],
   "component_definitions": [
     { "id": "component_def:0", "name": "ExternalSupply", "source": { "namespace": "volt.examples.stm32_usb_buck", "name": "external_supply", "version": "1.0.0" }, "pins": ["pin_def:0", "pin_def:1"], "properties": {
         "category": { "type": "string", "value": "validation_source" }
       } },
-    { "id": "component_def:1", "name": "Conn_01x04", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Conn_01x04", "version": "1.0.0" }, "pins": ["pin_def:2", "pin_def:3", "pin_def:4", "pin_def:5"], "properties": {
+    { "id": "component_def:1", "name": "Conn_01x04", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Conn_01x04", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Conn_01x04", "variant": "default" }], "pins": ["pin_def:2", "pin_def:3", "pin_def:4", "pin_def:5"], "properties": {
         "category": { "type": "string", "value": "connector" }
       } },
-    { "id": "component_def:2", "name": "AP1117-15", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "AP1117-15", "version": "1.0.0" }, "pins": ["pin_def:6", "pin_def:7", "pin_def:8"], "properties": {
+    { "id": "component_def:2", "name": "MP2359_Buck", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "MP2359_Buck", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:MP2359_Buck", "variant": "default" }], "pins": ["pin_def:6", "pin_def:7", "pin_def:8", "pin_def:9", "pin_def:10", "pin_def:11"], "properties": {
+        "category": { "type": "string", "value": "regulator" },
+        "topology": { "type": "string", "value": "buck" }
+      } },
+    { "id": "component_def:3", "name": "AP1117-33", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "AP1117-33", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:AP1117_33", "variant": "default" }], "pins": ["pin_def:12", "pin_def:13", "pin_def:14"], "properties": {
         "category": { "type": "string", "value": "regulator" }
       } },
-    { "id": "component_def:3", "name": "Capacitor", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Capacitor", "version": "1.0.0" }, "pins": ["pin_def:9", "pin_def:10"], "properties": {
-        "category": { "type": "string", "value": "passive" }
-      } },
-    { "id": "component_def:4", "name": "USB_B_Micro", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "USB_B_Micro", "version": "1.0.0" }, "pins": ["pin_def:11", "pin_def:12", "pin_def:13", "pin_def:14", "pin_def:15", "pin_def:16"], "properties": {
-        "category": { "type": "string", "value": "connector" }
-      } },
-    { "id": "component_def:5", "name": "USBLC6-4SC6", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "USBLC6-4SC6", "version": "1.0.0" }, "pins": ["pin_def:17", "pin_def:18", "pin_def:19", "pin_def:20", "pin_def:21", "pin_def:22"], "properties": {
+    { "id": "component_def:4", "name": "Polyfuse", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Polyfuse", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Polyfuse", "variant": "default" }], "pins": ["pin_def:15", "pin_def:16"], "properties": {
         "category": { "type": "string", "value": "protection" }
       } },
-    { "id": "component_def:6", "name": "Capacitor", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Capacitor", "version": "1.0.0" }, "pins": ["pin_def:23", "pin_def:24"], "properties": {
+    { "id": "component_def:5", "name": "Ferrite_Bead", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Ferrite_Bead", "version": "1.0.0" }, "pins": ["pin_def:17", "pin_def:18"], "properties": {
+        "category": { "type": "string", "value": "emi" }
+      } },
+    { "id": "component_def:6", "name": "Inductor_10uH", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Inductor_10uH", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Inductor_10uH", "variant": "default" }], "pins": ["pin_def:19", "pin_def:20"], "properties": {
         "category": { "type": "string", "value": "passive" }
       } },
-    { "id": "component_def:7", "name": "Resistor", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Resistor", "version": "1.0.0" }, "pins": ["pin_def:25", "pin_def:26"], "properties": {
+    { "id": "component_def:7", "name": "B5819W", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "B5819W", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:B5819W", "variant": "default" }], "pins": ["pin_def:21", "pin_def:22"], "properties": {
+        "category": { "type": "string", "value": "diode" },
+        "topology_role": { "type": "string", "value": "buck_catch" }
+      } },
+    { "id": "component_def:8", "name": "Capacitor_10uF", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Capacitor_10uF", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Capacitor_10uF", "variant": "default" }], "pins": ["pin_def:23", "pin_def:24"], "properties": {
         "category": { "type": "string", "value": "passive" }
       } },
-    { "id": "component_def:8", "name": "Crystal_GND24", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Crystal_GND24", "version": "1.0.0" }, "pins": ["pin_def:27", "pin_def:28", "pin_def:29", "pin_def:30"], "properties": {
+    { "id": "component_def:9", "name": "Capacitor_10nF", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Capacitor_10nF", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Capacitor_10nF", "variant": "default" }], "pins": ["pin_def:25", "pin_def:26"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:10", "name": "Capacitor_4u7", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Capacitor_4u7", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Capacitor_4u7", "variant": "default" }], "pins": ["pin_def:27", "pin_def:28"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:11", "name": "Capacitor", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Capacitor", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Capacitor", "variant": "default" }], "pins": ["pin_def:29", "pin_def:30"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:12", "name": "Resistor_100k", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Resistor_100k", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Resistor_100k", "variant": "default" }], "pins": ["pin_def:31", "pin_def:32"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:13", "name": "Resistor_47k", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Resistor_47k", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Resistor_47k", "variant": "default" }], "pins": ["pin_def:33", "pin_def:34"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:14", "name": "Resistor_68k", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Resistor_68k", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Resistor_68k", "variant": "default" }], "pins": ["pin_def:35", "pin_def:36"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:15", "name": "Resistor_15k", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Resistor_15k", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Resistor_15k", "variant": "default" }], "pins": ["pin_def:37", "pin_def:38"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:16", "name": "USB_B_Micro", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "USB_B_Micro", "version": "1.0.0" }, "pins": ["pin_def:39", "pin_def:40", "pin_def:41", "pin_def:42", "pin_def:43", "pin_def:44"], "properties": {
+        "category": { "type": "string", "value": "connector" }
+      } },
+    { "id": "component_def:17", "name": "USBLC6-4SC6", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "USBLC6-4SC6", "version": "1.0.0" }, "pins": ["pin_def:45", "pin_def:46", "pin_def:47", "pin_def:48", "pin_def:49", "pin_def:50"], "properties": {
+        "category": { "type": "string", "value": "protection" }
+      } },
+    { "id": "component_def:18", "name": "Capacitor", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Capacitor", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Capacitor", "variant": "default" }], "pins": ["pin_def:51", "pin_def:52"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:19", "name": "Capacitor_2u2", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Capacitor_2u2", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Capacitor_2u2", "variant": "default" }], "pins": ["pin_def:53", "pin_def:54"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:20", "name": "Capacitor_18pF", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Capacitor_18pF", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Capacitor_18pF", "variant": "default" }], "pins": ["pin_def:55", "pin_def:56"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:21", "name": "Resistor", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Resistor", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Resistor", "variant": "default" }], "pins": ["pin_def:57", "pin_def:58"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:22", "name": "Resistor_100k", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Resistor_100k", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Resistor_100k", "variant": "default" }], "pins": ["pin_def:59", "pin_def:60"], "properties": {
+        "category": { "type": "string", "value": "passive" }
+      } },
+    { "id": "component_def:23", "name": "Crystal_GND24", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Crystal_GND24", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Crystal_GND24", "variant": "default" }], "pins": ["pin_def:61", "pin_def:62", "pin_def:63", "pin_def:64"], "properties": {
         "category": { "type": "string", "value": "crystal" }
       } },
-    { "id": "component_def:9", "name": "SW_SPDT", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "SW_SPDT", "version": "1.0.0" }, "pins": ["pin_def:31", "pin_def:32", "pin_def:33"], "properties": {
+    { "id": "component_def:24", "name": "SW_SPDT", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "SW_SPDT", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:SW_SPDT", "variant": "default" }], "pins": ["pin_def:65", "pin_def:66", "pin_def:67"], "properties": {
         "category": { "type": "string", "value": "switch" }
       } },
-    { "id": "component_def:10", "name": "Conn_ARM_JTAG_SWD_10", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Conn_ARM_JTAG_SWD_10", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Conn_ARM_JTAG_SWD_10", "variant": "default" }], "pins": ["pin_def:34", "pin_def:35", "pin_def:36", "pin_def:37", "pin_def:38", "pin_def:39", "pin_def:40", "pin_def:41", "pin_def:42", "pin_def:43"], "properties": {
+    { "id": "component_def:25", "name": "Conn_ARM_JTAG_SWD_10", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Conn_ARM_JTAG_SWD_10", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Conn_ARM_JTAG_SWD_10", "variant": "default" }], "pins": ["pin_def:68", "pin_def:69", "pin_def:70", "pin_def:71", "pin_def:72", "pin_def:73", "pin_def:74", "pin_def:75", "pin_def:76", "pin_def:77"], "properties": {
         "category": { "type": "string", "value": "connector" }
       } },
-    { "id": "component_def:11", "name": "Conn_01x04", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Conn_01x04", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Conn_01x04", "variant": "default" }], "pins": ["pin_def:44", "pin_def:45", "pin_def:46", "pin_def:47"], "properties": {
+    { "id": "component_def:26", "name": "Conn_01x04", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Conn_01x04", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Conn_01x04", "variant": "default" }], "pins": ["pin_def:78", "pin_def:79", "pin_def:80", "pin_def:81"], "properties": {
         "category": { "type": "string", "value": "connector" }
       } },
-    { "id": "component_def:12", "name": "Resistor", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Resistor", "version": "1.0.0" }, "pins": ["pin_def:48", "pin_def:49"], "properties": {
+    { "id": "component_def:27", "name": "Resistor_330R", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "Resistor_330R", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:Resistor_330R", "variant": "default" }], "pins": ["pin_def:82", "pin_def:83"], "properties": {
         "category": { "type": "string", "value": "passive" }
       } },
-    { "id": "component_def:13", "name": "IndicatorLED", "source": { "namespace": "volt.examples.stm32_usb_buck", "name": "indicator_led", "version": "1.0.0" }, "pins": ["pin_def:50", "pin_def:51"], "properties": {
+    { "id": "component_def:28", "name": "IndicatorLED", "source": { "namespace": "volt.examples.stm32_usb_buck", "name": "indicator_led", "version": "1.0.0" }, "pins": ["pin_def:84", "pin_def:85"], "properties": {
         "category": { "type": "string", "value": "indicator" }
       } },
-    { "id": "component_def:14", "name": "STM32F405RGTx", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "STM32F405RGTx", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:STM32F405RGTx", "variant": "default" }], "pins": ["pin_def:52", "pin_def:53", "pin_def:54", "pin_def:55", "pin_def:56", "pin_def:57", "pin_def:58", "pin_def:59", "pin_def:60", "pin_def:61", "pin_def:62", "pin_def:63", "pin_def:64", "pin_def:65", "pin_def:66", "pin_def:67", "pin_def:68", "pin_def:69", "pin_def:70", "pin_def:71", "pin_def:72", "pin_def:73", "pin_def:74", "pin_def:75", "pin_def:76", "pin_def:77", "pin_def:78", "pin_def:79", "pin_def:80", "pin_def:81", "pin_def:82", "pin_def:83", "pin_def:84", "pin_def:85", "pin_def:86", "pin_def:87", "pin_def:88", "pin_def:89", "pin_def:90", "pin_def:91", "pin_def:92", "pin_def:93", "pin_def:94", "pin_def:95", "pin_def:96", "pin_def:97", "pin_def:98", "pin_def:99", "pin_def:100", "pin_def:101", "pin_def:102", "pin_def:103", "pin_def:104", "pin_def:105", "pin_def:106", "pin_def:107", "pin_def:108", "pin_def:109", "pin_def:110", "pin_def:111", "pin_def:112", "pin_def:113", "pin_def:114", "pin_def:115"], "properties": {
+    { "id": "component_def:29", "name": "STM32F405RGTx", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "STM32F405RGTx", "version": "1.0.0" }, "schematic_symbols": [{ "name": "volt.benchmarks.stm32_usb_buck:STM32F405RGTx", "variant": "default" }], "pins": ["pin_def:86", "pin_def:87", "pin_def:88", "pin_def:89", "pin_def:90", "pin_def:91", "pin_def:92", "pin_def:93", "pin_def:94", "pin_def:95", "pin_def:96", "pin_def:97", "pin_def:98", "pin_def:99", "pin_def:100", "pin_def:101", "pin_def:102", "pin_def:103", "pin_def:104", "pin_def:105", "pin_def:106", "pin_def:107", "pin_def:108", "pin_def:109", "pin_def:110", "pin_def:111", "pin_def:112", "pin_def:113", "pin_def:114", "pin_def:115", "pin_def:116", "pin_def:117", "pin_def:118", "pin_def:119", "pin_def:120", "pin_def:121", "pin_def:122", "pin_def:123", "pin_def:124", "pin_def:125", "pin_def:126", "pin_def:127", "pin_def:128", "pin_def:129", "pin_def:130", "pin_def:131", "pin_def:132", "pin_def:133", "pin_def:134", "pin_def:135", "pin_def:136", "pin_def:137", "pin_def:138", "pin_def:139", "pin_def:140", "pin_def:141", "pin_def:142", "pin_def:143", "pin_def:144", "pin_def:145", "pin_def:146", "pin_def:147", "pin_def:148", "pin_def:149"], "properties": {
         "category": { "type": "string", "value": "mcu" },
         "package": { "type": "string", "value": "LQFP-64" }
       } },
-    { "id": "component_def:15", "name": "MountingHole_Pad", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "MountingHole_Pad", "version": "1.0.0" }, "pins": ["pin_def:116"], "properties": {
+    { "id": "component_def:30", "name": "MountingHole_Pad", "source": { "namespace": "volt.benchmarks.stm32_usb_buck", "name": "MountingHole_Pad", "version": "1.0.0" }, "pins": ["pin_def:150"], "properties": {
         "category": { "type": "string", "value": "mechanical" }
       } }
   ],
   "components": [
     { "id": "component:0", "definition": "component_def:0", "reference": "VIN_SRC", "properties": {
+        "pcb_reference": { "type": "string", "value": "J1" },
         "value": { "type": "string", "value": "12 V input" }
       }, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Generic", "part_number": "HDR-1x02-2.54mm" },
@@ -185,6 +267,7 @@
       "properties": {}
     } },
     { "id": "component:1", "definition": "component_def:1", "reference": "PWR/J", "properties": {
+        "pcb_reference": { "type": "string", "value": "J2" },
         "value": { "type": "string", "value": "Power input" }
       }, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Sullins", "part_number": "PEC04SAAN" },
@@ -198,128 +281,232 @@
       ],
       "properties": {}
     } },
-    { "id": "component:2", "definition": "component_def:2", "reference": "PWR/U5", "properties": {
-        "value": { "type": "string", "value": "AP1117-5.0" }
+    { "id": "component:2", "definition": "component_def:4", "reference": "PWR/F1", "properties": {
+        "pcb_reference": { "type": "string", "value": "F1" },
+        "value": { "type": "string", "value": "250 mA polyfuse" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Diodes Incorporated", "part_number": "AP1117E15G-13" },
-      "package": "SOT-223-3",
-      "footprint": { "library": "Package_TO_SOT_SMD", "name": "SOT-223-3_TabPin2" },
+      "manufacturer_part": { "manufacturer": "Bourns", "part_number": "MF-NSMF020-2" },
+      "package": "1206 resettable fuse",
+      "footprint": { "library": "protection", "name": "Fuse_1206_3216Metric" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:6", "pad": "1" },
-        { "pin": "pin_def:7", "pad": "2" },
-        { "pin": "pin_def:7", "pad": "4" },
-        { "pin": "pin_def:8", "pad": "3" }
+        { "pin": "pin_def:15", "pad": "1" },
+        { "pin": "pin_def:16", "pad": "2" }
       ],
       "properties": {}
     } },
-    { "id": "component:3", "definition": "component_def:2", "reference": "PWR/U3V3", "properties": {
-        "value": { "type": "string", "value": "AP1117-3.3" }
+    { "id": "component:3", "definition": "component_def:5", "reference": "PWR/FB1", "properties": {
+        "pcb_reference": { "type": "string", "value": "FB1" },
+        "value": { "type": "string", "value": "600 Ohm @ 100 MHz" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Diodes Incorporated", "part_number": "AP1117E15G-13" },
-      "package": "SOT-223-3",
-      "footprint": { "library": "Package_TO_SOT_SMD", "name": "SOT-223-3_TabPin2" },
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "BLM18AG601SN1D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "L_0603_1608Metric" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:6", "pad": "1" },
-        { "pin": "pin_def:7", "pad": "2" },
-        { "pin": "pin_def:7", "pad": "4" },
-        { "pin": "pin_def:8", "pad": "3" }
+        { "pin": "pin_def:17", "pad": "1" },
+        { "pin": "pin_def:18", "pad": "2" }
       ],
       "properties": {}
     } },
-    { "id": "component:4", "definition": "component_def:3", "reference": "PWR/CIN", "properties": {
-        "value": { "type": "string", "value": "4.7 uF" }
+    { "id": "component:4", "definition": "component_def:2", "reference": "PWR/U5", "properties": {
+        "pcb_reference": { "type": "string", "value": "U2" },
+        "value": { "type": "string", "value": "MP2359 5V buck" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
-      "package": "0603",
-      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:9", "pad": "1" },
-        { "pin": "pin_def:10", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
-      }
-    } },
-    { "id": "component:5", "definition": "component_def:3", "reference": "PWR/C5V", "properties": {
-        "value": { "type": "string", "value": "4.7 uF" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
-      "package": "0603",
-      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:9", "pad": "1" },
-        { "pin": "pin_def:10", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
-      }
-    } },
-    { "id": "component:6", "definition": "component_def:3", "reference": "PWR/C3V3", "properties": {
-        "value": { "type": "string", "value": "4.7 uF" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
-      "package": "0603",
-      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:9", "pad": "1" },
-        { "pin": "pin_def:10", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
-      }
-    } },
-    { "id": "component:7", "definition": "component_def:3", "reference": "PWR/CVDDA", "properties": {
-        "pcb_reference": { "type": "string", "value": "C4" },
-        "value": { "type": "string", "value": "100 nF" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
-      "package": "0603",
-      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:9", "pad": "1" },
-        { "pin": "pin_def:10", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
-      }
-    } },
-    { "id": "component:8", "definition": "component_def:4", "reference": "USB/J1", "properties": {
-        "value": { "type": "string", "value": "USB Micro-B" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Molex", "part_number": "105017-0001" },
-      "package": "Micro-USB-B receptacle",
-      "footprint": { "library": "connectors", "name": "USB_Micro-B_Receptacle" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:11", "pad": "1" },
-        { "pin": "pin_def:12", "pad": "2" },
-        { "pin": "pin_def:13", "pad": "3" },
-        { "pin": "pin_def:14", "pad": "4" },
-        { "pin": "pin_def:15", "pad": "5" },
-        { "pin": "pin_def:16", "pad": "6" }
-      ],
-      "properties": {}
-    } },
-    { "id": "component:9", "definition": "component_def:5", "reference": "USB/U1", "properties": {
-        "value": { "type": "string", "value": "USBLC6-4SC6" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "STMicroelectronics", "part_number": "USBLC6-4SC6" },
+      "manufacturer_part": { "manufacturer": "Monolithic Power Systems", "part_number": "MP2359DJ-LF-Z" },
       "package": "SOT-23-6",
       "footprint": { "library": "Package_TO_SOT_SMD", "name": "SOT-23-6" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:17", "pad": "1" },
-        { "pin": "pin_def:18", "pad": "2" },
-        { "pin": "pin_def:19", "pad": "3" },
-        { "pin": "pin_def:20", "pad": "4" },
-        { "pin": "pin_def:21", "pad": "5" },
-        { "pin": "pin_def:22", "pad": "6" }
+        { "pin": "pin_def:6", "pad": "1" },
+        { "pin": "pin_def:7", "pad": "2" },
+        { "pin": "pin_def:8", "pad": "3" },
+        { "pin": "pin_def:9", "pad": "4" },
+        { "pin": "pin_def:10", "pad": "5" },
+        { "pin": "pin_def:11", "pad": "6" }
       ],
       "properties": {}
     } },
-    { "id": "component:10", "definition": "component_def:6", "reference": "SUPPORT/CVDD", "properties": {
+    { "id": "component:5", "definition": "component_def:6", "reference": "PWR/L1", "properties": {
+        "pcb_reference": { "type": "string", "value": "L1" },
+        "value": { "type": "string", "value": "10 uH" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Bourns", "part_number": "SRN4018-100M" },
+      "package": "4.0x4.0mm shielded inductor",
+      "footprint": { "library": "inductors", "name": "L_4.0x4.0mm" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:19", "pad": "1" },
+        { "pin": "pin_def:20", "pad": "2" }
+      ],
+      "properties": {}
+    } },
+    { "id": "component:6", "definition": "component_def:7", "reference": "PWR/DSW", "properties": {
+        "pcb_reference": { "type": "string", "value": "D1" },
+        "value": { "type": "string", "value": "B5819W" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Diodes Incorporated", "part_number": "B5819W-7-F" },
+      "package": "SOD-123",
+      "footprint": { "library": "diodes", "name": "D_SOD-123" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:21", "pad": "1" },
+        { "pin": "pin_def:22", "pad": "2" }
+      ],
+      "properties": {}
+    } },
+    { "id": "component:7", "definition": "component_def:8", "reference": "PWR/CIN", "properties": {
+        "pcb_reference": { "type": "string", "value": "C1" },
+        "value": { "type": "string", "value": "10 uF" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Samsung Electro-Mechanics", "part_number": "CL31A106KAHNNNE" },
+      "package": "1206",
+      "footprint": { "library": "passives", "name": "C_1206_3216Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:23", "pad": "1" },
+        { "pin": "pin_def:24", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 25 }
+      }
+    } },
+    { "id": "component:8", "definition": "component_def:9", "reference": "PWR/CBST", "properties": {
+        "pcb_reference": { "type": "string", "value": "C2" },
+        "value": { "type": "string", "value": "10 nF" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71H103KA01D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:25", "pad": "1" },
+        { "pin": "pin_def:26", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 50 }
+      }
+    } },
+    { "id": "component:9", "definition": "component_def:8", "reference": "PWR/C5V", "properties": {
+        "pcb_reference": { "type": "string", "value": "C3" },
+        "value": { "type": "string", "value": "10 uF" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Samsung Electro-Mechanics", "part_number": "CL31A106KAHNNNE" },
+      "package": "1206",
+      "footprint": { "library": "passives", "name": "C_1206_3216Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:23", "pad": "1" },
+        { "pin": "pin_def:24", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 25 }
+      }
+    } },
+    { "id": "component:10", "definition": "component_def:12", "reference": "PWR/REN_TOP", "properties": {
+        "pcb_reference": { "type": "string", "value": "R1" },
+        "value": { "type": "string", "value": "100 kOhm" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-07100KL" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:31", "pad": "1" },
+        { "pin": "pin_def:32", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }
+      }
+    } },
+    { "id": "component:11", "definition": "component_def:13", "reference": "PWR/REN_BOT", "properties": {
+        "pcb_reference": { "type": "string", "value": "R2" },
+        "value": { "type": "string", "value": "47 kOhm" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-0747KL" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:33", "pad": "1" },
+        { "pin": "pin_def:34", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }
+      }
+    } },
+    { "id": "component:12", "definition": "component_def:14", "reference": "PWR/RFB_TOP", "properties": {
+        "pcb_reference": { "type": "string", "value": "R3" },
+        "value": { "type": "string", "value": "68 kOhm" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-0768KL" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:35", "pad": "1" },
+        { "pin": "pin_def:36", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }
+      }
+    } },
+    { "id": "component:13", "definition": "component_def:15", "reference": "PWR/RFB_BOT", "properties": {
+        "pcb_reference": { "type": "string", "value": "R4" },
+        "value": { "type": "string", "value": "15 kOhm" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-0715KL" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:37", "pad": "1" },
+        { "pin": "pin_def:38", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }
+      }
+    } },
+    { "id": "component:14", "definition": "component_def:3", "reference": "PWR/U3V3", "properties": {
+        "pcb_reference": { "type": "string", "value": "U3" },
+        "value": { "type": "string", "value": "AP1117-3.3" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Diodes Incorporated", "part_number": "AP1117E33G-13" },
+      "package": "SOT-223-3",
+      "footprint": { "library": "Package_TO_SOT_SMD", "name": "SOT-223-3_TabPin2" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:12", "pad": "1" },
+        { "pin": "pin_def:13", "pad": "2" },
+        { "pin": "pin_def:13", "pad": "4" },
+        { "pin": "pin_def:14", "pad": "3" }
+      ],
+      "properties": {}
+    } },
+    { "id": "component:15", "definition": "component_def:10", "reference": "PWR/C3V3", "properties": {
+        "pcb_reference": { "type": "string", "value": "C4" },
+        "value": { "type": "string", "value": "4.7 uF" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R60J475ME19D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:27", "pad": "1" },
+        { "pin": "pin_def:28", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 6.2999999999999998 }
+      }
+    } },
+    { "id": "component:16", "definition": "component_def:5", "reference": "PWR/FBVDDA", "properties": {
+        "pcb_reference": { "type": "string", "value": "FB2" },
+        "value": { "type": "string", "value": "600 Ohm @ 100 MHz" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "BLM18AG601SN1D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "L_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:17", "pad": "1" },
+        { "pin": "pin_def:18", "pad": "2" }
+      ],
+      "properties": {}
+    } },
+    { "id": "component:17", "definition": "component_def:11", "reference": "PWR/CVDDA", "properties": {
         "pcb_reference": { "type": "string", "value": "C5" },
         "value": { "type": "string", "value": "100 nF" }
       }, "selected_physical_part": {
@@ -327,79 +514,129 @@
       "package": "0603",
       "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:23", "pad": "1" },
-        { "pin": "pin_def:24", "pad": "2" }
+        { "pin": "pin_def:29", "pad": "1" },
+        { "pin": "pin_def:30", "pad": "2" }
       ],
       "properties": {},
       "electrical_attributes": {
         "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
       }
     } },
-    { "id": "component:11", "definition": "component_def:6", "reference": "SUPPORT/CVCAP1", "properties": {
+    { "id": "component:18", "definition": "component_def:16", "reference": "USB/J1", "properties": {
+        "pcb_reference": { "type": "string", "value": "J3" },
+        "value": { "type": "string", "value": "USB Micro-B" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Molex", "part_number": "105017-0001" },
+      "package": "Micro-USB-B receptacle",
+      "footprint": { "library": "connectors", "name": "USB_Micro-B_Receptacle" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:39", "pad": "1" },
+        { "pin": "pin_def:40", "pad": "2" },
+        { "pin": "pin_def:41", "pad": "3" },
+        { "pin": "pin_def:42", "pad": "4" },
+        { "pin": "pin_def:43", "pad": "5" },
+        { "pin": "pin_def:44", "pad": "6" }
+      ],
+      "properties": {}
+    } },
+    { "id": "component:19", "definition": "component_def:17", "reference": "USB/U1", "properties": {
+        "pcb_reference": { "type": "string", "value": "U4" },
+        "value": { "type": "string", "value": "USBLC6-4SC6" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "STMicroelectronics", "part_number": "USBLC6-4SC6" },
+      "package": "SOT-23-6",
+      "footprint": { "library": "Package_TO_SOT_SMD", "name": "SOT-23-6" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:45", "pad": "1" },
+        { "pin": "pin_def:46", "pad": "2" },
+        { "pin": "pin_def:47", "pad": "3" },
+        { "pin": "pin_def:48", "pad": "4" },
+        { "pin": "pin_def:49", "pad": "5" },
+        { "pin": "pin_def:50", "pad": "6" }
+      ],
+      "properties": {}
+    } },
+    { "id": "component:20", "definition": "component_def:18", "reference": "SUPPORT/CVDD", "properties": {
         "pcb_reference": { "type": "string", "value": "C6" },
-        "value": { "type": "string", "value": "2.2 uF" }
+        "value": { "type": "string", "value": "100 nF" }
       }, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
       "package": "0603",
       "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:23", "pad": "1" },
-        { "pin": "pin_def:24", "pad": "2" }
+        { "pin": "pin_def:51", "pad": "1" },
+        { "pin": "pin_def:52", "pad": "2" }
       ],
       "properties": {},
       "electrical_attributes": {
         "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
       }
     } },
-    { "id": "component:12", "definition": "component_def:6", "reference": "SUPPORT/CVCAP2", "properties": {
+    { "id": "component:21", "definition": "component_def:19", "reference": "SUPPORT/CVCAP1", "properties": {
         "pcb_reference": { "type": "string", "value": "C7" },
         "value": { "type": "string", "value": "2.2 uF" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R61A225KE34D" },
       "package": "0603",
       "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:23", "pad": "1" },
-        { "pin": "pin_def:24", "pad": "2" }
+        { "pin": "pin_def:53", "pad": "1" },
+        { "pin": "pin_def:54", "pad": "2" }
       ],
       "properties": {},
       "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 10 }
       }
     } },
-    { "id": "component:13", "definition": "component_def:7", "reference": "SUPPORT/RRESET", "properties": {
-        "pcb_reference": { "type": "string", "value": "R1" },
+    { "id": "component:22", "definition": "component_def:19", "reference": "SUPPORT/CVCAP2", "properties": {
+        "pcb_reference": { "type": "string", "value": "C8" },
+        "value": { "type": "string", "value": "2.2 uF" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R61A225KE34D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:53", "pad": "1" },
+        { "pin": "pin_def:54", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 10 }
+      }
+    } },
+    { "id": "component:23", "definition": "component_def:21", "reference": "SUPPORT/RRESET", "properties": {
+        "pcb_reference": { "type": "string", "value": "R5" },
         "value": { "type": "string", "value": "10 kOhm" }
       }, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-0710KL" },
       "package": "0603",
       "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:25", "pad": "1" },
-        { "pin": "pin_def:26", "pad": "2" }
+        { "pin": "pin_def:57", "pad": "1" },
+        { "pin": "pin_def:58", "pad": "2" }
       ],
       "properties": {},
       "electrical_attributes": {
         "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }
       }
     } },
-    { "id": "component:14", "definition": "component_def:7", "reference": "SUPPORT/RBOOT", "properties": {
-        "pcb_reference": { "type": "string", "value": "R2" },
+    { "id": "component:24", "definition": "component_def:22", "reference": "SUPPORT/RBOOT", "properties": {
+        "pcb_reference": { "type": "string", "value": "R6" },
         "value": { "type": "string", "value": "100 kOhm" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-0710KL" },
+      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-07100KL" },
       "package": "0603",
       "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:25", "pad": "1" },
-        { "pin": "pin_def:26", "pad": "2" }
+        { "pin": "pin_def:59", "pad": "1" },
+        { "pin": "pin_def:60", "pad": "2" }
       ],
       "properties": {},
       "electrical_attributes": {
         "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }
       }
     } },
-    { "id": "component:15", "definition": "component_def:9", "reference": "SUPPORT/SWBOOT", "properties": {
+    { "id": "component:25", "definition": "component_def:24", "reference": "SUPPORT/SWBOOT", "properties": {
         "pcb_reference": { "type": "string", "value": "SW1" },
         "value": { "type": "string", "value": "BOOT0" }
       }, "selected_physical_part": {
@@ -407,13 +644,13 @@
       "package": "SMD slide switch",
       "footprint": { "library": "switches", "name": "SW_SPDT_PCM12" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:31", "pad": "1" },
-        { "pin": "pin_def:32", "pad": "2" },
-        { "pin": "pin_def:33", "pad": "3" }
+        { "pin": "pin_def:65", "pad": "1" },
+        { "pin": "pin_def:66", "pad": "2" },
+        { "pin": "pin_def:67", "pad": "3" }
       ],
       "properties": {}
     } },
-    { "id": "component:16", "definition": "component_def:8", "reference": "SUPPORT/Y1", "properties": {
+    { "id": "component:26", "definition": "component_def:23", "reference": "SUPPORT/Y1", "properties": {
         "pcb_reference": { "type": "string", "value": "Y1" },
         "value": { "type": "string", "value": "8 MHz" }
       }, "selected_physical_part": {
@@ -421,213 +658,217 @@
       "package": "3.2x2.5mm 4-pad",
       "footprint": { "library": "crystals", "name": "Crystal_3225_4Pad" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:27", "pad": "1" },
-        { "pin": "pin_def:28", "pad": "2" },
-        { "pin": "pin_def:29", "pad": "3" },
-        { "pin": "pin_def:30", "pad": "4" }
+        { "pin": "pin_def:61", "pad": "1" },
+        { "pin": "pin_def:62", "pad": "2" },
+        { "pin": "pin_def:63", "pad": "3" },
+        { "pin": "pin_def:64", "pad": "4" }
       ],
       "properties": {}
     } },
-    { "id": "component:17", "definition": "component_def:6", "reference": "SUPPORT/CHSEIN", "properties": {
-        "pcb_reference": { "type": "string", "value": "C8" },
-        "value": { "type": "string", "value": "18 pF" }
-      }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
-      "package": "0603",
-      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
-      "pin_pad_mappings": [
-        { "pin": "pin_def:23", "pad": "1" },
-        { "pin": "pin_def:24", "pad": "2" }
-      ],
-      "properties": {},
-      "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
-      }
-    } },
-    { "id": "component:18", "definition": "component_def:6", "reference": "SUPPORT/CHSEOUT", "properties": {
+    { "id": "component:27", "definition": "component_def:20", "reference": "SUPPORT/CHSEIN", "properties": {
         "pcb_reference": { "type": "string", "value": "C9" },
         "value": { "type": "string", "value": "18 pF" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM1885C1H180JA01D" },
       "package": "0603",
       "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:23", "pad": "1" },
-        { "pin": "pin_def:24", "pad": "2" }
+        { "pin": "pin_def:55", "pad": "1" },
+        { "pin": "pin_def:56", "pad": "2" }
       ],
       "properties": {},
       "electrical_attributes": {
-        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 50 }
       }
     } },
-    { "id": "component:19", "definition": "component_def:10", "reference": "J2", "properties": {
+    { "id": "component:28", "definition": "component_def:20", "reference": "SUPPORT/CHSEOUT", "properties": {
+        "pcb_reference": { "type": "string", "value": "C10" },
+        "value": { "type": "string", "value": "18 pF" }
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM1885C1H180JA01D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:55", "pad": "1" },
+        { "pin": "pin_def:56", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 50 }
+      }
+    } },
+    { "id": "component:29", "definition": "component_def:25", "reference": "J2", "properties": {
+        "pcb_reference": { "type": "string", "value": "J4" },
         "value": { "type": "string", "value": "SWD 10-pin" }
       }, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Samtec", "part_number": "FTSH-105-01-L-DV-K" },
       "package": "2x05 1.27mm",
       "footprint": { "library": "connectors", "name": "PinHeader_2x05_P1.27mm_Vertical_SmallPads" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:34", "pad": "1" },
-        { "pin": "pin_def:35", "pad": "2" },
-        { "pin": "pin_def:36", "pad": "3" },
-        { "pin": "pin_def:37", "pad": "4" },
-        { "pin": "pin_def:38", "pad": "5" },
-        { "pin": "pin_def:39", "pad": "6" },
-        { "pin": "pin_def:40", "pad": "7" },
-        { "pin": "pin_def:41", "pad": "8" },
-        { "pin": "pin_def:42", "pad": "9" },
-        { "pin": "pin_def:43", "pad": "10" }
+        { "pin": "pin_def:68", "pad": "1" },
+        { "pin": "pin_def:69", "pad": "2" },
+        { "pin": "pin_def:70", "pad": "3" },
+        { "pin": "pin_def:71", "pad": "4" },
+        { "pin": "pin_def:72", "pad": "5" },
+        { "pin": "pin_def:73", "pad": "6" },
+        { "pin": "pin_def:74", "pad": "7" },
+        { "pin": "pin_def:75", "pad": "8" },
+        { "pin": "pin_def:76", "pad": "9" },
+        { "pin": "pin_def:77", "pad": "10" }
       ],
       "properties": {}
     } },
-    { "id": "component:20", "definition": "component_def:11", "reference": "J3", "properties": {
+    { "id": "component:30", "definition": "component_def:26", "reference": "J3", "properties": {
+        "pcb_reference": { "type": "string", "value": "J5" },
         "value": { "type": "string", "value": "GPIO 1x4" }
       }, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Sullins", "part_number": "PEC04SAAN" },
       "package": "1x04 2.54mm",
       "footprint": { "library": "connectors", "name": "PinHeader_1x04_P2.54mm_Vertical" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:44", "pad": "1" },
-        { "pin": "pin_def:45", "pad": "2" },
-        { "pin": "pin_def:46", "pad": "3" },
-        { "pin": "pin_def:47", "pad": "4" }
+        { "pin": "pin_def:78", "pad": "1" },
+        { "pin": "pin_def:79", "pad": "2" },
+        { "pin": "pin_def:80", "pad": "3" },
+        { "pin": "pin_def:81", "pad": "4" }
       ],
       "properties": {}
     } },
-    { "id": "component:21", "definition": "component_def:12", "reference": "LED_STATUS/R", "properties": {
+    { "id": "component:31", "definition": "component_def:27", "reference": "LED_STATUS/R", "properties": {
+        "pcb_reference": { "type": "string", "value": "R7" },
         "value": { "type": "string", "value": "330 Ohm" }
       }, "selected_physical_part": {
-      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-0710KL" },
+      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-07330RL" },
       "package": "0603",
       "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:48", "pad": "1" },
-        { "pin": "pin_def:49", "pad": "2" }
+        { "pin": "pin_def:82", "pad": "1" },
+        { "pin": "pin_def:83", "pad": "2" }
       ],
       "properties": {},
       "electrical_attributes": {
         "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }
       }
     } },
-    { "id": "component:22", "definition": "component_def:13", "reference": "LED_STATUS/D", "properties": {
+    { "id": "component:32", "definition": "component_def:28", "reference": "LED_STATUS/D", "properties": {
+        "pcb_reference": { "type": "string", "value": "D2" },
         "value": { "type": "string", "value": "Green LED" }
       }, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Lite-On", "part_number": "LTST-C190KGKT" },
       "package": "0603 LED",
       "footprint": { "library": "leds", "name": "LED_0603_1608Metric" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:50", "pad": "1" },
-        { "pin": "pin_def:51", "pad": "2" }
+        { "pin": "pin_def:84", "pad": "1" },
+        { "pin": "pin_def:85", "pad": "2" }
       ],
       "properties": {}
     } },
-    { "id": "component:23", "definition": "component_def:14", "reference": "U1", "properties": {
+    { "id": "component:33", "definition": "component_def:29", "reference": "U1", "properties": {
         "value": { "type": "string", "value": "STM32F405RGT6" }
       }, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "STMicroelectronics", "part_number": "STM32F405RGT6" },
       "package": "LQFP-64",
       "footprint": { "library": "Package_QFP", "name": "LQFP-64_10x10mm_P0.5mm" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:52", "pad": "1" },
-        { "pin": "pin_def:53", "pad": "2" },
-        { "pin": "pin_def:54", "pad": "3" },
-        { "pin": "pin_def:55", "pad": "4" },
-        { "pin": "pin_def:56", "pad": "5" },
-        { "pin": "pin_def:57", "pad": "6" },
-        { "pin": "pin_def:58", "pad": "7" },
-        { "pin": "pin_def:59", "pad": "8" },
-        { "pin": "pin_def:60", "pad": "9" },
-        { "pin": "pin_def:61", "pad": "10" },
-        { "pin": "pin_def:62", "pad": "11" },
-        { "pin": "pin_def:63", "pad": "12" },
-        { "pin": "pin_def:64", "pad": "13" },
-        { "pin": "pin_def:65", "pad": "14" },
-        { "pin": "pin_def:66", "pad": "15" },
-        { "pin": "pin_def:67", "pad": "16" },
-        { "pin": "pin_def:68", "pad": "17" },
-        { "pin": "pin_def:69", "pad": "18" },
-        { "pin": "pin_def:70", "pad": "19" },
-        { "pin": "pin_def:71", "pad": "20" },
-        { "pin": "pin_def:72", "pad": "21" },
-        { "pin": "pin_def:73", "pad": "22" },
-        { "pin": "pin_def:74", "pad": "23" },
-        { "pin": "pin_def:75", "pad": "24" },
-        { "pin": "pin_def:76", "pad": "25" },
-        { "pin": "pin_def:77", "pad": "26" },
-        { "pin": "pin_def:78", "pad": "27" },
-        { "pin": "pin_def:79", "pad": "28" },
-        { "pin": "pin_def:80", "pad": "29" },
-        { "pin": "pin_def:81", "pad": "30" },
-        { "pin": "pin_def:82", "pad": "31" },
-        { "pin": "pin_def:83", "pad": "32" },
-        { "pin": "pin_def:84", "pad": "33" },
-        { "pin": "pin_def:85", "pad": "34" },
-        { "pin": "pin_def:86", "pad": "35" },
-        { "pin": "pin_def:87", "pad": "36" },
-        { "pin": "pin_def:88", "pad": "37" },
-        { "pin": "pin_def:89", "pad": "38" },
-        { "pin": "pin_def:90", "pad": "39" },
-        { "pin": "pin_def:91", "pad": "40" },
-        { "pin": "pin_def:92", "pad": "41" },
-        { "pin": "pin_def:93", "pad": "42" },
-        { "pin": "pin_def:94", "pad": "43" },
-        { "pin": "pin_def:95", "pad": "44" },
-        { "pin": "pin_def:96", "pad": "45" },
-        { "pin": "pin_def:97", "pad": "46" },
-        { "pin": "pin_def:98", "pad": "47" },
-        { "pin": "pin_def:99", "pad": "48" },
-        { "pin": "pin_def:100", "pad": "49" },
-        { "pin": "pin_def:101", "pad": "50" },
-        { "pin": "pin_def:102", "pad": "51" },
-        { "pin": "pin_def:103", "pad": "52" },
-        { "pin": "pin_def:104", "pad": "53" },
-        { "pin": "pin_def:105", "pad": "54" },
-        { "pin": "pin_def:106", "pad": "55" },
-        { "pin": "pin_def:107", "pad": "56" },
-        { "pin": "pin_def:108", "pad": "57" },
-        { "pin": "pin_def:109", "pad": "58" },
-        { "pin": "pin_def:110", "pad": "59" },
-        { "pin": "pin_def:111", "pad": "60" },
-        { "pin": "pin_def:112", "pad": "61" },
-        { "pin": "pin_def:113", "pad": "62" },
-        { "pin": "pin_def:114", "pad": "63" },
-        { "pin": "pin_def:115", "pad": "64" }
+        { "pin": "pin_def:86", "pad": "1" },
+        { "pin": "pin_def:87", "pad": "2" },
+        { "pin": "pin_def:88", "pad": "3" },
+        { "pin": "pin_def:89", "pad": "4" },
+        { "pin": "pin_def:90", "pad": "5" },
+        { "pin": "pin_def:91", "pad": "6" },
+        { "pin": "pin_def:92", "pad": "7" },
+        { "pin": "pin_def:93", "pad": "8" },
+        { "pin": "pin_def:94", "pad": "9" },
+        { "pin": "pin_def:95", "pad": "10" },
+        { "pin": "pin_def:96", "pad": "11" },
+        { "pin": "pin_def:97", "pad": "12" },
+        { "pin": "pin_def:98", "pad": "13" },
+        { "pin": "pin_def:99", "pad": "14" },
+        { "pin": "pin_def:100", "pad": "15" },
+        { "pin": "pin_def:101", "pad": "16" },
+        { "pin": "pin_def:102", "pad": "17" },
+        { "pin": "pin_def:103", "pad": "18" },
+        { "pin": "pin_def:104", "pad": "19" },
+        { "pin": "pin_def:105", "pad": "20" },
+        { "pin": "pin_def:106", "pad": "21" },
+        { "pin": "pin_def:107", "pad": "22" },
+        { "pin": "pin_def:108", "pad": "23" },
+        { "pin": "pin_def:109", "pad": "24" },
+        { "pin": "pin_def:110", "pad": "25" },
+        { "pin": "pin_def:111", "pad": "26" },
+        { "pin": "pin_def:112", "pad": "27" },
+        { "pin": "pin_def:113", "pad": "28" },
+        { "pin": "pin_def:114", "pad": "29" },
+        { "pin": "pin_def:115", "pad": "30" },
+        { "pin": "pin_def:116", "pad": "31" },
+        { "pin": "pin_def:117", "pad": "32" },
+        { "pin": "pin_def:118", "pad": "33" },
+        { "pin": "pin_def:119", "pad": "34" },
+        { "pin": "pin_def:120", "pad": "35" },
+        { "pin": "pin_def:121", "pad": "36" },
+        { "pin": "pin_def:122", "pad": "37" },
+        { "pin": "pin_def:123", "pad": "38" },
+        { "pin": "pin_def:124", "pad": "39" },
+        { "pin": "pin_def:125", "pad": "40" },
+        { "pin": "pin_def:126", "pad": "41" },
+        { "pin": "pin_def:127", "pad": "42" },
+        { "pin": "pin_def:128", "pad": "43" },
+        { "pin": "pin_def:129", "pad": "44" },
+        { "pin": "pin_def:130", "pad": "45" },
+        { "pin": "pin_def:131", "pad": "46" },
+        { "pin": "pin_def:132", "pad": "47" },
+        { "pin": "pin_def:133", "pad": "48" },
+        { "pin": "pin_def:134", "pad": "49" },
+        { "pin": "pin_def:135", "pad": "50" },
+        { "pin": "pin_def:136", "pad": "51" },
+        { "pin": "pin_def:137", "pad": "52" },
+        { "pin": "pin_def:138", "pad": "53" },
+        { "pin": "pin_def:139", "pad": "54" },
+        { "pin": "pin_def:140", "pad": "55" },
+        { "pin": "pin_def:141", "pad": "56" },
+        { "pin": "pin_def:142", "pad": "57" },
+        { "pin": "pin_def:143", "pad": "58" },
+        { "pin": "pin_def:144", "pad": "59" },
+        { "pin": "pin_def:145", "pad": "60" },
+        { "pin": "pin_def:146", "pad": "61" },
+        { "pin": "pin_def:147", "pad": "62" },
+        { "pin": "pin_def:148", "pad": "63" },
+        { "pin": "pin_def:149", "pad": "64" }
       ],
       "properties": {}
     } },
-    { "id": "component:24", "definition": "component_def:15", "reference": "H1", "properties": {}, "selected_physical_part": {
+    { "id": "component:34", "definition": "component_def:30", "reference": "H1", "properties": {}, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Generic", "part_number": "MH-PAD-3.2MM" },
       "package": "plated mounting pad",
       "footprint": { "library": "mechanical", "name": "MountingHole_3.2mm_Pad_6.0mm" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:116", "pad": "1" }
+        { "pin": "pin_def:150", "pad": "1" }
       ],
       "properties": {}
     } },
-    { "id": "component:25", "definition": "component_def:15", "reference": "H2", "properties": {}, "selected_physical_part": {
+    { "id": "component:35", "definition": "component_def:30", "reference": "H2", "properties": {}, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Generic", "part_number": "MH-PAD-3.2MM" },
       "package": "plated mounting pad",
       "footprint": { "library": "mechanical", "name": "MountingHole_3.2mm_Pad_6.0mm" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:116", "pad": "1" }
+        { "pin": "pin_def:150", "pad": "1" }
       ],
       "properties": {}
     } },
-    { "id": "component:26", "definition": "component_def:15", "reference": "H3", "properties": {}, "selected_physical_part": {
+    { "id": "component:36", "definition": "component_def:30", "reference": "H3", "properties": {}, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Generic", "part_number": "MH-PAD-3.2MM" },
       "package": "plated mounting pad",
       "footprint": { "library": "mechanical", "name": "MountingHole_3.2mm_Pad_6.0mm" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:116", "pad": "1" }
+        { "pin": "pin_def:150", "pad": "1" }
       ],
       "properties": {}
     } },
-    { "id": "component:27", "definition": "component_def:15", "reference": "H4", "properties": {}, "selected_physical_part": {
+    { "id": "component:37", "definition": "component_def:30", "reference": "H4", "properties": {}, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Generic", "part_number": "MH-PAD-3.2MM" },
       "package": "plated mounting pad",
       "footprint": { "library": "mechanical", "name": "MountingHole_3.2mm_Pad_6.0mm" },
       "pin_pad_mappings": [
-        { "pin": "pin_def:116", "pad": "1" }
+        { "pin": "pin_def:150", "pad": "1" }
       ],
       "properties": {}
     } }
@@ -639,139 +880,162 @@
     { "id": "pin:3", "component": "component:1", "definition": "pin_def:3" },
     { "id": "pin:4", "component": "component:1", "definition": "pin_def:4" },
     { "id": "pin:5", "component": "component:1", "definition": "pin_def:5" },
-    { "id": "pin:6", "component": "component:2", "definition": "pin_def:6" },
-    { "id": "pin:7", "component": "component:2", "definition": "pin_def:7" },
-    { "id": "pin:8", "component": "component:2", "definition": "pin_def:8" },
-    { "id": "pin:9", "component": "component:3", "definition": "pin_def:6" },
-    { "id": "pin:10", "component": "component:3", "definition": "pin_def:7" },
-    { "id": "pin:11", "component": "component:3", "definition": "pin_def:8" },
-    { "id": "pin:12", "component": "component:4", "definition": "pin_def:9" },
-    { "id": "pin:13", "component": "component:4", "definition": "pin_def:10" },
-    { "id": "pin:14", "component": "component:5", "definition": "pin_def:9" },
-    { "id": "pin:15", "component": "component:5", "definition": "pin_def:10" },
-    { "id": "pin:16", "component": "component:6", "definition": "pin_def:9" },
-    { "id": "pin:17", "component": "component:6", "definition": "pin_def:10" },
-    { "id": "pin:18", "component": "component:7", "definition": "pin_def:9" },
-    { "id": "pin:19", "component": "component:7", "definition": "pin_def:10" },
-    { "id": "pin:20", "component": "component:8", "definition": "pin_def:11" },
-    { "id": "pin:21", "component": "component:8", "definition": "pin_def:12" },
-    { "id": "pin:22", "component": "component:8", "definition": "pin_def:13" },
-    { "id": "pin:23", "component": "component:8", "definition": "pin_def:14" },
-    { "id": "pin:24", "component": "component:8", "definition": "pin_def:15" },
-    { "id": "pin:25", "component": "component:8", "definition": "pin_def:16" },
-    { "id": "pin:26", "component": "component:9", "definition": "pin_def:17" },
-    { "id": "pin:27", "component": "component:9", "definition": "pin_def:18" },
-    { "id": "pin:28", "component": "component:9", "definition": "pin_def:19" },
-    { "id": "pin:29", "component": "component:9", "definition": "pin_def:20" },
-    { "id": "pin:30", "component": "component:9", "definition": "pin_def:21" },
-    { "id": "pin:31", "component": "component:9", "definition": "pin_def:22" },
-    { "id": "pin:32", "component": "component:10", "definition": "pin_def:23" },
-    { "id": "pin:33", "component": "component:10", "definition": "pin_def:24" },
-    { "id": "pin:34", "component": "component:11", "definition": "pin_def:23" },
-    { "id": "pin:35", "component": "component:11", "definition": "pin_def:24" },
-    { "id": "pin:36", "component": "component:12", "definition": "pin_def:23" },
-    { "id": "pin:37", "component": "component:12", "definition": "pin_def:24" },
-    { "id": "pin:38", "component": "component:13", "definition": "pin_def:25" },
-    { "id": "pin:39", "component": "component:13", "definition": "pin_def:26" },
-    { "id": "pin:40", "component": "component:14", "definition": "pin_def:25" },
-    { "id": "pin:41", "component": "component:14", "definition": "pin_def:26" },
-    { "id": "pin:42", "component": "component:15", "definition": "pin_def:31" },
-    { "id": "pin:43", "component": "component:15", "definition": "pin_def:32" },
-    { "id": "pin:44", "component": "component:15", "definition": "pin_def:33" },
-    { "id": "pin:45", "component": "component:16", "definition": "pin_def:27" },
-    { "id": "pin:46", "component": "component:16", "definition": "pin_def:28" },
-    { "id": "pin:47", "component": "component:16", "definition": "pin_def:29" },
-    { "id": "pin:48", "component": "component:16", "definition": "pin_def:30" },
-    { "id": "pin:49", "component": "component:17", "definition": "pin_def:23" },
-    { "id": "pin:50", "component": "component:17", "definition": "pin_def:24" },
-    { "id": "pin:51", "component": "component:18", "definition": "pin_def:23" },
-    { "id": "pin:52", "component": "component:18", "definition": "pin_def:24" },
-    { "id": "pin:53", "component": "component:19", "definition": "pin_def:34" },
-    { "id": "pin:54", "component": "component:19", "definition": "pin_def:35" },
-    { "id": "pin:55", "component": "component:19", "definition": "pin_def:36" },
-    { "id": "pin:56", "component": "component:19", "definition": "pin_def:37" },
-    { "id": "pin:57", "component": "component:19", "definition": "pin_def:38" },
-    { "id": "pin:58", "component": "component:19", "definition": "pin_def:39" },
-    { "id": "pin:59", "component": "component:19", "definition": "pin_def:40" },
-    { "id": "pin:60", "component": "component:19", "definition": "pin_def:41" },
-    { "id": "pin:61", "component": "component:19", "definition": "pin_def:42" },
-    { "id": "pin:62", "component": "component:19", "definition": "pin_def:43" },
-    { "id": "pin:63", "component": "component:20", "definition": "pin_def:44" },
-    { "id": "pin:64", "component": "component:20", "definition": "pin_def:45" },
-    { "id": "pin:65", "component": "component:20", "definition": "pin_def:46" },
-    { "id": "pin:66", "component": "component:20", "definition": "pin_def:47" },
-    { "id": "pin:67", "component": "component:21", "definition": "pin_def:48" },
-    { "id": "pin:68", "component": "component:21", "definition": "pin_def:49" },
-    { "id": "pin:69", "component": "component:22", "definition": "pin_def:50" },
-    { "id": "pin:70", "component": "component:22", "definition": "pin_def:51" },
-    { "id": "pin:71", "component": "component:23", "definition": "pin_def:52" },
-    { "id": "pin:72", "component": "component:23", "definition": "pin_def:53" },
-    { "id": "pin:73", "component": "component:23", "definition": "pin_def:54" },
-    { "id": "pin:74", "component": "component:23", "definition": "pin_def:55" },
-    { "id": "pin:75", "component": "component:23", "definition": "pin_def:56" },
-    { "id": "pin:76", "component": "component:23", "definition": "pin_def:57" },
-    { "id": "pin:77", "component": "component:23", "definition": "pin_def:58" },
-    { "id": "pin:78", "component": "component:23", "definition": "pin_def:59" },
-    { "id": "pin:79", "component": "component:23", "definition": "pin_def:60" },
-    { "id": "pin:80", "component": "component:23", "definition": "pin_def:61" },
-    { "id": "pin:81", "component": "component:23", "definition": "pin_def:62" },
-    { "id": "pin:82", "component": "component:23", "definition": "pin_def:63" },
-    { "id": "pin:83", "component": "component:23", "definition": "pin_def:64" },
-    { "id": "pin:84", "component": "component:23", "definition": "pin_def:65" },
-    { "id": "pin:85", "component": "component:23", "definition": "pin_def:66" },
-    { "id": "pin:86", "component": "component:23", "definition": "pin_def:67" },
-    { "id": "pin:87", "component": "component:23", "definition": "pin_def:68" },
-    { "id": "pin:88", "component": "component:23", "definition": "pin_def:69" },
-    { "id": "pin:89", "component": "component:23", "definition": "pin_def:70" },
-    { "id": "pin:90", "component": "component:23", "definition": "pin_def:71" },
-    { "id": "pin:91", "component": "component:23", "definition": "pin_def:72" },
-    { "id": "pin:92", "component": "component:23", "definition": "pin_def:73" },
-    { "id": "pin:93", "component": "component:23", "definition": "pin_def:74" },
-    { "id": "pin:94", "component": "component:23", "definition": "pin_def:75" },
-    { "id": "pin:95", "component": "component:23", "definition": "pin_def:76" },
-    { "id": "pin:96", "component": "component:23", "definition": "pin_def:77" },
-    { "id": "pin:97", "component": "component:23", "definition": "pin_def:78" },
-    { "id": "pin:98", "component": "component:23", "definition": "pin_def:79" },
-    { "id": "pin:99", "component": "component:23", "definition": "pin_def:80" },
-    { "id": "pin:100", "component": "component:23", "definition": "pin_def:81" },
-    { "id": "pin:101", "component": "component:23", "definition": "pin_def:82" },
-    { "id": "pin:102", "component": "component:23", "definition": "pin_def:83" },
-    { "id": "pin:103", "component": "component:23", "definition": "pin_def:84" },
-    { "id": "pin:104", "component": "component:23", "definition": "pin_def:85" },
-    { "id": "pin:105", "component": "component:23", "definition": "pin_def:86" },
-    { "id": "pin:106", "component": "component:23", "definition": "pin_def:87" },
-    { "id": "pin:107", "component": "component:23", "definition": "pin_def:88" },
-    { "id": "pin:108", "component": "component:23", "definition": "pin_def:89" },
-    { "id": "pin:109", "component": "component:23", "definition": "pin_def:90" },
-    { "id": "pin:110", "component": "component:23", "definition": "pin_def:91" },
-    { "id": "pin:111", "component": "component:23", "definition": "pin_def:92" },
-    { "id": "pin:112", "component": "component:23", "definition": "pin_def:93" },
-    { "id": "pin:113", "component": "component:23", "definition": "pin_def:94" },
-    { "id": "pin:114", "component": "component:23", "definition": "pin_def:95" },
-    { "id": "pin:115", "component": "component:23", "definition": "pin_def:96" },
-    { "id": "pin:116", "component": "component:23", "definition": "pin_def:97" },
-    { "id": "pin:117", "component": "component:23", "definition": "pin_def:98" },
-    { "id": "pin:118", "component": "component:23", "definition": "pin_def:99" },
-    { "id": "pin:119", "component": "component:23", "definition": "pin_def:100" },
-    { "id": "pin:120", "component": "component:23", "definition": "pin_def:101" },
-    { "id": "pin:121", "component": "component:23", "definition": "pin_def:102" },
-    { "id": "pin:122", "component": "component:23", "definition": "pin_def:103" },
-    { "id": "pin:123", "component": "component:23", "definition": "pin_def:104" },
-    { "id": "pin:124", "component": "component:23", "definition": "pin_def:105" },
-    { "id": "pin:125", "component": "component:23", "definition": "pin_def:106" },
-    { "id": "pin:126", "component": "component:23", "definition": "pin_def:107" },
-    { "id": "pin:127", "component": "component:23", "definition": "pin_def:108" },
-    { "id": "pin:128", "component": "component:23", "definition": "pin_def:109" },
-    { "id": "pin:129", "component": "component:23", "definition": "pin_def:110" },
-    { "id": "pin:130", "component": "component:23", "definition": "pin_def:111" },
-    { "id": "pin:131", "component": "component:23", "definition": "pin_def:112" },
-    { "id": "pin:132", "component": "component:23", "definition": "pin_def:113" },
-    { "id": "pin:133", "component": "component:23", "definition": "pin_def:114" },
-    { "id": "pin:134", "component": "component:23", "definition": "pin_def:115" },
-    { "id": "pin:135", "component": "component:24", "definition": "pin_def:116" },
-    { "id": "pin:136", "component": "component:25", "definition": "pin_def:116" },
-    { "id": "pin:137", "component": "component:26", "definition": "pin_def:116" },
-    { "id": "pin:138", "component": "component:27", "definition": "pin_def:116" }
+    { "id": "pin:6", "component": "component:2", "definition": "pin_def:15" },
+    { "id": "pin:7", "component": "component:2", "definition": "pin_def:16" },
+    { "id": "pin:8", "component": "component:3", "definition": "pin_def:17" },
+    { "id": "pin:9", "component": "component:3", "definition": "pin_def:18" },
+    { "id": "pin:10", "component": "component:4", "definition": "pin_def:6" },
+    { "id": "pin:11", "component": "component:4", "definition": "pin_def:7" },
+    { "id": "pin:12", "component": "component:4", "definition": "pin_def:8" },
+    { "id": "pin:13", "component": "component:4", "definition": "pin_def:9" },
+    { "id": "pin:14", "component": "component:4", "definition": "pin_def:10" },
+    { "id": "pin:15", "component": "component:4", "definition": "pin_def:11" },
+    { "id": "pin:16", "component": "component:5", "definition": "pin_def:19" },
+    { "id": "pin:17", "component": "component:5", "definition": "pin_def:20" },
+    { "id": "pin:18", "component": "component:6", "definition": "pin_def:21" },
+    { "id": "pin:19", "component": "component:6", "definition": "pin_def:22" },
+    { "id": "pin:20", "component": "component:7", "definition": "pin_def:23" },
+    { "id": "pin:21", "component": "component:7", "definition": "pin_def:24" },
+    { "id": "pin:22", "component": "component:8", "definition": "pin_def:25" },
+    { "id": "pin:23", "component": "component:8", "definition": "pin_def:26" },
+    { "id": "pin:24", "component": "component:9", "definition": "pin_def:23" },
+    { "id": "pin:25", "component": "component:9", "definition": "pin_def:24" },
+    { "id": "pin:26", "component": "component:10", "definition": "pin_def:31" },
+    { "id": "pin:27", "component": "component:10", "definition": "pin_def:32" },
+    { "id": "pin:28", "component": "component:11", "definition": "pin_def:33" },
+    { "id": "pin:29", "component": "component:11", "definition": "pin_def:34" },
+    { "id": "pin:30", "component": "component:12", "definition": "pin_def:35" },
+    { "id": "pin:31", "component": "component:12", "definition": "pin_def:36" },
+    { "id": "pin:32", "component": "component:13", "definition": "pin_def:37" },
+    { "id": "pin:33", "component": "component:13", "definition": "pin_def:38" },
+    { "id": "pin:34", "component": "component:14", "definition": "pin_def:12" },
+    { "id": "pin:35", "component": "component:14", "definition": "pin_def:13" },
+    { "id": "pin:36", "component": "component:14", "definition": "pin_def:14" },
+    { "id": "pin:37", "component": "component:15", "definition": "pin_def:27" },
+    { "id": "pin:38", "component": "component:15", "definition": "pin_def:28" },
+    { "id": "pin:39", "component": "component:16", "definition": "pin_def:17" },
+    { "id": "pin:40", "component": "component:16", "definition": "pin_def:18" },
+    { "id": "pin:41", "component": "component:17", "definition": "pin_def:29" },
+    { "id": "pin:42", "component": "component:17", "definition": "pin_def:30" },
+    { "id": "pin:43", "component": "component:18", "definition": "pin_def:39" },
+    { "id": "pin:44", "component": "component:18", "definition": "pin_def:40" },
+    { "id": "pin:45", "component": "component:18", "definition": "pin_def:41" },
+    { "id": "pin:46", "component": "component:18", "definition": "pin_def:42" },
+    { "id": "pin:47", "component": "component:18", "definition": "pin_def:43" },
+    { "id": "pin:48", "component": "component:18", "definition": "pin_def:44" },
+    { "id": "pin:49", "component": "component:19", "definition": "pin_def:45" },
+    { "id": "pin:50", "component": "component:19", "definition": "pin_def:46" },
+    { "id": "pin:51", "component": "component:19", "definition": "pin_def:47" },
+    { "id": "pin:52", "component": "component:19", "definition": "pin_def:48" },
+    { "id": "pin:53", "component": "component:19", "definition": "pin_def:49" },
+    { "id": "pin:54", "component": "component:19", "definition": "pin_def:50" },
+    { "id": "pin:55", "component": "component:20", "definition": "pin_def:51" },
+    { "id": "pin:56", "component": "component:20", "definition": "pin_def:52" },
+    { "id": "pin:57", "component": "component:21", "definition": "pin_def:53" },
+    { "id": "pin:58", "component": "component:21", "definition": "pin_def:54" },
+    { "id": "pin:59", "component": "component:22", "definition": "pin_def:53" },
+    { "id": "pin:60", "component": "component:22", "definition": "pin_def:54" },
+    { "id": "pin:61", "component": "component:23", "definition": "pin_def:57" },
+    { "id": "pin:62", "component": "component:23", "definition": "pin_def:58" },
+    { "id": "pin:63", "component": "component:24", "definition": "pin_def:59" },
+    { "id": "pin:64", "component": "component:24", "definition": "pin_def:60" },
+    { "id": "pin:65", "component": "component:25", "definition": "pin_def:65" },
+    { "id": "pin:66", "component": "component:25", "definition": "pin_def:66" },
+    { "id": "pin:67", "component": "component:25", "definition": "pin_def:67" },
+    { "id": "pin:68", "component": "component:26", "definition": "pin_def:61" },
+    { "id": "pin:69", "component": "component:26", "definition": "pin_def:62" },
+    { "id": "pin:70", "component": "component:26", "definition": "pin_def:63" },
+    { "id": "pin:71", "component": "component:26", "definition": "pin_def:64" },
+    { "id": "pin:72", "component": "component:27", "definition": "pin_def:55" },
+    { "id": "pin:73", "component": "component:27", "definition": "pin_def:56" },
+    { "id": "pin:74", "component": "component:28", "definition": "pin_def:55" },
+    { "id": "pin:75", "component": "component:28", "definition": "pin_def:56" },
+    { "id": "pin:76", "component": "component:29", "definition": "pin_def:68" },
+    { "id": "pin:77", "component": "component:29", "definition": "pin_def:69" },
+    { "id": "pin:78", "component": "component:29", "definition": "pin_def:70" },
+    { "id": "pin:79", "component": "component:29", "definition": "pin_def:71" },
+    { "id": "pin:80", "component": "component:29", "definition": "pin_def:72" },
+    { "id": "pin:81", "component": "component:29", "definition": "pin_def:73" },
+    { "id": "pin:82", "component": "component:29", "definition": "pin_def:74" },
+    { "id": "pin:83", "component": "component:29", "definition": "pin_def:75" },
+    { "id": "pin:84", "component": "component:29", "definition": "pin_def:76" },
+    { "id": "pin:85", "component": "component:29", "definition": "pin_def:77" },
+    { "id": "pin:86", "component": "component:30", "definition": "pin_def:78" },
+    { "id": "pin:87", "component": "component:30", "definition": "pin_def:79" },
+    { "id": "pin:88", "component": "component:30", "definition": "pin_def:80" },
+    { "id": "pin:89", "component": "component:30", "definition": "pin_def:81" },
+    { "id": "pin:90", "component": "component:31", "definition": "pin_def:82" },
+    { "id": "pin:91", "component": "component:31", "definition": "pin_def:83" },
+    { "id": "pin:92", "component": "component:32", "definition": "pin_def:84" },
+    { "id": "pin:93", "component": "component:32", "definition": "pin_def:85" },
+    { "id": "pin:94", "component": "component:33", "definition": "pin_def:86" },
+    { "id": "pin:95", "component": "component:33", "definition": "pin_def:87" },
+    { "id": "pin:96", "component": "component:33", "definition": "pin_def:88" },
+    { "id": "pin:97", "component": "component:33", "definition": "pin_def:89" },
+    { "id": "pin:98", "component": "component:33", "definition": "pin_def:90" },
+    { "id": "pin:99", "component": "component:33", "definition": "pin_def:91" },
+    { "id": "pin:100", "component": "component:33", "definition": "pin_def:92" },
+    { "id": "pin:101", "component": "component:33", "definition": "pin_def:93" },
+    { "id": "pin:102", "component": "component:33", "definition": "pin_def:94" },
+    { "id": "pin:103", "component": "component:33", "definition": "pin_def:95" },
+    { "id": "pin:104", "component": "component:33", "definition": "pin_def:96" },
+    { "id": "pin:105", "component": "component:33", "definition": "pin_def:97" },
+    { "id": "pin:106", "component": "component:33", "definition": "pin_def:98" },
+    { "id": "pin:107", "component": "component:33", "definition": "pin_def:99" },
+    { "id": "pin:108", "component": "component:33", "definition": "pin_def:100" },
+    { "id": "pin:109", "component": "component:33", "definition": "pin_def:101" },
+    { "id": "pin:110", "component": "component:33", "definition": "pin_def:102" },
+    { "id": "pin:111", "component": "component:33", "definition": "pin_def:103" },
+    { "id": "pin:112", "component": "component:33", "definition": "pin_def:104" },
+    { "id": "pin:113", "component": "component:33", "definition": "pin_def:105" },
+    { "id": "pin:114", "component": "component:33", "definition": "pin_def:106" },
+    { "id": "pin:115", "component": "component:33", "definition": "pin_def:107" },
+    { "id": "pin:116", "component": "component:33", "definition": "pin_def:108" },
+    { "id": "pin:117", "component": "component:33", "definition": "pin_def:109" },
+    { "id": "pin:118", "component": "component:33", "definition": "pin_def:110" },
+    { "id": "pin:119", "component": "component:33", "definition": "pin_def:111" },
+    { "id": "pin:120", "component": "component:33", "definition": "pin_def:112" },
+    { "id": "pin:121", "component": "component:33", "definition": "pin_def:113" },
+    { "id": "pin:122", "component": "component:33", "definition": "pin_def:114" },
+    { "id": "pin:123", "component": "component:33", "definition": "pin_def:115" },
+    { "id": "pin:124", "component": "component:33", "definition": "pin_def:116" },
+    { "id": "pin:125", "component": "component:33", "definition": "pin_def:117" },
+    { "id": "pin:126", "component": "component:33", "definition": "pin_def:118" },
+    { "id": "pin:127", "component": "component:33", "definition": "pin_def:119" },
+    { "id": "pin:128", "component": "component:33", "definition": "pin_def:120" },
+    { "id": "pin:129", "component": "component:33", "definition": "pin_def:121" },
+    { "id": "pin:130", "component": "component:33", "definition": "pin_def:122" },
+    { "id": "pin:131", "component": "component:33", "definition": "pin_def:123" },
+    { "id": "pin:132", "component": "component:33", "definition": "pin_def:124" },
+    { "id": "pin:133", "component": "component:33", "definition": "pin_def:125" },
+    { "id": "pin:134", "component": "component:33", "definition": "pin_def:126" },
+    { "id": "pin:135", "component": "component:33", "definition": "pin_def:127" },
+    { "id": "pin:136", "component": "component:33", "definition": "pin_def:128" },
+    { "id": "pin:137", "component": "component:33", "definition": "pin_def:129" },
+    { "id": "pin:138", "component": "component:33", "definition": "pin_def:130" },
+    { "id": "pin:139", "component": "component:33", "definition": "pin_def:131" },
+    { "id": "pin:140", "component": "component:33", "definition": "pin_def:132" },
+    { "id": "pin:141", "component": "component:33", "definition": "pin_def:133" },
+    { "id": "pin:142", "component": "component:33", "definition": "pin_def:134" },
+    { "id": "pin:143", "component": "component:33", "definition": "pin_def:135" },
+    { "id": "pin:144", "component": "component:33", "definition": "pin_def:136" },
+    { "id": "pin:145", "component": "component:33", "definition": "pin_def:137" },
+    { "id": "pin:146", "component": "component:33", "definition": "pin_def:138" },
+    { "id": "pin:147", "component": "component:33", "definition": "pin_def:139" },
+    { "id": "pin:148", "component": "component:33", "definition": "pin_def:140" },
+    { "id": "pin:149", "component": "component:33", "definition": "pin_def:141" },
+    { "id": "pin:150", "component": "component:33", "definition": "pin_def:142" },
+    { "id": "pin:151", "component": "component:33", "definition": "pin_def:143" },
+    { "id": "pin:152", "component": "component:33", "definition": "pin_def:144" },
+    { "id": "pin:153", "component": "component:33", "definition": "pin_def:145" },
+    { "id": "pin:154", "component": "component:33", "definition": "pin_def:146" },
+    { "id": "pin:155", "component": "component:33", "definition": "pin_def:147" },
+    { "id": "pin:156", "component": "component:33", "definition": "pin_def:148" },
+    { "id": "pin:157", "component": "component:33", "definition": "pin_def:149" },
+    { "id": "pin:158", "component": "component:34", "definition": "pin_def:150" },
+    { "id": "pin:159", "component": "component:35", "definition": "pin_def:150" },
+    { "id": "pin:160", "component": "component:36", "definition": "pin_def:150" },
+    { "id": "pin:161", "component": "component:37", "definition": "pin_def:150" }
   ],
   "nets": [
     { "id": "net:0", "name": "+12V", "kind": "Power", "pins": ["pin:0"], "electrical_attributes": {
@@ -780,111 +1044,157 @@
     { "id": "net:1", "name": "+5V", "kind": "Power", "pins": [], "electrical_attributes": {
         "voltage": { "type": "quantity", "dimension": "voltage", "value": 5 }
       } },
-    { "id": "net:2", "name": "+3V3", "kind": "Power", "pins": ["pin:53", "pin:63", "pin:71", "pin:89", "pin:102", "pin:118", "pin:134"], "electrical_attributes": {
+    { "id": "net:2", "name": "+3V3", "kind": "Power", "pins": ["pin:76", "pin:86", "pin:94", "pin:112", "pin:125", "pin:141", "pin:157"], "electrical_attributes": {
         "voltage": { "type": "quantity", "dimension": "voltage", "value": 3.2999999999999998 }
       } },
-    { "id": "net:3", "name": "VDDA", "kind": "Power", "pins": ["pin:83"], "electrical_attributes": {
+    { "id": "net:3", "name": "VDDA", "kind": "Power", "pins": ["pin:106"], "electrical_attributes": {
         "voltage": { "type": "quantity", "dimension": "voltage", "value": 3.2999999999999998 }
       } },
-    { "id": "net:4", "name": "GND", "kind": "Ground", "pins": ["pin:1", "pin:55", "pin:57", "pin:61", "pin:66", "pin:88", "pin:133", "pin:82", "pin:135", "pin:136", "pin:137", "pin:138"] },
-    { "id": "net:5", "name": "PWR/IN_12V", "kind": "Power", "pins": ["pin:2", "pin:8", "pin:12"] },
-    { "id": "net:6", "name": "PWR/OUT_5V", "kind": "Power", "pins": ["pin:7", "pin:11", "pin:14"] },
-    { "id": "net:7", "name": "PWR/OUT_3V3", "kind": "Power", "pins": ["pin:10", "pin:16"] },
-    { "id": "net:8", "name": "PWR/VDDA", "kind": "Power", "pins": ["pin:18"] },
-    { "id": "net:9", "name": "PWR/GND", "kind": "Ground", "pins": ["pin:3", "pin:4", "pin:5", "pin:6", "pin:9", "pin:13", "pin:15", "pin:17", "pin:19"] },
-    { "id": "net:10", "name": "USB_DP", "kind": "Signal", "pins": [] },
-    { "id": "net:11", "name": "USB_DM", "kind": "Signal", "pins": [] },
-    { "id": "net:12", "name": "MCU_USB_DP", "kind": "Signal", "pins": ["pin:115"] },
-    { "id": "net:13", "name": "MCU_USB_DM", "kind": "Signal", "pins": ["pin:114"] },
-    { "id": "net:14", "name": "USB/VBUS", "kind": "Power", "pins": ["pin:20", "pin:30"] },
-    { "id": "net:15", "name": "USB/USB_DP", "kind": "Signal", "pins": ["pin:22", "pin:26"] },
-    { "id": "net:16", "name": "USB/USB_DM", "kind": "Signal", "pins": ["pin:21", "pin:28"] },
-    { "id": "net:17", "name": "USB/MCU_USB_DP", "kind": "Signal", "pins": ["pin:31"] },
-    { "id": "net:18", "name": "USB/MCU_USB_DM", "kind": "Signal", "pins": ["pin:29"] },
-    { "id": "net:19", "name": "USB/GND", "kind": "Ground", "pins": ["pin:24", "pin:25", "pin:27"] },
-    { "id": "net:20", "name": "SUPPORT/VDD", "kind": "Power", "pins": ["pin:32", "pin:38", "pin:42"] },
-    { "id": "net:21", "name": "SUPPORT/GND", "kind": "Ground", "pins": ["pin:33", "pin:35", "pin:37", "pin:41", "pin:44", "pin:46", "pin:48", "pin:50", "pin:52"] },
-    { "id": "net:22", "name": "SUPPORT/NRST", "kind": "Signal", "pins": ["pin:39"] },
-    { "id": "net:23", "name": "SUPPORT/BOOT0", "kind": "Signal", "pins": ["pin:40", "pin:43"] },
-    { "id": "net:24", "name": "SUPPORT/HSE_IN", "kind": "Signal", "pins": ["pin:45", "pin:49"] },
-    { "id": "net:25", "name": "SUPPORT/HSE_OUT", "kind": "Signal", "pins": ["pin:47", "pin:51"] },
-    { "id": "net:26", "name": "SUPPORT/VCAP_1", "kind": "Power", "pins": ["pin:34"] },
-    { "id": "net:27", "name": "SUPPORT/VCAP_2", "kind": "Power", "pins": ["pin:36"] },
-    { "id": "net:28", "name": "NRST", "kind": "Signal", "pins": ["pin:62", "pin:77"] },
-    { "id": "net:29", "name": "BOOT0", "kind": "Signal", "pins": ["pin:60", "pin:64", "pin:130"] },
-    { "id": "net:30", "name": "HSE_IN", "kind": "Signal", "pins": ["pin:75"] },
-    { "id": "net:31", "name": "HSE_OUT", "kind": "Signal", "pins": ["pin:76"] },
-    { "id": "net:32", "name": "VCAP_1", "kind": "Signal", "pins": ["pin:101"] },
-    { "id": "net:33", "name": "VCAP_2", "kind": "Signal", "pins": ["pin:117"] },
-    { "id": "net:34", "name": "SWDIO", "kind": "Signal", "pins": ["pin:54", "pin:116"] },
-    { "id": "net:35", "name": "SWCLK", "kind": "Signal", "pins": ["pin:56", "pin:119"] },
-    { "id": "net:36", "name": "SWO", "kind": "Signal", "pins": ["pin:58", "pin:125"] },
-    { "id": "net:37", "name": "STATUS_LED", "kind": "Signal", "pins": ["pin:72"] },
-    { "id": "net:38", "name": "LED_STATUS/SUPPLY", "kind": "Power", "pins": ["pin:67"] },
-    { "id": "net:39", "name": "LED_STATUS/SIGNAL", "kind": "Signal", "pins": ["pin:68", "pin:69"] },
-    { "id": "net:40", "name": "LED_STATUS/GND", "kind": "Ground", "pins": ["pin:70"] }
+    { "id": "net:4", "name": "GND", "kind": "Ground", "pins": ["pin:1", "pin:78", "pin:80", "pin:84", "pin:89", "pin:111", "pin:156", "pin:105", "pin:158", "pin:159", "pin:160", "pin:161"] },
+    { "id": "net:5", "name": "PWR/IN_12V", "kind": "Power", "pins": ["pin:2", "pin:6"] },
+    { "id": "net:6", "name": "PWR/OUT_5V", "kind": "Power", "pins": ["pin:17", "pin:24", "pin:30", "pin:36"] },
+    { "id": "net:7", "name": "PWR/OUT_3V3", "kind": "Power", "pins": ["pin:35", "pin:37", "pin:39"] },
+    { "id": "net:8", "name": "PWR/VDDA", "kind": "Power", "pins": ["pin:40", "pin:41"] },
+    { "id": "net:9", "name": "PWR/GND", "kind": "Ground", "pins": ["pin:3", "pin:4", "pin:5", "pin:21", "pin:11", "pin:29", "pin:18", "pin:25", "pin:33", "pin:34", "pin:38", "pin:42"] },
+    { "id": "net:10", "name": "PWR/FUSED_12V", "kind": "Power", "pins": ["pin:7", "pin:8"] },
+    { "id": "net:11", "name": "PWR/BUCK_IN", "kind": "Power", "pins": ["pin:9", "pin:14", "pin:20", "pin:26"] },
+    { "id": "net:12", "name": "PWR/BUCK_EN", "kind": "Signal", "pins": ["pin:27", "pin:28", "pin:13"] },
+    { "id": "net:13", "name": "PWR/BUCK_SW", "kind": "Signal", "pins": ["pin:15", "pin:19", "pin:16", "pin:22"] },
+    { "id": "net:14", "name": "PWR/BUCK_BST", "kind": "Signal", "pins": ["pin:10", "pin:23"] },
+    { "id": "net:15", "name": "PWR/BUCK_FB", "kind": "Signal", "pins": ["pin:12", "pin:31", "pin:32"] },
+    { "id": "net:16", "name": "USB_DP", "kind": "Signal", "pins": [] },
+    { "id": "net:17", "name": "USB_DM", "kind": "Signal", "pins": [] },
+    { "id": "net:18", "name": "MCU_USB_DP", "kind": "Signal", "pins": ["pin:138"] },
+    { "id": "net:19", "name": "MCU_USB_DM", "kind": "Signal", "pins": ["pin:137"] },
+    { "id": "net:20", "name": "USB/VBUS", "kind": "Power", "pins": ["pin:43", "pin:53"] },
+    { "id": "net:21", "name": "USB/USB_DP", "kind": "Signal", "pins": ["pin:45", "pin:49"] },
+    { "id": "net:22", "name": "USB/USB_DM", "kind": "Signal", "pins": ["pin:44", "pin:51"] },
+    { "id": "net:23", "name": "USB/MCU_USB_DP", "kind": "Signal", "pins": ["pin:54"] },
+    { "id": "net:24", "name": "USB/MCU_USB_DM", "kind": "Signal", "pins": ["pin:52"] },
+    { "id": "net:25", "name": "USB/GND", "kind": "Ground", "pins": ["pin:47", "pin:48", "pin:50"] },
+    { "id": "net:26", "name": "SUPPORT/VDD", "kind": "Power", "pins": ["pin:55", "pin:61", "pin:65"] },
+    { "id": "net:27", "name": "SUPPORT/GND", "kind": "Ground", "pins": ["pin:56", "pin:58", "pin:60", "pin:64", "pin:67", "pin:69", "pin:71", "pin:73", "pin:75"] },
+    { "id": "net:28", "name": "SUPPORT/NRST", "kind": "Signal", "pins": ["pin:62"] },
+    { "id": "net:29", "name": "SUPPORT/BOOT0", "kind": "Signal", "pins": ["pin:63", "pin:66"] },
+    { "id": "net:30", "name": "SUPPORT/HSE_IN", "kind": "Signal", "pins": ["pin:68", "pin:72"] },
+    { "id": "net:31", "name": "SUPPORT/HSE_OUT", "kind": "Signal", "pins": ["pin:70", "pin:74"] },
+    { "id": "net:32", "name": "SUPPORT/VCAP_1", "kind": "Power", "pins": ["pin:57"] },
+    { "id": "net:33", "name": "SUPPORT/VCAP_2", "kind": "Power", "pins": ["pin:59"] },
+    { "id": "net:34", "name": "NRST", "kind": "Signal", "pins": ["pin:85", "pin:100"] },
+    { "id": "net:35", "name": "BOOT0", "kind": "Signal", "pins": ["pin:83", "pin:87", "pin:153"] },
+    { "id": "net:36", "name": "HSE_IN", "kind": "Signal", "pins": ["pin:98"] },
+    { "id": "net:37", "name": "HSE_OUT", "kind": "Signal", "pins": ["pin:99"] },
+    { "id": "net:38", "name": "VCAP_1", "kind": "Signal", "pins": ["pin:124"] },
+    { "id": "net:39", "name": "VCAP_2", "kind": "Signal", "pins": ["pin:140"] },
+    { "id": "net:40", "name": "SWDIO", "kind": "Signal", "pins": ["pin:77", "pin:139"] },
+    { "id": "net:41", "name": "SWCLK", "kind": "Signal", "pins": ["pin:79", "pin:142"] },
+    { "id": "net:42", "name": "SWO", "kind": "Signal", "pins": ["pin:81", "pin:148"] },
+    { "id": "net:43", "name": "STATUS_LED", "kind": "Signal", "pins": ["pin:95"] },
+    { "id": "net:44", "name": "LED_STATUS/SUPPLY", "kind": "Power", "pins": ["pin:90"] },
+    { "id": "net:45", "name": "LED_STATUS/SIGNAL", "kind": "Signal", "pins": ["pin:93"] },
+    { "id": "net:46", "name": "LED_STATUS/LED_A", "kind": "Signal", "pins": ["pin:91", "pin:92"] }
   ],
-  "design_intent": { "stub_nets": ["net:34", "net:35", "net:36", "net:37"], "no_connect_pins": ["pin:23", "pin:65", "pin:59", "pin:73", "pin:74", "pin:78", "pin:79", "pin:80", "pin:81", "pin:84", "pin:85", "pin:86", "pin:87", "pin:90", "pin:91", "pin:92", "pin:93", "pin:94", "pin:95", "pin:96", "pin:97", "pin:98", "pin:99", "pin:100", "pin:103", "pin:104", "pin:105", "pin:106", "pin:107", "pin:108", "pin:109", "pin:110", "pin:111", "pin:112", "pin:113", "pin:120", "pin:121", "pin:122", "pin:123", "pin:124", "pin:126", "pin:127", "pin:128", "pin:129", "pin:131", "pin:132"], "component_assembly": [{ "component": "component:0", "dnp": true, "selection_override": false }, { "component": "component:1", "dnp": false, "selection_override": false }, { "component": "component:2", "dnp": false, "selection_override": false }, { "component": "component:3", "dnp": false, "selection_override": false }, { "component": "component:4", "dnp": false, "selection_override": false }, { "component": "component:5", "dnp": false, "selection_override": false }, { "component": "component:6", "dnp": false, "selection_override": false }, { "component": "component:7", "dnp": false, "selection_override": false }, { "component": "component:8", "dnp": false, "selection_override": false }, { "component": "component:9", "dnp": false, "selection_override": false }, { "component": "component:10", "dnp": false, "selection_override": false }, { "component": "component:11", "dnp": false, "selection_override": false }, { "component": "component:12", "dnp": false, "selection_override": false }, { "component": "component:13", "dnp": false, "selection_override": false }, { "component": "component:14", "dnp": false, "selection_override": false }, { "component": "component:15", "dnp": false, "selection_override": false }, { "component": "component:16", "dnp": false, "selection_override": false }, { "component": "component:17", "dnp": false, "selection_override": false }, { "component": "component:18", "dnp": false, "selection_override": false }, { "component": "component:19", "dnp": false, "selection_override": false }, { "component": "component:20", "dnp": false, "selection_override": false }, { "component": "component:21", "dnp": false, "selection_override": false }, { "component": "component:22", "dnp": false, "selection_override": false }, { "component": "component:23", "dnp": false, "selection_override": false }, { "component": "component:24", "dnp": true, "selection_override": false }, { "component": "component:25", "dnp": true, "selection_override": false }, { "component": "component:26", "dnp": true, "selection_override": false }, { "component": "component:27", "dnp": true, "selection_override": false }] },
+  "design_intent": { "stub_nets": ["net:40", "net:41", "net:42", "net:43"], "no_connect_pins": ["pin:46", "pin:88", "pin:82", "pin:96", "pin:97", "pin:101", "pin:102", "pin:103", "pin:104", "pin:107", "pin:108", "pin:109", "pin:110", "pin:113", "pin:114", "pin:115", "pin:116", "pin:117", "pin:118", "pin:119", "pin:120", "pin:121", "pin:122", "pin:123", "pin:126", "pin:127", "pin:128", "pin:129", "pin:130", "pin:131", "pin:132", "pin:133", "pin:134", "pin:135", "pin:136", "pin:143", "pin:144", "pin:145", "pin:146", "pin:147", "pin:149", "pin:150", "pin:151", "pin:152", "pin:154", "pin:155"], "component_assembly": [{ "component": "component:0", "dnp": true, "selection_override": false }, { "component": "component:1", "dnp": false, "selection_override": false }, { "component": "component:2", "dnp": false, "selection_override": false }, { "component": "component:3", "dnp": false, "selection_override": false }, { "component": "component:4", "dnp": false, "selection_override": false }, { "component": "component:5", "dnp": false, "selection_override": false }, { "component": "component:6", "dnp": false, "selection_override": false }, { "component": "component:7", "dnp": false, "selection_override": false }, { "component": "component:8", "dnp": false, "selection_override": false }, { "component": "component:9", "dnp": false, "selection_override": false }, { "component": "component:10", "dnp": false, "selection_override": false }, { "component": "component:11", "dnp": false, "selection_override": false }, { "component": "component:12", "dnp": false, "selection_override": false }, { "component": "component:13", "dnp": false, "selection_override": false }, { "component": "component:14", "dnp": false, "selection_override": false }, { "component": "component:15", "dnp": false, "selection_override": false }, { "component": "component:16", "dnp": false, "selection_override": false }, { "component": "component:17", "dnp": false, "selection_override": false }, { "component": "component:18", "dnp": false, "selection_override": false }, { "component": "component:19", "dnp": false, "selection_override": false }, { "component": "component:20", "dnp": false, "selection_override": false }, { "component": "component:21", "dnp": false, "selection_override": false }, { "component": "component:22", "dnp": false, "selection_override": false }, { "component": "component:23", "dnp": false, "selection_override": false }, { "component": "component:24", "dnp": false, "selection_override": false }, { "component": "component:25", "dnp": false, "selection_override": false }, { "component": "component:26", "dnp": false, "selection_override": false }, { "component": "component:27", "dnp": false, "selection_override": false }, { "component": "component:28", "dnp": false, "selection_override": false }, { "component": "component:29", "dnp": false, "selection_override": false }, { "component": "component:30", "dnp": false, "selection_override": false }, { "component": "component:31", "dnp": false, "selection_override": false }, { "component": "component:32", "dnp": false, "selection_override": false }, { "component": "component:33", "dnp": false, "selection_override": false }, { "component": "component:34", "dnp": true, "selection_override": false }, { "component": "component:35", "dnp": true, "selection_override": false }, { "component": "component:36", "dnp": true, "selection_override": false }, { "component": "component:37", "dnp": true, "selection_override": false }] },
   "module_definitions": [
-    { "id": "module_def:0", "name": "PowerInputAndRegulator", "local_nets": [{ "id": "template_net:0", "name": "IN_12V", "kind": "Power" }, { "id": "template_net:1", "name": "OUT_5V", "kind": "Power" }, { "id": "template_net:2", "name": "OUT_3V3", "kind": "Power" }, { "id": "template_net:3", "name": "VDDA", "kind": "Power" }, { "id": "template_net:4", "name": "GND", "kind": "Ground" }], "components": [{ "id": "module_component:0", "definition": "component_def:1", "reference": "J", "properties": {
+    { "id": "module_def:0", "name": "PowerInputAndRegulator", "local_nets": [{ "id": "template_net:0", "name": "IN_12V", "kind": "Power" }, { "id": "template_net:1", "name": "OUT_5V", "kind": "Power" }, { "id": "template_net:2", "name": "OUT_3V3", "kind": "Power" }, { "id": "template_net:3", "name": "VDDA", "kind": "Power" }, { "id": "template_net:4", "name": "GND", "kind": "Ground" }, { "id": "template_net:5", "name": "FUSED_12V", "kind": "Power" }, { "id": "template_net:6", "name": "BUCK_IN", "kind": "Power" }, { "id": "template_net:7", "name": "BUCK_EN", "kind": "Signal" }, { "id": "template_net:8", "name": "BUCK_SW", "kind": "Signal" }, { "id": "template_net:9", "name": "BUCK_BST", "kind": "Signal" }, { "id": "template_net:10", "name": "BUCK_FB", "kind": "Signal" }], "components": [{ "id": "module_component:0", "definition": "component_def:1", "reference": "J", "properties": {
+        "pcb_reference": { "type": "string", "value": "J2" },
         "value": { "type": "string", "value": "Power input" }
-      } }, { "id": "module_component:1", "definition": "component_def:2", "reference": "U5", "properties": {
-        "value": { "type": "string", "value": "AP1117-5.0" }
-      } }, { "id": "module_component:2", "definition": "component_def:2", "reference": "U3V3", "properties": {
+      } }, { "id": "module_component:1", "definition": "component_def:4", "reference": "F1", "properties": {
+        "pcb_reference": { "type": "string", "value": "F1" },
+        "value": { "type": "string", "value": "250 mA polyfuse" }
+      } }, { "id": "module_component:2", "definition": "component_def:5", "reference": "FB1", "properties": {
+        "pcb_reference": { "type": "string", "value": "FB1" },
+        "value": { "type": "string", "value": "600 Ohm @ 100 MHz" }
+      } }, { "id": "module_component:3", "definition": "component_def:2", "reference": "U5", "properties": {
+        "pcb_reference": { "type": "string", "value": "U2" },
+        "value": { "type": "string", "value": "MP2359 5V buck" }
+      } }, { "id": "module_component:4", "definition": "component_def:6", "reference": "L1", "properties": {
+        "pcb_reference": { "type": "string", "value": "L1" },
+        "value": { "type": "string", "value": "10 uH" }
+      } }, { "id": "module_component:5", "definition": "component_def:7", "reference": "DSW", "properties": {
+        "pcb_reference": { "type": "string", "value": "D1" },
+        "value": { "type": "string", "value": "B5819W" }
+      } }, { "id": "module_component:6", "definition": "component_def:8", "reference": "CIN", "properties": {
+        "pcb_reference": { "type": "string", "value": "C1" },
+        "value": { "type": "string", "value": "10 uF" }
+      } }, { "id": "module_component:7", "definition": "component_def:9", "reference": "CBST", "properties": {
+        "pcb_reference": { "type": "string", "value": "C2" },
+        "value": { "type": "string", "value": "10 nF" }
+      } }, { "id": "module_component:8", "definition": "component_def:8", "reference": "C5V", "properties": {
+        "pcb_reference": { "type": "string", "value": "C3" },
+        "value": { "type": "string", "value": "10 uF" }
+      } }, { "id": "module_component:9", "definition": "component_def:12", "reference": "REN_TOP", "properties": {
+        "pcb_reference": { "type": "string", "value": "R1" },
+        "value": { "type": "string", "value": "100 kOhm" }
+      } }, { "id": "module_component:10", "definition": "component_def:13", "reference": "REN_BOT", "properties": {
+        "pcb_reference": { "type": "string", "value": "R2" },
+        "value": { "type": "string", "value": "47 kOhm" }
+      } }, { "id": "module_component:11", "definition": "component_def:14", "reference": "RFB_TOP", "properties": {
+        "pcb_reference": { "type": "string", "value": "R3" },
+        "value": { "type": "string", "value": "68 kOhm" }
+      } }, { "id": "module_component:12", "definition": "component_def:15", "reference": "RFB_BOT", "properties": {
+        "pcb_reference": { "type": "string", "value": "R4" },
+        "value": { "type": "string", "value": "15 kOhm" }
+      } }, { "id": "module_component:13", "definition": "component_def:3", "reference": "U3V3", "properties": {
+        "pcb_reference": { "type": "string", "value": "U3" },
         "value": { "type": "string", "value": "AP1117-3.3" }
-      } }, { "id": "module_component:3", "definition": "component_def:3", "reference": "CIN", "properties": {
-        "value": { "type": "string", "value": "4.7 uF" }
-      } }, { "id": "module_component:4", "definition": "component_def:3", "reference": "C5V", "properties": {
-        "value": { "type": "string", "value": "4.7 uF" }
-      } }, { "id": "module_component:5", "definition": "component_def:3", "reference": "C3V3", "properties": {
-        "value": { "type": "string", "value": "4.7 uF" }
-      } }, { "id": "module_component:6", "definition": "component_def:3", "reference": "CVDDA", "properties": {
+      } }, { "id": "module_component:14", "definition": "component_def:10", "reference": "C3V3", "properties": {
         "pcb_reference": { "type": "string", "value": "C4" },
-        "value": { "type": "string", "value": "100 nF" }
-      } }], "connections": [{ "net": "template_net:0", "component": "module_component:0", "pin": "pin_def:2" }, { "net": "template_net:4", "component": "module_component:0", "pin": "pin_def:3" }, { "net": "template_net:4", "component": "module_component:0", "pin": "pin_def:4" }, { "net": "template_net:4", "component": "module_component:0", "pin": "pin_def:5" }, { "net": "template_net:4", "component": "module_component:1", "pin": "pin_def:6" }, { "net": "template_net:1", "component": "module_component:1", "pin": "pin_def:7" }, { "net": "template_net:0", "component": "module_component:1", "pin": "pin_def:8" }, { "net": "template_net:4", "component": "module_component:2", "pin": "pin_def:6" }, { "net": "template_net:2", "component": "module_component:2", "pin": "pin_def:7" }, { "net": "template_net:1", "component": "module_component:2", "pin": "pin_def:8" }, { "net": "template_net:0", "component": "module_component:3", "pin": "pin_def:9" }, { "net": "template_net:4", "component": "module_component:3", "pin": "pin_def:10" }, { "net": "template_net:1", "component": "module_component:4", "pin": "pin_def:9" }, { "net": "template_net:4", "component": "module_component:4", "pin": "pin_def:10" }, { "net": "template_net:2", "component": "module_component:5", "pin": "pin_def:9" }, { "net": "template_net:4", "component": "module_component:5", "pin": "pin_def:10" }, { "net": "template_net:3", "component": "module_component:6", "pin": "pin_def:9" }, { "net": "template_net:4", "component": "module_component:6", "pin": "pin_def:10" }], "ports": [{ "id": "port:0", "name": "IN_12V", "internal_net": "template_net:0", "role": "PowerInput", "required": true }, { "id": "port:1", "name": "OUT_5V", "internal_net": "template_net:1", "role": "PowerOutput", "required": true }, { "id": "port:2", "name": "OUT_3V3", "internal_net": "template_net:2", "role": "PowerOutput", "required": true }, { "id": "port:3", "name": "VDDA", "internal_net": "template_net:3", "role": "PowerOutput", "required": true }, { "id": "port:4", "name": "GND", "internal_net": "template_net:4", "role": "Ground", "required": true }] },
-    { "id": "module_def:1", "name": "UsbInterface", "local_nets": [{ "id": "template_net:5", "name": "VBUS", "kind": "Power" }, { "id": "template_net:6", "name": "USB_DP", "kind": "Signal" }, { "id": "template_net:7", "name": "USB_DM", "kind": "Signal" }, { "id": "template_net:8", "name": "MCU_USB_DP", "kind": "Signal" }, { "id": "template_net:9", "name": "MCU_USB_DM", "kind": "Signal" }, { "id": "template_net:10", "name": "GND", "kind": "Ground" }], "components": [{ "id": "module_component:7", "definition": "component_def:4", "reference": "J1", "properties": {
-        "value": { "type": "string", "value": "USB Micro-B" }
-      } }, { "id": "module_component:8", "definition": "component_def:5", "reference": "U1", "properties": {
-        "value": { "type": "string", "value": "USBLC6-4SC6" }
-      } }], "connections": [{ "net": "template_net:5", "component": "module_component:7", "pin": "pin_def:11" }, { "net": "template_net:7", "component": "module_component:7", "pin": "pin_def:12" }, { "net": "template_net:6", "component": "module_component:7", "pin": "pin_def:13" }, { "net": "template_net:10", "component": "module_component:7", "pin": "pin_def:15" }, { "net": "template_net:10", "component": "module_component:7", "pin": "pin_def:16" }, { "net": "template_net:6", "component": "module_component:8", "pin": "pin_def:17" }, { "net": "template_net:10", "component": "module_component:8", "pin": "pin_def:18" }, { "net": "template_net:7", "component": "module_component:8", "pin": "pin_def:19" }, { "net": "template_net:9", "component": "module_component:8", "pin": "pin_def:20" }, { "net": "template_net:5", "component": "module_component:8", "pin": "pin_def:21" }, { "net": "template_net:8", "component": "module_component:8", "pin": "pin_def:22" }], "ports": [{ "id": "port:5", "name": "VBUS", "internal_net": "template_net:5", "role": "PowerInput", "required": true }, { "id": "port:6", "name": "USB_DP", "internal_net": "template_net:6", "role": "Bidirectional", "required": true }, { "id": "port:7", "name": "USB_DM", "internal_net": "template_net:7", "role": "Bidirectional", "required": true }, { "id": "port:8", "name": "MCU_USB_DP", "internal_net": "template_net:8", "role": "Bidirectional", "required": true }, { "id": "port:9", "name": "MCU_USB_DM", "internal_net": "template_net:9", "role": "Bidirectional", "required": true }, { "id": "port:10", "name": "GND", "internal_net": "template_net:10", "role": "Ground", "required": true }] },
-    { "id": "module_def:2", "name": "McuSupport", "local_nets": [{ "id": "template_net:11", "name": "VDD", "kind": "Power" }, { "id": "template_net:12", "name": "GND", "kind": "Ground" }, { "id": "template_net:13", "name": "NRST", "kind": "Signal" }, { "id": "template_net:14", "name": "BOOT0", "kind": "Signal" }, { "id": "template_net:15", "name": "HSE_IN", "kind": "Signal" }, { "id": "template_net:16", "name": "HSE_OUT", "kind": "Signal" }, { "id": "template_net:17", "name": "VCAP_1", "kind": "Power" }, { "id": "template_net:18", "name": "VCAP_2", "kind": "Power" }], "components": [{ "id": "module_component:9", "definition": "component_def:6", "reference": "CVDD", "properties": {
+        "value": { "type": "string", "value": "4.7 uF" }
+      } }, { "id": "module_component:15", "definition": "component_def:5", "reference": "FBVDDA", "properties": {
+        "pcb_reference": { "type": "string", "value": "FB2" },
+        "value": { "type": "string", "value": "600 Ohm @ 100 MHz" }
+      } }, { "id": "module_component:16", "definition": "component_def:11", "reference": "CVDDA", "properties": {
         "pcb_reference": { "type": "string", "value": "C5" },
         "value": { "type": "string", "value": "100 nF" }
-      } }, { "id": "module_component:10", "definition": "component_def:6", "reference": "CVCAP1", "properties": {
+      } }], "connections": [{ "net": "template_net:0", "component": "module_component:0", "pin": "pin_def:2" }, { "net": "template_net:4", "component": "module_component:0", "pin": "pin_def:3" }, { "net": "template_net:4", "component": "module_component:0", "pin": "pin_def:4" }, { "net": "template_net:4", "component": "module_component:0", "pin": "pin_def:5" }, { "net": "template_net:0", "component": "module_component:1", "pin": "pin_def:15" }, { "net": "template_net:5", "component": "module_component:1", "pin": "pin_def:16" }, { "net": "template_net:5", "component": "module_component:2", "pin": "pin_def:17" }, { "net": "template_net:6", "component": "module_component:2", "pin": "pin_def:18" }, { "net": "template_net:9", "component": "module_component:3", "pin": "pin_def:6" }, { "net": "template_net:4", "component": "module_component:3", "pin": "pin_def:7" }, { "net": "template_net:10", "component": "module_component:3", "pin": "pin_def:8" }, { "net": "template_net:7", "component": "module_component:3", "pin": "pin_def:9" }, { "net": "template_net:6", "component": "module_component:3", "pin": "pin_def:10" }, { "net": "template_net:8", "component": "module_component:3", "pin": "pin_def:11" }, { "net": "template_net:8", "component": "module_component:4", "pin": "pin_def:19" }, { "net": "template_net:1", "component": "module_component:4", "pin": "pin_def:20" }, { "net": "template_net:4", "component": "module_component:5", "pin": "pin_def:21" }, { "net": "template_net:8", "component": "module_component:5", "pin": "pin_def:22" }, { "net": "template_net:6", "component": "module_component:6", "pin": "pin_def:23" }, { "net": "template_net:4", "component": "module_component:6", "pin": "pin_def:24" }, { "net": "template_net:8", "component": "module_component:7", "pin": "pin_def:25" }, { "net": "template_net:9", "component": "module_component:7", "pin": "pin_def:26" }, { "net": "template_net:1", "component": "module_component:8", "pin": "pin_def:23" }, { "net": "template_net:4", "component": "module_component:8", "pin": "pin_def:24" }, { "net": "template_net:6", "component": "module_component:9", "pin": "pin_def:31" }, { "net": "template_net:7", "component": "module_component:9", "pin": "pin_def:32" }, { "net": "template_net:7", "component": "module_component:10", "pin": "pin_def:33" }, { "net": "template_net:4", "component": "module_component:10", "pin": "pin_def:34" }, { "net": "template_net:1", "component": "module_component:11", "pin": "pin_def:35" }, { "net": "template_net:10", "component": "module_component:11", "pin": "pin_def:36" }, { "net": "template_net:10", "component": "module_component:12", "pin": "pin_def:37" }, { "net": "template_net:4", "component": "module_component:12", "pin": "pin_def:38" }, { "net": "template_net:4", "component": "module_component:13", "pin": "pin_def:12" }, { "net": "template_net:2", "component": "module_component:13", "pin": "pin_def:13" }, { "net": "template_net:1", "component": "module_component:13", "pin": "pin_def:14" }, { "net": "template_net:2", "component": "module_component:14", "pin": "pin_def:27" }, { "net": "template_net:4", "component": "module_component:14", "pin": "pin_def:28" }, { "net": "template_net:2", "component": "module_component:15", "pin": "pin_def:17" }, { "net": "template_net:3", "component": "module_component:15", "pin": "pin_def:18" }, { "net": "template_net:3", "component": "module_component:16", "pin": "pin_def:29" }, { "net": "template_net:4", "component": "module_component:16", "pin": "pin_def:30" }], "ports": [{ "id": "port:0", "name": "IN_12V", "internal_net": "template_net:0", "role": "PowerInput", "required": true }, { "id": "port:1", "name": "OUT_5V", "internal_net": "template_net:1", "role": "PowerOutput", "required": true }, { "id": "port:2", "name": "OUT_3V3", "internal_net": "template_net:2", "role": "PowerOutput", "required": true }, { "id": "port:3", "name": "VDDA", "internal_net": "template_net:3", "role": "PowerOutput", "required": true }, { "id": "port:4", "name": "GND", "internal_net": "template_net:4", "role": "Ground", "required": true }] },
+    { "id": "module_def:1", "name": "UsbInterface", "local_nets": [{ "id": "template_net:11", "name": "VBUS", "kind": "Power" }, { "id": "template_net:12", "name": "USB_DP", "kind": "Signal" }, { "id": "template_net:13", "name": "USB_DM", "kind": "Signal" }, { "id": "template_net:14", "name": "MCU_USB_DP", "kind": "Signal" }, { "id": "template_net:15", "name": "MCU_USB_DM", "kind": "Signal" }, { "id": "template_net:16", "name": "GND", "kind": "Ground" }], "components": [{ "id": "module_component:17", "definition": "component_def:16", "reference": "J1", "properties": {
+        "pcb_reference": { "type": "string", "value": "J3" },
+        "value": { "type": "string", "value": "USB Micro-B" }
+      } }, { "id": "module_component:18", "definition": "component_def:17", "reference": "U1", "properties": {
+        "pcb_reference": { "type": "string", "value": "U4" },
+        "value": { "type": "string", "value": "USBLC6-4SC6" }
+      } }], "connections": [{ "net": "template_net:11", "component": "module_component:17", "pin": "pin_def:39" }, { "net": "template_net:13", "component": "module_component:17", "pin": "pin_def:40" }, { "net": "template_net:12", "component": "module_component:17", "pin": "pin_def:41" }, { "net": "template_net:16", "component": "module_component:17", "pin": "pin_def:43" }, { "net": "template_net:16", "component": "module_component:17", "pin": "pin_def:44" }, { "net": "template_net:12", "component": "module_component:18", "pin": "pin_def:45" }, { "net": "template_net:16", "component": "module_component:18", "pin": "pin_def:46" }, { "net": "template_net:13", "component": "module_component:18", "pin": "pin_def:47" }, { "net": "template_net:15", "component": "module_component:18", "pin": "pin_def:48" }, { "net": "template_net:11", "component": "module_component:18", "pin": "pin_def:49" }, { "net": "template_net:14", "component": "module_component:18", "pin": "pin_def:50" }], "ports": [{ "id": "port:5", "name": "VBUS", "internal_net": "template_net:11", "role": "PowerInput", "required": true }, { "id": "port:6", "name": "USB_DP", "internal_net": "template_net:12", "role": "Bidirectional", "required": true }, { "id": "port:7", "name": "USB_DM", "internal_net": "template_net:13", "role": "Bidirectional", "required": true }, { "id": "port:8", "name": "MCU_USB_DP", "internal_net": "template_net:14", "role": "Bidirectional", "required": true }, { "id": "port:9", "name": "MCU_USB_DM", "internal_net": "template_net:15", "role": "Bidirectional", "required": true }, { "id": "port:10", "name": "GND", "internal_net": "template_net:16", "role": "Ground", "required": true }] },
+    { "id": "module_def:2", "name": "McuSupport", "local_nets": [{ "id": "template_net:17", "name": "VDD", "kind": "Power" }, { "id": "template_net:18", "name": "GND", "kind": "Ground" }, { "id": "template_net:19", "name": "NRST", "kind": "Signal" }, { "id": "template_net:20", "name": "BOOT0", "kind": "Signal" }, { "id": "template_net:21", "name": "HSE_IN", "kind": "Signal" }, { "id": "template_net:22", "name": "HSE_OUT", "kind": "Signal" }, { "id": "template_net:23", "name": "VCAP_1", "kind": "Power" }, { "id": "template_net:24", "name": "VCAP_2", "kind": "Power" }], "components": [{ "id": "module_component:19", "definition": "component_def:18", "reference": "CVDD", "properties": {
         "pcb_reference": { "type": "string", "value": "C6" },
-        "value": { "type": "string", "value": "2.2 uF" }
-      } }, { "id": "module_component:11", "definition": "component_def:6", "reference": "CVCAP2", "properties": {
+        "value": { "type": "string", "value": "100 nF" }
+      } }, { "id": "module_component:20", "definition": "component_def:19", "reference": "CVCAP1", "properties": {
         "pcb_reference": { "type": "string", "value": "C7" },
         "value": { "type": "string", "value": "2.2 uF" }
-      } }, { "id": "module_component:12", "definition": "component_def:7", "reference": "RRESET", "properties": {
-        "pcb_reference": { "type": "string", "value": "R1" },
+      } }, { "id": "module_component:21", "definition": "component_def:19", "reference": "CVCAP2", "properties": {
+        "pcb_reference": { "type": "string", "value": "C8" },
+        "value": { "type": "string", "value": "2.2 uF" }
+      } }, { "id": "module_component:22", "definition": "component_def:21", "reference": "RRESET", "properties": {
+        "pcb_reference": { "type": "string", "value": "R5" },
         "value": { "type": "string", "value": "10 kOhm" }
-      } }, { "id": "module_component:13", "definition": "component_def:7", "reference": "RBOOT", "properties": {
-        "pcb_reference": { "type": "string", "value": "R2" },
+      } }, { "id": "module_component:23", "definition": "component_def:22", "reference": "RBOOT", "properties": {
+        "pcb_reference": { "type": "string", "value": "R6" },
         "value": { "type": "string", "value": "100 kOhm" }
-      } }, { "id": "module_component:14", "definition": "component_def:9", "reference": "SWBOOT", "properties": {
+      } }, { "id": "module_component:24", "definition": "component_def:24", "reference": "SWBOOT", "properties": {
         "pcb_reference": { "type": "string", "value": "SW1" },
         "value": { "type": "string", "value": "BOOT0" }
-      } }, { "id": "module_component:15", "definition": "component_def:8", "reference": "Y1", "properties": {
+      } }, { "id": "module_component:25", "definition": "component_def:23", "reference": "Y1", "properties": {
         "pcb_reference": { "type": "string", "value": "Y1" },
         "value": { "type": "string", "value": "8 MHz" }
-      } }, { "id": "module_component:16", "definition": "component_def:6", "reference": "CHSEIN", "properties": {
-        "pcb_reference": { "type": "string", "value": "C8" },
-        "value": { "type": "string", "value": "18 pF" }
-      } }, { "id": "module_component:17", "definition": "component_def:6", "reference": "CHSEOUT", "properties": {
+      } }, { "id": "module_component:26", "definition": "component_def:20", "reference": "CHSEIN", "properties": {
         "pcb_reference": { "type": "string", "value": "C9" },
         "value": { "type": "string", "value": "18 pF" }
-      } }], "connections": [{ "net": "template_net:11", "component": "module_component:9", "pin": "pin_def:23" }, { "net": "template_net:12", "component": "module_component:9", "pin": "pin_def:24" }, { "net": "template_net:17", "component": "module_component:10", "pin": "pin_def:23" }, { "net": "template_net:12", "component": "module_component:10", "pin": "pin_def:24" }, { "net": "template_net:18", "component": "module_component:11", "pin": "pin_def:23" }, { "net": "template_net:12", "component": "module_component:11", "pin": "pin_def:24" }, { "net": "template_net:11", "component": "module_component:12", "pin": "pin_def:25" }, { "net": "template_net:13", "component": "module_component:12", "pin": "pin_def:26" }, { "net": "template_net:14", "component": "module_component:13", "pin": "pin_def:25" }, { "net": "template_net:12", "component": "module_component:13", "pin": "pin_def:26" }, { "net": "template_net:11", "component": "module_component:14", "pin": "pin_def:31" }, { "net": "template_net:14", "component": "module_component:14", "pin": "pin_def:32" }, { "net": "template_net:12", "component": "module_component:14", "pin": "pin_def:33" }, { "net": "template_net:15", "component": "module_component:15", "pin": "pin_def:27" }, { "net": "template_net:12", "component": "module_component:15", "pin": "pin_def:28" }, { "net": "template_net:16", "component": "module_component:15", "pin": "pin_def:29" }, { "net": "template_net:12", "component": "module_component:15", "pin": "pin_def:30" }, { "net": "template_net:15", "component": "module_component:16", "pin": "pin_def:23" }, { "net": "template_net:12", "component": "module_component:16", "pin": "pin_def:24" }, { "net": "template_net:16", "component": "module_component:17", "pin": "pin_def:23" }, { "net": "template_net:12", "component": "module_component:17", "pin": "pin_def:24" }], "ports": [{ "id": "port:11", "name": "VDD", "internal_net": "template_net:11", "role": "PowerInput", "required": true }, { "id": "port:12", "name": "GND", "internal_net": "template_net:12", "role": "Ground", "required": true }, { "id": "port:13", "name": "NRST", "internal_net": "template_net:13", "role": "Input", "required": true }, { "id": "port:14", "name": "BOOT0", "internal_net": "template_net:14", "role": "Input", "required": true }, { "id": "port:15", "name": "HSE_IN", "internal_net": "template_net:15", "role": "Passive", "required": true }, { "id": "port:16", "name": "HSE_OUT", "internal_net": "template_net:16", "role": "Passive", "required": true }, { "id": "port:17", "name": "VCAP_1", "internal_net": "template_net:17", "role": "PowerInput", "required": true }, { "id": "port:18", "name": "VCAP_2", "internal_net": "template_net:18", "role": "PowerInput", "required": true }] },
-    { "id": "module_def:3", "name": "LedIndicator", "local_nets": [{ "id": "template_net:19", "name": "SUPPLY", "kind": "Power" }, { "id": "template_net:20", "name": "SIGNAL", "kind": "Signal" }, { "id": "template_net:21", "name": "GND", "kind": "Ground" }], "components": [{ "id": "module_component:18", "definition": "component_def:12", "reference": "R", "properties": {
+      } }, { "id": "module_component:27", "definition": "component_def:20", "reference": "CHSEOUT", "properties": {
+        "pcb_reference": { "type": "string", "value": "C10" },
+        "value": { "type": "string", "value": "18 pF" }
+      } }], "connections": [{ "net": "template_net:17", "component": "module_component:19", "pin": "pin_def:51" }, { "net": "template_net:18", "component": "module_component:19", "pin": "pin_def:52" }, { "net": "template_net:23", "component": "module_component:20", "pin": "pin_def:53" }, { "net": "template_net:18", "component": "module_component:20", "pin": "pin_def:54" }, { "net": "template_net:24", "component": "module_component:21", "pin": "pin_def:53" }, { "net": "template_net:18", "component": "module_component:21", "pin": "pin_def:54" }, { "net": "template_net:17", "component": "module_component:22", "pin": "pin_def:57" }, { "net": "template_net:19", "component": "module_component:22", "pin": "pin_def:58" }, { "net": "template_net:20", "component": "module_component:23", "pin": "pin_def:59" }, { "net": "template_net:18", "component": "module_component:23", "pin": "pin_def:60" }, { "net": "template_net:17", "component": "module_component:24", "pin": "pin_def:65" }, { "net": "template_net:20", "component": "module_component:24", "pin": "pin_def:66" }, { "net": "template_net:18", "component": "module_component:24", "pin": "pin_def:67" }, { "net": "template_net:21", "component": "module_component:25", "pin": "pin_def:61" }, { "net": "template_net:18", "component": "module_component:25", "pin": "pin_def:62" }, { "net": "template_net:22", "component": "module_component:25", "pin": "pin_def:63" }, { "net": "template_net:18", "component": "module_component:25", "pin": "pin_def:64" }, { "net": "template_net:21", "component": "module_component:26", "pin": "pin_def:55" }, { "net": "template_net:18", "component": "module_component:26", "pin": "pin_def:56" }, { "net": "template_net:22", "component": "module_component:27", "pin": "pin_def:55" }, { "net": "template_net:18", "component": "module_component:27", "pin": "pin_def:56" }], "ports": [{ "id": "port:11", "name": "VDD", "internal_net": "template_net:17", "role": "PowerInput", "required": true }, { "id": "port:12", "name": "GND", "internal_net": "template_net:18", "role": "Ground", "required": true }, { "id": "port:13", "name": "NRST", "internal_net": "template_net:19", "role": "Input", "required": true }, { "id": "port:14", "name": "BOOT0", "internal_net": "template_net:20", "role": "Input", "required": true }, { "id": "port:15", "name": "HSE_IN", "internal_net": "template_net:21", "role": "Passive", "required": true }, { "id": "port:16", "name": "HSE_OUT", "internal_net": "template_net:22", "role": "Passive", "required": true }, { "id": "port:17", "name": "VCAP_1", "internal_net": "template_net:23", "role": "PowerInput", "required": true }, { "id": "port:18", "name": "VCAP_2", "internal_net": "template_net:24", "role": "PowerInput", "required": true }] },
+    { "id": "module_def:3", "name": "LedIndicator", "local_nets": [{ "id": "template_net:25", "name": "SUPPLY", "kind": "Power" }, { "id": "template_net:26", "name": "SIGNAL", "kind": "Signal" }, { "id": "template_net:27", "name": "LED_A", "kind": "Signal" }], "components": [{ "id": "module_component:28", "definition": "component_def:27", "reference": "R", "properties": {
+        "pcb_reference": { "type": "string", "value": "R7" },
         "value": { "type": "string", "value": "330 Ohm" }
-      } }, { "id": "module_component:19", "definition": "component_def:13", "reference": "D", "properties": {
+      } }, { "id": "module_component:29", "definition": "component_def:28", "reference": "D", "properties": {
+        "pcb_reference": { "type": "string", "value": "D2" },
         "value": { "type": "string", "value": "Green LED" }
-      } }], "connections": [{ "net": "template_net:19", "component": "module_component:18", "pin": "pin_def:48" }, { "net": "template_net:20", "component": "module_component:18", "pin": "pin_def:49" }, { "net": "template_net:20", "component": "module_component:19", "pin": "pin_def:50" }, { "net": "template_net:21", "component": "module_component:19", "pin": "pin_def:51" }], "ports": [{ "id": "port:19", "name": "SUPPLY", "internal_net": "template_net:19", "role": "PowerInput", "required": true }, { "id": "port:20", "name": "SIGNAL", "internal_net": "template_net:20", "role": "Input", "required": true }, { "id": "port:21", "name": "GND", "internal_net": "template_net:21", "role": "Ground", "required": true }] }
+      } }], "connections": [{ "net": "template_net:25", "component": "module_component:28", "pin": "pin_def:82" }, { "net": "template_net:27", "component": "module_component:28", "pin": "pin_def:83" }, { "net": "template_net:27", "component": "module_component:29", "pin": "pin_def:84" }, { "net": "template_net:26", "component": "module_component:29", "pin": "pin_def:85" }], "ports": [{ "id": "port:19", "name": "SUPPLY", "internal_net": "template_net:25", "role": "PowerInput", "required": true }, { "id": "port:20", "name": "SIGNAL", "internal_net": "template_net:26", "role": "Input", "required": true }] }
   ],
   "module_instances": [
-    { "id": "module:0", "definition": "module_def:0", "name": "PWR", "net_origins": [{ "template_net": "template_net:0", "net": "net:5" }, { "template_net": "template_net:1", "net": "net:6" }, { "template_net": "template_net:2", "net": "net:7" }, { "template_net": "template_net:3", "net": "net:8" }, { "template_net": "template_net:4", "net": "net:9" }], "component_origins": [{ "template_component": "module_component:0", "component": "component:1" }, { "template_component": "module_component:1", "component": "component:2" }, { "template_component": "module_component:2", "component": "component:3" }, { "template_component": "module_component:3", "component": "component:4" }, { "template_component": "module_component:4", "component": "component:5" }, { "template_component": "module_component:5", "component": "component:6" }, { "template_component": "module_component:6", "component": "component:7" }], "port_bindings": [{ "port": "port:0", "parent_net": "net:0" }, { "port": "port:1", "parent_net": "net:1" }, { "port": "port:2", "parent_net": "net:2" }, { "port": "port:3", "parent_net": "net:3" }, { "port": "port:4", "parent_net": "net:4" }] },
-    { "id": "module:1", "definition": "module_def:1", "name": "USB", "net_origins": [{ "template_net": "template_net:5", "net": "net:14" }, { "template_net": "template_net:6", "net": "net:15" }, { "template_net": "template_net:7", "net": "net:16" }, { "template_net": "template_net:8", "net": "net:17" }, { "template_net": "template_net:9", "net": "net:18" }, { "template_net": "template_net:10", "net": "net:19" }], "component_origins": [{ "template_component": "module_component:7", "component": "component:8" }, { "template_component": "module_component:8", "component": "component:9" }], "port_bindings": [{ "port": "port:5", "parent_net": "net:1" }, { "port": "port:6", "parent_net": "net:10" }, { "port": "port:7", "parent_net": "net:11" }, { "port": "port:8", "parent_net": "net:12" }, { "port": "port:9", "parent_net": "net:13" }, { "port": "port:10", "parent_net": "net:4" }] },
-    { "id": "module:2", "definition": "module_def:2", "name": "SUPPORT", "net_origins": [{ "template_net": "template_net:11", "net": "net:20" }, { "template_net": "template_net:12", "net": "net:21" }, { "template_net": "template_net:13", "net": "net:22" }, { "template_net": "template_net:14", "net": "net:23" }, { "template_net": "template_net:15", "net": "net:24" }, { "template_net": "template_net:16", "net": "net:25" }, { "template_net": "template_net:17", "net": "net:26" }, { "template_net": "template_net:18", "net": "net:27" }], "component_origins": [{ "template_component": "module_component:9", "component": "component:10" }, { "template_component": "module_component:10", "component": "component:11" }, { "template_component": "module_component:11", "component": "component:12" }, { "template_component": "module_component:12", "component": "component:13" }, { "template_component": "module_component:13", "component": "component:14" }, { "template_component": "module_component:14", "component": "component:15" }, { "template_component": "module_component:15", "component": "component:16" }, { "template_component": "module_component:16", "component": "component:17" }, { "template_component": "module_component:17", "component": "component:18" }], "port_bindings": [{ "port": "port:11", "parent_net": "net:2" }, { "port": "port:12", "parent_net": "net:4" }, { "port": "port:13", "parent_net": "net:28" }, { "port": "port:14", "parent_net": "net:29" }, { "port": "port:15", "parent_net": "net:30" }, { "port": "port:16", "parent_net": "net:31" }, { "port": "port:17", "parent_net": "net:32" }, { "port": "port:18", "parent_net": "net:33" }] },
-    { "id": "module:3", "definition": "module_def:3", "name": "LED_STATUS", "net_origins": [{ "template_net": "template_net:19", "net": "net:38" }, { "template_net": "template_net:20", "net": "net:39" }, { "template_net": "template_net:21", "net": "net:40" }], "component_origins": [{ "template_component": "module_component:18", "component": "component:21" }, { "template_component": "module_component:19", "component": "component:22" }], "port_bindings": [{ "port": "port:19", "parent_net": "net:2" }, { "port": "port:20", "parent_net": "net:37" }, { "port": "port:21", "parent_net": "net:4" }] }
+    { "id": "module:0", "definition": "module_def:0", "name": "PWR", "net_origins": [{ "template_net": "template_net:0", "net": "net:5" }, { "template_net": "template_net:1", "net": "net:6" }, { "template_net": "template_net:2", "net": "net:7" }, { "template_net": "template_net:3", "net": "net:8" }, { "template_net": "template_net:4", "net": "net:9" }, { "template_net": "template_net:5", "net": "net:10" }, { "template_net": "template_net:6", "net": "net:11" }, { "template_net": "template_net:7", "net": "net:12" }, { "template_net": "template_net:8", "net": "net:13" }, { "template_net": "template_net:9", "net": "net:14" }, { "template_net": "template_net:10", "net": "net:15" }], "component_origins": [{ "template_component": "module_component:0", "component": "component:1" }, { "template_component": "module_component:1", "component": "component:2" }, { "template_component": "module_component:2", "component": "component:3" }, { "template_component": "module_component:3", "component": "component:4" }, { "template_component": "module_component:4", "component": "component:5" }, { "template_component": "module_component:5", "component": "component:6" }, { "template_component": "module_component:6", "component": "component:7" }, { "template_component": "module_component:7", "component": "component:8" }, { "template_component": "module_component:8", "component": "component:9" }, { "template_component": "module_component:9", "component": "component:10" }, { "template_component": "module_component:10", "component": "component:11" }, { "template_component": "module_component:11", "component": "component:12" }, { "template_component": "module_component:12", "component": "component:13" }, { "template_component": "module_component:13", "component": "component:14" }, { "template_component": "module_component:14", "component": "component:15" }, { "template_component": "module_component:15", "component": "component:16" }, { "template_component": "module_component:16", "component": "component:17" }], "port_bindings": [{ "port": "port:0", "parent_net": "net:0" }, { "port": "port:1", "parent_net": "net:1" }, { "port": "port:2", "parent_net": "net:2" }, { "port": "port:3", "parent_net": "net:3" }, { "port": "port:4", "parent_net": "net:4" }] },
+    { "id": "module:1", "definition": "module_def:1", "name": "USB", "net_origins": [{ "template_net": "template_net:11", "net": "net:20" }, { "template_net": "template_net:12", "net": "net:21" }, { "template_net": "template_net:13", "net": "net:22" }, { "template_net": "template_net:14", "net": "net:23" }, { "template_net": "template_net:15", "net": "net:24" }, { "template_net": "template_net:16", "net": "net:25" }], "component_origins": [{ "template_component": "module_component:17", "component": "component:18" }, { "template_component": "module_component:18", "component": "component:19" }], "port_bindings": [{ "port": "port:5", "parent_net": "net:1" }, { "port": "port:6", "parent_net": "net:16" }, { "port": "port:7", "parent_net": "net:17" }, { "port": "port:8", "parent_net": "net:18" }, { "port": "port:9", "parent_net": "net:19" }, { "port": "port:10", "parent_net": "net:4" }] },
+    { "id": "module:2", "definition": "module_def:2", "name": "SUPPORT", "net_origins": [{ "template_net": "template_net:17", "net": "net:26" }, { "template_net": "template_net:18", "net": "net:27" }, { "template_net": "template_net:19", "net": "net:28" }, { "template_net": "template_net:20", "net": "net:29" }, { "template_net": "template_net:21", "net": "net:30" }, { "template_net": "template_net:22", "net": "net:31" }, { "template_net": "template_net:23", "net": "net:32" }, { "template_net": "template_net:24", "net": "net:33" }], "component_origins": [{ "template_component": "module_component:19", "component": "component:20" }, { "template_component": "module_component:20", "component": "component:21" }, { "template_component": "module_component:21", "component": "component:22" }, { "template_component": "module_component:22", "component": "component:23" }, { "template_component": "module_component:23", "component": "component:24" }, { "template_component": "module_component:24", "component": "component:25" }, { "template_component": "module_component:25", "component": "component:26" }, { "template_component": "module_component:26", "component": "component:27" }, { "template_component": "module_component:27", "component": "component:28" }], "port_bindings": [{ "port": "port:11", "parent_net": "net:2" }, { "port": "port:12", "parent_net": "net:4" }, { "port": "port:13", "parent_net": "net:34" }, { "port": "port:14", "parent_net": "net:35" }, { "port": "port:15", "parent_net": "net:36" }, { "port": "port:16", "parent_net": "net:37" }, { "port": "port:17", "parent_net": "net:38" }, { "port": "port:18", "parent_net": "net:39" }] },
+    { "id": "module:3", "definition": "module_def:3", "name": "LED_STATUS", "net_origins": [{ "template_net": "template_net:25", "net": "net:44" }, { "template_net": "template_net:26", "net": "net:45" }, { "template_net": "template_net:27", "net": "net:46" }], "component_origins": [{ "template_component": "module_component:28", "component": "component:31" }, { "template_component": "module_component:29", "component": "component:32" }], "port_bindings": [{ "port": "port:19", "parent_net": "net:2" }, { "port": "port:20", "parent_net": "net:43" }] }
   ]
 }

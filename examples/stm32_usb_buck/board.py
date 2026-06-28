@@ -12,6 +12,33 @@ from .stm32_board import Stm32UsbBuckBoard
 BOARD_NAME = "STM32 USB Buck PCB"
 JLCPCB_PROFILE_PROJECT_PATH = "profiles/jlcpcb_4layer.voltcap.json"
 JLCPCB_PROFILE_PATH = Path(__file__).resolve().parent / JLCPCB_PROFILE_PROJECT_PATH
+BOARD_SIZE = (90.0, 58.0)
+BOARD_CORNER_RADIUS = 4.0
+
+
+def _rounded_rect_vertices(
+    *,
+    origin: tuple[float, float] = (0.0, 0.0),
+    size: tuple[float, float] = BOARD_SIZE,
+    radius: float = BOARD_CORNER_RADIUS,
+) -> tuple[tuple[float, float], ...]:
+    x, y = origin
+    width, height = size
+    offset = round(radius * 0.2929, 2)
+    return (
+        (x + radius, y),
+        (x + width - radius, y),
+        (x + width - offset, y + offset),
+        (x + width, y + radius),
+        (x + width, y + height - radius),
+        (x + width - offset, y + height - offset),
+        (x + width - radius, y + height),
+        (x + radius, y + height),
+        (x + offset, y + height - offset),
+        (x, y + height - radius),
+        (x, y + radius),
+        (x + offset, y + offset),
+    )
 
 
 def build_pcb(context: volt.BuildContext) -> volt.Board:
@@ -34,7 +61,7 @@ def build_pcb(context: volt.BuildContext) -> volt.Board:
         min_via_annular=0.70,
         board_outline_clearance=0.25,
     )
-    board.set_rectangular_outline(origin=(0.0, 0.0), size=(90.0, 58.0))
+    board.set_polygon_outline(_rounded_rect_vertices())
 
     pwr = model.modules["PWR"]
     usb = model.modules["USB"]
@@ -45,36 +72,46 @@ def build_pcb(context: volt.BuildContext) -> volt.Board:
         placed = {
             "VIN_SRC": layout.place(model.components["VIN_SRC"], at=(6.0, 30.0), orient="right"),
             "PWR/J": layout.place(pwr.component("J"), at=(6.0, 17.0), orient="right"),
-            "PWR/U5": layout.place(pwr.component("U5"), at=(23.0, 17.0), orient="right"),
-            "PWR/U3V3": layout.place(pwr.component("U3V3"), at=(38.0, 17.0), orient="right"),
-            "PWR/CIN": layout.two_pad(pwr.component("CIN")).at((17.0, 23.0)).anchor("center").right(),
-            "PWR/C5V": layout.two_pad(pwr.component("C5V")).at((31.0, 23.0)).anchor("center").right(),
-            "PWR/C3V3": layout.two_pad(pwr.component("C3V3")).at((46.0, 23.0)).anchor("center").right(),
-            "PWR/CVDDA": layout.two_pad(pwr.component("CVDDA")).at((33.0, 30.0)).anchor("center").down(),
+            "PWR/F1": layout.two_pad(pwr.component("F1")).at((13.5, 12.0)).anchor("center").right(),
+            "PWR/FB1": layout.two_pad(pwr.component("FB1")).at((19.0, 12.0)).anchor("center").right(),
+            "PWR/U5": layout.place(pwr.component("U5"), at=(27.5, 16.5), orient="right"),
+            "PWR/L1": layout.two_pad(pwr.component("L1")).at((36.0, 16.5)).anchor("center").right(),
+            "PWR/DSW": layout.two_pad(pwr.component("DSW")).at((27.5, 23.0)).anchor("center").right(),
+            "PWR/CIN": layout.two_pad(pwr.component("CIN")).at((22.5, 18.0)).anchor("center").down(),
+            "PWR/CBST": layout.two_pad(pwr.component("CBST")).at((31.5, 10.5)).anchor("center").right(),
+            "PWR/C5V": layout.two_pad(pwr.component("C5V")).at((42.0, 17.0)).anchor("center").down(),
+            "PWR/REN_TOP": layout.two_pad(pwr.component("REN_TOP")).at((23.5, 8.0)).anchor("center").right(),
+            "PWR/REN_BOT": layout.two_pad(pwr.component("REN_BOT")).at((23.5, 10.5)).anchor("center").right(),
+            "PWR/RFB_TOP": layout.two_pad(pwr.component("RFB_TOP")).at((40.0, 10.5)).anchor("center").right(),
+            "PWR/RFB_BOT": layout.two_pad(pwr.component("RFB_BOT")).at((40.0, 13.0)).anchor("center").right(),
+            "PWR/U3V3": layout.place(pwr.component("U3V3"), at=(55.0, 13.5), orient="right"),
+            "PWR/C3V3": layout.two_pad(pwr.component("C3V3")).at((63.0, 16.0)).anchor("center").down(),
+            "PWR/FBVDDA": layout.two_pad(pwr.component("FBVDDA")).at((40.5, 28.5)).anchor("center").right(),
+            "PWR/CVDDA": layout.two_pad(pwr.component("CVDDA")).at((37.5, 29.0)).anchor("center").down(),
             "USB/J1": layout.place(usb.component("J1"), at=(84.0, 39.0), orient="left", locked=True),
             "USB/U1": layout.place(usb.component("U1"), at=(73.0, 37.5), orient="right"),
-            "SUPPORT/CVDD": layout.two_pad(support.component("CVDD")).at((38.0, 22.0)).anchor("center").right(),
+            "SUPPORT/CVDD": layout.two_pad(support.component("CVDD")).at((39.0, 22.0)).anchor("center").right(),
             "SUPPORT/CVCAP1": layout.two_pad(support.component("CVCAP1")).at((42.0, 43.0)).anchor("center").down(),
             "SUPPORT/CVCAP2": layout.two_pad(support.component("CVCAP2")).at((54.0, 43.0)).anchor("center").down(),
-            "SUPPORT/RRESET": layout.two_pad(support.component("RRESET")).at((36.5, 27.0)).anchor("center").right(),
+            "SUPPORT/RRESET": layout.two_pad(support.component("RRESET")).at((36.0, 26.5)).anchor("center").right(),
             "SUPPORT/RBOOT": layout.two_pad(support.component("RBOOT")).at((60.0, 25.0)).anchor("center").down(),
             "SUPPORT/SWBOOT": layout.place(support.component("SWBOOT"), at=(66.5, 24.5), orient="right"),
-            "SUPPORT/Y1": layout.place(support.component("Y1"), at=(37.5, 33.0), orient="right"),
-            "SUPPORT/CHSEIN": layout.two_pad(support.component("CHSEIN")).at((33.0, 36.0)).anchor("center").right(),
-            "SUPPORT/CHSEOUT": layout.two_pad(support.component("CHSEOUT")).at((41.0, 39.0)).anchor("center").right(),
+            "SUPPORT/Y1": layout.place(support.component("Y1"), at=(36.5, 34.0), orient="right"),
+            "SUPPORT/CHSEIN": layout.two_pad(support.component("CHSEIN")).at((32.5, 36.5)).anchor("center").right(),
+            "SUPPORT/CHSEOUT": layout.two_pad(support.component("CHSEOUT")).at((40.5, 39.5)).anchor("center").right(),
             "LED_STATUS/R": layout.two_pad(led.component("R")).at((62.0, 50.0)).anchor("center").right(),
             "LED_STATUS/D": layout.two_pad(led.component("D")).at((70.0, 50.0)).anchor("center").right(),
             "U1": layout.place(model.components["U1"], at=(49.0, 31.0), orient="right"),
             "J2": layout.place(model.components["J2"], at=(78.0, 17.0), orient="right", locked=True),
             "J3": layout.place(model.components["J3"], at=(84.0, 30.0), orient="left", locked=True),
-            "H1": layout.place(model.components["H1"], at=(5.0, 5.0), orient="right", locked=True),
-            "H2": layout.place(model.components["H2"], at=(85.0, 5.0), orient="right", locked=True),
-            "H3": layout.place(model.components["H3"], at=(5.0, 53.0), orient="right", locked=True),
-            "H4": layout.place(model.components["H4"], at=(85.0, 53.0), orient="right", locked=True),
+            "H1": layout.place(model.components["H1"], at=(6.0, 6.0), orient="right", locked=True),
+            "H2": layout.place(model.components["H2"], at=(84.0, 6.0), orient="right", locked=True),
+            "H3": layout.place(model.components["H3"], at=(6.0, 52.0), orient="right", locked=True),
+            "H4": layout.place(model.components["H4"], at=(84.0, 52.0), orient="right", locked=True),
         }
 
         _add_silkscreen(layout, silk)
-        _route_power(model, nets, placed, layout, front, back)
+        _route_power(model, nets, placed, layout, front, inner1, inner2, back)
         _route_usb(nets, placed, layout, front, back)
         _route_mcu_support(nets, placed, layout, front, inner2, back)
         _route_connectors(nets, placed, layout, front, inner1)
@@ -82,8 +119,8 @@ def build_pcb(context: volt.BuildContext) -> volt.Board:
         layout.zone(
             layers=(back,),
             net=nets["GND"],
-            at=(1.0, 49.0),
-            size=(13.0, 8.0),
+            at=(4.5, 48.0),
+            size=(16.0, 6.0),
             fill="solid",
         )
 
@@ -92,18 +129,19 @@ def build_pcb(context: volt.BuildContext) -> volt.Board:
 
 def _add_silkscreen(layout, silk: int) -> None:
     labels = (
-        ("STM32 USB BUCK", (30.0, 54.5), 0.0, 1.2),
-        ("12V IN", (2.5, 17.0), 90.0, 0.8),
+        ("STM32 USB BUCK", (30.0, 55.0), 0.0, 1.1),
+        ("12V IN", (2.5, 17.0), 90.0, 0.75),
+        ("BUCK 5V", (31.0, 6.0), 0.0, 0.7),
         ("USB", (81.0, 45.5), 0.0, 0.8),
         ("SWD", (71.0, 9.5), 0.0, 0.8),
         ("GPIO", (80.0, 29.0), 0.0, 0.8),
-        ("+3V3", (47.0, 19.0), 0.0, 0.7),
-        ("VDDA", (32.0, 25.5), 0.0, 0.7),
-        ("BOOT0", (61.0, 20.5), 0.0, 0.7),
-        ("RESET", (25.0, 29.5), 0.0, 0.7),
+        ("+3V3", (62.0, 19.0), 0.0, 0.7),
+        ("VDDA", (34.0, 29.5), 0.0, 0.7),
+        ("BOOT0", (72.0, 24.0), 0.0, 0.7),
+        ("RESET", (27.0, 28.5), 0.0, 0.7),
         ("STATUS", (61.0, 53.0), 0.0, 0.7),
         ("HSE 8MHZ", (19.5, 40.0), 0.0, 0.7),
-        ("GND POUR B.CU", (12.0, 54.5), 0.0, 0.7),
+        ("GND POUR B.CU", (12.0, 55.0), 0.0, 0.65),
     )
     for text, at, rotation, size in labels:
         layout.text(text, at=at, layer=silk, rotation=rotation, size=size)
@@ -115,8 +153,21 @@ def _chain(layout, net: volt.Net, anchors, *, layer: int, width: float) -> None:
         _connect(layout, net, start, end, layer=layer, width=width)
 
 
-def _via_drop(layout, net: volt.Net, anchor, drop, *, front: int, back: int, width: float) -> None:
-    _connect(layout, net, anchor, drop, layer=front, width=width)
+def _via_drop(
+    layout,
+    net: volt.Net,
+    anchor,
+    drop,
+    *,
+    front: int,
+    back: int,
+    width: float,
+    direct: bool = False,
+) -> None:
+    if direct:
+        _manual_trace(layout, net, (anchor, drop), layer=front, width=width)
+    else:
+        _connect(layout, net, anchor, drop, layer=front, width=width)
     layout.via(net, at=drop, start_layer=front, end_layer=back)
 
 
@@ -140,6 +191,21 @@ def _manual_trace(layout, net: volt.Net, anchors, *, layer: int, width: float) -
     if len(points) < 2:
         return
     layout._board.add_track(net, layer=layer, points=tuple(points), width=width)
+
+
+def _orthogonal_chain(layout, net: volt.Net, anchors, *, layer: int, width: float) -> None:
+    points = tuple(_board_point(anchor) for anchor in anchors)
+    for start, end in zip(points, points[1:]):
+        if start[0] == end[0] or start[1] == end[1]:
+            _manual_trace(layout, net, (start, end), layer=layer, width=width)
+            continue
+        _manual_trace(
+            layout,
+            net,
+            (start, (end[0], start[1]), end),
+            layer=layer,
+            width=width,
+        )
 
 
 def _route_via_channel(
@@ -172,14 +238,26 @@ def _route_power(
     placed: dict[str, object],
     layout,
     front: int,
+    control_layer: int,
+    bootstrap_layer: int,
     back: int,
 ) -> None:
     pwr_j = placed["PWR/J"]
+    f1 = placed["PWR/F1"]
+    fb1 = placed["PWR/FB1"]
     u5 = placed["PWR/U5"]
-    u3v3 = placed["PWR/U3V3"]
+    l1 = placed["PWR/L1"]
+    dsw = placed["PWR/DSW"]
     cin = placed["PWR/CIN"]
+    cboot = placed["PWR/CBST"]
     c5v = placed["PWR/C5V"]
+    ren_top = placed["PWR/REN_TOP"]
+    ren_bottom = placed["PWR/REN_BOT"]
+    rfb_top = placed["PWR/RFB_TOP"]
+    rfb_bottom = placed["PWR/RFB_BOT"]
+    u3v3 = placed["PWR/U3V3"]
     c3v3 = placed["PWR/C3V3"]
+    fbvdda = placed["PWR/FBVDDA"]
     cvdda = placed["PWR/CVDDA"]
     vin = placed["VIN_SRC"]
     mcu = placed["U1"]
@@ -190,25 +268,109 @@ def _route_power(
     _chain(
         layout,
         nets["PWR/IN_12V"],
-        (pwr_j[1], cin.start, u5["VI"]),
+        (pwr_j[1], f1.start),
         layer=front,
         width=0.50,
     )
     _chain(
         layout,
+        nets["PWR/FUSED_12V"],
+        (f1.end, fb1.start),
+        layer=front,
+        width=0.50,
+    )
+    _chain(
+        layout,
+        nets["PWR/BUCK_IN"],
+        (fb1.end, cin.start, u5["IN"], ren_top.start),
+        layer=front,
+        width=0.50,
+    )
+    _chain(
+        layout,
+        nets["PWR/BUCK_EN"],
+        (ren_top.end, ren_bottom.start, u5["EN"]),
+        layer=front,
+        width=0.20,
+    )
+    _route_via_channel(
+        layout,
+        nets["PWR/BUCK_EN"],
+        u5["EN"],
+        (30.25, u5["EN"].y),
+        ((30.25, ren_bottom.start.y),),
+        (21.5, ren_bottom.start.y),
+        ren_bottom.start,
+        front=front,
+        back=control_layer,
+        width=0.20,
+    )
+    _chain(
+        layout,
+        nets["PWR/BUCK_SW"],
+        (u5["SW"], l1.start, dsw["K"], cboot.start),
+        layer=front,
+        width=0.50,
+    )
+    _chain(
+        layout,
+        nets["PWR/BUCK_BST"],
+        (u5["BST"], cboot.end),
+        layer=front,
+        width=0.20,
+    )
+    _route_via_channel(
+        layout,
+        nets["PWR/BUCK_BST"],
+        u5["BST"],
+        (24.0, u5["BST"].y),
+        ((24.0, 8.75),),
+        (cboot.end.x, 8.75),
+        cboot.end,
+        front=front,
+        back=bootstrap_layer,
+        width=0.20,
+    )
+    _chain(
+        layout,
         nets["PWR/OUT_5V"],
-        (u5.pad("4"), u5.pad("2"), c5v.start, u3v3["VI"]),
+        (l1.end, c5v.start, rfb_top.start, u3v3["VI"]),
         layer=front,
         width=0.45,
     )
     _chain(
         layout,
+        nets["PWR/BUCK_FB"],
+        (rfb_top.end, rfb_bottom.start, u5["FB"]),
+        layer=front,
+        width=0.20,
+    )
+    _route_via_channel(
+        layout,
+        nets["PWR/BUCK_FB"],
+        u5["FB"],
+        (26.5, u5["FB"].y),
+        ((26.5, 19.0), (37.0, 19.0)),
+        (37.0, rfb_bottom.start.y),
+        rfb_bottom.start,
+        front=front,
+        back=control_layer,
+        width=0.20,
+    )
+    _chain(
+        layout,
         nets["PWR/OUT_3V3"],
-        (u3v3.pad("4"), u3v3.pad("2"), c3v3.start),
+        (u3v3.pad("4"), u3v3.pad("2"), c3v3.start, fbvdda.start),
         layer=front,
         width=0.40,
     )
-    _connect(layout, nets["PWR/VDDA"], cvdda.start, cvdda.start.down(3.0), layer=front, width=0.25)
+    _chain(
+        layout,
+        nets["PWR/VDDA"],
+        (fbvdda.end, cvdda.start),
+        layer=front,
+        width=0.25,
+    )
 
     pwr_gnd_anchors = (
         pwr_j[2],
@@ -216,18 +378,40 @@ def _route_power(
         pwr_j[4],
         cin.end,
         u5["GND"],
+        ren_bottom.end,
+        dsw["A"],
         c5v.end,
+        rfb_bottom.end,
         u3v3["GND"],
         c3v3.end,
         cvdda.end,
     )
-    pwr_gnd_drops = tuple(
-        layout.node(anchor, dx=0.0, dy=2.0)
-        for anchor in pwr_gnd_anchors
+    pwr_gnd_drops = (
+        (pwr_j[2].x + 2.0, pwr_j[2].y),
+        (pwr_j[3].x + 2.0, pwr_j[3].y),
+        (pwr_j[4].x + 2.0, pwr_j[4].y),
+        (cin.end.x - 2.0, cin.end.y),
+        (u5["GND"].x - 1.5, u5["GND"].y),
+        (ren_bottom.end.x + 2.0, ren_bottom.end.y + 2.0),
+        (dsw["A"].x, dsw["A"].y + 3.0),
+        (c5v.end.x, c5v.end.y + 3.0),
+        (rfb_bottom.end.x + 2.25, rfb_bottom.end.y),
+        (u3v3["GND"].x, u3v3["GND"].y - 2.0),
+        (c3v3.end.x, c3v3.end.y + 3.0),
+        (cvdda.end.x - 2.0, cvdda.end.y),
     )
     for anchor, drop in zip(pwr_gnd_anchors, pwr_gnd_drops):
-        _via_drop(layout, nets["PWR/GND"], anchor, drop, front=front, back=back, width=0.30)
-    _chain(layout, nets["PWR/GND"], pwr_gnd_drops, layer=back, width=0.40)
+        _via_drop(
+            layout,
+            nets["PWR/GND"],
+            anchor,
+            drop,
+            front=front,
+            back=back,
+            width=0.30,
+            direct=True,
+        )
+    _orthogonal_chain(layout, nets["PWR/GND"], pwr_gnd_drops, layer=back, width=0.40)
 
     vdd_anchors = (
         mcu["VBAT"],
@@ -318,13 +502,15 @@ def _route_usb(
     layout._board.add_via(nets["USB/GND"], at=usb_j["GND"].point, start_layer=front, end_layer=back)
     layout._board.add_via(nets["USB/GND"], at=usb_j["Shield"].point, start_layer=front, end_layer=back)
     layout._board.add_via(nets["USB/GND"], at=esd["GND"].point, start_layer=front, end_layer=back)
+    gnd_bus_x = esd["GND"].x - 2.0
+    gnd_bus_y = usb_j["GND"].y + 1.2
     _manual_trace(
         layout,
         nets["USB/GND"],
         (
             usb_j["Shield"],
-            (76.0, usb_j["Shield"].y),
-            (76.0, esd["GND"].y),
+            (gnd_bus_x, usb_j["Shield"].y),
+            (gnd_bus_x, esd["GND"].y),
             esd["GND"],
         ),
         layer=back,
@@ -335,9 +521,9 @@ def _route_usb(
         nets["USB/GND"],
         (
             usb_j["GND"],
-            (82.7, 43.0),
-            (76.0, 43.0),
-            (76.0, esd["GND"].y),
+            (usb_j["GND"].x, gnd_bus_y),
+            (gnd_bus_x, gnd_bus_y),
+            (gnd_bus_x, esd["GND"].y),
         ),
         layer=back,
         width=0.30,
@@ -498,8 +684,8 @@ def _route_connectors(
         layout,
         nets["NRST"],
         mcu["NRST"],
-        (41.0, 31.75),
-        ((41.0, 47.0), (89.2, 47.0)),
+        (39.0, 31.75),
+        ((39.0, 47.0), (89.2, 47.0)),
         (89.2, swd["nRESET"].y),
         swd["nRESET"],
         front=front,
@@ -518,7 +704,19 @@ def _route_status_led(
     resistor = placed["LED_STATUS/R"]
     led = placed["LED_STATUS/D"]
     mcu = placed["U1"]
-    _connect(layout, nets["LED_STATUS/SUPPLY"], resistor.start, resistor.start.left(3.0), layer=front, width=0.25)
-    _connect(layout, nets["LED_STATUS/SIGNAL"], resistor.end, led["A"], layer=front, width=0.20)
-    _connect(layout, nets["LED_STATUS/GND"], led["K"], led["K"].right(2.5), layer=front, width=0.25)
+    _manual_trace(
+        layout,
+        nets["LED_STATUS/SUPPLY"],
+        (resistor.start, resistor.start.left(3.0)),
+        layer=front,
+        width=0.25,
+    )
+    _manual_trace(layout, nets["LED_STATUS/LED_A"], (resistor.end, led["A"]), layer=front, width=0.20)
+    _manual_trace(
+        layout,
+        nets["LED_STATUS/SIGNAL"],
+        (led["K"], led["K"].right(2.5)),
+        layer=front,
+        width=0.20,
+    )
     _connect(layout, nets["STATUS_LED"], mcu["PC13"], mcu["PC13"].left(3.0), layer=front, width=0.20)

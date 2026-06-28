@@ -733,13 +733,6 @@ PMOS_DGS = LIB.component(
     prefix="Q",
 )
 
-POLYFUSE = LIB.component(
-    "Polyfuse",
-    pins=[_passive("1", 1), _passive("2", 2)],
-    properties={"category": "protection"},
-    prefix="F",
-)
-
 FERRITE_BEAD = LIB.component(
     "Ferrite_Bead",
     pins=[_passive("1", 1), _passive("2", 2)],
@@ -933,8 +926,36 @@ INDUCTOR = LIB.component(
     prefix="L",
 )
 
+from .stm32_usb_buck_power import (  # noqa: E402
+    AP1117_33,
+    BUCK_MP2359,
+    CAP_10NF,
+    CAP_10UF,
+    CAP_100NF,
+    CAP_18PF,
+    CAP_2U2,
+    CAP_4U7,
+    POLYFUSE,
+    POWER_INDUCTOR_10UH,
+    RES_10K,
+    RES_15K,
+    RES_330R,
+    RES_47K,
+    RES_68K,
+    RES_100K,
+    SCHOTTKY_B5819,
+)
+
 __all__ = [
     "AP1117_15",
+    "AP1117_33",
+    "BUCK_MP2359",
+    "CAP_10NF",
+    "CAP_10UF",
+    "CAP_100NF",
+    "CAP_18PF",
+    "CAP_2U2",
+    "CAP_4U7",
     "CAPACITOR",
     "CONNECTOR_1X04",
     "CRYSTAL_GND24",
@@ -946,7 +967,15 @@ __all__ = [
     "MOUNTING_HOLE_PAD",
     "PMOS_DGS",
     "POLYFUSE",
+    "POWER_INDUCTOR_10UH",
+    "RES_15K",
+    "RES_330R",
+    "RES_47K",
+    "RES_68K",
+    "RES_10K",
+    "RES_100K",
     "RESISTOR",
+    "SCHOTTKY_B5819",
     "SPDT_SWITCH",
     "STM32F405RGTx",
     "USBLC6_4SC6",
