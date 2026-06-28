@@ -23,9 +23,9 @@ enum class FabricationSide {
     Bottom,
 };
 
-struct CopperLayerMap {
-    std::optional<BoardLayerId> top;
-    std::optional<BoardLayerId> bottom;
+struct CopperLayerExport {
+    BoardLayerId layer;
+    std::size_t number;
 };
 
 struct PlacementExport {
@@ -399,10 +399,11 @@ class GerberWriter {
     return std::find(layers.begin(), layers.end(), layer_id) != layers.end();
 }
 
-[[nodiscard]] bool is_exported_copper_layer(const CopperLayerMap &copper_layers,
+[[nodiscard]] bool is_exported_copper_layer(const std::vector<CopperLayerExport> &copper_layers,
                                             BoardLayerId layer_id) {
-    return (copper_layers.top.has_value() && copper_layers.top.value() == layer_id) ||
-           (copper_layers.bottom.has_value() && copper_layers.bottom.value() == layer_id);
+    return std::any_of(
+        copper_layers.begin(), copper_layers.end(),
+        [layer_id](const CopperLayerExport &candidate) { return candidate.layer == layer_id; });
 }
 
 void report_enabled_copper_layers_outside_stack(const Board &board,
@@ -419,14 +420,14 @@ void report_enabled_copper_layers_outside_stack(const Board &board,
                 loss_report, PcbFabricationLossKind::UnsupportedLayer,
                 "board.layer.copper_stack_membership",
                 "Native fabrication export derives copper ownership from the board stack; "
-                "enabled copper layers outside the two exported stack layers are omitted",
+                "enabled copper layers outside the exported stack layers are omitted",
                 std::vector{EntityRef::board_layer(layer_id)});
         }
     }
 }
 
-[[nodiscard]] CopperLayerMap build_copper_layer_map(const Board &board,
-                                                    PcbFabricationLossReport &loss_report) {
+[[nodiscard]] std::vector<CopperLayerExport>
+build_copper_layer_exports(const Board &board, PcbFabricationLossReport &loss_report) {
     if (!board.layer_stack().has_value()) {
         add_fab_critical_warning(
             loss_report, PcbFabricationLossKind::MissingGeometry, "board.layer_stack",
@@ -443,10 +444,10 @@ void report_enabled_copper_layers_outside_stack(const Board &board,
         }
     }
 
-    if (stack_copper.size() != 2U) {
+    if (stack_copper.size() < 2U) {
         add_fab_critical_warning(
             loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.layer_stack.copper_count",
-            "Native fabrication export v1 emits exactly two board-stack copper layers",
+            "Native fabrication export requires at least top and bottom board-stack copper layers",
             board_layer_entities(stack_copper));
         return {};
     }
@@ -456,19 +457,36 @@ void report_enabled_copper_layers_outside_stack(const Board &board,
     if (top_layer.side() != BoardLayerSide::Top || bottom_layer.side() != BoardLayerSide::Bottom) {
         add_fab_critical_warning(
             loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.layer_stack.outer_sides",
-            "Native fabrication export v1 expects the two stack copper layers to be top then "
-            "bottom",
+            "Native fabrication export expects stack copper layers to begin with top copper and "
+            "end with bottom copper",
+            board_layer_entities(stack_copper));
+        return {};
+    }
+
+    for (std::size_t index = 1; index + 1 < stack_copper.size(); ++index) {
+        if (board.layer(stack_copper[index]).side() == BoardLayerSide::Inner) {
+            continue;
+        }
+        add_fab_critical_warning(
+            loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.layer_stack.inner_sides",
+            "Native fabrication export expects middle stack copper layers to be marked inner",
             board_layer_entities(stack_copper));
         return {};
     }
 
     report_enabled_copper_layers_outside_stack(board, stack_copper, loss_report);
-    return CopperLayerMap{stack_copper.front(), stack_copper.back()};
+    auto exports = std::vector<CopperLayerExport>{};
+    exports.reserve(stack_copper.size());
+    for (std::size_t index = 0; index < stack_copper.size(); ++index) {
+        exports.push_back(CopperLayerExport{stack_copper[index], index + 1U});
+    }
+    return exports;
 }
 
-void report_unsupported_copper_content(const Board &board, const CopperLayerMap &copper_layers,
+void report_unsupported_copper_content(const Board &board,
+                                       const std::vector<CopperLayerExport> &copper_layers,
                                        PcbFabricationLossReport &loss_report) {
-    if (!copper_layers.top.has_value() || !copper_layers.bottom.has_value()) {
+    if (copper_layers.empty()) {
         return;
     }
 
@@ -480,8 +498,7 @@ void report_unsupported_copper_content(const Board &board, const CopperLayerMap 
         }
         add_fab_critical_warning(
             loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.track.layer",
-            "Native fabrication export v1 omits tracks on copper layers outside the exported "
-            "two-layer stack",
+            "Native fabrication export omits tracks on copper layers outside the exported stack",
             std::vector{EntityRef::board_track(track_id), EntityRef::board_layer(track.layer())});
     }
 
@@ -494,8 +511,7 @@ void report_unsupported_copper_content(const Board &board, const CopperLayerMap 
             }
             add_fab_critical_warning(
                 loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.zone.layer",
-                "Native fabrication export v1 omits zones on copper layers outside the exported "
-                "two-layer stack",
+                "Native fabrication export omits zones on copper layers outside the exported stack",
                 std::vector{EntityRef::board_zone(zone_id), EntityRef::board_layer(layer_id)});
         }
     }
@@ -509,8 +525,7 @@ void report_unsupported_copper_content(const Board &board, const CopperLayerMap 
         }
         add_fab_critical_warning(
             loss_report, PcbFabricationLossKind::UnsupportedLayer, "board.via.layer_span",
-            "Native fabrication export v1 omits via copper on layers outside the exported "
-            "two-layer stack",
+            "Native fabrication export omits via copper on layers outside the exported stack",
             std::vector{EntityRef::board_via(via_id), EntityRef::board_layer(via.start_layer()),
                         EntityRef::board_layer(via.end_layer())});
     }
@@ -996,6 +1011,42 @@ void append_file(std::vector<PcbFabricationFile> &files, std::string filename, s
     files.push_back(PcbFabricationFile{std::move(filename), std::move(function), std::move(text)});
 }
 
+[[nodiscard]] std::string copper_file_function(const CopperLayerExport &layer,
+                                               std::size_t layer_count) {
+    auto out = std::ostringstream{};
+    out << "Copper,L" << layer.number << ",";
+    if (layer.number == 1U) {
+        out << "Top";
+    } else if (layer.number == layer_count) {
+        out << "Bot";
+    } else {
+        out << "Inr";
+    }
+    return out.str();
+}
+
+[[nodiscard]] std::string copper_file_extension(const CopperLayerExport &layer,
+                                                std::size_t layer_count) {
+    if (layer.number == 1U) {
+        return ".GTL";
+    }
+    if (layer.number == layer_count) {
+        return ".GBL";
+    }
+    return ".G" + std::to_string(layer.number);
+}
+
+[[nodiscard]] std::string copper_file_kind(const CopperLayerExport &layer,
+                                           std::size_t layer_count) {
+    if (layer.number == 1U) {
+        return "copper-top";
+    }
+    if (layer.number == layer_count) {
+        return "copper-bottom";
+    }
+    return "copper-inner-l" + std::to_string(layer.number);
+}
+
 } // namespace
 
 void PcbFabricationLossReport::add_warning(PcbFabricationLossKind kind, std::string construct,
@@ -1057,21 +1108,15 @@ write_pcb_fabrication_files(const Board &board, const FootprintLibrary &footprin
     const auto transform = BoardFabricationTransform::from_board(board);
     report_unsupported_board_features(board, result.loss_report);
     report_unsupported_board_text_layers(board, result.loss_report);
-    const auto copper_layers = build_copper_layer_map(board, result.loss_report);
+    const auto copper_layers = build_copper_layer_exports(board, result.loss_report);
     report_unsupported_copper_content(board, copper_layers, result.loss_report);
     const auto placements = build_placement_exports(board, footprints, result.loss_report);
 
-    if (copper_layers.top.has_value()) {
-        auto writer = GerberWriter{"Copper,L1,Top", transform};
-        write_copper_layer(writer, board, copper_layers.top.value(), placements,
-                           result.loss_report);
-        append_file(result.files, basename + ".GTL", "copper-top", writer.finish());
-    }
-    if (copper_layers.bottom.has_value()) {
-        auto writer = GerberWriter{"Copper,L2,Bot", transform};
-        write_copper_layer(writer, board, copper_layers.bottom.value(), placements,
-                           result.loss_report);
-        append_file(result.files, basename + ".GBL", "copper-bottom", writer.finish());
+    for (const auto &layer : copper_layers) {
+        auto writer = GerberWriter{copper_file_function(layer, copper_layers.size()), transform};
+        write_copper_layer(writer, board, layer.layer, placements, result.loss_report);
+        append_file(result.files, basename + copper_file_extension(layer, copper_layers.size()),
+                    copper_file_kind(layer, copper_layers.size()), writer.finish());
     }
 
     {

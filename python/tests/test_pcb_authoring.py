@@ -1305,11 +1305,23 @@ def test_python_board_authoring_exports_kicad_pcb_with_loss_report(tmp_path):
         layers=(front,),
         net=led_a,
     )
-    with_loss = board.to_kicad_pcb()
-    assert [warning.construct for warning in with_loss.warnings] == ["board.zone"]
-    assert with_loss.warnings[0].kind == "unsupported"
-    assert with_loss.warnings[0].severity == "warning"
-    assert with_loss.warnings[0].fabrication_impact == "fab-critical"
+    with_zone = board.to_kicad_pcb()
+    assert with_zone.warnings == ()
+    assert '(zone\n    (net 2)' in with_zone.text
+    assert '(net_name "LED_A")' in with_zone.text
+    assert '(layer "F.Cu")' in with_zone.text
+    assert '(polygon\n      (pts (xy 2 2) (xy 12 2) (xy 12 8) (xy 2 8))' in with_zone.text
+
+    inner = board.add_layer("In1.Cu", role="copper", side="inner")
+    board.add_zone(
+        outline=((14.0, 2.0), (18.0, 2.0), (18.0, 6.0), (14.0, 6.0)),
+        layers=(inner,),
+        net=led_a,
+    )
+    with_inner_zone = board.to_kicad_pcb()
+    assert with_inner_zone.warnings == ()
+    assert '(1 "In1.Cu" signal)' in with_inner_zone.text
+    assert '(layer "In1.Cu")' in with_inner_zone.text
 
 
 def test_python_board_authoring_exports_native_fabrication_files(tmp_path):
@@ -1658,6 +1670,64 @@ def test_python_board_authoring_sets_rules_and_reports_drc_diagnostics():
         for diagnostic in report
         for entity in diagnostic.entities
     )
+
+
+def test_python_board_drc_treats_bound_module_port_nets_as_same_copper_domain():
+    design = volt.Design("bound-net-clearance")
+    module = design.define_module("Child")
+    module.port("N")
+    parent = design.net("N")
+    instance = design.instantiate(module, ref="M")
+    parent += instance["N"]
+    nets = {net.name: net for net in design.nets()}
+
+    board = design.board()
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(12.0, 6.0))
+    board.set_design_rules(copper_clearance=0.20)
+    board.add_track(parent, layer=front, points=((2.0, 3.0), (10.0, 3.0)), width=0.40)
+    board.add_track(nets["M/N"], layer=front, points=((4.0, 3.0), (8.0, 3.0)), width=0.40)
+
+    assert "PCB_COPPER_CLEARANCE_VIOLATION" not in {
+        diagnostic.code for diagnostic in board.validate()
+    }
+
+
+def test_python_board_drc_treats_bound_module_port_copper_as_routed_connectivity():
+    design = volt.Design("bound-net-ratsnest")
+    one_pin = design.define_component("OnePinPad", pins=[volt.PinSpec("1", 1)])
+    module = design.define_module("Child")
+    module.port("N")
+
+    parent = design.net("N")
+    p1 = design.instantiate(one_pin, ref="P1")
+    p2 = design.instantiate(one_pin, ref="P2")
+    instance = design.instantiate(module, ref="M")
+    parent += p1[1], p2[1], instance["N"]
+    nets = {net.name: net for net in design.nets()}
+
+    for component in (p1, p2):
+        component.select_part(
+            manufacturer="Volt",
+            part_number="ONE-PIN-0603",
+            package="0603",
+            footprint=("passives", "R_0603_1608Metric"),
+            pin_pads={1: "1"},
+        )
+
+    board = design.board()
+    front = board.add_layer("F.Cu", role="copper", side="top")
+    board.set_rectangular_outline(origin=(0.0, 0.0), size=(12.0, 6.0))
+    board.cache_footprint(_passive_0603(("passives", "R_0603_1608Metric")))
+    board.place(p1, at=(3.0, 3.0))
+    board.place(p2, at=(9.0, 3.0))
+    board.add_track(parent, layer=front, points=((2.25, 3.0), (5.0, 3.0)), width=0.40)
+    board.add_track(nets["M/N"], layer=front, points=((5.0, 3.0), (7.0, 3.0)), width=0.40)
+    board.add_track(parent, layer=front, points=((7.0, 3.0), (8.25, 3.0)), width=0.40)
+
+    codes = {diagnostic.code for diagnostic in board.validate()}
+    assert "PCB_COPPER_CLEARANCE_VIOLATION" not in codes
+    assert "PCB_NET_UNROUTED" not in codes
 
 
 def test_python_board_add_via_defaults_respect_board_rule_floor():

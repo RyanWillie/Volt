@@ -116,6 +116,15 @@ def _plated_header_pad(label: str, x: float, y: float) -> FootprintPad:
     )
 
 
+def _plated_header_pad_127(label: str, x: float, y: float) -> FootprintPad:
+    return FootprintPad.through_hole(
+        label,
+        at=(x, y),
+        size=(0.85, 0.85),
+        drill=FootprintDrill(0.45),
+    )
+
+
 def _single_row_header_footprint(
     ref: tuple[str, str],
     *,
@@ -145,8 +154,8 @@ def _dual_row_header_footprint(
     pads = []
     for row in range(pins_per_row):
         y = first_y + row * pitch
-        pads.append(_plated_header_pad(str(row * 2 + 1), left_x, y))
-        pads.append(_plated_header_pad(str(row * 2 + 2), right_x, y))
+        pads.append(_plated_header_pad_127(str(row * 2 + 1), left_x, y))
+        pads.append(_plated_header_pad_127(str(row * 2 + 2), right_x, y))
     return Footprint(ref, pads=tuple(pads))
 
 
@@ -282,6 +291,56 @@ def _sot_223_3_footprint() -> Footprint:
     )
 
 
+def _crystal_3225_4pad_footprint() -> Footprint:
+    body = _rectangle(3.20, 2.50)
+    return Footprint(
+        ("crystals", "Crystal_3225_4Pad"),
+        pads=(
+            _front_smd_pad("1", -1.05, -0.75, 0.90, 0.90),
+            _front_smd_pad("2", 1.05, -0.75, 0.90, 0.90),
+            _front_smd_pad("3", 1.05, 0.75, 0.90, 0.90),
+            _front_smd_pad("4", -1.05, 0.75, 0.90, 0.90),
+        ),
+        courtyard=_rectangle(4.00, 3.20),
+        body=body,
+        fabrication_outline=body,
+        assembly_outline=body,
+        markings=(FootprintMarking.pin_1(_offset_rectangle(-1.55, -1.15, 0.16, 0.16)),),
+    )
+
+
+def _spdt_slide_switch_footprint() -> Footprint:
+    body = _rectangle(4.50, 2.60)
+    return Footprint(
+        ("switches", "SW_SPDT_PCM12"),
+        pads=(
+            _front_smd_pad("1", -1.60, 0.00, 0.90, 1.60),
+            _front_smd_pad("2", 0.00, 0.00, 0.90, 1.60),
+            _front_smd_pad("3", 1.60, 0.00, 0.90, 1.60),
+        ),
+        courtyard=_rectangle(5.50, 3.40),
+        body=body,
+        fabrication_outline=body,
+        assembly_outline=body,
+    )
+
+
+def _mounting_hole_pad_footprint() -> Footprint:
+    return Footprint(
+        ("mechanical", "MountingHole_3.2mm_Pad_6.0mm"),
+        pads=(
+            FootprintPad.through_hole(
+                "1",
+                at=(0.0, 0.0),
+                size=(6.00, 6.00),
+                drill=FootprintDrill(3.20),
+                shape="circle",
+            ),
+        ),
+        courtyard=_rectangle(7.00, 7.00),
+    )
+
+
 LQFP_64_FOOTPRINT = _qfp_footprint(
     ("Package_QFP", "LQFP-64_10x10mm_P0.5mm"),
     pin_count=64,
@@ -307,15 +366,27 @@ FERRITE_0603_FOOTPRINT = _two_terminal_smd_footprint(
     pad_height=0.95,
 )
 HEADER_2X05_127_FOOTPRINT = _dual_row_header_footprint(
-    ("connectors", "PinHeader_2x05_P1.27mm_Vertical"),
+    ("connectors", "PinHeader_2x05_P1.27mm_Vertical_SmallPads"),
     pins_per_row=5,
     row_spacing=1.27,
     pitch=1.27,
+)
+HEADER_1X02_FOOTPRINT = _single_row_header_footprint(
+    ("connectors", "PinHeader_1x02_P2.54mm_Vertical"),
+    pin_count=2,
+    pitch=2.54,
 )
 HEADER_1X04_FOOTPRINT = _single_row_header_footprint(
     ("connectors", "PinHeader_1x04_P2.54mm_Vertical"),
     pin_count=4,
     pitch=2.54,
+)
+LED_0603_FOOTPRINT = _two_terminal_smd_footprint(
+    ("leds", "LED_0603_1608Metric"),
+    pad_span=1.50,
+    pad_width=0.80,
+    pad_height=0.95,
+    markings=(FootprintMarking.polarity(_offset_rectangle(0.55, 0.0, 0.12, 0.60)),),
 )
 DIODE_SOD_123_FOOTPRINT = _two_terminal_smd_footprint(
     ("diodes", "D_SOD-123"),
@@ -344,6 +415,9 @@ INDUCTOR_0603_FOOTPRINT = _two_terminal_smd_footprint(
     pad_width=0.80,
     pad_height=0.95,
 )
+CRYSTAL_3225_4PAD_FOOTPRINT = _crystal_3225_4pad_footprint()
+SPDT_SLIDE_SWITCH_FOOTPRINT = _spdt_slide_switch_footprint()
+MOUNTING_HOLE_PAD_FOOTPRINT = _mounting_hole_pad_footprint()
 
 
 def _two_pin_symbol(name: str, label: str) -> SchematicSymbolSpec:
@@ -683,6 +757,12 @@ CRYSTAL_GND24 = LIB.component(
     "Crystal_GND24",
     pins=[_passive("1", 1), _ground("GND", 2), _passive("3", 3), _ground("GND", 4)],
     properties={"category": "crystal"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="Abracon",
+        part_number="ABM8G-8.000MHZ-18-D2Y-T",
+        package="3.2x2.5mm 4-pad",
+        footprint=CRYSTAL_3225_4PAD_FOOTPRINT,
+    ),
     prefix="Y",
     schematic_symbol=_crystal_symbol("Crystal_GND24"),
 )
@@ -691,6 +771,12 @@ SPDT_SWITCH = LIB.component(
     "SW_SPDT",
     pins=[_passive("A", 1), _passive("C", 2), _passive("B", 3)],
     properties={"category": "switch"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="C&K",
+        part_number="PCM12SMTR",
+        package="SMD slide switch",
+        footprint=SPDT_SLIDE_SWITCH_FOOTPRINT,
+    ),
     prefix="SW",
     schematic_symbol=_switch_symbol("SW_SPDT"),
 )
@@ -767,6 +853,12 @@ MOUNTING_HOLE_PAD = LIB.component(
     "MountingHole_Pad",
     pins=[_ground("1", 1)],
     properties={"category": "mechanical"},
+    physical_part=PhysicalPartSpec.same_numbered(
+        manufacturer="Generic",
+        part_number="MH-PAD-3.2MM",
+        package="plated mounting pad",
+        footprint=MOUNTING_HOLE_PAD_FOOTPRINT,
+    ),
     prefix="H",
 )
 

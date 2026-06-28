@@ -1,0 +1,296 @@
+{
+  "format": "volt.cpl",
+  "version": 1,
+  "metadata": {
+    "units": "mm",
+    "origin": {
+      "convention": "board_origin",
+      "description": "Positions are board coordinates in millimeters from the authored board origin"
+    },
+    "rotation": {
+      "convention": "degrees_counterclockwise_board_coordinates",
+      "description": "rotation_deg is authored placement rotation plus any data-supplied footprint rotation offset, normalized to [0, 360)",
+      "includes_rotation_offsets": true
+    }
+  },
+  "rows": [
+    {
+      "designator": "J2",
+      "component": "component:19",
+      "placement": "component_placement:22",
+      "footprint": {"library": "connectors", "name": "PinHeader_2x05_P1.27mm_Vertical_SmallPads"},
+      "side": "top",
+      "position_mm": [78, 17],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Samtec", "mpn": "FTSH-105-01-L-DV-K", "package": "2x05 1.27mm"}
+    },
+    {
+      "designator": "J3",
+      "component": "component:20",
+      "placement": "component_placement:23",
+      "footprint": {"library": "connectors", "name": "PinHeader_1x04_P2.54mm_Vertical"},
+      "side": "top",
+      "position_mm": [84, 30],
+      "authored_rotation_deg": 180,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 180,
+      "part": {"manufacturer": "Sullins", "mpn": "PEC04SAAN", "package": "1x04 2.54mm"}
+    },
+    {
+      "designator": "LED_STATUS/D",
+      "component": "component:22",
+      "placement": "component_placement:20",
+      "footprint": {"library": "leds", "name": "LED_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [70, 50],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Lite-On", "mpn": "LTST-C190KGKT", "package": "0603 LED"}
+    },
+    {
+      "designator": "LED_STATUS/R",
+      "component": "component:21",
+      "placement": "component_placement:19",
+      "footprint": {"library": "passives", "name": "R_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [62, 50],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Yageo", "mpn": "RC0603FR-0710KL", "package": "0603"}
+    },
+    {
+      "designator": "PWR/C3V3",
+      "component": "component:6",
+      "placement": "component_placement:6",
+      "footprint": {"library": "passives", "name": "C_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [46, 23],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Murata", "mpn": "GRM188R71C104KA01D", "package": "0603"}
+    },
+    {
+      "designator": "PWR/C5V",
+      "component": "component:5",
+      "placement": "component_placement:5",
+      "footprint": {"library": "passives", "name": "C_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [31, 23],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Murata", "mpn": "GRM188R71C104KA01D", "package": "0603"}
+    },
+    {
+      "designator": "PWR/CIN",
+      "component": "component:4",
+      "placement": "component_placement:4",
+      "footprint": {"library": "passives", "name": "C_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [17, 23],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Murata", "mpn": "GRM188R71C104KA01D", "package": "0603"}
+    },
+    {
+      "designator": "PWR/CVDDA",
+      "component": "component:7",
+      "placement": "component_placement:7",
+      "footprint": {"library": "passives", "name": "C_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [33, 30],
+      "authored_rotation_deg": 90,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 90,
+      "part": {"manufacturer": "Murata", "mpn": "GRM188R71C104KA01D", "package": "0603"}
+    },
+    {
+      "designator": "PWR/J",
+      "component": "component:1",
+      "placement": "component_placement:1",
+      "footprint": {"library": "connectors", "name": "PinHeader_1x04_P2.54mm_Vertical"},
+      "side": "top",
+      "position_mm": [6, 17],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Sullins", "mpn": "PEC04SAAN", "package": "1x04 2.54mm"}
+    },
+    {
+      "designator": "PWR/U3V3",
+      "component": "component:3",
+      "placement": "component_placement:3",
+      "footprint": {"library": "Package_TO_SOT_SMD", "name": "SOT-223-3_TabPin2"},
+      "side": "top",
+      "position_mm": [38, 17],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Diodes Incorporated", "mpn": "AP1117E15G-13", "package": "SOT-223-3"}
+    },
+    {
+      "designator": "PWR/U5",
+      "component": "component:2",
+      "placement": "component_placement:2",
+      "footprint": {"library": "Package_TO_SOT_SMD", "name": "SOT-223-3_TabPin2"},
+      "side": "top",
+      "position_mm": [23, 17],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Diodes Incorporated", "mpn": "AP1117E15G-13", "package": "SOT-223-3"}
+    },
+    {
+      "designator": "SUPPORT/CHSEIN",
+      "component": "component:17",
+      "placement": "component_placement:17",
+      "footprint": {"library": "passives", "name": "C_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [33, 36],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Murata", "mpn": "GRM188R71C104KA01D", "package": "0603"}
+    },
+    {
+      "designator": "SUPPORT/CHSEOUT",
+      "component": "component:18",
+      "placement": "component_placement:18",
+      "footprint": {"library": "passives", "name": "C_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [41, 39],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Murata", "mpn": "GRM188R71C104KA01D", "package": "0603"}
+    },
+    {
+      "designator": "SUPPORT/CVCAP1",
+      "component": "component:11",
+      "placement": "component_placement:11",
+      "footprint": {"library": "passives", "name": "C_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [42, 43],
+      "authored_rotation_deg": 90,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 90,
+      "part": {"manufacturer": "Murata", "mpn": "GRM188R71C104KA01D", "package": "0603"}
+    },
+    {
+      "designator": "SUPPORT/CVCAP2",
+      "component": "component:12",
+      "placement": "component_placement:12",
+      "footprint": {"library": "passives", "name": "C_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [54, 43],
+      "authored_rotation_deg": 90,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 90,
+      "part": {"manufacturer": "Murata", "mpn": "GRM188R71C104KA01D", "package": "0603"}
+    },
+    {
+      "designator": "SUPPORT/CVDD",
+      "component": "component:10",
+      "placement": "component_placement:10",
+      "footprint": {"library": "passives", "name": "C_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [38, 22],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Murata", "mpn": "GRM188R71C104KA01D", "package": "0603"}
+    },
+    {
+      "designator": "SUPPORT/RBOOT",
+      "component": "component:14",
+      "placement": "component_placement:14",
+      "footprint": {"library": "passives", "name": "R_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [60, 25],
+      "authored_rotation_deg": 90,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 90,
+      "part": {"manufacturer": "Yageo", "mpn": "RC0603FR-0710KL", "package": "0603"}
+    },
+    {
+      "designator": "SUPPORT/RRESET",
+      "component": "component:13",
+      "placement": "component_placement:13",
+      "footprint": {"library": "passives", "name": "R_0603_1608Metric"},
+      "side": "top",
+      "position_mm": [36.5, 27],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Yageo", "mpn": "RC0603FR-0710KL", "package": "0603"}
+    },
+    {
+      "designator": "SUPPORT/SWBOOT",
+      "component": "component:15",
+      "placement": "component_placement:15",
+      "footprint": {"library": "switches", "name": "SW_SPDT_PCM12"},
+      "side": "top",
+      "position_mm": [66.5, 24.5],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "C&K", "mpn": "PCM12SMTR", "package": "SMD slide switch"}
+    },
+    {
+      "designator": "SUPPORT/Y1",
+      "component": "component:16",
+      "placement": "component_placement:16",
+      "footprint": {"library": "crystals", "name": "Crystal_3225_4Pad"},
+      "side": "top",
+      "position_mm": [37.5, 33],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "Abracon", "mpn": "ABM8G-8.000MHZ-18-D2Y-T", "package": "3.2x2.5mm 4-pad"}
+    },
+    {
+      "designator": "U1",
+      "component": "component:23",
+      "placement": "component_placement:21",
+      "footprint": {"library": "Package_QFP", "name": "LQFP-64_10x10mm_P0.5mm"},
+      "side": "top",
+      "position_mm": [49, 31],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "STMicroelectronics", "mpn": "STM32F405RGT6", "package": "LQFP-64"}
+    },
+    {
+      "designator": "USB/J1",
+      "component": "component:8",
+      "placement": "component_placement:8",
+      "footprint": {"library": "connectors", "name": "USB_Micro-B_Receptacle"},
+      "side": "top",
+      "position_mm": [84, 39],
+      "authored_rotation_deg": 180,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 180,
+      "part": {"manufacturer": "Molex", "mpn": "105017-0001", "package": "Micro-USB-B receptacle"}
+    },
+    {
+      "designator": "USB/U1",
+      "component": "component:9",
+      "placement": "component_placement:9",
+      "footprint": {"library": "Package_TO_SOT_SMD", "name": "SOT-23-6"},
+      "side": "top",
+      "position_mm": [73, 37.5],
+      "authored_rotation_deg": 0,
+      "rotation_offset_deg": 0,
+      "rotation_deg": 0,
+      "part": {"manufacturer": "STMicroelectronics", "mpn": "USBLC6-4SC6", "package": "SOT-23-6"}
+    }
+  ],
+  "diagnostics": [
+  ]
+}

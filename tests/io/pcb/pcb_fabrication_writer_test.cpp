@@ -449,6 +449,57 @@ TEST_CASE("PCB fabrication writer converts board y-down coordinates to fabricati
     CHECK_FALSE(contains(npth->text, "X0007500000Y0012500000"));
 }
 
+TEST_CASE("PCB fabrication writer exports ordered inner copper Gerbers") {
+    const auto fixture = make_fabrication_circuit();
+    auto board = make_fabrication_board(fixture);
+    const auto inner_1 = board.add_layer(
+        volt::BoardLayer{"In1.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Inner});
+    const auto inner_2 = board.add_layer(
+        volt::BoardLayer{"In2.Cu", volt::BoardLayerRole::Copper, volt::BoardLayerSide::Inner});
+    board.set_layer_stack(
+        volt::LayerStack{{volt::BoardLayerId{0}, inner_1, inner_2, volt::BoardLayerId{1}}, 1.6});
+    static_cast<void>(board.add_track(volt::BoardTrack{
+        fixture.ground,
+        inner_1,
+        std::vector{volt::BoardPoint{2.0, 2.0}, volt::BoardPoint{8.0, 2.0}},
+        0.25,
+    }));
+
+    const auto result = volt::io::write_pcb_fabrication_files(board, fabrication_footprints());
+
+    CHECK_FALSE(result.loss_report.has_fab_critical_warnings());
+    CHECK(file_names(result) == std::vector<std::string>{
+                                    "Control.GTL",
+                                    "Control.G2",
+                                    "Control.G3",
+                                    "Control.GBL",
+                                    "Control.GTS",
+                                    "Control.GBS",
+                                    "Control.GTO",
+                                    "Control.GTP",
+                                    "Control.GKO",
+                                    "Control-PTH.TXT",
+                                    "Control-NPTH.TXT",
+                                });
+
+    const auto *inner_1_file = find_file(result, "Control.G2");
+    REQUIRE(inner_1_file != nullptr);
+    CHECK(inner_1_file->function == "copper-inner-l2");
+    CHECK(contains(inner_1_file->text, "%TF.FileFunction,Copper,L2,Inr*%"));
+    CHECK(contains(inner_1_file->text, "X0002000000Y0018000000D02*"));
+    CHECK(contains(inner_1_file->text, "X0008000000Y0018000000D01*"));
+    CHECK(contains(inner_1_file->text, "X0015000000Y0005000000D03*"));
+
+    const auto *inner_2_file = find_file(result, "Control.G3");
+    REQUIRE(inner_2_file != nullptr);
+    CHECK(inner_2_file->function == "copper-inner-l3");
+    CHECK(contains(inner_2_file->text, "%TF.FileFunction,Copper,L3,Inr*%"));
+
+    const auto *bottom_file = find_file(result, "Control.GBL");
+    REQUIRE(bottom_file != nullptr);
+    CHECK(contains(bottom_file->text, "%TF.FileFunction,Copper,L4,Bot*%"));
+}
+
 TEST_CASE("PCB fabrication writer emits unconnected mapped pads without fabrication loss") {
     auto circuit = volt::Circuit{};
     const auto passive = circuit.add_pin_definition(volt::PinDefinition{
@@ -635,7 +686,7 @@ TEST_CASE("PCB fabrication writer reports unsupported copper layer data") {
                                      volt::EntityRef::board_layer(inner)}));
 }
 
-TEST_CASE("PCB fabrication writer derives copper output from two-layer board stack") {
+TEST_CASE("PCB fabrication writer rejects non-inner middle stack copper") {
     const auto fixture = make_fabrication_circuit();
     auto board = make_fabrication_board(fixture);
     const auto duplicate_top = board.add_layer(
@@ -647,7 +698,7 @@ TEST_CASE("PCB fabrication writer derives copper output from two-layer board sta
 
     const auto diagnostics = volt::io::fabrication_diagnostics(result.loss_report);
     const auto *diagnostic = find_diagnostic(diagnostics, "PCB_NATIVE_FAB_UNSUPPORTED_LAYER",
-                                             "board.layer_stack.copper_count");
+                                             "board.layer_stack.inner_sides");
     REQUIRE(diagnostic != nullptr);
     CHECK(diagnostic->entities() ==
           std::vector{volt::EntityRef::board_layer(volt::BoardLayerId{0}),

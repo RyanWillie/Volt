@@ -3,6 +3,7 @@
 #include "format.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <map>
@@ -12,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -75,6 +77,25 @@ void write_at(std::ostream &out, BoardPoint point, double rotation_degrees = 0.0
 
 [[nodiscard]] int kicad_net(NetId net) { return static_cast<int>(net.index() + 1U); }
 
+[[nodiscard]] std::optional<int> kicad_inner_layer_index(std::string_view name) {
+    constexpr auto prefix = std::string_view{"In"};
+    constexpr auto suffix = std::string_view{".Cu"};
+    if (name.size() <= prefix.size() + suffix.size() || name.substr(0, prefix.size()) != prefix ||
+        name.substr(name.size() - suffix.size()) != suffix) {
+        return std::nullopt;
+    }
+
+    auto value = 0;
+    const auto digits = name.substr(prefix.size(), name.size() - prefix.size() - suffix.size());
+    const auto *first = digits.data();
+    const auto *last = digits.data() + digits.size();
+    const auto [ptr, ec] = std::from_chars(first, last, value);
+    if (ec != std::errc{} || ptr != last || value < 1 || value > 30) {
+        return std::nullopt;
+    }
+    return value;
+}
+
 [[nodiscard]] std::optional<PcbLayer> candidate_layer_for(const BoardLayer &layer) {
     if (!layer.enabled()) {
         return std::nullopt;
@@ -88,6 +109,10 @@ void write_at(std::ostream &out, BoardPoint point, double rotation_degrees = 0.0
         case BoardLayerSide::Bottom:
             return PcbLayer{31, "B.Cu", "signal"};
         case BoardLayerSide::Inner:
+            if (const auto index = kicad_inner_layer_index(layer.name()); index.has_value()) {
+                return PcbLayer{*index, layer.name(), "signal"};
+            }
+            return std::nullopt;
         case BoardLayerSide::Both:
         case BoardLayerSide::None:
             return std::nullopt;
@@ -195,6 +220,17 @@ void report_layer_mapping_collision(const Board &board, BoardLayerId current, Bo
         return property_value_to_string(component.properties().get(lowercase_value_key));
     }
     return definition.name();
+}
+
+[[nodiscard]] std::string pcb_component_reference(const ComponentInstance &component) {
+    const auto key = PropertyKey{"pcb_reference"};
+    if (component.properties().contains(key)) {
+        const auto &value = component.properties().get(key);
+        if (value.kind() == PropertyValueKind::String) {
+            return value.as_string();
+        }
+    }
+    return component.reference().value();
 }
 
 [[nodiscard]] const FootprintDefinition *
@@ -511,7 +547,7 @@ void write_component_footprints(std::ostream &out, const Board &board,
         write_at(out, placement.position(), placement.rotation().degrees());
         out << "\n";
         write_property(
-            out, "Reference", component.reference().value(), 0.0, -1.5, "F.Fab",
+            out, "Reference", pcb_component_reference(component), 0.0, -1.5, "F.Fab",
             pcb_uuid("component-placement", placement_export.id.index(), "property/Reference"));
         write_property(
             out, "Value", pcb_component_value(component, component_definition), 0.0, 1.5, "F.Fab",
@@ -598,6 +634,57 @@ void write_vias(std::ostream &out, const Board &board, const LayerMap &layer_map
     }
 }
 
+void write_zone(std::ostream &out, const Board &board, BoardZoneId id, const BoardZone &zone,
+                const PcbLayer &layer) {
+    const auto net_index = zone.net().has_value() ? kicad_net(zone.net().value()) : 0;
+    const auto net_name = zone.net().has_value()
+                              ? board.circuit().net(zone.net().value()).name().value()
+                              : std::string{};
+
+    out << "  (zone\n";
+    out << "    (net " << net_index << ")\n";
+    out << "    (net_name " << sexpr_string(net_name) << ")\n";
+    out << "    (layer " << sexpr_string(layer.name) << ")\n";
+    out << "    (uuid " << sexpr_string(pcb_uuid("board-zone", id.index(), layer.name)) << ")\n";
+    out << "    (hatch edge 0.5)\n";
+    out << "    (priority " << zone.priority() << ")\n";
+    out << "    (connect_pads (clearance 0))\n";
+    out << "    (min_thickness 0.2)\n";
+    out << "    (filled_areas_thickness no)\n";
+    out << "    (fill yes)\n";
+    out << "    (polygon\n";
+    out << "      (pts";
+    for (const auto &point : zone.outline()) {
+        out << " (xy ";
+        write_number(out, point.x_mm());
+        out << ' ';
+        write_number(out, point.y_mm());
+        out << ')';
+    }
+    out << ")\n";
+    out << "    )\n";
+    out << "  )\n";
+}
+
+void write_zones(std::ostream &out, const Board &board, const LayerMap &layer_map,
+                 LossReport &loss_report) {
+    for (std::size_t zone_index = 0; zone_index < board.zone_count(); ++zone_index) {
+        const auto zone_id = BoardZoneId{zone_index};
+        const auto &zone = board.zone(zone_id);
+        for (const auto layer_id : zone.layers()) {
+            const auto layer = layer_map.find(layer_id);
+            if (!layer.has_value() || layer->kind != "signal") {
+                add_fab_critical_warning(
+                    loss_report, LossKind::UnsupportedConstruct, "board.zone.layer",
+                    "The KiCad PCB writer exports copper zones only on mapped top or bottom "
+                    "copper layers");
+                continue;
+            }
+            write_zone(out, board, zone_id, zone, layer.value());
+        }
+    }
+}
+
 [[nodiscard]] bool unmapped_text_layer_is_informational(const BoardLayer &layer) {
     switch (layer.role()) {
     case BoardLayerRole::Mechanical:
@@ -678,10 +765,6 @@ void write_outline(std::ostream &out, const Board &board) {
 }
 
 void report_unsupported_board_constructs(const Board &board, LossReport &loss_report) {
-    for (std::size_t index = 0; index < board.zone_count(); ++index) {
-        add_fab_critical_warning(loss_report, LossKind::UnsupportedConstruct, "board.zone",
-                                 "The first KiCad PCB writer subset does not export copper zones");
-    }
     for (std::size_t index = 0; index < board.keepout_count(); ++index) {
         add_fab_critical_warning(
             loss_report, LossKind::UnsupportedConstruct, "board.keepout",
@@ -717,6 +800,7 @@ namespace volt::adapters::kicad {
     detail::write_component_footprints(out, board, footprints, result.loss_report);
     detail::write_tracks(out, board, layer_map, result.loss_report);
     detail::write_vias(out, board, layer_map, result.loss_report);
+    detail::write_zones(out, board, layer_map, result.loss_report);
     detail::write_texts(out, board, layer_map, result.loss_report);
     detail::write_outline(out, board);
     out << ")\n";

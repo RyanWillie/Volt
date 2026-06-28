@@ -1,6 +1,8 @@
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 
+#include <volt/circuit/validation/validation.hpp>
+
 #include "../validation/board_capability_validation.hpp"
 #include "../validation/board_footprint_drc.hpp"
 #include "board_copper_detail.hpp"
@@ -392,19 +394,20 @@ void validate_keepout_placements(const Board &board, DiagnosticReport &report) {
     return index;
 }
 
-void validate_unrouted_nets(const std::vector<PadResolution> &resolutions,
+void validate_unrouted_nets(const Board &board, const std::vector<PadResolution> &resolutions,
                             const std::vector<BoardCopperShape> &shapes, DiagnosticReport &report) {
     if (shapes.empty()) {
         return;
     }
 
+    const auto continuity = NetContinuityView{board.circuit()};
     auto parents = std::vector<std::size_t>(shapes.size());
     std::iota(parents.begin(), parents.end(), 0U);
     for (std::size_t lhs_index = 0; lhs_index < shapes.size(); ++lhs_index) {
         for (std::size_t rhs_index = lhs_index + 1U; rhs_index < shapes.size(); ++rhs_index) {
             const auto &lhs = shapes[lhs_index];
             const auto &rhs = shapes[rhs_index];
-            if (lhs.net != rhs.net || !layers_overlap(lhs, rhs)) {
+            if (!continuity.same_group(lhs.net, rhs.net) || !layers_overlap(lhs, rhs)) {
                 continue;
             }
             if (shape_distance(lhs, rhs) > lhs.radius_mm + rhs.radius_mm + board_drc_epsilon) {
@@ -482,8 +485,8 @@ void validate_board_drc(const Board &board, const FootprintLibrary &footprints,
         .add([](const Board &rule_board, DiagnosticReport &rule_report) {
             validate_keepout_placements(rule_board, rule_report);
         })
-        .add([&pad_resolutions, &shapes](const Board &, DiagnosticReport &rule_report) {
-            validate_unrouted_nets(pad_resolutions, shapes, rule_report);
+        .add([&pad_resolutions, &shapes](const Board &rule_board, DiagnosticReport &rule_report) {
+            validate_unrouted_nets(rule_board, pad_resolutions, shapes, rule_report);
         });
     rules.run(board, report);
 }

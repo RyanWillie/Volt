@@ -1,0 +1,755 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="pcb-placement-preview" viewBox="0 0 98 66" width="98mm" height="66mm" data-board="board:0" data-board-name="STM32 USB Buck PCB" data-units="mm">
+  <style>
+    .board-background{fill:#f8faf8}
+    .board-outline{fill:#d7ead0;stroke:#1f5f3a;stroke-width:0.28}
+    .board-feature{fill:none;stroke:#6b7280;stroke-width:0.24}
+    .pcb-track{fill:none;stroke:#b45309;stroke-linecap:round;stroke-linejoin:round}
+    .pcb-via-annular{fill:#b45309;stroke:#7c2d12;stroke-width:0.08}
+    .pcb-via-drill{fill:#f8faf8;stroke:#7c2d12;stroke-width:0.06}
+    .pcb-zone{fill:#b45309;fill-opacity:0.22;stroke:#92400e;stroke-width:0.12}
+    .board-text{font-family:sans-serif;fill:#172026;text-anchor:middle;dominant-baseline:middle}
+    .board-feature-label,.reference-designator,.pad-net-label,.diagnostic-label{font:1.8px sans-serif;fill:#172026}
+    .footprint-courtyard{fill:none;stroke:#64748b;stroke-width:0.12;stroke-dasharray:0.7 0.45}
+    .footprint-body.declared{fill:#fff8db;stroke:#8a6a16;stroke-width:0.18}
+    .footprint-fabrication.declared{fill:none;stroke:#475569;stroke-width:0.1}
+    .footprint-assembly.declared{fill:none;stroke:#7c3aed;stroke-width:0.1;stroke-dasharray:0.55 0.35}
+    .footprint-marking.declared{fill:#172026;fill-opacity:0.45;stroke:#172026;stroke-width:0.08}
+    .footprint-marking.kind-pin_1,.footprint-marking.kind-polarity{fill:#b42318;stroke:#7a271a}
+    .footprint-envelope.synthetic{fill:#fff8db;fill-opacity:0.24;stroke:#8a6a16;stroke-width:0.18;stroke-dasharray:0.9 0.55}
+    .footprint-pad{fill:#d99822;stroke:#5a3a08;stroke-width:0.14}
+    .pad-overlay{fill:#175cd3;stroke:#ffffff;stroke-width:0.12}
+    .ratsnest{fill:none;stroke:#175cd3;stroke-width:0.16;stroke-dasharray:0.8 0.55}
+    .diagnostic-marker{fill:none;stroke:#b42318;stroke-width:0.28;stroke-dasharray:0.9 0.55}
+    .diagnostic-label{fill:#b42318}
+  </style>
+  <rect class="board-background" x="0" y="0" width="98" height="66"/>
+  <g class="board-content" transform="translate(4 4)">
+    <polygon class="board-outline" data-board="board:0" points="0,0 90,0 90,58 0,58"/>
+    <g class="layer layer-board-features">
+    </g>
+    <g id="pcb-layer-F_Cu" class="pcb-layer board-layer layer-F_Cu" data-layer="board_layer:0" data-layer-name="F.Cu" data-layer-role="copper" data-layer-side="top">
+    <g class="layer layer-zones">
+    </g>
+    <g class="layer layer-copper">
+      <polyline id="pcb-track-0" class="pcb-track" data-track="board_track:0" data-layer="board_layer:0" data-net="net:0" points="6,28.73 9.5,28.73" stroke-width="0.2"/>
+      <polyline id="pcb-track-1" class="pcb-track" data-track="board_track:1" data-layer="board_layer:0" data-net="net:5" points="6,13.19 16.25,13.19" stroke-width="0.2"/>
+      <polyline id="pcb-track-2" class="pcb-track" data-track="board_track:2" data-layer="board_layer:0" data-net="net:5" points="16.25,13.19 16.25,23" stroke-width="0.2"/>
+      <polyline id="pcb-track-3" class="pcb-track" data-track="board_track:3" data-layer="board_layer:0" data-net="net:5" points="16.25,23 16.25,20.38125" stroke-width="0.2"/>
+      <polyline id="pcb-track-4" class="pcb-track" data-track="board_track:4" data-layer="board_layer:0" data-net="net:5" points="16.25,20.38125 21.7125,20.38125" stroke-width="0.2"/>
+      <polyline id="pcb-track-5" class="pcb-track" data-track="board_track:5" data-layer="board_layer:0" data-net="net:5" points="21.7125,20.38125 25.3,20.38125" stroke-width="0.2"/>
+      <polyline id="pcb-track-6" class="pcb-track" data-track="board_track:6" data-layer="board_layer:0" data-net="net:5" points="25.3,20.38125 25.3,15.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-7" class="pcb-track" data-track="board_track:7" data-layer="board_layer:0" data-net="net:6" points="23,19.05 23,15.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-8" class="pcb-track" data-track="board_track:8" data-layer="board_layer:0" data-net="net:6" points="23,15.5 23,13.8125" stroke-width="0.2"/>
+      <polyline id="pcb-track-9" class="pcb-track" data-track="board_track:9" data-layer="board_layer:0" data-net="net:6" points="23,13.8125 32.25,13.8125" stroke-width="0.2"/>
+      <polyline id="pcb-track-10" class="pcb-track" data-track="board_track:10" data-layer="board_layer:0" data-net="net:6" points="32.25,13.8125 30.25,13.8125" stroke-width="0.2"/>
+      <polyline id="pcb-track-11" class="pcb-track" data-track="board_track:11" data-layer="board_layer:0" data-net="net:6" points="30.25,13.8125 30.25,23" stroke-width="0.2"/>
+      <polyline id="pcb-track-12" class="pcb-track" data-track="board_track:12" data-layer="board_layer:0" data-net="net:6" points="30.25,23 30.25,20.50625" stroke-width="0.2"/>
+      <polyline id="pcb-track-13" class="pcb-track" data-track="board_track:13" data-layer="board_layer:0" data-net="net:6" points="30.25,20.50625 36.2125,20.50625" stroke-width="0.2"/>
+      <polyline id="pcb-track-14" class="pcb-track" data-track="board_track:14" data-layer="board_layer:0" data-net="net:6" points="36.2125,20.50625 40.3,20.50625" stroke-width="0.2"/>
+      <polyline id="pcb-track-15" class="pcb-track" data-track="board_track:15" data-layer="board_layer:0" data-net="net:6" points="40.3,20.50625 40.3,15.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-16" class="pcb-track" data-track="board_track:16" data-layer="board_layer:0" data-net="net:7" points="38,19.05 38,15.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-17" class="pcb-track" data-track="board_track:17" data-layer="board_layer:0" data-net="net:7" points="38,15.5 38,13.8125" stroke-width="0.2"/>
+      <polyline id="pcb-track-18" class="pcb-track" data-track="board_track:18" data-layer="board_layer:0" data-net="net:7" points="38,13.8125 47.25,13.8125" stroke-width="0.2"/>
+      <polyline id="pcb-track-19" class="pcb-track" data-track="board_track:19" data-layer="board_layer:0" data-net="net:7" points="47.25,13.8125 45.25,13.8125" stroke-width="0.2"/>
+      <polyline id="pcb-track-20" class="pcb-track" data-track="board_track:20" data-layer="board_layer:0" data-net="net:7" points="45.25,13.8125 45.25,23" stroke-width="0.2"/>
+      <polyline id="pcb-track-21" class="pcb-track" data-track="board_track:21" data-layer="board_layer:0" data-net="net:8" points="33,29.25 32.2,29.25" stroke-width="0.2"/>
+      <polyline id="pcb-track-22" class="pcb-track" data-track="board_track:22" data-layer="board_layer:0" data-net="net:8" points="32.2,29.25 32.2,30.75" stroke-width="0.2"/>
+      <polyline id="pcb-track-23" class="pcb-track" data-track="board_track:23" data-layer="board_layer:0" data-net="net:8" points="32.2,30.75 32.2,32.25" stroke-width="0.2"/>
+      <polyline id="pcb-track-24" class="pcb-track" data-track="board_track:24" data-layer="board_layer:0" data-net="net:8" points="32.2,32.25 33,32.25" stroke-width="0.2"/>
+      <polyline id="pcb-track-25" class="pcb-track" data-track="board_track:25" data-layer="board_layer:0" data-net="net:9" points="6,15.73 6,17.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-26" class="pcb-track" data-track="board_track:26" data-layer="board_layer:0" data-net="net:9" points="6,18.27 6,20.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-27" class="pcb-track" data-track="board_track:27" data-layer="board_layer:0" data-net="net:9" points="6,20.81 6,23" stroke-width="0.2"/>
+      <polyline id="pcb-track-28" class="pcb-track" data-track="board_track:28" data-layer="board_layer:0" data-net="net:9" points="17.75,23 18,23" stroke-width="0.2"/>
+      <polyline id="pcb-track-29" class="pcb-track" data-track="board_track:29" data-layer="board_layer:0" data-net="net:9" points="18,23 18,25" stroke-width="0.2"/>
+      <polyline id="pcb-track-30" class="pcb-track" data-track="board_track:30" data-layer="board_layer:0" data-net="net:9" points="20.7,15.5 20.5,15.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-31" class="pcb-track" data-track="board_track:31" data-layer="board_layer:0" data-net="net:9" points="20.5,15.5 20.5,17.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-32" class="pcb-track" data-track="board_track:32" data-layer="board_layer:0" data-net="net:9" points="31.75,23 32,23" stroke-width="0.2"/>
+      <polyline id="pcb-track-33" class="pcb-track" data-track="board_track:33" data-layer="board_layer:0" data-net="net:9" points="32,23 32,25" stroke-width="0.2"/>
+      <polyline id="pcb-track-34" class="pcb-track" data-track="board_track:34" data-layer="board_layer:0" data-net="net:9" points="35.7,15.5 35.5,15.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-35" class="pcb-track" data-track="board_track:35" data-layer="board_layer:0" data-net="net:9" points="35.5,15.5 35.5,17.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-36" class="pcb-track" data-track="board_track:36" data-layer="board_layer:0" data-net="net:9" points="46.75,23 47,23" stroke-width="0.2"/>
+      <polyline id="pcb-track-37" class="pcb-track" data-track="board_track:37" data-layer="board_layer:0" data-net="net:9" points="47,23 47,25" stroke-width="0.2"/>
+      <polyline id="pcb-track-38" class="pcb-track" data-track="board_track:38" data-layer="board_layer:0" data-net="net:9" points="33,30.75 33.8,30.75" stroke-width="0.2"/>
+      <polyline id="pcb-track-39" class="pcb-track" data-track="board_track:39" data-layer="board_layer:0" data-net="net:9" points="33.8,30.75 33.8,31.875" stroke-width="0.2"/>
+      <polyline id="pcb-track-40" class="pcb-track" data-track="board_track:40" data-layer="board_layer:0" data-net="net:9" points="33.8,31.875 33.8,33" stroke-width="0.2"/>
+      <polyline id="pcb-track-41" class="pcb-track" data-track="board_track:41" data-layer="board_layer:0" data-net="net:9" points="33.8,33 33,33" stroke-width="0.2"/>
+      <polyline id="pcb-track-56" class="pcb-track" data-track="board_track:56" data-layer="board_layer:0" data-net="net:2" points="43.2,34.75 43,34.75" stroke-width="0.2"/>
+      <polyline id="pcb-track-57" class="pcb-track" data-track="board_track:57" data-layer="board_layer:0" data-net="net:2" points="43,34.75 43,38" stroke-width="0.2"/>
+      <polyline id="pcb-track-58" class="pcb-track" data-track="board_track:58" data-layer="board_layer:0" data-net="net:2" points="46.25,25.2 46.25,25.896858112554" stroke-width="0.2"/>
+      <polyline id="pcb-track-59" class="pcb-track" data-track="board_track:59" data-layer="board_layer:0" data-net="net:2" points="46.25,25.896858112554 47.445831832227,25.896858112554" stroke-width="0.2"/>
+      <polyline id="pcb-track-60" class="pcb-track" data-track="board_track:60" data-layer="board_layer:0" data-net="net:2" points="47.445831832227,25.896858112554 48.5,25.896858112554" stroke-width="0.2"/>
+      <polyline id="pcb-track-61" class="pcb-track" data-track="board_track:61" data-layer="board_layer:0" data-net="net:2" points="48.5,25.896858112554 48.5,25" stroke-width="0.2"/>
+      <polyline id="pcb-track-62" class="pcb-track" data-track="board_track:62" data-layer="board_layer:0" data-net="net:2" points="52.75,25.2 52.75,23.51034772375" stroke-width="0.2"/>
+      <polyline id="pcb-track-63" class="pcb-track" data-track="board_track:63" data-layer="board_layer:0" data-net="net:2" points="52.75,23.51034772375 52.056674545857,23.51034772375" stroke-width="0.2"/>
+      <polyline id="pcb-track-64" class="pcb-track" data-track="board_track:64" data-layer="board_layer:0" data-net="net:2" points="52.056674545857,23.51034772375 51,23.51034772375" stroke-width="0.2"/>
+      <polyline id="pcb-track-65" class="pcb-track" data-track="board_track:65" data-layer="board_layer:0" data-net="net:2" points="51,23.51034772375 51,25" stroke-width="0.2"/>
+      <polyline id="pcb-track-66" class="pcb-track" data-track="board_track:66" data-layer="board_layer:0" data-net="net:2" points="54.8,34.75 55,34.75" stroke-width="0.2"/>
+      <polyline id="pcb-track-67" class="pcb-track" data-track="board_track:67" data-layer="board_layer:0" data-net="net:2" points="55,34.75 55,38" stroke-width="0.2"/>
+      <polyline id="pcb-track-68" class="pcb-track" data-track="board_track:68" data-layer="board_layer:0" data-net="net:2" points="45.25,36.8 45.25,40" stroke-width="0.2"/>
+      <polyline id="pcb-track-69" class="pcb-track" data-track="board_track:69" data-layer="board_layer:0" data-net="net:2" points="45.25,40 45.5,40" stroke-width="0.2"/>
+      <polyline id="pcb-track-70" class="pcb-track" data-track="board_track:70" data-layer="board_layer:0" data-net="net:2" points="77.365,14.46 77.5,14.46" stroke-width="0.2"/>
+      <polyline id="pcb-track-71" class="pcb-track" data-track="board_track:71" data-layer="board_layer:0" data-net="net:2" points="77.5,14.46 77.5,11.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-72" class="pcb-track" data-track="board_track:72" data-layer="board_layer:0" data-net="net:2" points="84,33.81 80,33.81" stroke-width="0.2"/>
+      <polyline id="pcb-track-73" class="pcb-track" data-track="board_track:73" data-layer="board_layer:0" data-net="net:2" points="80,33.81 80,34" stroke-width="0.2"/>
+      <polyline id="pcb-track-86" class="pcb-track" data-track="board_track:86" data-layer="board_layer:0" data-net="net:3" points="43.2,28.75 40.2,28.75" stroke-width="0.2"/>
+      <polyline id="pcb-track-87" class="pcb-track" data-track="board_track:87" data-layer="board_layer:0" data-net="net:4" points="6,31.27 4.520027939202,31.27" stroke-width="0.2"/>
+      <polyline id="pcb-track-88" class="pcb-track" data-track="board_track:88" data-layer="board_layer:0" data-net="net:4" points="4.520027939202,31.27 4.520027939202,28.497743211884" stroke-width="0.2"/>
+      <polyline id="pcb-track-89" class="pcb-track" data-track="board_track:89" data-layer="board_layer:0" data-net="net:4" points="4.520027939202,28.497743211884 4.520027939202,27.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-90" class="pcb-track" data-track="board_track:90" data-layer="board_layer:0" data-net="net:4" points="4.520027939202,27.5 7.5,27.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-91" class="pcb-track" data-track="board_track:91" data-layer="board_layer:0" data-net="net:4" points="45.75,25.2 45.75,28" stroke-width="0.2"/>
+      <polyline id="pcb-track-92" class="pcb-track" data-track="board_track:92" data-layer="board_layer:0" data-net="net:4" points="45.75,28 47,28" stroke-width="0.2"/>
+      <polyline id="pcb-track-93" class="pcb-track" data-track="board_track:93" data-layer="board_layer:0" data-net="net:4" points="45.75,36.8 45.75,33" stroke-width="0.2"/>
+      <polyline id="pcb-track-94" class="pcb-track" data-track="board_track:94" data-layer="board_layer:0" data-net="net:4" points="45.75,33 47,33" stroke-width="0.2"/>
+      <polyline id="pcb-track-95" class="pcb-track" data-track="board_track:95" data-layer="board_layer:0" data-net="net:4" points="43.2,29.25 44.5,29.25" stroke-width="0.2"/>
+      <polyline id="pcb-track-96" class="pcb-track" data-track="board_track:96" data-layer="board_layer:0" data-net="net:4" points="44.5,29.25 44.5,32.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-97" class="pcb-track" data-track="board_track:97" data-layer="board_layer:0" data-net="net:4" points="77.365,15.73 75.5,15.73" stroke-width="0.2"/>
+      <polyline id="pcb-track-98" class="pcb-track" data-track="board_track:98" data-layer="board_layer:0" data-net="net:4" points="75.5,15.73 75.5,18.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-99" class="pcb-track" data-track="board_track:99" data-layer="board_layer:0" data-net="net:4" points="77.365,17 75.5,17" stroke-width="0.2"/>
+      <polyline id="pcb-track-100" class="pcb-track" data-track="board_track:100" data-layer="board_layer:0" data-net="net:4" points="75.5,17 75.5,20" stroke-width="0.2"/>
+      <polyline id="pcb-track-101" class="pcb-track" data-track="board_track:101" data-layer="board_layer:0" data-net="net:4" points="77.365,19.54 75.5,19.54" stroke-width="0.2"/>
+      <polyline id="pcb-track-102" class="pcb-track" data-track="board_track:102" data-layer="board_layer:0" data-net="net:4" points="75.5,19.54 75.5,22.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-103" class="pcb-track" data-track="board_track:103" data-layer="board_layer:0" data-net="net:4" points="84,26.19 82,26.19" stroke-width="0.2"/>
+      <polyline id="pcb-track-104" class="pcb-track" data-track="board_track:104" data-layer="board_layer:0" data-net="net:4" points="82,26.19 82,29" stroke-width="0.2"/>
+      <polyline id="pcb-track-105" class="pcb-track" data-track="board_track:105" data-layer="board_layer:0" data-net="net:4" points="5,5 6.5,5" stroke-width="0.2"/>
+      <polyline id="pcb-track-106" class="pcb-track" data-track="board_track:106" data-layer="board_layer:0" data-net="net:4" points="6.5,5 6.5,8" stroke-width="0.2"/>
+      <polyline id="pcb-track-107" class="pcb-track" data-track="board_track:107" data-layer="board_layer:0" data-net="net:4" points="85,5 83,5" stroke-width="0.2"/>
+      <polyline id="pcb-track-108" class="pcb-track" data-track="board_track:108" data-layer="board_layer:0" data-net="net:4" points="83,5 83,8" stroke-width="0.2"/>
+      <polyline id="pcb-track-109" class="pcb-track" data-track="board_track:109" data-layer="board_layer:0" data-net="net:4" points="5,53 6.5,53" stroke-width="0.2"/>
+      <polyline id="pcb-track-110" class="pcb-track" data-track="board_track:110" data-layer="board_layer:0" data-net="net:4" points="6.5,53 6.5,49" stroke-width="0.2"/>
+      <polyline id="pcb-track-111" class="pcb-track" data-track="board_track:111" data-layer="board_layer:0" data-net="net:4" points="85,53 83,53" stroke-width="0.2"/>
+      <polyline id="pcb-track-112" class="pcb-track" data-track="board_track:112" data-layer="board_layer:0" data-net="net:4" points="83,53 83,49" stroke-width="0.2"/>
+      <polyline id="pcb-track-132" class="pcb-track" data-track="board_track:132" data-layer="board_layer:0" data-net="net:14" points="85.3,40.7 85.3,39.209375" stroke-width="0.2"/>
+      <polyline id="pcb-track-133" class="pcb-track" data-track="board_track:133" data-layer="board_layer:0" data-net="net:14" points="85.3,39.209375 80.175,39.209375" stroke-width="0.2"/>
+      <polyline id="pcb-track-134" class="pcb-track" data-track="board_track:134" data-layer="board_layer:0" data-net="net:14" points="80.175,39.209375 80.175,37.71875" stroke-width="0.2"/>
+      <polyline id="pcb-track-135" class="pcb-track" data-track="board_track:135" data-layer="board_layer:0" data-net="net:14" points="80.175,37.71875 74.25,37.71875" stroke-width="0.2"/>
+      <polyline id="pcb-track-136" class="pcb-track" data-track="board_track:136" data-layer="board_layer:0" data-net="net:14" points="74.25,37.71875 74.25,37.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-137" class="pcb-track" data-track="board_track:137" data-layer="board_layer:0" data-net="net:15" points="84,40.7 84,39.575" stroke-width="0.2"/>
+      <polyline id="pcb-track-138" class="pcb-track" data-track="board_track:138" data-layer="board_layer:0" data-net="net:15" points="84,39.575 71.75,39.575" stroke-width="0.2"/>
+      <polyline id="pcb-track-139" class="pcb-track" data-track="board_track:139" data-layer="board_layer:0" data-net="net:15" points="71.75,39.575 71.75,38.45" stroke-width="0.2"/>
+      <polyline id="pcb-track-140" class="pcb-track" data-track="board_track:140" data-layer="board_layer:0" data-net="net:16" points="84.65,40.7 84.65,41.8 70.4,41.8 70.4,36.55 71.75,36.55" stroke-width="0.2"/>
+      <polyline id="pcb-track-143" class="pcb-track" data-track="board_track:143" data-layer="board_layer:0" data-net="net:20" points="37.25,22 35.75,22" stroke-width="0.2"/>
+      <polyline id="pcb-track-144" class="pcb-track" data-track="board_track:144" data-layer="board_layer:0" data-net="net:20" points="35.75,22 35.75,27" stroke-width="0.2"/>
+      <polyline id="pcb-track-145" class="pcb-track" data-track="board_track:145" data-layer="board_layer:0" data-net="net:20" points="35.75,27 35.75,20.909375" stroke-width="0.2"/>
+      <polyline id="pcb-track-146" class="pcb-track" data-track="board_track:146" data-layer="board_layer:0" data-net="net:20" points="35.75,20.909375 49.3875,20.909375" stroke-width="0.2"/>
+      <polyline id="pcb-track-147" class="pcb-track" data-track="board_track:147" data-layer="board_layer:0" data-net="net:20" points="49.3875,20.909375 49.3875,14.81875" stroke-width="0.2"/>
+      <polyline id="pcb-track-148" class="pcb-track" data-track="board_track:148" data-layer="board_layer:0" data-net="net:20" points="49.3875,14.81875 64.9,14.81875" stroke-width="0.2"/>
+      <polyline id="pcb-track-149" class="pcb-track" data-track="board_track:149" data-layer="board_layer:0" data-net="net:20" points="64.9,14.81875 64.9,24.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-150" class="pcb-track" data-track="board_track:150" data-layer="board_layer:0" data-net="net:23" points="60,24.25 63.1875,24.25" stroke-width="0.2"/>
+      <polyline id="pcb-track-151" class="pcb-track" data-track="board_track:151" data-layer="board_layer:0" data-net="net:23" points="63.1875,24.25 63.1875,26" stroke-width="0.2"/>
+      <polyline id="pcb-track-152" class="pcb-track" data-track="board_track:152" data-layer="board_layer:0" data-net="net:23" points="63.1875,26 66.5,26" stroke-width="0.2"/>
+      <polyline id="pcb-track-153" class="pcb-track" data-track="board_track:153" data-layer="board_layer:0" data-net="net:23" points="66.5,26 66.5,24.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-154" class="pcb-track" data-track="board_track:154" data-layer="board_layer:0" data-net="net:24" points="36.45,32.25 35.133593692276,32.25" stroke-width="0.2"/>
+      <polyline id="pcb-track-155" class="pcb-track" data-track="board_track:155" data-layer="board_layer:0" data-net="net:24" points="35.133593692276,32.25 35.133593692276,33.528249870699" stroke-width="0.2"/>
+      <polyline id="pcb-track-156" class="pcb-track" data-track="board_track:156" data-layer="board_layer:0" data-net="net:24" points="35.133593692276,33.528249870699 33.817187384553,33.528249870699" stroke-width="0.2"/>
+      <polyline id="pcb-track-157" class="pcb-track" data-track="board_track:157" data-layer="board_layer:0" data-net="net:24" points="33.817187384553,33.528249870699 33.817187384553,34.76412493535" stroke-width="0.2"/>
+      <polyline id="pcb-track-158" class="pcb-track" data-track="board_track:158" data-layer="board_layer:0" data-net="net:24" points="33.817187384553,34.76412493535 32.25,34.76412493535" stroke-width="0.2"/>
+      <polyline id="pcb-track-159" class="pcb-track" data-track="board_track:159" data-layer="board_layer:0" data-net="net:24" points="32.25,34.76412493535 32.25,36" stroke-width="0.2"/>
+      <polyline id="pcb-track-160" class="pcb-track" data-track="board_track:160" data-layer="board_layer:0" data-net="net:25" points="38.55,33.75 40.25,33.75" stroke-width="0.2"/>
+      <polyline id="pcb-track-161" class="pcb-track" data-track="board_track:161" data-layer="board_layer:0" data-net="net:25" points="40.25,33.75 40.25,39" stroke-width="0.2"/>
+      <polyline id="pcb-track-162" class="pcb-track" data-track="board_track:162" data-layer="board_layer:0" data-net="net:22" points="37.25,27 40.25,27" stroke-width="0.2"/>
+      <polyline id="pcb-track-163" class="pcb-track" data-track="board_track:163" data-layer="board_layer:0" data-net="net:26" points="42,42.25 42,39.75" stroke-width="0.2"/>
+      <polyline id="pcb-track-164" class="pcb-track" data-track="board_track:164" data-layer="board_layer:0" data-net="net:27" points="54,42.25 54,39.75" stroke-width="0.2"/>
+      <polyline id="pcb-track-170" class="pcb-track" data-track="board_track:170" data-layer="board_layer:0" data-net="net:12" points="54.8,33.25 61.8,33.25" stroke-width="0.2"/>
+      <polyline id="pcb-track-171" class="pcb-track" data-track="board_track:171" data-layer="board_layer:0" data-net="net:13" points="54.8,32.75 61.8,32.75" stroke-width="0.2"/>
+      <polyline id="pcb-track-172" class="pcb-track" data-track="board_track:172" data-layer="board_layer:0" data-net="net:34" points="54.8,33.75 62.5,33.75" stroke-width="0.2"/>
+      <polyline id="pcb-track-174" class="pcb-track" data-track="board_track:174" data-layer="board_layer:0" data-net="net:34" points="85.6,14.46 78.635,14.46" stroke-width="0.2"/>
+      <polyline id="pcb-track-175" class="pcb-track" data-track="board_track:175" data-layer="board_layer:0" data-net="net:35" points="52.75,36.8 52.75,39.5" stroke-width="0.2"/>
+      <polyline id="pcb-track-177" class="pcb-track" data-track="board_track:177" data-layer="board_layer:0" data-net="net:35" points="86.5,15.73 78.635,15.73" stroke-width="0.2"/>
+      <polyline id="pcb-track-178" class="pcb-track" data-track="board_track:178" data-layer="board_layer:0" data-net="net:36" points="49.75,36.8 49.75,42" stroke-width="0.2"/>
+      <polyline id="pcb-track-180" class="pcb-track" data-track="board_track:180" data-layer="board_layer:0" data-net="net:36" points="87.4,17 78.635,17" stroke-width="0.2"/>
+      <polyline id="pcb-track-181" class="pcb-track" data-track="board_track:181" data-layer="board_layer:0" data-net="net:29" points="47.25,36.8 47.25,45" stroke-width="0.2"/>
+      <polyline id="pcb-track-183" class="pcb-track" data-track="board_track:183" data-layer="board_layer:0" data-net="net:29" points="88.3,18.27 78.635,18.27" stroke-width="0.2"/>
+      <polyline id="pcb-track-184" class="pcb-track" data-track="board_track:184" data-layer="board_layer:0" data-net="net:28" points="43.2,31.75 41,31.75" stroke-width="0.2"/>
+      <polyline id="pcb-track-186" class="pcb-track" data-track="board_track:186" data-layer="board_layer:0" data-net="net:28" points="89.2,19.54 78.635,19.54" stroke-width="0.2"/>
+      <polyline id="pcb-track-187" class="pcb-track" data-track="board_track:187" data-layer="board_layer:0" data-net="net:29" points="47.25,36.8 47.25,47.81625" stroke-width="0.2"/>
+      <polyline id="pcb-track-188" class="pcb-track" data-track="board_track:188" data-layer="board_layer:0" data-net="net:29" points="47.25,47.81625 67.69875,47.81625" stroke-width="0.2"/>
+      <polyline id="pcb-track-189" class="pcb-track" data-track="board_track:189" data-layer="board_layer:0" data-net="net:29" points="67.69875,47.81625 67.69875,31.27" stroke-width="0.2"/>
+      <polyline id="pcb-track-190" class="pcb-track" data-track="board_track:190" data-layer="board_layer:0" data-net="net:29" points="67.69875,31.27 84,31.27" stroke-width="0.2"/>
+      <polyline id="pcb-track-191" class="pcb-track" data-track="board_track:191" data-layer="board_layer:0" data-net="net:38" points="61.25,50 58.25,50" stroke-width="0.2"/>
+      <polyline id="pcb-track-192" class="pcb-track" data-track="board_track:192" data-layer="board_layer:0" data-net="net:39" points="62.75,50 69.25,50" stroke-width="0.2"/>
+      <polyline id="pcb-track-193" class="pcb-track" data-track="board_track:193" data-layer="board_layer:0" data-net="net:40" points="70.75,50 73.25,50" stroke-width="0.2"/>
+      <g id="pcb-via-0-layer-F_Cu" class="pcb-via" data-via="board_via:0" data-net="net:9" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="6" cy="17.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="6" cy="17.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-1-layer-F_Cu" class="pcb-via" data-via="board_via:1" data-net="net:9" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="6" cy="20.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="6" cy="20.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-2-layer-F_Cu" class="pcb-via" data-via="board_via:2" data-net="net:9" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="6" cy="23" r="0.35"/>
+        <circle class="pcb-via-drill" cx="6" cy="23" r="0.15"/>
+      </g>
+      <g id="pcb-via-3-layer-F_Cu" class="pcb-via" data-via="board_via:3" data-net="net:9" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="18" cy="25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="18" cy="25" r="0.15"/>
+      </g>
+      <g id="pcb-via-4-layer-F_Cu" class="pcb-via" data-via="board_via:4" data-net="net:9" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="20.5" cy="17.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="20.5" cy="17.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-5-layer-F_Cu" class="pcb-via" data-via="board_via:5" data-net="net:9" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="32" cy="25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="32" cy="25" r="0.15"/>
+      </g>
+      <g id="pcb-via-6-layer-F_Cu" class="pcb-via" data-via="board_via:6" data-net="net:9" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="35.5" cy="17.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="35.5" cy="17.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-7-layer-F_Cu" class="pcb-via" data-via="board_via:7" data-net="net:9" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="47" cy="25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="47" cy="25" r="0.15"/>
+      </g>
+      <g id="pcb-via-8-layer-F_Cu" class="pcb-via" data-via="board_via:8" data-net="net:9" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="33" cy="33" r="0.35"/>
+        <circle class="pcb-via-drill" cx="33" cy="33" r="0.15"/>
+      </g>
+      <g id="pcb-via-9-layer-F_Cu" class="pcb-via" data-via="board_via:9" data-net="net:2" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="43" cy="38" r="0.35"/>
+        <circle class="pcb-via-drill" cx="43" cy="38" r="0.15"/>
+      </g>
+      <g id="pcb-via-10-layer-F_Cu" class="pcb-via" data-via="board_via:10" data-net="net:2" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="48.5" cy="25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="48.5" cy="25" r="0.15"/>
+      </g>
+      <g id="pcb-via-11-layer-F_Cu" class="pcb-via" data-via="board_via:11" data-net="net:2" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="51" cy="25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="51" cy="25" r="0.15"/>
+      </g>
+      <g id="pcb-via-12-layer-F_Cu" class="pcb-via" data-via="board_via:12" data-net="net:2" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="55" cy="38" r="0.35"/>
+        <circle class="pcb-via-drill" cx="55" cy="38" r="0.15"/>
+      </g>
+      <g id="pcb-via-13-layer-F_Cu" class="pcb-via" data-via="board_via:13" data-net="net:2" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="45.5" cy="40" r="0.35"/>
+        <circle class="pcb-via-drill" cx="45.5" cy="40" r="0.15"/>
+      </g>
+      <g id="pcb-via-14-layer-F_Cu" class="pcb-via" data-via="board_via:14" data-net="net:2" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="77.5" cy="11.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="77.5" cy="11.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-15-layer-F_Cu" class="pcb-via" data-via="board_via:15" data-net="net:2" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="80" cy="34" r="0.35"/>
+        <circle class="pcb-via-drill" cx="80" cy="34" r="0.15"/>
+      </g>
+      <g id="pcb-via-16-layer-F_Cu" class="pcb-via" data-via="board_via:16" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="7.5" cy="27.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="7.5" cy="27.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-17-layer-F_Cu" class="pcb-via" data-via="board_via:17" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="47" cy="28" r="0.35"/>
+        <circle class="pcb-via-drill" cx="47" cy="28" r="0.15"/>
+      </g>
+      <g id="pcb-via-18-layer-F_Cu" class="pcb-via" data-via="board_via:18" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="47" cy="33" r="0.35"/>
+        <circle class="pcb-via-drill" cx="47" cy="33" r="0.15"/>
+      </g>
+      <g id="pcb-via-19-layer-F_Cu" class="pcb-via" data-via="board_via:19" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="44.5" cy="32.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="44.5" cy="32.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-20-layer-F_Cu" class="pcb-via" data-via="board_via:20" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="75.5" cy="18.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="75.5" cy="18.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-21-layer-F_Cu" class="pcb-via" data-via="board_via:21" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="75.5" cy="20" r="0.35"/>
+        <circle class="pcb-via-drill" cx="75.5" cy="20" r="0.15"/>
+      </g>
+      <g id="pcb-via-22-layer-F_Cu" class="pcb-via" data-via="board_via:22" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="75.5" cy="22.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="75.5" cy="22.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-23-layer-F_Cu" class="pcb-via" data-via="board_via:23" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="82" cy="29" r="0.35"/>
+        <circle class="pcb-via-drill" cx="82" cy="29" r="0.15"/>
+      </g>
+      <g id="pcb-via-24-layer-F_Cu" class="pcb-via" data-via="board_via:24" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="6.5" cy="8" r="0.35"/>
+        <circle class="pcb-via-drill" cx="6.5" cy="8" r="0.15"/>
+      </g>
+      <g id="pcb-via-25-layer-F_Cu" class="pcb-via" data-via="board_via:25" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="83" cy="8" r="0.35"/>
+        <circle class="pcb-via-drill" cx="83" cy="8" r="0.15"/>
+      </g>
+      <g id="pcb-via-26-layer-F_Cu" class="pcb-via" data-via="board_via:26" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="6.5" cy="49" r="0.35"/>
+        <circle class="pcb-via-drill" cx="6.5" cy="49" r="0.15"/>
+      </g>
+      <g id="pcb-via-27-layer-F_Cu" class="pcb-via" data-via="board_via:27" data-net="net:4" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="83" cy="49" r="0.35"/>
+        <circle class="pcb-via-drill" cx="83" cy="49" r="0.15"/>
+      </g>
+      <g id="pcb-via-28-layer-F_Cu" class="pcb-via" data-via="board_via:28" data-net="net:19" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="82.7" cy="40.7" r="0.35"/>
+        <circle class="pcb-via-drill" cx="82.7" cy="40.7" r="0.15"/>
+      </g>
+      <g id="pcb-via-29-layer-F_Cu" class="pcb-via" data-via="board_via:29" data-net="net:19" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="84" cy="37.3" r="0.35"/>
+        <circle class="pcb-via-drill" cx="84" cy="37.3" r="0.15"/>
+      </g>
+      <g id="pcb-via-30-layer-F_Cu" class="pcb-via" data-via="board_via:30" data-net="net:19" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="71.75" cy="37.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="71.75" cy="37.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-31-layer-F_Cu" class="pcb-via" data-via="board_via:31" data-net="net:21" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="38.75" cy="22" r="0.35"/>
+        <circle class="pcb-via-drill" cx="38.75" cy="22" r="0.15"/>
+      </g>
+      <g id="pcb-via-32-layer-F_Cu" class="pcb-via" data-via="board_via:32" data-net="net:21" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="38.55" cy="32.25" r="0.35"/>
+        <circle class="pcb-via-drill" cx="38.55" cy="32.25" r="0.15"/>
+      </g>
+      <g id="pcb-via-33-layer-F_Cu" class="pcb-via" data-via="board_via:33" data-net="net:21" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="36.45" cy="33.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="36.45" cy="33.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-34-layer-F_Cu" class="pcb-via" data-via="board_via:34" data-net="net:21" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="33.75" cy="36" r="0.35"/>
+        <circle class="pcb-via-drill" cx="33.75" cy="36" r="0.15"/>
+      </g>
+      <g id="pcb-via-35-layer-F_Cu" class="pcb-via" data-via="board_via:35" data-net="net:21" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="41.75" cy="39" r="0.35"/>
+        <circle class="pcb-via-drill" cx="41.75" cy="39" r="0.15"/>
+      </g>
+      <g id="pcb-via-36-layer-F_Cu" class="pcb-via" data-via="board_via:36" data-net="net:21" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="42" cy="43.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="42" cy="43.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-37-layer-F_Cu" class="pcb-via" data-via="board_via:37" data-net="net:21" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="54" cy="43.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="54" cy="43.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-38-layer-F_Cu" class="pcb-via" data-via="board_via:38" data-net="net:21" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="60" cy="25.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="60" cy="25.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-39-layer-F_Cu" class="pcb-via" data-via="board_via:39" data-net="net:21" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:3">
+        <circle class="pcb-via-annular" cx="68.1" cy="24.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="68.1" cy="24.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-40-layer-F_Cu" class="pcb-via" data-via="board_via:40" data-net="net:34" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="62.5" cy="33.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="62.5" cy="33.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-41-layer-F_Cu" class="pcb-via" data-via="board_via:41" data-net="net:34" data-layer="board_layer:0" data-start-layer="board_layer:1" data-end-layer="board_layer:0">
+        <circle class="pcb-via-annular" cx="85.6" cy="14.46" r="0.35"/>
+        <circle class="pcb-via-drill" cx="85.6" cy="14.46" r="0.15"/>
+      </g>
+      <g id="pcb-via-42-layer-F_Cu" class="pcb-via" data-via="board_via:42" data-net="net:35" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="52.75" cy="39.5" r="0.35"/>
+        <circle class="pcb-via-drill" cx="52.75" cy="39.5" r="0.15"/>
+      </g>
+      <g id="pcb-via-43-layer-F_Cu" class="pcb-via" data-via="board_via:43" data-net="net:35" data-layer="board_layer:0" data-start-layer="board_layer:1" data-end-layer="board_layer:0">
+        <circle class="pcb-via-annular" cx="86.5" cy="15.73" r="0.35"/>
+        <circle class="pcb-via-drill" cx="86.5" cy="15.73" r="0.15"/>
+      </g>
+      <g id="pcb-via-44-layer-F_Cu" class="pcb-via" data-via="board_via:44" data-net="net:36" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="49.75" cy="42" r="0.35"/>
+        <circle class="pcb-via-drill" cx="49.75" cy="42" r="0.15"/>
+      </g>
+      <g id="pcb-via-45-layer-F_Cu" class="pcb-via" data-via="board_via:45" data-net="net:36" data-layer="board_layer:0" data-start-layer="board_layer:1" data-end-layer="board_layer:0">
+        <circle class="pcb-via-annular" cx="87.4" cy="17" r="0.35"/>
+        <circle class="pcb-via-drill" cx="87.4" cy="17" r="0.15"/>
+      </g>
+      <g id="pcb-via-46-layer-F_Cu" class="pcb-via" data-via="board_via:46" data-net="net:29" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="47.25" cy="45" r="0.35"/>
+        <circle class="pcb-via-drill" cx="47.25" cy="45" r="0.15"/>
+      </g>
+      <g id="pcb-via-47-layer-F_Cu" class="pcb-via" data-via="board_via:47" data-net="net:29" data-layer="board_layer:0" data-start-layer="board_layer:1" data-end-layer="board_layer:0">
+        <circle class="pcb-via-annular" cx="88.3" cy="18.27" r="0.35"/>
+        <circle class="pcb-via-drill" cx="88.3" cy="18.27" r="0.15"/>
+      </g>
+      <g id="pcb-via-48-layer-F_Cu" class="pcb-via" data-via="board_via:48" data-net="net:28" data-layer="board_layer:0" data-start-layer="board_layer:0" data-end-layer="board_layer:1">
+        <circle class="pcb-via-annular" cx="41" cy="31.75" r="0.35"/>
+        <circle class="pcb-via-drill" cx="41" cy="31.75" r="0.15"/>
+      </g>
+      <g id="pcb-via-49-layer-F_Cu" class="pcb-via" data-via="board_via:49" data-net="net:28" data-layer="board_layer:0" data-start-layer="board_layer:1" data-end-layer="board_layer:0">
+        <circle class="pcb-via-annular" cx="89.2" cy="19.54" r="0.35"/>
+        <circle class="pcb-via-drill" cx="89.2" cy="19.54" r="0.15"/>
+      </g>
+    </g>
+    <g class="layer layer-board-text">
+    </g>
+    </g>
+    <g class="layer layer-footprints">
+      <g class="layer layer-package-courtyards">
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:4" data-component="component:4" points="15.75,22.3 18.25,22.3 18.25,23.7 15.75,23.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:5" data-component="component:5" points="29.75,22.3 32.25,22.3 32.25,23.7 29.75,23.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:6" data-component="component:6" points="44.75,22.3 47.25,22.3 47.25,23.7 44.75,23.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:7" data-component="component:7" points="33.7,28.75 33.7,31.25 32.3,31.25 32.3,28.75"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:10" data-component="component:10" points="36.75,21.3 39.25,21.3 39.25,22.7 36.75,22.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:11" data-component="component:11" points="42.7,41.75 42.7,44.25 41.3,44.25 41.3,41.75"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:12" data-component="component:12" points="54.7,41.75 54.7,44.25 53.3,44.25 53.3,41.75"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:13" data-component="component:13" points="35.25,26.3 37.75,26.3 37.75,27.7 35.25,27.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:14" data-component="component:14" points="60.7,23.75 60.7,26.25 59.3,26.25 59.3,23.75"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:15" data-component="component:15" points="63.75,22.8 69.25,22.8 69.25,26.2 63.75,26.2"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:16" data-component="component:16" points="35.5,31.4 39.5,31.4 39.5,34.6 35.5,34.6"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:17" data-component="component:17" points="31.75,35.3 34.25,35.3 34.25,36.7 31.75,36.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:18" data-component="component:18" points="39.75,38.3 42.25,38.3 42.25,39.7 39.75,39.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:19" data-component="component:21" points="60.75,49.3 63.25,49.3 63.25,50.7 60.75,50.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:20" data-component="component:22" points="68.75,49.3 71.25,49.3 71.25,50.7 68.75,50.7"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:24" data-component="component:24" points="1.5,1.5 8.5,1.5 8.5,8.5 1.5,8.5"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:25" data-component="component:25" points="81.5,1.5 88.5,1.5 88.5,8.5 81.5,8.5"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:26" data-component="component:26" points="1.5,49.5 8.5,49.5 8.5,56.5 1.5,56.5"/>
+      <polygon class="footprint-courtyard declared" data-placement="component_placement:27" data-component="component:27" points="81.5,49.5 88.5,49.5 88.5,56.5 81.5,56.5"/>
+      </g>
+      <g class="layer layer-package-bodies">
+      <polygon class="footprint-body declared" data-placement="component_placement:4" data-component="component:4" points="16.2,22.6 17.8,22.6 17.8,23.4 16.2,23.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:5" data-component="component:5" points="30.2,22.6 31.8,22.6 31.8,23.4 30.2,23.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:6" data-component="component:6" points="45.2,22.6 46.8,22.6 46.8,23.4 45.2,23.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:7" data-component="component:7" points="33.4,29.2 33.4,30.8 32.6,30.8 32.6,29.2"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:10" data-component="component:10" points="37.2,21.6 38.8,21.6 38.8,22.4 37.2,22.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:11" data-component="component:11" points="42.4,42.2 42.4,43.8 41.6,43.8 41.6,42.2"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:12" data-component="component:12" points="54.4,42.2 54.4,43.8 53.6,43.8 53.6,42.2"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:13" data-component="component:13" points="35.7,26.6 37.3,26.6 37.3,27.4 35.7,27.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:14" data-component="component:14" points="60.4,24.2 60.4,25.8 59.6,25.8 59.6,24.2"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:15" data-component="component:15" points="64.25,23.2 68.75,23.2 68.75,25.8 64.25,25.8"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:16" data-component="component:16" points="35.9,31.75 39.1,31.75 39.1,34.25 35.9,34.25"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:17" data-component="component:17" points="32.2,35.6 33.8,35.6 33.8,36.4 32.2,36.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:18" data-component="component:18" points="40.2,38.6 41.8,38.6 41.8,39.4 40.2,39.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:19" data-component="component:21" points="61.2,49.6 62.8,49.6 62.8,50.4 61.2,50.4"/>
+      <polygon class="footprint-body declared" data-placement="component_placement:20" data-component="component:22" points="69.2,49.6 70.8,49.6 70.8,50.4 69.2,50.4"/>
+      </g>
+      <g class="layer layer-package-fabrication">
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:4" data-component="component:4" points="16.2,22.6 17.8,22.6 17.8,23.4 16.2,23.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:5" data-component="component:5" points="30.2,22.6 31.8,22.6 31.8,23.4 30.2,23.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:6" data-component="component:6" points="45.2,22.6 46.8,22.6 46.8,23.4 45.2,23.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:7" data-component="component:7" points="33.4,29.2 33.4,30.8 32.6,30.8 32.6,29.2"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:10" data-component="component:10" points="37.2,21.6 38.8,21.6 38.8,22.4 37.2,22.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:11" data-component="component:11" points="42.4,42.2 42.4,43.8 41.6,43.8 41.6,42.2"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:12" data-component="component:12" points="54.4,42.2 54.4,43.8 53.6,43.8 53.6,42.2"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:13" data-component="component:13" points="35.7,26.6 37.3,26.6 37.3,27.4 35.7,27.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:14" data-component="component:14" points="60.4,24.2 60.4,25.8 59.6,25.8 59.6,24.2"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:15" data-component="component:15" points="64.25,23.2 68.75,23.2 68.75,25.8 64.25,25.8"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:16" data-component="component:16" points="35.9,31.75 39.1,31.75 39.1,34.25 35.9,34.25"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:17" data-component="component:17" points="32.2,35.6 33.8,35.6 33.8,36.4 32.2,36.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:18" data-component="component:18" points="40.2,38.6 41.8,38.6 41.8,39.4 40.2,39.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:19" data-component="component:21" points="61.2,49.6 62.8,49.6 62.8,50.4 61.2,50.4"/>
+      <polygon class="footprint-fabrication declared" data-placement="component_placement:20" data-component="component:22" points="69.2,49.6 70.8,49.6 70.8,50.4 69.2,50.4"/>
+      </g>
+      <g class="layer layer-package-assembly">
+      <polygon class="footprint-assembly declared" data-placement="component_placement:4" data-component="component:4" points="16.2,22.6 17.8,22.6 17.8,23.4 16.2,23.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:5" data-component="component:5" points="30.2,22.6 31.8,22.6 31.8,23.4 30.2,23.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:6" data-component="component:6" points="45.2,22.6 46.8,22.6 46.8,23.4 45.2,23.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:7" data-component="component:7" points="33.4,29.2 33.4,30.8 32.6,30.8 32.6,29.2"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:10" data-component="component:10" points="37.2,21.6 38.8,21.6 38.8,22.4 37.2,22.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:11" data-component="component:11" points="42.4,42.2 42.4,43.8 41.6,43.8 41.6,42.2"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:12" data-component="component:12" points="54.4,42.2 54.4,43.8 53.6,43.8 53.6,42.2"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:13" data-component="component:13" points="35.7,26.6 37.3,26.6 37.3,27.4 35.7,27.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:14" data-component="component:14" points="60.4,24.2 60.4,25.8 59.6,25.8 59.6,24.2"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:15" data-component="component:15" points="64.25,23.2 68.75,23.2 68.75,25.8 64.25,25.8"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:16" data-component="component:16" points="35.9,31.75 39.1,31.75 39.1,34.25 35.9,34.25"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:17" data-component="component:17" points="32.2,35.6 33.8,35.6 33.8,36.4 32.2,36.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:18" data-component="component:18" points="40.2,38.6 41.8,38.6 41.8,39.4 40.2,39.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:19" data-component="component:21" points="61.2,49.6 62.8,49.6 62.8,50.4 61.2,50.4"/>
+      <polygon class="footprint-assembly declared" data-placement="component_placement:20" data-component="component:22" points="69.2,49.6 70.8,49.6 70.8,50.4 69.2,50.4"/>
+      </g>
+      <g class="layer layer-silkscreen">
+      <polygon class="footprint-marking declared kind-pin_1" data-placement="component_placement:16" data-component="component:16" data-marking="footprint_marking:0" points="35.87,31.77 36.03,31.77 36.03,31.93 35.87,31.93"/>
+      <polygon class="footprint-marking declared kind-polarity" data-placement="component_placement:20" data-component="component:22" data-marking="footprint_marking:0" points="70.49,49.7 70.61,49.7 70.61,50.3 70.49,50.3"/>
+      </g>
+      <g class="layer layer-pads">
+      <g class="component-placement top" data-placement="component_placement:0" data-component="component:0" data-footprint-def="footprint_def:0" data-footprint="connectors:PinHeader_1x02_P2.54mm_Vertical" transform="translate(6 30) rotate(0)">
+        <rect class="footprint-envelope synthetic" x="-1.35" y="-2.62" width="2.7" height="5.24"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:0:0" data-pad="footprint_pad:0" data-pin="pin:0" data-net="net:0" cx="0" cy="-1.27" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:0:1" data-pad="footprint_pad:1" data-pin="pin:1" data-net="net:4" cx="0" cy="1.27" r="0.85"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:1" data-component="component:1" data-footprint-def="footprint_def:1" data-footprint="connectors:PinHeader_1x04_P2.54mm_Vertical" transform="translate(6 17) rotate(0)">
+        <rect class="footprint-envelope synthetic" x="-1.35" y="-5.16" width="2.7" height="10.32"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:1:0" data-pad="footprint_pad:0" data-pin="pin:2" data-net="net:5" cx="0" cy="-3.81" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:1:1" data-pad="footprint_pad:1" data-pin="pin:3" data-net="net:9" cx="0" cy="-1.27" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:1:2" data-pad="footprint_pad:2" data-pin="pin:4" data-net="net:9" cx="0" cy="1.27" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:1:3" data-pad="footprint_pad:3" data-pin="pin:5" data-net="net:9" cx="0" cy="3.81" r="0.85"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:2" data-component="component:2" data-footprint-def="footprint_def:2" data-footprint="Package_TO_SOT_SMD:SOT-223-3_TabPin2" transform="translate(23 17) rotate(0)">
+        <rect class="footprint-envelope synthetic" x="-3.325" y="-2.9" width="6.65" height="6.55"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:0" data-pad="footprint_pad:0" data-pin="pin:6" data-net="net:9" x="-2.825" y="-2.4" width="1.05" height="1.8" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:1" data-pad="footprint_pad:1" data-pin="pin:7" data-net="net:6" x="-0.525" y="-2.4" width="1.05" height="1.8" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:2" data-pad="footprint_pad:2" data-pin="pin:8" data-net="net:5" x="1.775" y="-2.4" width="1.05" height="1.8" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:2:3" data-pad="footprint_pad:3" data-pin="pin:7" data-net="net:6" x="-1.9" y="0.95" width="3.8" height="2.2" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:3" data-component="component:3" data-footprint-def="footprint_def:2" data-footprint="Package_TO_SOT_SMD:SOT-223-3_TabPin2" transform="translate(38 17) rotate(0)">
+        <rect class="footprint-envelope synthetic" x="-3.325" y="-2.9" width="6.65" height="6.55"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:3:0" data-pad="footprint_pad:0" data-pin="pin:9" data-net="net:9" x="-2.825" y="-2.4" width="1.05" height="1.8" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:3:1" data-pad="footprint_pad:1" data-pin="pin:10" data-net="net:7" x="-0.525" y="-2.4" width="1.05" height="1.8" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:3:2" data-pad="footprint_pad:2" data-pin="pin:11" data-net="net:6" x="1.775" y="-2.4" width="1.05" height="1.8" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:3:3" data-pad="footprint_pad:3" data-pin="pin:10" data-net="net:7" x="-1.9" y="0.95" width="3.8" height="2.2" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:4" data-component="component:4" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(17 23) rotate(0)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:4:0" data-pad="footprint_pad:0" data-pin="pin:12" data-net="net:5" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:4:1" data-pad="footprint_pad:1" data-pin="pin:13" data-net="net:9" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:5" data-component="component:5" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(31 23) rotate(0)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:5:0" data-pad="footprint_pad:0" data-pin="pin:14" data-net="net:6" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:5:1" data-pad="footprint_pad:1" data-pin="pin:15" data-net="net:9" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:6" data-component="component:6" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(46 23) rotate(0)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:6:0" data-pad="footprint_pad:0" data-pin="pin:16" data-net="net:7" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:6:1" data-pad="footprint_pad:1" data-pin="pin:17" data-net="net:9" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:7" data-component="component:7" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(33 30) rotate(90)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:7:0" data-pad="footprint_pad:0" data-pin="pin:18" data-net="net:8" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:7:1" data-pad="footprint_pad:1" data-pin="pin:19" data-net="net:9" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:8" data-component="component:8" data-footprint-def="footprint_def:4" data-footprint="connectors:USB_Micro-B_Receptacle" transform="translate(84 39) rotate(180)">
+        <rect class="footprint-envelope synthetic" x="-3.15" y="-2.875" width="6.3" height="5.625"/>
+        <rect class="footprint-pad rectangle connected" data-pad-projection="pcb_pad:8:0" data-pad="footprint_pad:0" data-pin="pin:20" data-net="net:14" x="-1.5" y="-2.375" width="0.4" height="1.35"/>
+        <rect class="footprint-pad rectangle connected" data-pad-projection="pcb_pad:8:1" data-pad="footprint_pad:1" data-pin="pin:21" data-net="net:16" x="-0.85" y="-2.375" width="0.4" height="1.35"/>
+        <rect class="footprint-pad rectangle connected" data-pad-projection="pcb_pad:8:2" data-pad="footprint_pad:2" data-pin="pin:22" data-net="net:15" x="-0.2" y="-2.375" width="0.4" height="1.35"/>
+        <rect class="footprint-pad rectangle unconnected" data-pad-projection="pcb_pad:8:3" data-pad="footprint_pad:3" data-pin="pin:23" x="0.45" y="-2.375" width="0.4" height="1.35"/>
+        <rect class="footprint-pad rectangle connected" data-pad-projection="pcb_pad:8:4" data-pad="footprint_pad:4" data-pin="pin:24" data-net="net:19" x="1.1" y="-2.375" width="0.4" height="1.35"/>
+        <rect class="footprint-pad rectangle connected" data-pad-projection="pcb_pad:8:5" data-pad="footprint_pad:5" data-pin="pin:25" data-net="net:19" x="-1.6" y="1.15" width="3.2" height="1.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:9" data-component="component:9" data-footprint-def="footprint_def:5" data-footprint="Package_TO_SOT_SMD:SOT-23-6" transform="translate(73 37.5) rotate(0)">
+        <rect class="footprint-envelope synthetic" x="-2.15" y="-1.75" width="4.3" height="3.5"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:9:0" data-pad="footprint_pad:0" data-pin="pin:26" data-net="net:15" x="-1.65" y="0.65" width="0.8" height="0.6" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:9:1" data-pad="footprint_pad:1" data-pin="pin:27" data-net="net:19" x="-1.65" y="-0.3" width="0.8" height="0.6" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:9:2" data-pad="footprint_pad:2" data-pin="pin:28" data-net="net:16" x="-1.65" y="-1.25" width="0.8" height="0.6" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:9:3" data-pad="footprint_pad:3" data-pin="pin:29" data-net="net:18" x="0.85" y="-1.25" width="0.8" height="0.6" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:9:4" data-pad="footprint_pad:4" data-pin="pin:30" data-net="net:14" x="0.85" y="-0.3" width="0.8" height="0.6" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:9:5" data-pad="footprint_pad:5" data-pin="pin:31" data-net="net:17" x="0.85" y="0.65" width="0.8" height="0.6" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:10" data-component="component:10" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(38 22) rotate(0)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:10:0" data-pad="footprint_pad:0" data-pin="pin:32" data-net="net:20" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:10:1" data-pad="footprint_pad:1" data-pin="pin:33" data-net="net:21" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:11" data-component="component:11" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(42 43) rotate(90)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:11:0" data-pad="footprint_pad:0" data-pin="pin:34" data-net="net:26" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:11:1" data-pad="footprint_pad:1" data-pin="pin:35" data-net="net:21" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:12" data-component="component:12" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(54 43) rotate(90)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:12:0" data-pad="footprint_pad:0" data-pin="pin:36" data-net="net:27" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:12:1" data-pad="footprint_pad:1" data-pin="pin:37" data-net="net:21" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:13" data-component="component:13" data-footprint-def="footprint_def:6" data-footprint="passives:R_0603_1608Metric" transform="translate(36.5 27) rotate(0)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:13:0" data-pad="footprint_pad:0" data-pin="pin:38" data-net="net:20" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:13:1" data-pad="footprint_pad:1" data-pin="pin:39" data-net="net:22" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:14" data-component="component:14" data-footprint-def="footprint_def:6" data-footprint="passives:R_0603_1608Metric" transform="translate(60 25) rotate(90)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:14:0" data-pad="footprint_pad:0" data-pin="pin:40" data-net="net:23" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:14:1" data-pad="footprint_pad:1" data-pin="pin:41" data-net="net:21" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:15" data-component="component:15" data-footprint-def="footprint_def:7" data-footprint="switches:SW_SPDT_PCM12" transform="translate(66.5 24.5) rotate(0)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:15:0" data-pad="footprint_pad:0" data-pin="pin:42" data-net="net:20" x="-2.05" y="-0.8" width="0.9" height="1.6" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:15:1" data-pad="footprint_pad:1" data-pin="pin:43" data-net="net:23" x="-0.45" y="-0.8" width="0.9" height="1.6" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:15:2" data-pad="footprint_pad:2" data-pin="pin:44" data-net="net:21" x="1.15" y="-0.8" width="0.9" height="1.6" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:16" data-component="component:16" data-footprint-def="footprint_def:8" data-footprint="crystals:Crystal_3225_4Pad" transform="translate(37.5 33) rotate(0)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:16:0" data-pad="footprint_pad:0" data-pin="pin:45" data-net="net:24" x="-1.5" y="-1.2" width="0.9" height="0.9" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:16:1" data-pad="footprint_pad:1" data-pin="pin:46" data-net="net:21" x="0.6" y="-1.2" width="0.9" height="0.9" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:16:2" data-pad="footprint_pad:2" data-pin="pin:47" data-net="net:25" x="0.6" y="0.3" width="0.9" height="0.9" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:16:3" data-pad="footprint_pad:3" data-pin="pin:48" data-net="net:21" x="-1.5" y="0.3" width="0.9" height="0.9" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:17" data-component="component:17" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(33 36) rotate(0)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:17:0" data-pad="footprint_pad:0" data-pin="pin:49" data-net="net:24" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:17:1" data-pad="footprint_pad:1" data-pin="pin:50" data-net="net:21" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:18" data-component="component:18" data-footprint-def="footprint_def:3" data-footprint="passives:C_0603_1608Metric" transform="translate(41 39) rotate(0)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:18:0" data-pad="footprint_pad:0" data-pin="pin:51" data-net="net:25" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:18:1" data-pad="footprint_pad:1" data-pin="pin:52" data-net="net:21" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:19" data-component="component:21" data-footprint-def="footprint_def:6" data-footprint="passives:R_0603_1608Metric" transform="translate(62 50) rotate(0)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:19:0" data-pad="footprint_pad:0" data-pin="pin:67" data-net="net:38" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:19:1" data-pad="footprint_pad:1" data-pin="pin:68" data-net="net:39" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:20" data-component="component:22" data-footprint-def="footprint_def:9" data-footprint="leds:LED_0603_1608Metric" transform="translate(70 50) rotate(0)">
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:20:0" data-pad="footprint_pad:0" data-pin="pin:69" data-net="net:39" x="-1.15" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:20:1" data-pad="footprint_pad:1" data-pin="pin:70" data-net="net:40" x="0.35" y="-0.475" width="0.8" height="0.95" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top" data-placement="component_placement:21" data-component="component:23" data-footprint-def="footprint_def:10" data-footprint="Package_QFP:LQFP-64_10x10mm_P0.5mm" transform="translate(49 31) rotate(0)">
+        <rect class="footprint-envelope synthetic" x="-6.975" y="-6.975" width="13.95" height="13.95"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:0" data-pad="footprint_pad:0" data-pin="pin:71" data-net="net:2" x="-6.475" y="3.6" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:1" data-pad="footprint_pad:1" data-pin="pin:72" data-net="net:37" x="-6.475" y="3.1" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:2" data-pad="footprint_pad:2" data-pin="pin:73" x="-6.475" y="2.6" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:3" data-pad="footprint_pad:3" data-pin="pin:74" x="-6.475" y="2.1" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:4" data-pad="footprint_pad:4" data-pin="pin:75" data-net="net:30" x="-6.475" y="1.6" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:5" data-pad="footprint_pad:5" data-pin="pin:76" data-net="net:31" x="-6.475" y="1.1" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:6" data-pad="footprint_pad:6" data-pin="pin:77" data-net="net:28" x="-6.475" y="0.6" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:7" data-pad="footprint_pad:7" data-pin="pin:78" x="-6.475" y="0.1" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:8" data-pad="footprint_pad:8" data-pin="pin:79" x="-6.475" y="-0.4" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:9" data-pad="footprint_pad:9" data-pin="pin:80" x="-6.475" y="-0.9" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:10" data-pad="footprint_pad:10" data-pin="pin:81" x="-6.475" y="-1.4" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:11" data-pad="footprint_pad:11" data-pin="pin:82" data-net="net:4" x="-6.475" y="-1.9" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:12" data-pad="footprint_pad:12" data-pin="pin:83" data-net="net:3" x="-6.475" y="-2.4" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:13" data-pad="footprint_pad:13" data-pin="pin:84" x="-6.475" y="-2.9" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:14" data-pad="footprint_pad:14" data-pin="pin:85" x="-6.475" y="-3.4" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:15" data-pad="footprint_pad:15" data-pin="pin:86" x="-6.475" y="-3.9" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:16" data-pad="footprint_pad:16" data-pin="pin:87" x="-3.9" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:17" data-pad="footprint_pad:17" data-pin="pin:88" data-net="net:4" x="-3.4" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:18" data-pad="footprint_pad:18" data-pin="pin:89" data-net="net:2" x="-2.9" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:19" data-pad="footprint_pad:19" data-pin="pin:90" x="-2.4" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:20" data-pad="footprint_pad:20" data-pin="pin:91" x="-1.9" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:21" data-pad="footprint_pad:21" data-pin="pin:92" x="-1.4" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:22" data-pad="footprint_pad:22" data-pin="pin:93" x="-0.9" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:23" data-pad="footprint_pad:23" data-pin="pin:94" x="-0.4" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:24" data-pad="footprint_pad:24" data-pin="pin:95" x="0.1" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:25" data-pad="footprint_pad:25" data-pin="pin:96" x="0.6" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:26" data-pad="footprint_pad:26" data-pin="pin:97" x="1.1" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:27" data-pad="footprint_pad:27" data-pin="pin:98" x="1.6" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:28" data-pad="footprint_pad:28" data-pin="pin:99" x="2.1" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:29" data-pad="footprint_pad:29" data-pin="pin:100" x="2.6" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:30" data-pad="footprint_pad:30" data-pin="pin:101" data-net="net:32" x="3.1" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:31" data-pad="footprint_pad:31" data-pin="pin:102" data-net="net:2" x="3.6" y="-6.475" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:32" data-pad="footprint_pad:32" data-pin="pin:103" x="5.125" y="-3.9" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:33" data-pad="footprint_pad:33" data-pin="pin:104" x="5.125" y="-3.4" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:34" data-pad="footprint_pad:34" data-pin="pin:105" x="5.125" y="-2.9" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:35" data-pad="footprint_pad:35" data-pin="pin:106" x="5.125" y="-2.4" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:36" data-pad="footprint_pad:36" data-pin="pin:107" x="5.125" y="-1.9" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:37" data-pad="footprint_pad:37" data-pin="pin:108" x="5.125" y="-1.4" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:38" data-pad="footprint_pad:38" data-pin="pin:109" x="5.125" y="-0.9" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:39" data-pad="footprint_pad:39" data-pin="pin:110" x="5.125" y="-0.4" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:40" data-pad="footprint_pad:40" data-pin="pin:111" x="5.125" y="0.1" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:41" data-pad="footprint_pad:41" data-pin="pin:112" x="5.125" y="0.6" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:42" data-pad="footprint_pad:42" data-pin="pin:113" x="5.125" y="1.1" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:43" data-pad="footprint_pad:43" data-pin="pin:114" data-net="net:13" x="5.125" y="1.6" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:44" data-pad="footprint_pad:44" data-pin="pin:115" data-net="net:12" x="5.125" y="2.1" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:45" data-pad="footprint_pad:45" data-pin="pin:116" data-net="net:34" x="5.125" y="2.6" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:46" data-pad="footprint_pad:46" data-pin="pin:117" data-net="net:33" x="5.125" y="3.1" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:47" data-pad="footprint_pad:47" data-pin="pin:118" data-net="net:2" x="5.125" y="3.6" width="1.35" height="0.3" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:48" data-pad="footprint_pad:48" data-pin="pin:119" data-net="net:35" x="3.6" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:49" data-pad="footprint_pad:49" data-pin="pin:120" x="3.1" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:50" data-pad="footprint_pad:50" data-pin="pin:121" x="2.6" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:51" data-pad="footprint_pad:51" data-pin="pin:122" x="2.1" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:52" data-pad="footprint_pad:52" data-pin="pin:123" x="1.6" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:53" data-pad="footprint_pad:53" data-pin="pin:124" x="1.1" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:54" data-pad="footprint_pad:54" data-pin="pin:125" data-net="net:36" x="0.6" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:55" data-pad="footprint_pad:55" data-pin="pin:126" x="0.1" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:56" data-pad="footprint_pad:56" data-pin="pin:127" x="-0.4" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:57" data-pad="footprint_pad:57" data-pin="pin:128" x="-0.9" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:58" data-pad="footprint_pad:58" data-pin="pin:129" x="-1.4" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:59" data-pad="footprint_pad:59" data-pin="pin:130" data-net="net:29" x="-1.9" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:60" data-pad="footprint_pad:60" data-pin="pin:131" x="-2.4" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle unconnected" data-pad-projection="pcb_pad:21:61" data-pad="footprint_pad:61" data-pin="pin:132" x="-2.9" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:62" data-pad="footprint_pad:62" data-pin="pin:133" data-net="net:4" x="-3.4" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+        <rect class="footprint-pad rounded-rectangle connected" data-pad-projection="pcb_pad:21:63" data-pad="footprint_pad:63" data-pin="pin:134" data-net="net:2" x="-3.9" y="5.125" width="0.3" height="1.35" rx="0.1" ry="0.1"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:22" data-component="component:19" data-footprint-def="footprint_def:11" data-footprint="connectors:PinHeader_2x05_P1.27mm_Vertical_SmallPads" transform="translate(78 17) rotate(0)">
+        <rect class="footprint-envelope synthetic" x="-1.56" y="-3.465" width="3.12" height="6.93"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:0" data-pad="footprint_pad:0" data-pin="pin:53" data-net="net:2" cx="-0.635" cy="-2.54" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:1" data-pad="footprint_pad:1" data-pin="pin:54" data-net="net:34" cx="0.635" cy="-2.54" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:2" data-pad="footprint_pad:2" data-pin="pin:55" data-net="net:4" cx="-0.635" cy="-1.27" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:3" data-pad="footprint_pad:3" data-pin="pin:56" data-net="net:35" cx="0.635" cy="-1.27" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:4" data-pad="footprint_pad:4" data-pin="pin:57" data-net="net:4" cx="-0.635" cy="0" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:5" data-pad="footprint_pad:5" data-pin="pin:58" data-net="net:36" cx="0.635" cy="0" r="0.425"/>
+        <circle class="footprint-pad circle unconnected" data-pad-projection="pcb_pad:22:6" data-pad="footprint_pad:6" data-pin="pin:59" cx="-0.635" cy="1.27" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:7" data-pad="footprint_pad:7" data-pin="pin:60" data-net="net:29" cx="0.635" cy="1.27" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:8" data-pad="footprint_pad:8" data-pin="pin:61" data-net="net:4" cx="-0.635" cy="2.54" r="0.425"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:22:9" data-pad="footprint_pad:9" data-pin="pin:62" data-net="net:28" cx="0.635" cy="2.54" r="0.425"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:23" data-component="component:20" data-footprint-def="footprint_def:1" data-footprint="connectors:PinHeader_1x04_P2.54mm_Vertical" transform="translate(84 30) rotate(180)">
+        <rect class="footprint-envelope synthetic" x="-1.35" y="-5.16" width="2.7" height="10.32"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:23:0" data-pad="footprint_pad:0" data-pin="pin:63" data-net="net:2" cx="0" cy="-3.81" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:23:1" data-pad="footprint_pad:1" data-pin="pin:64" data-net="net:29" cx="0" cy="-1.27" r="0.85"/>
+        <circle class="footprint-pad circle unconnected" data-pad-projection="pcb_pad:23:2" data-pad="footprint_pad:2" data-pin="pin:65" cx="0" cy="1.27" r="0.85"/>
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:23:3" data-pad="footprint_pad:3" data-pin="pin:66" data-net="net:4" cx="0" cy="3.81" r="0.85"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:24" data-component="component:24" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(5 5) rotate(0)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:24:0" data-pad="footprint_pad:0" data-pin="pin:135" data-net="net:4" cx="0" cy="0" r="3"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:25" data-component="component:25" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(85 5) rotate(0)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:25:0" data-pad="footprint_pad:0" data-pin="pin:136" data-net="net:4" cx="0" cy="0" r="3"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:26" data-component="component:26" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(5 53) rotate(0)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:26:0" data-pad="footprint_pad:0" data-pin="pin:137" data-net="net:4" cx="0" cy="0" r="3"/>
+      </g>
+      <g class="component-placement top locked" data-placement="component_placement:27" data-component="component:27" data-footprint-def="footprint_def:12" data-footprint="mechanical:MountingHole_3.2mm_Pad_6.0mm" transform="translate(85 53) rotate(0)">
+        <circle class="footprint-pad circle connected" data-pad-projection="pcb_pad:27:0" data-pad="footprint_pad:0" data-pin="pin:138" data-net="net:4" cx="0" cy="0" r="3"/>
+      </g>
+      </g>
+      <g class="layer layer-reference-designators">
+      <text class="reference-designator" data-placement="component_placement:0" data-component="component:0" x="6" y="26.38" text-anchor="middle">VIN_SRC</text>
+      <text class="reference-designator" data-placement="component_placement:1" data-component="component:1" x="6" y="10.84" text-anchor="middle">PWR/J</text>
+      <text class="reference-designator" data-placement="component_placement:2" data-component="component:2" x="23" y="13.1" text-anchor="middle">PWR/U5</text>
+      <text class="reference-designator" data-placement="component_placement:3" data-component="component:3" x="38" y="13.1" text-anchor="middle">PWR/U3V3</text>
+      <text class="reference-designator" data-placement="component_placement:4" data-component="component:4" x="17" y="21.3" text-anchor="middle">PWR/CIN</text>
+      <text class="reference-designator" data-placement="component_placement:5" data-component="component:5" x="31" y="21.3" text-anchor="middle">PWR/C5V</text>
+      <text class="reference-designator" data-placement="component_placement:6" data-component="component:6" x="46" y="21.3" text-anchor="middle">PWR/C3V3</text>
+      <text class="reference-designator" data-placement="component_placement:7" data-component="component:7" x="34.7" y="30" text-anchor="middle">C4</text>
+      <text class="reference-designator" data-placement="component_placement:8" data-component="component:8" x="84" y="42.875" text-anchor="middle">USB/J1</text>
+      <text class="reference-designator" data-placement="component_placement:9" data-component="component:9" x="73" y="34.75" text-anchor="middle">USB/U1</text>
+      <text class="reference-designator" data-placement="component_placement:10" data-component="component:10" x="38" y="20.3" text-anchor="middle">C5</text>
+      <text class="reference-designator" data-placement="component_placement:11" data-component="component:11" x="43.7" y="43" text-anchor="middle">C6</text>
+      <text class="reference-designator" data-placement="component_placement:12" data-component="component:12" x="55.7" y="43" text-anchor="middle">C7</text>
+      <text class="reference-designator" data-placement="component_placement:13" data-component="component:13" x="36.5" y="25.3" text-anchor="middle">R1</text>
+      <text class="reference-designator" data-placement="component_placement:14" data-component="component:14" x="61.7" y="25" text-anchor="middle">R2</text>
+      <text class="reference-designator" data-placement="component_placement:15" data-component="component:15" x="66.5" y="21.8" text-anchor="middle">SW1</text>
+      <text class="reference-designator" data-placement="component_placement:16" data-component="component:16" x="37.5" y="30.4" text-anchor="middle">Y1</text>
+      <text class="reference-designator" data-placement="component_placement:17" data-component="component:17" x="33" y="34.3" text-anchor="middle">C8</text>
+      <text class="reference-designator" data-placement="component_placement:18" data-component="component:18" x="41" y="37.3" text-anchor="middle">C9</text>
+      <text class="reference-designator" data-placement="component_placement:19" data-component="component:21" x="62" y="48.3" text-anchor="middle">LED_STATUS/R</text>
+      <text class="reference-designator" data-placement="component_placement:20" data-component="component:22" x="70" y="48.3" text-anchor="middle">LED_STATUS/D</text>
+      <text class="reference-designator" data-placement="component_placement:21" data-component="component:23" x="49" y="23.025" text-anchor="middle">U1</text>
+      <text class="reference-designator" data-placement="component_placement:22" data-component="component:19" x="78" y="12.535" text-anchor="middle">J2</text>
+      <text class="reference-designator" data-placement="component_placement:23" data-component="component:20" x="84" y="36.16" text-anchor="middle">J3</text>
+      <text class="reference-designator" data-placement="component_placement:24" data-component="component:24" x="5" y="0.5" text-anchor="middle">H1</text>
+      <text class="reference-designator" data-placement="component_placement:25" data-component="component:25" x="85" y="0.5" text-anchor="middle">H2</text>
+      <text class="reference-designator" data-placement="component_placement:26" data-component="component:26" x="5" y="48.5" text-anchor="middle">H3</text>
+      <text class="reference-designator" data-placement="component_placement:27" data-component="component:27" x="85" y="48.5" text-anchor="middle">H4</text>
+      </g>
+    </g>
+    <g class="layer layer-ratsnest">
+      <line id="ratsnest-edge-net-2-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:0" data-net="net:2" data-from-pad="pcb_pad:21:0" data-to-pad="pcb_pad:21:63" x1="43.2" y1="34.75" x2="45.25" y2="36.8"/>
+      <line id="ratsnest-edge-net-2-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:1" data-net="net:2" data-from-pad="pcb_pad:21:18" data-to-pad="pcb_pad:21:31" x1="46.25" y1="25.2" x2="52.75" y2="25.2"/>
+      <line id="ratsnest-edge-net-2-2" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:2" data-net="net:2" data-from-pad="pcb_pad:21:47" data-to-pad="pcb_pad:21:63" x1="54.8" y1="34.75" x2="45.25" y2="36.8"/>
+      <line id="ratsnest-edge-net-2-3" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:3" data-net="net:2" data-from-pad="pcb_pad:21:31" data-to-pad="pcb_pad:21:47" x1="52.75" y1="25.2" x2="54.8" y2="34.75"/>
+      <line id="ratsnest-edge-net-2-4" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:4" data-net="net:2" data-from-pad="pcb_pad:22:0" data-to-pad="pcb_pad:23:0" x1="77.365" y1="14.46" x2="84" y2="33.81"/>
+      <line id="ratsnest-edge-net-2-5" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:2:5" data-net="net:2" data-from-pad="pcb_pad:21:31" data-to-pad="pcb_pad:22:0" x1="52.75" y1="25.2" x2="77.365" y2="14.46"/>
+      <line id="ratsnest-edge-net-4-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:0" data-net="net:4" data-from-pad="pcb_pad:22:2" data-to-pad="pcb_pad:22:4" x1="77.365" y1="15.73" x2="77.365" y2="17"/>
+      <line id="ratsnest-edge-net-4-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:1" data-net="net:4" data-from-pad="pcb_pad:22:4" data-to-pad="pcb_pad:22:8" x1="77.365" y1="17" x2="77.365" y2="19.54"/>
+      <line id="ratsnest-edge-net-4-2" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:2" data-net="net:4" data-from-pad="pcb_pad:21:11" data-to-pad="pcb_pad:21:17" x1="43.2" y1="29.25" x2="45.75" y2="25.2"/>
+      <line id="ratsnest-edge-net-4-3" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:3" data-net="net:4" data-from-pad="pcb_pad:21:11" data-to-pad="pcb_pad:21:62" x1="43.2" y1="29.25" x2="45.75" y2="36.8"/>
+      <line id="ratsnest-edge-net-4-4" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:4" data-net="net:4" data-from-pad="pcb_pad:22:8" data-to-pad="pcb_pad:23:3" x1="77.365" y1="19.54" x2="84" y2="26.19"/>
+      <line id="ratsnest-edge-net-4-5" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:5" data-net="net:4" data-from-pad="pcb_pad:22:2" data-to-pad="pcb_pad:25:0" x1="77.365" y1="15.73" x2="85" y2="5"/>
+      <line id="ratsnest-edge-net-4-6" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:6" data-net="net:4" data-from-pad="pcb_pad:0:1" data-to-pad="pcb_pad:26:0" x1="6" y1="31.27" x2="5" y2="53"/>
+      <line id="ratsnest-edge-net-4-7" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:7" data-net="net:4" data-from-pad="pcb_pad:0:1" data-to-pad="pcb_pad:24:0" x1="6" y1="31.27" x2="5" y2="5"/>
+      <line id="ratsnest-edge-net-4-8" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:8" data-net="net:4" data-from-pad="pcb_pad:23:3" data-to-pad="pcb_pad:27:0" x1="84" y1="26.19" x2="85" y2="53"/>
+      <line id="ratsnest-edge-net-4-9" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:9" data-net="net:4" data-from-pad="pcb_pad:21:17" data-to-pad="pcb_pad:22:8" x1="45.75" y1="25.2" x2="77.365" y2="19.54"/>
+      <line id="ratsnest-edge-net-4-10" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:4:10" data-net="net:4" data-from-pad="pcb_pad:0:1" data-to-pad="pcb_pad:21:11" x1="6" y1="31.27" x2="43.2" y2="29.25"/>
+      <line id="ratsnest-edge-net-5-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:5:0" data-net="net:5" data-from-pad="pcb_pad:2:2" data-to-pad="pcb_pad:4:0" x1="25.3" y1="15.5" x2="16.25" y2="23"/>
+      <line id="ratsnest-edge-net-5-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:5:1" data-net="net:5" data-from-pad="pcb_pad:1:0" data-to-pad="pcb_pad:4:0" x1="6" y1="13.19" x2="16.25" y2="23"/>
+      <line id="ratsnest-edge-net-6-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:6:0" data-net="net:6" data-from-pad="pcb_pad:2:1" data-to-pad="pcb_pad:2:3" x1="23" y1="15.5" x2="23" y2="19.05"/>
+      <line id="ratsnest-edge-net-6-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:6:1" data-net="net:6" data-from-pad="pcb_pad:2:3" data-to-pad="pcb_pad:5:0" x1="23" y1="19.05" x2="30.25" y2="23"/>
+      <line id="ratsnest-edge-net-6-2" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:6:2" data-net="net:6" data-from-pad="pcb_pad:3:2" data-to-pad="pcb_pad:5:0" x1="40.3" y1="15.5" x2="30.25" y2="23"/>
+      <line id="ratsnest-edge-net-7-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:7:0" data-net="net:7" data-from-pad="pcb_pad:3:1" data-to-pad="pcb_pad:3:3" x1="38" y1="15.5" x2="38" y2="19.05"/>
+      <line id="ratsnest-edge-net-7-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:7:1" data-net="net:7" data-from-pad="pcb_pad:3:3" data-to-pad="pcb_pad:6:0" x1="38" y1="19.05" x2="45.25" y2="23"/>
+      <line id="ratsnest-edge-net-9-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:9:0" data-net="net:9" data-from-pad="pcb_pad:1:1" data-to-pad="pcb_pad:1:2" x1="6" y1="15.73" x2="6" y2="18.27"/>
+      <line id="ratsnest-edge-net-9-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:9:1" data-net="net:9" data-from-pad="pcb_pad:1:2" data-to-pad="pcb_pad:1:3" x1="6" y1="18.27" x2="6" y2="20.81"/>
+      <line id="ratsnest-edge-net-9-2" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:9:2" data-net="net:9" data-from-pad="pcb_pad:5:1" data-to-pad="pcb_pad:7:1" x1="31.75" y1="23" x2="33" y2="30.75"/>
+      <line id="ratsnest-edge-net-9-3" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:9:3" data-net="net:9" data-from-pad="pcb_pad:2:0" data-to-pad="pcb_pad:4:1" x1="20.7" y1="15.5" x2="17.75" y2="23"/>
+      <line id="ratsnest-edge-net-9-4" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:9:4" data-net="net:9" data-from-pad="pcb_pad:3:0" data-to-pad="pcb_pad:5:1" x1="35.7" y1="15.5" x2="31.75" y2="23"/>
+      <line id="ratsnest-edge-net-9-5" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:9:5" data-net="net:9" data-from-pad="pcb_pad:1:3" data-to-pad="pcb_pad:4:1" x1="6" y1="20.81" x2="17.75" y2="23"/>
+      <line id="ratsnest-edge-net-9-6" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:9:6" data-net="net:9" data-from-pad="pcb_pad:3:0" data-to-pad="pcb_pad:6:1" x1="35.7" y1="15.5" x2="46.75" y2="23"/>
+      <line id="ratsnest-edge-net-9-7" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:9:7" data-net="net:9" data-from-pad="pcb_pad:2:0" data-to-pad="pcb_pad:5:1" x1="20.7" y1="15.5" x2="31.75" y2="23"/>
+      <line id="ratsnest-edge-net-14-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:14:0" data-net="net:14" data-from-pad="pcb_pad:8:0" data-to-pad="pcb_pad:9:4" x1="85.3" y1="40.7" x2="74.25" y2="37.5"/>
+      <line id="ratsnest-edge-net-15-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:15:0" data-net="net:15" data-from-pad="pcb_pad:8:2" data-to-pad="pcb_pad:9:0" x1="84" y1="40.7" x2="71.75" y2="38.45"/>
+      <line id="ratsnest-edge-net-16-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:16:0" data-net="net:16" data-from-pad="pcb_pad:8:1" data-to-pad="pcb_pad:9:2" x1="84.65" y1="40.7" x2="71.75" y2="36.55"/>
+      <line id="ratsnest-edge-net-19-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:19:0" data-net="net:19" data-from-pad="pcb_pad:8:4" data-to-pad="pcb_pad:8:5" x1="82.7" y1="40.7" x2="84" y2="37.3"/>
+      <line id="ratsnest-edge-net-19-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:19:1" data-net="net:19" data-from-pad="pcb_pad:8:4" data-to-pad="pcb_pad:9:1" x1="82.7" y1="40.7" x2="71.75" y2="37.5"/>
+      <line id="ratsnest-edge-net-20-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:20:0" data-net="net:20" data-from-pad="pcb_pad:10:0" data-to-pad="pcb_pad:13:0" x1="37.25" y1="22" x2="35.75" y2="27"/>
+      <line id="ratsnest-edge-net-20-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:20:1" data-net="net:20" data-from-pad="pcb_pad:10:0" data-to-pad="pcb_pad:15:0" x1="37.25" y1="22" x2="64.9" y2="24.5"/>
+      <line id="ratsnest-edge-net-21-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:21:0" data-net="net:21" data-from-pad="pcb_pad:16:1" data-to-pad="pcb_pad:16:3" x1="38.55" y1="32.25" x2="36.45" y2="33.75"/>
+      <line id="ratsnest-edge-net-21-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:21:1" data-net="net:21" data-from-pad="pcb_pad:16:3" data-to-pad="pcb_pad:17:1" x1="36.45" y1="33.75" x2="33.75" y2="36"/>
+      <line id="ratsnest-edge-net-21-2" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:21:2" data-net="net:21" data-from-pad="pcb_pad:11:1" data-to-pad="pcb_pad:18:1" x1="42" y1="43.75" x2="41.75" y2="39"/>
+      <line id="ratsnest-edge-net-21-3" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:21:3" data-net="net:21" data-from-pad="pcb_pad:16:3" data-to-pad="pcb_pad:18:1" x1="36.45" y1="33.75" x2="41.75" y2="39"/>
+      <line id="ratsnest-edge-net-21-4" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:21:4" data-net="net:21" data-from-pad="pcb_pad:14:1" data-to-pad="pcb_pad:15:2" x1="60" y1="25.75" x2="68.1" y2="24.5"/>
+      <line id="ratsnest-edge-net-21-5" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:21:5" data-net="net:21" data-from-pad="pcb_pad:10:1" data-to-pad="pcb_pad:16:1" x1="38.75" y1="22" x2="38.55" y2="32.25"/>
+      <line id="ratsnest-edge-net-21-6" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:21:6" data-net="net:21" data-from-pad="pcb_pad:11:1" data-to-pad="pcb_pad:12:1" x1="42" y1="43.75" x2="54" y2="43.75"/>
+      <line id="ratsnest-edge-net-21-7" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:21:7" data-net="net:21" data-from-pad="pcb_pad:12:1" data-to-pad="pcb_pad:14:1" x1="54" y1="43.75" x2="60" y2="25.75"/>
+      <line id="ratsnest-edge-net-23-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:23:0" data-net="net:23" data-from-pad="pcb_pad:14:0" data-to-pad="pcb_pad:15:1" x1="60" y1="24.25" x2="66.5" y2="24.5"/>
+      <line id="ratsnest-edge-net-24-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:24:0" data-net="net:24" data-from-pad="pcb_pad:16:0" data-to-pad="pcb_pad:17:0" x1="36.45" y1="32.25" x2="32.25" y2="36"/>
+      <line id="ratsnest-edge-net-25-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:25:0" data-net="net:25" data-from-pad="pcb_pad:16:2" data-to-pad="pcb_pad:18:0" x1="38.55" y1="33.75" x2="40.25" y2="39"/>
+      <line id="ratsnest-edge-net-28-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:28:0" data-net="net:28" data-from-pad="pcb_pad:21:6" data-to-pad="pcb_pad:22:9" x1="43.2" y1="31.75" x2="78.635" y2="19.54"/>
+      <line id="ratsnest-edge-net-29-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:29:0" data-net="net:29" data-from-pad="pcb_pad:22:7" data-to-pad="pcb_pad:23:1" x1="78.635" y1="18.27" x2="84" y2="31.27"/>
+      <line id="ratsnest-edge-net-29-1" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:29:1" data-net="net:29" data-from-pad="pcb_pad:21:59" data-to-pad="pcb_pad:22:7" x1="47.25" y1="36.8" x2="78.635" y2="18.27"/>
+      <line id="ratsnest-edge-net-34-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:34:0" data-net="net:34" data-from-pad="pcb_pad:21:45" data-to-pad="pcb_pad:22:1" x1="54.8" y1="33.75" x2="78.635" y2="14.46"/>
+      <line id="ratsnest-edge-net-35-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:35:0" data-net="net:35" data-from-pad="pcb_pad:21:48" data-to-pad="pcb_pad:22:3" x1="52.75" y1="36.8" x2="78.635" y2="15.73"/>
+      <line id="ratsnest-edge-net-36-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:36:0" data-net="net:36" data-from-pad="pcb_pad:21:54" data-to-pad="pcb_pad:22:5" x1="49.75" y1="36.8" x2="78.635" y2="17"/>
+      <line id="ratsnest-edge-net-39-0" class="ratsnest ratsnest-edge" data-ratsnest-edge="ratsnest:39:0" data-net="net:39" data-from-pad="pcb_pad:19:1" data-to-pad="pcb_pad:20:0" x1="62.75" y1="50" x2="69.25" y2="50"/>
+    </g>
+    <g class="layer layer-pad-overlays">
+    </g>
+    <g class="layer layer-diagnostics">
+    </g>
+  </g>
+</svg>

@@ -14,6 +14,18 @@
 namespace volt::detail {
 namespace {
 
+[[nodiscard]] std::string pcb_reference_label(const Circuit &circuit, ComponentId component_id) {
+    const auto &component = circuit.component(component_id);
+    const auto key = PropertyKey{"pcb_reference"};
+    if (component.properties().contains(key)) {
+        const auto &value = component.properties().get(key);
+        if (value.kind() == PropertyValueKind::String) {
+            return value.as_string();
+        }
+    }
+    return component.reference().value();
+}
+
 struct PlacementVisualExtent {
     ComponentPlacementId placement;
     ComponentId component;
@@ -421,7 +433,7 @@ collect_pad_visual_geometry(const Board &board, const FootprintLibrary &footprin
 reference_designator_extent(const Board &board, const ComponentPlacement &placement,
                             ComponentPlacementId placement_id,
                             const FootprintDefinition &definition) {
-    const auto value = board.circuit().component(placement.component()).reference().value();
+    const auto value = pcb_reference_label(board.circuit(), placement.component());
     const auto corners = default_reference_designator_corners(placement, definition, value);
     const auto [min, max] = box_bounds(corners);
     return ReferenceDesignatorVisualExtent{

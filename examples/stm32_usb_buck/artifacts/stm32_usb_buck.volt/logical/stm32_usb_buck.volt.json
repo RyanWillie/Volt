@@ -174,67 +174,298 @@
   "components": [
     { "id": "component:0", "definition": "component_def:0", "reference": "VIN_SRC", "properties": {
         "value": { "type": "string", "value": "12 V input" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Generic", "part_number": "HDR-1x02-2.54mm" },
+      "package": "1x02 2.54mm header",
+      "footprint": { "library": "connectors", "name": "PinHeader_1x02_P2.54mm_Vertical" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:0", "pad": "1" },
+        { "pin": "pin_def:1", "pad": "2" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:1", "definition": "component_def:1", "reference": "PWR/J", "properties": {
         "value": { "type": "string", "value": "Power input" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Sullins", "part_number": "PEC04SAAN" },
+      "package": "1x04 2.54mm",
+      "footprint": { "library": "connectors", "name": "PinHeader_1x04_P2.54mm_Vertical" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:2", "pad": "1" },
+        { "pin": "pin_def:3", "pad": "2" },
+        { "pin": "pin_def:4", "pad": "3" },
+        { "pin": "pin_def:5", "pad": "4" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:2", "definition": "component_def:2", "reference": "PWR/U5", "properties": {
         "value": { "type": "string", "value": "AP1117-5.0" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Diodes Incorporated", "part_number": "AP1117E15G-13" },
+      "package": "SOT-223-3",
+      "footprint": { "library": "Package_TO_SOT_SMD", "name": "SOT-223-3_TabPin2" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:6", "pad": "1" },
+        { "pin": "pin_def:7", "pad": "2" },
+        { "pin": "pin_def:7", "pad": "4" },
+        { "pin": "pin_def:8", "pad": "3" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:3", "definition": "component_def:2", "reference": "PWR/U3V3", "properties": {
         "value": { "type": "string", "value": "AP1117-3.3" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Diodes Incorporated", "part_number": "AP1117E15G-13" },
+      "package": "SOT-223-3",
+      "footprint": { "library": "Package_TO_SOT_SMD", "name": "SOT-223-3_TabPin2" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:6", "pad": "1" },
+        { "pin": "pin_def:7", "pad": "2" },
+        { "pin": "pin_def:7", "pad": "4" },
+        { "pin": "pin_def:8", "pad": "3" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:4", "definition": "component_def:3", "reference": "PWR/CIN", "properties": {
         "value": { "type": "string", "value": "4.7 uF" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:9", "pad": "1" },
+        { "pin": "pin_def:10", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
+      }
+    } },
     { "id": "component:5", "definition": "component_def:3", "reference": "PWR/C5V", "properties": {
         "value": { "type": "string", "value": "4.7 uF" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:9", "pad": "1" },
+        { "pin": "pin_def:10", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
+      }
+    } },
     { "id": "component:6", "definition": "component_def:3", "reference": "PWR/C3V3", "properties": {
         "value": { "type": "string", "value": "4.7 uF" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:9", "pad": "1" },
+        { "pin": "pin_def:10", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
+      }
+    } },
     { "id": "component:7", "definition": "component_def:3", "reference": "PWR/CVDDA", "properties": {
+        "pcb_reference": { "type": "string", "value": "C4" },
         "value": { "type": "string", "value": "100 nF" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:9", "pad": "1" },
+        { "pin": "pin_def:10", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
+      }
+    } },
     { "id": "component:8", "definition": "component_def:4", "reference": "USB/J1", "properties": {
         "value": { "type": "string", "value": "USB Micro-B" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Molex", "part_number": "105017-0001" },
+      "package": "Micro-USB-B receptacle",
+      "footprint": { "library": "connectors", "name": "USB_Micro-B_Receptacle" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:11", "pad": "1" },
+        { "pin": "pin_def:12", "pad": "2" },
+        { "pin": "pin_def:13", "pad": "3" },
+        { "pin": "pin_def:14", "pad": "4" },
+        { "pin": "pin_def:15", "pad": "5" },
+        { "pin": "pin_def:16", "pad": "6" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:9", "definition": "component_def:5", "reference": "USB/U1", "properties": {
         "value": { "type": "string", "value": "USBLC6-4SC6" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "STMicroelectronics", "part_number": "USBLC6-4SC6" },
+      "package": "SOT-23-6",
+      "footprint": { "library": "Package_TO_SOT_SMD", "name": "SOT-23-6" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:17", "pad": "1" },
+        { "pin": "pin_def:18", "pad": "2" },
+        { "pin": "pin_def:19", "pad": "3" },
+        { "pin": "pin_def:20", "pad": "4" },
+        { "pin": "pin_def:21", "pad": "5" },
+        { "pin": "pin_def:22", "pad": "6" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:10", "definition": "component_def:6", "reference": "SUPPORT/CVDD", "properties": {
+        "pcb_reference": { "type": "string", "value": "C5" },
         "value": { "type": "string", "value": "100 nF" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:23", "pad": "1" },
+        { "pin": "pin_def:24", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
+      }
+    } },
     { "id": "component:11", "definition": "component_def:6", "reference": "SUPPORT/CVCAP1", "properties": {
+        "pcb_reference": { "type": "string", "value": "C6" },
         "value": { "type": "string", "value": "2.2 uF" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:23", "pad": "1" },
+        { "pin": "pin_def:24", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
+      }
+    } },
     { "id": "component:12", "definition": "component_def:6", "reference": "SUPPORT/CVCAP2", "properties": {
+        "pcb_reference": { "type": "string", "value": "C7" },
         "value": { "type": "string", "value": "2.2 uF" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:23", "pad": "1" },
+        { "pin": "pin_def:24", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
+      }
+    } },
     { "id": "component:13", "definition": "component_def:7", "reference": "SUPPORT/RRESET", "properties": {
+        "pcb_reference": { "type": "string", "value": "R1" },
         "value": { "type": "string", "value": "10 kOhm" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-0710KL" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:25", "pad": "1" },
+        { "pin": "pin_def:26", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }
+      }
+    } },
     { "id": "component:14", "definition": "component_def:7", "reference": "SUPPORT/RBOOT", "properties": {
+        "pcb_reference": { "type": "string", "value": "R2" },
         "value": { "type": "string", "value": "100 kOhm" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-0710KL" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:25", "pad": "1" },
+        { "pin": "pin_def:26", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }
+      }
+    } },
     { "id": "component:15", "definition": "component_def:9", "reference": "SUPPORT/SWBOOT", "properties": {
+        "pcb_reference": { "type": "string", "value": "SW1" },
         "value": { "type": "string", "value": "BOOT0" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "C&K", "part_number": "PCM12SMTR" },
+      "package": "SMD slide switch",
+      "footprint": { "library": "switches", "name": "SW_SPDT_PCM12" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:31", "pad": "1" },
+        { "pin": "pin_def:32", "pad": "2" },
+        { "pin": "pin_def:33", "pad": "3" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:16", "definition": "component_def:8", "reference": "SUPPORT/Y1", "properties": {
+        "pcb_reference": { "type": "string", "value": "Y1" },
         "value": { "type": "string", "value": "8 MHz" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Abracon", "part_number": "ABM8G-8.000MHZ-18-D2Y-T" },
+      "package": "3.2x2.5mm 4-pad",
+      "footprint": { "library": "crystals", "name": "Crystal_3225_4Pad" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:27", "pad": "1" },
+        { "pin": "pin_def:28", "pad": "2" },
+        { "pin": "pin_def:29", "pad": "3" },
+        { "pin": "pin_def:30", "pad": "4" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:17", "definition": "component_def:6", "reference": "SUPPORT/CHSEIN", "properties": {
+        "pcb_reference": { "type": "string", "value": "C8" },
         "value": { "type": "string", "value": "18 pF" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:23", "pad": "1" },
+        { "pin": "pin_def:24", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
+      }
+    } },
     { "id": "component:18", "definition": "component_def:6", "reference": "SUPPORT/CHSEOUT", "properties": {
+        "pcb_reference": { "type": "string", "value": "C9" },
         "value": { "type": "string", "value": "18 pF" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Murata", "part_number": "GRM188R71C104KA01D" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "C_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:23", "pad": "1" },
+        { "pin": "pin_def:24", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "voltage_rating": { "type": "quantity", "dimension": "voltage", "value": 16 }
+      }
+    } },
     { "id": "component:19", "definition": "component_def:10", "reference": "J2", "properties": {
         "value": { "type": "string", "value": "SWD 10-pin" }
       }, "selected_physical_part": {
       "manufacturer_part": { "manufacturer": "Samtec", "part_number": "FTSH-105-01-L-DV-K" },
       "package": "2x05 1.27mm",
-      "footprint": { "library": "connectors", "name": "PinHeader_2x05_P1.27mm_Vertical" },
+      "footprint": { "library": "connectors", "name": "PinHeader_2x05_P1.27mm_Vertical_SmallPads" },
       "pin_pad_mappings": [
         { "pin": "pin_def:34", "pad": "1" },
         { "pin": "pin_def:35", "pad": "2" },
@@ -265,10 +496,31 @@
     } },
     { "id": "component:21", "definition": "component_def:12", "reference": "LED_STATUS/R", "properties": {
         "value": { "type": "string", "value": "330 Ohm" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Yageo", "part_number": "RC0603FR-0710KL" },
+      "package": "0603",
+      "footprint": { "library": "passives", "name": "R_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:48", "pad": "1" },
+        { "pin": "pin_def:49", "pad": "2" }
+      ],
+      "properties": {},
+      "electrical_attributes": {
+        "power_rating": { "type": "quantity", "dimension": "power", "value": 0.10000000000000001 }
+      }
+    } },
     { "id": "component:22", "definition": "component_def:13", "reference": "LED_STATUS/D", "properties": {
         "value": { "type": "string", "value": "Green LED" }
-      } },
+      }, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Lite-On", "part_number": "LTST-C190KGKT" },
+      "package": "0603 LED",
+      "footprint": { "library": "leds", "name": "LED_0603_1608Metric" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:50", "pad": "1" },
+        { "pin": "pin_def:51", "pad": "2" }
+      ],
+      "properties": {}
+    } },
     { "id": "component:23", "definition": "component_def:14", "reference": "U1", "properties": {
         "value": { "type": "string", "value": "STM32F405RGT6" }
       }, "selected_physical_part": {
@@ -343,10 +595,42 @@
       ],
       "properties": {}
     } },
-    { "id": "component:24", "definition": "component_def:15", "reference": "H1", "properties": {} },
-    { "id": "component:25", "definition": "component_def:15", "reference": "H2", "properties": {} },
-    { "id": "component:26", "definition": "component_def:15", "reference": "H3", "properties": {} },
-    { "id": "component:27", "definition": "component_def:15", "reference": "H4", "properties": {} }
+    { "id": "component:24", "definition": "component_def:15", "reference": "H1", "properties": {}, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Generic", "part_number": "MH-PAD-3.2MM" },
+      "package": "plated mounting pad",
+      "footprint": { "library": "mechanical", "name": "MountingHole_3.2mm_Pad_6.0mm" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:116", "pad": "1" }
+      ],
+      "properties": {}
+    } },
+    { "id": "component:25", "definition": "component_def:15", "reference": "H2", "properties": {}, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Generic", "part_number": "MH-PAD-3.2MM" },
+      "package": "plated mounting pad",
+      "footprint": { "library": "mechanical", "name": "MountingHole_3.2mm_Pad_6.0mm" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:116", "pad": "1" }
+      ],
+      "properties": {}
+    } },
+    { "id": "component:26", "definition": "component_def:15", "reference": "H3", "properties": {}, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Generic", "part_number": "MH-PAD-3.2MM" },
+      "package": "plated mounting pad",
+      "footprint": { "library": "mechanical", "name": "MountingHole_3.2mm_Pad_6.0mm" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:116", "pad": "1" }
+      ],
+      "properties": {}
+    } },
+    { "id": "component:27", "definition": "component_def:15", "reference": "H4", "properties": {}, "selected_physical_part": {
+      "manufacturer_part": { "manufacturer": "Generic", "part_number": "MH-PAD-3.2MM" },
+      "package": "plated mounting pad",
+      "footprint": { "library": "mechanical", "name": "MountingHole_3.2mm_Pad_6.0mm" },
+      "pin_pad_mappings": [
+        { "pin": "pin_def:116", "pad": "1" }
+      ],
+      "properties": {}
+    } }
   ],
   "pins": [
     { "id": "pin:0", "component": "component:0", "definition": "pin_def:0" },
@@ -540,7 +824,7 @@
     { "id": "net:39", "name": "LED_STATUS/SIGNAL", "kind": "Signal", "pins": ["pin:68", "pin:69"] },
     { "id": "net:40", "name": "LED_STATUS/GND", "kind": "Ground", "pins": ["pin:70"] }
   ],
-  "design_intent": { "stub_nets": ["net:34", "net:35", "net:36", "net:37"], "no_connect_pins": ["pin:65", "pin:59", "pin:73", "pin:74", "pin:78", "pin:79", "pin:80", "pin:81", "pin:84", "pin:85", "pin:86", "pin:87", "pin:90", "pin:91", "pin:92", "pin:93", "pin:94", "pin:95", "pin:96", "pin:97", "pin:98", "pin:99", "pin:100", "pin:103", "pin:104", "pin:105", "pin:106", "pin:107", "pin:108", "pin:109", "pin:110", "pin:111", "pin:112", "pin:113", "pin:120", "pin:121", "pin:122", "pin:123", "pin:124", "pin:126", "pin:127", "pin:128", "pin:129", "pin:131", "pin:132"], "component_assembly": [{ "component": "component:0", "dnp": true, "selection_override": false }, { "component": "component:1", "dnp": true, "selection_override": false }, { "component": "component:2", "dnp": true, "selection_override": false }, { "component": "component:3", "dnp": true, "selection_override": false }, { "component": "component:4", "dnp": true, "selection_override": false }, { "component": "component:5", "dnp": true, "selection_override": false }, { "component": "component:6", "dnp": true, "selection_override": false }, { "component": "component:7", "dnp": true, "selection_override": false }, { "component": "component:8", "dnp": true, "selection_override": false }, { "component": "component:9", "dnp": true, "selection_override": false }, { "component": "component:10", "dnp": true, "selection_override": false }, { "component": "component:11", "dnp": true, "selection_override": false }, { "component": "component:12", "dnp": true, "selection_override": false }, { "component": "component:13", "dnp": true, "selection_override": false }, { "component": "component:14", "dnp": true, "selection_override": false }, { "component": "component:15", "dnp": true, "selection_override": false }, { "component": "component:16", "dnp": true, "selection_override": false }, { "component": "component:17", "dnp": true, "selection_override": false }, { "component": "component:18", "dnp": true, "selection_override": false }, { "component": "component:19", "dnp": true, "selection_override": false }, { "component": "component:20", "dnp": true, "selection_override": false }, { "component": "component:21", "dnp": true, "selection_override": false }, { "component": "component:22", "dnp": true, "selection_override": false }, { "component": "component:23", "dnp": true, "selection_override": false }, { "component": "component:24", "dnp": true, "selection_override": false }, { "component": "component:25", "dnp": true, "selection_override": false }, { "component": "component:26", "dnp": true, "selection_override": false }, { "component": "component:27", "dnp": true, "selection_override": false }] },
+  "design_intent": { "stub_nets": ["net:34", "net:35", "net:36", "net:37"], "no_connect_pins": ["pin:23", "pin:65", "pin:59", "pin:73", "pin:74", "pin:78", "pin:79", "pin:80", "pin:81", "pin:84", "pin:85", "pin:86", "pin:87", "pin:90", "pin:91", "pin:92", "pin:93", "pin:94", "pin:95", "pin:96", "pin:97", "pin:98", "pin:99", "pin:100", "pin:103", "pin:104", "pin:105", "pin:106", "pin:107", "pin:108", "pin:109", "pin:110", "pin:111", "pin:112", "pin:113", "pin:120", "pin:121", "pin:122", "pin:123", "pin:124", "pin:126", "pin:127", "pin:128", "pin:129", "pin:131", "pin:132"], "component_assembly": [{ "component": "component:0", "dnp": true, "selection_override": false }, { "component": "component:1", "dnp": false, "selection_override": false }, { "component": "component:2", "dnp": false, "selection_override": false }, { "component": "component:3", "dnp": false, "selection_override": false }, { "component": "component:4", "dnp": false, "selection_override": false }, { "component": "component:5", "dnp": false, "selection_override": false }, { "component": "component:6", "dnp": false, "selection_override": false }, { "component": "component:7", "dnp": false, "selection_override": false }, { "component": "component:8", "dnp": false, "selection_override": false }, { "component": "component:9", "dnp": false, "selection_override": false }, { "component": "component:10", "dnp": false, "selection_override": false }, { "component": "component:11", "dnp": false, "selection_override": false }, { "component": "component:12", "dnp": false, "selection_override": false }, { "component": "component:13", "dnp": false, "selection_override": false }, { "component": "component:14", "dnp": false, "selection_override": false }, { "component": "component:15", "dnp": false, "selection_override": false }, { "component": "component:16", "dnp": false, "selection_override": false }, { "component": "component:17", "dnp": false, "selection_override": false }, { "component": "component:18", "dnp": false, "selection_override": false }, { "component": "component:19", "dnp": false, "selection_override": false }, { "component": "component:20", "dnp": false, "selection_override": false }, { "component": "component:21", "dnp": false, "selection_override": false }, { "component": "component:22", "dnp": false, "selection_override": false }, { "component": "component:23", "dnp": false, "selection_override": false }, { "component": "component:24", "dnp": true, "selection_override": false }, { "component": "component:25", "dnp": true, "selection_override": false }, { "component": "component:26", "dnp": true, "selection_override": false }, { "component": "component:27", "dnp": true, "selection_override": false }] },
   "module_definitions": [
     { "id": "module_def:0", "name": "PowerInputAndRegulator", "local_nets": [{ "id": "template_net:0", "name": "IN_12V", "kind": "Power" }, { "id": "template_net:1", "name": "OUT_5V", "kind": "Power" }, { "id": "template_net:2", "name": "OUT_3V3", "kind": "Power" }, { "id": "template_net:3", "name": "VDDA", "kind": "Power" }, { "id": "template_net:4", "name": "GND", "kind": "Ground" }], "components": [{ "id": "module_component:0", "definition": "component_def:1", "reference": "J", "properties": {
         "value": { "type": "string", "value": "Power input" }
@@ -555,6 +839,7 @@
       } }, { "id": "module_component:5", "definition": "component_def:3", "reference": "C3V3", "properties": {
         "value": { "type": "string", "value": "4.7 uF" }
       } }, { "id": "module_component:6", "definition": "component_def:3", "reference": "CVDDA", "properties": {
+        "pcb_reference": { "type": "string", "value": "C4" },
         "value": { "type": "string", "value": "100 nF" }
       } }], "connections": [{ "net": "template_net:0", "component": "module_component:0", "pin": "pin_def:2" }, { "net": "template_net:4", "component": "module_component:0", "pin": "pin_def:3" }, { "net": "template_net:4", "component": "module_component:0", "pin": "pin_def:4" }, { "net": "template_net:4", "component": "module_component:0", "pin": "pin_def:5" }, { "net": "template_net:4", "component": "module_component:1", "pin": "pin_def:6" }, { "net": "template_net:1", "component": "module_component:1", "pin": "pin_def:7" }, { "net": "template_net:0", "component": "module_component:1", "pin": "pin_def:8" }, { "net": "template_net:4", "component": "module_component:2", "pin": "pin_def:6" }, { "net": "template_net:2", "component": "module_component:2", "pin": "pin_def:7" }, { "net": "template_net:1", "component": "module_component:2", "pin": "pin_def:8" }, { "net": "template_net:0", "component": "module_component:3", "pin": "pin_def:9" }, { "net": "template_net:4", "component": "module_component:3", "pin": "pin_def:10" }, { "net": "template_net:1", "component": "module_component:4", "pin": "pin_def:9" }, { "net": "template_net:4", "component": "module_component:4", "pin": "pin_def:10" }, { "net": "template_net:2", "component": "module_component:5", "pin": "pin_def:9" }, { "net": "template_net:4", "component": "module_component:5", "pin": "pin_def:10" }, { "net": "template_net:3", "component": "module_component:6", "pin": "pin_def:9" }, { "net": "template_net:4", "component": "module_component:6", "pin": "pin_def:10" }], "ports": [{ "id": "port:0", "name": "IN_12V", "internal_net": "template_net:0", "role": "PowerInput", "required": true }, { "id": "port:1", "name": "OUT_5V", "internal_net": "template_net:1", "role": "PowerOutput", "required": true }, { "id": "port:2", "name": "OUT_3V3", "internal_net": "template_net:2", "role": "PowerOutput", "required": true }, { "id": "port:3", "name": "VDDA", "internal_net": "template_net:3", "role": "PowerOutput", "required": true }, { "id": "port:4", "name": "GND", "internal_net": "template_net:4", "role": "Ground", "required": true }] },
     { "id": "module_def:1", "name": "UsbInterface", "local_nets": [{ "id": "template_net:5", "name": "VBUS", "kind": "Power" }, { "id": "template_net:6", "name": "USB_DP", "kind": "Signal" }, { "id": "template_net:7", "name": "USB_DM", "kind": "Signal" }, { "id": "template_net:8", "name": "MCU_USB_DP", "kind": "Signal" }, { "id": "template_net:9", "name": "MCU_USB_DM", "kind": "Signal" }, { "id": "template_net:10", "name": "GND", "kind": "Ground" }], "components": [{ "id": "module_component:7", "definition": "component_def:4", "reference": "J1", "properties": {
@@ -563,22 +848,31 @@
         "value": { "type": "string", "value": "USBLC6-4SC6" }
       } }], "connections": [{ "net": "template_net:5", "component": "module_component:7", "pin": "pin_def:11" }, { "net": "template_net:7", "component": "module_component:7", "pin": "pin_def:12" }, { "net": "template_net:6", "component": "module_component:7", "pin": "pin_def:13" }, { "net": "template_net:10", "component": "module_component:7", "pin": "pin_def:15" }, { "net": "template_net:10", "component": "module_component:7", "pin": "pin_def:16" }, { "net": "template_net:6", "component": "module_component:8", "pin": "pin_def:17" }, { "net": "template_net:10", "component": "module_component:8", "pin": "pin_def:18" }, { "net": "template_net:7", "component": "module_component:8", "pin": "pin_def:19" }, { "net": "template_net:9", "component": "module_component:8", "pin": "pin_def:20" }, { "net": "template_net:5", "component": "module_component:8", "pin": "pin_def:21" }, { "net": "template_net:8", "component": "module_component:8", "pin": "pin_def:22" }], "ports": [{ "id": "port:5", "name": "VBUS", "internal_net": "template_net:5", "role": "PowerInput", "required": true }, { "id": "port:6", "name": "USB_DP", "internal_net": "template_net:6", "role": "Bidirectional", "required": true }, { "id": "port:7", "name": "USB_DM", "internal_net": "template_net:7", "role": "Bidirectional", "required": true }, { "id": "port:8", "name": "MCU_USB_DP", "internal_net": "template_net:8", "role": "Bidirectional", "required": true }, { "id": "port:9", "name": "MCU_USB_DM", "internal_net": "template_net:9", "role": "Bidirectional", "required": true }, { "id": "port:10", "name": "GND", "internal_net": "template_net:10", "role": "Ground", "required": true }] },
     { "id": "module_def:2", "name": "McuSupport", "local_nets": [{ "id": "template_net:11", "name": "VDD", "kind": "Power" }, { "id": "template_net:12", "name": "GND", "kind": "Ground" }, { "id": "template_net:13", "name": "NRST", "kind": "Signal" }, { "id": "template_net:14", "name": "BOOT0", "kind": "Signal" }, { "id": "template_net:15", "name": "HSE_IN", "kind": "Signal" }, { "id": "template_net:16", "name": "HSE_OUT", "kind": "Signal" }, { "id": "template_net:17", "name": "VCAP_1", "kind": "Power" }, { "id": "template_net:18", "name": "VCAP_2", "kind": "Power" }], "components": [{ "id": "module_component:9", "definition": "component_def:6", "reference": "CVDD", "properties": {
+        "pcb_reference": { "type": "string", "value": "C5" },
         "value": { "type": "string", "value": "100 nF" }
       } }, { "id": "module_component:10", "definition": "component_def:6", "reference": "CVCAP1", "properties": {
+        "pcb_reference": { "type": "string", "value": "C6" },
         "value": { "type": "string", "value": "2.2 uF" }
       } }, { "id": "module_component:11", "definition": "component_def:6", "reference": "CVCAP2", "properties": {
+        "pcb_reference": { "type": "string", "value": "C7" },
         "value": { "type": "string", "value": "2.2 uF" }
       } }, { "id": "module_component:12", "definition": "component_def:7", "reference": "RRESET", "properties": {
+        "pcb_reference": { "type": "string", "value": "R1" },
         "value": { "type": "string", "value": "10 kOhm" }
       } }, { "id": "module_component:13", "definition": "component_def:7", "reference": "RBOOT", "properties": {
+        "pcb_reference": { "type": "string", "value": "R2" },
         "value": { "type": "string", "value": "100 kOhm" }
       } }, { "id": "module_component:14", "definition": "component_def:9", "reference": "SWBOOT", "properties": {
+        "pcb_reference": { "type": "string", "value": "SW1" },
         "value": { "type": "string", "value": "BOOT0" }
       } }, { "id": "module_component:15", "definition": "component_def:8", "reference": "Y1", "properties": {
+        "pcb_reference": { "type": "string", "value": "Y1" },
         "value": { "type": "string", "value": "8 MHz" }
       } }, { "id": "module_component:16", "definition": "component_def:6", "reference": "CHSEIN", "properties": {
+        "pcb_reference": { "type": "string", "value": "C8" },
         "value": { "type": "string", "value": "18 pF" }
       } }, { "id": "module_component:17", "definition": "component_def:6", "reference": "CHSEOUT", "properties": {
+        "pcb_reference": { "type": "string", "value": "C9" },
         "value": { "type": "string", "value": "18 pF" }
       } }], "connections": [{ "net": "template_net:11", "component": "module_component:9", "pin": "pin_def:23" }, { "net": "template_net:12", "component": "module_component:9", "pin": "pin_def:24" }, { "net": "template_net:17", "component": "module_component:10", "pin": "pin_def:23" }, { "net": "template_net:12", "component": "module_component:10", "pin": "pin_def:24" }, { "net": "template_net:18", "component": "module_component:11", "pin": "pin_def:23" }, { "net": "template_net:12", "component": "module_component:11", "pin": "pin_def:24" }, { "net": "template_net:11", "component": "module_component:12", "pin": "pin_def:25" }, { "net": "template_net:13", "component": "module_component:12", "pin": "pin_def:26" }, { "net": "template_net:14", "component": "module_component:13", "pin": "pin_def:25" }, { "net": "template_net:12", "component": "module_component:13", "pin": "pin_def:26" }, { "net": "template_net:11", "component": "module_component:14", "pin": "pin_def:31" }, { "net": "template_net:14", "component": "module_component:14", "pin": "pin_def:32" }, { "net": "template_net:12", "component": "module_component:14", "pin": "pin_def:33" }, { "net": "template_net:15", "component": "module_component:15", "pin": "pin_def:27" }, { "net": "template_net:12", "component": "module_component:15", "pin": "pin_def:28" }, { "net": "template_net:16", "component": "module_component:15", "pin": "pin_def:29" }, { "net": "template_net:12", "component": "module_component:15", "pin": "pin_def:30" }, { "net": "template_net:15", "component": "module_component:16", "pin": "pin_def:23" }, { "net": "template_net:12", "component": "module_component:16", "pin": "pin_def:24" }, { "net": "template_net:16", "component": "module_component:17", "pin": "pin_def:23" }, { "net": "template_net:12", "component": "module_component:17", "pin": "pin_def:24" }], "ports": [{ "id": "port:11", "name": "VDD", "internal_net": "template_net:11", "role": "PowerInput", "required": true }, { "id": "port:12", "name": "GND", "internal_net": "template_net:12", "role": "Ground", "required": true }, { "id": "port:13", "name": "NRST", "internal_net": "template_net:13", "role": "Input", "required": true }, { "id": "port:14", "name": "BOOT0", "internal_net": "template_net:14", "role": "Input", "required": true }, { "id": "port:15", "name": "HSE_IN", "internal_net": "template_net:15", "role": "Passive", "required": true }, { "id": "port:16", "name": "HSE_OUT", "internal_net": "template_net:16", "role": "Passive", "required": true }, { "id": "port:17", "name": "VCAP_1", "internal_net": "template_net:17", "role": "PowerInput", "required": true }, { "id": "port:18", "name": "VCAP_2", "internal_net": "template_net:18", "role": "PowerInput", "required": true }] },
     { "id": "module_def:3", "name": "LedIndicator", "local_nets": [{ "id": "template_net:19", "name": "SUPPLY", "kind": "Power" }, { "id": "template_net:20", "name": "SIGNAL", "kind": "Signal" }, { "id": "template_net:21", "name": "GND", "kind": "Ground" }], "components": [{ "id": "module_component:18", "definition": "component_def:12", "reference": "R", "properties": {

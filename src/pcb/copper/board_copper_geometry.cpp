@@ -1,6 +1,8 @@
 #include <volt/pcb/board.hpp>
 #include <volt/pcb/routing/board_spatial_index.hpp>
 
+#include <volt/circuit/validation/validation.hpp>
+
 #include "../validation/board_capability_validation.hpp"
 #include "../validation/board_footprint_drc.hpp"
 #include "board_copper_detail.hpp"
@@ -440,7 +442,8 @@ required_copper_clearance(const Board &board, const BoardRoomRuleResolver &rooms
 check_copper_clearance(const Board &board, const BoardCopperShape &lhs, BoardClearanceKind lhs_kind,
                        const BoardCopperShape &rhs, BoardClearanceKind rhs_kind) {
     auto result = BoardCopperClearanceCheck{};
-    if (lhs.net == rhs.net) {
+    const auto continuity = NetContinuityView{board.circuit()};
+    if (continuity.same_group(lhs.net, rhs.net)) {
         return result;
     }
     const auto layer = first_common_layer(lhs, rhs);

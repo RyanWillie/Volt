@@ -528,6 +528,11 @@ def test_project_expected_kicad_loss_construct_does_not_cover_another_loss():
             layers=(front,),
             net=nets["VCC"],
         )
+        pcb.add_keepout(
+            outline=((7.0, 1.0), (9.0, 1.0), (9.0, 3.0), (7.0, 3.0)),
+            layers=(front,),
+            restrictions=("copper",),
+        )
         return pcb
 
     result = project.run()
@@ -545,7 +550,7 @@ def test_project_expected_kicad_loss_construct_does_not_cover_another_loss():
         if diagnostic.code == "PCB_KICAD_FAB_EXPORT_LOSS"
     ]
     assert [diagnostic.rule for diagnostic in unexpected_kicad] == [
-        "board.zone"
+        "board.keepout"
     ]
 
 

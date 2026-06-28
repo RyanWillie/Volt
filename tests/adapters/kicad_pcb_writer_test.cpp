@@ -405,16 +405,17 @@ TEST_CASE("KiCad PCB writer reports unsupported out-of-subset board constructs")
     const auto result =
         volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
 
-    REQUIRE(result.loss_report.warnings().size() == 5);
+    REQUIRE(result.loss_report.warnings().size() == 4);
     CHECK(result.loss_report.warnings().at(0).kind ==
           volt::adapters::kicad::LossKind::UnsupportedConstruct);
-    CHECK(result.loss_report.warnings().at(0).construct == "board.zone");
+    CHECK(result.loss_report.warnings().at(0).construct == "board.keepout");
     CHECK(result.loss_report.warnings().at(1).kind ==
           volt::adapters::kicad::LossKind::UnsupportedConstruct);
-    CHECK(result.loss_report.warnings().at(1).construct == "board.keepout");
-    CHECK(result.loss_report.warnings().at(2).construct == "board.feature.slot");
-    CHECK(result.loss_report.warnings().at(3).construct == "board.feature.cutout");
-    CHECK(result.loss_report.warnings().at(4).construct == "board.feature.circle");
+    CHECK(result.loss_report.warnings().at(1).construct == "board.feature.slot");
+    CHECK(result.loss_report.warnings().at(2).construct == "board.feature.cutout");
+    CHECK(result.loss_report.warnings().at(3).construct == "board.feature.circle");
+    CHECK(result.text.find("(zone") != std::string::npos);
+    CHECK(result.text.find("(net_name \"LEFT\")") != std::string::npos);
 }
 
 TEST_CASE("KiCad PCB writer classifies fab-critical and informational losses") {
@@ -440,20 +441,18 @@ TEST_CASE("KiCad PCB writer classifies fab-critical and informational losses") {
     const auto result =
         volt::adapters::kicad::write_board(board, volt::builtin_footprint_library());
 
-    REQUIRE(result.loss_report.warnings().size() == 3);
-    CHECK(result.loss_report.warnings().at(0).construct == "board.zone");
+    REQUIRE(result.loss_report.warnings().size() == 2);
+    CHECK(result.loss_report.warnings().at(0).construct == "board.text.layer");
+    CHECK(result.loss_report.warnings().at(0).severity ==
+          volt::adapters::kicad::LossSeverity::Info);
     CHECK(result.loss_report.warnings().at(0).fabrication_impact ==
-          volt::adapters::kicad::LossFabricationImpact::FabCritical);
+          volt::adapters::kicad::LossFabricationImpact::Informational);
     CHECK(result.loss_report.warnings().at(1).construct == "board.text.layer");
     CHECK(result.loss_report.warnings().at(1).severity ==
-          volt::adapters::kicad::LossSeverity::Info);
-    CHECK(result.loss_report.warnings().at(1).fabrication_impact ==
-          volt::adapters::kicad::LossFabricationImpact::Informational);
-    CHECK(result.loss_report.warnings().at(2).construct == "board.text.layer");
-    CHECK(result.loss_report.warnings().at(2).severity ==
           volt::adapters::kicad::LossSeverity::Warning);
-    CHECK(result.loss_report.warnings().at(2).fabrication_impact ==
+    CHECK(result.loss_report.warnings().at(1).fabrication_impact ==
           volt::adapters::kicad::LossFabricationImpact::FabCritical);
+    CHECK(result.text.find("(zone") != std::string::npos);
     CHECK(result.loss_report.has_fab_critical_warnings());
 }
 
